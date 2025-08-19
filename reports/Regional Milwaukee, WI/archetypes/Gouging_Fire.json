@@ -1,0 +1,369 @@
+{
+  "deckTotal": 1,
+  "items": [
+    {
+      "rank": 1,
+      "name": "Ultra Ball",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "name": "Iron Bundle",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "name": "Nest Ball",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "name": "Squawkabilly ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "name": "Energy Switch",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "name": "Munkidori",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "name": "Fire Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 5,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "name": "Secret Box",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "name": "Gouging Fire ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "name": "Pecharunt ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Fezandipiti ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Night Stretcher",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Pecharunt",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Carmine",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Darkness Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Pok\u00e9gear 3.0",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Perilous Jungle",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Boss's Orders",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Pal Pad",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Binding Mochi",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Ancient Booster Energy Capsule",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "Brute Bonnet",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "name": "Roaring Moon ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Latias ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "Earthen Vessel",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 26,
+      "name": "Professor Sada's Vitality",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    }
+  ]
+}

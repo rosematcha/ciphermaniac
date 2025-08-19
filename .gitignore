@@ -1,0 +1,31 @@
+# Node modules
+node_modules/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# VS Code settings
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build/output
+/dist/
+/build/
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+
+# Misc
+.env
+*.bak
+*.tmp
+
+# Github files
+.github/
