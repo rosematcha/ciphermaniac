@@ -1,0 +1,767 @@
+{
+  "deckTotal": 24,
+  "items": [
+    {
+      "rank": 1,
+      "name": "Earthen Vessel",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 24,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "name": "Pok\u00e9gear 3.0",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 4.17
+        },
+        {
+          "copies": 2,
+          "players": 5,
+          "percent": 20.83
+        },
+        {
+          "copies": 3,
+          "players": 13,
+          "percent": 54.17
+        },
+        {
+          "copies": 4,
+          "players": 5,
+          "percent": 20.83
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "name": "Fezandipiti ex",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 24,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "name": "Ultra Ball",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 11,
+          "percent": 45.83
+        },
+        {
+          "copies": 4,
+          "players": 13,
+          "percent": 54.17
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "name": "Crispin",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 4.17
+        },
+        {
+          "copies": 4,
+          "players": 23,
+          "percent": 95.83
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "name": "Grass Energy",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 5,
+          "players": 24,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "name": "Mew ex",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 23,
+          "percent": 95.83
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 4.17
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "name": "Lightning Energy",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 5,
+          "players": 23,
+          "percent": 95.83
+        },
+        {
+          "copies": 6,
+          "players": 1,
+          "percent": 4.17
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "name": "Bloodmoon Ursaluna ex",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 24,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "name": "Miraidon ex",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 4.17
+        },
+        {
+          "copies": 2,
+          "players": 23,
+          "percent": 95.83
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Arven",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 4.17
+        },
+        {
+          "copies": 4,
+          "players": 23,
+          "percent": 95.83
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Latias ex",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 24,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Nest Ball",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 4.17
+        },
+        {
+          "copies": 4,
+          "players": 23,
+          "percent": 95.83
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Boss's Orders",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 8.33
+        },
+        {
+          "copies": 4,
+          "players": 22,
+          "percent": 91.67
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Prime Catcher",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 24,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Rescue Board",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 24,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Pikachu ex",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 4.17
+        },
+        {
+          "copies": 2,
+          "players": 23,
+          "percent": 95.83
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Joltik",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 24,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Iron Hands ex",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 24,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Metal Energy",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 21,
+          "percent": 87.5
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 12.5
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Iron Leaves ex",
+      "found": 23,
+      "total": 24,
+      "pct": 95.83,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 23,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "Bravery Charm",
+      "found": 23,
+      "total": 24,
+      "pct": 95.83,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 13.04
+        },
+        {
+          "copies": 2,
+          "players": 20,
+          "percent": 86.96
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "name": "Galvantula",
+      "found": 23,
+      "total": 24,
+      "pct": 95.83,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 23,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Psychic Energy",
+      "found": 20,
+      "total": 24,
+      "pct": 83.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 20.0
+        },
+        {
+          "copies": 2,
+          "players": 16,
+          "percent": 80.0
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "Lillie's Clefairy ex",
+      "found": 20,
+      "total": 24,
+      "pct": 83.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 20,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 26,
+      "name": "Future Booster Energy Capsule",
+      "found": 18,
+      "total": 24,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 18,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 27,
+      "name": "Super Rod",
+      "found": 12,
+      "total": 24,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 12,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 28,
+      "name": "Genesect",
+      "found": 9,
+      "total": 24,
+      "pct": 37.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 29,
+      "name": "Night Stretcher",
+      "found": 8,
+      "total": 24,
+      "pct": 33.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 30,
+      "name": "Gravity Mountain",
+      "found": 8,
+      "total": 24,
+      "pct": 33.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 62.5
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 37.5
+        }
+      ]
+    },
+    {
+      "rank": 31,
+      "name": "Iono",
+      "found": 8,
+      "total": 24,
+      "pct": 33.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 32,
+      "name": "Exp. Share",
+      "found": 7,
+      "total": 24,
+      "pct": 29.17,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 33,
+      "name": "Switch",
+      "found": 5,
+      "total": 24,
+      "pct": 20.83,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 34,
+      "name": "Counter Catcher",
+      "found": 4,
+      "total": 24,
+      "pct": 16.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 35,
+      "name": "Defiance Band",
+      "found": 4,
+      "total": 24,
+      "pct": 16.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 36,
+      "name": "Powerglass",
+      "found": 3,
+      "total": 24,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 37,
+      "name": "Vitality Band",
+      "found": 3,
+      "total": 24,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 38,
+      "name": "Team Rocket's Petrel",
+      "found": 3,
+      "total": 24,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 66.67
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 33.33
+        }
+      ]
+    },
+    {
+      "rank": 39,
+      "name": "Energy Switch",
+      "found": 2,
+      "total": 24,
+      "pct": 8.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 40,
+      "name": "Picnic Basket",
+      "found": 2,
+      "total": 24,
+      "pct": 8.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 41,
+      "name": "Team Rocket's Watchtower",
+      "found": 2,
+      "total": 24,
+      "pct": 8.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 42,
+      "name": "Magnemite",
+      "found": 1,
+      "total": 24,
+      "pct": 4.17,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 43,
+      "name": "Magneton",
+      "found": 1,
+      "total": 24,
+      "pct": 4.17,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 44,
+      "name": "Mesagoza",
+      "found": 1,
+      "total": 24,
+      "pct": 4.17,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 45,
+      "name": "Iron Bundle",
+      "found": 1,
+      "total": 24,
+      "pct": 4.17,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 46,
+      "name": "Galvantula ex",
+      "found": 1,
+      "total": 24,
+      "pct": 4.17,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 47,
+      "name": "Protective Goggles",
+      "found": 1,
+      "total": 24,
+      "pct": 4.17,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 48,
+      "name": "Maractus",
+      "found": 1,
+      "total": 24,
+      "pct": 4.17,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    }
+  ]
+}

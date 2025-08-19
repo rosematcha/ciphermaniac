@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ciphermaniac</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <link rel="icon" href="data:," />
+</head>
+  <body>
+  <header>
+    <div class="header-inner">
+      <a class="logo" href="./" aria-label="Ciphermaniac home">
+        <div class="site-title">ciphermaniac</div>
+      </a>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a class="nav-link" href="./">Home</a>
+        <a class="nav-link" href="card.html">Cards</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="toolbar-inner">
+      <div class="controls">
+  <input id="search" type="search" placeholder="Search cards…" aria-label="Search cards" autocomplete="off" />
+        <button id="filtersToggle" class="filters-toggle" type="button" aria-expanded="false" aria-controls="filters">Filters</button>
+        <div id="filters" class="filters">
+          <select id="tournament" title="Choose tournament" aria-label="Choose tournament">
+            <!-- options populated by JS -->
+          </select>
+          <select id="archetype" title="Choose archetype" aria-label="Choose archetype">
+            <option value="__all__">All archetypes</option>
+          </select>
+          <select id="fav-filter" title="Show favorites or all" aria-label="Favorites filter">
+            <option value="all">All cards</option>
+            <option value="fav">Favorites</option>
+          </select>
+          <select id="sort" aria-label="Sort order">
+            <option value="percent-desc">Sort: most used</option>
+            <option value="percent-asc">Sort: least used</option>
+            <option value="alpha-asc">Sort: A→Z</option>
+            <option value="alpha-desc">Sort: Z→A</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <section id="grid" class="grid" aria-live="polite" role="grid" aria-label="Card usage grid"></section>
+  </main>
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-left">
+        <div id="summary" class="summary"></div>
+        <div class="credits">Data sourced from <a href="https://limitlesstcg.com/tournaments/500">LimitlessTCG</a>. UI inspiration from <a href="https://www.trainerhill.com/">TrainerHill</a>.</div>
+      </div>
+      <div class="footer-right">
+        <div><a href="https://x.com/ciphermaniac" target="_blank" rel="noopener noreferrer">Follow on Twitter for updates</a></div>
+      </div>
+    </div>
+  </footer>
+
+  <template id="card-template">
+    <article class="card" tabindex="0">
+      <div class="thumb">
+        <img alt="" />
+        <div class="overlay">
+          <div class="hist" aria-label="Count distribution per copies">
+            <!-- columns inserted by JS -->
+          </div>
+          <div class="usagebar" title="Usage %">
+            <div class="bar"></div>
+            <span class="pct"></span>
+          </div>
+        </div>
+      </div>
+      <div class="titleRow">
+        <h3 class="name"></h3>
+        <div class="counts"></div>
+      </div>
+    </article>
+  </template>
+
+  <script src="assets/js/main.js" type="module"></script>
+  <script src="assets/js/ui.js" type="module"></script>
+</body>
+</html>
