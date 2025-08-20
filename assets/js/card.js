@@ -28,28 +28,6 @@ const backLink = document.getElementById('back-link');
 if(backLink){ backLink.href = 'index.html'; }
 const analysisSel = document.getElementById('analysis-event');
 const analysisTable = document.getElementById('analysis-table');
-
-// If no card is selected (e.g., user clicked a navbar card but no name was provided),
-// hide the metadata and analysis sections so they don't remain visible with stale content.
-if(!cardName){
-	if(metaSection) metaSection.style.display = 'none';
-	const analysisSection = document.getElementById('card-analysis');
-	if(analysisSection) analysisSection.style.display = 'none';
-}
-
-// Show a consistent empty state like the grid page uses
-function renderEmptyState(){
-	const main = document.querySelector('main');
-	if(!main) return;
-	let empty = document.getElementById('empty-state-card');
-	if(!empty){
-		empty = document.createElement('div');
-		empty.id = 'empty-state-card';
-		empty.className = 'empty-state';
-		empty.innerHTML = `<h2>Dead draw.</h2><p>No results for this search, try another!</p>`;
-		main.appendChild(empty);
-	}
-}
 const copyBtn = document.getElementById('copy-link');
 const searchInGrid = document.getElementById('search-in-grid');
 const windowSelect = document.getElementById('window-select');
@@ -221,35 +199,8 @@ async function initCardSearch(){
 			cardSearchInput.addEventListener('keydown', (e) => {
 				if(e.key === 'Enter'){
 					e.preventDefault();
-					const inputVal = cardSearchInput.value.trim();
-					// First, prefer the active suggestions list we already rendered
-					let pick = null;
-					if(currentMatches && currentMatches.length > 0){
-						const idx = (selectedIndex >= 0 && selectedIndex < currentMatches.length) ? selectedIndex : 0;
-						pick = currentMatches[idx];
-					}
-					// If we somehow don't have a live list, check the UI overlay's first item
-					if(!pick){
-						const uiFirst = (function(){
-							try{
-								const firstEl = suggestionsBox && suggestionsBox.firstElementChild;
-								if(firstEl){
-									const left = firstEl.querySelector('span');
-									if(left && left.textContent) return left.textContent;
-									return firstEl.textContent || null;
-								}
-							}catch{}
-							return null;
-						})();
-						if(uiFirst) pick = uiFirst;
-					}
-					// As a final calculated fallback, recompute and use the first match
-					if(!pick){
-						const recomputed = computeMatches(cardSearchInput.value);
-						if(recomputed && recomputed.length > 0){ pick = recomputed[0]; }
-					}
-					// Only if the input has content and no suggestions were available at all, use raw input
-					if(!pick && inputVal){ pick = inputVal; }
+					// If user navigated suggestions, pick highlighted; otherwise use input value
+					const pick = (selectedIndex >= 0 && currentMatches[selectedIndex]) ? currentMatches[selectedIndex] : cardSearchInput.value.trim();
 					if(pick) goTo(pick);
 					return;
 				}
@@ -506,15 +457,6 @@ async function load(){
 							deckRows.push({ tournament: t, archetype: null, pct: globalPct, found: globalFound, total: globalTotal });
 						}
 					}catch{/* missing tournament master */}
-				}
-
-				// If no events contain this card, show the same empty state as the grid page and stop.
-				if(timePoints.length === 0){
-					if(metaSection) metaSection.style.display = 'none';
-					const analysisSection = document.getElementById('card-analysis');
-					if(analysisSection) analysisSection.style.display = 'none';
-					renderEmptyState();
-					return;
 				}
 
 		// Default window comes from selector (6)
