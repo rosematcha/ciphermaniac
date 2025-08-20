@@ -78,8 +78,8 @@ export function syncControlsWidth(width) {
   
   // On small screens, let CSS handle width (mobile override)
   if (window.innerWidth <= 520) {
-    controls.style.width = '';
-    controls.style.margin = '';
+  if (controls.style.width) controls.style.width = '';
+  if (controls.style.margin) controls.style.margin = '';
     return;
   }
   
@@ -88,8 +88,13 @@ export function syncControlsWidth(width) {
   const cap = headerInner ? headerInner.clientWidth : width;
   const finalWidth = Math.min(width, cap || width);
   
-  controls.style.width = finalWidth + 'px';
-  controls.style.margin = '0 auto';
+  const targetWidth = finalWidth + 'px';
+  if (controls.style.width !== targetWidth) {
+    controls.style.width = targetWidth;
+  }
+  if (controls.style.margin !== '0 auto') {
+    controls.style.margin = '0 auto';
+  }
   
   logger.debug(`Synced controls width to ${finalWidth}px`);
 }

@@ -359,12 +359,25 @@ window.addEventListener('popstate', () => handlePopState(appState));
  * @param {AppState} state
  */
 function setupResizeHandler(state) {
-  const handleResize = debounce(() => {
-    logger.debug('Window resized, updating layout');
-    updateLayout();
-  }, 150);
+  // rAF scheduler: update at most once per animation frame during resize
+  let ticking = false;
+  const onResize = () => {
+    if (ticking) return;
+    ticking = true;
+    try {
+      window.requestAnimationFrame(() => {
+        logger.debug('Window resized (rAF), updating layout');
+        updateLayout();
+        ticking = false;
+      });
+    } catch {
+      // Fallback without rAF
+      updateLayout();
+      ticking = false;
+    }
+  };
 
-  state.cleanup.addEventListener(window, 'resize', handleResize);
+  state.cleanup.addEventListener(window, 'resize', onResize);
 }
 
 /**

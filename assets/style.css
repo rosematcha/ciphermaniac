@@ -58,7 +58,8 @@ header{
 .toolbar .controls{ display:flex; gap:12px; align-items:center }
 .toolbar .filters{ display:flex }
 
-@media (max-width:520px){
+@media (max-width:899px){
+  /* Small viewport: use the same layout as mobile */
   .toolbar .controls{ flex-direction:column; align-items:stretch }
   .toolbar .filters{ display:none }
   .toolbar .filters[aria-hidden="false"]{ display:flex }
@@ -76,16 +77,16 @@ header{
 .filters-toggle{background:var(--panel);color:var(--text);border:1px solid #2c335a;border-radius:10px;padding:10px 12px;min-height:44px;cursor:pointer}
 .filters{display:flex;gap:12px;flex-wrap:wrap}
 
-@media (max-width: 520px){
+@media (max-width: 899px){
   .filters{display:none}
   .filters[aria-hidden="false"]{display:flex}
 }
-@media (min-width: 521px){
+@media (min-width: 900px){
   .filters-toggle{display:none}
 }
 
 /* Mobile-friendly controls layout */
-@media (max-width: 520px){
+@media (max-width: 899px){
   .controls{
     width:100% !important; /* override JS inline width on small screens */
     margin:0 auto;
@@ -102,6 +103,8 @@ header{
 @media (min-width: 900px){
   .controls{justify-content:center}
   .controls input[type="search"], .controls select{ font-size:17px; min-height:46px; }
+  /* On wider screens use slightly larger side padding for main content */
+  main{ padding:0 20px 24px; }
 }
 .controls input[type="search"], .controls select{
   background:var(--panel);

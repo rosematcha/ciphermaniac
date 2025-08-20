@@ -4,8 +4,13 @@ export function initFiltersToggle(){
   const panel = document.getElementById('filters');
   if(!btn || !panel) return;
   // initialize hidden state on small screens; on desktop CSS shows filters regardless
-  if(!panel.hasAttribute('aria-hidden')){
+  const isSmall = window.matchMedia('(max-width: 899px)').matches;
+  if(!panel.hasAttribute('aria-hidden') && isSmall){
     panel.setAttribute('aria-hidden', 'true');
+  } else if (!isSmall) {
+    // Ensure ARIA matches visible state on desktop
+    panel.setAttribute('aria-hidden', 'false');
+    btn.setAttribute('aria-expanded', 'false');
   }
   const openPanel = () => {
     btn.setAttribute('aria-expanded', 'true');

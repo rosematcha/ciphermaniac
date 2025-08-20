@@ -190,6 +190,9 @@ export function render(items, overrides={}){
     while(idx < items.length){ cnt++; const isBigLocal = cnt-1 < bigRows; const maxCount = isBigLocal ? perRowBig : targetSmall; idx += maxCount; }
     return cnt;
   })();
+  // Persist totals so resize handler can decide whether to show More after reflow
+  grid._totalRows = estimateTotalRows;
+  grid._totalCards = items.length;
   if(rowIndex < estimateTotalRows){
     const moreWrap = document.createElement('div'); moreWrap.className = 'more-rows';
     const moreBtn = document.createElement('button'); moreBtn.className = 'btn'; moreBtn.type = 'button'; moreBtn.textContent = 'More...';
@@ -205,6 +208,8 @@ export function render(items, overrides={}){
     });
     moreWrap.appendChild(moreBtn);
     grid.appendChild(moreWrap);
+    // Keep a reference so updateLayout can re-attach after rebuilds
+    grid._moreWrapRef = moreWrap;
   }
 
   // Keyboard navigation: arrow keys move focus across cards by row/column
@@ -267,10 +272,44 @@ export function updateLayout(){
   const { base, perRowBig, bigRowContentWidth, targetSmall, smallScale, bigRows } = computeLayout(containerWidth);
   syncControlsWidth(bigRowContentWidth);
 
+  // Fast path: If row grouping hasn't changed, avoid rebuilding the entire grid.
+  // Only update CSS vars and row widths/scales in-place to minimize DOM churn.
+  const prev = grid._layoutMetrics;
+  const groupingUnchanged = prev 
+    && prev.perRowBig === perRowBig 
+    && prev.targetSmall === targetSmall 
+    && prev.bigRows === bigRows;
+  if (groupingUnchanged) {
+    const rows = Array.from(grid.querySelectorAll('.row'));
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++){
+      const row = rows[rowIndex];
+      const isBig = rowIndex < bigRows;
+      const scale = isBig ? 1 : smallScale;
+      row.style.setProperty('--scale', String(scale));
+      row.style.setProperty('--card-base', base + 'px');
+      // Keep consistent width and centering
+      const widthPx = bigRowContentWidth + 'px';
+      if (row.style.width !== widthPx) row.style.width = widthPx;
+      if (row.style.margin !== '0 auto') row.style.margin = '0 auto';
+    }
+    // Store latest metrics and return
+    grid._layoutMetrics = { base, perRowBig, bigRowContentWidth, targetSmall, smallScale, bigRows };
+    return;
+  }
+
   // Build rows and re-append existing cards
+  // Preserve existing More... control, if any, to re-attach after rebuild
+  const savedMore = grid.querySelector('.more-rows') || grid._moreWrapRef || null;
   const frag = document.createDocumentFragment();
   let i = 0;
   let rowIndex = 0;
+  // Compute the total number of rows for ALL items based on latest layout
+  const totalCards = Number.isInteger(grid._totalCards) ? grid._totalCards : cards.length;
+  const newTotalRows = (() => {
+    let cnt = 0; let idx = 0;
+    while(idx < totalCards){ cnt++; const isBigLocal = cnt-1 < bigRows; const maxCount = isBigLocal ? perRowBig : targetSmall; idx += maxCount; }
+    return cnt;
+  })();
   while(i < cards.length){
     const row = document.createElement('div');
     row.className = 'row';
@@ -296,4 +335,12 @@ export function updateLayout(){
   // Replace rows; event listeners on cards remain intact
   grid.innerHTML = '';
   grid.appendChild(frag);
+  // Restore More... button if there are additional rows beyond the visible ones
+  if (savedMore && rowIndex < newTotalRows) {
+    grid.appendChild(savedMore);
+    grid._moreWrapRef = savedMore;
+  }
+  // Cache last layout metrics for fast-path updates on minor resizes
+  grid._layoutMetrics = { base, perRowBig, bigRowContentWidth, targetSmall, smallScale, bigRows };
+  grid._totalRows = newTotalRows;
 }
