@@ -12,14 +12,28 @@ export function getStateFromURL(loc = window.location){
 }
 
 export function setStateInURL(state, opts = {}){
-  const { replace = false } = opts;
-  const params = new URLSearchParams();
-  if(state.q) params.set('q', state.q);
-  if(state.sort) params.set('sort', state.sort);
-  if(state.archetype) params.set('archetype', state.archetype);
-  if(state.tour) params.set('tour', state.tour);
-  if(state.fav) params.set('fav', state.fav);
-  const newUrl = `${location.pathname}?${params.toString()}${location.hash || ''}`;
+  const { replace = false, merge = false } = opts;
+
+  // Start from existing params when merging, otherwise build a fresh set
+  const params = merge ? new URLSearchParams(location.search) : new URLSearchParams();
+
+  // Helper to set or remove a param depending on value
+  const setOrDelete = (key, val) => {
+    if (val === undefined || val === null || val === '') {
+      params.delete(key);
+    } else {
+      params.set(key, String(val));
+    }
+  };
+
+  setOrDelete('q', state.q);
+  setOrDelete('sort', state.sort);
+  setOrDelete('archetype', state.archetype);
+  setOrDelete('tour', state.tour);
+  setOrDelete('fav', state.fav);
+
+  const search = params.toString();
+  const newUrl = `${location.pathname}${search ? `?${search}` : ''}${location.hash || ''}`;
   if(replace){
     history.replaceState(null, '', newUrl);
   } else {
@@ -64,4 +78,51 @@ export function normalizeCardRouteOnLoad(){
     return true;
   }
   return false;
+}
+
+/**
+ * Ensure index page has a valid hash. If the hash is present but not recognized
+ * (not #grid and not #card/...), clear the hash to avoid leaving the app in an
+ * unknown state. Returns true if the hash was cleared.
+ *
+ * This is intentionally conservative and only runs on index.html.
+ */
+export function normalizeUnknownHashOnIndex(){
+  const h = location.hash || '';
+  if(!h) return false;
+  if(h === '#grid') return false;
+  if(/^#card\/.+/.test(h)) return false;
+  // Unknown hash -> clear it but preserve search params
+  const newUrl = `${location.pathname}${location.search}`;
+  history.replaceState(null, '', newUrl);
+  return true;
+}
+
+/**
+ * Parse a hash string into a simple route object.
+ * @param {string} [hash] - optional hash (defaults to location.hash)
+ * @returns {{route: 'card'|'grid'|'unknown', name?: string, raw?: string}}
+ */
+export function parseHash(hash = location.hash){
+  const h = String(hash || '');
+  const m = h.match(/^#card\/(.+)$/);
+  if(m){
+    return { route: 'card', name: decodeURIComponent(m[1]) };
+  }
+  if(h === '#grid' || h === ''){
+    return { route: 'grid' };
+  }
+  return { route: 'unknown', raw: h };
+}
+
+/**
+ * Serialize a route object back into a hash string.
+ * @param {{route: string, name?: string, raw?: string}} obj
+ * @returns {string}
+ */
+export function stringifyRoute(obj = {}){
+  if(!obj || !obj.route) return '';
+  if(obj.route === 'card' && obj.name) return `#card/${encodeURIComponent(obj.name)}`;
+  if(obj.route === 'grid') return '#grid';
+  return obj.raw || '';
 }

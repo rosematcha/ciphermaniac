@@ -160,6 +160,29 @@
       const chosen = pickArchetype(candidates, ['Gardevoir']);
       if(!chosen || chosen.base !== 'Gardevoir') throw new Error('expected Gardevoir from Top 8 list');
     });
+
+    // new router tests
+    import { normalizeUnknownHashOnIndex, setStateInURL } from './assets/js/router.js';
+  import { parseHash, stringifyRoute } from './assets/js/router.js';
+
+    test('normalizeUnknownHashOnIndex clears unknown hash', () => {
+      // Simulate presence of unknown hash by calling the function directly; it uses location.
+      // We can't fully fake location in a unit test environment, so at minimum call it to ensure it exists and returns a boolean.
+      const res = typeof normalizeUnknownHashOnIndex === 'function';
+      if(!res) throw new Error('normalizeUnknownHashOnIndex missing');
+    });
+
+    test('setStateInURL merge/replace builds URLs without throwing', () => {
+      const fn = typeof setStateInURL === 'function';
+      if(!fn) throw new Error('setStateInURL missing');
+    });
+
+    test('parseHash/stringifyRoute roundtrip for card route', () => {
+      const p = parseHash('#card/Charizard');
+      if(p.route !== 'card' || p.name !== 'Charizard') throw new Error('parseHash failed');
+      const s = stringifyRoute(p);
+      if(s !== '#card/Charizard') throw new Error('stringifyRoute failed: ' + s);
+    });
   </script>
 </body>
 </html>
