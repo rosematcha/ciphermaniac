@@ -451,78 +451,30 @@ async function load(){
 					}catch{/* missing tournament master */}
 				}
 
-		// Default window comes from selector (6)
-		let LIMIT = 6;
-		let showAll = false;
-		if(windowSelect){
-			const params = new URLSearchParams(location.search);
-			const initWin = params.get('win');
-			if(initWin){ windowSelect.value = initWin; }
-			const parseWin = () => {
-				const v = windowSelect.value;
-				if(v === 'all'){ showAll = true; }
-				else { LIMIT = Math.max(1, parseInt(v,10) || 6); showAll = false; }
-				// sync URL
-				const u = new URL(location.href);
-				u.searchParams.delete('win');
-				if(v && v !== '6'){ // default is 6; omit if default
-					u.searchParams.set('win', v);
-				}
-				history.replaceState(null, '', u.toString());
-			};
-			parseWin();
-			windowSelect.addEventListener('change', () => { parseWin(); refresh(); });
-			window.addEventListener('popstate', () => {
-				const p = new URLSearchParams(location.search);
-				const w = p.get('win') || '6';
-				if(windowSelect.value !== w){ windowSelect.value = w; parseWin(); refresh(); }
-			});
-		}
+		// Fixed window: always show the most recent 6 tournaments
+		const LIMIT = 6;
+		const showAll = false;
 		const renderToggles = () => {
 		// Clear previous notes
 		const oldNotes = metaSection.querySelectorAll('.summary.toggle-note');
 		oldNotes.forEach(n => n.remove());
 			const totalP = timePoints.length;
-		const needToggleP = totalP > LIMIT;
-		if(needToggleP){
+			const shown = Math.min(LIMIT, totalP);
 			const note = document.createElement('div');
 			note.className = 'summary toggle-note';
-			const shown = showAll ? totalP : Math.min(LIMIT, totalP);
-			note.textContent = `Chronological (oldest to newest). Showing ${shown} of ${totalP}.`;
-			const a = document.createElement('a');
-			a.href = '#'; a.style.marginLeft = '8px'; a.textContent = showAll ? 'Show fewer' : 'Show all';
-			a.addEventListener('click', (e)=>{ e.preventDefault(); showAll = !showAll; refresh(); });
-			note.appendChild(a);
+			note.textContent = `Chronological (oldest to newest). Showing most recent ${shown} of ${totalP}.`;
 			metaSection.appendChild(note);
-		}else{
-			const note = document.createElement('div');
-			note.className = 'summary toggle-note';
-			note.textContent = 'Chronological (oldest to newest).';
-			metaSection.appendChild(note);
-		}
 		// Events/decks toggle mirrors chart (attach to eventsSection if present)
 			const tableSection = eventsSection || decksSection;
 		if(tableSection){
 			const oldNotes2 = tableSection.querySelectorAll('.summary.toggle-note');
 			oldNotes2.forEach(n => n.remove());
 				const totalR = deckRows.length;
-			const needToggleR = totalR > LIMIT;
-			if(needToggleR){
+				const shownR = Math.min(LIMIT, totalR);
 				const note2 = document.createElement('div');
 				note2.className = 'summary toggle-note';
-				const shownR = showAll ? totalR : Math.min(LIMIT, totalR);
-				note2.textContent = `Chronological (oldest to newest). Showing ${shownR} of ${totalR}.`;
-				const a2 = document.createElement('a');
-				a2.href = '#'; a2.style.marginLeft = '8px'; a2.textContent = showAll ? 'Show fewer' : 'Show all';
-				a2.addEventListener('click', (e)=>{ e.preventDefault(); showAll = !showAll; refresh(); });
-				note2.appendChild(a2);
+				note2.textContent = `Chronological (oldest to newest). Showing most recent ${shownR} of ${totalR}.`;
 				tableSection.appendChild(note2);
-			}else{
-				const note2 = document.createElement('div');
-				note2.className = 'summary toggle-note';
-				note2.textContent = 'Chronological (oldest to newest).';
-				tableSection.appendChild(note2);
-			}
 		}
 	};
 
