@@ -1,5 +1,6 @@
 /**
  * Centralized logging utility with consistent formatting and levels
+ * (no private class fields to maximize mobile Firefox compatibility)
  * @module Logger
  */
 
@@ -7,10 +8,10 @@
 
 class Logger {
   /** @type {LogLevel} */
-  #level = 'info';
-  
+  _level = 'info';
+
   /** @type {Record<LogLevel, number>} */
-  #levels = {
+  _levels = {
     debug: 0,
     info: 1,
     warn: 2,
@@ -22,8 +23,8 @@ class Logger {
    * @param {LogLevel} level 
    */
   setLevel(level) {
-    if (level in this.#levels) {
-      this.#level = level;
+    if (level in this._levels) {
+      this._level = level;
     }
   }
 
@@ -32,8 +33,8 @@ class Logger {
    * @param {LogLevel} level 
    * @returns {boolean}
    */
-  #shouldLog(level) {
-    return this.#levels[level] >= this.#levels[this.#level];
+  _shouldLog(level) {
+    return this._levels[level] >= this._levels[this._level];
   }
 
   /**
@@ -43,10 +44,14 @@ class Logger {
    * @param {any[]} args 
    * @returns {[string, ...any[]]}
    */
-  #format(level, message, args) {
-    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
-    const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
-    return [prefix + ' ' + message, ...args];
+  _format(level, message, args) {
+    try {
+      const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+      const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
+      return [prefix + ' ' + message, ...args];
+    } catch {
+      return [message, ...args];
+    }
   }
 
   /**
@@ -55,8 +60,9 @@ class Logger {
    * @param {...any} args 
    */
   debug(message, ...args) {
-    if (this.#shouldLog('debug')) {
-      console.debug(...this.#format('debug', message, args));
+    if (this._shouldLog('debug')) {
+      // Use console.log for broader support where console.debug may be filtered
+      (console.debug || console.log).apply(console, this._format('debug', message, args));
     }
   }
 
@@ -66,9 +72,7 @@ class Logger {
    * @param {...any} args 
    */
   info(message, ...args) {
-    if (this.#shouldLog('info')) {
-      console.log(...this.#format('info', message, args));
-    }
+    console.log.apply(console, this._format('info', message, args));
   }
 
   /**
@@ -77,9 +81,7 @@ class Logger {
    * @param {...any} args 
    */
   warn(message, ...args) {
-    if (this.#shouldLog('warn')) {
-      console.warn(...this.#format('warn', message, args));
-    }
+    console.warn.apply(console, this._format('warn', message, args));
   }
 
   /**
@@ -88,9 +90,7 @@ class Logger {
    * @param {...any} args 
    */
   error(message, ...args) {
-    if (this.#shouldLog('error')) {
-      console.error(...this.#format('error', message, args));
-    }
+    console.error.apply(console, this._format('error', message, args));
   }
 
   /**
@@ -100,7 +100,7 @@ class Logger {
    * @param {...any} args 
    */
   exception(message, error, ...args) {
-    this.error(message, error.message, error.stack, ...args);
+    this.error(message, error && error.message ? error.message : String(error), error && error.stack ? error.stack : '', ...args);
   }
 }
 
@@ -108,10 +108,12 @@ class Logger {
 export const logger = new Logger();
 
 // Set log level based on environment or URL params
-if (typeof window !== 'undefined') {
-  const params = new URLSearchParams(window.location.search);
-  const debugLevel = params.get('debug');
-  if (debugLevel && ['debug', 'info', 'warn', 'error'].includes(debugLevel)) {
-    logger.setLevel(debugLevel);
+try {
+  if (typeof window !== 'undefined' && 'URLSearchParams' in window) {
+    const params = new URLSearchParams(window.location.search || '');
+    const debugLevel = params.get('debug');
+    if (debugLevel && ['debug', 'info', 'warn', 'error'].includes(debugLevel)) {
+      logger.setLevel(debugLevel);
+    }
   }
-}
+} catch {}

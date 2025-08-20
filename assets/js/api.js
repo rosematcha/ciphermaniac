@@ -14,15 +14,17 @@ import { AppError, ErrorTypes, withRetry, validateType } from './utils/errorHand
  * @returns {Promise<Response>}
  */
 async function safeFetch(url, options = {}) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
-  
+  const supportsAbort = (typeof AbortController !== 'undefined');
+  const controller = supportsAbort ? new AbortController() : null;
+  const timeoutId = supportsAbort ? setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS) : null;
+
   try {
     const response = await fetch(url, {
       ...options,
-      signal: controller.signal
+      // Only pass signal when supported to avoid ReferenceErrors on older engines
+      ...(controller ? { signal: controller.signal } : {})
     });
-    
+
     if (!response.ok) {
       throw new AppError(
         `HTTP ${response.status}: ${response.statusText}`,
@@ -30,15 +32,15 @@ async function safeFetch(url, options = {}) {
         { url, status: response.status }
       );
     }
-    
+
     return response;
   } catch (error) {
-    if (error.name === 'AbortError') {
+    if (error && (error.name === 'AbortError' || error.code === 20)) {
       throw new AppError(`Request timeout after ${CONFIG.API.TIMEOUT_MS}ms`, ErrorTypes.NETWORK, { url });
     }
     throw error;
   } finally {
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
   }
 }
 
