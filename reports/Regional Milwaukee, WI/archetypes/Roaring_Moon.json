@@ -3,25 +3,6 @@
   "items": [
     {
       "rank": 1,
-      "name": "Iono",
-      "found": 10,
-      "total": 10,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 7,
-          "percent": 70.0
-        },
-        {
-          "copies": 2,
-          "players": 3,
-          "percent": 30.0
-        }
-      ]
-    },
-    {
-      "rank": 2,
       "name": "Nest Ball",
       "found": 10,
       "total": 10,
@@ -35,210 +16,7 @@
       ]
     },
     {
-      "rank": 3,
-      "name": "Energy Switch",
-      "found": 10,
-      "total": 10,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 10,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 4,
-      "name": "Darkness Energy",
-      "found": 10,
-      "total": 10,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 7,
-          "players": 5,
-          "percent": 50.0
-        },
-        {
-          "copies": 8,
-          "players": 5,
-          "percent": 50.0
-        }
-      ]
-    },
-    {
-      "rank": 5,
-      "name": "Ultra Ball",
-      "found": 10,
-      "total": 10,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 9,
-          "percent": 90.0
-        },
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 10.0
-        }
-      ]
-    },
-    {
-      "rank": 6,
-      "name": "Earthen Vessel",
-      "found": 10,
-      "total": 10,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 4,
-          "percent": 40.0
-        },
-        {
-          "copies": 3,
-          "players": 6,
-          "percent": 60.0
-        }
-      ]
-    },
-    {
-      "rank": 7,
-      "name": "Secret Box",
-      "found": 10,
-      "total": 10,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 10,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 8,
-      "name": "Pecharunt ex",
-      "found": 10,
-      "total": 10,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 20.0
-        },
-        {
-          "copies": 2,
-          "players": 8,
-          "percent": 80.0
-        }
-      ]
-    },
-    {
-      "rank": 9,
-      "name": "Fezandipiti ex",
-      "found": 10,
-      "total": 10,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 10,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 10,
-      "name": "Squawkabilly ex",
-      "found": 10,
-      "total": 10,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 10.0
-        },
-        {
-          "copies": 2,
-          "players": 9,
-          "percent": 90.0
-        }
-      ]
-    },
-    {
-      "rank": 11,
-      "name": "Night Stretcher",
-      "found": 10,
-      "total": 10,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 10,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 12,
-      "name": "Pecharunt",
-      "found": 10,
-      "total": 10,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 10,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 13,
-      "name": "Carmine",
-      "found": 10,
-      "total": 10,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 9,
-          "percent": 90.0
-        },
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 10.0
-        }
-      ]
-    },
-    {
-      "rank": 14,
-      "name": "Roaring Moon ex",
-      "found": 10,
-      "total": 10,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 9,
-          "percent": 90.0
-        },
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 10.0
-        }
-      ]
-    },
-    {
-      "rank": 15,
+      "rank": 2,
       "name": "Perilous Jungle",
       "found": 10,
       "total": 10,
@@ -257,35 +35,40 @@
       ]
     },
     {
-      "rank": 16,
-      "name": "Boss's Orders",
+      "rank": 3,
+      "name": "Professor Sada's Vitality",
+      "found": 10,
+      "total": 10,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 10,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "name": "Earthen Vessel",
       "found": 10,
       "total": 10,
       "pct": 100.0,
       "dist": [
         {
           "copies": 2,
-          "players": 10,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 17,
-      "name": "Pal Pad",
-      "found": 10,
-      "total": 10,
-      "pct": 100.0,
-      "dist": [
+          "players": 4,
+          "percent": 40.0
+        },
         {
-          "copies": 1,
-          "players": 10,
-          "percent": 100.0
+          "copies": 3,
+          "players": 6,
+          "percent": 60.0
         }
       ]
     },
     {
-      "rank": 18,
+      "rank": 5,
       "name": "Ancient Booster Energy Capsule",
       "found": 10,
       "total": 10,
@@ -299,21 +82,26 @@
       ]
     },
     {
-      "rank": 19,
-      "name": "Brute Bonnet",
+      "rank": 6,
+      "name": "Ultra Ball",
       "found": 10,
       "total": 10,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
-          "players": 10,
-          "percent": 100.0
+          "copies": 3,
+          "players": 9,
+          "percent": 90.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 10.0
         }
       ]
     },
     {
-      "rank": 20,
+      "rank": 7,
       "name": "Roaring Moon",
       "found": 10,
       "total": 10,
@@ -327,8 +115,22 @@
       ]
     },
     {
-      "rank": 21,
-      "name": "Pok\u00e9gear 3.0",
+      "rank": 8,
+      "name": "Fezandipiti ex",
+      "found": 10,
+      "total": 10,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 10,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "name": "Pokégear 3.0",
       "found": 10,
       "total": 10,
       "pct": 100.0,
@@ -351,16 +153,214 @@
       ]
     },
     {
-      "rank": 22,
-      "name": "Professor Sada's Vitality",
+      "rank": 10,
+      "name": "Secret Box",
       "found": 10,
       "total": 10,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 4,
+          "copies": 1,
           "players": 10,
           "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Pal Pad",
+      "found": 10,
+      "total": 10,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 10,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Squawkabilly ex",
+      "found": 10,
+      "total": 10,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 10.0
+        },
+        {
+          "copies": 2,
+          "players": 9,
+          "percent": 90.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Darkness Energy",
+      "found": 10,
+      "total": 10,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 7,
+          "players": 5,
+          "percent": 50.0
+        },
+        {
+          "copies": 8,
+          "players": 5,
+          "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Brute Bonnet",
+      "found": 10,
+      "total": 10,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 10,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Night Stretcher",
+      "found": 10,
+      "total": 10,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 10,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Roaring Moon ex",
+      "found": 10,
+      "total": 10,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 9,
+          "percent": 90.0
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 10.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Pecharunt ex",
+      "found": 10,
+      "total": 10,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 20.0
+        },
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 80.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Boss's Orders",
+      "found": 10,
+      "total": 10,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 10,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Energy Switch",
+      "found": 10,
+      "total": 10,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 10,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Pecharunt",
+      "found": 10,
+      "total": 10,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 10,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Iono",
+      "found": 10,
+      "total": 10,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 70.0
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 30.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "Carmine",
+      "found": 10,
+      "total": 10,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 9,
+          "percent": 90.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 10.0
         }
       ]
     },
@@ -436,7 +436,7 @@
     },
     {
       "rank": 28,
-      "name": "Koraidon",
+      "name": "Penny",
       "found": 1,
       "total": 10,
       "pct": 10.0,
@@ -450,7 +450,7 @@
     },
     {
       "rank": 29,
-      "name": "Penny",
+      "name": "Koraidon",
       "found": 1,
       "total": 10,
       "pct": 10.0,

@@ -3,63 +3,6 @@
   "items": [
     {
       "rank": 1,
-      "name": "Munkidori",
-      "found": 3,
-      "total": 3,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 2,
-          "percent": 66.67
-        },
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 33.33
-        }
-      ]
-    },
-    {
-      "rank": 2,
-      "name": "Counter Catcher",
-      "found": 3,
-      "total": 3,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 2,
-          "percent": 66.67
-        },
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 33.33
-        }
-      ]
-    },
-    {
-      "rank": 3,
-      "name": "Ultra Ball",
-      "found": 3,
-      "total": 3,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 66.67
-        },
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 33.33
-        }
-      ]
-    },
-    {
-      "rank": 4,
       "name": "Night Stretcher",
       "found": 3,
       "total": 3,
@@ -78,21 +21,7 @@
       ]
     },
     {
-      "rank": 5,
-      "name": "Earthen Vessel",
-      "found": 3,
-      "total": 3,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 3,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 6,
+      "rank": 2,
       "name": "Rescue Board",
       "found": 3,
       "total": 3,
@@ -106,16 +35,92 @@
       ]
     },
     {
-      "rank": 7,
-      "name": "Technical Machine: Devolution",
+      "rank": 3,
+      "name": "Munkidori",
       "found": 3,
       "total": 3,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 3,
+          "players": 2,
+          "percent": 66.67
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 33.33
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "name": "Earthen Vessel",
+      "found": 3,
+      "total": 3,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
           "players": 3,
           "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "name": "Luminous Energy",
+      "found": 3,
+      "total": 3,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 66.67
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 33.33
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "name": "Darkness Energy",
+      "found": 3,
+      "total": 3,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 33.33
+        },
+        {
+          "copies": 5,
+          "players": 2,
+          "percent": 66.67
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "name": "Counter Catcher",
+      "found": 3,
+      "total": 3,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 66.67
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 33.33
         }
       ]
     },
@@ -140,25 +145,67 @@
     },
     {
       "rank": 9,
-      "name": "Darkness Energy",
+      "name": "Bloodmoon Ursaluna ex",
       "found": 3,
       "total": 3,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 4,
-          "players": 1,
-          "percent": 33.33
-        },
-        {
-          "copies": 5,
-          "players": 2,
-          "percent": 66.67
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
         }
       ]
     },
     {
       "rank": 10,
+      "name": "Technical Machine: Devolution",
+      "found": 3,
+      "total": 3,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Ultra Ball",
+      "found": 3,
+      "total": 3,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 66.67
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 33.33
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Unfair Stamp",
+      "found": 3,
+      "total": 3,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
       "name": "Professor's Research",
       "found": 3,
       "total": 3,
@@ -173,53 +220,6 @@
           "copies": 4,
           "players": 2,
           "percent": 66.67
-        }
-      ]
-    },
-    {
-      "rank": 11,
-      "name": "Artazon",
-      "found": 3,
-      "total": 3,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 3,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 12,
-      "name": "Bloodmoon Ursaluna ex",
-      "found": 3,
-      "total": 3,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 3,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 13,
-      "name": "Buddy-Buddy Poffin",
-      "found": 3,
-      "total": 3,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 2,
-          "percent": 66.67
-        },
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 33.33
         }
       ]
     },
@@ -244,7 +244,21 @@
     },
     {
       "rank": 15,
-      "name": "Froslass",
+      "name": "Artazon",
+      "found": 3,
+      "total": 3,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Buddy-Buddy Poffin",
       "found": 3,
       "total": 3,
       "pct": 100.0,
@@ -262,35 +276,21 @@
       ]
     },
     {
-      "rank": 16,
-      "name": "Luminous Energy",
+      "rank": 17,
+      "name": "Froslass",
       "found": 3,
       "total": 3,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 3,
           "players": 2,
           "percent": 66.67
         },
         {
-          "copies": 2,
+          "copies": 4,
           "players": 1,
           "percent": 33.33
-        }
-      ]
-    },
-    {
-      "rank": 17,
-      "name": "Unfair Stamp",
-      "found": 3,
-      "total": 3,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 3,
-          "percent": 100.0
         }
       ]
     },
@@ -329,18 +329,18 @@
     },
     {
       "rank": 20,
-      "name": "Pok\u00e9gear 3.0",
+      "name": "Maractus",
       "found": 2,
       "total": 3,
       "pct": 66.67,
       "dist": [
         {
-          "copies": 2,
+          "copies": 1,
           "players": 1,
           "percent": 50.0
         },
         {
-          "copies": 3,
+          "copies": 2,
           "players": 1,
           "percent": 50.0
         }
@@ -348,7 +348,7 @@
     },
     {
       "rank": 21,
-      "name": "Nest Ball",
+      "name": "Bravery Charm",
       "found": 2,
       "total": 3,
       "pct": 66.67,
@@ -376,7 +376,7 @@
     },
     {
       "rank": 23,
-      "name": "Bravery Charm",
+      "name": "Nest Ball",
       "found": 2,
       "total": 3,
       "pct": 66.67,
@@ -390,18 +390,18 @@
     },
     {
       "rank": 24,
-      "name": "Maractus",
+      "name": "Pokégear 3.0",
       "found": 2,
       "total": 3,
       "pct": 66.67,
       "dist": [
         {
-          "copies": 1,
+          "copies": 2,
           "players": 1,
           "percent": 50.0
         },
         {
-          "copies": 2,
+          "copies": 3,
           "players": 1,
           "percent": 50.0
         }
@@ -409,20 +409,6 @@
     },
     {
       "rank": 25,
-      "name": "Switch",
-      "found": 1,
-      "total": 3,
-      "pct": 33.33,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 26,
       "name": "Gravity Gemstone",
       "found": 1,
       "total": 3,
@@ -436,8 +422,8 @@
       ]
     },
     {
-      "rank": 27,
-      "name": "Penny",
+      "rank": 26,
+      "name": "Switch",
       "found": 1,
       "total": 3,
       "pct": 33.33,
@@ -450,7 +436,7 @@
       ]
     },
     {
-      "rank": 28,
+      "rank": 27,
       "name": "Snorunt PAR 37",
       "found": 1,
       "total": 3,
@@ -464,91 +450,7 @@
       ]
     },
     {
-      "rank": 29,
-      "name": "Lana's Aid",
-      "found": 1,
-      "total": 3,
-      "pct": 33.33,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 30,
-      "name": "Larry's Skill",
-      "found": 1,
-      "total": 3,
-      "pct": 33.33,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 31,
-      "name": "Dudunsparce ex",
-      "found": 1,
-      "total": 3,
-      "pct": 33.33,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 32,
-      "name": "Energy Switch",
-      "found": 1,
-      "total": 3,
-      "pct": 33.33,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 33,
-      "name": "Dunsparce",
-      "found": 1,
-      "total": 3,
-      "pct": 33.33,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 34,
-      "name": "Psychic Energy",
-      "found": 1,
-      "total": 3,
-      "pct": 33.33,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 35,
+      "rank": 28,
       "name": "Water Energy",
       "found": 1,
       "total": 3,
@@ -562,21 +464,7 @@
       ]
     },
     {
-      "rank": 36,
-      "name": "Wellspring Mask Ogerpon ex",
-      "found": 1,
-      "total": 3,
-      "pct": 33.33,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 37,
+      "rank": 29,
       "name": "Lillie's Clefairy ex",
       "found": 1,
       "total": 3,
@@ -590,7 +478,21 @@
       ]
     },
     {
-      "rank": 38,
+      "rank": 30,
+      "name": "Penny",
+      "found": 1,
+      "total": 3,
+      "pct": 33.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 31,
       "name": "Dudunsparce",
       "found": 1,
       "total": 3,
@@ -598,6 +500,104 @@
       "dist": [
         {
           "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 32,
+      "name": "Psychic Energy",
+      "found": 1,
+      "total": 3,
+      "pct": 33.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 33,
+      "name": "Wellspring Mask Ogerpon ex",
+      "found": 1,
+      "total": 3,
+      "pct": 33.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 34,
+      "name": "Dudunsparce ex",
+      "found": 1,
+      "total": 3,
+      "pct": 33.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 35,
+      "name": "Energy Switch",
+      "found": 1,
+      "total": 3,
+      "pct": 33.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 36,
+      "name": "Lana's Aid",
+      "found": 1,
+      "total": 3,
+      "pct": 33.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 37,
+      "name": "Dunsparce PAL 156",
+      "found": 1,
+      "total": 3,
+      "pct": 33.33,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 38,
+      "name": "Larry's Skill",
+      "found": 1,
+      "total": 3,
+      "pct": 33.33,
+      "dist": [
+        {
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }

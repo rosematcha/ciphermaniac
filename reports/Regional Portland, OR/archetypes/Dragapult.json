@@ -3,7 +3,7 @@
   "items": [
     {
       "rank": 1,
-      "name": "Hawlucha",
+      "name": "Bloodmoon Ursaluna ex",
       "found": 48,
       "total": 48,
       "pct": 100.0,
@@ -17,44 +17,6 @@
     },
     {
       "rank": 2,
-      "name": "Buddy-Buddy Poffin",
-      "found": 48,
-      "total": 48,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 2.08
-        },
-        {
-          "copies": 4,
-          "players": 47,
-          "percent": 97.92
-        }
-      ]
-    },
-    {
-      "rank": 3,
-      "name": "Ultra Ball",
-      "found": 48,
-      "total": 48,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 27,
-          "percent": 56.25
-        },
-        {
-          "copies": 4,
-          "players": 21,
-          "percent": 43.75
-        }
-      ]
-    },
-    {
-      "rank": 4,
       "name": "Fezandipiti ex",
       "found": 48,
       "total": 48,
@@ -68,40 +30,21 @@
       ]
     },
     {
-      "rank": 5,
-      "name": "Drakloak",
+      "rank": 3,
+      "name": "Hawlucha",
       "found": 48,
       "total": 48,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 4,
+          "copies": 1,
           "players": 48,
           "percent": 100.0
         }
       ]
     },
     {
-      "rank": 6,
-      "name": "Fire Energy",
-      "found": 48,
-      "total": 48,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 45,
-          "percent": 93.75
-        },
-        {
-          "copies": 3,
-          "players": 3,
-          "percent": 6.25
-        }
-      ]
-    },
-    {
-      "rank": 7,
+      "rank": 4,
       "name": "Psychic Energy",
       "found": 48,
       "total": 48,
@@ -120,7 +63,21 @@
       ]
     },
     {
-      "rank": 8,
+      "rank": 5,
+      "name": "Dreepy",
+      "found": 48,
+      "total": 48,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 48,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 6,
       "name": "Counter Catcher",
       "found": 48,
       "total": 48,
@@ -139,41 +96,22 @@
       ]
     },
     {
-      "rank": 9,
-      "name": "Bloodmoon Ursaluna ex",
+      "rank": 7,
+      "name": "Drakloak",
       "found": 48,
       "total": 48,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 4,
           "players": 48,
           "percent": 100.0
         }
       ]
     },
     {
-      "rank": 10,
-      "name": "Budew",
-      "found": 48,
-      "total": 48,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 2.08
-        },
-        {
-          "copies": 2,
-          "players": 47,
-          "percent": 97.92
-        }
-      ]
-    },
-    {
-      "rank": 11,
-      "name": "Iono",
+      "rank": 8,
+      "name": "Buddy-Buddy Poffin",
       "found": 48,
       "total": 48,
       "pct": 100.0,
@@ -191,26 +129,7 @@
       ]
     },
     {
-      "rank": 12,
-      "name": "Dragapult ex",
-      "found": 48,
-      "total": 48,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 29,
-          "percent": 60.42
-        },
-        {
-          "copies": 3,
-          "players": 19,
-          "percent": 39.58
-        }
-      ]
-    },
-    {
-      "rank": 13,
+      "rank": 9,
       "name": "Boss's Orders",
       "found": 48,
       "total": 48,
@@ -234,21 +153,145 @@
       ]
     },
     {
-      "rank": 14,
-      "name": "Dreepy",
+      "rank": 10,
+      "name": "Dragapult ex",
       "found": 48,
       "total": 48,
       "pct": 100.0,
       "dist": [
         {
+          "copies": 2,
+          "players": 29,
+          "percent": 60.42
+        },
+        {
+          "copies": 3,
+          "players": 19,
+          "percent": 39.58
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Budew",
+      "found": 48,
+      "total": 48,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 2.08
+        },
+        {
+          "copies": 2,
+          "players": 47,
+          "percent": 97.92
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Ultra Ball",
+      "found": 48,
+      "total": 48,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 27,
+          "percent": 56.25
+        },
+        {
           "copies": 4,
-          "players": 48,
-          "percent": 100.0
+          "players": 21,
+          "percent": 43.75
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Iono",
+      "found": 48,
+      "total": 48,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 2.08
+        },
+        {
+          "copies": 4,
+          "players": 47,
+          "percent": 97.92
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Fire Energy",
+      "found": 48,
+      "total": 48,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 45,
+          "percent": 93.75
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 6.25
         }
       ]
     },
     {
       "rank": 15,
+      "name": "Munkidori",
+      "found": 47,
+      "total": 48,
+      "pct": 97.92,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 45,
+          "percent": 95.74
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 4.26
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Night Stretcher",
+      "found": 47,
+      "total": 48,
+      "pct": 97.92,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 6.38
+        },
+        {
+          "copies": 2,
+          "players": 41,
+          "percent": 87.23
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 6.38
+        }
+      ]
+    },
+    {
+      "rank": 17,
       "name": "Brock's Scouting",
       "found": 47,
       "total": 48,
@@ -273,49 +316,6 @@
           "copies": 4,
           "players": 1,
           "percent": 2.13
-        }
-      ]
-    },
-    {
-      "rank": 16,
-      "name": "Munkidori",
-      "found": 47,
-      "total": 48,
-      "pct": 97.92,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 45,
-          "percent": 95.74
-        },
-        {
-          "copies": 2,
-          "players": 2,
-          "percent": 4.26
-        }
-      ]
-    },
-    {
-      "rank": 17,
-      "name": "Night Stretcher",
-      "found": 47,
-      "total": 48,
-      "pct": 97.92,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 3,
-          "percent": 6.38
-        },
-        {
-          "copies": 2,
-          "players": 41,
-          "percent": 87.23
-        },
-        {
-          "copies": 3,
-          "players": 3,
-          "percent": 6.38
         }
       ]
     },
@@ -350,6 +350,20 @@
     },
     {
       "rank": 19,
+      "name": "Rescue Board",
+      "found": 37,
+      "total": 48,
+      "pct": 77.08,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 37,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 20,
       "name": "Arven",
       "found": 37,
       "total": 48,
@@ -369,20 +383,6 @@
           "copies": 4,
           "players": 13,
           "percent": 35.14
-        }
-      ]
-    },
-    {
-      "rank": 20,
-      "name": "Rescue Board",
-      "found": 37,
-      "total": 48,
-      "pct": 77.08,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 37,
-          "percent": 100.0
         }
       ]
     },
@@ -666,7 +666,7 @@
     },
     {
       "rank": 38,
-      "name": "Duskull",
+      "name": "Dusclops",
       "found": 10,
       "total": 48,
       "pct": 20.83,
@@ -680,7 +680,7 @@
     },
     {
       "rank": 39,
-      "name": "Dusclops",
+      "name": "Duskull",
       "found": 10,
       "total": 48,
       "pct": 20.83,
@@ -722,7 +722,7 @@
     },
     {
       "rank": 42,
-      "name": "Pok\u00e9mon League Headquarters",
+      "name": "Pokémon League Headquarters",
       "found": 4,
       "total": 48,
       "pct": 8.33,
@@ -835,20 +835,6 @@
     },
     {
       "rank": 49,
-      "name": "Pidgeotto",
-      "found": 1,
-      "total": 48,
-      "pct": 2.08,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 50,
       "name": "Pidgeot ex",
       "found": 1,
       "total": 48,
@@ -862,8 +848,22 @@
       ]
     },
     {
+      "rank": 50,
+      "name": "Pidgey OBF 162",
+      "found": 1,
+      "total": 48,
+      "pct": 2.08,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 51,
-      "name": "Pidgey",
+      "name": "Pidgeotto",
       "found": 1,
       "total": 48,
       "pct": 2.08,
@@ -905,20 +905,6 @@
     },
     {
       "rank": 54,
-      "name": "Girafarig",
-      "found": 1,
-      "total": 48,
-      "pct": 2.08,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 55,
       "name": "Farigiraf ex",
       "found": 1,
       "total": 48,
@@ -932,7 +918,7 @@
       ]
     },
     {
-      "rank": 56,
+      "rank": 55,
       "name": "Sparkling Crystal",
       "found": 1,
       "total": 48,
@@ -946,8 +932,22 @@
       ]
     },
     {
-      "rank": 57,
+      "rank": 56,
       "name": "Technical Machine: Evolution",
+      "found": 1,
+      "total": 48,
+      "pct": 2.08,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 57,
+      "name": "Girafarig TWM 83",
       "found": 1,
       "total": 48,
       "pct": 2.08,

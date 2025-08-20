@@ -3,6 +3,20 @@
   "items": [
     {
       "rank": 1,
+      "name": "N's Zorua",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 2,
       "name": "Hawlucha",
       "found": 1,
       "total": 1,
@@ -16,35 +30,7 @@
       ]
     },
     {
-      "rank": 2,
-      "name": "Ultra Ball",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
       "rank": 3,
-      "name": "Professor Turo's Scenario",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 4,
       "name": "Fezandipiti ex",
       "found": 1,
       "total": 1,
@@ -58,36 +44,8 @@
       ]
     },
     {
-      "rank": 5,
-      "name": "Archaludon ex",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 6,
-      "name": "Pok\u00e9gear 3.0",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 7,
-      "name": "Squawkabilly ex",
+      "rank": 4,
+      "name": "Black Belt's Training",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -100,14 +58,56 @@
       ]
     },
     {
-      "rank": 8,
-      "name": "Professor's Research",
+      "rank": 5,
+      "name": "Pokégear 3.0",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 4,
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "name": "Pal Pad",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "name": "Night Stretcher",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "name": "Relicanth",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }
@@ -143,13 +143,13 @@
     },
     {
       "rank": 11,
-      "name": "Scoop Up Cyclone",
+      "name": "Archaludon ex",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 4,
           "players": 1,
           "percent": 100.0
         }
@@ -171,13 +171,13 @@
     },
     {
       "rank": 13,
-      "name": "Night Stretcher",
+      "name": "Scoop Up Cyclone",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 3,
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }
@@ -185,13 +185,13 @@
     },
     {
       "rank": 14,
-      "name": "Pal Pad",
+      "name": "Professor Turo's Scenario",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 2,
           "players": 1,
           "percent": 100.0
         }
@@ -199,118 +199,6 @@
     },
     {
       "rank": 15,
-      "name": "Iono",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 16,
-      "name": "Relicanth",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 17,
-      "name": "Iron Bundle",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 18,
-      "name": "Black Belt's Training",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 19,
-      "name": "N's Zorua",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 20,
-      "name": "Metal Energy",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 8,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 21,
-      "name": "N's Zoroark ex",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 22,
-      "name": "Carmine",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 23,
       "name": "Duraludon",
       "found": 1,
       "total": 1,
@@ -324,7 +212,21 @@
       ]
     },
     {
-      "rank": 24,
+      "rank": 16,
+      "name": "Iono",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
       "name": "Boss's Orders",
       "found": 1,
       "total": 1,
@@ -332,6 +234,104 @@
       "dist": [
         {
           "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Carmine",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Iron Bundle",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Squawkabilly ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Professor's Research",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "N's Zoroark ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "name": "Metal Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 8,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Ultra Ball",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
           "players": 1,
           "percent": 100.0
         }

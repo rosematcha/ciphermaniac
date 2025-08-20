@@ -3,13 +3,13 @@
   "items": [
     {
       "rank": 1,
-      "name": "Munkidori",
+      "name": "Town Store",
       "found": 2,
       "total": 2,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 4,
+          "copies": 2,
           "players": 2,
           "percent": 100.0
         }
@@ -17,76 +17,6 @@
     },
     {
       "rank": 2,
-      "name": "Cornerstone Mask Ogerpon ex",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 3,
-      "name": "Ultra Ball",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 4,
-      "name": "Earthen Vessel",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 5,
-      "name": "Rescue Board",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 6,
-      "name": "Blissey ex",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 7,
       "name": "Boss's Orders",
       "found": 2,
       "total": 2,
@@ -100,7 +30,35 @@
       ]
     },
     {
-      "rank": 8,
+      "rank": 3,
+      "name": "Rescue Board",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "name": "Blissey ex",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 5,
       "name": "Switch",
       "found": 2,
       "total": 2,
@@ -114,8 +72,8 @@
       ]
     },
     {
-      "rank": 9,
-      "name": "Chansey",
+      "rank": 6,
+      "name": "Munkidori",
       "found": 2,
       "total": 2,
       "pct": 100.0,
@@ -128,7 +86,35 @@
       ]
     },
     {
-      "rank": 10,
+      "rank": 7,
+      "name": "Earthen Vessel",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "name": "Pokégear 3.0",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 9,
       "name": "Roaring Moon ex",
       "found": 2,
       "total": 2,
@@ -142,7 +128,7 @@
       ]
     },
     {
-      "rank": 11,
+      "rank": 10,
       "name": "Night Stretcher",
       "found": 2,
       "total": 2,
@@ -156,8 +142,22 @@
       ]
     },
     {
+      "rank": 11,
+      "name": "Fighting Energy",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 12,
-      "name": "Town Store",
+      "name": "Professor's Research",
       "found": 2,
       "total": 2,
       "pct": 100.0,
@@ -185,48 +185,6 @@
     },
     {
       "rank": 14,
-      "name": "Iono",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 15,
-      "name": "Exp. Share",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 16,
-      "name": "Precious Trolley",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 17,
       "name": "Darkness Energy",
       "found": 2,
       "total": 2,
@@ -240,21 +198,35 @@
       ]
     },
     {
-      "rank": 18,
-      "name": "Fighting Energy",
+      "rank": 15,
+      "name": "Cornerstone Mask Ogerpon ex",
       "found": 2,
       "total": 2,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 1,
           "players": 2,
           "percent": 100.0
         }
       ]
     },
     {
-      "rank": 19,
+      "rank": 16,
+      "name": "Chansey",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
       "name": "Psychic Energy",
       "found": 2,
       "total": 2,
@@ -268,49 +240,7 @@
       ]
     },
     {
-      "rank": 20,
-      "name": "Rigid Band",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 21,
-      "name": "Arven",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 22,
-      "name": "Pok\u00e9gear 3.0",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 23,
+      "rank": 18,
       "name": "Nest Ball",
       "found": 2,
       "total": 2,
@@ -324,8 +254,78 @@
       ]
     },
     {
+      "rank": 19,
+      "name": "Ultra Ball",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Arven",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Precious Trolley",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "Iono",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "name": "Exp. Share",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 24,
-      "name": "Professor's Research",
+      "name": "Rigid Band",
       "found": 2,
       "total": 2,
       "pct": 100.0,

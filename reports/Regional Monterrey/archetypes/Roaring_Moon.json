@@ -3,72 +3,6 @@
   "items": [
     {
       "rank": 1,
-      "name": "Professor Sada's Vitality",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 2,
-      "name": "Roaring Moon ex",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 25.0
-        },
-        {
-          "copies": 3,
-          "players": 3,
-          "percent": 75.0
-        }
-      ]
-    },
-    {
-      "rank": 3,
-      "name": "Pal Pad",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 4,
-      "name": "Ultra Ball",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 3,
-          "percent": 75.0
-        },
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 25.0
-        }
-      ]
-    },
-    {
-      "rank": 5,
       "name": "Nest Ball",
       "found": 4,
       "total": 4,
@@ -87,21 +21,7 @@
       ]
     },
     {
-      "rank": 6,
-      "name": "Pecharunt",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 7,
+      "rank": 2,
       "name": "Fezandipiti ex",
       "found": 4,
       "total": 4,
@@ -115,73 +35,7 @@
       ]
     },
     {
-      "rank": 8,
-      "name": "Pok\u00e9gear 3.0",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 25.0
-        },
-        {
-          "copies": 3,
-          "players": 3,
-          "percent": 75.0
-        }
-      ]
-    },
-    {
-      "rank": 9,
-      "name": "Earthen Vessel",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 2,
-          "percent": 50.0
-        },
-        {
-          "copies": 4,
-          "players": 2,
-          "percent": 50.0
-        }
-      ]
-    },
-    {
-      "rank": 10,
-      "name": "Brute Bonnet",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 11,
-      "name": "Secret Box",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 12,
+      "rank": 3,
       "name": "Carmine",
       "found": 4,
       "total": 4,
@@ -200,21 +54,35 @@
       ]
     },
     {
-      "rank": 13,
-      "name": "Squawkabilly ex",
+      "rank": 4,
+      "name": "Professor Sada's Vitality",
       "found": 4,
       "total": 4,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 4,
           "players": 4,
           "percent": 100.0
         }
       ]
     },
     {
-      "rank": 14,
+      "rank": 5,
+      "name": "Secret Box",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 6,
       "name": "Perilous Jungle",
       "found": 4,
       "total": 4,
@@ -233,7 +101,40 @@
       ]
     },
     {
-      "rank": 15,
+      "rank": 7,
+      "name": "Earthen Vessel",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "name": "Brute Bonnet",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 9,
       "name": "Night Stretcher",
       "found": 4,
       "total": 4,
@@ -252,21 +153,7 @@
       ]
     },
     {
-      "rank": 16,
-      "name": "Ancient Booster Energy Capsule",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 17,
+      "rank": 10,
       "name": "Boss's Orders",
       "found": 4,
       "total": 4,
@@ -280,7 +167,73 @@
       ]
     },
     {
-      "rank": 18,
+      "rank": 11,
+      "name": "Ultra Ball",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 75.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 25.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Pal Pad",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Ancient Booster Energy Capsule",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Pokégear 3.0",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 75.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
       "name": "Darkness Energy",
       "found": 4,
       "total": 4,
@@ -304,6 +257,53 @@
       ]
     },
     {
+      "rank": 16,
+      "name": "Pecharunt",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Roaring Moon ex",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 75.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Squawkabilly ex",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 19,
       "name": "Roaring Moon",
       "found": 3,
@@ -319,6 +319,20 @@
     },
     {
       "rank": 20,
+      "name": "Pecharunt ex",
+      "found": 3,
+      "total": 4,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 21,
       "name": "Mew ex",
       "found": 3,
       "total": 4,
@@ -332,7 +346,7 @@
       ]
     },
     {
-      "rank": 21,
+      "rank": 22,
       "name": "Bloodmoon Ursaluna ex",
       "found": 3,
       "total": 4,
@@ -346,7 +360,7 @@
       ]
     },
     {
-      "rank": 22,
+      "rank": 23,
       "name": "Energy Switch",
       "found": 3,
       "total": 4,
@@ -361,20 +375,6 @@
           "copies": 4,
           "players": 1,
           "percent": 33.33
-        }
-      ]
-    },
-    {
-      "rank": 23,
-      "name": "Pecharunt ex",
-      "found": 3,
-      "total": 4,
-      "pct": 75.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 3,
-          "percent": 100.0
         }
       ]
     },
@@ -394,13 +394,13 @@
     },
     {
       "rank": 25,
-      "name": "Energy Sticker",
+      "name": "Munkidori",
       "found": 1,
       "total": 4,
       "pct": 25.0,
       "dist": [
         {
-          "copies": 4,
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }
@@ -408,13 +408,13 @@
     },
     {
       "rank": 26,
-      "name": "Water Energy",
+      "name": "Super Rod",
       "found": 1,
       "total": 4,
       "pct": 25.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }
@@ -436,13 +436,13 @@
     },
     {
       "rank": 28,
-      "name": "Wellspring Mask Ogerpon ex",
+      "name": "Energy Sticker",
       "found": 1,
       "total": 4,
       "pct": 25.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 4,
           "players": 1,
           "percent": 100.0
         }
@@ -450,20 +450,6 @@
     },
     {
       "rank": 29,
-      "name": "Super Rod",
-      "found": 1,
-      "total": 4,
-      "pct": 25.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 30,
       "name": "Mist Energy",
       "found": 1,
       "total": 4,
@@ -477,14 +463,28 @@
       ]
     },
     {
-      "rank": 31,
-      "name": "Munkidori",
+      "rank": 30,
+      "name": "Wellspring Mask Ogerpon ex",
       "found": 1,
       "total": 4,
       "pct": 25.0,
       "dist": [
         {
           "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 31,
+      "name": "Water Energy",
+      "found": 1,
+      "total": 4,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 2,
           "players": 1,
           "percent": 100.0
         }

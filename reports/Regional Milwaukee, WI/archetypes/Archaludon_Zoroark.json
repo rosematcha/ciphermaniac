@@ -3,6 +3,20 @@
   "items": [
     {
       "rank": 1,
+      "name": "N's Zorua",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 2,
       "name": "Nest Ball",
       "found": 2,
       "total": 2,
@@ -16,7 +30,49 @@
       ]
     },
     {
-      "rank": 2,
+      "rank": 3,
+      "name": "Fezandipiti ex",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "name": "Arven",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "name": "Pokégear 3.0",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 6,
       "name": "Hop's Choice Band",
       "found": 2,
       "total": 2,
@@ -30,54 +86,7 @@
       ]
     },
     {
-      "rank": 3,
-      "name": "Cyrano",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 50.0
-        },
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 50.0
-        }
-      ]
-    },
-    {
-      "rank": 4,
-      "name": "Archaludon ex",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 5,
-      "name": "Technical Machine: Evolution",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 6,
+      "rank": 7,
       "name": "Professor Turo's Scenario",
       "found": 2,
       "total": 2,
@@ -96,91 +105,7 @@
       ]
     },
     {
-      "rank": 7,
-      "name": "Fezandipiti ex",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
       "rank": 8,
-      "name": "Night Stretcher",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 9,
-      "name": "Black Belt's Training",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 10,
-      "name": "N's Castle",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 11,
-      "name": "Ultra Ball",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 12,
-      "name": "Hop's Zacian ex",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 13,
       "name": "Counter Catcher",
       "found": 2,
       "total": 2,
@@ -194,8 +119,83 @@
       ]
     },
     {
+      "rank": 9,
+      "name": "Cyrano",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "name": "Buddy-Buddy Poffin",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Pal Pad",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Jamming Tower",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Ultra Ball",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 14,
-      "name": "Vengeful Punch",
+      "name": "Technical Machine: Evolution",
       "found": 2,
       "total": 2,
       "pct": 100.0,
@@ -209,20 +209,6 @@
     },
     {
       "rank": 15,
-      "name": "Boss's Orders",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 16,
       "name": "Iono",
       "found": 2,
       "total": 2,
@@ -241,8 +227,22 @@
       ]
     },
     {
+      "rank": 16,
+      "name": "Black Belt's Training",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 17,
-      "name": "Pal Pad",
+      "name": "Hop's Zacian ex",
       "found": 2,
       "total": 2,
       "pct": 100.0,
@@ -256,13 +256,13 @@
     },
     {
       "rank": 18,
-      "name": "N's Zorua",
+      "name": "Night Stretcher",
       "found": 2,
       "total": 2,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 4,
+          "copies": 2,
           "players": 2,
           "percent": 100.0
         }
@@ -270,7 +270,7 @@
     },
     {
       "rank": 19,
-      "name": "Buddy-Buddy Poffin",
+      "name": "Vengeful Punch",
       "found": 2,
       "total": 2,
       "pct": 100.0,
@@ -284,90 +284,6 @@
     },
     {
       "rank": 20,
-      "name": "Duraludon",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 21,
-      "name": "Arven",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 22,
-      "name": "Jamming Tower",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 23,
-      "name": "N's Zoroark ex",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 24,
-      "name": "Pok\u00e9gear 3.0",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 25,
-      "name": "Precious Trolley",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 26,
       "name": "Earthen Vessel",
       "found": 2,
       "total": 2,
@@ -381,7 +297,35 @@
       ]
     },
     {
-      "rank": 27,
+      "rank": 21,
+      "name": "Archaludon ex",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "Boss's Orders",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 23,
       "name": "Metal Energy",
       "found": 2,
       "total": 2,
@@ -389,6 +333,62 @@
       "dist": [
         {
           "copies": 7,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "N's Castle",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "Duraludon",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 26,
+      "name": "N's Zoroark ex",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 27,
+      "name": "Precious Trolley",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
           "players": 2,
           "percent": 100.0
         }

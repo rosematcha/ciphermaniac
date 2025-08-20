@@ -3,44 +3,29 @@
   "items": [
     {
       "rank": 1,
-      "name": "Night Stretcher",
+      "name": "Prime Catcher",
       "found": 20,
       "total": 20,
       "pct": 100.0,
       "dist": [
         {
           "copies": 1,
-          "players": 1,
-          "percent": 5.0
-        },
-        {
-          "copies": 2,
-          "players": 14,
-          "percent": 70.0
-        },
-        {
-          "copies": 3,
-          "players": 5,
-          "percent": 25.0
+          "players": 20,
+          "percent": 100.0
         }
       ]
     },
     {
       "rank": 2,
-      "name": "Grass Energy",
+      "name": "Nest Ball",
       "found": 20,
       "total": 20,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 5,
-          "players": 13,
-          "percent": 65.0
-        },
-        {
-          "copies": 6,
-          "players": 7,
-          "percent": 35.0
+          "copies": 4,
+          "players": 20,
+          "percent": 100.0
         }
       ]
     },
@@ -60,53 +45,44 @@
     },
     {
       "rank": 4,
-      "name": "Teal Mask Ogerpon ex",
+      "name": "Ultra Ball",
       "found": 20,
       "total": 20,
       "pct": 100.0,
       "dist": [
         {
           "copies": 3,
-          "players": 18,
-          "percent": 90.0
+          "players": 14,
+          "percent": 70.0
         },
         {
           "copies": 4,
-          "players": 2,
-          "percent": 10.0
+          "players": 6,
+          "percent": 30.0
         }
       ]
     },
     {
       "rank": 5,
-      "name": "Prime Catcher",
+      "name": "Grass Energy",
       "found": 20,
       "total": 20,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
-          "players": 20,
-          "percent": 100.0
+          "copies": 5,
+          "players": 13,
+          "percent": 65.0
+        },
+        {
+          "copies": 6,
+          "players": 7,
+          "percent": 35.0
         }
       ]
     },
     {
       "rank": 6,
-      "name": "Lightning Energy",
-      "found": 20,
-      "total": 20,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 20,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 7,
       "name": "Raging Bolt ex",
       "found": 20,
       "total": 20,
@@ -130,35 +106,7 @@
       ]
     },
     {
-      "rank": 8,
-      "name": "Professor Sada's Vitality",
-      "found": 20,
-      "total": 20,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 20,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 9,
-      "name": "Nest Ball",
-      "found": 20,
-      "total": 20,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 20,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 10,
+      "rank": 7,
       "name": "Slither Wing",
       "found": 20,
       "total": 20,
@@ -172,92 +120,7 @@
       ]
     },
     {
-      "rank": 11,
-      "name": "Fighting Energy",
-      "found": 20,
-      "total": 20,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 20,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 12,
-      "name": "Latias ex",
-      "found": 20,
-      "total": 20,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 20,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 13,
-      "name": "Earthen Vessel",
-      "found": 20,
-      "total": 20,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 19,
-          "percent": 95.0
-        },
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 5.0
-        }
-      ]
-    },
-    {
-      "rank": 14,
-      "name": "Ultra Ball",
-      "found": 20,
-      "total": 20,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 14,
-          "percent": 70.0
-        },
-        {
-          "copies": 4,
-          "players": 6,
-          "percent": 30.0
-        }
-      ]
-    },
-    {
-      "rank": 15,
-      "name": "Boss's Orders",
-      "found": 20,
-      "total": 20,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 16,
-          "percent": 80.0
-        },
-        {
-          "copies": 2,
-          "players": 4,
-          "percent": 20.0
-        }
-      ]
-    },
-    {
-      "rank": 16,
+      "rank": 8,
       "name": "Crispin",
       "found": 20,
       "total": 20,
@@ -276,14 +139,151 @@
       ]
     },
     {
+      "rank": 9,
+      "name": "Night Stretcher",
+      "found": 20,
+      "total": 20,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 5.0
+        },
+        {
+          "copies": 2,
+          "players": 14,
+          "percent": 70.0
+        },
+        {
+          "copies": 3,
+          "players": 5,
+          "percent": 25.0
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "name": "Lightning Energy",
+      "found": 20,
+      "total": 20,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 20,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Latias ex",
+      "found": 20,
+      "total": 20,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 20,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Earthen Vessel",
+      "found": 20,
+      "total": 20,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 19,
+          "percent": 95.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 5.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Boss's Orders",
+      "found": 20,
+      "total": 20,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 16,
+          "percent": 80.0
+        },
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 20.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Fighting Energy",
+      "found": 20,
+      "total": 20,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 20,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Teal Mask Ogerpon ex",
+      "found": 20,
+      "total": 20,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 18,
+          "percent": 90.0
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 10.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Professor Sada's Vitality",
+      "found": 20,
+      "total": 20,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 20,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 17,
-      "name": "Ditto",
+      "name": "Noctowl",
       "found": 19,
       "total": 20,
       "pct": 95.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 3,
           "players": 19,
           "percent": 100.0
         }
@@ -291,34 +291,6 @@
     },
     {
       "rank": 18,
-      "name": "Fan Rotom",
-      "found": 19,
-      "total": 20,
-      "pct": 95.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 19,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 19,
-      "name": "Area Zero Underdepths",
-      "found": 19,
-      "total": 20,
-      "pct": 95.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 19,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 20,
       "name": "Jamming Tower",
       "found": 19,
       "total": 20,
@@ -332,14 +304,42 @@
       ]
     },
     {
-      "rank": 21,
-      "name": "Noctowl",
+      "rank": 19,
+      "name": "Fan Rotom",
       "found": 19,
       "total": 20,
       "pct": 95.0,
       "dist": [
         {
-          "copies": 3,
+          "copies": 2,
+          "players": 19,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Ditto",
+      "found": 19,
+      "total": 20,
+      "pct": 95.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 19,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Area Zero Underdepths",
+      "found": 19,
+      "total": 20,
+      "pct": 95.0,
+      "dist": [
+        {
+          "copies": 2,
           "players": 19,
           "percent": 100.0
         }
@@ -550,6 +550,20 @@
     },
     {
       "rank": 34,
+      "name": "Bravery Charm",
+      "found": 4,
+      "total": 20,
+      "pct": 20.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 35,
       "name": "Hoothoot TEF 126",
       "found": 4,
       "total": 20,
@@ -564,20 +578,6 @@
           "copies": 2,
           "players": 2,
           "percent": 50.0
-        }
-      ]
-    },
-    {
-      "rank": 35,
-      "name": "Bravery Charm",
-      "found": 4,
-      "total": 20,
-      "pct": 20.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 4,
-          "percent": 100.0
         }
       ]
     },
@@ -597,7 +597,7 @@
     },
     {
       "rank": 37,
-      "name": "Switch",
+      "name": "Koraidon",
       "found": 2,
       "total": 20,
       "pct": 10.0,
@@ -611,7 +611,7 @@
     },
     {
       "rank": 38,
-      "name": "Koraidon",
+      "name": "Switch",
       "found": 2,
       "total": 20,
       "pct": 10.0,
@@ -695,13 +695,13 @@
     },
     {
       "rank": 44,
-      "name": "Cycling Road",
+      "name": "Pokémon Catcher",
       "found": 1,
       "total": 20,
       "pct": 5.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 4,
           "players": 1,
           "percent": 100.0
         }
@@ -709,7 +709,7 @@
     },
     {
       "rank": 45,
-      "name": "Pok\u00e9mon Catcher",
+      "name": "Pokégear 3.0",
       "found": 1,
       "total": 20,
       "pct": 5.0,
@@ -723,13 +723,13 @@
     },
     {
       "rank": 46,
-      "name": "Pok\u00e9gear 3.0",
+      "name": "Cycling Road",
       "found": 1,
       "total": 20,
       "pct": 5.0,
       "dist": [
         {
-          "copies": 4,
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }
@@ -737,7 +737,7 @@
     },
     {
       "rank": 47,
-      "name": "Briar",
+      "name": "Water Energy",
       "found": 1,
       "total": 20,
       "pct": 5.0,
@@ -751,7 +751,7 @@
     },
     {
       "rank": 48,
-      "name": "Terapagos ex",
+      "name": "Briar",
       "found": 1,
       "total": 20,
       "pct": 5.0,
@@ -765,7 +765,7 @@
     },
     {
       "rank": 49,
-      "name": "Water Energy",
+      "name": "Terapagos ex",
       "found": 1,
       "total": 20,
       "pct": 5.0,
@@ -793,7 +793,7 @@
     },
     {
       "rank": 51,
-      "name": "Rare Candy",
+      "name": "Pidgey",
       "found": 1,
       "total": 20,
       "pct": 5.0,
@@ -807,7 +807,7 @@
     },
     {
       "rank": 52,
-      "name": "Pidgeot ex",
+      "name": "Rare Candy",
       "found": 1,
       "total": 20,
       "pct": 5.0,
@@ -821,7 +821,7 @@
     },
     {
       "rank": 53,
-      "name": "Pidgey",
+      "name": "Pidgeot ex",
       "found": 1,
       "total": 20,
       "pct": 5.0,

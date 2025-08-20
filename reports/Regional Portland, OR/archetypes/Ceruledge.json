@@ -3,48 +3,6 @@
   "items": [
     {
       "rank": 1,
-      "name": "Ultra Ball",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 2,
-      "name": "Metal Energy",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 3,
-      "name": "Charcadet PAL 39",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 4,
       "name": "Fezandipiti ex",
       "found": 1,
       "total": 1,
@@ -58,21 +16,7 @@
       ]
     },
     {
-      "rank": 5,
-      "name": "Carmine",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 6,
+      "rank": 2,
       "name": "Briar",
       "found": 1,
       "total": 1,
@@ -86,63 +30,21 @@
       ]
     },
     {
-      "rank": 7,
-      "name": "Darkness Energy",
+      "rank": 3,
+      "name": "Metal Energy",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 3,
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }
       ]
     },
     {
-      "rank": 8,
-      "name": "Charcadet SSP 32",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 9,
-      "name": "Revavroom",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 10,
-      "name": "Earthen Vessel",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 11,
+      "rank": 4,
       "name": "Charcadet PAR 26",
       "found": 1,
       "total": 1,
@@ -156,14 +58,112 @@
       ]
     },
     {
-      "rank": 12,
-      "name": "Varoom",
+      "rank": 5,
+      "name": "Boss's Orders",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "name": "Pal Pad",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "name": "Night Stretcher",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "name": "Earthen Vessel",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "name": "Professor's Research",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
           "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "name": "Squawkabilly ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Brilliant Blender",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Psychic Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }
@@ -185,13 +185,13 @@
     },
     {
       "rank": 14,
-      "name": "Night Stretcher",
+      "name": "Revavroom",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 3,
+          "copies": 2,
           "players": 1,
           "percent": 100.0
         }
@@ -199,160 +199,6 @@
     },
     {
       "rank": 15,
-      "name": "Pal Pad",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 16,
-      "name": "Mist Energy",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 17,
-      "name": "Boss's Orders",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 18,
-      "name": "Psychic Energy",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 19,
-      "name": "Jet Energy",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 20,
-      "name": "Munkidori",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 21,
-      "name": "Iono",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 22,
-      "name": "Nest Ball",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 23,
-      "name": "Squawkabilly ex",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 24,
-      "name": "Counter Catcher",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 25,
-      "name": "Brilliant Blender",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 26,
       "name": "Fire Energy",
       "found": 1,
       "total": 1,
@@ -366,14 +212,168 @@
       ]
     },
     {
-      "rank": 27,
-      "name": "Professor's Research",
+      "rank": 16,
+      "name": "Munkidori",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Charcadet PAL 39",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Jet Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Counter Catcher",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
           "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Charcadet SSP 32",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Nest Ball",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "Darkness Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "name": "Iono",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Ultra Ball",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "Varoom",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 26,
+      "name": "Mist Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 27,
+      "name": "Carmine",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
           "players": 1,
           "percent": 100.0
         }

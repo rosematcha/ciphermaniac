@@ -3,72 +3,6 @@
   "items": [
     {
       "rank": 1,
-      "name": "Night Stretcher",
-      "found": 29,
-      "total": 29,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 15,
-          "percent": 51.72
-        },
-        {
-          "copies": 2,
-          "players": 14,
-          "percent": 48.28
-        }
-      ]
-    },
-    {
-      "rank": 2,
-      "name": "Psychic Energy",
-      "found": 29,
-      "total": 29,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 6.9
-        },
-        {
-          "copies": 2,
-          "players": 27,
-          "percent": 93.1
-        }
-      ]
-    },
-    {
-      "rank": 3,
-      "name": "Lillie's Clefairy ex",
-      "found": 29,
-      "total": 29,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 29,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 4,
-      "name": "Fan Rotom",
-      "found": 29,
-      "total": 29,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 29,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 5,
       "name": "Fezandipiti ex",
       "found": 29,
       "total": 29,
@@ -82,8 +16,74 @@
       ]
     },
     {
+      "rank": 2,
+      "name": "Briar",
+      "found": 29,
+      "total": 29,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 29,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "name": "Water Energy",
+      "found": 29,
+      "total": 29,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 28,
+          "percent": 96.55
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 3.45
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "name": "Leafeon ex",
+      "found": 29,
+      "total": 29,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 29,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "name": "Crispin",
+      "found": 29,
+      "total": 29,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 6.9
+        },
+        {
+          "copies": 3,
+          "players": 27,
+          "percent": 93.1
+        }
+      ]
+    },
+    {
       "rank": 6,
-      "name": "Boss's Orders",
+      "name": "Fire Energy",
       "found": 29,
       "total": 29,
       "pct": 100.0,
@@ -97,6 +97,147 @@
     },
     {
       "rank": 7,
+      "name": "Fan Rotom",
+      "found": 29,
+      "total": 29,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 29,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "name": "Nest Ball",
+      "found": 29,
+      "total": 29,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 6.9
+        },
+        {
+          "copies": 4,
+          "players": 27,
+          "percent": 93.1
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "name": "Lillie's Clefairy ex",
+      "found": 29,
+      "total": 29,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 29,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "name": "Latias ex",
+      "found": 29,
+      "total": 29,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 29,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Buddy-Buddy Poffin",
+      "found": 29,
+      "total": 29,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 10.34
+        },
+        {
+          "copies": 2,
+          "players": 26,
+          "percent": 89.66
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Flareon ex",
+      "found": 29,
+      "total": 29,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 29,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Tera Orb",
+      "found": 29,
+      "total": 29,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 29,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Area Zero Underdepths",
+      "found": 29,
+      "total": 29,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 23,
+          "percent": 79.31
+        },
+        {
+          "copies": 3,
+          "players": 6,
+          "percent": 20.69
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Eevee SSP 143",
+      "found": 29,
+      "total": 29,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 29,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
       "name": "Ultra Ball",
       "found": 29,
       "total": 29,
@@ -120,106 +261,7 @@
       ]
     },
     {
-      "rank": 8,
-      "name": "Fire Energy",
-      "found": 29,
-      "total": 29,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 29,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 9,
-      "name": "Eevee MEW 133",
-      "found": 29,
-      "total": 29,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 29,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 10,
-      "name": "Counter Catcher",
-      "found": 29,
-      "total": 29,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 24,
-          "percent": 82.76
-        },
-        {
-          "copies": 2,
-          "players": 5,
-          "percent": 17.24
-        }
-      ]
-    },
-    {
-      "rank": 11,
-      "name": "Area Zero Underdepths",
-      "found": 29,
-      "total": 29,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 23,
-          "percent": 79.31
-        },
-        {
-          "copies": 3,
-          "players": 6,
-          "percent": 20.69
-        }
-      ]
-    },
-    {
-      "rank": 12,
-      "name": "Lightning Energy",
-      "found": 29,
-      "total": 29,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 29,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 13,
-      "name": "Eevee ex",
-      "found": 29,
-      "total": 29,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 28,
-          "percent": 96.55
-        },
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 3.45
-        }
-      ]
-    },
-    {
-      "rank": 14,
+      "rank": 17,
       "name": "Noctowl",
       "found": 29,
       "total": 29,
@@ -238,75 +280,38 @@
       ]
     },
     {
-      "rank": 15,
-      "name": "Flareon ex",
+      "rank": 18,
+      "name": "Night Stretcher",
       "found": 29,
       "total": 29,
       "pct": 100.0,
       "dist": [
+        {
+          "copies": 1,
+          "players": 15,
+          "percent": 51.72
+        },
         {
           "copies": 2,
-          "players": 29,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 16,
-      "name": "Briar",
-      "found": 29,
-      "total": 29,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 29,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 17,
-      "name": "Latias ex",
-      "found": 29,
-      "total": 29,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 29,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 18,
-      "name": "Leafeon ex",
-      "found": 29,
-      "total": 29,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 29,
-          "percent": 100.0
+          "players": 14,
+          "percent": 48.28
         }
       ]
     },
     {
       "rank": 19,
-      "name": "Nest Ball",
+      "name": "Iono",
       "found": 29,
       "total": 29,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 3,
+          "copies": 1,
           "players": 2,
           "percent": 6.9
         },
         {
-          "copies": 4,
+          "copies": 2,
           "players": 27,
           "percent": 93.1
         }
@@ -314,39 +319,29 @@
     },
     {
       "rank": 20,
-      "name": "Switch",
+      "name": "Eevee MEW 133",
       "found": 29,
       "total": 29,
       "pct": 100.0,
       "dist": [
         {
           "copies": 1,
-          "players": 28,
-          "percent": 96.55
-        },
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 3.45
+          "players": 29,
+          "percent": 100.0
         }
       ]
     },
     {
       "rank": 21,
-      "name": "Crispin",
+      "name": "Lightning Energy",
       "found": 29,
       "total": 29,
       "pct": 100.0,
       "dist": [
         {
           "copies": 2,
-          "players": 2,
-          "percent": 6.9
-        },
-        {
-          "copies": 3,
-          "players": 27,
-          "percent": 93.1
+          "players": 29,
+          "percent": 100.0
         }
       ]
     },
@@ -366,73 +361,59 @@
     },
     {
       "rank": 23,
-      "name": "Eevee SSP 143",
+      "name": "Switch",
       "found": 29,
       "total": 29,
       "pct": 100.0,
       "dist": [
         {
           "copies": 1,
-          "players": 29,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 24,
-      "name": "Buddy-Buddy Poffin",
-      "found": 29,
-      "total": 29,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 3,
-          "percent": 10.34
-        },
-        {
-          "copies": 2,
-          "players": 26,
-          "percent": 89.66
-        }
-      ]
-    },
-    {
-      "rank": 25,
-      "name": "Water Energy",
-      "found": 29,
-      "total": 29,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
           "players": 28,
           "percent": 96.55
         },
         {
-          "copies": 3,
+          "copies": 2,
           "players": 1,
           "percent": 3.45
         }
       ]
     },
     {
-      "rank": 26,
-      "name": "Tera Orb",
+      "rank": 24,
+      "name": "Eevee ex",
       "found": 29,
       "total": 29,
       "pct": 100.0,
       "dist": [
         {
           "copies": 1,
+          "players": 28,
+          "percent": 96.55
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 3.45
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "Boss's Orders",
+      "found": 29,
+      "total": 29,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
           "players": 29,
           "percent": 100.0
         }
       ]
     },
     {
-      "rank": 27,
-      "name": "Iono",
+      "rank": 26,
+      "name": "Psychic Energy",
       "found": 29,
       "total": 29,
       "pct": 100.0,
@@ -446,6 +427,25 @@
           "copies": 2,
           "players": 27,
           "percent": 93.1
+        }
+      ]
+    },
+    {
+      "rank": 27,
+      "name": "Counter Catcher",
+      "found": 29,
+      "total": 29,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 24,
+          "percent": 82.76
+        },
+        {
+          "copies": 2,
+          "players": 5,
+          "percent": 17.24
         }
       ]
     },
@@ -508,7 +508,7 @@
     },
     {
       "rank": 31,
-      "name": "Mew ex",
+      "name": "Super Rod",
       "found": 27,
       "total": 29,
       "pct": 93.1,
@@ -522,7 +522,7 @@
     },
     {
       "rank": 32,
-      "name": "Super Rod",
+      "name": "Mew ex",
       "found": 27,
       "total": 29,
       "pct": 93.1,
@@ -690,7 +690,7 @@
     },
     {
       "rank": 44,
-      "name": "Rare Candy",
+      "name": "Pidgeot ex",
       "found": 1,
       "total": 29,
       "pct": 3.45,
@@ -704,7 +704,7 @@
     },
     {
       "rank": 45,
-      "name": "Pidgey",
+      "name": "Rare Candy",
       "found": 1,
       "total": 29,
       "pct": 3.45,
@@ -718,7 +718,7 @@
     },
     {
       "rank": 46,
-      "name": "Pidgeot ex",
+      "name": "Pidgey OBF 162",
       "found": 1,
       "total": 29,
       "pct": 3.45,

@@ -3,7 +3,7 @@
   "items": [
     {
       "rank": 1,
-      "name": "Super Rod",
+      "name": "Precious Trolley",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -17,34 +17,6 @@
     },
     {
       "rank": 2,
-      "name": "Frogadier",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 3,
-      "name": "Technical Machine: Evolution",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 4,
       "name": "Professor Turo's Scenario",
       "found": 1,
       "total": 1,
@@ -58,8 +30,8 @@
       ]
     },
     {
-      "rank": 5,
-      "name": "Blaziken ex",
+      "rank": 3,
+      "name": "Rare Candy",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -72,8 +44,36 @@
       ]
     },
     {
+      "rank": 4,
+      "name": "Frogadier",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "name": "Combusken",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 6,
-      "name": "Fire Energy",
+      "name": "Greninja ex",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -87,13 +87,13 @@
     },
     {
       "rank": 7,
-      "name": "Munkidori",
+      "name": "Brock's Scouting",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 3,
           "players": 1,
           "percent": 100.0
         }
@@ -115,21 +115,7 @@
     },
     {
       "rank": 9,
-      "name": "Iono",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 10,
-      "name": "N's Zorua",
+      "name": "Technical Machine: Evolution",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -142,21 +128,7 @@
       ]
     },
     {
-      "rank": 11,
-      "name": "N's Reshiram",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 12,
+      "rank": 10,
       "name": "Fezandipiti ex",
       "found": 1,
       "total": 1,
@@ -170,175 +142,7 @@
       ]
     },
     {
-      "rank": 13,
-      "name": "N's Zoroark ex",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 14,
-      "name": "Brock's Scouting",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 15,
-      "name": "Darkness Energy",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 16,
-      "name": "Morty's Conviction",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 17,
-      "name": "Earthen Vessel",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 18,
-      "name": "Combusken",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 19,
-      "name": "Rare Candy",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 20,
-      "name": "Froakie",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 21,
-      "name": "Counter Catcher",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 22,
-      "name": "Artazon",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 23,
-      "name": "Boss's Orders",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 24,
-      "name": "Buddy-Buddy Poffin",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 25,
+      "rank": 11,
       "name": "Arven",
       "found": 1,
       "total": 1,
@@ -352,8 +156,8 @@
       ]
     },
     {
-      "rank": 26,
-      "name": "Jamming Tower",
+      "rank": 12,
+      "name": "Psychic Energy",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -366,49 +170,7 @@
       ]
     },
     {
-      "rank": 27,
-      "name": "Switch",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 28,
-      "name": "Greninja ex",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 29,
-      "name": "Water Energy",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 30,
+      "rank": 13,
       "name": "Pecharunt",
       "found": 1,
       "total": 1,
@@ -422,7 +184,63 @@
       ]
     },
     {
-      "rank": 31,
+      "rank": 14,
+      "name": "Iono",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Super Rod",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Artazon",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Counter Catcher",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
       "name": "Torchic",
       "found": 1,
       "total": 1,
@@ -436,8 +254,8 @@
       ]
     },
     {
-      "rank": 32,
-      "name": "Precious Trolley",
+      "rank": 19,
+      "name": "Earthen Vessel",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -450,14 +268,196 @@
       ]
     },
     {
-      "rank": 33,
-      "name": "Psychic Energy",
+      "rank": 20,
+      "name": "Buddy-Buddy Poffin",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
           "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Water Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "Jamming Tower",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "name": "N's Zoroark ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Switch",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "N's Reshiram",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 26,
+      "name": "N's Zorua",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 27,
+      "name": "Morty's Conviction",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 28,
+      "name": "Fire Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 29,
+      "name": "Boss's Orders",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 30,
+      "name": "Munkidori",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 31,
+      "name": "Darkness Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 32,
+      "name": "Blaziken ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 33,
+      "name": "Froakie",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
           "players": 1,
           "percent": 100.0
         }

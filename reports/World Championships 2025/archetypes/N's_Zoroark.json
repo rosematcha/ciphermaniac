@@ -17,25 +17,6 @@
     },
     {
       "rank": 2,
-      "name": "Energy Switch",
-      "found": 3,
-      "total": 3,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 66.67
-        },
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 33.33
-        }
-      ]
-    },
-    {
-      "rank": 3,
       "name": "N's Zoroark ex",
       "found": 3,
       "total": 3,
@@ -49,21 +30,30 @@
       ]
     },
     {
-      "rank": 4,
-      "name": "Professor Turo's Scenario",
+      "rank": 3,
+      "name": "Earthen Vessel",
       "found": 3,
       "total": 3,
       "pct": 100.0,
       "dist": [
         {
           "copies": 1,
-          "players": 2,
-          "percent": 66.67
-        },
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "name": "Nest Ball",
+      "found": 3,
+      "total": 3,
+      "pct": 100.0,
+      "dist": [
         {
-          "copies": 2,
-          "players": 1,
-          "percent": 33.33
+          "copies": 3,
+          "players": 3,
+          "percent": 100.0
         }
       ]
     },
@@ -88,6 +78,20 @@
     },
     {
       "rank": 6,
+      "name": "Darkness Energy",
+      "found": 3,
+      "total": 3,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 7,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 7,
       "name": "Fezandipiti ex",
       "found": 3,
       "total": 3,
@@ -101,33 +105,19 @@
       ]
     },
     {
-      "rank": 7,
-      "name": "Bloodmoon Ursaluna ex",
+      "rank": 8,
+      "name": "Super Rod",
       "found": 3,
       "total": 3,
       "pct": 100.0,
       "dist": [
         {
           "copies": 1,
-          "players": 3,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 8,
-      "name": "Buddy-Buddy Poffin",
-      "found": 3,
-      "total": 3,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
           "players": 2,
           "percent": 66.67
         },
         {
-          "copies": 4,
+          "copies": 2,
           "players": 1,
           "percent": 33.33
         }
@@ -154,62 +144,25 @@
     },
     {
       "rank": 10,
-      "name": "Ultra Ball",
+      "name": "Professor Turo's Scenario",
       "found": 3,
       "total": 3,
       "pct": 100.0,
       "dist": [
         {
           "copies": 1,
-          "players": 3,
-          "percent": 100.0
+          "players": 2,
+          "percent": 66.67
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 33.33
         }
       ]
     },
     {
       "rank": 11,
-      "name": "Pal Pad",
-      "found": 3,
-      "total": 3,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 3,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 12,
-      "name": "Earthen Vessel",
-      "found": 3,
-      "total": 3,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 3,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 13,
-      "name": "Counter Catcher",
-      "found": 3,
-      "total": 3,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 3,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 14,
       "name": "N's Reshiram",
       "found": 3,
       "total": 3,
@@ -223,54 +176,26 @@
       ]
     },
     {
-      "rank": 15,
-      "name": "Darkness Energy",
+      "rank": 12,
+      "name": "Buddy-Buddy Poffin",
       "found": 3,
       "total": 3,
       "pct": 100.0,
       "dist": [
-        {
-          "copies": 7,
-          "players": 3,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 16,
-      "name": "Nest Ball",
-      "found": 3,
-      "total": 3,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 3,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 17,
-      "name": "Iono",
-      "found": 3,
-      "total": 3,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 33.33
-        },
         {
           "copies": 3,
           "players": 2,
           "percent": 66.67
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 33.33
         }
       ]
     },
     {
-      "rank": 18,
+      "rank": 13,
       "name": "Technical Machine: Evolution",
       "found": 3,
       "total": 3,
@@ -289,7 +214,7 @@
       ]
     },
     {
-      "rank": 19,
+      "rank": 14,
       "name": "N's Zorua",
       "found": 3,
       "total": 3,
@@ -303,8 +228,83 @@
       ]
     },
     {
+      "rank": 15,
+      "name": "Iono",
+      "found": 3,
+      "total": 3,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 33.33
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 66.67
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Pal Pad",
+      "found": 3,
+      "total": 3,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Ultra Ball",
+      "found": 3,
+      "total": 3,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Bloodmoon Ursaluna ex",
+      "found": 3,
+      "total": 3,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Counter Catcher",
+      "found": 3,
+      "total": 3,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 20,
-      "name": "Super Rod",
+      "name": "Energy Switch",
       "found": 3,
       "total": 3,
       "pct": 100.0,
@@ -323,90 +323,6 @@
     },
     {
       "rank": 21,
-      "name": "Cornerstone Mask Ogerpon ex",
-      "found": 2,
-      "total": 3,
-      "pct": 66.67,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 22,
-      "name": "Night Stretcher",
-      "found": 2,
-      "total": 3,
-      "pct": 66.67,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 23,
-      "name": "N's PP Up",
-      "found": 2,
-      "total": 3,
-      "pct": 66.67,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 24,
-      "name": "Professor's Research",
-      "found": 2,
-      "total": 3,
-      "pct": 66.67,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 25,
-      "name": "Wellspring Mask Ogerpon ex",
-      "found": 2,
-      "total": 3,
-      "pct": 66.67,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 26,
-      "name": "Air Balloon",
-      "found": 2,
-      "total": 3,
-      "pct": 66.67,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 27,
       "name": "Technical Machine: Turbo Energize",
       "found": 2,
       "total": 3,
@@ -420,7 +336,63 @@
       ]
     },
     {
-      "rank": 28,
+      "rank": 22,
+      "name": "Professor's Research",
+      "found": 2,
+      "total": 3,
+      "pct": 66.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "name": "Wellspring Mask Ogerpon ex",
+      "found": 2,
+      "total": 3,
+      "pct": 66.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Night Stretcher",
+      "found": 2,
+      "total": 3,
+      "pct": 66.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "N's PP Up",
+      "found": 2,
+      "total": 3,
+      "pct": 66.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 26,
       "name": "Artazon",
       "found": 2,
       "total": 3,
@@ -434,35 +406,35 @@
       ]
     },
     {
+      "rank": 27,
+      "name": "Cornerstone Mask Ogerpon ex",
+      "found": 2,
+      "total": 3,
+      "pct": 66.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 28,
+      "name": "Air Balloon",
+      "found": 2,
+      "total": 3,
+      "pct": 66.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 29,
-      "name": "Fighting Energy",
-      "found": 2,
-      "total": 3,
-      "pct": 66.67,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 30,
-      "name": "Switch",
-      "found": 2,
-      "total": 3,
-      "pct": 66.67,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 31,
       "name": "Secret Box",
       "found": 2,
       "total": 3,
@@ -476,8 +448,36 @@
       ]
     },
     {
+      "rank": 30,
+      "name": "Fighting Energy",
+      "found": 2,
+      "total": 3,
+      "pct": 66.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 31,
+      "name": "Switch",
+      "found": 2,
+      "total": 3,
+      "pct": 66.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 32,
-      "name": "Toedscool",
+      "name": "N's Castle",
       "found": 1,
       "total": 3,
       "pct": 33.33,
@@ -491,7 +491,7 @@
     },
     {
       "rank": 33,
-      "name": "Binding Mochi",
+      "name": "Unfair Stamp",
       "found": 1,
       "total": 3,
       "pct": 33.33,
@@ -519,7 +519,7 @@
     },
     {
       "rank": 35,
-      "name": "N's Castle",
+      "name": "Toedscool PAR 16",
       "found": 1,
       "total": 3,
       "pct": 33.33,
@@ -533,20 +533,6 @@
     },
     {
       "rank": 36,
-      "name": "Pecharunt ex",
-      "found": 1,
-      "total": 3,
-      "pct": 33.33,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 37,
       "name": "Toedscruel",
       "found": 1,
       "total": 3,
@@ -560,8 +546,8 @@
       ]
     },
     {
-      "rank": 38,
-      "name": "Unfair Stamp",
+      "rank": 37,
+      "name": "Binding Mochi",
       "found": 1,
       "total": 3,
       "pct": 33.33,
@@ -574,7 +560,7 @@
       ]
     },
     {
-      "rank": 39,
+      "rank": 38,
       "name": "Janine's Secret Art",
       "found": 1,
       "total": 3,
@@ -582,6 +568,20 @@
       "dist": [
         {
           "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 39,
+      "name": "Pecharunt ex",
+      "found": 1,
+      "total": 3,
+      "pct": 33.33,
+      "dist": [
+        {
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }

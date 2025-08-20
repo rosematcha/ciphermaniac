@@ -3,13 +3,13 @@
   "items": [
     {
       "rank": 1,
-      "name": "Brute Bonnet",
+      "name": "Pecharunt ex",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }
@@ -17,13 +17,13 @@
     },
     {
       "rank": 2,
-      "name": "Night Stretcher",
+      "name": "Super Rod",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }
@@ -45,13 +45,13 @@
     },
     {
       "rank": 4,
-      "name": "Pecharunt",
+      "name": "Fezandipiti ex",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }
@@ -59,13 +59,13 @@
     },
     {
       "rank": 5,
-      "name": "Koraidon",
+      "name": "Ultra Ball",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 4,
           "players": 1,
           "percent": 100.0
         }
@@ -87,216 +87,6 @@
     },
     {
       "rank": 7,
-      "name": "Iono",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 8,
-      "name": "Fezandipiti ex",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 9,
-      "name": "Mew ex",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 10,
-      "name": "Darkness Energy",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 7,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 11,
-      "name": "Bloodmoon Ursaluna ex",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 12,
-      "name": "Professor Sada's Vitality",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 13,
-      "name": "Ancient Booster Energy Capsule",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 14,
-      "name": "Latias ex",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 15,
-      "name": "Nest Ball",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 16,
-      "name": "Boss's Orders",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 17,
-      "name": "Perilous Jungle",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 18,
-      "name": "Pecharunt ex",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 19,
-      "name": "Pok\u00e9mon Catcher",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 20,
-      "name": "Squawkabilly ex",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 21,
-      "name": "Super Rod",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 22,
       "name": "Energy Switch",
       "found": 1,
       "total": 1,
@@ -310,8 +100,8 @@
       ]
     },
     {
-      "rank": 23,
-      "name": "Pok\u00e9gear 3.0",
+      "rank": 8,
+      "name": "Boss's Orders",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -324,8 +114,22 @@
       ]
     },
     {
-      "rank": 24,
-      "name": "Earthen Vessel",
+      "rank": 9,
+      "name": "Nest Ball",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "name": "Brute Bonnet",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -338,8 +142,8 @@
       ]
     },
     {
-      "rank": 25,
-      "name": "Pal Pad",
+      "rank": 11,
+      "name": "Latias ex",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -352,7 +156,119 @@
       ]
     },
     {
-      "rank": 26,
+      "rank": 12,
+      "name": "Mew ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Squawkabilly ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Night Stretcher",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Perilous Jungle",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Ancient Booster Energy Capsule",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Bloodmoon Ursaluna ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Pecharunt",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Pokémon Catcher",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 20,
       "name": "Carmine",
       "found": 1,
       "total": 1,
@@ -366,14 +282,98 @@
       ]
     },
     {
-      "rank": 27,
-      "name": "Ultra Ball",
+      "rank": 21,
+      "name": "Professor Sada's Vitality",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
           "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "Koraidon",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "name": "Darkness Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 7,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Pal Pad",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "Earthen Vessel",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 26,
+      "name": "Iono",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 27,
+      "name": "Pokégear 3.0",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }

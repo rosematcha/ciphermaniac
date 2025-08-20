@@ -3,6 +3,143 @@
   "items": [
     {
       "rank": 1,
+      "name": "Cynthia's Garchomp ex",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 6,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "name": "Buddy-Buddy Poffin",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 33.33
+        },
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 66.67
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "name": "Arven",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 6,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "name": "Earthen Vessel",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "name": "Iono",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 33.33
+        },
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 66.67
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "name": "Cynthia's Roserade",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 66.67
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 33.33
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "name": "Cynthia's Roselia",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 66.67
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 33.33
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "name": "Technical Machine: Evolution",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 6,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 9,
       "name": "Night Stretcher",
       "found": 6,
       "total": 6,
@@ -26,78 +163,31 @@
       ]
     },
     {
-      "rank": 2,
-      "name": "Earthen Vessel",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 3,
-          "percent": 50.0
-        },
-        {
-          "copies": 2,
-          "players": 3,
-          "percent": 50.0
-        }
-      ]
-    },
-    {
-      "rank": 3,
-      "name": "Cynthia's Roserade",
+      "rank": 10,
+      "name": "Boss's Orders",
       "found": 6,
       "total": 6,
       "pct": 100.0,
       "dist": [
         {
           "copies": 2,
-          "players": 4,
-          "percent": 66.67
+          "players": 3,
+          "percent": 50.0
         },
         {
           "copies": 3,
           "players": 2,
           "percent": 33.33
-        }
-      ]
-    },
-    {
-      "rank": 4,
-      "name": "Cynthia's Gabite",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
+        },
         {
           "copies": 4,
-          "players": 6,
-          "percent": 100.0
+          "players": 1,
+          "percent": 16.67
         }
       ]
     },
     {
-      "rank": 5,
-      "name": "Cynthia's Roselia",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 4,
-          "percent": 66.67
-        },
-        {
-          "copies": 3,
-          "players": 2,
-          "percent": 33.33
-        }
-      ]
-    },
-    {
-      "rank": 6,
+      "rank": 11,
       "name": "Cynthia's Gible",
       "found": 6,
       "total": 6,
@@ -111,26 +201,7 @@
       ]
     },
     {
-      "rank": 7,
-      "name": "Cynthia's Power Weight",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 2,
-          "percent": 33.33
-        },
-        {
-          "copies": 4,
-          "players": 4,
-          "percent": 66.67
-        }
-      ]
-    },
-    {
-      "rank": 8,
+      "rank": 12,
       "name": "Fighting Energy",
       "found": 6,
       "total": 6,
@@ -159,87 +230,16 @@
       ]
     },
     {
-      "rank": 9,
-      "name": "Buddy-Buddy Poffin",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 2,
-          "percent": 33.33
-        },
-        {
-          "copies": 4,
-          "players": 4,
-          "percent": 66.67
-        }
-      ]
-    },
-    {
-      "rank": 10,
-      "name": "Counter Catcher",
+      "rank": 13,
+      "name": "Cynthia's Spiritomb",
       "found": 6,
       "total": 6,
       "pct": 100.0,
       "dist": [
         {
           "copies": 1,
-          "players": 2,
-          "percent": 33.33
-        },
-        {
-          "copies": 2,
-          "players": 4,
-          "percent": 66.67
-        }
-      ]
-    },
-    {
-      "rank": 11,
-      "name": "Cynthia's Garchomp ex",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
           "players": 6,
           "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 12,
-      "name": "Arven",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 6,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 13,
-      "name": "Iono",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 2,
-          "percent": 33.33
-        },
-        {
-          "copies": 4,
-          "players": 4,
-          "percent": 66.67
         }
       ]
     },
@@ -269,44 +269,11 @@
     },
     {
       "rank": 15,
-      "name": "Technical Machine: Evolution",
+      "name": "Cynthia's Power Weight",
       "found": 6,
       "total": 6,
       "pct": 100.0,
       "dist": [
-        {
-          "copies": 2,
-          "players": 6,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 16,
-      "name": "Cynthia's Spiritomb",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 6,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 17,
-      "name": "Boss's Orders",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 3,
-          "percent": 50.0
-        },
         {
           "copies": 3,
           "players": 2,
@@ -314,8 +281,41 @@
         },
         {
           "copies": 4,
-          "players": 1,
-          "percent": 16.67
+          "players": 4,
+          "percent": 66.67
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Cynthia's Gabite",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 6,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Counter Catcher",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 33.33
+        },
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 66.67
         }
       ]
     },
@@ -335,20 +335,15 @@
     },
     {
       "rank": 19,
-      "name": "Munkidori",
+      "name": "Artazon",
       "found": 4,
       "total": 6,
       "pct": 66.67,
       "dist": [
         {
           "copies": 1,
-          "players": 1,
-          "percent": 25.0
-        },
-        {
-          "copies": 2,
-          "players": 3,
-          "percent": 75.0
+          "players": 4,
+          "percent": 100.0
         }
       ]
     },
@@ -378,15 +373,20 @@
     },
     {
       "rank": 21,
-      "name": "Artazon",
+      "name": "Munkidori",
       "found": 4,
       "total": 6,
       "pct": 66.67,
       "dist": [
         {
           "copies": 1,
-          "players": 4,
-          "percent": 100.0
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 75.0
         }
       ]
     },
@@ -481,20 +481,6 @@
     },
     {
       "rank": 28,
-      "name": "Budew",
-      "found": 2,
-      "total": 6,
-      "pct": 33.33,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 29,
       "name": "Team Rocket's Petrel",
       "found": 2,
       "total": 6,
@@ -502,6 +488,20 @@
       "dist": [
         {
           "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 29,
+      "name": "Budew",
+      "found": 2,
+      "total": 6,
+      "pct": 33.33,
+      "dist": [
+        {
+          "copies": 1,
           "players": 2,
           "percent": 100.0
         }
@@ -523,7 +523,7 @@
     },
     {
       "rank": 31,
-      "name": "Powerglass",
+      "name": "Fezandipiti ex",
       "found": 2,
       "total": 6,
       "pct": 33.33,
@@ -537,7 +537,7 @@
     },
     {
       "rank": 32,
-      "name": "Fezandipiti ex",
+      "name": "Powerglass",
       "found": 2,
       "total": 6,
       "pct": 33.33,

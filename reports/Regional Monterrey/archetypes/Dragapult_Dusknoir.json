@@ -3,63 +3,6 @@
   "items": [
     {
       "rank": 1,
-      "name": "Dragapult ex",
-      "found": 24,
-      "total": 24,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 2,
-          "percent": 8.33
-        },
-        {
-          "copies": 3,
-          "players": 22,
-          "percent": 91.67
-        }
-      ]
-    },
-    {
-      "rank": 2,
-      "name": "Dusclops",
-      "found": 24,
-      "total": 24,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 8.33
-        },
-        {
-          "copies": 2,
-          "players": 22,
-          "percent": 91.67
-        }
-      ]
-    },
-    {
-      "rank": 3,
-      "name": "Counter Catcher",
-      "found": 24,
-      "total": 24,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 7,
-          "percent": 29.17
-        },
-        {
-          "copies": 3,
-          "players": 17,
-          "percent": 70.83
-        }
-      ]
-    },
-    {
-      "rank": 4,
       "name": "Night Stretcher",
       "found": 24,
       "total": 24,
@@ -83,31 +26,7 @@
       ]
     },
     {
-      "rank": 5,
-      "name": "Ultra Ball",
-      "found": 24,
-      "total": 24,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 3,
-          "percent": 12.5
-        },
-        {
-          "copies": 3,
-          "players": 10,
-          "percent": 41.67
-        },
-        {
-          "copies": 4,
-          "players": 11,
-          "percent": 45.83
-        }
-      ]
-    },
-    {
-      "rank": 6,
+      "rank": 2,
       "name": "Rescue Board",
       "found": 24,
       "total": 24,
@@ -121,59 +40,97 @@
       ]
     },
     {
-      "rank": 7,
-      "name": "Buddy-Buddy Poffin",
+      "rank": 3,
+      "name": "Fezandipiti ex",
       "found": 24,
       "total": 24,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 4,
+          "copies": 1,
           "players": 24,
           "percent": 100.0
         }
       ]
     },
     {
-      "rank": 8,
-      "name": "Iono",
+      "rank": 4,
+      "name": "Duskull",
       "found": 24,
       "total": 24,
       "pct": 100.0,
       "dist": [
         {
           "copies": 2,
-          "players": 1,
-          "percent": 4.17
+          "players": 21,
+          "percent": 87.5
         },
         {
           "copies": 3,
-          "players": 4,
-          "percent": 16.67
-        },
-        {
-          "copies": 4,
-          "players": 19,
-          "percent": 79.17
+          "players": 3,
+          "percent": 12.5
         }
       ]
     },
     {
-      "rank": 9,
-      "name": "Dreepy",
+      "rank": 5,
+      "name": "Dragapult ex",
       "found": 24,
       "total": 24,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 4,
-          "players": 24,
-          "percent": 100.0
+          "copies": 2,
+          "players": 2,
+          "percent": 8.33
+        },
+        {
+          "copies": 3,
+          "players": 22,
+          "percent": 91.67
         }
       ]
     },
     {
-      "rank": 10,
+      "rank": 6,
+      "name": "Dusclops",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 8.33
+        },
+        {
+          "copies": 2,
+          "players": 22,
+          "percent": 91.67
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "name": "Counter Catcher",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 7,
+          "percent": 29.17
+        },
+        {
+          "copies": 3,
+          "players": 17,
+          "percent": 70.83
+        }
+      ]
+    },
+    {
+      "rank": 8,
       "name": "Dusknoir",
       "found": 24,
       "total": 24,
@@ -192,21 +149,7 @@
       ]
     },
     {
-      "rank": 11,
-      "name": "Fezandipiti ex",
-      "found": 24,
-      "total": 24,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 24,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 12,
+      "rank": 9,
       "name": "Budew",
       "found": 24,
       "total": 24,
@@ -220,7 +163,7 @@
       ]
     },
     {
-      "rank": 13,
+      "rank": 10,
       "name": "Arven",
       "found": 24,
       "total": 24,
@@ -249,26 +192,31 @@
       ]
     },
     {
-      "rank": 14,
-      "name": "Duskull",
+      "rank": 11,
+      "name": "Iono",
       "found": 24,
       "total": 24,
       "pct": 100.0,
       "dist": [
         {
           "copies": 2,
-          "players": 21,
-          "percent": 87.5
+          "players": 1,
+          "percent": 4.17
         },
         {
           "copies": 3,
-          "players": 3,
-          "percent": 12.5
+          "players": 4,
+          "percent": 16.67
+        },
+        {
+          "copies": 4,
+          "players": 19,
+          "percent": 79.17
         }
       ]
     },
     {
-      "rank": 15,
+      "rank": 12,
       "name": "Rare Candy",
       "found": 24,
       "total": 24,
@@ -287,7 +235,26 @@
       ]
     },
     {
-      "rank": 16,
+      "rank": 13,
+      "name": "Jacq",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 16.67
+        },
+        {
+          "copies": 2,
+          "players": 20,
+          "percent": 83.33
+        }
+      ]
+    },
+    {
+      "rank": 14,
       "name": "Drakloak",
       "found": 24,
       "total": 24,
@@ -306,21 +273,64 @@
       ]
     },
     {
-      "rank": 17,
-      "name": "Jacq",
+      "rank": 15,
+      "name": "Buddy-Buddy Poffin",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 24,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Boss's Orders",
       "found": 24,
       "total": 24,
       "pct": 100.0,
       "dist": [
         {
           "copies": 1,
-          "players": 4,
-          "percent": 16.67
+          "players": 3,
+          "percent": 12.5
         },
         {
           "copies": 2,
           "players": 20,
           "percent": 83.33
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 4.17
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Ultra Ball",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 12.5
+        },
+        {
+          "copies": 3,
+          "players": 10,
+          "percent": 41.67
+        },
+        {
+          "copies": 4,
+          "players": 11,
+          "percent": 45.83
         }
       ]
     },
@@ -345,30 +355,6 @@
     },
     {
       "rank": 19,
-      "name": "Boss's Orders",
-      "found": 24,
-      "total": 24,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 3,
-          "percent": 12.5
-        },
-        {
-          "copies": 2,
-          "players": 20,
-          "percent": 83.33
-        },
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 4.17
-        }
-      ]
-    },
-    {
-      "rank": 20,
       "name": "Psychic Energy",
       "found": 24,
       "total": 24,
@@ -383,6 +369,20 @@
           "copies": 3,
           "players": 23,
           "percent": 95.83
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Dreepy",
+      "found": 24,
+      "total": 24,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 24,
+          "percent": 100.0
         }
       ]
     },
@@ -599,7 +599,7 @@
     },
     {
       "rank": 35,
-      "name": "Jamming Tower",
+      "name": "Munkidori",
       "found": 3,
       "total": 24,
       "pct": 12.5,
@@ -613,6 +613,20 @@
     },
     {
       "rank": 36,
+      "name": "Jamming Tower",
+      "found": 3,
+      "total": 24,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 37,
       "name": "Luminous Energy",
       "found": 3,
       "total": 24,
@@ -632,20 +646,6 @@
           "copies": 3,
           "players": 1,
           "percent": 33.33
-        }
-      ]
-    },
-    {
-      "rank": 37,
-      "name": "Munkidori",
-      "found": 3,
-      "total": 24,
-      "pct": 12.5,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 3,
-          "percent": 100.0
         }
       ]
     },
@@ -707,7 +707,7 @@
     },
     {
       "rank": 42,
-      "name": "Pok\u00e9mon League Headquarters",
+      "name": "Pokémon League Headquarters",
       "found": 2,
       "total": 24,
       "pct": 8.33,
@@ -749,7 +749,7 @@
     },
     {
       "rank": 45,
-      "name": "Toedscool",
+      "name": "Toedscool SCR 17",
       "found": 1,
       "total": 24,
       "pct": 4.17,

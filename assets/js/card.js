@@ -1,5 +1,5 @@
 // Entry for per-card page: loads meta-share over tournaments and common decks
-import { fetchTournamentsList, fetchReport, fetchArchetypesList, fetchArchetypeReport, fetchOverrides, fetchTop8ArchetypesList } from './api.js';
+import { fetchTournamentsList, fetchReport, fetchArchetypesList, fetchArchetypeReport, fetchOverrides, fetchTop8ArchetypesList, fetchCardIndex, fetchMeta } from './api.js';
 import { parseReport } from './parse.js';
 import { buildThumbCandidates } from './thumbs.js';
 import { pickArchetype, baseToLabel } from './selectArchetype.js';
@@ -28,31 +28,12 @@ const backLink = document.getElementById('back-link');
 if(backLink){ backLink.href = 'index.html'; }
 const analysisSel = document.getElementById('analysis-event');
 const analysisTable = document.getElementById('analysis-table');
-const copyBtn = document.getElementById('copy-link');
 const searchInGrid = document.getElementById('search-in-grid');
 const windowSelect = document.getElementById('window-select');
-const copyStatus = document.getElementById('copy-status');
 const cardSearchInput = document.getElementById('card-search');
 const cardNamesList = document.getElementById('card-names');
 const suggestionsBox = document.getElementById('card-suggestions');
-if(copyBtn){
-	copyBtn.addEventListener('click', async () => {
-		const params = new URLSearchParams(location.search);
-		const win = params.get('win');
-		const qstr = win ? `?win=${encodeURIComponent(win)}` : '';
-		const clean = `${location.origin}${location.pathname.replace(/card\.html$/,'card.html')}${qstr}#card/${encodeURIComponent(cardName || '')}`;
-		try{
-			await navigator.clipboard.writeText(clean);
-			if(copyStatus){ copyStatus.textContent = 'Link copied!'; setTimeout(()=>copyStatus.textContent='', 2000); }
-		}catch{
-			// Fallback
-			const ta = document.createElement('textarea');
-			ta.value = clean; document.body.appendChild(ta); ta.select();
-			try{ document.execCommand('copy'); if(copyStatus){ copyStatus.textContent = 'Link copied!'; setTimeout(()=>copyStatus.textContent='', 2000); } }
-			finally{ ta.remove(); }
-		}
-	});
-}
+// Copy link button removed per request
 
 // Link to grid prefilled with search
 if(searchInGrid){
@@ -357,9 +338,9 @@ function renderDecks(container, rows){
 		tbl.style.borderRadius = '8px';
 	const thead = document.createElement('thead');
 	const hdr = document.createElement('tr');
-		;['Tournament','Most Success In','Usage % (All)','Decks (All)'].forEach(h=>{
-			const th = document.createElement('th'); th.textContent = h; th.style.textAlign='left'; th.style.padding='10px 12px'; th.style.borderBottom='1px solid #2c335a'; th.style.color='var(--muted)'; hdr.appendChild(th);
-	});
+	    ;['Tournament','Usage % (All)','Decks (All)'].forEach(h=>{
+		    const th = document.createElement('th'); th.textContent = h; th.style.textAlign='left'; th.style.padding='10px 12px'; th.style.borderBottom='1px solid #2c335a'; th.style.color='var(--muted)'; hdr.appendChild(th);
+	    });
 	thead.appendChild(hdr);
 	tbl.appendChild(thead);
 	const tbody = document.createElement('tbody');
@@ -369,8 +350,8 @@ function renderDecks(container, rows){
 			const tLink = document.createElement('a');
 			tLink.href = `index.html?tour=${encodeURIComponent(r.tournament)}`;
 			tLink.textContent = r.tournament;
-			const cells = [tLink, r.archetype || '—', r.pct!=null? r.pct.toFixed(1)+'%':'—', r.found!=null && r.total!=null? `${r.found}/${r.total}`:'—'];
-			cells.forEach((v,i)=>{ const td = document.createElement('td'); if(v instanceof HTMLElement){ td.appendChild(v); } else { td.textContent = v; } td.style.padding='10px 12px'; if(i===2) td.style.textAlign='right'; tr.appendChild(td); });
+			const cells = [tLink, r.pct!=null? r.pct.toFixed(1)+'%':'—', r.found!=null && r.total!=null? `${r.found}/${r.total}`:'—'];
+			cells.forEach((v,i)=>{ const td = document.createElement('td'); if(v instanceof HTMLElement){ td.appendChild(v); } else { td.textContent = v; } td.style.padding='10px 12px'; if(i===1) td.style.textAlign='right'; tr.appendChild(td); });
 		tbody.appendChild(tr);
 	});
 	tbl.appendChild(tbody);
@@ -383,14 +364,14 @@ function renderEvents(container, rows){
 	tbl.style.width = '80%'; tbl.style.marginLeft='auto'; tbl.style.marginRight='auto'; tbl.style.borderCollapse='collapse'; tbl.style.marginTop='8px'; tbl.style.background='var(--panel)'; tbl.style.border='1px solid #242a4a'; tbl.style.borderRadius='8px';
 	const thead = document.createElement('thead');
 	const hdr = document.createElement('tr');
-	;['Tournament','Most Success In','Usage % (All)'].forEach((h,i)=>{ const th = document.createElement('th'); th.textContent=h; th.style.textAlign= i===2 ? 'right' : 'left'; th.style.padding='10px 12px'; th.style.borderBottom='1px solid #2c335a'; th.style.color='var(--muted)'; hdr.appendChild(th); });
+	;['Tournament','Usage % (All)'].forEach((h,i)=>{ const th = document.createElement('th'); th.textContent=h; th.style.textAlign= i===1 ? 'right' : 'left'; th.style.padding='10px 12px'; th.style.borderBottom='1px solid #2c335a'; th.style.color='var(--muted)'; hdr.appendChild(th); });
 	thead.appendChild(hdr); tbl.appendChild(thead);
 	const tbody = document.createElement('tbody');
 	rows.forEach(r => {
 		const tr = document.createElement('tr');
 		const tLink = document.createElement('a'); tLink.href = `index.html?tour=${encodeURIComponent(r.tournament)}`; tLink.textContent = r.tournament;
-		const cells = [tLink, r.archetype || '—', r.pct!=null? r.pct.toFixed(1)+'%':'—'];
-		cells.forEach((v,i)=>{ const td = document.createElement('td'); if(v instanceof HTMLElement){ td.appendChild(v); } else { td.textContent = v; } td.style.padding='10px 12px'; if(i===2) td.style.textAlign='right'; tr.appendChild(td); });
+	const cells = [tLink, r.pct!=null? r.pct.toFixed(1)+'%':'—'];
+	cells.forEach((v,i)=>{ const td = document.createElement('td'); if(v instanceof HTMLElement){ td.appendChild(v); } else { td.textContent = v; } td.style.padding='10px 12px'; if(i===1) td.style.textAlign='right'; tr.appendChild(td); });
 		tbody.appendChild(tr);
 	});
 	tbl.appendChild(tbody);
@@ -440,9 +421,20 @@ async function load(){
 						if(cache[ck]){
 							({ pct: globalPct, found: globalFound, total: globalTotal } = cache[ck]);
 						}else{
-							const master = await fetchReport(t);
-							const parsed = parseReport(master);
-							const card = findCard(parsed.items);
+							// Prefer precomputed cardIndex when available; fallback to master
+							let card = null;
+							try{
+								const idx = await fetchCardIndex(t);
+								const entry = idx.cards?.[cardName] || idx.cards?.[Object.keys(idx.cards||{}).find(k => k.toLowerCase() === cardName.toLowerCase()) || ''];
+								if(entry){
+									card = { name: cardName, found: entry.found, total: entry.total, pct: entry.pct, dist: entry.dist };
+								}
+							}catch{}
+							if(!card){
+								const master = await fetchReport(t);
+								const parsed = parseReport(master);
+								card = findCard(parsed.items);
+							}
 							if(card){
 								globalPct = Number.isFinite(card.pct)? card.pct : (card.total? (100*card.found/card.total): 0);
 								globalFound = Number.isFinite(card.found)? card.found : null;
@@ -736,19 +728,34 @@ async function load(){
 				tbl.style.width = '100%'; tbl.style.borderCollapse='collapse'; tbl.style.background='var(--panel)'; tbl.style.border='1px solid #242a4a'; tbl.style.borderRadius='8px';
 				const thead = document.createElement('thead');
 				const trh = document.createElement('tr');
-				;['Archetype','Played %','1x','2x','3x','4x','Decks'].forEach((h,i)=>{ const th = document.createElement('th'); th.textContent=h; if(h==='Played %'){ th.title='Percent of decks in the archetype that ran the card (any copies).'; } if(['1x','2x','3x','4x'].includes(h)){ th.title = `Percent of decks in the archetype that ran exactly ${h}`; } th.style.textAlign = (i>0 && i<6) ? 'right' : 'left'; th.style.padding='10px 12px'; th.style.borderBottom='1px solid #2c335a'; th.style.color='var(--muted)'; trh.appendChild(th); });
+				;['Archetype','Played %','1x','2x','3x','4x'].forEach((h,i)=>{ const th = document.createElement('th'); th.textContent=h; if(h==='Played %'){ th.title='Percent of decks in the archetype that ran the card (any copies).'; } if(['1x','2x','3x','4x'].includes(h)){ th.title = `Percent of decks in the archetype that ran exactly ${h}`; } th.style.textAlign = (i>0 && i<6) ? 'right' : 'left'; th.style.padding='10px 12px'; th.style.borderBottom='1px solid #2c335a'; th.style.color='var(--muted)'; trh.appendChild(th); });
 				thead.appendChild(trh); tbl.appendChild(thead);
 				const tbody = document.createElement('tbody');
 				for(const r of rows){
 					const tr = document.createElement('tr');
 					const fmt = (v) => v==null? '—' : `${v.toFixed(1)}%`;
-					const cells = [
-						r.archetype,
-						r.pct!=null? r.pct.toFixed(1)+'%':'—',
-						fmt(r.c1), fmt(r.c2), fmt(r.c3), fmt(r.c4),
-						(r.found!=null && r.total!=null? `${r.found}/${r.total}`:'—')
-					];
-					cells.forEach((v,i)=>{ const td = document.createElement('td'); td.textContent = v; if(i===1){ td.title = 'Played % = (decks with the card / total decks in archetype)'; } if(i>=2 && i<=5){ const n = i-1; td.title = `Percent of decks in archetype that ran exactly ${n}x`; } td.style.padding='10px 12px'; if(i>=1 && i<=5) td.style.textAlign='right'; tr.appendChild(td); });
+					// Compose archetype cell: bold archetype name + deck count in parentheses
+					const archeCount = (r.total!=null) ? r.total : (r.found!=null ? r.found : null);
+					const td0 = document.createElement('td');
+					const strong = document.createElement('strong');
+					strong.textContent = r.archetype;
+					td0.appendChild(strong);
+					if(archeCount!=null){ td0.appendChild(document.createTextNode(` (${archeCount})`)); }
+					td0.style.padding = '10px 12px';
+					td0.style.textAlign = 'left';
+					tr.appendChild(td0);
+
+					const otherValues = [ r.pct!=null? r.pct.toFixed(1)+'%':'—', fmt(r.c1), fmt(r.c2), fmt(r.c3), fmt(r.c4) ];
+					otherValues.forEach((v,i)=>{
+						const td = document.createElement('td');
+						td.textContent = v;
+						if(i===0){ td.title = 'Played % = (decks with the card / total decks in archetype)'; }
+						if(i>=1 && i<=4){ const n = i; td.title = `Percent of decks in archetype that ran exactly ${n}x`; }
+						td.style.padding = '10px 12px';
+						td.style.textAlign = 'right';
+						tr.appendChild(td);
+					});
+
 					tbody.appendChild(tr);
 				}
 				tbl.appendChild(tbody);

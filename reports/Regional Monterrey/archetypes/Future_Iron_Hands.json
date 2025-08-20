@@ -3,13 +3,13 @@
   "items": [
     {
       "rank": 1,
-      "name": "Morty's Conviction",
+      "name": "Town Store",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 2,
           "players": 1,
           "percent": 100.0
         }
@@ -17,7 +17,7 @@
     },
     {
       "rank": 2,
-      "name": "Picnic Basket",
+      "name": "Switch",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -31,21 +31,7 @@
     },
     {
       "rank": 3,
-      "name": "Iron Hands ex",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 4,
-      "name": "Electric Generator",
+      "name": "Techno Radar",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -58,14 +44,28 @@
       ]
     },
     {
-      "rank": 5,
-      "name": "Future Booster Energy Capsule",
+      "rank": 4,
+      "name": "Pokégear 3.0",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 3,
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "name": "Iron Crown ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
           "players": 1,
           "percent": 100.0
         }
@@ -73,7 +73,7 @@
     },
     {
       "rank": 6,
-      "name": "Mew ex",
+      "name": "Super Rod",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -87,13 +87,13 @@
     },
     {
       "rank": 7,
-      "name": "Switch",
+      "name": "Iron Hands ex",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 2,
           "players": 1,
           "percent": 100.0
         }
@@ -115,13 +115,13 @@
     },
     {
       "rank": 9,
-      "name": "Iron Thorns ex",
+      "name": "Future Booster Energy Capsule",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 3,
           "players": 1,
           "percent": 100.0
         }
@@ -129,13 +129,13 @@
     },
     {
       "rank": 10,
-      "name": "Heavy Baton",
+      "name": "Boss's Orders",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 3,
           "players": 1,
           "percent": 100.0
         }
@@ -143,7 +143,7 @@
     },
     {
       "rank": 11,
-      "name": "Town Store",
+      "name": "Professor's Research",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -157,7 +157,7 @@
     },
     {
       "rank": 12,
-      "name": "Bloodmoon Ursaluna ex",
+      "name": "Mew ex",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -171,13 +171,13 @@
     },
     {
       "rank": 13,
-      "name": "Iono",
+      "name": "Morty's Conviction",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 3,
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }
@@ -199,21 +199,7 @@
     },
     {
       "rank": 15,
-      "name": "Boss's Orders",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 16,
-      "name": "Arven",
+      "name": "Electric Generator",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -226,8 +212,22 @@
       ]
     },
     {
+      "rank": 16,
+      "name": "Bloodmoon Ursaluna ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 17,
-      "name": "Iron Bundle",
+      "name": "Picnic Basket",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -241,20 +241,6 @@
     },
     {
       "rank": 18,
-      "name": "Pok\u00e9gear 3.0",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 19,
       "name": "Prime Catcher",
       "found": 1,
       "total": 1,
@@ -268,22 +254,8 @@
       ]
     },
     {
-      "rank": 20,
-      "name": "Iron Crown ex",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 21,
-      "name": "Professor's Research",
+      "rank": 19,
+      "name": "Heavy Baton",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -296,8 +268,8 @@
       ]
     },
     {
-      "rank": 22,
-      "name": "Super Rod",
+      "rank": 20,
+      "name": "Iron Bundle",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -310,8 +282,8 @@
       ]
     },
     {
-      "rank": 23,
-      "name": "Techno Radar",
+      "rank": 21,
+      "name": "Arven",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -324,7 +296,21 @@
       ]
     },
     {
-      "rank": 24,
+      "rank": 22,
+      "name": "Iron Thorns ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 23,
       "name": "Miraidon",
       "found": 1,
       "total": 1,
@@ -332,6 +318,20 @@
       "dist": [
         {
           "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Iono",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
           "players": 1,
           "percent": 100.0
         }

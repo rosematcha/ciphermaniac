@@ -3,13 +3,13 @@
   "items": [
     {
       "rank": 1,
-      "name": "Buddy-Buddy Poffin",
+      "name": "Dragapult ex",
       "found": 9,
       "total": 9,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 4,
+          "copies": 1,
           "players": 9,
           "percent": 100.0
         }
@@ -17,36 +17,7 @@
     },
     {
       "rank": 2,
-      "name": "Ciphermaniac's Codebreaking",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 11.11
-        },
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 11.11
-        },
-        {
-          "copies": 3,
-          "players": 6,
-          "percent": 66.67
-        },
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 11.11
-        }
-      ]
-    },
-    {
-      "rank": 3,
-      "name": "Grass Energy",
+      "name": "Jamming Tower",
       "found": 9,
       "total": 9,
       "pct": 100.0,
@@ -55,6 +26,25 @@
           "copies": 1,
           "players": 9,
           "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "name": "Earthen Vessel",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 33.33
+        },
+        {
+          "copies": 2,
+          "players": 6,
+          "percent": 66.67
         }
       ]
     },
@@ -88,302 +78,6 @@
     },
     {
       "rank": 6,
-      "name": "Counter Catcher",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 9,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 7,
-      "name": "Boss's Orders",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 9,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 8,
-      "name": "Arven",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 9,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 9,
-      "name": "Dragapult ex",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 9,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 10,
-      "name": "Technical Machine: Evolution",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 9,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 11,
-      "name": "Gholdengo ex",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 9,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 12,
-      "name": "Metal Energy",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 9,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 13,
-      "name": "Darkness Energy",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 11.11
-        },
-        {
-          "copies": 2,
-          "players": 8,
-          "percent": 88.89
-        }
-      ]
-    },
-    {
-      "rank": 14,
-      "name": "Fire Energy",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 9,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 15,
-      "name": "Dreepy",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 8,
-          "percent": 88.89
-        },
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 11.11
-        }
-      ]
-    },
-    {
-      "rank": 16,
-      "name": "Psychic Energy",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 7,
-          "percent": 77.78
-        },
-        {
-          "copies": 2,
-          "players": 2,
-          "percent": 22.22
-        }
-      ]
-    },
-    {
-      "rank": 17,
-      "name": "Munkidori",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 9,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 18,
-      "name": "Gimmighoul SSP 97",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 11.11
-        },
-        {
-          "copies": 4,
-          "players": 8,
-          "percent": 88.89
-        }
-      ]
-    },
-    {
-      "rank": 19,
-      "name": "Night Stretcher",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 11.11
-        },
-        {
-          "copies": 2,
-          "players": 8,
-          "percent": 88.89
-        }
-      ]
-    },
-    {
-      "rank": 20,
-      "name": "Ultra Ball",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 22.22
-        },
-        {
-          "copies": 2,
-          "players": 7,
-          "percent": 77.78
-        }
-      ]
-    },
-    {
-      "rank": 21,
-      "name": "Iono",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 9,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 22,
-      "name": "Lightning Energy",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 9,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 23,
-      "name": "Water Energy",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 9,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 24,
-      "name": "Superior Energy Retrieval",
-      "found": 9,
-      "total": 9,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 9,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 25,
       "name": "Drakloak",
       "found": 9,
       "total": 9,
@@ -402,7 +96,101 @@
       ]
     },
     {
-      "rank": 26,
+      "rank": 7,
+      "name": "Darkness Energy",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 11.11
+        },
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 88.89
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "name": "Gimmighoul SSP 97",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 11.11
+        },
+        {
+          "copies": 4,
+          "players": 8,
+          "percent": 88.89
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "name": "Technical Machine: Evolution",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "name": "Fire Energy",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Superior Energy Retrieval",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Arven",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
       "name": "Switch",
       "found": 9,
       "total": 9,
@@ -416,26 +204,101 @@
       ]
     },
     {
-      "rank": 27,
-      "name": "Earthen Vessel",
+      "rank": 14,
+      "name": "Psychic Energy",
       "found": 9,
       "total": 9,
       "pct": 100.0,
       "dist": [
         {
           "copies": 1,
-          "players": 3,
-          "percent": 33.33
+          "players": 7,
+          "percent": 77.78
         },
         {
           "copies": 2,
-          "players": 6,
-          "percent": 66.67
+          "players": 2,
+          "percent": 22.22
         }
       ]
     },
     {
-      "rank": 28,
+      "rank": 15,
+      "name": "Ultra Ball",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 22.22
+        },
+        {
+          "copies": 2,
+          "players": 7,
+          "percent": 77.78
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Metal Energy",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Buddy-Buddy Poffin",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Munkidori",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Lightning Energy",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 20,
       "name": "Fighting Energy",
       "found": 9,
       "total": 9,
@@ -449,8 +312,145 @@
       ]
     },
     {
+      "rank": 21,
+      "name": "Night Stretcher",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 11.11
+        },
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 88.89
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "Ciphermaniac's Codebreaking",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 11.11
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 11.11
+        },
+        {
+          "copies": 3,
+          "players": 6,
+          "percent": 66.67
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 11.11
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "name": "Gholdengo ex",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Grass Energy",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "Dreepy",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 88.89
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 11.11
+        }
+      ]
+    },
+    {
+      "rank": 26,
+      "name": "Iono",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 27,
+      "name": "Boss's Orders",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 28,
+      "name": "Water Energy",
+      "found": 9,
+      "total": 9,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 29,
-      "name": "Jamming Tower",
+      "name": "Counter Catcher",
       "found": 9,
       "total": 9,
       "pct": 100.0,
@@ -497,7 +497,7 @@
     },
     {
       "rank": 32,
-      "name": "Pok\u00e9gear 3.0",
+      "name": "Pokégear 3.0",
       "found": 7,
       "total": 9,
       "pct": 77.78,
@@ -558,7 +558,7 @@
     },
     {
       "rank": 36,
-      "name": "Pok\u00e9mon League Headquarters",
+      "name": "Pokémon League Headquarters",
       "found": 1,
       "total": 9,
       "pct": 11.11,
@@ -572,7 +572,7 @@
     },
     {
       "rank": 37,
-      "name": "Genesect",
+      "name": "Klefki",
       "found": 1,
       "total": 9,
       "pct": 11.11,
@@ -586,34 +586,6 @@
     },
     {
       "rank": 38,
-      "name": "Crispin",
-      "found": 1,
-      "total": 9,
-      "pct": 11.11,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 39,
-      "name": "Super Rod",
-      "found": 1,
-      "total": 9,
-      "pct": 11.11,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 40,
       "name": "Rescue Board",
       "found": 1,
       "total": 9,
@@ -627,8 +599,36 @@
       ]
     },
     {
+      "rank": 39,
+      "name": "Crispin",
+      "found": 1,
+      "total": 9,
+      "pct": 11.11,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 40,
+      "name": "Genesect",
+      "found": 1,
+      "total": 9,
+      "pct": 11.11,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 41,
-      "name": "Klefki",
+      "name": "Super Rod",
       "found": 1,
       "total": 9,
       "pct": 11.11,

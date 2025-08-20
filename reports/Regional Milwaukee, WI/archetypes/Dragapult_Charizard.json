@@ -3,21 +3,7 @@
   "items": [
     {
       "rank": 1,
-      "name": "Super Rod",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 6,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 2,
-      "name": "Charizard ex",
+      "name": "Counter Catcher",
       "found": 6,
       "total": 6,
       "pct": 100.0,
@@ -30,26 +16,21 @@
       ]
     },
     {
-      "rank": 3,
-      "name": "Iono",
+      "rank": 2,
+      "name": "Night Stretcher",
       "found": 6,
       "total": 6,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 3,
-          "players": 2,
-          "percent": 33.33
-        },
-        {
-          "copies": 4,
-          "players": 4,
-          "percent": 66.67
+          "copies": 1,
+          "players": 6,
+          "percent": 100.0
         }
       ]
     },
     {
-      "rank": 4,
+      "rank": 3,
       "name": "Nest Ball",
       "found": 6,
       "total": 6,
@@ -68,96 +49,7 @@
       ]
     },
     {
-      "rank": 5,
-      "name": "Ultra Ball",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 6,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 6,
-      "name": "Counter Catcher",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 6,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 7,
-      "name": "Boss's Orders",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 3,
-          "percent": 50.0
-        },
-        {
-          "copies": 3,
-          "players": 3,
-          "percent": 50.0
-        }
-      ]
-    },
-    {
-      "rank": 8,
-      "name": "Drakloak",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 6,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 9,
-      "name": "Fezandipiti ex",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 6,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 10,
-      "name": "Dragapult ex",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 6,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 11,
+      "rank": 4,
       "name": "Fire Energy",
       "found": 6,
       "total": 6,
@@ -176,8 +68,8 @@
       ]
     },
     {
-      "rank": 12,
-      "name": "Artazon",
+      "rank": 5,
+      "name": "Energy Search",
       "found": 6,
       "total": 6,
       "pct": 100.0,
@@ -190,36 +82,8 @@
       ]
     },
     {
-      "rank": 13,
-      "name": "Dreepy",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 6,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 14,
-      "name": "Buddy-Buddy Poffin",
-      "found": 6,
-      "total": 6,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 6,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 15,
-      "name": "Charmander",
+      "rank": 6,
+      "name": "Charmander PAF 7",
       "found": 6,
       "total": 6,
       "pct": 100.0,
@@ -232,7 +96,63 @@
       ]
     },
     {
-      "rank": 16,
+      "rank": 7,
+      "name": "Hawlucha",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "name": "Ultra Ball",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 6,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "name": "Dragapult ex",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 6,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "name": "Fezandipiti ex",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 11,
       "name": "Arven",
       "found": 6,
       "total": 6,
@@ -251,21 +171,21 @@
       ]
     },
     {
-      "rank": 17,
-      "name": "Night Stretcher",
+      "rank": 12,
+      "name": "Dreepy",
       "found": 6,
       "total": 6,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 4,
           "players": 6,
           "percent": 100.0
         }
       ]
     },
     {
-      "rank": 18,
+      "rank": 13,
       "name": "Psychic Energy",
       "found": 6,
       "total": 6,
@@ -284,7 +204,49 @@
       ]
     },
     {
-      "rank": 19,
+      "rank": 14,
+      "name": "Super Rod",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Artazon",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Charizard ex",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 6,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
       "name": "Rare Candy",
       "found": 6,
       "total": 6,
@@ -298,14 +260,47 @@
       ]
     },
     {
-      "rank": 20,
-      "name": "Hawlucha",
+      "rank": 18,
+      "name": "Buddy-Buddy Poffin",
       "found": 6,
       "total": 6,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 4,
+          "players": 6,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Boss's Orders",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 50.0
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Drakloak",
+      "found": 6,
+      "total": 6,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
           "players": 6,
           "percent": 100.0
         }
@@ -313,15 +308,20 @@
     },
     {
       "rank": 21,
-      "name": "Energy Search",
+      "name": "Iono",
       "found": 6,
       "total": 6,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
-          "players": 6,
-          "percent": 100.0
+          "copies": 3,
+          "players": 2,
+          "percent": 33.33
+        },
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 66.67
         }
       ]
     },
@@ -379,6 +379,20 @@
     },
     {
       "rank": 25,
+      "name": "Switch",
+      "found": 4,
+      "total": 6,
+      "pct": 66.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 26,
       "name": "Budew",
       "found": 4,
       "total": 6,
@@ -397,22 +411,8 @@
       ]
     },
     {
-      "rank": 26,
-      "name": "Hero's Cape",
-      "found": 4,
-      "total": 6,
-      "pct": 66.67,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
       "rank": 27,
-      "name": "Switch",
+      "name": "Hero's Cape",
       "found": 4,
       "total": 6,
       "pct": 66.67,
@@ -440,20 +440,6 @@
     },
     {
       "rank": 29,
-      "name": "Munkidori",
-      "found": 3,
-      "total": 6,
-      "pct": 50.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 3,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 30,
       "name": "Luminous Energy",
       "found": 3,
       "total": 6,
@@ -461,6 +447,20 @@
       "dist": [
         {
           "copies": 3,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 30,
+      "name": "Munkidori",
+      "found": 3,
+      "total": 6,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
           "players": 3,
           "percent": 100.0
         }
@@ -496,20 +496,6 @@
     },
     {
       "rank": 33,
-      "name": "Professor Turo's Scenario",
-      "found": 2,
-      "total": 6,
-      "pct": 33.33,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 34,
       "name": "Jacq",
       "found": 2,
       "total": 6,
@@ -528,8 +514,22 @@
       ]
     },
     {
+      "rank": 34,
+      "name": "Professor Turo's Scenario",
+      "found": 2,
+      "total": 6,
+      "pct": 33.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 35,
-      "name": "Dusclops",
+      "name": "Dusknoir",
       "found": 1,
       "total": 6,
       "pct": 16.67,
@@ -543,7 +543,7 @@
     },
     {
       "rank": 36,
-      "name": "Dusknoir",
+      "name": "Dusclops",
       "found": 1,
       "total": 6,
       "pct": 16.67,
@@ -585,7 +585,7 @@
     },
     {
       "rank": 39,
-      "name": "Bravery Charm",
+      "name": "Genesect",
       "found": 1,
       "total": 6,
       "pct": 16.67,
@@ -599,7 +599,7 @@
     },
     {
       "rank": 40,
-      "name": "Genesect",
+      "name": "Bravery Charm",
       "found": 1,
       "total": 6,
       "pct": 16.67,

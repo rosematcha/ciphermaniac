@@ -138,6 +138,60 @@ export async function fetchArchetypeReport(tournament, archetypeBase) {
 }
 
 /**
+ * Fetch tournament metadata (meta.json)
+ * @param {string} tournament
+ * @returns {Promise<Object>}
+ */
+export async function fetchMeta(tournament){
+  return withRetry(async () => {
+    logger.debug(`Fetching meta.json for: ${tournament}`);
+    const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/meta.json`;
+    const response = await safeFetch(url);
+    const data = await response.json();
+    validateType(data, 'object', 'tournament meta');
+    return data;
+  }, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+}
+
+/**
+ * Fetch per-tournament card index (cardIndex.json)
+ * @param {string} tournament
+ * @returns {Promise<{deckTotal:number, cards: Record<string, any>}>}
+ */
+export async function fetchCardIndex(tournament){
+  return withRetry(async () => {
+    logger.debug(`Fetching cardIndex for: ${tournament}`);
+    const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/cardIndex.json`;
+    const response = await safeFetch(url);
+    const data = await response.json();
+    validateType(data, 'object', 'card index');
+    if(typeof data.deckTotal !== 'number' || !data.cards || typeof data.cards !== 'object'){
+      throw new AppError('Invalid card index schema', ErrorTypes.PARSE, { tournament });
+    }
+    return data;
+  }, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+}
+
+/**
+ * Fetch raw deck list export (decks.json)
+ * @param {string} tournament
+ * @returns {Promise<Array>|null}
+ */
+export async function fetchDecks(tournament){
+  try{
+    logger.debug(`Fetching decks.json for: ${tournament}`);
+    const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/decks.json`;
+    const response = await safeFetch(url);
+    const data = await response.json();
+    validateType(data, 'array', 'decks');
+    return data;
+  }catch(err){
+    logger.debug('decks.json not available', err.message);
+    return null;
+  }
+}
+
+/**
  * Fetch top 8 archetypes list (optional endpoint)
  * @param {string} tournament 
  * @returns {Promise<string[]|null>}

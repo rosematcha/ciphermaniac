@@ -2,7 +2,7 @@ import { buildThumbCandidates } from './thumbs.js';
 import { computeLayout, syncControlsWidth } from './layoutHelper.js';
 import { trackMissing } from './dev/missingThumbs.js';
 import { isFavorite, toggleFavorite, subscribeFavorites } from './favorites.js';
-import { CardModal } from './cardModal.js';
+// Modal removed: navigate to card page instead
 
 export function renderSummary(container, deckTotal, count){
   const parts = [];
@@ -133,19 +133,20 @@ export function render(items, overrides={}){
         hist.appendChild(col);
       }
     }
-    // Open per-card preview modal on click/Enter; ctrl/meta opens full page
+    // Navigate to per-card page on click/Enter; ctrl/meta opens new tab
     card.addEventListener('click', (e) => {
       const url = `card.html#card/${encodeURIComponent(it.name)}`;
       if(e.ctrlKey || e.metaKey){
         window.open(url, '_blank');
       } else {
-        CardModal.open(it.name, { push: true });
+        location.assign(url);
       }
     });
     card.addEventListener('keydown', (e) => {
       if(e.key === 'Enter' || e.key === ' '){
         e.preventDefault();
-        CardModal.open(it.name, { push: true });
+        const url = `card.html#card/${encodeURIComponent(it.name)}`;
+        location.assign(url);
       }
     });
     return el;

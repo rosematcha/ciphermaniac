@@ -3,14 +3,13 @@
  * @module Main
  */
 
-import { fetchReport, fetchOverrides, fetchArchetypeReport, fetchTournamentsList, fetchArchetypesList } from './api.js';
+import { fetchReport, fetchOverrides, fetchArchetypeReport, fetchTournamentsList, fetchArchetypesList, fetchMeta, fetchCardIndex } from './api.js';
 import { parseReport } from './parse.js';
 import { render, renderSummary, updateLayout } from './render.js';
 import { applyFiltersSort } from './controls.js';
 import { initMissingThumbsDev, dumpMissingReport } from './dev/missingThumbs.js';
 import { initCacheDev } from './dev/cacheDev.js';
 import { getStateFromURL, setStateInURL, normalizeRouteOnLoad, parseHash } from './router.js';
-import { CardModal } from './cardModal.js';
 import { logger } from './utils/logger.js';
 import { storage } from './utils/storage.js';
 import { CleanupManager, debounce, validateElements } from './utils/performance.js';
@@ -69,6 +68,18 @@ class DataCache {
       items: data.items
     };
     storage.set('gridCache', this.cache);
+  }
+
+  setCachedCardIndex(tournament, idx){
+    this.cache.cardIndex = this.cache.cardIndex || {};
+    this.cache.cardIndex[tournament] = { ts: Date.now(), idx };
+    storage.set('gridCache', this.cache);
+  }
+
+  getCachedCardIndex(tournament){
+    const entry = this.cache?.cardIndex?.[tournament];
+    if(!entry || this.isExpired(entry.ts)) return null;
+    return entry.idx;
   }
 
   getCachedArcheIndex(tournament) {
@@ -151,7 +162,18 @@ async function loadTournamentData(tournament, cache) {
     return { deckTotal: cached.deckTotal, items: cached.items };
   }
   
-  // Fetch from API
+  // Prefer precomputed cardIndex to avoid heavy parsing when available
+  try{
+    const idx = await fetchCardIndex(tournament);
+    if(idx && idx.cards){
+      const items = Object.keys(idx.cards).map(name => ({ name, ...idx.cards[name] }));
+      const parsed = { deckTotal: idx.deckTotal, items };
+      cache.setCachedMaster(tournament, parsed);
+      return parsed;
+    }
+  }catch{}
+
+  // Fallback to master.json
   const data = await fetchReport(tournament);
   const parsed = parseReport(data);
   
@@ -321,22 +343,12 @@ function setupControlHandlers(state) {
 // Restore state from URL when navigating back/forward
 function handlePopState(state){
   logger.debug('popstate detected, restoring URL state');
-  // If the user navigated to a card hash, redirect to card.html to show per-card page
   const parsed = parseHash();
   if(parsed.route === 'card' && parsed.name){
-    // If we're on index, open modal instead of navigating away
-    if(location.pathname.match(/index\.html?$/i)){
-      CardModal.open(parsed.name, { push: false });
-      return;
-    }
-    // Otherwise navigate to card.html as before
     const target = `${location.pathname.replace(/index\.html?$/i, 'card.html')}${location.search}#card/${encodeURIComponent(parsed.name)}`;
     location.assign(target);
     return;
   }
-
-  // If the new URL is not a card route, ensure modal is closed and re-apply state
-  CardModal.close();
   applyInitialState(state);
 }
 

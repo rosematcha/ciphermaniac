@@ -17,72 +17,20 @@
     },
     {
       "rank": 2,
-      "name": "Snorunt TWM 51",
+      "name": "Technical Machine: Devolution",
       "found": 4,
       "total": 4,
       "pct": 100.0,
       "dist": [
         {
           "copies": 1,
-          "players": 1,
-          "percent": 25.0
-        },
-        {
-          "copies": 2,
-          "players": 3,
-          "percent": 75.0
+          "players": 4,
+          "percent": 100.0
         }
       ]
     },
     {
       "rank": 3,
-      "name": "Boss's Orders",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 2,
-          "percent": 50.0
-        },
-        {
-          "copies": 3,
-          "players": 2,
-          "percent": 50.0
-        }
-      ]
-    },
-    {
-      "rank": 4,
-      "name": "Rare Candy",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 5,
-      "name": "Darkness Energy",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 8,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 6,
       "name": "Professor's Research",
       "found": 4,
       "total": 4,
@@ -101,124 +49,7 @@
       ]
     },
     {
-      "rank": 7,
-      "name": "Ultra Ball",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 8,
-      "name": "Budew",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 9,
-      "name": "Air Balloon",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 10,
-      "name": "Iono",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 11,
-      "name": "Super Rod",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 12,
-      "name": "Counter Catcher",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 13,
-      "name": "Froslass",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 14,
-      "name": "Buddy-Buddy Poffin",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 50.0
-        },
-        {
-          "copies": 2,
-          "players": 2,
-          "percent": 50.0
-        }
-      ]
-    },
-    {
-      "rank": 15,
+      "rank": 4,
       "name": "Technical Machine: Evolution",
       "found": 4,
       "total": 4,
@@ -237,21 +68,96 @@
       ]
     },
     {
-      "rank": 16,
-      "name": "Marnie's Impidimp",
+      "rank": 5,
+      "name": "Night Stretcher",
       "found": 4,
       "total": 4,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 3,
+          "copies": 2,
           "players": 4,
           "percent": 100.0
         }
       ]
     },
     {
-      "rank": 17,
+      "rank": 6,
+      "name": "Super Rod",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "name": "Iono",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "name": "Rare Candy",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "name": "Boss's Orders",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 50.0
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "name": "Budew",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 11,
       "name": "Spikemuth Gym",
       "found": 4,
       "total": 4,
@@ -270,36 +176,8 @@
       ]
     },
     {
-      "rank": 18,
-      "name": "Night Stretcher",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 19,
-      "name": "Munkidori",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 20,
-      "name": "Technical Machine: Devolution",
+      "rank": 12,
+      "name": "Air Balloon",
       "found": 4,
       "total": 4,
       "pct": 100.0,
@@ -312,7 +190,7 @@
       ]
     },
     {
-      "rank": 21,
+      "rank": 13,
       "name": "Secret Box",
       "found": 4,
       "total": 4,
@@ -326,7 +204,49 @@
       ]
     },
     {
-      "rank": 22,
+      "rank": 14,
+      "name": "Ultra Ball",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Marnie's Impidimp",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Froslass",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
       "name": "Artazon",
       "found": 4,
       "total": 4,
@@ -345,7 +265,68 @@
       ]
     },
     {
-      "rank": 23,
+      "rank": 18,
+      "name": "Munkidori",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Darkness Energy",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 8,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Buddy-Buddy Poffin",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Counter Catcher",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
       "name": "Marnie's Grimmsnarl ex",
       "found": 4,
       "total": 4,
@@ -359,7 +340,7 @@
       ]
     },
     {
-      "rank": 24,
+      "rank": 23,
       "name": "Marnie's Morgrem",
       "found": 4,
       "total": 4,
@@ -369,6 +350,25 @@
           "copies": 2,
           "players": 4,
           "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Snorunt TWM 51",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 75.0
         }
       ]
     },
@@ -449,7 +449,7 @@
     },
     {
       "rank": 30,
-      "name": "Pok\u00e9gear 3.0",
+      "name": "Pokégear 3.0",
       "found": 1,
       "total": 4,
       "pct": 25.0,
@@ -463,7 +463,7 @@
     },
     {
       "rank": 31,
-      "name": "Tatsugiri",
+      "name": "Snorunt PAR 37",
       "found": 1,
       "total": 4,
       "pct": 25.0,
@@ -477,7 +477,7 @@
     },
     {
       "rank": 32,
-      "name": "Snorunt PAR 37",
+      "name": "Tatsugiri",
       "found": 1,
       "total": 4,
       "pct": 25.0,

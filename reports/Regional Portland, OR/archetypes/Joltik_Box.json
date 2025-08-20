@@ -3,13 +3,13 @@
   "items": [
     {
       "rank": 1,
-      "name": "Iron Hands ex",
+      "name": "Bloodmoon Ursaluna ex",
       "found": 27,
       "total": 27,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 1,
           "players": 27,
           "percent": 100.0
         }
@@ -17,7 +17,7 @@
     },
     {
       "rank": 2,
-      "name": "Latias ex",
+      "name": "Mew ex",
       "found": 27,
       "total": 27,
       "pct": 100.0,
@@ -31,6 +31,67 @@
     },
     {
       "rank": 3,
+      "name": "Earthen Vessel",
+      "found": 27,
+      "total": 27,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 27,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "name": "Fezandipiti ex",
+      "found": 27,
+      "total": 27,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 27,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "name": "Joltik",
+      "found": 27,
+      "total": 27,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 27,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "name": "Ultra Ball",
+      "found": 27,
+      "total": 27,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 17,
+          "percent": 62.96
+        },
+        {
+          "copies": 4,
+          "players": 10,
+          "percent": 37.04
+        }
+      ]
+    },
+    {
+      "rank": 7,
       "name": "Pikachu ex",
       "found": 27,
       "total": 27,
@@ -49,35 +110,26 @@
       ]
     },
     {
-      "rank": 4,
-      "name": "Miraidon ex",
+      "rank": 8,
+      "name": "Boss's Orders",
       "found": 27,
       "total": 27,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
-          "players": 27,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 5,
-      "name": "Fezandipiti ex",
-      "found": 27,
-      "total": 27,
-      "pct": 100.0,
-      "dist": [
+          "copies": 3,
+          "players": 4,
+          "percent": 14.81
+        },
         {
-          "copies": 1,
-          "players": 27,
-          "percent": 100.0
+          "copies": 4,
+          "players": 23,
+          "percent": 85.19
         }
       ]
     },
     {
-      "rank": 6,
+      "rank": 9,
       "name": "Arven",
       "found": 27,
       "total": 27,
@@ -92,58 +144,6 @@
           "copies": 4,
           "players": 24,
           "percent": 88.89
-        }
-      ]
-    },
-    {
-      "rank": 7,
-      "name": "Bravery Charm",
-      "found": 27,
-      "total": 27,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 15,
-          "percent": 55.56
-        },
-        {
-          "copies": 2,
-          "players": 12,
-          "percent": 44.44
-        }
-      ]
-    },
-    {
-      "rank": 8,
-      "name": "Nest Ball",
-      "found": 27,
-      "total": 27,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 27,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 9,
-      "name": "Ultra Ball",
-      "found": 27,
-      "total": 27,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 17,
-          "percent": 62.96
-        },
-        {
-          "copies": 4,
-          "players": 10,
-          "percent": 37.04
         }
       ]
     },
@@ -163,53 +163,48 @@
     },
     {
       "rank": 11,
-      "name": "Bloodmoon Ursaluna ex",
+      "name": "Bravery Charm",
       "found": 27,
       "total": 27,
       "pct": 100.0,
       "dist": [
         {
           "copies": 1,
+          "players": 15,
+          "percent": 55.56
+        },
+        {
+          "copies": 2,
+          "players": 12,
+          "percent": 44.44
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Nest Ball",
+      "found": 27,
+      "total": 27,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
           "players": 27,
           "percent": 100.0
         }
       ]
     },
     {
-      "rank": 12,
-      "name": "Boss's Orders",
-      "found": 27,
-      "total": 27,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 4,
-          "percent": 14.81
-        },
-        {
-          "copies": 4,
-          "players": 23,
-          "percent": 85.19
-        }
-      ]
-    },
-    {
       "rank": 13,
-      "name": "Crispin",
+      "name": "Miraidon ex",
       "found": 27,
       "total": 27,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 3,
-          "players": 2,
-          "percent": 7.41
-        },
-        {
-          "copies": 4,
-          "players": 25,
-          "percent": 92.59
+          "copies": 2,
+          "players": 27,
+          "percent": 100.0
         }
       ]
     },
@@ -234,6 +229,48 @@
     },
     {
       "rank": 15,
+      "name": "Prime Catcher",
+      "found": 27,
+      "total": 27,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 27,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Latias ex",
+      "found": 27,
+      "total": 27,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 27,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Iron Hands ex",
+      "found": 27,
+      "total": 27,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 27,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
       "name": "Metal Energy",
       "found": 27,
       "total": 27,
@@ -252,64 +289,27 @@
       ]
     },
     {
-      "rank": 16,
-      "name": "Prime Catcher",
-      "found": 27,
-      "total": 27,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 27,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 17,
-      "name": "Joltik",
-      "found": 27,
-      "total": 27,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 27,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 18,
-      "name": "Earthen Vessel",
-      "found": 27,
-      "total": 27,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 27,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
       "rank": 19,
-      "name": "Mew ex",
+      "name": "Crispin",
       "found": 27,
       "total": 27,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
-          "players": 27,
-          "percent": 100.0
+          "copies": 3,
+          "players": 2,
+          "percent": 7.41
+        },
+        {
+          "copies": 4,
+          "players": 25,
+          "percent": 92.59
         }
       ]
     },
     {
       "rank": 20,
-      "name": "Pok\u00e9gear 3.0",
+      "name": "Pokégear 3.0",
       "found": 26,
       "total": 27,
       "pct": 96.3,
@@ -717,6 +717,20 @@
     },
     {
       "rank": 47,
+      "name": "Drakloak",
+      "found": 1,
+      "total": 27,
+      "pct": 3.7,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 48,
       "name": "Fire Energy",
       "found": 1,
       "total": 27,
@@ -730,22 +744,8 @@
       ]
     },
     {
-      "rank": 48,
-      "name": "Dreepy",
-      "found": 1,
-      "total": 27,
-      "pct": 3.7,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
       "rank": 49,
-      "name": "Drakloak",
+      "name": "Dreepy",
       "found": 1,
       "total": 27,
       "pct": 3.7,
@@ -773,7 +773,7 @@
     },
     {
       "rank": 51,
-      "name": "Magneton",
+      "name": "Magnemite",
       "found": 1,
       "total": 27,
       "pct": 3.7,
@@ -787,7 +787,7 @@
     },
     {
       "rank": 52,
-      "name": "Magnemite",
+      "name": "Magneton",
       "found": 1,
       "total": 27,
       "pct": 3.7,
@@ -857,7 +857,7 @@
     },
     {
       "rank": 57,
-      "name": "Water Energy",
+      "name": "Kieran",
       "found": 1,
       "total": 27,
       "pct": 3.7,
@@ -871,7 +871,7 @@
     },
     {
       "rank": 58,
-      "name": "Kieran",
+      "name": "Water Energy",
       "found": 1,
       "total": 27,
       "pct": 3.7,

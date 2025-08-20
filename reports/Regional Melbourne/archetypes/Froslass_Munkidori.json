@@ -3,13 +3,13 @@
   "items": [
     {
       "rank": 1,
-      "name": "Night Stretcher",
+      "name": "Froslass",
       "found": 2,
       "total": 2,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 3,
+          "copies": 4,
           "players": 2,
           "percent": 100.0
         }
@@ -17,13 +17,13 @@
     },
     {
       "rank": 2,
-      "name": "Budew",
+      "name": "Luminous Energy",
       "found": 2,
       "total": 2,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 3,
+          "copies": 1,
           "players": 2,
           "percent": 100.0
         }
@@ -31,13 +31,13 @@
     },
     {
       "rank": 3,
-      "name": "Bravery Charm",
+      "name": "Bloodmoon Ursaluna ex",
       "found": 2,
       "total": 2,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 1,
           "players": 2,
           "percent": 100.0
         }
@@ -45,13 +45,13 @@
     },
     {
       "rank": 4,
-      "name": "Nest Ball",
+      "name": "Earthen Vessel",
       "found": 2,
       "total": 2,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 1,
           "players": 2,
           "percent": 100.0
         }
@@ -59,6 +59,25 @@
     },
     {
       "rank": 5,
+      "name": "Pokégear 3.0",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 6,
       "name": "Darkness Energy",
       "found": 2,
       "total": 2,
@@ -66,20 +85,6 @@
       "dist": [
         {
           "copies": 5,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 6,
-      "name": "Iono",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
           "players": 2,
           "percent": 100.0
         }
@@ -101,109 +106,6 @@
     },
     {
       "rank": 8,
-      "name": "Counter Catcher",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 9,
-      "name": "Technical Machine: Devolution",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 10,
-      "name": "Professor's Research",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 50.0
-        },
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 50.0
-        }
-      ]
-    },
-    {
-      "rank": 11,
-      "name": "Earthen Vessel",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 12,
-      "name": "Froslass",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 13,
-      "name": "Ultra Ball",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 14,
-      "name": "Bloodmoon Ursaluna ex",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 15,
       "name": "Unfair Stamp",
       "found": 2,
       "total": 2,
@@ -217,21 +119,119 @@
       ]
     },
     {
-      "rank": 16,
-      "name": "Pok\u00e9gear 3.0",
+      "rank": 9,
+      "name": "Night Stretcher",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "name": "Maractus",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Artazon",
       "found": 2,
       "total": 2,
       "pct": 100.0,
       "dist": [
         {
           "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Arven",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Budew",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Technical Machine: Devolution",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Rescue Board",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
           "players": 1,
           "percent": 50.0
         },
         {
-          "copies": 3,
+          "copies": 2,
           "players": 1,
           "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Nest Ball",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 100.0
         }
       ]
     },
@@ -251,21 +251,7 @@
     },
     {
       "rank": 18,
-      "name": "Artazon",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 19,
-      "name": "Maractus",
+      "name": "Ultra Ball",
       "found": 2,
       "total": 2,
       "pct": 100.0,
@@ -278,8 +264,55 @@
       ]
     },
     {
+      "rank": 19,
+      "name": "Counter Catcher",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 20,
-      "name": "Arven",
+      "name": "Bravery Charm",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Professor's Research",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "Iono",
       "found": 2,
       "total": 2,
       "pct": 100.0,
@@ -292,7 +325,7 @@
       ]
     },
     {
-      "rank": 21,
+      "rank": 23,
       "name": "Munkidori",
       "found": 2,
       "total": 2,
@@ -306,41 +339,8 @@
       ]
     },
     {
-      "rank": 22,
-      "name": "Luminous Energy",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 23,
-      "name": "Rescue Board",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 50.0
-        },
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 50.0
-        }
-      ]
-    },
-    {
       "rank": 24,
-      "name": "Switch",
+      "name": "Technical Machine: Evolution",
       "found": 1,
       "total": 2,
       "pct": 50.0,
@@ -354,7 +354,7 @@
     },
     {
       "rank": 25,
-      "name": "Technical Machine: Evolution",
+      "name": "Switch",
       "found": 1,
       "total": 2,
       "pct": 50.0,
@@ -382,20 +382,6 @@
     },
     {
       "rank": 27,
-      "name": "Counter Gain",
-      "found": 1,
-      "total": 2,
-      "pct": 50.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 28,
       "name": "Snorunt PAR 37",
       "found": 1,
       "total": 2,
@@ -403,6 +389,20 @@
       "dist": [
         {
           "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 28,
+      "name": "Counter Gain",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }

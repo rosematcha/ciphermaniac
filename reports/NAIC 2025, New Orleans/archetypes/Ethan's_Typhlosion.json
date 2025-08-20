@@ -17,18 +17,18 @@
     },
     {
       "rank": 2,
-      "name": "Professor's Research",
+      "name": "Buddy-Buddy Poffin",
       "found": 2,
       "total": 2,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 3,
           "players": 1,
           "percent": 50.0
         },
         {
-          "copies": 2,
+          "copies": 4,
           "players": 1,
           "percent": 50.0
         }
@@ -50,7 +50,45 @@
     },
     {
       "rank": 4,
-      "name": "Boss's Orders",
+      "name": "Arven",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "name": "Professor's Research",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "name": "Gravity Mountain",
       "found": 2,
       "total": 2,
       "pct": 100.0,
@@ -63,36 +101,8 @@
       ]
     },
     {
-      "rank": 5,
-      "name": "Ultra Ball",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 6,
-      "name": "Ethan's Adventure",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
       "rank": 7,
-      "name": "Rare Candy",
+      "name": "Victini",
       "found": 2,
       "total": 2,
       "pct": 100.0,
@@ -130,18 +140,18 @@
     },
     {
       "rank": 9,
-      "name": "Buddy-Buddy Poffin",
+      "name": "Rare Candy",
       "found": 2,
       "total": 2,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 3,
+          "copies": 1,
           "players": 1,
           "percent": 50.0
         },
         {
-          "copies": 4,
+          "copies": 2,
           "players": 1,
           "percent": 50.0
         }
@@ -149,7 +159,7 @@
     },
     {
       "rank": 10,
-      "name": "Counter Catcher",
+      "name": "Redeemable Ticket",
       "found": 2,
       "total": 2,
       "pct": 100.0,
@@ -163,6 +173,104 @@
     },
     {
       "rank": 11,
+      "name": "Artazon",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Ethan's Cyndaquil",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Ultra Ball",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Technical Machine: Evolution",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Ethan's Adventure",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Iono",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Ethan's Quilava",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
       "name": "Super Rod",
       "found": 2,
       "total": 2,
@@ -181,40 +289,7 @@
       ]
     },
     {
-      "rank": 12,
-      "name": "Redeemable Ticket",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 13,
-      "name": "Arven",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 50.0
-        },
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 50.0
-        }
-      ]
-    },
-    {
-      "rank": 14,
+      "rank": 19,
       "name": "Ethan's Typhlosion",
       "found": 2,
       "total": 2,
@@ -228,89 +303,14 @@
       ]
     },
     {
-      "rank": 15,
-      "name": "Victini",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 50.0
-        },
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 50.0
-        }
-      ]
-    },
-    {
-      "rank": 16,
-      "name": "Technical Machine: Evolution",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 17,
-      "name": "Artazon",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 18,
-      "name": "Ethan's Quilava",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 19,
-      "name": "Gravity Mountain",
-      "found": 2,
-      "total": 2,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 2,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
       "rank": 20,
-      "name": "Ethan's Cyndaquil",
+      "name": "Boss's Orders",
       "found": 2,
       "total": 2,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 4,
+          "copies": 2,
           "players": 2,
           "percent": 100.0
         }
@@ -318,13 +318,13 @@
     },
     {
       "rank": 21,
-      "name": "Iono",
+      "name": "Counter Catcher",
       "found": 2,
       "total": 2,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 1,
           "players": 2,
           "percent": 100.0
         }
@@ -332,48 +332,6 @@
     },
     {
       "rank": 22,
-      "name": "Pidgeotto",
-      "found": 1,
-      "total": 2,
-      "pct": 50.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 23,
-      "name": "Energy Search",
-      "found": 1,
-      "total": 2,
-      "pct": 50.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 24,
-      "name": "Pidgey",
-      "found": 1,
-      "total": 2,
-      "pct": 50.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 25,
       "name": "Fezandipiti ex",
       "found": 1,
       "total": 2,
@@ -387,21 +345,7 @@
       ]
     },
     {
-      "rank": 26,
-      "name": "Defiance Band",
-      "found": 1,
-      "total": 2,
-      "pct": 50.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 27,
+      "rank": 23,
       "name": "Nest Ball",
       "found": 1,
       "total": 2,
@@ -415,7 +359,49 @@
       ]
     },
     {
-      "rank": 28,
+      "rank": 24,
+      "name": "Defiance Band",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "Energy Search",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 26,
+      "name": "Pidgey MEW 16",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 27,
       "name": "Pidgeot ex",
       "found": 1,
       "total": 2,
@@ -429,8 +415,8 @@
       ]
     },
     {
-      "rank": 29,
-      "name": "Night Stretcher",
+      "rank": 28,
+      "name": "Pidgeotto",
       "found": 1,
       "total": 2,
       "pct": 50.0,
@@ -443,21 +429,7 @@
       ]
     },
     {
-      "rank": 30,
-      "name": "Vitality Band",
-      "found": 1,
-      "total": 2,
-      "pct": 50.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 31,
+      "rank": 29,
       "name": "Dreepy",
       "found": 1,
       "total": 2,
@@ -471,7 +443,7 @@
       ]
     },
     {
-      "rank": 32,
+      "rank": 30,
       "name": "Picnic Basket",
       "found": 1,
       "total": 2,
@@ -485,8 +457,36 @@
       ]
     },
     {
+      "rank": 31,
+      "name": "Drakloak",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 32,
+      "name": "Night Stretcher",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 33,
-      "name": "Budew",
+      "name": "Vitality Band",
       "found": 1,
       "total": 2,
       "pct": 50.0,
@@ -500,13 +500,13 @@
     },
     {
       "rank": 34,
-      "name": "Drakloak",
+      "name": "Budew",
       "found": 1,
       "total": 2,
       "pct": 50.0,
       "dist": [
         {
-          "copies": 3,
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }

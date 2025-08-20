@@ -3,185 +3,6 @@
   "items": [
     {
       "rank": 1,
-      "name": "Professor's Research",
-      "found": 19,
-      "total": 19,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 5.26
-        },
-        {
-          "copies": 4,
-          "players": 18,
-          "percent": 94.74
-        }
-      ]
-    },
-    {
-      "rank": 2,
-      "name": "Scream Tail",
-      "found": 19,
-      "total": 19,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 19,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 3,
-      "name": "Iono",
-      "found": 19,
-      "total": 19,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 5.26
-        },
-        {
-          "copies": 4,
-          "players": 18,
-          "percent": 94.74
-        }
-      ]
-    },
-    {
-      "rank": 4,
-      "name": "Munkidori",
-      "found": 19,
-      "total": 19,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 19,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 5,
-      "name": "Ralts",
-      "found": 19,
-      "total": 19,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 19,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 6,
-      "name": "Psychic Energy",
-      "found": 19,
-      "total": 19,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 7,
-          "players": 19,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 7,
-      "name": "Kirlia",
-      "found": 19,
-      "total": 19,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 17,
-          "percent": 89.47
-        },
-        {
-          "copies": 3,
-          "players": 2,
-          "percent": 10.53
-        }
-      ]
-    },
-    {
-      "rank": 8,
-      "name": "Ultra Ball",
-      "found": 19,
-      "total": 19,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 19,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 9,
-      "name": "Lillie's Clefairy ex",
-      "found": 19,
-      "total": 19,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 19,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 10,
-      "name": "Counter Catcher",
-      "found": 19,
-      "total": 19,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 5.26
-        },
-        {
-          "copies": 2,
-          "players": 18,
-          "percent": 94.74
-        }
-      ]
-    },
-    {
-      "rank": 11,
-      "name": "Gardevoir ex",
-      "found": 19,
-      "total": 19,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 16,
-          "percent": 84.21
-        },
-        {
-          "copies": 3,
-          "players": 3,
-          "percent": 15.79
-        }
-      ]
-    },
-    {
-      "rank": 12,
       "name": "Night Stretcher",
       "found": 19,
       "total": 19,
@@ -200,8 +21,46 @@
       ]
     },
     {
-      "rank": 13,
-      "name": "Drifloon",
+      "rank": 2,
+      "name": "Kirlia",
+      "found": 19,
+      "total": 19,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 17,
+          "percent": 89.47
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 10.53
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "name": "Counter Catcher",
+      "found": 19,
+      "total": 19,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 5.26
+        },
+        {
+          "copies": 2,
+          "players": 18,
+          "percent": 94.74
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "name": "Lillie's Clefairy ex",
       "found": 19,
       "total": 19,
       "pct": 100.0,
@@ -214,7 +73,7 @@
       ]
     },
     {
-      "rank": 14,
+      "rank": 5,
       "name": "Rare Candy",
       "found": 19,
       "total": 19,
@@ -238,8 +97,8 @@
       ]
     },
     {
-      "rank": 15,
-      "name": "Earthen Vessel",
+      "rank": 6,
+      "name": "Munkidori",
       "found": 19,
       "total": 19,
       "pct": 100.0,
@@ -252,8 +111,8 @@
       ]
     },
     {
-      "rank": 16,
-      "name": "Secret Box",
+      "rank": 7,
+      "name": "Scream Tail",
       "found": 19,
       "total": 19,
       "pct": 100.0,
@@ -266,7 +125,21 @@
       ]
     },
     {
-      "rank": 17,
+      "rank": 8,
+      "name": "Artazon",
+      "found": 19,
+      "total": 19,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 19,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 9,
       "name": "Bravery Charm",
       "found": 19,
       "total": 19,
@@ -285,16 +158,143 @@
       ]
     },
     {
+      "rank": 10,
+      "name": "Professor's Research",
+      "found": 19,
+      "total": 19,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 5.26
+        },
+        {
+          "copies": 4,
+          "players": 18,
+          "percent": 94.74
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Ralts",
+      "found": 19,
+      "total": 19,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 19,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Earthen Vessel",
+      "found": 19,
+      "total": 19,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 19,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Drifloon",
+      "found": 19,
+      "total": 19,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 19,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Psychic Energy",
+      "found": 19,
+      "total": 19,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 7,
+          "players": 19,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Secret Box",
+      "found": 19,
+      "total": 19,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 19,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Ultra Ball",
+      "found": 19,
+      "total": 19,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 19,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Iono",
+      "found": 19,
+      "total": 19,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 5.26
+        },
+        {
+          "copies": 4,
+          "players": 18,
+          "percent": 94.74
+        }
+      ]
+    },
+    {
       "rank": 18,
-      "name": "Artazon",
+      "name": "Gardevoir ex",
       "found": 19,
       "total": 19,
       "pct": 100.0,
       "dist": [
         {
           "copies": 2,
-          "players": 19,
-          "percent": 100.0
+          "players": 16,
+          "percent": 84.21
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 15.79
         }
       ]
     },
@@ -314,7 +314,7 @@
     },
     {
       "rank": 20,
-      "name": "Cleffa",
+      "name": "Budew",
       "found": 18,
       "total": 19,
       "pct": 94.74,
@@ -328,7 +328,7 @@
     },
     {
       "rank": 21,
-      "name": "Budew",
+      "name": "Cleffa",
       "found": 18,
       "total": 19,
       "pct": 94.74,
@@ -422,25 +422,6 @@
     },
     {
       "rank": 27,
-      "name": "Technical Machine: Evolution",
-      "found": 2,
-      "total": 19,
-      "pct": 10.53,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 50.0
-        },
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 50.0
-        }
-      ]
-    },
-    {
-      "rank": 28,
       "name": "Arven",
       "found": 2,
       "total": 19,
@@ -453,6 +434,25 @@
         },
         {
           "copies": 4,
+          "players": 1,
+          "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 28,
+      "name": "Technical Machine: Evolution",
+      "found": 2,
+      "total": 19,
+      "pct": 10.53,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
           "players": 1,
           "percent": 50.0
         }

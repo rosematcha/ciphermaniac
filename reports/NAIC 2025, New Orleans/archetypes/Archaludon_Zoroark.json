@@ -3,13 +3,13 @@
   "items": [
     {
       "rank": 1,
-      "name": "Night Stretcher",
+      "name": "Pokégear 3.0",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 4,
           "players": 1,
           "percent": 100.0
         }
@@ -17,21 +17,7 @@
     },
     {
       "rank": 2,
-      "name": "Professor Turo's Scenario",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 3,
-      "name": "Buddy-Buddy Poffin",
+      "name": "Fezandipiti ex",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -44,14 +30,28 @@
       ]
     },
     {
-      "rank": 4,
-      "name": "Counter Catcher",
+      "rank": 3,
+      "name": "Arven",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "name": "Jamming Tower",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }
@@ -73,13 +73,13 @@
     },
     {
       "rank": 6,
-      "name": "Duraludon",
+      "name": "Professor Turo's Scenario",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 4,
+          "copies": 2,
           "players": 1,
           "percent": 100.0
         }
@@ -87,13 +87,13 @@
     },
     {
       "rank": 7,
-      "name": "Fezandipiti ex",
+      "name": "Iono",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 3,
           "players": 1,
           "percent": 100.0
         }
@@ -101,13 +101,13 @@
     },
     {
       "rank": 8,
-      "name": "Boss's Orders",
+      "name": "Relicanth",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }
@@ -129,13 +129,13 @@
     },
     {
       "rank": 10,
-      "name": "Precious Trolley",
+      "name": "Black Belt's Training",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 2,
           "players": 1,
           "percent": 100.0
         }
@@ -143,62 +143,6 @@
     },
     {
       "rank": 11,
-      "name": "Arven",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 12,
-      "name": "N's Zorua",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 13,
-      "name": "Iono",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 14,
-      "name": "N's Zoroark ex",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 15,
       "name": "Technical Machine: Evolution",
       "found": 1,
       "total": 1,
@@ -212,8 +156,64 @@
       ]
     },
     {
+      "rank": 12,
+      "name": "Duraludon",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Night Stretcher",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "N's Zorua",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Counter Catcher",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 16,
-      "name": "Budew",
+      "name": "Precious Trolley",
       "found": 1,
       "total": 1,
       "pct": 100.0,
@@ -227,6 +227,20 @@
     },
     {
       "rank": 17,
+      "name": "Buddy-Buddy Poffin",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
       "name": "Archaludon ex",
       "found": 1,
       "total": 1,
@@ -240,7 +254,7 @@
       ]
     },
     {
-      "rank": 18,
+      "rank": 19,
       "name": "Metal Energy",
       "found": 1,
       "total": 1,
@@ -254,7 +268,21 @@
       ]
     },
     {
-      "rank": 19,
+      "rank": 20,
+      "name": "Budew",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 21,
       "name": "Pal Pad",
       "found": 1,
       "total": 1,
@@ -268,21 +296,7 @@
       ]
     },
     {
-      "rank": 20,
-      "name": "Pok\u00e9gear 3.0",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 21,
+      "rank": 22,
       "name": "Rescue Board",
       "found": 1,
       "total": 1,
@@ -296,28 +310,14 @@
       ]
     },
     {
-      "rank": 22,
-      "name": "Relicanth",
-      "found": 1,
-      "total": 1,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
       "rank": 23,
-      "name": "Team Rocket's Watchtower",
+      "name": "N's Zoroark ex",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 4,
           "players": 1,
           "percent": 100.0
         }
@@ -325,13 +325,13 @@
     },
     {
       "rank": 24,
-      "name": "Jamming Tower",
+      "name": "Boss's Orders",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 1,
+          "copies": 2,
           "players": 1,
           "percent": 100.0
         }
@@ -339,13 +339,13 @@
     },
     {
       "rank": 25,
-      "name": "Black Belt's Training",
+      "name": "Team Rocket's Watchtower",
       "found": 1,
       "total": 1,
       "pct": 100.0,
       "dist": [
         {
-          "copies": 2,
+          "copies": 1,
           "players": 1,
           "percent": 100.0
         }

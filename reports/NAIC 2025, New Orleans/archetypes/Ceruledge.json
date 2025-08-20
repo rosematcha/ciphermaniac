@@ -3,20 +3,6 @@
   "items": [
     {
       "rank": 1,
-      "name": "Varoom",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 2,
       "name": "Carmine",
       "found": 4,
       "total": 4,
@@ -35,31 +21,7 @@
       ]
     },
     {
-      "rank": 3,
-      "name": "Nest Ball",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 2,
-          "players": 1,
-          "percent": 25.0
-        },
-        {
-          "copies": 3,
-          "players": 2,
-          "percent": 50.0
-        },
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 25.0
-        }
-      ]
-    },
-    {
-      "rank": 4,
+      "rank": 2,
       "name": "Fezandipiti ex",
       "found": 4,
       "total": 4,
@@ -73,54 +35,7 @@
       ]
     },
     {
-      "rank": 5,
-      "name": "Professor Turo's Scenario",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 6,
-      "name": "Professor's Research",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 3,
-          "percent": 75.0
-        },
-        {
-          "copies": 4,
-          "players": 1,
-          "percent": 25.0
-        }
-      ]
-    },
-    {
-      "rank": 7,
-      "name": "Charcadet SSP 32",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 8,
+      "rank": 3,
       "name": "Briar",
       "found": 4,
       "total": 4,
@@ -134,7 +49,54 @@
       ]
     },
     {
-      "rank": 9,
+      "rank": 4,
+      "name": "Luminous Energy",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 4,
+          "players": 3,
+          "percent": 75.0
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "name": "Ultra Ball",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "name": "Night Stretcher",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 7,
       "name": "Boss's Orders",
       "found": 4,
       "total": 4,
@@ -153,35 +115,7 @@
       ]
     },
     {
-      "rank": 10,
-      "name": "Fire Energy",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 10,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 11,
-      "name": "Night Stretcher",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 12,
+      "rank": 8,
       "name": "Munkidori",
       "found": 4,
       "total": 4,
@@ -195,7 +129,157 @@
       ]
     },
     {
+      "rank": 9,
+      "name": "Professor's Research",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 75.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 25.0
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "name": "Charcadet SSP 32",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Ceruledge ex",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Fire Energy",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 10,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 13,
+      "name": "Professor Turo's Scenario",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Revavroom",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 75.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Jet Energy",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Varoom",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Squawkabilly ex",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Pal Pad",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 19,
       "name": "Earthen Vessel",
       "found": 4,
       "total": 4,
@@ -219,148 +303,31 @@
       ]
     },
     {
-      "rank": 14,
-      "name": "Pal Pad",
+      "rank": 20,
+      "name": "Nest Ball",
       "found": 4,
       "total": 4,
       "pct": 100.0,
       "dist": [
-        {
-          "copies": 1,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 15,
-      "name": "Luminous Energy",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 1,
-          "percent": 25.0
-        },
-        {
-          "copies": 4,
-          "players": 3,
-          "percent": 75.0
-        }
-      ]
-    },
-    {
-      "rank": 16,
-      "name": "Ceruledge ex",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 3,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 17,
-      "name": "Revavroom",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 25.0
-        },
         {
           "copies": 2,
-          "players": 3,
-          "percent": 75.0
-        }
-      ]
-    },
-    {
-      "rank": 18,
-      "name": "Ultra Ball",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 50.0
+        },
         {
           "copies": 4,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 19,
-      "name": "Squawkabilly ex",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 4,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 20,
-      "name": "Jet Energy",
-      "found": 4,
-      "total": 4,
-      "pct": 100.0,
-      "dist": [
-        {
-          "copies": 4,
-          "players": 4,
-          "percent": 100.0
+          "players": 1,
+          "percent": 25.0
         }
       ]
     },
     {
       "rank": 21,
-      "name": "Counter Catcher",
-      "found": 3,
-      "total": 4,
-      "pct": 75.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 1,
-          "percent": 33.33
-        },
-        {
-          "copies": 2,
-          "players": 2,
-          "percent": 66.67
-        }
-      ]
-    },
-    {
-      "rank": 22,
-      "name": "Iono",
-      "found": 3,
-      "total": 4,
-      "pct": 75.0,
-      "dist": [
-        {
-          "copies": 1,
-          "players": 3,
-          "percent": 100.0
-        }
-      ]
-    },
-    {
-      "rank": 23,
       "name": "Jamming Tower",
       "found": 3,
       "total": 4,
@@ -379,8 +346,41 @@
       ]
     },
     {
+      "rank": 22,
+      "name": "Counter Catcher",
+      "found": 3,
+      "total": 4,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 33.33
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 66.67
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "name": "Iono",
+      "found": 3,
+      "total": 4,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
       "rank": 24,
-      "name": "Buddy-Buddy Poffin",
+      "name": "Brilliant Blender",
       "found": 2,
       "total": 4,
       "pct": 50.0,
@@ -394,7 +394,7 @@
     },
     {
       "rank": 25,
-      "name": "Brilliant Blender",
+      "name": "Buddy-Buddy Poffin",
       "found": 2,
       "total": 4,
       "pct": 50.0,

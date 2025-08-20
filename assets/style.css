@@ -332,3 +332,26 @@ h2{margin:8px 0 6px}
 
 /* Slightly more spacing for inline summaries within the center column */
 #card-center .summary{ margin: 6px 2px 12px; }
+
+/* Card analysis layout and responsive tables */
+#card-analysis{
+  max-width:1280px;
+  margin:12px auto;
+}
+
+/* Make tables inside card sections behave on small screens: allow horizontal scroll and wrap cell content */
+.card-sect{ position:relative; }
+.card-sect{ -webkit-overflow-scrolling: touch; }
+.card-sect table{ width:100%; border-collapse:collapse; }
+.card-sect th, .card-sect td{ white-space:normal; word-break:break-word; padding:10px; }
+
+/* Allow horizontal scrolling of wide tables without forcing a min-width that breaks layout */
+.card-sect{ overflow-x:auto; }
+
+@media (max-width:720px){
+  .card-sect th, .card-sect td{ padding:8px; font-size:13px; }
+}
+
+@media (max-width:480px){
+  .card-sect th, .card-sect td{ padding:6px; font-size:12px; }
+}
