@@ -1,9 +1,12 @@
 // Entry for per-card page: loads meta-share over tournaments and common decks
-import { fetchTournamentsList, fetchReport, fetchArchetypesList, fetchArchetypeReport, fetchOverrides, fetchTop8ArchetypesList } from './api.js';
+import { fetchTournamentsList, fetchReport, fetchArchetypesList, fetchArchetypeReport, fetchOverrides, fetchTop8ArchetypesList, fetchCardIndex, fetchMeta } from './api.js';
 import { parseReport } from './parse.js';
 import { buildThumbCandidates } from './thumbs.js';
 import { pickArchetype, baseToLabel } from './selectArchetype.js';
 import { normalizeCardRouteOnLoad } from './router.js';
+import { prettyTournamentName } from './utils/format.js';
+// Show curated suggestions on the card landing view
+import './cardsLanding.js';
 
 function getCardNameFromLocation(){
 	const params = new URLSearchParams(location.search);
@@ -25,56 +28,69 @@ const decksSection = document.getElementById('card-decks');
 const eventsSection = document.getElementById('card-events');
 const copiesSection = document.getElementById('card-copies');
 const backLink = document.getElementById('back-link');
+// Lightweight floating tooltip used for charts/histograms
+let __graphTooltipEl = null;
+function ensureGraphTooltip(){
+	if(__graphTooltipEl) return __graphTooltipEl;
+	const t = document.createElement('div');
+	t.className = 'graph-tooltip';
+	t.setAttribute('role', 'status');
+	t.style.position = 'fixed';
+	t.style.pointerEvents = 'none';
+	t.style.zIndex = 9999;
+	t.style.display = 'none';
+	document.body.appendChild(t);
+	__graphTooltipEl = t;
+	return t;
+}
+function showGraphTooltip(html, x, y){
+	const t = ensureGraphTooltip();
+	t.innerHTML = html;
+	t.style.display = 'block';
+	// offset so pointer doesn't overlap
+	const offsetX = 12; const offsetY = 12;
+	// clamp to viewport
+	const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+	const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+	let left = x + offsetX;
+	let top = y + offsetY;
+	// if overflowing right, move left
+	const rect = t.getBoundingClientRect();
+	if(left + rect.width > vw) left = Math.max(8, x - rect.width - offsetX);
+	if(top + rect.height > vh) top = Math.max(8, y - rect.height - offsetY);
+	t.style.left = left + 'px';
+	t.style.top = top + 'px';
+}
+function hideGraphTooltip(){
+	const t = __graphTooltipEl;
+	if(!t) return;
+	t.style.display = 'none';
+}
+
+// Simple HTML escaper for tooltip content
+function escapeHtml(str){
+	if(!str) return '';
+	return String(str).replace(/[&<>\"]/g, (s) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[s]);
+}
 if(backLink){ backLink.href = 'index.html'; }
 const analysisSel = document.getElementById('analysis-event');
 const analysisTable = document.getElementById('analysis-table');
-
-// If no card is selected (e.g., user clicked a navbar card but no name was provided),
-// hide the metadata and analysis sections so they don't remain visible with stale content.
-if(!cardName){
-	if(metaSection) metaSection.style.display = 'none';
-	const analysisSection = document.getElementById('card-analysis');
-	if(analysisSection) analysisSection.style.display = 'none';
-}
-
-// Show a consistent empty state like the grid page uses
-function renderEmptyState(){
-	const main = document.querySelector('main');
-	if(!main) return;
-	let empty = document.getElementById('empty-state-card');
-	if(!empty){
-		empty = document.createElement('div');
-		empty.id = 'empty-state-card';
-		empty.className = 'empty-state';
-		empty.innerHTML = `<h2>Dead draw.</h2><p>No results for this search, try another!</p>`;
-		main.appendChild(empty);
-	}
-}
-const copyBtn = document.getElementById('copy-link');
 const searchInGrid = document.getElementById('search-in-grid');
 const windowSelect = document.getElementById('window-select');
-const copyStatus = document.getElementById('copy-status');
 const cardSearchInput = document.getElementById('card-search');
 const cardNamesList = document.getElementById('card-names');
 const suggestionsBox = document.getElementById('card-suggestions');
-if(copyBtn){
-	copyBtn.addEventListener('click', async () => {
-		const params = new URLSearchParams(location.search);
-		const win = params.get('win');
-		const qstr = win ? `?win=${encodeURIComponent(win)}` : '';
-		const clean = `${location.origin}${location.pathname.replace(/card\.html$/,'card.html')}${qstr}#card/${encodeURIComponent(cardName || '')}`;
-		try{
-			await navigator.clipboard.writeText(clean);
-			if(copyStatus){ copyStatus.textContent = 'Link copied!'; setTimeout(()=>copyStatus.textContent='', 2000); }
-		}catch{
-			// Fallback
-			const ta = document.createElement('textarea');
-			ta.value = clean; document.body.appendChild(ta); ta.select();
-			try{ document.execCommand('copy'); if(copyStatus){ copyStatus.textContent = 'Link copied!'; setTimeout(()=>copyStatus.textContent='', 2000); } }
-			finally{ ta.remove(); }
+// Copy link button removed per request
+
+// When navigating between cards via hash (e.g., from Suggestions), reload to re-init
+try{
+	window.addEventListener('hashchange', () => {
+		// Only react if we're on card.html and the hash points to a card route
+		if(/^#card\//.test(location.hash)){
+			location.reload();
 		}
 	});
-}
+}catch{}
 
 // Link to grid prefilled with search
 if(searchInGrid){
@@ -221,35 +237,8 @@ async function initCardSearch(){
 			cardSearchInput.addEventListener('keydown', (e) => {
 				if(e.key === 'Enter'){
 					e.preventDefault();
-					const inputVal = cardSearchInput.value.trim();
-					// First, prefer the active suggestions list we already rendered
-					let pick = null;
-					if(currentMatches && currentMatches.length > 0){
-						const idx = (selectedIndex >= 0 && selectedIndex < currentMatches.length) ? selectedIndex : 0;
-						pick = currentMatches[idx];
-					}
-					// If we somehow don't have a live list, check the UI overlay's first item
-					if(!pick){
-						const uiFirst = (function(){
-							try{
-								const firstEl = suggestionsBox && suggestionsBox.firstElementChild;
-								if(firstEl){
-									const left = firstEl.querySelector('span');
-									if(left && left.textContent) return left.textContent;
-									return firstEl.textContent || null;
-								}
-							}catch{}
-							return null;
-						})();
-						if(uiFirst) pick = uiFirst;
-					}
-					// As a final calculated fallback, recompute and use the first match
-					if(!pick){
-						const recomputed = computeMatches(cardSearchInput.value);
-						if(recomputed && recomputed.length > 0){ pick = recomputed[0]; }
-					}
-					// Only if the input has content and no suggestions were available at all, use raw input
-					if(!pick && inputVal){ pick = inputVal; }
+					// If user navigated suggestions, pick highlighted; otherwise use input value
+					const pick = (selectedIndex >= 0 && currentMatches[selectedIndex]) ? currentMatches[selectedIndex] : cardSearchInput.value.trim();
 					if(pick) goTo(pick);
 					return;
 				}
@@ -348,20 +337,61 @@ function renderChart(container, points){
 	line.setAttribute('stroke', '#6aa3ff');
 	line.setAttribute('stroke-width', '2');
 	svg.appendChild(line);
-	// dots
-	points.forEach((p,i)=>{
-		const c = document.createElementNS(svgNS, 'circle');
-		c.setAttribute('cx', String(scaleX(i)));
-		c.setAttribute('cy', String(scaleY(p.pct || 0)));
-		c.setAttribute('r', '3');
-		c.setAttribute('fill', '#6aa3ff');
-		const tip = `${p.tournament}: ${(p.pct||0).toFixed(1)}%`;
-		c.setAttribute('title', tip);
-		c.setAttribute('tabindex', '0');
-		c.setAttribute('role', 'img');
-		c.setAttribute('aria-label', tip);
-		svg.appendChild(c);
-	});
+
+	// Add a transparent, thick hit-path on top of the line so hovering anywhere near it
+	// will show tooltip information for the nearest point.
+	const hit = document.createElementNS(svgNS, 'path');
+	hit.setAttribute('d', path);
+	hit.setAttribute('fill', 'none');
+	hit.setAttribute('stroke', 'transparent');
+	hit.setAttribute('stroke-width', '18');
+	hit.setAttribute('pointer-events', 'stroke');
+	svg.appendChild(hit);
+	function onHitMove(ev){
+		try{
+			const rect = svg.getBoundingClientRect();
+			const svgX = ev.clientX - rect.left;
+			const norm = (svgX - pad) / (w - 2*pad);
+			const idx = Math.round(norm * Math.max(1, xs.length - 1));
+			const i = Math.max(0, Math.min(xs.length - 1, idx));
+			const p = points[i];
+			if(p){
+				showGraphTooltip(`<strong>${escapeHtml(prettyTournamentName(p.tournament))}</strong><div>${(p.pct||0).toFixed(1)}%</div>`, ev.clientX, ev.clientY);
+			}
+		}catch(e){}
+	}
+	hit.addEventListener('mousemove', onHitMove);
+	hit.addEventListener('mouseenter', onHitMove);
+	hit.addEventListener('mouseleave', hideGraphTooltip);
+		// dots
+		points.forEach((p,i)=>{
+				const cx = scaleX(i);
+				const cy = scaleY(p.pct || 0);
+				// visible small dot
+				const dot = document.createElementNS(svgNS, 'circle');
+				dot.setAttribute('cx', String(cx));
+				dot.setAttribute('cy', String(cy));
+				dot.setAttribute('r', '3');
+				dot.setAttribute('fill', '#6aa3ff');
+				svg.appendChild(dot);
+				// larger invisible hit target behind the dot for easier hover
+				const hitDot = document.createElementNS(svgNS, 'circle');
+				hitDot.setAttribute('cx', String(cx));
+				hitDot.setAttribute('cy', String(cy));
+				hitDot.setAttribute('r', '12');
+				hitDot.setAttribute('fill', 'transparent');
+				hitDot.setAttribute('pointer-events', 'all');
+				const tip = `${prettyTournamentName(p.tournament)}: ${(p.pct||0).toFixed(1)}%`;
+				hitDot.setAttribute('tabindex', '0');
+				hitDot.setAttribute('role', 'img');
+				hitDot.setAttribute('aria-label', tip);
+				hitDot.addEventListener('mousemove', (ev) => showGraphTooltip(`<strong>${escapeHtml(prettyTournamentName(p.tournament))}</strong><div>${(p.pct||0).toFixed(1)}%</div>`, ev.clientX, ev.clientY));
+				hitDot.addEventListener('mouseenter', (ev) => showGraphTooltip(`<strong>${escapeHtml(prettyTournamentName(p.tournament))}</strong><div>${(p.pct||0).toFixed(1)}%</div>`, ev.clientX, ev.clientY));
+				hitDot.addEventListener('mouseleave', hideGraphTooltip);
+				hitDot.addEventListener('focus', (ev) => showGraphTooltip(`<strong>${escapeHtml(prettyTournamentName(p.tournament))}</strong><div>${(p.pct||0).toFixed(1)}%</div>`, ev.clientX || 0, ev.clientY || 0));
+				hitDot.addEventListener('blur', hideGraphTooltip);
+				svg.appendChild(hitDot);
+		});
 		container.innerHTML = '';
 		container.appendChild(svg);
 	const caption = document.createElement('div');
@@ -388,7 +418,15 @@ function renderCopiesHistogram(container, overall){
 		const bar = document.createElement('div'); bar.className='bar';
 		bar.style.height = Math.max(2, Math.round(54 * (pct / maxPct))) + 'px';
 		const lbl = document.createElement('div'); lbl.className='lbl'; lbl.textContent=String(c);
-		col.title = `${c}x: ${pct.toFixed(1)}%${(d&&total)?` (${d.players}/${total})`:''}`;
+		const tipText = d ? `${c}x: ${pct.toFixed(1)}%${(d&&total)?` (${d.players}/${total})`:''}` : `${c}x: 0%`;
+		col.setAttribute('tabindex', '0');
+		col.setAttribute('role', 'img');
+		col.setAttribute('aria-label', tipText);
+		col.addEventListener('mousemove', (ev) => showGraphTooltip(escapeHtml(tipText), ev.clientX, ev.clientY));
+		col.addEventListener('mouseenter', (ev) => showGraphTooltip(escapeHtml(tipText), ev.clientX, ev.clientY));
+		col.addEventListener('mouseleave', hideGraphTooltip);
+		col.addEventListener('focus', (ev) => showGraphTooltip(escapeHtml(tipText), ev.clientX || 0, ev.clientY || 0));
+		col.addEventListener('blur', hideGraphTooltip);
 		col.appendChild(bar); col.appendChild(lbl); hist.appendChild(col);
 	}
 	container.appendChild(hist);
@@ -406,9 +444,9 @@ function renderDecks(container, rows){
 		tbl.style.borderRadius = '8px';
 	const thead = document.createElement('thead');
 	const hdr = document.createElement('tr');
-		;['Tournament','Most Success In','Usage % (All)','Decks (All)'].forEach(h=>{
-			const th = document.createElement('th'); th.textContent = h; th.style.textAlign='left'; th.style.padding='10px 12px'; th.style.borderBottom='1px solid #2c335a'; th.style.color='var(--muted)'; hdr.appendChild(th);
-	});
+	    ;['Tournament','Usage % (All)','Decks (All)'].forEach(h=>{
+		    const th = document.createElement('th'); th.textContent = h; th.style.textAlign='left'; th.style.padding='10px 12px'; th.style.borderBottom='1px solid #2c335a'; th.style.color='var(--muted)'; hdr.appendChild(th);
+	    });
 	thead.appendChild(hdr);
 	tbl.appendChild(thead);
 	const tbody = document.createElement('tbody');
@@ -417,9 +455,9 @@ function renderDecks(container, rows){
 			// Tournament cell is a link back to main with tournament selected
 			const tLink = document.createElement('a');
 			tLink.href = `index.html?tour=${encodeURIComponent(r.tournament)}`;
-			tLink.textContent = r.tournament;
-			const cells = [tLink, r.archetype || '—', r.pct!=null? r.pct.toFixed(1)+'%':'—', r.found!=null && r.total!=null? `${r.found}/${r.total}`:'—'];
-			cells.forEach((v,i)=>{ const td = document.createElement('td'); if(v instanceof HTMLElement){ td.appendChild(v); } else { td.textContent = v; } td.style.padding='10px 12px'; if(i===2) td.style.textAlign='right'; tr.appendChild(td); });
+			tLink.textContent = prettyTournamentName(r.tournament);
+			const cells = [tLink, r.pct!=null? r.pct.toFixed(1)+'%':'—', r.found!=null && r.total!=null? `${r.found}/${r.total}`:'—'];
+			cells.forEach((v,i)=>{ const td = document.createElement('td'); if(v instanceof HTMLElement){ td.appendChild(v); } else { td.textContent = v; } td.style.padding='10px 12px'; if(i===1) td.style.textAlign='right'; tr.appendChild(td); });
 		tbody.appendChild(tr);
 	});
 	tbl.appendChild(tbody);
@@ -432,14 +470,14 @@ function renderEvents(container, rows){
 	tbl.style.width = '80%'; tbl.style.marginLeft='auto'; tbl.style.marginRight='auto'; tbl.style.borderCollapse='collapse'; tbl.style.marginTop='8px'; tbl.style.background='var(--panel)'; tbl.style.border='1px solid #242a4a'; tbl.style.borderRadius='8px';
 	const thead = document.createElement('thead');
 	const hdr = document.createElement('tr');
-	;['Tournament','Most Success In','Usage % (All)'].forEach((h,i)=>{ const th = document.createElement('th'); th.textContent=h; th.style.textAlign= i===2 ? 'right' : 'left'; th.style.padding='10px 12px'; th.style.borderBottom='1px solid #2c335a'; th.style.color='var(--muted)'; hdr.appendChild(th); });
+	;['Tournament','Usage % (All)'].forEach((h,i)=>{ const th = document.createElement('th'); th.textContent=h; th.style.textAlign= i===1 ? 'right' : 'left'; th.style.padding='10px 12px'; th.style.borderBottom='1px solid #2c335a'; th.style.color='var(--muted)'; hdr.appendChild(th); });
 	thead.appendChild(hdr); tbl.appendChild(thead);
 	const tbody = document.createElement('tbody');
 	rows.forEach(r => {
 		const tr = document.createElement('tr');
-		const tLink = document.createElement('a'); tLink.href = `index.html?tour=${encodeURIComponent(r.tournament)}`; tLink.textContent = r.tournament;
-		const cells = [tLink, r.archetype || '—', r.pct!=null? r.pct.toFixed(1)+'%':'—'];
-		cells.forEach((v,i)=>{ const td = document.createElement('td'); if(v instanceof HTMLElement){ td.appendChild(v); } else { td.textContent = v; } td.style.padding='10px 12px'; if(i===2) td.style.textAlign='right'; tr.appendChild(td); });
+		const tLink = document.createElement('a'); tLink.href = `index.html?tour=${encodeURIComponent(r.tournament)}`; tLink.textContent = prettyTournamentName(r.tournament);
+	const cells = [tLink, r.pct!=null? r.pct.toFixed(1)+'%':'—'];
+	cells.forEach((v,i)=>{ const td = document.createElement('td'); if(v instanceof HTMLElement){ td.appendChild(v); } else { td.textContent = v; } td.style.padding='10px 12px'; if(i===1) td.style.textAlign='right'; tr.appendChild(td); });
 		tbody.appendChild(tr);
 	});
 	tbl.appendChild(tbody);
@@ -489,9 +527,20 @@ async function load(){
 						if(cache[ck]){
 							({ pct: globalPct, found: globalFound, total: globalTotal } = cache[ck]);
 						}else{
-							const master = await fetchReport(t);
-							const parsed = parseReport(master);
-							const card = findCard(parsed.items);
+							// Prefer precomputed cardIndex when available; fallback to master
+							let card = null;
+							try{
+								const idx = await fetchCardIndex(t);
+								const entry = idx.cards?.[cardName] || idx.cards?.[Object.keys(idx.cards||{}).find(k => k.toLowerCase() === cardName.toLowerCase()) || ''];
+								if(entry){
+									card = { name: cardName, found: entry.found, total: entry.total, pct: entry.pct, dist: entry.dist };
+								}
+							}catch{}
+							if(!card){
+								const master = await fetchReport(t);
+								const parsed = parseReport(master);
+								card = findCard(parsed.items);
+							}
 							if(card){
 								globalPct = Number.isFinite(card.pct)? card.pct : (card.total? (100*card.found/card.total): 0);
 								globalFound = Number.isFinite(card.found)? card.found : null;
@@ -508,87 +557,30 @@ async function load(){
 					}catch{/* missing tournament master */}
 				}
 
-				// If no events contain this card, show the same empty state as the grid page and stop.
-				if(timePoints.length === 0){
-					if(metaSection) metaSection.style.display = 'none';
-					const analysisSection = document.getElementById('card-analysis');
-					if(analysisSection) analysisSection.style.display = 'none';
-					renderEmptyState();
-					return;
-				}
-
-		// Default window comes from selector (6)
-		let LIMIT = 6;
-		let showAll = false;
-		if(windowSelect){
-			const params = new URLSearchParams(location.search);
-			const initWin = params.get('win');
-			if(initWin){ windowSelect.value = initWin; }
-			const parseWin = () => {
-				const v = windowSelect.value;
-				if(v === 'all'){ showAll = true; }
-				else { LIMIT = Math.max(1, parseInt(v,10) || 6); showAll = false; }
-				// sync URL
-				const u = new URL(location.href);
-				u.searchParams.delete('win');
-				if(v && v !== '6'){ // default is 6; omit if default
-					u.searchParams.set('win', v);
-				}
-				history.replaceState(null, '', u.toString());
-			};
-			parseWin();
-			windowSelect.addEventListener('change', () => { parseWin(); refresh(); });
-			window.addEventListener('popstate', () => {
-				const p = new URLSearchParams(location.search);
-				const w = p.get('win') || '6';
-				if(windowSelect.value !== w){ windowSelect.value = w; parseWin(); refresh(); }
-			});
-		}
+		// Fixed window: always show the most recent 6 tournaments
+		const LIMIT = 6;
+		const showAll = false;
 		const renderToggles = () => {
 		// Clear previous notes
 		const oldNotes = metaSection.querySelectorAll('.summary.toggle-note');
 		oldNotes.forEach(n => n.remove());
 			const totalP = timePoints.length;
-		const needToggleP = totalP > LIMIT;
-		if(needToggleP){
+			const shown = Math.min(LIMIT, totalP);
 			const note = document.createElement('div');
 			note.className = 'summary toggle-note';
-			const shown = showAll ? totalP : Math.min(LIMIT, totalP);
-			note.textContent = `Chronological (oldest to newest). Showing ${shown} of ${totalP}.`;
-			const a = document.createElement('a');
-			a.href = '#'; a.style.marginLeft = '8px'; a.textContent = showAll ? 'Show fewer' : 'Show all';
-			a.addEventListener('click', (e)=>{ e.preventDefault(); showAll = !showAll; refresh(); });
-			note.appendChild(a);
+			note.textContent = `Chronological (oldest to newest). Showing most recent ${shown} of ${totalP}.`;
 			metaSection.appendChild(note);
-		}else{
-			const note = document.createElement('div');
-			note.className = 'summary toggle-note';
-			note.textContent = 'Chronological (oldest to newest).';
-			metaSection.appendChild(note);
-		}
 		// Events/decks toggle mirrors chart (attach to eventsSection if present)
 			const tableSection = eventsSection || decksSection;
 		if(tableSection){
 			const oldNotes2 = tableSection.querySelectorAll('.summary.toggle-note');
 			oldNotes2.forEach(n => n.remove());
 				const totalR = deckRows.length;
-			const needToggleR = totalR > LIMIT;
-			if(needToggleR){
+				const shownR = Math.min(LIMIT, totalR);
 				const note2 = document.createElement('div');
 				note2.className = 'summary toggle-note';
-				const shownR = showAll ? totalR : Math.min(LIMIT, totalR);
-				note2.textContent = `Chronological (oldest to newest). Showing ${shownR} of ${totalR}.`;
-				const a2 = document.createElement('a');
-				a2.href = '#'; a2.style.marginLeft = '8px'; a2.textContent = showAll ? 'Show fewer' : 'Show all';
-				a2.addEventListener('click', (e)=>{ e.preventDefault(); showAll = !showAll; refresh(); });
-				note2.appendChild(a2);
+				note2.textContent = `Chronological (oldest to newest). Showing most recent ${shownR} of ${totalR}.`;
 				tableSection.appendChild(note2);
-			}else{
-				const note2 = document.createElement('div');
-				note2.className = 'summary toggle-note';
-				note2.textContent = 'Chronological (oldest to newest).';
-				tableSection.appendChild(note2);
-			}
 		}
 	};
 
@@ -794,19 +786,34 @@ async function load(){
 				tbl.style.width = '100%'; tbl.style.borderCollapse='collapse'; tbl.style.background='var(--panel)'; tbl.style.border='1px solid #242a4a'; tbl.style.borderRadius='8px';
 				const thead = document.createElement('thead');
 				const trh = document.createElement('tr');
-				;['Archetype','Played %','1x','2x','3x','4x','Decks'].forEach((h,i)=>{ const th = document.createElement('th'); th.textContent=h; if(h==='Played %'){ th.title='Percent of decks in the archetype that ran the card (any copies).'; } if(['1x','2x','3x','4x'].includes(h)){ th.title = `Percent of decks in the archetype that ran exactly ${h}`; } th.style.textAlign = (i>0 && i<6) ? 'right' : 'left'; th.style.padding='10px 12px'; th.style.borderBottom='1px solid #2c335a'; th.style.color='var(--muted)'; trh.appendChild(th); });
+				;['Archetype','Played %','1x','2x','3x','4x'].forEach((h,i)=>{ const th = document.createElement('th'); th.textContent=h; if(h==='Played %'){ th.title='Percent of decks in the archetype that ran the card (any copies).'; } if(['1x','2x','3x','4x'].includes(h)){ th.title = `Percent of decks in the archetype that ran exactly ${h}`; } th.style.textAlign = (i>0 && i<6) ? 'right' : 'left'; th.style.padding='10px 12px'; th.style.borderBottom='1px solid #2c335a'; th.style.color='var(--muted)'; trh.appendChild(th); });
 				thead.appendChild(trh); tbl.appendChild(thead);
 				const tbody = document.createElement('tbody');
 				for(const r of rows){
 					const tr = document.createElement('tr');
 					const fmt = (v) => v==null? '—' : `${v.toFixed(1)}%`;
-					const cells = [
-						r.archetype,
-						r.pct!=null? r.pct.toFixed(1)+'%':'—',
-						fmt(r.c1), fmt(r.c2), fmt(r.c3), fmt(r.c4),
-						(r.found!=null && r.total!=null? `${r.found}/${r.total}`:'—')
-					];
-					cells.forEach((v,i)=>{ const td = document.createElement('td'); td.textContent = v; if(i===1){ td.title = 'Played % = (decks with the card / total decks in archetype)'; } if(i>=2 && i<=5){ const n = i-1; td.title = `Percent of decks in archetype that ran exactly ${n}x`; } td.style.padding='10px 12px'; if(i>=1 && i<=5) td.style.textAlign='right'; tr.appendChild(td); });
+					// Compose archetype cell: bold archetype name + deck count in parentheses
+					const archeCount = (r.total!=null) ? r.total : (r.found!=null ? r.found : null);
+					const td0 = document.createElement('td');
+					const strong = document.createElement('strong');
+					strong.textContent = r.archetype;
+					td0.appendChild(strong);
+					if(archeCount!=null){ td0.appendChild(document.createTextNode(` (${archeCount})`)); }
+					td0.style.padding = '10px 12px';
+					td0.style.textAlign = 'left';
+					tr.appendChild(td0);
+
+					const otherValues = [ r.pct!=null? r.pct.toFixed(1)+'%':'—', fmt(r.c1), fmt(r.c2), fmt(r.c3), fmt(r.c4) ];
+					otherValues.forEach((v,i)=>{
+						const td = document.createElement('td');
+						td.textContent = v;
+						if(i===0){ td.title = 'Played % = (decks with the card / total decks in archetype)'; }
+						if(i>=1 && i<=4){ const n = i; td.title = `Percent of decks in archetype that ran exactly ${n}x`; }
+						td.style.padding = '10px 12px';
+						td.style.textAlign = 'right';
+						tr.appendChild(td);
+					});
+
 					tbody.appendChild(tr);
 				}
 				tbl.appendChild(tbody);

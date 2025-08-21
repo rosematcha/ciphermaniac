@@ -1,0 +1,680 @@
+{
+  "deckTotal": 12,
+  "items": [
+    {
+      "rank": 1,
+      "name": "Duraludon",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 12,
+          "percent": 100.0
+        }
+      ],
+      "set": "SCR",
+      "number": "106",
+      "uid": "Duraludon::SCR::106"
+    },
+    {
+      "rank": 2,
+      "name": "Archaludon ex",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 25.0
+        },
+        {
+          "copies": 3,
+          "players": 9,
+          "percent": 75.0
+        }
+      ],
+      "set": "SSP",
+      "number": "130",
+      "uid": "Archaludon ex::SSP::130"
+    },
+    {
+      "rank": 3,
+      "name": "Pecharunt",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 25.0
+        },
+        {
+          "copies": 2,
+          "players": 9,
+          "percent": 75.0
+        }
+      ],
+      "set": "SVP",
+      "number": "149",
+      "uid": "Pecharunt::SVP::149"
+    },
+    {
+      "rank": 4,
+      "name": "Brute Bonnet",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 12,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "123",
+      "uid": "Brute Bonnet::PAR::123"
+    },
+    {
+      "rank": 5,
+      "name": "Fezandipiti ex",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 12,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "038",
+      "uid": "Fezandipiti ex::SFA::038"
+    },
+    {
+      "rank": 6,
+      "name": "Latias ex",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 11,
+          "percent": 91.67
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 8.33
+        }
+      ],
+      "set": "SSP",
+      "number": "076",
+      "uid": "Latias ex::SSP::076"
+    },
+    {
+      "rank": 7,
+      "name": "Squawkabilly ex",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 6,
+          "percent": 50.0
+        }
+      ],
+      "set": "PAL",
+      "number": "169",
+      "uid": "Squawkabilly ex::PAL::169"
+    },
+    {
+      "rank": 8,
+      "name": "Bloodmoon Ursaluna ex",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 12,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "141",
+      "uid": "Bloodmoon Ursaluna ex::TWM::141"
+    },
+    {
+      "rank": 9,
+      "name": "Boss's Orders",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 9,
+          "percent": 75.0
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 25.0
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "name": "Professor's Research",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 10,
+          "percent": 83.33
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 16.67
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Iono",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 6,
+          "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Nest Ball",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 25.0
+        },
+        {
+          "copies": 4,
+          "players": 9,
+          "percent": 75.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Ultra Ball",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 25.0
+        },
+        {
+          "copies": 4,
+          "players": 9,
+          "percent": 75.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Night Stretcher",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 16.67
+        },
+        {
+          "copies": 3,
+          "players": 9,
+          "percent": 75.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 8.33
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Earthen Vessel",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 16.67
+        },
+        {
+          "copies": 2,
+          "players": 6,
+          "percent": 50.0
+        },
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 33.33
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Ancient Booster Energy Capsule",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 7,
+          "percent": 58.33
+        },
+        {
+          "copies": 4,
+          "players": 5,
+          "percent": 41.67
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Binding Mochi",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 66.67
+        },
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 33.33
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Perilous Jungle",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 8.33
+        },
+        {
+          "copies": 3,
+          "players": 7,
+          "percent": 58.33
+        },
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 33.33
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Metal Energy",
+      "found": 12,
+      "total": 12,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 6,
+          "players": 7,
+          "percent": 58.33
+        },
+        {
+          "copies": 7,
+          "players": 5,
+          "percent": 41.67
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Pal Pad",
+      "found": 11,
+      "total": 12,
+      "pct": 91.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 11,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Professor Turo's Scenario",
+      "found": 10,
+      "total": 12,
+      "pct": 83.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 60.0
+        },
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 40.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "Carmine",
+      "found": 9,
+      "total": 12,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 22.22
+        },
+        {
+          "copies": 4,
+          "players": 7,
+          "percent": 77.78
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "name": "Pokégear 3.0",
+      "found": 9,
+      "total": 12,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 11.11
+        },
+        {
+          "copies": 3,
+          "players": 7,
+          "percent": 77.78
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 11.11
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Secret Box",
+      "found": 9,
+      "total": 12,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "Budew",
+      "found": 7,
+      "total": 12,
+      "pct": 58.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "PRE",
+      "number": "004",
+      "uid": "Budew::PRE::004"
+    },
+    {
+      "rank": 26,
+      "name": "Kieran",
+      "found": 7,
+      "total": 12,
+      "pct": 58.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 27,
+      "name": "Relicanth",
+      "found": 4,
+      "total": 12,
+      "pct": 33.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "084",
+      "uid": "Relicanth::TEF::084"
+    },
+    {
+      "rank": 28,
+      "name": "Arven",
+      "found": 4,
+      "total": 12,
+      "pct": 33.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 4,
+          "players": 3,
+          "percent": 75.0
+        }
+      ]
+    },
+    {
+      "rank": 29,
+      "name": "Iron Bundle",
+      "found": 3,
+      "total": 12,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "056",
+      "uid": "Iron Bundle::PAR::056"
+    },
+    {
+      "rank": 30,
+      "name": "Precious Trolley",
+      "found": 3,
+      "total": 12,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 31,
+      "name": "Counter Catcher",
+      "found": 3,
+      "total": 12,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 32,
+      "name": "Munkidori",
+      "found": 3,
+      "total": 12,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "095",
+      "uid": "Munkidori::TWM::095"
+    },
+    {
+      "rank": 33,
+      "name": "Darkness Energy",
+      "found": 3,
+      "total": 12,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 34,
+      "name": "Mew ex",
+      "found": 3,
+      "total": 12,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEW",
+      "number": "151",
+      "uid": "Mew ex::MEW::151"
+    },
+    {
+      "rank": 35,
+      "name": "Pecharunt ex",
+      "found": 2,
+      "total": 12,
+      "pct": 16.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "039",
+      "uid": "Pecharunt ex::SFA::039"
+    },
+    {
+      "rank": 36,
+      "name": "Super Rod",
+      "found": 2,
+      "total": 12,
+      "pct": 16.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 37,
+      "name": "Black Belt's Training",
+      "found": 1,
+      "total": 12,
+      "pct": 8.33,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    }
+  ]
+}

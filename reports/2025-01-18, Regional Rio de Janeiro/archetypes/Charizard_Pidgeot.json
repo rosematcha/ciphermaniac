@@ -1,0 +1,863 @@
+{
+  "deckTotal": 25,
+  "items": [
+    {
+      "rank": 1,
+      "name": "Charmander",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 4.0
+        },
+        {
+          "copies": 2,
+          "players": 7,
+          "percent": 28.0
+        },
+        {
+          "copies": 3,
+          "players": 17,
+          "percent": 68.0
+        }
+      ],
+      "set": "PAF",
+      "number": "007",
+      "uid": "Charmander::PAF::007"
+    },
+    {
+      "rank": 2,
+      "name": "Charmeleon",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 25,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAF",
+      "number": "008",
+      "uid": "Charmeleon::PAF::008"
+    },
+    {
+      "rank": 3,
+      "name": "Charizard ex",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 25,
+          "percent": 100.0
+        }
+      ],
+      "set": "OBF",
+      "number": "125",
+      "uid": "Charizard ex::OBF::125"
+    },
+    {
+      "rank": 4,
+      "name": "Pidgeot ex",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 25,
+          "percent": 100.0
+        }
+      ],
+      "set": "OBF",
+      "number": "164",
+      "uid": "Pidgeot ex::OBF::164"
+    },
+    {
+      "rank": 5,
+      "name": "Dusclops",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 25,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "019",
+      "uid": "Dusclops::SFA::019"
+    },
+    {
+      "rank": 6,
+      "name": "Dusknoir",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 25,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "020",
+      "uid": "Dusknoir::SFA::020"
+    },
+    {
+      "rank": 7,
+      "name": "Radiant Charizard",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 25,
+          "percent": 100.0
+        }
+      ],
+      "set": "CRZ",
+      "number": "020",
+      "uid": "Radiant Charizard::CRZ::020"
+    },
+    {
+      "rank": 8,
+      "name": "Rotom V",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 19,
+          "percent": 76.0
+        },
+        {
+          "copies": 2,
+          "players": 6,
+          "percent": 24.0
+        }
+      ],
+      "set": "LOR",
+      "number": "058",
+      "uid": "Rotom V::LOR::058"
+    },
+    {
+      "rank": 9,
+      "name": "Lumineon V",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 25,
+          "percent": 100.0
+        }
+      ],
+      "set": "BRS",
+      "number": "040",
+      "uid": "Lumineon V::BRS::040"
+    },
+    {
+      "rank": 10,
+      "name": "Fezandipiti ex",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 25,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "038",
+      "uid": "Fezandipiti ex::SFA::038"
+    },
+    {
+      "rank": 11,
+      "name": "Arven",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 4.0
+        },
+        {
+          "copies": 4,
+          "players": 24,
+          "percent": 96.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Iono",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 24,
+          "percent": 96.0
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 4.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Boss's Orders",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 25,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Professor Turo's Scenario",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 25,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Thorton",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 25,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Ultra Ball",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 25,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Rare Candy",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 25,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Buddy-Buddy Poffin",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 8.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 4.0
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 8.0
+        },
+        {
+          "copies": 4,
+          "players": 20,
+          "percent": 80.0
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Nest Ball",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 32.0
+        },
+        {
+          "copies": 3,
+          "players": 10,
+          "percent": 40.0
+        },
+        {
+          "copies": 4,
+          "players": 7,
+          "percent": 28.0
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Super Rod",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 25,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Counter Catcher",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 8.0
+        },
+        {
+          "copies": 2,
+          "players": 23,
+          "percent": 92.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "Night Stretcher",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 25,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "name": "Forest Seal Stone",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 25,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Defiance Band",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 25,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "Fire Energy",
+      "found": 25,
+      "total": 25,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 5,
+          "players": 24,
+          "percent": 96.0
+        },
+        {
+          "copies": 6,
+          "players": 1,
+          "percent": 4.0
+        }
+      ]
+    },
+    {
+      "rank": 26,
+      "name": "Pidgey",
+      "found": 24,
+      "total": 25,
+      "pct": 96.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 24,
+          "percent": 100.0
+        }
+      ],
+      "set": "OBF",
+      "number": "162",
+      "uid": "Pidgey::OBF::162"
+    },
+    {
+      "rank": 27,
+      "name": "Briar",
+      "found": 24,
+      "total": 25,
+      "pct": 96.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 24,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 28,
+      "name": "Duskull",
+      "found": 22,
+      "total": 25,
+      "pct": 88.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 4.55
+        },
+        {
+          "copies": 2,
+          "players": 21,
+          "percent": 95.45
+        }
+      ],
+      "set": "SFA",
+      "number": "018",
+      "uid": "Duskull::SFA::018"
+    },
+    {
+      "rank": 29,
+      "name": "Unfair Stamp",
+      "found": 21,
+      "total": 25,
+      "pct": 84.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 21,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 30,
+      "name": "Lost Vacuum",
+      "found": 21,
+      "total": 25,
+      "pct": 84.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 21,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 31,
+      "name": "Collapsed Stadium",
+      "found": 11,
+      "total": 25,
+      "pct": 44.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 11,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 32,
+      "name": "Canceling Cologne",
+      "found": 11,
+      "total": 25,
+      "pct": 44.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 11,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 33,
+      "name": "Cleffa",
+      "found": 10,
+      "total": 25,
+      "pct": 40.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 10,
+          "percent": 100.0
+        }
+      ],
+      "set": "OBF",
+      "number": "080",
+      "uid": "Cleffa::OBF::080"
+    },
+    {
+      "rank": 34,
+      "name": "Manaphy",
+      "found": 9,
+      "total": 25,
+      "pct": 36.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 100.0
+        }
+      ],
+      "set": "BRS",
+      "number": "041",
+      "uid": "Manaphy::BRS::041"
+    },
+    {
+      "rank": 35,
+      "name": "Duskull",
+      "found": 4,
+      "total": 25,
+      "pct": 16.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 75.0
+        }
+      ],
+      "set": "BRS",
+      "number": "060",
+      "uid": "Duskull::BRS::060"
+    },
+    {
+      "rank": 36,
+      "name": "Litten",
+      "found": 4,
+      "total": 25,
+      "pct": 16.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "032",
+      "uid": "Litten::TEF::032"
+    },
+    {
+      "rank": 37,
+      "name": "Incineroar ex",
+      "found": 4,
+      "total": 25,
+      "pct": 16.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "034",
+      "uid": "Incineroar ex::TEF::034"
+    },
+    {
+      "rank": 38,
+      "name": "Charmander",
+      "found": 4,
+      "total": 25,
+      "pct": 16.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 75.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 25.0
+        }
+      ],
+      "set": "SVP",
+      "number": "047",
+      "uid": "Charmander::SVP::047"
+    },
+    {
+      "rank": 39,
+      "name": "Precious Trolley",
+      "found": 4,
+      "total": 25,
+      "pct": 16.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 40,
+      "name": "Technical Machine: Devolution",
+      "found": 3,
+      "total": 25,
+      "pct": 12.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 41,
+      "name": "Pecharunt ex",
+      "found": 2,
+      "total": 25,
+      "pct": 8.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "039",
+      "uid": "Pecharunt ex::SFA::039"
+    },
+    {
+      "rank": 42,
+      "name": "Bibarel",
+      "found": 2,
+      "total": 25,
+      "pct": 8.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "BRS",
+      "number": "121",
+      "uid": "Bibarel::BRS::121"
+    },
+    {
+      "rank": 43,
+      "name": "Hisuian Heavy Ball",
+      "found": 2,
+      "total": 25,
+      "pct": 8.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 44,
+      "name": "Pal Pad",
+      "found": 1,
+      "total": 25,
+      "pct": 4.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 45,
+      "name": "Binding Mochi",
+      "found": 1,
+      "total": 25,
+      "pct": 4.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 46,
+      "name": "Bidoof",
+      "found": 1,
+      "total": 25,
+      "pct": 4.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "BRS",
+      "number": "120",
+      "uid": "Bidoof::BRS::120"
+    },
+    {
+      "rank": 47,
+      "name": "Roxanne",
+      "found": 1,
+      "total": 25,
+      "pct": 4.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 48,
+      "name": "Pidgey",
+      "found": 1,
+      "total": 25,
+      "pct": 4.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEW",
+      "number": "016",
+      "uid": "Pidgey::MEW::016"
+    },
+    {
+      "rank": 49,
+      "name": "Professor's Research",
+      "found": 1,
+      "total": 25,
+      "pct": 4.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 50,
+      "name": "Bidoof",
+      "found": 1,
+      "total": 25,
+      "pct": 4.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "CRZ",
+      "number": "111",
+      "uid": "Bidoof::CRZ::111"
+    },
+    {
+      "rank": 51,
+      "name": "Bravery Charm",
+      "found": 1,
+      "total": 25,
+      "pct": 4.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    }
+  ]
+}

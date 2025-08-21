@@ -1,0 +1,17 @@
+# One tournament URL per line. Lines starting with # are ignored.
+https://limitlesstcg.com/tournaments/500/decklists
+https://limitlesstcg.com/tournaments/463/decklists
+https://limitlesstcg.com/tournaments/497/decklists
+https://limitlesstcg.com/tournaments/498/decklists
+https://limitlesstcg.com/tournaments/475/decklists
+https://limitlesstcg.com/tournaments/466/decklists
+https://limitlesstcg.com/tournaments/474/decklists
+https://limitlesstcg.com/tournaments/489/decklists
+https://limitlesstcg.com/tournaments/477/decklists
+https://limitlesstcg.com/tournaments/468/decklists
+https://limitlesstcg.com/tournaments/465/decklists
+https://limitlesstcg.com/tournaments/473/decklists
+https://limitlesstcg.com/tournaments/472/decklists
+https://limitlesstcg.com/tournaments/484/decklists
+https://limitlesstcg.com/tournaments/467/decklists
+https://limitlesstcg.com/tournaments/471/decklists

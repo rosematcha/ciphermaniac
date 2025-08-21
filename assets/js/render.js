@@ -2,6 +2,40 @@ import { buildThumbCandidates } from './thumbs.js';
 import { computeLayout, syncControlsWidth } from './layoutHelper.js';
 import { trackMissing } from './dev/missingThumbs.js';
 import { isFavorite, toggleFavorite, subscribeFavorites } from './favorites.js';
+// Modal removed: navigate to card page instead
+
+// Lightweight floating tooltip used for thumbnails' histograms
+let __gridGraphTooltip = null;
+function ensureGridTooltip(){
+  if(__gridGraphTooltip) return __gridGraphTooltip;
+  const t = document.createElement('div');
+  t.className = 'graph-tooltip';
+  t.setAttribute('role', 'status');
+  t.style.position = 'fixed';
+  t.style.pointerEvents = 'none';
+  t.style.zIndex = 9999;
+  t.style.display = 'none';
+  document.body.appendChild(t);
+  __gridGraphTooltip = t;
+  return t;
+}
+function showGridTooltip(html, x, y){
+  const t = ensureGridTooltip();
+  t.innerHTML = html;
+  t.style.display = 'block';
+  const offsetX = 12; const offsetY = 12;
+  const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+  const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+  let left = x + offsetX;
+  let top = y + offsetY;
+  const rect = t.getBoundingClientRect();
+  if(left + rect.width > vw) left = Math.max(8, x - rect.width - offsetX);
+  if(top + rect.height > vh) top = Math.max(8, y - rect.height - offsetY);
+  t.style.left = left + 'px';
+  t.style.top = top + 'px';
+}
+function hideGridTooltip(){ if(__gridGraphTooltip) __gridGraphTooltip.style.display = 'none'; }
+function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>\"]/g, (ch)=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch])); }
 
 export function renderSummary(container, deckTotal, count){
   const parts = [];
@@ -60,7 +94,7 @@ export function render(items, overrides={}){
   img.loading = useSm ? 'eager' : 'lazy';
   img.style.opacity = '0';
   img.style.transition = 'opacity .18s ease-out';
-  const candidates = buildThumbCandidates(it.name, useSm, overrides);
+  const candidates = buildThumbCandidates(it.name, useSm, overrides, { set: it.set, number: it.number });
     let idx = 0;
     const tryNext = () => {
       if(idx >= candidates.length){
@@ -116,35 +150,51 @@ export function render(items, overrides={}){
         const h = d ? Math.max(2, Math.round(54 * (d.percent / maxPct))) : 2;
         bar.style.height = h + 'px';
         if(!d){ bar.style.opacity = 0.25; }
-        // Tooltip: for each N, percent and raw counts if available
+        // Tooltip/ARIA: for each N, percent and raw counts if available
         if(d){
           const total = Number.isFinite(it.total) ? it.total : null;
           const players = Number.isFinite(d.players) ? d.players : null;
           const exactPct = Number.isFinite(d.percent) ? d.percent : (players!=null && total ? (100*players/total) : null);
           const pctStr = exactPct!=null ? exactPct.toFixed(1)+'%' : '—';
           const countsStr = (players!=null && total!=null) ? ` (${players}/${total})` : '';
-          col.title = `${c}x: ${pctStr}${countsStr}`;
+          const tip = `${c}x: ${pctStr}${countsStr}`;
+          col.setAttribute('tabindex', '0');
+          col.setAttribute('role', 'img');
+          col.setAttribute('aria-label', tip);
+          col.addEventListener('mousemove', (ev) => showGridTooltip(`<strong>${escapeHtml(it.name)}</strong><div>${escapeHtml(tip)}</div>`, ev.clientX, ev.clientY));
+          col.addEventListener('mouseenter', (ev) => showGridTooltip(`<strong>${escapeHtml(it.name)}</strong><div>${escapeHtml(tip)}</div>`, ev.clientX, ev.clientY));
+          col.addEventListener('mouseleave', hideGridTooltip);
+          col.addEventListener('focus', (ev) => showGridTooltip(`<strong>${escapeHtml(it.name)}</strong><div>${escapeHtml(tip)}</div>`, ev.clientX || 0, ev.clientY || 0));
+          col.addEventListener('blur', hideGridTooltip);
         } else {
-          col.title = `${c}x: 0%`;
+          const tip = `${c}x: 0%`;
+          col.setAttribute('tabindex', '0');
+          col.setAttribute('role', 'img');
+          col.setAttribute('aria-label', tip);
+          col.addEventListener('mouseenter', (ev) => showGridTooltip(`<strong>${escapeHtml(it.name)}</strong><div>${escapeHtml(tip)}</div>`, ev.clientX, ev.clientY));
+          col.addEventListener('mouseleave', hideGridTooltip);
+          col.addEventListener('focus', (ev) => showGridTooltip(`<strong>${escapeHtml(it.name)}</strong><div>${escapeHtml(tip)}</div>`, ev.clientX || 0, ev.clientY || 0));
+          col.addEventListener('blur', hideGridTooltip);
         }
         col.appendChild(bar);
         col.appendChild(lbl);
         hist.appendChild(col);
       }
     }
-    // Navigate to per-card page on click/Enter
+    // Navigate to per-card page on click/Enter; ctrl/meta opens new tab
     card.addEventListener('click', (e) => {
       const url = `card.html#card/${encodeURIComponent(it.name)}`;
       if(e.ctrlKey || e.metaKey){
         window.open(url, '_blank');
       } else {
-        location.href = url;
+        location.assign(url);
       }
     });
     card.addEventListener('keydown', (e) => {
       if(e.key === 'Enter' || e.key === ' '){
         e.preventDefault();
-        location.href = `card.html#card/${encodeURIComponent(it.name)}`;
+        const url = `card.html#card/${encodeURIComponent(it.name)}`;
+        location.assign(url);
       }
     });
     return el;
@@ -161,9 +211,10 @@ export function render(items, overrides={}){
     row.className = 'row';
     row.dataset.rowIndex = String(rowIndex);
   const isBig = rowIndex < bigRows;
-    const scale = isBig ? 1 : smallScale;
-    const maxCount = isBig ? perRowBig : targetSmall;
-    row.style.setProperty('--scale', String(scale));
+  const scale = isBig ? 1 : smallScale;
+  const maxCount = isBig ? perRowBig : targetSmall;
+  row.style.setProperty('--scale', String(scale));
+  // Use the base width for big rows and base for small rows (scaled via --scale)
   row.style.setProperty('--card-base', base + 'px');
   // Keep a consistent row width based on big row content and center it
   row.style.width = bigRowContentWidth + 'px';
@@ -188,6 +239,9 @@ export function render(items, overrides={}){
     while(idx < items.length){ cnt++; const isBigLocal = cnt-1 < bigRows; const maxCount = isBigLocal ? perRowBig : targetSmall; idx += maxCount; }
     return cnt;
   })();
+  // Persist totals so resize handler can decide whether to show More after reflow
+  grid._totalRows = estimateTotalRows;
+  grid._totalCards = items.length;
   if(rowIndex < estimateTotalRows){
     const moreWrap = document.createElement('div'); moreWrap.className = 'more-rows';
     const moreBtn = document.createElement('button'); moreBtn.className = 'btn'; moreBtn.type = 'button'; moreBtn.textContent = 'More...';
@@ -203,6 +257,8 @@ export function render(items, overrides={}){
     });
     moreWrap.appendChild(moreBtn);
     grid.appendChild(moreWrap);
+    // Keep a reference so updateLayout can re-attach after rebuilds
+    grid._moreWrapRef = moreWrap;
   }
 
   // Keyboard navigation: arrow keys move focus across cards by row/column
@@ -265,10 +321,44 @@ export function updateLayout(){
   const { base, perRowBig, bigRowContentWidth, targetSmall, smallScale, bigRows } = computeLayout(containerWidth);
   syncControlsWidth(bigRowContentWidth);
 
+  // Fast path: If row grouping hasn't changed, avoid rebuilding the entire grid.
+  // Only update CSS vars and row widths/scales in-place to minimize DOM churn.
+  const prev = grid._layoutMetrics;
+  const groupingUnchanged = prev 
+    && prev.perRowBig === perRowBig 
+    && prev.targetSmall === targetSmall 
+    && prev.bigRows === bigRows;
+  if (groupingUnchanged) {
+    const rows = Array.from(grid.querySelectorAll('.row'));
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++){
+      const row = rows[rowIndex];
+      const isBig = rowIndex < bigRows;
+      const scale = isBig ? 1 : smallScale;
+      row.style.setProperty('--scale', String(scale));
+      row.style.setProperty('--card-base', base + 'px');
+      // Keep consistent width and centering
+      const widthPx = bigRowContentWidth + 'px';
+      if (row.style.width !== widthPx) row.style.width = widthPx;
+      if (row.style.margin !== '0 auto') row.style.margin = '0 auto';
+    }
+    // Store latest metrics and return
+    grid._layoutMetrics = { base, perRowBig, bigRowContentWidth, targetSmall, smallScale, bigRows };
+    return;
+  }
+
   // Build rows and re-append existing cards
+  // Preserve existing More... control, if any, to re-attach after rebuild
+  const savedMore = grid.querySelector('.more-rows') || grid._moreWrapRef || null;
   const frag = document.createDocumentFragment();
   let i = 0;
   let rowIndex = 0;
+  // Compute the total number of rows for ALL items based on latest layout
+  const totalCards = Number.isInteger(grid._totalCards) ? grid._totalCards : cards.length;
+  const newTotalRows = (() => {
+    let cnt = 0; let idx = 0;
+    while(idx < totalCards){ cnt++; const isBigLocal = cnt-1 < bigRows; const maxCount = isBigLocal ? perRowBig : targetSmall; idx += maxCount; }
+    return cnt;
+  })();
   while(i < cards.length){
     const row = document.createElement('div');
     row.className = 'row';
@@ -294,4 +384,12 @@ export function updateLayout(){
   // Replace rows; event listeners on cards remain intact
   grid.innerHTML = '';
   grid.appendChild(frag);
+  // Restore More... button if there are additional rows beyond the visible ones
+  if (savedMore && rowIndex < newTotalRows) {
+    grid.appendChild(savedMore);
+    grid._moreWrapRef = savedMore;
+  }
+  // Cache last layout metrics for fast-path updates on minor resizes
+  grid._layoutMetrics = { base, perRowBig, bigRowContentWidth, targetSmall, smallScale, bigRows };
+  grid._totalRows = newTotalRows;
 }

@@ -1,0 +1,448 @@
+{
+  "deckTotal": 7,
+  "items": [
+    {
+      "rank": 1,
+      "name": "Toedscruel ex",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "OBF",
+      "number": "022",
+      "uid": "Toedscruel ex::OBF::022"
+    },
+    {
+      "rank": 2,
+      "name": "Toedscruel",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "017",
+      "uid": "Toedscruel::PAR::017"
+    },
+    {
+      "rank": 3,
+      "name": "Teal Mask Ogerpon ex",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "025",
+      "uid": "Teal Mask Ogerpon ex::TWM::025"
+    },
+    {
+      "rank": 4,
+      "name": "Iron Leaves ex",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "025",
+      "uid": "Iron Leaves ex::TEF::025"
+    },
+    {
+      "rank": 5,
+      "name": "Latias ex",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "076",
+      "uid": "Latias ex::SSP::076"
+    },
+    {
+      "rank": 6,
+      "name": "Fezandipiti ex",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "038",
+      "uid": "Fezandipiti ex::SFA::038"
+    },
+    {
+      "rank": 7,
+      "name": "Mew ex",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEW",
+      "number": "151",
+      "uid": "Mew ex::MEW::151"
+    },
+    {
+      "rank": 8,
+      "name": "Budew",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "PRE",
+      "number": "004",
+      "uid": "Budew::PRE::004"
+    },
+    {
+      "rank": 9,
+      "name": "Professor's Research",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 7,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "name": "Iono",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 7,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Boss's Orders",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 57.14
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 42.86
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Bug Catching Set",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 7,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Nest Ball",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 7,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Energy Switch",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 7,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Ultra Ball",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 7,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Super Rod",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 7,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Prime Catcher",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Area Zero Underdepths",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 57.14
+        },
+        {
+          "copies": 4,
+          "players": 3,
+          "percent": 42.86
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Grass Energy",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 11,
+          "players": 1,
+          "percent": 14.29
+        },
+        {
+          "copies": 12,
+          "players": 6,
+          "percent": 85.71
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Toedscool",
+      "found": 6,
+      "total": 7,
+      "pct": 85.71,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 66.67
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 33.33
+        }
+      ],
+      "set": "PAR",
+      "number": "016",
+      "uid": "Toedscool::PAR::016"
+    },
+    {
+      "rank": 21,
+      "name": "Squawkabilly ex",
+      "found": 6,
+      "total": 7,
+      "pct": 85.71,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "169",
+      "uid": "Squawkabilly ex::PAL::169"
+    },
+    {
+      "rank": 22,
+      "name": "Toedscool",
+      "found": 4,
+      "total": 7,
+      "pct": 57.14,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "SCR",
+      "number": "017",
+      "uid": "Toedscool::SCR::017"
+    },
+    {
+      "rank": 23,
+      "name": "Shaymin",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "DRI",
+      "number": "010",
+      "uid": "Shaymin::DRI::010"
+    },
+    {
+      "rank": 24,
+      "name": "Terapagos ex",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SCR",
+      "number": "128",
+      "uid": "Terapagos ex::SCR::128"
+    },
+    {
+      "rank": 25,
+      "name": "Toedscool",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "025",
+      "uid": "Toedscool::SVI::025"
+    },
+    {
+      "rank": 26,
+      "name": "Toedscool",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "015",
+      "uid": "Toedscool::PAR::015"
+    },
+    {
+      "rank": 27,
+      "name": "Jamming Tower",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    }
+  ]
+}

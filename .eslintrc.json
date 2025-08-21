@@ -1,0 +1,19 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2021,
+    "sourceType": "module"
+  },
+  "rules": {
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "PropertyDefinition[kind='field'][key.type='PrivateIdentifier']",
+        "message": "Private class fields are disallowed for compatibility with older mobile browsers. Use underscored properties or closures instead."
+      }
+    ]
+  }
+}
