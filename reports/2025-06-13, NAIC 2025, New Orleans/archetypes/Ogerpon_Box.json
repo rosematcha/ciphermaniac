@@ -1,0 +1,399 @@
+{
+  "deckTotal": 1,
+  "items": [
+    {
+      "rank": 1,
+      "name": "Teal Mask Ogerpon ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "025",
+      "uid": "Teal Mask Ogerpon ex::TWM::025"
+    },
+    {
+      "rank": 2,
+      "name": "Cornerstone Mask Ogerpon ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "112",
+      "uid": "Cornerstone Mask Ogerpon ex::TWM::112"
+    },
+    {
+      "rank": 3,
+      "name": "Wellspring Mask Ogerpon ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "064",
+      "uid": "Wellspring Mask Ogerpon ex::TWM::064"
+    },
+    {
+      "rank": 4,
+      "name": "Lillie's Clefairy ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "JTG",
+      "number": "056",
+      "uid": "Lillie's Clefairy ex::JTG::056"
+    },
+    {
+      "rank": 5,
+      "name": "Fezandipiti ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "038",
+      "uid": "Fezandipiti ex::SFA::038"
+    },
+    {
+      "rank": 6,
+      "name": "Latias ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "076",
+      "uid": "Latias ex::SSP::076"
+    },
+    {
+      "rank": 7,
+      "name": "Squawkabilly ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "169",
+      "uid": "Squawkabilly ex::PAL::169"
+    },
+    {
+      "rank": 8,
+      "name": "Mew ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEW",
+      "number": "151",
+      "uid": "Mew ex::MEW::151"
+    },
+    {
+      "rank": 9,
+      "name": "Iron Bundle",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "056",
+      "uid": "Iron Bundle::PAR::056"
+    },
+    {
+      "rank": 10,
+      "name": "Bloodmoon Ursaluna ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "141",
+      "uid": "Bloodmoon Ursaluna ex::TWM::141"
+    },
+    {
+      "rank": 11,
+      "name": "Boss's Orders",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Professor's Research",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Iono",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Penny",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Energy Switch",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Nest Ball",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Earthen Vessel",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Ultra Ball",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Night Stretcher",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Tera Orb",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Ogre's Mask",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "Bravery Charm",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "name": "Grass Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 8,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Luminous Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "Legacy Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 26,
+      "name": "Psychic Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    }
+  ]
+}

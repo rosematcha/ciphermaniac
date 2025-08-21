@@ -1,0 +1,408 @@
+{
+  "generatedAt": "2025-08-21T05:46:24.772275+00:00",
+  "source": "generate_suggestions.py",
+  "categories": [
+    {
+      "id": "consistent-leaders",
+      "title": "Consistent Leaders",
+      "items": [
+        {
+          "name": "Ultra Ball",
+          "uid": "Ultra Ball",
+          "set": null,
+          "number": null
+        },
+        {
+          "name": "Fezandipiti ex",
+          "uid": "Fezandipiti ex::SFA::038",
+          "set": "SFA",
+          "number": "038"
+        },
+        {
+          "name": "Night Stretcher",
+          "uid": "Night Stretcher",
+          "set": null,
+          "number": null
+        },
+        {
+          "name": "Nest Ball",
+          "uid": "Nest Ball",
+          "set": null,
+          "number": null
+        },
+        {
+          "name": "Iono",
+          "uid": "Iono",
+          "set": null,
+          "number": null
+        },
+        {
+          "name": "Boss's Orders",
+          "uid": "Boss's Orders",
+          "set": null,
+          "number": null
+        },
+        {
+          "name": "Counter Catcher",
+          "uid": "Counter Catcher",
+          "set": null,
+          "number": null
+        },
+        {
+          "name": "Earthen Vessel",
+          "uid": "Earthen Vessel",
+          "set": null,
+          "number": null
+        },
+        {
+          "name": "Buddy-Buddy Poffin",
+          "uid": "Buddy-Buddy Poffin",
+          "set": null,
+          "number": null
+        },
+        {
+          "name": "Munkidori",
+          "uid": "Munkidori::TWM::095",
+          "set": "TWM",
+          "number": "095"
+        },
+        {
+          "name": "Arven",
+          "uid": "Arven",
+          "set": null,
+          "number": null
+        },
+        {
+          "name": "Professor's Research",
+          "uid": "Professor's Research",
+          "set": null,
+          "number": null
+        },
+        {
+          "name": "Professor Turo's Scenario",
+          "uid": "Professor Turo's Scenario",
+          "set": null,
+          "number": null
+        },
+        {
+          "name": "Latias ex",
+          "uid": "Latias ex::SSP::076",
+          "set": "SSP",
+          "number": "076"
+        },
+        {
+          "name": "Bloodmoon Ursaluna ex",
+          "uid": "Bloodmoon Ursaluna ex::TWM::141",
+          "set": "TWM",
+          "number": "141"
+        },
+        {
+          "name": "Crispin",
+          "uid": "Crispin",
+          "set": null,
+          "number": null
+        },
+        {
+          "name": "Budew",
+          "uid": "Budew::PRE::004",
+          "set": "PRE",
+          "number": "004"
+        },
+        {
+          "name": "Bravery Charm",
+          "uid": "Bravery Charm",
+          "set": null,
+          "number": null
+        }
+      ]
+    },
+    {
+      "id": "on-the-rise",
+      "title": "On The Rise",
+      "items": [
+        {
+          "name": "Levincia",
+          "uid": "Levincia",
+          "set": null,
+          "number": null,
+          "archetype": "Gholdengo"
+        },
+        {
+          "name": "Gimmighoul",
+          "uid": "Gimmighoul::PAR::087",
+          "set": "PAR",
+          "number": "087",
+          "archetype": "Gholdengo"
+        },
+        {
+          "name": "Neo Upper Energy",
+          "uid": "Neo Upper Energy",
+          "set": null,
+          "number": null,
+          "archetype": "Dragapult Dusknoir"
+        },
+        {
+          "name": "Dusclops",
+          "uid": "Dusclops::SFA::019",
+          "set": "SFA",
+          "number": "019",
+          "archetype": "Dragapult Dusknoir"
+        },
+        {
+          "name": "Chi-Yu",
+          "uid": "Chi-Yu::PAR::029",
+          "set": "PAR",
+          "number": "029",
+          "archetype": "Charizard Pidgeot"
+        },
+        {
+          "name": "Charmeleon",
+          "uid": "Charmeleon::MEW::005",
+          "set": "MEW",
+          "number": "005",
+          "archetype": "Charizard Pidgeot"
+        },
+        {
+          "name": "Chien-Pao",
+          "uid": "Chien-Pao::SSP::056",
+          "set": "SSP",
+          "number": "056",
+          "archetype": "Raging Bolt Ogerpon"
+        },
+        {
+          "name": "Leafeon ex",
+          "uid": "Leafeon ex::PRE::006",
+          "set": "PRE",
+          "number": "006",
+          "archetype": "Tera Box"
+        },
+        {
+          "name": "Gravity Mountain",
+          "uid": "Gravity Mountain",
+          "set": null,
+          "number": null,
+          "archetype": "Flareon Noctowl"
+        },
+        {
+          "name": "Koraidon",
+          "uid": "Koraidon::SSP::116",
+          "set": "SSP",
+          "number": "116",
+          "archetype": "Raging Bolt Ogerpon"
+        },
+        {
+          "name": "Technical Machine: Turbo Energize",
+          "uid": "Technical Machine: Turbo Energize",
+          "set": null,
+          "number": null,
+          "archetype": "N's Zoroark"
+        },
+        {
+          "name": "Snorunt",
+          "uid": "Snorunt::TWM::051",
+          "set": "TWM",
+          "number": "051",
+          "archetype": "Grimmsnarl Froslass"
+        },
+        {
+          "name": "Marnie's Grimmsnarl ex",
+          "uid": "Marnie's Grimmsnarl ex::DRI::136",
+          "set": "DRI",
+          "number": "136",
+          "archetype": "Grimmsnarl Froslass"
+        }
+      ]
+    },
+    {
+      "id": "chopped-and-washed",
+      "title": "Chopped and Washed",
+      "items": [
+        {
+          "name": "Bouffalant",
+          "uid": "Bouffalant::SCR::119",
+          "set": "SCR",
+          "number": "119",
+          "score": 102.314,
+          "peak": 11.4,
+          "latest": 0.0,
+          "archetype": "Terapagos Noctowl"
+        },
+        {
+          "name": "Dudunsparce",
+          "uid": "Dudunsparce::TEF::129",
+          "set": "TEF",
+          "number": "129",
+          "score": 97.282,
+          "peak": 11.03,
+          "latest": 0.0,
+          "archetype": "Roaring Moon Dudunsparce"
+        },
+        {
+          "name": "Dunsparce",
+          "uid": "Dunsparce::PAL::156",
+          "set": "PAL",
+          "number": "156",
+          "score": 92.364,
+          "peak": 10.66,
+          "latest": 0.0,
+          "archetype": "Roaring Moon Dudunsparce"
+        },
+        {
+          "name": "Morty's Conviction",
+          "uid": "Morty's Conviction",
+          "set": null,
+          "number": null,
+          "score": 81.539,
+          "peak": 9.76,
+          "latest": 0.0,
+          "archetype": "Gardevoir"
+        },
+        {
+          "name": "Pokémon League Headquarters",
+          "uid": "Pokémon League Headquarters",
+          "set": null,
+          "number": null,
+          "score": 66.779,
+          "peak": 8.25,
+          "latest": 0.0,
+          "archetype": "Dragapult Charizard"
+        },
+        {
+          "name": "Vengeful Punch",
+          "uid": "Vengeful Punch",
+          "set": null,
+          "number": null,
+          "score": 65.497,
+          "peak": 8.46,
+          "latest": 0.0,
+          "archetype": "Gholdengo Dragapult"
+        },
+        {
+          "name": "Dudunsparce ex",
+          "uid": "Dudunsparce ex::JTG::121",
+          "set": "JTG",
+          "number": "121",
+          "score": 65.497,
+          "peak": 8.46,
+          "latest": 0.0,
+          "archetype": "Gholdengo Dudunsparce"
+        },
+        {
+          "name": "Klefki",
+          "uid": "Klefki::SVI::096",
+          "set": "SVI",
+          "number": "096",
+          "score": 61.377,
+          "peak": 8.09,
+          "latest": 0.0,
+          "archetype": "Gardevoir"
+        },
+        {
+          "name": "Ancient Booster Energy Capsule",
+          "uid": "Ancient Booster Energy Capsule",
+          "set": null,
+          "number": null,
+          "score": 58.701,
+          "peak": 7.8,
+          "latest": 0.0,
+          "archetype": "Poison Archaludon"
+        },
+        {
+          "name": "Brute Bonnet",
+          "uid": "Brute Bonnet::PAR::123",
+          "set": "PAR",
+          "number": "123",
+          "score": 49.807,
+          "peak": 6.99,
+          "latest": 0.0,
+          "archetype": "Poison Archaludon"
+        },
+        {
+          "name": "Volcanion ex",
+          "uid": "Volcanion ex::JTG::031",
+          "set": "JTG",
+          "number": "031",
+          "score": 48.902,
+          "peak": 6.63,
+          "latest": 0.0,
+          "archetype": "Flareon Noctowl"
+        },
+        {
+          "name": "Reversal Energy",
+          "uid": "Reversal Energy",
+          "set": null,
+          "number": null,
+          "score": 35.346,
+          "peak": 5.34,
+          "latest": 0.0,
+          "archetype": "N's Zoroark"
+        },
+        {
+          "name": "Counter Gain",
+          "uid": "Counter Gain",
+          "set": null,
+          "number": null,
+          "score": 34.605,
+          "peak": 5.15,
+          "latest": 0.0,
+          "archetype": "N's Zoroark"
+        },
+        {
+          "name": "Roaring Moon ex",
+          "uid": "Roaring Moon ex::PAR::124",
+          "set": "PAR",
+          "number": "124",
+          "score": 32.19,
+          "peak": 4.98,
+          "latest": 0.0,
+          "archetype": "Blissey"
+        },
+        {
+          "name": "Umbreon ex",
+          "uid": "Umbreon ex::PRE::060",
+          "set": "PRE",
+          "number": "060",
+          "score": 25.673,
+          "peak": 4.05,
+          "latest": 0.0,
+          "archetype": "Flareon Noctowl"
+        },
+        {
+          "name": "Relicanth",
+          "uid": "Relicanth::TEF::084",
+          "set": "TEF",
+          "number": "084",
+          "score": 23.788,
+          "peak": 4.04,
+          "latest": 0.0,
+          "archetype": "Archaludon Zoroark"
+        },
+        {
+          "name": "Rabsca",
+          "uid": "Rabsca::TEF::024",
+          "set": "TEF",
+          "number": "024",
+          "score": 23.027,
+          "peak": 3.72,
+          "latest": 0.0,
+          "archetype": "Festival Lead"
+        },
+        {
+          "name": "Hoothoot",
+          "uid": "Hoothoot::TEF::126",
+          "set": "TEF",
+          "number": "126",
+          "score": 22.801,
+          "peak": 7.14,
+          "latest": 0.79,
+          "archetype": "Raging Bolt Ogerpon"
+        }
+      ]
+    },
+    {
+      "id": "that-day2d",
+      "title": "That Day 2'd?",
+      "items": []
+    }
+  ]
+}

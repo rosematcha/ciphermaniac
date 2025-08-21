@@ -1,0 +1,382 @@
+{
+  "deckTotal": 1,
+  "items": [
+    {
+      "rank": 1,
+      "name": "Duskull",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "018",
+      "uid": "Duskull::SFA::018"
+    },
+    {
+      "rank": 2,
+      "name": "Dusclops",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "019",
+      "uid": "Dusclops::SFA::019"
+    },
+    {
+      "rank": 3,
+      "name": "Dusknoir",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "020",
+      "uid": "Dusknoir::SFA::020"
+    },
+    {
+      "rank": 4,
+      "name": "Charmander",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAF",
+      "number": "007",
+      "uid": "Charmander::PAF::007"
+    },
+    {
+      "rank": 5,
+      "name": "Charmeleon",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEW",
+      "number": "005",
+      "uid": "Charmeleon::MEW::005"
+    },
+    {
+      "rank": 6,
+      "name": "Charizard ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "OBF",
+      "number": "125",
+      "uid": "Charizard ex::OBF::125"
+    },
+    {
+      "rank": 7,
+      "name": "Chi-Yu",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "029",
+      "uid": "Chi-Yu::PAR::029"
+    },
+    {
+      "rank": 8,
+      "name": "Budew",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PRE",
+      "number": "004",
+      "uid": "Budew::PRE::004"
+    },
+    {
+      "rank": 9,
+      "name": "Iron Bundle",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "056",
+      "uid": "Iron Bundle::PAR::056"
+    },
+    {
+      "rank": 10,
+      "name": "Iono",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Arven",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Jacq",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Professor's Research",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Brock's Scouting",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Boss's Orders",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Buddy-Buddy Poffin",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Rare Candy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Ultra Ball",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Pokégear 3.0",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Counter Catcher",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Precious Trolley",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "Energy Search",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "name": "Technical Machine: Evolution",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Defiance Band",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "Fire Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 7,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    }
+  ]
+}

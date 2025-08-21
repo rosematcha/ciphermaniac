@@ -4,6 +4,9 @@ import { parseReport } from './parse.js';
 import { buildThumbCandidates } from './thumbs.js';
 import { pickArchetype, baseToLabel } from './selectArchetype.js';
 import { normalizeCardRouteOnLoad } from './router.js';
+import { prettyTournamentName } from './utils/format.js';
+// Show curated suggestions on the card landing view
+import './cardsLanding.js';
 
 function getCardNameFromLocation(){
 	const params = new URLSearchParams(location.search);
@@ -25,6 +28,50 @@ const decksSection = document.getElementById('card-decks');
 const eventsSection = document.getElementById('card-events');
 const copiesSection = document.getElementById('card-copies');
 const backLink = document.getElementById('back-link');
+// Lightweight floating tooltip used for charts/histograms
+let __graphTooltipEl = null;
+function ensureGraphTooltip(){
+	if(__graphTooltipEl) return __graphTooltipEl;
+	const t = document.createElement('div');
+	t.className = 'graph-tooltip';
+	t.setAttribute('role', 'status');
+	t.style.position = 'fixed';
+	t.style.pointerEvents = 'none';
+	t.style.zIndex = 9999;
+	t.style.display = 'none';
+	document.body.appendChild(t);
+	__graphTooltipEl = t;
+	return t;
+}
+function showGraphTooltip(html, x, y){
+	const t = ensureGraphTooltip();
+	t.innerHTML = html;
+	t.style.display = 'block';
+	// offset so pointer doesn't overlap
+	const offsetX = 12; const offsetY = 12;
+	// clamp to viewport
+	const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+	const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+	let left = x + offsetX;
+	let top = y + offsetY;
+	// if overflowing right, move left
+	const rect = t.getBoundingClientRect();
+	if(left + rect.width > vw) left = Math.max(8, x - rect.width - offsetX);
+	if(top + rect.height > vh) top = Math.max(8, y - rect.height - offsetY);
+	t.style.left = left + 'px';
+	t.style.top = top + 'px';
+}
+function hideGraphTooltip(){
+	const t = __graphTooltipEl;
+	if(!t) return;
+	t.style.display = 'none';
+}
+
+// Simple HTML escaper for tooltip content
+function escapeHtml(str){
+	if(!str) return '';
+	return String(str).replace(/[&<>\"]/g, (s) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[s]);
+}
 if(backLink){ backLink.href = 'index.html'; }
 const analysisSel = document.getElementById('analysis-event');
 const analysisTable = document.getElementById('analysis-table');
@@ -34,6 +81,16 @@ const cardSearchInput = document.getElementById('card-search');
 const cardNamesList = document.getElementById('card-names');
 const suggestionsBox = document.getElementById('card-suggestions');
 // Copy link button removed per request
+
+// When navigating between cards via hash (e.g., from Suggestions), reload to re-init
+try{
+	window.addEventListener('hashchange', () => {
+		// Only react if we're on card.html and the hash points to a card route
+		if(/^#card\//.test(location.hash)){
+			location.reload();
+		}
+	});
+}catch{}
 
 // Link to grid prefilled with search
 if(searchInGrid){
@@ -280,20 +337,61 @@ function renderChart(container, points){
 	line.setAttribute('stroke', '#6aa3ff');
 	line.setAttribute('stroke-width', '2');
 	svg.appendChild(line);
-	// dots
-	points.forEach((p,i)=>{
-		const c = document.createElementNS(svgNS, 'circle');
-		c.setAttribute('cx', String(scaleX(i)));
-		c.setAttribute('cy', String(scaleY(p.pct || 0)));
-		c.setAttribute('r', '3');
-		c.setAttribute('fill', '#6aa3ff');
-		const tip = `${p.tournament}: ${(p.pct||0).toFixed(1)}%`;
-		c.setAttribute('title', tip);
-		c.setAttribute('tabindex', '0');
-		c.setAttribute('role', 'img');
-		c.setAttribute('aria-label', tip);
-		svg.appendChild(c);
-	});
+
+	// Add a transparent, thick hit-path on top of the line so hovering anywhere near it
+	// will show tooltip information for the nearest point.
+	const hit = document.createElementNS(svgNS, 'path');
+	hit.setAttribute('d', path);
+	hit.setAttribute('fill', 'none');
+	hit.setAttribute('stroke', 'transparent');
+	hit.setAttribute('stroke-width', '18');
+	hit.setAttribute('pointer-events', 'stroke');
+	svg.appendChild(hit);
+	function onHitMove(ev){
+		try{
+			const rect = svg.getBoundingClientRect();
+			const svgX = ev.clientX - rect.left;
+			const norm = (svgX - pad) / (w - 2*pad);
+			const idx = Math.round(norm * Math.max(1, xs.length - 1));
+			const i = Math.max(0, Math.min(xs.length - 1, idx));
+			const p = points[i];
+			if(p){
+				showGraphTooltip(`<strong>${escapeHtml(prettyTournamentName(p.tournament))}</strong><div>${(p.pct||0).toFixed(1)}%</div>`, ev.clientX, ev.clientY);
+			}
+		}catch(e){}
+	}
+	hit.addEventListener('mousemove', onHitMove);
+	hit.addEventListener('mouseenter', onHitMove);
+	hit.addEventListener('mouseleave', hideGraphTooltip);
+		// dots
+		points.forEach((p,i)=>{
+				const cx = scaleX(i);
+				const cy = scaleY(p.pct || 0);
+				// visible small dot
+				const dot = document.createElementNS(svgNS, 'circle');
+				dot.setAttribute('cx', String(cx));
+				dot.setAttribute('cy', String(cy));
+				dot.setAttribute('r', '3');
+				dot.setAttribute('fill', '#6aa3ff');
+				svg.appendChild(dot);
+				// larger invisible hit target behind the dot for easier hover
+				const hitDot = document.createElementNS(svgNS, 'circle');
+				hitDot.setAttribute('cx', String(cx));
+				hitDot.setAttribute('cy', String(cy));
+				hitDot.setAttribute('r', '12');
+				hitDot.setAttribute('fill', 'transparent');
+				hitDot.setAttribute('pointer-events', 'all');
+				const tip = `${prettyTournamentName(p.tournament)}: ${(p.pct||0).toFixed(1)}%`;
+				hitDot.setAttribute('tabindex', '0');
+				hitDot.setAttribute('role', 'img');
+				hitDot.setAttribute('aria-label', tip);
+				hitDot.addEventListener('mousemove', (ev) => showGraphTooltip(`<strong>${escapeHtml(prettyTournamentName(p.tournament))}</strong><div>${(p.pct||0).toFixed(1)}%</div>`, ev.clientX, ev.clientY));
+				hitDot.addEventListener('mouseenter', (ev) => showGraphTooltip(`<strong>${escapeHtml(prettyTournamentName(p.tournament))}</strong><div>${(p.pct||0).toFixed(1)}%</div>`, ev.clientX, ev.clientY));
+				hitDot.addEventListener('mouseleave', hideGraphTooltip);
+				hitDot.addEventListener('focus', (ev) => showGraphTooltip(`<strong>${escapeHtml(prettyTournamentName(p.tournament))}</strong><div>${(p.pct||0).toFixed(1)}%</div>`, ev.clientX || 0, ev.clientY || 0));
+				hitDot.addEventListener('blur', hideGraphTooltip);
+				svg.appendChild(hitDot);
+		});
 		container.innerHTML = '';
 		container.appendChild(svg);
 	const caption = document.createElement('div');
@@ -320,7 +418,15 @@ function renderCopiesHistogram(container, overall){
 		const bar = document.createElement('div'); bar.className='bar';
 		bar.style.height = Math.max(2, Math.round(54 * (pct / maxPct))) + 'px';
 		const lbl = document.createElement('div'); lbl.className='lbl'; lbl.textContent=String(c);
-		col.title = `${c}x: ${pct.toFixed(1)}%${(d&&total)?` (${d.players}/${total})`:''}`;
+		const tipText = d ? `${c}x: ${pct.toFixed(1)}%${(d&&total)?` (${d.players}/${total})`:''}` : `${c}x: 0%`;
+		col.setAttribute('tabindex', '0');
+		col.setAttribute('role', 'img');
+		col.setAttribute('aria-label', tipText);
+		col.addEventListener('mousemove', (ev) => showGraphTooltip(escapeHtml(tipText), ev.clientX, ev.clientY));
+		col.addEventListener('mouseenter', (ev) => showGraphTooltip(escapeHtml(tipText), ev.clientX, ev.clientY));
+		col.addEventListener('mouseleave', hideGraphTooltip);
+		col.addEventListener('focus', (ev) => showGraphTooltip(escapeHtml(tipText), ev.clientX || 0, ev.clientY || 0));
+		col.addEventListener('blur', hideGraphTooltip);
 		col.appendChild(bar); col.appendChild(lbl); hist.appendChild(col);
 	}
 	container.appendChild(hist);
@@ -349,7 +455,7 @@ function renderDecks(container, rows){
 			// Tournament cell is a link back to main with tournament selected
 			const tLink = document.createElement('a');
 			tLink.href = `index.html?tour=${encodeURIComponent(r.tournament)}`;
-			tLink.textContent = r.tournament;
+			tLink.textContent = prettyTournamentName(r.tournament);
 			const cells = [tLink, r.pct!=null? r.pct.toFixed(1)+'%':'—', r.found!=null && r.total!=null? `${r.found}/${r.total}`:'—'];
 			cells.forEach((v,i)=>{ const td = document.createElement('td'); if(v instanceof HTMLElement){ td.appendChild(v); } else { td.textContent = v; } td.style.padding='10px 12px'; if(i===1) td.style.textAlign='right'; tr.appendChild(td); });
 		tbody.appendChild(tr);
@@ -369,7 +475,7 @@ function renderEvents(container, rows){
 	const tbody = document.createElement('tbody');
 	rows.forEach(r => {
 		const tr = document.createElement('tr');
-		const tLink = document.createElement('a'); tLink.href = `index.html?tour=${encodeURIComponent(r.tournament)}`; tLink.textContent = r.tournament;
+		const tLink = document.createElement('a'); tLink.href = `index.html?tour=${encodeURIComponent(r.tournament)}`; tLink.textContent = prettyTournamentName(r.tournament);
 	const cells = [tLink, r.pct!=null? r.pct.toFixed(1)+'%':'—'];
 	cells.forEach((v,i)=>{ const td = document.createElement('td'); if(v instanceof HTMLElement){ td.appendChild(v); } else { td.textContent = v; } td.style.padding='10px 12px'; if(i===1) td.style.textAlign='right'; tr.appendChild(td); });
 		tbody.appendChild(tr);

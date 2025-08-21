@@ -1,0 +1,438 @@
+{
+  "deckTotal": 1,
+  "items": [
+    {
+      "rank": 1,
+      "name": "Comfey",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "079",
+      "uid": "Comfey::LOR::079"
+    },
+    {
+      "rank": 2,
+      "name": "Giratina V",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "130",
+      "uid": "Giratina V::LOR::130"
+    },
+    {
+      "rank": 3,
+      "name": "Giratina VSTAR",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "131",
+      "uid": "Giratina VSTAR::LOR::131"
+    },
+    {
+      "rank": 4,
+      "name": "Manaphy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "BRS",
+      "number": "041",
+      "uid": "Manaphy::BRS::041"
+    },
+    {
+      "rank": 5,
+      "name": "Sableye",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "070",
+      "uid": "Sableye::LOR::070"
+    },
+    {
+      "rank": 6,
+      "name": "Bloodmoon Ursaluna ex",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "141",
+      "uid": "Bloodmoon Ursaluna ex::TWM::141"
+    },
+    {
+      "rank": 7,
+      "name": "Radiant Greninja",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "ASR",
+      "number": "046",
+      "uid": "Radiant Greninja::ASR::046"
+    },
+    {
+      "rank": 8,
+      "name": "Spiritomb",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "089",
+      "uid": "Spiritomb::PAL::089"
+    },
+    {
+      "rank": 9,
+      "name": "Cramorant",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "050",
+      "uid": "Cramorant::LOR::050"
+    },
+    {
+      "rank": 10,
+      "name": "Colress's Experiment",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Boss's Orders",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Roxanne",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Super Rod",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Mirage Gate",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Buddy-Buddy Poffin",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Nest Ball",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Switch",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Switch Cart",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Counter Catcher",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Hisuian Heavy Ball",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Lost Vacuum",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "Pokégear 3.0",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "name": "Unfair Stamp",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Technical Machine: Devolution",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "Temple of Sinnoh",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 26,
+      "name": "Jet Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 27,
+      "name": "Water Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 28,
+      "name": "Grass Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 29,
+      "name": "Psychic Energy",
+      "found": 1,
+      "total": 1,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    }
+  ]
+}

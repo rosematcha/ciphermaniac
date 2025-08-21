@@ -10,6 +10,9 @@ import { AppError, ErrorTypes, validateType } from './utils/errorHandler.js';
  * @typedef {Object} CardItem
  * @property {number} [rank] - Card rank in usage
  * @property {string} name - Card name
+ * @property {string} [uid] - Optional per-variant unique id (e.g., "Name::SET::NNN")
+ * @property {string} [set] - Optional set code for Pokémon variants
+ * @property {string|number} [number] - Optional card number for Pokémon variants
  * @property {number} found - Number of decks containing this card
  * @property {number} total - Total number of decks
  * @property {number} pct - Usage percentage
@@ -93,6 +96,10 @@ function validateAndCleanItem(item, index) {
     total: cleanTotal,
     pct: Math.round(cleanPct * 100) / 100 // Round to 2 decimal places
   };
+  // Preserve optional variant metadata if present
+  if (typeof item.uid === 'string' && item.uid) cleanItem.uid = item.uid;
+  if (typeof item.set === 'string' && item.set) cleanItem.set = item.set;
+  if (typeof item.number === 'string' || typeof item.number === 'number') cleanItem.number = item.number;
   
   // Optional fields
   if (typeof rank === 'number') {

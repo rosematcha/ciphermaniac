@@ -1,0 +1,5685 @@
+{
+  "deckTotal": 197,
+  "items": [
+    {
+      "rank": 1,
+      "name": "Boss's Orders",
+      "found": 194,
+      "total": 197,
+      "pct": 98.48,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 62,
+          "percent": 31.96
+        },
+        {
+          "copies": 2,
+          "players": 80,
+          "percent": 41.24
+        },
+        {
+          "copies": 3,
+          "players": 33,
+          "percent": 17.01
+        },
+        {
+          "copies": 4,
+          "players": 19,
+          "percent": 9.79
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "name": "Nest Ball",
+      "found": 193,
+      "total": 197,
+      "pct": 97.97,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 20,
+          "percent": 10.36
+        },
+        {
+          "copies": 2,
+          "players": 32,
+          "percent": 16.58
+        },
+        {
+          "copies": 3,
+          "players": 25,
+          "percent": 12.95
+        },
+        {
+          "copies": 4,
+          "players": 116,
+          "percent": 60.1
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "name": "Ultra Ball",
+      "found": 177,
+      "total": 197,
+      "pct": 89.85,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 2.82
+        },
+        {
+          "copies": 2,
+          "players": 51,
+          "percent": 28.81
+        },
+        {
+          "copies": 3,
+          "players": 27,
+          "percent": 15.25
+        },
+        {
+          "copies": 4,
+          "players": 94,
+          "percent": 53.11
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "name": "Iono",
+      "found": 158,
+      "total": 197,
+      "pct": 80.2,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 34,
+          "percent": 21.52
+        },
+        {
+          "copies": 2,
+          "players": 79,
+          "percent": 50.0
+        },
+        {
+          "copies": 3,
+          "players": 40,
+          "percent": 25.32
+        },
+        {
+          "copies": 4,
+          "players": 5,
+          "percent": 3.16
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "name": "Night Stretcher",
+      "found": 146,
+      "total": 197,
+      "pct": 74.11,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 50,
+          "percent": 34.25
+        },
+        {
+          "copies": 2,
+          "players": 55,
+          "percent": 37.67
+        },
+        {
+          "copies": 3,
+          "players": 25,
+          "percent": 17.12
+        },
+        {
+          "copies": 4,
+          "players": 16,
+          "percent": 10.96
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "name": "Fezandipiti ex",
+      "found": 141,
+      "total": 197,
+      "pct": 71.57,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 141,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "038",
+      "uid": "Fezandipiti ex::SFA::038"
+    },
+    {
+      "rank": 7,
+      "name": "Earthen Vessel",
+      "found": 117,
+      "total": 197,
+      "pct": 59.39,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 29,
+          "percent": 24.79
+        },
+        {
+          "copies": 2,
+          "players": 16,
+          "percent": 13.68
+        },
+        {
+          "copies": 3,
+          "players": 27,
+          "percent": 23.08
+        },
+        {
+          "copies": 4,
+          "players": 45,
+          "percent": 38.46
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "name": "Counter Catcher",
+      "found": 99,
+      "total": 197,
+      "pct": 50.25,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 41,
+          "percent": 41.41
+        },
+        {
+          "copies": 2,
+          "players": 50,
+          "percent": 50.51
+        },
+        {
+          "copies": 4,
+          "players": 8,
+          "percent": 8.08
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "name": "Super Rod",
+      "found": 85,
+      "total": 197,
+      "pct": 43.15,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 23,
+          "percent": 27.06
+        },
+        {
+          "copies": 2,
+          "players": 52,
+          "percent": 61.18
+        },
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 4.71
+        },
+        {
+          "copies": 4,
+          "players": 6,
+          "percent": 7.06
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "name": "Professor's Research",
+      "found": 84,
+      "total": 197,
+      "pct": 42.64,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 20,
+          "percent": 23.81
+        },
+        {
+          "copies": 2,
+          "players": 5,
+          "percent": 5.95
+        },
+        {
+          "copies": 3,
+          "players": 14,
+          "percent": 16.67
+        },
+        {
+          "copies": 4,
+          "players": 45,
+          "percent": 53.57
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Arven",
+      "found": 82,
+      "total": 197,
+      "pct": 41.62,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 1.22
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 1.22
+        },
+        {
+          "copies": 3,
+          "players": 18,
+          "percent": 21.95
+        },
+        {
+          "copies": 4,
+          "players": 62,
+          "percent": 75.61
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Squawkabilly ex",
+      "found": 80,
+      "total": 197,
+      "pct": 40.61,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 78,
+          "percent": 97.5
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 2.5
+        }
+      ],
+      "set": "PAL",
+      "number": "169",
+      "uid": "Squawkabilly ex::PAL::169"
+    },
+    {
+      "rank": 13,
+      "name": "Buddy-Buddy Poffin",
+      "found": 78,
+      "total": 197,
+      "pct": 39.59,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 12,
+          "percent": 15.38
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 3.85
+        },
+        {
+          "copies": 3,
+          "players": 16,
+          "percent": 20.51
+        },
+        {
+          "copies": 4,
+          "players": 47,
+          "percent": 60.26
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Lumineon V",
+      "found": 78,
+      "total": 197,
+      "pct": 39.59,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 58,
+          "percent": 74.36
+        },
+        {
+          "copies": 2,
+          "players": 20,
+          "percent": 25.64
+        }
+      ],
+      "set": "BRS",
+      "number": "040",
+      "uid": "Lumineon V::BRS::040"
+    },
+    {
+      "rank": 15,
+      "name": "Fire Energy",
+      "found": 77,
+      "total": 197,
+      "pct": 39.09,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 11,
+          "percent": 14.29
+        },
+        {
+          "copies": 2,
+          "players": 13,
+          "percent": 16.88
+        },
+        {
+          "copies": 3,
+          "players": 17,
+          "percent": 22.08
+        },
+        {
+          "copies": 4,
+          "players": 8,
+          "percent": 10.39
+        },
+        {
+          "copies": 5,
+          "players": 24,
+          "percent": 31.17
+        },
+        {
+          "copies": 6,
+          "players": 1,
+          "percent": 1.3
+        },
+        {
+          "copies": 7,
+          "players": 1,
+          "percent": 1.3
+        },
+        {
+          "copies": 10,
+          "players": 1,
+          "percent": 1.3
+        },
+        {
+          "copies": 14,
+          "players": 1,
+          "percent": 1.3
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Radiant Greninja",
+      "found": 76,
+      "total": 197,
+      "pct": 38.58,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 76,
+          "percent": 100.0
+        }
+      ],
+      "set": "ASR",
+      "number": "046",
+      "uid": "Radiant Greninja::ASR::046"
+    },
+    {
+      "rank": 17,
+      "name": "Pal Pad",
+      "found": 74,
+      "total": 197,
+      "pct": 37.56,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 65,
+          "percent": 87.84
+        },
+        {
+          "copies": 2,
+          "players": 9,
+          "percent": 12.16
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Lost Vacuum",
+      "found": 73,
+      "total": 197,
+      "pct": 37.06,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 64,
+          "percent": 87.67
+        },
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 10.96
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 1.37
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "Professor Turo's Scenario",
+      "found": 68,
+      "total": 197,
+      "pct": 34.52,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 54,
+          "percent": 79.41
+        },
+        {
+          "copies": 2,
+          "players": 14,
+          "percent": 20.59
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Hisuian Heavy Ball",
+      "found": 66,
+      "total": 197,
+      "pct": 33.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 53,
+          "percent": 80.3
+        },
+        {
+          "copies": 2,
+          "players": 13,
+          "percent": 19.7
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Prime Catcher",
+      "found": 65,
+      "total": 197,
+      "pct": 32.99,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 65,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "name": "Iron Bundle",
+      "found": 63,
+      "total": 197,
+      "pct": 31.98,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 63,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "056",
+      "uid": "Iron Bundle::PAR::056"
+    },
+    {
+      "rank": 23,
+      "name": "Pokégear 3.0",
+      "found": 62,
+      "total": 197,
+      "pct": 31.47,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 4.84
+        },
+        {
+          "copies": 2,
+          "players": 23,
+          "percent": 37.1
+        },
+        {
+          "copies": 3,
+          "players": 14,
+          "percent": 22.58
+        },
+        {
+          "copies": 4,
+          "players": 22,
+          "percent": 35.48
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Grass Energy",
+      "found": 58,
+      "total": 197,
+      "pct": 29.44,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 12,
+          "percent": 20.69
+        },
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 6.9
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 1.72
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 1.72
+        },
+        {
+          "copies": 5,
+          "players": 12,
+          "percent": 20.69
+        },
+        {
+          "copies": 6,
+          "players": 2,
+          "percent": 3.45
+        },
+        {
+          "copies": 7,
+          "players": 26,
+          "percent": 44.83
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "Forest Seal Stone",
+      "found": 57,
+      "total": 197,
+      "pct": 28.93,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 44,
+          "percent": 77.19
+        },
+        {
+          "copies": 2,
+          "players": 13,
+          "percent": 22.81
+        }
+      ]
+    },
+    {
+      "rank": 26,
+      "name": "Thorton",
+      "found": 53,
+      "total": 197,
+      "pct": 26.9,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 51,
+          "percent": 96.23
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 3.77
+        }
+      ]
+    },
+    {
+      "rank": 27,
+      "name": "Radiant Charizard",
+      "found": 52,
+      "total": 197,
+      "pct": 26.4,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 52,
+          "percent": 100.0
+        }
+      ],
+      "set": "CRZ",
+      "number": "020",
+      "uid": "Radiant Charizard::CRZ::020"
+    },
+    {
+      "rank": 28,
+      "name": "PokéStop",
+      "found": 52,
+      "total": 197,
+      "pct": 26.4,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 7.69
+        },
+        {
+          "copies": 2,
+          "players": 20,
+          "percent": 38.46
+        },
+        {
+          "copies": 3,
+          "players": 18,
+          "percent": 34.62
+        },
+        {
+          "copies": 4,
+          "players": 10,
+          "percent": 19.23
+        }
+      ]
+    },
+    {
+      "rank": 29,
+      "name": "Rare Candy",
+      "found": 50,
+      "total": 197,
+      "pct": 25.38,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 12.0
+        },
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 16.0
+        },
+        {
+          "copies": 3,
+          "players": 5,
+          "percent": 10.0
+        },
+        {
+          "copies": 4,
+          "players": 31,
+          "percent": 62.0
+        }
+      ]
+    },
+    {
+      "rank": 30,
+      "name": "Switch",
+      "found": 47,
+      "total": 197,
+      "pct": 23.86,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 40,
+          "percent": 85.11
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 4.26
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 4.26
+        },
+        {
+          "copies": 4,
+          "players": 3,
+          "percent": 6.38
+        }
+      ]
+    },
+    {
+      "rank": 31,
+      "name": "Canceling Cologne",
+      "found": 46,
+      "total": 197,
+      "pct": 23.35,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 44,
+          "percent": 95.65
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 4.35
+        }
+      ]
+    },
+    {
+      "rank": 32,
+      "name": "Bloodmoon Ursaluna ex",
+      "found": 46,
+      "total": 197,
+      "pct": 23.35,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 46,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "141",
+      "uid": "Bloodmoon Ursaluna ex::TWM::141"
+    },
+    {
+      "rank": 33,
+      "name": "Double Turbo Energy",
+      "found": 45,
+      "total": 197,
+      "pct": 22.84,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 2.22
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 6.67
+        },
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 8.89
+        },
+        {
+          "copies": 4,
+          "players": 37,
+          "percent": 82.22
+        }
+      ]
+    },
+    {
+      "rank": 34,
+      "name": "Lightning Energy",
+      "found": 44,
+      "total": 197,
+      "pct": 22.34,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 12,
+          "percent": 27.27
+        },
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 18.18
+        },
+        {
+          "copies": 3,
+          "players": 19,
+          "percent": 43.18
+        },
+        {
+          "copies": 7,
+          "players": 4,
+          "percent": 9.09
+        },
+        {
+          "copies": 15,
+          "players": 1,
+          "percent": 2.27
+        }
+      ]
+    },
+    {
+      "rank": 35,
+      "name": "Manaphy",
+      "found": 44,
+      "total": 197,
+      "pct": 22.34,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 44,
+          "percent": 100.0
+        }
+      ],
+      "set": "BRS",
+      "number": "041",
+      "uid": "Manaphy::BRS::041"
+    },
+    {
+      "rank": 36,
+      "name": "Psychic Energy",
+      "found": 44,
+      "total": 197,
+      "pct": 22.34,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 14,
+          "percent": 31.82
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 6.82
+        },
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 9.09
+        },
+        {
+          "copies": 4,
+          "players": 9,
+          "percent": 20.45
+        },
+        {
+          "copies": 7,
+          "players": 13,
+          "percent": 29.55
+        },
+        {
+          "copies": 8,
+          "players": 1,
+          "percent": 2.27
+        }
+      ]
+    },
+    {
+      "rank": 37,
+      "name": "Darkness Energy",
+      "found": 43,
+      "total": 197,
+      "pct": 21.83,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 12,
+          "percent": 27.91
+        },
+        {
+          "copies": 2,
+          "players": 7,
+          "percent": 16.28
+        },
+        {
+          "copies": 3,
+          "players": 8,
+          "percent": 18.6
+        },
+        {
+          "copies": 7,
+          "players": 8,
+          "percent": 18.6
+        },
+        {
+          "copies": 8,
+          "players": 1,
+          "percent": 2.33
+        },
+        {
+          "copies": 9,
+          "players": 7,
+          "percent": 16.28
+        }
+      ]
+    },
+    {
+      "rank": 38,
+      "name": "Briar",
+      "found": 42,
+      "total": 197,
+      "pct": 21.32,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 42,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 39,
+      "name": "Teal Mask Ogerpon ex",
+      "found": 40,
+      "total": 197,
+      "pct": 20.3,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 40,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "025",
+      "uid": "Teal Mask Ogerpon ex::TWM::025"
+    },
+    {
+      "rank": 40,
+      "name": "Switch Cart",
+      "found": 40,
+      "total": 197,
+      "pct": 20.3,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 20.0
+        },
+        {
+          "copies": 2,
+          "players": 26,
+          "percent": 65.0
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 2.5
+        },
+        {
+          "copies": 4,
+          "players": 5,
+          "percent": 12.5
+        }
+      ]
+    },
+    {
+      "rank": 41,
+      "name": "Dragapult ex",
+      "found": 38,
+      "total": 197,
+      "pct": 19.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 24,
+          "percent": 63.16
+        },
+        {
+          "copies": 2,
+          "players": 9,
+          "percent": 23.68
+        },
+        {
+          "copies": 3,
+          "players": 5,
+          "percent": 13.16
+        }
+      ],
+      "set": "TWM",
+      "number": "130",
+      "uid": "Dragapult ex::TWM::130"
+    },
+    {
+      "rank": 42,
+      "name": "Jamming Tower",
+      "found": 38,
+      "total": 197,
+      "pct": 19.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 27,
+          "percent": 71.05
+        },
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 21.05
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 5.26
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 2.63
+        }
+      ]
+    },
+    {
+      "rank": 43,
+      "name": "Cleffa",
+      "found": 36,
+      "total": 197,
+      "pct": 18.27,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 36,
+          "percent": 100.0
+        }
+      ],
+      "set": "OBF",
+      "number": "080",
+      "uid": "Cleffa::OBF::080"
+    },
+    {
+      "rank": 44,
+      "name": "Pidgeot ex",
+      "found": 36,
+      "total": 197,
+      "pct": 18.27,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 2.78
+        },
+        {
+          "copies": 2,
+          "players": 35,
+          "percent": 97.22
+        }
+      ],
+      "set": "OBF",
+      "number": "164",
+      "uid": "Pidgeot ex::OBF::164"
+    },
+    {
+      "rank": 45,
+      "name": "Pidgey",
+      "found": 35,
+      "total": 197,
+      "pct": 17.77,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 2.86
+        },
+        {
+          "copies": 2,
+          "players": 34,
+          "percent": 97.14
+        }
+      ],
+      "set": "OBF",
+      "number": "162",
+      "uid": "Pidgey::OBF::162"
+    },
+    {
+      "rank": 46,
+      "name": "Dusknoir",
+      "found": 35,
+      "total": 197,
+      "pct": 17.77,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 32,
+          "percent": 91.43
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 8.57
+        }
+      ],
+      "set": "SFA",
+      "number": "020",
+      "uid": "Dusknoir::SFA::020"
+    },
+    {
+      "rank": 47,
+      "name": "Mew ex",
+      "found": 34,
+      "total": 197,
+      "pct": 17.26,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 34,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEW",
+      "number": "151",
+      "uid": "Mew ex::MEW::151"
+    },
+    {
+      "rank": 48,
+      "name": "Superior Energy Retrieval",
+      "found": 33,
+      "total": 197,
+      "pct": 16.75,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 21,
+          "percent": 63.64
+        },
+        {
+          "copies": 4,
+          "players": 12,
+          "percent": 36.36
+        }
+      ]
+    },
+    {
+      "rank": 49,
+      "name": "Unfair Stamp",
+      "found": 33,
+      "total": 197,
+      "pct": 16.75,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 33,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 50,
+      "name": "Bravery Charm",
+      "found": 32,
+      "total": 197,
+      "pct": 16.24,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 28.12
+        },
+        {
+          "copies": 2,
+          "players": 19,
+          "percent": 59.38
+        },
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 12.5
+        }
+      ]
+    },
+    {
+      "rank": 51,
+      "name": "Rotom V",
+      "found": 31,
+      "total": 197,
+      "pct": 15.74,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 21,
+          "percent": 67.74
+        },
+        {
+          "copies": 2,
+          "players": 10,
+          "percent": 32.26
+        }
+      ],
+      "set": "LOR",
+      "number": "058",
+      "uid": "Rotom V::LOR::058"
+    },
+    {
+      "rank": 52,
+      "name": "Professor Sada's Vitality",
+      "found": 31,
+      "total": 197,
+      "pct": 15.74,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 31,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 53,
+      "name": "Duskull",
+      "found": 30,
+      "total": 197,
+      "pct": 15.23,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 6.67
+        },
+        {
+          "copies": 2,
+          "players": 28,
+          "percent": 93.33
+        }
+      ],
+      "set": "SFA",
+      "number": "018",
+      "uid": "Duskull::SFA::018"
+    },
+    {
+      "rank": 54,
+      "name": "Precious Trolley",
+      "found": 30,
+      "total": 197,
+      "pct": 15.23,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 30,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 55,
+      "name": "Energy Switch",
+      "found": 29,
+      "total": 197,
+      "pct": 14.72,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 6.9
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 3.45
+        },
+        {
+          "copies": 4,
+          "players": 26,
+          "percent": 89.66
+        }
+      ]
+    },
+    {
+      "rank": 56,
+      "name": "Dusclops",
+      "found": 29,
+      "total": 197,
+      "pct": 14.72,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 29,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "019",
+      "uid": "Dusclops::SFA::019"
+    },
+    {
+      "rank": 57,
+      "name": "Pecharunt ex",
+      "found": 29,
+      "total": 197,
+      "pct": 14.72,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 29,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "039",
+      "uid": "Pecharunt ex::SFA::039"
+    },
+    {
+      "rank": 58,
+      "name": "Latias ex",
+      "found": 29,
+      "total": 197,
+      "pct": 14.72,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 29,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "076",
+      "uid": "Latias ex::SSP::076"
+    },
+    {
+      "rank": 59,
+      "name": "Regidrago V",
+      "found": 28,
+      "total": 197,
+      "pct": 14.21,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 7.14
+        },
+        {
+          "copies": 3,
+          "players": 26,
+          "percent": 92.86
+        }
+      ],
+      "set": "SIT",
+      "number": "135",
+      "uid": "Regidrago V::SIT::135"
+    },
+    {
+      "rank": 60,
+      "name": "Regidrago VSTAR",
+      "found": 28,
+      "total": 197,
+      "pct": 14.21,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 7.14
+        },
+        {
+          "copies": 3,
+          "players": 26,
+          "percent": 92.86
+        }
+      ],
+      "set": "SIT",
+      "number": "136",
+      "uid": "Regidrago VSTAR::SIT::136"
+    },
+    {
+      "rank": 61,
+      "name": "Metal Energy",
+      "found": 28,
+      "total": 197,
+      "pct": 14.21,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 3.57
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 10.71
+        },
+        {
+          "copies": 3,
+          "players": 10,
+          "percent": 35.71
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 3.57
+        },
+        {
+          "copies": 9,
+          "players": 6,
+          "percent": 21.43
+        },
+        {
+          "copies": 10,
+          "players": 7,
+          "percent": 25.0
+        }
+      ]
+    },
+    {
+      "rank": 62,
+      "name": "Giratina VSTAR",
+      "found": 27,
+      "total": 197,
+      "pct": 13.71,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 26,
+          "percent": 96.3
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 3.7
+        }
+      ],
+      "set": "LOR",
+      "number": "131",
+      "uid": "Giratina VSTAR::LOR::131"
+    },
+    {
+      "rank": 63,
+      "name": "Pokémon Catcher",
+      "found": 27,
+      "total": 197,
+      "pct": 13.71,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 10,
+          "percent": 37.04
+        },
+        {
+          "copies": 3,
+          "players": 14,
+          "percent": 51.85
+        },
+        {
+          "copies": 4,
+          "players": 3,
+          "percent": 11.11
+        }
+      ]
+    },
+    {
+      "rank": 64,
+      "name": "Kyurem",
+      "found": 26,
+      "total": 197,
+      "pct": 13.2,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 26,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "047",
+      "uid": "Kyurem::SFA::047"
+    },
+    {
+      "rank": 65,
+      "name": "Hisuian Goodra VSTAR",
+      "found": 26,
+      "total": 197,
+      "pct": 13.2,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 26,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "136",
+      "uid": "Hisuian Goodra VSTAR::LOR::136"
+    },
+    {
+      "rank": 66,
+      "name": "Defiance Band",
+      "found": 26,
+      "total": 197,
+      "pct": 13.2,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 26,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 67,
+      "name": "Area Zero Underdepths",
+      "found": 25,
+      "total": 197,
+      "pct": 12.69,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 4.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 4.0
+        },
+        {
+          "copies": 3,
+          "players": 10,
+          "percent": 40.0
+        },
+        {
+          "copies": 4,
+          "players": 13,
+          "percent": 52.0
+        }
+      ]
+    },
+    {
+      "rank": 68,
+      "name": "Charmander",
+      "found": 25,
+      "total": 197,
+      "pct": 12.69,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 4.0
+        },
+        {
+          "copies": 2,
+          "players": 7,
+          "percent": 28.0
+        },
+        {
+          "copies": 3,
+          "players": 17,
+          "percent": 68.0
+        }
+      ],
+      "set": "PAF",
+      "number": "007",
+      "uid": "Charmander::PAF::007"
+    },
+    {
+      "rank": 69,
+      "name": "Charmeleon",
+      "found": 25,
+      "total": 197,
+      "pct": 12.69,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 25,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAF",
+      "number": "008",
+      "uid": "Charmeleon::PAF::008"
+    },
+    {
+      "rank": 70,
+      "name": "Charizard ex",
+      "found": 25,
+      "total": 197,
+      "pct": 12.69,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 25,
+          "percent": 100.0
+        }
+      ],
+      "set": "OBF",
+      "number": "125",
+      "uid": "Charizard ex::OBF::125"
+    },
+    {
+      "rank": 71,
+      "name": "Ancient Booster Energy Capsule",
+      "found": 25,
+      "total": 197,
+      "pct": 12.69,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 8.0
+        },
+        {
+          "copies": 3,
+          "players": 13,
+          "percent": 52.0
+        },
+        {
+          "copies": 4,
+          "players": 10,
+          "percent": 40.0
+        }
+      ]
+    },
+    {
+      "rank": 72,
+      "name": "Fighting Energy",
+      "found": 25,
+      "total": 197,
+      "pct": 12.69,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 11,
+          "percent": 44.0
+        },
+        {
+          "copies": 3,
+          "players": 14,
+          "percent": 56.0
+        }
+      ]
+    },
+    {
+      "rank": 73,
+      "name": "Technical Machine: Evolution",
+      "found": 24,
+      "total": 197,
+      "pct": 12.18,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 16.67
+        },
+        {
+          "copies": 2,
+          "players": 20,
+          "percent": 83.33
+        }
+      ]
+    },
+    {
+      "rank": 74,
+      "name": "Jet Energy",
+      "found": 24,
+      "total": 197,
+      "pct": 12.18,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 16.67
+        },
+        {
+          "copies": 4,
+          "players": 20,
+          "percent": 83.33
+        }
+      ]
+    },
+    {
+      "rank": 75,
+      "name": "Terapagos ex",
+      "found": 23,
+      "total": 197,
+      "pct": 11.68,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 16,
+          "percent": 69.57
+        },
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 17.39
+        },
+        {
+          "copies": 4,
+          "players": 3,
+          "percent": 13.04
+        }
+      ],
+      "set": "SCR",
+      "number": "128",
+      "uid": "Terapagos ex::SCR::128"
+    },
+    {
+      "rank": 76,
+      "name": "Alolan Exeggutor ex",
+      "found": 23,
+      "total": 197,
+      "pct": 11.68,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 23,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "133",
+      "uid": "Alolan Exeggutor ex::SSP::133"
+    },
+    {
+      "rank": 77,
+      "name": "Klefki",
+      "found": 23,
+      "total": 197,
+      "pct": 11.68,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 18,
+          "percent": 78.26
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 13.04
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 8.7
+        }
+      ],
+      "set": "SVI",
+      "number": "096",
+      "uid": "Klefki::SVI::096"
+    },
+    {
+      "rank": 78,
+      "name": "Pecharunt",
+      "found": 22,
+      "total": 197,
+      "pct": 11.17,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 22,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVP",
+      "number": "149",
+      "uid": "Pecharunt::SVP::149"
+    },
+    {
+      "rank": 79,
+      "name": "Flutter Mane",
+      "found": 22,
+      "total": 197,
+      "pct": 11.17,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 14,
+          "percent": 63.64
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 4.55
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 4.55
+        },
+        {
+          "copies": 4,
+          "players": 6,
+          "percent": 27.27
+        }
+      ],
+      "set": "TEF",
+      "number": "078",
+      "uid": "Flutter Mane::TEF::078"
+    },
+    {
+      "rank": 80,
+      "name": "Trekking Shoes",
+      "found": 22,
+      "total": 197,
+      "pct": 11.17,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 11,
+          "percent": 50.0
+        },
+        {
+          "copies": 3,
+          "players": 9,
+          "percent": 40.91
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 9.09
+        }
+      ]
+    },
+    {
+      "rank": 81,
+      "name": "Water Energy",
+      "found": 21,
+      "total": 197,
+      "pct": 10.66,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 33.33
+        },
+        {
+          "copies": 3,
+          "players": 10,
+          "percent": 47.62
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 4.76
+        },
+        {
+          "copies": 6,
+          "players": 1,
+          "percent": 4.76
+        },
+        {
+          "copies": 7,
+          "players": 1,
+          "percent": 4.76
+        },
+        {
+          "copies": 8,
+          "players": 1,
+          "percent": 4.76
+        }
+      ]
+    },
+    {
+      "rank": 82,
+      "name": "Carmine",
+      "found": 21,
+      "total": 197,
+      "pct": 10.66,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 17,
+          "percent": 80.95
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 4.76
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 4.76
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 9.52
+        }
+      ]
+    },
+    {
+      "rank": 83,
+      "name": "Mist Energy",
+      "found": 21,
+      "total": 197,
+      "pct": 10.66,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 14.29
+        },
+        {
+          "copies": 2,
+          "players": 12,
+          "percent": 57.14
+        },
+        {
+          "copies": 3,
+          "players": 5,
+          "percent": 23.81
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 4.76
+        }
+      ]
+    },
+    {
+      "rank": 84,
+      "name": "Colress's Tenacity",
+      "found": 20,
+      "total": 197,
+      "pct": 10.15,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 18,
+          "percent": 90.0
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 10.0
+        }
+      ]
+    },
+    {
+      "rank": 85,
+      "name": "Artazon",
+      "found": 20,
+      "total": 197,
+      "pct": 10.15,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 14,
+          "percent": 70.0
+        },
+        {
+          "copies": 2,
+          "players": 6,
+          "percent": 30.0
+        }
+      ]
+    },
+    {
+      "rank": 86,
+      "name": "Iron Hands ex",
+      "found": 20,
+      "total": 197,
+      "pct": 10.15,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 19,
+          "percent": 95.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 5.0
+        }
+      ],
+      "set": "PAR",
+      "number": "070",
+      "uid": "Iron Hands ex::PAR::070"
+    },
+    {
+      "rank": 87,
+      "name": "Energy Retrieval",
+      "found": 19,
+      "total": 197,
+      "pct": 9.64,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 26.32
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 15.79
+        },
+        {
+          "copies": 3,
+          "players": 10,
+          "percent": 52.63
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 5.26
+        }
+      ]
+    },
+    {
+      "rank": 88,
+      "name": "Temple of Sinnoh",
+      "found": 18,
+      "total": 197,
+      "pct": 9.14,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 17,
+          "percent": 94.44
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 5.56
+        }
+      ]
+    },
+    {
+      "rank": 89,
+      "name": "Munkidori",
+      "found": 18,
+      "total": 197,
+      "pct": 9.14,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 33.33
+        },
+        {
+          "copies": 2,
+          "players": 12,
+          "percent": 66.67
+        }
+      ],
+      "set": "TWM",
+      "number": "095",
+      "uid": "Munkidori::TWM::095"
+    },
+    {
+      "rank": 90,
+      "name": "Penny",
+      "found": 17,
+      "total": 197,
+      "pct": 8.63,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 11.76
+        },
+        {
+          "copies": 2,
+          "players": 11,
+          "percent": 64.71
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 11.76
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 11.76
+        }
+      ]
+    },
+    {
+      "rank": 91,
+      "name": "Technical Machine: Devolution",
+      "found": 17,
+      "total": 197,
+      "pct": 8.63,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 17,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 92,
+      "name": "Binding Mochi",
+      "found": 17,
+      "total": 197,
+      "pct": 8.63,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 11.76
+        },
+        {
+          "copies": 2,
+          "players": 6,
+          "percent": 35.29
+        },
+        {
+          "copies": 3,
+          "players": 9,
+          "percent": 52.94
+        }
+      ]
+    },
+    {
+      "rank": 93,
+      "name": "Secret Box",
+      "found": 17,
+      "total": 197,
+      "pct": 8.63,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 17,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 94,
+      "name": "Crispin",
+      "found": 17,
+      "total": 197,
+      "pct": 8.63,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 41.18
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 5.88
+        },
+        {
+          "copies": 4,
+          "players": 9,
+          "percent": 52.94
+        }
+      ]
+    },
+    {
+      "rank": 95,
+      "name": "Judge",
+      "found": 16,
+      "total": 197,
+      "pct": 8.12,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 25.0
+        },
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 50.0
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 18.75
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 6.25
+        }
+      ]
+    },
+    {
+      "rank": 96,
+      "name": "Brute Bonnet",
+      "found": 16,
+      "total": 197,
+      "pct": 8.12,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 6.25
+        },
+        {
+          "copies": 2,
+          "players": 15,
+          "percent": 93.75
+        }
+      ],
+      "set": "PAR",
+      "number": "123",
+      "uid": "Brute Bonnet::PAR::123"
+    },
+    {
+      "rank": 97,
+      "name": "Roaring Moon",
+      "found": 16,
+      "total": 197,
+      "pct": 8.12,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 31.25
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 18.75
+        },
+        {
+          "copies": 4,
+          "players": 8,
+          "percent": 50.0
+        }
+      ],
+      "set": "TEF",
+      "number": "109",
+      "uid": "Roaring Moon::TEF::109"
+    },
+    {
+      "rank": 98,
+      "name": "Archeops",
+      "found": 16,
+      "total": 197,
+      "pct": 8.12,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 16,
+          "percent": 100.0
+        }
+      ],
+      "set": "SIT",
+      "number": "147",
+      "uid": "Archeops::SIT::147"
+    },
+    {
+      "rank": 99,
+      "name": "Lugia V",
+      "found": 16,
+      "total": 197,
+      "pct": 8.12,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 15,
+          "percent": 93.75
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 6.25
+        }
+      ],
+      "set": "SIT",
+      "number": "138",
+      "uid": "Lugia V::SIT::138"
+    },
+    {
+      "rank": 100,
+      "name": "Lugia VSTAR",
+      "found": 16,
+      "total": 197,
+      "pct": 8.12,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 16,
+          "percent": 100.0
+        }
+      ],
+      "set": "SIT",
+      "number": "139",
+      "uid": "Lugia VSTAR::SIT::139"
+    },
+    {
+      "rank": 101,
+      "name": "Minccino",
+      "found": 16,
+      "total": 197,
+      "pct": 8.12,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 25.0
+        },
+        {
+          "copies": 2,
+          "players": 12,
+          "percent": 75.0
+        }
+      ],
+      "set": "TEF",
+      "number": "136",
+      "uid": "Minccino::TEF::136"
+    },
+    {
+      "rank": 102,
+      "name": "Cinccino",
+      "found": 16,
+      "total": 197,
+      "pct": 8.12,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 6.25
+        },
+        {
+          "copies": 2,
+          "players": 15,
+          "percent": 93.75
+        }
+      ],
+      "set": "TEF",
+      "number": "137",
+      "uid": "Cinccino::TEF::137"
+    },
+    {
+      "rank": 103,
+      "name": "Wellspring Mask Ogerpon ex",
+      "found": 16,
+      "total": 197,
+      "pct": 8.12,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 16,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "064",
+      "uid": "Wellspring Mask Ogerpon ex::TWM::064"
+    },
+    {
+      "rank": 104,
+      "name": "Capturing Aroma",
+      "found": 16,
+      "total": 197,
+      "pct": 8.12,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 16,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 105,
+      "name": "Gift Energy",
+      "found": 16,
+      "total": 197,
+      "pct": 8.12,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 16,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 106,
+      "name": "Legacy Energy",
+      "found": 16,
+      "total": 197,
+      "pct": 8.12,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 16,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 107,
+      "name": "V Guard Energy",
+      "found": 16,
+      "total": 197,
+      "pct": 8.12,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 16,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 108,
+      "name": "Iron Thorns ex",
+      "found": 15,
+      "total": 197,
+      "pct": 7.61,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 6.67
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 6.67
+        },
+        {
+          "copies": 4,
+          "players": 13,
+          "percent": 86.67
+        }
+      ],
+      "set": "TWM",
+      "number": "077",
+      "uid": "Iron Thorns ex::TWM::077"
+    },
+    {
+      "rank": 109,
+      "name": "Klawf",
+      "found": 15,
+      "total": 197,
+      "pct": 7.61,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 26.67
+        },
+        {
+          "copies": 2,
+          "players": 10,
+          "percent": 66.67
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 6.67
+        }
+      ],
+      "set": "PAR",
+      "number": "105",
+      "uid": "Klawf::PAR::105"
+    },
+    {
+      "rank": 110,
+      "name": "Radiant Hisuian Sneasler",
+      "found": 15,
+      "total": 197,
+      "pct": 7.61,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 15,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "123",
+      "uid": "Radiant Hisuian Sneasler::LOR::123"
+    },
+    {
+      "rank": 111,
+      "name": "Hisuian Electrode V",
+      "found": 15,
+      "total": 197,
+      "pct": 7.61,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 15,
+          "percent": 100.0
+        }
+      ],
+      "set": "SP",
+      "number": "294",
+      "uid": "Hisuian Electrode V::SP::294"
+    },
+    {
+      "rank": 112,
+      "name": "Koraidon",
+      "found": 15,
+      "total": 197,
+      "pct": 7.61,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 14,
+          "percent": 93.33
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 6.67
+        }
+      ],
+      "set": "SSP",
+      "number": "116",
+      "uid": "Koraidon::SSP::116"
+    },
+    {
+      "rank": 113,
+      "name": "Jacq",
+      "found": 15,
+      "total": 197,
+      "pct": 7.61,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 15,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 114,
+      "name": "Irida",
+      "found": 14,
+      "total": 197,
+      "pct": 7.11,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 28.57
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 14.29
+        },
+        {
+          "copies": 3,
+          "players": 7,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 7.14
+        }
+      ]
+    },
+    {
+      "rank": 115,
+      "name": "Future Booster Energy Capsule",
+      "found": 14,
+      "total": 197,
+      "pct": 7.11,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 57.14
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 7.14
+        },
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 28.57
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 7.14
+        }
+      ]
+    },
+    {
+      "rank": 116,
+      "name": "Oranguru V",
+      "found": 14,
+      "total": 197,
+      "pct": 7.11,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 14,
+          "percent": 100.0
+        }
+      ],
+      "set": "ASR",
+      "number": "133",
+      "uid": "Oranguru V::ASR::133"
+    },
+    {
+      "rank": 117,
+      "name": "Supereffective Glasses",
+      "found": 14,
+      "total": 197,
+      "pct": 7.11,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 92.86
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 7.14
+        }
+      ]
+    },
+    {
+      "rank": 118,
+      "name": "Ralts",
+      "found": 14,
+      "total": 197,
+      "pct": 7.11,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 28.57
+        },
+        {
+          "copies": 4,
+          "players": 10,
+          "percent": 71.43
+        }
+      ],
+      "set": "ASR",
+      "number": "060",
+      "uid": "Ralts::ASR::060"
+    },
+    {
+      "rank": 119,
+      "name": "Kirlia",
+      "found": 14,
+      "total": 197,
+      "pct": 7.11,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 14,
+          "percent": 100.0
+        }
+      ],
+      "set": "SIT",
+      "number": "068",
+      "uid": "Kirlia::SIT::068"
+    },
+    {
+      "rank": 120,
+      "name": "Gardevoir ex",
+      "found": 14,
+      "total": 197,
+      "pct": 7.11,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 14,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "086",
+      "uid": "Gardevoir ex::SVI::086"
+    },
+    {
+      "rank": 121,
+      "name": "Drifloon",
+      "found": 14,
+      "total": 197,
+      "pct": 7.11,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 92.86
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 7.14
+        }
+      ],
+      "set": "SVI",
+      "number": "089",
+      "uid": "Drifloon::SVI::089"
+    },
+    {
+      "rank": 122,
+      "name": "Scream Tail",
+      "found": 14,
+      "total": 197,
+      "pct": 7.11,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 14,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "086",
+      "uid": "Scream Tail::PAR::086"
+    },
+    {
+      "rank": 123,
+      "name": "Mesagoza",
+      "found": 14,
+      "total": 197,
+      "pct": 7.11,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 21.43
+        },
+        {
+          "copies": 2,
+          "players": 11,
+          "percent": 78.57
+        }
+      ]
+    },
+    {
+      "rank": 124,
+      "name": "Raging Bolt ex",
+      "found": 14,
+      "total": 197,
+      "pct": 7.11,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 7.14
+        },
+        {
+          "copies": 4,
+          "players": 13,
+          "percent": 92.86
+        }
+      ],
+      "set": "TEF",
+      "number": "123",
+      "uid": "Raging Bolt ex::TEF::123"
+    },
+    {
+      "rank": 125,
+      "name": "Rescue Board",
+      "found": 14,
+      "total": 197,
+      "pct": 7.11,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 92.86
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 7.14
+        }
+      ]
+    },
+    {
+      "rank": 126,
+      "name": "Eri",
+      "found": 13,
+      "total": 197,
+      "pct": 6.6,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 23.08
+        },
+        {
+          "copies": 2,
+          "players": 9,
+          "percent": 69.23
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 7.69
+        }
+      ]
+    },
+    {
+      "rank": 127,
+      "name": "Energy Loto",
+      "found": 13,
+      "total": 197,
+      "pct": 6.6,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 10,
+          "percent": 76.92
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 23.08
+        }
+      ]
+    },
+    {
+      "rank": 128,
+      "name": "Duraludon",
+      "found": 13,
+      "total": 197,
+      "pct": 6.6,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 13,
+          "percent": 100.0
+        }
+      ],
+      "set": "SCR",
+      "number": "106",
+      "uid": "Duraludon::SCR::106"
+    },
+    {
+      "rank": 129,
+      "name": "Archaludon ex",
+      "found": 13,
+      "total": 197,
+      "pct": 6.6,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 13,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "130",
+      "uid": "Archaludon ex::SSP::130"
+    },
+    {
+      "rank": 130,
+      "name": "Relicanth",
+      "found": 13,
+      "total": 197,
+      "pct": 6.6,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "084",
+      "uid": "Relicanth::TEF::084"
+    },
+    {
+      "rank": 131,
+      "name": "Dark Patch",
+      "found": 13,
+      "total": 197,
+      "pct": 6.6,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 23.08
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 15.38
+        },
+        {
+          "copies": 4,
+          "players": 8,
+          "percent": 61.54
+        }
+      ]
+    },
+    {
+      "rank": 132,
+      "name": "Slither Wing",
+      "found": 13,
+      "total": 197,
+      "pct": 6.6,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "107",
+      "uid": "Slither Wing::PAR::107"
+    },
+    {
+      "rank": 133,
+      "name": "Noctowl",
+      "found": 12,
+      "total": 197,
+      "pct": 6.09,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 8.33
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 16.67
+        },
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 33.33
+        },
+        {
+          "copies": 4,
+          "players": 5,
+          "percent": 41.67
+        }
+      ],
+      "set": "SCR",
+      "number": "115",
+      "uid": "Noctowl::SCR::115"
+    },
+    {
+      "rank": 134,
+      "name": "Collapsed Stadium",
+      "found": 12,
+      "total": 197,
+      "pct": 6.09,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 12,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 135,
+      "name": "Dreepy",
+      "found": 12,
+      "total": 197,
+      "pct": 6.09,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 8.33
+        },
+        {
+          "copies": 4,
+          "players": 11,
+          "percent": 91.67
+        }
+      ],
+      "set": "TWM",
+      "number": "128",
+      "uid": "Dreepy::TWM::128"
+    },
+    {
+      "rank": 136,
+      "name": "Drakloak",
+      "found": 12,
+      "total": 197,
+      "pct": 6.09,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 16.67
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 16.67
+        },
+        {
+          "copies": 4,
+          "players": 8,
+          "percent": 66.67
+        }
+      ],
+      "set": "TWM",
+      "number": "129",
+      "uid": "Drakloak::TWM::129"
+    },
+    {
+      "rank": 137,
+      "name": "Origin Forme Dialga V",
+      "found": 12,
+      "total": 197,
+      "pct": 6.09,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 25.0
+        },
+        {
+          "copies": 2,
+          "players": 9,
+          "percent": 75.0
+        }
+      ],
+      "set": "ASR",
+      "number": "113",
+      "uid": "Origin Forme Dialga V::ASR::113"
+    },
+    {
+      "rank": 138,
+      "name": "Origin Forme Dialga VSTAR",
+      "found": 12,
+      "total": 197,
+      "pct": 6.09,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 8.33
+        },
+        {
+          "copies": 2,
+          "players": 11,
+          "percent": 91.67
+        }
+      ],
+      "set": "ASR",
+      "number": "114",
+      "uid": "Origin Forme Dialga VSTAR::ASR::114"
+    },
+    {
+      "rank": 139,
+      "name": "Wyrdeer V",
+      "found": 12,
+      "total": 197,
+      "pct": 6.09,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 12,
+          "percent": 100.0
+        }
+      ],
+      "set": "ASR",
+      "number": "134",
+      "uid": "Wyrdeer V::ASR::134"
+    },
+    {
+      "rank": 140,
+      "name": "Roaring Moon ex",
+      "found": 12,
+      "total": 197,
+      "pct": 6.09,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 33.33
+        },
+        {
+          "copies": 3,
+          "players": 8,
+          "percent": 66.67
+        }
+      ],
+      "set": "PAR",
+      "number": "124",
+      "uid": "Roaring Moon ex::PAR::124"
+    },
+    {
+      "rank": 141,
+      "name": "Hoothoot",
+      "found": 11,
+      "total": 197,
+      "pct": 5.58,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 9.09
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 9.09
+        },
+        {
+          "copies": 3,
+          "players": 5,
+          "percent": 45.45
+        },
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 36.36
+        }
+      ],
+      "set": "SCR",
+      "number": "114",
+      "uid": "Hoothoot::SCR::114"
+    },
+    {
+      "rank": 142,
+      "name": "Fan Rotom",
+      "found": 11,
+      "total": 197,
+      "pct": 5.58,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 18.18
+        },
+        {
+          "copies": 2,
+          "players": 9,
+          "percent": 81.82
+        }
+      ],
+      "set": "SCR",
+      "number": "118",
+      "uid": "Fan Rotom::SCR::118"
+    },
+    {
+      "rank": 143,
+      "name": "Gholdengo ex",
+      "found": 11,
+      "total": 197,
+      "pct": 5.58,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 11,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "139",
+      "uid": "Gholdengo ex::PAR::139"
+    },
+    {
+      "rank": 144,
+      "name": "Ciphermaniac's Codebreaking",
+      "found": 11,
+      "total": 197,
+      "pct": 5.58,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 9.09
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 9.09
+        },
+        {
+          "copies": 3,
+          "players": 8,
+          "percent": 72.73
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 9.09
+        }
+      ]
+    },
+    {
+      "rank": 145,
+      "name": "Energy Search Pro",
+      "found": 11,
+      "total": 197,
+      "pct": 5.58,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 11,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 146,
+      "name": "Radiant Alakazam",
+      "found": 11,
+      "total": 197,
+      "pct": 5.58,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 11,
+          "percent": 100.0
+        }
+      ],
+      "set": "SIT",
+      "number": "059",
+      "uid": "Radiant Alakazam::SIT::059"
+    },
+    {
+      "rank": 147,
+      "name": "Scoop Up Cyclone",
+      "found": 11,
+      "total": 197,
+      "pct": 5.58,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 11,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 148,
+      "name": "Miss Fortune Sisters",
+      "found": 10,
+      "total": 197,
+      "pct": 5.08,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 20.0
+        },
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 40.0
+        },
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 40.0
+        }
+      ]
+    },
+    {
+      "rank": 149,
+      "name": "Accompanying Flute",
+      "found": 10,
+      "total": 197,
+      "pct": 5.08,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 20.0
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 20.0
+        },
+        {
+          "copies": 4,
+          "players": 6,
+          "percent": 60.0
+        }
+      ]
+    },
+    {
+      "rank": 150,
+      "name": "Gimmighoul",
+      "found": 10,
+      "total": 197,
+      "pct": 5.08,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 40.0
+        },
+        {
+          "copies": 4,
+          "players": 6,
+          "percent": 60.0
+        }
+      ],
+      "set": "SSP",
+      "number": "097",
+      "uid": "Gimmighoul::SSP::097"
+    },
+    {
+      "rank": 151,
+      "name": "Mawile",
+      "found": 10,
+      "total": 197,
+      "pct": 5.08,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 10,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "071",
+      "uid": "Mawile::LOR::071"
+    },
+    {
+      "rank": 152,
+      "name": "Snorlax",
+      "found": 9,
+      "total": 197,
+      "pct": 4.57,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 11.11
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 11.11
+        },
+        {
+          "copies": 4,
+          "players": 7,
+          "percent": 77.78
+        }
+      ],
+      "set": "PGO",
+      "number": "055",
+      "uid": "Snorlax::PGO::055"
+    },
+    {
+      "rank": 153,
+      "name": "Erika's Invitation",
+      "found": 9,
+      "total": 197,
+      "pct": 4.57,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 154,
+      "name": "Cyllene",
+      "found": 9,
+      "total": 197,
+      "pct": 4.57,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 77.78
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 22.22
+        }
+      ]
+    },
+    {
+      "rank": 155,
+      "name": "Origin Forme Palkia V",
+      "found": 8,
+      "total": 197,
+      "pct": 4.06,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 75.0
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 25.0
+        }
+      ],
+      "set": "ASR",
+      "number": "039",
+      "uid": "Origin Forme Palkia V::ASR::039"
+    },
+    {
+      "rank": 156,
+      "name": "Origin Forme Palkia VSTAR",
+      "found": 8,
+      "total": 197,
+      "pct": 4.06,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 75.0
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 25.0
+        }
+      ],
+      "set": "ASR",
+      "number": "040",
+      "uid": "Origin Forme Palkia VSTAR::ASR::040"
+    },
+    {
+      "rank": 157,
+      "name": "Great Tusk",
+      "found": 8,
+      "total": 197,
+      "pct": 4.06,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 37.5
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 37.5
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 25.0
+        }
+      ],
+      "set": "TEF",
+      "number": "097",
+      "uid": "Great Tusk::TEF::097"
+    },
+    {
+      "rank": 158,
+      "name": "Explorer's Guidance",
+      "found": 8,
+      "total": 197,
+      "pct": 4.06,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 8,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 159,
+      "name": "Handheld Fan",
+      "found": 8,
+      "total": 197,
+      "pct": 4.06,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 25.0
+        },
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 50.0
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 25.0
+        }
+      ]
+    },
+    {
+      "rank": 160,
+      "name": "Roxanne",
+      "found": 8,
+      "total": 197,
+      "pct": 4.06,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 161,
+      "name": "Mimikyu",
+      "found": 8,
+      "total": 197,
+      "pct": 4.06,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 62.5
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 25.0
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 12.5
+        }
+      ],
+      "set": "PAL",
+      "number": "097",
+      "uid": "Mimikyu::PAL::097"
+    },
+    {
+      "rank": 162,
+      "name": "Xerosic's Machinations",
+      "found": 8,
+      "total": 197,
+      "pct": 4.06,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 163,
+      "name": "Duskull",
+      "found": 7,
+      "total": 197,
+      "pct": 3.55,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 42.86
+        },
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 57.14
+        }
+      ],
+      "set": "BRS",
+      "number": "060",
+      "uid": "Duskull::BRS::060"
+    },
+    {
+      "rank": 164,
+      "name": "Feather Ball",
+      "found": 7,
+      "total": 197,
+      "pct": 3.55,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 165,
+      "name": "Boxed Order",
+      "found": 7,
+      "total": 197,
+      "pct": 3.55,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 14.29
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 28.57
+        },
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 57.14
+        }
+      ]
+    },
+    {
+      "rank": 166,
+      "name": "Togekiss",
+      "found": 7,
+      "total": 197,
+      "pct": 3.55,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 71.43
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 28.57
+        }
+      ],
+      "set": "SSP",
+      "number": "072",
+      "uid": "Togekiss::SSP::072"
+    },
+    {
+      "rank": 167,
+      "name": "Toedscruel",
+      "found": 7,
+      "total": 197,
+      "pct": 3.55,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "017",
+      "uid": "Toedscruel::PAR::017"
+    },
+    {
+      "rank": 168,
+      "name": "Tera Orb",
+      "found": 7,
+      "total": 197,
+      "pct": 3.55,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 169,
+      "name": "Team Yell's Cheer",
+      "found": 7,
+      "total": 197,
+      "pct": 3.55,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 170,
+      "name": "Lost City",
+      "found": 6,
+      "total": 197,
+      "pct": 3.05,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 16.67
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 16.67
+        },
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 66.67
+        }
+      ]
+    },
+    {
+      "rank": 171,
+      "name": "Regidrago",
+      "found": 6,
+      "total": 197,
+      "pct": 3.05,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 100.0
+        }
+      ],
+      "set": "ASR",
+      "number": "118",
+      "uid": "Regidrago::ASR::118"
+    },
+    {
+      "rank": 172,
+      "name": "Comfey",
+      "found": 6,
+      "total": 197,
+      "pct": 3.05,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 6,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "079",
+      "uid": "Comfey::LOR::079"
+    },
+    {
+      "rank": 173,
+      "name": "Cramorant",
+      "found": 6,
+      "total": 197,
+      "pct": 3.05,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "050",
+      "uid": "Cramorant::LOR::050"
+    },
+    {
+      "rank": 174,
+      "name": "Sableye",
+      "found": 6,
+      "total": 197,
+      "pct": 3.05,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 83.33
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 16.67
+        }
+      ],
+      "set": "LOR",
+      "number": "070",
+      "uid": "Sableye::LOR::070"
+    },
+    {
+      "rank": 175,
+      "name": "Colress's Experiment",
+      "found": 6,
+      "total": 197,
+      "pct": 3.05,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 6,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 176,
+      "name": "Mirage Gate",
+      "found": 6,
+      "total": 197,
+      "pct": 3.05,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 6,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 177,
+      "name": "Cornerstone Mask Ogerpon ex",
+      "found": 6,
+      "total": 197,
+      "pct": 3.05,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "112",
+      "uid": "Cornerstone Mask Ogerpon ex::TWM::112"
+    },
+    {
+      "rank": 178,
+      "name": "Techno Radar",
+      "found": 5,
+      "total": 197,
+      "pct": 2.54,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 60.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 20.0
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 20.0
+        }
+      ]
+    },
+    {
+      "rank": 179,
+      "name": "Genesect",
+      "found": 5,
+      "total": 197,
+      "pct": 2.54,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "040",
+      "uid": "Genesect::SFA::040"
+    },
+    {
+      "rank": 180,
+      "name": "Spiritomb",
+      "found": 5,
+      "total": 197,
+      "pct": 2.54,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "089",
+      "uid": "Spiritomb::PAL::089"
+    },
+    {
+      "rank": 181,
+      "name": "Pidgeot V",
+      "found": 5,
+      "total": 197,
+      "pct": 2.54,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "137",
+      "uid": "Pidgeot V::LOR::137"
+    },
+    {
+      "rank": 182,
+      "name": "Pikachu ex",
+      "found": 5,
+      "total": 197,
+      "pct": 2.54,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "057",
+      "uid": "Pikachu ex::SSP::057"
+    },
+    {
+      "rank": 183,
+      "name": "Pokémon League Headquarters",
+      "found": 5,
+      "total": 197,
+      "pct": 2.54,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 60.0
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 40.0
+        }
+      ]
+    },
+    {
+      "rank": 184,
+      "name": "Kieran",
+      "found": 4,
+      "total": 197,
+      "pct": 2.03,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 185,
+      "name": "Crushing Hammer",
+      "found": 4,
+      "total": 197,
+      "pct": 2.03,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 186,
+      "name": "Enhanced Hammer",
+      "found": 4,
+      "total": 197,
+      "pct": 2.03,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 75.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 25.0
+        }
+      ]
+    },
+    {
+      "rank": 187,
+      "name": "Technical Machine: Turbo Energize",
+      "found": 4,
+      "total": 197,
+      "pct": 2.03,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 188,
+      "name": "Bouffalant",
+      "found": 4,
+      "total": 197,
+      "pct": 2.03,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "SCR",
+      "number": "119",
+      "uid": "Bouffalant::SCR::119"
+    },
+    {
+      "rank": 189,
+      "name": "Litten",
+      "found": 4,
+      "total": 197,
+      "pct": 2.03,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "032",
+      "uid": "Litten::TEF::032"
+    },
+    {
+      "rank": 190,
+      "name": "Incineroar ex",
+      "found": 4,
+      "total": 197,
+      "pct": 2.03,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "034",
+      "uid": "Incineroar ex::TEF::034"
+    },
+    {
+      "rank": 191,
+      "name": "Charmander",
+      "found": 4,
+      "total": 197,
+      "pct": 2.03,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 75.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 25.0
+        }
+      ],
+      "set": "SVP",
+      "number": "047",
+      "uid": "Charmander::SVP::047"
+    },
+    {
+      "rank": 192,
+      "name": "Togepi",
+      "found": 4,
+      "total": 197,
+      "pct": 2.03,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 75.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 25.0
+        }
+      ],
+      "set": "SSP",
+      "number": "070",
+      "uid": "Togepi::SSP::070"
+    },
+    {
+      "rank": 193,
+      "name": "Gimmighoul",
+      "found": 3,
+      "total": 197,
+      "pct": 1.52,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 66.67
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 33.33
+        }
+      ],
+      "set": "PAR",
+      "number": "088",
+      "uid": "Gimmighoul::PAR::088"
+    },
+    {
+      "rank": 194,
+      "name": "Sparkling Crystal",
+      "found": 3,
+      "total": 197,
+      "pct": 1.52,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 195,
+      "name": "Minccino",
+      "found": 3,
+      "total": 197,
+      "pct": 1.52,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 66.67
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 33.33
+        }
+      ],
+      "set": "BRS",
+      "number": "124",
+      "uid": "Minccino::BRS::124"
+    },
+    {
+      "rank": 196,
+      "name": "Great Ball",
+      "found": 3,
+      "total": 197,
+      "pct": 1.52,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 197,
+      "name": "Giacomo",
+      "found": 3,
+      "total": 197,
+      "pct": 1.52,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 198,
+      "name": "Togepi",
+      "found": 3,
+      "total": 197,
+      "pct": 1.52,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 66.67
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 33.33
+        }
+      ],
+      "set": "ASR",
+      "number": "055",
+      "uid": "Togepi::ASR::055"
+    },
+    {
+      "rank": 199,
+      "name": "Ralts",
+      "found": 3,
+      "total": 197,
+      "pct": 1.52,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "set": "SIT",
+      "number": "067",
+      "uid": "Ralts::SIT::067"
+    },
+    {
+      "rank": 200,
+      "name": "Moonlit Hill",
+      "found": 3,
+      "total": 197,
+      "pct": 1.52,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 201,
+      "name": "Toedscool",
+      "found": 3,
+      "total": 197,
+      "pct": 1.52,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "016",
+      "uid": "Toedscool::PAR::016"
+    },
+    {
+      "rank": 202,
+      "name": "Worker",
+      "found": 3,
+      "total": 197,
+      "pct": 1.52,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 203,
+      "name": "Gravity Gemstone",
+      "found": 3,
+      "total": 197,
+      "pct": 1.52,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 204,
+      "name": "Jubilife Village",
+      "found": 3,
+      "total": 197,
+      "pct": 1.52,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 205,
+      "name": "Bibarel",
+      "found": 3,
+      "total": 197,
+      "pct": 1.52,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 66.67
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 33.33
+        }
+      ],
+      "set": "BRS",
+      "number": "121",
+      "uid": "Bibarel::BRS::121"
+    },
+    {
+      "rank": 206,
+      "name": "Hawlucha",
+      "found": 3,
+      "total": 197,
+      "pct": 1.52,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "118",
+      "uid": "Hawlucha::SVI::118"
+    },
+    {
+      "rank": 207,
+      "name": "Counter Gain",
+      "found": 3,
+      "total": 197,
+      "pct": 1.52,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 208,
+      "name": "Hoothoot",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "set": "TEF",
+      "number": "126",
+      "uid": "Hoothoot::TEF::126"
+    },
+    {
+      "rank": 209,
+      "name": "Glass Trumpet",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 210,
+      "name": "Scramble Switch",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 211,
+      "name": "Town Store",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 212,
+      "name": "Toedscool",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "OBF",
+      "number": "118",
+      "uid": "Toedscool::OBF::118"
+    },
+    {
+      "rank": 213,
+      "name": "Charcadet",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "set": "SSP",
+      "number": "032",
+      "uid": "Charcadet::SSP::032"
+    },
+    {
+      "rank": 214,
+      "name": "Ceruledge ex",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "036",
+      "uid": "Ceruledge ex::SSP::036"
+    },
+    {
+      "rank": 215,
+      "name": "Brilliant Blender",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 216,
+      "name": "Kofu",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 217,
+      "name": "Miracle Headset",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 218,
+      "name": "Hero's Cape",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 219,
+      "name": "Luxurious Cape",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 220,
+      "name": "Exp. Share",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 221,
+      "name": "Toedscool",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "SCR",
+      "number": "017",
+      "uid": "Toedscool::SCR::017"
+    },
+    {
+      "rank": 222,
+      "name": "Gravity Mountain",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 223,
+      "name": "Cobalion",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "SIT",
+      "number": "126",
+      "uid": "Cobalion::SIT::126"
+    },
+    {
+      "rank": 224,
+      "name": "Gimmighoul",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "087",
+      "uid": "Gimmighoul::PAR::087"
+    },
+    {
+      "rank": 225,
+      "name": "Noivern ex",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "153",
+      "uid": "Noivern ex::PAL::153"
+    },
+    {
+      "rank": 226,
+      "name": "Tatsugiri",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "131",
+      "uid": "Tatsugiri::TWM::131"
+    },
+    {
+      "rank": 227,
+      "name": "Magma Basin",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 228,
+      "name": "Luxray V",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "ASR",
+      "number": "050",
+      "uid": "Luxray V::ASR::050"
+    },
+    {
+      "rank": 229,
+      "name": "Regieleki",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "ASR",
+      "number": "051",
+      "uid": "Regieleki::ASR::051"
+    },
+    {
+      "rank": 230,
+      "name": "Roseanne's Backup",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 231,
+      "name": "Defiance Vest",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 232,
+      "name": "Iron Leaves ex",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "set": "TEF",
+      "number": "025",
+      "uid": "Iron Leaves ex::TEF::025"
+    },
+    {
+      "rank": 233,
+      "name": "Luminous Energy",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 50.0
+        }
+      ]
+    },
+    {
+      "rank": 234,
+      "name": "Bidoof",
+      "found": 2,
+      "total": 197,
+      "pct": 1.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "set": "CRZ",
+      "number": "111",
+      "uid": "Bidoof::CRZ::111"
+    },
+    {
+      "rank": 235,
+      "name": "Ditto",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEW",
+      "number": "132",
+      "uid": "Ditto::MEW::132"
+    },
+    {
+      "rank": 236,
+      "name": "Mela",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 237,
+      "name": "Morty's Conviction",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 238,
+      "name": "Mantine",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "ASR",
+      "number": "034",
+      "uid": "Mantine::ASR::034"
+    },
+    {
+      "rank": 239,
+      "name": "Dusk Ball",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 240,
+      "name": "Friends in Hisui",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 241,
+      "name": "Bidoof",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "BRS",
+      "number": "120",
+      "uid": "Bidoof::BRS::120"
+    },
+    {
+      "rank": 242,
+      "name": "Durant ex",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "004",
+      "uid": "Durant ex::SSP::004"
+    },
+    {
+      "rank": 243,
+      "name": "Ralts",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "084",
+      "uid": "Ralts::SVI::084"
+    },
+    {
+      "rank": 244,
+      "name": "Pidgey",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEW",
+      "number": "016",
+      "uid": "Pidgey::MEW::016"
+    },
+    {
+      "rank": 245,
+      "name": "Cresselia",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "074",
+      "uid": "Cresselia::LOR::074"
+    },
+    {
+      "rank": 246,
+      "name": "Hyper Aroma",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 247,
+      "name": "Gouging Fire ex",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "038",
+      "uid": "Gouging Fire ex::TEF::038"
+    },
+    {
+      "rank": 248,
+      "name": "Delphox V",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "027",
+      "uid": "Delphox V::LOR::027"
+    },
+    {
+      "rank": 249,
+      "name": "Entei V",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "BRS",
+      "number": "022",
+      "uid": "Entei V::BRS::022"
+    },
+    {
+      "rank": 250,
+      "name": "Moltres",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PGO",
+      "number": "012",
+      "uid": "Moltres::PGO::012"
+    },
+    {
+      "rank": 251,
+      "name": "Giratina V",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "130",
+      "uid": "Giratina V::LOR::130"
+    },
+    {
+      "rank": 252,
+      "name": "Feebas",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SIT",
+      "number": "039",
+      "uid": "Feebas::SIT::039"
+    },
+    {
+      "rank": 253,
+      "name": "Milotic",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "050",
+      "uid": "Milotic::TWM::050"
+    },
+    {
+      "rank": 254,
+      "name": "Black Kyurem ex",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "048",
+      "uid": "Black Kyurem ex::SSP::048"
+    },
+    {
+      "rank": 255,
+      "name": "Radiant Tsareena",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SIT",
+      "number": "016",
+      "uid": "Radiant Tsareena::SIT::016"
+    },
+    {
+      "rank": 256,
+      "name": "Dunsparce",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "156",
+      "uid": "Dunsparce::PAL::156"
+    },
+    {
+      "rank": 257,
+      "name": "Dudunsparce",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "129",
+      "uid": "Dudunsparce::TEF::129"
+    },
+    {
+      "rank": 258,
+      "name": "Enriching Energy",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 259,
+      "name": "Miraidon ex",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "081",
+      "uid": "Miraidon ex::SVI::081"
+    },
+    {
+      "rank": 260,
+      "name": "Magnemite",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "058",
+      "uid": "Magnemite::SSP::058"
+    },
+    {
+      "rank": 261,
+      "name": "Magneton",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "059",
+      "uid": "Magneton::SSP::059"
+    },
+    {
+      "rank": 262,
+      "name": "Raichu V",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "BRS",
+      "number": "045",
+      "uid": "Raichu V::BRS::045"
+    },
+    {
+      "rank": 263,
+      "name": "Raikou V",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "BRS",
+      "number": "048",
+      "uid": "Raikou V::BRS::048"
+    },
+    {
+      "rank": 264,
+      "name": "Electric Generator",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 265,
+      "name": "Grant",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 266,
+      "name": "Call Bell",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 267,
+      "name": "Calamitous Wasteland",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 268,
+      "name": "Shellos",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "046",
+      "uid": "Shellos::SSP::046"
+    },
+    {
+      "rank": 269,
+      "name": "Gastrodon",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "107",
+      "uid": "Gastrodon::SSP::107"
+    },
+    {
+      "rank": 270,
+      "name": "Charcadet",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "040",
+      "uid": "Charcadet::SVI::040"
+    },
+    {
+      "rank": 271,
+      "name": "Armarouge",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "041",
+      "uid": "Armarouge::SVI::041"
+    },
+    {
+      "rank": 272,
+      "name": "Sandshrew",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEW",
+      "number": "027",
+      "uid": "Sandshrew::MEW::027"
+    },
+    {
+      "rank": 273,
+      "name": "Iron Crown ex",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "081",
+      "uid": "Iron Crown ex::TEF::081"
+    },
+    {
+      "rank": 274,
+      "name": "Miraidon",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "121",
+      "uid": "Miraidon::TEF::121"
+    },
+    {
+      "rank": 275,
+      "name": "Iron Valiant ex",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "089",
+      "uid": "Iron Valiant ex::PAR::089"
+    },
+    {
+      "rank": 276,
+      "name": "Lacey",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 277,
+      "name": "Reboot Pod",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 278,
+      "name": "Darkrai V",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "ASR",
+      "number": "098",
+      "uid": "Darkrai V::ASR::098"
+    },
+    {
+      "rank": 279,
+      "name": "Darkrai VSTAR",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "ASR",
+      "number": "099",
+      "uid": "Darkrai VSTAR::ASR::099"
+    },
+    {
+      "rank": 280,
+      "name": "Lisia's Appeal",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 281,
+      "name": "Nemona",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 282,
+      "name": "Frigibax",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "057",
+      "uid": "Frigibax::PAL::057"
+    },
+    {
+      "rank": 283,
+      "name": "Frigibax",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAF",
+      "number": "017",
+      "uid": "Frigibax::PAF::017"
+    },
+    {
+      "rank": 284,
+      "name": "Arctibax",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "059",
+      "uid": "Arctibax::PAL::059"
+    },
+    {
+      "rank": 285,
+      "name": "Baxcalibur",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "060",
+      "uid": "Baxcalibur::PAL::060"
+    },
+    {
+      "rank": 286,
+      "name": "Chien-Pao ex",
+      "found": 1,
+      "total": 197,
+      "pct": 0.51,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "061",
+      "uid": "Chien-Pao ex::PAL::061"
+    }
+  ]
+}

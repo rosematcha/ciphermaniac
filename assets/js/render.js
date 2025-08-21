@@ -4,6 +4,39 @@ import { trackMissing } from './dev/missingThumbs.js';
 import { isFavorite, toggleFavorite, subscribeFavorites } from './favorites.js';
 // Modal removed: navigate to card page instead
 
+// Lightweight floating tooltip used for thumbnails' histograms
+let __gridGraphTooltip = null;
+function ensureGridTooltip(){
+  if(__gridGraphTooltip) return __gridGraphTooltip;
+  const t = document.createElement('div');
+  t.className = 'graph-tooltip';
+  t.setAttribute('role', 'status');
+  t.style.position = 'fixed';
+  t.style.pointerEvents = 'none';
+  t.style.zIndex = 9999;
+  t.style.display = 'none';
+  document.body.appendChild(t);
+  __gridGraphTooltip = t;
+  return t;
+}
+function showGridTooltip(html, x, y){
+  const t = ensureGridTooltip();
+  t.innerHTML = html;
+  t.style.display = 'block';
+  const offsetX = 12; const offsetY = 12;
+  const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+  const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+  let left = x + offsetX;
+  let top = y + offsetY;
+  const rect = t.getBoundingClientRect();
+  if(left + rect.width > vw) left = Math.max(8, x - rect.width - offsetX);
+  if(top + rect.height > vh) top = Math.max(8, y - rect.height - offsetY);
+  t.style.left = left + 'px';
+  t.style.top = top + 'px';
+}
+function hideGridTooltip(){ if(__gridGraphTooltip) __gridGraphTooltip.style.display = 'none'; }
+function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>\"]/g, (ch)=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch])); }
+
 export function renderSummary(container, deckTotal, count){
   const parts = [];
   if(deckTotal) parts.push(`${deckTotal} decklists`);
@@ -61,7 +94,7 @@ export function render(items, overrides={}){
   img.loading = useSm ? 'eager' : 'lazy';
   img.style.opacity = '0';
   img.style.transition = 'opacity .18s ease-out';
-  const candidates = buildThumbCandidates(it.name, useSm, overrides);
+  const candidates = buildThumbCandidates(it.name, useSm, overrides, { set: it.set, number: it.number });
     let idx = 0;
     const tryNext = () => {
       if(idx >= candidates.length){
@@ -117,16 +150,31 @@ export function render(items, overrides={}){
         const h = d ? Math.max(2, Math.round(54 * (d.percent / maxPct))) : 2;
         bar.style.height = h + 'px';
         if(!d){ bar.style.opacity = 0.25; }
-        // Tooltip: for each N, percent and raw counts if available
+        // Tooltip/ARIA: for each N, percent and raw counts if available
         if(d){
           const total = Number.isFinite(it.total) ? it.total : null;
           const players = Number.isFinite(d.players) ? d.players : null;
           const exactPct = Number.isFinite(d.percent) ? d.percent : (players!=null && total ? (100*players/total) : null);
           const pctStr = exactPct!=null ? exactPct.toFixed(1)+'%' : '—';
           const countsStr = (players!=null && total!=null) ? ` (${players}/${total})` : '';
-          col.title = `${c}x: ${pctStr}${countsStr}`;
+          const tip = `${c}x: ${pctStr}${countsStr}`;
+          col.setAttribute('tabindex', '0');
+          col.setAttribute('role', 'img');
+          col.setAttribute('aria-label', tip);
+          col.addEventListener('mousemove', (ev) => showGridTooltip(`<strong>${escapeHtml(it.name)}</strong><div>${escapeHtml(tip)}</div>`, ev.clientX, ev.clientY));
+          col.addEventListener('mouseenter', (ev) => showGridTooltip(`<strong>${escapeHtml(it.name)}</strong><div>${escapeHtml(tip)}</div>`, ev.clientX, ev.clientY));
+          col.addEventListener('mouseleave', hideGridTooltip);
+          col.addEventListener('focus', (ev) => showGridTooltip(`<strong>${escapeHtml(it.name)}</strong><div>${escapeHtml(tip)}</div>`, ev.clientX || 0, ev.clientY || 0));
+          col.addEventListener('blur', hideGridTooltip);
         } else {
-          col.title = `${c}x: 0%`;
+          const tip = `${c}x: 0%`;
+          col.setAttribute('tabindex', '0');
+          col.setAttribute('role', 'img');
+          col.setAttribute('aria-label', tip);
+          col.addEventListener('mouseenter', (ev) => showGridTooltip(`<strong>${escapeHtml(it.name)}</strong><div>${escapeHtml(tip)}</div>`, ev.clientX, ev.clientY));
+          col.addEventListener('mouseleave', hideGridTooltip);
+          col.addEventListener('focus', (ev) => showGridTooltip(`<strong>${escapeHtml(it.name)}</strong><div>${escapeHtml(tip)}</div>`, ev.clientX || 0, ev.clientY || 0));
+          col.addEventListener('blur', hideGridTooltip);
         }
         col.appendChild(bar);
         col.appendChild(lbl);
@@ -163,9 +211,10 @@ export function render(items, overrides={}){
     row.className = 'row';
     row.dataset.rowIndex = String(rowIndex);
   const isBig = rowIndex < bigRows;
-    const scale = isBig ? 1 : smallScale;
-    const maxCount = isBig ? perRowBig : targetSmall;
-    row.style.setProperty('--scale', String(scale));
+  const scale = isBig ? 1 : smallScale;
+  const maxCount = isBig ? perRowBig : targetSmall;
+  row.style.setProperty('--scale', String(scale));
+  // Use the base width for big rows and base for small rows (scaled via --scale)
   row.style.setProperty('--card-base', base + 'px');
   // Keep a consistent row width based on big row content and center it
   row.style.width = bigRowContentWidth + 'px';

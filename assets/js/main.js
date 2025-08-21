@@ -15,6 +15,7 @@ import { storage } from './utils/storage.js';
 import { CleanupManager, debounce, validateElements } from './utils/performance.js';
 import { CONFIG } from './config.js';
 import { safeAsync } from './utils/errorHandler.js';
+import { prettyTournamentName } from './utils/format.js';
 
 /**
  * Application state and caches
@@ -122,7 +123,7 @@ async function initializeTournamentSelector(state) {
   tournaments.forEach(tournament => {
     const option = document.createElement('option');
     option.value = tournament;
-    option.textContent = tournament;
+    option.textContent = prettyTournamentName(tournament);
     elements.tournamentSelect.appendChild(option);
   });
   
@@ -162,16 +163,7 @@ async function loadTournamentData(tournament, cache) {
     return { deckTotal: cached.deckTotal, items: cached.items };
   }
   
-  // Prefer precomputed cardIndex to avoid heavy parsing when available
-  try{
-    const idx = await fetchCardIndex(tournament);
-    if(idx && idx.cards){
-      const items = Object.keys(idx.cards).map(name => ({ name, ...idx.cards[name] }));
-      const parsed = { deckTotal: idx.deckTotal, items };
-      cache.setCachedMaster(tournament, parsed);
-      return parsed;
-    }
-  }catch{}
+  // Note: Do not use aggregated cardIndex for main grid; master.json preserves per-variant distinctions.
 
   // Fallback to master.json
   const data = await fetchReport(tournament);

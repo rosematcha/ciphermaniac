@@ -1,0 +1,613 @@
+{
+  "deckTotal": 13,
+  "items": [
+    {
+      "rank": 1,
+      "name": "Comfey",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 13,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "079",
+      "uid": "Comfey::LOR::079"
+    },
+    {
+      "rank": 2,
+      "name": "Manaphy",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 100.0
+        }
+      ],
+      "set": "BRS",
+      "number": "041",
+      "uid": "Manaphy::BRS::041"
+    },
+    {
+      "rank": 3,
+      "name": "Radiant Greninja",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 100.0
+        }
+      ],
+      "set": "ASR",
+      "number": "046",
+      "uid": "Radiant Greninja::ASR::046"
+    },
+    {
+      "rank": 4,
+      "name": "Cramorant",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "050",
+      "uid": "Cramorant::LOR::050"
+    },
+    {
+      "rank": 5,
+      "name": "Sableye",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 100.0
+        }
+      ],
+      "set": "LOR",
+      "number": "070",
+      "uid": "Sableye::LOR::070"
+    },
+    {
+      "rank": 6,
+      "name": "Bloodmoon Ursaluna ex",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "141",
+      "uid": "Bloodmoon Ursaluna ex::TWM::141"
+    },
+    {
+      "rank": 7,
+      "name": "Colress's Experiment",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 13,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "name": "Boss's Orders",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "name": "Nest Ball",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 13,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "name": "Mirage Gate",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 13,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "name": "Super Rod",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 13,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "name": "Switch Cart",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 13,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "name": "Buddy-Buddy Poffin",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 10,
+          "percent": 76.92
+        },
+        {
+          "copies": 4,
+          "players": 3,
+          "percent": 23.08
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "Switch",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 11,
+          "percent": 84.62
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 15.38
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "Lost Vacuum",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 13,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "name": "Prime Catcher",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "name": "Hisuian Heavy Ball",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "Pal Pad",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "PokéStop",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 15.38
+        },
+        {
+          "copies": 3,
+          "players": 8,
+          "percent": 61.54
+        },
+        {
+          "copies": 4,
+          "players": 3,
+          "percent": 23.08
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "name": "Psychic Energy",
+      "found": 13,
+      "total": 13,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 11,
+          "percent": 84.62
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 15.38
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "name": "Pikachu ex",
+      "found": 12,
+      "total": 13,
+      "pct": 92.31,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 12,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "057",
+      "uid": "Pikachu ex::SSP::057"
+    },
+    {
+      "rank": 22,
+      "name": "Iron Hands ex",
+      "found": 12,
+      "total": 13,
+      "pct": 92.31,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 12,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "070",
+      "uid": "Iron Hands ex::PAR::070"
+    },
+    {
+      "rank": 23,
+      "name": "Water Energy",
+      "found": 12,
+      "total": 13,
+      "pct": 92.31,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 33.33
+        },
+        {
+          "copies": 3,
+          "players": 8,
+          "percent": 66.67
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "name": "Lightning Energy",
+      "found": 12,
+      "total": 13,
+      "pct": 92.31,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 12,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "name": "Metal Energy",
+      "found": 12,
+      "total": 13,
+      "pct": 92.31,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 12,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 26,
+      "name": "Grass Energy",
+      "found": 12,
+      "total": 13,
+      "pct": 92.31,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 12,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 27,
+      "name": "Night Stretcher",
+      "found": 11,
+      "total": 13,
+      "pct": 84.62,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 54.55
+        },
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 36.36
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 9.09
+        }
+      ]
+    },
+    {
+      "rank": 28,
+      "name": "Rescue Board",
+      "found": 10,
+      "total": 13,
+      "pct": 76.92,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 10,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 29,
+      "name": "Roxanne",
+      "found": 9,
+      "total": 13,
+      "pct": 69.23,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 30,
+      "name": "Pokégear 3.0",
+      "found": 7,
+      "total": 13,
+      "pct": 53.85,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 31,
+      "name": "Iron Bundle",
+      "found": 4,
+      "total": 13,
+      "pct": 30.77,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "056",
+      "uid": "Iron Bundle::PAR::056"
+    },
+    {
+      "rank": 32,
+      "name": "Cyllene",
+      "found": 2,
+      "total": 13,
+      "pct": 15.38,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 33,
+      "name": "Counter Catcher",
+      "found": 2,
+      "total": 13,
+      "pct": 15.38,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 34,
+      "name": "Roaring Moon ex",
+      "found": 1,
+      "total": 13,
+      "pct": 7.69,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "124",
+      "uid": "Roaring Moon ex::PAR::124"
+    },
+    {
+      "rank": 35,
+      "name": "Fezandipiti ex",
+      "found": 1,
+      "total": 13,
+      "pct": 7.69,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "038",
+      "uid": "Fezandipiti ex::SFA::038"
+    },
+    {
+      "rank": 36,
+      "name": "Canceling Cologne",
+      "found": 1,
+      "total": 13,
+      "pct": 7.69,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 37,
+      "name": "Darkness Energy",
+      "found": 1,
+      "total": 13,
+      "pct": 7.69,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ]
+    },
+    {
+      "rank": 38,
+      "name": "Iron Leaves ex",
+      "found": 1,
+      "total": 13,
+      "pct": 7.69,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "025",
+      "uid": "Iron Leaves ex::TEF::025"
+    }
+  ]
+}

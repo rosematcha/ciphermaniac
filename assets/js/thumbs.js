@@ -32,12 +32,17 @@ function teamRocketVariants(name){
   return variants;
 }
 
-export function buildThumbCandidates(name, useSm, overrides){
+export function buildThumbCandidates(name, useSm, overrides, variant){
   // useSm: true -> sm folder, false -> xs folder
   const base = useSm ? 'thumbnails/sm/' : 'thumbnails/xs/';
   const out = [];
   if(overrides && overrides[name]){
     out.push(base + overrides[name]);
+  }
+  // If variant info is provided (set+number), prioritize that filename
+  if(variant && variant.set && variant.number != null){
+    const primaryVariant = sanitizePrimary(`${name}_${String(variant.set)}_${String(variant.number)}`) + '.png';
+    out.push(base + primaryVariant);
   }
   const primary = sanitizePrimary(name) + '.png';
   out.push(base + primary);

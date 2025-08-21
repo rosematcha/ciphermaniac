@@ -1,0 +1,11 @@
+{
+  "name": "ciphermaniac",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "lint": "eslint . --ext .js --rule 'no-restricted-syntax: [error, { selector: \"PropertyDefinition[kind=\\'field\\'][key.type=\\'PrivateIdentifier\\']\", message: \"Private class fields are disallowed\" }]'"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0"
+  }
+}
