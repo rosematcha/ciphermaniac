@@ -4,6 +4,7 @@
  */
 
 import { fetchReport, fetchOverrides, fetchArchetypeReport, fetchTournamentsList, fetchArchetypesList, fetchMeta, fetchCardIndex } from './api.js';
+import { AppError } from './utils/errorHandler.js';
 import { parseReport } from './parse.js';
 import { render, renderSummary, updateLayout } from './render.js';
 import { applyFiltersSort } from './controls.js';
@@ -138,12 +139,7 @@ async function initializeTournamentSelector(state) {
 
   // Clean up URL if invalid tournament was specified
   if (urlState.tour && !tournaments.includes(urlState.tour)) {
-    setStateInURL({
-      q: urlState.q,
-      sort: urlState.sort,
-      archetype: urlState.archetype,
-      tour: selectedTournament
-    }, { replace: true });
+    setStateInURL({ tour: selectedTournament }, { merge: true, replace: true });
   }
 
   logger.info(`Initialized with tournament: ${selectedTournament}`);
@@ -181,8 +177,9 @@ async function loadTournamentData(tournament, cache) {
  * @param {string} tournament
  * @param {DataCache} cache
  * @param {AppState} state
+ * @param {boolean} skipUrlInit - Skip URL-based initialization (e.g., during tournament change)
  */
-async function setupArchetypeSelector(tournament, cache, state) {
+async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = false) {
   const archeSel = document.getElementById('archetype');
   if (!archeSel) {return;}
 
@@ -217,10 +214,11 @@ async function setupArchetypeSelector(tournament, cache, state) {
   // Set up change handler with caching
   const handleArchetypeChange = async () => {
     const selectedValue = archeSel.value;
+    const currentTournament = state.currentTournament;
 
     if (selectedValue === '__all__') {
       // Show all cards
-      const data = await loadTournamentData(tournament, cache);
+      const data = await loadTournamentData(currentTournament, cache);
       state.current = data;
       renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
       applyFiltersSort(data.items, state.overrides);
@@ -231,11 +229,21 @@ async function setupArchetypeSelector(tournament, cache, state) {
     // Load specific archetype data
     let cached = state.archeCache.get(selectedValue);
     if (!cached) {
-      const data = await safeAsync(
-        () => fetchArchetypeReport(tournament, selectedValue),
-        `fetching archetype ${selectedValue}`,
-        { items: [], deckTotal: 0 }
-      );
+      let data;
+      try {
+        data = await fetchArchetypeReport(currentTournament, selectedValue);
+      } catch (error) {
+        // Handle missing archetype files gracefully
+        if (error instanceof AppError && error.context?.status === 404) {
+          logger.debug(`Archetype ${selectedValue} not available for ${currentTournament}, using empty data`);
+          data = { items: [], deckTotal: 0 };
+        } else {
+          // Log other errors normally and use fallback
+          logger.exception(`Failed fetching archetype ${selectedValue}`, error);
+          data = { items: [], deckTotal: 0 };
+        }
+      }
+      
       const parsed = parseReport(data);
       cached = { data, deckTotal: parsed.deckTotal, items: parsed.items };
       state.archeCache.set(selectedValue, cached);
@@ -250,14 +258,16 @@ async function setupArchetypeSelector(tournament, cache, state) {
   // Add event listener with cleanup
   state.cleanup.addEventListener(archeSel, 'change', handleArchetypeChange);
 
-  // Set initial value from URL state
-  const urlState = getStateFromURL();
-  if (urlState.archetype && urlState.archetype !== '__all__') {
-    // Check if this archetype exists in the list
-    const hasArchetype = archetypesList.includes(urlState.archetype);
-    archeSel.value = hasArchetype ? urlState.archetype : '__all__';
-    if (hasArchetype) {
-      handleArchetypeChange();
+  // Set initial value from URL state (unless skipping URL initialization)
+  if (!skipUrlInit) {
+    const urlState = getStateFromURL();
+    if (urlState.archetype && urlState.archetype !== '__all__') {
+      // Check if this archetype exists in the list
+      const hasArchetype = archetypesList.includes(urlState.archetype);
+      archeSel.value = hasArchetype ? urlState.archetype : '__all__';
+      if (hasArchetype) {
+        handleArchetypeChange();
+      }
     }
   }
 }
@@ -271,7 +281,8 @@ function setupControlHandlers(state) {
     search: '#search',
     sort: '#sort',
     favFilter: '#fav-filter',
-    tournament: '#tournament'
+    tournament: '#tournament',
+    archetype: '#archetype'
   }, 'controls');
 
   // Debounced search handler
@@ -298,6 +309,9 @@ function setupControlHandlers(state) {
     const newTournament = elements.tournament.value;
     if (newTournament === state.currentTournament) {return;}
 
+    // Get currently selected archetype before switching
+    const currentArchetype = elements.archetype?.value || '__all__';
+
     logger.info(`Switching to tournament: ${newTournament}`);
     state.currentTournament = newTournament;
     state.archeCache.clear(); // Clear archetype cache
@@ -309,16 +323,38 @@ function setupControlHandlers(state) {
     const data = await loadTournamentData(newTournament, cache);
     state.current = data;
 
-    // Update archetype selector
-    await setupArchetypeSelector(newTournament, cache, state);
+    // Load archetype list for the new tournament to check availability
+    const newArchetypesList = await safeAsync(
+      () => fetchArchetypesList(newTournament),
+      `fetching archetypes for ${newTournament}`,
+      []
+    );
 
-    // Reset archetype to "All"
-    elements.archetype?.selectAll?.(0);
+    // Determine if we can preserve the current archetype
+    const canPreserveArchetype = currentArchetype !== '__all__' && newArchetypesList.includes(currentArchetype);
+    const targetArchetype = canPreserveArchetype ? currentArchetype : '__all__';
 
-    // Update display
-    renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
-    applyFiltersSort(data.items, state.overrides);
-    setStateInURL({ tour: newTournament }, { merge: true });
+    logger.debug(`Archetype preservation: ${currentArchetype} → ${targetArchetype} (available: ${canPreserveArchetype})`);
+
+    // Update archetype selector (skip URL initialization to avoid conflicts)
+    await setupArchetypeSelector(newTournament, cache, state, true);
+
+    // Set archetype to preserved value or "All"
+    elements.archetype.value = targetArchetype;
+
+    // Load archetype data if preserving a specific archetype
+    if (canPreserveArchetype) {
+      // Trigger archetype change to load the specific archetype data
+      const archetypeChangeEvent = new Event('change');
+      elements.archetype.dispatchEvent(archetypeChangeEvent);
+    } else {
+      // Update display with all tournament data
+      renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
+      applyFiltersSort(data.items, state.overrides);
+    }
+
+    // Update URL with both tournament and archetype
+    setStateInURL({ tour: newTournament, archetype: targetArchetype }, { merge: true });
   };
 
   // Add event listeners with cleanup

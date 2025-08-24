@@ -12,7 +12,9 @@
       "Bash(node:*)",
       "Bash(find:*)",
       "Bash(python:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "mcp__atlassian__getVisibleJiraProjects",
+      "mcp__atlassian__createJiraIssue"
     ],
     "deny": [],
     "ask": []

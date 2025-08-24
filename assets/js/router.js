@@ -26,11 +26,12 @@ export function setStateInURL(state, opts = {}){
     }
   };
 
-  setOrDelete('q', state.q);
-  setOrDelete('sort', state.sort);
-  setOrDelete('archetype', state.archetype);
-  setOrDelete('tour', state.tour);
-  setOrDelete('fav', state.fav);
+  // Only update parameters that are explicitly provided in the state object
+  if ('q' in state) setOrDelete('q', state.q);
+  if ('sort' in state) setOrDelete('sort', state.sort);
+  if ('archetype' in state) setOrDelete('archetype', state.archetype);
+  if ('tour' in state) setOrDelete('tour', state.tour);
+  if ('fav' in state) setOrDelete('fav', state.fav);
 
   const search = params.toString();
   const newUrl = `${location.pathname}${search ? `?${search}` : ''}${location.hash || ''}`;

@@ -167,16 +167,32 @@ export async function fetchArchetypesList(tournament) {
  * @throws {AppError}
  */
 export async function fetchArchetypeReport(tournament, archetypeBase) {
-  return withRetry(async () => {
-    logger.debug(`Fetching archetype report: ${tournament}/${archetypeBase}`);
-    const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
+  logger.debug(`Fetching archetype report: ${tournament}/${archetypeBase}`);
+  const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
+  
+  try {
     const response = await safeFetch(url);
     const data = await safeJsonParse(response, url);
 
     validateType(data, 'object', 'archetype report');
     logger.info(`Loaded archetype report ${archetypeBase} for ${tournament}`, { itemCount: data.items?.length });
     return data;
-  }, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+  } catch (error) {
+    // For 404 errors (archetype doesn't exist), don't retry and log at debug level
+    if (error instanceof AppError && error.context?.status === 404) {
+      logger.debug(`Archetype ${archetypeBase} not found for ${tournament}`, { url });
+      throw error;
+    }
+    
+    // For other errors, use retry logic
+    return withRetry(async () => {
+      const response = await safeFetch(url);
+      const data = await safeJsonParse(response, url);
+      validateType(data, 'object', 'archetype report');
+      logger.info(`Loaded archetype report ${archetypeBase} for ${tournament}`, { itemCount: data.items?.length });
+      return data;
+    }, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+  }
 }
 
 /**
