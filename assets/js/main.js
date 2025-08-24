@@ -9,6 +9,7 @@ import { render, renderSummary, updateLayout } from './render.js';
 import { applyFiltersSort } from './controls.js';
 import { initMissingThumbsDev, dumpMissingReport } from './dev/missingThumbs.js';
 import { initCacheDev } from './dev/cacheDev.js';
+import { imagePreloader } from './utils/imagePreloader.js';
 import { getStateFromURL, setStateInURL, normalizeRouteOnLoad, parseHash } from './router.js';
 import { logger } from './utils/logger.js';
 import { storage } from './utils/storage.js';
@@ -79,7 +80,7 @@ class DataCache {
 
   getCachedCardIndex(tournament){
     const entry = this.cache?.cardIndex?.[tournament];
-    if(!entry || this.isExpired(entry.ts)) return null;
+    if(!entry || this.isExpired(entry.ts)) {return null;}
     return entry.idx;
   }
 
@@ -110,15 +111,15 @@ async function initializeTournamentSelector(state) {
   const elements = validateElements({
     tournamentSelect: '#tournament'
   }, 'tournament selector');
-  
+
   const tournaments = await safeAsync(
     () => fetchTournamentsList(),
     'fetching tournaments list',
     ['World Championships 2025'] // fallback
   );
-  
+
   const urlState = getStateFromURL();
-  
+
   // Populate tournament options
   tournaments.forEach(tournament => {
     const option = document.createElement('option');
@@ -126,15 +127,15 @@ async function initializeTournamentSelector(state) {
     option.textContent = prettyTournamentName(tournament);
     elements.tournamentSelect.appendChild(option);
   });
-  
+
   // Set selected tournament from URL or use first as default
-  const selectedTournament = urlState.tour && tournaments.includes(urlState.tour) 
-    ? urlState.tour 
+  const selectedTournament = urlState.tour && tournaments.includes(urlState.tour)
+    ? urlState.tour
     : tournaments[0];
-  
+
   elements.tournamentSelect.value = selectedTournament;
   state.currentTournament = selectedTournament;
-  
+
   // Clean up URL if invalid tournament was specified
   if (urlState.tour && !tournaments.includes(urlState.tour)) {
     setStateInURL({
@@ -144,7 +145,7 @@ async function initializeTournamentSelector(state) {
       tour: selectedTournament
     }, { replace: true });
   }
-  
+
   logger.info(`Initialized with tournament: ${selectedTournament}`);
   return elements.tournamentSelect;
 }
@@ -162,16 +163,16 @@ async function loadTournamentData(tournament, cache) {
     logger.debug(`Using cached data for ${tournament}`);
     return { deckTotal: cached.deckTotal, items: cached.items };
   }
-  
+
   // Note: Do not use aggregated cardIndex for main grid; master.json preserves per-variant distinctions.
 
   // Fallback to master.json
   const data = await fetchReport(tournament);
   const parsed = parseReport(data);
-  
+
   // Cache the result
   cache.setCachedMaster(tournament, parsed);
-  
+
   return parsed;
 }
 
@@ -183,7 +184,7 @@ async function loadTournamentData(tournament, cache) {
  */
 async function setupArchetypeSelector(tournament, cache, state) {
   const archeSel = document.getElementById('archetype');
-  if (!archeSel) return;
+  if (!archeSel) {return;}
 
   // Clear existing options except "All archetypes"
   while (archeSel.children.length > 1) {
@@ -192,14 +193,14 @@ async function setupArchetypeSelector(tournament, cache, state) {
 
   // Try to load archetype index
   let archetypesList = cache.getCachedArcheIndex(tournament);
-  
+
   if (!archetypesList) {
     archetypesList = await safeAsync(
       () => fetchArchetypesList(tournament),
       `fetching archetypes for ${tournament}`,
       []
     );
-    
+
     if (archetypesList.length > 0) {
       cache.setCachedArcheIndex(tournament, archetypesList);
     }
@@ -216,7 +217,7 @@ async function setupArchetypeSelector(tournament, cache, state) {
   // Set up change handler with caching
   const handleArchetypeChange = async () => {
     const selectedValue = archeSel.value;
-    
+
     if (selectedValue === '__all__') {
       // Show all cards
       const data = await loadTournamentData(tournament, cache);
@@ -248,7 +249,7 @@ async function setupArchetypeSelector(tournament, cache, state) {
 
   // Add event listener with cleanup
   state.cleanup.addEventListener(archeSel, 'change', handleArchetypeChange);
-  
+
   // Set initial value from URL state
   const urlState = getStateFromURL();
   if (urlState.archetype && urlState.archetype !== '__all__') {
@@ -276,8 +277,8 @@ function setupControlHandlers(state) {
   // Debounced search handler
   const handleSearch = debounce(() => {
     applyFiltersSort(state.current.items, state.overrides);
-  // Use replace while typing to avoid polluting history; final commit can push
-  setStateInURL({ q: elements.search.value }, { merge: true, replace: true });
+    // Use replace while typing to avoid polluting history; final commit can push
+    setStateInURL({ q: elements.search.value }, { merge: true, replace: true });
   });
 
   // Sort change handler
@@ -295,14 +296,15 @@ function setupControlHandlers(state) {
   // Tournament change handler
   const handleTournamentChange = async () => {
     const newTournament = elements.tournament.value;
-    if (newTournament === state.currentTournament) return;
+    if (newTournament === state.currentTournament) {return;}
 
     logger.info(`Switching to tournament: ${newTournament}`);
     state.currentTournament = newTournament;
     state.archeCache.clear(); // Clear archetype cache
+    imagePreloader.clearCache(); // Clear image preloader cache
 
     const cache = new DataCache();
-    
+
     // Load new tournament data
     const data = await loadTournamentData(newTournament, cache);
     state.current = data;
@@ -327,9 +329,9 @@ function setupControlHandlers(state) {
 
   // Restore initial state from URL
   const urlState = getStateFromURL();
-  if (urlState.q) elements.search.value = urlState.q;
-  if (urlState.sort) elements.sort.value = urlState.sort;
-  if (urlState.fav && elements.favFilter) elements.favFilter.value = urlState.fav;
+  if (urlState.q) {elements.search.value = urlState.q;}
+  if (urlState.sort) {elements.sort.value = urlState.sort;}
+  if (urlState.fav && elements.favFilter) {elements.favFilter.value = urlState.fav;}
 }
 
 // Restore state from URL when navigating back/forward
@@ -354,7 +356,7 @@ function setupResizeHandler(state) {
   // rAF scheduler: update at most once per animation frame during resize
   let ticking = false;
   const onResize = () => {
-    if (ticking) return;
+    if (ticking) {return;}
     ticking = true;
     try {
       window.requestAnimationFrame(() => {
@@ -380,7 +382,7 @@ function applyInitialState(state) {
   const urlState = getStateFromURL();
   const elements = validateElements({
     search: '#search',
-    sort: '#sort', 
+    sort: '#sort',
     archetype: '#archetype',
     favFilter: '#fav-filter'
   }, 'applying initial state');
@@ -409,7 +411,7 @@ function applyInitialState(state) {
 async function initializeApp() {
   try {
     // Normalize hash routes like #card/... to card.html
-    if (normalizeRouteOnLoad()) return;
+    if (normalizeRouteOnLoad()) {return;}
 
     logger.info('Initializing Ciphermaniac application');
 
@@ -446,7 +448,7 @@ async function initializeApp() {
 
     // Initial render
     renderSummary(document.getElementById('summary'), initialData.deckTotal, initialData.items.length);
-    
+
     // Apply initial state from URL
     applyInitialState(appState);
 
@@ -454,7 +456,7 @@ async function initializeApp() {
 
   } catch (error) {
     logger.exception('Failed to initialize application', error);
-    
+
     // Show user-friendly error message
     const grid = document.getElementById('grid');
     if (grid) {

@@ -1,7 +1,7 @@
 function sanitizePrimary(name){
   // Normalize and keep Unicode letters/numbers, apostrophes, dashes, underscores; spaces -> underscores
-  let s = String(name).normalize('NFC')
-    .replace(/\u2019/g, "'") // curly to straight apostrophe
+  const s = String(name).normalize('NFC')
+    .replace(/\u2019/g, '\'') // curly to straight apostrophe
     .replace(/[\:!.,]/g, '')
     .replace(/\s+/g, '_')
     .replace(/[^\p{L}\p{N}_\-']/gu, '_')
@@ -26,7 +26,7 @@ function asciiFold(name){
 function teamRocketVariants(name){
   const variants = [];
   if(/Team Rocket's/i.test(name)){
-    variants.push(name.replace(/Team Rocket's/gi, "Team Rocket's")); // normalized
+    variants.push(name.replace(/Team Rocket's/gi, 'Team Rocket\'s')); // normalized
     variants.push(name.replace(/Team Rocket's/gi, 'Team Rockets'));
   }
   return variants;

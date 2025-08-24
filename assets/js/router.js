@@ -6,8 +6,8 @@ export function getStateFromURL(loc = window.location){
     q: params.get('q') || '',
     sort: params.get('sort') || '',
     archetype: params.get('archetype') || '',
-  tour: params.get('tour') || '',
-  fav: params.get('fav') || ''
+    tour: params.get('tour') || '',
+    fav: params.get('fav') || ''
   };
 }
 
@@ -89,9 +89,9 @@ export function normalizeCardRouteOnLoad(){
  */
 export function normalizeUnknownHashOnIndex(){
   const h = location.hash || '';
-  if(!h) return false;
-  if(h === '#grid') return false;
-  if(/^#card\/.+/.test(h)) return false;
+  if(!h) {return false;}
+  if(h === '#grid') {return false;}
+  if(/^#card\/.+/.test(h)) {return false;}
   // Unknown hash -> clear it but preserve search params
   const newUrl = `${location.pathname}${location.search}`;
   history.replaceState(null, '', newUrl);
@@ -121,8 +121,8 @@ export function parseHash(hash = location.hash){
  * @returns {string}
  */
 export function stringifyRoute(obj = {}){
-  if(!obj || !obj.route) return '';
-  if(obj.route === 'card' && obj.name) return `#card/${encodeURIComponent(obj.name)}`;
-  if(obj.route === 'grid') return '#grid';
+  if(!obj || !obj.route) {return '';}
+  if(obj.route === 'card' && obj.name) {return `#card/${encodeURIComponent(obj.name)}`;}
+  if(obj.route === 'grid') {return '#grid';}
   return obj.raw || '';
 }

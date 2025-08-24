@@ -62,7 +62,7 @@ export function getFavoritesSet() {
 
 /**
  * Check if a card is favorited
- * @param {string} cardName 
+ * @param {string} cardName
  * @returns {boolean}
  */
 export function isFavorite(cardName) {
@@ -71,7 +71,7 @@ export function isFavorite(cardName) {
 
 /**
  * Toggle favorite status of a card
- * @param {string} cardName 
+ * @param {string} cardName
  * @returns {boolean} New favorite status
  */
 export function toggleFavorite(cardName) {
@@ -79,9 +79,9 @@ export function toggleFavorite(cardName) {
     logger.warn('toggleFavorite called with empty card name');
     return false;
   }
-  
+
   const wasFavorite = favoritesSet.has(cardName);
-  
+
   if (wasFavorite) {
     favoritesSet.delete(cardName);
     logger.debug(`Removed ${cardName} from favorites`);
@@ -89,17 +89,17 @@ export function toggleFavorite(cardName) {
     favoritesSet.add(cardName);
     logger.debug(`Added ${cardName} to favorites`);
   }
-  
+
   saveFavorites();
   notifyListeners();
-  
+
   return !wasFavorite;
 }
 
 /**
  * Set favorite status of a card explicitly
- * @param {string} cardName 
- * @param {boolean} enabled 
+ * @param {string} cardName
+ * @param {boolean} enabled
  * @returns {boolean} New favorite status
  */
 export function setFavorite(cardName, enabled) {
@@ -107,33 +107,33 @@ export function setFavorite(cardName, enabled) {
     logger.warn('setFavorite called with empty card name');
     return false;
   }
-  
+
   const wasChanged = enabled ? !favoritesSet.has(cardName) : favoritesSet.has(cardName);
-  
+
   if (enabled) {
     favoritesSet.add(cardName);
   } else {
     favoritesSet.delete(cardName);
   }
-  
+
   if (wasChanged) {
     logger.debug(`Set ${cardName} favorite status to ${enabled}`);
     saveFavorites();
     notifyListeners();
   }
-  
+
   return enabled;
 }
 
 /**
  * Subscribe to favorites changes
- * @param {FavoritesListener} listener 
+ * @param {FavoritesListener} listener
  * @returns {() => void} Unsubscribe function
  */
 export function subscribeFavorites(listener) {
   listeners.add(listener);
   logger.debug('Added favorites listener');
-  
+
   return () => {
     listeners.delete(listener);
     logger.debug('Removed favorites listener');

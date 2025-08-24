@@ -73,23 +73,23 @@ export const CONFIG = Object.freeze({
 
 /**
  * Validate configuration object structure
- * @param {Object} config 
+ * @param {Object} config
  * @throws {Error} If configuration is invalid
  */
 function validateConfig(config) {
   validateType(config, 'object', 'CONFIG');
-  
+
   // Validate layout constants
   assert(config.LAYOUT, 'CONFIG.LAYOUT is required');
   assert(typeof config.LAYOUT.GAP === 'number' && config.LAYOUT.GAP > 0, 'GAP must be positive number');
   assert(typeof config.LAYOUT.BASE_CARD_WIDTH === 'number' && config.LAYOUT.BASE_CARD_WIDTH > 0, 'BASE_CARD_WIDTH must be positive number');
   assert(typeof config.LAYOUT.BIG_ROWS_COUNT === 'number' && config.LAYOUT.BIG_ROWS_COUNT > 0, 'BIG_ROWS_COUNT must be positive number');
-  
+
   // Validate API config
   assert(config.API, 'CONFIG.API is required');
   assert(typeof config.API.REPORTS_BASE === 'string', 'REPORTS_BASE must be string');
   assert(typeof config.API.TIMEOUT_MS === 'number' && config.API.TIMEOUT_MS > 0, 'TIMEOUT_MS must be positive number');
-  
+
   // Validate archetypes
   assert(Array.isArray(config.ARCHETYPES), 'ARCHETYPES must be array');
   assert(config.ARCHETYPES.length > 0, 'ARCHETYPES cannot be empty');

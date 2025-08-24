@@ -1207,9 +1207,9 @@
           "percent": 1.56
         }
       ],
-      "set": "SFA",
-      "number": "020",
-      "uid": "Dusknoir::SFA::020"
+      "set": "PRE",
+      "number": "037",
+      "uid": "Dusknoir::PRE::037"
     },
     {
       "rank": 48,
@@ -1704,9 +1704,9 @@
           "percent": 2.38
         }
       ],
-      "set": "SFA",
-      "number": "018",
-      "uid": "Duskull::SFA::018"
+      "set": "PRE",
+      "number": "035",
+      "uid": "Duskull::PRE::035"
     },
     {
       "rank": 69,
@@ -1726,9 +1726,9 @@
           "percent": 2.44
         }
       ],
-      "set": "SFA",
-      "number": "019",
-      "uid": "Dusclops::SFA::019"
+      "set": "PRE",
+      "number": "036",
+      "uid": "Dusclops::PRE::036"
     },
     {
       "rank": 70,

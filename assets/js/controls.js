@@ -28,7 +28,7 @@ const SORT_COMPARATORS = {
 
 /**
  * Get comparator function for a given sort key
- * @param {string} sortKey 
+ * @param {string} sortKey
  * @returns {(a: any, b: any) => number}
  */
 export function getComparator(sortKey) {
@@ -48,7 +48,7 @@ function getCurrentFilters() {
   const searchInput = document.getElementById('search');
   const sortSelect = document.getElementById('sort');
   const favSelect = document.getElementById('fav-filter');
-  
+
   return {
     query: searchInput?.value?.trim()?.toLowerCase() || '',
     sort: sortSelect?.value || 'percent-desc',
@@ -58,34 +58,34 @@ function getCurrentFilters() {
 
 /**
  * Apply search filter to items
- * @param {any[]} items 
- * @param {string} query 
+ * @param {any[]} items
+ * @param {string} query
  * @returns {any[]}
  */
 function applySearchFilter(items, query) {
   if (!query || query.length < CONFIG.UI.SEARCH_MIN_LENGTH) {
     return items;
   }
-  
-  const filtered = items.filter(item => 
+
+  const filtered = items.filter(item =>
     item.name && item.name.toLowerCase().includes(query)
   );
-  
+
   logger.debug(`Search filtered ${items.length} items to ${filtered.length}`, { query });
   return filtered;
 }
 
 /**
  * Apply favorites filter to items
- * @param {any[]} items 
- * @param {boolean} favoritesOnly 
+ * @param {any[]} items
+ * @param {boolean} favoritesOnly
  * @returns {any[]}
  */
 function applyFavoritesFilter(items, favoritesOnly) {
   if (!favoritesOnly) {
     return items;
   }
-  
+
   const filtered = items.filter(item => isFavorite(item.name));
   logger.debug(`Favorites filtered ${items.length} items to ${filtered.length}`);
   return filtered;
@@ -93,8 +93,8 @@ function applyFavoritesFilter(items, favoritesOnly) {
 
 /**
  * Apply sorting to items
- * @param {any[]} items 
- * @param {string} sortKey 
+ * @param {any[]} items
+ * @param {string} sortKey
  * @returns {any[]}
  */
 function applySorting(items, sortKey) {
@@ -114,21 +114,21 @@ export function applyFiltersSort(allItems, overrides = {}) {
     logger.error('applyFiltersSort called with non-array items', allItems);
     return;
   }
-  
+
   const filters = getCurrentFilters();
   logger.debug('Applying filters and sort', filters);
-  
+
   let filtered = allItems;
-  
+
   // Apply filters in sequence
   filtered = applySearchFilter(filtered, filters.query);
   filtered = applyFavoritesFilter(filtered, filters.favoritesOnly);
-  
+
   // Apply sorting
   const sorted = applySorting(filtered, filters.sort);
-  
+
   logger.info(`Filtered and sorted: ${allItems.length} → ${sorted.length} items`);
-  
+
   // Render the results
   render(sorted, overrides);
 }

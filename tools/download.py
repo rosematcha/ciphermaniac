@@ -213,11 +213,14 @@ def extract_all_decklists(soup, anonymize=False):
         for card_div in cards_container.find_all('div', class_='decklist-card'):
             category_text = card_div.find_parent('div', class_='decklist-column').find('div', class_='decklist-column-heading').text.strip().lower()
             category = "pokemon" if "pokémon" in category_text else "trainer" if "trainer" in category_text else "energy"
+            set_acronym = card_div.get('data-set', '').upper().strip()
+            number_raw = card_div.get('data-number', '').lstrip('0')
+            number = number_raw.zfill(3) if number_raw else number_raw
             cards.append({
                 "count": int(card_div.find('span', class_='card-count').text.strip()),
                 "name": card_div.find('span', class_='card-name').text.strip(),
-                "set": card_div['data-set'],
-                "number": card_div['data-number'],
+                "set": set_acronym,
+                "number": number,
                 "category": category
             })
         
@@ -248,69 +251,14 @@ def identify_pokemon_variants(all_decks):
                 pokemon_versions[card["name"]].add(f"{card['set']} {card['number']}")
     return {name for name, versions in pokemon_versions.items() if len(versions) > 1}
 
-# Map exact reprint pairs to a canonical (set, number). Keys and values are (set_code, number) strings.
-# For pairs provided, map PRE or older code to the modern/main set.
-REPRINT_EQUIV = {
-    ("PRE", "012"): ("TWM", "025"),  # Teal Mask Ogerpon ex
-    ("TWM", "025"): ("TWM", "025"),
-    ("PRE", "027"): ("TWM", "064"),  # Wellspring Mask Ogerpon ex
-    ("TWM", "064"): ("TWM", "064"),
-    ("TWM", "167"): ("TWM", "064"),  # alt numbering reprint maps to 064
-    ("PRE", "031"): ("PAR", "072"),  # Iron Hands ex
-    ("PAR", "072"): ("PAR", "072"),
-    ("PRE", "032"): ("TWM", "077"),  # Iron Thorns ex
-    ("TWM", "077"): ("TWM", "077"),
-    ("PRE", "035"): ("SFA", "018"),  # Duskull
-    ("SFA", "018"): ("SFA", "018"),
-    ("PRE", "036"): ("SFA", "019"),  # Dusclops
-    ("SFA", "019"): ("SFA", "019"),
-    ("PRE", "037"): ("SFA", "020"),  # Dusknoir
-    ("SFA", "020"): ("SFA", "020"),
-    ("PRE", "041"): ("SSP", "086"),  # Sylveon ex
-    ("SSP", "086"): ("SSP", "086"),
-    ("PRE", "042"): ("PAR", "086"),  # Scream Tail
-    ("PAR", "086"): ("PAR", "086"),
-    ("PRE", "043"): ("TEF", "078"),  # Flutter Mane
-    ("TEF", "078"): ("TEF", "078"),
-    ("PRE", "044"): ("TWM", "095"),  # Munkidori
-    ("TWM", "095"): ("TWM", "095"),
-    ("PRE", "055"): ("TEF", "097"),  # Great Tusk
-    ("TEF", "097"): ("TEF", "097"),
-    ("PRE", "057"): ("TWM", "111"),  # Okidogi
-    ("TWM", "111"): ("TWM", "111"),
-    ("PRE", "058"): ("TWM", "112"),  # Cornerstone Mask Ogerpon ex
-    ("TWM", "112"): ("TWM", "112"),
-    ("PRE", "065"): ("TEF", "109"),  # Roaring Moon
-    ("TEF", "109"): ("TEF", "109"),
-    ("PRE", "069"): ("SCR", "106"),  # Duraludon
-    ("SCR", "106"): ("SCR", "106"),
-    ("PRE", "071"): ("TWM", "128"),  # Dreepy
-    ("TWM", "128"): ("TWM", "128"),
-    ("PRE", "072"): ("TWM", "129"),  # Drakloak
-    ("TWM", "129"): ("TWM", "129"),
-    ("PRE", "073"): ("TWM", "130"),  # Dragapult ex
-    ("TWM", "130"): ("TWM", "130"),
-    ("PRE", "078"): ("SCR", "115"),  # Noctowl
-    ("SCR", "115"): ("SCR", "115"),
-    ("PRE", "079"): ("TEF", "128"),  # Dunsparce
-    ("TEF", "128"): ("TEF", "128"),
-    ("PRE", "080"): ("TEF", "129"),  # Dudunsparce
-    ("TEF", "129"): ("TEF", "129"),
-    ("PRE", "085"): ("SCR", "118"),  # Fan Rotom
-    ("SCR", "118"): ("SCR", "118"),
-    ("PRE", "092"): ("SCR", "128"),  # Terapagos ex
-    ("SCR", "128"): ("SCR", "128"),
-}
+# REPRINT_EQUIV mapping removed - each card with different set/number is treated as unique
 
 def canonicalize_variant(set_code: str, number: str):
+    """No longer canonicalizes - each set/number combination is treated as unique.
+    Different cards with the same name but different sets/numbers are different cards."""
     sc = (set_code or '').upper().strip()
     num = (number or '').lstrip('0')
     num = num.zfill(3) if num else num
-    if not sc or not num:
-        return sc, num
-    canon = REPRINT_EQUIV.get((sc, num))
-    if canon:
-        return canon
     return sc, num
 
 def generate_report_json(deck_list, deck_total, all_decks_for_variants):
@@ -400,56 +348,66 @@ def download_thumbnails(all_decks, base_path, session, workers=1, download_log_p
     unique_cards = {}
     for d in all_decks:
         for c in d.get('cards', []):
-            if c.get('set') and c.get('number'):
-                key = f"{c['set']}_{c['number']}"
+            set_acronym = (c.get('set', '') or '').upper().strip()
+            number_raw = (c.get('number', '') or '').lstrip('0')
+            number = number_raw.zfill(3) if number_raw else number_raw
+            category = c.get('category', '')
+            # Use set+number as key for all cards if present, else fallback to name
+            if set_acronym and number:
+                key = f"{set_acronym}_{number}"
             else:
                 key = sanitize_for_filename(c.get('name', ''))
             if key not in unique_cards:
-                unique_cards[key] = c
+                card_copy = dict(c)
+                card_copy['set'] = set_acronym
+                card_copy['number'] = number
+                card_copy['category'] = category
+                unique_cards[key] = card_copy
 
     # Build download jobs
     jobs = []
     for card in unique_cards.values():
         name = card.get("name", "")
-        set_code = card.get("set", "")
-        number = card.get("number", "")
-        # Always include set+number for Pokémon when available; Trainers/Energy stay plain
-        if card.get("category") == "pokemon" and set_code and number:
+        set_code = (card.get("set", "") or '').upper().strip()
+        number = (card.get("number", "") or '').zfill(3)
+        category = card.get("category", "")
+        if category == "pokemon" and set_code and number:
             base_filename = f"{sanitize_for_filename(name)}_{set_code}_{number}"
+            plain_base = sanitize_for_filename(name)
+            # Only create set+number file for Pokémon, never queue plain-name file for download
+            if base_filename in processed_filenames:
+                continue
+            processed_filenames.add(base_filename)
+            print(f"  - Queueing images for: {name} ({set_code} {number}) [Pokémon]")
+            for size in sizes_to_download:
+                img_filename = f"{set_code}_{number}_R_EN_{size}.png"
+                full_url = f"{base_url}{set_code}/{img_filename}"
+                file_path = os.path.join(base_path, "thumbnails", size.lower(), f"{base_filename}.png")
+                # Do not create or manage a plain-name alias for Pokémon to avoid duplicates
+                alias_path = None
+                jobs.append((name, set_code, number, size, full_url, file_path, alias_path, category))
         else:
             base_filename = sanitize_for_filename(name)
-
-        plain_base = sanitize_for_filename(name)
-        category = card.get("category", "")
-
-        if base_filename in processed_filenames:
-            continue
-        processed_filenames.add(base_filename)
-        print(f"  - Queueing images for: {name} ({set_code} {number})")
-
-        for size in sizes_to_download:
-            padded_number = number.zfill(3) if number else ''
-            img_filename = f"{set_code}_{padded_number}_R_EN_{size}.png" if set_code and padded_number else ''
-            full_url = f"{base_url}{set_code}/{img_filename}" if img_filename else ''
-            file_path = os.path.join(base_path, "thumbnails", size.lower(), f"{base_filename}.png")
-            alias_path = os.path.join(base_path, "thumbnails", size.lower(), f"{plain_base}.png")
-            jobs.append((name, set_code, number, size, full_url, file_path, alias_path, category))
+            if base_filename in processed_filenames:
+                continue
+            processed_filenames.add(base_filename)
+            print(f"  - Queueing images for: {name} [Trainer/Energy/Other]")
+            for size in sizes_to_download:
+                if set_code and number:
+                    img_filename = f"{set_code}_{number}_R_EN_{size}.png"
+                    full_url = f"{base_url}{set_code}/{img_filename}"
+                else:
+                    img_filename = ''
+                    full_url = ''
+                file_path = os.path.join(base_path, "thumbnails", size.lower(), f"{base_filename}.png")
+                alias_path = file_path
+                jobs.append((name, set_code, number, size, full_url, file_path, alias_path, category))
 
     def fetch_one(job):
         name, set_code, number, size, full_url, file_path, alias_path, category = job
         ts = datetime.now(timezone.utc).isoformat()
         # Skip if exists and not forcing
         if not force and os.path.exists(file_path):
-            # Ensure alias exists for Pokémon thumbnails
-            alias_created = False
-            if category == 'pokemon':
-                try:
-                    if not os.path.exists(alias_path):
-                        _ensure_parent_dir(alias_path)
-                        shutil.copyfile(file_path, alias_path)
-                        alias_created = True
-                except Exception:
-                    pass
             return {
                 "timestamp": ts,
                 "status": "skip_exists",
@@ -459,10 +417,18 @@ def download_thumbnails(all_decks, base_path, session, workers=1, download_log_p
                 "number": number,
                 "size": size,
                 "url": full_url,
-                "file": file_path,
-                **({"alias": alias_path, "aliasCreated": True} if alias_created else {})
+                "file": file_path
             }
         if not full_url:
+            reason = []
+            if not set_code:
+                reason.append("missing set acronym")
+            if not number:
+                reason.append("missing card number")
+            if set_code and number:
+                reason.append("URL pattern may not exist for this card type (likely not a Pokémon)")
+            reason_str = ", ".join(reason) if reason else "unknown reason"
+            print(f"    - Could not download size {size} for {name}: No URL generated (set: {set_code}, number: {number}) [{reason_str}]")
             return {
                 "timestamp": ts,
                 "status": "no_url",
@@ -472,23 +438,15 @@ def download_thumbnails(all_decks, base_path, session, workers=1, download_log_p
                 "number": number,
                 "size": size,
                 "url": full_url,
-                "file": file_path
+                "file": file_path,
+                "error": f"No URL generated for this card. Reason: {reason_str}",
+                "url_tried": full_url
             }
         try:
             resp = request_with_retries(session, 'GET', full_url, stream=True, timeout=15)
             if resp and resp.status_code == 200:
                 with open(file_path, 'wb') as f:
                     f.write(resp.content)
-                # After successful download, create plain-name alias for Pokémon if missing
-                alias_created = False
-                if category == 'pokemon':
-                    try:
-                        if not os.path.exists(alias_path):
-                            _ensure_parent_dir(alias_path)
-                            shutil.copyfile(file_path, alias_path)
-                            alias_created = True
-                    except Exception:
-                        pass
                 return {
                     "timestamp": ts,
                     "status": "ok",
@@ -499,10 +457,10 @@ def download_thumbnails(all_decks, base_path, session, workers=1, download_log_p
                     "size": size,
                     "url": full_url,
                     "file": file_path,
-                    "bytes": len(resp.content),
-                    **({"alias": alias_path, "aliasCreated": True} if alias_created else {})
+                    "bytes": len(resp.content)
                 }
             else:
+                print(f"    - Could not download size {size} for {name}: HTTP error {getattr(resp, 'status_code', None)} for URL {full_url}")
                 return {
                     "timestamp": ts,
                     "status": "http_error",
@@ -513,9 +471,11 @@ def download_thumbnails(all_decks, base_path, session, workers=1, download_log_p
                     "number": number,
                     "size": size,
                     "url": full_url,
-                    "file": file_path
+                    "file": file_path,
+                    "error": f"HTTP error {getattr(resp, 'status_code', None)} for URL {full_url}"
                 }
         except requests.exceptions.RequestException as e:
+            print(f"    - Could not download size {size} for {name}: Exception {str(e)} for URL {full_url}")
             return {
                 "timestamp": ts,
                 "status": "exception",
@@ -526,7 +486,8 @@ def download_thumbnails(all_decks, base_path, session, workers=1, download_log_p
                 "number": number,
                 "size": size,
                 "url": full_url,
-                "file": file_path
+                "file": file_path,
+                "error": f"Exception {str(e)} for URL {full_url}"
             }
 
     if workers and workers > 1 and len(jobs) > 1:

@@ -37,7 +37,7 @@ class StorageManager {
   /**
    * Get data from localStorage with parsing and validation
    * @template T
-   * @param {keyof STORAGE_CONFIG} storageKey 
+   * @param {keyof STORAGE_CONFIG} storageKey
    * @returns {T}
    */
   get(storageKey) {
@@ -61,8 +61,8 @@ class StorageManager {
 
   /**
    * Set data to localStorage with serialization
-   * @param {keyof STORAGE_CONFIG} storageKey 
-   * @param {any} data 
+   * @param {keyof STORAGE_CONFIG} storageKey
+   * @param {any} data
    * @returns {boolean} Success status
    */
   set(storageKey, data) {
@@ -81,7 +81,7 @@ class StorageManager {
 
   /**
    * Remove data from localStorage
-   * @param {keyof STORAGE_CONFIG} storageKey 
+   * @param {keyof STORAGE_CONFIG} storageKey
    * @returns {boolean} Success status
    */
   remove(storageKey) {

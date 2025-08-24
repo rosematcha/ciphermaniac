@@ -1,28 +1,66 @@
-/* Minimal, readable, and responsive. Inspired by TrainerHill’s compact cards. */
-:root{
-  /* Single dark theme (neutral, not overly blue) */
-  --bg:#121317;
-  --panel:#17181d;
-  --text:#eef1f7;
-  --muted:#a3a8b7;
-  --accent:#ff6b6b;
-  --accent-2:#6aa3ff;
-  --bar-bg:#262833;
-  --link:#7cc6ff;
+/* ==========================================================================
+   Ciphermaniac - Minimal, readable, and responsive
+   Inspired by TrainerHill's compact cards
+   ========================================================================== */
+
+/* ==========================================================================
+   CSS Custom Properties (Design Tokens)
+   ========================================================================== */
+:root {
+  /* Colors - Dark theme (neutral, not overly blue) */
+  --bg: #121317;
+  --panel: #17181d;
+  --text: #eef1f7;
+  --muted: #a3a8b7;
+  --accent: #ff6b6b;
+  --accent-2: #6aa3ff;
+  --bar-bg: #262833;
+  --link: #7cc6ff;
+  
+  /* Layout */
+  --gap: 12px;
+  --border-radius: 8px;
+  --border-radius-lg: 12px;
+  --container-max-width: 1200px;
+  
+  /* Typography */
+  --font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Inter, Arial, sans-serif;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
 }
-*{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0;
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+
+/* ==========================================================================
+   Base Styles
+   ========================================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: var(--font-family);
   /* Make the page a column flex container so footer can be pushed to the bottom when
      the main content is short. This prevents the footer from "creeping up". */
-  display:flex;
-  flex-direction:column;
-  min-height:100vh;
-  /* Minimize gradients in production */
-  background:var(--bg);
-  color:var(--text);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
 }
 header{
   padding:12px 0;
@@ -158,6 +196,8 @@ header{
   cursor:pointer;
   display:flex; align-items:center; justify-content:space-between;
 }
+.suggestion-name{ flex-grow: 1; }
+.suggestion-set{ font-size: 0.85em; color: var(--muted); margin-left: 0.5em; }
 .card-search .suggestions .item:hover,
 .card-search .suggestions .item[aria-selected="true"],
 .toolbar .suggestions .item:hover,
@@ -319,6 +359,8 @@ h2{margin:8px 0 6px}
 }
 .header-title{ grid-area: header; }
 .header-title h1{ margin: 2px 0 8px; font-size: 24px; letter-spacing: .3px; }
+.card-title-set{ font-size: 0.75em; font-weight: 400; color: var(--muted); margin-left: 0.5em; }
+.card-sets{ color: var(--muted); font-size: 13px; margin: 0 0 4px; font-weight: normal; letter-spacing: normal; }
 #card-hero{ grid-area: hero; align-self:start }
 #card-center{ grid-area: center; display:grid; grid-template-rows: auto auto auto; gap:14px; }
 #card-window{ margin: 0 0 2px; display:flex; justify-content:flex-end }

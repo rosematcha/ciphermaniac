@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run lint)",
+      "Bash(npx eslint:*)",
+      "Bash(npm run lint:*)",
+      "mcp__atlassian__getAccessibleAtlassianResources",
+      "mcp__atlassian__getJiraIssue",
+      "mcp__atlassian__addCommentToJiraIssue",
+      "mcp__atlassian__getTransitionsForJiraIssue",
+      "mcp__atlassian__transitionJiraIssue",
+      "Bash(node:*)",
+      "Bash(find:*)",
+      "Bash(python:*)",
+      "Bash(grep:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

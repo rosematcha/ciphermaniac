@@ -9,8 +9,8 @@ import { AppError, ErrorTypes, withRetry, validateType } from './utils/errorHand
 
 /**
  * Enhanced fetch with timeout and error handling
- * @param {string} url 
- * @param {RequestInit} [options] 
+ * @param {string} url
+ * @param {RequestInit} [options]
  * @returns {Promise<Response>}
  */
 async function safeFetch(url, options = {}) {
@@ -40,7 +40,46 @@ async function safeFetch(url, options = {}) {
     }
     throw error;
   } finally {
-    if (timeoutId) clearTimeout(timeoutId);
+    if (timeoutId) {clearTimeout(timeoutId);}
+  }
+}
+
+/**
+ * Safe JSON parsing with improved error handling
+ * @param {Response} response
+ * @param {string} url
+ * @returns {Promise<any>}
+ */
+async function safeJsonParse(response, url) {
+  const contentType = response.headers.get('content-type') || '';
+
+  const text = await response.text();
+
+  if (!text.trim()) {
+    throw new AppError('Empty response body', ErrorTypes.PARSE, { url, contentType });
+  }
+
+  if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
+    const preview = text.slice(0, 100) + (text.length > 100 ? '...' : '');
+    throw new AppError(
+      `Expected JSON response but got ${contentType || 'unknown content type'}`,
+      ErrorTypes.PARSE,
+      { url, contentType, preview }
+    );
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    if (error.name === 'SyntaxError') {
+      const preview = text.slice(0, 100) + (text.length > 100 ? '...' : '');
+      throw new AppError(
+        `Invalid JSON response: ${error.message}`,
+        ErrorTypes.PARSE,
+        { url, contentType, preview }
+      );
+    }
+    throw error;
   }
 }
 
@@ -54,8 +93,8 @@ export async function fetchTournamentsList() {
     logger.debug('Fetching tournaments list');
     const url = `${CONFIG.API.REPORTS_BASE}/tournaments.json`;
     const response = await safeFetch(url);
-    const data = await response.json();
-    
+    const data = await safeJsonParse(response, url);
+
     validateType(data, 'array', 'tournaments list');
     logger.info(`Loaded ${data.length} tournaments`);
     return data;
@@ -64,7 +103,7 @@ export async function fetchTournamentsList() {
 
 /**
  * Fetch tournament report data
- * @param {string} tournament 
+ * @param {string} tournament
  * @returns {Promise<Object>}
  * @throws {AppError}
  */
@@ -73,8 +112,8 @@ export async function fetchReport(tournament) {
     logger.debug(`Fetching report for tournament: ${tournament}`);
     const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/master.json`;
     const response = await safeFetch(url);
-    const data = await response.json();
-    
+    const data = await safeJsonParse(response, url);
+
     validateType(data, 'object', 'tournament report');
     logger.info(`Loaded report for ${tournament}`, { itemCount: data.items?.length });
     return data;
@@ -88,9 +127,10 @@ export async function fetchReport(tournament) {
 export async function fetchOverrides() {
   try {
     logger.debug('Fetching thumbnail overrides');
-    const response = await safeFetch('assets/overrides.json');
-    const data = await response.json();
-    
+    const url = 'assets/overrides.json';
+    const response = await safeFetch(url);
+    const data = await safeJsonParse(response, url);
+
     validateType(data, 'object', 'overrides');
     logger.info(`Loaded ${Object.keys(data).length} thumbnail overrides`);
     return data;
@@ -102,7 +142,7 @@ export async function fetchOverrides() {
 
 /**
  * Fetch archetype list for a tournament
- * @param {string} tournament 
+ * @param {string} tournament
  * @returns {Promise<string[]>}
  * @throws {AppError}
  */
@@ -111,8 +151,8 @@ export async function fetchArchetypesList(tournament) {
     logger.debug(`Fetching archetypes list for: ${tournament}`);
     const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/index.json`;
     const response = await safeFetch(url);
-    const data = await response.json();
-    
+    const data = await safeJsonParse(response, url);
+
     validateType(data, 'array', 'archetypes list');
     logger.info(`Loaded ${data.length} archetypes for ${tournament}`);
     return data;
@@ -121,8 +161,8 @@ export async function fetchArchetypesList(tournament) {
 
 /**
  * Fetch specific archetype report data
- * @param {string} tournament 
- * @param {string} archetypeBase 
+ * @param {string} tournament
+ * @param {string} archetypeBase
  * @returns {Promise<Object>}
  * @throws {AppError}
  */
@@ -131,8 +171,8 @@ export async function fetchArchetypeReport(tournament, archetypeBase) {
     logger.debug(`Fetching archetype report: ${tournament}/${archetypeBase}`);
     const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
     const response = await safeFetch(url);
-    const data = await response.json();
-    
+    const data = await safeJsonParse(response, url);
+
     validateType(data, 'object', 'archetype report');
     logger.info(`Loaded archetype report ${archetypeBase} for ${tournament}`, { itemCount: data.items?.length });
     return data;
@@ -149,7 +189,7 @@ export async function fetchMeta(tournament){
     logger.debug(`Fetching meta.json for: ${tournament}`);
     const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/meta.json`;
     const response = await safeFetch(url);
-    const data = await response.json();
+    const data = await safeJsonParse(response, url);
     validateType(data, 'object', 'tournament meta');
     return data;
   }, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
@@ -165,7 +205,7 @@ export async function fetchCardIndex(tournament){
     logger.debug(`Fetching cardIndex for: ${tournament}`);
     const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/cardIndex.json`;
     const response = await safeFetch(url);
-    const data = await response.json();
+    const data = await safeJsonParse(response, url);
     validateType(data, 'object', 'card index');
     if(typeof data.deckTotal !== 'number' || !data.cards || typeof data.cards !== 'object'){
       throw new AppError('Invalid card index schema', ErrorTypes.PARSE, { tournament });
@@ -184,7 +224,7 @@ export async function fetchDecks(tournament){
     logger.debug(`Fetching decks.json for: ${tournament}`);
     const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/decks.json`;
     const response = await safeFetch(url);
-    const data = await response.json();
+    const data = await safeJsonParse(response, url);
     validateType(data, 'array', 'decks');
     return data;
   }catch(err){
@@ -195,7 +235,7 @@ export async function fetchDecks(tournament){
 
 /**
  * Fetch top 8 archetypes list (optional endpoint)
- * @param {string} tournament 
+ * @param {string} tournament
  * @returns {Promise<string[]|null>}
  */
 export async function fetchTop8ArchetypesList(tournament) {
@@ -203,13 +243,13 @@ export async function fetchTop8ArchetypesList(tournament) {
     logger.debug(`Fetching top 8 archetypes for: ${tournament}`);
     const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/top8.json`;
     const response = await safeFetch(url);
-    const data = await response.json();
-    
+    const data = await safeJsonParse(response, url);
+
     if (Array.isArray(data)) {
       logger.info(`Loaded ${data.length} top 8 archetypes for ${tournament}`);
       return data;
     }
-    
+
     logger.warn('Top 8 data is not an array, returning null');
     return null;
   } catch (error) {

@@ -1,0 +1,63 @@
+# Browser caching for static assets
+<IfModule mod_expires.c>
+    ExpiresActive on
+
+    # Images - cache for 30 days
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/jpg "access plus 30 days"
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/gif "access plus 30 days"
+    ExpiresByType image/webp "access plus 30 days"
+    ExpiresByType image/svg+xml "access plus 30 days"
+
+    # CSS and JavaScript - cache for 7 days
+    ExpiresByType text/css "access plus 7 days"
+    ExpiresByType application/javascript "access plus 7 days"
+    ExpiresByType text/javascript "access plus 7 days"
+
+    # JSON files - cache for 1 hour (tournament data changes frequently)
+    ExpiresByType application/json "access plus 1 hour"
+
+    # HTML files - no cache (content changes frequently)
+    ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+# Alternative cache control headers (works with more servers)
+<IfModule mod_headers.c>
+    # Set cache headers for images
+    <FilesMatch "\.(png|jpg|jpeg|gif|webp|svg)$">
+        Header set Cache-Control "public, max-age=2592000, immutable"
+        Header set Expires "Thu, 31 Dec 2037 23:55:55 GMT"
+    </FilesMatch>
+
+    # Set cache headers for CSS/JS
+    <FilesMatch "\.(css|js)$">
+        Header set Cache-Control "public, max-age=604800"
+    </FilesMatch>
+
+    # Set cache headers for JSON
+    <FilesMatch "\.json$">
+        Header set Cache-Control "public, max-age=3600"
+    </FilesMatch>
+
+    # Prevent caching of HTML
+    <FilesMatch "\.html$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </FilesMatch>
+</IfModule>
+
+# Compression to reduce file sizes
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE application/json
+</IfModule>

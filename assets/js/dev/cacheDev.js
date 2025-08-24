@@ -5,7 +5,7 @@ function shouldEnable(){
 }
 
 export function initCacheDev(){
-  if(!shouldEnable()) return;
+  if(!shouldEnable()) {return;}
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.textContent = 'Clear cache';

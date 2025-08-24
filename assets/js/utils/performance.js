@@ -18,12 +18,12 @@ export function debounce(func, wait = CONFIG.UI.DEBOUNCE_MS, immediate = false) 
   return function executedFunction(...args) {
     const later = () => {
       timeout = null;
-      if (!immediate) func.apply(this, args);
+      if (!immediate) {func.apply(this, args);}
     };
     const callNow = immediate && !timeout;
     clearTimeout(timeout);
     timeout = setTimeout(later, wait);
-    if (callNow) func.apply(this, args);
+    if (callNow) {func.apply(this, args);}
   };
 }
 
@@ -54,7 +54,7 @@ export class CleanupManager {
 
   /**
    * Add a cleanup function
-   * @param {Function} cleanup 
+   * @param {Function} cleanup
    */
   add(cleanup) {
     this.cleanupFunctions.add(cleanup);
@@ -62,10 +62,10 @@ export class CleanupManager {
 
   /**
    * Add an event listener with automatic cleanup
-   * @param {EventTarget} target 
-   * @param {string} event 
-   * @param {Function} listener 
-   * @param {Object} [options] 
+   * @param {EventTarget} target
+   * @param {string} event
+   * @param {Function} listener
+   * @param {Object} [options]
    */
   addEventListener(target, event, listener, options = {}) {
     target.addEventListener(event, listener, options);
@@ -97,7 +97,7 @@ export class PerformanceMonitor {
 
   /**
    * Start timing an operation
-   * @param {string} name 
+   * @param {string} name
    */
   start(name) {
     if (CONFIG.DEV.ENABLE_PERF_MONITORING) {
@@ -107,7 +107,7 @@ export class PerformanceMonitor {
 
   /**
    * End timing and log the result
-   * @param {string} name 
+   * @param {string} name
    */
   end(name) {
     if (CONFIG.DEV.ENABLE_PERF_MONITORING) {
@@ -134,7 +134,7 @@ export const perf = new PerformanceMonitor();
 export function validateElements(selectors, context = 'page') {
   const elements = {};
   const missing = [];
-  
+
   Object.entries(selectors).forEach(([name, selector]) => {
     const element = document.querySelector(selector);
     if (element) {
@@ -143,10 +143,10 @@ export function validateElements(selectors, context = 'page') {
       missing.push(`${name} (${selector})`);
     }
   });
-  
+
   if (missing.length > 0) {
     throw new Error(`Missing required elements in ${context}: ${missing.join(', ')}`);
   }
-  
+
   return elements;
 }
