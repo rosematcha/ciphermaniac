@@ -73,8 +73,8 @@ function renderCarousel(container, items){
   let cardBase = measureBase();
   const build = () => {
     track.innerHTML = '';
-    for(const it of items){ 
-      track.appendChild(makeCardItem(it.name, { base: cardBase, set: it.set, number: it.number, uid: it.uid })); 
+    for(const it of items){
+      track.appendChild(makeCardItem(it.name, { base: cardBase, set: it.set, number: it.number, uid: it.uid }));
     }
   };
   build();
@@ -120,13 +120,13 @@ async function init(){
     const block = document.createElement('div'); block.className='suggestion-block';
     const header = document.createElement('div'); header.className='suggestion-header';
     const title = document.createElement('h2'); title.textContent = c.title || c.id; header.appendChild(title);
-  const state = { value: pref, onchange: ()=>{} };
-  const controls = buildControls(); header.appendChild(controls);
+    const state = { value: pref, onchange: ()=>{} };
+    const controls = buildControls(); header.appendChild(controls);
     block.appendChild(header);
     const area = document.createElement('div'); area.className='suggestion-area'; block.appendChild(area);
-  // Always render as carousel (rows option removed)
-  const render = () => { renderCarousel(area, c.items.slice(0, 48)); };
-  state.onchange = render; render();
+    // Always render as carousel (rows option removed)
+    const render = () => { renderCarousel(area, c.items.slice(0, 48)); };
+    state.onchange = render; render();
     root.appendChild(block);
   }
 

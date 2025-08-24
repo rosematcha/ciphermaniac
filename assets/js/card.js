@@ -37,13 +37,13 @@ function getDisplayName(cardId) {
 // Parse display name into name and set ID parts
 function parseDisplayName(displayName) {
   if (!displayName) {return {name: '', setId: ''};}
-  
+
   // Match pattern: "CardName SetCode Number" -> split into name and "SetCode Number"
   const match = displayName.match(/^(.+?)\s+([A-Z]+\s+\d+[A-Za-z]?)$/);
   if (match) {
     return {name: match[1], setId: match[2]};
   }
-  
+
   // If no set ID pattern found, treat entire string as name
   return {name: displayName, setId: ''};
 }
@@ -111,11 +111,11 @@ const cardTitleEl = document.getElementById('card-title');
 if (cardName) {
   const {name, setId} = parseDisplayName(cardName);
   cardTitleEl.innerHTML = '';
-  
+
   const nameSpan = document.createElement('span');
   nameSpan.textContent = name;
   cardTitleEl.appendChild(nameSpan);
-  
+
   if (setId) {
     const setSpan = document.createElement('span');
     setSpan.className = 'card-title-set';
@@ -209,7 +209,7 @@ async function initCardSearch(){
     cardSearchInput = document.getElementById('card-search');
     cardNamesList = document.getElementById('card-names');
     suggestionsBox = document.getElementById('card-suggestions');
-    
+
     if(!(cardSearchInput && cardNamesList)) {
       return;
     }
@@ -305,18 +305,18 @@ async function initCardSearch(){
         const left = document.createElement('span');
         left.className = 'suggestion-name';
         const {name, setId} = parseDisplayName(matches[i]);
-        
+
         const nameSpan = document.createElement('span');
         nameSpan.textContent = name;
         left.appendChild(nameSpan);
-        
+
         if (setId) {
           const setSpan = document.createElement('span');
           setSpan.className = 'suggestion-set';
           setSpan.textContent = setId;
           left.appendChild(setSpan);
         }
-        
+
         item.appendChild(left);
         const right = document.createElement('span');
         // show Tab badge on the first item by default (or on selectedIndex when set)
@@ -1011,12 +1011,12 @@ async function renderAnalysisTable(tournament){
     rows.sort((a,b)=> {
       // Primary sort: actual deck count (found)
       const foundDiff = (b.found ?? 0) - (a.found ?? 0);
-      if (foundDiff !== 0) return foundDiff;
-      
+      if (foundDiff !== 0) {return foundDiff;}
+
       // Secondary sort: deck popularity (total) when found counts are equal
       const totalDiff = (b.total ?? 0) - (a.total ?? 0);
-      if (totalDiff !== 0) return totalDiff;
-      
+      if (totalDiff !== 0) {return totalDiff;}
+
       // Tertiary sort: alphabetical by archetype name
       return a.archetype.localeCompare(b.archetype);
     });

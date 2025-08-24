@@ -243,7 +243,7 @@ async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = fa
           data = { items: [], deckTotal: 0 };
         }
       }
-      
+
       const parsed = parseReport(data);
       cached = { data, deckTotal: parsed.deckTotal, items: parsed.items };
       state.archeCache.set(selectedValue, cached);

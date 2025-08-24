@@ -7,18 +7,6 @@
   <link rel="stylesheet" href="assets/style.css" />
 </head>
 <body>
-  <header>
-    <div class="header-inner">
-      <a class="logo" href="./" aria-label="Ciphermaniac home">
-        <div class="site-title">ciphermaniac</div>
-      </a>
-      <nav class="main-nav" aria-label="Main navigation">
-        <a class="nav-link" href="./">Home</a>
-        <a class="nav-link" href="card.html">Cards</a>
-      </nav>
-    </div>
-  <!-- header-only: branding and nav -->
-  </header>
 
   <!-- Search toolbar (minimal, card-only) -->
   <div class="toolbar" role="search" aria-label="Card search">
@@ -75,18 +63,17 @@
     </section>
   </main>
 
-  <footer class="site-footer">
-    <div class="footer-inner">
-      <div class="footer-left">
-        <div id="summary" class="summary"></div>
-        <div class="credits">Data sourced from <a href="https://limitlesstcg.com/tournaments/500">LimitlessTCG</a>. UI inspiration from <a href="https://www.trainerhill.com/">TrainerHill</a>.</div>
-      </div>
-      <div class="footer-right">
-        <div><a href="https://x.com/ciphermaniac" target="_blank" rel="noopener noreferrer">Follow on Twitter for updates</a></div>
-      </div>
-    </div>
-  </footer>
-
+  <script type="module">
+    import { createHeader } from './assets/js/components/header.js';
+    import { createFooter } from './assets/js/components/footer.js';
+    
+    // Insert header and footer
+    const header = createHeader({ currentPage: 'cards' });
+    const footer = createFooter({ includeSummary: true });
+    
+    document.body.insertAdjacentElement('afterbegin', header);
+    document.body.insertAdjacentElement('beforeend', footer);
+  </script>
   <script src="assets/js/card.js" type="module"></script>
 </body>
 </html>

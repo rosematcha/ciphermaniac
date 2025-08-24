@@ -14,7 +14,13 @@
       "Bash(python:*)",
       "Bash(grep:*)",
       "mcp__atlassian__getVisibleJiraProjects",
-      "mcp__atlassian__createJiraIssue"
+      "mcp__atlassian__createJiraIssue",
+      "Bash(npm run validate:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npx:*)",
+      "Bash(npm install:*)",
+      "mcp__atlassian__searchJiraIssuesUsingJql"
     ],
     "deny": [],
     "ask": []

@@ -169,7 +169,7 @@ export async function fetchArchetypesList(tournament) {
 export async function fetchArchetypeReport(tournament, archetypeBase) {
   logger.debug(`Fetching archetype report: ${tournament}/${archetypeBase}`);
   const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
-  
+
   try {
     const response = await safeFetch(url);
     const data = await safeJsonParse(response, url);
@@ -183,7 +183,7 @@ export async function fetchArchetypeReport(tournament, archetypeBase) {
       logger.debug(`Archetype ${archetypeBase} not found for ${tournament}`, { url });
       throw error;
     }
-    
+
     // For other errors, use retry logic
     return withRetry(async () => {
       const response = await safeFetch(url);
