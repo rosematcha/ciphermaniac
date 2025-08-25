@@ -248,36 +248,30 @@ async function addBasicEnergyPrices(priceData, allGroups) {
  * TCGCSV has variable field counts due to missing data, so we need dynamic parsing
  */
 function extractPricesFromFields(fields) {
-  // Find extNumber first (it's usually near the end and has format XXX/XXX)
+  // MUCH MORE ROBUST parsing for TCGCSV's inconsistent field structures
+  
+  // 1. Find extNumber by scanning ALL fields for card number pattern
   let extNumber = null;
   let numberFieldIndex = -1;
   
-  for (let i = fields.length - 10; i < fields.length; i++) {
-    if (fields[i] && fields[i].match(/^\d{3}\/\d{3}$/)) {
+  // Look for any field with pattern like "123/456" - card numbers can be 1-3 digits  
+  for (let i = 5; i < fields.length; i++) {
+    if (fields[i] && fields[i].match(/^\d{1,3}\/\d{2,3}$/)) {
       extNumber = fields[i];
       numberFieldIndex = i;
       break;
     }
   }
   
-  // If no standard number found, look for any number pattern
-  if (!extNumber) {
-    for (let i = 15; i < Math.min(25, fields.length); i++) {
-      if (fields[i] && fields[i].match(/^\d+\/\d+$/)) {
-        extNumber = fields[i];
-        numberFieldIndex = i;
-        break;
-      }
-    }
-  }
-  
-  // Find price fields by scanning for decimal numbers in expected range
+  // 2. Find price fields by scanning ALL numeric fields in reasonable range
   const prices = {};
   const potentialPrices = [];
   
-  for (let i = 10; i < Math.min(20, fields.length); i++) {
+  // Scan much broader range since CSV structures vary wildly between sets
+  for (let i = 5; i < Math.min(30, fields.length); i++) {
     const field = fields[i];
-    if (field && field.match(/^\d+\.?\d*$/) && parseFloat(field) > 0 && parseFloat(field) < 1000) {
+    // Look for decimal numbers that could be prices (0.01 to 999.99)
+    if (field && field.match(/^\d{1,3}(\.\d{1,2})?$/) && parseFloat(field) >= 0.01 && parseFloat(field) <= 999.99) {
       potentialPrices.push({
         index: i,
         value: parseFloat(field)
@@ -285,31 +279,43 @@ function extractPricesFromFields(fields) {
     }
   }
   
-  // Logic: marketPrice is usually the middle price value, not the highest
-  if (potentialPrices.length >= 3) {
-    // Sort by value and take the middle one as market price
+  // 3. Smart price selection logic
+  // TCGCSV typically has: lowPrice, midPrice, highPrice, marketPrice, directLowPrice
+  // We want marketPrice when available, or a reasonable middle price
+  
+  let marketPrice = 0;
+  
+  if (potentialPrices.length >= 4) {
+    // With 4+ prices, sort and pick the 2nd lowest as market price
+    // This avoids the lowest (which might be lowPrice) and highest (which might be highPrice)
     const sorted = potentialPrices.sort((a, b) => a.value - b.value);
+    marketPrice = sorted[1].value;
     prices.lowPrice = sorted[0].value;
-    prices.marketPrice = sorted[1].value; // Middle price is usually market price
+    prices.marketPrice = sorted[1].value; 
     prices.highPrice = sorted[sorted.length - 1].value;
-  } else if (potentialPrices.length === 2) {
-    // If only 2 prices, take the lower one as market price
+  } else if (potentialPrices.length === 3) {
+    // With 3 prices, take the middle one
     const sorted = potentialPrices.sort((a, b) => a.value - b.value);
+    marketPrice = sorted[1].value;
+    prices.marketPrice = sorted[1].value;
+  } else if (potentialPrices.length === 2) {
+    // With 2 prices, take the lower one (avoid high prices)
+    const sorted = potentialPrices.sort((a, b) => a.value - b.value);
+    marketPrice = sorted[0].value;
     prices.marketPrice = sorted[0].value;
-    prices.highPrice = sorted[1].value;
   } else if (potentialPrices.length === 1) {
-    // If only 1 price, use it
+    // With 1 price, use it
+    marketPrice = potentialPrices[0].value;
     prices.marketPrice = potentialPrices[0].value;
-  } else {
-    prices.marketPrice = 0;
   }
   
   return {
     extNumber: extNumber ? extNumber.split('/')[0] : null,
-    marketPrice: prices.marketPrice || 0,
+    marketPrice: marketPrice,
     lowPrice: prices.lowPrice || 0,
     highPrice: prices.highPrice || 0,
-    priceCount: potentialPrices.length
+    priceCount: potentialPrices.length,
+    allPrices: potentialPrices.map(p => p.value) // For debugging
   };
 }
 
