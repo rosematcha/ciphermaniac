@@ -5,6 +5,7 @@ import { buildThumbCandidates } from './thumbs.js';
 import { pickArchetype, baseToLabel } from './selectArchetype.js';
 import { normalizeCardRouteOnLoad } from './router.js';
 import { prettyTournamentName } from './utils/format.js';
+import { createCardDetailsSkeleton, createChartSkeleton, showSkeleton, hideSkeleton } from './components/placeholders.js';
 // Show curated suggestions on the card landing view
 import './cardsLanding.js';
 

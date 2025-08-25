@@ -9,6 +9,7 @@ import { SynergyNetworkViz } from './synergyViz.js';
 import { logger } from './utils/logger.js';
 import { safeAsync } from './utils/errorHandler.js';
 import { debounce } from './utils/performance.js';
+import { createNetworkSkeleton, createSelectSkeleton, showSkeleton, hideSkeleton } from './components/placeholders.js';
 
 /**
  * Main synergy application class

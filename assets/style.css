@@ -437,3 +437,275 @@ h2{margin:8px 0 6px}
 @media (max-width:480px){
   .card-sect th, .card-sect td{ padding:6px; font-size:12px; }
 }
+
+/* ==========================================================================
+   Skeleton Placeholders for CLS Reduction
+   ========================================================================== */
+
+/* Base skeleton animation */
+@keyframes skeleton-loading {
+  0% { opacity: 0.6; }
+  50% { opacity: 0.8; }
+  100% { opacity: 0.6; }
+}
+
+.skeleton-card {
+  pointer-events: none;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+/* Skeleton text elements */
+.skeleton-text {
+  background: var(--bar-bg);
+  border-radius: 4px;
+  height: 1em;
+  display: block;
+}
+
+.skeleton-text.small { height: 0.8em; width: 60%; }
+.skeleton-text.name { width: 80%; margin-bottom: 4px; }
+.skeleton-text.counts { width: 40%; height: 0.9em; }
+.skeleton-text.title { height: 1.5em; margin-bottom: 8px; }
+.skeleton-text.title.large { height: 2em; width: 70%; }
+.skeleton-text.sets { width: 50%; height: 0.9em; margin-bottom: 12px; }
+.skeleton-text.select-text { width: 100%; height: 1.2em; }
+
+/* Skeleton image placeholder */
+.skeleton-img {
+  width: 100%;
+  height: 100%;
+  background: var(--bar-bg);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-img::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255,255,255,0.1), 
+    transparent
+  );
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Skeleton bars for histograms */
+.skeleton-bar {
+  background: var(--bar-bg);
+  border-radius: 2px;
+  margin: 1px;
+  height: 20px;
+  flex: 1;
+}
+
+.skeleton-usage-bar {
+  background: var(--bar-bg);
+  border-radius: 2px;
+  height: 4px;
+  width: 60%;
+}
+
+/* Skeleton select dropdown */
+.skeleton-select {
+  background: var(--panel);
+  border: 1px solid #2c335a;
+  border-radius: 10px;
+  padding: 12px 14px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+/* Skeleton network visualization */
+.skeleton-network {
+  width: 100%;
+  height: 400px;
+  position: relative;
+  background: var(--panel);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.skeleton-nodes {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.skeleton-node {
+  position: absolute;
+  background: var(--bar-bg);
+  border-radius: 50%;
+  animation: skeleton-loading 2s ease-in-out infinite;
+}
+
+.skeleton-node.large { 
+  width: 40px; 
+  height: 40px; 
+  top: 30%; 
+  left: 20%; 
+}
+
+.skeleton-node.medium { 
+  width: 25px; 
+  height: 25px; 
+}
+
+.skeleton-node.medium:nth-child(2) { top: 60%; left: 70%; }
+.skeleton-node.medium:nth-child(4) { top: 20%; left: 80%; }
+
+.skeleton-node.small { 
+  width: 15px; 
+  height: 15px; 
+}
+
+.skeleton-node.small:nth-child(3) { top: 70%; left: 30%; }
+.skeleton-node.small:nth-child(6) { top: 40%; left: 60%; }
+
+.skeleton-node:nth-child(5) { 
+  width: 35px; 
+  height: 35px; 
+  top: 50%; 
+  left: 50%; 
+}
+
+.skeleton-edges {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.skeleton-edge {
+  position: absolute;
+  background: var(--muted);
+  height: 2px;
+  opacity: 0.3;
+  animation: skeleton-loading 2s ease-in-out infinite;
+}
+
+.skeleton-edge:nth-child(1) {
+  top: 42%;
+  left: 25%;
+  width: 30%;
+  transform: rotate(25deg);
+}
+
+.skeleton-edge:nth-child(2) {
+  top: 55%;
+  left: 45%;
+  width: 25%;
+  transform: rotate(-15deg);
+}
+
+.skeleton-edge:nth-child(3) {
+  top: 35%;
+  left: 60%;
+  width: 20%;
+  transform: rotate(45deg);
+}
+
+/* Skeleton chart */
+.skeleton-chart {
+  background: var(--panel);
+  border-radius: var(--border-radius);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-axes {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.skeleton-y-axis {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  bottom: 40px;
+  width: 2px;
+  background: var(--bar-bg);
+}
+
+.skeleton-x-axis {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 40px;
+  height: 2px;
+  background: var(--bar-bg);
+}
+
+.skeleton-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 100%;
+  padding: 20px 20px 40px 40px;
+}
+
+.skeleton-chart .skeleton-bar {
+  flex: 1;
+  background: var(--bar-bg);
+  border-radius: 4px 4px 0 0;
+  min-height: 20px;
+  animation: skeleton-loading 2s ease-in-out infinite;
+}
+
+/* Skeleton card details */
+.skeleton-card-details {
+  padding: 20px 0;
+}
+
+.skeleton-hero {
+  width: 200px;
+  height: 280px;
+  background: var(--bar-bg);
+  border-radius: var(--border-radius);
+  margin: 16px auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255,255,255,0.1), 
+    transparent
+  );
+  animation: skeleton-shimmer 2s infinite;
+}
+
+/* Responsive skeleton adjustments */
+@media (max-width: 720px) {
+  .skeleton-network {
+    height: 300px;
+  }
+  
+  .skeleton-node.large { width: 30px; height: 30px; }
+  .skeleton-node.medium { width: 20px; height: 20px; }
+  .skeleton-node.small { width: 12px; height: 12px; }
+  
+  .skeleton-hero {
+    width: 150px;
+    height: 210px;
+  }
+}

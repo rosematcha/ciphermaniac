@@ -18,6 +18,7 @@ import { CleanupManager, debounce, validateElements } from './utils/performance.
 import { CONFIG } from './config.js';
 import { safeAsync } from './utils/errorHandler.js';
 import { prettyTournamentName } from './utils/format.js';
+import { showGridSkeleton, hideGridSkeleton, createSelectSkeleton, showSkeleton, hideSkeleton } from './components/placeholders.js';
 
 /**
  * Application state and caches
@@ -151,9 +152,10 @@ async function initializeTournamentSelector(state) {
  * Load and parse tournament data
  * @param {string} tournament
  * @param {DataCache} cache
+ * @param {boolean} showSkeleton - Whether to show skeleton loading state
  * @returns {Promise<{deckTotal: number, items: any[]}>}
  */
-async function loadTournamentData(tournament, cache) {
+async function loadTournamentData(tournament, cache, showSkeletonLoading = false) {
   // Check cache first
   const cached = cache.getCachedMaster(tournament);
   if (cached) {
@@ -161,16 +163,28 @@ async function loadTournamentData(tournament, cache) {
     return { deckTotal: cached.deckTotal, items: cached.items };
   }
 
-  // Note: Do not use aggregated cardIndex for main grid; master.json preserves per-variant distinctions.
+  // Show skeleton loading if requested
+  if (showSkeletonLoading) {
+    showGridSkeleton();
+  }
 
-  // Fallback to master.json
-  const data = await fetchReport(tournament);
-  const parsed = parseReport(data);
+  try {
+    // Note: Do not use aggregated cardIndex for main grid; master.json preserves per-variant distinctions.
 
-  // Cache the result
-  cache.setCachedMaster(tournament, parsed);
+    // Fallback to master.json
+    const data = await fetchReport(tournament);
+    const parsed = parseReport(data);
 
-  return parsed;
+    // Cache the result
+    cache.setCachedMaster(tournament, parsed);
+
+    return parsed;
+  } finally {
+    // Always hide skeleton when done
+    if (showSkeletonLoading) {
+      hideGridSkeleton();
+    }
+  }
 }
 
 /**
@@ -323,8 +337,8 @@ function setupControlHandlers(state) {
 
     const cache = new DataCache();
 
-    // Load new tournament data
-    const data = await loadTournamentData(newTournament, cache);
+    // Load new tournament data with skeleton loading
+    const data = await loadTournamentData(newTournament, cache, true);
     // Use object spread to avoid race conditions
     Object.assign(state, { current: { ...data } });
 
