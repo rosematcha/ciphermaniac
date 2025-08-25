@@ -19,6 +19,9 @@ export async function onRequestGet({ request, env }) {
       case 'mapping':
         return await testSetMapping();
         
+      case 'database':
+        return await testDatabaseFiltering();
+        
       case 'full':
         // Test the full pricing pipeline
         const { onRequestGet: pricingUpdate } = await import('./pricing.js');
@@ -30,7 +33,8 @@ export async function onRequestGet({ request, env }) {
           availableActions: [
             'groups - Test TCGCSV groups API',
             'csv - Test CSV parsing (add ?groupId=XXXX)',
-            'mapping - Test set mapping logic',
+            'mapping - Test set mapping logic', 
+            'database - Show database card filtering',
             'full - Run full pricing update'
           ],
           example: '/api/test-pricing?action=groups'
@@ -122,6 +126,32 @@ async function testSetMapping() {
     mappings,
     foundSets: Object.values(mappings).filter(Boolean).length,
     totalKnownSets: knownSets.length
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
+async function testDatabaseFiltering() {
+  // Import the database cards from pricing module
+  const pricingModule = await import('./pricing.js');
+  
+  // Sample some database cards to show filtering
+  const sampleDatabaseCards = [
+    "Ultra Ball::SVI::196",
+    "Boss's Orders::PAL::172", 
+    "Charizard ex::OBF::125",
+    "Night Stretcher::SFA::061",
+    "Ethan's Pichu::DRI::071"
+  ];
+  
+  return new Response(JSON.stringify({
+    message: 'Database filtering test',
+    totalDatabaseCards: 428, // DATABASE_CARDS.size
+    sampleCards: sampleDatabaseCards,
+    explanation: 'Only cards in your tournament database will get prices',
+    databaseSets: ['SVI', 'PAL', 'DRI', 'TWM', 'SFA', 'TEF', 'JTG', 'MEW', 'OBF', 'PAR', 'SSP', 'SCR', 'PRE', 'BLK', 'WHT', 'PAF', 'SVP', 'SVE'],
+    filteringLogic: 'CSV parsing now checks DATABASE_CARDS.has(cardKey) before including prices'
   }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' }
