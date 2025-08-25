@@ -142,7 +142,10 @@
           "players": 1,
           "percent": 25.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "155",
+      "uid": "Professor's Research::JTG::155"
     },
     {
       "rank": 9,
@@ -161,7 +164,10 @@
           "players": 2,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "145",
+      "uid": "Carmine::TWM::145"
     },
     {
       "rank": 10,
@@ -180,7 +186,10 @@
           "players": 2,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "172",
+      "uid": "Boss's Orders::PAL::172"
     },
     {
       "rank": 11,
@@ -194,7 +203,10 @@
           "players": 4,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "171",
+      "uid": "Professor Turo's Scenario::PAR::171"
     },
     {
       "rank": 12,
@@ -208,7 +220,10 @@
           "players": 4,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SCR",
+      "number": "132",
+      "uid": "Briar::SCR::132"
     },
     {
       "rank": 13,
@@ -222,7 +237,10 @@
           "players": 4,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "196",
+      "uid": "Ultra Ball::SVI::196"
     },
     {
       "rank": 14,
@@ -236,7 +254,10 @@
           "players": 4,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "061",
+      "uid": "Night Stretcher::SFA::061"
     },
     {
       "rank": 15,
@@ -260,7 +281,10 @@
           "players": 1,
           "percent": 25.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "181",
+      "uid": "Nest Ball::SVI::181"
     },
     {
       "rank": 16,
@@ -284,7 +308,10 @@
           "players": 1,
           "percent": 25.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "163",
+      "uid": "Earthen Vessel::PAR::163"
     },
     {
       "rank": 17,
@@ -298,7 +325,10 @@
           "players": 4,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "182",
+      "uid": "Pal Pad::SVI::182"
     },
     {
       "rank": 18,
@@ -312,7 +342,10 @@
           "players": 4,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "010",
+      "uid": "Fire Energy::SVE::010"
     },
     {
       "rank": 19,
@@ -331,7 +364,10 @@
           "players": 3,
           "percent": 75.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "191",
+      "uid": "Luminous Energy::PAL::191"
     },
     {
       "rank": 20,
@@ -345,7 +381,10 @@
           "players": 4,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "190",
+      "uid": "Jet Energy::PAL::190"
     },
     {
       "rank": 21,
@@ -359,7 +398,10 @@
           "players": 3,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "185",
+      "uid": "Iono::PAL::185"
     },
     {
       "rank": 22,
@@ -378,7 +420,10 @@
           "players": 2,
           "percent": 66.67
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "160",
+      "uid": "Counter Catcher::PAR::160"
     },
     {
       "rank": 23,
@@ -397,7 +442,10 @@
           "players": 2,
           "percent": 66.67
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "153",
+      "uid": "Jamming Tower::TWM::153"
     },
     {
       "rank": 24,
@@ -411,7 +459,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "144",
+      "uid": "Buddy-Buddy Poffin::TEF::144"
     },
     {
       "rank": 25,
@@ -425,7 +476,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SSP",
+      "number": "164",
+      "uid": "Brilliant Blender::SSP::164"
     },
     {
       "rank": 26,
@@ -439,7 +493,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "015",
+      "uid": "Darkness Energy::SVE::015"
     },
     {
       "rank": 27,
@@ -487,7 +544,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "163",
+      "uid": "Secret Box::TWM::163"
     },
     {
       "rank": 30,
@@ -518,7 +578,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "167",
+      "uid": "Legacy Energy::TWM::167"
     },
     {
       "rank": 32,

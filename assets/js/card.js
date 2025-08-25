@@ -5,7 +5,7 @@ import { buildThumbCandidates } from './thumbs.js';
 import { pickArchetype, baseToLabel } from './selectArchetype.js';
 import { normalizeCardRouteOnLoad } from './router.js';
 import { prettyTournamentName } from './utils/format.js';
-import { createCardDetailsSkeleton, createChartSkeleton, showSkeleton, hideSkeleton } from './components/placeholders.js';
+import { createChartSkeleton, createHistogramSkeleton, createEventsTableSkeleton, showSkeleton, hideSkeleton } from './components/placeholders.js';
 // Show curated suggestions on the card landing view
 import './cardsLanding.js';
 
@@ -454,8 +454,14 @@ function findCard(items, cardIdentifier){
 
 function renderChart(container, points){
   if(!points.length){
-    // eslint-disable-next-line no-param-reassign
-    container.textContent = 'No data.';
+    const noDataContent = document.createTextNode('No data.');
+    if(container.classList.contains('showing-skeleton')) {
+      hideSkeleton(container, noDataContent);
+    } else {
+      // eslint-disable-next-line no-param-reassign
+      container.innerHTML = '';
+      container.appendChild(noDataContent);
+    }
     return;
   }
   // Use the container's actual width to avoid overflow; cap min/max for readability
@@ -553,25 +559,29 @@ function renderChart(container, points){
     hitDot.addEventListener('blur', hideGraphTooltip);
     svg.appendChild(hitDot);
   });
-  // eslint-disable-next-line no-param-reassign
-  container.innerHTML = '';
-  // eslint-disable-next-line no-param-reassign
-  container.appendChild(svg);
+  const chartContent = document.createDocumentFragment();
+  chartContent.appendChild(svg);
   const caption = document.createElement('div');
   caption.className = 'summary';
   caption.textContent = 'Meta-share over tournaments (All archetypes)';
-  // eslint-disable-next-line no-param-reassign
-  container.appendChild(caption);
+  chartContent.appendChild(caption);
+
+  if(container.classList.contains('showing-skeleton')) {
+    hideSkeleton(container, chartContent);
+  } else {
+    // eslint-disable-next-line no-param-reassign
+    container.innerHTML = '';
+    // eslint-disable-next-line no-param-reassign
+    container.appendChild(chartContent);
+  }
 }
 
 function renderCopiesHistogram(container, overall){
-  // eslint-disable-next-line no-param-reassign
-  container.innerHTML = '';
+  const histContent = document.createDocumentFragment();
   const box = document.createElement('div');
   box.className = 'summary';
   box.textContent = 'Copies distribution in the most recent visible event:';
-  // eslint-disable-next-line no-param-reassign
-  container.appendChild(box);
+  histContent.appendChild(box);
   const hist = document.createElement('div');
   hist.className = 'hist';
   const dist = overall?.dist || [];
@@ -595,16 +605,28 @@ function renderCopiesHistogram(container, overall){
     col.addEventListener('blur', hideGraphTooltip);
     col.appendChild(bar); col.appendChild(lbl); hist.appendChild(col);
   }
-  // eslint-disable-next-line no-param-reassign
-  container.appendChild(hist);
+  histContent.appendChild(hist);
+
+  if(container.classList.contains('showing-skeleton')) {
+    hideSkeleton(container, histContent);
+  } else {
+    // eslint-disable-next-line no-param-reassign
+    container.innerHTML = '';
+    // eslint-disable-next-line no-param-reassign
+    container.appendChild(histContent);
+  }
 }
 
 function renderEvents(container, rows){
-  // eslint-disable-next-line no-param-reassign
-  container.innerHTML = '';
   if(!rows.length){
-    // eslint-disable-next-line no-param-reassign
-    container.textContent = 'No recent events data.';
+    const emptyContent = document.createTextNode('No recent events data.');
+    if(container.classList.contains('showing-skeleton')) {
+      hideSkeleton(container, emptyContent);
+    } else {
+      // eslint-disable-next-line no-param-reassign
+      container.innerHTML = '';
+      container.appendChild(emptyContent);
+    }
     return;
   }
   const tbl = document.createElement('table');
@@ -622,8 +644,15 @@ function renderEvents(container, rows){
     tbody.appendChild(tr);
   });
   tbl.appendChild(tbody);
-  // eslint-disable-next-line no-param-reassign
-  container.appendChild(tbl);
+
+  if(container.classList.contains('showing-skeleton')) {
+    hideSkeleton(container, tbl);
+  } else {
+    // eslint-disable-next-line no-param-reassign
+    container.innerHTML = '';
+    // eslint-disable-next-line no-param-reassign
+    container.appendChild(tbl);
+  }
 }
 
 async function collectCardVariants(cardIdentifier) {
@@ -688,11 +717,20 @@ async function renderCardSets(cardIdentifier) {
 
 async function load(){
   if(!cardIdentifier){ metaSection.textContent = 'Missing card identifier.'; return; }
-  // Loading state
-  const chartEl = document.getElementById('card-chart') || metaSection;
-  chartEl.textContent = 'Loading…';
-  if(eventsSection) {eventsSection.textContent = '';}
-  if(copiesSection) {copiesSection.textContent = '';}
+
+  // Show placeholders for all sections to prevent CLS
+  const chartEl = document.getElementById('card-chart');
+  if(chartEl) {
+    showSkeleton(chartEl, createChartSkeleton('180px'));
+  }
+
+  if(copiesSection) {
+    showSkeleton(copiesSection, createHistogramSkeleton());
+  }
+
+  if(eventsSection) {
+    showSkeleton(eventsSection, createEventsTableSkeleton());
+  }
   // Load overrides for thumbnails and render hero
   const overrides = await fetchOverrides();
   const hero = document.getElementById('card-hero');
@@ -732,11 +770,15 @@ async function load(){
   // Ignore initialization errors
   } };
 
-  // Aggregate meta-share per tournament; eager load across all tournaments
+  // Fixed window: only process the most recent 6 tournaments to minimize network calls
+  const PROCESS_LIMIT = 6;
+  const recentTournaments = tournaments.slice(0, PROCESS_LIMIT);
+
+  // Aggregate meta-share per tournament; only load the most recent tournaments
   const timePoints = [];
   const deckRows = [];
   const eventsWithCard = [];
-  for(const t of tournaments){
+  for(const t of recentTournaments){
     try{
       const ck = `${t}::${cardIdentifier}`;
       let globalPct = null, globalFound = null, globalTotal = null;
@@ -796,7 +838,7 @@ async function load(){
     const shown = Math.min(LIMIT, totalP);
     const note = document.createElement('div');
     note.className = 'summary toggle-note';
-    note.textContent = `Chronological (oldest to newest). Showing most recent ${shown} of ${totalP}.`;
+    note.textContent = `Chronological (oldest to newest). Showing most recent ${shown} of ${totalP}. Limited to 6 tournaments for optimal performance.`;
     metaSection.appendChild(note);
     // Events/decks toggle mirrors chart (attach to eventsSection if present)
     const tableSection = eventsSection || decksSection;
@@ -937,7 +979,36 @@ function renderAnalysisSelector(events){
 
 async function renderAnalysisTable(tournament){
   if(!analysisTable){ return; }
-  analysisTable.textContent = 'Loading…';
+
+  // Show loading state with skeleton
+  const loadingSkeleton = document.createElement('div');
+  loadingSkeleton.className = 'skeleton-analysis-loading';
+  loadingSkeleton.setAttribute('aria-hidden', 'true');
+  loadingSkeleton.innerHTML = `
+    <div class="skeleton-text medium" style="margin-bottom: 8px;"></div>
+    <div class="skeleton-text large" style="margin-bottom: 16px;"></div>
+    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 8px;">
+      <div class="skeleton-text small"></div>
+      <div class="skeleton-text small"></div>
+      <div class="skeleton-text small"></div>
+      <div class="skeleton-text small"></div>
+      <div class="skeleton-text small"></div>
+      <div class="skeleton-text small"></div>
+    </div>
+    ${Array(5).fill(0).map(() => `
+      <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 4px;">
+        <div class="skeleton-text medium"></div>
+        <div class="skeleton-text small"></div>
+        <div class="skeleton-text small"></div>
+        <div class="skeleton-text small"></div>
+        <div class="skeleton-text small"></div>
+        <div class="skeleton-text small"></div>
+      </div>
+    `).join('')}
+  `;
+
+  analysisTable.innerHTML = '';
+  analysisTable.appendChild(loadingSkeleton);
   try{
     // Overall (All archetypes) distribution for this event
     let overall = null;

@@ -183,7 +183,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "170",
+      "uid": "Professor Sada's Vitality::PAR::170"
     },
     {
       "rank": 12,
@@ -197,7 +200,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "172",
+      "uid": "Boss's Orders::PAL::172"
     },
     {
       "rank": 13,
@@ -211,7 +217,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "145",
+      "uid": "Carmine::TWM::145"
     },
     {
       "rank": 14,
@@ -225,7 +234,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "185",
+      "uid": "Iono::PAL::185"
     },
     {
       "rank": 15,
@@ -239,7 +251,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "154",
+      "uid": "Kieran::TWM::154"
     },
     {
       "rank": 16,
@@ -253,7 +268,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "196",
+      "uid": "Ultra Ball::SVI::196"
     },
     {
       "rank": 17,
@@ -267,7 +285,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "181",
+      "uid": "Nest Ball::SVI::181"
     },
     {
       "rank": 18,
@@ -281,7 +302,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "173",
+      "uid": "Energy Switch::SVI::173"
     },
     {
       "rank": 19,
@@ -295,7 +319,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "163",
+      "uid": "Earthen Vessel::PAR::163"
     },
     {
       "rank": 20,
@@ -309,7 +336,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "186",
+      "uid": "Pokégear 3.0::SVI::186"
     },
     {
       "rank": 21,
@@ -323,7 +353,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "061",
+      "uid": "Night Stretcher::SFA::061"
     },
     {
       "rank": 22,
@@ -337,7 +370,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "182",
+      "uid": "Pal Pad::SVI::182"
     },
     {
       "rank": 23,
@@ -351,7 +387,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "194",
+      "uid": "Switch::SVI::194"
     },
     {
       "rank": 24,
@@ -365,7 +404,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "163",
+      "uid": "Secret Box::TWM::163"
     },
     {
       "rank": 25,
@@ -379,7 +421,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "140",
+      "uid": "Ancient Booster Energy Capsule::TEF::140"
     },
     {
       "rank": 26,
@@ -393,7 +438,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "156",
+      "uid": "Perilous Jungle::TEF::156"
     },
     {
       "rank": 27,
@@ -407,7 +455,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "010",
+      "uid": "Fire Energy::SVE::010"
     },
     {
       "rank": 28,
@@ -421,7 +472,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "015",
+      "uid": "Darkness Energy::SVE::015"
     }
   ]
 }

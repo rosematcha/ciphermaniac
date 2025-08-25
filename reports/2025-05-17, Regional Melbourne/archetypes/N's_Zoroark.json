@@ -166,7 +166,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "185",
+      "uid": "Iono::PAL::185"
     },
     {
       "rank": 11,
@@ -180,7 +183,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "155",
+      "uid": "Professor's Research::JTG::155"
     },
     {
       "rank": 12,
@@ -194,7 +200,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "172",
+      "uid": "Boss's Orders::PAL::172"
     },
     {
       "rank": 13,
@@ -208,7 +217,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "175",
+      "uid": "Jacq::SVI::175"
     },
     {
       "rank": 14,
@@ -222,7 +234,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "171",
+      "uid": "Professor Turo's Scenario::PAR::171"
     },
     {
       "rank": 15,
@@ -236,7 +251,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "181",
+      "uid": "Nest Ball::SVI::181"
     },
     {
       "rank": 16,
@@ -250,7 +268,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "144",
+      "uid": "Buddy-Buddy Poffin::TEF::144"
     },
     {
       "rank": 17,
@@ -264,7 +285,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "196",
+      "uid": "Ultra Ball::SVI::196"
     },
     {
       "rank": 18,
@@ -278,7 +302,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "153",
+      "uid": "N's PP Up::JTG::153"
     },
     {
       "rank": 19,
@@ -292,7 +319,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "160",
+      "uid": "Counter Catcher::PAR::160"
     },
     {
       "rank": 20,
@@ -306,7 +336,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "061",
+      "uid": "Night Stretcher::SFA::061"
     },
     {
       "rank": 21,
@@ -320,7 +353,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "188",
+      "uid": "Super Rod::PAL::188"
     },
     {
       "rank": 22,
@@ -334,7 +370,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "169",
+      "uid": "Defiance Band::SVI::169"
     },
     {
       "rank": 23,
@@ -348,7 +387,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "063",
+      "uid": "Powerglass::SFA::063"
     },
     {
       "rank": 24,
@@ -362,7 +404,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "152",
+      "uid": "N's Castle::JTG::152"
     },
     {
       "rank": 25,
@@ -376,7 +421,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "015",
+      "uid": "Darkness Energy::SVE::015"
     },
     {
       "rank": 26,
@@ -390,7 +438,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "192",
+      "uid": "Reversal Energy::PAL::192"
     }
   ]
 }

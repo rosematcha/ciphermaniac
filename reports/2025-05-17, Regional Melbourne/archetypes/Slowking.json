@@ -234,7 +234,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "155",
+      "uid": "Professor's Research::JTG::155"
     },
     {
       "rank": 15,
@@ -248,7 +251,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "145",
+      "uid": "Ciphermaniac's Codebreaking::TEF::145"
     },
     {
       "rank": 16,
@@ -262,7 +268,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "185",
+      "uid": "Iono::PAL::185"
     },
     {
       "rank": 17,
@@ -276,7 +285,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "155",
+      "uid": "Lana's Aid::TWM::155"
     },
     {
       "rank": 18,
@@ -290,7 +302,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "181",
+      "uid": "Nest Ball::SVI::181"
     },
     {
       "rank": 19,
@@ -304,7 +319,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "061",
+      "uid": "Night Stretcher::SFA::061"
     },
     {
       "rank": 20,
@@ -318,7 +336,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "196",
+      "uid": "Ultra Ball::SVI::196"
     },
     {
       "rank": 21,
@@ -332,7 +353,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "144",
+      "uid": "Buddy-Buddy Poffin::TEF::144"
     },
     {
       "rank": 22,
@@ -346,7 +370,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PRE",
+      "number": "116",
+      "uid": "Max Rod::PRE::116"
     },
     {
       "rank": 23,
@@ -360,7 +387,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "054",
+      "uid": "Academy at Night::SFA::054"
     },
     {
       "rank": 24,
@@ -374,7 +404,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "013",
+      "uid": "Psychic Energy::SVE::013"
     },
     {
       "rank": 25,
@@ -388,7 +421,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "190",
+      "uid": "Jet Energy::PAL::190"
     },
     {
       "rank": 26,
@@ -402,7 +438,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "192",
+      "uid": "Reversal Energy::PAL::192"
     }
   ]
 }

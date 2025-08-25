@@ -115,7 +115,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "177",
+      "uid": "Team Rocket's Proton::DRI::177"
     },
     {
       "rank": 8,
@@ -129,7 +132,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "171",
+      "uid": "Team Rocket's Ariana::DRI::171"
     },
     {
       "rank": 9,
@@ -143,7 +149,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "174",
+      "uid": "Team Rocket's Giovanni::DRI::174"
     },
     {
       "rank": 10,
@@ -157,7 +166,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "170",
+      "uid": "Team Rocket's Archer::DRI::170"
     },
     {
       "rank": 11,
@@ -171,7 +183,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "176",
+      "uid": "Team Rocket's Petrel::DRI::176"
     },
     {
       "rank": 12,
@@ -185,7 +200,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "178",
+      "uid": "Team Rocket's Transceiver::DRI::178"
     },
     {
       "rank": 13,
@@ -199,7 +217,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "196",
+      "uid": "Ultra Ball::SVI::196"
     },
     {
       "rank": 14,
@@ -213,7 +234,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "163",
+      "uid": "Earthen Vessel::PAR::163"
     },
     {
       "rank": 15,
@@ -227,7 +251,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "061",
+      "uid": "Night Stretcher::SFA::061"
     },
     {
       "rank": 16,
@@ -241,7 +268,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "160",
+      "uid": "Counter Catcher::PAR::160"
     },
     {
       "rank": 17,
@@ -255,7 +285,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "163",
+      "uid": "Secret Box::TWM::163"
     },
     {
       "rank": 18,
@@ -269,7 +302,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "184",
+      "uid": "Picnic Basket::SVI::184"
     },
     {
       "rank": 19,
@@ -283,7 +319,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "168",
+      "uid": "Sacred Ash::DRI::168"
     },
     {
       "rank": 20,
@@ -297,7 +336,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "173",
+      "uid": "Energy Switch::SVI::173"
     },
     {
       "rank": 21,
@@ -311,7 +353,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "181",
+      "uid": "Nest Ball::SVI::181"
     },
     {
       "rank": 22,
@@ -325,7 +370,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "169",
+      "uid": "Defiance Band::SVI::169"
     },
     {
       "rank": 23,
@@ -339,7 +387,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "173",
+      "uid": "Team Rocket's Factory::DRI::173"
     },
     {
       "rank": 24,
@@ -353,7 +404,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "009",
+      "uid": "Grass Energy::SVE::009"
     },
     {
       "rank": 25,
@@ -367,7 +421,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "182",
+      "uid": "Team Rocket's Energy::DRI::182"
     }
   ]
 }

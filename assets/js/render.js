@@ -42,8 +42,9 @@ function hideGridTooltip(){ if(__gridGraphTooltip) {__gridGraphTooltip.style.dis
 function escapeHtml(s){ if(!s) {return '';} return String(s).replace(/[&<>"]/g, (ch)=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch])); }
 
 export function renderSummary(container, deckTotal, count){
+  if (!container) return; // Handle case where summary element doesn't exist
   const parts = [];
-  if(deckTotal) parts.push(`${deckTotal} decklists`);
+  if(deckTotal) {parts.push(`${deckTotal} decklists`);}
   parts.push(`${count} cards`);
   container.textContent = parts.join(' • ');
 }
@@ -298,7 +299,7 @@ function setupCardImage(img, cardName, useSm, overrides, cardData) {
     decoding: 'async',
     loading: useSm ? 'eager' : 'lazy'
   });
-  
+
   setStyles(img, {
     opacity: '0',
     transition: 'opacity .18s ease-out'
@@ -322,17 +323,23 @@ function setupCardImage(img, cardName, useSm, overrides, cardData) {
 
 function populateCardContent(el, cardData) {
   // Calculate percentage once
-  const pct = Number.isFinite(cardData.pct) 
-    ? cardData.pct 
+  const pct = Number.isFinite(cardData.pct)
+    ? cardData.pct
     : (cardData.total ? (100 * cardData.found / cardData.total) : 0);
-  
+
   const pctText = Number.isFinite(pct) ? `${pct.toFixed(1)}%` : '—';
   const widthPct = `${Math.max(0, Math.min(100, pct))}%`;
-  
-  // Update name element
+
+  // Update name element - show only the card name in grid view
   const nameEl = el.querySelector('.name');
   nameEl.textContent = cardData.name;
-  nameEl.title = cardData.name;
+
+  // Set full title with set info for tooltip, but display only name
+  if (cardData.set && cardData.number) {
+    nameEl.title = `${cardData.name} ${cardData.set} ${cardData.number}`;
+  } else {
+    nameEl.title = cardData.name;
+  }
 
   // Update percentage display
   el.querySelector('.bar').style.width = widthPct;
@@ -363,7 +370,7 @@ function createCardHistogram(el, cardData) {
     const d = cardData.dist.find(x=>x.copies===c);
     const col = createElement('div', { className: 'col' });
     const bar = createElement('div', { className: 'bar' });
-    const lbl = createElement('div', { 
+    const lbl = createElement('div', {
       className: 'lbl',
       textContent: String(c)
     });
@@ -437,7 +444,7 @@ function makeCardElement(cardData, useSm, overrides) {
 
   // Setup card attributes
   setupCardAttributes(card, cardData);
-  
+
   // Setup image
   const img = fragment.querySelector('img');
   setupCardImage(img, cardData.name, useSm, overrides, cardData);
@@ -464,7 +471,7 @@ function setupCardAttributes(card, cardData) {
 function setupCardCounts(element, cardData) {
   const counts = element.querySelector('.counts');
   counts.innerHTML = '';
-  
+
   const hasValidCounts = Number.isFinite(cardData.found) && Number.isFinite(cardData.total);
   const countsText = createElement('span', {
     textContent: hasValidCounts ? `${cardData.found} / ${cardData.total} decks` : 'no data'

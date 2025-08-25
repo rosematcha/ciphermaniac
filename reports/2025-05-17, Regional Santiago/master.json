@@ -28,7 +28,10 @@
           "players": 78,
           "percent": 40.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "196",
+      "uid": "Ultra Ball::SVI::196"
     },
     {
       "rank": 2,
@@ -74,7 +77,10 @@
           "players": 93,
           "percent": 50.54
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "181",
+      "uid": "Nest Ball::SVI::181"
     },
     {
       "rank": 4,
@@ -103,7 +109,10 @@
           "players": 16,
           "percent": 9.04
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "061",
+      "uid": "Night Stretcher::SFA::061"
     },
     {
       "rank": 5,
@@ -132,7 +141,10 @@
           "players": 63,
           "percent": 35.8
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "185",
+      "uid": "Iono::PAL::185"
     },
     {
       "rank": 6,
@@ -161,7 +173,10 @@
           "players": 27,
           "percent": 16.17
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "172",
+      "uid": "Boss's Orders::PAL::172"
     },
     {
       "rank": 7,
@@ -190,7 +205,10 @@
           "players": 31,
           "percent": 21.23
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "013",
+      "uid": "Psychic Energy::SVE::013"
     },
     {
       "rank": 8,
@@ -219,7 +237,10 @@
           "players": 5,
           "percent": 3.47
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "163",
+      "uid": "Earthen Vessel::PAR::163"
     },
     {
       "rank": 9,
@@ -243,7 +264,10 @@
           "players": 19,
           "percent": 14.84
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "160",
+      "uid": "Counter Catcher::PAR::160"
     },
     {
       "rank": 10,
@@ -272,7 +296,10 @@
           "players": 68,
           "percent": 59.13
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "144",
+      "uid": "Buddy-Buddy Poffin::TEF::144"
     },
     {
       "rank": 11,
@@ -301,7 +328,10 @@
           "players": 67,
           "percent": 58.77
         }
-      ]
+      ],
+      "set": "OBF",
+      "number": "186",
+      "uid": "Arven::OBF::186"
     },
     {
       "rank": 12,
@@ -325,7 +355,10 @@
           "players": 25,
           "percent": 23.36
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "173",
+      "uid": "Bravery Charm::PAL::173"
     },
     {
       "rank": 13,
@@ -403,7 +436,10 @@
           "players": 26,
           "percent": 28.89
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "012",
+      "uid": "Lightning Energy::SVE::012"
     },
     {
       "rank": 16,
@@ -449,7 +485,10 @@
           "players": 26,
           "percent": 29.55
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "155",
+      "uid": "Professor's Research::JTG::155"
     },
     {
       "rank": 18,
@@ -483,7 +522,10 @@
           "players": 11,
           "percent": 12.64
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "009",
+      "uid": "Grass Energy::SVE::009"
     },
     {
       "rank": 19,
@@ -512,7 +554,10 @@
           "players": 33,
           "percent": 38.37
         }
-      ]
+      ],
+      "set": "SCR",
+      "number": "133",
+      "uid": "Crispin::SCR::133"
     },
     {
       "rank": 20,
@@ -595,7 +640,10 @@
           "players": 1,
           "percent": 1.23
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "015",
+      "uid": "Darkness Energy::SVE::015"
     },
     {
       "rank": 23,
@@ -609,7 +657,10 @@
           "players": 81,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "159",
+      "uid": "Rescue Board::TEF::159"
     },
     {
       "rank": 24,
@@ -628,7 +679,10 @@
           "players": 5,
           "percent": 6.17
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "171",
+      "uid": "Professor Turo's Scenario::PAR::171"
     },
     {
       "rank": 25,
@@ -652,7 +706,10 @@
           "players": 4,
           "percent": 5.33
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "171",
+      "uid": "Artazon::PAL::171"
     },
     {
       "rank": 26,
@@ -708,7 +765,10 @@
           "players": 4,
           "percent": 5.41
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "010",
+      "uid": "Fire Energy::SVE::010"
     },
     {
       "rank": 28,
@@ -722,7 +782,10 @@
           "players": 70,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "194",
+      "uid": "Switch::SVI::194"
     },
     {
       "rank": 29,
@@ -736,7 +799,10 @@
           "players": 68,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "157",
+      "uid": "Prime Catcher::TEF::157"
     },
     {
       "rank": 30,
@@ -755,7 +821,10 @@
           "players": 6,
           "percent": 8.82
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "153",
+      "uid": "Jamming Tower::TWM::153"
     },
     {
       "rank": 31,
@@ -789,7 +858,10 @@
           "players": 1,
           "percent": 1.59
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "014",
+      "uid": "Fighting Energy::SVE::014"
     },
     {
       "rank": 32,
@@ -828,7 +900,10 @@
           "players": 2,
           "percent": 3.17
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "016",
+      "uid": "Metal Energy::SVE::016"
     },
     {
       "rank": 33,
@@ -857,7 +932,10 @@
           "players": 2,
           "percent": 3.51
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "191",
+      "uid": "Rare Candy::SVI::191"
     },
     {
       "rank": 34,
@@ -876,7 +954,10 @@
           "players": 5,
           "percent": 8.77
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "188",
+      "uid": "Super Rod::PAL::188"
     },
     {
       "rank": 35,
@@ -922,7 +1003,10 @@
           "players": 11,
           "percent": 20.37
         }
-      ]
+      ],
+      "set": "SCR",
+      "number": "131",
+      "uid": "Area Zero Underdepths::SCR::131"
     },
     {
       "rank": 37,
@@ -1005,7 +1089,10 @@
           "players": 3,
           "percent": 5.66
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "186",
+      "uid": "Pokégear 3.0::SVI::186"
     },
     {
       "rank": 40,
@@ -1088,7 +1175,10 @@
           "players": 2,
           "percent": 4.35
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "146",
+      "uid": "Brock's Scouting::JTG::146"
     },
     {
       "rank": 43,
@@ -1173,7 +1263,10 @@
           "players": 29,
           "percent": 69.05
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "178",
+      "uid": "Technical Machine: Evolution::PAR::178"
     },
     {
       "rank": 47,
@@ -1197,7 +1290,10 @@
           "players": 3,
           "percent": 7.14
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "011",
+      "uid": "Water Energy::SVE::011"
     },
     {
       "rank": 48,
@@ -1228,7 +1324,10 @@
           "players": 39,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "165",
+      "uid": "Unfair Stamp::TWM::165"
     },
     {
       "rank": 50,
@@ -1274,7 +1373,10 @@
           "players": 37,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "163",
+      "uid": "Secret Box::TWM::163"
     },
     {
       "rank": 52,
@@ -1325,7 +1427,10 @@
           "players": 4,
           "percent": 11.43
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "191",
+      "uid": "Luminous Energy::PAL::191"
     },
     {
       "rank": 54,
@@ -1339,7 +1444,10 @@
           "players": 34,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "170",
+      "uid": "Professor Sada's Vitality::PAR::170"
     },
     {
       "rank": 55,
@@ -1353,7 +1461,10 @@
           "players": 34,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "174",
+      "uid": "Exp. Share::SVI::174"
     },
     {
       "rank": 56,
@@ -1382,7 +1493,10 @@
           "players": 1,
           "percent": 3.03
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "173",
+      "uid": "Energy Switch::SVI::173"
     },
     {
       "rank": 57,
@@ -1496,7 +1610,10 @@
           "players": 7,
           "percent": 22.58
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "171",
+      "uid": "Energy Retrieval::SVI::171"
     },
     {
       "rank": 63,
@@ -1515,7 +1632,10 @@
           "players": 1,
           "percent": 3.23
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "182",
+      "uid": "Pal Pad::SVI::182"
     },
     {
       "rank": 64,
@@ -1578,7 +1698,10 @@
           "players": 16,
           "percent": 57.14
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "175",
+      "uid": "Jacq::SVI::175"
     },
     {
       "rank": 67,
@@ -1756,7 +1879,10 @@
           "players": 1,
           "percent": 3.85
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "145",
+      "uid": "Ciphermaniac's Codebreaking::TEF::145"
     },
     {
       "rank": 75,
@@ -1792,7 +1918,10 @@
           "players": 23,
           "percent": 92.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "189",
+      "uid": "Superior Energy Retrieval::PAL::189"
     },
     {
       "rank": 77,
@@ -1806,7 +1935,10 @@
           "players": 24,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "172",
+      "uid": "Energy Search::SVI::172"
     },
     {
       "rank": 78,
@@ -1891,7 +2023,10 @@
           "players": 23,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SSP",
+      "number": "176",
+      "uid": "Energy Search Pro::SSP::176"
     },
     {
       "rank": 82,
@@ -1905,7 +2040,10 @@
           "players": 22,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "166",
+      "uid": "Luxurious Cape::PAR::166"
     },
     {
       "rank": 83,
@@ -1936,7 +2074,10 @@
           "players": 18,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "149",
+      "uid": "Future Booster Energy Capsule::TEF::149"
     },
     {
       "rank": 85,
@@ -1955,7 +2096,10 @@
           "players": 3,
           "percent": 16.67
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "169",
+      "uid": "Defiance Band::SVI::169"
     },
     {
       "rank": 86,
@@ -1969,7 +2113,10 @@
           "players": 17,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SCR",
+      "number": "142",
+      "uid": "Sparkling Crystal::SCR::142"
     },
     {
       "rank": 87,
@@ -2005,7 +2152,10 @@
           "players": 1,
           "percent": 6.25
         }
-      ]
+      ],
+      "set": "OBF",
+      "number": "192",
+      "uid": "Pokémon League Headquarters::OBF::192"
     },
     {
       "rank": 89,
@@ -2151,7 +2301,10 @@
           "players": 12,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "063",
+      "uid": "Powerglass::SFA::063"
     },
     {
       "rank": 96,
@@ -2253,7 +2406,10 @@
           "players": 11,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SCR",
+      "number": "135",
+      "uid": "Glass Trumpet::SCR::135"
     },
     {
       "rank": 101,
@@ -2277,7 +2433,10 @@
           "players": 5,
           "percent": 45.45
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "140",
+      "uid": "Ancient Booster Energy Capsule::TEF::140"
     },
     {
       "rank": 102,
@@ -2296,7 +2455,10 @@
           "players": 1,
           "percent": 10.0
         }
-      ]
+      ],
+      "set": "SSP",
+      "number": "170",
+      "uid": "Cyrano::SSP::170"
     },
     {
       "rank": 103,
@@ -2310,7 +2472,10 @@
           "players": 9,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "176",
+      "uid": "Judge::SVI::176"
     },
     {
       "rank": 104,
@@ -2324,7 +2489,10 @@
           "players": 9,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "154",
+      "uid": "Kieran::TWM::154"
     },
     {
       "rank": 105,
@@ -2365,7 +2533,10 @@
           "players": 5,
           "percent": 55.56
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "190",
+      "uid": "Jet Energy::PAL::190"
     },
     {
       "rank": 107,
@@ -2521,7 +2692,10 @@
           "players": 1,
           "percent": 12.5
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "152",
+      "uid": "N's Castle::JTG::152"
     },
     {
       "rank": 114,
@@ -2552,7 +2726,10 @@
           "players": 7,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SCR",
+      "number": "132",
+      "uid": "Briar::SCR::132"
     },
     {
       "rank": 116,
@@ -2566,7 +2743,10 @@
           "players": 7,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SSP",
+      "number": "189",
+      "uid": "Tera Orb::SSP::189"
     },
     {
       "rank": 117,
@@ -2705,7 +2885,10 @@
           "players": 1,
           "percent": 14.29
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "192",
+      "uid": "Reversal Energy::PAL::192"
     },
     {
       "rank": 123,
@@ -2812,7 +2995,10 @@
           "players": 3,
           "percent": 42.86
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "145",
+      "uid": "Carmine::TWM::145"
     },
     {
       "rank": 128,
@@ -2831,7 +3017,10 @@
           "players": 5,
           "percent": 83.33
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "153",
+      "uid": "N's PP Up::JTG::153"
     },
     {
       "rank": 129,
@@ -2850,7 +3039,10 @@
           "players": 1,
           "percent": 16.67
         }
-      ]
+      ],
+      "set": "SSP",
+      "number": "177",
+      "uid": "Gravity Mountain::SSP::177"
     },
     {
       "rank": 130,
@@ -2908,7 +3100,10 @@
           "players": 5,
           "percent": 83.33
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "156",
+      "uid": "Perilous Jungle::TEF::156"
     },
     {
       "rank": 133,
@@ -2922,7 +3117,10 @@
           "players": 6,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "197",
+      "uid": "Vitality Band::SVI::197"
     },
     {
       "rank": 134,
@@ -2946,7 +3144,10 @@
           "players": 2,
           "percent": 33.33
         }
-      ]
+      ],
+      "set": "PRE",
+      "number": "095",
+      "uid": "Binding Mochi::PRE::095"
     },
     {
       "rank": 135,
@@ -2965,7 +3166,10 @@
           "players": 2,
           "percent": 40.0
         }
-      ]
+      ],
+      "set": "OBF",
+      "number": "196",
+      "uid": "Town Store::OBF::196"
     },
     {
       "rank": 136,
@@ -2984,7 +3188,10 @@
           "players": 4,
           "percent": 80.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "147",
+      "uid": "Explorer's Guidance::TEF::147"
     },
     {
       "rank": 137,
@@ -2998,7 +3205,10 @@
           "players": 5,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "OBF",
+      "number": "197",
+      "uid": "Vengeful Punch::OBF::197"
     },
     {
       "rank": 138,
@@ -3012,7 +3222,10 @@
           "players": 5,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "193",
+      "uid": "Rocky Helmet::SVI::193"
     },
     {
       "rank": 139,
@@ -3070,7 +3283,10 @@
           "players": 4,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "060",
+      "uid": "Neutralization Zone::SFA::060"
     },
     {
       "rank": 142,
@@ -3084,7 +3300,10 @@
           "players": 4,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "145",
+      "uid": "Black Belt's Training::JTG::145"
     },
     {
       "rank": 143,
@@ -3103,7 +3322,10 @@
           "players": 2,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "MEW",
+      "number": "165",
+      "uid": "Rigid Band::MEW::165"
     },
     {
       "rank": 144,
@@ -3292,7 +3514,10 @@
           "players": 3,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "162",
+      "uid": "Neo Upper Energy::TEF::162"
     },
     {
       "rank": 155,
@@ -3328,7 +3553,10 @@
           "players": 3,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "057",
+      "uid": "Colress's Tenacity::SFA::057"
     },
     {
       "rank": 157,
@@ -3347,7 +3575,10 @@
           "players": 1,
           "percent": 33.33
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "183",
+      "uid": "Great Ball::PAL::183"
     },
     {
       "rank": 158,
@@ -3361,7 +3592,10 @@
           "players": 3,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "183",
+      "uid": "Penny::SVI::183"
     },
     {
       "rank": 159,
@@ -3380,7 +3614,10 @@
           "players": 2,
           "percent": 66.67
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "179",
+      "uid": "Technical Machine: Turbo Energize::PAR::179"
     },
     {
       "rank": 160,
@@ -3411,7 +3648,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "MEW",
+      "number": "164",
+      "uid": "Protective Goggles::MEW::164"
     },
     {
       "rank": 162,
@@ -3425,7 +3665,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "151",
+      "uid": "Heavy Baton::TEF::151"
     },
     {
       "rank": 163,
@@ -3444,7 +3687,10 @@
           "players": 1,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "PRE",
+      "number": "112",
+      "uid": "Janine's Secret Art::PRE::112"
     },
     {
       "rank": 164,
@@ -3514,7 +3760,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SSP",
+      "number": "185",
+      "uid": "Precious Trolley::SSP::185"
     },
     {
       "rank": 168,
@@ -3528,7 +3777,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "152",
+      "uid": "Hero's Cape::TEF::152"
     },
     {
       "rank": 169,
@@ -3559,7 +3811,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "184",
+      "uid": "Picnic Basket::SVI::184"
     },
     {
       "rank": 171,
@@ -3624,7 +3879,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "155",
+      "uid": "Morty's Conviction::TEF::155"
     },
     {
       "rank": 175,
@@ -3638,7 +3896,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "154",
+      "uid": "Maximum Belt::TEF::154"
     },
     {
       "rank": 176,
@@ -3686,7 +3947,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "064",
+      "uid": "Xerosic's Machinations::SFA::064"
     },
     {
       "rank": 179,
@@ -3700,7 +3964,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "168",
+      "uid": "Crushing Hammer::SVI::168"
     },
     {
       "rank": 180,
@@ -3714,7 +3981,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "156",
+      "uid": "Redeemable Ticket::JTG::156"
     },
     {
       "rank": 181,
@@ -3728,7 +3998,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "150",
+      "uid": "Handheld Fan::TWM::150"
     },
     {
       "rank": 182,
@@ -3742,7 +4015,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "OBF",
+      "number": "189",
+      "uid": "Letter of Encouragement::OBF::189"
     },
     {
       "rank": 183,
@@ -3773,7 +4049,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "155",
+      "uid": "Lana's Aid::TWM::155"
     },
     {
       "rank": 185,
@@ -3821,7 +4100,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SSP",
+      "number": "169",
+      "uid": "Counter Gain::SSP::169"
     },
     {
       "rank": 188,
@@ -3852,7 +4134,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "MEW",
+      "number": "157",
+      "uid": "Cycling Road::MEW::157"
     },
     {
       "rank": 190,
@@ -3900,7 +4185,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "150",
+      "uid": "Levincia::JTG::150"
     },
     {
       "rank": 193,
@@ -3914,7 +4202,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "158",
+      "uid": "Lucky Helmet::TWM::158"
     },
     {
       "rank": 194,
@@ -3945,7 +4236,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "179",
+      "uid": "Miriam::SVI::179"
     },
     {
       "rank": 196,
@@ -4061,7 +4355,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "158",
+      "uid": "Super Potion::JTG::158"
     },
     {
       "rank": 203,
@@ -4143,7 +4440,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "157",
+      "uid": "Ruffian::JTG::157"
     },
     {
       "rank": 208,
@@ -4208,7 +4508,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "177",
+      "uid": "Technical Machine: Devolution::PAR::177"
     }
   ]
 }

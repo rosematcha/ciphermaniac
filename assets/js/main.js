@@ -473,7 +473,7 @@ async function initializeApp() {
     if (normalizeRouteOnLoad()) {return;}
 
     logger.info('Initializing Ciphermaniac application');
-    
+
     // Show skeleton loading immediately
     showGridSkeleton();
 

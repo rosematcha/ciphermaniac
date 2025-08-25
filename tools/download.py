@@ -216,6 +216,11 @@ def extract_all_decklists(soup, anonymize=False):
             set_acronym = card_div.get('data-set', '').upper().strip()
             number_raw = card_div.get('data-number', '').lstrip('0')
             number = number_raw.zfill(3) if number_raw else number_raw
+            
+            # Ensure all cards (Pokemon, Trainer, Energy) have set and number identifiers
+            if not set_acronym or not number:
+                print(f"Warning: Card '{card_div.find('span', class_='card-name').text.strip()}' missing set ({set_acronym}) or number ({number}) identifiers")
+            
             cards.append({
                 "count": int(card_div.find('span', class_='card-count').text.strip()),
                 "name": card_div.find('span', class_='card-name').text.strip(),
@@ -281,17 +286,18 @@ def generate_report_json(deck_list, deck_total, all_decks_for_variants):
             cat = card.get("category")
             set_code = card.get("set", "")
             number = card.get("number", "")
-            if cat == "pokemon":
-                sc, num = canonicalize_variant(set_code, number)
-                uid = f"{name}::{sc}::{num}" if sc and num else f"{name}::::"
+            sc, num = canonicalize_variant(set_code, number)
+            # All card types get set/number treatment for consistency
+            if sc and num:
+                uid = f"{name}::{sc}::{num}"
                 display = name
                 per_deck_counts[uid] += int(card.get('count', 0))
                 per_deck_seen_meta[uid] = {"set": sc, "number": num}
             else:
+                # Fallback for cards without set/number identifiers
                 uid = name
                 display = name
                 per_deck_counts[uid] += int(card.get('count', 0))
-                # trainers/energy: no set/number
         # After scanning deck, record one entry per uid
         for uid, tot in per_deck_counts.items():
             card_data[uid].append(tot)
@@ -371,34 +377,29 @@ def download_thumbnails(all_decks, base_path, session, workers=1, download_log_p
         set_code = (card.get("set", "") or '').upper().strip()
         number = (card.get("number", "") or '').zfill(3)
         category = card.get("category", "")
-        if category == "pokemon" and set_code and number:
+        # All card types (Pokemon, Trainer, Energy) should use set+number identifiers when available
+        if set_code and number:
             base_filename = f"{sanitize_for_filename(name)}_{set_code}_{number}"
-            plain_base = sanitize_for_filename(name)
-            # Only create set+number file for Pokémon, never queue plain-name file for download
             if base_filename in processed_filenames:
                 continue
             processed_filenames.add(base_filename)
-            print(f"  - Queueing images for: {name} ({set_code} {number}) [Pokémon]")
+            print(f"  - Queueing images for: {name} ({set_code} {number}) [{category.title()}]")
             for size in sizes_to_download:
                 img_filename = f"{set_code}_{number}_R_EN_{size}.png"
                 full_url = f"{base_url}{set_code}/{img_filename}"
                 file_path = os.path.join(base_path, "thumbnails", size.lower(), f"{base_filename}.png")
-                # Do not create or manage a plain-name alias for Pokémon to avoid duplicates
-                alias_path = None
+                alias_path = None  # No alias needed - all cards use consistent set+number naming
                 jobs.append((name, set_code, number, size, full_url, file_path, alias_path, category))
         else:
+            # Fallback for cards without set/number (should be rare with proper data extraction)
             base_filename = sanitize_for_filename(name)
             if base_filename in processed_filenames:
                 continue
             processed_filenames.add(base_filename)
-            print(f"  - Queueing images for: {name} [Trainer/Energy/Other]")
+            print(f"  - Queueing images for: {name} (no set/number) [{category.title()}]")
             for size in sizes_to_download:
-                if set_code and number:
-                    img_filename = f"{set_code}_{number}_R_EN_{size}.png"
-                    full_url = f"{base_url}{set_code}/{img_filename}"
-                else:
-                    img_filename = ''
-                    full_url = ''
+                img_filename = ''
+                full_url = ''
                 file_path = os.path.join(base_path, "thumbnails", size.lower(), f"{base_filename}.png")
                 alias_path = file_path
                 jobs.append((name, set_code, number, size, full_url, file_path, alias_path, category))
@@ -666,13 +667,10 @@ def generate_card_index(all_decks):
             base_key = name.lower() if category == 'pokemon' else name.lower()
             if base_key not in name_casing:
                 name_casing[base_key] = name
-            if category == 'pokemon':
-                per_deck_counts[base_key] += int(card.get('count', 0))
-                if set_code:
-                    sets_map[base_key].add(set_code)
-            else:
-                # For trainers/energy, just take the count as-is (still summed if repeated entries)
-                per_deck_counts[base_key] += int(card.get('count', 0))
+            # All card types get set tracking for consistency
+            per_deck_counts[base_key] += int(card.get('count', 0))
+            if set_code:
+                sets_map[base_key].add(set_code)
         # After scanning the deck, record one entry per base
         for base_key, total_copies in per_deck_counts.items():
             card_data[base_key].append(total_copies)

@@ -98,7 +98,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "OBF",
+      "number": "186",
+      "uid": "Arven::OBF::186"
     },
     {
       "rank": 7,
@@ -112,7 +115,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "172",
+      "uid": "Boss's Orders::PAL::172"
     },
     {
       "rank": 8,
@@ -126,7 +132,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "185",
+      "uid": "Iono::PAL::185"
     },
     {
       "rank": 9,
@@ -140,7 +149,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "155",
+      "uid": "Professor's Research::JTG::155"
     },
     {
       "rank": 10,
@@ -154,7 +166,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "186",
+      "uid": "Pokégear 3.0::SVI::186"
     },
     {
       "rank": 11,
@@ -168,7 +183,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "196",
+      "uid": "Ultra Ball::SVI::196"
     },
     {
       "rank": 12,
@@ -182,7 +200,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "181",
+      "uid": "Nest Ball::SVI::181"
     },
     {
       "rank": 13,
@@ -196,7 +217,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "061",
+      "uid": "Night Stretcher::SFA::061"
     },
     {
       "rank": 14,
@@ -210,7 +234,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SSP",
+      "number": "185",
+      "uid": "Precious Trolley::SSP::185"
     },
     {
       "rank": 15,
@@ -224,7 +251,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "163",
+      "uid": "Earthen Vessel::PAR::163"
     },
     {
       "rank": 16,
@@ -238,7 +268,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "194",
+      "uid": "Switch::SVI::194"
     },
     {
       "rank": 17,
@@ -252,7 +285,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "179",
+      "uid": "Technical Machine: Turbo Energize::PAR::179"
     },
     {
       "rank": 18,
@@ -266,7 +302,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "MEW",
+      "number": "165",
+      "uid": "Rigid Band::MEW::165"
     },
     {
       "rank": 19,
@@ -280,7 +319,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "159",
+      "uid": "Rescue Board::TEF::159"
     },
     {
       "rank": 20,
@@ -294,7 +336,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "174",
+      "uid": "Exp. Share::SVI::174"
     },
     {
       "rank": 21,
@@ -308,7 +353,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "OBF",
+      "number": "196",
+      "uid": "Town Store::OBF::196"
     },
     {
       "rank": 22,
@@ -322,7 +370,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "015",
+      "uid": "Darkness Energy::SVE::015"
     },
     {
       "rank": 23,
@@ -336,7 +387,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "014",
+      "uid": "Fighting Energy::SVE::014"
     },
     {
       "rank": 24,
@@ -350,7 +404,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "013",
+      "uid": "Psychic Energy::SVE::013"
     }
   ]
 }
