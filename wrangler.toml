@@ -11,7 +11,7 @@ crons = ["30 20 * * *"]  # Daily at 8:30 PM UTC
 # KV namespace binding for price data storage
 [[kv_namespaces]]
 binding = "PRICE_DATA"
-id = "your-kv-namespace-id"  # You'll need to create this KV namespace
+id = "c43f84feaa1049488390313c619610d8"  # You'll need to create this KV namespace
 
 # Environment variables (set these in CloudFlare dashboard)
 [env.production.vars]
