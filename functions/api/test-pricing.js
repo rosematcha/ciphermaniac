@@ -22,6 +22,10 @@ export async function onRequestGet({ request, env }) {
       case 'database':
         return await testDatabaseFiltering();
         
+      case 'columns':
+        const testGroupId = url.searchParams.get('groupId') || '23651'; // Default to SSP for Ceruledge
+        return await testColumnAlignment(testGroupId);
+        
       case 'full':
         // Test the full pricing pipeline
         const { onRequestGet: pricingUpdate } = await import('./pricing.js');
@@ -35,6 +39,7 @@ export async function onRequestGet({ request, env }) {
             'csv - Test CSV parsing (add ?groupId=XXXX)',
             'mapping - Test set mapping logic', 
             'database - Show database card filtering',
+            'columns - Test CSV column alignment (add ?groupId=XXXX)',
             'full - Run full pricing update'
           ],
           example: '/api/test-pricing?action=groups'
@@ -156,4 +161,49 @@ async function testDatabaseFiltering() {
     status: 200,
     headers: { 'Content-Type': 'application/json' }
   });
+}
+
+async function testColumnAlignment(groupId) {
+  const csvUrl = `https://tcgcsv.com/tcgplayer/3/${groupId}/ProductsAndPrices.csv`;
+  const response = await fetch(csvUrl);
+  const csvText = await response.text();
+  
+  const lines = csvText.split('\n');
+  const header = lines[0];
+  
+  // Find Ceruledge ex line for testing
+  const ceruledgeLine = lines.find(line => line.includes('Ceruledge ex'));
+  
+  if (ceruledgeLine) {
+    // Parse the line using our CSV parser
+    const fields = ceruledgeLine.split(',');
+    
+    return new Response(JSON.stringify({
+      groupId,
+      headerColumns: header.split(','),
+      ceruledgeExample: {
+        name: fields[1],
+        extNumber: fields[17],
+        lowPrice: fields[10],
+        midPrice: fields[11], 
+        highPrice: fields[12],
+        marketPrice: fields[13],
+        directLowPrice: fields[14]
+      },
+      explanation: 'Should use index 13 for marketPrice, not 12 (highPrice) or 14 (directLowPrice)',
+      currentCodeUses: 'fields[13] - which should be correct'
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } else {
+    return new Response(JSON.stringify({
+      error: 'Ceruledge ex not found in this set',
+      groupId,
+      try: 'Use ?groupId=23651 for SSP set where Ceruledge ex exists'
+    }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 }

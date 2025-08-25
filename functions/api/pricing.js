@@ -43,6 +43,9 @@ export async function onRequestGet({ env }) {
     // Step 3: Download CSVs for each set and extract prices
     const priceData = await fetchPricesForSets(setMappings);
     
+    // Step 3.5: Handle basic energy cards separately if needed
+    await addBasicEnergyPrices(priceData, groupsData.results);
+    
     // Step 4: Store the results
     await storePriceData(env, priceData);
     
@@ -152,13 +155,18 @@ function parseCsvPrices(csvText, setAbbr) {
       // Parse CSV line - be careful with commas in quoted strings
       const fields = parseCSVLine(line);
       
-      if (fields.length < 14) continue; // Need at least 14 fields for marketPrice
+      if (fields.length < 18) continue; // Need at least 18 fields for card number
       
       const name = fields[1]; // Card name
       const extNumber = fields[17]; // Card number  
-      const marketPrice = parseFloat(fields[13]); // Market price
+      const marketPrice = parseFloat(fields[13]); // Market price (index 13)
       
-      if (!name || !extNumber || isNaN(marketPrice)) continue;
+      // Debug problematic cards
+      if (name && name.toLowerCase().includes('ceruledge')) {
+        console.log(`DEBUG Ceruledge: name="${name}", extNumber="${extNumber}", marketPrice="${fields[13]}", highPrice="${fields[12]}", directLow="${fields[14]}"`);
+      }
+      
+      if (!name || !extNumber || isNaN(marketPrice) || marketPrice <= 0) continue;
       
       // Clean up the card name and number
       const cleanName = name.replace(/['"]/g, '').trim();
@@ -183,7 +191,55 @@ function parseCsvPrices(csvText, setAbbr) {
 }
 
 /**
- * Simple CSV parser that handles quoted strings
+ * Add basic energy card prices if they exist in database
+ * Basic energies are often in a separate set or have special pricing
+ */
+async function addBasicEnergyPrices(priceData, allGroups) {
+  // Look for energy cards in our database
+  const energyCards = Array.from(DATABASE_CARDS).filter(card => 
+    card.includes('Energy::SVE::') || 
+    card.includes(' Energy::') ||
+    card.toLowerCase().includes('energy')
+  );
+  
+  if (energyCards.length === 0) {
+    console.log('No energy cards found in database');
+    return;
+  }
+  
+  console.log(`Found ${energyCards.length} energy cards in database:`, energyCards.slice(0, 3));
+  
+  // Try different approaches to get energy pricing
+  // 1. Look for SVE set (Scarlet & Violet Energies)
+  const sveGroup = allGroups.find(g => g.abbreviation === 'SVE');
+  if (sveGroup) {
+    try {
+      console.log(`Fetching SVE energy set: ${sveGroup.groupId}`);
+      const csvUrl = `https://tcgcsv.com/tcgplayer/3/${sveGroup.groupId}/ProductsAndPrices.csv`;
+      const response = await fetch(csvUrl);
+      if (response.ok) {
+        const csvText = await response.text();
+        const energyPrices = parseCsvPrices(csvText, 'SVE');
+        Object.assign(priceData, energyPrices);
+        console.log(`Added ${Object.keys(energyPrices).length} energy prices from SVE`);
+      }
+    } catch (error) {
+      console.warn('Failed to fetch SVE energy prices:', error.message);
+    }
+  }
+  
+  // 2. If no SVE prices found, set basic energy cards to $0.01 (they're essentially free)
+  const missingEnergies = energyCards.filter(card => !priceData[card]);
+  if (missingEnergies.length > 0) {
+    console.log(`Setting ${missingEnergies.length} missing energy cards to $0.01`);
+    missingEnergies.forEach(card => {
+      priceData[card] = 0.01; // Basic energies are practically free
+    });
+  }
+}
+
+/**
+ * Robust CSV parser that handles quoted strings and HTML content
  */
 function parseCSVLine(line) {
   const fields = [];
@@ -193,17 +249,18 @@ function parseCSVLine(line) {
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
     
-    if (char === '"') {
+    if (char === '"' && (i === 0 || line[i-1] === ',' || inQuotes)) {
+      // Only treat as quote delimiter if at start, after comma, or already in quotes
       inQuotes = !inQuotes;
     } else if (char === ',' && !inQuotes) {
-      fields.push(current);
+      fields.push(current.trim());
       current = '';
     } else {
       current += char;
     }
   }
   
-  fields.push(current); // Don't forget the last field
+  fields.push(current.trim()); // Don't forget the last field
   return fields;
 }
 
