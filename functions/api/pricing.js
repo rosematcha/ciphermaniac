@@ -158,22 +158,18 @@ function parseCsvPrices(csvText, setAbbr) {
       if (fields.length < 18) continue; // Need at least 18 fields for card number
       
       const name = fields[1]; // Card name
-      const extNumber = fields[17]; // Card number  
-      const marketPrice = parseFloat(fields[13]); // Market price (index 13)
+      
+      // CRITICAL FIX: Find price fields dynamically due to TCGCSV inconsistent format
+      const priceData = extractPricesFromFields(fields);
+      const marketPrice = priceData.marketPrice;
+      const extNumber = priceData.extNumber;
       
       // Debug problematic cards
-      if (name && name.toLowerCase().includes('ceruledge')) {
-        console.log(`DEBUG Ceruledge FOUND:`);
-        console.log(`  Raw line: ${line.substring(0, 200)}...`);
+      if (name && (name.toLowerCase().includes('ceruledge') || name.toLowerCase().includes('energy retrieval'))) {
+        console.log(`DEBUG ${name}:`);
         console.log(`  Total fields: ${fields.length}`);
-        console.log(`  Name (field[1]): "${fields[1]}"`);
-        console.log(`  ExtNumber (field[17]): "${fields[17]}"`);
-        console.log(`  LowPrice (field[10]): "${fields[10]}"`);
-        console.log(`  MidPrice (field[11]): "${fields[11]}"`);
-        console.log(`  HighPrice (field[12]): "${fields[12]}"`);
-        console.log(`  MarketPrice (field[13]): "${fields[13]}"`);
-        console.log(`  DirectLowPrice (field[14]): "${fields[14]}"`);
-        console.log(`  Parsed marketPrice: ${marketPrice}`);
+        console.log(`  Found prices:`, priceData);
+        console.log(`  Using marketPrice: ${marketPrice}`);
       }
       
       if (!name || !extNumber || isNaN(marketPrice) || marketPrice <= 0) continue;
@@ -268,6 +264,76 @@ async function addBasicEnergyPrices(priceData, allGroups) {
   if (otherMissingEnergies.length > 0) {
     console.warn(`Missing prices for special energy cards:`, otherMissingEnergies);
   }
+}
+
+/**
+ * Extract price data from CSV fields, handling TCGCSV's inconsistent field structure
+ * TCGCSV has variable field counts due to missing data, so we need dynamic parsing
+ */
+function extractPricesFromFields(fields) {
+  // Find extNumber first (it's usually near the end and has format XXX/XXX)
+  let extNumber = null;
+  let numberFieldIndex = -1;
+  
+  for (let i = fields.length - 10; i < fields.length; i++) {
+    if (fields[i] && fields[i].match(/^\d{3}\/\d{3}$/)) {
+      extNumber = fields[i];
+      numberFieldIndex = i;
+      break;
+    }
+  }
+  
+  // If no standard number found, look for any number pattern
+  if (!extNumber) {
+    for (let i = 15; i < Math.min(25, fields.length); i++) {
+      if (fields[i] && fields[i].match(/^\d+\/\d+$/)) {
+        extNumber = fields[i];
+        numberFieldIndex = i;
+        break;
+      }
+    }
+  }
+  
+  // Find price fields by scanning for decimal numbers in expected range
+  const prices = {};
+  const potentialPrices = [];
+  
+  for (let i = 10; i < Math.min(20, fields.length); i++) {
+    const field = fields[i];
+    if (field && field.match(/^\d+\.?\d*$/) && parseFloat(field) > 0 && parseFloat(field) < 1000) {
+      potentialPrices.push({
+        index: i,
+        value: parseFloat(field)
+      });
+    }
+  }
+  
+  // Logic: marketPrice is usually the middle price value, not the highest
+  if (potentialPrices.length >= 3) {
+    // Sort by value and take the middle one as market price
+    const sorted = potentialPrices.sort((a, b) => a.value - b.value);
+    prices.lowPrice = sorted[0].value;
+    prices.marketPrice = sorted[1].value; // Middle price is usually market price
+    prices.highPrice = sorted[sorted.length - 1].value;
+  } else if (potentialPrices.length === 2) {
+    // If only 2 prices, take the lower one as market price
+    const sorted = potentialPrices.sort((a, b) => a.value - b.value);
+    prices.marketPrice = sorted[0].value;
+    prices.highPrice = sorted[1].value;
+  } else if (potentialPrices.length === 1) {
+    // If only 1 price, use it
+    prices.marketPrice = potentialPrices[0].value;
+  } else {
+    prices.marketPrice = 0;
+  }
+  
+  return {
+    extNumber: extNumber ? extNumber.split('/')[0] : null,
+    marketPrice: prices.marketPrice || 0,
+    lowPrice: prices.lowPrice || 0,
+    highPrice: prices.highPrice || 0,
+    priceCount: potentialPrices.length
+  };
 }
 
 /**
