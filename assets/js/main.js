@@ -3,12 +3,14 @@
  * @module Main
  */
 
-import { fetchReport, fetchOverrides, fetchArchetypeReport, fetchTournamentsList, fetchArchetypesList, fetchMeta, fetchCardIndex } from './api.js';
+import { fetchReport, fetchOverrides, fetchArchetypeReport, fetchTournamentsList, fetchArchetypesList } from './api.js';
+import { AppError } from './utils/errorHandler.js';
 import { parseReport } from './parse.js';
-import { render, renderSummary, updateLayout } from './render.js';
+import { renderSummary, updateLayout } from './render.js';
 import { applyFiltersSort } from './controls.js';
-import { initMissingThumbsDev, dumpMissingReport } from './dev/missingThumbs.js';
+import { initMissingThumbsDev } from './dev/missingThumbs.js';
 import { initCacheDev } from './dev/cacheDev.js';
+import { imagePreloader } from './utils/imagePreloader.js';
 import { getStateFromURL, setStateInURL, normalizeRouteOnLoad, parseHash } from './router.js';
 import { logger } from './utils/logger.js';
 import { storage } from './utils/storage.js';
@@ -16,6 +18,7 @@ import { CleanupManager, debounce, validateElements } from './utils/performance.
 import { CONFIG } from './config.js';
 import { safeAsync } from './utils/errorHandler.js';
 import { prettyTournamentName } from './utils/format.js';
+import { showGridSkeleton, hideGridSkeleton, createSelectSkeleton, showSkeleton, hideSkeleton, updateSkeletonLayout } from './components/placeholders.js';
 
 /**
  * Application state and caches
@@ -79,7 +82,7 @@ class DataCache {
 
   getCachedCardIndex(tournament){
     const entry = this.cache?.cardIndex?.[tournament];
-    if(!entry || this.isExpired(entry.ts)) return null;
+    if(!entry || this.isExpired(entry.ts)) {return null;}
     return entry.idx;
   }
 
@@ -110,15 +113,15 @@ async function initializeTournamentSelector(state) {
   const elements = validateElements({
     tournamentSelect: '#tournament'
   }, 'tournament selector');
-  
+
   const tournaments = await safeAsync(
     () => fetchTournamentsList(),
     'fetching tournaments list',
     ['World Championships 2025'] // fallback
   );
-  
+
   const urlState = getStateFromURL();
-  
+
   // Populate tournament options
   tournaments.forEach(tournament => {
     const option = document.createElement('option');
@@ -126,25 +129,21 @@ async function initializeTournamentSelector(state) {
     option.textContent = prettyTournamentName(tournament);
     elements.tournamentSelect.appendChild(option);
   });
-  
+
   // Set selected tournament from URL or use first as default
-  const selectedTournament = urlState.tour && tournaments.includes(urlState.tour) 
-    ? urlState.tour 
+  const selectedTournament = urlState.tour && tournaments.includes(urlState.tour)
+    ? urlState.tour
     : tournaments[0];
-  
+
   elements.tournamentSelect.value = selectedTournament;
-  state.currentTournament = selectedTournament;
-  
+  // Use object spread to avoid mutations
+  Object.assign(state, { currentTournament: selectedTournament });
+
   // Clean up URL if invalid tournament was specified
   if (urlState.tour && !tournaments.includes(urlState.tour)) {
-    setStateInURL({
-      q: urlState.q,
-      sort: urlState.sort,
-      archetype: urlState.archetype,
-      tour: selectedTournament
-    }, { replace: true });
+    setStateInURL({ tour: selectedTournament }, { merge: true, replace: true });
   }
-  
+
   logger.info(`Initialized with tournament: ${selectedTournament}`);
   return elements.tournamentSelect;
 }
@@ -153,26 +152,39 @@ async function initializeTournamentSelector(state) {
  * Load and parse tournament data
  * @param {string} tournament
  * @param {DataCache} cache
+ * @param {boolean} showSkeleton - Whether to show skeleton loading state
  * @returns {Promise<{deckTotal: number, items: any[]}>}
  */
-async function loadTournamentData(tournament, cache) {
+async function loadTournamentData(tournament, cache, showSkeletonLoading = false) {
   // Check cache first
   const cached = cache.getCachedMaster(tournament);
   if (cached) {
     logger.debug(`Using cached data for ${tournament}`);
     return { deckTotal: cached.deckTotal, items: cached.items };
   }
-  
-  // Note: Do not use aggregated cardIndex for main grid; master.json preserves per-variant distinctions.
 
-  // Fallback to master.json
-  const data = await fetchReport(tournament);
-  const parsed = parseReport(data);
-  
-  // Cache the result
-  cache.setCachedMaster(tournament, parsed);
-  
-  return parsed;
+  // Show skeleton loading if requested
+  if (showSkeletonLoading) {
+    showGridSkeleton();
+  }
+
+  try {
+    // Note: Do not use aggregated cardIndex for main grid; master.json preserves per-variant distinctions.
+
+    // Fallback to master.json
+    const data = await fetchReport(tournament);
+    const parsed = parseReport(data);
+
+    // Cache the result
+    cache.setCachedMaster(tournament, parsed);
+
+    return parsed;
+  } finally {
+    // Always hide skeleton when done
+    if (showSkeletonLoading) {
+      hideGridSkeleton();
+    }
+  }
 }
 
 /**
@@ -180,10 +192,11 @@ async function loadTournamentData(tournament, cache) {
  * @param {string} tournament
  * @param {DataCache} cache
  * @param {AppState} state
+ * @param {boolean} skipUrlInit - Skip URL-based initialization (e.g., during tournament change)
  */
-async function setupArchetypeSelector(tournament, cache, state) {
+async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = false) {
   const archeSel = document.getElementById('archetype');
-  if (!archeSel) return;
+  if (!archeSel) {return;}
 
   // Clear existing options except "All archetypes"
   while (archeSel.children.length > 1) {
@@ -192,14 +205,14 @@ async function setupArchetypeSelector(tournament, cache, state) {
 
   // Try to load archetype index
   let archetypesList = cache.getCachedArcheIndex(tournament);
-  
+
   if (!archetypesList) {
     archetypesList = await safeAsync(
       () => fetchArchetypesList(tournament),
       `fetching archetypes for ${tournament}`,
       []
     );
-    
+
     if (archetypesList.length > 0) {
       cache.setCachedArcheIndex(tournament, archetypesList);
     }
@@ -216,11 +229,13 @@ async function setupArchetypeSelector(tournament, cache, state) {
   // Set up change handler with caching
   const handleArchetypeChange = async () => {
     const selectedValue = archeSel.value;
-    
+    const currentTournament = state.currentTournament;
+
     if (selectedValue === '__all__') {
       // Show all cards
-      const data = await loadTournamentData(tournament, cache);
-      state.current = data;
+      const data = await loadTournamentData(currentTournament, cache);
+      // Use object spread to avoid race conditions
+      Object.assign(state, { current: { ...data } });
       renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
       applyFiltersSort(data.items, state.overrides);
       setStateInURL({ archetype: selectedValue }, { merge: true });
@@ -230,17 +245,28 @@ async function setupArchetypeSelector(tournament, cache, state) {
     // Load specific archetype data
     let cached = state.archeCache.get(selectedValue);
     if (!cached) {
-      const data = await safeAsync(
-        () => fetchArchetypeReport(tournament, selectedValue),
-        `fetching archetype ${selectedValue}`,
-        { items: [], deckTotal: 0 }
-      );
+      let data;
+      try {
+        data = await fetchArchetypeReport(currentTournament, selectedValue);
+      } catch (error) {
+        // Handle missing archetype files gracefully
+        if (error instanceof AppError && error.context?.status === 404) {
+          logger.debug(`Archetype ${selectedValue} not available for ${currentTournament}, using empty data`);
+          data = { items: [], deckTotal: 0 };
+        } else {
+          // Log other errors normally and use fallback
+          logger.exception(`Failed fetching archetype ${selectedValue}`, error);
+          data = { items: [], deckTotal: 0 };
+        }
+      }
+
       const parsed = parseReport(data);
       cached = { data, deckTotal: parsed.deckTotal, items: parsed.items };
       state.archeCache.set(selectedValue, cached);
     }
 
-    state.current = { items: cached.items, deckTotal: cached.deckTotal };
+    // Use object spread to avoid race conditions
+    Object.assign(state, { current: { items: cached.items, deckTotal: cached.deckTotal } });
     renderSummary(document.getElementById('summary'), cached.deckTotal, cached.items.length);
     applyFiltersSort(cached.items, state.overrides);
     setStateInURL({ archetype: selectedValue }, { merge: true });
@@ -248,15 +274,17 @@ async function setupArchetypeSelector(tournament, cache, state) {
 
   // Add event listener with cleanup
   state.cleanup.addEventListener(archeSel, 'change', handleArchetypeChange);
-  
-  // Set initial value from URL state
-  const urlState = getStateFromURL();
-  if (urlState.archetype && urlState.archetype !== '__all__') {
-    // Check if this archetype exists in the list
-    const hasArchetype = archetypesList.includes(urlState.archetype);
-    archeSel.value = hasArchetype ? urlState.archetype : '__all__';
-    if (hasArchetype) {
-      handleArchetypeChange();
+
+  // Set initial value from URL state (unless skipping URL initialization)
+  if (!skipUrlInit) {
+    const urlState = getStateFromURL();
+    if (urlState.archetype && urlState.archetype !== '__all__') {
+      // Check if this archetype exists in the list
+      const hasArchetype = archetypesList.includes(urlState.archetype);
+      archeSel.value = hasArchetype ? urlState.archetype : '__all__';
+      if (hasArchetype) {
+        handleArchetypeChange();
+      }
     }
   }
 }
@@ -270,14 +298,15 @@ function setupControlHandlers(state) {
     search: '#search',
     sort: '#sort',
     favFilter: '#fav-filter',
-    tournament: '#tournament'
+    tournament: '#tournament',
+    archetype: '#archetype'
   }, 'controls');
 
   // Debounced search handler
   const handleSearch = debounce(() => {
     applyFiltersSort(state.current.items, state.overrides);
-  // Use replace while typing to avoid polluting history; final commit can push
-  setStateInURL({ q: elements.search.value }, { merge: true, replace: true });
+    // Use replace while typing to avoid polluting history; final commit can push
+    setStateInURL({ q: elements.search.value }, { merge: true, replace: true });
   });
 
   // Sort change handler
@@ -295,28 +324,57 @@ function setupControlHandlers(state) {
   // Tournament change handler
   const handleTournamentChange = async () => {
     const newTournament = elements.tournament.value;
-    if (newTournament === state.currentTournament) return;
+    if (newTournament === state.currentTournament) {return;}
+
+    // Get currently selected archetype before switching
+    const currentArchetype = elements.archetype?.value || '__all__';
 
     logger.info(`Switching to tournament: ${newTournament}`);
-    state.currentTournament = newTournament;
+    // Use object spread to avoid mutations
+    Object.assign(state, { currentTournament: newTournament });
     state.archeCache.clear(); // Clear archetype cache
+    imagePreloader.clearCache(); // Clear image preloader cache
 
     const cache = new DataCache();
-    
-    // Load new tournament data
-    const data = await loadTournamentData(newTournament, cache);
-    state.current = data;
 
-    // Update archetype selector
-    await setupArchetypeSelector(newTournament, cache, state);
+    // Load new tournament data with skeleton loading
+    const data = await loadTournamentData(newTournament, cache, true);
+    // Use object spread to avoid race conditions
+    Object.assign(state, { current: { ...data } });
 
-    // Reset archetype to "All"
-    elements.archetype?.selectAll?.(0);
+    // Load archetype list for the new tournament to check availability
+    const newArchetypesList = await safeAsync(
+      () => fetchArchetypesList(newTournament),
+      `fetching archetypes for ${newTournament}`,
+      []
+    );
 
-    // Update display
-    renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
-    applyFiltersSort(data.items, state.overrides);
-    setStateInURL({ tour: newTournament }, { merge: true });
+    // Determine if we can preserve the current archetype
+    const canPreserveArchetype = currentArchetype !== '__all__' && newArchetypesList.includes(currentArchetype);
+    const targetArchetype = canPreserveArchetype ? currentArchetype : '__all__';
+
+    logger.debug(`Archetype preservation: ${currentArchetype} → ${targetArchetype} (available: ${canPreserveArchetype})`);
+
+    // Update archetype selector (skip URL initialization to avoid conflicts)
+    await setupArchetypeSelector(newTournament, cache, state, true);
+
+    // Set archetype to preserved value or "All"
+    const archetypeElement = elements.archetype;
+    archetypeElement.value = targetArchetype;
+
+    // Load archetype data if preserving a specific archetype
+    if (canPreserveArchetype) {
+      // Trigger archetype change to load the specific archetype data
+      const archetypeChangeEvent = new Event('change');
+      elements.archetype.dispatchEvent(archetypeChangeEvent);
+    } else {
+      // Update display with all tournament data
+      renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
+      applyFiltersSort(data.items, state.overrides);
+    }
+
+    // Update URL with both tournament and archetype
+    setStateInURL({ tour: newTournament, archetype: targetArchetype }, { merge: true });
   };
 
   // Add event listeners with cleanup
@@ -327,9 +385,9 @@ function setupControlHandlers(state) {
 
   // Restore initial state from URL
   const urlState = getStateFromURL();
-  if (urlState.q) elements.search.value = urlState.q;
-  if (urlState.sort) elements.sort.value = urlState.sort;
-  if (urlState.fav && elements.favFilter) elements.favFilter.value = urlState.fav;
+  if (urlState.q) {elements.search.value = urlState.q;}
+  if (urlState.sort) {elements.sort.value = urlState.sort;}
+  if (urlState.fav && elements.favFilter) {elements.favFilter.value = urlState.fav;}
 }
 
 // Restore state from URL when navigating back/forward
@@ -354,16 +412,19 @@ function setupResizeHandler(state) {
   // rAF scheduler: update at most once per animation frame during resize
   let ticking = false;
   const onResize = () => {
-    if (ticking) return;
+    if (ticking) {return;}
     ticking = true;
     try {
       window.requestAnimationFrame(() => {
         logger.debug('Window resized (rAF), updating layout');
+        // Update skeleton layout if it's currently showing
+        updateSkeletonLayout();
         updateLayout();
         ticking = false;
       });
     } catch {
       // Fallback without rAF
+      updateSkeletonLayout();
       updateLayout();
       ticking = false;
     }
@@ -380,7 +441,7 @@ function applyInitialState(state) {
   const urlState = getStateFromURL();
   const elements = validateElements({
     search: '#search',
-    sort: '#sort', 
+    sort: '#sort',
     archetype: '#archetype',
     favFilter: '#fav-filter'
   }, 'applying initial state');
@@ -409,9 +470,12 @@ function applyInitialState(state) {
 async function initializeApp() {
   try {
     // Normalize hash routes like #card/... to card.html
-    if (normalizeRouteOnLoad()) return;
+    if (normalizeRouteOnLoad()) {return;}
 
     logger.info('Initializing Ciphermaniac application');
+    
+    // Show skeleton loading immediately
+    showGridSkeleton();
 
     // Initialize development tools
     initMissingThumbsDev();
@@ -429,11 +493,12 @@ async function initializeApp() {
     );
 
     // Initialize tournament selector
-    const tournamentSelect = await initializeTournamentSelector(appState);
+    await initializeTournamentSelector(appState);
 
     // Load initial tournament data
     const initialData = await loadTournamentData(appState.currentTournament, cache);
-    appState.current = initialData;
+    // Use object spread to avoid race conditions
+    Object.assign(appState, { current: { ...initialData } });
 
     // Setup archetype selector
     await setupArchetypeSelector(appState.currentTournament, cache, appState);
@@ -444,9 +509,12 @@ async function initializeApp() {
     // Setup resize handler
     setupResizeHandler(appState);
 
+    // Hide skeleton and show real content
+    hideGridSkeleton();
+
     // Initial render
     renderSummary(document.getElementById('summary'), initialData.deckTotal, initialData.items.length);
-    
+
     // Apply initial state from URL
     applyInitialState(appState);
 
@@ -454,7 +522,10 @@ async function initializeApp() {
 
   } catch (error) {
     logger.exception('Failed to initialize application', error);
-    
+
+    // Hide skeleton and show error
+    hideGridSkeleton();
+
     // Show user-friendly error message
     const grid = document.getElementById('grid');
     if (grid) {

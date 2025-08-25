@@ -10,7 +10,7 @@ import { logger } from './logger.js';
  */
 export const ErrorTypes = {
   NETWORK: 'NetworkError',
-  PARSE: 'ParseError', 
+  PARSE: 'ParseError',
   VALIDATION: 'ValidationError',
   STORAGE: 'StorageError',
   NOT_FOUND: 'NotFoundError'
@@ -21,9 +21,9 @@ export const ErrorTypes = {
  */
 export class AppError extends Error {
   /**
-   * @param {string} message 
-   * @param {string} type 
-   * @param {any} [context] 
+   * @param {string} message
+   * @param {string} type
+   * @param {any} [context]
    */
   constructor(message, type, context = null) {
     super(message);
@@ -55,7 +55,7 @@ export async function safeAsync(fn, operation = 'operation', fallback = null) {
  * Safe sync function wrapper that logs errors
  * @template T
  * @param {() => T} fn - Sync function to wrap
- * @param {string} [operation] - Description of the operation  
+ * @param {string} [operation] - Description of the operation
  * @param {T} [fallback] - Fallback value on error
  * @returns {T}
  */
@@ -78,28 +78,41 @@ export function safeSync(fn, operation = 'operation', fallback = null) {
  */
 export async function withRetry(fn, maxAttempts = 3, delay = 1000) {
   let lastError;
-  
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error;
-      logger.warn(`Attempt ${attempt}/${maxAttempts} failed`, error.message);
-      
+
+      // Enhanced error logging with context
+      if (error instanceof AppError && error.context) {
+        logger.warn(`Attempt ${attempt}/${maxAttempts} failed`, error.message, error.context);
+      } else {
+        logger.warn(`Attempt ${attempt}/${maxAttempts} failed`, error.message);
+      }
+
       if (attempt < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }
-  
+
+  // Enhanced error logging for final failure
+  if (lastError instanceof AppError && lastError.context) {
+    logger.error(`Failed after ${maxAttempts} attempts`, lastError.message, lastError.context);
+  } else {
+    logger.error(`Failed after ${maxAttempts} attempts`, lastError.message);
+  }
+
   throw lastError;
 }
 
 /**
  * Validate that a value matches expected type/structure
- * @param {any} value 
- * @param {string} expectedType 
- * @param {string} [fieldName='value'] 
+ * @param {any} value
+ * @param {string} expectedType
+ * @param {string} [fieldName='value']
  * @throws {AppError}
  */
 export function validateType(value, expectedType, fieldName = 'value') {
@@ -116,8 +129,8 @@ export function validateType(value, expectedType, fieldName = 'value') {
 
 /**
  * Assert a condition is true, throw error if false
- * @param {any} condition 
- * @param {string} message 
+ * @param {any} condition
+ * @param {string} message
  * @param {string} [type=VALIDATION]
  * @throws {AppError}
  */
