@@ -69,7 +69,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "OBF",
+      "number": "186",
+      "uid": "Arven::OBF::186"
     },
     {
       "rank": 5,
@@ -88,7 +91,10 @@
           "players": 1,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "185",
+      "uid": "Iono::PAL::185"
     },
     {
       "rank": 6,
@@ -102,7 +108,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "172",
+      "uid": "Boss's Orders::PAL::172"
     },
     {
       "rank": 7,
@@ -116,7 +125,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SCR",
+      "number": "133",
+      "uid": "Crispin::SCR::133"
     },
     {
       "rank": 8,
@@ -135,7 +147,10 @@
           "players": 1,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "155",
+      "uid": "Professor's Research::JTG::155"
     },
     {
       "rank": 9,
@@ -149,7 +164,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "186",
+      "uid": "Pokégear 3.0::SVI::186"
     },
     {
       "rank": 10,
@@ -163,7 +181,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "062",
+      "uid": "Poké Vital A::SFA::062"
     },
     {
       "rank": 11,
@@ -177,7 +198,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "144",
+      "uid": "Buddy-Buddy Poffin::TEF::144"
     },
     {
       "rank": 12,
@@ -196,7 +220,10 @@
           "players": 1,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "181",
+      "uid": "Nest Ball::SVI::181"
     },
     {
       "rank": 13,
@@ -210,7 +237,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "061",
+      "uid": "Night Stretcher::SFA::061"
     },
     {
       "rank": 14,
@@ -224,7 +254,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "166",
+      "uid": "Luxurious Cape::PAR::166"
     },
     {
       "rank": 15,
@@ -238,7 +271,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "149",
+      "uid": "Future Booster Energy Capsule::TEF::149"
     },
     {
       "rank": 16,
@@ -252,7 +288,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "179",
+      "uid": "Technical Machine: Turbo Energize::PAR::179"
     },
     {
       "rank": 17,
@@ -266,7 +305,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "009",
+      "uid": "Grass Energy::SVE::009"
     },
     {
       "rank": 18,
@@ -280,7 +322,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "012",
+      "uid": "Lightning Energy::SVE::012"
     },
     {
       "rank": 19,
@@ -294,7 +339,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "182",
+      "uid": "Medical Energy::PAR::182"
     },
     {
       "rank": 20,
@@ -308,7 +356,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "161",
+      "uid": "Mist Energy::TEF::161"
     },
     {
       "rank": 21,
@@ -322,7 +373,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "187",
+      "uid": "Pokémon Catcher::SVI::187"
     },
     {
       "rank": 22,
@@ -336,7 +390,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "180",
+      "uid": "Techno Radar::PAR::180"
     },
     {
       "rank": 23,
@@ -350,7 +407,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "158",
+      "uid": "Super Potion::JTG::158"
     },
     {
       "rank": 24,
@@ -364,7 +424,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "188",
+      "uid": "Super Rod::PAL::188"
     },
     {
       "rank": 25,
@@ -378,7 +441,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "180",
+      "uid": "Team Rocket's Watchtower::DRI::180"
     },
     {
       "rank": 26,
@@ -392,7 +458,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "190",
+      "uid": "Jet Energy::PAL::190"
     },
     {
       "rank": 27,
@@ -406,7 +475,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "057",
+      "uid": "Colress's Tenacity::SFA::057"
     },
     {
       "rank": 28,
@@ -420,7 +492,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "154",
+      "uid": "Kieran::TWM::154"
     },
     {
       "rank": 29,
@@ -434,7 +509,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "163",
+      "uid": "Earthen Vessel::PAR::163"
     },
     {
       "rank": 30,
@@ -448,7 +526,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "178",
+      "uid": "Technical Machine: Evolution::PAR::178"
     },
     {
       "rank": 31,
@@ -462,7 +543,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "186",
+      "uid": "Practice Studio::PAL::186"
     },
     {
       "rank": 32,
@@ -476,7 +560,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "OBF",
+      "number": "196",
+      "uid": "Town Store::OBF::196"
     },
     {
       "rank": 33,
@@ -490,7 +577,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "192",
+      "uid": "Reversal Energy::PAL::192"
     }
   ]
 }

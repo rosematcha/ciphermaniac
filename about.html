@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>About - Ciphermaniac</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <link rel="icon" href="data:," />
+</head>
+<body>
+  <main class="about-page">
+    <div class="about-content">
+      <h1>About Ciphermaniac</h1>
+      
+      <p>Ciphermaniac is a Pokemon Trading Card Game analysis platform focused on tournament meta analysis and deck building insights. This site helps players understand card usage patterns, meta trends, and deck compositions from competitive Pokemon TCG tournaments.</p>
+
+      <h2>Acknowledgments</h2>
+      
+      <p>We want to credit some sources which helped a lot in the making of this site:</p>
+      
+      <ul class="credits-list">
+        <li>
+          <strong><a href="https://limitlesstcg.com/" target="_blank" rel="noopener noreferrer">LimitlessTCG</a></strong> - 
+          for being the source of the tournament data that powers our analysis
+        </li>
+        <li>
+          <strong><a href="https://www.trainerhill.com/" target="_blank" rel="noopener noreferrer">TrainerHill</a></strong> - 
+          for inspiration on the user interface design and layout
+        </li>
+        <li>
+          <strong><a href="https://tcgcsv.com/" target="_blank" rel="noopener noreferrer">TCGCSV</a></strong> - 
+          for providing pricing data integration
+        </li>
+      </ul>
+      
+      <p>Without these amazing resources and the Pokemon TCG community behind them, this project would not have been possible.</p>
+    </div>
+  </main>
+
+  <script type="module">
+    import { createHeader } from './assets/js/components/header.js';
+    import { createFooter } from './assets/js/components/footer.js';
+    
+    // Insert header and footer
+    const header = createHeader({ currentPage: 'about' });
+    const footer = createFooter();
+    
+    document.body.insertAdjacentElement('afterbegin', header);
+    document.body.insertAdjacentElement('beforeend', footer);
+  </script>
+</body>
+</html>

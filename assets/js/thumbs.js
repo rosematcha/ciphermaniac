@@ -40,7 +40,7 @@ export function buildThumbCandidates(name, useSm, overrides, variant){
     out.push(base + overrides[name]);
   }
   // If variant info is provided (set+number), prioritize that filename
-  if(variant && variant.set && variant.number !== null){
+  if(variant && variant.set && variant.number){
     const primaryVariant = sanitizePrimary(`${name}_${String(variant.set)}_${String(variant.number)}`) + '.png';
     out.push(base + primaryVariant);
   }

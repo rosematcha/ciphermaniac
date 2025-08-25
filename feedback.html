@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Feedback - Ciphermaniac</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <link rel="icon" href="data:," />
+</head>
+<body>
+  <main class="feedback-page">
+    <div class="container">
+      <h1>Site Feedback</h1>
+      <p>Help us improve Ciphermaniac by sharing your feedback.</p>
+      
+      <form id="feedbackForm" class="feedback-form">
+        <div class="form-group">
+          <label for="feedbackType">What type of feedback are you submitting?</label>
+          <select id="feedbackType" name="feedbackType" required>
+            <option value="">Select feedback type</option>
+            <option value="bug">Bug Report</option>
+            <option value="feature">Feature Request</option>
+          </select>
+        </div>
+
+        <div id="bugDetails" class="conditional-section" style="display: none;">
+          <div class="form-group">
+            <label for="platform">Platform</label>
+            <select id="platform" name="platform">
+              <option value="">Select platform</option>
+              <option value="desktop">Desktop</option>
+              <option value="mobile">Mobile</option>
+            </select>
+          </div>
+
+          <div id="desktopDetails" class="conditional-subsection" style="display: none;">
+            <div class="form-group">
+              <label for="desktopOS">Operating System</label>
+              <select id="desktopOS" name="desktopOS">
+                <option value="">Select OS</option>
+                <option value="windows">Windows</option>
+                <option value="macos">macOS</option>
+                <option value="linux">Linux</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="desktopBrowser">Browser</label>
+              <select id="desktopBrowser" name="desktopBrowser">
+                <option value="">Select browser</option>
+                <option value="chrome">Chrome</option>
+                <option value="firefox">Firefox</option>
+                <option value="safari">Safari</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div id="otherDesktopBrowser" class="form-group" style="display: none;">
+              <label for="otherDesktopBrowserName">Other browser name</label>
+              <input type="text" id="otherDesktopBrowserName" name="otherDesktopBrowserName" placeholder="Enter browser name">
+            </div>
+          </div>
+
+          <div id="mobileDetails" class="conditional-subsection" style="display: none;">
+            <div class="form-group">
+              <label for="mobileOS">Mobile OS</label>
+              <select id="mobileOS" name="mobileOS">
+                <option value="">Select mobile OS</option>
+                <option value="android">Android</option>
+                <option value="ios">iOS</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="mobileBrowser">Browser</label>
+              <select id="mobileBrowser" name="mobileBrowser">
+                <option value="">Select browser</option>
+                <option value="chrome">Chrome</option>
+                <option value="firefox">Firefox</option>
+                <option value="safari">Safari</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div id="otherMobileBrowser" class="form-group" style="display: none;">
+              <label for="otherMobileBrowserName">Other browser name</label>
+              <input type="text" id="otherMobileBrowserName" name="otherMobileBrowserName" placeholder="Enter browser name">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="feedbackText">Your feedback</label>
+          <textarea id="feedbackText" name="feedbackText" rows="6" required 
+                    placeholder="Please describe your bug report or feature request in detail..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="followUp">Would you like a follow-up from the developer?</label>
+          <select id="followUp" name="followUp" required>
+            <option value="">Select option</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div id="contactDetails" class="conditional-section" style="display: none;">
+          <div class="form-group">
+            <label for="contactMethod">How would you like to be contacted?</label>
+            <select id="contactMethod" name="contactMethod">
+              <option value="">Select contact method</option>
+              <option value="discord">Discord</option>
+              <option value="twitter">Twitter</option>
+              <option value="email">Email</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="contactInfo">Your username/email</label>
+            <input type="text" id="contactInfo" name="contactInfo" 
+                   placeholder="Enter your Discord username, Twitter handle, or email">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <button type="submit" class="submit-button">Submit Feedback</button>
+        </div>
+
+        <div id="submitStatus" class="status-message" style="display: none;"></div>
+      </form>
+    </div>
+  </main>
+
+  <script type="module">
+    import { createHeader } from './assets/js/components/header.js';
+    import { createFooter } from './assets/js/components/footer.js';
+    
+    const header = createHeader({ currentPage: 'feedback' });
+    const footer = createFooter();
+    
+    document.body.insertAdjacentElement('afterbegin', header);
+    document.body.insertAdjacentElement('beforeend', footer);
+  </script>
+  <script src="assets/js/feedback.js" type="module"></script>
+</body>
+</html>

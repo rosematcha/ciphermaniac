@@ -1,0 +1,26 @@
+# CloudFlare Pages configuration for Ciphermaniac
+name = "ciphermaniac"
+compatibility_date = "2023-10-30"
+
+# Cron trigger for daily pricing updates
+# 3:30 PM CST = 9:30 PM UTC (standard time) / 8:30 PM UTC (daylight time)
+# Using 8:30 PM UTC to handle daylight saving time
+[[triggers]]
+crons = ["30 20 * * *"]  # Daily at 8:30 PM UTC
+
+# KV namespace binding for price data storage
+[[kv_namespaces]]
+binding = "PRICE_DATA"
+id = "your-kv-namespace-id"  # You'll need to create this KV namespace
+
+# Environment variables (set these in CloudFlare dashboard)
+[env.production.vars]
+# MAILGUN_API_KEY = "your-mailgun-api-key"
+# MAILGUN_DOMAIN = "ciphermaniac.com"
+
+[build]
+command = "echo 'No build needed for static site'"
+publish = "."
+
+[build.environment]
+NODE_VERSION = "18"

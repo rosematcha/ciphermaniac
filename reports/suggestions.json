@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2025-08-24T14:30:43.053400+00:00",
+  "generatedAt": "2025-08-25T18:06:53.414511+00:00",
   "source": "generate_suggestions.py (optimized)",
   "categories": [
     {
@@ -8,18 +8,18 @@
       "items": [
         {
           "name": "Night Stretcher",
-          "uid": "Night Stretcher",
-          "set": null,
-          "number": null,
+          "uid": "Night Stretcher::SFA::061",
+          "set": "SFA",
+          "number": "061",
           "avg_usage": 90.5,
           "consistency": 0.09,
           "appearance_rate": 1.0
         },
         {
           "name": "Ultra Ball",
-          "uid": "Ultra Ball",
-          "set": null,
-          "number": null,
+          "uid": "Ultra Ball::SVI::196",
+          "set": "SVI",
+          "number": "196",
           "avg_usage": 97.1,
           "consistency": 0.06,
           "appearance_rate": 1.0
@@ -53,9 +53,9 @@
         },
         {
           "name": "Boss's Orders",
-          "uid": "Boss's Orders",
-          "set": null,
-          "number": null,
+          "uid": "Boss's Orders::PAL::172",
+          "set": "PAL",
+          "number": "172",
           "avg_usage": 86.7,
           "consistency": 0.04,
           "appearance_rate": 1.0
@@ -71,45 +71,45 @@
         },
         {
           "name": "Energy Switch",
-          "uid": "Energy Switch",
-          "set": null,
-          "number": null,
+          "uid": "Energy Switch::SVI::173",
+          "set": "SVI",
+          "number": "173",
           "avg_usage": 16.5,
           "consistency": 0.18,
           "appearance_rate": 1.0
         },
         {
           "name": "Professor's Research",
-          "uid": "Professor's Research",
-          "set": null,
-          "number": null,
+          "uid": "Professor's Research::JTG::155",
+          "set": "JTG",
+          "number": "155",
           "avg_usage": 47.0,
           "consistency": 0.06,
           "appearance_rate": 1.0
         },
         {
           "name": "Nest Ball",
-          "uid": "Nest Ball",
-          "set": null,
-          "number": null,
+          "uid": "Nest Ball::SVI::181",
+          "set": "SVI",
+          "number": "181",
           "avg_usage": 89.6,
           "consistency": 0.03,
           "appearance_rate": 1.0
         },
         {
           "name": "Counter Catcher",
-          "uid": "Counter Catcher",
-          "set": null,
-          "number": null,
+          "uid": "Counter Catcher::PAR::160",
+          "set": "PAR",
+          "number": "160",
           "avg_usage": 73.7,
           "consistency": 0.03,
           "appearance_rate": 1.0
         },
         {
           "name": "Artazon",
-          "uid": "Artazon",
-          "set": null,
-          "number": null,
+          "uid": "Artazon::PAL::171",
+          "set": "PAL",
+          "number": "171",
           "avg_usage": 35.3,
           "consistency": 0.06,
           "appearance_rate": 1.0
@@ -176,9 +176,9 @@
       "items": [
         {
           "name": "Picnic Basket",
-          "uid": "Picnic Basket",
-          "set": null,
-          "number": null,
+          "uid": "Picnic Basket::SVI::184",
+          "set": "SVI",
+          "number": "184",
           "archetype": "Gholdengo",
           "current_usage": 18.1,
           "momentum_score": 174.78,
@@ -186,9 +186,9 @@
         },
         {
           "name": "Levincia",
-          "uid": "Levincia",
-          "set": null,
-          "number": null,
+          "uid": "Levincia::JTG::150",
+          "set": "JTG",
+          "number": "150",
           "archetype": "Gholdengo",
           "current_usage": 26.8,
           "momentum_score": 159.84,
@@ -196,9 +196,9 @@
         },
         {
           "name": "Superior Energy Retrieval",
-          "uid": "Superior Energy Retrieval",
-          "set": null,
-          "number": null,
+          "uid": "Superior Energy Retrieval::PAL::189",
+          "set": "PAL",
+          "number": "189",
           "archetype": "Gholdengo",
           "current_usage": 33.1,
           "momentum_score": 155.75,
@@ -216,9 +216,9 @@
         },
         {
           "name": "Neo Upper Energy",
-          "uid": "Neo Upper Energy",
-          "set": null,
-          "number": null,
+          "uid": "Neo Upper Energy::TEF::162",
+          "set": "TEF",
+          "number": "162",
           "archetype": "Dragapult Dusknoir",
           "current_usage": 18.9,
           "momentum_score": 114.58,
@@ -301,10 +301,22 @@
       "title": "Chopped and Washed",
       "items": [
         {
+          "name": "Judge",
+          "uid": "Judge::SVI::176",
+          "set": "SVI",
+          "number": "176",
+          "archetype": "Raging Bolt Ogerpon",
+          "peak_usage": 9.4,
+          "current_usage": 0.0,
+          "drop_amount": 9.4,
+          "crash_severity": 1.0,
+          "sustained_peak": 3
+        },
+        {
           "name": "Pokémon League Headquarters",
-          "uid": "Pokémon League Headquarters",
-          "set": null,
-          "number": null,
+          "uid": "Pokémon League Headquarters::OBF::192",
+          "set": "OBF",
+          "number": "192",
           "archetype": "Dragapult Charizard",
           "peak_usage": 8.2,
           "current_usage": 0.0,
@@ -326,9 +338,9 @@
         },
         {
           "name": "Morty's Conviction",
-          "uid": "Morty's Conviction",
-          "set": null,
-          "number": null,
+          "uid": "Morty's Conviction::TEF::155",
+          "set": "TEF",
+          "number": "155",
           "archetype": "Gardevoir",
           "peak_usage": 8.6,
           "current_usage": 0.0,
@@ -350,9 +362,9 @@
         },
         {
           "name": "Ancient Booster Energy Capsule",
-          "uid": "Ancient Booster Energy Capsule",
-          "set": null,
-          "number": null,
+          "uid": "Ancient Booster Energy Capsule::TEF::140",
+          "set": "TEF",
+          "number": "140",
           "archetype": "Poison Archaludon",
           "peak_usage": 7.3,
           "current_usage": 0.0,
@@ -362,9 +374,9 @@
         },
         {
           "name": "Vengeful Punch",
-          "uid": "Vengeful Punch",
-          "set": null,
-          "number": null,
+          "uid": "Vengeful Punch::OBF::197",
+          "set": "OBF",
+          "number": "197",
           "archetype": "Gholdengo Dragapult",
           "peak_usage": 7.6,
           "current_usage": 0.0,
@@ -427,6 +439,18 @@
       "title": "That Day 2'd?",
       "items": [
         {
+          "name": "Charmeleon",
+          "uid": "Charmeleon::OBF::027",
+          "set": "OBF",
+          "number": "027",
+          "archetype": "Charizard Pidgeot",
+          "peak_usage": 0.5,
+          "total_appearances": 1,
+          "total_usage": 0.5,
+          "tournaments_since_peak": 3,
+          "experimental_score": 70.39
+        },
+        {
           "name": "Indeedee",
           "uid": "Indeedee::SVI::153",
           "set": "SVI",
@@ -436,7 +460,7 @@
           "total_appearances": 1,
           "total_usage": 0.5,
           "tournaments_since_peak": 3,
-          "experimental_score": 91.2
+          "experimental_score": 70.39
         },
         {
           "name": "Scyther",
@@ -448,7 +472,7 @@
           "total_appearances": 1,
           "total_usage": 0.5,
           "tournaments_since_peak": 3,
-          "experimental_score": 91.2
+          "experimental_score": 70.39
         },
         {
           "name": "Enamorus",
@@ -460,7 +484,7 @@
           "total_appearances": 1,
           "total_usage": 1.0,
           "tournaments_since_peak": 4,
-          "experimental_score": 87.47
+          "experimental_score": 66.67
         },
         {
           "name": "Dodrio",
@@ -472,7 +496,31 @@
           "total_appearances": 2,
           "total_usage": 1.0,
           "tournaments_since_peak": 3,
-          "experimental_score": 86.95
+          "experimental_score": 66.15
+        },
+        {
+          "name": "Dusk Ball",
+          "uid": "Dusk Ball::SSP::175",
+          "set": "SSP",
+          "number": "175",
+          "archetype": "Roaring Moon Dudunsparce",
+          "peak_usage": 0.7,
+          "total_appearances": 1,
+          "total_usage": 0.7,
+          "tournaments_since_peak": 5,
+          "experimental_score": 64.76
+        },
+        {
+          "name": "Energy Sticker",
+          "uid": "Energy Sticker::MEW::159",
+          "set": "MEW",
+          "number": "159",
+          "archetype": "Roaring Moon",
+          "peak_usage": 0.5,
+          "total_appearances": 1,
+          "total_usage": 0.5,
+          "tournaments_since_peak": 6,
+          "experimental_score": 62.64
         },
         {
           "name": "Ho-Oh",
@@ -484,7 +532,7 @@
           "total_appearances": 1,
           "total_usage": 0.5,
           "tournaments_since_peak": 6,
-          "experimental_score": 83.44
+          "experimental_score": 62.64
         },
         {
           "name": "Shroodle",
@@ -496,7 +544,7 @@
           "total_appearances": 1,
           "total_usage": 1.0,
           "tournaments_since_peak": 6,
-          "experimental_score": 82.38
+          "experimental_score": 61.58
         },
         {
           "name": "Shroodle",
@@ -508,7 +556,7 @@
           "total_appearances": 1,
           "total_usage": 0.4,
           "tournaments_since_peak": 7,
-          "experimental_score": 81.1
+          "experimental_score": 60.3
         },
         {
           "name": "Glimmet",
@@ -520,7 +568,7 @@
           "total_appearances": 1,
           "total_usage": 0.7,
           "tournaments_since_peak": 7,
-          "experimental_score": 80.3
+          "experimental_score": 59.5
         },
         {
           "name": "Glimmora ex",
@@ -532,19 +580,43 @@
           "total_appearances": 1,
           "total_usage": 0.7,
           "tournaments_since_peak": 7,
-          "experimental_score": 80.3
+          "experimental_score": 59.5
+        },
+        {
+          "name": "Crushing Hammer",
+          "uid": "Crushing Hammer::SVI::168",
+          "set": "SVI",
+          "number": "168",
+          "archetype": "Great Tusk Mill",
+          "peak_usage": 0.5,
+          "total_appearances": 1,
+          "total_usage": 0.5,
+          "tournaments_since_peak": 3,
+          "experimental_score": 54.15
+        },
+        {
+          "name": "Great Tusk",
+          "uid": "Great Tusk::TEF::097",
+          "set": "TEF",
+          "number": "097",
+          "archetype": "Great Tusk Mill",
+          "peak_usage": 0.5,
+          "total_appearances": 1,
+          "total_usage": 0.5,
+          "tournaments_since_peak": 3,
+          "experimental_score": 54.15
         },
         {
           "name": "Miriam",
-          "uid": "Miriam",
-          "set": null,
-          "number": null,
+          "uid": "Miriam::SVI::179",
+          "set": "SVI",
+          "number": "179",
           "archetype": "N's Zoroark",
           "peak_usage": 0.5,
           "total_appearances": 1,
           "total_usage": 0.5,
           "tournaments_since_peak": 3,
-          "experimental_score": 70.15
+          "experimental_score": 54.15
         },
         {
           "name": "Zeraora",
@@ -556,7 +628,7 @@
           "total_appearances": 1,
           "total_usage": 0.5,
           "tournaments_since_peak": 3,
-          "experimental_score": 70.15
+          "experimental_score": 54.15
         },
         {
           "name": "N's Sigilyph",
@@ -568,79 +640,19 @@
           "total_appearances": 2,
           "total_usage": 0.9,
           "tournaments_since_peak": 3,
-          "experimental_score": 67.68
+          "experimental_score": 51.68
         },
         {
-          "name": "Larvitar",
-          "uid": "Larvitar::JTG::080",
-          "set": "JTG",
-          "number": "080",
+          "name": "Calamitous Wasteland",
+          "uid": "Calamitous Wasteland::PAL::175",
+          "set": "PAL",
+          "number": "175",
           "archetype": "Tyranitar",
           "peak_usage": 1.0,
           "total_appearances": 1,
           "total_usage": 1.0,
           "tournaments_since_peak": 4,
-          "experimental_score": 67.28
-        },
-        {
-          "name": "Pupitar",
-          "uid": "Pupitar::PRE::048",
-          "set": "PRE",
-          "number": "048",
-          "archetype": "Tyranitar",
-          "peak_usage": 1.0,
-          "total_appearances": 1,
-          "total_usage": 1.0,
-          "tournaments_since_peak": 4,
-          "experimental_score": 67.28
-        },
-        {
-          "name": "Big Air Balloon",
-          "uid": "Big Air Balloon",
-          "set": null,
-          "number": null,
-          "archetype": "Mamoswine",
-          "peak_usage": 0.4,
-          "total_appearances": 1,
-          "total_usage": 0.4,
-          "tournaments_since_peak": 5,
-          "experimental_score": 66.4
-        },
-        {
-          "name": "Boomerang Energy",
-          "uid": "Boomerang Energy",
-          "set": null,
-          "number": null,
-          "archetype": "Slaking",
-          "peak_usage": 0.4,
-          "total_appearances": 1,
-          "total_usage": 0.4,
-          "tournaments_since_peak": 5,
-          "experimental_score": 66.4
-        },
-        {
-          "name": "Ting-Lu ex",
-          "uid": "Ting-Lu ex::PAL::127",
-          "set": "PAL",
-          "number": "127",
-          "archetype": "Froslass Munkidori",
-          "peak_usage": 0.4,
-          "total_appearances": 1,
-          "total_usage": 0.4,
-          "tournaments_since_peak": 5,
-          "experimental_score": 66.4
-        },
-        {
-          "name": "Vigoroth",
-          "uid": "Vigoroth::PAL::161",
-          "set": "PAL",
-          "number": "161",
-          "archetype": "Slaking",
-          "peak_usage": 0.4,
-          "total_appearances": 1,
-          "total_usage": 0.4,
-          "tournaments_since_peak": 5,
-          "experimental_score": 66.4
+          "experimental_score": 51.28
         }
       ]
     }

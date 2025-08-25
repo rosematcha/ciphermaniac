@@ -67,9 +67,33 @@ function applySearchFilter(items, query) {
     return items;
   }
 
-  const filtered = items.filter(item =>
-    item.name && item.name.toLowerCase().includes(query)
-  );
+  const filtered = items.filter(item => {
+    if (!item.name) {return false;}
+
+    // Search in card name
+    if (item.name.toLowerCase().includes(query)) {
+      return true;
+    }
+
+    // Also search in set and number for cards that have them (trainers, energy, pokemon)
+    if (item.set && item.set.toLowerCase().includes(query)) {
+      return true;
+    }
+
+    if (item.number && item.number.toLowerCase().includes(query)) {
+      return true;
+    }
+
+    // Search in combined "name set number" format
+    if (item.set && item.number) {
+      const combinedSearch = `${item.name} ${item.set} ${item.number}`.toLowerCase();
+      if (combinedSearch.includes(query)) {
+        return true;
+      }
+    }
+
+    return false;
+  });
 
   logger.debug(`Search filtered ${items.length} items to ${filtered.length}`, { query });
   return filtered;

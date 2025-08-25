@@ -69,7 +69,7 @@
     
     // Insert header and footer
     const header = createHeader({ currentPage: 'home' });
-    const footer = createFooter({ includeSummary: true });
+    const footer = createFooter();
     
     document.body.insertAdjacentElement('afterbegin', header);
     document.body.insertAdjacentElement('beforeend', footer);

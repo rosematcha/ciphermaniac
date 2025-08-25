@@ -21,7 +21,9 @@
       "Bash(npx:*)",
       "Bash(npm install:*)",
       "mcp__atlassian__searchJiraIssuesUsingJql",
-      "Bash(del lint-edge-case-tests.js edge-case-validation.js test-empty-catch.js)"
+      "Bash(del lint-edge-case-tests.js edge-case-validation.js test-empty-catch.js)",
+      "mcp__context7__resolve-library-id",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

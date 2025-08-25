@@ -103,7 +103,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "171",
+      "uid": "Team Rocket's Ariana::DRI::171"
     },
     {
       "rank": 7,
@@ -117,7 +120,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "174",
+      "uid": "Team Rocket's Giovanni::DRI::174"
     },
     {
       "rank": 8,
@@ -131,7 +137,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "177",
+      "uid": "Team Rocket's Proton::DRI::177"
     },
     {
       "rank": 9,
@@ -145,7 +154,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "170",
+      "uid": "Team Rocket's Archer::DRI::170"
     },
     {
       "rank": 10,
@@ -159,7 +171,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "178",
+      "uid": "Team Rocket's Transceiver::DRI::178"
     },
     {
       "rank": 11,
@@ -173,7 +188,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "196",
+      "uid": "Ultra Ball::SVI::196"
     },
     {
       "rank": 12,
@@ -192,7 +210,10 @@
           "players": 1,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "163",
+      "uid": "Earthen Vessel::PAR::163"
     },
     {
       "rank": 13,
@@ -206,7 +227,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "061",
+      "uid": "Night Stretcher::SFA::061"
     },
     {
       "rank": 14,
@@ -220,7 +244,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "186",
+      "uid": "Pokégear 3.0::SVI::186"
     },
     {
       "rank": 15,
@@ -239,7 +266,10 @@
           "players": 1,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "173",
+      "uid": "Energy Switch::SVI::173"
     },
     {
       "rank": 16,
@@ -258,7 +288,10 @@
           "players": 1,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "173",
+      "uid": "Bravery Charm::PAL::173"
     },
     {
       "rank": 17,
@@ -277,7 +310,10 @@
           "players": 1,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "173",
+      "uid": "Team Rocket's Factory::DRI::173"
     },
     {
       "rank": 18,
@@ -291,7 +327,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "182",
+      "uid": "Team Rocket's Energy::DRI::182"
     },
     {
       "rank": 19,
@@ -310,7 +349,10 @@
           "players": 1,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "009",
+      "uid": "Grass Energy::SVE::009"
     },
     {
       "rank": 20,
@@ -324,7 +366,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "013",
+      "uid": "Psychic Energy::SVE::013"
     },
     {
       "rank": 21,
@@ -338,7 +383,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "DRI",
+      "number": "176",
+      "uid": "Team Rocket's Petrel::DRI::176"
     },
     {
       "rank": 22,
@@ -352,7 +400,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "185",
+      "uid": "Iono::PAL::185"
     },
     {
       "rank": 23,
@@ -366,7 +417,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "163",
+      "uid": "Secret Box::TWM::163"
     },
     {
       "rank": 24,
@@ -380,7 +434,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "144",
+      "uid": "Buddy-Buddy Poffin::TEF::144"
     },
     {
       "rank": 25,
@@ -394,7 +451,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "178",
+      "uid": "Technical Machine: Evolution::PAR::178"
     },
     {
       "rank": 26,
@@ -459,7 +519,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "181",
+      "uid": "Nest Ball::SVI::181"
     },
     {
       "rank": 30,
@@ -473,7 +536,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "157",
+      "uid": "Prime Catcher::TEF::157"
     }
   ]
 }
