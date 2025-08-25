@@ -15,7 +15,6 @@ export function createHeader(options = {}) {
         <a class="nav-link${currentPage === 'home' ? ' active' : ''}" href="./">Home</a>
         <a class="nav-link${currentPage === 'cards' ? ' active' : ''}" href="card.html">Cards</a>
         <a class="nav-link${currentPage === 'feedback' ? ' active' : ''}" href="feedback.html">Feedback</a>
-        <!-- Temporarily hidden: <a class="nav-link${currentPage === 'synergies' ? ' active' : ''}" href="synergy.html">Synergies</a> -->
       </nav>
     </div>
   `;

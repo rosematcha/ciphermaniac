@@ -27,7 +27,7 @@ class FeedbackForm {
   handleFeedbackTypeChange() {
     const feedbackType = document.getElementById('feedbackType').value;
     const bugDetails = document.getElementById('bugDetails');
-    
+
     if (feedbackType === 'bug') {
       bugDetails.style.display = 'block';
       this.setRequiredFields(bugDetails, true);
@@ -42,7 +42,7 @@ class FeedbackForm {
     const platform = document.getElementById('platform').value;
     const desktopDetails = document.getElementById('desktopDetails');
     const mobileDetails = document.getElementById('mobileDetails');
-    
+
     if (platform === 'desktop') {
       desktopDetails.style.display = 'block';
       mobileDetails.style.display = 'none';
@@ -64,7 +64,7 @@ class FeedbackForm {
   handleFollowUpChange() {
     const followUp = document.getElementById('followUp').value;
     const contactDetails = document.getElementById('contactDetails');
-    
+
     if (followUp === 'yes') {
       contactDetails.style.display = 'block';
       this.setRequiredFields(contactDetails, true);
@@ -77,11 +77,11 @@ class FeedbackForm {
   handleBrowserChange(platform) {
     const browserSelect = document.getElementById(`${platform}Browser`);
     const otherBrowserDiv = document.getElementById(`other${platform.charAt(0).toUpperCase() + platform.slice(1)}Browser`);
-    
+
     if (browserSelect.value === 'other') {
       otherBrowserDiv.style.display = 'block';
       const otherInput = otherBrowserDiv.querySelector('input');
-      if (otherInput) otherInput.required = true;
+      if (otherInput) {otherInput.required = true;}
     } else {
       otherBrowserDiv.style.display = 'none';
       const otherInput = otherBrowserDiv.querySelector('input');
@@ -95,16 +95,16 @@ class FeedbackForm {
   setRequiredFields(container, required) {
     const selects = container.querySelectorAll('select');
     const inputs = container.querySelectorAll('input');
-    
+
     selects.forEach(select => {
       select.required = required;
-      if (!required) select.value = '';
+      if (!required) {select.value = '';}
     });
-    
+
     inputs.forEach(input => {
       if (!input.closest('.form-group[style*="display: none"]')) {
         input.required = required;
-        if (!required) input.value = '';
+        if (!required) {input.value = '';}
       }
     });
   }
@@ -120,23 +120,23 @@ class FeedbackForm {
   collectFormData() {
     const formData = new FormData(this.form);
     const data = {};
-    
-    for (let [key, value] of formData.entries()) {
+
+    for (const [key, value] of formData.entries()) {
       if (value.trim()) {
         data[key] = value.trim();
       }
     }
-    
+
     if (data.desktopBrowser === 'other' && data.otherDesktopBrowserName) {
       data.desktopBrowser = data.otherDesktopBrowserName;
       delete data.otherDesktopBrowserName;
     }
-    
+
     if (data.mobileBrowser === 'other' && data.otherMobileBrowserName) {
       data.mobileBrowser = data.otherMobileBrowserName;
       delete data.otherMobileBrowserName;
     }
-    
+
     return data;
   }
 
@@ -145,7 +145,7 @@ class FeedbackForm {
     status.textContent = message;
     status.className = `status-message ${isError ? 'error' : 'success'}`;
     status.style.display = 'block';
-    
+
     setTimeout(() => {
       status.style.display = 'none';
     }, 5000);
@@ -153,16 +153,16 @@ class FeedbackForm {
 
   async handleSubmit(e) {
     e.preventDefault();
-    
+
     const submitButton = this.form.querySelector('.submit-button');
     const originalText = submitButton.textContent;
-    
+
     try {
       submitButton.disabled = true;
       submitButton.textContent = 'Submitting...';
-      
+
       const formData = this.collectFormData();
-      
+
       const response = await fetch('/api/feedback', {
         method: 'POST',
         headers: {
@@ -170,7 +170,7 @@ class FeedbackForm {
         },
         body: JSON.stringify(formData)
       });
-      
+
       if (response.ok) {
         this.showStatus('Thank you! Your feedback has been submitted successfully.');
         this.form.reset();
@@ -179,7 +179,7 @@ class FeedbackForm {
       } else {
         throw new Error(`Server error: ${response.status}`);
       }
-      
+
     } catch (error) {
       console.error('Submission error:', error);
       this.showStatus('Sorry, there was an error submitting your feedback. Please try again later.', true);
