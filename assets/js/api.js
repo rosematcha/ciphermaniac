@@ -84,40 +84,44 @@ async function safeJsonParse(response, url) {
 }
 
 /**
- * Fetch tournaments list with retry logic
- * @returns {Promise<string[]>}
- * @throws {AppError}
+ * Common API fetch wrapper with retry, validation, and logging
+ * @template T
+ * @param {string} url - API endpoint URL
+ * @param {string} operation - Description for logging
+ * @param {string} expectedType - Expected data type for validation
+ * @param {string} [fieldName] - Field name for validation errors
+ * @returns {Promise<T>}
  */
-export async function fetchTournamentsList() {
+function fetchWithRetry(url, operation, expectedType, fieldName) {
   return withRetry(async () => {
-    logger.debug('Fetching tournaments list');
-    const url = `${CONFIG.API.REPORTS_BASE}/tournaments.json`;
+    logger.debug(`Fetching ${operation}`);
     const response = await safeFetch(url);
     const data = await safeJsonParse(response, url);
 
-    validateType(data, 'array', 'tournaments list');
-    logger.info(`Loaded ${data.length} tournaments`);
+    validateType(data, expectedType, fieldName || operation);
+    const count = Array.isArray(data) ? data.length : (data.items?.length || 'unknown');
+    logger.info(`Loaded ${operation}`, { count });
     return data;
   }, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+}
+
+/**
+ * Fetch tournaments list
+ * @returns {Promise<string[]>}
+ */
+export function fetchTournamentsList() {
+  const url = `${CONFIG.API.REPORTS_BASE}/tournaments.json`;
+  return fetchWithRetry(url, 'tournaments list', 'array', 'tournaments list');
 }
 
 /**
  * Fetch tournament report data
  * @param {string} tournament
  * @returns {Promise<Object>}
- * @throws {AppError}
  */
-export async function fetchReport(tournament) {
-  return withRetry(async () => {
-    logger.debug(`Fetching report for tournament: ${tournament}`);
-    const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/master.json`;
-    const response = await safeFetch(url);
-    const data = await safeJsonParse(response, url);
-
-    validateType(data, 'object', 'tournament report');
-    logger.info(`Loaded report for ${tournament}`, { itemCount: data.items?.length });
-    return data;
-  }, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+export function fetchReport(tournament) {
+  const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/master.json`;
+  return fetchWithRetry(url, `report for ${tournament}`, 'object', 'tournament report');
 }
 
 /**
@@ -144,19 +148,10 @@ export async function fetchOverrides() {
  * Fetch archetype list for a tournament
  * @param {string} tournament
  * @returns {Promise<string[]>}
- * @throws {AppError}
  */
-export async function fetchArchetypesList(tournament) {
-  return withRetry(async () => {
-    logger.debug(`Fetching archetypes list for: ${tournament}`);
-    const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/index.json`;
-    const response = await safeFetch(url);
-    const data = await safeJsonParse(response, url);
-
-    validateType(data, 'array', 'archetypes list');
-    logger.info(`Loaded ${data.length} archetypes for ${tournament}`);
-    return data;
-  }, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+export function fetchArchetypesList(tournament) {
+  const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/index.json`;
+  return fetchWithRetry(url, `archetypes for ${tournament}`, 'array', 'archetypes list');
 }
 
 /**
@@ -200,15 +195,9 @@ export async function fetchArchetypeReport(tournament, archetypeBase) {
  * @param {string} tournament
  * @returns {Promise<Object>}
  */
-export async function fetchMeta(tournament){
-  return withRetry(async () => {
-    logger.debug(`Fetching meta.json for: ${tournament}`);
-    const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/meta.json`;
-    const response = await safeFetch(url);
-    const data = await safeJsonParse(response, url);
-    validateType(data, 'object', 'tournament meta');
-    return data;
-  }, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+export function fetchMeta(tournament) {
+  const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/meta.json`;
+  return fetchWithRetry(url, `meta for ${tournament}`, 'object', 'tournament meta');
 }
 
 /**
@@ -216,9 +205,8 @@ export async function fetchMeta(tournament){
  * @param {string} tournament
  * @returns {Promise<{deckTotal:number, cards: Record<string, any>}>}
  */
-export async function fetchCardIndex(tournament){
+export function fetchCardIndex(tournament) {
   return withRetry(async () => {
-    logger.debug(`Fetching cardIndex for: ${tournament}`);
     const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/cardIndex.json`;
     const response = await safeFetch(url);
     const data = await safeJsonParse(response, url);

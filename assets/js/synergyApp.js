@@ -172,11 +172,11 @@ class SynergyApp {
     }
 
     this.currentTournament = tournament;
-    
+
     // Clear cache when switching tournaments
     this.cachedFullNetwork = null;
     this.cacheSettings = null;
-    
+
     this.showLoading();
 
     try {
@@ -231,13 +231,13 @@ class SynergyApp {
       // Build network data with more permissive settings for caching
       const cacheMinOccurrence = Math.min(minOccurrence, 2);
       const cacheMinSynergy = Math.min(minSynergy, 0.01);
-      
+
       this.cachedFullNetwork = this.analyzer.buildSynergyNetwork(
         this.currentData,
         cacheMinOccurrence,
         cacheMinSynergy
       );
-      
+
       this.cacheSettings = { minOccurrence: cacheMinOccurrence, minSynergy: cacheMinSynergy };
 
       // Filter to current settings
@@ -255,7 +255,7 @@ class SynergyApp {
    * Check if we can use cached network data
    */
   canUseCache(minOccurrence, minSynergy) {
-    return this.cacheSettings && 
+    return this.cacheSettings &&
            minOccurrence >= this.cacheSettings.minOccurrence &&
            minSynergy >= this.cacheSettings.minSynergy;
   }
@@ -264,10 +264,10 @@ class SynergyApp {
    * Filter existing network without rebuilding
    */
   filterExistingNetwork(minOccurrence, minSynergy) {
-    if (!this.cachedFullNetwork) return;
+    if (!this.cachedFullNetwork) {return;}
 
     // Filter nodes by occurrence
-    const validNodes = this.cachedFullNetwork.nodes.filter(node => 
+    const validNodes = this.cachedFullNetwork.nodes.filter(node =>
       node.occurrence >= minOccurrence
     );
     const validNodeIds = new Set(validNodes.map(n => n.id));
@@ -402,14 +402,14 @@ class SynergyApp {
    * Update network performance statistics
    */
   updateNetworkStats() {
-    if (!this.networkData || !this.elements.networkStats) return;
+    if (!this.networkData || !this.elements.networkStats) {return;}
 
     const { nodes, edges } = this.networkData;
     const totalCards = this.cachedFullNetwork ? this.cachedFullNetwork.nodes.length : nodes.length;
     const totalEdges = this.cachedFullNetwork ? this.cachedFullNetwork.edges.length : edges.length;
 
     let statsText = `Showing ${nodes.length} cards and ${edges.length} relationships`;
-    
+
     if (nodes.length < totalCards || edges.length < totalEdges) {
       statsText += ` (filtered from ${totalCards} cards and ${totalEdges} relationships)`;
     }

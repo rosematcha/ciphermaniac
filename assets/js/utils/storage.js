@@ -120,7 +120,7 @@ class StorageManager {
     Object.entries(STORAGE_CONFIG).forEach(([key, config]) => {
       const data = safeSync(() => localStorage.getItem(config.key), `getting ${key} size`, '');
       const size = new Blob([data || '']).size;
-      stats[key] = { size, exists: !!data };
+      stats[key] = { size, exists: Boolean(data) };
       totalSize += size;
     });
 

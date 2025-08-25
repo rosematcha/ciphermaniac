@@ -3,8 +3,8 @@
  */
 
 export function createHeader(options = {}) {
-  const { currentPage = '', includeIcon = true } = options;
-  
+  const { currentPage = '' } = options;
+
   const header = document.createElement('header');
   header.innerHTML = `
     <div class="header-inner">
@@ -18,7 +18,7 @@ export function createHeader(options = {}) {
       </nav>
     </div>
   `;
-  
+
   return header;
 }
 

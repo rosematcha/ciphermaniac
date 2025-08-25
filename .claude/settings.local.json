@@ -20,7 +20,8 @@
       "Bash(npm run typecheck:*)",
       "Bash(npx:*)",
       "Bash(npm install:*)",
-      "mcp__atlassian__searchJiraIssuesUsingJql"
+      "mcp__atlassian__searchJiraIssuesUsingJql",
+      "Bash(del lint-edge-case-tests.js edge-case-validation.js test-empty-catch.js)"
     ],
     "deny": [],
     "ask": []

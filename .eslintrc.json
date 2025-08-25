@@ -27,6 +27,26 @@
     "quotes": ["error", "single", { "allowTemplateLiterals": true }],
     "indent": ["error", 2],
     "no-trailing-spaces": "error",
-    "eol-last": "error"
+    "eol-last": "error",
+    "no-implicit-coercion": "error",
+    "no-unsafe-optional-chaining": "error",
+    "no-unsafe-negation": "error",
+    "no-implicit-globals": "error",
+    "consistent-return": "error",
+    "default-param-last": "error",
+    "no-param-reassign": ["error", { "props": true }],
+    "prefer-rest-params": "error",
+    "dot-notation": "error",
+    "no-delete-var": "error",
+    "no-prototype-builtins": "error",
+    "prefer-object-spread": "error",
+    "no-useless-computed-key": "error",
+    "no-empty": ["error", { "allowEmptyCatch": false }],
+    "prefer-promise-reject-errors": "error",
+    "no-async-promise-executor": "error",
+    "require-atomic-updates": "error",
+    "no-await-in-loop": "warn",
+    "no-return-await": "error",
+    "require-await": "error"
   }
 }

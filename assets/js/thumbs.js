@@ -2,7 +2,7 @@ function sanitizePrimary(name){
   // Normalize and keep Unicode letters/numbers, apostrophes, dashes, underscores; spaces -> underscores
   const s = String(name).normalize('NFC')
     .replace(/\u2019/g, '\'') // curly to straight apostrophe
-    .replace(/[\:!.,]/g, '')
+    .replace(/[:!.,]/g, '')
     .replace(/\s+/g, '_')
     .replace(/[^\p{L}\p{N}_\-']/gu, '_')
     .replace(/_+/g,'_');
@@ -40,7 +40,7 @@ export function buildThumbCandidates(name, useSm, overrides, variant){
     out.push(base + overrides[name]);
   }
   // If variant info is provided (set+number), prioritize that filename
-  if(variant && variant.set && variant.number != null){
+  if(variant && variant.set && variant.number !== null){
     const primaryVariant = sanitizePrimary(`${name}_${String(variant.set)}_${String(variant.number)}`) + '.png';
     out.push(base + primaryVariant);
   }

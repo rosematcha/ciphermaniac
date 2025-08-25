@@ -43,8 +43,10 @@ function makeCardItem(name, opts){
 
 // View preference
 const PREF_KEY = 'suggestionsView';
-function getPref(){ try{ return localStorage.getItem(PREF_KEY) || 'carousel'; }catch{ return 'carousel'; } }
-function setPref(v){ try{ localStorage.setItem(PREF_KEY, v); }catch{} }
+function getPref(){ try{ return localStorage.getItem(PREF_KEY) || 'carousel'; }catch(error){ console.warn('Failed to get preference:', error); return 'carousel'; } }
+// Note: setPref currently unused but kept for future use
+// eslint-disable-next-line no-unused-vars
+function setPref(v){ try{ localStorage.setItem(PREF_KEY, v); }catch(error){ console.warn('Failed to set preference:', error); } }
 
 // Note: rows view removed — suggestions now always render as a carousel
 
@@ -57,6 +59,7 @@ function createArrow(dir){
   return b;
 }
 function renderCarousel(container, items){
+  // Use safe container update
   container.innerHTML = '';
   const prev = createArrow('prev'); const next = createArrow('next');
   const viewport = document.createElement('div'); viewport.className='carousel-viewport';

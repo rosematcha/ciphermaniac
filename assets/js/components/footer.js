@@ -4,12 +4,12 @@
 
 export function createFooter(options = {}) {
   const { includeSummary = true, footerClass = 'site-footer' } = options;
-  
+
   const footer = document.createElement('footer');
   footer.className = footerClass;
-  
+
   const summaryDiv = includeSummary ? '<div id="summary" class="summary"></div>' : '';
-  
+
   footer.innerHTML = `
     <div class="footer-inner">
       <div class="footer-left">
@@ -21,7 +21,7 @@ export function createFooter(options = {}) {
       </div>
     </div>
   `;
-  
+
   return footer;
 }
 
@@ -32,7 +32,7 @@ export function createSimpleFooter() {
       <p>&copy; 2025 Ciphermaniac. Pokemon TCG tournament analysis and deck building tools.</p>
     </div>
   `;
-  
+
   return footer;
 }
 

@@ -93,23 +93,23 @@ export class SynergyNetworkViz {
     // Sort nodes by popularity to get the most interesting ones first
     const sortedNodes = [...networkData.nodes].sort((a, b) => b.popularity - a.popularity);
     const sortedEdges = [...networkData.edges].sort((a, b) => b.strength - a.strength);
-    
+
     // Limit data size for performance but keep it interesting
     const maxNodes = 150;
     const maxEdges = 300;
-    
-    let nodes = sortedNodes.slice(0, maxNodes).map(d => ({ ...d }));
-    
+
+    const nodes = sortedNodes.slice(0, maxNodes).map(d => ({ ...d }));
+
     // Filter edges to only include valid nodes and keep strongest connections
     const nodeIds = new Set(nodes.map(n => n.id));
-    let links = sortedEdges
+    const links = sortedEdges
       .filter(link => nodeIds.has(link.source) && nodeIds.has(link.target))
       .slice(0, maxEdges)
       .map(d => ({ ...d }));
-    
+
     // Ensure we have a connected network by including bridging edges
     this.ensureConnectivity(nodes, links, nodeIds);
-    
+
     logger.debug(`Rendering limited network: ${nodes.length} nodes, ${links.length} edges`);
 
     // Create force simulation
@@ -465,13 +465,13 @@ export class SynergyNetworkViz {
     });
 
     const isolatedNodes = nodes.filter(node => !connectedNodes.has(node.id));
-    
+
     // For each isolated node, try to find a connection in the original data
     isolatedNodes.forEach(isolatedNode => {
       // Find the best edge involving this node from the original data
       const allEdges = this.originalEdges || [];
       const possibleEdges = allEdges
-        .filter(edge => 
+        .filter(edge =>
           (edge.source === isolatedNode.id || edge.target === isolatedNode.id) &&
           nodeIds.has(edge.source) && nodeIds.has(edge.target)
         )

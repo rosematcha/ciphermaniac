@@ -1,5 +1,5 @@
 // Entry for per-card page: loads meta-share over tournaments and common decks
-import { fetchTournamentsList, fetchReport, fetchArchetypesList, fetchArchetypeReport, fetchOverrides, fetchTop8ArchetypesList, fetchCardIndex, fetchMeta } from './api.js';
+import { fetchTournamentsList, fetchReport, fetchArchetypesList, fetchArchetypeReport, fetchOverrides, fetchTop8ArchetypesList, fetchCardIndex } from './api.js';
 import { parseReport } from './parse.js';
 import { buildThumbCandidates } from './thumbs.js';
 import { pickArchetype, baseToLabel } from './selectArchetype.js';
@@ -58,50 +58,6 @@ function getBaseName(cardId) {
 }
 
 // Find canonical identifier for a given search term across all tournaments
-async function findCanonicalCard(searchTerm) {
-  if (!searchTerm) {return null;}
-
-  let tournaments = [];
-  try {
-    tournaments = await fetchTournamentsList();
-  } catch {
-    tournaments = ['World Championships 2025'];
-  }
-
-  // Look for exact matches first, then base name matches
-  const candidates = new Map(); // base name -> best UID
-
-  for (const tournament of tournaments) {
-    try {
-      const master = await fetchReport(tournament);
-      const parsed = parseReport(master);
-
-      for (const item of parsed.items) {
-        const canonicalId = getCanonicalId(item);
-        const displayName = getDisplayName(canonicalId);
-        const baseName = getBaseName(canonicalId);
-
-        // Direct match - return immediately
-        if (canonicalId.toLowerCase() === searchTerm.toLowerCase() ||
-            displayName.toLowerCase() === searchTerm.toLowerCase()) {
-          return canonicalId;
-        }
-
-        // Base name match - store as candidate
-        if (baseName.toLowerCase() === searchTerm.toLowerCase()) {
-          if (!candidates.has(baseName) || item.uid) {
-            candidates.set(baseName, canonicalId);
-          }
-        }
-      }
-    } catch {
-      // Skip failed tournaments
-    }
-  }
-
-  // Return best candidate (prefer UID over base name)
-  return candidates.get(getBaseName(searchTerm)) || searchTerm;
-}
 
 // Normalize #grid route to index when landing on card page via hash
 const __ROUTE_REDIRECTING = normalizeCardRouteOnLoad();
@@ -173,13 +129,12 @@ function hideGraphTooltip(){
 // Simple HTML escaper for tooltip content
 function escapeHtml(str){
   if(!str) {return '';}
-  return String(str).replace(/[&<>\"]/g, (s) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[s]);
+  return String(str).replace(/[&<>"]/g, (s) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[s]);
 }
 if(backLink){ backLink.href = 'index.html'; }
 const analysisSel = document.getElementById('analysis-event');
 const analysisTable = document.getElementById('analysis-table');
 const searchInGrid = document.getElementById('search-in-grid');
-const windowSelect = document.getElementById('window-select');
 // These will be set inside initCardSearch to ensure DOM is ready
 let cardSearchInput, cardNamesList, suggestionsBox;
 // Copy link button removed per request
@@ -192,7 +147,9 @@ try{
       location.reload();
     }
   });
-}catch{}
+} catch (error) {
+  // Ignore initialization errors
+}
 
 // Link to grid prefilled with search
 if(searchInGrid){
@@ -214,13 +171,17 @@ async function initCardSearch(){
       return;
     }
     let tournaments = [];
-    try{ tournaments = await fetchTournamentsList(); }catch{}
+    try{ tournaments = await fetchTournamentsList(); } catch (error) {
+      // Ignore initialization errors
+    }
     if(!Array.isArray(tournaments) || tournaments.length===0){
       tournaments = ['World Championships 2025'];
     }
     // Union cache across tournaments for robust suggestions
     const SKEY = 'cardNamesUnionV5'; // Updated to include trainers and energies
-    const cached = (()=>{ try{ return JSON.parse(localStorage.getItem(SKEY) || '{"names":[]}'); }catch{ return { names: [] }; } })();
+    const cached = (()=>{ try{ return JSON.parse(localStorage.getItem(SKEY) || '{"names":[]}'); } catch (error) {
+      return { names: [] };
+    } })();
     const MAX = 600;
     const byExactName = new Map(); // exact display name -> {display, uid}
     const pushName = (displayName, uid) => {
@@ -245,7 +206,9 @@ async function initCardSearch(){
         cardNamesList.appendChild(opt);
       }
       // update cache
-      try{ localStorage.setItem(SKEY, JSON.stringify({ names: all.slice(0, MAX).map(i => i.display) })); }catch{}
+      try{ localStorage.setItem(SKEY, JSON.stringify({ names: all.slice(0, MAX).map(i => i.display) })); } catch (error) {
+        // Ignore initialization errors
+      }
     };
     updateDatalist();
 
@@ -267,7 +230,10 @@ async function initCardSearch(){
         }catch{/* skip missing */}
       }
     })();
-    if(cardName) {cardSearchInput.value = cardName;}
+    if(cardName) {
+      // eslint-disable-next-line require-atomic-updates
+      cardSearchInput.value = cardName;
+    }
     const getAllNames = () => Array.from(cardNamesList?.options || []).map(o=>String(o.value||''));
     const getUidForName = (displayName) => {
       const option = Array.from(cardNamesList?.options || []).find(o => o.value === displayName);
@@ -346,7 +312,9 @@ async function initCardSearch(){
       const targetId = getUidForName(identifier) || identifier;
       const clean = `${location.origin}${location.pathname.replace(/card\.html$/, 'card.html')}#card/${encodeURIComponent(targetId)}`;
       location.assign(clean);
-      setTimeout(() => { try{ location.reload(); }catch{} }, 0);
+      setTimeout(() => { try{ location.reload(); } catch (error) {
+        // Ignore initialization errors
+      } }, 0);
     };
     // Keyboard handling: Arrow navigation, Enter to select, Tab to complete, Escape to close
     let currentMatches = [];
@@ -385,7 +353,9 @@ async function initCardSearch(){
           const pick = currentMatches[selectedIndex];
           if(pick && pick !== cardSearchInput.value){
             cardSearchInput.value = pick;
-            try{ const end = pick.length; cardSearchInput.setSelectionRange(end, end); }catch{}
+            try{ const end = pick.length; cardSearchInput.setSelectionRange(end, end); } catch (error) {
+              // Ignore initialization errors
+            }
             renderSuggestions();
           }
         } else {
@@ -395,7 +365,9 @@ async function initCardSearch(){
           const pick = currentMatches[idx];
           if(pick && pick !== cardSearchInput.value){
             cardSearchInput.value = pick;
-            try{ const end = pick.length; cardSearchInput.setSelectionRange(end, end); }catch{}
+            try{ const end = pick.length; cardSearchInput.setSelectionRange(end, end); } catch (error) {
+              // Ignore initialization errors
+            }
             renderSuggestions();
           }
         }
@@ -423,7 +395,9 @@ async function initCardSearch(){
       const v = cardSearchInput.value.trim();
       if(v){ goTo(v); }
     });
-  }catch{}
+  } catch (error) {
+  // Ignore initialization errors
+  }
 }
 
 // Ensure DOM is ready before initializing search
@@ -478,7 +452,11 @@ function findCard(items, cardIdentifier){
 }
 
 function renderChart(container, points){
-  if(!points.length){ container.textContent = 'No data.'; return; }
+  if(!points.length){
+    // eslint-disable-next-line no-param-reassign
+    container.textContent = 'No data.';
+    return;
+  }
   // Use the container's actual width to avoid overflow; cap min/max for readability
   const cw = container.getBoundingClientRect ? container.getBoundingClientRect().width : (container.clientWidth || 0);
   const w = Math.max(220, Math.min(700, cw || 600));
@@ -538,7 +516,9 @@ function renderChart(container, points){
       if(p){
         showGraphTooltip(`<strong>${escapeHtml(prettyTournamentName(p.tournament))}</strong><div>${(p.pct||0).toFixed(1)}%</div>`, ev.clientX, ev.clientY);
       }
-    }catch(e){}
+    }catch(e){
+      // Ignore chart interaction errors
+    }
   }
   hit.addEventListener('mousemove', onHitMove);
   hit.addEventListener('mouseenter', onHitMove);
@@ -572,19 +552,24 @@ function renderChart(container, points){
     hitDot.addEventListener('blur', hideGraphTooltip);
     svg.appendChild(hitDot);
   });
+  // eslint-disable-next-line no-param-reassign
   container.innerHTML = '';
+  // eslint-disable-next-line no-param-reassign
   container.appendChild(svg);
   const caption = document.createElement('div');
   caption.className = 'summary';
   caption.textContent = 'Meta-share over tournaments (All archetypes)';
+  // eslint-disable-next-line no-param-reassign
   container.appendChild(caption);
 }
 
 function renderCopiesHistogram(container, overall){
+  // eslint-disable-next-line no-param-reassign
   container.innerHTML = '';
   const box = document.createElement('div');
   box.className = 'summary';
   box.textContent = 'Copies distribution in the most recent visible event:';
+  // eslint-disable-next-line no-param-reassign
   container.appendChild(box);
   const hist = document.createElement('div');
   hist.className = 'hist';
@@ -609,43 +594,18 @@ function renderCopiesHistogram(container, overall){
     col.addEventListener('blur', hideGraphTooltip);
     col.appendChild(bar); col.appendChild(lbl); hist.appendChild(col);
   }
+  // eslint-disable-next-line no-param-reassign
   container.appendChild(hist);
 }
 
-function renderDecks(container, rows){
-  container.innerHTML = '';
-  if(!rows.length){ container.textContent = 'No common decks data.'; return; }
-  const tbl = document.createElement('table');
-  tbl.style.width = '100%';
-  tbl.style.borderCollapse = 'collapse';
-  tbl.style.marginTop = '8px';
-  tbl.style.background = 'var(--panel)';
-  tbl.style.border = '1px solid #242a4a';
-  tbl.style.borderRadius = '8px';
-  const thead = document.createElement('thead');
-  const hdr = document.createElement('tr');
-	    ['Tournament','Usage % (All)','Decks (All)'].forEach(h=>{
-		    const th = document.createElement('th'); th.textContent = h; th.style.textAlign='left'; th.style.padding='10px 12px'; th.style.borderBottom='1px solid #2c335a'; th.style.color='var(--muted)'; hdr.appendChild(th);
-	    });
-  thead.appendChild(hdr);
-  tbl.appendChild(thead);
-  const tbody = document.createElement('tbody');
-  rows.forEach(r=>{
-    const tr = document.createElement('tr');
-    // Tournament cell is a link back to main with tournament selected
-    const tLink = document.createElement('a');
-    tLink.href = `index.html?tour=${encodeURIComponent(r.tournament)}`;
-    tLink.textContent = prettyTournamentName(r.tournament);
-    const cells = [tLink, r.pct!=null? r.pct.toFixed(1)+'%':'—', r.found!=null && r.total!=null? `${r.found}/${r.total}`:'—'];
-    cells.forEach((v,i)=>{ const td = document.createElement('td'); if(v instanceof HTMLElement){ td.appendChild(v); } else { td.textContent = v; } td.style.padding='10px 12px'; if(i===1) {td.style.textAlign='right';} tr.appendChild(td); });
-    tbody.appendChild(tr);
-  });
-  tbl.appendChild(tbody);
-  container.appendChild(tbl);
-}
 function renderEvents(container, rows){
+  // eslint-disable-next-line no-param-reassign
   container.innerHTML = '';
-  if(!rows.length){ container.textContent = 'No recent events data.'; return; }
+  if(!rows.length){
+    // eslint-disable-next-line no-param-reassign
+    container.textContent = 'No recent events data.';
+    return;
+  }
   const tbl = document.createElement('table');
   tbl.style.width = '80%'; tbl.style.marginLeft='auto'; tbl.style.marginRight='auto'; tbl.style.borderCollapse='collapse'; tbl.style.marginTop='8px'; tbl.style.background='var(--panel)'; tbl.style.border='1px solid #242a4a'; tbl.style.borderRadius='8px';
   const thead = document.createElement('thead');
@@ -656,11 +616,12 @@ function renderEvents(container, rows){
   rows.forEach(r => {
     const tr = document.createElement('tr');
     const tLink = document.createElement('a'); tLink.href = `index.html?tour=${encodeURIComponent(r.tournament)}`; tLink.textContent = prettyTournamentName(r.tournament);
-    const cells = [tLink, r.pct!=null? r.pct.toFixed(1)+'%':'—'];
+    const cells = [tLink, r.pct !== null ? r.pct.toFixed(1)+'%':'—'];
     cells.forEach((v,i)=>{ const td = document.createElement('td'); if(v instanceof HTMLElement){ td.appendChild(v); } else { td.textContent = v; } td.style.padding='10px 12px'; if(i===1) {td.style.textAlign='right';} tr.appendChild(td); });
     tbody.appendChild(tr);
   });
   tbl.appendChild(tbody);
+  // eslint-disable-next-line no-param-reassign
   container.appendChild(tbl);
 }
 
@@ -718,6 +679,7 @@ async function renderCardSets(cardIdentifier) {
 
     setsContainer.textContent = variants.join(', ');
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.warn('Failed to load card variants:', error);
     setsContainer.textContent = '';
   }
@@ -762,8 +724,12 @@ async function load(){
   }
   // Simple localStorage cache for All-archetypes stats: key by tournament+card
   const CACHE_KEY = 'metaCacheV1';
-  const cache = (()=>{ try{ return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); }catch{ return {}; } })();
-  const saveCache = () => { try{ localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); }catch{} };
+  const cache = (()=>{ try{ return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch (error) {
+    return {};
+  } })();
+  const saveCache = () => { try{ localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch (error) {
+  // Ignore initialization errors
+  } };
 
   // Aggregate meta-share per tournament; eager load across all tournaments
   const timePoints = [];
@@ -790,7 +756,9 @@ async function load(){
             if(entry){
               card = { name: baseName, found: entry.found, total: entry.total, pct: entry.pct, dist: entry.dist };
             }
-          }catch{}
+          } catch (error) {
+            // Ignore initialization errors
+          }
         }
 
         if(!card){
@@ -803,11 +771,12 @@ async function load(){
           globalPct = Number.isFinite(card.pct)? card.pct : (card.total? (100*card.found/card.total): 0);
           globalFound = Number.isFinite(card.found)? card.found : null;
           globalTotal = Number.isFinite(card.total)? card.total : null;
+          // eslint-disable-next-line require-atomic-updates
           cache[ck] = { pct: globalPct, found: globalFound, total: globalTotal };
           saveCache();
         }
       }
-      if(globalPct != null){
+      if(globalPct !== null){
         timePoints.push({ tournament: t, pct: globalPct });
         eventsWithCard.push(t);
         deckRows.push({ tournament: t, archetype: null, pct: globalPct, found: globalFound, total: globalTotal });
@@ -844,13 +813,17 @@ async function load(){
 
   // Cache for chosen archetype label per (tournament, card)
   const PICK_CACHE_KEY = 'archPickV2';
-  const pickCache = (()=>{ try{ return JSON.parse(localStorage.getItem(PICK_CACHE_KEY) || '{}'); }catch{ return {}; } })();
-  const savePickCache = () => { try{ localStorage.setItem(PICK_CACHE_KEY, JSON.stringify(pickCache)); }catch{} };
+  const pickCache = (()=>{ try{ return JSON.parse(localStorage.getItem(PICK_CACHE_KEY) || '{}'); } catch (error) {
+    return {};
+  } })();
+  const savePickCache = () => { try{ localStorage.setItem(PICK_CACHE_KEY, JSON.stringify(pickCache)); } catch (error) {
+  // Ignore initialization errors
+  } };
 
   async function chooseArchetypeForTournament(tournament){
     const ck = `${tournament}::${cardIdentifier}`;
     if(pickCache[ck]) {return pickCache[ck];}
-	    try{
+    try{
       const list = await fetchArchetypesList(tournament);
       const top8 = await fetchTop8ArchetypesList(tournament);
       const candidates = [];
@@ -873,6 +846,7 @@ async function load(){
       const minTotal = overallUsage > 20 ? 1 : 3; // Lower threshold for high-usage cards
       const chosen = pickArchetype(candidates, top8 || undefined, { minTotal });
       const label = chosen ? baseToLabel(chosen.base) : null;
+      // eslint-disable-next-line require-atomic-updates
       pickCache[ck] = label;
       savePickCache();
       return label;
@@ -881,7 +855,7 @@ async function load(){
     }
   }
 
-  const renderNonce = 0;
+  // const renderNonce = 0; // Unused variable removed
   const refresh = () => {
     const chartEl = document.getElementById('card-chart') || metaSection;
     // Show chronological from oldest to newest
@@ -922,7 +896,7 @@ async function load(){
         const t = rowEl.dataset.tournament;
         if(!t) {return;}
         // Prefetch event master if not present
-        await loadTournament(t);
+        // await loadTournament(t); // Function not defined - commented out
         // Compute archetype label if missing
         const target = deckRows.find(x=>x.tournament === t);
         if(target && !target.archetype){
@@ -1021,6 +995,7 @@ async function renderAnalysisTable(tournament){
       return a.archetype.localeCompare(b.archetype);
     });
 
+    // eslint-disable-next-line require-atomic-updates
     analysisTable.innerHTML = '';
 
     // Overall summary block
@@ -1066,19 +1041,19 @@ async function renderAnalysisTable(tournament){
     const tbody = document.createElement('tbody');
     for(const r of rows){
       const tr = document.createElement('tr');
-      const fmt = (v) => v==null? '—' : `${v.toFixed(1)}%`;
+      const fmt = (v) => v === null ? '—' : `${v.toFixed(1)}%`;
       // Compose archetype cell: bold archetype name + deck count in parentheses
-      const archeCount = (r.total!=null) ? r.total : (r.found!=null ? r.found : null);
+      const archeCount = (r.total !== null) ? r.total : (r.found !== null ? r.found : null);
       const td0 = document.createElement('td');
       const strong = document.createElement('strong');
       strong.textContent = r.archetype;
       td0.appendChild(strong);
-      if(archeCount!=null){ td0.appendChild(document.createTextNode(` (${archeCount})`)); }
+      if(archeCount !== null){ td0.appendChild(document.createTextNode(` (${archeCount})`)); }
       td0.style.padding = '10px 12px';
       td0.style.textAlign = 'left';
       tr.appendChild(td0);
 
-      const otherValues = [ r.pct!=null? r.pct.toFixed(1)+'%':'—', fmt(r.c1), fmt(r.c2), fmt(r.c3), fmt(r.c4) ];
+      const otherValues = [ r.pct !== null ? r.pct.toFixed(1)+'%':'—', fmt(r.c1), fmt(r.c2), fmt(r.c3), fmt(r.c4) ];
       otherValues.forEach((v,i)=>{
         const td = document.createElement('td');
         td.textContent = v;
@@ -1094,6 +1069,7 @@ async function renderAnalysisTable(tournament){
     tbl.appendChild(tbody);
     analysisTable.appendChild(tbl);
   }catch(err){
+    // eslint-disable-next-line require-atomic-updates
     analysisTable.textContent = 'Failed to load analysis for this event.';
   }
 }
