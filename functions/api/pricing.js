@@ -164,19 +164,21 @@ function parseCsvPrices(csvText, setAbbr) {
       const marketPrice = priceData.marketPrice;
       const extNumber = priceData.extNumber;
       
-      // Debug problematic cards
-      if (name && (name.toLowerCase().includes('ceruledge') || name.toLowerCase().includes('energy retrieval'))) {
-        console.log(`DEBUG ${name}:`);
-        console.log(`  Total fields: ${fields.length}`);
-        console.log(`  Found prices:`, priceData);
-        console.log(`  Using marketPrice: ${marketPrice}`);
-      }
-      
       if (!name || !extNumber || isNaN(marketPrice) || marketPrice <= 0) continue;
       
       // Clean up the card name and number
       const cleanName = name.replace(/['"]/g, '').trim();
       const cleanNumber = extNumber.split('/')[0]; // Take just the number part (before slash)
+      
+      // Debug problematic cards
+      if (name && (name.toLowerCase().includes('ceruledge') || name.toLowerCase().includes('energy retrieval') || name.toLowerCase().includes('luminous energy'))) {
+        console.log(`DEBUG ${name}:`);
+        console.log(`  Total fields: ${fields.length}`);
+        console.log(`  Found prices:`, priceData);
+        console.log(`  Using marketPrice: ${marketPrice}`);
+        console.log(`  Card key: "${cleanName}::${setAbbr}::${cleanNumber.padStart(3, '0')}"`);
+        console.log(`  In database: ${DATABASE_CARDS.has(`${cleanName}::${setAbbr}::${cleanNumber.padStart(3, '0')}`)}`);
+      }
       
       // Create the card key in your format
       const cardKey = `${cleanName}::${setAbbr}::${cleanNumber.padStart(3, '0')}`;
@@ -201,46 +203,15 @@ function parseCsvPrices(csvText, setAbbr) {
  * Basic energies are often in a separate set or have special pricing
  */
 async function addBasicEnergyPrices(priceData, allGroups) {
-  // Look for energy cards in our database
-  const energyCards = Array.from(DATABASE_CARDS).filter(card => 
-    card.includes('Energy::SVE::') || 
-    card.includes(' Energy::') ||
-    card.toLowerCase().includes('energy')
-  );
-  
-  if (energyCards.length === 0) {
-    console.log('No energy cards found in database');
-    return;
-  }
-  
-  console.log(`Found ${energyCards.length} energy cards in database:`, energyCards.slice(0, 3));
-  
-  // Try different approaches to get energy pricing
-  // 1. Look for SVE set (Scarlet & Violet Energies)
-  const sveGroup = allGroups.find(g => g.abbreviation === 'SVE');
-  if (sveGroup) {
-    try {
-      console.log(`Fetching SVE energy set: ${sveGroup.groupId}`);
-      const csvUrl = `https://tcgcsv.com/tcgplayer/3/${sveGroup.groupId}/ProductsAndPrices.csv`;
-      const response = await fetch(csvUrl);
-      if (response.ok) {
-        const csvText = await response.text();
-        const energyPrices = parseCsvPrices(csvText, 'SVE');
-        Object.assign(priceData, energyPrices);
-        console.log(`Added ${Object.keys(energyPrices).length} energy prices from SVE`);
-      }
-    } catch (error) {
-      console.warn('Failed to fetch SVE energy prices:', error.message);
-    }
-  }
-  
-  // 2. ONLY set the 8 basic energy types to $0.01 if missing
+  // ONLY set the 8 basic energy types to $0.01 if missing
+  // All other energy cards should get real prices from their respective sets
   const basicEnergyTypes = [
     'Darkness Energy', 'Fighting Energy', 'Fire Energy', 'Grass Energy',
     'Lightning Energy', 'Metal Energy', 'Psychic Energy', 'Water Energy'
   ];
   
-  const missingBasicEnergies = energyCards.filter(card => {
+  // Find any missing basic energy cards and set to $0.01
+  const missingBasicEnergies = Array.from(DATABASE_CARDS).filter(card => {
     if (priceData[card]) return false; // Already have price
     
     const cardName = card.split('::')[0];
@@ -254,16 +225,22 @@ async function addBasicEnergyPrices(priceData, allGroups) {
     });
   }
   
-  // Report any other missing energy cards (these should have real prices)
-  const otherMissingEnergies = energyCards.filter(card => {
+  // Report any other missing energy-related cards (but don't set prices - they should come from regular CSV parsing)
+  const allEnergyCards = Array.from(DATABASE_CARDS).filter(card => 
+    card.toLowerCase().includes('energy')
+  );
+  
+  const otherMissingEnergies = allEnergyCards.filter(card => {
     if (priceData[card]) return false;
     const cardName = card.split('::')[0];
     return !basicEnergyTypes.includes(cardName);
   });
   
   if (otherMissingEnergies.length > 0) {
-    console.warn(`Missing prices for special energy cards:`, otherMissingEnergies);
+    console.warn(`Missing prices for special energy cards (should come from regular sets):`, otherMissingEnergies);
   }
+  
+  console.log(`Energy processing complete: ${allEnergyCards.length} total energy cards, ${missingBasicEnergies.length} set to $0.01`);
 }
 
 /**
