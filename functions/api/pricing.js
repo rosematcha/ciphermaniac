@@ -134,17 +134,62 @@ async function fetchPricesForSets(setMappings) {
 }
 
 /**
+ * Normalize multi-line CSV records into single lines
+ * Handles quoted fields that span multiple lines (like card descriptions)
+ */
+function normalizeCsvText(csvText) {
+  const lines = csvText.split('\n');
+  const normalizedLines = [];
+  let currentRecord = '';
+  let inQuotedField = false;
+  let quoteCount = 0;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    currentRecord += (currentRecord ? ' ' : '') + line.trim();
+    
+    // Count quotes in this line to track if we're inside a quoted field
+    for (let j = 0; j < line.length; j++) {
+      if (line[j] === '"') {
+        quoteCount++;
+      }
+    }
+    
+    // If we have an even number of quotes, we're not in a quoted field
+    inQuotedField = (quoteCount % 2 !== 0);
+    
+    // If we're not in a quoted field and the line looks like a complete record, finish it
+    if (!inQuotedField && (currentRecord.includes(',') || i === 0)) {
+      normalizedLines.push(currentRecord);
+      currentRecord = '';
+      quoteCount = 0;
+    }
+  }
+  
+  // Add any remaining record
+  if (currentRecord.trim()) {
+    normalizedLines.push(currentRecord);
+  }
+  
+  return normalizedLines;
+}
+
+/**
  * Parse CSV and extract price data
  * ONLY returns prices for cards that exist in our database
  */
 function parseCsvPrices(csvText, setAbbr) {
   const prices = {};
-  const lines = csvText.split('\n');
+  
+  // Normalize multi-line CSV records first (fixes PAL Luminous Energy etc.)
+  const lines = normalizeCsvText(csvText);
   
   if (lines.length < 2) {
     console.warn(`Invalid CSV format for set ${setAbbr}`);
     return prices;
   }
+  
+  console.log(`Processing ${lines.length} normalized lines for ${setAbbr}`);
   
   // Skip header line
   for (let i = 1; i < lines.length; i++) {
@@ -155,7 +200,7 @@ function parseCsvPrices(csvText, setAbbr) {
       // Parse CSV line - be careful with commas in quoted strings
       const fields = parseCSVLine(line);
       
-      if (fields.length < 18) continue; // Need at least 18 fields for card number
+      if (fields.length < 10) continue; // Need reasonable number of fields
       
       const name = fields[1]; // Card name
       
