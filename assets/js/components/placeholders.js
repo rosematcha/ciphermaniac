@@ -39,14 +39,25 @@ export function createCardSkeleton(isLarge = false) {
 }
 
 /**
- * Create a grid of skeleton cards
+ * Create a grid of skeleton cards using proper layout computation
  */
 export function createGridSkeleton(containerWidth = 1200, rowCount = 6) {
     const layout = computeLayout(containerWidth);
     const frag = document.createDocumentFragment();
     
-    // First 2 rows are large cards
+    // First 2 rows are large cards (matches NUM_LARGE_ROWS from render.js)
     const NUM_LARGE_ROWS = 2;
+    
+    // Create a wrapper div to match the grid structure and add proper centering
+    const gridWrapper = document.createElement('div');
+    gridWrapper.className = 'skeleton-grid-wrapper';
+    gridWrapper.style.cssText = `
+        max-width: ${layout.bigRowContentWidth}px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap, 12px);
+    `;
     
     for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
         const row = document.createElement('div');
@@ -65,9 +76,10 @@ export function createGridSkeleton(containerWidth = 1200, rowCount = 6) {
             row.appendChild(skeletonCard);
         }
         
-        frag.appendChild(row);
+        gridWrapper.appendChild(row);
     }
     
+    frag.appendChild(gridWrapper);
     return frag;
 }
 
@@ -207,7 +219,22 @@ export function showGridSkeleton() {
     const grid = document.getElementById('grid');
     if (!grid) return;
     
-    const containerWidth = grid.clientWidth || grid.getBoundingClientRect().width || 1200;
+    // Get the actual available width for the grid content
+    // This should match how the real render calculates container width
+    let containerWidth = grid.clientWidth || grid.getBoundingClientRect().width;
+    
+    // If we can't get the width, use the main element or window width as fallback
+    if (!containerWidth || containerWidth === 0) {
+        const main = document.querySelector('main');
+        if (main) {
+            containerWidth = main.clientWidth;
+        } else {
+            // Account for typical padding on main (12px each side)
+            containerWidth = (window.innerWidth || 1200) - 24;
+        }
+    }
+    
+    // Create skeleton with computed layout
     const gridSkeleton = createGridSkeleton(containerWidth, 6);
     showSkeleton(grid, gridSkeleton);
 }
@@ -220,4 +247,15 @@ export function hideGridSkeleton(newContent = null) {
     if (!grid) return;
     
     hideSkeleton(grid, newContent);
+}
+
+/**
+ * Update skeleton layout when window resizes (if skeleton is currently shown)
+ */
+export function updateSkeletonLayout() {
+    const grid = document.getElementById('grid');
+    if (!grid || !grid.classList.contains('showing-skeleton')) return;
+    
+    // Re-create skeleton with new dimensions
+    showGridSkeleton();
 }

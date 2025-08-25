@@ -18,7 +18,7 @@ import { CleanupManager, debounce, validateElements } from './utils/performance.
 import { CONFIG } from './config.js';
 import { safeAsync } from './utils/errorHandler.js';
 import { prettyTournamentName } from './utils/format.js';
-import { showGridSkeleton, hideGridSkeleton, createSelectSkeleton, showSkeleton, hideSkeleton } from './components/placeholders.js';
+import { showGridSkeleton, hideGridSkeleton, createSelectSkeleton, showSkeleton, hideSkeleton, updateSkeletonLayout } from './components/placeholders.js';
 
 /**
  * Application state and caches
@@ -417,11 +417,14 @@ function setupResizeHandler(state) {
     try {
       window.requestAnimationFrame(() => {
         logger.debug('Window resized (rAF), updating layout');
+        // Update skeleton layout if it's currently showing
+        updateSkeletonLayout();
         updateLayout();
         ticking = false;
       });
     } catch {
       // Fallback without rAF
+      updateSkeletonLayout();
       updateLayout();
       ticking = false;
     }
@@ -470,6 +473,9 @@ async function initializeApp() {
     if (normalizeRouteOnLoad()) {return;}
 
     logger.info('Initializing Ciphermaniac application');
+    
+    // Show skeleton loading immediately
+    showGridSkeleton();
 
     // Initialize development tools
     initMissingThumbsDev();
@@ -503,6 +509,9 @@ async function initializeApp() {
     // Setup resize handler
     setupResizeHandler(appState);
 
+    // Hide skeleton and show real content
+    hideGridSkeleton();
+
     // Initial render
     renderSummary(document.getElementById('summary'), initialData.deckTotal, initialData.items.length);
 
@@ -513,6 +522,9 @@ async function initializeApp() {
 
   } catch (error) {
     logger.exception('Failed to initialize application', error);
+
+    // Hide skeleton and show error
+    hideGridSkeleton();
 
     // Show user-friendly error message
     const grid = document.getElementById('grid');

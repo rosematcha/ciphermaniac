@@ -694,6 +694,25 @@ h2{margin:8px 0 6px}
   animation: skeleton-shimmer 2s infinite;
 }
 
+/* Skeleton grid wrapper for proper centering */
+.skeleton-grid-wrapper {
+  width: 100%;
+}
+
+/* Ensure skeleton rows behave like real rows */
+.skeleton-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--gap, 12px);
+  align-items: stretch;
+}
+
+.skeleton-card {
+  /* Match the real card width calculation */
+  width: calc(var(--card-base, 200px) * var(--scale, 1));
+  flex: 0 0 auto;
+}
+
 /* Responsive skeleton adjustments */
 @media (max-width: 720px) {
   .skeleton-network {
@@ -707,5 +726,11 @@ h2{margin:8px 0 6px}
   .skeleton-hero {
     width: 150px;
     height: 210px;
+  }
+  
+  /* Ensure skeleton wrapper adjusts on mobile */
+  .skeleton-grid-wrapper {
+    max-width: none !important;
+    margin: 0 !important;
   }
 }
