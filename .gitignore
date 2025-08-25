@@ -29,7 +29,11 @@ coverage/
 
 # Github files
 .github/
-CLAUDE.md
-CLAUDE.md
+
+# dev stuff
 CLAUDE.md
 TORVALDS.md
+DEVELOPER.md
+tools/
+.claude/
+.mcp.json
