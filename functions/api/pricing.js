@@ -163,7 +163,17 @@ function parseCsvPrices(csvText, setAbbr) {
       
       // Debug problematic cards
       if (name && name.toLowerCase().includes('ceruledge')) {
-        console.log(`DEBUG Ceruledge: name="${name}", extNumber="${extNumber}", marketPrice="${fields[13]}", highPrice="${fields[12]}", directLow="${fields[14]}"`);
+        console.log(`DEBUG Ceruledge FOUND:`);
+        console.log(`  Raw line: ${line.substring(0, 200)}...`);
+        console.log(`  Total fields: ${fields.length}`);
+        console.log(`  Name (field[1]): "${fields[1]}"`);
+        console.log(`  ExtNumber (field[17]): "${fields[17]}"`);
+        console.log(`  LowPrice (field[10]): "${fields[10]}"`);
+        console.log(`  MidPrice (field[11]): "${fields[11]}"`);
+        console.log(`  HighPrice (field[12]): "${fields[12]}"`);
+        console.log(`  MarketPrice (field[13]): "${fields[13]}"`);
+        console.log(`  DirectLowPrice (field[14]): "${fields[14]}"`);
+        console.log(`  Parsed marketPrice: ${marketPrice}`);
       }
       
       if (!name || !extNumber || isNaN(marketPrice) || marketPrice <= 0) continue;
@@ -228,40 +238,79 @@ async function addBasicEnergyPrices(priceData, allGroups) {
     }
   }
   
-  // 2. If no SVE prices found, set basic energy cards to $0.01 (they're essentially free)
-  const missingEnergies = energyCards.filter(card => !priceData[card]);
-  if (missingEnergies.length > 0) {
-    console.log(`Setting ${missingEnergies.length} missing energy cards to $0.01`);
-    missingEnergies.forEach(card => {
-      priceData[card] = 0.01; // Basic energies are practically free
+  // 2. ONLY set the 8 basic energy types to $0.01 if missing
+  const basicEnergyTypes = [
+    'Darkness Energy', 'Fighting Energy', 'Fire Energy', 'Grass Energy',
+    'Lightning Energy', 'Metal Energy', 'Psychic Energy', 'Water Energy'
+  ];
+  
+  const missingBasicEnergies = energyCards.filter(card => {
+    if (priceData[card]) return false; // Already have price
+    
+    const cardName = card.split('::')[0];
+    return basicEnergyTypes.includes(cardName);
+  });
+  
+  if (missingBasicEnergies.length > 0) {
+    console.log(`Setting ${missingBasicEnergies.length} basic energy cards to $0.01:`, missingBasicEnergies);
+    missingBasicEnergies.forEach(card => {
+      priceData[card] = 0.01; // Only basic energies are practically free
     });
+  }
+  
+  // Report any other missing energy cards (these should have real prices)
+  const otherMissingEnergies = energyCards.filter(card => {
+    if (priceData[card]) return false;
+    const cardName = card.split('::')[0];
+    return !basicEnergyTypes.includes(cardName);
+  });
+  
+  if (otherMissingEnergies.length > 0) {
+    console.warn(`Missing prices for special energy cards:`, otherMissingEnergies);
   }
 }
 
 /**
- * Robust CSV parser that handles quoted strings and HTML content
+ * RFC 4180 compliant CSV parser that properly handles quotes and escapes
  */
 function parseCSVLine(line) {
   const fields = [];
   let current = '';
   let inQuotes = false;
+  let i = 0;
   
-  for (let i = 0; i < line.length; i++) {
+  while (i < line.length) {
     const char = line[i];
     
-    if (char === '"' && (i === 0 || line[i-1] === ',' || inQuotes)) {
-      // Only treat as quote delimiter if at start, after comma, or already in quotes
-      inQuotes = !inQuotes;
+    if (char === '"') {
+      if (!inQuotes) {
+        // Starting quoted field
+        inQuotes = true;
+      } else if (i + 1 < line.length && line[i + 1] === '"') {
+        // Escaped quote (double quote within quotes)
+        current += '"';
+        i++; // Skip the second quote
+      } else {
+        // Ending quoted field
+        inQuotes = false;
+      }
     } else if (char === ',' && !inQuotes) {
-      fields.push(current.trim());
+      // Field separator outside of quotes
+      fields.push(current);
       current = '';
     } else {
+      // Regular character
       current += char;
     }
+    
+    i++;
   }
   
-  fields.push(current.trim()); // Don't forget the last field
-  return fields;
+  // Add the last field
+  fields.push(current);
+  
+  // Trim whitespace from non-quoted fields only
+  return fields.map(field => field.trim());
 }
 
 /**

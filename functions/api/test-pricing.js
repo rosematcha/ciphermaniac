@@ -175,23 +175,34 @@ async function testColumnAlignment(groupId) {
   const ceruledgeLine = lines.find(line => line.includes('Ceruledge ex'));
   
   if (ceruledgeLine) {
-    // Parse the line using our CSV parser
-    const fields = ceruledgeLine.split(',');
+    // Test both simple split and our custom parser
+    const simpleFields = ceruledgeLine.split(',');
+    const customFields = parseCSVLine(ceruledgeLine);
     
     return new Response(JSON.stringify({
       groupId,
       headerColumns: header.split(','),
-      ceruledgeExample: {
-        name: fields[1],
-        extNumber: fields[17],
-        lowPrice: fields[10],
-        midPrice: fields[11], 
-        highPrice: fields[12],
-        marketPrice: fields[13],
-        directLowPrice: fields[14]
+      rawLine: ceruledgeLine,
+      simpleSplit: {
+        totalFields: simpleFields.length,
+        name: simpleFields[1],
+        extNumber: simpleFields[17],
+        marketPrice: simpleFields[13],
+        highPrice: simpleFields[12],
+        directLowPrice: simpleFields[14]
       },
-      explanation: 'Should use index 13 for marketPrice, not 12 (highPrice) or 14 (directLowPrice)',
-      currentCodeUses: 'fields[13] - which should be correct'
+      customParser: {
+        totalFields: customFields.length,
+        name: customFields[1],
+        extNumber: customFields[17],
+        marketPrice: customFields[13],
+        highPrice: customFields[12],
+        directLowPrice: customFields[14]
+      },
+      analysis: {
+        expectedMarketPrice: '1.5',
+        problemIfSeeing: '15.84 means getting directLowPrice instead of marketPrice'
+      }
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
@@ -206,4 +217,26 @@ async function testColumnAlignment(groupId) {
       headers: { 'Content-Type': 'application/json' }
     });
   }
+}
+
+function parseCSVLine(line) {
+  const fields = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"' && (i === 0 || line[i-1] === ',' || inQuotes)) {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      fields.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  fields.push(current.trim());
+  return fields;
 }
