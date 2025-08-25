@@ -1,34 +1,37 @@
 // Dev utility: collect missing thumbnails encountered during rendering and log a report.
 // Opt-in via URL hash: #dev-missing-thumbs
 import { buildThumbCandidates } from '../thumbs.js';
+import { logger } from '../utils/logger.js';
 
 const state = {
   enabled: false,
   missing: new Map(), // name -> { tried: string[], lastFolder: 'sm'|'xs' }
 };
 
-function isEnabled(){
+function isEnabled() {
   return location.hash.includes('dev-missing-thumbs');
 }
 
-export function initMissingThumbsDev(){
+export function initMissingThumbsDev() {
   state.enabled = isEnabled();
   window.addEventListener('hashchange', () => {
     state.enabled = isEnabled();
   });
-  if(state.enabled){
+  if (state.enabled) {
     // Expose helpers in dev mode
     Object.assign(window, {
-        ciphermaniacDumpMissingReport: dumpMissingReport,
-        ciphermaniacProposeOverrides: proposeOverridesSkeleton,
-        ciphermaniacDownloadOverrides: downloadOverridesSkeleton,
+      ciphermaniacDumpMissingReport: dumpMissingReport,
+      ciphermaniacProposeOverrides: proposeOverridesSkeleton,
+      ciphermaniacDownloadOverrides: downloadOverridesSkeleton,
     });
-      console.info('[dev] Missing thumbs dev mode enabled. Run ciphermaniacDumpMissingReport(), ciphermaniacProposeOverrides(), or ciphermaniacDownloadOverrides() in console.');
+    logger.info('[dev] Missing thumbs dev mode enabled. Run ciphermaniacDumpMissingReport(), ciphermaniacProposeOverrides(), or ciphermaniacDownloadOverrides() in console.');
   }
 }
 
-export function trackMissing(name, useSm, overrides){
-  if(!state.enabled) return;
+export function trackMissing(name, useSm, overrides) {
+  if (!state.enabled) {
+    return;
+  }
   const tried = buildThumbCandidates(name, useSm, overrides);
   const rec = state.missing.get(name) || { tried: [], lastFolder: useSm ? 'sm' : 'xs' };
   rec.tried = Array.from(new Set(rec.tried.concat(tried)));
@@ -36,33 +39,34 @@ export function trackMissing(name, useSm, overrides){
   state.missing.set(name, rec);
 }
 
-export function dumpMissingReport(){
-  if(!state.enabled) return;
-  const arr = Array.from(state.missing.entries()).map(([name, info]) => ({ name, ...info }));
-  if(arr.length === 0){
-    console.info('[dev] No missing thumbnails recorded.');
+export function dumpMissingReport() {
+  if (!state.enabled) {
     return;
   }
-  console.group('[dev] Missing thumbnail candidates');
-  for(const item of arr){
-    console.log(`- ${item.name} (${item.lastFolder})`);
-    for(const path of item.tried){
-      console.log('   ', path);
+  const arr = Array.from(state.missing.entries()).map(([name, info]) => ({ name, ...info }));
+  if (arr.length === 0) {
+    logger.info('[dev] No missing thumbnails recorded.');
+    return;
+  }
+  logger.info('[dev] Missing thumbnail candidates:');
+  for (const item of arr) {
+    logger.debug(`- ${item.name} (${item.lastFolder})`);
+    for (const path of item.tried) {
+      logger.debug(`   ${path}`);
     }
   }
-  console.groupEnd();
 
   // Propose overrides JSON skeleton
   const overrides = {};
-  for(const item of arr){
+  for (const item of arr) {
     // Suggest the first candidate for each missing card
-    if(item.tried && item.tried.length){
-  const rel = item.tried[0].replace(/^thumbnails\/(sm|xs)\//, '');
+    if (item.tried && item.tried.length) {
+      const rel = item.tried[0].replace(/^thumbnails\/(sm|xs)\//, '');
       overrides[item.name] = rel;
     }
   }
   const json = JSON.stringify(overrides, null, 2);
-  console.info('[dev] Proposed overrides.json:', json);
+  logger.info('[dev] Proposed overrides.json:', json);
 
   // Download as file
   const blob = new Blob([json], { type: 'application/json' });
@@ -84,11 +88,11 @@ function pickBasename(path){
 
 // Build a simple overrides skeleton mapping missing card names to a best-guess filename
 export function proposeOverridesSkeleton(){
-  if(!state.enabled) return {};
+  if(!state.enabled) {return {};}
   const out = {};
   for(const [name, info] of state.missing.entries()){
     // Choose the first candidate's basename as a starting point
-  const tried = info.tried || buildThumbCandidates(name, info.lastFolder === 'sm', {});
+    const tried = info.tried || buildThumbCandidates(name, info.lastFolder === 'sm', {});
     if(tried.length > 0){
       out[name] = pickBasename(tried[0]);
     }

@@ -29,3 +29,13 @@ coverage/
 
 # Github files
 .github/
+
+# dev stuff
+CLAUDE.md
+TORVALDS.md
+DEVELOPER.md
+tools/
+.claude/
+.mcp.json
+reports/get-prices.json
+/reports/get prices debugging

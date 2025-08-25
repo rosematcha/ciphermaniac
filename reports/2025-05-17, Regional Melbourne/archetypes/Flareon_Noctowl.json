@@ -234,7 +234,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SCR",
+      "number": "133",
+      "uid": "Crispin::SCR::133"
     },
     {
       "rank": 15,
@@ -248,7 +251,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "172",
+      "uid": "Boss's Orders::PAL::172"
     },
     {
       "rank": 16,
@@ -262,7 +268,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "185",
+      "uid": "Iono::PAL::185"
     },
     {
       "rank": 17,
@@ -276,7 +285,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SCR",
+      "number": "132",
+      "uid": "Briar::SCR::132"
     },
     {
       "rank": 18,
@@ -290,7 +302,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "181",
+      "uid": "Nest Ball::SVI::181"
     },
     {
       "rank": 19,
@@ -304,7 +319,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "196",
+      "uid": "Ultra Ball::SVI::196"
     },
     {
       "rank": 20,
@@ -318,7 +336,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "144",
+      "uid": "Buddy-Buddy Poffin::TEF::144"
     },
     {
       "rank": 21,
@@ -337,7 +358,10 @@
           "players": 1,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "061",
+      "uid": "Night Stretcher::SFA::061"
     },
     {
       "rank": 22,
@@ -351,7 +375,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "188",
+      "uid": "Super Rod::PAL::188"
     },
     {
       "rank": 23,
@@ -365,7 +392,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SSP",
+      "number": "189",
+      "uid": "Tera Orb::SSP::189"
     },
     {
       "rank": 24,
@@ -379,7 +409,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "160",
+      "uid": "Counter Catcher::PAR::160"
     },
     {
       "rank": 25,
@@ -398,7 +431,10 @@
           "players": 1,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "194",
+      "uid": "Switch::SVI::194"
     },
     {
       "rank": 26,
@@ -412,7 +448,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SCR",
+      "number": "142",
+      "uid": "Sparkling Crystal::SCR::142"
     },
     {
       "rank": 27,
@@ -426,7 +465,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SCR",
+      "number": "131",
+      "uid": "Area Zero Underdepths::SCR::131"
     },
     {
       "rank": 28,
@@ -445,7 +487,10 @@
           "players": 1,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "012",
+      "uid": "Lightning Energy::SVE::012"
     },
     {
       "rank": 29,
@@ -459,7 +504,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "010",
+      "uid": "Fire Energy::SVE::010"
     },
     {
       "rank": 30,
@@ -478,7 +526,10 @@
           "players": 1,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "011",
+      "uid": "Water Energy::SVE::011"
     },
     {
       "rank": 31,
@@ -492,7 +543,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "013",
+      "uid": "Psychic Energy::SVE::013"
     },
     {
       "rank": 32,
@@ -523,7 +577,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "146",
+      "uid": "Brock's Scouting::JTG::146"
     },
     {
       "rank": 34,
@@ -537,7 +594,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "171",
+      "uid": "Professor Turo's Scenario::PAR::171"
     },
     {
       "rank": 35,
@@ -551,7 +611,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "145",
+      "uid": "Black Belt's Training::JTG::145"
     },
     {
       "rank": 36,
@@ -565,7 +628,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SSP",
+      "number": "170",
+      "uid": "Cyrano::SSP::170"
     },
     {
       "rank": 37,
@@ -579,7 +645,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SCR",
+      "number": "135",
+      "uid": "Glass Trumpet::SCR::135"
     }
   ]
 }

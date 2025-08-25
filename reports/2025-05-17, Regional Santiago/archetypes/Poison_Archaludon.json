@@ -181,7 +181,10 @@
           "players": 3,
           "percent": 75.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "145",
+      "uid": "Carmine::TWM::145"
     },
     {
       "rank": 11,
@@ -200,7 +203,10 @@
           "players": 1,
           "percent": 25.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "172",
+      "uid": "Boss's Orders::PAL::172"
     },
     {
       "rank": 12,
@@ -219,7 +225,10 @@
           "players": 3,
           "percent": 75.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "155",
+      "uid": "Professor's Research::JTG::155"
     },
     {
       "rank": 13,
@@ -233,7 +242,10 @@
           "players": 4,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "185",
+      "uid": "Iono::PAL::185"
     },
     {
       "rank": 14,
@@ -247,7 +259,10 @@
           "players": 4,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "181",
+      "uid": "Nest Ball::SVI::181"
     },
     {
       "rank": 15,
@@ -261,7 +276,10 @@
           "players": 4,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "061",
+      "uid": "Night Stretcher::SFA::061"
     },
     {
       "rank": 16,
@@ -280,7 +298,10 @@
           "players": 3,
           "percent": 75.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "196",
+      "uid": "Ultra Ball::SVI::196"
     },
     {
       "rank": 17,
@@ -299,7 +320,10 @@
           "players": 1,
           "percent": 25.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "186",
+      "uid": "Pokégear 3.0::SVI::186"
     },
     {
       "rank": 18,
@@ -313,7 +337,10 @@
           "players": 4,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "163",
+      "uid": "Earthen Vessel::PAR::163"
     },
     {
       "rank": 19,
@@ -327,7 +354,10 @@
           "players": 4,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "163",
+      "uid": "Secret Box::TWM::163"
     },
     {
       "rank": 20,
@@ -346,7 +376,10 @@
           "players": 1,
           "percent": 25.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "140",
+      "uid": "Ancient Booster Energy Capsule::TEF::140"
     },
     {
       "rank": 21,
@@ -365,7 +398,10 @@
           "players": 2,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "PRE",
+      "number": "095",
+      "uid": "Binding Mochi::PRE::095"
     },
     {
       "rank": 22,
@@ -379,7 +415,10 @@
           "players": 4,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "156",
+      "uid": "Perilous Jungle::TEF::156"
     },
     {
       "rank": 23,
@@ -398,7 +437,10 @@
           "players": 2,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "016",
+      "uid": "Metal Energy::SVE::016"
     },
     {
       "rank": 24,
@@ -412,7 +454,10 @@
           "players": 3,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "154",
+      "uid": "Kieran::TWM::154"
     },
     {
       "rank": 25,
@@ -426,7 +471,10 @@
           "players": 3,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "182",
+      "uid": "Pal Pad::SVI::182"
     },
     {
       "rank": 26,
@@ -457,7 +505,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "171",
+      "uid": "Professor Turo's Scenario::PAR::171"
     },
     {
       "rank": 28,

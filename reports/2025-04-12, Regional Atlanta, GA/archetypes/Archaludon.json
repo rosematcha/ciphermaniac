@@ -154,7 +154,10 @@
           "players": 1,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "155",
+      "uid": "Professor's Research::JTG::155"
     },
     {
       "rank": 10,
@@ -168,7 +171,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "172",
+      "uid": "Boss's Orders::PAL::172"
     },
     {
       "rank": 11,
@@ -182,7 +188,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "JTG",
+      "number": "145",
+      "uid": "Black Belt's Training::JTG::145"
     },
     {
       "rank": 12,
@@ -196,7 +205,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAL",
+      "number": "185",
+      "uid": "Iono::PAL::185"
     },
     {
       "rank": 13,
@@ -210,7 +222,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "171",
+      "uid": "Professor Turo's Scenario::PAR::171"
     },
     {
       "rank": 14,
@@ -224,7 +239,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "181",
+      "uid": "Nest Ball::SVI::181"
     },
     {
       "rank": 15,
@@ -238,7 +256,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "196",
+      "uid": "Ultra Ball::SVI::196"
     },
     {
       "rank": 16,
@@ -252,7 +273,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SFA",
+      "number": "061",
+      "uid": "Night Stretcher::SFA::061"
     },
     {
       "rank": 17,
@@ -266,7 +290,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "PAR",
+      "number": "163",
+      "uid": "Earthen Vessel::PAR::163"
     },
     {
       "rank": 18,
@@ -285,7 +312,10 @@
           "players": 1,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "186",
+      "uid": "Pokégear 3.0::SVI::186"
     },
     {
       "rank": 19,
@@ -299,7 +329,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "SVI",
+      "number": "182",
+      "uid": "Pal Pad::SVI::182"
     },
     {
       "rank": 20,
@@ -313,7 +346,10 @@
           "players": 2,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "OBF",
+      "number": "197",
+      "uid": "Vengeful Punch::OBF::197"
     },
     {
       "rank": 21,
@@ -332,7 +368,10 @@
           "players": 1,
           "percent": 50.0
         }
-      ]
+      ],
+      "set": "SVE",
+      "number": "016",
+      "uid": "Metal Energy::SVE::016"
     },
     {
       "rank": 22,
@@ -380,7 +419,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "162",
+      "uid": "Scoop Up Cyclone::TWM::162"
     },
     {
       "rank": 25,
@@ -394,7 +436,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "153",
+      "uid": "Jamming Tower::TWM::153"
     },
     {
       "rank": 26,
@@ -408,7 +453,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TWM",
+      "number": "145",
+      "uid": "Carmine::TWM::145"
     },
     {
       "rank": 27,
@@ -422,7 +470,10 @@
           "players": 1,
           "percent": 100.0
         }
-      ]
+      ],
+      "set": "TEF",
+      "number": "154",
+      "uid": "Maximum Belt::TEF::154"
     }
   ]
 }

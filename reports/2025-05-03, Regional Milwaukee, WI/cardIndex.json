@@ -264,7 +264,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "PAR"
+      ]
     },
     "Crispin": {
       "found": 117,
@@ -292,7 +294,9 @@
           "percent": 45.3
         }
       ],
-      "sets": []
+      "sets": [
+        "SCR"
+      ]
     },
     "Boss's Orders": {
       "found": 241,
@@ -320,7 +324,9 @@
           "percent": 21.16
         }
       ],
-      "sets": []
+      "sets": [
+        "PAL"
+      ]
     },
     "Judge": {
       "found": 5,
@@ -333,7 +339,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Nest Ball": {
       "found": 258,
@@ -361,7 +369,9 @@
           "percent": 56.2
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Ultra Ball": {
       "found": 275,
@@ -389,7 +399,9 @@
           "percent": 46.55
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Earthen Vessel": {
       "found": 210,
@@ -417,7 +429,9 @@
           "percent": 1.9
         }
       ],
-      "sets": []
+      "sets": [
+        "PAR"
+      ]
     },
     "Night Stretcher": {
       "found": 234,
@@ -445,7 +459,9 @@
           "percent": 13.25
         }
       ],
-      "sets": []
+      "sets": [
+        "SFA"
+      ]
     },
     "Energy Retrieval": {
       "found": 22,
@@ -468,7 +484,9 @@
           "percent": 4.55
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Prime Catcher": {
       "found": 78,
@@ -481,7 +499,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "TEF"
+      ]
     },
     "Pal Pad": {
       "found": 34,
@@ -494,7 +514,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Bravery Charm": {
       "found": 127,
@@ -517,7 +539,9 @@
           "percent": 27.56
         }
       ],
-      "sets": []
+      "sets": [
+        "PAL"
+      ]
     },
     "Area Zero Underdepths": {
       "found": 53,
@@ -540,7 +564,9 @@
           "percent": 11.32
         }
       ],
-      "sets": []
+      "sets": [
+        "SCR"
+      ]
     },
     "Jamming Tower": {
       "found": 83,
@@ -568,7 +594,9 @@
           "percent": 1.2
         }
       ],
-      "sets": []
+      "sets": [
+        "TWM"
+      ]
     },
     "Grass Energy": {
       "found": 116,
@@ -601,7 +629,9 @@
           "percent": 15.52
         }
       ],
-      "sets": []
+      "sets": [
+        "SVE"
+      ]
     },
     "Fighting Energy": {
       "found": 70,
@@ -634,7 +664,9 @@
           "percent": 1.43
         }
       ],
-      "sets": []
+      "sets": [
+        "SVE"
+      ]
     },
     "Lightning Energy": {
       "found": 129,
@@ -662,7 +694,9 @@
           "percent": 35.66
         }
       ],
-      "sets": []
+      "sets": [
+        "SVE"
+      ]
     },
     "Dreepy": {
       "found": 81,
@@ -865,7 +899,9 @@
           "percent": 43.58
         }
       ],
-      "sets": []
+      "sets": [
+        "PAL"
+      ]
     },
     "Arven": {
       "found": 156,
@@ -893,7 +929,9 @@
           "percent": 58.33
         }
       ],
-      "sets": []
+      "sets": [
+        "OBF"
+      ]
     },
     "Professor's Research": {
       "found": 130,
@@ -921,7 +959,9 @@
           "percent": 35.38
         }
       ],
-      "sets": []
+      "sets": [
+        "JTG"
+      ]
     },
     "Brock's Scouting": {
       "found": 58,
@@ -949,7 +989,9 @@
           "percent": 5.17
         }
       ],
-      "sets": []
+      "sets": [
+        "JTG"
+      ]
     },
     "Buddy-Buddy Poffin": {
       "found": 156,
@@ -977,7 +1019,9 @@
           "percent": 65.38
         }
       ],
-      "sets": []
+      "sets": [
+        "TEF"
+      ]
     },
     "Counter Catcher": {
       "found": 196,
@@ -1005,7 +1049,9 @@
           "percent": 1.02
         }
       ],
-      "sets": []
+      "sets": [
+        "PAR"
+      ]
     },
     "Unfair Stamp": {
       "found": 51,
@@ -1018,7 +1064,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "TWM"
+      ]
     },
     "Energy Search": {
       "found": 32,
@@ -1031,7 +1079,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Switch": {
       "found": 110,
@@ -1054,7 +1104,9 @@
           "percent": 0.91
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Rescue Board": {
       "found": 124,
@@ -1072,7 +1124,9 @@
           "percent": 4.03
         }
       ],
-      "sets": []
+      "sets": [
+        "TEF"
+      ]
     },
     "Luxurious Cape": {
       "found": 32,
@@ -1090,7 +1144,9 @@
           "percent": 3.12
         }
       ],
-      "sets": []
+      "sets": [
+        "PAR"
+      ]
     },
     "Exp. Share": {
       "found": 49,
@@ -1108,7 +1164,9 @@
           "percent": 2.04
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Artazon": {
       "found": 109,
@@ -1131,7 +1189,9 @@
           "percent": 3.67
         }
       ],
-      "sets": []
+      "sets": [
+        "PAL"
+      ]
     },
     "Luminous Energy": {
       "found": 58,
@@ -1159,7 +1219,9 @@
           "percent": 3.45
         }
       ],
-      "sets": []
+      "sets": [
+        "PAL"
+      ]
     },
     "Fire Energy": {
       "found": 117,
@@ -1202,7 +1264,9 @@
           "percent": 0.85
         }
       ],
-      "sets": []
+      "sets": [
+        "SVE"
+      ]
     },
     "Psychic Energy": {
       "found": 214,
@@ -1245,7 +1309,9 @@
           "percent": 0.47
         }
       ],
-      "sets": []
+      "sets": [
+        "SVE"
+      ]
     },
     "Joltik": {
       "found": 46,
@@ -1388,7 +1454,9 @@
           "percent": 19.19
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Future Booster Energy Capsule": {
       "found": 40,
@@ -1406,7 +1474,9 @@
           "percent": 2.5
         }
       ],
-      "sets": []
+      "sets": [
+        "TEF"
+      ]
     },
     "Metal Energy": {
       "found": 100,
@@ -1439,7 +1509,9 @@
           "percent": 3.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SVE"
+      ]
     },
     "Duskull": {
       "found": 24,
@@ -1542,7 +1614,9 @@
           "percent": 1.61
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Rare Candy": {
       "found": 65,
@@ -1570,7 +1644,9 @@
           "percent": 3.08
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Pokémon League Headquarters": {
       "found": 7,
@@ -1583,7 +1659,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "OBF"
+      ]
     },
     "Eevee ex": {
       "found": 13,
@@ -1692,7 +1770,9 @@
           "percent": 8.33
         }
       ],
-      "sets": []
+      "sets": [
+        "TWM"
+      ]
     },
     "Briar": {
       "found": 18,
@@ -1705,7 +1785,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SCR"
+      ]
     },
     "Professor Turo's Scenario": {
       "found": 126,
@@ -1728,7 +1810,9 @@
           "percent": 0.79
         }
       ],
-      "sets": []
+      "sets": [
+        "PAR"
+      ]
     },
     "Super Rod": {
       "found": 88,
@@ -1746,7 +1830,9 @@
           "percent": 4.55
         }
       ],
-      "sets": []
+      "sets": [
+        "PAL"
+      ]
     },
     "Tera Orb": {
       "found": 14,
@@ -1764,7 +1850,9 @@
           "percent": 7.14
         }
       ],
-      "sets": []
+      "sets": [
+        "SSP"
+      ]
     },
     "Sparkling Crystal": {
       "found": 27,
@@ -1777,7 +1865,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SCR"
+      ]
     },
     "Water Energy": {
       "found": 69,
@@ -1805,7 +1895,9 @@
           "percent": 2.9
         }
       ],
-      "sets": []
+      "sets": [
+        "SVE"
+      ]
     },
     "Defiance Band": {
       "found": 30,
@@ -1823,7 +1915,9 @@
           "percent": 16.67
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Ralts": {
       "found": 38,
@@ -1941,7 +2035,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "TWM"
+      ]
     },
     "Darkness Energy": {
       "found": 122,
@@ -1989,7 +2085,9 @@
           "percent": 4.1
         }
       ],
-      "sets": []
+      "sets": [
+        "SVE"
+      ]
     },
     "N's Zorua": {
       "found": 21,
@@ -2132,7 +2230,9 @@
           "percent": 15.38
         }
       ],
-      "sets": []
+      "sets": [
+        "SSP"
+      ]
     },
     "Ciphermaniac's Codebreaking": {
       "found": 38,
@@ -2160,7 +2260,9 @@
           "percent": 13.16
         }
       ],
-      "sets": []
+      "sets": [
+        "TEF"
+      ]
     },
     "Black Belt's Training": {
       "found": 9,
@@ -2173,7 +2275,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "JTG"
+      ]
     },
     "N's PP Up": {
       "found": 14,
@@ -2191,7 +2295,9 @@
           "percent": 57.14
         }
       ],
-      "sets": []
+      "sets": [
+        "JTG"
+      ]
     },
     "Energy Switch": {
       "found": 43,
@@ -2214,7 +2320,9 @@
           "percent": 25.58
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Powerglass": {
       "found": 24,
@@ -2232,7 +2340,9 @@
           "percent": 4.17
         }
       ],
-      "sets": []
+      "sets": [
+        "SFA"
+      ]
     },
     "N's Castle": {
       "found": 16,
@@ -2255,7 +2365,9 @@
           "percent": 25.0
         }
       ],
-      "sets": []
+      "sets": [
+        "JTG"
+      ]
     },
     "Reversal Energy": {
       "found": 15,
@@ -2278,7 +2390,9 @@
           "percent": 6.67
         }
       ],
-      "sets": []
+      "sets": [
+        "PAL"
+      ]
     },
     "Gimmighoul": {
       "found": 35,
@@ -2322,7 +2436,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "PAL"
+      ]
     },
     "Energy Search Pro": {
       "found": 35,
@@ -2335,7 +2451,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SSP"
+      ]
     },
     "Technical Machine: Evolution": {
       "found": 53,
@@ -2353,7 +2471,9 @@
           "percent": 67.92
         }
       ],
-      "sets": []
+      "sets": [
+        "PAR"
+      ]
     },
     "Dunsparce": {
       "found": 7,
@@ -2487,7 +2607,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "TEF"
+      ]
     },
     "Great Ball": {
       "found": 3,
@@ -2505,7 +2627,9 @@
           "percent": 33.33
         }
       ],
-      "sets": []
+      "sets": [
+        "PAL"
+      ]
     },
     "Ancient Booster Energy Capsule": {
       "found": 19,
@@ -2528,7 +2652,9 @@
           "percent": 78.95
         }
       ],
-      "sets": []
+      "sets": [
+        "TEF"
+      ]
     },
     "Neutralization Zone": {
       "found": 4,
@@ -2541,7 +2667,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SFA"
+      ]
     },
     "Luxray": {
       "found": 2,
@@ -2654,7 +2782,9 @@
           "percent": 28.57
         }
       ],
-      "sets": []
+      "sets": [
+        "TWM"
+      ]
     },
     "Brilliant Blender": {
       "found": 2,
@@ -2667,7 +2797,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SSP"
+      ]
     },
     "Jet Energy": {
       "found": 7,
@@ -2690,7 +2822,9 @@
           "percent": 42.86
         }
       ],
-      "sets": []
+      "sets": [
+        "PAL"
+      ]
     },
     "Mimikyu": {
       "found": 3,
@@ -2877,7 +3011,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SSP"
+      ]
     },
     "Wellspring Mask Ogerpon ex": {
       "found": 21,
@@ -2910,7 +3046,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Duraludon": {
       "found": 5,
@@ -2983,7 +3121,9 @@
           "percent": 50.0
         }
       ],
-      "sets": []
+      "sets": [
+        "JTG"
+      ]
     },
     "Vengeful Punch": {
       "found": 16,
@@ -2996,7 +3136,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "OBF"
+      ]
     },
     "Galvantula ex": {
       "found": 6,
@@ -3094,7 +3236,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Perilous Jungle": {
       "found": 14,
@@ -3112,7 +3256,9 @@
           "percent": 57.14
         }
       ],
-      "sets": []
+      "sets": [
+        "TEF"
+      ]
     },
     "Glass Trumpet": {
       "found": 12,
@@ -3130,7 +3276,9 @@
           "percent": 16.67
         }
       ],
-      "sets": []
+      "sets": [
+        "SCR"
+      ]
     },
     "Gholdengo": {
       "found": 13,
@@ -3158,7 +3306,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Gravity Mountain": {
       "found": 14,
@@ -3176,7 +3326,9 @@
           "percent": 7.14
         }
       ],
-      "sets": []
+      "sets": [
+        "SSP"
+      ]
     },
     "Lacey": {
       "found": 2,
@@ -3189,7 +3341,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SCR"
+      ]
     },
     "Levincia": {
       "found": 6,
@@ -3207,7 +3361,9 @@
           "percent": 16.67
         }
       ],
-      "sets": []
+      "sets": [
+        "JTG"
+      ]
     },
     "Scyther": {
       "found": 5,
@@ -3250,7 +3406,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "TEF"
+      ]
     },
     "Heavy Baton": {
       "found": 1,
@@ -3263,7 +3421,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "TEF"
+      ]
     },
     "Ruffian": {
       "found": 1,
@@ -3276,7 +3436,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "JTG"
+      ]
     },
     "Dusk Ball": {
       "found": 2,
@@ -3289,7 +3451,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SSP"
+      ]
     },
     "Snorunt": {
       "found": 4,
@@ -3358,7 +3522,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SCR"
+      ]
     },
     "Technical Machine: Devolution": {
       "found": 6,
@@ -3381,7 +3547,9 @@
           "percent": 16.67
         }
       ],
-      "sets": []
+      "sets": [
+        "PAR"
+      ]
     },
     "Colress's Tenacity": {
       "found": 4,
@@ -3399,7 +3567,9 @@
           "percent": 75.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SFA"
+      ]
     },
     "Grand Tree": {
       "found": 2,
@@ -3412,7 +3582,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SCR"
+      ]
     },
     "Girafarig": {
       "found": 7,
@@ -3456,7 +3628,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "TEF"
+      ]
     },
     "Lana's Aid": {
       "found": 3,
@@ -3479,7 +3653,9 @@
           "percent": 33.33
         }
       ],
-      "sets": []
+      "sets": [
+        "TWM"
+      ]
     },
     "Torchic": {
       "found": 2,
@@ -3597,7 +3773,9 @@
           "percent": 50.0
         }
       ],
-      "sets": []
+      "sets": [
+        "TEF"
+      ]
     },
     "Counter Gain": {
       "found": 3,
@@ -3615,7 +3793,9 @@
           "percent": 33.33
         }
       ],
-      "sets": []
+      "sets": [
+        "SSP"
+      ]
     },
     "Town Store": {
       "found": 3,
@@ -3628,7 +3808,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "OBF"
+      ]
     },
     "Nymble": {
       "found": 1,
@@ -3741,7 +3923,9 @@
           "percent": 75.0
         }
       ],
-      "sets": []
+      "sets": [
+        "PRE"
+      ]
     },
     "Iron Valiant ex": {
       "found": 1,
@@ -3799,7 +3983,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SSP"
+      ]
     },
     "Techno Radar": {
       "found": 1,
@@ -3812,7 +3998,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "PAR"
+      ]
     },
     "Hop's Bag": {
       "found": 2,
@@ -3825,7 +4013,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "JTG"
+      ]
     },
     "Postwick": {
       "found": 2,
@@ -3843,7 +4033,9 @@
           "percent": 50.0
         }
       ],
-      "sets": []
+      "sets": [
+        "JTG"
+      ]
     },
     "Mist Energy": {
       "found": 1,
@@ -3856,7 +4048,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "TEF"
+      ]
     },
     "Toedscool": {
       "found": 3,
@@ -4029,7 +4223,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "JTG"
+      ]
     },
     "Okidogi": {
       "found": 1,
@@ -4057,7 +4253,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "TWM"
+      ]
     },
     "Legacy Energy": {
       "found": 1,
@@ -4070,7 +4268,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "TWM"
+      ]
     },
     "Picnic Basket": {
       "found": 1,
@@ -4083,7 +4283,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "SVI"
+      ]
     },
     "Sandy Shocks ex": {
       "found": 1,
@@ -4111,7 +4313,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "TWM"
+      ]
     },
     "Chansey": {
       "found": 1,
@@ -4154,7 +4358,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "MEW"
+      ]
     },
     "Technical Machine: Turbo Energize": {
       "found": 1,
@@ -4167,7 +4373,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "PAR"
+      ]
     },
     "Calamitous Snowy Mountain": {
       "found": 1,
@@ -4180,7 +4388,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "PAL"
+      ]
     },
     "Letter of Encouragement": {
       "found": 1,
@@ -4193,7 +4403,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "OBF"
+      ]
     },
     "Slakoth": {
       "found": 1,
@@ -4251,7 +4463,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "TWM"
+      ]
     },
     "Umbreon ex": {
       "found": 1,
@@ -4339,7 +4553,9 @@
           "percent": 100.0
         }
       ],
-      "sets": []
+      "sets": [
+        "MEW"
+      ]
     }
   }
 }

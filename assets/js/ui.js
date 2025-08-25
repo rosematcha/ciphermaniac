@@ -2,7 +2,7 @@
 export function initFiltersToggle(){
   const btn = document.getElementById('filtersToggle');
   const panel = document.getElementById('filters');
-  if(!btn || !panel) return;
+  if(!btn || !panel) {return;}
   // initialize hidden state on small screens; on desktop CSS shows filters regardless
   const isSmall = window.matchMedia('(max-width: 899px)').matches;
   if(!panel.hasAttribute('aria-hidden') && isSmall){
@@ -17,7 +17,7 @@ export function initFiltersToggle(){
     panel.setAttribute('aria-hidden', 'false');
     // Move focus to first control inside panel for accessibility
     const focusable = panel.querySelector('select, input, button');
-    if(focusable) focusable.focus();
+    if(focusable) {focusable.focus();}
   };
   const closePanel = () => {
     btn.setAttribute('aria-expanded', 'false');

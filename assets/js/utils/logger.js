@@ -7,20 +7,25 @@
 /** @typedef {'debug' | 'info' | 'warn' | 'error'} LogLevel */
 
 class Logger {
-  /** @type {LogLevel} */
-  _level = 'info';
+  /**
+   * Constructor initializes logger with default settings
+   */
+  constructor() {
+    /** @type {LogLevel} */
+    this._level = 'info';
 
-  /** @type {Record<LogLevel, number>} */
-  _levels = {
-    debug: 0,
-    info: 1,
-    warn: 2,
-    error: 3
-  };
+    /** @type {Record<LogLevel, number>} */
+    this._levels = {
+      debug: 0,
+      info: 1,
+      warn: 2,
+      error: 3
+    };
+  }
 
   /**
    * Set the minimum log level
-   * @param {LogLevel} level 
+   * @param {LogLevel} level
    */
   setLevel(level) {
     if (level in this._levels) {
@@ -30,7 +35,7 @@ class Logger {
 
   /**
    * Check if a level should be logged
-   * @param {LogLevel} level 
+   * @param {LogLevel} level
    * @returns {boolean}
    */
   _shouldLog(level) {
@@ -39,9 +44,9 @@ class Logger {
 
   /**
    * Format log message with timestamp and context
-   * @param {LogLevel} level 
-   * @param {string} message 
-   * @param {any[]} args 
+   * @param {LogLevel} level
+   * @param {string} message
+   * @param {any[]} args
    * @returns {[string, ...any[]]}
    */
   _format(level, message, args) {
@@ -56,8 +61,8 @@ class Logger {
 
   /**
    * Log debug message
-   * @param {string} message 
-   * @param {...any} args 
+   * @param {string} message
+   * @param {...any} args
    */
   debug(message, ...args) {
     if (this._shouldLog('debug')) {
@@ -68,8 +73,8 @@ class Logger {
 
   /**
    * Log info message
-   * @param {string} message 
-   * @param {...any} args 
+   * @param {string} message
+   * @param {...any} args
    */
   info(message, ...args) {
     console.log.apply(console, this._format('info', message, args));
@@ -77,8 +82,8 @@ class Logger {
 
   /**
    * Log warning message
-   * @param {string} message 
-   * @param {...any} args 
+   * @param {string} message
+   * @param {...any} args
    */
   warn(message, ...args) {
     console.warn.apply(console, this._format('warn', message, args));
@@ -86,8 +91,8 @@ class Logger {
 
   /**
    * Log error message
-   * @param {string} message 
-   * @param {...any} args 
+   * @param {string} message
+   * @param {...any} args
    */
   error(message, ...args) {
     console.error.apply(console, this._format('error', message, args));
@@ -95,9 +100,9 @@ class Logger {
 
   /**
    * Log error with stack trace
-   * @param {string} message 
-   * @param {Error} error 
-   * @param {...any} args 
+   * @param {string} message
+   * @param {Error} error
+   * @param {...any} args
    */
   exception(message, error, ...args) {
     this.error(message, error && error.message ? error.message : String(error), error && error.stack ? error.stack : '', ...args);
