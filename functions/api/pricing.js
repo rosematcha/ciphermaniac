@@ -171,11 +171,13 @@ function parseCsvPrices(csvText, setAbbr) {
       const cleanNumber = extNumber.split('/')[0]; // Take just the number part (before slash)
       
       // Debug problematic cards
-      if (name && (name.toLowerCase().includes('ceruledge') || name.toLowerCase().includes('energy retrieval') || name.toLowerCase().includes('luminous energy'))) {
-        console.log(`DEBUG ${name}:`);
+      if (name && (name.toLowerCase().includes('ceruledge') || name.toLowerCase().includes('energy retrieval') || name.toLowerCase().includes('luminous energy') || name.toLowerCase().includes('dunsparce'))) {
+        console.log(`DEBUG ${name} (${setAbbr}):`);
         console.log(`  Total fields: ${fields.length}`);
+        console.log(`  Raw fields 10-20:`, fields.slice(10, 21));
         console.log(`  Found prices:`, priceData);
         console.log(`  Using marketPrice: ${marketPrice}`);
+        console.log(`  ExtNumber: "${extNumber}"`);
         console.log(`  Card key: "${cleanName}::${setAbbr}::${cleanNumber.padStart(3, '0')}"`);
         console.log(`  In database: ${DATABASE_CARDS.has(`${cleanName}::${setAbbr}::${cleanNumber.padStart(3, '0')}`)}`);
       }
