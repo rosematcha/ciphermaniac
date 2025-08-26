@@ -42,7 +42,7 @@ function hideGridTooltip(){ if(__gridGraphTooltip) {__gridGraphTooltip.style.dis
 function escapeHtml(s){ if(!s) {return '';} return String(s).replace(/[&<>"]/g, (ch)=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch])); }
 
 export function renderSummary(container, deckTotal, count){
-  if (!container) return; // Handle case where summary element doesn't exist
+  if (!container) {return;} // Handle case where summary element doesn't exist
   const parts = [];
   if(deckTotal) {parts.push(`${deckTotal} decklists`);}
   parts.push(`${count} cards`);

@@ -751,6 +751,77 @@ h2{margin:8px 0 6px}
   animation: skeleton-loading 2s ease-in-out infinite;
 }
 
+/* Skeleton axis labels */
+.skeleton-y-label {
+  position: absolute;
+  left: 2px;
+  top: 12px;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: system-ui, sans-serif;
+}
+
+.skeleton-x-label {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--muted);
+  font-family: system-ui, sans-serif;
+}
+
+/* Skeleton line graph */
+.skeleton-line-graph {
+  position: absolute;
+  left: 40px;
+  top: 20px;
+  right: 20px;
+  bottom: 40px;
+}
+
+.skeleton-line-path {
+  position: absolute;
+  left: 0;
+  top: 40%;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, 
+    var(--accent-2) 0%,
+    var(--accent-2) 15%,
+    transparent 15%,
+    transparent 25%,
+    var(--accent-2) 25%,
+    var(--accent-2) 40%,
+    transparent 40%,
+    transparent 60%,
+    var(--accent-2) 60%,
+    var(--accent-2) 75%,
+    transparent 75%,
+    transparent 85%,
+    var(--accent-2) 85%,
+    var(--accent-2) 100%
+  );
+  border-radius: 1px;
+  animation: skeleton-loading 2s ease-in-out infinite;
+}
+
+.skeleton-dots {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.skeleton-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--accent-2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: skeleton-loading 2s ease-in-out infinite;
+}
+
 /* Skeleton card details */
 .skeleton-card-details {
   padding: 20px 0;

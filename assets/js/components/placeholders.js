@@ -137,13 +137,19 @@ export function createChartSkeleton(height = '300px') {
         <div class="skeleton-axes">
             <div class="skeleton-y-axis"></div>
             <div class="skeleton-x-axis"></div>
+            <div class="skeleton-y-label">Usage %</div>
+            <div class="skeleton-x-label">Tournaments</div>
         </div>
-        <div class="skeleton-bars">
-            <div class="skeleton-bar" style="height: 60%"></div>
-            <div class="skeleton-bar" style="height: 80%"></div>
-            <div class="skeleton-bar" style="height: 45%"></div>
-            <div class="skeleton-bar" style="height: 70%"></div>
-            <div class="skeleton-bar" style="height: 90%"></div>
+        <div class="skeleton-line-graph">
+            <div class="skeleton-line-path"></div>
+            <div class="skeleton-dots">
+                <div class="skeleton-dot" style="left: 15%; top: 40%;"></div>
+                <div class="skeleton-dot" style="left: 25%; top: 20%;"></div>
+                <div class="skeleton-dot" style="left: 40%; top: 55%;"></div>
+                <div class="skeleton-dot" style="left: 60%; top: 30%;"></div>
+                <div class="skeleton-dot" style="left: 75%; top: 10%;"></div>
+                <div class="skeleton-dot" style="left: 85%; top: 35%;"></div>
+            </div>
         </div>
     `;
 

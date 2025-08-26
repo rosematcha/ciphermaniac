@@ -18,30 +18,19 @@ import { CleanupManager, debounce, validateElements } from './utils/performance.
 import { CONFIG } from './config.js';
 import { safeAsync } from './utils/errorHandler.js';
 import { prettyTournamentName } from './utils/format.js';
-import { showGridSkeleton, hideGridSkeleton, createSelectSkeleton, showSkeleton, hideSkeleton, updateSkeletonLayout } from './components/placeholders.js';
+import { showGridSkeleton, hideGridSkeleton, updateSkeletonLayout } from './components/placeholders.js';
 
 /**
- * Application state and caches
+ * Application state - simple object
  */
-class AppState {
-  constructor() {
-    this.currentTournament = null;
-    this.current = { items: [], deckTotal: 0 };
-    this.overrides = {};
-    this.masterCache = new Map();
-    this.archeCache = new Map();
-    this.cleanup = new CleanupManager();
-  }
-
-  /**
-   * Clean up application resources
-   */
-  destroy() {
-    this.cleanup.cleanup();
-  }
-}
-
-let appState;
+const appState = {
+  currentTournament: null,
+  current: { items: [], deckTotal: 0 },
+  overrides: {},
+  masterCache: new Map(),
+  archeCache: new Map(),
+  cleanup: new CleanupManager()
+};
 
 /**
  * Cache management for tournament data
@@ -136,8 +125,7 @@ async function initializeTournamentSelector(state) {
     : tournaments[0];
 
   elements.tournamentSelect.value = selectedTournament;
-  // Use object spread to avoid mutations
-  Object.assign(state, { currentTournament: selectedTournament });
+  state.currentTournament = selectedTournament;
 
   // Clean up URL if invalid tournament was specified
   if (urlState.tour && !tournaments.includes(urlState.tour)) {
@@ -234,8 +222,7 @@ async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = fa
     if (selectedValue === '__all__') {
       // Show all cards
       const data = await loadTournamentData(currentTournament, cache);
-      // Use object spread to avoid race conditions
-      Object.assign(state, { current: { ...data } });
+      state.current = data;
       renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
       applyFiltersSort(data.items, state.overrides);
       setStateInURL({ archetype: selectedValue }, { merge: true });
@@ -265,8 +252,7 @@ async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = fa
       state.archeCache.set(selectedValue, cached);
     }
 
-    // Use object spread to avoid race conditions
-    Object.assign(state, { current: { items: cached.items, deckTotal: cached.deckTotal } });
+    state.current = { items: cached.items, deckTotal: cached.deckTotal };
     renderSummary(document.getElementById('summary'), cached.deckTotal, cached.items.length);
     applyFiltersSort(cached.items, state.overrides);
     setStateInURL({ archetype: selectedValue }, { merge: true });
@@ -330,8 +316,7 @@ function setupControlHandlers(state) {
     const currentArchetype = elements.archetype?.value || '__all__';
 
     logger.info(`Switching to tournament: ${newTournament}`);
-    // Use object spread to avoid mutations
-    Object.assign(state, { currentTournament: newTournament });
+    state.currentTournament = newTournament;
     state.archeCache.clear(); // Clear archetype cache
     imagePreloader.clearCache(); // Clear image preloader cache
 
@@ -339,8 +324,7 @@ function setupControlHandlers(state) {
 
     // Load new tournament data with skeleton loading
     const data = await loadTournamentData(newTournament, cache, true);
-    // Use object spread to avoid race conditions
-    Object.assign(state, { current: { ...data } });
+    state.current = data;
 
     // Load archetype list for the new tournament to check availability
     const newArchetypesList = await safeAsync(
@@ -481,8 +465,6 @@ async function initializeApp() {
     initMissingThumbsDev();
     initCacheDev();
 
-    // Create application state
-    appState = new AppState();
     const cache = new DataCache();
 
     // Load configuration data
@@ -497,8 +479,7 @@ async function initializeApp() {
 
     // Load initial tournament data
     const initialData = await loadTournamentData(appState.currentTournament, cache);
-    // Use object spread to avoid race conditions
-    Object.assign(appState, { current: { ...initialData } });
+    appState.current = initialData;
 
     // Setup archetype selector
     await setupArchetypeSelector(appState.currentTournament, cache, appState);
@@ -544,7 +525,5 @@ initializeApp();
 
 // Clean up on page unload
 window.addEventListener('beforeunload', () => {
-  if (appState) {
-    appState.destroy();
-  }
+  appState.cleanup.cleanup();
 });

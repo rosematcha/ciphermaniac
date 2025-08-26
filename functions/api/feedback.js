@@ -1,6 +1,6 @@
 /**
  * CloudFlare Pages function for handling feedback form submissions
- * Processes feedback and sends emails via Mailgun
+ * Processes feedback and sends emails via Resend
  */
 
 export async function onRequestPost({ request, env }) {
@@ -15,19 +15,19 @@ export async function onRequestPost({ request, env }) {
       });
     }
 
-    // Determine recipient email based on feedback type
-    const recipient = feedbackData.feedbackType === 'bug' 
-      ? 'bugs@ciphermaniac.com' 
-      : 'features@ciphermaniac.com';
+    // Send all feedback to main email
+    const recipient = 'reese@ciphermaniac.com';
 
     // Build email content
     const emailContent = buildEmailContent(feedbackData);
     
-    // Send email via Mailgun
-    const mailgunResponse = await sendEmail(env, recipient, emailContent, feedbackData);
+    // Send email via Resend
+    const resendResponse = await sendEmail(env, recipient, emailContent, feedbackData);
     
-    if (!mailgunResponse.ok) {
-      throw new Error(`Mailgun API error: ${mailgunResponse.status}`);
+    if (!resendResponse.ok) {
+      const errorText = await resendResponse.text();
+      console.error('Resend API Error Response:', errorText);
+      throw new Error(`Resend API error: ${resendResponse.status} - ${errorText}`);
     }
 
     return new Response(JSON.stringify({ success: true }), {
@@ -109,26 +109,27 @@ function buildEmailContent(data) {
 }
 
 async function sendEmail(env, recipient, content, feedbackData) {
-  const mailgunDomain = env.MAILGUN_DOMAIN || 'ciphermaniac.com';
-  const mailgunApiKey = env.MAILGUN_API_KEY;
+  const resendApiKey = env.RESEND_API_KEY;
   
-  if (!mailgunApiKey) {
-    throw new Error('MAILGUN_API_KEY environment variable not set');
+  if (!resendApiKey) {
+    throw new Error('RESEND_API_KEY environment variable not set');
   }
 
   const subject = `[Ciphermaniac] ${feedbackData.feedbackType === 'bug' ? 'Bug Report' : 'Feature Request'}`;
   
-  const formData = new FormData();
-  formData.append('from', `Ciphermaniac Feedback <noreply@${mailgunDomain}>`);
-  formData.append('to', recipient);
-  formData.append('subject', subject);
-  formData.append('text', content);
+  const emailPayload = {
+    from: 'Ciphermaniac Feedback <onboarding@resend.dev>',
+    to: recipient,
+    subject: subject,
+    text: content
+  };
 
-  return fetch(`https://api.mailgun.net/v3/${mailgunDomain}/messages`, {
+  return fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
-      'Authorization': `Basic ${btoa(`api:${mailgunApiKey}`)}`
+      'Authorization': `Bearer ${resendApiKey}`,
+      'Content-Type': 'application/json'
     },
-    body: formData
+    body: JSON.stringify(emailPayload)
   });
 }

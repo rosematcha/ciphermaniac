@@ -19,15 +19,15 @@ class PricingManager {
    */
   async getCardPrice(cardName, setCode, cardNumber) {
     await this.ensurePriceData();
-    
+
     if (!this.priceData || !this.priceData.cardPrices) {
       return null;
     }
-    
+
     // Format the key to match our pricing data structure
     const paddedNumber = cardNumber.padStart(3, '0');
     const cardKey = `${cardName}::${setCode}::${paddedNumber}`;
-    
+
     return this.priceData.cardPrices[cardKey] || null;
   }
 
@@ -38,23 +38,23 @@ class PricingManager {
    */
   async getMultiplePrices(cards) {
     await this.ensurePriceData();
-    
+
     if (!this.priceData || !this.priceData.cardPrices) {
       return {};
     }
-    
+
     const prices = {};
-    
+
     for (const card of cards) {
       const paddedNumber = card.number.padStart(3, '0');
       const cardKey = `${card.name}::${card.set}::${paddedNumber}`;
       const price = this.priceData.cardPrices[cardKey];
-      
+
       if (price !== undefined) {
         prices[cardKey] = price;
       }
     }
-    
+
     return prices;
   }
 
@@ -63,11 +63,11 @@ class PricingManager {
    */
   async getPricingMetadata() {
     await this.ensurePriceData();
-    
+
     if (!this.priceData) {
       return null;
     }
-    
+
     return {
       lastUpdated: this.priceData.lastUpdated,
       updateSource: this.priceData.updateSource,
@@ -84,7 +84,7 @@ class PricingManager {
     if (price === null || price === undefined) {
       return 'N/A';
     }
-    
+
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -97,7 +97,7 @@ class PricingManager {
    */
   async ensurePriceData() {
     const now = Date.now();
-    
+
     // Check if we need to fetch new data
     if (!this.priceData || !this.lastFetch || (now - this.lastFetch) > this.cacheExpiry) {
       try {
@@ -114,25 +114,25 @@ class PricingManager {
   async fetchPriceData() {
     try {
       const response = await fetch('/api/get-prices');
-      
+
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (data.error) {
         throw new Error(data.message || data.error);
       }
-      
+
       this.priceData = data;
       this.lastFetch = Date.now();
-      
+
       console.log('Price data updated:', {
         cardCount: Object.keys(data.cardPrices || {}).length,
         lastUpdated: data.lastUpdated
       });
-      
+
     } catch (error) {
       console.error('Failed to fetch price data:', error);
       throw error;
