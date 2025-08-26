@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tournament Usage Graphics Generator - Ciphermaniac</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <link rel="icon" href="data:," />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f8f9fa;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .graphics-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    h1 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .controls-section {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .control-group {
+      margin-bottom: 15px;
+    }
+    
+    .control-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    select, input[type="number"] {
+      width: 100%;
+      max-width: 300px;
+      padding: 8px 12px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    input[type="checkbox"] {
+      margin-right: 8px;
+    }
+    
+    .graphic-output {
+      background: white;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      position: relative;
+    }
+    
+    .card-graphic {
+      display: flex;
+      align-items: center;
+      margin: 10px 0;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 8px;
+      color: white;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+    }
+    
+    .card-image-container {
+      width: 230px;
+      height: 144px;
+      overflow: hidden;
+      border-radius: 6px;
+      margin-right: 20px;
+      position: relative;
+    }
+    
+    .card-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .card-info {
+      flex: 1;
+    }
+    
+    .card-name {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: white;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
+    
+    .card-rank {
+      font-size: 18px;
+      margin-bottom: 10px;
+      color: #f0f0f0;
+      font-weight: 600;
+    }
+    
+    .card-usage {
+      font-size: 16px;
+      margin-bottom: 10px;
+      color: #e8e8e8;
+    }
+    
+    .histogram {
+      display: flex;
+      height: 40px;
+      align-items: end;
+      gap: 2px;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 5px;
+      border-radius: 4px;
+    }
+    
+    .histogram-bar {
+      background: rgba(255, 255, 255, 0.9);
+      min-width: 12px;
+      border-radius: 2px;
+      display: flex;
+      align-items: end;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: bold;
+      color: #333;
+      margin: 0 1px;
+    }
+    
+    .export-controls {
+      margin-top: 20px;
+      text-align: center;
+    }
+    
+    .export-btn {
+      background: #4CAF50;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 0 10px;
+    }
+    
+    .export-btn:hover {
+      background: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <div class="graphics-container">
+    <h1>Tournament Usage Graphics Generator</h1>
+    
+    <div class="controls-section">
+      <div class="control-group">
+        <label for="tournament-select">Select Tournament:</label>
+        <select id="tournament-select">
+          <option value="">Loading tournaments...</option>
+        </select>
+      </div>
+      
+      <div class="control-group">
+        <label for="include-consistent-leaders">
+          <input type="checkbox" id="include-consistent-leaders" checked />
+          Include Consistent Leaders
+        </label>
+      </div>
+      
+      <div class="control-group">
+        <label for="max-cards">Maximum Cards to Display:</label>
+        <input type="number" id="max-cards" value="20" min="1" max="50" />
+      </div>
+      
+      <div class="control-group">
+        <label>Crop Parameters:</label>
+        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+          <div>
+            <label for="crop-sides">Sides (Left & Right):</label>
+            <input type="number" id="crop-sides" value="22" min="0" max="100" style="width: 70px;" />
+          </div>
+          <div>
+            <label for="trainer-crop-top">Trainer Top:</label>
+            <input type="number" id="trainer-crop-top" value="4" min="-50" max="200" style="width: 70px;" />
+          </div>
+          <div>
+            <label for="pokemon-crop-top">Pokemon Top:</label>
+            <input type="number" id="pokemon-crop-top" value="-13" min="-50" max="200" style="width: 70px;" />
+          </div>
+        </div>
+      </div>
+      
+      <button id="generate-btn" class="export-btn">Generate Graphics</button>
+    </div>
+    
+    <div id="graphics-output"></div>
+    
+    <div class="export-controls">
+      <button id="export-png" class="export-btn">Export as PNG</button>
+      <button id="export-jpg" class="export-btn">Export as JPG</button>
+    </div>
+  </div>
+
+  <script src="assets/js/social-graphics.js"></script>
+</body>
+</html>
