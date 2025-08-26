@@ -24,7 +24,9 @@
       "Bash(del lint-edge-case-tests.js edge-case-validation.js test-empty-catch.js)",
       "mcp__context7__resolve-library-id",
       "Bash(curl:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(del:*)",
+      "Read(/C:\\Users\\Reuse\\Documents\\GitHub\\Ciphermaniac\\assets/**)"
     ],
     "deny": [],
     "ask": [],

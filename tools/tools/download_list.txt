@@ -1,9 +1,0 @@
-# One tournament URL per line. Lines starting with # are ignored.
-https://limitlesstcg.com/tournaments/500/decklists
-https://limitlesstcg.com/tournaments/463/decklists
-https://limitlesstcg.com/tournaments/497/decklists
-https://limitlesstcg.com/tournaments/498/decklists
-https://limitlesstcg.com/tournaments/475/decklists
-https://limitlesstcg.com/tournaments/466/decklists
-https://limitlesstcg.com/tournaments/474/decklists
-https://limitlesstcg.com/tournaments/489/decklists

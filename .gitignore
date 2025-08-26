@@ -39,3 +39,4 @@ tools/
 .mcp.json
 reports/get-prices.json
 /reports/get prices debugging
+.claude/settings.local.json

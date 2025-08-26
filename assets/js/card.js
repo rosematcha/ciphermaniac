@@ -495,6 +495,56 @@ function renderChart(container, points){
   yAxis.setAttribute('y2', String(h - pad));
   yAxis.setAttribute('stroke', '#39425f');
   svg.appendChild(yAxis);
+
+  // Add axis labels
+  // Y-axis label (percentage)
+  const yLabel = document.createElementNS(svgNS, 'text');
+  yLabel.setAttribute('x', String(12));
+  yLabel.setAttribute('y', String(pad - 8));
+  yLabel.setAttribute('fill', '#a3a8b7');
+  yLabel.setAttribute('font-size', '11');
+  yLabel.setAttribute('font-family', 'system-ui, sans-serif');
+  yLabel.textContent = 'Usage %';
+  svg.appendChild(yLabel);
+
+  // Add Y-axis tick marks and labels
+  const yTicks = Math.min(4, Math.ceil(maxY / 10)); // Show reasonable number of ticks
+  for (let i = 0; i <= yTicks; i++) {
+    const tickValue = (i * maxY) / yTicks;
+    const tickY = scaleY(tickValue);
+    
+    // Tick mark
+    const tick = document.createElementNS(svgNS, 'line');
+    tick.setAttribute('x1', String(pad - 3));
+    tick.setAttribute('y1', String(tickY));
+    tick.setAttribute('x2', String(pad));
+    tick.setAttribute('y2', String(tickY));
+    tick.setAttribute('stroke', '#39425f');
+    svg.appendChild(tick);
+    
+    // Tick label
+    const tickLabel = document.createElementNS(svgNS, 'text');
+    tickLabel.setAttribute('x', String(pad - 6));
+    tickLabel.setAttribute('y', String(tickY + 3));
+    tickLabel.setAttribute('fill', '#a3a8b7');
+    tickLabel.setAttribute('font-size', '10');
+    tickLabel.setAttribute('font-family', 'system-ui, sans-serif');
+    tickLabel.setAttribute('text-anchor', 'end');
+    tickLabel.textContent = tickValue.toFixed(0);
+    svg.appendChild(tickLabel);
+  }
+
+  // X-axis label (tournaments)
+  const xLabel = document.createElementNS(svgNS, 'text');
+  xLabel.setAttribute('x', String((w - 2*pad) / 2 + pad));
+  xLabel.setAttribute('y', String(h - 8));
+  xLabel.setAttribute('fill', '#a3a8b7');
+  xLabel.setAttribute('font-size', '11');
+  xLabel.setAttribute('font-family', 'system-ui, sans-serif');
+  xLabel.setAttribute('text-anchor', 'middle');
+  xLabel.textContent = 'Tournaments (Chronological)';
+  svg.appendChild(xLabel);
+
   // line
   const line = document.createElementNS(svgNS, 'path');
   line.setAttribute('d', path);
