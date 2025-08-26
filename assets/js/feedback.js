@@ -177,7 +177,9 @@ class FeedbackForm {
         this.handleFeedbackTypeChange();
         this.handleFollowUpChange();
       } else {
-        throw new Error(`Server error: ${response.status}`);
+        const errorData = await response.text();
+        console.error('Server response:', errorData);
+        throw new Error(`Server error: ${response.status} - ${errorData}`);
       }
 
     } catch (error) {

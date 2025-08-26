@@ -15,10 +15,8 @@ export async function onRequestPost({ request, env }) {
       });
     }
 
-    // Determine recipient email based on feedback type
-    const recipient = feedbackData.feedbackType === 'bug' 
-      ? 'bugs@ciphermaniac.com' 
-      : 'features@ciphermaniac.com';
+    // Send all feedback to main email
+    const recipient = 'reese@ciphermaniac.com';
 
     // Build email content
     const emailContent = buildEmailContent(feedbackData);
@@ -27,7 +25,9 @@ export async function onRequestPost({ request, env }) {
     const resendResponse = await sendEmail(env, recipient, emailContent, feedbackData);
     
     if (!resendResponse.ok) {
-      throw new Error(`Resend API error: ${resendResponse.status}`);
+      const errorText = await resendResponse.text();
+      console.error('Resend API Error Response:', errorText);
+      throw new Error(`Resend API error: ${resendResponse.status} - ${errorText}`);
     }
 
     return new Response(JSON.stringify({ success: true }), {
@@ -118,7 +118,7 @@ async function sendEmail(env, recipient, content, feedbackData) {
   const subject = `[Ciphermaniac] ${feedbackData.feedbackType === 'bug' ? 'Bug Report' : 'Feature Request'}`;
   
   const emailPayload = {
-    from: 'Ciphermaniac Feedback <noreply@ciphermaniac.com>',
+    from: 'Ciphermaniac Feedback <onboarding@resend.dev>',
     to: recipient,
     subject: subject,
     text: content
