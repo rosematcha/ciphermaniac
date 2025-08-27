@@ -221,11 +221,11 @@ function parseCsvPrices(csvText, setAbbr) {
       
       const cleanNumber = extNumber.split('/')[0]; // Take just the number part (before slash)
       
-      // Debug problematic cards
-      if (name && (name.toLowerCase().includes('ceruledge') || name.toLowerCase().includes('energy retrieval') || name.toLowerCase().includes('luminous energy') || name.toLowerCase().includes('dunsparce') || name.toLowerCase().includes('superior energy'))) {
+      // Debug problematic cards - show actual field parsing
+      if (name && (name.toLowerCase().includes('teal mask ogerpon') || name.toLowerCase().includes('squawkabilly ex') || name.toLowerCase().includes('ceruledge') || name.toLowerCase().includes('energy retrieval') || name.toLowerCase().includes('luminous energy') || name.toLowerCase().includes('dunsparce') || name.toLowerCase().includes('superior energy'))) {
         console.log(`DEBUG ${name} (${setAbbr}):`);
         console.log(`  Total fields: ${fields.length}`);
-        console.log(`  Raw fields 10-20:`, fields.slice(10, 21));
+        console.log(`  Fields 10-13: [${fields[10]}, ${fields[11]}, ${fields[12]}, ${fields[13]}]`);
         console.log(`  Found prices:`, priceData);
         console.log(`  Using marketPrice: ${marketPrice}`);
         console.log(`  ExtNumber: "${extNumber}"`);
@@ -353,78 +353,103 @@ function extractPricesFromFields(fields) {
   const prices = {};
   const potentialPrices = [];
   
-  // Scan for potential price fields, but be smarter about filtering
-  // Start from field 10 onwards as earlier fields are typically metadata, not prices
-  for (let i = 10; i < Math.min(30, fields.length); i++) {
-    const field = fields[i];
-    // Look for decimal numbers that could be prices (0.01 to 999.99)
-    // Must be a valid price format with decimal OR whole numbers >= 2.00 (avoid single digits like "1", "2", "3")
-    if (field && field.match(/^\d{1,3}(\.\d{1,2})?$/) && parseFloat(field) >= 0.01 && parseFloat(field) <= 999.99) {
-      const value = parseFloat(field);
+  // TCGCSV has a fairly consistent structure for price fields:
+  // Field 10: lowPrice, Field 11: midPrice, Field 12: highPrice, Field 13: marketPrice
+  // But we still need to scan dynamically due to some format variations
+  
+  // First, try to extract prices from the expected positions if they exist
+  let marketPrice = 0;
+  let lowPrice = 0;
+  let midPrice = 0;
+  let highPrice = 0;
+  
+  // Try to get prices from standard TCGCSV positions
+  if (fields.length > 13) {
+    const field10 = parseFloat(fields[10]) || 0; // lowPrice
+    const field11 = parseFloat(fields[11]) || 0; // midPrice
+    const field12 = parseFloat(fields[12]) || 0; // highPrice  
+    const field13 = parseFloat(fields[13]) || 0; // marketPrice
+    
+    // Validate these look like reasonable prices
+    const standardPrices = [field10, field11, field12, field13].filter(p => p > 0 && p <= 999.99);
+    
+    if (standardPrices.length >= 3) {
+      // We have good standard format data - use it directly
+      lowPrice = field10 > 0 ? field10 : 0;
+      midPrice = field11 > 0 ? field11 : 0;
+      highPrice = field12 > 0 ? field12 : 0;
+      marketPrice = field13 > 0 ? field13 : (field11 > 0 ? field11 : field10); // Prefer marketPrice, fallback to mid then low
       
-      // Filter out likely non-price fields:
-      // - Single digit integers (1, 2, 3, etc.) that are probably status codes
-      // - Very round numbers like 10, 20, 30 that might be quantity fields
-      const isLikelyPrice = (
-        value % 1 !== 0 || // Has decimal places (like 17.1, 16.0)
-        value >= 2.00     // Or is at least $2 (avoids status codes like 1, 0)
-      );
+      prices.lowPrice = lowPrice;
+      prices.marketPrice = marketPrice;
+      prices.highPrice = highPrice;
       
-      if (isLikelyPrice) {
-        potentialPrices.push({
-          index: i,
-          value: value
-        });
-      }
+      console.log(`Used standard TCGCSV format: low=${lowPrice}, mid=${midPrice}, high=${highPrice}, market=${marketPrice}`);
+      
+      // Return early to skip dynamic scanning
+      return {
+        extNumber: extNumber ? extNumber.split('/')[0] : null,
+        marketPrice: marketPrice,
+        lowPrice: lowPrice,
+        highPrice: highPrice,
+        priceCount: standardPrices.length,
+        allPrices: [field10, field11, field12, field13].filter(p => p > 0),
+        hadMalformedData: false
+      };
     }
   }
   
-  // 3. Smart price selection logic
-  // TCGCSV typically has: lowPrice, midPrice, highPrice, marketPrice, directLowPrice
-  // We want marketPrice when available, or a reasonable middle price
-  
-  let marketPrice = 0;
-  
-  if (potentialPrices.length >= 4) {
-    // With 4+ prices, the market price is typically the 4th price field
-    // Or use the 2nd lowest to avoid extreme low/high prices
-    const sorted = potentialPrices.sort((a, b) => a.value - b.value);
-    
-    // Try to find the most reasonable market price:
-    // If we have exactly 4 prices and the last one isn't extremely high, use it
-    if (potentialPrices.length === 4) {
-      const unsorted = potentialPrices.sort((a, b) => a.index - b.index); // Sort by field position
-      const lastPrice = unsorted[unsorted.length - 1].value;
-      const secondHighest = sorted[sorted.length - 2].value;
-      
-      // Use the last price if it's reasonable (not more than 3x the second highest)
-      if (lastPrice <= secondHighest * 3) {
-        marketPrice = lastPrice;
-      } else {
-        marketPrice = sorted[1].value; // Use 2nd lowest as fallback
+  // If standard format didn't work, fall back to dynamic scanning
+  if (marketPrice === 0) {
+    // Scan for potential price fields, but be smarter about filtering
+    // Start from field 10 onwards as earlier fields are typically metadata, not prices
+    for (let i = 10; i < Math.min(30, fields.length); i++) {
+      const field = fields[i];
+      // Look for decimal numbers that could be prices (0.01 to 999.99)
+      // Must be a valid price format with decimal OR whole numbers >= 2.00 (avoid single digits like "1", "2", "3")
+      if (field && field.match(/^\d{1,3}(\.\d{1,2})?$/) && parseFloat(field) >= 0.01 && parseFloat(field) <= 999.99) {
+        const value = parseFloat(field);
+        
+        // Filter out likely non-price fields:
+        // - Single digit integers (1, 2, 3, etc.) that are probably status codes
+        // - Very round numbers like 10, 20, 30 that might be quantity fields
+        const isLikelyPrice = (
+          value % 1 !== 0 || // Has decimal places (like 17.1, 16.0)
+          value >= 2.00     // Or is at least $2 (avoids status codes like 1, 0)
+        );
+        
+        if (isLikelyPrice) {
+          potentialPrices.push({
+            index: i,
+            value: value
+          });
+        }
       }
-    } else {
-      // More than 4 prices - use 2nd lowest to avoid extremes
-      marketPrice = sorted[1].value;
     }
     
-    prices.lowPrice = sorted[0].value;
-    prices.marketPrice = marketPrice; 
-    prices.highPrice = sorted[sorted.length - 1].value;
-  } else if (potentialPrices.length === 3) {
-    // With 3 prices, take the middle one when sorted
-    const sorted = potentialPrices.sort((a, b) => a.value - b.value);
-    marketPrice = sorted[1].value;
-    prices.marketPrice = sorted[1].value;
-  } else if (potentialPrices.length === 2) {
-    // With 2 prices, take the lower one (avoid high prices)
-    const sorted = potentialPrices.sort((a, b) => a.value - b.value);
-    marketPrice = sorted[0].value;
-    prices.marketPrice = sorted[0].value;
-  } else if (potentialPrices.length === 1) {
-    // With 1 price, use it
-    marketPrice = potentialPrices[0].value;
-    prices.marketPrice = potentialPrices[0].value;
+    // 3. Smart price selection logic for dynamic scanning
+    if (potentialPrices.length >= 4) {
+      // With 4+ prices, use 2nd lowest to avoid extremes
+      const sorted = potentialPrices.sort((a, b) => a.value - b.value);
+      marketPrice = sorted[1].value;
+      prices.lowPrice = sorted[0].value;
+      prices.marketPrice = sorted[1].value; 
+      prices.highPrice = sorted[sorted.length - 1].value;
+    } else if (potentialPrices.length === 3) {
+      // With 3 prices, take the middle one when sorted
+      const sorted = potentialPrices.sort((a, b) => a.value - b.value);
+      marketPrice = sorted[1].value;
+      prices.marketPrice = sorted[1].value;
+    } else if (potentialPrices.length === 2) {
+      // With 2 prices, take the lower one (avoid high prices)
+      const sorted = potentialPrices.sort((a, b) => a.value - b.value);
+      marketPrice = sorted[0].value;
+      prices.marketPrice = sorted[0].value;
+    } else if (potentialPrices.length === 1) {
+      // With 1 price, use it
+      marketPrice = potentialPrices[0].value;
+      prices.marketPrice = potentialPrices[0].value;
+    }
   }
   
   // SPECIAL HANDLING: For cards with valid extNumber but no price data (malformed CSV entries)
