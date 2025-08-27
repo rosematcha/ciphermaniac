@@ -7,10 +7,11 @@ import { render } from './render.js';
 import { isFavorite } from './favorites.js';
 import { logger } from './utils/logger.js';
 import { CONFIG } from './config.js';
+import { getCardPrice } from './api.js';
 
 /**
  * @typedef {Object} SortOption
- * @property {'percent-desc'|'percent-asc'|'alpha-asc'|'alpha-desc'} key
+ * @property {'percent-desc'|'percent-asc'|'alpha-asc'|'alpha-desc'|'price-desc'|'price-asc'} key
  * @property {string} label
  * @property {(a: any, b: any) => number} compareFn
  */
@@ -24,6 +25,8 @@ const SORT_COMPARATORS = {
   'percent-asc': (a, b) => (a.pct ?? Infinity) - (b.pct ?? Infinity),
   'alpha-asc': (a, b) => a.name.localeCompare(b.name),
   'alpha-desc': (a, b) => b.name.localeCompare(a.name),
+  'price-desc': (a, b) => (b.price ?? -1) - (a.price ?? -1),
+  'price-asc': (a, b) => (a.price ?? Infinity) - (b.price ?? Infinity),
 };
 
 /**
@@ -133,7 +136,7 @@ function applySorting(items, sortKey) {
  * @param {any[]} allItems - Complete dataset
  * @param {Object} [overrides={}] - Thumbnail overrides
  */
-export function applyFiltersSort(allItems, overrides = {}) {
+export async function applyFiltersSort(allItems, overrides = {}) {
   if (!Array.isArray(allItems)) {
     logger.error('applyFiltersSort called with non-array items', allItems);
     return;
@@ -148,6 +151,11 @@ export function applyFiltersSort(allItems, overrides = {}) {
   filtered = applySearchFilter(filtered, filters.query);
   filtered = applyFavoritesFilter(filtered, filters.favoritesOnly);
 
+  // Enrich with pricing data if needed for sorting
+  if (filters.sort.startsWith('price-')) {
+    filtered = await enrichWithPricingData(filtered);
+  }
+
   // Apply sorting
   const sorted = applySorting(filtered, filters.sort);
 
@@ -155,4 +163,55 @@ export function applyFiltersSort(allItems, overrides = {}) {
 
   // Render the results
   render(sorted, overrides);
+}
+
+/**
+ * Enrich items with pricing data for sorting
+ * @param {any[]} items
+ * @returns {Promise<any[]>}
+ */
+async function enrichWithPricingData(items) {
+  const enriched = await Promise.all(items.map(async (item) => {
+    try {
+      // Build card identifier from item data
+      const cardId = buildCardIdentifier(item);
+      const price = cardId ? await getCardPrice(cardId) : null;
+      
+      return {
+        ...item,
+        price: price || 0
+      };
+    } catch (error) {
+      logger.debug(`Failed to get price for ${item.name}`, error.message);
+      return {
+        ...item,
+        price: 0
+      };
+    }
+  }));
+  
+  return enriched;
+}
+
+/**
+ * Build card identifier from item data
+ * @param {Object} item
+ * @returns {string|null}
+ */
+function buildCardIdentifier(item) {
+  if (!item.name) return null;
+  
+  // Try to use UID if available
+  if (item.uid) {
+    return item.uid;
+  }
+  
+  // Build from name, set, and number if available
+  if (item.set && item.number) {
+    const paddedNumber = item.number.toString().padStart(3, '0');
+    return `${item.name}::${item.set}::${paddedNumber}`;
+  }
+  
+  // For trainers/energies without set info, just use name
+  return item.name;
 }

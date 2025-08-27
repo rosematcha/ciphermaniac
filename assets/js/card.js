@@ -1,5 +1,5 @@
 // Entry for per-card page: loads meta-share over tournaments and common decks
-import { fetchTournamentsList, fetchReport, fetchArchetypesList, fetchArchetypeReport, fetchOverrides, fetchTop8ArchetypesList, fetchCardIndex } from './api.js';
+import { fetchTournamentsList, fetchReport, fetchArchetypesList, fetchArchetypeReport, fetchOverrides, fetchTop8ArchetypesList, fetchCardIndex, getCardPrice } from './api.js';
 import { parseReport } from './parse.js';
 import { buildThumbCandidates } from './thumbs.js';
 import { pickArchetype, baseToLabel } from './selectArchetype.js';
@@ -705,6 +705,32 @@ function renderEvents(container, rows){
   }
 }
 
+async function renderCardPrice(cardIdentifier) {
+  const priceContainer = document.getElementById('card-price');
+  if (!priceContainer || !cardIdentifier) {return;}
+
+  try {
+    const price = await getCardPrice(cardIdentifier);
+    
+    if (price !== null && price > 0) {
+      const priceEl = document.createElement('div');
+      priceEl.className = 'price-info';
+      priceEl.innerHTML = `
+        <div class="price-label">Market Price:</div>
+        <div class="price-value">$${price.toFixed(2)}</div>
+      `;
+      priceContainer.appendChild(priceEl);
+    } else {
+      const noPrice = document.createElement('div');
+      noPrice.className = 'price-info no-price';
+      noPrice.textContent = 'Price not available';
+      priceContainer.appendChild(noPrice);
+    }
+  } catch (error) {
+    priceContainer.textContent = '';
+  }
+}
+
 async function collectCardVariants(cardIdentifier) {
   if (!cardIdentifier) {return [];}
 
@@ -804,6 +830,9 @@ async function load(){
 
   // Collect and display all card variants (set/number combinations)
   await renderCardSets(cardName);
+  
+  // Display pricing information
+  await renderCardPrice(cardIdentifier);
 
   let tournaments = [];
   try{ tournaments = await fetchTournamentsList(); }

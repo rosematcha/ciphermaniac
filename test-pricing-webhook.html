@@ -71,6 +71,7 @@
         <button onclick="testGroups()">Test TCGCSV Groups API</button>
         <button onclick="testMapping()">Test Set Mapping</button>
         <button onclick="testCSV()">Test CSV Parsing</button>
+        <button onclick="testTCGPlayerIds()">Test TCGPlayer IDs</button>
         <button onclick="triggerFullUpdate()" style="background: #ff6600;">🚀 Trigger Full Update</button>
         <button onclick="clearOutput()">Clear Output</button>
         
@@ -144,6 +145,73 @@
         
         async function testCSV() {
             await makeRequest('/api/test-pricing?action=csv&groupId=24269');
+        }
+        
+        async function testTCGPlayerIds() {
+            try {
+                setStatus('Testing TCGPlayer ID functionality...', 'info');
+                
+                // First get the current pricing data
+                const pricingData = await makeRequest('/api/get-prices');
+                
+                if (pricingData && pricingData.cardPrices) {
+                    appendOutput('=== TCGPlayer ID Tests ===');
+                    
+                    // Test specific cards mentioned in your examples
+                    const testCards = [
+                        "Ethan's Pichu::DRI::071",
+                        "Cynthia's Garchomp ex::DRI::104"
+                    ];
+                    
+                    let foundCount = 0;
+                    
+                    for (const cardKey of testCards) {
+                        const cardData = pricingData.cardPrices[cardKey];
+                        if (cardData) {
+                            foundCount++;
+                            appendOutput(`✅ Found ${cardKey}:`);
+                            appendOutput(`   Price: $${cardData.price}`);
+                            appendOutput(`   TCGPlayer ID: ${cardData.tcgPlayerId}`);
+                            if (cardData.tcgPlayerId) {
+                                appendOutput(`   TCGPlayer URL: https://www.tcgplayer.com/product/${cardData.tcgPlayerId}`);
+                            }
+                        } else {
+                            appendOutput(`❌ Not found: ${cardKey}`);
+                        }
+                        appendOutput('');
+                    }
+                    
+                    // Show a sample of other cards with TCGPlayer IDs
+                    appendOutput('=== Sample Cards with TCGPlayer IDs ===');
+                    let sampleCount = 0;
+                    for (const [cardKey, cardData] of Object.entries(pricingData.cardPrices)) {
+                        if (cardData.tcgPlayerId && sampleCount < 5) {
+                            appendOutput(`${cardKey}: $${cardData.price} (ID: ${cardData.tcgPlayerId})`);
+                            sampleCount++;
+                        }
+                    }
+                    
+                    const totalCards = Object.keys(pricingData.cardPrices).length;
+                    const cardsWithIds = Object.values(pricingData.cardPrices).filter(card => card.tcgPlayerId).length;
+                    
+                    appendOutput(`\n=== Summary ===`);
+                    appendOutput(`Total cards: ${totalCards}`);
+                    appendOutput(`Cards with TCGPlayer IDs: ${cardsWithIds}`);
+                    appendOutput(`Test cards found: ${foundCount}/${testCards.length}`);
+                    
+                    if (foundCount > 0 && cardsWithIds > 0) {
+                        setStatus('✅ TCGPlayer ID functionality working!', 'success');
+                    } else {
+                        setStatus('⚠️ TCGPlayer IDs not found - may need data update', 'warning');
+                    }
+                    
+                } else {
+                    setStatus('❌ No pricing data available', 'error');
+                }
+                
+            } catch (error) {
+                setStatus(`💥 TCGPlayer ID test failed: ${error.message}`, 'error');
+            }
         }
         
         async function triggerFullUpdate() {

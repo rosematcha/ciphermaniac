@@ -26,7 +26,8 @@
       "Bash(curl:*)",
       "Bash(cat:*)",
       "Bash(del:*)",
-      "Read(/C:\\Users\\Reuse\\Documents\\GitHub\\Ciphermaniac\\assets/**)"
+      "Read(/C:\\Users\\Reuse\\Documents\\GitHub\\Ciphermaniac\\assets/**)",
+      "Bash(ls \"C:\\Users\\Reese\\Documents\\GitHub\\Ciphermaniac\\thumbnails\\sm\"\" | grep -i \"buddy \")"
     ],
     "deny": [],
     "ask": [],

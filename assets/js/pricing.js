@@ -28,7 +28,52 @@ class PricingManager {
     const paddedNumber = cardNumber.padStart(3, '0');
     const cardKey = `${cardName}::${setCode}::${paddedNumber}`;
 
-    return this.priceData.cardPrices[cardKey] || null;
+    const cardData = this.priceData.cardPrices[cardKey];
+    return cardData ? cardData.price : null;
+  }
+
+  /**
+   * Get TCGPlayer ID for a card
+   * @param {string} cardName - Card name
+   * @param {string} setCode - Set abbreviation (SVI, PAL, etc.)
+   * @param {string} cardNumber - Card number (padded to 3 digits)
+   * @returns {string|null} TCGPlayer ID or null if not found
+   */
+  async getCardTCGPlayerId(cardName, setCode, cardNumber) {
+    await this.ensurePriceData();
+
+    if (!this.priceData || !this.priceData.cardPrices) {
+      return null;
+    }
+
+    // Format the key to match our pricing data structure
+    const paddedNumber = cardNumber.padStart(3, '0');
+    const cardKey = `${cardName}::${setCode}::${paddedNumber}`;
+
+    const cardData = this.priceData.cardPrices[cardKey];
+    return cardData ? cardData.tcgPlayerId : null;
+  }
+
+  /**
+   * Get complete card data (price and TCGPlayer ID)
+   * @param {string} cardName - Card name
+   * @param {string} setCode - Set abbreviation (SVI, PAL, etc.)
+   * @param {string} cardNumber - Card number (padded to 3 digits)
+   * @returns {Object|null} Object with price and tcgPlayerId or null if not found
+   */
+  async getCardData(cardName, setCode, cardNumber) {
+    await this.ensurePriceData();
+
+    if (!this.priceData || !this.priceData.cardPrices) {
+      return null;
+    }
+
+    // Format the key to match our pricing data structure
+    const paddedNumber = cardNumber.padStart(3, '0');
+    const cardKey = `${cardName}::${setCode}::${paddedNumber}`;
+
+    const cardData = this.priceData.cardPrices[cardKey];
+    return cardData || null;
   }
 
   /**
@@ -48,10 +93,10 @@ class PricingManager {
     for (const card of cards) {
       const paddedNumber = card.number.padStart(3, '0');
       const cardKey = `${card.name}::${card.set}::${paddedNumber}`;
-      const price = this.priceData.cardPrices[cardKey];
+      const cardData = this.priceData.cardPrices[cardKey];
 
-      if (price !== undefined) {
-        prices[cardKey] = price;
+      if (cardData !== undefined) {
+        prices[cardKey] = cardData.price;
       }
     }
 
@@ -130,7 +175,8 @@ class PricingManager {
 
       console.log('Price data updated:', {
         cardCount: Object.keys(data.cardPrices || {}).length,
-        lastUpdated: data.lastUpdated
+        lastUpdated: data.lastUpdated,
+        sampleCard: Object.entries(data.cardPrices || {})[0] // Show structure for debugging
       });
 
     } catch (error) {

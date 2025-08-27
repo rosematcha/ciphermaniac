@@ -238,7 +238,11 @@ function parseCsvPrices(csvText, setAbbr) {
       
       // CRITICAL: Only include cards that exist in our database
       if (DATABASE_CARDS.has(cardKey)) {
-        prices[cardKey] = marketPrice;
+        const tcgPlayerId = fields[0]; // First field is always the TCGPlayer ID
+        prices[cardKey] = {
+          price: marketPrice,
+          tcgPlayerId: tcgPlayerId
+        };
       }
       
     } catch (error) {
@@ -274,7 +278,10 @@ async function addBasicEnergyPrices(priceData, allGroups) {
   if (missingBasicEnergies.length > 0) {
     console.log(`Setting ${missingBasicEnergies.length} basic energy cards to $0.01:`, missingBasicEnergies);
     missingBasicEnergies.forEach(card => {
-      priceData[card] = 0.01; // Only basic energies are practically free
+      priceData[card] = {
+        price: 0.01, // Only basic energies are practically free
+        tcgPlayerId: null // Basic energies don't have TCGPlayer IDs
+      };
     });
   }
   
@@ -285,7 +292,10 @@ async function addBasicEnergyPrices(priceData, allGroups) {
   
   knownMalformedCards.forEach(card => {
     if (!priceData[card] && DATABASE_CARDS.has(card)) {
-      priceData[card] = 0.75; // Reasonable default for special energy cards
+      priceData[card] = {
+        price: 0.75, // Reasonable default for special energy cards
+        tcgPlayerId: null // Malformed entries don't have reliable TCGPlayer IDs
+      };
       console.log(`Applied fallback price for malformed CSV entry: ${card} = $0.75`);
     }
   });

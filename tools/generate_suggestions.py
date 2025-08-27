@@ -19,6 +19,7 @@ from collections import defaultdict, Counter
 import math
 from typing import Dict, List, Tuple, Optional, Set
 from dataclasses import dataclass
+import argparse
 
 # Basic energies to exclude from suggestions
 BASIC_ENERGY = frozenset({
@@ -30,6 +31,8 @@ ROOT = Path(__file__).resolve().parents[1]
 REPORTS = ROOT / 'reports'
 TOURNAMENTS_FILE = REPORTS / 'tournaments.json'
 OUT_FILE = REPORTS / 'suggestions.json'
+DAY2D_CANDIDATES_FILE = REPORTS / 'that_day2d_candidates.json'
+DAY2D_SELECTION_FILE = REPORTS / 'that_day2d_selection.json'
 
 # Enhanced quality parameters
 RECENT_WEIGHT_HALF_LIFE_DAYS = 30.0  # recency weight exponential half-life
@@ -375,8 +378,17 @@ class CardAnalyzer:
 
 
     def compute_consistent_leaders(self, tournament_data: List[TournamentData], 
-                                  tournaments: List[str], max_limit: int = MAX_CANDIDATES) -> List[dict]:
-        """Enhanced computation of truly reliable staple cards."""
+                                  tournaments: List[str], max_limit: int = MAX_CANDIDATES,
+                                  min_appearance_pct: float = MIN_LEADER_APPEARANCE_PCT,
+                                  min_avg_pct: float = MIN_LEADER_AVG_PCT,
+                                  max_avg_rank: int = 10) -> List[dict]:
+        """Compute cards that are nearly always at the top of usage rankings.
+
+        Parameters:
+        - min_appearance_pct: minimum fraction of tournaments a card must appear in
+        - min_avg_pct: minimum average usage percentage across tournaments
+        - max_avg_rank: maximum allowed average rank (lower is better)
+        """
         if not tournament_data:
             return []
         
@@ -384,57 +396,99 @@ class CardAnalyzer:
         stats = []
         total_tournaments = len(tournament_data)
         
+        # For each tournament, calculate rankings
+        tournament_rankings = []
+        for data in tournament_data:
+            # Sort cards by usage percentage (descending)
+            sorted_cards = sorted(
+                [(key, pct) for key, pct in data.pct_map.items() if pct > 0], 
+                key=lambda x: x[1], 
+                reverse=True
+            )
+            # Create ranking map: card_key -> rank (1-based)
+            ranking_map = {card_key: rank + 1 for rank, (card_key, _) in enumerate(sorted_cards)}
+            tournament_rankings.append(ranking_map)
+        
         for key in card_keys:
             name = self._get_display_name(key, tournament_data)
             
             if name in BASIC_ENERGY:
                 continue
             
-            # Get usage data across tournaments
-            values = [data.pct_map.get(key, 0.0) for data in tournament_data]
-            present_count = sum(1 for v in values if v > 0.0)
+            # Get rankings across tournaments (0 = didn't appear)
+            rankings = []
+            usage_values = []
+            
+            for i, data in enumerate(tournament_data):
+                usage = data.pct_map.get(key, 0.0)
+                usage_values.append(usage)
+                
+                if key in tournament_rankings[i]:
+                    rankings.append(tournament_rankings[i][key])
+                elif usage > 0:
+                    # Edge case: had usage but not in rankings (shouldn't happen)
+                    rankings.append(999)
+                else:
+                    rankings.append(0)  # Didn't appear
             
             # Quality Filter 1: Must appear in significant portion of tournaments
-            appearance_rate = present_count / total_tournaments
-            if appearance_rate < MIN_LEADER_APPEARANCE_PCT:
+            appeared_count = sum(1 for r in rankings if r > 0)
+            appearance_rate = appeared_count / total_tournaments
+            
+            if appearance_rate < min_appearance_pct:
                 continue
-            
-            # Calculate weighted average with slight recency bias
-            weighted_sum = 0.0
-            weight_sum = 0.0
-            
-            for i, value in enumerate(values):
-                # More recent tournaments get slightly higher weight
-                weight = 1.0 + (LEADER_RECENCY_WEIGHT * (total_tournaments - i) / total_tournaments)
-                weighted_sum += value * weight
-                weight_sum += weight
-            
-            weighted_avg = weighted_sum / weight_sum
             
             # Quality Filter 2: Must have meaningful average usage
-            if weighted_avg < MIN_LEADER_AVG_PCT:
+            avg_usage = sum(usage_values) / len(usage_values)
+            if avg_usage < min_avg_pct:
                 continue
             
-            # Calculate consistency (lower variance = more consistent)
-            mean_usage = sum(values) / len(values)
-            variance = sum((v - mean_usage) ** 2 for v in values) / len(values)
-            consistency_score = 1.0 / (1.0 + variance)  # Higher score = more consistent
+            # Calculate average ranking among tournaments where it appeared
+            valid_rankings = [r for r in rankings if r > 0]
+            if not valid_rankings:
+                continue
+                
+            avg_ranking = sum(valid_rankings) / len(valid_rankings)
             
-            # Overall quality score combines average, consistency, and appearance rate
-            quality_score = weighted_avg * consistency_score * appearance_rate
+            # Quality Filter 3: Must consistently rank high (top 10 on average)
+            if avg_ranking > max_avg_rank:
+                continue
+            
+            # Calculate how often it's in top 5
+            top_5_count = sum(1 for r in valid_rankings if r <= 5)
+            top_5_rate = top_5_count / len(valid_rankings)
+            
+            # Calculate how often it's #1
+            top_1_count = sum(1 for r in valid_rankings if r == 1)
+            top_1_rate = top_1_count / len(valid_rankings)
+            
+            # Leader score prioritizes:
+            # 1. High usage (weighted most)
+            # 2. Consistently high rankings (weighted heavily)
+            # 3. Frequent top 5 appearances
+            # 4. High appearance rate
+            leader_score = (
+                avg_usage * 10.0 +                    # Raw usage importance
+                (11 - avg_ranking) * 8.0 +            # Ranking importance (inverted so lower rank = higher score)
+                top_5_rate * 15.0 +                   # Top 5 consistency bonus
+                top_1_rate * 10.0 +                   # #1 appearances bonus
+                appearance_rate * 5.0                 # Appearance consistency
+            )
             
             stats.append({
                 'name': name,
                 'uid': key,
-                'avg': weighted_avg,
-                'consistency': consistency_score,
+                'avg_usage': avg_usage,
+                'avg_ranking': avg_ranking,
                 'appearance_rate': appearance_rate,
-                'quality_score': quality_score,
-                'present': present_count
+                'top_5_rate': top_5_rate,
+                'top_1_rate': top_1_rate,
+                'leader_score': leader_score,
+                'appeared_count': appeared_count
             })
         
-        # Sort by quality score (combines all factors)
-        stats.sort(key=lambda x: (-x['quality_score'], -x['avg'], x['name']))
+        # Sort by leader score (best leaders first)
+        stats.sort(key=lambda x: (-x['leader_score'], x['avg_ranking'], x['name']))
         
         result = []
         for item in stats[:max_limit]:
@@ -444,8 +498,9 @@ class CardAnalyzer:
                 'uid': item['uid'],
                 'set': set_code,
                 'number': number,
-                'avg_usage': round(item['avg'], 1),
-                'consistency': round(item['consistency'], 2),
+                'avg_usage': round(item['avg_usage'], 1),
+                'avg_ranking': round(item['avg_ranking'], 1),
+                'top_5_rate': round(item['top_5_rate'], 2),
                 'appearance_rate': round(item['appearance_rate'], 2)
             })
         
@@ -767,6 +822,21 @@ class RotationFilter:
 
 def generate_suggestions():
     """Main function to generate card suggestions with optimized algorithms."""
+    # CLI args (optional; defaults keep current behavior)
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument('--day2d-pool', type=int, default=60, help='Number of That Day 2\'d? candidates to produce in the pool file')
+    parser.add_argument('--day2d-selection', type=str, default='', help='Path to selection JSON to curate That Day 2\'d?')
+    parser.add_argument('--no-candidate-files', action='store_true', help='Do not write candidate pool files')
+    # Allow script to be imported without argparse errors
+    try:
+        args, _ = parser.parse_known_args()
+    except SystemExit:
+        # In case parsing fails when imported, fall back to defaults
+        class _Defaults: pass
+        args = _Defaults()
+        args.day2d_pool = 60
+        args.day2d_selection = ''
+        args.no_candidate_files = False
     # Initialize components
     loader = TournamentDataLoader()
     analyzer = CardAnalyzer(loader)
@@ -786,7 +856,76 @@ def generate_suggestions():
     print(f"Processing {len(tournament_data)} tournaments...")
     
     # Compute categories with optimized algorithms
-    leaders = analyzer.compute_consistent_leaders(tournament_data, filtered_tournaments, MAX_CANDIDATES)
+    # Leaders with progressive relaxation to ensure we meet minimum count
+    leaders = analyzer.compute_consistent_leaders(
+        tournament_data, filtered_tournaments, MAX_CANDIDATES,
+        min_appearance_pct=MIN_LEADER_APPEARANCE_PCT,
+        min_avg_pct=MIN_LEADER_AVG_PCT,
+        max_avg_rank=10
+    )
+    if len(leaders) < MIN_CANDIDATES:
+        # Relax average rank threshold first
+        leaders = analyzer.compute_consistent_leaders(
+            tournament_data, filtered_tournaments, MAX_CANDIDATES,
+            min_appearance_pct=MIN_LEADER_APPEARANCE_PCT,
+            min_avg_pct=MIN_LEADER_AVG_PCT,
+            max_avg_rank=12
+        )
+    if len(leaders) < MIN_CANDIDATES:
+        # Relax appearance percentage slightly
+        leaders = analyzer.compute_consistent_leaders(
+            tournament_data, filtered_tournaments, MAX_CANDIDATES,
+            min_appearance_pct=max(MIN_LEADER_APPEARANCE_PCT - 0.1, 0.4),
+            min_avg_pct=MIN_LEADER_AVG_PCT,
+            max_avg_rank=12
+        )
+    if len(leaders) < MIN_CANDIDATES:
+        # Relax average usage threshold slightly
+        leaders = analyzer.compute_consistent_leaders(
+            tournament_data, filtered_tournaments, MAX_CANDIDATES,
+            min_appearance_pct=max(MIN_LEADER_APPEARANCE_PCT - 0.1, 0.4),
+            min_avg_pct=max(MIN_LEADER_AVG_PCT - 0.5, 2.0),
+            max_avg_rank=13
+        )
+    if len(leaders) < MIN_CANDIDATES:
+        # Final relaxed attempt
+        leaders = analyzer.compute_consistent_leaders(
+            tournament_data, filtered_tournaments, MAX_CANDIDATES,
+            min_appearance_pct=max(MIN_LEADER_APPEARANCE_PCT - 0.2, 0.35),
+            min_avg_pct=max(MIN_LEADER_AVG_PCT - 1.0, 1.5),
+            max_avg_rank=15
+        )
+    if len(leaders) < MIN_CANDIDATES:
+        # Very loose: cast a wide net
+        loose_pool = analyzer.compute_consistent_leaders(
+            tournament_data, filtered_tournaments, MAX_CANDIDATES,
+            min_appearance_pct=0.25,
+            min_avg_pct=0.8,
+            max_avg_rank=20
+        )
+        # Merge to reach minimum
+        have = {item['uid'] for item in leaders}
+        for item in loose_pool:
+            if len(leaders) >= MIN_CANDIDATES:
+                break
+            if item['uid'] not in have:
+                leaders.append(item)
+                have.add(item['uid'])
+    if len(leaders) < MIN_CANDIDATES:
+        # Ultimate fallback: no filters, then merge until we hit the floor
+        ultimate_pool = analyzer.compute_consistent_leaders(
+            tournament_data, filtered_tournaments, MAX_CANDIDATES,
+            min_appearance_pct=0.0,
+            min_avg_pct=0.0,
+            max_avg_rank=10**6
+        )
+        have = {item['uid'] for item in leaders}
+        for item in ultimate_pool:
+            if len(leaders) >= MIN_CANDIDATES:
+                break
+            if item['uid'] not in have:
+                leaders.append(item)
+                have.add(item['uid'])
     leader_keys = {c.get('uid') or c['name'] for c in leaders}
     
     # Compute "On The Rise" with exclusions and fallback caps
@@ -824,7 +963,6 @@ def generate_suggestions():
         tournaments, leader_keys | rise_keys | chopped_keys, 
         MAX_CANDIDATES, MAX_PER_ARCHETYPE
     )
-    
     if len(that_day2d) < MIN_CANDIDATES:
         for cap in (3, 4):
             that_day2d = analyzer.compute_that_day2d(
@@ -833,6 +971,82 @@ def generate_suggestions():
             )
             if len(that_day2d) >= MIN_CANDIDATES:
                 break
+
+    # Build a larger candidate pool for "That Day 2'd?" (less restrictive per-arch cap)
+    try:
+        pool_cap = max(MAX_PER_ARCHETYPE * 5, 10)
+        that_day2d_pool = analyzer.compute_that_day2d(
+            tournaments, leader_keys | rise_keys | chopped_keys,
+            max(args.day2d_pool, MAX_CANDIDATES), cap_per_arch=pool_cap
+        )
+    except Exception:
+        that_day2d_pool = []
+
+    # Optionally write the pool to a file for manual inspection
+    if not args.no_candidate_files and that_day2d_pool:
+        try:
+            DAY2D_CANDIDATES_FILE.write_text(json.dumps({
+                'generatedAt': datetime.now(timezone.utc).isoformat(),
+                'note': 'Candidate pool for manual curation of That Day 2\'d?',
+                'count': len(that_day2d_pool),
+                'items': that_day2d_pool
+            }, ensure_ascii=False, indent=2), encoding='utf-8')
+            print(f"Wrote That Day 2'd? candidate pool: {DAY2D_CANDIDATES_FILE} ({len(that_day2d_pool)} items)")
+        except Exception as e:
+            print(f"Warning: failed to write candidate pool file: {e}")
+
+    # If a selection file is provided or exists, use it to curate the final list
+    selection_path = Path(args.day2d_selection).resolve() if args.day2d_selection else DAY2D_SELECTION_FILE
+    curated_used = False
+    if selection_path.exists() and that_day2d_pool:
+        try:
+            raw = json.loads(selection_path.read_text(encoding='utf-8'))
+            # Accept formats: {"items": ["uid", ...]} or ["uid", {"uid": "..."}, {"name": "..."}]
+            selected_ids: List[str] = []
+            if isinstance(raw, dict) and 'items' in raw:
+                seq = raw['items']
+            else:
+                seq = raw
+            if isinstance(seq, list):
+                for entry in seq:
+                    if isinstance(entry, str):
+                        selected_ids.append(entry)
+                    elif isinstance(entry, dict):
+                        uid = entry.get('uid') or entry.get('id')
+                        name = entry.get('name')
+                        if uid:
+                            selected_ids.append(uid)
+                        elif name:
+                            selected_ids.append(name)
+            # Build maps for lookup
+            by_uid = {item.get('uid') or item.get('name'): item for item in that_day2d_pool}
+            chosen: List[dict] = []
+            seen: Set[str] = set()
+            for sid in selected_ids:
+                item = by_uid.get(sid)
+                if not item:
+                    # try name-only match if sid looked like a name
+                    item = next((it for it in that_day2d_pool if it.get('name') == sid), None)
+                if item:
+                    uid = item.get('uid') or item.get('name')
+                    if uid not in seen and len(chosen) < MAX_CANDIDATES:
+                        chosen.append(item)
+                        seen.add(uid)
+            # Fill up to minimum with top pool items not already chosen
+            if len(chosen) < MIN_CANDIDATES:
+                for it in that_day2d_pool:
+                    uid = it.get('uid') or it.get('name')
+                    if uid not in seen:
+                        chosen.append(it)
+                        seen.add(uid)
+                        if len(chosen) >= MIN_CANDIDATES:
+                            break
+            # Cap at MAX_CANDIDATES
+            that_day2d = chosen[:MAX_CANDIDATES]
+            curated_used = True
+            print(f"Applied That Day 2'd? selection from: {selection_path} — {len(that_day2d)} items")
+        except Exception as e:
+            print(f"Warning: failed to apply selection file '{selection_path}': {e}")
     
     # Create output structure
     categories = [
