@@ -353,15 +353,29 @@ function extractPricesFromFields(fields) {
   const prices = {};
   const potentialPrices = [];
   
-  // Scan much broader range since CSV structures vary wildly between sets
-  for (let i = 5; i < Math.min(30, fields.length); i++) {
+  // Scan for potential price fields, but be smarter about filtering
+  // Start from field 10 onwards as earlier fields are typically metadata, not prices
+  for (let i = 10; i < Math.min(30, fields.length); i++) {
     const field = fields[i];
     // Look for decimal numbers that could be prices (0.01 to 999.99)
+    // Must be a valid price format with decimal OR whole numbers >= 2.00 (avoid single digits like "1", "2", "3")
     if (field && field.match(/^\d{1,3}(\.\d{1,2})?$/) && parseFloat(field) >= 0.01 && parseFloat(field) <= 999.99) {
-      potentialPrices.push({
-        index: i,
-        value: parseFloat(field)
-      });
+      const value = parseFloat(field);
+      
+      // Filter out likely non-price fields:
+      // - Single digit integers (1, 2, 3, etc.) that are probably status codes
+      // - Very round numbers like 10, 20, 30 that might be quantity fields
+      const isLikelyPrice = (
+        value % 1 !== 0 || // Has decimal places (like 17.1, 16.0)
+        value >= 2.00     // Or is at least $2 (avoids status codes like 1, 0)
+      );
+      
+      if (isLikelyPrice) {
+        potentialPrices.push({
+          index: i,
+          value: value
+        });
+      }
     }
   }
   
@@ -372,15 +386,33 @@ function extractPricesFromFields(fields) {
   let marketPrice = 0;
   
   if (potentialPrices.length >= 4) {
-    // With 4+ prices, sort and pick the 2nd lowest as market price
-    // This avoids the lowest (which might be lowPrice) and highest (which might be highPrice)
+    // With 4+ prices, the market price is typically the 4th price field
+    // Or use the 2nd lowest to avoid extreme low/high prices
     const sorted = potentialPrices.sort((a, b) => a.value - b.value);
-    marketPrice = sorted[1].value;
+    
+    // Try to find the most reasonable market price:
+    // If we have exactly 4 prices and the last one isn't extremely high, use it
+    if (potentialPrices.length === 4) {
+      const unsorted = potentialPrices.sort((a, b) => a.index - b.index); // Sort by field position
+      const lastPrice = unsorted[unsorted.length - 1].value;
+      const secondHighest = sorted[sorted.length - 2].value;
+      
+      // Use the last price if it's reasonable (not more than 3x the second highest)
+      if (lastPrice <= secondHighest * 3) {
+        marketPrice = lastPrice;
+      } else {
+        marketPrice = sorted[1].value; // Use 2nd lowest as fallback
+      }
+    } else {
+      // More than 4 prices - use 2nd lowest to avoid extremes
+      marketPrice = sorted[1].value;
+    }
+    
     prices.lowPrice = sorted[0].value;
-    prices.marketPrice = sorted[1].value; 
+    prices.marketPrice = marketPrice; 
     prices.highPrice = sorted[sorted.length - 1].value;
   } else if (potentialPrices.length === 3) {
-    // With 3 prices, take the middle one
+    // With 3 prices, take the middle one when sorted
     const sorted = potentialPrices.sort((a, b) => a.value - b.value);
     marketPrice = sorted[1].value;
     prices.marketPrice = sorted[1].value;

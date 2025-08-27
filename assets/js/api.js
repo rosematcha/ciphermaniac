@@ -300,11 +300,26 @@ export async function fetchPricingData() {
  */
 export async function getCardPrice(cardId) {
   try {
+    console.log('getCardPrice called with cardId:', cardId);
     const pricing = await fetchPricingData();
+    console.log('Pricing data loaded, total cards:', Object.keys(pricing.cardPrices).length);
+    
     const cardData = pricing.cardPrices[cardId];
-    return cardData ? cardData.price : null;
+    console.log('Lookup result for', cardId, ':', cardData);
+    
+    if (!cardData) {
+      // If exact match failed, let's see if there are similar cards
+      const similarKeys = Object.keys(pricing.cardPrices).filter(key => 
+        key.toLowerCase().includes(cardId.toLowerCase().split('::')[0])
+      ).slice(0, 3);
+      console.log('Similar cards found:', similarKeys);
+    }
+    
+    // FIX: The pricing data stores prices as numbers directly, not as objects with .price property
+    return cardData || null;
   } catch (error) {
     logger.debug(`Failed to get price for ${cardId}`, error.message);
+    console.error('Error in getCardPrice:', error);
     return null;
   }
 }
@@ -318,7 +333,9 @@ export async function getCardTCGPlayerId(cardId) {
   try {
     const pricing = await fetchPricingData();
     const cardData = pricing.cardPrices[cardId];
-    return cardData ? cardData.tcgPlayerId : null;
+    // Since cardData is now a number (price), we don't have TCGPlayer IDs stored anymore
+    // This function should return null or we need to restructure the data
+    return null;
   } catch (error) {
     logger.debug(`Failed to get TCGPlayer ID for ${cardId}`, error.message);
     return null;
@@ -333,7 +350,9 @@ export async function getCardTCGPlayerId(cardId) {
 export async function getCardData(cardId) {
   try {
     const pricing = await fetchPricingData();
-    return pricing.cardPrices[cardId] || null;
+    const cardPrice = pricing.cardPrices[cardId];
+    // Since pricing data now stores numbers directly, return in expected object format
+    return cardPrice ? { price: cardPrice, tcgPlayerId: null } : null;
   } catch (error) {
     logger.debug(`Failed to get card data for ${cardId}`, error.message);
     return null;

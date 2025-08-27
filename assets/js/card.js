@@ -720,7 +720,38 @@ async function renderCardPrice(cardIdentifier) {
   priceContainer.appendChild(loadingEl);
 
   try {
-    const price = await getCardPrice(cardIdentifier);
+    console.log('Attempting to get price for cardIdentifier:', cardIdentifier);
+    
+    let price = null;
+    
+    // If cardIdentifier is already in UID format (Name::SET::NUMBER), use it directly
+    if (cardIdentifier.includes('::')) {
+      price = await getCardPrice(cardIdentifier);
+      console.log('Direct UID lookup result:', price);
+    } else {
+      // If cardIdentifier is just a name, try to find variants from the card sets
+      console.log('Card identifier is just a name, attempting to find variants...');
+      
+      try {
+        const variants = await collectCardVariants(cardIdentifier);
+        console.log('Found variants:', variants);
+        
+        // Try to get price from the first available variant
+        for (const variant of variants) {
+          const variantUID = getCanonicalId(variant);
+          if (variantUID && variantUID.includes('::')) {
+            console.log('Trying variant UID:', variantUID);
+            price = await getCardPrice(variantUID);
+            if (price !== null && price > 0) {
+              console.log('Found price from variant:', variantUID, price);
+              break;
+            }
+          }
+        }
+      } catch (variantError) {
+        console.warn('Failed to get card variants:', variantError);
+      }
+    }
     
     // Clear loading and show actual price
     priceContainer.innerHTML = '';
@@ -733,11 +764,13 @@ async function renderCardPrice(cardIdentifier) {
         <div class="price-value">$${price.toFixed(2)}</div>
       `;
       priceContainer.appendChild(priceEl);
+      console.log('Successfully displayed price:', price);
     } else {
       const noPrice = document.createElement('div');
       noPrice.className = 'price-info no-price';
       noPrice.textContent = 'Price not available';
       priceContainer.appendChild(noPrice);
+      console.log('No price found for card identifier:', cardIdentifier);
     }
   } catch (error) {
     // Clear loading and show error state
@@ -746,6 +779,7 @@ async function renderCardPrice(cardIdentifier) {
     errorEl.className = 'price-info error';
     errorEl.textContent = 'Price unavailable';
     priceContainer.appendChild(errorEl);
+    console.error('Error in renderCardPrice:', error);
   }
 }
 

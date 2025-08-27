@@ -433,7 +433,7 @@ h2{margin:8px 0 6px}
 .card-hero .thumb img{ width:100%; height:100%; object-fit:contain }
 
 /* Card pricing styles */
-.card-price{ margin:8px 0; display:flex; justify-content:center; }
+.card-price{ margin: 0; display: flex; justify-content: flex-end; }
 .price-info{ 
   display:flex; 
   align-items:center; 
@@ -504,7 +504,8 @@ h2{margin:8px 0 6px}
   padding: 16px; /* extra padding for breathing room on card page */
 }
 .header-title{ grid-area: header; }
-.header-title h1{ margin: 2px 0 8px; font-size: 24px; letter-spacing: .3px; }
+.title-row{ display: flex; align-items: baseline; gap: 16px; margin: 2px 0 8px; }
+.header-title h1{ margin: 0; font-size: 24px; letter-spacing: .3px; flex: 1; }
 .card-title-set{ font-size: 0.75em; font-weight: 400; color: var(--muted); margin-left: 0.5em; }
 .card-sets{ color: var(--muted); font-size: 13px; margin: 0 0 4px; font-weight: normal; letter-spacing: normal; }
 #card-hero{ grid-area: hero; align-self:start }
