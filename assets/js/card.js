@@ -6,6 +6,7 @@ import { pickArchetype, baseToLabel } from './selectArchetype.js';
 import { normalizeCardRouteOnLoad } from './router.js';
 import { prettyTournamentName } from './utils/format.js';
 import { createChartSkeleton, createHistogramSkeleton, createEventsTableSkeleton, showSkeleton, hideSkeleton } from './components/placeholders.js';
+import { createProgressIndicator, processInParallel, cleanupOrphanedProgressIndicators } from './utils/parallelLoader.js';
 // Show curated suggestions on the card landing view
 import './cardsLanding.js';
 
@@ -747,24 +748,47 @@ async function collectCardVariants(cardIdentifier) {
     tournaments = ['World Championships 2025'];
   }
 
-  // Collect variants from all tournaments
-  for (const tournament of tournaments) {
-    try {
-      const master = await fetchReport(tournament);
-      const parsed = parseReport(master);
+  // Parallelize tournament data collection with concurrency limit
+  const CONCURRENCY_LIMIT = 8; // Higher limit for variants collection since it's lighter data processing
+  const chunks = [];
+  for (let i = 0; i < tournaments.length; i += CONCURRENCY_LIMIT) {
+    chunks.push(tournaments.slice(i, i + CONCURRENCY_LIMIT));
+  }
 
-      for (const item of parsed.items) {
-        const canonicalId = getCanonicalId(item);
-        const itemBaseName = getBaseName(canonicalId);
-        const searchBaseName = getBaseName(cardIdentifier);
+  const searchBaseName = getBaseName(cardIdentifier);
+  if (!searchBaseName) return [];
 
-        if (itemBaseName && searchBaseName && itemBaseName.toLowerCase() === searchBaseName.toLowerCase()) {
-          // Add canonical display name
-          variants.add(getDisplayName(canonicalId));
+  for (const chunk of chunks) {
+    const promises = chunk.map(async (tournament) => {
+      try {
+        const master = await fetchReport(tournament);
+        const parsed = parseReport(master);
+        const tournamentVariants = new Set();
+
+        for (const item of parsed.items) {
+          const canonicalId = getCanonicalId(item);
+          const itemBaseName = getBaseName(canonicalId);
+
+          if (itemBaseName && itemBaseName.toLowerCase() === searchBaseName.toLowerCase()) {
+            // Add canonical display name
+            tournamentVariants.add(getDisplayName(canonicalId));
+          }
         }
+
+        return tournamentVariants;
+      } catch {
+        // Skip failed tournament loads
+        return new Set();
       }
-    } catch {
-      // Skip failed tournament loads
+    });
+
+    const results = await Promise.all(promises);
+    
+    // Merge all variants from this chunk
+    for (const tournamentVariants of results) {
+      for (const variant of tournamentVariants) {
+        variants.add(variant);
+      }
     }
   }
 
@@ -1088,6 +1112,18 @@ async function renderAnalysisTable(tournament){
 
   analysisTable.innerHTML = '';
   analysisTable.appendChild(loadingSkeleton);
+  
+  // Create enhanced progress indicator
+  const progress = createProgressIndicator('Loading Archetype Analysis', [
+    'Processing archetype data',
+    'Building analysis table'
+  ], {
+    position: 'fixed', 
+    location: 'bottom-right',
+    autoRemove: true,
+    showPercentage: true
+  });
+  
   try{
     // Overall (All archetypes) distribution for this event
     let overall = null;
@@ -1098,41 +1134,61 @@ async function renderAnalysisTable(tournament){
       if(ci){ overall = ci; }
     }catch{/* ignore */}
 
-    // Per-archetype distributions
+    // Per-archetype distributions using enhanced parallel loading
     const list = await fetchArchetypesList(tournament);
-    const rows = [];
-    for(const base of list){
-      try{
+
+    progress.updateStep(0, 'loading');
+
+    // Use parallel processing utility for better performance
+    const archetypeResults = await processInParallel(list, async (base) => {
+      try {
         const arc = await fetchArchetypeReport(tournament, base);
         const p = parseReport(arc);
         const ci = findCard(p.items, cardIdentifier);
-        if(ci){
+        
+        if (ci) {
           // For high-usage cards (>20%), include single-deck archetypes to show distribution
           const overallItem = overall || {};
           const overallPct = overallItem.total ? (100 * overallItem.found / overallItem.total) : (overallItem.pct || 0);
           const minSample = overallPct > 20 ? 1 : 2; // Lower threshold for high-usage cards
-          if(!(ci.total >= minSample)) {continue;}
-          const pct = Number.isFinite(ci.pct)? ci.pct : (ci.total? (100*ci.found/ci.total): 0);
-          // Precompute percent of all decks in archetype by copies
-          const copiesPct = (n) => {
-            if(!Array.isArray(ci.dist) || !(ci.total>0)) {return null;}
-            const d = ci.dist.find(x=>x.copies===n);
-            if(!d) {return 0;}
-            return 100 * (d.players ?? 0) / ci.total;
-          };
-          rows.push({
-            archetype: base.replace(/_/g,' '),
-            pct,
-            found: ci.found,
-            total: ci.total,
-            c1: copiesPct(1),
-            c2: copiesPct(2),
-            c3: copiesPct(3),
-            c4: copiesPct(4)
-          });
+          if (ci.total >= minSample) {
+            const pct = Number.isFinite(ci.pct) ? ci.pct : (ci.total ? (100 * ci.found / ci.total) : 0);
+            
+            // Precompute percent of all decks in archetype by copies
+            const copiesPct = (n) => {
+              if (!Array.isArray(ci.dist) || !(ci.total > 0)) { return null; }
+              const d = ci.dist.find(x => x.copies === n);
+              if (!d) { return 0; }
+              return 100 * (d.players ?? 0) / ci.total;
+            };
+            
+            return {
+              archetype: base.replace(/_/g, ' '),
+              pct,
+              found: ci.found,
+              total: ci.total,
+              c1: copiesPct(1),
+              c2: copiesPct(2),
+              c3: copiesPct(3),
+              c4: copiesPct(4)
+            };
+          }
         }
-      }catch{/*missing*/}
-    }
+        return null;
+      } catch {
+        return null; // missing archetype
+      }
+    }, {
+      concurrency: 6, // Reasonable limit to avoid overwhelming the server
+      onProgress: (processed, total) => {
+        progress.updateProgress(processed, total, `${processed}/${total} archetypes processed`);
+      }
+    });
+
+    // Filter out null results
+    const rows = archetypeResults.filter(result => result !== null);
+    progress.updateStep(0, 'complete', `Processed ${rows.length} archetypes with data`);
+    progress.updateStep(1, 'loading');
     rows.sort((a,b)=> {
       // Primary sort: actual deck count (found)
       const foundDiff = (b.found ?? 0) - (a.found ?? 0);
@@ -1181,6 +1237,8 @@ async function renderAnalysisTable(tournament){
       note.className = 'summary';
       note.textContent = 'No per-archetype usage found for this event (or all archetypes have only one deck).';
       analysisTable.appendChild(note);
+      progress.updateStep(1, 'complete');
+      progress.setComplete(500); // Show for half a second then fade
       return;
     }
     const tbl = document.createElement('table');
@@ -1219,10 +1277,46 @@ async function renderAnalysisTable(tournament){
     }
     tbl.appendChild(tbody);
     analysisTable.appendChild(tbl);
+    
+    progress.updateStep(1, 'complete', `Built table with ${rows.length} archetypes`);
+    progress.setComplete(500); // Show for half a second then fade away
+    
   }catch(err){
+    console.error('Analysis table error:', err);
     // eslint-disable-next-line require-atomic-updates
     analysisTable.textContent = 'Failed to load analysis for this event.';
+    
+    // Clean up progress indicator and any orphans
+    if (progress && progress.fadeAndRemove) {
+      progress.fadeAndRemove();
+    }
+    
+    // Failsafe cleanup for any lingering progress indicators
+    setTimeout(() => {
+      cleanupOrphanedProgressIndicators();
+    }, 100);
   }
 }
 
 if(!__ROUTE_REDIRECTING) {load();}
+
+// Debug utility - expose cleanup function globally for troubleshooting
+window.cleanupProgressIndicators = () => {
+  const elements = document.querySelectorAll('.parallel-loader-progress, [id^="progress-"]');
+  console.log(`Found ${elements.length} progress indicator(s) to clean up`);
+  
+  elements.forEach((element, index) => {
+    console.log(`Removing progress indicator ${index + 1}: ${element.id || element.className}`);
+    element.style.transition = 'opacity 0.3s ease-out';
+    element.style.opacity = '0';
+    
+    setTimeout(() => {
+      if (element.parentNode) {
+        element.remove();
+        console.log(`Successfully removed progress indicator ${index + 1}`);
+      }
+    }, 300);
+  });
+  
+  return elements.length;
+};

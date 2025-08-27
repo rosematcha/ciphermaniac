@@ -26,13 +26,13 @@
       "Bash(curl:*)",
       "Bash(cat:*)",
       "Bash(del:*)",
-      "Read(/C:\\Users\\Reuse\\Documents\\GitHub\\Ciphermaniac\\assets/**)",
+      "Read(/C:\\Users\\Reese\\Documents\\GitHub\\Ciphermaniac\\assets/**)",
       "Bash(ls \"C:\\Users\\Reese\\Documents\\GitHub\\Ciphermaniac\\thumbnails\\sm\"\" | grep -i \"buddy \")"
     ],
     "deny": [],
     "ask": [],
     "additionalDirectories": [
-      "C:\\Users\\Reuse\\Documents\\GitHub\\Ciphermaniac\\reports\\get prices debugging"
+      "C:\\Users\\Reese\\Documents\\GitHub\\Ciphermaniac\\reports\\get prices debugging"
     ]
   }
 }
