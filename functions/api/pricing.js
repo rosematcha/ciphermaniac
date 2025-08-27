@@ -378,7 +378,15 @@ function extractPricesFromFields(fields) {
       lowPrice = field10 > 0 ? field10 : 0;
       midPrice = field11 > 0 ? field11 : 0;
       highPrice = field12 > 0 ? field12 : 0;
-      marketPrice = field13 > 0 ? field13 : (field11 > 0 ? field11 : field10); // Prefer marketPrice, fallback to mid then low
+      
+      // CRITICAL FIX: Always prefer field 13 (marketPrice) if it exists and is reasonable
+      if (field13 > 0 && field13 <= 999.99) {
+        marketPrice = field13;
+      } else if (field11 > 0) {
+        marketPrice = field11; // Fallback to midPrice
+      } else {
+        marketPrice = field10; // Last resort: lowPrice
+      }
       
       prices.lowPrice = lowPrice;
       prices.marketPrice = marketPrice;
