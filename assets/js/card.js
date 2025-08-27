@@ -710,8 +710,20 @@ async function renderCardPrice(cardIdentifier) {
   const priceContainer = document.getElementById('card-price');
   if (!priceContainer || !cardIdentifier) {return;}
 
+  // Show loading placeholder immediately for better UX
+  const loadingEl = document.createElement('div');
+  loadingEl.className = 'price-info loading';
+  loadingEl.innerHTML = `
+    <div class="price-label">Market Price:</div>
+    <div class="price-value">Loading...</div>
+  `;
+  priceContainer.appendChild(loadingEl);
+
   try {
     const price = await getCardPrice(cardIdentifier);
+    
+    // Clear loading and show actual price
+    priceContainer.innerHTML = '';
     
     if (price !== null && price > 0) {
       const priceEl = document.createElement('div');
@@ -728,12 +740,39 @@ async function renderCardPrice(cardIdentifier) {
       priceContainer.appendChild(noPrice);
     }
   } catch (error) {
-    priceContainer.textContent = '';
+    // Clear loading and show error state
+    priceContainer.innerHTML = '';
+    const errorEl = document.createElement('div');
+    errorEl.className = 'price-info error';
+    errorEl.textContent = 'Price unavailable';
+    priceContainer.appendChild(errorEl);
   }
 }
 
 async function collectCardVariants(cardIdentifier) {
   if (!cardIdentifier) {return [];}
+
+  const searchBaseName = getBaseName(cardIdentifier);
+  if (!searchBaseName) return [];
+
+  // Use aggressive caching for variants to avoid repeated network calls
+  const VARIANTS_CACHE_KEY = 'cardVariantsV2';
+  const CACHE_EXPIRY = 1000 * 60 * 60 * 24; // 24 hours
+  
+  let variantsCache;
+  try {
+    variantsCache = JSON.parse(localStorage.getItem(VARIANTS_CACHE_KEY) || '{}');
+  } catch {
+    variantsCache = {};
+  }
+
+  const cacheKey = searchBaseName.toLowerCase();
+  const cachedEntry = variantsCache[cacheKey];
+  
+  // Return cached data if fresh
+  if (cachedEntry && (Date.now() - cachedEntry.timestamp) < CACHE_EXPIRY) {
+    return cachedEntry.variants.sort();
+  }
 
   const variants = new Set();
   let tournaments = [];
@@ -748,59 +787,73 @@ async function collectCardVariants(cardIdentifier) {
     tournaments = ['World Championships 2025'];
   }
 
-  // Parallelize tournament data collection with concurrency limit
-  const CONCURRENCY_LIMIT = 8; // Higher limit for variants collection since it's lighter data processing
-  const chunks = [];
-  for (let i = 0; i < tournaments.length; i += CONCURRENCY_LIMIT) {
-    chunks.push(tournaments.slice(i, i + CONCURRENCY_LIMIT));
-  }
+  // Optimize for performance: limit to recent tournaments for variants collection
+  // Most card variants appear across multiple recent tournaments
+  const RECENT_LIMIT = 4; // Check only the 4 most recent tournaments for variants
+  const recentTournaments = tournaments.slice(0, RECENT_LIMIT);
 
-  const searchBaseName = getBaseName(cardIdentifier);
-  if (!searchBaseName) return [];
+  // Parallelize tournament data collection with higher concurrency since we're processing fewer tournaments
+  const promises = recentTournaments.map(async (tournament) => {
+    try {
+      const master = await fetchReport(tournament);
+      const parsed = parseReport(master);
+      const tournamentVariants = new Set();
 
-  for (const chunk of chunks) {
-    const promises = chunk.map(async (tournament) => {
-      try {
-        const master = await fetchReport(tournament);
-        const parsed = parseReport(master);
-        const tournamentVariants = new Set();
+      for (const item of parsed.items) {
+        const canonicalId = getCanonicalId(item);
+        const itemBaseName = getBaseName(canonicalId);
 
-        for (const item of parsed.items) {
-          const canonicalId = getCanonicalId(item);
-          const itemBaseName = getBaseName(canonicalId);
-
-          if (itemBaseName && itemBaseName.toLowerCase() === searchBaseName.toLowerCase()) {
-            // Add canonical display name
-            tournamentVariants.add(getDisplayName(canonicalId));
-          }
+        if (itemBaseName && itemBaseName.toLowerCase() === searchBaseName.toLowerCase()) {
+          // Add canonical display name
+          tournamentVariants.add(getDisplayName(canonicalId));
         }
-
-        return tournamentVariants;
-      } catch {
-        // Skip failed tournament loads
-        return new Set();
       }
-    });
 
-    const results = await Promise.all(promises);
-    
-    // Merge all variants from this chunk
-    for (const tournamentVariants of results) {
-      for (const variant of tournamentVariants) {
-        variants.add(variant);
-      }
+      return tournamentVariants;
+    } catch {
+      // Skip failed tournament loads
+      return new Set();
+    }
+  });
+
+  const results = await Promise.all(promises);
+  
+  // Merge all variants
+  for (const tournamentVariants of results) {
+    for (const variant of tournamentVariants) {
+      variants.add(variant);
     }
   }
 
-  return Array.from(variants).sort();
+  const variantsList = Array.from(variants);
+
+  // Cache the results for future use
+  try {
+    variantsCache[cacheKey] = {
+      variants: variantsList,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(VARIANTS_CACHE_KEY, JSON.stringify(variantsCache));
+  } catch {
+    // Ignore cache storage errors
+  }
+
+  return variantsList.sort();
 }
 
 async function renderCardSets(cardIdentifier) {
   const setsContainer = document.getElementById('card-sets');
   if (!setsContainer || !cardIdentifier) {return;}
 
+  // Show loading state immediately
+  setsContainer.textContent = 'Loading variants...';
+  setsContainer.className = 'loading';
+
   try {
     const variants = await collectCardVariants(cardIdentifier);
+
+    // Clear loading state
+    setsContainer.className = '';
 
     if (variants.length === 0) {
       setsContainer.textContent = '';
@@ -811,6 +864,8 @@ async function renderCardSets(cardIdentifier) {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.warn('Failed to load card variants:', error);
+    // Handle errors gracefully
+    setsContainer.className = 'error';
     setsContainer.textContent = '';
   }
 }
@@ -818,6 +873,17 @@ async function renderCardSets(cardIdentifier) {
 async function load(){
   if(!cardIdentifier){ metaSection.textContent = 'Missing card identifier.'; return; }
 
+  // Phase 1: Immediate UI Setup (synchronous, runs before any network)
+  setupImmediateUI();
+  
+  // Phase 2: Start all async operations in parallel
+  const dataPromises = startParallelDataLoading();
+  
+  // Phase 3: Progressive rendering as data becomes available
+  await renderProgressively(dataPromises);
+}
+
+function setupImmediateUI() {
   // Show placeholders for all sections to prevent CLS
   const chartEl = document.getElementById('card-chart');
   if(chartEl) {
@@ -831,39 +897,105 @@ async function load(){
   if(eventsSection) {
     showSkeleton(eventsSection, createEventsTableSkeleton());
   }
-  // Load overrides for thumbnails and render hero
-  const overrides = await fetchOverrides();
+
+  // Start hero image loading immediately, replacing skeleton
   const hero = document.getElementById('card-hero');
   if(hero && cardName){
+    // Clear any existing skeleton placeholder
+    hero.innerHTML = '';
+    
+    // Create image element and wrapper
     const img = document.createElement('img');
-    img.alt = cardName; img.decoding = 'async'; img.loading = 'eager'; // Use eager for hero image
+    img.alt = cardName; img.decoding = 'async'; img.loading = 'eager';
     img.style.opacity = '0'; img.style.transition = 'opacity .18s ease-out';
-    const candidates = buildThumbCandidates(cardName, true, overrides);
-    let idx = 0;
-    const tryNext = () => {
-      if(idx>=candidates.length) {return;}
-      img.src = candidates[idx++];
-    };
-    img.onerror = () => tryNext();
-    img.onload = () => { img.style.opacity = '1'; }; // Smooth fade-in
-    tryNext();
-    const wrap = document.createElement('div'); wrap.className = 'thumb'; wrap.appendChild(img);
+    
+    const wrap = document.createElement('div'); 
+    wrap.className = 'thumb'; 
+    wrap.appendChild(img);
     hero.appendChild(wrap);
     hero.removeAttribute('aria-hidden');
+    
+    // Store image loading state on the element
+    img._loadingState = { candidates: [], idx: 0, loading: false };
+    
+    const tryNextImage = () => {
+      const state = img._loadingState;
+      if(state.loading || state.idx >= state.candidates.length) return;
+      
+      state.loading = true;
+      img.src = state.candidates[state.idx++];
+    };
+    
+    img.onerror = () => {
+      img._loadingState.loading = false;
+      tryNextImage();
+    };
+    
+    img.onload = () => { 
+      img.style.opacity = '1'; 
+    };
+    
+    // Start with default candidates
+    const defaultCandidates = buildThumbCandidates(cardName, true, {});
+    img._loadingState.candidates = defaultCandidates;
+    tryNextImage();
   }
+}
 
-  // Collect and display all card variants (set/number combinations)
-  await renderCardSets(cardName);
+function startParallelDataLoading() {
+  // Start all data fetching in parallel immediately
+  const tournamentsPromise = fetchTournamentsList().catch(() => ['World Championships 2025']);
+  const overridesPromise = fetchOverrides();
   
-  // Display pricing information
-  await renderCardPrice(cardIdentifier);
+  // Secondary data that doesn't block initial content
+  const cardSetsPromise = renderCardSets(cardName).catch(() => null);
+  const cardPricePromise = renderCardPrice(cardIdentifier).catch(() => null);
+  
+  return {
+    tournaments: tournamentsPromise,
+    overrides: overridesPromise,
+    cardSets: cardSetsPromise,
+    cardPrice: cardPricePromise
+  };
+}
 
+async function renderProgressively(dataPromises) {
+  // Get tournaments data first (needed for most content)
   let tournaments = [];
-  try{ tournaments = await fetchTournamentsList(); }
-  catch{ /* fallback below */ }
+  try{ 
+    tournaments = await dataPromises.tournaments;
+  } catch{ 
+    tournaments = ['World Championships 2025'];
+  }
   if(!Array.isArray(tournaments) || tournaments.length===0){
     tournaments = ['World Championships 2025'];
   }
+
+  // Enhance hero image with overrides when available (non-blocking)
+  dataPromises.overrides.then(overrides => {
+    const hero = document.getElementById('card-hero');
+    const img = hero?.querySelector('img');
+    if(hero && img && cardName && img.style.opacity === '0' && img._loadingState) {
+      // Only enhance if image hasn't loaded yet and we have better candidates
+      const enhancedCandidates = buildThumbCandidates(cardName, true, overrides);
+      const state = img._loadingState;
+      
+      // If we haven't started loading or failed on default candidates, use enhanced ones
+      if(state.idx === 0 || (state.idx >= state.candidates.length && !state.loading)) {
+        state.candidates = enhancedCandidates;
+        state.idx = 0;
+        state.loading = false;
+        
+        // Retry with enhanced candidates
+        if(state.idx < state.candidates.length && !state.loading) {
+          state.loading = true;
+          img.src = state.candidates[state.idx++];
+        }
+      }
+    }
+  }).catch(() => {
+    // Keep default candidates on override failure
+  });
   // Simple localStorage cache for All-archetypes stats: key by tournament+card
   const CACHE_KEY = 'metaCacheV1';
   const cache = (()=>{ try{ return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch (error) {
@@ -873,6 +1005,11 @@ async function load(){
   // Ignore initialization errors
   } };
 
+  // Load main chart data in parallel
+  await loadAndRenderMainContent(tournaments, cache, saveCache);
+}
+
+async function loadAndRenderMainContent(tournaments, cache, saveCache) {
   // Fixed window: only process the most recent 6 tournaments to minimize network calls
   const PROCESS_LIMIT = 6;
   const recentTournaments = tournaments.slice(0, PROCESS_LIMIT);
@@ -881,7 +1018,9 @@ async function load(){
   const timePoints = [];
   const deckRows = [];
   const eventsWithCard = [];
-  for(const t of recentTournaments){
+  
+  // Process tournaments in parallel with Promise.all for faster loading
+  const tournamentPromises = recentTournaments.map(async (t) => {
     try{
       const ck = `${t}::${cardIdentifier}`;
       let globalPct = null, globalFound = null, globalTotal = null;
@@ -923,40 +1062,30 @@ async function load(){
         }
       }
       if(globalPct !== null){
-        timePoints.push({ tournament: t, pct: globalPct });
-        eventsWithCard.push(t);
-        deckRows.push({ tournament: t, archetype: null, pct: globalPct, found: globalFound, total: globalTotal });
+        return { tournament: t, pct: globalPct, found: globalFound, total: globalTotal };
       }
-    }catch{/* missing tournament master */}
-  }
+      return null;
+    }catch{
+      return null; // missing tournament master
+    }
+  });
+  
+  // Wait for all tournament data in parallel
+  const tournamentResults = await Promise.all(tournamentPromises);
+  
+  // Filter and collect results
+  tournamentResults.forEach(result => {
+    if (result) {
+      timePoints.push({ tournament: result.tournament, pct: result.pct });
+      eventsWithCard.push(result.tournament);
+      deckRows.push({ tournament: result.tournament, archetype: null, pct: result.pct, found: result.found, total: result.total });
+    }
+  });
 
   // Fixed window: always show the most recent 6 tournaments
   const LIMIT = 6;
   const showAll = false;
-  const renderToggles = () => {
-    // Clear previous notes
-    const oldNotes = metaSection.querySelectorAll('.summary.toggle-note');
-    oldNotes.forEach(n => n.remove());
-    const totalP = timePoints.length;
-    const shown = Math.min(LIMIT, totalP);
-    const note = document.createElement('div');
-    note.className = 'summary toggle-note';
-    note.textContent = `Chronological (oldest to newest). Showing most recent ${shown} of ${totalP}. Limited to 6 tournaments for optimal performance.`;
-    metaSection.appendChild(note);
-    // Events/decks toggle mirrors chart (attach to eventsSection if present)
-    const tableSection = eventsSection || decksSection;
-    if(tableSection){
-      const oldNotes2 = tableSection.querySelectorAll('.summary.toggle-note');
-      oldNotes2.forEach(n => n.remove());
-      const totalR = deckRows.length;
-      const shownR = Math.min(LIMIT, totalR);
-      const note2 = document.createElement('div');
-      note2.className = 'summary toggle-note';
-      note2.textContent = `Chronological (oldest to newest). Showing most recent ${shownR} of ${totalR}.`;
-      tableSection.appendChild(note2);
-    }
-  };
-
+  
   // Cache for chosen archetype label per (tournament, card)
   const PICK_CACHE_KEY = 'archPickV2';
   const pickCache = (()=>{ try{ return JSON.parse(localStorage.getItem(PICK_CACHE_KEY) || '{}'); } catch (error) {
@@ -1001,7 +1130,31 @@ async function load(){
     }
   }
 
-  // const renderNonce = 0; // Unused variable removed
+  const renderToggles = () => {
+    if (!metaSection) return;
+    // Clear previous notes
+    const oldNotes = metaSection.querySelectorAll('.summary.toggle-note');
+    oldNotes.forEach(n => n.remove());
+    const totalP = timePoints.length;
+    const shown = Math.min(LIMIT, totalP);
+    const note = document.createElement('div');
+    note.className = 'summary toggle-note';
+    note.textContent = `Chronological (oldest to newest). Showing most recent ${shown} of ${totalP}. Limited to 6 tournaments for optimal performance.`;
+    metaSection.appendChild(note);
+    // Events/decks toggle mirrors chart (attach to eventsSection if present)
+    const tableSection = eventsSection || decksSection;
+    if(tableSection){
+      const oldNotes2 = tableSection.querySelectorAll('.summary.toggle-note');
+      oldNotes2.forEach(n => n.remove());
+      const totalR = deckRows.length;
+      const shownR = Math.min(LIMIT, totalR);
+      const note2 = document.createElement('div');
+      note2.className = 'summary toggle-note';
+      note2.textContent = `Chronological (oldest to newest). Showing most recent ${shownR} of ${totalR}.`;
+      tableSection.appendChild(note2);
+    }
+  };
+
   const refresh = () => {
     const chartEl = document.getElementById('card-chart') || metaSection;
     // Show chronological from oldest to newest

@@ -5,6 +5,7 @@ import { computeLayout, syncControlsWidth } from './layoutHelper.js';
 import { trackMissing } from './dev/missingThumbs.js';
 import { isFavorite, toggleFavorite, subscribeFavorites } from './favorites.js';
 import { setupImagePreloading } from './utils/imagePreloader.js';
+import { parallelImageLoader } from './utils/parallelImageLoader.js';
 import { setProperties, setStyles, createElement, batchAppend } from './utils/dom.js';
 // Modal removed: navigate to card page instead
 
@@ -117,6 +118,13 @@ export function render(items, overrides={}){
 
   // Set up image preloading for better performance
   setupImagePreloading(items, overrides);
+  
+  // Additionally, preload visible images in parallel batches for even faster loading
+  if (items.length > 0) {
+    requestAnimationFrame(() => {
+      preloadVisibleImagesParallel(items, overrides);
+    });
+  }
 
   // If there are remaining rows not rendered, show a More control
   // Determine total rows that would be generated for all items
@@ -258,6 +266,17 @@ function expandGridRows(items, overrides, targetTotalRows) {
   // Set up image preloading for new cards only
   const newItems = items.slice(existingCards);
   setupImagePreloading(newItems, overrides);
+  
+  // Additionally preload new images in parallel for better performance
+  if (newItems.length > 0) {
+    requestAnimationFrame(() => {
+      const newCandidatesList = newItems.flatMap(item => [
+        buildThumbCandidates(item.name, true, overrides, { set: item.set, number: item.number }),  // sm
+        buildThumbCandidates(item.name, false, overrides, { set: item.set, number: item.number })  // xs
+      ]);
+      parallelImageLoader.preloadImages(newCandidatesList, 6);
+    });
+  }
 
   // Restore scroll position after DOM manipulation
   requestAnimationFrame(() => {
@@ -293,32 +312,51 @@ function createStarButton(cardName) {
 }
 
 function setupCardImage(img, cardName, useSm, overrides, cardData) {
-  // Set basic image attributes - no mutations of parameters
-  setProperties(img, {
-    alt: cardName,
-    decoding: 'async',
-    loading: useSm ? 'eager' : 'lazy'
-  });
-
-  setStyles(img, {
-    opacity: '0',
-    transition: 'opacity .18s ease-out'
-  });
-
   const candidates = buildThumbCandidates(cardName, useSm, overrides, { set: cardData.set, number: cardData.number });
-  let idx = 0;
-
-  const tryNext = () => {
-    if (idx >= candidates.length) {
+  
+  // Use parallel image loader for better performance
+  parallelImageLoader.setupImageElement(img, candidates, {
+    alt: cardName,
+    fadeIn: true,
+    maxParallel: 3, // Try first 3 candidates in parallel
+    onFailure: () => {
+      // Track missing images for debugging
       trackMissing(cardName, useSm, overrides);
-      return;
     }
-    img.src = candidates[idx++];
-  };
+  });
+}
 
-  img.onerror = tryNext;
-  img.onload = () => { img.style.opacity = '1'; };
-  tryNext();
+/**
+ * Preload visible images using parallel loading for even faster performance
+ */
+function preloadVisibleImagesParallel(items, overrides = {}) {
+  const grid = document.getElementById('grid');
+  if (!grid || !Array.isArray(items)) return;
+
+  // Get visible cards
+  const visibleCards = Array.from(grid.querySelectorAll('.card'));
+  const candidatesList = [];
+
+  visibleCards.forEach(cardEl => {
+    const nameEl = cardEl.querySelector('.name');
+    const cardName = nameEl?.textContent;
+    
+    if (cardName) {
+      const cardData = items.find(item => item.name === cardName);
+      if (cardData) {
+        // Add both sm and xs candidates for each visible card
+        candidatesList.push(
+          buildThumbCandidates(cardName, true, overrides, { set: cardData.set, number: cardData.number }),  // sm
+          buildThumbCandidates(cardName, false, overrides, { set: cardData.set, number: cardData.number })  // xs
+        );
+      }
+    }
+  });
+
+  // Preload in batches with high concurrency for visible images
+  if (candidatesList.length > 0) {
+    parallelImageLoader.preloadImages(candidatesList, 8); // Higher concurrency for visible images
+  }
 }
 
 function populateCardContent(el, cardData) {

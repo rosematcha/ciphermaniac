@@ -39,14 +39,27 @@
     <section id="card-meta" class="card-sect">
   <div class="header-title">
     <h1 id="card-title">Card Details</h1>
-    <div id="card-sets" class="card-sets"></div>
+    <div id="card-sets" class="card-sets skeleton-loading">
+      <div class="skeleton-text medium"></div>
+    </div>
   </div>
-  <div id="card-hero" class="card-hero" aria-hidden="true"></div>
-  <div id="card-price" class="card-price"></div>
+  <div id="card-hero" class="card-hero">
+    <!-- Show placeholder immediately, no aria-hidden -->
+    <div class="thumb skeleton-loading">
+      <div class="skeleton-image"></div>
+    </div>
+  </div>
+  <div id="card-price" class="card-price skeleton-loading">
+    <div class="skeleton-text small"></div>
+  </div>
   <div id="card-center">
   <!-- window-select removed; card page always shows the most recent 6 tournaments -->
-        <div id="card-chart"></div>
-        <div id="card-copies"></div>
+        <div id="card-chart" class="skeleton-loading">
+          <div class="skeleton-chart"></div>
+        </div>
+        <div id="card-copies" class="skeleton-loading">
+          <div class="skeleton-histogram"></div>
+        </div>
   </div>
   <div id="card-events"></div>
       <!-- Card meta-share and copy count graph will go here -->
@@ -67,6 +80,31 @@
   <script type="module">
     import { createHeader } from './assets/js/components/header.js';
     import { createFooter } from './assets/js/components/footer.js';
+    
+    // Extract and display card name immediately for fast initial paint
+    function getCardNameFromLocation(){
+      const params = new URLSearchParams(location.search);
+      const q = params.get('name');
+      if(q) {return q;}
+      // Hash route: #card/<encoded name or UID>
+      const m = location.hash.match(/^#card\/(.+)$/);
+      if(m) {return decodeURIComponent(m[1]);}
+      return null;
+    }
+    
+    // Show card name immediately, no waiting for JS modules
+    const cardName = getCardNameFromLocation();
+    if (cardName) {
+      const titleEl = document.getElementById('card-title');
+      if (titleEl) {
+        // Extract display name from UID or use as-is
+        const displayName = cardName.includes('::') 
+          ? cardName.split('::')[0] 
+          : cardName;
+        titleEl.textContent = displayName;
+        document.title = `${displayName} – Ciphermaniac`;
+      }
+    }
     
     // Insert header and footer
     const header = createHeader({ currentPage: 'cards' });
