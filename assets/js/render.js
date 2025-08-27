@@ -372,8 +372,15 @@ function preloadVisibleImagesParallel(items, overrides = {}) {
 }
 
 function populateCardContent(el, cardData) {
-  // Remove skeleton classes and elements from the card
-  const card = el.querySelector ? el : el.querySelector('.card');
+  // Remove skeleton classes from the card element itself
+  // el could be the card directly or a fragment containing the card
+  let card = null;
+  if (el.classList && el.classList.contains('card')) {
+    card = el; // el is the card itself
+  } else if (el.querySelector) {
+    card = el.querySelector('.card'); // el is a fragment, find the card
+  }
+  
   if (card) {
     card.classList.remove('skeleton-card');
     card.removeAttribute('aria-hidden');
@@ -389,16 +396,18 @@ function populateCardContent(el, cardData) {
 
   // Update name element - remove skeleton and set real content
   const nameEl = el.querySelector('.name');
-  // Remove any existing skeleton-text elements and classes
-  nameEl.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
-  nameEl.classList.remove('skeleton-text');
-  nameEl.textContent = cardData.name;
+  if (nameEl) {
+    // Remove any existing skeleton-text elements and classes
+    nameEl.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
+    nameEl.classList.remove('skeleton-text');
+    nameEl.textContent = cardData.name;
 
-  // Set full title with set info for tooltip, but display only name
-  if (cardData.set && cardData.number) {
-    nameEl.title = `${cardData.name} ${cardData.set} ${cardData.number}`;
-  } else {
-    nameEl.title = cardData.name;
+    // Set full title with set info for tooltip, but display only name
+    if (cardData.set && cardData.number) {
+      nameEl.title = `${cardData.name} ${cardData.set} ${cardData.number}`;
+    } else {
+      nameEl.title = cardData.name;
+    }
   }
 
   // Update percentage display - remove skeleton elements
@@ -429,13 +438,15 @@ function populateCardContent(el, cardData) {
 function createCardHistogram(el, cardData) {
   const hist = el.querySelector('.hist');
   
-  // Remove skeleton elements and classes
-  hist.querySelectorAll('.skeleton-bar').forEach(skeleton => skeleton.remove());
-  hist.classList.remove('skeleton-loading');
-  hist.innerHTML = '';
+  if (hist) {
+    // Remove skeleton elements and classes
+    hist.querySelectorAll('.skeleton-bar').forEach(skeleton => skeleton.remove());
+    hist.classList.remove('skeleton-loading');
+    hist.innerHTML = '';
 
-  if (!cardData.dist || !cardData.dist.length) {
-    return;
+    if (!cardData.dist || !cardData.dist.length) {
+      return;
+    }
   }
 
   const minC = Math.min(...cardData.dist.map(d=>d.copies));
@@ -547,18 +558,20 @@ function setupCardAttributes(card, cardData) {
 function setupCardCounts(element, cardData) {
   const counts = element.querySelector('.counts');
   
-  // Remove any skeleton elements and classes
-  counts.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
-  counts.classList.remove('skeleton-text', 'counts');
-  counts.innerHTML = '';
+  if (counts) {
+    // Remove any skeleton elements and classes
+    counts.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
+    counts.classList.remove('skeleton-text', 'counts');
+    counts.innerHTML = '';
 
-  const hasValidCounts = Number.isFinite(cardData.found) && Number.isFinite(cardData.total);
-  const countsText = createElement('span', {
-    textContent: hasValidCounts ? `${cardData.found} / ${cardData.total} decks` : 'no data'
-  });
+    const hasValidCounts = Number.isFinite(cardData.found) && Number.isFinite(cardData.total);
+    const countsText = createElement('span', {
+      textContent: hasValidCounts ? `${cardData.found} / ${cardData.total} decks` : 'no data'
+    });
 
-  const starBtn = createStarButton(cardData.name);
-  batchAppend(counts, [countsText, starBtn]);
+    const starBtn = createStarButton(cardData.name);
+    batchAppend(counts, [countsText, starBtn]);
+  }
 }
 
 // Reflow-only: recompute per-row sizing and move existing cards into new rows without rebuilding cards/images.
