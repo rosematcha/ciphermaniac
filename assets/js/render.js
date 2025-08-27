@@ -312,6 +312,18 @@ function createStarButton(cardName) {
 }
 
 function setupCardImage(img, cardName, useSm, overrides, cardData) {
+  // Remove any skeleton classes and elements from the thumb container
+  const thumbContainer = img.closest('.thumb');
+  if (thumbContainer) {
+    // Remove skeleton image if it exists
+    const skeletonImg = thumbContainer.querySelector('.skeleton-img');
+    if (skeletonImg) {
+      skeletonImg.remove();
+    }
+    // Remove skeleton-loading class
+    thumbContainer.classList.remove('skeleton-loading');
+  }
+
   const candidates = buildThumbCandidates(cardName, useSm, overrides, { set: cardData.set, number: cardData.number });
   
   // Use parallel image loader for better performance
@@ -360,6 +372,13 @@ function preloadVisibleImagesParallel(items, overrides = {}) {
 }
 
 function populateCardContent(el, cardData) {
+  // Remove skeleton classes and elements from the card
+  const card = el.querySelector ? el : el.querySelector('.card');
+  if (card) {
+    card.classList.remove('skeleton-card');
+    card.removeAttribute('aria-hidden');
+  }
+
   // Calculate percentage once
   const pct = Number.isFinite(cardData.pct)
     ? cardData.pct
@@ -368,8 +387,11 @@ function populateCardContent(el, cardData) {
   const pctText = Number.isFinite(pct) ? `${pct.toFixed(1)}%` : '—';
   const widthPct = `${Math.max(0, Math.min(100, pct))}%`;
 
-  // Update name element - show only the card name in grid view
+  // Update name element - remove skeleton and set real content
   const nameEl = el.querySelector('.name');
+  // Remove any existing skeleton-text elements and classes
+  nameEl.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
+  nameEl.classList.remove('skeleton-text');
   nameEl.textContent = cardData.name;
 
   // Set full title with set info for tooltip, but display only name
@@ -379,9 +401,21 @@ function populateCardContent(el, cardData) {
     nameEl.title = cardData.name;
   }
 
-  // Update percentage display
-  el.querySelector('.bar').style.width = widthPct;
-  el.querySelector('.pct').textContent = pctText;
+  // Update percentage display - remove skeleton elements
+  const barEl = el.querySelector('.bar');
+  const pctEl = el.querySelector('.pct');
+  
+  if (barEl) {
+    barEl.classList.remove('skeleton-usage-bar');
+    barEl.style.width = widthPct;
+  }
+  
+  if (pctEl) {
+    // Remove skeleton text elements and classes
+    pctEl.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
+    pctEl.classList.remove('skeleton-text', 'small');
+    pctEl.textContent = pctText;
+  }
 
   // Update usage tooltip
   const usageEl = el.querySelector('.usagebar');
@@ -394,6 +428,10 @@ function populateCardContent(el, cardData) {
 
 function createCardHistogram(el, cardData) {
   const hist = el.querySelector('.hist');
+  
+  // Remove skeleton elements and classes
+  hist.querySelectorAll('.skeleton-bar').forEach(skeleton => skeleton.remove());
+  hist.classList.remove('skeleton-loading');
   hist.innerHTML = '';
 
   if (!cardData.dist || !cardData.dist.length) {
@@ -508,6 +546,10 @@ function setupCardAttributes(card, cardData) {
 // Extract counts setup
 function setupCardCounts(element, cardData) {
   const counts = element.querySelector('.counts');
+  
+  // Remove any skeleton elements and classes
+  counts.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
+  counts.classList.remove('skeleton-text', 'counts');
   counts.innerHTML = '';
 
   const hasValidCounts = Number.isFinite(cardData.found) && Number.isFinite(cardData.total);
