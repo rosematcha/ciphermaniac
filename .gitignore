@@ -36,8 +36,4 @@ coverage/
 tools/
 .claude/
 .mcp.json
-reports/get-prices.json
-/reports/get prices debugging
-.claude/settings.local.json
 reports/that_day2d_candidates.json
-/.claude
