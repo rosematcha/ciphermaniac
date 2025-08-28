@@ -36,4 +36,5 @@ coverage/
 tools/
 .claude/
 .mcp.json
-reports/that_day2d_candidates.json
+package-lock.json
+*test*.html
