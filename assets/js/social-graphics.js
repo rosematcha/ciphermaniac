@@ -2,7 +2,8 @@ class SocialGraphicsGenerator {
   constructor() {
     this.tournaments = [];
     this.currentTournamentData = null;
-    this.consistentLeaders = new Set(['Professor_Sada_Vitality', 'Boss_Orders', 'Ultra_Ball', 'Nest_Ball']);
+    this.previousTournamentData = null;
+    this.consistentLeaders = new Set();
     
     this.init();
   }
@@ -10,6 +11,7 @@ class SocialGraphicsGenerator {
   async init() {
     try {
       await this.loadTournaments();
+      await this.loadConsistentLeaders();
       this.setupEventListeners();
     } catch (error) {
       console.error('Failed to initialize social graphics generator:', error);
@@ -23,10 +25,11 @@ class SocialGraphicsGenerator {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const tournamentNames = await response.json();
-      this.tournaments = tournamentNames.map(name => ({
+      this.tournaments = tournamentNames.map((name, index) => ({
         folder: name,
-        name: name
-      }));
+        name: name,
+        index: index
+      })).sort((a, b) => b.folder.localeCompare(a.folder)); // Sort by date desc
       this.populateTournamentSelect();
     } catch (error) {
       console.error('Failed to load tournaments:', error);
@@ -44,6 +47,30 @@ class SocialGraphicsGenerator {
       option.textContent = tournament.name;
       select.appendChild(option);
     });
+  }
+
+  async loadConsistentLeaders() {
+    try {
+      const response = await fetch('reports/suggestions.json');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const suggestions = await response.json();
+      
+      // Find the consistent leaders category
+      const consistentLeadersCategory = suggestions.categories.find(cat => cat.id === 'consistent-leaders');
+      if (consistentLeadersCategory) {
+        // Transform card names to match the filtering logic
+        consistentLeadersCategory.items.forEach(item => {
+          const transformedName = item.name.replace(/[^a-zA-Z0-9]/g, '_');
+          this.consistentLeaders.add(transformedName);
+        });
+        console.log(`Loaded ${this.consistentLeaders.size} consistent leaders`);
+      }
+    } catch (error) {
+      console.error('Failed to load consistent leaders:', error);
+      this.showError('Failed to load consistent leaders data');
+    }
   }
 
   showError(message) {
@@ -72,6 +99,24 @@ class SocialGraphicsGenerator {
       const text = await response.text();
       this.currentTournamentData = JSON.parse(text);
       
+      // Load previous tournament for rising cards comparison
+      const currentIndex = this.tournaments.findIndex(t => t.folder === tournamentFolder);
+      if (currentIndex < this.tournaments.length - 1) {
+        const previousFolder = this.tournaments[currentIndex + 1].folder;
+        try {
+          const prevResponse = await fetch(`reports/${previousFolder}/master.json`);
+          if (prevResponse.ok) {
+            const prevText = await prevResponse.text();
+            this.previousTournamentData = JSON.parse(prevText);
+          }
+        } catch (error) {
+          console.warn('Failed to load previous tournament data:', error);
+          this.previousTournamentData = null;
+        }
+      } else {
+        this.previousTournamentData = null;
+      }
+      
       await this.renderGraphics();
     } catch (error) {
       console.error('Failed to generate graphics:', error);
@@ -80,28 +125,136 @@ class SocialGraphicsGenerator {
   }
 
   async renderGraphics() {
-    const includeConsistentLeaders = document.getElementById('include-consistent-leaders').checked;
+    const displayMode = document.getElementById('display-mode').value;
     const maxCards = parseInt(document.getElementById('max-cards').value) || 20;
     
-    let filteredData = this.currentTournamentData.items.filter(card => {
-      if (card.set === 'SVE') return false;
-      
-      if (!includeConsistentLeaders && this.isConsistentLeader(card)) {
-        return false;
-      }
-      
-      return true;
-    });
-
+    let filteredData = this.getFilteredData(displayMode);
     filteredData = filteredData.slice(0, maxCards);
     
     const output = document.getElementById('graphics-output');
     output.innerHTML = '';
 
-    for (const card of filteredData) {
-      const cardGraphic = await this.createCardGraphic(card);
-      output.appendChild(cardGraphic);
+    if (filteredData.length === 0) return;
+
+    // Create tournament layout structure
+    const tournamentLayout = document.createElement('div');
+    tournamentLayout.className = 'tournament-layout';
+
+    // Main tournament section (featured + bracket-right)
+    const tournamentMain = document.createElement('div');
+    tournamentMain.className = 'tournament-main';
+
+    // Featured card container (rank #1)
+    const featuredContainer = document.createElement('div');
+    featuredContainer.className = 'featured-card-container';
+
+    // Bracket right side container
+    const bracketRight = document.createElement('div');
+    bracketRight.className = 'bracket-right';
+
+    // Create featured card (rank #1)
+    if (filteredData.length > 0) {
+      const featuredCard = await this.createCardGraphic(filteredData[0], 1, displayMode, 'featured');
+      featuredContainer.appendChild(featuredCard);
     }
+
+    // Medium row (ranks 2, 3, 4)
+    if (filteredData.length > 1) {
+      const mediumRow = document.createElement('div');
+      mediumRow.className = 'bracket-row medium-row';
+      
+      for (let i = 1; i <= 3 && i < filteredData.length; i++) {
+        const mediumCard = await this.createCardGraphic(filteredData[i], i + 1, displayMode, 'medium');
+        mediumRow.appendChild(mediumCard);
+      }
+      bracketRight.appendChild(mediumRow);
+    }
+
+    // Small row (ranks 5, 6, 7, 8)
+    if (filteredData.length > 4) {
+      const smallRow = document.createElement('div');
+      smallRow.className = 'bracket-row small-row';
+      
+      for (let i = 4; i <= 7 && i < filteredData.length; i++) {
+        const smallCard = await this.createCardGraphic(filteredData[i], i + 1, displayMode, 'small');
+        smallRow.appendChild(smallCard);
+      }
+      bracketRight.appendChild(smallRow);
+    }
+
+    // Assemble main tournament section
+    tournamentMain.appendChild(featuredContainer);
+    tournamentMain.appendChild(bracketRight);
+
+    // Bottom row (ranks 9-14)
+    if (filteredData.length > 8) {
+      const bottomRow = document.createElement('div');
+      bottomRow.className = 'bottom-row';
+      
+      for (let i = 8; i <= 13 && i < filteredData.length; i++) {
+        const bottomCard = await this.createCardGraphic(filteredData[i], i + 1, displayMode, 'tiny');
+        bottomRow.appendChild(bottomCard);
+      }
+      
+      tournamentLayout.appendChild(tournamentMain);
+      tournamentLayout.appendChild(bottomRow);
+    } else {
+      tournamentLayout.appendChild(tournamentMain);
+    }
+
+    output.appendChild(tournamentLayout);
+  }
+
+  getFilteredData(displayMode) {
+    let data = this.currentTournamentData.items.filter(card => card.set !== 'SVE');
+    
+    switch (displayMode) {
+      case 'standard':
+        return data;
+        
+      case 'no-leaders':
+        return data.filter(card => !this.isConsistentLeader(card));
+        
+      case 'rising':
+        return this.getRisingCards(data);
+        
+      default:
+        return data;
+    }
+  }
+
+  getRisingCards(currentData) {
+    if (!this.previousTournamentData) {
+      // If no previous data, show message and return empty
+      this.showError('No previous tournament data available for comparison. Rising cards mode requires historical data.');
+      return [];
+    }
+
+    // Create lookup map for previous tournament data
+    const previousLookup = new Map();
+    this.previousTournamentData.items.forEach(card => {
+      previousLookup.set(card.uid, card.pct);
+    });
+
+    // Calculate increases and filter out new cards (0% to something)
+    const risingCards = [];
+    currentData.forEach(card => {
+      const previousPct = previousLookup.get(card.uid);
+      
+      if (previousPct !== undefined && previousPct > 0) {
+        const increase = card.pct - previousPct;
+        if (increase > 0) {
+          risingCards.push({
+            ...card,
+            increase: increase,
+            previousPct: previousPct
+          });
+        }
+      }
+    });
+
+    // Sort by increase amount (descending)
+    return risingCards.sort((a, b) => b.increase - a.increase);
   }
 
   isConsistentLeader(card) {
@@ -109,9 +262,18 @@ class SocialGraphicsGenerator {
     return this.consistentLeaders.has(cardKey);
   }
 
-  async createCardGraphic(card) {
+  async createCardGraphic(card, displayRank, displayMode = 'standard', cardSize = 'normal') {
     const cardDiv = document.createElement('div');
-    cardDiv.className = 'card-graphic';
+    cardDiv.className = cardSize === 'featured' ? 'card-graphic featured' : 
+                       cardSize === 'medium' ? 'card-graphic medium' :
+                       cardSize === 'small' ? 'card-graphic small' :
+                       cardSize === 'tiny' ? 'card-graphic tiny' : 'card-graphic';
+    
+    // Add rank badge
+    const rankBadge = document.createElement('div');
+    rankBadge.className = 'card-rank-badge';
+    rankBadge.textContent = displayRank;
+    cardDiv.appendChild(rankBadge);
     
     const imageContainer = document.createElement('div');
     imageContainer.className = 'card-image-container';
@@ -123,7 +285,7 @@ class SocialGraphicsGenerator {
     if (imagePath) {
       img.src = imagePath;
       img.alt = card.name;
-      await this.applyCropping(img, card);
+      await this.applyCropping(img, card, cardSize);
     } else {
       img.style.backgroundColor = '#ddd';
       img.style.display = 'flex';
@@ -136,31 +298,40 @@ class SocialGraphicsGenerator {
     
     imageContainer.appendChild(img);
     
-    const infoDiv = document.createElement('div');
-    infoDiv.className = 'card-info';
+    // Create chin section like home grid
+    const cardChin = document.createElement('div');
+    cardChin.className = 'card-chin';
+    
+    const chinLeft = document.createElement('div');
+    chinLeft.className = 'card-chin-left';
     
     const nameDiv = document.createElement('div');
     nameDiv.className = 'card-name';
-    const cardType = this.determineCardType(card);
-    nameDiv.textContent = `${card.name} [${cardType.toUpperCase()}]`;
+    nameDiv.textContent = card.name;
     
-    const rankDiv = document.createElement('div');
-    rankDiv.className = 'card-rank';
-    rankDiv.textContent = `Rank #${card.rank}`;
+    const usageInfo = document.createElement('div');
+    usageInfo.className = 'card-usage';
+    usageInfo.style.fontSize = 'var(--font-size-sm)';
+    usageInfo.style.color = 'var(--muted)';
     
-    const usageDiv = document.createElement('div');
-    usageDiv.className = 'card-usage';
-    usageDiv.textContent = `Used in ${card.pct}% of decks (${card.found}/${card.total})`;
+    if (displayMode === 'rising' && card.increase !== undefined) {
+      usageInfo.textContent = `+${card.increase.toFixed(1)}% increase`;
+    } else {
+      usageInfo.textContent = `${card.found}/${card.total} decks`;
+    }
     
-    const histogram = this.createHistogram(card.dist);
+    const chinRight = document.createElement('div');
+    chinRight.className = 'card-chin-right';
+    chinRight.textContent = `${card.pct}%`;
     
-    infoDiv.appendChild(nameDiv);
-    infoDiv.appendChild(rankDiv);
-    infoDiv.appendChild(usageDiv);
-    infoDiv.appendChild(histogram);
+    chinLeft.appendChild(nameDiv);
+    chinLeft.appendChild(usageInfo);
+    
+    cardChin.appendChild(chinLeft);
+    cardChin.appendChild(chinRight);
     
     cardDiv.appendChild(imageContainer);
-    cardDiv.appendChild(infoDiv);
+    cardDiv.appendChild(cardChin);
     
     return cardDiv;
   }
@@ -172,10 +343,33 @@ class SocialGraphicsGenerator {
 
   async loadImageWithFallback(card) {
     const baseName = card.name.replace(/[^a-zA-Z0-9]/g, '_');
+    
+    // Special case transformations for known patterns
+    let specialName = card.name;
+    
+    // Handle "Buddy-Buddy" pattern (preserve hyphen in Buddy-Buddy, convert space to underscore)
+    if (card.name.includes('Buddy-Buddy')) {
+      specialName = card.name.replace(/\s+/g, '_'); // Convert spaces to underscores first
+      specialName = specialName.replace(/[^a-zA-Z0-9\-_]/g, '_'); // Keep hyphens and underscores
+    }
+    // Handle "Technical Machine: X" pattern (colon becomes single underscore)
+    else if (card.name.startsWith('Technical Machine:')) {
+      specialName = card.name.replace('Technical Machine:', 'Technical_Machine');
+      specialName = specialName.replace(/[^a-zA-Z0-9]/g, '_');
+    }
+    // Handle cards with special characters that should be preserved (periods, accents, decimals)
+    else if (card.name.includes('Pokégear 3.0') || 
+             card.name.includes('Exp. Share') ||
+             card.name.match(/\d+\.\d+/) ||  // Decimal numbers like 3.0
+             card.name.match(/\w+\.\s+\w+/)) { // Abbreviations like "Exp. Share"
+      specialName = card.name.replace(/\s+/g, '_'); // Only convert spaces to underscores
+    }
+    
     const possiblePaths = [
       `thumbnails/sm/${baseName}_${card.set}_${card.number}.png`,
       `thumbnails/sm/${card.name.replace(/[^a-zA-Z0-9']/g, '_')}_${card.set}_${card.number}.png`,
-      `thumbnails/sm/${card.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '_')}_${card.set}_${card.number}.png`
+      `thumbnails/sm/${card.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '_')}_${card.set}_${card.number}.png`,
+      `thumbnails/sm/${specialName.replace(/[^a-zA-Z0-9\-]/g, '_')}_${card.set}_${card.number}.png`
     ];
 
     console.log(`Trying to load image for: ${card.name} (${card.set} ${card.number})`);
@@ -207,7 +401,7 @@ class SocialGraphicsGenerator {
     return null;
   }
 
-  async applyCropping(img, card) {
+  async applyCropping(img, card, cardSize = 'normal') {
     return new Promise((resolve) => {
       // Prevent recursive cropping by checking if already processed
       if (img.dataset.cropped === 'true') {
@@ -223,8 +417,17 @@ class SocialGraphicsGenerator {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           
-          canvas.width = 230;
-          canvas.height = 144;
+          // Use proper aspect ratios for card display
+          const canvasWidth = cardSize === 'featured' ? 400 : 
+                            cardSize === 'medium' ? 300 :
+                            cardSize === 'small' ? 240 :
+                            cardSize === 'tiny' ? 200 : 300;
+          const canvasHeight = cardSize === 'featured' ? 353 : 
+                             cardSize === 'medium' ? 160 :
+                             cardSize === 'small' ? 150 :
+                             cardSize === 'tiny' ? 125 : 200;
+          canvas.width = canvasWidth;
+          canvas.height = canvasHeight;
           
           const cropParams = this.getCropParameters(card);
           
@@ -238,22 +441,22 @@ class SocialGraphicsGenerator {
             
             // Calculate aspect ratios
             const sourceAspect = sourceWidth / sourceHeight;
-            const targetAspect = 230 / 144;
+            const targetAspect = canvasWidth / canvasHeight;
             
             let drawWidth, drawHeight, drawX, drawY;
             
             if (sourceAspect > targetAspect) {
               // Source is wider, fit to height and crop sides
-              drawHeight = 144;
+              drawHeight = canvasHeight;
               drawWidth = drawHeight * sourceAspect;
-              drawX = (230 - drawWidth) / 2;
+              drawX = (canvasWidth - drawWidth) / 2;
               drawY = 0;
             } else {
               // Source is taller, fit to width and crop top/bottom
-              drawWidth = 230;
+              drawWidth = canvasWidth;
               drawHeight = drawWidth / sourceAspect;
               drawX = 0;
-              drawY = (144 - drawHeight) / 2;
+              drawY = (canvasHeight - drawHeight) / 2;
             }
             
             ctx.drawImage(
@@ -369,12 +572,14 @@ class SocialGraphicsGenerator {
     const histogram = document.createElement('div');
     histogram.className = 'histogram';
     
-    const maxPlayers = Math.max(...distribution.map(d => d.players));
+    // Filter to only show 1-4 copies (Pokemon cards max 4)
+    const validDist = distribution.filter(d => d.copies <= 4);
+    const maxPlayers = Math.max(...validDist.map(d => d.players));
     
-    distribution.forEach(dist => {
+    validDist.forEach(dist => {
       const bar = document.createElement('div');
       bar.className = 'histogram-bar';
-      bar.style.height = `${(dist.players / maxPlayers) * 35}px`;
+      bar.style.height = `${(dist.players / maxPlayers) * 15}px`;
       bar.textContent = dist.copies;
       bar.title = `${dist.copies} copies: ${dist.players} players (${dist.percent}%)`;
       histogram.appendChild(bar);
@@ -394,8 +599,11 @@ class SocialGraphicsGenerator {
     try {
       const canvas = await html2canvas(output, {
         backgroundColor: '#ffffff',
-        scale: 2,
-        useCORS: true
+        scale: 1,
+        useCORS: true,
+        allowTaint: true,
+        imageTimeout: 3000,
+        logging: false
       });
       
       const link = document.createElement('a');

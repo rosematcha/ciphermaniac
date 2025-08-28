@@ -7,6 +7,8 @@ import { CONFIG } from './config.js';
 import { logger } from './utils/logger.js';
 import { AppError, ErrorTypes, withRetry, validateType } from './utils/errorHandler.js';
 
+let pricingData = null;
+
 /**
  * Enhanced fetch with timeout and error handling
  * @param {string} url
@@ -258,6 +260,101 @@ export async function fetchTop8ArchetypesList(tournament) {
     return null;
   } catch (error) {
     logger.debug(`Top 8 archetypes not available for ${tournament}`, error.message);
+    return null;
+  }
+}
+
+/**
+ * Fetch pricing data from the pricing API
+ * @returns {Promise<Object>} Pricing data with card prices
+ */
+export async function fetchPricingData() {
+  if (pricingData) {
+    return pricingData;
+  }
+  
+  try {
+    logger.debug('Fetching pricing data...');
+    const url = 'https://ciphermaniac.com/api/get-prices';
+    const response = await safeFetch(url);
+    const data = await safeJsonParse(response, url);
+    
+    validateType(data, 'object', 'pricing data');
+    if (!data.cardPrices || typeof data.cardPrices !== 'object') {
+      throw new AppError('Invalid pricing data schema', ErrorTypes.PARSE);
+    }
+    
+    pricingData = data;
+    logger.info(`Loaded pricing data for ${Object.keys(data.cardPrices).length} cards`);
+    return data;
+  } catch (error) {
+    logger.warn('Failed to fetch pricing data', error.message);
+    return { cardPrices: {} };
+  }
+}
+
+/**
+ * Get price for a specific card
+ * @param {string} cardId - Card identifier in format "Name::SET::NUMBER"
+ * @returns {Promise<number|null>} Price in USD or null if not found
+ */
+export async function getCardPrice(cardId) {
+  try {
+    console.log('getCardPrice called with cardId:', cardId);
+    const pricing = await fetchPricingData();
+    console.log('Pricing data loaded, total cards:', Object.keys(pricing.cardPrices).length);
+    
+    const cardData = pricing.cardPrices[cardId];
+    console.log('Lookup result for', cardId, ':', cardData);
+    
+    if (!cardData) {
+      // If exact match failed, let's see if there are similar cards
+      const similarKeys = Object.keys(pricing.cardPrices).filter(key => 
+        key.toLowerCase().includes(cardId.toLowerCase().split('::')[0])
+      ).slice(0, 3);
+      console.log('Similar cards found:', similarKeys);
+    }
+    
+    // FIX: The pricing data stores prices as numbers directly, not as objects with .price property
+    return cardData || null;
+  } catch (error) {
+    logger.debug(`Failed to get price for ${cardId}`, error.message);
+    console.error('Error in getCardPrice:', error);
+    return null;
+  }
+}
+
+/**
+ * Get TCGPlayer ID for a specific card
+ * @param {string} cardId - Card identifier in format "Name::SET::NUMBER"
+ * @returns {Promise<string|null>} TCGPlayer ID or null if not found
+ */
+export async function getCardTCGPlayerId(cardId) {
+  try {
+    const pricing = await fetchPricingData();
+    const cardData = pricing.cardPrices[cardId];
+    // Since cardData is now a number (price), we don't have TCGPlayer IDs stored anymore
+    // This function should return null or we need to restructure the data
+    return null;
+  } catch (error) {
+    logger.debug(`Failed to get TCGPlayer ID for ${cardId}`, error.message);
+    return null;
+  }
+}
+
+/**
+ * Get complete card data (price and TCGPlayer ID)
+ * @param {string} cardId - Card identifier in format "Name::SET::NUMBER"  
+ * @returns {Promise<Object|null>} Object with price and tcgPlayerId or null if not found
+ */
+export async function getCardData(cardId) {
+  try {
+    const pricing = await fetchPricingData();
+    const cardPrice = pricing.cardPrices[cardId];
+    // Since pricing data now stores numbers directly, return in expected object format
+    return cardPrice ? { price: cardPrice, tcgPlayerId: null } : null;
+  } catch (error) {
+    logger.debug(`Failed to get card data for ${cardId}`, error.message);
     return null;
   }
 }
