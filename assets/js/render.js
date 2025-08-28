@@ -5,6 +5,7 @@ import { computeLayout, syncControlsWidth } from './layoutHelper.js';
 import { trackMissing } from './dev/missingThumbs.js';
 import { isFavorite, toggleFavorite, subscribeFavorites } from './favorites.js';
 import { setupImagePreloading } from './utils/imagePreloader.js';
+import { parallelImageLoader } from './utils/parallelImageLoader.js';
 import { setProperties, setStyles, createElement, batchAppend } from './utils/dom.js';
 // Modal removed: navigate to card page instead
 
@@ -117,6 +118,13 @@ export function render(items, overrides={}){
 
   // Set up image preloading for better performance
   setupImagePreloading(items, overrides);
+  
+  // Additionally, preload visible images in parallel batches for even faster loading
+  if (items.length > 0) {
+    requestAnimationFrame(() => {
+      preloadVisibleImagesParallel(items, overrides);
+    });
+  }
 
   // If there are remaining rows not rendered, show a More control
   // Determine total rows that would be generated for all items
@@ -258,6 +266,17 @@ function expandGridRows(items, overrides, targetTotalRows) {
   // Set up image preloading for new cards only
   const newItems = items.slice(existingCards);
   setupImagePreloading(newItems, overrides);
+  
+  // Additionally preload new images in parallel for better performance
+  if (newItems.length > 0) {
+    requestAnimationFrame(() => {
+      const newCandidatesList = newItems.flatMap(item => [
+        buildThumbCandidates(item.name, true, overrides, { set: item.set, number: item.number }),  // sm
+        buildThumbCandidates(item.name, false, overrides, { set: item.set, number: item.number })  // xs
+      ]);
+      parallelImageLoader.preloadImages(newCandidatesList, 6);
+    });
+  }
 
   // Restore scroll position after DOM manipulation
   requestAnimationFrame(() => {
@@ -293,35 +312,80 @@ function createStarButton(cardName) {
 }
 
 function setupCardImage(img, cardName, useSm, overrides, cardData) {
-  // Set basic image attributes - no mutations of parameters
-  setProperties(img, {
-    alt: cardName,
-    decoding: 'async',
-    loading: useSm ? 'eager' : 'lazy'
-  });
-
-  setStyles(img, {
-    opacity: '0',
-    transition: 'opacity .18s ease-out'
-  });
+  // Remove any skeleton classes and elements from the thumb container
+  const thumbContainer = img.closest('.thumb');
+  if (thumbContainer) {
+    // Remove skeleton image if it exists
+    const skeletonImg = thumbContainer.querySelector('.skeleton-img');
+    if (skeletonImg) {
+      skeletonImg.remove();
+    }
+    // Remove skeleton-loading class
+    thumbContainer.classList.remove('skeleton-loading');
+  }
 
   const candidates = buildThumbCandidates(cardName, useSm, overrides, { set: cardData.set, number: cardData.number });
-  let idx = 0;
-
-  const tryNext = () => {
-    if (idx >= candidates.length) {
+  
+  // Use parallel image loader for better performance
+  parallelImageLoader.setupImageElement(img, candidates, {
+    alt: cardName,
+    fadeIn: true,
+    maxParallel: 3, // Try first 3 candidates in parallel
+    onFailure: () => {
+      // Track missing images for debugging
       trackMissing(cardName, useSm, overrides);
-      return;
     }
-    img.src = candidates[idx++];
-  };
+  });
+}
 
-  img.onerror = tryNext;
-  img.onload = () => { img.style.opacity = '1'; };
-  tryNext();
+/**
+ * Preload visible images using parallel loading for even faster performance
+ */
+function preloadVisibleImagesParallel(items, overrides = {}) {
+  const grid = document.getElementById('grid');
+  if (!grid || !Array.isArray(items)) return;
+
+  // Get visible cards
+  const visibleCards = Array.from(grid.querySelectorAll('.card'));
+  const candidatesList = [];
+
+  visibleCards.forEach(cardEl => {
+    const nameEl = cardEl.querySelector('.name');
+    const cardName = nameEl?.textContent;
+    
+    if (cardName) {
+      const cardData = items.find(item => item.name === cardName);
+      if (cardData) {
+        // Add both sm and xs candidates for each visible card
+        candidatesList.push(
+          buildThumbCandidates(cardName, true, overrides, { set: cardData.set, number: cardData.number }),  // sm
+          buildThumbCandidates(cardName, false, overrides, { set: cardData.set, number: cardData.number })  // xs
+        );
+      }
+    }
+  });
+
+  // Preload in batches with high concurrency for visible images
+  if (candidatesList.length > 0) {
+    parallelImageLoader.preloadImages(candidatesList, 8); // Higher concurrency for visible images
+  }
 }
 
 function populateCardContent(el, cardData) {
+  // Remove skeleton classes from the card element itself
+  // el could be the card directly or a fragment containing the card
+  let card = null;
+  if (el.classList && el.classList.contains('card')) {
+    card = el; // el is the card itself
+  } else if (el.querySelector) {
+    card = el.querySelector('.card'); // el is a fragment, find the card
+  }
+  
+  if (card) {
+    card.classList.remove('skeleton-card');
+    card.removeAttribute('aria-hidden');
+  }
+
   // Calculate percentage once
   const pct = Number.isFinite(cardData.pct)
     ? cardData.pct
@@ -330,20 +394,37 @@ function populateCardContent(el, cardData) {
   const pctText = Number.isFinite(pct) ? `${pct.toFixed(1)}%` : '—';
   const widthPct = `${Math.max(0, Math.min(100, pct))}%`;
 
-  // Update name element - show only the card name in grid view
+  // Update name element - remove skeleton and set real content
   const nameEl = el.querySelector('.name');
-  nameEl.textContent = cardData.name;
+  if (nameEl) {
+    // Remove any existing skeleton-text elements and classes
+    nameEl.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
+    nameEl.classList.remove('skeleton-text');
+    nameEl.textContent = cardData.name;
 
-  // Set full title with set info for tooltip, but display only name
-  if (cardData.set && cardData.number) {
-    nameEl.title = `${cardData.name} ${cardData.set} ${cardData.number}`;
-  } else {
-    nameEl.title = cardData.name;
+    // Set full title with set info for tooltip, but display only name
+    if (cardData.set && cardData.number) {
+      nameEl.title = `${cardData.name} ${cardData.set} ${cardData.number}`;
+    } else {
+      nameEl.title = cardData.name;
+    }
   }
 
-  // Update percentage display
-  el.querySelector('.bar').style.width = widthPct;
-  el.querySelector('.pct').textContent = pctText;
+  // Update percentage display - remove skeleton elements
+  const barEl = el.querySelector('.bar');
+  const pctEl = el.querySelector('.pct');
+  
+  if (barEl) {
+    barEl.classList.remove('skeleton-usage-bar');
+    barEl.style.width = widthPct;
+  }
+  
+  if (pctEl) {
+    // Remove skeleton text elements and classes
+    pctEl.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
+    pctEl.classList.remove('skeleton-text', 'small');
+    pctEl.textContent = pctText;
+  }
 
   // Update usage tooltip
   const usageEl = el.querySelector('.usagebar');
@@ -356,10 +437,16 @@ function populateCardContent(el, cardData) {
 
 function createCardHistogram(el, cardData) {
   const hist = el.querySelector('.hist');
-  hist.innerHTML = '';
+  
+  if (hist) {
+    // Remove skeleton elements and classes
+    hist.querySelectorAll('.skeleton-bar').forEach(skeleton => skeleton.remove());
+    hist.classList.remove('skeleton-loading');
+    hist.innerHTML = '';
 
-  if (!cardData.dist || !cardData.dist.length) {
-    return;
+    if (!cardData.dist || !cardData.dist.length) {
+      return;
+    }
   }
 
   const minC = Math.min(...cardData.dist.map(d=>d.copies));
@@ -470,15 +557,21 @@ function setupCardAttributes(card, cardData) {
 // Extract counts setup
 function setupCardCounts(element, cardData) {
   const counts = element.querySelector('.counts');
-  counts.innerHTML = '';
+  
+  if (counts) {
+    // Remove any skeleton elements and classes
+    counts.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
+    counts.classList.remove('skeleton-text', 'counts');
+    counts.innerHTML = '';
 
-  const hasValidCounts = Number.isFinite(cardData.found) && Number.isFinite(cardData.total);
-  const countsText = createElement('span', {
-    textContent: hasValidCounts ? `${cardData.found} / ${cardData.total} decks` : 'no data'
-  });
+    const hasValidCounts = Number.isFinite(cardData.found) && Number.isFinite(cardData.total);
+    const countsText = createElement('span', {
+      textContent: hasValidCounts ? `${cardData.found} / ${cardData.total} decks` : 'no data'
+    });
 
-  const starBtn = createStarButton(cardData.name);
-  batchAppend(counts, [countsText, starBtn]);
+    const starBtn = createStarButton(cardData.name);
+    batchAppend(counts, [countsText, starBtn]);
+  }
 }
 
 // Reflow-only: recompute per-row sizing and move existing cards into new rows without rebuilding cards/images.

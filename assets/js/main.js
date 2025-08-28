@@ -224,7 +224,7 @@ async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = fa
       const data = await loadTournamentData(currentTournament, cache);
       state.current = data;
       renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
-      applyFiltersSort(data.items, state.overrides);
+      await applyFiltersSort(data.items, state.overrides);
       setStateInURL({ archetype: selectedValue }, { merge: true });
       return;
     }
@@ -254,7 +254,7 @@ async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = fa
 
     state.current = { items: cached.items, deckTotal: cached.deckTotal };
     renderSummary(document.getElementById('summary'), cached.deckTotal, cached.items.length);
-    applyFiltersSort(cached.items, state.overrides);
+    await applyFiltersSort(cached.items, state.overrides);
     setStateInURL({ archetype: selectedValue }, { merge: true });
   };
 
@@ -289,21 +289,21 @@ function setupControlHandlers(state) {
   }, 'controls');
 
   // Debounced search handler
-  const handleSearch = debounce(() => {
-    applyFiltersSort(state.current.items, state.overrides);
+  const handleSearch = debounce(async () => {
+    await applyFiltersSort(state.current.items, state.overrides);
     // Use replace while typing to avoid polluting history; final commit can push
     setStateInURL({ q: elements.search.value }, { merge: true, replace: true });
   });
 
   // Sort change handler
-  const handleSort = () => {
-    applyFiltersSort(state.current.items, state.overrides);
+  const handleSort = async () => {
+    await applyFiltersSort(state.current.items, state.overrides);
     setStateInURL({ sort: elements.sort.value }, { merge: true });
   };
 
   // Favorites filter handler
-  const handleFavoritesFilter = () => {
-    applyFiltersSort(state.current.items, state.overrides);
+  const handleFavoritesFilter = async () => {
+    await applyFiltersSort(state.current.items, state.overrides);
     setStateInURL({ fav: elements.favFilter.value }, { merge: true });
   };
 
@@ -354,7 +354,7 @@ function setupControlHandlers(state) {
     } else {
       // Update display with all tournament data
       renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
-      applyFiltersSort(data.items, state.overrides);
+      await applyFiltersSort(data.items, state.overrides);
     }
 
     // Update URL with both tournament and archetype
@@ -375,7 +375,7 @@ function setupControlHandlers(state) {
 }
 
 // Restore state from URL when navigating back/forward
-function handlePopState(state){
+async function handlePopState(state){
   logger.debug('popstate detected, restoring URL state');
   const parsed = parseHash();
   if(parsed.route === 'card' && parsed.name){
@@ -383,10 +383,10 @@ function handlePopState(state){
     location.assign(target);
     return;
   }
-  applyInitialState(state);
+  await applyInitialState(state);
 }
 
-window.addEventListener('popstate', () => handlePopState(appState));
+window.addEventListener('popstate', async () => await handlePopState(appState));
 
 /**
  * Setup layout resize handler
@@ -421,7 +421,7 @@ function setupResizeHandler(state) {
  * Apply initial filters from URL state
  * @param {AppState} state
  */
-function applyInitialState(state) {
+async function applyInitialState(state) {
   const urlState = getStateFromURL();
   const elements = validateElements({
     search: '#search',
@@ -441,7 +441,7 @@ function applyInitialState(state) {
     elements.archetype.value = urlState.archetype;
     elements.archetype.dispatchEvent(new Event('change'));
   } else {
-    applyFiltersSort(state.current.items, state.overrides);
+    await applyFiltersSort(state.current.items, state.overrides);
   }
   if (urlState.fav && elements.favFilter) {
     elements.favFilter.value = urlState.fav === 'fav' ? 'fav' : 'all';
@@ -497,7 +497,7 @@ async function initializeApp() {
     renderSummary(document.getElementById('summary'), initialData.deckTotal, initialData.items.length);
 
     // Apply initial state from URL
-    applyInitialState(appState);
+    await applyInitialState(appState);
 
     logger.info('Application initialization complete');
 
