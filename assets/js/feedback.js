@@ -21,7 +21,7 @@ class FeedbackForm {
     desktopBrowserSelect.addEventListener('change', () => this.handleBrowserChange('desktop'));
     mobileBrowserSelect.addEventListener('change', () => this.handleBrowserChange('mobile'));
 
-    this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+    this.form.addEventListener('submit', e => this.handleSubmit(e));
   }
 
   handleFeedbackTypeChange() {
@@ -181,7 +181,6 @@ class FeedbackForm {
         console.error('Server response:', errorData);
         throw new Error(`Server error: ${response.status} - ${errorData}`);
       }
-
     } catch (error) {
       console.error('Submission error:', error);
       this.showStatus('Sorry, there was an error submitting your feedback. Please try again later.', true);

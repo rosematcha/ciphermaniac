@@ -38,3 +38,5 @@ tools/
 .mcp.json
 package-lock.json
 *test*.html
+reports/that_day2d_candidates.json
+test-server.js

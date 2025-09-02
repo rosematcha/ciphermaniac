@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "checkJs": true,
+    "allowJs": true,
+    "baseUrl": ".",
+    "paths": {
+      "*": ["assets/js/*"]
+    }
+  },
+  "include": [
+    "assets/js/**/*.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "backend",
+    "functions"
+  ]
+}

@@ -2,6 +2,10 @@
  * Reusable header component
  */
 
+/**
+ *
+ * @param options
+ */
 export function createHeader(options = {}) {
   const { currentPage = '' } = options;
 
@@ -22,6 +26,11 @@ export function createHeader(options = {}) {
   return header;
 }
 
+/**
+ *
+ * @param container
+ * @param options
+ */
 export function insertHeader(container, options = {}) {
   const header = createHeader(options);
   container.appendChild(header);

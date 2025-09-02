@@ -7,7 +7,7 @@ import { logger } from './utils/logger.js';
 import { AppError, ErrorTypes, validateType } from './utils/errorHandler.js';
 
 /**
- * @typedef {Object} CardItem
+ * @typedef {object} CardItem
  * @property {number} [rank] - Card rank in usage
  * @property {string} name - Card name
  * @property {string} [uid] - Optional per-variant unique id (e.g., "Name::SET::NNN")
@@ -20,7 +20,7 @@ import { AppError, ErrorTypes, validateType } from './utils/errorHandler.js';
  */
 
 /**
- * @typedef {Object} ParsedReport
+ * @typedef {object} ParsedReport
  * @property {number} deckTotal - Total number of decks
  * @property {CardItem[]} items - Array of card usage items
  */
@@ -42,7 +42,7 @@ export function parseReport(data) {
     throw new AppError('Report data must contain an items array', ErrorTypes.PARSE, { data });
   }
 
-  const deckTotal = data.deckTotal;
+  const { deckTotal } = data;
   if (typeof deckTotal !== 'number' || deckTotal < 0) {
     logger.warn('Invalid or missing deckTotal, using items length as fallback', { deckTotal });
   }
@@ -109,13 +109,15 @@ function validateAndCleanItem(item, index) {
   if (Array.isArray(dist)) {
     // Keep v2 schema objects { copies, players, percent } if present; otherwise accept numeric array fallback
     cleanItem.dist = dist
-      .map((d) => {
+      .map(d => {
         if (typeof d === 'number') {return { copies: d, players: undefined, percent: undefined };}
-        if (d && typeof d === 'object') {return {
-          copies: Number.isFinite(d.copies) ? d.copies : undefined,
-          players: Number.isFinite(d.players) ? d.players : undefined,
-          percent: Number.isFinite(d.percent) ? d.percent : undefined,
-        };}
+        if (d && typeof d === 'object') {
+          return {
+            copies: Number.isFinite(d.copies) ? d.copies : undefined,
+            players: Number.isFinite(d.players) ? d.players : undefined,
+            percent: Number.isFinite(d.percent) ? d.percent : undefined
+          };
+        }
         return null;
       })
       .filter(Boolean);

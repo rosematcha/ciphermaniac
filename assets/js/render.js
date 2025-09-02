@@ -4,15 +4,15 @@ import { buildThumbCandidates } from './thumbs.js';
 import { computeLayout, syncControlsWidth } from './layoutHelper.js';
 import { trackMissing } from './dev/missingThumbs.js';
 import { isFavorite, toggleFavorite, subscribeFavorites } from './favorites.js';
-import { setupImagePreloading } from './utils/imagePreloader.js';
+// import { setupImagePreloading } from './utils/imagePreloader.js'; // Disabled - using parallelImageLoader instead
 import { parallelImageLoader } from './utils/parallelImageLoader.js';
 import { setProperties, setStyles, createElement, batchAppend } from './utils/dom.js';
 // Modal removed: navigate to card page instead
 
 // Lightweight floating tooltip used for thumbnails' histograms
 let __gridGraphTooltip = null;
-function ensureGridTooltip(){
-  if(__gridGraphTooltip) {return __gridGraphTooltip;}
+function ensureGridTooltip() {
+  if (__gridGraphTooltip) {return __gridGraphTooltip;}
   const t = document.createElement('div');
   t.className = 'graph-tooltip';
   t.setAttribute('role', 'status');
@@ -24,7 +24,7 @@ function ensureGridTooltip(){
   __gridGraphTooltip = t;
   return t;
 }
-function showGridTooltip(html, x, y){
+function showGridTooltip(html, x, y) {
   const t = ensureGridTooltip();
   t.innerHTML = html;
   t.style.display = 'block';
@@ -34,28 +34,39 @@ function showGridTooltip(html, x, y){
   let left = x + offsetX;
   let top = y + offsetY;
   const rect = t.getBoundingClientRect();
-  if(left + rect.width > vw) {left = Math.max(8, x - rect.width - offsetX);}
-  if(top + rect.height > vh) {top = Math.max(8, y - rect.height - offsetY);}
-  t.style.left = left + 'px';
-  t.style.top = top + 'px';
+  if (left + rect.width > vw) {left = Math.max(8, x - rect.width - offsetX);}
+  if (top + rect.height > vh) {top = Math.max(8, y - rect.height - offsetY);}
+  t.style.left = `${left}px`;
+  t.style.top = `${top}px`;
 }
-function hideGridTooltip(){ if(__gridGraphTooltip) {__gridGraphTooltip.style.display = 'none';} }
-function escapeHtml(s){ if(!s) {return '';} return String(s).replace(/[&<>"]/g, (ch)=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch])); }
+function hideGridTooltip() { if (__gridGraphTooltip) {__gridGraphTooltip.style.display = 'none';} }
+function escapeHtml(s) { if (!s) {return '';} return String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
 
-export function renderSummary(container, deckTotal, count){
+/**
+ *
+ * @param container
+ * @param deckTotal
+ * @param count
+ */
+export function renderSummary(container, deckTotal, count) {
   if (!container) {return;} // Handle case where summary element doesn't exist
   const parts = [];
-  if(deckTotal) {parts.push(`${deckTotal} decklists`);}
+  if (deckTotal) {parts.push(`${deckTotal} decklists`);}
   parts.push(`${count} cards`);
   container.textContent = parts.join(' • ');
 }
 
-export function render(items, overrides={}){
+/**
+ *
+ * @param items
+ * @param overrides
+ */
+export function render(items, overrides = {}) {
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
 
   // Empty state for no results
-  if(!items || items.length === 0){
+  if (!items || items.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
     empty.innerHTML = `<h2>Dead draw.</h2><p>No results for this search, try another!</p>`;
@@ -67,11 +78,11 @@ export function render(items, overrides={}){
   const containerWidth = grid.clientWidth || grid.getBoundingClientRect().width || 0;
   const layout = computeLayout(containerWidth);
   // Override bigRows with NUM_LARGE_ROWS
-  const base = layout.base;
-  const perRowBig = layout.perRowBig;
-  const bigRowContentWidth = layout.bigRowContentWidth;
-  const targetSmall = layout.targetSmall;
-  const smallScale = layout.smallScale;
+  const { base } = layout;
+  const { perRowBig } = layout;
+  const { bigRowContentWidth } = layout;
+  const { targetSmall } = layout;
+  const { smallScale } = layout;
   // Use NUM_LARGE_ROWS constant directly
   syncControlsWidth(bigRowContentWidth);
 
@@ -88,9 +99,9 @@ export function render(items, overrides={}){
   let i = 0;
   let rowIndex = 0;
   // visible rows limit (rows, not cards). Default to 6; clicking More loads +8 rows
-  if(!Number.isInteger(grid._visibleRows)) {grid._visibleRows = 6;}
+  if (!Number.isInteger(grid._visibleRows)) {grid._visibleRows = 6;}
   const visibleRowsLimit = grid._visibleRows;
-  while(i < items.length && rowIndex < visibleRowsLimit){
+  while (i < items.length && rowIndex < visibleRowsLimit) {
     const row = document.createElement('div');
     row.className = 'row';
     row.dataset.rowIndex = String(rowIndex);
@@ -99,16 +110,16 @@ export function render(items, overrides={}){
     const maxCount = isBig ? perRowBig : targetSmall;
     row.style.setProperty('--scale', String(scale));
     // Use the base width for big rows and base for small rows (scaled via --scale)
-    row.style.setProperty('--card-base', base + 'px');
+    row.style.setProperty('--card-base', `${base}px`);
     // Keep a consistent row width based on big row content and center it
-    row.style.width = bigRowContentWidth + 'px';
+    row.style.width = `${bigRowContentWidth}px`;
     row.style.margin = '0 auto';
     const count = Math.min(maxCount, items.length - i);
-    for(let j=0; j<count && i<items.length; j++, i++){
+    for (let j = 0; j < count && i < items.length; j++, i++) {
       // sm thumbs for big rows, xs for small rows
       const elFrag = makeCard(items[i], isBig);
       const cardEl = elFrag.querySelector('.card');
-      if(cardEl){ cardEl.dataset.row = String(rowIndex); cardEl.dataset.col = String(j); }
+      if (cardEl) { cardEl.dataset.row = String(rowIndex); cardEl.dataset.col = String(j); }
       row.appendChild(elFrag);
     }
     frag.appendChild(row);
@@ -117,8 +128,8 @@ export function render(items, overrides={}){
   grid.appendChild(frag);
 
   // Set up image preloading for better performance
-  setupImagePreloading(items, overrides);
-  
+  // setupImagePreloading(items, overrides); // Disabled - using parallelImageLoader instead
+
   // Additionally, preload visible images in parallel batches for even faster loading
   if (items.length > 0) {
     requestAnimationFrame(() => {
@@ -130,13 +141,13 @@ export function render(items, overrides={}){
   // Determine total rows that would be generated for all items
   const estimateTotalRows = (() => {
     let cnt = 0; let idx = 0;
-    while(idx < items.length){ cnt++; const isBigLocal = cnt-1 < NUM_LARGE_ROWS; const maxCount = isBigLocal ? perRowBig : targetSmall; idx += maxCount; }
+    while (idx < items.length) { cnt++; const isBigLocal = cnt - 1 < NUM_LARGE_ROWS; const maxCount = isBigLocal ? perRowBig : targetSmall; idx += maxCount; }
     return cnt;
   })();
   // Persist totals so resize handler can decide whether to show More after reflow
   grid._totalRows = estimateTotalRows;
   grid._totalCards = items.length;
-  if(rowIndex < estimateTotalRows){
+  if (rowIndex < estimateTotalRows) {
     const moreWrap = document.createElement('div'); moreWrap.className = 'more-rows';
     const moreBtn = document.createElement('button'); moreBtn.className = 'btn'; moreBtn.type = 'button'; moreBtn.textContent = 'More...';
     moreBtn.addEventListener('click', () => {
@@ -150,10 +161,10 @@ export function render(items, overrides={}){
   }
 
   // Keyboard navigation: arrow keys move focus across cards by row/column
-  if(!grid._kbNavAttached){
-    grid.addEventListener('keydown', (e) => {
+  if (!grid._kbNavAttached) {
+    grid.addEventListener('keydown', e => {
       const active = document.activeElement;
-      if(!active || !active.classList || !active.classList.contains('card')) {return;}
+      if (!active || !active.classList || !active.classList.contains('card')) {return;}
       const rowEl = active.closest('.row');
       const rowIdx = Number(active.dataset.row ?? rowEl?.dataset.rowIndex ?? 0);
       const colIdx = Number(active.dataset.col ?? 0);
@@ -161,30 +172,30 @@ export function render(items, overrides={}){
         const rowsEls = Array.from(grid.querySelectorAll('.row'));
         const r = Math.max(0, Math.min(rowsEls.length - 1, rowIdx + dr));
         const targetRow = rowsEls[r];
-        if(!targetRow) {return;}
+        if (!targetRow) {return;}
         const cards = Array.from(targetRow.querySelectorAll('.card'));
         const c = Math.max(0, Math.min(cards.length - 1, colIdx + dc));
         const next = cards[c];
-        if(next){ next.focus(); }
+        if (next) { next.focus(); }
       };
-      switch(e.key){
-      case 'ArrowRight': e.preventDefault(); move(0, +1); break;
-      case 'ArrowLeft': e.preventDefault(); move(0, -1); break;
-      case 'ArrowDown': e.preventDefault(); move(+1, 0); break;
-      case 'ArrowUp': e.preventDefault(); move(-1, 0); break;
-      default: return;
+      switch (e.key) {
+        case 'ArrowRight': e.preventDefault(); move(0, +1); break;
+        case 'ArrowLeft': e.preventDefault(); move(0, -1); break;
+        case 'ArrowDown': e.preventDefault(); move(+1, 0); break;
+        case 'ArrowUp': e.preventDefault(); move(-1, 0); break;
+        default:
       }
     });
     grid._kbNavAttached = true;
   }
 
   // Live update stars if favorites change elsewhere
-  if(!grid._favSub){
+  if (!grid._favSub) {
     grid._favSub = subscribeFavorites(() => {
       grid.querySelectorAll('.card').forEach(card => {
         const name = card.querySelector('.name')?.textContent;
         const btn = card.querySelector('.star-btn');
-        if(name && btn){
+        if (name && btn) {
           const fav = isFavorite(name);
           btn.classList.toggle('is-active', fav);
           btn.setAttribute('aria-pressed', String(fav));
@@ -204,7 +215,7 @@ function expandGridRows(items, overrides, targetTotalRows) {
   }
 
   // Preserve scroll position during DOM manipulation
-  const scrollY = window.scrollY;
+  const { scrollY } = window;
 
   // Remove the More button
   const moreWrap = grid.querySelector('.more-rows');
@@ -216,11 +227,11 @@ function expandGridRows(items, overrides, targetTotalRows) {
   const containerWidth = grid.clientWidth || grid.getBoundingClientRect().width || 0;
   const layout = computeLayout(containerWidth);
   // Override bigRows with NUM_LARGE_ROWS
-  const base = layout.base;
-  const perRowBig = layout.perRowBig;
-  const bigRowContentWidth = layout.bigRowContentWidth;
-  const targetSmall = layout.targetSmall;
-  const smallScale = layout.smallScale;
+  const { base } = layout;
+  const { perRowBig } = layout;
+  const { bigRowContentWidth } = layout;
+  const { targetSmall } = layout;
+  const { smallScale } = layout;
   // Use NUM_LARGE_ROWS constant directly
 
   // Count existing cards and determine where to start adding new ones
@@ -240,8 +251,8 @@ function expandGridRows(items, overrides, targetTotalRows) {
     const scale = isBig ? 1 : smallScale;
     const maxCount = isBig ? perRowBig : targetSmall;
     row.style.setProperty('--scale', String(scale));
-    row.style.setProperty('--card-base', base + 'px');
-    row.style.width = bigRowContentWidth + 'px';
+    row.style.setProperty('--card-base', `${base}px`);
+    row.style.width = `${bigRowContentWidth}px`;
     row.style.margin = '0 auto';
 
     const count = Math.min(maxCount, items.length - cardIndex);
@@ -265,14 +276,14 @@ function expandGridRows(items, overrides, targetTotalRows) {
 
   // Set up image preloading for new cards only
   const newItems = items.slice(existingCards);
-  setupImagePreloading(newItems, overrides);
-  
+  // setupImagePreloading(newItems, overrides); // Disabled - using parallelImageLoader instead
+
   // Additionally preload new images in parallel for better performance
   if (newItems.length > 0) {
     requestAnimationFrame(() => {
       const newCandidatesList = newItems.flatMap(item => [
-        buildThumbCandidates(item.name, true, overrides, { set: item.set, number: item.number }),  // sm
-        buildThumbCandidates(item.name, false, overrides, { set: item.set, number: item.number })  // xs
+        buildThumbCandidates(item.name, true, overrides, { set: item.set, number: item.number }), // sm
+        buildThumbCandidates(item.name, false, overrides, { set: item.set, number: item.number }) // xs
       ]);
       parallelImageLoader.preloadImages(newCandidatesList, 6);
     });
@@ -301,7 +312,7 @@ function createStarButton(cardName) {
     starBtn.textContent = fav ? '★' : '☆';
   };
 
-  starBtn.addEventListener('click', (e) => {
+  starBtn.addEventListener('click', e => {
     e.stopPropagation();
     toggleFavorite(cardName);
     updateStarState();
@@ -324,8 +335,18 @@ function setupCardImage(img, cardName, useSm, overrides, cardData) {
     thumbContainer.classList.remove('skeleton-loading');
   }
 
-  const candidates = buildThumbCandidates(cardName, useSm, overrides, { set: cardData.set, number: cardData.number });
-  
+  // Only pass variant info if cardData exists and has both set and number
+  const variant = (cardData && cardData.set && cardData.number)
+    ? { set: cardData.set, number: cardData.number }
+    : undefined;
+
+  // DEBUG: Log cards without variant data
+  if (!variant && cardName && (cardName.includes('Boss') || cardName.includes('Pokégear') || cardName.includes('Ethan'))) {
+    console.warn('Card missing variant data:', cardName, cardData);
+  }
+
+  const candidates = buildThumbCandidates(cardName, useSm, overrides, variant);
+
   // Use parallel image loader for better performance
   parallelImageLoader.setupImageElement(img, candidates, {
     alt: cardName,
@@ -340,10 +361,12 @@ function setupCardImage(img, cardName, useSm, overrides, cardData) {
 
 /**
  * Preload visible images using parallel loading for even faster performance
+ * @param items
+ * @param overrides
  */
 function preloadVisibleImagesParallel(items, overrides = {}) {
   const grid = document.getElementById('grid');
-  if (!grid || !Array.isArray(items)) return;
+  if (!grid || !Array.isArray(items)) {return;}
 
   // Get visible cards
   const visibleCards = Array.from(grid.querySelectorAll('.card'));
@@ -352,15 +375,18 @@ function preloadVisibleImagesParallel(items, overrides = {}) {
   visibleCards.forEach(cardEl => {
     const nameEl = cardEl.querySelector('.name');
     const cardName = nameEl?.textContent;
-    
+
     if (cardName) {
       const cardData = items.find(item => item.name === cardName);
       if (cardData) {
         // Add both sm and xs candidates for each visible card
         candidatesList.push(
-          buildThumbCandidates(cardName, true, overrides, { set: cardData.set, number: cardData.number }),  // sm
-          buildThumbCandidates(cardName, false, overrides, { set: cardData.set, number: cardData.number })  // xs
+          buildThumbCandidates(cardName, true, overrides, { set: cardData.set, number: cardData.number }), // sm
+          buildThumbCandidates(cardName, false, overrides, { set: cardData.set, number: cardData.number }) // xs
         );
+      } else {
+        // DEBUG: Log when cardData is not found
+        console.warn('Card data not found for preloading:', cardName, 'Available names:', items.slice(0, 5).map(i => i.name));
       }
     }
   });
@@ -380,7 +406,7 @@ function populateCardContent(el, cardData) {
   } else if (el.querySelector) {
     card = el.querySelector('.card'); // el is a fragment, find the card
   }
-  
+
   if (card) {
     card.classList.remove('skeleton-card');
     card.removeAttribute('aria-hidden');
@@ -400,25 +426,28 @@ function populateCardContent(el, cardData) {
     // Remove any existing skeleton-text elements and classes
     nameEl.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
     nameEl.classList.remove('skeleton-text');
-    nameEl.textContent = cardData.name;
 
-    // Set full title with set info for tooltip, but display only name
+    // Display consistent format: "Card Name SET NUMBER" when available, otherwise just name
+    let displayText;
     if (cardData.set && cardData.number) {
-      nameEl.title = `${cardData.name} ${cardData.set} ${cardData.number}`;
+      displayText = `${cardData.name} ${cardData.set} ${cardData.number}`;
     } else {
-      nameEl.title = cardData.name;
+      displayText = cardData.name;
     }
+
+    nameEl.textContent = displayText;
+    nameEl.title = displayText; // Set same text for tooltip
   }
 
   // Update percentage display - remove skeleton elements
   const barEl = el.querySelector('.bar');
   const pctEl = el.querySelector('.pct');
-  
+
   if (barEl) {
     barEl.classList.remove('skeleton-usage-bar');
     barEl.style.width = widthPct;
   }
-  
+
   if (pctEl) {
     // Remove skeleton text elements and classes
     pctEl.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
@@ -437,7 +466,7 @@ function populateCardContent(el, cardData) {
 
 function createCardHistogram(el, cardData) {
   const hist = el.querySelector('.hist');
-  
+
   if (hist) {
     // Remove skeleton elements and classes
     hist.querySelectorAll('.skeleton-bar').forEach(skeleton => skeleton.remove());
@@ -449,12 +478,12 @@ function createCardHistogram(el, cardData) {
     }
   }
 
-  const minC = Math.min(...cardData.dist.map(d=>d.copies));
-  const maxC = Math.max(...cardData.dist.map(d=>d.copies));
-  const maxPct = Math.max(1, ...cardData.dist.map(d=>d.percent));
+  const minC = Math.min(...cardData.dist.map(d => d.copies));
+  const maxC = Math.max(...cardData.dist.map(d => d.copies));
+  const maxPct = Math.max(1, ...cardData.dist.map(d => d.percent));
 
-  for (let c=minC; c<=maxC; c++) {
-    const d = cardData.dist.find(x=>x.copies===c);
+  for (let c = minC; c <= maxC; c++) {
+    const d = cardData.dist.find(x => x.copies === c);
     const col = createElement('div', { className: 'col' });
     const bar = createElement('div', { className: 'bar' });
     const lbl = createElement('div', {
@@ -472,8 +501,8 @@ function createCardHistogram(el, cardData) {
     if (d) {
       const total = Number.isFinite(cardData.total) ? cardData.total : null;
       const players = Number.isFinite(d.players) ? d.players : null;
-      const exactPct = Number.isFinite(d.percent) ? d.percent : (players !== null && total ? (100*players/total) : null);
-      const pctStr = exactPct !== null ? exactPct.toFixed(1)+'%' : '—';
+      const exactPct = Number.isFinite(d.percent) ? d.percent : (players !== null && total ? (100 * players / total) : null);
+      const pctStr = exactPct !== null ? `${exactPct.toFixed(1)}%` : '—';
       const countsStr = (players !== null && total !== null) ? ` (${players}/${total})` : '';
       const tip = `${c}x: ${pctStr}${countsStr}`;
 
@@ -494,7 +523,7 @@ function setupHistogramTooltip(col, cardName, tip) {
   col.setAttribute('role', 'img');
   col.setAttribute('aria-label', tip);
 
-  const showTooltip = (ev) => showGridTooltip(`<strong>${escapeHtml(cardName)}</strong><div>${escapeHtml(tip)}</div>`, ev.clientX || 0, ev.clientY || 0);
+  const showTooltip = ev => showGridTooltip(`<strong>${escapeHtml(cardName)}</strong><div>${escapeHtml(tip)}</div>`, ev.clientX || 0, ev.clientY || 0);
 
   col.addEventListener('mousemove', showTooltip);
   col.addEventListener('mouseenter', showTooltip);
@@ -507,7 +536,7 @@ function attachCardNavigation(card, cardData) {
   const cardIdentifier = cardData.uid || cardData.name;
   const url = `card.html#card/${encodeURIComponent(cardIdentifier)}`;
 
-  card.addEventListener('click', (e) => {
+  card.addEventListener('click', e => {
     if (e.ctrlKey || e.metaKey) {
       window.open(url, '_blank');
     } else {
@@ -515,7 +544,7 @@ function attachCardNavigation(card, cardData) {
     }
   });
 
-  card.addEventListener('keydown', (e) => {
+  card.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       location.assign(url);
@@ -557,7 +586,7 @@ function setupCardAttributes(card, cardData) {
 // Extract counts setup
 function setupCardCounts(element, cardData) {
   const counts = element.querySelector('.counts');
-  
+
   if (counts) {
     // Remove any skeleton elements and classes
     counts.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
@@ -575,12 +604,12 @@ function setupCardCounts(element, cardData) {
 }
 
 // Reflow-only: recompute per-row sizing and move existing cards into new rows without rebuilding cards/images.
-export function updateLayout(){
+export function updateLayout() {
   const grid = document.getElementById('grid');
-  if(!grid) {return;}
+  if (!grid) {return;}
   // Collect existing card elements in current order
   const cards = Array.from(grid.querySelectorAll('.card'));
-  if(cards.length === 0) {return;}
+  if (cards.length === 0) {return;}
 
   // Compute layout based on current container width
   const containerWidth = grid.clientWidth || grid.getBoundingClientRect().width || 0;
@@ -596,14 +625,14 @@ export function updateLayout(){
     && prev.bigRows === bigRows;
   if (groupingUnchanged) {
     const rows = Array.from(grid.querySelectorAll('.row'));
-    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++){
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
       const row = rows[rowIndex];
       const isBig = rowIndex < NUM_LARGE_ROWS;
       const scale = isBig ? 1 : smallScale;
       row.style.setProperty('--scale', String(scale));
-      row.style.setProperty('--card-base', base + 'px');
+      row.style.setProperty('--card-base', `${base}px`);
       // Keep consistent width and centering
-      const widthPx = bigRowContentWidth + 'px';
+      const widthPx = `${bigRowContentWidth}px`;
       if (row.style.width !== widthPx) {row.style.width = widthPx;}
       if (row.style.margin !== '0 auto') {row.style.margin = '0 auto';}
     }
@@ -622,10 +651,10 @@ export function updateLayout(){
   const totalCards = Number.isInteger(grid._totalCards) ? grid._totalCards : cards.length;
   const newTotalRows = (() => {
     let cnt = 0; let idx = 0;
-    while(idx < totalCards){ cnt++; const isBigLocal = cnt-1 < bigRows; const maxCount = isBigLocal ? perRowBig : targetSmall; idx += maxCount; }
+    while (idx < totalCards) { cnt++; const isBigLocal = cnt - 1 < bigRows; const maxCount = isBigLocal ? perRowBig : targetSmall; idx += maxCount; }
     return cnt;
   })();
-  while(i < cards.length){
+  while (i < cards.length) {
     const row = document.createElement('div');
     row.className = 'row';
     row.dataset.rowIndex = String(rowIndex);
@@ -633,14 +662,14 @@ export function updateLayout(){
     const scale = isBig ? 1 : smallScale;
     const maxCount = isBig ? perRowBig : targetSmall;
     row.style.setProperty('--scale', String(scale));
-    row.style.setProperty('--card-base', base + 'px');
-    row.style.width = bigRowContentWidth + 'px';
+    row.style.setProperty('--card-base', `${base}px`);
+    row.style.width = `${bigRowContentWidth}px`;
     row.style.margin = '0 auto';
 
     const count = Math.min(maxCount, cards.length - i);
-    for(let j = 0; j < count && i < cards.length; j++, i++){
+    for (let j = 0; j < count && i < cards.length; j++, i++) {
       const cardEl = cards[i];
-      if(cardEl){ cardEl.dataset.row = String(rowIndex); cardEl.dataset.col = String(j); }
+      if (cardEl) { cardEl.dataset.row = String(rowIndex); cardEl.dataset.col = String(j); }
       row.appendChild(cardEl);
     }
     frag.appendChild(row);

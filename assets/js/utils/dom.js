@@ -33,7 +33,7 @@ export function batchAppend(container, elements) {
 /**
  * Safe property assignment avoiding parameter mutation
  * @param {Element} element
- * @param {Object} properties
+ * @param {object} properties
  */
 export function setProperties(element, properties) {
   if (!element || !properties) {
@@ -45,7 +45,7 @@ export function setProperties(element, properties) {
 /**
  * Safe style assignment avoiding parameter mutation
  * @param {Element} element
- * @param {Object} styles
+ * @param {object} styles
  */
 export function setStyles(element, styles) {
   if (!element?.style || !styles) {
@@ -57,9 +57,9 @@ export function setStyles(element, styles) {
 /**
  * Create element with attributes and content efficiently
  * @param {string} tagName
- * @param {Object} options
- * @param {Object} options.attributes
- * @param {Object} options.styles
+ * @param {object} options
+ * @param {object} options.attributes
+ * @param {object} options.styles
  * @param {string} options.textContent
  * @param {string} options.className
  * @returns {Element}

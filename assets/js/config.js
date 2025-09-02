@@ -73,7 +73,7 @@ export const CONFIG = Object.freeze({
 
 /**
  * Validate configuration object structure
- * @param {Object} config
+ * @param {object} config
  * @throws {Error} If configuration is invalid
  */
 function validateConfig(config) {
@@ -99,12 +99,12 @@ function validateConfig(config) {
 validateConfig(CONFIG);
 
 // Legacy exports for backwards compatibility
-export const REPORTS_BASE = CONFIG.API.REPORTS_BASE;
-export const ARCHETYPES = CONFIG.ARCHETYPES;
+export const { REPORTS_BASE } = CONFIG.API;
+export const { ARCHETYPES } = CONFIG;
 
 // Layout constants for backwards compatibility
-export const GAP = CONFIG.LAYOUT.GAP;
+export const { GAP } = CONFIG.LAYOUT;
 export const BASE = CONFIG.LAYOUT.BASE_CARD_WIDTH;
 export const MIN_BASE = CONFIG.LAYOUT.MIN_BASE_CARD_WIDTH;
 export const BIG_ROWS = CONFIG.LAYOUT.BIG_ROWS_COUNT;
-export const MIN_SCALE = CONFIG.LAYOUT.MIN_SCALE;
+export const { MIN_SCALE } = CONFIG.LAYOUT;

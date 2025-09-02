@@ -10,7 +10,7 @@ import { CONFIG } from './config.js';
 import { getCardPrice } from './api.js';
 
 /**
- * @typedef {Object} SortOption
+ * @typedef {object} SortOption
  * @property {'percent-desc'|'percent-asc'|'alpha-asc'|'alpha-desc'|'price-desc'|'price-asc'} key
  * @property {string} label
  * @property {(a: any, b: any) => number} compareFn
@@ -26,7 +26,7 @@ const SORT_COMPARATORS = {
   'alpha-asc': (a, b) => a.name.localeCompare(b.name),
   'alpha-desc': (a, b) => b.name.localeCompare(a.name),
   'price-desc': (a, b) => (b.price ?? -1) - (a.price ?? -1),
-  'price-asc': (a, b) => (a.price ?? Infinity) - (b.price ?? Infinity),
+  'price-asc': (a, b) => (a.price ?? Infinity) - (b.price ?? Infinity)
 };
 
 /**
@@ -45,7 +45,7 @@ export function getComparator(sortKey) {
 
 /**
  * Get current filter and sort values from DOM
- * @returns {Object} Current filter state
+ * @returns {object} Current filter state
  */
 function getCurrentFilters() {
   const searchInput = document.getElementById('search');
@@ -75,6 +75,11 @@ function applySearchFilter(items, query) {
 
     // Search in card name
     if (item.name.toLowerCase().includes(query)) {
+      return true;
+    }
+
+    // Search in UID if it exists
+    if (item.uid && item.uid.toLowerCase().includes(query)) {
       return true;
     }
 
@@ -134,7 +139,7 @@ function applySorting(items, sortKey) {
 /**
  * Apply all filters and sorting, then render the results
  * @param {any[]} allItems - Complete dataset
- * @param {Object} [overrides={}] - Thumbnail overrides
+ * @param {object} [overrides] - Thumbnail overrides
  */
 export async function applyFiltersSort(allItems, overrides = {}) {
   if (!Array.isArray(allItems)) {
@@ -171,12 +176,12 @@ export async function applyFiltersSort(allItems, overrides = {}) {
  * @returns {Promise<any[]>}
  */
 async function enrichWithPricingData(items) {
-  const enriched = await Promise.all(items.map(async (item) => {
+  const enriched = await Promise.all(items.map(async item => {
     try {
       // Build card identifier from item data
       const cardId = buildCardIdentifier(item);
       const price = cardId ? await getCardPrice(cardId) : null;
-      
+
       return {
         ...item,
         price: price || 0
@@ -189,29 +194,29 @@ async function enrichWithPricingData(items) {
       };
     }
   }));
-  
+
   return enriched;
 }
 
 /**
  * Build card identifier from item data
- * @param {Object} item
+ * @param {object} item
  * @returns {string|null}
  */
 function buildCardIdentifier(item) {
-  if (!item.name) return null;
-  
+  if (!item.name) {return null;}
+
   // Try to use UID if available
   if (item.uid) {
     return item.uid;
   }
-  
+
   // Build from name, set, and number if available
   if (item.set && item.number) {
     const paddedNumber = item.number.toString().padStart(3, '0');
     return `${item.name}::${item.set}::${paddedNumber}`;
   }
-  
+
   // For trainers/energies without set info, just use name
   return item.name;
 }

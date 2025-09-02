@@ -53,7 +53,7 @@ class Logger {
     try {
       const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
       const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
-      return [prefix + ' ' + message, ...args];
+      return [`${prefix} ${message}`, ...args];
     } catch {
       return [message, ...args];
     }

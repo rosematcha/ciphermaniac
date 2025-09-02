@@ -2,6 +2,10 @@
  * Reusable footer component
  */
 
+/**
+ *
+ * @param options
+ */
 export function createFooter(options = {}) {
   const { footerClass = 'site-footer' } = options;
 
@@ -22,6 +26,9 @@ export function createFooter(options = {}) {
   return footer;
 }
 
+/**
+ *
+ */
 export function createSimpleFooter() {
   const footer = document.createElement('footer');
   footer.innerHTML = `
@@ -33,6 +40,11 @@ export function createSimpleFooter() {
   return footer;
 }
 
+/**
+ *
+ * @param container
+ * @param options
+ */
 export function insertFooter(container, options = {}) {
   const footer = createFooter(options);
   container.appendChild(footer);
