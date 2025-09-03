@@ -31,7 +31,8 @@
       ],
       "set": "SVI",
       "number": "196",
-      "uid": "Ultra Ball::SVI::196"
+      "uid": "Ultra Ball::SVI::196",
+      "category": "trainer"
     },
     {
       "rank": 2,
@@ -63,7 +64,8 @@
       ],
       "set": "SFA",
       "number": "061",
-      "uid": "Night Stretcher::SFA::061"
+      "uid": "Night Stretcher::SFA::061",
+      "category": "trainer"
     },
     {
       "rank": 3,
@@ -95,7 +97,8 @@
       ],
       "set": "PAL",
       "number": "185",
-      "uid": "Iono::PAL::185"
+      "uid": "Iono::PAL::185",
+      "category": "trainer"
     },
     {
       "rank": 4,
@@ -127,7 +130,8 @@
       ],
       "set": "PAL",
       "number": "172",
-      "uid": "Boss's Orders::PAL::172"
+      "uid": "Boss's Orders::PAL::172",
+      "category": "trainer"
     },
     {
       "rank": 5,
@@ -144,7 +148,8 @@
       ],
       "set": "SFA",
       "number": "038",
-      "uid": "Fezandipiti ex::SFA::038"
+      "uid": "Fezandipiti ex::SFA::038",
+      "category": "pokemon"
     },
     {
       "rank": 6,
@@ -176,7 +181,8 @@
       ],
       "set": "SVI",
       "number": "181",
-      "uid": "Nest Ball::SVI::181"
+      "uid": "Nest Ball::SVI::181",
+      "category": "trainer"
     },
     {
       "rank": 7,
@@ -208,7 +214,8 @@
       ],
       "set": "PAR",
       "number": "160",
-      "uid": "Counter Catcher::PAR::160"
+      "uid": "Counter Catcher::PAR::160",
+      "category": "trainer"
     },
     {
       "rank": 8,
@@ -240,7 +247,8 @@
       ],
       "set": "TEF",
       "number": "144",
-      "uid": "Buddy-Buddy Poffin::TEF::144"
+      "uid": "Buddy-Buddy Poffin::TEF::144",
+      "category": "trainer"
     },
     {
       "rank": 9,
@@ -272,7 +280,8 @@
       ],
       "set": "OBF",
       "number": "186",
-      "uid": "Arven::OBF::186"
+      "uid": "Arven::OBF::186",
+      "category": "trainer"
     },
     {
       "rank": 10,
@@ -304,7 +313,8 @@
       ],
       "set": "PAR",
       "number": "163",
-      "uid": "Earthen Vessel::PAR::163"
+      "uid": "Earthen Vessel::PAR::163",
+      "category": "trainer"
     },
     {
       "rank": 11,
@@ -336,7 +346,8 @@
       ],
       "set": "TWM",
       "number": "095",
-      "uid": "Munkidori::TWM::095"
+      "uid": "Munkidori::TWM::095",
+      "category": "pokemon"
     },
     {
       "rank": 12,
@@ -368,7 +379,8 @@
       ],
       "set": "JTG",
       "number": "155",
-      "uid": "Professor's Research::JTG::155"
+      "uid": "Professor's Research::JTG::155",
+      "category": "trainer"
     },
     {
       "rank": 13,
@@ -390,7 +402,8 @@
       ],
       "set": "PAL",
       "number": "188",
-      "uid": "Super Rod::PAL::188"
+      "uid": "Super Rod::PAL::188",
+      "category": "trainer"
     },
     {
       "rank": 14,
@@ -417,7 +430,8 @@
       ],
       "set": "PAR",
       "number": "178",
-      "uid": "Technical Machine: Evolution::PAR::178"
+      "uid": "Technical Machine: Evolution::PAR::178",
+      "category": "trainer"
     },
     {
       "rank": 15,
@@ -454,7 +468,8 @@
       ],
       "set": "SVE",
       "number": "013",
-      "uid": "Psychic Energy::SVE::013"
+      "uid": "Psychic Energy::SVE::013",
+      "category": "energy"
     },
     {
       "rank": 16,
@@ -481,7 +496,8 @@
       ],
       "set": "SVI",
       "number": "191",
-      "uid": "Rare Candy::SVI::191"
+      "uid": "Rare Candy::SVI::191",
+      "category": "trainer"
     },
     {
       "rank": 17,
@@ -543,7 +559,8 @@
       ],
       "set": "SVE",
       "number": "009",
-      "uid": "Grass Energy::SVE::009"
+      "uid": "Grass Energy::SVE::009",
+      "category": "energy"
     },
     {
       "rank": 18,
@@ -600,7 +617,8 @@
       ],
       "set": "SVE",
       "number": "015",
-      "uid": "Darkness Energy::SVE::015"
+      "uid": "Darkness Energy::SVE::015",
+      "category": "energy"
     },
     {
       "rank": 19,
@@ -622,7 +640,8 @@
       ],
       "set": "MEW",
       "number": "151",
-      "uid": "Mew ex::MEW::151"
+      "uid": "Mew ex::MEW::151",
+      "category": "pokemon"
     },
     {
       "rank": 20,
@@ -669,7 +688,8 @@
       ],
       "set": "SVE",
       "number": "010",
-      "uid": "Fire Energy::SVE::010"
+      "uid": "Fire Energy::SVE::010",
+      "category": "energy"
     },
     {
       "rank": 21,
@@ -696,7 +716,8 @@
       ],
       "set": "TWM",
       "number": "153",
-      "uid": "Jamming Tower::TWM::153"
+      "uid": "Jamming Tower::TWM::153",
+      "category": "trainer"
     },
     {
       "rank": 22,
@@ -718,7 +739,8 @@
       ],
       "set": "TEF",
       "number": "159",
-      "uid": "Rescue Board::TEF::159"
+      "uid": "Rescue Board::TEF::159",
+      "category": "trainer"
     },
     {
       "rank": 23,
@@ -735,7 +757,8 @@
       ],
       "set": "SSP",
       "number": "076",
-      "uid": "Latias ex::SSP::076"
+      "uid": "Latias ex::SSP::076",
+      "category": "pokemon"
     },
     {
       "rank": 24,
@@ -777,7 +800,8 @@
       ],
       "set": "SVE",
       "number": "012",
-      "uid": "Lightning Energy::SVE::012"
+      "uid": "Lightning Energy::SVE::012",
+      "category": "energy"
     },
     {
       "rank": 25,
@@ -799,7 +823,8 @@
       ],
       "set": "PRE",
       "number": "004",
-      "uid": "Budew::PRE::004"
+      "uid": "Budew::PRE::004",
+      "category": "pokemon"
     },
     {
       "rank": 26,
@@ -826,7 +851,8 @@
       ],
       "set": "PAL",
       "number": "171",
-      "uid": "Artazon::PAL::171"
+      "uid": "Artazon::PAL::171",
+      "category": "trainer"
     },
     {
       "rank": 27,
@@ -843,7 +869,8 @@
       ],
       "set": "DRI",
       "number": "010",
-      "uid": "Shaymin::DRI::010"
+      "uid": "Shaymin::DRI::010",
+      "category": "pokemon"
     },
     {
       "rank": 28,
@@ -875,7 +902,8 @@
       ],
       "set": "SCR",
       "number": "133",
-      "uid": "Crispin::SCR::133"
+      "uid": "Crispin::SCR::133",
+      "category": "trainer"
     },
     {
       "rank": 29,
@@ -892,7 +920,8 @@
       ],
       "set": "TWM",
       "number": "163",
-      "uid": "Secret Box::TWM::163"
+      "uid": "Secret Box::TWM::163",
+      "category": "trainer"
     },
     {
       "rank": 30,
@@ -909,7 +938,8 @@
       ],
       "set": "TWM",
       "number": "141",
-      "uid": "Bloodmoon Ursaluna ex::TWM::141"
+      "uid": "Bloodmoon Ursaluna ex::TWM::141",
+      "category": "pokemon"
     },
     {
       "rank": 31,
@@ -931,7 +961,8 @@
       ],
       "set": "JTG",
       "number": "056",
-      "uid": "Lillie's Clefairy ex::JTG::056"
+      "uid": "Lillie's Clefairy ex::JTG::056",
+      "category": "pokemon"
     },
     {
       "rank": 32,
@@ -958,7 +989,8 @@
       ],
       "set": "TWM",
       "number": "128",
-      "uid": "Dreepy::TWM::128"
+      "uid": "Dreepy::TWM::128",
+      "category": "pokemon"
     },
     {
       "rank": 33,
@@ -985,7 +1017,8 @@
       ],
       "set": "TWM",
       "number": "129",
-      "uid": "Drakloak::TWM::129"
+      "uid": "Drakloak::TWM::129",
+      "category": "pokemon"
     },
     {
       "rank": 34,
@@ -1012,7 +1045,8 @@
       ],
       "set": "SCR",
       "number": "131",
-      "uid": "Area Zero Underdepths::SCR::131"
+      "uid": "Area Zero Underdepths::SCR::131",
+      "category": "trainer"
     },
     {
       "rank": 35,
@@ -1039,7 +1073,8 @@
       ],
       "set": "PAL",
       "number": "173",
-      "uid": "Bravery Charm::PAL::173"
+      "uid": "Bravery Charm::PAL::173",
+      "category": "trainer"
     },
     {
       "rank": 36,
@@ -1086,7 +1121,8 @@
       ],
       "set": "SVE",
       "number": "014",
-      "uid": "Fighting Energy::SVE::014"
+      "uid": "Fighting Energy::SVE::014",
+      "category": "energy"
     },
     {
       "rank": 37,
@@ -1103,7 +1139,8 @@
       ],
       "set": "TEF",
       "number": "157",
-      "uid": "Prime Catcher::TEF::157"
+      "uid": "Prime Catcher::TEF::157",
+      "category": "trainer"
     },
     {
       "rank": 38,
@@ -1125,7 +1162,8 @@
       ],
       "set": "PAR",
       "number": "171",
-      "uid": "Professor Turo's Scenario::PAR::171"
+      "uid": "Professor Turo's Scenario::PAR::171",
+      "category": "trainer"
     },
     {
       "rank": 39,
@@ -1147,7 +1185,8 @@
       ],
       "set": "SCR",
       "number": "118",
-      "uid": "Fan Rotom::SCR::118"
+      "uid": "Fan Rotom::SCR::118",
+      "category": "pokemon"
     },
     {
       "rank": 40,
@@ -1179,7 +1218,8 @@
       ],
       "set": "PAL",
       "number": "191",
-      "uid": "Luminous Energy::PAL::191"
+      "uid": "Luminous Energy::PAL::191",
+      "category": "energy"
     },
     {
       "rank": 41,
@@ -1206,7 +1246,8 @@
       ],
       "set": "SVI",
       "number": "194",
-      "uid": "Switch::SVI::194"
+      "uid": "Switch::SVI::194",
+      "category": "trainer"
     },
     {
       "rank": 42,
@@ -1233,7 +1274,8 @@
       ],
       "set": "SCR",
       "number": "115",
-      "uid": "Noctowl::SCR::115"
+      "uid": "Noctowl::SCR::115",
+      "category": "pokemon"
     },
     {
       "rank": 43,
@@ -1260,7 +1302,8 @@
       ],
       "set": "TWM",
       "number": "130",
-      "uid": "Dragapult ex::TWM::130"
+      "uid": "Dragapult ex::TWM::130",
+      "category": "pokemon"
     },
     {
       "rank": 44,
@@ -1287,7 +1330,8 @@
       ],
       "set": "SCR",
       "number": "114",
-      "uid": "Hoothoot::SCR::114"
+      "uid": "Hoothoot::SCR::114",
+      "category": "pokemon"
     },
     {
       "rank": 45,
@@ -1309,7 +1353,8 @@
       ],
       "set": "TEF",
       "number": "025",
-      "uid": "Iron Leaves ex::TEF::025"
+      "uid": "Iron Leaves ex::TEF::025",
+      "category": "pokemon"
     },
     {
       "rank": 46,
@@ -1336,7 +1381,8 @@
       ],
       "set": "TWM",
       "number": "025",
-      "uid": "Teal Mask Ogerpon ex::TWM::025"
+      "uid": "Teal Mask Ogerpon ex::TWM::025",
+      "category": "pokemon"
     },
     {
       "rank": 47,
@@ -1353,7 +1399,8 @@
       ],
       "set": "SVI",
       "number": "118",
-      "uid": "Hawlucha::SVI::118"
+      "uid": "Hawlucha::SVI::118",
+      "category": "pokemon"
     },
     {
       "rank": 48,
@@ -1385,7 +1432,8 @@
       ],
       "set": "SVI",
       "number": "186",
-      "uid": "Pokégear 3.0::SVI::186"
+      "uid": "Pokégear 3.0::SVI::186",
+      "category": "trainer"
     },
     {
       "rank": 49,
@@ -1402,7 +1450,8 @@
       ],
       "set": "MEW",
       "number": "132",
-      "uid": "Ditto::MEW::132"
+      "uid": "Ditto::MEW::132",
+      "category": "pokemon"
     },
     {
       "rank": 50,
@@ -1424,7 +1473,8 @@
       ],
       "set": "PAR",
       "number": "170",
-      "uid": "Professor Sada's Vitality::PAR::170"
+      "uid": "Professor Sada's Vitality::PAR::170",
+      "category": "trainer"
     },
     {
       "rank": 51,
@@ -1446,7 +1496,8 @@
       ],
       "set": "PAR",
       "number": "177",
-      "uid": "Technical Machine: Devolution::PAR::177"
+      "uid": "Technical Machine: Devolution::PAR::177",
+      "category": "trainer"
     },
     {
       "rank": 52,
@@ -1468,7 +1519,8 @@
       ],
       "set": "TEF",
       "number": "123",
-      "uid": "Raging Bolt ex::TEF::123"
+      "uid": "Raging Bolt ex::TEF::123",
+      "category": "pokemon"
     },
     {
       "rank": 53,
@@ -1490,7 +1542,8 @@
       ],
       "set": "SCR",
       "number": "111",
-      "uid": "Raging Bolt::SCR::111"
+      "uid": "Raging Bolt::SCR::111",
+      "category": "pokemon"
     },
     {
       "rank": 54,
@@ -1507,7 +1560,8 @@
       ],
       "set": "PAR",
       "number": "107",
-      "uid": "Slither Wing::PAR::107"
+      "uid": "Slither Wing::PAR::107",
+      "category": "pokemon"
     },
     {
       "rank": 55,
@@ -1524,7 +1578,8 @@
       ],
       "set": "TWM",
       "number": "165",
-      "uid": "Unfair Stamp::TWM::165"
+      "uid": "Unfair Stamp::TWM::165",
+      "category": "trainer"
     },
     {
       "rank": 56,
@@ -1551,7 +1606,8 @@
       ],
       "set": "SVE",
       "number": "011",
-      "uid": "Water Energy::SVE::011"
+      "uid": "Water Energy::SVE::011",
+      "category": "energy"
     },
     {
       "rank": 57,
@@ -1568,7 +1624,8 @@
       ],
       "set": "SVI",
       "number": "084",
-      "uid": "Ralts::SVI::084"
+      "uid": "Ralts::SVI::084",
+      "category": "pokemon"
     },
     {
       "rank": 58,
@@ -1590,7 +1647,8 @@
       ],
       "set": "SVI",
       "number": "085",
-      "uid": "Kirlia::SVI::085"
+      "uid": "Kirlia::SVI::085",
+      "category": "pokemon"
     },
     {
       "rank": 59,
@@ -1612,7 +1670,8 @@
       ],
       "set": "SVI",
       "number": "086",
-      "uid": "Gardevoir ex::SVI::086"
+      "uid": "Gardevoir ex::SVI::086",
+      "category": "pokemon"
     },
     {
       "rank": 60,
@@ -1629,7 +1688,8 @@
       ],
       "set": "PAR",
       "number": "086",
-      "uid": "Scream Tail::PAR::086"
+      "uid": "Scream Tail::PAR::086",
+      "category": "pokemon"
     },
     {
       "rank": 61,
@@ -1666,7 +1726,8 @@
       ],
       "set": "SVE",
       "number": "016",
-      "uid": "Metal Energy::SVE::016"
+      "uid": "Metal Energy::SVE::016",
+      "category": "energy"
     },
     {
       "rank": 62,
@@ -1698,7 +1759,8 @@
       ],
       "set": "SVI",
       "number": "173",
-      "uid": "Energy Switch::SVI::173"
+      "uid": "Energy Switch::SVI::173",
+      "category": "trainer"
     },
     {
       "rank": 63,
@@ -1720,7 +1782,8 @@
       ],
       "set": "TWM",
       "number": "053",
-      "uid": "Froslass::TWM::053"
+      "uid": "Froslass::TWM::053",
+      "category": "pokemon"
     },
     {
       "rank": 64,
@@ -1747,7 +1810,8 @@
       ],
       "set": "DRI",
       "number": "134",
-      "uid": "Marnie's Impidimp::DRI::134"
+      "uid": "Marnie's Impidimp::DRI::134",
+      "category": "pokemon"
     },
     {
       "rank": 65,
@@ -1774,7 +1838,8 @@
       ],
       "set": "DRI",
       "number": "135",
-      "uid": "Marnie's Morgrem::DRI::135"
+      "uid": "Marnie's Morgrem::DRI::135",
+      "category": "pokemon"
     },
     {
       "rank": 66,
@@ -1796,7 +1861,8 @@
       ],
       "set": "DRI",
       "number": "136",
-      "uid": "Marnie's Grimmsnarl ex::DRI::136"
+      "uid": "Marnie's Grimmsnarl ex::DRI::136",
+      "category": "pokemon"
     },
     {
       "rank": 67,
@@ -1823,7 +1889,8 @@
       ],
       "set": "DRI",
       "number": "169",
-      "uid": "Spikemuth Gym::DRI::169"
+      "uid": "Spikemuth Gym::DRI::169",
+      "category": "trainer"
     },
     {
       "rank": 68,
@@ -1840,7 +1907,8 @@
       ],
       "set": "SVI",
       "number": "089",
-      "uid": "Drifloon::SVI::089"
+      "uid": "Drifloon::SVI::089",
+      "category": "pokemon"
     },
     {
       "rank": 69,
@@ -1862,7 +1930,8 @@
       ],
       "set": "DRI",
       "number": "167",
-      "uid": "Judge::DRI::167"
+      "uid": "Judge::DRI::167",
+      "category": "trainer"
     },
     {
       "rank": 70,
@@ -1879,7 +1948,8 @@
       ],
       "set": "OBF",
       "number": "080",
-      "uid": "Cleffa::OBF::080"
+      "uid": "Cleffa::OBF::080",
+      "category": "pokemon"
     },
     {
       "rank": 71,
@@ -1906,7 +1976,8 @@
       ],
       "set": "DRI",
       "number": "180",
-      "uid": "Team Rocket's Watchtower::DRI::180"
+      "uid": "Team Rocket's Watchtower::DRI::180",
+      "category": "trainer"
     },
     {
       "rank": 72,
@@ -1933,7 +2004,8 @@
       ],
       "set": "PAF",
       "number": "007",
-      "uid": "Charmander::PAF::007"
+      "uid": "Charmander::PAF::007",
+      "category": "pokemon"
     },
     {
       "rank": 73,
@@ -1950,7 +2022,8 @@
       ],
       "set": "OBF",
       "number": "125",
-      "uid": "Charizard ex::OBF::125"
+      "uid": "Charizard ex::OBF::125",
+      "category": "pokemon"
     },
     {
       "rank": 74,
@@ -1972,7 +2045,8 @@
       ],
       "set": "PRE",
       "number": "077",
-      "uid": "Hoothoot::PRE::077"
+      "uid": "Hoothoot::PRE::077",
+      "category": "pokemon"
     },
     {
       "rank": 75,
@@ -1994,7 +2068,8 @@
       ],
       "set": "SVI",
       "number": "171",
-      "uid": "Energy Retrieval::SVI::171"
+      "uid": "Energy Retrieval::SVI::171",
+      "category": "trainer"
     },
     {
       "rank": 76,
@@ -2016,7 +2091,8 @@
       ],
       "set": "SVI",
       "number": "175",
-      "uid": "Jacq::SVI::175"
+      "uid": "Jacq::SVI::175",
+      "category": "trainer"
     },
     {
       "rank": 77,
@@ -2033,7 +2109,8 @@
       ],
       "set": "SCR",
       "number": "132",
-      "uid": "Briar::SCR::132"
+      "uid": "Briar::SCR::132",
+      "category": "trainer"
     },
     {
       "rank": 78,
@@ -2065,7 +2142,8 @@
       ],
       "set": "JTG",
       "number": "146",
-      "uid": "Brock's Scouting::JTG::146"
+      "uid": "Brock's Scouting::JTG::146",
+      "category": "trainer"
     },
     {
       "rank": 79,
@@ -2092,7 +2170,8 @@
       ],
       "set": "PRE",
       "number": "035",
-      "uid": "Duskull::PRE::035"
+      "uid": "Duskull::PRE::035",
+      "category": "pokemon"
     },
     {
       "rank": 80,
@@ -2119,7 +2198,8 @@
       ],
       "set": "PRE",
       "number": "036",
-      "uid": "Dusclops::PRE::036"
+      "uid": "Dusclops::PRE::036",
+      "category": "pokemon"
     },
     {
       "rank": 81,
@@ -2136,7 +2216,8 @@
       ],
       "set": "SVI",
       "number": "172",
-      "uid": "Energy Search::SVI::172"
+      "uid": "Energy Search::SVI::172",
+      "category": "trainer"
     },
     {
       "rank": 82,
@@ -2153,7 +2234,8 @@
       ],
       "set": "SCR",
       "number": "142",
-      "uid": "Sparkling Crystal::SCR::142"
+      "uid": "Sparkling Crystal::SCR::142",
+      "category": "trainer"
     },
     {
       "rank": 83,
@@ -2175,7 +2257,8 @@
       ],
       "set": "PAL",
       "number": "169",
-      "uid": "Squawkabilly ex::PAL::169"
+      "uid": "Squawkabilly ex::PAL::169",
+      "category": "pokemon"
     },
     {
       "rank": 84,
@@ -2197,7 +2280,8 @@
       ],
       "set": "SCR",
       "number": "128",
-      "uid": "Terapagos ex::SCR::128"
+      "uid": "Terapagos ex::SCR::128",
+      "category": "pokemon"
     },
     {
       "rank": 85,
@@ -2224,7 +2308,8 @@
       ],
       "set": "TWM",
       "number": "051",
-      "uid": "Snorunt::TWM::051"
+      "uid": "Snorunt::TWM::051",
+      "category": "pokemon"
     },
     {
       "rank": 86,
@@ -2241,7 +2326,8 @@
       ],
       "set": "SVI",
       "number": "169",
-      "uid": "Defiance Band::SVI::169"
+      "uid": "Defiance Band::SVI::169",
+      "category": "trainer"
     },
     {
       "rank": 87,
@@ -2263,7 +2349,8 @@
       ],
       "set": "PRE",
       "number": "037",
-      "uid": "Dusknoir::PRE::037"
+      "uid": "Dusknoir::PRE::037",
+      "category": "pokemon"
     },
     {
       "rank": 88,
@@ -2285,7 +2372,8 @@
       ],
       "set": "SSP",
       "number": "189",
-      "uid": "Tera Orb::SSP::189"
+      "uid": "Tera Orb::SSP::189",
+      "category": "trainer"
     },
     {
       "rank": 89,
@@ -2302,7 +2390,8 @@
       ],
       "set": "MEW",
       "number": "005",
-      "uid": "Charmeleon::MEW::005"
+      "uid": "Charmeleon::MEW::005",
+      "category": "pokemon"
     },
     {
       "rank": 90,
@@ -2319,7 +2408,8 @@
       ],
       "set": "SSP",
       "number": "143",
-      "uid": "Eevee::SSP::143"
+      "uid": "Eevee::SSP::143",
+      "category": "pokemon"
     },
     {
       "rank": 91,
@@ -2336,7 +2426,8 @@
       ],
       "set": "MEW",
       "number": "133",
-      "uid": "Eevee::MEW::133"
+      "uid": "Eevee::MEW::133",
+      "category": "pokemon"
     },
     {
       "rank": 92,
@@ -2358,7 +2449,8 @@
       ],
       "set": "PRE",
       "number": "014",
-      "uid": "Flareon ex::PRE::014"
+      "uid": "Flareon ex::PRE::014",
+      "category": "pokemon"
     },
     {
       "rank": 93,
@@ -2375,7 +2467,8 @@
       ],
       "set": "PRE",
       "number": "006",
-      "uid": "Leafeon ex::PRE::006"
+      "uid": "Leafeon ex::PRE::006",
+      "category": "pokemon"
     },
     {
       "rank": 94,
@@ -2397,7 +2490,8 @@
       ],
       "set": "PAL",
       "number": "189",
-      "uid": "Superior Energy Retrieval::PAL::189"
+      "uid": "Superior Energy Retrieval::PAL::189",
+      "category": "trainer"
     },
     {
       "rank": 95,
@@ -2429,7 +2523,8 @@
       ],
       "set": "TEF",
       "number": "145",
-      "uid": "Ciphermaniac's Codebreaking::TEF::145"
+      "uid": "Ciphermaniac's Codebreaking::TEF::145",
+      "category": "trainer"
     },
     {
       "rank": 96,
@@ -2451,7 +2546,8 @@
       ],
       "set": "SSP",
       "number": "086",
-      "uid": "Sylveon ex::SSP::086"
+      "uid": "Sylveon ex::SSP::086",
+      "category": "pokemon"
     },
     {
       "rank": 97,
@@ -2473,7 +2569,8 @@
       ],
       "set": "PRE",
       "number": "075",
-      "uid": "Eevee ex::PRE::075"
+      "uid": "Eevee ex::PRE::075",
+      "category": "pokemon"
     },
     {
       "rank": 98,
@@ -2490,7 +2587,8 @@
       ],
       "set": "SVI",
       "number": "182",
-      "uid": "Pal Pad::SVI::182"
+      "uid": "Pal Pad::SVI::182",
+      "category": "trainer"
     },
     {
       "rank": 99,
@@ -2517,7 +2615,8 @@
       ],
       "set": "PAR",
       "number": "037",
-      "uid": "Snorunt::PAR::037"
+      "uid": "Snorunt::PAR::037",
+      "category": "pokemon"
     },
     {
       "rank": 100,
@@ -2534,7 +2633,8 @@
       ],
       "set": "PAR",
       "number": "139",
-      "uid": "Gholdengo ex::PAR::139"
+      "uid": "Gholdengo ex::PAR::139",
+      "category": "pokemon"
     },
     {
       "rank": 101,
@@ -2551,7 +2651,8 @@
       ],
       "set": "SSP",
       "number": "176",
-      "uid": "Energy Search Pro::SSP::176"
+      "uid": "Energy Search Pro::SSP::176",
+      "category": "trainer"
     },
     {
       "rank": 102,
@@ -2568,7 +2669,8 @@
       ],
       "set": "TEF",
       "number": "162",
-      "uid": "Neo Upper Energy::TEF::162"
+      "uid": "Neo Upper Energy::TEF::162",
+      "category": "energy"
     },
     {
       "rank": 103,
@@ -2590,7 +2692,8 @@
       ],
       "set": "SSP",
       "number": "170",
-      "uid": "Cyrano::SSP::170"
+      "uid": "Cyrano::SSP::170",
+      "category": "trainer"
     },
     {
       "rank": 104,
@@ -2612,7 +2715,8 @@
       ],
       "set": "SSP",
       "number": "097",
-      "uid": "Gimmighoul::SSP::097"
+      "uid": "Gimmighoul::SSP::097",
+      "category": "pokemon"
     },
     {
       "rank": 105,
@@ -2634,7 +2738,8 @@
       ],
       "set": "PAR",
       "number": "070",
-      "uid": "Iron Hands ex::PAR::070"
+      "uid": "Iron Hands ex::PAR::070",
+      "category": "pokemon"
     },
     {
       "rank": 106,
@@ -2656,7 +2761,8 @@
       ],
       "set": "SVI",
       "number": "184",
-      "uid": "Picnic Basket::SVI::184"
+      "uid": "Picnic Basket::SVI::184",
+      "category": "trainer"
     },
     {
       "rank": 107,
@@ -2678,7 +2784,8 @@
       ],
       "set": "SSP",
       "number": "057",
-      "uid": "Pikachu ex::SSP::057"
+      "uid": "Pikachu ex::SSP::057",
+      "category": "pokemon"
     },
     {
       "rank": 108,
@@ -2695,7 +2802,8 @@
       ],
       "set": "SCR",
       "number": "050",
-      "uid": "Joltik::SCR::050"
+      "uid": "Joltik::SCR::050",
+      "category": "pokemon"
     },
     {
       "rank": 109,
@@ -2717,7 +2825,8 @@
       ],
       "set": "SVI",
       "number": "081",
-      "uid": "Miraidon ex::SVI::081"
+      "uid": "Miraidon ex::SVI::081",
+      "category": "pokemon"
     },
     {
       "rank": 110,
@@ -2734,7 +2843,8 @@
       ],
       "set": "SFA",
       "number": "002",
-      "uid": "Galvantula::SFA::002"
+      "uid": "Galvantula::SFA::002",
+      "category": "pokemon"
     },
     {
       "rank": 111,
@@ -2751,7 +2861,8 @@
       ],
       "set": "PAR",
       "number": "056",
-      "uid": "Iron Bundle::PAR::056"
+      "uid": "Iron Bundle::PAR::056",
+      "category": "pokemon"
     },
     {
       "rank": 112,
@@ -2778,7 +2889,8 @@
       ],
       "set": "TEF",
       "number": "149",
-      "uid": "Future Booster Energy Capsule::TEF::149"
+      "uid": "Future Booster Energy Capsule::TEF::149",
+      "category": "trainer"
     },
     {
       "rank": 113,
@@ -2800,7 +2912,8 @@
       ],
       "set": "JTG",
       "number": "008",
-      "uid": "Maractus::JTG::008"
+      "uid": "Maractus::JTG::008",
+      "category": "pokemon"
     },
     {
       "rank": 114,
@@ -2817,7 +2930,8 @@
       ],
       "set": "PAR",
       "number": "029",
-      "uid": "Chi-Yu::PAR::029"
+      "uid": "Chi-Yu::PAR::029",
+      "category": "pokemon"
     },
     {
       "rank": 115,
@@ -2839,7 +2953,8 @@
       ],
       "set": "PAR",
       "number": "166",
-      "uid": "Luxurious Cape::PAR::166"
+      "uid": "Luxurious Cape::PAR::166",
+      "category": "trainer"
     },
     {
       "rank": 116,
@@ -2861,7 +2976,8 @@
       ],
       "set": "SVI",
       "number": "174",
-      "uid": "Exp. Share::SVI::174"
+      "uid": "Exp. Share::SVI::174",
+      "category": "trainer"
     },
     {
       "rank": 117,
@@ -2878,7 +2994,8 @@
       ],
       "set": "PAF",
       "number": "008",
-      "uid": "Charmeleon::PAF::008"
+      "uid": "Charmeleon::PAF::008",
+      "category": "pokemon"
     },
     {
       "rank": 118,
@@ -2900,7 +3017,8 @@
       ],
       "set": "SSP",
       "number": "177",
-      "uid": "Gravity Mountain::SSP::177"
+      "uid": "Gravity Mountain::SSP::177",
+      "category": "trainer"
     },
     {
       "rank": 119,
@@ -2922,7 +3040,8 @@
       ],
       "set": "TWM",
       "number": "154",
-      "uid": "Kieran::TWM::154"
+      "uid": "Kieran::TWM::154",
+      "category": "trainer"
     },
     {
       "rank": 120,
@@ -2939,7 +3058,8 @@
       ],
       "set": "SCR",
       "number": "135",
-      "uid": "Glass Trumpet::SCR::135"
+      "uid": "Glass Trumpet::SCR::135",
+      "category": "trainer"
     },
     {
       "rank": 121,
@@ -2956,7 +3076,8 @@
       ],
       "set": "SFA",
       "number": "040",
-      "uid": "Genesect::SFA::040"
+      "uid": "Genesect::SFA::040",
+      "category": "pokemon"
     },
     {
       "rank": 122,
@@ -2978,7 +3099,8 @@
       ],
       "set": "PAR",
       "number": "179",
-      "uid": "Technical Machine: Turbo Energize::PAR::179"
+      "uid": "Technical Machine: Turbo Energize::PAR::179",
+      "category": "trainer"
     },
     {
       "rank": 123,
@@ -3000,7 +3122,8 @@
       ],
       "set": "DRI",
       "number": "176",
-      "uid": "Team Rocket's Petrel::DRI::176"
+      "uid": "Team Rocket's Petrel::DRI::176",
+      "category": "trainer"
     },
     {
       "rank": 124,
@@ -3022,7 +3145,8 @@
       ],
       "set": "TWM",
       "number": "064",
-      "uid": "Wellspring Mask Ogerpon ex::TWM::064"
+      "uid": "Wellspring Mask Ogerpon ex::TWM::064",
+      "category": "pokemon"
     },
     {
       "rank": 125,
@@ -3044,7 +3168,8 @@
       ],
       "set": "TWM",
       "number": "143",
-      "uid": "Bug Catching Set::TWM::143"
+      "uid": "Bug Catching Set::TWM::143",
+      "category": "trainer"
     },
     {
       "rank": 126,
@@ -3071,7 +3196,8 @@
       ],
       "set": "JTG",
       "number": "097",
-      "uid": "N's Zorua::JTG::097"
+      "uid": "N's Zorua::JTG::097",
+      "category": "pokemon"
     },
     {
       "rank": 127,
@@ -3098,7 +3224,8 @@
       ],
       "set": "JTG",
       "number": "098",
-      "uid": "N's Zoroark ex::JTG::098"
+      "uid": "N's Zoroark ex::JTG::098",
+      "category": "pokemon"
     },
     {
       "rank": 128,
@@ -3120,7 +3247,8 @@
       ],
       "set": "TWM",
       "number": "145",
-      "uid": "Carmine::TWM::145"
+      "uid": "Carmine::TWM::145",
+      "category": "trainer"
     },
     {
       "rank": 129,
@@ -3137,7 +3265,8 @@
       ],
       "set": "OBF",
       "number": "022",
-      "uid": "Toedscruel ex::OBF::022"
+      "uid": "Toedscruel ex::OBF::022",
+      "category": "pokemon"
     },
     {
       "rank": 130,
@@ -3154,7 +3283,8 @@
       ],
       "set": "PAR",
       "number": "017",
-      "uid": "Toedscruel::PAR::017"
+      "uid": "Toedscruel::PAR::017",
+      "category": "pokemon"
     },
     {
       "rank": 131,
@@ -3176,7 +3306,8 @@
       ],
       "set": "MEW",
       "number": "165",
-      "uid": "Rigid Band::MEW::165"
+      "uid": "Rigid Band::MEW::165",
+      "category": "trainer"
     },
     {
       "rank": 132,
@@ -3198,7 +3329,8 @@
       ],
       "set": "OBF",
       "number": "164",
-      "uid": "Pidgeot ex::OBF::164"
+      "uid": "Pidgeot ex::OBF::164",
+      "category": "pokemon"
     },
     {
       "rank": 133,
@@ -3215,7 +3347,8 @@
       ],
       "set": "TWM",
       "number": "131",
-      "uid": "Tatsugiri::TWM::131"
+      "uid": "Tatsugiri::TWM::131",
+      "category": "pokemon"
     },
     {
       "rank": 134,
@@ -3237,7 +3370,8 @@
       ],
       "set": "PAR",
       "number": "016",
-      "uid": "Toedscool::PAR::016"
+      "uid": "Toedscool::PAR::016",
+      "category": "pokemon"
     },
     {
       "rank": 135,
@@ -3259,7 +3393,8 @@
       ],
       "set": "JTG",
       "number": "116",
-      "uid": "N's Reshiram::JTG::116"
+      "uid": "N's Reshiram::JTG::116",
+      "category": "pokemon"
     },
     {
       "rank": 136,
@@ -3281,7 +3416,8 @@
       ],
       "set": "TWM",
       "number": "112",
-      "uid": "Cornerstone Mask Ogerpon ex::TWM::112"
+      "uid": "Cornerstone Mask Ogerpon ex::TWM::112",
+      "category": "pokemon"
     },
     {
       "rank": 137,
@@ -3298,7 +3434,8 @@
       ],
       "set": "DRI",
       "number": "179",
-      "uid": "Team Rocket's Venture Bomb::DRI::179"
+      "uid": "Team Rocket's Venture Bomb::DRI::179",
+      "category": "trainer"
     },
     {
       "rank": 138,
@@ -3315,7 +3452,8 @@
       ],
       "set": "SSP",
       "number": "032",
-      "uid": "Charcadet::SSP::032"
+      "uid": "Charcadet::SSP::032",
+      "category": "pokemon"
     },
     {
       "rank": 139,
@@ -3332,7 +3470,8 @@
       ],
       "set": "DRI",
       "number": "102",
-      "uid": "Cynthia's Gible::DRI::102"
+      "uid": "Cynthia's Gible::DRI::102",
+      "category": "pokemon"
     },
     {
       "rank": 140,
@@ -3349,7 +3488,8 @@
       ],
       "set": "DRI",
       "number": "104",
-      "uid": "Cynthia's Garchomp ex::DRI::104"
+      "uid": "Cynthia's Garchomp ex::DRI::104",
+      "category": "pokemon"
     },
     {
       "rank": 141,
@@ -3366,7 +3506,8 @@
       ],
       "set": "DRI",
       "number": "103",
-      "uid": "Cynthia's Gabite::DRI::103"
+      "uid": "Cynthia's Gabite::DRI::103",
+      "category": "pokemon"
     },
     {
       "rank": 142,
@@ -3388,7 +3529,8 @@
       ],
       "set": "DRI",
       "number": "007",
-      "uid": "Cynthia's Roselia::DRI::007"
+      "uid": "Cynthia's Roselia::DRI::007",
+      "category": "pokemon"
     },
     {
       "rank": 143,
@@ -3410,7 +3552,8 @@
       ],
       "set": "DRI",
       "number": "008",
-      "uid": "Cynthia's Roserade::DRI::008"
+      "uid": "Cynthia's Roserade::DRI::008",
+      "category": "pokemon"
     },
     {
       "rank": 144,
@@ -3427,7 +3570,8 @@
       ],
       "set": "DRI",
       "number": "129",
-      "uid": "Cynthia's Spiritomb::DRI::129"
+      "uid": "Cynthia's Spiritomb::DRI::129",
+      "category": "pokemon"
     },
     {
       "rank": 145,
@@ -3449,7 +3593,8 @@
       ],
       "set": "DRI",
       "number": "162",
-      "uid": "Cynthia's Power Weight::DRI::162"
+      "uid": "Cynthia's Power Weight::DRI::162",
+      "category": "trainer"
     },
     {
       "rank": 146,
@@ -3476,7 +3621,8 @@
       ],
       "set": "PAL",
       "number": "190",
-      "uid": "Jet Energy::PAL::190"
+      "uid": "Jet Energy::PAL::190",
+      "category": "energy"
     },
     {
       "rank": 147,
@@ -3498,7 +3644,8 @@
       ],
       "set": "MEW",
       "number": "017",
-      "uid": "Pidgeotto::MEW::017"
+      "uid": "Pidgeotto::MEW::017",
+      "category": "pokemon"
     },
     {
       "rank": 148,
@@ -3515,7 +3662,8 @@
       ],
       "set": "SVI",
       "number": "096",
-      "uid": "Klefki::SVI::096"
+      "uid": "Klefki::SVI::096",
+      "category": "pokemon"
     },
     {
       "rank": 149,
@@ -3537,7 +3685,8 @@
       ],
       "set": "TEF",
       "number": "161",
-      "uid": "Mist Energy::TEF::161"
+      "uid": "Mist Energy::TEF::161",
+      "category": "energy"
     },
     {
       "rank": 150,
@@ -3554,7 +3703,8 @@
       ],
       "set": "TWM",
       "number": "158",
-      "uid": "Lucky Helmet::TWM::158"
+      "uid": "Lucky Helmet::TWM::158",
+      "category": "trainer"
     },
     {
       "rank": 151,
@@ -3571,7 +3721,8 @@
       ],
       "set": "SFA",
       "number": "063",
-      "uid": "Powerglass::SFA::063"
+      "uid": "Powerglass::SFA::063",
+      "category": "trainer"
     },
     {
       "rank": 152,
@@ -3593,7 +3744,8 @@
       ],
       "set": "PAR",
       "number": "088",
-      "uid": "Gimmighoul::PAR::088"
+      "uid": "Gimmighoul::PAR::088",
+      "category": "pokemon"
     },
     {
       "rank": 153,
@@ -3610,7 +3762,8 @@
       ],
       "set": "SVI",
       "number": "197",
-      "uid": "Vitality Band::SVI::197"
+      "uid": "Vitality Band::SVI::197",
+      "category": "trainer"
     },
     {
       "rank": 154,
@@ -3632,7 +3785,8 @@
       ],
       "set": "OBF",
       "number": "192",
-      "uid": "Pokémon League Headquarters::OBF::192"
+      "uid": "Pokémon League Headquarters::OBF::192",
+      "category": "trainer"
     },
     {
       "rank": 155,
@@ -3649,7 +3803,8 @@
       ],
       "set": "MEW",
       "number": "016",
-      "uid": "Pidgey::MEW::016"
+      "uid": "Pidgey::MEW::016",
+      "category": "pokemon"
     },
     {
       "rank": 156,
@@ -3666,7 +3821,8 @@
       ],
       "set": "SCR",
       "number": "017",
-      "uid": "Toedscool::SCR::017"
+      "uid": "Toedscool::SCR::017",
+      "category": "pokemon"
     },
     {
       "rank": 157,
@@ -3688,7 +3844,8 @@
       ],
       "set": "JTG",
       "number": "145",
-      "uid": "Black Belt's Training::JTG::145"
+      "uid": "Black Belt's Training::JTG::145",
+      "category": "trainer"
     },
     {
       "rank": 158,
@@ -3705,7 +3862,8 @@
       ],
       "set": "SSP",
       "number": "116",
-      "uid": "Koraidon::SSP::116"
+      "uid": "Koraidon::SSP::116",
+      "category": "pokemon"
     },
     {
       "rank": 159,
@@ -3722,7 +3880,8 @@
       ],
       "set": "TWM",
       "number": "167",
-      "uid": "Legacy Energy::TWM::167"
+      "uid": "Legacy Energy::TWM::167",
+      "category": "energy"
     },
     {
       "rank": 160,
@@ -3739,7 +3898,8 @@
       ],
       "set": "SFA",
       "number": "039",
-      "uid": "Pecharunt ex::SFA::039"
+      "uid": "Pecharunt ex::SFA::039",
+      "category": "pokemon"
     },
     {
       "rank": 161,
@@ -3766,7 +3926,8 @@
       ],
       "set": "PRE",
       "number": "095",
-      "uid": "Binding Mochi::PRE::095"
+      "uid": "Binding Mochi::PRE::095",
+      "category": "trainer"
     },
     {
       "rank": 162,
@@ -3783,7 +3944,8 @@
       ],
       "set": "TEF",
       "number": "078",
-      "uid": "Flutter Mane::TEF::078"
+      "uid": "Flutter Mane::TEF::078",
+      "category": "pokemon"
     },
     {
       "rank": 163,
@@ -3800,7 +3962,8 @@
       ],
       "set": "SSP",
       "number": "036",
-      "uid": "Ceruledge ex::SSP::036"
+      "uid": "Ceruledge ex::SSP::036",
+      "category": "pokemon"
     },
     {
       "rank": 164,
@@ -3817,7 +3980,8 @@
       ],
       "set": "SFA",
       "number": "043",
-      "uid": "Varoom::SFA::043"
+      "uid": "Varoom::SFA::043",
+      "category": "pokemon"
     },
     {
       "rank": 165,
@@ -3839,7 +4003,8 @@
       ],
       "set": "SVI",
       "number": "142",
-      "uid": "Revavroom::SVI::142"
+      "uid": "Revavroom::SVI::142",
+      "category": "pokemon"
     },
     {
       "rank": 166,
@@ -3861,7 +4026,8 @@
       ],
       "set": "SCR",
       "number": "106",
-      "uid": "Duraludon::SCR::106"
+      "uid": "Duraludon::SCR::106",
+      "category": "pokemon"
     },
     {
       "rank": 167,
@@ -3883,7 +4049,8 @@
       ],
       "set": "SSP",
       "number": "130",
-      "uid": "Archaludon ex::SSP::130"
+      "uid": "Archaludon ex::SSP::130",
+      "category": "pokemon"
     },
     {
       "rank": 168,
@@ -3905,7 +4072,8 @@
       ],
       "set": "DRI",
       "number": "087",
-      "uid": "Team Rocket's Mimikyu::DRI::087"
+      "uid": "Team Rocket's Mimikyu::DRI::087",
+      "category": "pokemon"
     },
     {
       "rank": 169,
@@ -3932,7 +4100,8 @@
       ],
       "set": "JTG",
       "number": "153",
-      "uid": "N's PP Up::JTG::153"
+      "uid": "N's PP Up::JTG::153",
+      "category": "trainer"
     },
     {
       "rank": 170,
@@ -3949,7 +4118,8 @@
       ],
       "set": "JTG",
       "number": "152",
-      "uid": "N's Castle::JTG::152"
+      "uid": "N's Castle::JTG::152",
+      "category": "trainer"
     },
     {
       "rank": 171,
@@ -3971,7 +4141,8 @@
       ],
       "set": "TEF",
       "number": "108",
-      "uid": "Farigiraf ex::TEF::108"
+      "uid": "Farigiraf ex::TEF::108",
+      "category": "pokemon"
     },
     {
       "rank": 172,
@@ -3988,7 +4159,8 @@
       ],
       "set": "TEF",
       "number": "152",
-      "uid": "Hero's Cape::TEF::152"
+      "uid": "Hero's Cape::TEF::152",
+      "category": "trainer"
     },
     {
       "rank": 173,
@@ -4015,7 +4187,8 @@
       ],
       "set": "TEF",
       "number": "126",
-      "uid": "Hoothoot::TEF::126"
+      "uid": "Hoothoot::TEF::126",
+      "category": "pokemon"
     },
     {
       "rank": 174,
@@ -4032,7 +4205,8 @@
       ],
       "set": "PAR",
       "number": "123",
-      "uid": "Brute Bonnet::PAR::123"
+      "uid": "Brute Bonnet::PAR::123",
+      "category": "pokemon"
     },
     {
       "rank": 175,
@@ -4049,7 +4223,8 @@
       ],
       "set": "SVP",
       "number": "149",
-      "uid": "Pecharunt::SVP::149"
+      "uid": "Pecharunt::SVP::149",
+      "category": "pokemon"
     },
     {
       "rank": 176,
@@ -4071,7 +4246,8 @@
       ],
       "set": "TEF",
       "number": "140",
-      "uid": "Ancient Booster Energy Capsule::TEF::140"
+      "uid": "Ancient Booster Energy Capsule::TEF::140",
+      "category": "trainer"
     },
     {
       "rank": 177,
@@ -4088,7 +4264,8 @@
       ],
       "set": "TEF",
       "number": "156",
-      "uid": "Perilous Jungle::TEF::156"
+      "uid": "Perilous Jungle::TEF::156",
+      "category": "trainer"
     },
     {
       "rank": 178,
@@ -4110,7 +4287,8 @@
       ],
       "set": "OBF",
       "number": "196",
-      "uid": "Town Store::OBF::196"
+      "uid": "Town Store::OBF::196",
+      "category": "trainer"
     },
     {
       "rank": 179,
@@ -4127,7 +4305,8 @@
       ],
       "set": "TWM",
       "number": "151",
-      "uid": "Hassel::TWM::151"
+      "uid": "Hassel::TWM::151",
+      "category": "trainer"
     },
     {
       "rank": 180,
@@ -4144,7 +4323,8 @@
       ],
       "set": "TEF",
       "number": "084",
-      "uid": "Relicanth::TEF::084"
+      "uid": "Relicanth::TEF::084",
+      "category": "pokemon"
     },
     {
       "rank": 181,
@@ -4166,7 +4346,8 @@
       ],
       "set": "SVI",
       "number": "187",
-      "uid": "Pokémon Catcher::SVI::187"
+      "uid": "Pokémon Catcher::SVI::187",
+      "category": "trainer"
     },
     {
       "rank": 182,
@@ -4183,7 +4364,8 @@
       ],
       "set": "DRI",
       "number": "019",
-      "uid": "Team Rocket's Tarountula::DRI::019"
+      "uid": "Team Rocket's Tarountula::DRI::019",
+      "category": "pokemon"
     },
     {
       "rank": 183,
@@ -4205,7 +4387,8 @@
       ],
       "set": "DRI",
       "number": "020",
-      "uid": "Team Rocket's Spidops::DRI::020"
+      "uid": "Team Rocket's Spidops::DRI::020",
+      "category": "pokemon"
     },
     {
       "rank": 184,
@@ -4227,7 +4410,8 @@
       ],
       "set": "DRI",
       "number": "081",
-      "uid": "Team Rocket's Mewtwo ex::DRI::081"
+      "uid": "Team Rocket's Mewtwo ex::DRI::081",
+      "category": "pokemon"
     },
     {
       "rank": 185,
@@ -4249,7 +4433,8 @@
       ],
       "set": "DRI",
       "number": "051",
-      "uid": "Team Rocket's Articuno::DRI::051"
+      "uid": "Team Rocket's Articuno::DRI::051",
+      "category": "pokemon"
     },
     {
       "rank": 186,
@@ -4266,7 +4451,8 @@
       ],
       "set": "DRI",
       "number": "171",
-      "uid": "Team Rocket's Ariana::DRI::171"
+      "uid": "Team Rocket's Ariana::DRI::171",
+      "category": "trainer"
     },
     {
       "rank": 187,
@@ -4283,7 +4469,8 @@
       ],
       "set": "DRI",
       "number": "174",
-      "uid": "Team Rocket's Giovanni::DRI::174"
+      "uid": "Team Rocket's Giovanni::DRI::174",
+      "category": "trainer"
     },
     {
       "rank": 188,
@@ -4305,7 +4492,8 @@
       ],
       "set": "DRI",
       "number": "177",
-      "uid": "Team Rocket's Proton::DRI::177"
+      "uid": "Team Rocket's Proton::DRI::177",
+      "category": "trainer"
     },
     {
       "rank": 189,
@@ -4322,7 +4510,8 @@
       ],
       "set": "DRI",
       "number": "170",
-      "uid": "Team Rocket's Archer::DRI::170"
+      "uid": "Team Rocket's Archer::DRI::170",
+      "category": "trainer"
     },
     {
       "rank": 190,
@@ -4339,7 +4528,8 @@
       ],
       "set": "DRI",
       "number": "178",
-      "uid": "Team Rocket's Transceiver::DRI::178"
+      "uid": "Team Rocket's Transceiver::DRI::178",
+      "category": "trainer"
     },
     {
       "rank": 191,
@@ -4361,7 +4551,8 @@
       ],
       "set": "DRI",
       "number": "173",
-      "uid": "Team Rocket's Factory::DRI::173"
+      "uid": "Team Rocket's Factory::DRI::173",
+      "category": "trainer"
     },
     {
       "rank": 192,
@@ -4378,7 +4569,8 @@
       ],
       "set": "DRI",
       "number": "182",
-      "uid": "Team Rocket's Energy::DRI::182"
+      "uid": "Team Rocket's Energy::DRI::182",
+      "category": "energy"
     },
     {
       "rank": 193,
@@ -4395,7 +4587,8 @@
       ],
       "set": "PAL",
       "number": "192",
-      "uid": "Reversal Energy::PAL::192"
+      "uid": "Reversal Energy::PAL::192",
+      "category": "energy"
     },
     {
       "rank": 194,
@@ -4412,7 +4605,8 @@
       ],
       "set": "SVI",
       "number": "183",
-      "uid": "Penny::SVI::183"
+      "uid": "Penny::SVI::183",
+      "category": "trainer"
     },
     {
       "rank": 195,
@@ -4434,7 +4628,8 @@
       ],
       "set": "OBF",
       "number": "162",
-      "uid": "Pidgey::OBF::162"
+      "uid": "Pidgey::OBF::162",
+      "category": "pokemon"
     },
     {
       "rank": 196,
@@ -4451,7 +4646,8 @@
       ],
       "set": "PRE",
       "number": "112",
-      "uid": "Janine's Secret Art::PRE::112"
+      "uid": "Janine's Secret Art::PRE::112",
+      "category": "trainer"
     },
     {
       "rank": 197,
@@ -4473,7 +4669,8 @@
       ],
       "set": "SVI",
       "number": "041",
-      "uid": "Armarouge::SVI::041"
+      "uid": "Armarouge::SVI::041",
+      "category": "pokemon"
     },
     {
       "rank": 198,
@@ -4490,7 +4687,8 @@
       ],
       "set": "DRI",
       "number": "039",
-      "uid": "Ethan's Ho-Oh ex::DRI::039"
+      "uid": "Ethan's Ho-Oh ex::DRI::039",
+      "category": "pokemon"
     },
     {
       "rank": 199,
@@ -4507,7 +4705,8 @@
       ],
       "set": "SSP",
       "number": "004",
-      "uid": "Durant ex::SSP::004"
+      "uid": "Durant ex::SSP::004",
+      "category": "pokemon"
     },
     {
       "rank": 200,
@@ -4529,7 +4728,8 @@
       ],
       "set": "SSP",
       "number": "041",
-      "uid": "Feebas::SSP::041"
+      "uid": "Feebas::SSP::041",
+      "category": "pokemon"
     },
     {
       "rank": 201,
@@ -4546,7 +4746,8 @@
       ],
       "set": "SSP",
       "number": "042",
-      "uid": "Milotic ex::SSP::042"
+      "uid": "Milotic ex::SSP::042",
+      "category": "pokemon"
     },
     {
       "rank": 202,
@@ -4568,7 +4769,8 @@
       ],
       "set": "PAL",
       "number": "154",
-      "uid": "Girafarig::PAL::154"
+      "uid": "Girafarig::PAL::154",
+      "category": "pokemon"
     },
     {
       "rank": 203,
@@ -4585,7 +4787,8 @@
       ],
       "set": "SSP",
       "number": "164",
-      "uid": "Brilliant Blender::SSP::164"
+      "uid": "Brilliant Blender::SSP::164",
+      "category": "trainer"
     },
     {
       "rank": 204,
@@ -4602,7 +4805,8 @@
       ],
       "set": "PAF",
       "number": "006",
-      "uid": "Espathra ex::PAF::006"
+      "uid": "Espathra ex::PAF::006",
+      "category": "pokemon"
     },
     {
       "rank": 205,
@@ -4624,7 +4828,8 @@
       ],
       "set": "SFA",
       "number": "057",
-      "uid": "Colress's Tenacity::SFA::057"
+      "uid": "Colress's Tenacity::SFA::057",
+      "category": "trainer"
     },
     {
       "rank": 206,
@@ -4641,7 +4846,8 @@
       ],
       "set": "SSP",
       "number": "131",
-      "uid": "Gholdengo::SSP::131"
+      "uid": "Gholdengo::SSP::131",
+      "category": "pokemon"
     },
     {
       "rank": 207,
@@ -4658,7 +4864,8 @@
       ],
       "set": "SSP",
       "number": "185",
-      "uid": "Precious Trolley::SSP::185"
+      "uid": "Precious Trolley::SSP::185",
+      "category": "trainer"
     },
     {
       "rank": 208,
@@ -4680,7 +4887,8 @@
       ],
       "set": "PAR",
       "number": "180",
-      "uid": "Techno Radar::PAR::180"
+      "uid": "Techno Radar::PAR::180",
+      "category": "trainer"
     },
     {
       "rank": 209,
@@ -4697,7 +4905,8 @@
       ],
       "set": "DRI",
       "number": "032",
-      "uid": "Ethan's Cyndaquil::DRI::032"
+      "uid": "Ethan's Cyndaquil::DRI::032",
+      "category": "pokemon"
     },
     {
       "rank": 210,
@@ -4714,7 +4923,8 @@
       ],
       "set": "DRI",
       "number": "034",
-      "uid": "Ethan's Typhlosion::DRI::034"
+      "uid": "Ethan's Typhlosion::DRI::034",
+      "category": "pokemon"
     },
     {
       "rank": 211,
@@ -4731,7 +4941,8 @@
       ],
       "set": "DRI",
       "number": "033",
-      "uid": "Ethan's Quilava::DRI::033"
+      "uid": "Ethan's Quilava::DRI::033",
+      "category": "pokemon"
     },
     {
       "rank": 212,
@@ -4753,7 +4964,8 @@
       ],
       "set": "SSP",
       "number": "021",
-      "uid": "Victini::SSP::021"
+      "uid": "Victini::SSP::021",
+      "category": "pokemon"
     },
     {
       "rank": 213,
@@ -4770,7 +4982,8 @@
       ],
       "set": "DRI",
       "number": "165",
-      "uid": "Ethan's Adventure::DRI::165"
+      "uid": "Ethan's Adventure::DRI::165",
+      "category": "trainer"
     },
     {
       "rank": 214,
@@ -4787,7 +5000,8 @@
       ],
       "set": "JTG",
       "number": "156",
-      "uid": "Redeemable Ticket::JTG::156"
+      "uid": "Redeemable Ticket::JTG::156",
+      "category": "trainer"
     },
     {
       "rank": 215,
@@ -4804,7 +5018,8 @@
       ],
       "set": "DRI",
       "number": "127",
-      "uid": "Team Rocket's Murkrow::DRI::127"
+      "uid": "Team Rocket's Murkrow::DRI::127",
+      "category": "pokemon"
     },
     {
       "rank": 216,
@@ -4826,7 +5041,8 @@
       ],
       "set": "PAR",
       "number": "124",
-      "uid": "Roaring Moon ex::PAR::124"
+      "uid": "Roaring Moon ex::PAR::124",
+      "category": "pokemon"
     },
     {
       "rank": 217,
@@ -4843,7 +5059,8 @@
       ],
       "set": "DRI",
       "number": "011",
-      "uid": "Dwebble::DRI::011"
+      "uid": "Dwebble::DRI::011",
+      "category": "pokemon"
     },
     {
       "rank": 218,
@@ -4860,7 +5077,8 @@
       ],
       "set": "DRI",
       "number": "012",
-      "uid": "Crustle::DRI::012"
+      "uid": "Crustle::DRI::012",
+      "category": "pokemon"
     },
     {
       "rank": 219,
@@ -4882,7 +5100,8 @@
       ],
       "set": "TWM",
       "number": "077",
-      "uid": "Iron Thorns ex::TWM::077"
+      "uid": "Iron Thorns ex::TWM::077",
+      "category": "pokemon"
     },
     {
       "rank": 220,
@@ -4899,7 +5118,8 @@
       ],
       "set": "SFA",
       "number": "062",
-      "uid": "Poké Vital A::SFA::062"
+      "uid": "Poké Vital A::SFA::062",
+      "category": "trainer"
     },
     {
       "rank": 221,
@@ -4916,7 +5136,8 @@
       ],
       "set": "PAR",
       "number": "182",
-      "uid": "Medical Energy::PAR::182"
+      "uid": "Medical Energy::PAR::182",
+      "category": "energy"
     },
     {
       "rank": 222,
@@ -4933,7 +5154,8 @@
       ],
       "set": "JTG",
       "number": "026",
-      "uid": "N's Darumaka::JTG::026"
+      "uid": "N's Darumaka::JTG::026",
+      "category": "pokemon"
     },
     {
       "rank": 223,
@@ -4950,7 +5172,8 @@
       ],
       "set": "JTG",
       "number": "027",
-      "uid": "N's Darmanitan::JTG::027"
+      "uid": "N's Darmanitan::JTG::027",
+      "category": "pokemon"
     },
     {
       "rank": 224,
@@ -4967,7 +5190,8 @@
       ],
       "set": "TWM",
       "number": "159",
-      "uid": "Ogre's Mask::TWM::159"
+      "uid": "Ogre's Mask::TWM::159",
+      "category": "trainer"
     },
     {
       "rank": 225,
@@ -4984,7 +5208,8 @@
       ],
       "set": "TWM",
       "number": "040",
-      "uid": "Hearthflame Mask Ogerpon ex::TWM::040"
+      "uid": "Hearthflame Mask Ogerpon ex::TWM::040",
+      "category": "pokemon"
     },
     {
       "rank": 226,
@@ -5001,7 +5226,8 @@
       ],
       "set": "PRE",
       "number": "086",
-      "uid": "Regigigas::PRE::086"
+      "uid": "Regigigas::PRE::086",
+      "category": "pokemon"
     },
     {
       "rank": 227,
@@ -5018,7 +5244,8 @@
       ],
       "set": "TWM",
       "number": "049",
-      "uid": "Feebas::TWM::049"
+      "uid": "Feebas::TWM::049",
+      "category": "pokemon"
     },
     {
       "rank": 228,
@@ -5035,7 +5262,8 @@
       ],
       "set": "MEW",
       "number": "163",
-      "uid": "Leftovers::MEW::163"
+      "uid": "Leftovers::MEW::163",
+      "category": "trainer"
     },
     {
       "rank": 229,
@@ -5052,7 +5280,8 @@
       ],
       "set": "SCR",
       "number": "029",
-      "uid": "Charcadet::SCR::029"
+      "uid": "Charcadet::SCR::029",
+      "category": "pokemon"
     },
     {
       "rank": 230,
@@ -5069,7 +5298,8 @@
       ],
       "set": "PAR",
       "number": "080",
-      "uid": "Flittle::PAR::080"
+      "uid": "Flittle::PAR::080",
+      "category": "pokemon"
     },
     {
       "rank": 231,
@@ -5086,7 +5316,8 @@
       ],
       "set": "SSP",
       "number": "058",
-      "uid": "Magnemite::SSP::058"
+      "uid": "Magnemite::SSP::058",
+      "category": "pokemon"
     },
     {
       "rank": 232,
@@ -5103,7 +5334,8 @@
       ],
       "set": "SSP",
       "number": "059",
-      "uid": "Magneton::SSP::059"
+      "uid": "Magneton::SSP::059",
+      "category": "pokemon"
     },
     {
       "rank": 233,
@@ -5120,7 +5352,8 @@
       ],
       "set": "SCR",
       "number": "068",
-      "uid": "Flittle::SCR::068"
+      "uid": "Flittle::SCR::068",
+      "category": "pokemon"
     },
     {
       "rank": 234,
@@ -5137,7 +5370,8 @@
       ],
       "set": "SSP",
       "number": "169",
-      "uid": "Counter Gain::SSP::169"
+      "uid": "Counter Gain::SSP::169",
+      "category": "trainer"
     },
     {
       "rank": 235,
@@ -5154,7 +5388,8 @@
       ],
       "set": "PAR",
       "number": "026",
-      "uid": "Charcadet::PAR::026"
+      "uid": "Charcadet::PAR::026",
+      "category": "pokemon"
     },
     {
       "rank": 236,
@@ -5171,7 +5406,8 @@
       ],
       "set": "JTG",
       "number": "031",
-      "uid": "Volcanion ex::JTG::031"
+      "uid": "Volcanion ex::JTG::031",
+      "category": "pokemon"
     },
     {
       "rank": 237,
@@ -5188,7 +5424,8 @@
       ],
       "set": "PAL",
       "number": "174",
-      "uid": "Calamitous Snowy Mountain::PAL::174"
+      "uid": "Calamitous Snowy Mountain::PAL::174",
+      "category": "trainer"
     },
     {
       "rank": 238,
@@ -5205,7 +5442,8 @@
       ],
       "set": "SVI",
       "number": "178",
-      "uid": "Mesagoza::SVI::178"
+      "uid": "Mesagoza::SVI::178",
+      "category": "trainer"
     },
     {
       "rank": 239,
@@ -5222,7 +5460,8 @@
       ],
       "set": "SCR",
       "number": "137",
-      "uid": "Gravity Gemstone::SCR::137"
+      "uid": "Gravity Gemstone::SCR::137",
+      "category": "trainer"
     },
     {
       "rank": 240,
@@ -5239,7 +5478,8 @@
       ],
       "set": "MEW",
       "number": "123",
-      "uid": "Scyther::MEW::123"
+      "uid": "Scyther::MEW::123",
+      "category": "pokemon"
     },
     {
       "rank": 241,
@@ -5256,7 +5496,8 @@
       ],
       "set": "OBF",
       "number": "141",
-      "uid": "Scizor::OBF::141"
+      "uid": "Scizor::OBF::141",
+      "category": "pokemon"
     },
     {
       "rank": 242,
@@ -5273,7 +5514,8 @@
       ],
       "set": "TEF",
       "number": "081",
-      "uid": "Iron Crown ex::TEF::081"
+      "uid": "Iron Crown ex::TEF::081",
+      "category": "pokemon"
     },
     {
       "rank": 243,
@@ -5290,7 +5532,8 @@
       ],
       "set": "PAR",
       "number": "089",
-      "uid": "Iron Valiant ex::PAR::089"
+      "uid": "Iron Valiant ex::PAR::089",
+      "category": "pokemon"
     },
     {
       "rank": 244,
@@ -5307,7 +5550,8 @@
       ],
       "set": "TEF",
       "number": "121",
-      "uid": "Miraidon::TEF::121"
+      "uid": "Miraidon::TEF::121",
+      "category": "pokemon"
     },
     {
       "rank": 245,
@@ -5324,7 +5568,8 @@
       ],
       "set": "SSP",
       "number": "187",
-      "uid": "Surfer::SSP::187"
+      "uid": "Surfer::SSP::187",
+      "category": "trainer"
     },
     {
       "rank": 246,
@@ -5341,7 +5586,8 @@
       ],
       "set": "TEF",
       "number": "158",
-      "uid": "Reboot Pod::TEF::158"
+      "uid": "Reboot Pod::TEF::158",
+      "category": "trainer"
     },
     {
       "rank": 247,
@@ -5358,7 +5604,8 @@
       ],
       "set": "PAL",
       "number": "039",
-      "uid": "Charcadet::PAL::039"
+      "uid": "Charcadet::PAL::039",
+      "category": "pokemon"
     },
     {
       "rank": 248,
@@ -5375,7 +5622,8 @@
       ],
       "set": "SVP",
       "number": "047",
-      "uid": "Charmander::SVP::047"
+      "uid": "Charmander::SVP::047",
+      "category": "pokemon"
     },
     {
       "rank": 249,
@@ -5392,7 +5640,8 @@
       ],
       "set": "DRI",
       "number": "040",
-      "uid": "Torchic::DRI::040"
+      "uid": "Torchic::DRI::040",
+      "category": "pokemon"
     },
     {
       "rank": 250,
@@ -5409,7 +5658,8 @@
       ],
       "set": "DRI",
       "number": "041",
-      "uid": "Combusken::DRI::041"
+      "uid": "Combusken::DRI::041",
+      "category": "pokemon"
     },
     {
       "rank": 251,
@@ -5426,7 +5676,8 @@
       ],
       "set": "JTG",
       "number": "024",
-      "uid": "Blaziken ex::JTG::024"
+      "uid": "Blaziken ex::JTG::024",
+      "category": "pokemon"
     },
     {
       "rank": 252,
@@ -5443,7 +5694,8 @@
       ],
       "set": "DRI",
       "number": "042",
-      "uid": "Blaziken::DRI::042"
+      "uid": "Blaziken::DRI::042",
+      "category": "pokemon"
     },
     {
       "rank": 253,
@@ -5460,7 +5712,8 @@
       ],
       "set": "TWM",
       "number": "133",
-      "uid": "Chansey::TWM::133"
+      "uid": "Chansey::TWM::133",
+      "category": "pokemon"
     },
     {
       "rank": 254,
@@ -5477,7 +5730,8 @@
       ],
       "set": "TWM",
       "number": "134",
-      "uid": "Blissey ex::TWM::134"
+      "uid": "Blissey ex::TWM::134",
+      "category": "pokemon"
     },
     {
       "rank": 255,
@@ -5494,7 +5748,8 @@
       ],
       "set": "TEF",
       "number": "066",
-      "uid": "Girafarig::TEF::066"
+      "uid": "Girafarig::TEF::066",
+      "category": "pokemon"
     },
     {
       "rank": 256,
@@ -5511,7 +5766,8 @@
       ],
       "set": "JTG",
       "number": "158",
-      "uid": "Super Potion::JTG::158"
+      "uid": "Super Potion::JTG::158",
+      "category": "trainer"
     },
     {
       "rank": 257,
@@ -5528,7 +5784,8 @@
       ],
       "set": "TEF",
       "number": "154",
-      "uid": "Maximum Belt::TEF::154"
+      "uid": "Maximum Belt::TEF::154",
+      "category": "trainer"
     },
     {
       "rank": 258,
@@ -5545,7 +5802,8 @@
       ],
       "set": "TEF",
       "number": "038",
-      "uid": "Gouging Fire ex::TEF::038"
+      "uid": "Gouging Fire ex::TEF::038",
+      "category": "pokemon"
     },
     {
       "rank": 259,
@@ -5562,7 +5820,8 @@
       ],
       "set": "PAR",
       "number": "099",
-      "uid": "Minior::PAR::099"
+      "uid": "Minior::PAR::099",
+      "category": "pokemon"
     },
     {
       "rank": 260,
@@ -5579,7 +5838,8 @@
       ],
       "set": "DRI",
       "number": "168",
-      "uid": "Sacred Ash::DRI::168"
+      "uid": "Sacred Ash::DRI::168",
+      "category": "trainer"
     },
     {
       "rank": 261,
@@ -5596,7 +5856,8 @@
       ],
       "set": "TWM",
       "number": "017",
-      "uid": "Applin::TWM::017"
+      "uid": "Applin::TWM::017",
+      "category": "pokemon"
     },
     {
       "rank": 262,
@@ -5613,7 +5874,8 @@
       ],
       "set": "TWM",
       "number": "018",
-      "uid": "Dipplin::TWM::018"
+      "uid": "Dipplin::TWM::018",
+      "category": "pokemon"
     },
     {
       "rank": 263,
@@ -5630,7 +5892,8 @@
       ],
       "set": "DRI",
       "number": "018",
-      "uid": "Hydrapple::DRI::018"
+      "uid": "Hydrapple::DRI::018",
+      "category": "pokemon"
     },
     {
       "rank": 264,
@@ -5647,7 +5910,8 @@
       ],
       "set": "TWM",
       "number": "014",
-      "uid": "Grookey::TWM::014"
+      "uid": "Grookey::TWM::014",
+      "category": "pokemon"
     },
     {
       "rank": 265,
@@ -5664,7 +5928,8 @@
       ],
       "set": "TWM",
       "number": "015",
-      "uid": "Thwackey::TWM::015"
+      "uid": "Thwackey::TWM::015",
+      "category": "pokemon"
     },
     {
       "rank": 266,
@@ -5681,7 +5946,8 @@
       ],
       "set": "TEF",
       "number": "023",
-      "uid": "Rellor::TEF::023"
+      "uid": "Rellor::TEF::023",
+      "category": "pokemon"
     },
     {
       "rank": 267,
@@ -5698,7 +5964,8 @@
       ],
       "set": "TEF",
       "number": "024",
-      "uid": "Rabsca::TEF::024"
+      "uid": "Rabsca::TEF::024",
+      "category": "pokemon"
     },
     {
       "rank": 268,
@@ -5715,7 +5982,8 @@
       ],
       "set": "TWM",
       "number": "155",
-      "uid": "Lana's Aid::TWM::155"
+      "uid": "Lana's Aid::TWM::155",
+      "category": "trainer"
     },
     {
       "rank": 269,
@@ -5732,7 +6000,8 @@
       ],
       "set": "OBF",
       "number": "189",
-      "uid": "Letter of Encouragement::OBF::189"
+      "uid": "Letter of Encouragement::OBF::189",
+      "category": "trainer"
     },
     {
       "rank": 270,
@@ -5749,7 +6018,8 @@
       ],
       "set": "PRE",
       "number": "116",
-      "uid": "Max Rod::PRE::116"
+      "uid": "Max Rod::PRE::116",
+      "category": "trainer"
     },
     {
       "rank": 271,
@@ -5766,7 +6036,8 @@
       ],
       "set": "TWM",
       "number": "149",
-      "uid": "Festival Grounds::TWM::149"
+      "uid": "Festival Grounds::TWM::149",
+      "category": "trainer"
     },
     {
       "rank": 272,
@@ -5783,7 +6054,8 @@
       ],
       "set": "SCR",
       "number": "051",
-      "uid": "Galvantula ex::SCR::051"
+      "uid": "Galvantula ex::SCR::051",
+      "category": "pokemon"
     },
     {
       "rank": 273,
@@ -5800,7 +6072,8 @@
       ],
       "set": "MEW",
       "number": "164",
-      "uid": "Protective Goggles::MEW::164"
+      "uid": "Protective Goggles::MEW::164",
+      "category": "trainer"
     },
     {
       "rank": 274,
@@ -5817,7 +6090,8 @@
       ],
       "set": "DRI",
       "number": "082",
-      "uid": "Team Rocket's Wobbuffet::DRI::082"
+      "uid": "Team Rocket's Wobbuffet::DRI::082",
+      "category": "pokemon"
     },
     {
       "rank": 275,
@@ -5834,7 +6108,8 @@
       ],
       "set": "SVI",
       "number": "025",
-      "uid": "Toedscool::SVI::025"
+      "uid": "Toedscool::SVI::025",
+      "category": "pokemon"
     },
     {
       "rank": 276,
@@ -5851,7 +6126,8 @@
       ],
       "set": "PAR",
       "number": "015",
-      "uid": "Toedscool::PAR::015"
+      "uid": "Toedscool::PAR::015",
+      "category": "pokemon"
     },
     {
       "rank": 277,
@@ -5868,7 +6144,8 @@
       ],
       "set": "PAL",
       "number": "186",
-      "uid": "Practice Studio::PAL::186"
+      "uid": "Practice Studio::PAL::186",
+      "category": "trainer"
     },
     {
       "rank": 278,
@@ -5885,7 +6162,8 @@
       ],
       "set": "SVI",
       "number": "193",
-      "uid": "Rocky Helmet::SVI::193"
+      "uid": "Rocky Helmet::SVI::193",
+      "category": "trainer"
     },
     {
       "rank": 279,
@@ -5902,7 +6180,8 @@
       ],
       "set": "JTG",
       "number": "150",
-      "uid": "Levincia::JTG::150"
+      "uid": "Levincia::JTG::150",
+      "category": "trainer"
     },
     {
       "rank": 280,
@@ -5919,7 +6198,8 @@
       ],
       "set": "PRE",
       "number": "060",
-      "uid": "Umbreon ex::PRE::060"
+      "uid": "Umbreon ex::PRE::060",
+      "category": "pokemon"
     }
   ]
 }

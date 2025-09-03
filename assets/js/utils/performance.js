@@ -35,11 +35,13 @@ export function debounce(func, wait = CONFIG.UI.DEBOUNCE_MS, immediate = false) 
  */
 export function throttle(func, limit = CONFIG.UI.DEBOUNCE_MS) {
   let inThrottle;
-  return function(...args) {
+  return function (...args) {
     if (!inThrottle) {
       func.apply(this, args);
       inThrottle = true;
-      setTimeout(() => inThrottle = false, limit);
+      setTimeout(() => {
+        inThrottle = false;
+      }, limit);
     }
   };
 }
@@ -65,7 +67,7 @@ export class CleanupManager {
    * @param {EventTarget} target
    * @param {string} event
    * @param {Function} listener
-   * @param {Object} [options]
+   * @param {object} [options]
    */
   addEventListener(target, event, listener, options = {}) {
     target.addEventListener(event, listener, options);
@@ -126,9 +128,9 @@ export const perf = new PerformanceMonitor();
 
 /**
  * Validate HTML elements exist
- * @param {Object} selectors - Object mapping names to CSS selectors
+ * @param {object} selectors - Object mapping names to CSS selectors
  * @param {string} [context] - Context for error reporting
- * @returns {Object} Object mapping names to elements
+ * @returns {object} Object mapping names to elements
  * @throws {Error} If required elements are missing
  */
 export function validateElements(selectors, context = 'page') {

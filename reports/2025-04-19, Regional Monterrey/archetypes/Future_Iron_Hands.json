@@ -16,7 +16,8 @@
       ],
       "set": "TEF",
       "number": "081",
-      "uid": "Iron Crown ex::TEF::081"
+      "uid": "Iron Crown ex::TEF::081",
+      "category": "pokemon"
     },
     {
       "rank": 2,
@@ -33,7 +34,8 @@
       ],
       "set": "TEF",
       "number": "121",
-      "uid": "Miraidon::TEF::121"
+      "uid": "Miraidon::TEF::121",
+      "category": "pokemon"
     },
     {
       "rank": 3,
@@ -50,7 +52,8 @@
       ],
       "set": "TWM",
       "number": "077",
-      "uid": "Iron Thorns ex::TWM::077"
+      "uid": "Iron Thorns ex::TWM::077",
+      "category": "pokemon"
     },
     {
       "rank": 4,
@@ -67,7 +70,8 @@
       ],
       "set": "PAR",
       "number": "070",
-      "uid": "Iron Hands ex::PAR::070"
+      "uid": "Iron Hands ex::PAR::070",
+      "category": "pokemon"
     },
     {
       "rank": 5,
@@ -84,7 +88,8 @@
       ],
       "set": "MEW",
       "number": "151",
-      "uid": "Mew ex::MEW::151"
+      "uid": "Mew ex::MEW::151",
+      "category": "pokemon"
     },
     {
       "rank": 6,
@@ -101,7 +106,8 @@
       ],
       "set": "PAR",
       "number": "056",
-      "uid": "Iron Bundle::PAR::056"
+      "uid": "Iron Bundle::PAR::056",
+      "category": "pokemon"
     },
     {
       "rank": 7,
@@ -118,7 +124,8 @@
       ],
       "set": "TWM",
       "number": "141",
-      "uid": "Bloodmoon Ursaluna ex::TWM::141"
+      "uid": "Bloodmoon Ursaluna ex::TWM::141",
+      "category": "pokemon"
     },
     {
       "rank": 8,
@@ -135,7 +142,8 @@
       ],
       "set": "OBF",
       "number": "186",
-      "uid": "Arven::OBF::186"
+      "uid": "Arven::OBF::186",
+      "category": "trainer"
     },
     {
       "rank": 9,
@@ -152,7 +160,8 @@
       ],
       "set": "PAL",
       "number": "185",
-      "uid": "Iono::PAL::185"
+      "uid": "Iono::PAL::185",
+      "category": "trainer"
     },
     {
       "rank": 10,
@@ -169,7 +178,8 @@
       ],
       "set": "PAL",
       "number": "172",
-      "uid": "Boss's Orders::PAL::172"
+      "uid": "Boss's Orders::PAL::172",
+      "category": "trainer"
     },
     {
       "rank": 11,
@@ -186,7 +196,8 @@
       ],
       "set": "JTG",
       "number": "155",
-      "uid": "Professor's Research::JTG::155"
+      "uid": "Professor's Research::JTG::155",
+      "category": "trainer"
     },
     {
       "rank": 12,
@@ -203,7 +214,8 @@
       ],
       "set": "TEF",
       "number": "155",
-      "uid": "Morty's Conviction::TEF::155"
+      "uid": "Morty's Conviction::TEF::155",
+      "category": "trainer"
     },
     {
       "rank": 13,
@@ -220,7 +232,8 @@
       ],
       "set": "PAR",
       "number": "180",
-      "uid": "Techno Radar::PAR::180"
+      "uid": "Techno Radar::PAR::180",
+      "category": "trainer"
     },
     {
       "rank": 14,
@@ -237,7 +250,8 @@
       ],
       "set": "SVI",
       "number": "170",
-      "uid": "Electric Generator::SVI::170"
+      "uid": "Electric Generator::SVI::170",
+      "category": "trainer"
     },
     {
       "rank": 15,
@@ -254,7 +268,8 @@
       ],
       "set": "SVI",
       "number": "184",
-      "uid": "Picnic Basket::SVI::184"
+      "uid": "Picnic Basket::SVI::184",
+      "category": "trainer"
     },
     {
       "rank": 16,
@@ -271,7 +286,8 @@
       ],
       "set": "TEF",
       "number": "157",
-      "uid": "Prime Catcher::TEF::157"
+      "uid": "Prime Catcher::TEF::157",
+      "category": "trainer"
     },
     {
       "rank": 17,
@@ -288,7 +304,8 @@
       ],
       "set": "PAL",
       "number": "188",
-      "uid": "Super Rod::PAL::188"
+      "uid": "Super Rod::PAL::188",
+      "category": "trainer"
     },
     {
       "rank": 18,
@@ -305,7 +322,8 @@
       ],
       "set": "SVI",
       "number": "186",
-      "uid": "Pokégear 3.0::SVI::186"
+      "uid": "Pokégear 3.0::SVI::186",
+      "category": "trainer"
     },
     {
       "rank": 19,
@@ -322,7 +340,8 @@
       ],
       "set": "SVI",
       "number": "194",
-      "uid": "Switch::SVI::194"
+      "uid": "Switch::SVI::194",
+      "category": "trainer"
     },
     {
       "rank": 20,
@@ -339,7 +358,8 @@
       ],
       "set": "TEF",
       "number": "149",
-      "uid": "Future Booster Energy Capsule::TEF::149"
+      "uid": "Future Booster Energy Capsule::TEF::149",
+      "category": "trainer"
     },
     {
       "rank": 21,
@@ -356,7 +376,8 @@
       ],
       "set": "TEF",
       "number": "151",
-      "uid": "Heavy Baton::TEF::151"
+      "uid": "Heavy Baton::TEF::151",
+      "category": "trainer"
     },
     {
       "rank": 22,
@@ -373,7 +394,8 @@
       ],
       "set": "OBF",
       "number": "196",
-      "uid": "Town Store::OBF::196"
+      "uid": "Town Store::OBF::196",
+      "category": "trainer"
     },
     {
       "rank": 23,
@@ -390,7 +412,8 @@
       ],
       "set": "SVE",
       "number": "012",
-      "uid": "Lightning Energy::SVE::012"
+      "uid": "Lightning Energy::SVE::012",
+      "category": "energy"
     },
     {
       "rank": 24,
@@ -407,7 +430,8 @@
       ],
       "set": "SVE",
       "number": "013",
-      "uid": "Psychic Energy::SVE::013"
+      "uid": "Psychic Energy::SVE::013",
+      "category": "energy"
     }
   ]
 }

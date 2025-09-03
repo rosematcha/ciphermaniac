@@ -16,7 +16,8 @@
       ],
       "set": "SCR",
       "number": "106",
-      "uid": "Duraludon::SCR::106"
+      "uid": "Duraludon::SCR::106",
+      "category": "pokemon"
     },
     {
       "rank": 2,
@@ -33,7 +34,8 @@
       ],
       "set": "SSP",
       "number": "130",
-      "uid": "Archaludon ex::SSP::130"
+      "uid": "Archaludon ex::SSP::130",
+      "category": "pokemon"
     },
     {
       "rank": 3,
@@ -55,7 +57,8 @@
       ],
       "set": "JTG",
       "number": "097",
-      "uid": "N's Zorua::JTG::097"
+      "uid": "N's Zorua::JTG::097",
+      "category": "pokemon"
     },
     {
       "rank": 4,
@@ -77,7 +80,8 @@
       ],
       "set": "JTG",
       "number": "098",
-      "uid": "N's Zoroark ex::JTG::098"
+      "uid": "N's Zoroark ex::JTG::098",
+      "category": "pokemon"
     },
     {
       "rank": 5,
@@ -94,7 +98,8 @@
       ],
       "set": "TEF",
       "number": "084",
-      "uid": "Relicanth::TEF::084"
+      "uid": "Relicanth::TEF::084",
+      "category": "pokemon"
     },
     {
       "rank": 6,
@@ -111,7 +116,8 @@
       ],
       "set": "JTG",
       "number": "111",
-      "uid": "Hop's Zacian ex::JTG::111"
+      "uid": "Hop's Zacian ex::JTG::111",
+      "category": "pokemon"
     },
     {
       "rank": 7,
@@ -128,7 +134,8 @@
       ],
       "set": "OBF",
       "number": "186",
-      "uid": "Arven::OBF::186"
+      "uid": "Arven::OBF::186",
+      "category": "trainer"
     },
     {
       "rank": 8,
@@ -150,7 +157,8 @@
       ],
       "set": "PAL",
       "number": "185",
-      "uid": "Iono::PAL::185"
+      "uid": "Iono::PAL::185",
+      "category": "trainer"
     },
     {
       "rank": 9,
@@ -167,7 +175,8 @@
       ],
       "set": "PAR",
       "number": "171",
-      "uid": "Professor Turo's Scenario::PAR::171"
+      "uid": "Professor Turo's Scenario::PAR::171",
+      "category": "trainer"
     },
     {
       "rank": 10,
@@ -184,7 +193,8 @@
       ],
       "set": "PAL",
       "number": "172",
-      "uid": "Boss's Orders::PAL::172"
+      "uid": "Boss's Orders::PAL::172",
+      "category": "trainer"
     },
     {
       "rank": 11,
@@ -206,7 +216,8 @@
       ],
       "set": "JTG",
       "number": "145",
-      "uid": "Black Belt's Training::JTG::145"
+      "uid": "Black Belt's Training::JTG::145",
+      "category": "trainer"
     },
     {
       "rank": 12,
@@ -223,7 +234,8 @@
       ],
       "set": "SVI",
       "number": "186",
-      "uid": "Pokégear 3.0::SVI::186"
+      "uid": "Pokégear 3.0::SVI::186",
+      "category": "trainer"
     },
     {
       "rank": 13,
@@ -245,7 +257,8 @@
       ],
       "set": "SVI",
       "number": "196",
-      "uid": "Ultra Ball::SVI::196"
+      "uid": "Ultra Ball::SVI::196",
+      "category": "trainer"
     },
     {
       "rank": 14,
@@ -267,7 +280,8 @@
       ],
       "set": "SFA",
       "number": "061",
-      "uid": "Night Stretcher::SFA::061"
+      "uid": "Night Stretcher::SFA::061",
+      "category": "trainer"
     },
     {
       "rank": 15,
@@ -289,7 +303,8 @@
       ],
       "set": "PAR",
       "number": "163",
-      "uid": "Earthen Vessel::PAR::163"
+      "uid": "Earthen Vessel::PAR::163",
+      "category": "trainer"
     },
     {
       "rank": 16,
@@ -306,7 +321,8 @@
       ],
       "set": "SSP",
       "number": "185",
-      "uid": "Precious Trolley::SSP::185"
+      "uid": "Precious Trolley::SSP::185",
+      "category": "trainer"
     },
     {
       "rank": 17,
@@ -328,7 +344,8 @@
       ],
       "set": "PAR",
       "number": "160",
-      "uid": "Counter Catcher::PAR::160"
+      "uid": "Counter Catcher::PAR::160",
+      "category": "trainer"
     },
     {
       "rank": 18,
@@ -350,7 +367,8 @@
       ],
       "set": "SVI",
       "number": "181",
-      "uid": "Nest Ball::SVI::181"
+      "uid": "Nest Ball::SVI::181",
+      "category": "trainer"
     },
     {
       "rank": 19,
@@ -367,7 +385,8 @@
       ],
       "set": "TEF",
       "number": "144",
-      "uid": "Buddy-Buddy Poffin::TEF::144"
+      "uid": "Buddy-Buddy Poffin::TEF::144",
+      "category": "trainer"
     },
     {
       "rank": 20,
@@ -384,7 +403,8 @@
       ],
       "set": "SVI",
       "number": "182",
-      "uid": "Pal Pad::SVI::182"
+      "uid": "Pal Pad::SVI::182",
+      "category": "trainer"
     },
     {
       "rank": 21,
@@ -406,7 +426,8 @@
       ],
       "set": "PAR",
       "number": "178",
-      "uid": "Technical Machine: Evolution::PAR::178"
+      "uid": "Technical Machine: Evolution::PAR::178",
+      "category": "trainer"
     },
     {
       "rank": 22,
@@ -423,7 +444,8 @@
       ],
       "set": "SVE",
       "number": "016",
-      "uid": "Metal Energy::SVE::016"
+      "uid": "Metal Energy::SVE::016",
+      "category": "energy"
     },
     {
       "rank": 23,
@@ -445,7 +467,8 @@
       ],
       "set": "OBF",
       "number": "197",
-      "uid": "Vengeful Punch::OBF::197"
+      "uid": "Vengeful Punch::OBF::197",
+      "category": "trainer"
     },
     {
       "rank": 24,
@@ -462,7 +485,8 @@
       ],
       "set": "SFA",
       "number": "038",
-      "uid": "Fezandipiti ex::SFA::038"
+      "uid": "Fezandipiti ex::SFA::038",
+      "category": "pokemon"
     },
     {
       "rank": 25,
@@ -484,7 +508,8 @@
       ],
       "set": "SSP",
       "number": "170",
-      "uid": "Cyrano::SSP::170"
+      "uid": "Cyrano::SSP::170",
+      "category": "trainer"
     },
     {
       "rank": 26,
@@ -501,7 +526,8 @@
       ],
       "set": "JTG",
       "number": "148",
-      "uid": "Hop's Choice Band::JTG::148"
+      "uid": "Hop's Choice Band::JTG::148",
+      "category": "trainer"
     },
     {
       "rank": 27,
@@ -523,7 +549,8 @@
       ],
       "set": "JTG",
       "number": "152",
-      "uid": "N's Castle::JTG::152"
+      "uid": "N's Castle::JTG::152",
+      "category": "trainer"
     },
     {
       "rank": 28,
@@ -540,7 +567,8 @@
       ],
       "set": "TEF",
       "number": "159",
-      "uid": "Rescue Board::TEF::159"
+      "uid": "Rescue Board::TEF::159",
+      "category": "trainer"
     },
     {
       "rank": 29,
@@ -557,7 +585,8 @@
       ],
       "set": "PAR",
       "number": "056",
-      "uid": "Iron Bundle::PAR::056"
+      "uid": "Iron Bundle::PAR::056",
+      "category": "pokemon"
     },
     {
       "rank": 30,
@@ -574,7 +603,8 @@
       ],
       "set": "PRE",
       "number": "004",
-      "uid": "Budew::PRE::004"
+      "uid": "Budew::PRE::004",
+      "category": "pokemon"
     },
     {
       "rank": 31,
@@ -591,7 +621,8 @@
       ],
       "set": "SVI",
       "number": "096",
-      "uid": "Klefki::SVI::096"
+      "uid": "Klefki::SVI::096",
+      "category": "pokemon"
     },
     {
       "rank": 32,
@@ -608,7 +639,8 @@
       ],
       "set": "SFA",
       "number": "040",
-      "uid": "Genesect::SFA::040"
+      "uid": "Genesect::SFA::040",
+      "category": "pokemon"
     },
     {
       "rank": 33,
@@ -625,7 +657,8 @@
       ],
       "set": "SVI",
       "number": "194",
-      "uid": "Switch::SVI::194"
+      "uid": "Switch::SVI::194",
+      "category": "trainer"
     },
     {
       "rank": 34,
@@ -642,7 +675,8 @@
       ],
       "set": "MEW",
       "number": "165",
-      "uid": "Rigid Band::MEW::165"
+      "uid": "Rigid Band::MEW::165",
+      "category": "trainer"
     }
   ]
 }

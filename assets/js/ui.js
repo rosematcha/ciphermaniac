@@ -1,11 +1,11 @@
 // Wires up the mobile filters toggle button
-export function initFiltersToggle(){
+export function initFiltersToggle() {
   const btn = document.getElementById('filtersToggle');
   const panel = document.getElementById('filters');
-  if(!btn || !panel) {return;}
+  if (!btn || !panel) {return;}
   // initialize hidden state on small screens; on desktop CSS shows filters regardless
   const isSmall = window.matchMedia('(max-width: 899px)').matches;
-  if(!panel.hasAttribute('aria-hidden') && isSmall){
+  if (!panel.hasAttribute('aria-hidden') && isSmall) {
     panel.setAttribute('aria-hidden', 'true');
   } else if (!isSmall) {
     // Ensure ARIA matches visible state on desktop
@@ -17,7 +17,7 @@ export function initFiltersToggle(){
     panel.setAttribute('aria-hidden', 'false');
     // Move focus to first control inside panel for accessibility
     const focusable = panel.querySelector('select, input, button');
-    if(focusable) {focusable.focus();}
+    if (focusable) {focusable.focus();}
   };
   const closePanel = () => {
     btn.setAttribute('aria-expanded', 'false');
@@ -26,11 +26,11 @@ export function initFiltersToggle(){
   };
   btn.addEventListener('click', () => {
     const expanded = btn.getAttribute('aria-expanded') === 'true';
-    if(expanded){ closePanel(); } else { openPanel(); }
+    if (expanded) { closePanel(); } else { openPanel(); }
   });
   // Close on Escape when focus is within the panel
-  panel.addEventListener('keydown', (e) => {
-    if(e.key === 'Escape'){
+  panel.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
       e.stopPropagation();
       closePanel();
     }

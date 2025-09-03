@@ -13,10 +13,13 @@ class ImagePreloader {
    * Preload images for a list of card names
    * @param {Array} cardNames - Array of card names to preload
    * @param {boolean} useSm - Whether to use small or extra-small thumbnails
-   * @param {Object} overrides - Image filename overrides
+   * @param {object} overrides - Image filename overrides
    * @param {number} priority - Higher number = higher priority (default: 1)
    */
   preloadImages(cardNames, useSm = false, overrides = {}, priority = 1) {
+    // DISABLED: Using parallelImageLoader instead
+    return;
+
     if (!Array.isArray(cardNames)) {
       return;
     }
@@ -51,14 +54,18 @@ class ImagePreloader {
 
   /**
    * Load the first available image from candidates
+   * @param root0
+   * @param root0.name
+   * @param root0.candidates
+   * @param root0.useSm
    */
   async loadImageCandidates({ name, candidates, useSm }) {
-    if (this.preloadedImages.has(name + '_' + useSm)) {
+    if (this.preloadedImages.has(`${name}_${useSm}`)) {
       this.processQueue();
       return;
     }
 
-    const cacheKey = name + '_' + useSm;
+    const cacheKey = `${name}_${useSm}`;
     if (this.loadingImages.has(cacheKey)) {
       return; // Already loading
     }
@@ -86,9 +93,10 @@ class ImagePreloader {
 
   /**
    * Load a single image and return success/failure
+   * @param src
    */
   loadSingleImage(src) {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const img = new Image();
       img.onload = () => resolve(true);
       img.onerror = () => resolve(false);
@@ -98,8 +106,13 @@ class ImagePreloader {
 
   /**
    * Preload visible and near-visible cards in the grid
+   * @param items
+   * @param overrides
    */
   preloadVisibleCards(items, overrides = {}) {
+    // DISABLED: Using parallelImageLoader instead
+    return;
+
     if (!Array.isArray(items)) {
       return;
     }
@@ -117,7 +130,7 @@ class ImagePreloader {
     const visibleCardNames = [];
     const nearVisibleCardNames = [];
 
-    rows.forEach((row) => {
+    rows.forEach(row => {
       const rect = row.getBoundingClientRect();
       const rowTop = rect.top + scrollTop;
       const rowBottom = rowTop + rect.height;
@@ -186,7 +199,15 @@ export const imagePreloader = new ImagePreloader();
 
 // Throttled scroll handler for preloading
 let scrollTimeout = null;
+/**
+ *
+ * @param items
+ * @param overrides
+ */
 export function setupImagePreloading(items, overrides = {}) {
+  // DISABLED: Using parallelImageLoader instead
+  return () => {}; // Return empty cleanup function
+
   const handleScroll = () => {
     if (scrollTimeout) {
       return;

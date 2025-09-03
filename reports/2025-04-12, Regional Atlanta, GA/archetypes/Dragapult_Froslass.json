@@ -16,7 +16,8 @@
       ],
       "set": "TWM",
       "number": "128",
-      "uid": "Dreepy::TWM::128"
+      "uid": "Dreepy::TWM::128",
+      "category": "pokemon"
     },
     {
       "rank": 2,
@@ -33,7 +34,8 @@
       ],
       "set": "TWM",
       "number": "129",
-      "uid": "Drakloak::TWM::129"
+      "uid": "Drakloak::TWM::129",
+      "category": "pokemon"
     },
     {
       "rank": 3,
@@ -50,7 +52,8 @@
       ],
       "set": "TWM",
       "number": "130",
-      "uid": "Dragapult ex::TWM::130"
+      "uid": "Dragapult ex::TWM::130",
+      "category": "pokemon"
     },
     {
       "rank": 4,
@@ -67,7 +70,8 @@
       ],
       "set": "TWM",
       "number": "095",
-      "uid": "Munkidori::TWM::095"
+      "uid": "Munkidori::TWM::095",
+      "category": "pokemon"
     },
     {
       "rank": 5,
@@ -84,7 +88,8 @@
       ],
       "set": "TWM",
       "number": "053",
-      "uid": "Froslass::TWM::053"
+      "uid": "Froslass::TWM::053",
+      "category": "pokemon"
     },
     {
       "rank": 6,
@@ -101,7 +106,8 @@
       ],
       "set": "PRE",
       "number": "004",
-      "uid": "Budew::PRE::004"
+      "uid": "Budew::PRE::004",
+      "category": "pokemon"
     },
     {
       "rank": 7,
@@ -118,7 +124,8 @@
       ],
       "set": "JTG",
       "number": "008",
-      "uid": "Maractus::JTG::008"
+      "uid": "Maractus::JTG::008",
+      "category": "pokemon"
     },
     {
       "rank": 8,
@@ -135,7 +142,8 @@
       ],
       "set": "OBF",
       "number": "186",
-      "uid": "Arven::OBF::186"
+      "uid": "Arven::OBF::186",
+      "category": "trainer"
     },
     {
       "rank": 9,
@@ -157,7 +165,8 @@
       ],
       "set": "PAL",
       "number": "185",
-      "uid": "Iono::PAL::185"
+      "uid": "Iono::PAL::185",
+      "category": "trainer"
     },
     {
       "rank": 10,
@@ -179,7 +188,8 @@
       ],
       "set": "SVI",
       "number": "175",
-      "uid": "Jacq::SVI::175"
+      "uid": "Jacq::SVI::175",
+      "category": "trainer"
     },
     {
       "rank": 11,
@@ -196,7 +206,8 @@
       ],
       "set": "JTG",
       "number": "146",
-      "uid": "Brock's Scouting::JTG::146"
+      "uid": "Brock's Scouting::JTG::146",
+      "category": "trainer"
     },
     {
       "rank": 12,
@@ -218,7 +229,8 @@
       ],
       "set": "SCR",
       "number": "133",
-      "uid": "Crispin::SCR::133"
+      "uid": "Crispin::SCR::133",
+      "category": "trainer"
     },
     {
       "rank": 13,
@@ -235,7 +247,8 @@
       ],
       "set": "TEF",
       "number": "144",
-      "uid": "Buddy-Buddy Poffin::TEF::144"
+      "uid": "Buddy-Buddy Poffin::TEF::144",
+      "category": "trainer"
     },
     {
       "rank": 14,
@@ -252,7 +265,8 @@
       ],
       "set": "PAR",
       "number": "160",
-      "uid": "Counter Catcher::PAR::160"
+      "uid": "Counter Catcher::PAR::160",
+      "category": "trainer"
     },
     {
       "rank": 15,
@@ -269,7 +283,8 @@
       ],
       "set": "SFA",
       "number": "061",
-      "uid": "Night Stretcher::SFA::061"
+      "uid": "Night Stretcher::SFA::061",
+      "category": "trainer"
     },
     {
       "rank": 16,
@@ -286,7 +301,8 @@
       ],
       "set": "SVI",
       "number": "196",
-      "uid": "Ultra Ball::SVI::196"
+      "uid": "Ultra Ball::SVI::196",
+      "category": "trainer"
     },
     {
       "rank": 17,
@@ -303,7 +319,8 @@
       ],
       "set": "TWM",
       "number": "165",
-      "uid": "Unfair Stamp::TWM::165"
+      "uid": "Unfair Stamp::TWM::165",
+      "category": "trainer"
     },
     {
       "rank": 18,
@@ -320,7 +337,8 @@
       ],
       "set": "TEF",
       "number": "159",
-      "uid": "Rescue Board::TEF::159"
+      "uid": "Rescue Board::TEF::159",
+      "category": "trainer"
     },
     {
       "rank": 19,
@@ -337,7 +355,8 @@
       ],
       "set": "SCR",
       "number": "137",
-      "uid": "Gravity Gemstone::SCR::137"
+      "uid": "Gravity Gemstone::SCR::137",
+      "category": "trainer"
     },
     {
       "rank": 20,
@@ -354,7 +373,8 @@
       ],
       "set": "PAR",
       "number": "177",
-      "uid": "Technical Machine: Devolution::PAR::177"
+      "uid": "Technical Machine: Devolution::PAR::177",
+      "category": "trainer"
     },
     {
       "rank": 21,
@@ -371,7 +391,8 @@
       ],
       "set": "PAL",
       "number": "171",
-      "uid": "Artazon::PAL::171"
+      "uid": "Artazon::PAL::171",
+      "category": "trainer"
     },
     {
       "rank": 22,
@@ -388,7 +409,8 @@
       ],
       "set": "SVE",
       "number": "015",
-      "uid": "Darkness Energy::SVE::015"
+      "uid": "Darkness Energy::SVE::015",
+      "category": "energy"
     },
     {
       "rank": 23,
@@ -405,7 +427,8 @@
       ],
       "set": "SVE",
       "number": "013",
-      "uid": "Psychic Energy::SVE::013"
+      "uid": "Psychic Energy::SVE::013",
+      "category": "energy"
     },
     {
       "rank": 24,
@@ -422,7 +445,8 @@
       ],
       "set": "SVE",
       "number": "010",
-      "uid": "Fire Energy::SVE::010"
+      "uid": "Fire Energy::SVE::010",
+      "category": "energy"
     },
     {
       "rank": 25,
@@ -439,7 +463,8 @@
       ],
       "set": "PAL",
       "number": "191",
-      "uid": "Luminous Energy::PAL::191"
+      "uid": "Luminous Energy::PAL::191",
+      "category": "energy"
     },
     {
       "rank": 26,
@@ -456,7 +481,8 @@
       ],
       "set": "TWM",
       "number": "051",
-      "uid": "Snorunt::TWM::051"
+      "uid": "Snorunt::TWM::051",
+      "category": "pokemon"
     },
     {
       "rank": 27,
@@ -473,7 +499,8 @@
       ],
       "set": "PAR",
       "number": "163",
-      "uid": "Earthen Vessel::PAR::163"
+      "uid": "Earthen Vessel::PAR::163",
+      "category": "trainer"
     },
     {
       "rank": 28,
@@ -490,7 +517,8 @@
       ],
       "set": "PAR",
       "number": "037",
-      "uid": "Snorunt::PAR::037"
+      "uid": "Snorunt::PAR::037",
+      "category": "pokemon"
     },
     {
       "rank": 29,
@@ -507,7 +535,8 @@
       ],
       "set": "SVI",
       "number": "172",
-      "uid": "Energy Search::SVI::172"
+      "uid": "Energy Search::SVI::172",
+      "category": "trainer"
     }
   ]
 }

@@ -3,6 +3,9 @@
  * Fetches and caches TCGCSV pricing data
  */
 
+/**
+ * Manages pricing data for Pokemon cards
+ */
 class PricingManager {
   constructor() {
     this.priceData = null;
@@ -59,7 +62,7 @@ class PricingManager {
    * @param {string} cardName - Card name
    * @param {string} setCode - Set abbreviation (SVI, PAL, etc.)
    * @param {string} cardNumber - Card number (padded to 3 digits)
-   * @returns {Object|null} Object with price and tcgPlayerId or null if not found
+   * @returns {object | null} Object with price and tcgPlayerId or null if not found
    */
   async getCardData(cardName, setCode, cardNumber) {
     await this.ensurePriceData();
@@ -79,7 +82,7 @@ class PricingManager {
   /**
    * Get prices for multiple cards at once
    * @param {Array} cards - Array of {name, set, number} objects
-   * @returns {Object} Object mapping card keys to prices
+   * @returns {object} Object mapping card keys to prices
    */
   async getMultiplePrices(cards) {
     await this.ensurePriceData();
@@ -148,7 +151,7 @@ class PricingManager {
       try {
         await this.fetchPriceData();
       } catch (error) {
-        console.warn('Failed to fetch fresh price data, using cached data if available:', error);
+        // Failed to fetch fresh price data, using cached data if available
       }
     }
   }
@@ -173,14 +176,9 @@ class PricingManager {
       this.priceData = data;
       this.lastFetch = Date.now();
 
-      console.log('Price data updated:', {
-        cardCount: Object.keys(data.cardPrices || {}).length,
-        lastUpdated: data.lastUpdated,
-        sampleCard: Object.entries(data.cardPrices || {})[0] // Show structure for debugging
-      });
-
+      // Price data updated successfully
     } catch (error) {
-      console.error('Failed to fetch price data:', error);
+      // Failed to fetch price data
       throw error;
     }
   }

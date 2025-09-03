@@ -3,6 +3,49 @@
  * @module Main
  */
 
+// Clear any existing scroll listeners that might be left over from imagePreloader
+(function clearExistingScrollListeners() {
+  const oldListeners = window.__imagePreloaderScrollListeners || [];
+  oldListeners.forEach(listener => {
+    window.removeEventListener('scroll', listener);
+  });
+  window.__imagePreloaderScrollListeners = [];
+}());
+
+// DEBUG: Intercept Image loading to track erroneous thumbnail requests
+(function setupImageLoadingDebug() {
+  const originalImage = window.Image;
+  const problematicCards = ['Boss\'s_Orders.png', 'Pokégear_3.0.png', 'Ethan\'s_', 'Team_Rocket\'s_', 'Lillie\'s_', 'Exp._Share.png', 'Pokémon_Catcher.png'];
+
+  window.Image = function (...args) {
+    const img = new originalImage(...args);
+    const originalSrcSetter = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src').set;
+
+    Object.defineProperty(img, 'src', {
+      set(value) {
+        // Catch all problematic thumbnail requests without set/number codes
+        if (value.includes('thumbnails/') &&
+            problematicCards.some(card => value.includes(card)) &&
+            !value.match(/_[A-Z]+_\d+\.png$/)) { // Doesn't end with _SET_NUMBER.png
+          console.error('🚨 ERRONEOUS THUMBNAIL REQUEST:', value);
+          console.trace('Call stack:');
+          // debugger; // Uncomment to break
+        }
+        originalSrcSetter.call(this, value);
+      },
+      get() {
+        return this.getAttribute('src');
+      }
+    });
+
+    return img;
+  };
+
+  // Copy static properties
+  Object.setPrototypeOf(window.Image, originalImage);
+  Object.setPrototypeOf(window.Image.prototype, originalImage.prototype);
+}());
+
 import { fetchReport, fetchOverrides, fetchArchetypeReport, fetchTournamentsList, fetchArchetypesList } from './api.js';
 import { AppError } from './utils/errorHandler.js';
 import { parseReport } from './parse.js';
@@ -10,7 +53,7 @@ import { renderSummary, updateLayout } from './render.js';
 import { applyFiltersSort } from './controls.js';
 import { initMissingThumbsDev } from './dev/missingThumbs.js';
 import { initCacheDev } from './dev/cacheDev.js';
-import { imagePreloader } from './utils/imagePreloader.js';
+// import { imagePreloader } from './utils/imagePreloader.js'; // Disabled - using parallelImageLoader instead
 import { getStateFromURL, setStateInURL, normalizeRouteOnLoad, parseHash } from './router.js';
 import { logger } from './utils/logger.js';
 import { storage } from './utils/storage.js';
@@ -63,15 +106,15 @@ class DataCache {
     storage.set('gridCache', this.cache);
   }
 
-  setCachedCardIndex(tournament, idx){
+  setCachedCardIndex(tournament, idx) {
     this.cache.cardIndex = this.cache.cardIndex || {};
     this.cache.cardIndex[tournament] = { ts: Date.now(), idx };
     storage.set('gridCache', this.cache);
   }
 
-  getCachedCardIndex(tournament){
+  getCachedCardIndex(tournament) {
     const entry = this.cache?.cardIndex?.[tournament];
-    if(!entry || this.isExpired(entry.ts)) {return null;}
+    if (!entry || this.isExpired(entry.ts)) {return null;}
     return entry.idx;
   }
 
@@ -105,8 +148,8 @@ async function initializeTournamentSelector(state) {
 
   const tournaments = await safeAsync(
     () => fetchTournamentsList(),
-    'fetching tournaments list',
-    ['World Championships 2025'] // fallback
+    ['2025-08-15, World Championships 2025'], // fallback
+    'fetching tournaments list'
   );
 
   const urlState = getStateFromURL();
@@ -141,6 +184,7 @@ async function initializeTournamentSelector(state) {
  * @param {string} tournament
  * @param {DataCache} cache
  * @param {boolean} showSkeleton - Whether to show skeleton loading state
+ * @param showSkeletonLoading
  * @returns {Promise<{deckTotal: number, items: any[]}>}
  */
 async function loadTournamentData(tournament, cache, showSkeletonLoading = false) {
@@ -197,13 +241,19 @@ async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = fa
   if (!archetypesList) {
     archetypesList = await safeAsync(
       () => fetchArchetypesList(tournament),
-      `fetching archetypes for ${tournament}`,
-      []
+      [], // fallback
+      `fetching archetypes for ${tournament}`
     );
 
     if (archetypesList.length > 0) {
       cache.setCachedArcheIndex(tournament, archetypesList);
     }
+  }
+
+  // Ensure we have an array
+  if (!Array.isArray(archetypesList)) {
+    logger.warn('archetypesList is not an array, using empty array as fallback', { archetypesList, tournament });
+    archetypesList = [];
   }
 
   // Populate archetype options
@@ -217,7 +267,7 @@ async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = fa
   // Set up change handler with caching
   const handleArchetypeChange = async () => {
     const selectedValue = archeSel.value;
-    const currentTournament = state.currentTournament;
+    const { currentTournament } = state;
 
     if (selectedValue === '__all__') {
       // Show all cards
@@ -318,7 +368,7 @@ function setupControlHandlers(state) {
     logger.info(`Switching to tournament: ${newTournament}`);
     state.currentTournament = newTournament;
     state.archeCache.clear(); // Clear archetype cache
-    imagePreloader.clearCache(); // Clear image preloader cache
+    // imagePreloader.clearCache(); // Clear image preloader cache - disabled
 
     const cache = new DataCache();
 
@@ -375,10 +425,10 @@ function setupControlHandlers(state) {
 }
 
 // Restore state from URL when navigating back/forward
-async function handlePopState(state){
+async function handlePopState(state) {
   logger.debug('popstate detected, restoring URL state');
   const parsed = parseHash();
-  if(parsed.route === 'card' && parsed.name){
+  if (parsed.route === 'card' && parsed.name) {
     const target = `${location.pathname.replace(/index\.html?$/i, 'card.html')}${location.search}#card/${encodeURIComponent(parsed.name)}`;
     location.assign(target);
     return;
@@ -462,7 +512,7 @@ async function initializeApp() {
     showGridSkeleton();
 
     // Initialize development tools
-    initMissingThumbsDev();
+    // initMissingThumbsDev(); // Disabled to prevent redundant thumbnail requests
     initCacheDev();
 
     const cache = new DataCache();
@@ -500,7 +550,6 @@ async function initializeApp() {
     await applyInitialState(appState);
 
     logger.info('Application initialization complete');
-
   } catch (error) {
     logger.exception('Failed to initialize application', error);
 

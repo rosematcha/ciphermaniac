@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Card Details – Ciphermaniac</title>
-  <link rel="stylesheet" href="assets/style.css" />
+  <link rel="stylesheet" href="/assets/style.css" />
 </head>
 <body>
 
@@ -31,7 +31,6 @@
     <!-- Suggestions landing (populated by assets/js/cardsLanding.js when no card is selected) -->
     <section id="cards-landing" class="cards-landing" hidden>
       <div class="landing-inner">
-        <h2 class="landing-title">Suggestions</h2>
         <div id="suggestions-root" class="suggestions-root"></div>
       </div>
     </section>
@@ -80,8 +79,8 @@
   </main>
 
   <script type="module">
-    import { createHeader } from './assets/js/components/header.js';
-    import { createFooter } from './assets/js/components/footer.js';
+    import { createHeader } from '/assets/js/components/header.js';
+    import { createFooter } from '/assets/js/components/footer.js';
     
     // Extract and display card name immediately for fast initial paint
     function getCardNameFromLocation(){
@@ -115,6 +114,6 @@
     document.body.insertAdjacentElement('afterbegin', header);
     document.body.insertAdjacentElement('beforeend', footer);
   </script>
-  <script src="assets/js/card.js" type="module"></script>
+  <script src="/assets/js/card.js" type="module"></script>
 </body>
 </html>

@@ -12,7 +12,7 @@ let pricingData = null;
 /**
  * Enhanced fetch with timeout and error handling
  * @param {string} url
- * @param {RequestInit} [options]
+ * @param {object} [options]
  * @returns {Promise<Response>}
  */
 async function safeFetch(url, options = {}) {
@@ -119,7 +119,7 @@ export function fetchTournamentsList() {
 /**
  * Fetch tournament report data
  * @param {string} tournament
- * @returns {Promise<Object>}
+ * @returns {Promise<object>}
  */
 export function fetchReport(tournament) {
   const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/master.json`;
@@ -128,7 +128,7 @@ export function fetchReport(tournament) {
 
 /**
  * Fetch thumbnail overrides configuration
- * @returns {Promise<Object>}
+ * @returns {Promise<object>}
  */
 export async function fetchOverrides() {
   try {
@@ -160,7 +160,7 @@ export function fetchArchetypesList(tournament) {
  * Fetch specific archetype report data
  * @param {string} tournament
  * @param {string} archetypeBase
- * @returns {Promise<Object>}
+ * @returns {Promise<object>}
  * @throws {AppError}
  */
 export async function fetchArchetypeReport(tournament, archetypeBase) {
@@ -195,7 +195,7 @@ export async function fetchArchetypeReport(tournament, archetypeBase) {
 /**
  * Fetch tournament metadata (meta.json)
  * @param {string} tournament
- * @returns {Promise<Object>}
+ * @returns {Promise<object>}
  */
 export function fetchMeta(tournament) {
   const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/meta.json`;
@@ -213,7 +213,7 @@ export function fetchCardIndex(tournament) {
     const response = await safeFetch(url);
     const data = await safeJsonParse(response, url);
     validateType(data, 'object', 'card index');
-    if(typeof data.deckTotal !== 'number' || !data.cards || typeof data.cards !== 'object'){
+    if (typeof data.deckTotal !== 'number' || !data.cards || typeof data.cards !== 'object') {
       throw new AppError('Invalid card index schema', ErrorTypes.PARSE, { tournament });
     }
     return data;
@@ -225,15 +225,15 @@ export function fetchCardIndex(tournament) {
  * @param {string} tournament
  * @returns {Promise<Array>|null}
  */
-export async function fetchDecks(tournament){
-  try{
+export async function fetchDecks(tournament) {
+  try {
     logger.debug(`Fetching decks.json for: ${tournament}`);
     const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/decks.json`;
     const response = await safeFetch(url);
     const data = await safeJsonParse(response, url);
     validateType(data, 'array', 'decks');
     return data;
-  }catch(err){
+  } catch (err) {
     logger.debug('decks.json not available', err.message);
     return null;
   }
@@ -266,24 +266,25 @@ export async function fetchTop8ArchetypesList(tournament) {
 
 /**
  * Fetch pricing data from the pricing API
- * @returns {Promise<Object>} Pricing data with card prices
+ * @returns {Promise<object>} Pricing data with card prices
  */
 export async function fetchPricingData() {
   if (pricingData) {
     return pricingData;
   }
-  
+
   try {
     logger.debug('Fetching pricing data...');
     const url = 'https://ciphermaniac.com/api/get-prices';
     const response = await safeFetch(url);
     const data = await safeJsonParse(response, url);
-    
+
     validateType(data, 'object', 'pricing data');
     if (!data.cardPrices || typeof data.cardPrices !== 'object') {
       throw new AppError('Invalid pricing data schema', ErrorTypes.PARSE);
     }
-    
+
+    // eslint-disable-next-line require-atomic-updates
     pricingData = data;
     logger.info(`Loaded pricing data for ${Object.keys(data.cardPrices).length} cards`);
     return data;
@@ -300,26 +301,26 @@ export async function fetchPricingData() {
  */
 export async function getCardPrice(cardId) {
   try {
-    console.log('getCardPrice called with cardId:', cardId);
+    // Debug: getCardPrice called with cardId
     const pricing = await fetchPricingData();
-    console.log('Pricing data loaded, total cards:', Object.keys(pricing.cardPrices).length);
-    
-    const cardData = pricing.cardPrices[cardId];
-    console.log('Lookup result for', cardId, ':', cardData);
-    
-    if (!cardData) {
+    // Debug: Pricing data loaded
+
+    const _cardData = pricing.cardPrices[cardId];
+    // Debug: Lookup result for cardId
+
+    if (!_cardData) {
       // If exact match failed, let's see if there are similar cards
-      const similarKeys = Object.keys(pricing.cardPrices).filter(key => 
+      const _similarKeys = Object.keys(pricing.cardPrices).filter(key =>
         key.toLowerCase().includes(cardId.toLowerCase().split('::')[0])
       ).slice(0, 3);
-      console.log('Similar cards found:', similarKeys);
+      // Debug: Similar cards found
     }
-    
+
     // FIX: The pricing data stores prices as numbers directly, not as objects with .price property
-    return cardData || null;
+    return _cardData || null;
   } catch (error) {
     logger.debug(`Failed to get price for ${cardId}`, error.message);
-    console.error('Error in getCardPrice:', error);
+    logger.error('Error in getCardPrice:', error);
     return null;
   }
 }
@@ -332,8 +333,8 @@ export async function getCardPrice(cardId) {
 export async function getCardTCGPlayerId(cardId) {
   try {
     const pricing = await fetchPricingData();
-    const cardData = pricing.cardPrices[cardId];
-    // Since cardData is now a number (price), we don't have TCGPlayer IDs stored anymore
+    const _cardData = pricing.cardPrices[cardId];
+    // Since _cardData is now a number (price), we don't have TCGPlayer IDs stored anymore
     // This function should return null or we need to restructure the data
     return null;
   } catch (error) {
@@ -344,8 +345,8 @@ export async function getCardTCGPlayerId(cardId) {
 
 /**
  * Get complete card data (price and TCGPlayer ID)
- * @param {string} cardId - Card identifier in format "Name::SET::NUMBER"  
- * @returns {Promise<Object|null>} Object with price and tcgPlayerId or null if not found
+ * @param {string} cardId - Card identifier in format "Name::SET::NUMBER"
+ * @returns {Promise<object | null>} Object with price and tcgPlayerId or null if not found
  */
 export async function getCardData(cardId) {
   try {

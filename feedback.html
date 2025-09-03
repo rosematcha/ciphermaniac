@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Feedback - Ciphermaniac</title>
-  <link rel="stylesheet" href="assets/style.css" />
+  <link rel="stylesheet" href="/assets/style.css" />
   <link rel="icon" href="data:," />
 </head>
 <body>
@@ -127,8 +127,8 @@
   </main>
 
   <script type="module">
-    import { createHeader } from './assets/js/components/header.js';
-    import { createFooter } from './assets/js/components/footer.js';
+    import { createHeader } from '/assets/js/components/header.js';
+    import { createFooter } from '/assets/js/components/footer.js';
     
     const header = createHeader({ currentPage: 'feedback' });
     const footer = createFooter();
@@ -136,6 +136,6 @@
     document.body.insertAdjacentElement('afterbegin', header);
     document.body.insertAdjacentElement('beforeend', footer);
   </script>
-  <script src="assets/js/feedback.js" type="module"></script>
+  <script src="/assets/js/feedback.js" type="module"></script>
 </body>
 </html>

@@ -1,141 +1,548 @@
 /**
- * Centralized error handling utilities
- * @module ErrorHandler
+ * Comprehensive error handling system with user-friendly messages
+ * @module utils/errorHandler
  */
 
-import { logger } from './logger.js';
-
 /**
- * Standard error types for the application
+ * Error types for categorizing different failure modes
  */
 export const ErrorTypes = {
   NETWORK: 'NetworkError',
-  PARSE: 'ParseError',
   VALIDATION: 'ValidationError',
-  STORAGE: 'StorageError',
-  NOT_FOUND: 'NotFoundError'
+  DATA_FORMAT: 'DataFormatError',
+  TIMEOUT: 'TimeoutError',
+  CACHE: 'CacheError',
+  RENDER: 'RenderError',
+  API: 'ApiError',
+  USER_INPUT: 'UserInputError'
 };
 
 /**
- * Custom error classes for better error categorization
+ * Enhanced error class with user-friendly messages and context
  */
 export class AppError extends Error {
   /**
-   * @param {string} message
-   * @param {string} type
-   * @param {any} [context]
+   *
+   * @param type
+   * @param message
+   * @param userMessage
+   * @param context
    */
-  constructor(message, type, context = null) {
+  constructor(type, message, userMessage = null, context = {}) {
     super(message);
     this.name = 'AppError';
     this.type = type;
+    this.userMessage = userMessage || this.getDefaultUserMessage(type);
     this.context = context;
-    this.timestamp = new Date().toISOString();
+    this.timestamp = Date.now();
+  }
+
+  /**
+   *
+   * @param type
+   */
+  getDefaultUserMessage(type) {
+    const messages = {
+      [ErrorTypes.NETWORK]: 'Connection problem. Please check your internet and try again.',
+      [ErrorTypes.VALIDATION]: 'Please check your input and try again.',
+      [ErrorTypes.DATA_FORMAT]: 'Data format issue. Please refresh and try again.',
+      [ErrorTypes.TIMEOUT]: 'Request timed out. Please try again.',
+      [ErrorTypes.CACHE]: 'Storage issue. Clearing cache might help.',
+      [ErrorTypes.RENDER]: 'Display issue. Please refresh the page.',
+      [ErrorTypes.API]: 'Service temporarily unavailable. Please try again later.',
+      [ErrorTypes.USER_INPUT]: 'Invalid input provided.'
+    };
+    return messages[type] || 'Something went wrong. Please try again.';
   }
 }
 
 /**
- * Safe async function wrapper that logs errors
- * @template T
- * @param {() => Promise<T>} fn - Async function to wrap
- * @param {string} [operation] - Description of the operation
- * @param {T} [fallback] - Fallback value on error
- * @returns {Promise<T>}
+ * Logger utility for tracking errors and debugging
  */
-export async function safeAsync(fn, operation = 'operation', fallback = null) {
-  try {
-    return await fn();
-  } catch (error) {
-    logger.exception(`Failed ${operation}`, error);
-    return fallback;
+export class Logger {
+  /**
+   *
+   * @param level
+   */
+  constructor(level = 'info') {
+    this.level = level;
+    this.levels = { debug: 0, info: 1, warn: 2, error: 3 };
   }
-}
 
-/**
- * Safe sync function wrapper that logs errors
- * @template T
- * @param {() => T} fn - Sync function to wrap
- * @param {string} [operation] - Description of the operation
- * @param {T} [fallback] - Fallback value on error
- * @returns {T}
- */
-export function safeSync(fn, operation = 'operation', fallback = null) {
-  try {
-    return fn();
-  } catch (error) {
-    logger.exception(`Failed ${operation}`, error);
-    return fallback;
+  /**
+   *
+   * @param level
+   */
+  shouldLog(level) {
+    return this.levels[level] >= this.levels[this.level];
   }
-}
 
-/**
- * Create a retry wrapper for async functions
- * @template T
- * @param {() => Promise<T>} fn - Function to retry
- * @param {number} [maxAttempts=3] - Maximum retry attempts
- * @param {number} [delay=1000] - Delay between retries in ms
- * @returns {Promise<T>}
- */
-export async function withRetry(fn, maxAttempts = 3, delay = 1000) {
-  let lastError;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-
-      // Enhanced error logging with context
-      if (error instanceof AppError && error.context) {
-        logger.warn(`Attempt ${attempt}/${maxAttempts} failed`, error.message, error.context);
-      } else {
-        logger.warn(`Attempt ${attempt}/${maxAttempts} failed`, error.message);
-      }
-
-      if (attempt < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
+  /**
+   *
+   * @param message
+   * @param data
+   */
+  debug(message, data = null) {
+    if (this.shouldLog('debug')) {
+      console.debug(`[DEBUG] ${message}`, data);
     }
   }
 
-  // Enhanced error logging for final failure
-  if (lastError instanceof AppError && lastError.context) {
-    logger.error(`Failed after ${maxAttempts} attempts`, lastError.message, lastError.context);
-  } else {
-    logger.error(`Failed after ${maxAttempts} attempts`, lastError.message);
+  /**
+   *
+   * @param message
+   * @param data
+   */
+  info(message, data = null) {
+    if (this.shouldLog('info')) {
+      console.info(`[INFO] ${message}`, data);
+    }
+  }
+
+  /**
+   *
+   * @param message
+   * @param data
+   */
+  warn(message, data = null) {
+    if (this.shouldLog('warn')) {
+      console.warn(`[WARN] ${message}`, data);
+    }
+  }
+
+  /**
+   *
+   * @param message
+   * @param error
+   */
+  error(message, error = null) {
+    if (this.shouldLog('error')) {
+      console.error(`[ERROR] ${message}`, error);
+    }
+  }
+
+  /**
+   *
+   * @param message
+   * @param error
+   * @param context
+   */
+  exception(message, error, context = {}) {
+    if (this.shouldLog('error')) {
+      console.error(`[EXCEPTION] ${message}`, {
+        error: error.message || error,
+        stack: error.stack,
+        context,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+}
+
+export const logger = new Logger('info');
+
+/**
+ * Error boundary for handling async operations with user feedback
+ */
+export class ErrorBoundary {
+  /**
+   *
+   * @param container
+   * @param options
+   */
+  constructor(container, options = {}) {
+    this.container = container;
+    this.options = {
+      showRetryButton: true,
+      showErrorDetails: false,
+      logErrors: true,
+      ...options
+    };
+  }
+
+  /**
+   * Execute an async operation with error handling
+   * @param {Function} operation - Async operation to execute
+   * @param {Function} onSuccess - Success callback
+   * @param {object} config - Configuration options
+   * @returns {Promise} Operation promise
+   */
+  async execute(operation, onSuccess = null, config = {}) {
+    const {
+      loadingMessage = 'Loading...',
+      retryAttempts = 2,
+      retryDelay = 1000
+    } = config;
+
+    this.showLoading(loadingMessage);
+
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= retryAttempts; attempt++) {
+      try {
+        const result = await operation();
+
+        if (onSuccess) {
+          onSuccess(result);
+        }
+
+        this.clearError();
+        return result;
+      } catch (error) {
+        lastError = error;
+
+        if (this.options.logErrors) {
+          logger.exception(`Operation failed (attempt ${attempt + 1}/${retryAttempts + 1})`, error);
+        }
+
+        // If this wasn't the last attempt, wait before retrying
+        if (attempt < retryAttempts) {
+          await this.sleep(retryDelay * Math.pow(2, attempt)); // Exponential backoff
+        }
+      }
+    }
+
+    // All attempts failed
+    this.showError(lastError);
+    throw lastError;
+  }
+
+  /**
+   *
+   * @param message
+   */
+  showLoading(message) {
+    if (!this.container) {return;}
+
+    this.container.innerHTML = `
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <div class="loading-message">${message}</div>
+      </div>
+    `;
+  }
+
+  /**
+   *
+   * @param error
+   */
+  showError(error) {
+    if (!this.container) {return;}
+
+    const appError = error instanceof AppError ? error : new AppError(ErrorTypes.API, error.message);
+
+    const retryButton = this.options.showRetryButton
+      ? `<button class="error-retry-btn" onclick="location.reload()">Try Again</button>`
+      : '';
+
+    const errorDetails = this.options.showErrorDetails
+      ? `<details class="error-details">
+          <summary>Technical Details</summary>
+          <pre>${error.stack || error.message}</pre>
+         </details>`
+      : '';
+
+    this.container.innerHTML = `
+      <div class="error-state">
+        <div class="error-icon">⚠️</div>
+        <div class="error-message">${appError.userMessage}</div>
+        ${retryButton}
+        ${errorDetails}
+      </div>
+    `;
+
+    // Add event listener for retry button
+    const retryBtn = this.container.querySelector('.error-retry-btn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => location.reload());
+    }
+  }
+
+  clearError() {
+    if (!this.container) {return;}
+
+    const errorState = this.container.querySelector('.error-state');
+    const loadingState = this.container.querySelector('.loading-state');
+
+    if (errorState) {
+      errorState.remove();
+    }
+    if (loadingState) {
+      loadingState.remove();
+    }
+  }
+
+  /**
+   *
+   * @param milliseconds
+   */
+  sleep(milliseconds) {
+    return new Promise(resolve => setTimeout(resolve, milliseconds));
+  }
+}
+
+/**
+ * Enhanced safe fetch with comprehensive error handling
+ * @param {string|Request} input - URL or Request object
+ * @param {RequestInit} init - Fetch options
+ * @returns {Promise<Response>} Enhanced response
+ */
+export async function safeFetch(input, init = {}) {
+  const {
+    timeout = 10000,
+    retries = 2,
+    retryDelay = 1000,
+    ...fetchOptions
+  } = init;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(input, {
+          ...fetchOptions,
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const error = new AppError(
+            ErrorTypes.API,
+            `HTTP ${response.status}: ${response.statusText}`,
+            response.status === 404
+              ? 'The requested data was not found.'
+              : response.status >= 500
+                ? 'Server is temporarily unavailable.'
+                : 'Request failed. Please try again.'
+          );
+          throw error;
+        }
+
+        return response;
+      } catch (error) {
+        lastError = error;
+
+        if (error.name === 'AbortError') {
+          throw new AppError(ErrorTypes.TIMEOUT, 'Request timed out', null, { timeout });
+        }
+
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          throw new AppError(ErrorTypes.NETWORK, 'Network connection failed', null, { originalError: error });
+        }
+
+        // If this wasn't the last attempt, wait before retrying
+        if (attempt < retries) {
+          await new Promise(resolve => setTimeout(resolve, retryDelay * Math.pow(2, attempt)));
+        }
+      }
+    }
+
+    throw lastError;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Validation helpers for common input types
+ */
+export const validators = {
+  cardIdentifier(identifier) {
+    if (!identifier || typeof identifier !== 'string') {
+      throw new AppError(ErrorTypes.VALIDATION, 'Card identifier must be a non-empty string');
+    }
+
+    const trimmed = identifier.trim();
+    if (trimmed.length === 0) {
+      throw new AppError(ErrorTypes.VALIDATION, 'Card identifier cannot be empty');
+    }
+
+    if (trimmed.length > 200) {
+      throw new AppError(ErrorTypes.VALIDATION, 'Card identifier is too long');
+    }
+
+    return trimmed;
+  },
+
+  tournament(tournament) {
+    if (!tournament || typeof tournament !== 'string') {
+      throw new AppError(ErrorTypes.VALIDATION, 'Tournament name must be a non-empty string');
+    }
+    return tournament.trim();
+  },
+
+  array(arr, minLength = 0) {
+    if (!Array.isArray(arr)) {
+      throw new AppError(ErrorTypes.VALIDATION, 'Expected an array');
+    }
+    if (arr.length < minLength) {
+      throw new AppError(ErrorTypes.VALIDATION, `Array must have at least ${minLength} items`);
+    }
+    return arr;
+  }
+};
+
+/**
+ * Simple assertion helper for validation
+ * @param {any} condition - Value to test for truthiness
+ * @param {string} message - Error message if assertion fails
+ * @throws {Error} If condition is falsy
+ */
+export function assert(condition, message = 'Assertion failed') {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
+/**
+ * Type validation helper
+ * @param {any} value - Value to validate
+ * @param {string} expectedType - Expected type name
+ * @param {string} paramName - Parameter name for error message
+ * @throws {Error} If type doesn't match
+ */
+export function validateType(value, expectedType, paramName = 'value') {
+  // Handle array type specially since typeof array returns 'object'
+  if (expectedType === 'array') {
+    if (Array.isArray(value)) {
+      return; // Valid array
+    }
+    const actualType = Array.isArray(value) ? 'array' : typeof value;
+    throw new Error(`${paramName} must be ${expectedType}, got ${actualType}`);
+  }
+
+  const actualType = typeof value;
+  if (actualType !== expectedType) {
+    throw new Error(`${paramName} must be ${expectedType}, got ${actualType}`);
+  }
+}
+
+/**
+ * Retry wrapper for async operations
+ * @param {Function} operation - Async operation to retry
+ * @param {number} maxAttempts - Maximum number of attempts
+ * @param {number} delayMs - Delay between attempts in milliseconds
+ * @returns {Promise} Result of the operation
+ */
+export async function withRetry(operation, maxAttempts = 3, delayMs = 1000) {
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+
+      // Exponential backoff
+      const delay = delayMs * Math.pow(2, attempt - 1);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
   }
 
   throw lastError;
 }
 
 /**
- * Validate that a value matches expected type/structure
- * @param {any} value
- * @param {string} expectedType
- * @param {string} [fieldName='value']
- * @throws {AppError}
+ * Safe synchronous operation wrapper with error handling
+ * @param {Function} operation - Synchronous operation to execute
+ * @param {any} defaultValue - Default value to return on error
+ * @param {string} errorMessage - Custom error message
+ * @returns {any} Result of operation or default value
  */
-export function validateType(value, expectedType, fieldName = 'value') {
-  if (expectedType === 'array' && !Array.isArray(value)) {
-    throw new AppError(`Expected ${fieldName} to be array, got ${typeof value}`, ErrorTypes.VALIDATION);
-  }
-  if (expectedType === 'object' && (typeof value !== 'object' || value === null || Array.isArray(value))) {
-    throw new AppError(`Expected ${fieldName} to be object, got ${typeof value}`, ErrorTypes.VALIDATION);
-  }
-  if (expectedType !== 'array' && expectedType !== 'object' && typeof value !== expectedType) {
-    throw new AppError(`Expected ${fieldName} to be ${expectedType}, got ${typeof value}`, ErrorTypes.VALIDATION);
+export function safeSync(operation, defaultValue = null, errorMessage = 'Operation failed') {
+  try {
+    return operation();
+  } catch (error) {
+    logger.warn(`${errorMessage}: ${error.message}`);
+    return defaultValue;
   }
 }
 
 /**
- * Assert a condition is true, throw error if false
- * @param {any} condition
- * @param {string} message
- * @param {string} [type=VALIDATION]
- * @throws {AppError}
+ * Safe asynchronous operation wrapper with error handling
+ * @param {Function} operation - Async operation to execute
+ * @param {any} defaultValue - Default value to return on error
+ * @param {string} errorMessage - Custom error message
+ * @returns {Promise<any>} Result of operation or default value
  */
-export function assert(condition, message, type = ErrorTypes.VALIDATION) {
-  if (!condition) {
-    throw new AppError(message, type);
+export async function safeAsync(operation, defaultValue = null, errorMessage = 'Async operation failed') {
+  try {
+    return await operation();
+  } catch (error) {
+    logger.warn(`${errorMessage}: ${error.message}`);
+    return defaultValue;
   }
+}
+
+/**
+ * Global error handler for unhandled promise rejections and errors
+ */
+export function setupGlobalErrorHandler() {
+  if (typeof window === 'undefined') {return;}
+
+  window.addEventListener('unhandledrejection', event => {
+    logger.exception('Unhandled promise rejection', event.reason);
+
+    // Prevent the default browser error handling
+    event.preventDefault();
+
+    // Show user-friendly error if it's an AppError
+    if (event.reason instanceof AppError) {
+      showGlobalError(event.reason.userMessage);
+    }
+  });
+
+  window.addEventListener('error', event => {
+    logger.exception('Global error', event.error, {
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno
+    });
+  });
+}
+
+/**
+ * Show a global error notification
+ * @param {string} message - User-friendly error message
+ */
+export function showGlobalError(message) {
+  // Create or update global error notification
+  let errorNotification = document.getElementById('global-error-notification');
+
+  if (!errorNotification) {
+    errorNotification = document.createElement('div');
+    errorNotification.id = 'global-error-notification';
+    errorNotification.className = 'global-error-notification';
+    document.body.appendChild(errorNotification);
+  }
+
+  errorNotification.innerHTML = `
+    <div class="error-content">
+      <span class="error-icon">⚠️</span>
+      <span class="error-text">${message}</span>
+      <button class="error-close">&times;</button>
+    </div>
+  `;
+
+  // Auto-hide after 5 seconds
+  setTimeout(() => {
+    if (errorNotification.parentNode) {
+      errorNotification.remove();
+    }
+  }, 5000);
+
+  // Manual close button
+  const closeBtn = errorNotification.querySelector('.error-close');
+  closeBtn?.addEventListener('click', () => {
+    errorNotification.remove();
+  });
 }
