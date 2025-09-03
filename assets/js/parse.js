@@ -13,6 +13,7 @@ import { AppError, ErrorTypes, validateType } from './utils/errorHandler.js';
  * @property {string} [uid] - Optional per-variant unique id (e.g., "Name::SET::NNN")
  * @property {string} [set] - Optional set code for Pokémon variants
  * @property {string|number} [number] - Optional card number for Pokémon variants
+ * @property {string} [category] - Card classification: 'pokemon', 'trainer', or 'energy'
  * @property {number} found - Number of decks containing this card
  * @property {number} total - Total number of decks
  * @property {number} pct - Usage percentage
@@ -72,7 +73,7 @@ function validateAndCleanItem(item, index) {
     return null;
   }
 
-  const { name, found, total, pct, rank, dist } = item;
+  const { name, found, total, pct, rank, dist, category } = item;
 
   // Name is required
   if (typeof name !== 'string' || name.trim() === '') {
@@ -100,6 +101,9 @@ function validateAndCleanItem(item, index) {
   if (typeof item.uid === 'string' && item.uid) {cleanItem.uid = item.uid;}
   if (typeof item.set === 'string' && item.set) {cleanItem.set = item.set;}
   if (typeof item.number === 'string' || typeof item.number === 'number') {cleanItem.number = item.number;}
+  if (typeof category === 'string' && ['pokemon', 'trainer', 'energy'].includes(category.toLowerCase())) {
+    cleanItem.category = category.toLowerCase();
+  }
 
   // Optional fields
   if (typeof rank === 'number') {

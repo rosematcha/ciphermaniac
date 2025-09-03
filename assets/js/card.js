@@ -36,6 +36,7 @@ import {
 } from './card/identifiers.js';
 import { findCard, renderCardPrice, renderCardSets } from './card/data.js';
 import { renderChart, renderCopiesHistogram, renderEvents } from './card/charts.js';
+import { getCanonicalCard, getCardVariants } from './utils/cardSynonyms.js';
 
 // Show curated suggestions on the card landing view
 import './cardsLanding.js';
@@ -50,7 +51,27 @@ const pageCleanupManager = new CleanupManager();
 
 // Normalize #grid route to index when landing on card page via hash
 const __ROUTE_REDIRECTING = normalizeCardRouteOnLoad();
-const cardIdentifier = getCardNameFromLocation();
+let cardIdentifier = getCardNameFromLocation();
+
+// Check for synonym redirect early - if this card has a canonical version, redirect to it
+if (cardIdentifier) {
+  getCanonicalCard(cardIdentifier).then(canonicalIdentifier => {
+    if (canonicalIdentifier !== cardIdentifier) {
+      // This is a non-canonical card, redirect to canonical version
+      console.log(`Redirecting ${cardIdentifier} to canonical version: ${canonicalIdentifier}`);
+      const newUrl = `card.html#card/${encodeURIComponent(canonicalIdentifier)}`;
+      window.location.replace(newUrl);
+    } else {
+      // Update cardIdentifier to canonical version for consistency
+      // (though in this case they're the same)
+      cardIdentifier = canonicalIdentifier;
+    }
+  }).catch(error => {
+    // Continue with original identifier if synonym lookup fails
+    console.warn('Synonym lookup failed:', error);
+  });
+}
+
 const cardName = getDisplayName(cardIdentifier) || cardIdentifier;
 const cardTitleEl = document.getElementById('card-title');
 if (cardName) {
@@ -580,9 +601,255 @@ if (document.readyState === 'loading') {
   initCardSearch();
 }
 
+/**
+ * Check if a card exists in the Ciphermaniac database
+ * @param {string} cardIdentifier - Card identifier to check
+ * @returns {Promise<boolean>} Whether the card has a Ciphermaniac page
+ */
+async function checkCardExistsInDatabase(cardIdentifier) {
+  try {
+    // First try to fetch cardpool data to check if card exists
+    const response = await fetch('/assets/data/deckbuilder-cardpool-with-pages.json');
+    if (!response.ok) {
+      // If cardpool data fails, assume card exists (fallback to normal behavior)
+      return true;
+    }
+
+    const cardpool = await response.json();
+
+    // Try to find card by UID or name
+    const cardEntry = cardpool.find(card => {
+      if (!card) {return false;}
+
+      // Direct UID match
+      if (card.uid && card.uid.toLowerCase() === cardIdentifier.toLowerCase()) {
+        return true;
+      }
+
+      // Name match
+      if (card.name && card.name.toLowerCase() === cardIdentifier.toLowerCase()) {
+        return true;
+      }
+
+      // Display name format match (Name SET NUMBER)
+      if (card.uid) {
+        const displayName = getDisplayName(card.uid);
+        if (displayName && displayName.toLowerCase() === cardIdentifier.toLowerCase()) {
+          return true;
+        }
+      }
+
+      return false;
+    });
+
+    if (!cardEntry) {
+      // Card not found in TCGMasters pool - assume it might exist in tournament data
+      return true;
+    }
+
+    // Card found in pool - check if it has a Ciphermaniac page
+    return cardEntry.hasCiphermaniacPage === true;
+  } catch (error) {
+    logger.warn('Failed to check card existence', { cardIdentifier, error: error.message });
+    // On error, assume card exists (fallback to normal behavior)
+    return true;
+  }
+}
+
+/**
+ * Render a user-friendly error page for missing cards
+ * @param {string} cardIdentifier - The card that was requested
+ */
+async function renderMissingCardPage(cardIdentifier) {
+  try {
+    // Set proper HTTP status code
+    if (typeof history !== 'undefined' && history.replaceState) {
+      // This helps with SEO and proper 404 handling
+      document.title = `Card Not Found - ${getDisplayName(cardIdentifier) || cardIdentifier} | Ciphermaniac`;
+    }
+
+    // Get card details from cardpool if available
+    let cardInfo = null;
+    let cardImage = null;
+
+    try {
+      const response = await fetch('/assets/data/deckbuilder-cardpool-with-pages.json');
+      if (response.ok) {
+        const cardpool = await response.json();
+        cardInfo = cardpool.find(card => {
+          if (!card) {return false;}
+          return card.uid?.toLowerCase() === cardIdentifier.toLowerCase() ||
+                 card.name?.toLowerCase() === cardIdentifier.toLowerCase() ||
+                 getDisplayName(card.uid)?.toLowerCase() === cardIdentifier.toLowerCase();
+        });
+
+        if (cardInfo && cardInfo.image) {
+          cardImage = cardInfo.image;
+        }
+      }
+    } catch (error) {
+      logger.debug('Could not fetch card details for missing card page', error);
+    }
+
+    // Clear existing content and show error page
+    const main = document.querySelector('main');
+    if (main) {
+      main.innerHTML = `
+        <section class="card-404-section">
+          <div class="card-404-content">
+            <div class="card-404-header">
+              <h1>Card Page Not Available</h1>
+              <div class="card-404-subtitle">
+                ${getDisplayName(cardIdentifier) || cardIdentifier}
+              </div>
+            </div>
+            
+            ${cardImage ? `
+              <div class="card-404-image">
+                <img src="${cardImage}" alt="${getDisplayName(cardIdentifier) || cardIdentifier}" 
+                     style="max-width: 300px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+              </div>
+            ` : ''}
+            
+            <div class="card-404-explanation">
+              <p>This card exists in the TCGMasters card pool but doesn't have a Ciphermaniac page yet. 
+              This means we don't have tournament usage data for this card in our database.</p>
+              
+              <p>Cards get pages when they appear in tournament results that we've processed. 
+              If this card becomes popular in competitive play, its page will be created automatically.</p>
+            </div>
+            
+            <div class="card-404-actions">
+              <div class="card-404-suggestions">
+                <h3>What you can do:</h3>
+                <ul>
+                  <li><a href="index.html" class="card-404-link">Browse all cards with data</a></li>
+                  <li><a href="index.html?q=${encodeURIComponent(getBaseName(cardIdentifier) || cardIdentifier)}" 
+                        class="card-404-link">Search for similar cards</a></li>
+                  <li><a href="tools/deckbuilder.html" class="card-404-link">Use the deck builder</a></li>
+                  <li><a href="feedback.html" class="card-404-link">Request this card be prioritized</a></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+      `;
+
+      // Add CSS styles for the 404 page
+      const style = document.createElement('style');
+      style.textContent = `
+        .card-404-section {
+          max-width: 600px;
+          margin: 2rem auto;
+          padding: 2rem;
+          text-align: center;
+        }
+        
+        .card-404-content {
+          background: var(--panel, #1a1f3a);
+          border-radius: 12px;
+          padding: 2rem;
+          border: 1px solid var(--border, #2a3150);
+        }
+        
+        .card-404-header h1 {
+          color: var(--text, #ffffff);
+          margin: 0 0 0.5rem 0;
+          font-size: 1.5rem;
+        }
+        
+        .card-404-subtitle {
+          color: var(--muted, #8b95b8);
+          font-size: 1.1rem;
+          margin-bottom: 1.5rem;
+          font-weight: 500;
+        }
+        
+        .card-404-image {
+          margin: 1.5rem 0;
+        }
+        
+        .card-404-explanation {
+          text-align: left;
+          margin: 1.5rem 0;
+          color: var(--text, #ffffff);
+          line-height: 1.6;
+        }
+        
+        .card-404-explanation p {
+          margin-bottom: 1rem;
+        }
+        
+        .card-404-actions {
+          margin-top: 2rem;
+          text-align: left;
+        }
+        
+        .card-404-suggestions h3 {
+          color: var(--text, #ffffff);
+          margin-bottom: 1rem;
+          font-size: 1.1rem;
+        }
+        
+        .card-404-suggestions ul {
+          list-style: none;
+          padding: 0;
+        }
+        
+        .card-404-suggestions li {
+          margin: 0.75rem 0;
+        }
+        
+        .card-404-link {
+          color: var(--accent, #4f8cf4);
+          text-decoration: none;
+          padding: 0.5rem 0;
+          display: inline-block;
+          transition: color 0.2s ease;
+        }
+        
+        .card-404-link:hover {
+          color: var(--accent-hover, #6ba0f6);
+          text-decoration: underline;
+        }
+        
+        @media (max-width: 640px) {
+          .card-404-section {
+            margin: 1rem;
+            padding: 1rem;
+          }
+          
+          .card-404-content {
+            padding: 1.5rem;
+          }
+          
+          .card-404-header h1 {
+            font-size: 1.3rem;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    logger.info('Rendered missing card page', { cardIdentifier });
+  } catch (error) {
+    logger.error('Failed to render missing card page', { cardIdentifier, error: error.message });
+    // Fallback to simple error message
+    if (metaSection) {
+      metaSection.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text);">Card page not available. This card exists in the TCGMasters pool but doesn\'t have tournament data yet.</div>';
+    }
+  }
+}
 
 async function load() {
   if (!cardIdentifier) { metaSection.textContent = 'Missing card identifier.'; return; }
+
+  // Check if card exists in Ciphermaniac database before proceeding
+  const cardExistsInDatabase = await checkCardExistsInDatabase(cardIdentifier);
+  if (!cardExistsInDatabase) {
+    await renderMissingCardPage(cardIdentifier);
+    return;
+  }
 
   // Phase 1: Immediate UI Setup (synchronous, runs before any network)
   setupImmediateUI();
@@ -760,8 +1027,7 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
       if (cacheObject[ck]) {
         ({ pct: globalPct, found: globalFound, total: globalTotal } = cacheObject[ck]);
       } else {
-        // For specific variants (like "Snorunt TWM 51"), skip cardIndex and go directly to master
-        // cardIndex only has aggregated base names, not individual variants
+        // Get all variants of this card and combine their usage data
         let card = null;
         const hasUID = cardIdentifier && cardIdentifier.includes('::'); // Matches "Name SET NUMBER" pattern
 
@@ -788,10 +1054,40 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
         }
 
         if (!card) {
-          // Always check master.json for precise variant matching
+          // Get canonical card and all its variants for combined usage statistics
+          const canonical = await getCanonicalCard(cardIdentifier);
+          const variants = await getCardVariants(canonical);
+
           const master = await fetchReport(tournamentName);
           const parsed = parseReport(master);
-          card = findCard(parsed.items, cardIdentifier);
+
+          // Find data for all variants and combine
+          let combinedFound = 0;
+          let combinedTotal = null;
+          let hasAnyData = false;
+
+          for (const variant of variants) {
+            const variantCard = findCard(parsed.items, variant);
+            if (variantCard) {
+              hasAnyData = true;
+              if (Number.isFinite(variantCard.found)) {
+                combinedFound += variantCard.found;
+              }
+              // Use the total from any variant (should be the same across all variants in a tournament)
+              if (combinedTotal === null && Number.isFinite(variantCard.total)) {
+                combinedTotal = variantCard.total;
+              }
+            }
+          }
+
+          if (hasAnyData && combinedTotal !== null) {
+            card = {
+              name: getDisplayName(canonical),
+              found: combinedFound,
+              total: combinedTotal,
+              pct: combinedTotal > 0 ? (100 * combinedFound / combinedTotal) : 0
+            };
+          }
         }
         if (card) {
           globalPct = Number.isFinite(card.pct)
@@ -860,16 +1156,35 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
       const list = await fetchArchetypesList(tournament);
       const top8 = await fetchTop8ArchetypesList(tournament);
       const candidates = [];
+      const canonical = await getCanonicalCard(cardIdentifier);
+      const variants = await getCardVariants(canonical);
+
       for (const base of list) {
         try {
           const arc = await fetchArchetypeReport(tournament, base);
           const parsedReport = parseReport(arc);
-          const cardInfo = findCard(parsedReport.items, cardIdentifier);
-          if (cardInfo) {
-            const pct = Number.isFinite(cardInfo.pct) ? cardInfo.pct : (cardInfo.total ? (100 * cardInfo.found / cardInfo.total) : 0);
-            const found = Number.isFinite(cardInfo.found) ? cardInfo.found : null;
-            const total = Number.isFinite(cardInfo.total) ? cardInfo.total : null;
-            candidates.push({ base, pct, found, total });
+
+          // Combine data from all variants for this archetype
+          let combinedFound = 0;
+          let combinedTotal = null;
+          let hasAnyData = false;
+
+          for (const variant of variants) {
+            const variantCardInfo = findCard(parsedReport.items, variant);
+            if (variantCardInfo) {
+              hasAnyData = true;
+              if (Number.isFinite(variantCardInfo.found)) {
+                combinedFound += variantCardInfo.found;
+              }
+              if (combinedTotal === null && Number.isFinite(variantCardInfo.total)) {
+                combinedTotal = variantCardInfo.total;
+              }
+            }
+          }
+
+          if (hasAnyData && combinedTotal !== null) {
+            const pct = combinedTotal > 0 ? (100 * combinedFound / combinedTotal) : 0;
+            candidates.push({ base, pct, found: combinedFound, total: combinedTotal });
           }
         } catch {/* missing archetype file */}
       }
@@ -928,9 +1243,52 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
         // Find overall stats for the same tournament
         (async () => {
           try {
+            const canonical = await getCanonicalCard(cardIdentifier);
+            const variants = await getCardVariants(canonical);
+
             const master = await fetchReport(latest.tournament);
             const parsed = parseReport(master);
-            const overall = findCard(parsed.items, cardIdentifier);
+
+            // Combine distribution data from all variants
+            let overall = null;
+            let combinedFound = 0;
+            let combinedTotal = null;
+            const combinedDist = [];
+
+            for (const variant of variants) {
+              const variantCard = findCard(parsed.items, variant);
+              if (variantCard) {
+                if (Number.isFinite(variantCard.found)) {
+                  combinedFound += variantCard.found;
+                }
+                if (combinedTotal === null && Number.isFinite(variantCard.total)) {
+                  combinedTotal = variantCard.total;
+                }
+
+                // Combine distribution data
+                if (variantCard.dist && Array.isArray(variantCard.dist)) {
+                  for (const distEntry of variantCard.dist) {
+                    const existing = combinedDist.find(d => d.copies === distEntry.copies);
+                    if (existing) {
+                      existing.players += distEntry.players || 0;
+                    } else {
+                      combinedDist.push({ copies: distEntry.copies, players: distEntry.players || 0 });
+                    }
+                  }
+                }
+              }
+            }
+
+            if (combinedFound > 0 && combinedTotal !== null) {
+              overall = {
+                name: getDisplayName(canonical),
+                found: combinedFound,
+                total: combinedTotal,
+                pct: combinedTotal > 0 ? (100 * combinedFound / combinedTotal) : 0,
+                dist: combinedDist.sort((a, b) => a.copies - b.copies)
+              };
+            }
+
             if (overall) { renderCopiesHistogram(copiesSection, overall); } else { copiesSection.textContent = ''; }
           } catch { copiesSection.textContent = ''; }
         })();

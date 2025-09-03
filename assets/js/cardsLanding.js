@@ -29,7 +29,22 @@ function makeCardItem(name, opts) {
   tryNext(); thumb.appendChild(img);
 
   const titleRow = document.createElement('div'); titleRow.className = 'titleRow';
-  const h3 = document.createElement('h3'); h3.className = 'name'; h3.textContent = name; h3.title = name; titleRow.appendChild(h3);
+  const h3 = document.createElement('h3'); h3.className = 'name'; h3.title = name;
+
+  // Create the main name text
+  const nameText = document.createElement('span');
+  nameText.textContent = name;
+  h3.appendChild(nameText);
+
+  // Add set ID and number in smaller, de-emphasized text if available
+  if (opts?.set && opts?.number) {
+    const setSpan = document.createElement('span');
+    setSpan.className = 'card-title-set';
+    setSpan.textContent = `${opts.set} ${opts.number}`;
+    h3.appendChild(setSpan);
+  }
+
+  titleRow.appendChild(h3);
   card.appendChild(thumb); card.appendChild(titleRow);
 
   // Use UID if available, otherwise fall back to name

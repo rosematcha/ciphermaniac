@@ -20,7 +20,7 @@ class SocialGraphicsGenerator {
 
   async loadTournaments() {
     try {
-      const response = await fetch('reports/tournaments.json');
+      const response = await fetch('/reports/tournaments.json');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -51,7 +51,7 @@ class SocialGraphicsGenerator {
 
   async loadConsistentLeaders() {
     try {
-      const response = await fetch('reports/suggestions.json');
+      const response = await fetch('/reports/suggestions.json');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -92,7 +92,7 @@ class SocialGraphicsGenerator {
     }
 
     try {
-      const response = await fetch(`reports/${tournamentFolder}/master.json`);
+      const response = await fetch(`/reports/${tournamentFolder}/master.json`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -104,7 +104,7 @@ class SocialGraphicsGenerator {
       if (currentIndex < this.tournaments.length - 1) {
         const previousFolder = this.tournaments[currentIndex + 1].folder;
         try {
-          const prevResponse = await fetch(`reports/${previousFolder}/master.json`);
+          const prevResponse = await fetch(`/reports/${previousFolder}/master.json`);
           if (prevResponse.ok) {
             const prevText = await prevResponse.text();
             this.previousTournamentData = JSON.parse(prevText);
@@ -126,10 +126,10 @@ class SocialGraphicsGenerator {
 
   async renderGraphics() {
     const displayMode = document.getElementById('display-mode').value;
-    const maxCards = parseInt(document.getElementById('max-cards').value) || 20;
+    const layoutSize = parseInt(document.getElementById('graphics-layout').value) || 20;
 
     let filteredData = this.getFilteredData(displayMode);
-    filteredData = filteredData.slice(0, maxCards);
+    filteredData = filteredData.slice(0, layoutSize);
 
     const output = document.getElementById('graphics-output');
     output.innerHTML = '';
@@ -187,6 +187,7 @@ class SocialGraphicsGenerator {
     tournamentMain.appendChild(bracketRight);
 
     // Bottom row (ranks 9-14)
+    let hasBottomRow = false;
     if (filteredData.length > 8) {
       const bottomRow = document.createElement('div');
       bottomRow.className = 'bottom-row';
@@ -198,8 +199,22 @@ class SocialGraphicsGenerator {
 
       tournamentLayout.appendChild(tournamentMain);
       tournamentLayout.appendChild(bottomRow);
+      hasBottomRow = true;
     } else {
       tournamentLayout.appendChild(tournamentMain);
+    }
+
+    // Second bottom row (ranks 15-20)
+    if (filteredData.length > 14) {
+      const secondBottomRow = document.createElement('div');
+      secondBottomRow.className = 'bottom-row';
+
+      for (let i = 14; i <= 19 && i < filteredData.length; i++) {
+        const secondBottomCard = await this.createCardGraphic(filteredData[i], i + 1, displayMode, 'tiny');
+        secondBottomRow.appendChild(secondBottomCard);
+      }
+
+      tournamentLayout.appendChild(secondBottomRow);
     }
 
     output.appendChild(tournamentLayout);
@@ -281,7 +296,7 @@ class SocialGraphicsGenerator {
     const img = document.createElement('img');
     img.className = 'card-image';
 
-    const imagePath = await this.loadImageWithFallback(card);
+    const imagePath = await this.loadImageWithFallback(card, cardSize);
     if (imagePath) {
       img.src = imagePath;
       img.alt = card.name;
@@ -341,7 +356,7 @@ class SocialGraphicsGenerator {
     return `thumbnails/sm/${imageName}`;
   }
 
-  async loadImageWithFallback(card) {
+  async loadImageWithFallback(card, cardSize = 'normal') {
     const baseName = card.name.replace(/[^a-zA-Z0-9]/g, '_');
 
     // Special case transformations for known patterns
@@ -366,10 +381,10 @@ class SocialGraphicsGenerator {
     }
 
     const possiblePaths = [
-      `thumbnails/sm/${baseName}_${card.set}_${card.number}.png`,
-      `thumbnails/sm/${card.name.replace(/[^a-zA-Z0-9']/g, '_')}_${card.set}_${card.number}.png`,
-      `thumbnails/sm/${card.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '_')}_${card.set}_${card.number}.png`,
-      `thumbnails/sm/${specialName.replace(/[^a-zA-Z0-9\-]/g, '_')}_${card.set}_${card.number}.png`
+      `/thumbnails/sm/${baseName}_${card.set}_${card.number}.png`,
+      `/thumbnails/sm/${card.name.replace(/[^a-zA-Z0-9']/g, '_')}_${card.set}_${card.number}.png`,
+      `/thumbnails/sm/${card.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '_')}_${card.set}_${card.number}.png`,
+      `/thumbnails/sm/${specialName.replace(/[^a-zA-Z0-9\-]/g, '_')}_${card.set}_${card.number}.png`
     ];
 
     console.log(`Trying to load image for: ${card.name} (${card.set} ${card.number})`);
@@ -488,7 +503,6 @@ class SocialGraphicsGenerator {
 
   getCropParameters(card) {
     const cardType = this.determineCardType(card);
-    console.log(`Card: ${card.name} -> Type: ${cardType}`);
 
     const sidesCrop = parseInt(document.getElementById('crop-sides').value) || 22;
 

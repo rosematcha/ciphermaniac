@@ -427,16 +427,28 @@ function populateCardContent(el, cardData) {
     nameEl.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
     nameEl.classList.remove('skeleton-text');
 
-    // Display consistent format: "Card Name SET NUMBER" when available, otherwise just name
-    let displayText;
+    // Clear existing content
+    nameEl.innerHTML = '';
+
+    // Create the main name text
+    const nameText = document.createElement('span');
+    nameText.textContent = cardData.name;
+    nameEl.appendChild(nameText);
+
+    // Add set ID and number in smaller, de-emphasized text if available
     if (cardData.set && cardData.number) {
-      displayText = `${cardData.name} ${cardData.set} ${cardData.number}`;
-    } else {
-      displayText = cardData.name;
+      const setSpan = document.createElement('span');
+      setSpan.className = 'card-title-set';
+      setSpan.textContent = `${cardData.set} ${cardData.number}`;
+      nameEl.appendChild(setSpan);
     }
 
-    nameEl.textContent = displayText;
-    nameEl.title = displayText; // Set same text for tooltip
+
+    // Set tooltip with full card name and set info if available
+    const tooltipText = cardData.set && cardData.number
+      ? `${cardData.name} ${cardData.set} ${cardData.number}`
+      : cardData.name;
+    nameEl.title = tooltipText;
   }
 
   // Update percentage display - remove skeleton elements
@@ -528,7 +540,6 @@ function setupHistogramTooltip(col, cardName, tip) {
   col.addEventListener('mousemove', showTooltip);
   col.addEventListener('mouseenter', showTooltip);
   col.addEventListener('mouseleave', hideGridTooltip);
-  col.addEventListener('focus', showTooltip);
   col.addEventListener('blur', hideGridTooltip);
 }
 
@@ -579,6 +590,9 @@ function makeCardElement(cardData, useSm, overrides) {
 // Extract card attributes setup
 function setupCardAttributes(card, cardData) {
   card.dataset.name = cardData.name.toLowerCase();
+  if (cardData.category) {
+    card.dataset.category = cardData.category;
+  }
   card.setAttribute('role', 'link');
   card.setAttribute('aria-label', `${cardData.name} – open details`);
 }

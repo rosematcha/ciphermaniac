@@ -20,7 +20,7 @@ export const CONFIG = Object.freeze({
 
   // API configuration
   API: {
-    REPORTS_BASE: 'reports',
+    REPORTS_BASE: '/reports',
     TIMEOUT_MS: 10000,
     RETRY_ATTEMPTS: 3,
     RETRY_DELAY_MS: 1000

@@ -198,13 +198,6 @@ export function renderChart(container, points) {
       )
     );
     hitDot.addEventListener('mouseleave', hideGraphTooltip);
-    hitDot.addEventListener('focus', event =>
-      showGraphTooltip(
-        `<strong>${escapeHtml(prettyTournamentName(point.tournament))}</strong><div>${(point.pct || 0).toFixed(1)}%</div>`,
-        event.clientX || 0,
-        event.clientY || 0
-      )
-    );
     hitDot.addEventListener('blur', hideGraphTooltip);
     svg.appendChild(hitDot);
   });
@@ -284,9 +277,6 @@ export function renderCopiesHistogram(container, overall) {
       showGraphTooltip(escapeHtml(tooltipText), event.clientX, event.clientY)
     );
     column.addEventListener('mouseleave', hideGraphTooltip);
-    column.addEventListener('focus', event =>
-      showGraphTooltip(escapeHtml(tooltipText), event.clientX || 0, event.clientY || 0)
-    );
     column.addEventListener('blur', hideGraphTooltip);
 
     column.appendChild(bar);
