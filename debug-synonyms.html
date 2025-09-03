@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-case=1" />
+  <title>Debug Synonyms</title>
+</head>
+<body>
+  <h1>Debug Card Synonyms</h1>
+  
+  <div>
+    <button onclick="testSynonym()">Test Ancient Booster Energy Capsule PAR 159</button>
+    <div id="result"></div>
+  </div>
+  
+  <script type="module">
+    import { getCanonicalCard } from '/assets/js/utils/cardSynonyms.js';
+    
+    window.testSynonym = async function() {
+      const result = document.getElementById('result');
+      const testUID = 'Ancient Booster Energy Capsule::PAR::159';
+      
+      try {
+        result.innerHTML = 'Testing...';
+        console.log('Testing:', testUID);
+        
+        const canonical = await getCanonicalCard(testUID);
+        console.log('Result:', canonical);
+        
+        result.innerHTML = `
+          <p>Input: ${testUID}</p>
+          <p>Canonical: ${canonical}</p>
+          <p>Same? ${testUID === canonical}</p>
+        `;
+        
+        if (canonical !== testUID) {
+          const newUrl = `card.html#card/${encodeURIComponent(canonical)}`;
+          result.innerHTML += `<p>Should redirect to: <a href="${newUrl}">${newUrl}</a></p>`;
+        }
+        
+      } catch (error) {
+        console.error('Error:', error);
+        result.innerHTML = `Error: ${error.message}`;
+      }
+    };
+  </script>
+</body>
+</html>

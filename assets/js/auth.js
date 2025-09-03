@@ -3,7 +3,7 @@
  * @module Auth
  */
 
-import { getAuth, getCurrentUser } from './config/firebase.js';
+import { getAuth } from './config/firebase.js';
 import { logger } from './utils/logger.js';
 
 /** @type {Set<(user: firebase.User|null) => void>} */
@@ -19,7 +19,7 @@ export function initAuth() {
   const auth = getAuth();
 
   // Listen for auth state changes
-  auth.onAuthStateChanged((user) => {
+  auth.onAuthStateChanged(user => {
     currentUser = user;
     logger.info(user ? `User signed in: ${user.email}` : 'User signed out');
 

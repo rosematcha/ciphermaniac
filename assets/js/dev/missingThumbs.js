@@ -5,7 +5,7 @@ import { logger } from '../utils/logger.js';
 
 const state = {
   enabled: false,
-  missing: new Map(), // name -> { tried: string[], lastFolder: 'sm'|'xs' }
+  missing: new Map() // name -> { tried: string[], lastFolder: 'sm'|'xs' }
 };
 
 function isEnabled() {
@@ -22,12 +22,18 @@ export function initMissingThumbsDev() {
     Object.assign(window, {
       ciphermaniacDumpMissingReport: dumpMissingReport,
       ciphermaniacProposeOverrides: proposeOverridesSkeleton,
-      ciphermaniacDownloadOverrides: downloadOverridesSkeleton,
+      ciphermaniacDownloadOverrides: downloadOverridesSkeleton
     });
     logger.info('[dev] Missing thumbs dev mode enabled. Run ciphermaniacDumpMissingReport(), ciphermaniacProposeOverrides(), or ciphermaniacDownloadOverrides() in console.');
   }
 }
 
+/**
+ *
+ * @param name
+ * @param useSm
+ * @param overrides
+ */
 export function trackMissing(name, useSm, overrides) {
   if (!state.enabled) {
     return;
@@ -81,19 +87,22 @@ export function dumpMissingReport() {
   setTimeout(() => { a.remove(); }, 60000);
 }
 
-function pickBasename(path){
+function pickBasename(path) {
   const parts = String(path).split('/');
   return parts[parts.length - 1] || path;
 }
 
 // Build a simple overrides skeleton mapping missing card names to a best-guess filename
-export function proposeOverridesSkeleton(){
-  if(!state.enabled) {return {};}
+/**
+ *
+ */
+export function proposeOverridesSkeleton() {
+  if (!state.enabled) {return {};}
   const out = {};
-  for(const [name, info] of state.missing.entries()){
+  for (const [name, info] of state.missing.entries()) {
     // Choose the first candidate's basename as a starting point
     const tried = info.tried || buildThumbCandidates(name, info.lastFolder === 'sm', {});
-    if(tried.length > 0){
+    if (tried.length > 0) {
       out[name] = pickBasename(tried[0]);
     }
   }
@@ -103,7 +112,7 @@ export function proposeOverridesSkeleton(){
 }
 
 // Offer a quick download of the proposed overrides skeleton as JSON
-export function downloadOverridesSkeleton(){
+export function downloadOverridesSkeleton() {
   const obj = proposeOverridesSkeleton();
   const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);

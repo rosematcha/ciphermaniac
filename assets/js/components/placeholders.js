@@ -7,6 +7,7 @@ import { computeLayout } from '../layoutHelper.js';
 
 /**
  * Create a skeleton card placeholder
+ * @param isLarge
  */
 export function createCardSkeleton(isLarge = false) {
   const card = document.createElement('article');
@@ -40,6 +41,8 @@ export function createCardSkeleton(isLarge = false) {
 
 /**
  * Create a grid of skeleton cards using proper layout computation
+ * @param containerWidth
+ * @param rowCount
  */
 export function createGridSkeleton(containerWidth = 1200, rowCount = 6) {
   const layout = computeLayout(containerWidth);
@@ -69,7 +72,7 @@ export function createGridSkeleton(containerWidth = 1200, rowCount = 6) {
     const scale = isLarge ? 1 : layout.smallScale;
 
     row.style.setProperty('--scale', String(scale));
-    row.style.setProperty('--card-base', layout.base + 'px');
+    row.style.setProperty('--card-base', `${layout.base}px`);
 
     for (let cardIndex = 0; cardIndex < cardsPerRow; cardIndex++) {
       const skeletonCard = createCardSkeleton(isLarge);
@@ -85,6 +88,7 @@ export function createGridSkeleton(containerWidth = 1200, rowCount = 6) {
 
 /**
  * Create skeleton for dropdown/select elements
+ * @param width
  */
 export function createSelectSkeleton(width = '200px') {
   const skeleton = document.createElement('div');
@@ -126,6 +130,7 @@ export function createNetworkSkeleton() {
 
 /**
  * Create skeleton for charts/graphs
+ * @param height
  */
 export function createChartSkeleton(height = '300px') {
   const skeleton = document.createElement('div');
@@ -254,6 +259,8 @@ export function createEventsTableSkeleton() {
 
 /**
  * Show skeleton placeholder in target element
+ * @param target
+ * @param skeletonElement
  */
 export function showSkeleton(target, skeletonElement) {
   if (!target || !skeletonElement) {return;}
@@ -270,6 +277,8 @@ export function showSkeleton(target, skeletonElement) {
 
 /**
  * Hide skeleton and restore original content or show new content
+ * @param target
+ * @param newContent
  */
 export function hideSkeleton(target, newContent = null) {
   if (!target) {return;}
@@ -318,6 +327,7 @@ export function showGridSkeleton() {
 
 /**
  * Utility to hide grid skeleton
+ * @param newContent
  */
 export function hideGridSkeleton(newContent = null) {
   const grid = document.getElementById('grid');

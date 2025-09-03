@@ -7,7 +7,7 @@ import { CONFIG } from './config.js';
 import { logger } from './utils/logger.js';
 
 /**
- * @typedef {Object} LayoutMetrics
+ * @typedef {object} LayoutMetrics
  * @property {number} gap - Gap between cards
  * @property {number} base - Base card width
  * @property {number} perRowBig - Cards per big row
@@ -88,7 +88,7 @@ export function syncControlsWidth(width) {
   const cap = headerInner ? headerInner.clientWidth : width;
   const finalWidth = Math.min(width, cap || width);
 
-  const targetWidth = finalWidth + 'px';
+  const targetWidth = `${finalWidth}px`;
   if (controls.style.width !== targetWidth) {
     controls.style.width = targetWidth;
   }

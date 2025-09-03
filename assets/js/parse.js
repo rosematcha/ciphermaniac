@@ -7,12 +7,13 @@ import { logger } from './utils/logger.js';
 import { AppError, ErrorTypes, validateType } from './utils/errorHandler.js';
 
 /**
- * @typedef {Object} CardItem
+ * @typedef {object} CardItem
  * @property {number} [rank] - Card rank in usage
  * @property {string} name - Card name
  * @property {string} [uid] - Optional per-variant unique id (e.g., "Name::SET::NNN")
  * @property {string} [set] - Optional set code for Pokémon variants
  * @property {string|number} [number] - Optional card number for Pokémon variants
+ * @property {string} [category] - Card classification: 'pokemon', 'trainer', or 'energy'
  * @property {number} found - Number of decks containing this card
  * @property {number} total - Total number of decks
  * @property {number} pct - Usage percentage
@@ -20,7 +21,7 @@ import { AppError, ErrorTypes, validateType } from './utils/errorHandler.js';
  */
 
 /**
- * @typedef {Object} ParsedReport
+ * @typedef {object} ParsedReport
  * @property {number} deckTotal - Total number of decks
  * @property {CardItem[]} items - Array of card usage items
  */
@@ -42,7 +43,7 @@ export function parseReport(data) {
     throw new AppError('Report data must contain an items array', ErrorTypes.PARSE, { data });
   }
 
-  const deckTotal = data.deckTotal;
+  const { deckTotal } = data;
   if (typeof deckTotal !== 'number' || deckTotal < 0) {
     logger.warn('Invalid or missing deckTotal, using items length as fallback', { deckTotal });
   }
@@ -72,7 +73,7 @@ function validateAndCleanItem(item, index) {
     return null;
   }
 
-  const { name, found, total, pct, rank, dist } = item;
+  const { name, found, total, pct, rank, dist, category } = item;
 
   // Name is required
   if (typeof name !== 'string' || name.trim() === '') {
@@ -100,6 +101,9 @@ function validateAndCleanItem(item, index) {
   if (typeof item.uid === 'string' && item.uid) {cleanItem.uid = item.uid;}
   if (typeof item.set === 'string' && item.set) {cleanItem.set = item.set;}
   if (typeof item.number === 'string' || typeof item.number === 'number') {cleanItem.number = item.number;}
+  if (typeof category === 'string' && ['pokemon', 'trainer', 'energy'].includes(category.toLowerCase())) {
+    cleanItem.category = category.toLowerCase();
+  }
 
   // Optional fields
   if (typeof rank === 'number') {
@@ -109,13 +113,15 @@ function validateAndCleanItem(item, index) {
   if (Array.isArray(dist)) {
     // Keep v2 schema objects { copies, players, percent } if present; otherwise accept numeric array fallback
     cleanItem.dist = dist
-      .map((d) => {
+      .map(d => {
         if (typeof d === 'number') {return { copies: d, players: undefined, percent: undefined };}
-        if (d && typeof d === 'object') {return {
-          copies: Number.isFinite(d.copies) ? d.copies : undefined,
-          players: Number.isFinite(d.players) ? d.players : undefined,
-          percent: Number.isFinite(d.percent) ? d.percent : undefined,
-        };}
+        if (d && typeof d === 'object') {
+          return {
+            copies: Number.isFinite(d.copies) ? d.copies : undefined,
+            players: Number.isFinite(d.players) ? d.players : undefined,
+            percent: Number.isFinite(d.percent) ? d.percent : undefined
+          };
+        }
         return null;
       })
       .filter(Boolean);

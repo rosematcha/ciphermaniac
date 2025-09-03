@@ -1,6 +1,10 @@
 // Lightweight router and URL state helpers for the grid page
 
-export function getStateFromURL(loc = window.location){
+/**
+ *
+ * @param loc
+ */
+export function getStateFromURL(loc = window.location) {
   const params = new URLSearchParams(loc.search);
   return {
     q: params.get('q') || '',
@@ -11,7 +15,12 @@ export function getStateFromURL(loc = window.location){
   };
 }
 
-export function setStateInURL(state, opts = {}){
+/**
+ *
+ * @param state
+ * @param opts
+ */
+export function setStateInURL(state, opts = {}) {
   const { replace = false, merge = false } = opts;
 
   // Start from existing params when merging, otherwise build a fresh set
@@ -35,7 +44,7 @@ export function setStateInURL(state, opts = {}){
 
   const search = params.toString();
   const newUrl = `${location.pathname}${search ? `?${search}` : ''}${location.hash || ''}`;
-  if(replace){
+  if (replace) {
     history.replaceState(null, '', newUrl);
   } else {
     history.pushState(null, '', newUrl);
@@ -43,16 +52,24 @@ export function setStateInURL(state, opts = {}){
 }
 
 // Pure planning helpers for tests: return { redirect: boolean, url?: string }
-export function planNormalizeIndexRoute(loc){
-  if(/^#card\//.test(loc.hash)){
+/**
+ *
+ * @param loc
+ */
+export function planNormalizeIndexRoute(loc) {
+  if (/^#card\//.test(loc.hash)) {
     const base = loc.pathname.replace(/index\.html?$/i, 'card.html');
     return { redirect: true, url: `${base}${loc.search}${loc.hash}` };
   }
   return { redirect: false };
 }
 
-export function planNormalizeCardRoute(loc){
-  if(/^#grid$/.test(loc.hash)){
+/**
+ *
+ * @param loc
+ */
+export function planNormalizeCardRoute(loc) {
+  if (/^#grid$/.test(loc.hash)) {
     const base = loc.pathname.replace(/card\.html?$/i, 'index.html');
     return { redirect: true, url: `${base}${loc.search}#grid` };
   }
@@ -60,9 +77,12 @@ export function planNormalizeCardRoute(loc){
 }
 
 // Minimal hash router normalization so index can gracefully handle card hashes
-export function normalizeRouteOnLoad(){
+/**
+ *
+ */
+export function normalizeRouteOnLoad() {
   const plan = planNormalizeIndexRoute(location);
-  if(plan.redirect && plan.url){
+  if (plan.redirect && plan.url) {
     location.replace(plan.url);
     return true;
   }
@@ -72,9 +92,12 @@ export function normalizeRouteOnLoad(){
 
 // Card page normalization: allow navigating back to the grid via #grid
 // Returns true if a redirect was performed.
-export function normalizeCardRouteOnLoad(){
+/**
+ *
+ */
+export function normalizeCardRouteOnLoad() {
   const plan = planNormalizeCardRoute(location);
-  if(plan.redirect && plan.url){
+  if (plan.redirect && plan.url) {
     location.replace(plan.url);
     return true;
   }
@@ -88,11 +111,11 @@ export function normalizeCardRouteOnLoad(){
  *
  * This is intentionally conservative and only runs on index.html.
  */
-export function normalizeUnknownHashOnIndex(){
+export function normalizeUnknownHashOnIndex() {
   const h = location.hash || '';
-  if(!h) {return false;}
-  if(h === '#grid') {return false;}
-  if(/^#card\/.+/.test(h)) {return false;}
+  if (!h) {return false;}
+  if (h === '#grid') {return false;}
+  if (/^#card\/.+/.test(h)) {return false;}
   // Unknown hash -> clear it but preserve search params
   const newUrl = `${location.pathname}${location.search}`;
   history.replaceState(null, '', newUrl);
@@ -104,13 +127,13 @@ export function normalizeUnknownHashOnIndex(){
  * @param {string} [hash] - optional hash (defaults to location.hash)
  * @returns {{route: 'card'|'grid'|'unknown', name?: string, raw?: string}}
  */
-export function parseHash(hash = location.hash){
+export function parseHash(hash = location.hash) {
   const h = String(hash || '');
   const m = h.match(/^#card\/(.+)$/);
-  if(m){
+  if (m) {
     return { route: 'card', name: decodeURIComponent(m[1]) };
   }
-  if(h === '#grid' || h === ''){
+  if (h === '#grid' || h === '') {
     return { route: 'grid' };
   }
   return { route: 'unknown', raw: h };
@@ -121,9 +144,9 @@ export function parseHash(hash = location.hash){
  * @param {{route: string, name?: string, raw?: string}} obj
  * @returns {string}
  */
-export function stringifyRoute(obj = {}){
-  if(!obj || !obj.route) {return '';}
-  if(obj.route === 'card' && obj.name) {return `#card/${encodeURIComponent(obj.name)}`;}
-  if(obj.route === 'grid') {return '#grid';}
+export function stringifyRoute(obj = {}) {
+  if (!obj || !obj.route) {return '';}
+  if (obj.route === 'card' && obj.name) {return `#card/${encodeURIComponent(obj.name)}`;}
+  if (obj.route === 'grid') {return '#grid';}
   return obj.raw || '';
 }

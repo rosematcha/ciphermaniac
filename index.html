@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ciphermaniac</title>
-  <link rel="stylesheet" href="assets/style.css" />
+  <link rel="stylesheet" href="/assets/style.css" />
   <link rel="icon" href="data:," />
 </head>
   <body>
@@ -66,8 +66,8 @@
   </template>
 
   <script type="module">
-    import { createHeader } from './assets/js/components/header.js';
-    import { createFooter } from './assets/js/components/footer.js';
+    import { createHeader } from '/assets/js/components/header.js';
+    import { createFooter } from '/assets/js/components/footer.js';
     
     // Insert header and footer
     const header = createHeader({ currentPage: 'home' });
@@ -76,7 +76,7 @@
     document.body.insertAdjacentElement('afterbegin', header);
     document.body.insertAdjacentElement('beforeend', footer);
   </script>
-  <script src="assets/js/main.js" type="module"></script>
-  <script src="assets/js/ui.js" type="module"></script>
+  <script src="/assets/js/main.js" type="module"></script>
+  <script src="/assets/js/ui.js" type="module"></script>
 </body>
 </html>

@@ -3,6 +3,9 @@
  * Loads multiple image candidates simultaneously instead of sequentially
  */
 
+/**
+ *
+ */
 class ParallelImageLoader {
   constructor() {
     this.loadingImages = new Map(); // key -> Promise
@@ -23,7 +26,7 @@ class ParallelImageLoader {
 
     // Use first candidate as cache key
     const cacheKey = candidates[0];
-    
+
     // Return existing promise if already loading
     if (this.loadingImages.has(cacheKey)) {
       return this.loadingImages.get(cacheKey);
@@ -53,6 +56,8 @@ class ParallelImageLoader {
 
   /**
    * Internal method to load candidates in parallel
+   * @param candidates
+   * @param maxParallel
    * @private
    */
   async _loadCandidatesParallel(candidates, maxParallel) {
@@ -82,20 +87,21 @@ class ParallelImageLoader {
 
   /**
    * Load a single image and return the URL on success
+   * @param url
    * @private
    */
   _loadSingleImage(url) {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      
+
       img.onload = () => {
         resolve(url); // Return the successful URL
       };
-      
+
       img.onerror = () => {
         reject(new Error(`Failed to load: ${url}`));
       };
-      
+
       // Start loading
       img.src = url;
     });
@@ -105,7 +111,7 @@ class ParallelImageLoader {
    * Setup image element with parallel loading
    * @param {HTMLImageElement} img - Image element to setup
    * @param {Array<string>} candidates - Image URL candidates
-   * @param {Object} options - Loading options
+   * @param {object} options - Loading options
    */
   async setupImageElement(img, candidates, options = {}) {
     const {
@@ -130,16 +136,16 @@ class ParallelImageLoader {
     try {
       // Load image in parallel
       const successfulUrl = await this.loadImageParallel(candidates, maxParallel);
-      
+
       if (successfulUrl) {
         // Set the successful URL
         img.src = successfulUrl;
-        
+
         // Handle load event for fade-in
         if (fadeIn) {
           img.onload = () => {
             img.style.opacity = '1';
-            if (onSuccess) onSuccess(successfulUrl);
+            if (onSuccess) {onSuccess(successfulUrl);}
           };
         } else if (onSuccess) {
           img.onload = () => onSuccess(successfulUrl);
@@ -148,15 +154,15 @@ class ParallelImageLoader {
         // If image is already cached and loaded, trigger fade-in immediately
         if (img.complete && img.naturalHeight !== 0) {
           img.style.opacity = '1';
-          if (onSuccess) onSuccess(successfulUrl);
+          if (onSuccess) {onSuccess(successfulUrl);}
         }
       } else {
         // All candidates failed
-        if (onFailure) onFailure();
+        if (onFailure) {onFailure();}
       }
     } catch (error) {
       console.warn('Parallel image loading failed:', error);
-      if (onFailure) onFailure();
+      if (onFailure) {onFailure();}
     }
   }
 

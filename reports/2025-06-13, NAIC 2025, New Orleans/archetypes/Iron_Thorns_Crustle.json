@@ -16,7 +16,8 @@
       ],
       "set": "DRI",
       "number": "011",
-      "uid": "Dwebble::DRI::011"
+      "uid": "Dwebble::DRI::011",
+      "category": "pokemon"
     },
     {
       "rank": 2,
@@ -33,7 +34,8 @@
       ],
       "set": "DRI",
       "number": "012",
-      "uid": "Crustle::DRI::012"
+      "uid": "Crustle::DRI::012",
+      "category": "pokemon"
     },
     {
       "rank": 3,
@@ -55,7 +57,8 @@
       ],
       "set": "TWM",
       "number": "077",
-      "uid": "Iron Thorns ex::TWM::077"
+      "uid": "Iron Thorns ex::TWM::077",
+      "category": "pokemon"
     },
     {
       "rank": 4,
@@ -72,7 +75,8 @@
       ],
       "set": "OBF",
       "number": "186",
-      "uid": "Arven::OBF::186"
+      "uid": "Arven::OBF::186",
+      "category": "trainer"
     },
     {
       "rank": 5,
@@ -94,7 +98,8 @@
       ],
       "set": "PAL",
       "number": "185",
-      "uid": "Iono::PAL::185"
+      "uid": "Iono::PAL::185",
+      "category": "trainer"
     },
     {
       "rank": 6,
@@ -111,7 +116,8 @@
       ],
       "set": "PAL",
       "number": "172",
-      "uid": "Boss's Orders::PAL::172"
+      "uid": "Boss's Orders::PAL::172",
+      "category": "trainer"
     },
     {
       "rank": 7,
@@ -128,7 +134,8 @@
       ],
       "set": "SCR",
       "number": "133",
-      "uid": "Crispin::SCR::133"
+      "uid": "Crispin::SCR::133",
+      "category": "trainer"
     },
     {
       "rank": 8,
@@ -150,7 +157,8 @@
       ],
       "set": "JTG",
       "number": "155",
-      "uid": "Professor's Research::JTG::155"
+      "uid": "Professor's Research::JTG::155",
+      "category": "trainer"
     },
     {
       "rank": 9,
@@ -167,7 +175,8 @@
       ],
       "set": "SVI",
       "number": "186",
-      "uid": "Pokégear 3.0::SVI::186"
+      "uid": "Pokégear 3.0::SVI::186",
+      "category": "trainer"
     },
     {
       "rank": 10,
@@ -184,7 +193,8 @@
       ],
       "set": "SFA",
       "number": "062",
-      "uid": "Poké Vital A::SFA::062"
+      "uid": "Poké Vital A::SFA::062",
+      "category": "trainer"
     },
     {
       "rank": 11,
@@ -201,7 +211,8 @@
       ],
       "set": "TEF",
       "number": "144",
-      "uid": "Buddy-Buddy Poffin::TEF::144"
+      "uid": "Buddy-Buddy Poffin::TEF::144",
+      "category": "trainer"
     },
     {
       "rank": 12,
@@ -223,7 +234,8 @@
       ],
       "set": "SVI",
       "number": "181",
-      "uid": "Nest Ball::SVI::181"
+      "uid": "Nest Ball::SVI::181",
+      "category": "trainer"
     },
     {
       "rank": 13,
@@ -240,7 +252,8 @@
       ],
       "set": "SFA",
       "number": "061",
-      "uid": "Night Stretcher::SFA::061"
+      "uid": "Night Stretcher::SFA::061",
+      "category": "trainer"
     },
     {
       "rank": 14,
@@ -257,7 +270,8 @@
       ],
       "set": "PAR",
       "number": "166",
-      "uid": "Luxurious Cape::PAR::166"
+      "uid": "Luxurious Cape::PAR::166",
+      "category": "trainer"
     },
     {
       "rank": 15,
@@ -274,7 +288,8 @@
       ],
       "set": "TEF",
       "number": "149",
-      "uid": "Future Booster Energy Capsule::TEF::149"
+      "uid": "Future Booster Energy Capsule::TEF::149",
+      "category": "trainer"
     },
     {
       "rank": 16,
@@ -291,7 +306,8 @@
       ],
       "set": "PAR",
       "number": "179",
-      "uid": "Technical Machine: Turbo Energize::PAR::179"
+      "uid": "Technical Machine: Turbo Energize::PAR::179",
+      "category": "trainer"
     },
     {
       "rank": 17,
@@ -308,7 +324,8 @@
       ],
       "set": "SVE",
       "number": "009",
-      "uid": "Grass Energy::SVE::009"
+      "uid": "Grass Energy::SVE::009",
+      "category": "energy"
     },
     {
       "rank": 18,
@@ -325,7 +342,8 @@
       ],
       "set": "SVE",
       "number": "012",
-      "uid": "Lightning Energy::SVE::012"
+      "uid": "Lightning Energy::SVE::012",
+      "category": "energy"
     },
     {
       "rank": 19,
@@ -342,7 +360,8 @@
       ],
       "set": "PAR",
       "number": "182",
-      "uid": "Medical Energy::PAR::182"
+      "uid": "Medical Energy::PAR::182",
+      "category": "energy"
     },
     {
       "rank": 20,
@@ -359,7 +378,8 @@
       ],
       "set": "TEF",
       "number": "161",
-      "uid": "Mist Energy::TEF::161"
+      "uid": "Mist Energy::TEF::161",
+      "category": "energy"
     },
     {
       "rank": 21,
@@ -376,7 +396,8 @@
       ],
       "set": "SVI",
       "number": "187",
-      "uid": "Pokémon Catcher::SVI::187"
+      "uid": "Pokémon Catcher::SVI::187",
+      "category": "trainer"
     },
     {
       "rank": 22,
@@ -393,7 +414,8 @@
       ],
       "set": "PAR",
       "number": "180",
-      "uid": "Techno Radar::PAR::180"
+      "uid": "Techno Radar::PAR::180",
+      "category": "trainer"
     },
     {
       "rank": 23,
@@ -410,7 +432,8 @@
       ],
       "set": "JTG",
       "number": "158",
-      "uid": "Super Potion::JTG::158"
+      "uid": "Super Potion::JTG::158",
+      "category": "trainer"
     },
     {
       "rank": 24,
@@ -427,7 +450,8 @@
       ],
       "set": "PAL",
       "number": "188",
-      "uid": "Super Rod::PAL::188"
+      "uid": "Super Rod::PAL::188",
+      "category": "trainer"
     },
     {
       "rank": 25,
@@ -444,7 +468,8 @@
       ],
       "set": "DRI",
       "number": "180",
-      "uid": "Team Rocket's Watchtower::DRI::180"
+      "uid": "Team Rocket's Watchtower::DRI::180",
+      "category": "trainer"
     },
     {
       "rank": 26,
@@ -461,7 +486,8 @@
       ],
       "set": "PAL",
       "number": "190",
-      "uid": "Jet Energy::PAL::190"
+      "uid": "Jet Energy::PAL::190",
+      "category": "energy"
     },
     {
       "rank": 27,
@@ -478,7 +504,8 @@
       ],
       "set": "SFA",
       "number": "057",
-      "uid": "Colress's Tenacity::SFA::057"
+      "uid": "Colress's Tenacity::SFA::057",
+      "category": "trainer"
     },
     {
       "rank": 28,
@@ -495,7 +522,8 @@
       ],
       "set": "TWM",
       "number": "154",
-      "uid": "Kieran::TWM::154"
+      "uid": "Kieran::TWM::154",
+      "category": "trainer"
     },
     {
       "rank": 29,
@@ -512,7 +540,8 @@
       ],
       "set": "PAR",
       "number": "163",
-      "uid": "Earthen Vessel::PAR::163"
+      "uid": "Earthen Vessel::PAR::163",
+      "category": "trainer"
     },
     {
       "rank": 30,
@@ -529,7 +558,8 @@
       ],
       "set": "PAR",
       "number": "178",
-      "uid": "Technical Machine: Evolution::PAR::178"
+      "uid": "Technical Machine: Evolution::PAR::178",
+      "category": "trainer"
     },
     {
       "rank": 31,
@@ -546,7 +576,8 @@
       ],
       "set": "PAL",
       "number": "186",
-      "uid": "Practice Studio::PAL::186"
+      "uid": "Practice Studio::PAL::186",
+      "category": "trainer"
     },
     {
       "rank": 32,
@@ -563,7 +594,8 @@
       ],
       "set": "OBF",
       "number": "196",
-      "uid": "Town Store::OBF::196"
+      "uid": "Town Store::OBF::196",
+      "category": "trainer"
     },
     {
       "rank": 33,
@@ -580,7 +612,8 @@
       ],
       "set": "PAL",
       "number": "192",
-      "uid": "Reversal Energy::PAL::192"
+      "uid": "Reversal Energy::PAL::192",
+      "category": "energy"
     }
   ]
 }

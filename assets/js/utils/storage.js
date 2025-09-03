@@ -25,7 +25,7 @@ class StorageManager {
    * Check if localStorage is available
    * @returns {boolean}
    */
-  get isAvailable() {
+  static get isAvailable() {
     return safeSync(() => {
       const test = '__storage_test__';
       localStorage.setItem(test, test);
@@ -40,7 +40,7 @@ class StorageManager {
    * @param {keyof STORAGE_CONFIG} storageKey
    * @returns {T}
    */
-  get(storageKey) {
+  static get(storageKey) {
     const config = STORAGE_CONFIG[storageKey];
     if (!config) {
       throw new AppError(`Unknown storage key: ${storageKey}`, ErrorTypes.VALIDATION);
@@ -65,7 +65,7 @@ class StorageManager {
    * @param {any} data
    * @returns {boolean} Success status
    */
-  set(storageKey, data) {
+  static set(storageKey, data) {
     const config = STORAGE_CONFIG[storageKey];
     if (!config) {
       throw new AppError(`Unknown storage key: ${storageKey}`, ErrorTypes.VALIDATION);
@@ -84,7 +84,7 @@ class StorageManager {
    * @param {keyof STORAGE_CONFIG} storageKey
    * @returns {boolean} Success status
    */
-  remove(storageKey) {
+  static remove(storageKey) {
     const config = STORAGE_CONFIG[storageKey];
     if (!config) {
       throw new AppError(`Unknown storage key: ${storageKey}`, ErrorTypes.VALIDATION);
@@ -100,7 +100,7 @@ class StorageManager {
   /**
    * Clear all application data from localStorage
    */
-  clearAll() {
+  static clearAll() {
     Object.values(STORAGE_CONFIG).forEach(config => {
       safeSync(() => {
         localStorage.removeItem(config.key);
@@ -111,15 +111,15 @@ class StorageManager {
 
   /**
    * Get storage usage statistics
-   * @returns {Object} Storage statistics
+   * @returns {object} Storage statistics
    */
-  getStats() {
+  static getStats() {
     const stats = {};
     let totalSize = 0;
 
     Object.entries(STORAGE_CONFIG).forEach(([key, config]) => {
       const data = safeSync(() => localStorage.getItem(config.key), `getting ${key} size`, '');
-      const size = new Blob([data || '']).size;
+      const { size } = new Blob([data || '']);
       stats[key] = { size, exists: Boolean(data) };
       totalSize += size;
     });
@@ -129,5 +129,5 @@ class StorageManager {
   }
 }
 
-// Create and export singleton instance
-export const storage = new StorageManager();
+// Export the class itself since all methods are static
+export const storage = StorageManager;

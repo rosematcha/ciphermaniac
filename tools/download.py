@@ -275,6 +275,7 @@ def generate_report_json(deck_list, deck_total, all_decks_for_variants):
     card_data = defaultdict(list)  # uid -> list of per-deck total copies
     name_casing = {}              # uid -> display name (base)
     uid_meta = {}                 # uid -> {set, number}
+    uid_category = {}             # uid -> category
 
     for deck in deck_list:
         cards_in_this_deck = set()
@@ -293,11 +294,15 @@ def generate_report_json(deck_list, deck_total, all_decks_for_variants):
                 display = name
                 per_deck_counts[uid] += int(card.get('count', 0))
                 per_deck_seen_meta[uid] = {"set": sc, "number": num}
+                if cat:
+                    uid_category[uid] = cat
             else:
                 # Fallback for cards without set/number identifiers
                 uid = name
                 display = name
                 per_deck_counts[uid] += int(card.get('count', 0))
+                if cat:
+                    uid_category[uid] = cat
         # After scanning deck, record one entry per uid
         for uid, tot in per_deck_counts.items():
             card_data[uid].append(tot)
@@ -328,6 +333,9 @@ def generate_report_json(deck_list, deck_total, all_decks_for_variants):
             card_obj["set"] = meta.get("set")
             card_obj["number"] = meta.get("number")
             card_obj["uid"] = uid
+        # Include category if available
+        if uid in uid_category:
+            card_obj["category"] = uid_category[uid]
         report_items.append(card_obj)
         
     return {"deckTotal": deck_total, "items": report_items}

@@ -7,13 +7,24 @@
   "scripts": {
     "lint": "eslint assets/js --ext .js",
     "lint:fix": "eslint assets/js --ext .js --fix",
+    "format": "prettier --write \"assets/js/**/*.js\"",
+    "format:check": "prettier --check \"assets/js/**/*.js\"",
     "typecheck": "npx tsc --noEmit --project jsconfig.json",
+    "jsdoc": "jsdoc -c jsdoc.config.js",
+    "jsdoc:validate": "eslint assets/js --ext .js --rule 'valid-jsdoc: error'",
+    "complexity": "plato -r -d complexity-report assets/js",
     "dev": "python -m http.server 8000",
-    "validate": "npm run lint && npm run typecheck",
-    "clean": "echo 'No build artifacts to clean'"
+    "validate": "npm run lint && npm run typecheck && npm run format:check",
+    "validate:fix": "npm run lint:fix && npm run format && npm run typecheck",
+    "clean": "echo 'No build artifacts to clean'",
+    "pre-commit": "npm run validate:fix"
   },
   "devDependencies": {
     "eslint": "^8.0.0",
+    "eslint-plugin-jsdoc": "^48.0.0",
+    "prettier": "^3.0.0",
+    "jsdoc": "^4.0.0",
+    "plato": "^1.7.0",
     "typescript": "^5.9.2"
   },
   "engines": {

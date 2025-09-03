@@ -16,7 +16,8 @@
       ],
       "set": "DRI",
       "number": "019",
-      "uid": "Team Rocket's Tarountula::DRI::019"
+      "uid": "Team Rocket's Tarountula::DRI::019",
+      "category": "pokemon"
     },
     {
       "rank": 2,
@@ -38,7 +39,8 @@
       ],
       "set": "DRI",
       "number": "020",
-      "uid": "Team Rocket's Spidops::DRI::020"
+      "uid": "Team Rocket's Spidops::DRI::020",
+      "category": "pokemon"
     },
     {
       "rank": 3,
@@ -55,7 +57,8 @@
       ],
       "set": "DRI",
       "number": "081",
-      "uid": "Team Rocket's Mewtwo ex::DRI::081"
+      "uid": "Team Rocket's Mewtwo ex::DRI::081",
+      "category": "pokemon"
     },
     {
       "rank": 4,
@@ -72,7 +75,8 @@
       ],
       "set": "DRI",
       "number": "051",
-      "uid": "Team Rocket's Articuno::DRI::051"
+      "uid": "Team Rocket's Articuno::DRI::051",
+      "category": "pokemon"
     },
     {
       "rank": 5,
@@ -89,7 +93,8 @@
       ],
       "set": "DRI",
       "number": "087",
-      "uid": "Team Rocket's Mimikyu::DRI::087"
+      "uid": "Team Rocket's Mimikyu::DRI::087",
+      "category": "pokemon"
     },
     {
       "rank": 6,
@@ -106,7 +111,8 @@
       ],
       "set": "DRI",
       "number": "171",
-      "uid": "Team Rocket's Ariana::DRI::171"
+      "uid": "Team Rocket's Ariana::DRI::171",
+      "category": "trainer"
     },
     {
       "rank": 7,
@@ -123,7 +129,8 @@
       ],
       "set": "DRI",
       "number": "174",
-      "uid": "Team Rocket's Giovanni::DRI::174"
+      "uid": "Team Rocket's Giovanni::DRI::174",
+      "category": "trainer"
     },
     {
       "rank": 8,
@@ -140,7 +147,8 @@
       ],
       "set": "DRI",
       "number": "177",
-      "uid": "Team Rocket's Proton::DRI::177"
+      "uid": "Team Rocket's Proton::DRI::177",
+      "category": "trainer"
     },
     {
       "rank": 9,
@@ -157,7 +165,8 @@
       ],
       "set": "DRI",
       "number": "170",
-      "uid": "Team Rocket's Archer::DRI::170"
+      "uid": "Team Rocket's Archer::DRI::170",
+      "category": "trainer"
     },
     {
       "rank": 10,
@@ -174,7 +183,8 @@
       ],
       "set": "DRI",
       "number": "178",
-      "uid": "Team Rocket's Transceiver::DRI::178"
+      "uid": "Team Rocket's Transceiver::DRI::178",
+      "category": "trainer"
     },
     {
       "rank": 11,
@@ -191,7 +201,8 @@
       ],
       "set": "SVI",
       "number": "196",
-      "uid": "Ultra Ball::SVI::196"
+      "uid": "Ultra Ball::SVI::196",
+      "category": "trainer"
     },
     {
       "rank": 12,
@@ -213,7 +224,8 @@
       ],
       "set": "PAR",
       "number": "163",
-      "uid": "Earthen Vessel::PAR::163"
+      "uid": "Earthen Vessel::PAR::163",
+      "category": "trainer"
     },
     {
       "rank": 13,
@@ -230,7 +242,8 @@
       ],
       "set": "SFA",
       "number": "061",
-      "uid": "Night Stretcher::SFA::061"
+      "uid": "Night Stretcher::SFA::061",
+      "category": "trainer"
     },
     {
       "rank": 14,
@@ -247,7 +260,8 @@
       ],
       "set": "SVI",
       "number": "186",
-      "uid": "Pokégear 3.0::SVI::186"
+      "uid": "Pokégear 3.0::SVI::186",
+      "category": "trainer"
     },
     {
       "rank": 15,
@@ -269,7 +283,8 @@
       ],
       "set": "SVI",
       "number": "173",
-      "uid": "Energy Switch::SVI::173"
+      "uid": "Energy Switch::SVI::173",
+      "category": "trainer"
     },
     {
       "rank": 16,
@@ -291,7 +306,8 @@
       ],
       "set": "PAL",
       "number": "173",
-      "uid": "Bravery Charm::PAL::173"
+      "uid": "Bravery Charm::PAL::173",
+      "category": "trainer"
     },
     {
       "rank": 17,
@@ -313,7 +329,8 @@
       ],
       "set": "DRI",
       "number": "173",
-      "uid": "Team Rocket's Factory::DRI::173"
+      "uid": "Team Rocket's Factory::DRI::173",
+      "category": "trainer"
     },
     {
       "rank": 18,
@@ -330,7 +347,8 @@
       ],
       "set": "DRI",
       "number": "182",
-      "uid": "Team Rocket's Energy::DRI::182"
+      "uid": "Team Rocket's Energy::DRI::182",
+      "category": "energy"
     },
     {
       "rank": 19,
@@ -352,7 +370,8 @@
       ],
       "set": "SVE",
       "number": "009",
-      "uid": "Grass Energy::SVE::009"
+      "uid": "Grass Energy::SVE::009",
+      "category": "energy"
     },
     {
       "rank": 20,
@@ -369,7 +388,8 @@
       ],
       "set": "SVE",
       "number": "013",
-      "uid": "Psychic Energy::SVE::013"
+      "uid": "Psychic Energy::SVE::013",
+      "category": "energy"
     },
     {
       "rank": 21,
@@ -386,7 +406,8 @@
       ],
       "set": "DRI",
       "number": "176",
-      "uid": "Team Rocket's Petrel::DRI::176"
+      "uid": "Team Rocket's Petrel::DRI::176",
+      "category": "trainer"
     },
     {
       "rank": 22,
@@ -403,7 +424,8 @@
       ],
       "set": "PAL",
       "number": "185",
-      "uid": "Iono::PAL::185"
+      "uid": "Iono::PAL::185",
+      "category": "trainer"
     },
     {
       "rank": 23,
@@ -420,7 +442,8 @@
       ],
       "set": "TWM",
       "number": "163",
-      "uid": "Secret Box::TWM::163"
+      "uid": "Secret Box::TWM::163",
+      "category": "trainer"
     },
     {
       "rank": 24,
@@ -437,7 +460,8 @@
       ],
       "set": "TEF",
       "number": "144",
-      "uid": "Buddy-Buddy Poffin::TEF::144"
+      "uid": "Buddy-Buddy Poffin::TEF::144",
+      "category": "trainer"
     },
     {
       "rank": 25,
@@ -454,7 +478,8 @@
       ],
       "set": "PAR",
       "number": "178",
-      "uid": "Technical Machine: Evolution::PAR::178"
+      "uid": "Technical Machine: Evolution::PAR::178",
+      "category": "trainer"
     },
     {
       "rank": 26,
@@ -471,7 +496,8 @@
       ],
       "set": "JTG",
       "number": "056",
-      "uid": "Lillie's Clefairy ex::JTG::056"
+      "uid": "Lillie's Clefairy ex::JTG::056",
+      "category": "pokemon"
     },
     {
       "rank": 27,
@@ -488,7 +514,8 @@
       ],
       "set": "SFA",
       "number": "038",
-      "uid": "Fezandipiti ex::SFA::038"
+      "uid": "Fezandipiti ex::SFA::038",
+      "category": "pokemon"
     },
     {
       "rank": 28,
@@ -505,7 +532,8 @@
       ],
       "set": "DRI",
       "number": "082",
-      "uid": "Team Rocket's Wobbuffet::DRI::082"
+      "uid": "Team Rocket's Wobbuffet::DRI::082",
+      "category": "pokemon"
     },
     {
       "rank": 29,
@@ -522,7 +550,8 @@
       ],
       "set": "SVI",
       "number": "181",
-      "uid": "Nest Ball::SVI::181"
+      "uid": "Nest Ball::SVI::181",
+      "category": "trainer"
     },
     {
       "rank": 30,
@@ -539,7 +568,8 @@
       ],
       "set": "TEF",
       "number": "157",
-      "uid": "Prime Catcher::TEF::157"
+      "uid": "Prime Catcher::TEF::157",
+      "category": "trainer"
     }
   ]
 }
