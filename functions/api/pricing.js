@@ -128,7 +128,7 @@ function mapSetsToGroupIds(groups) {
 
 /**
  * Download and parse CSV data for each set
- * Extract only the data we need: name, set number, market price
+ * NEW APPROACH: Pre-filter CSV to only extract essential fields for accuracy
  */
 async function fetchPricesForSets(setMappings) {
   const allPrices = {};
@@ -147,7 +147,10 @@ async function fetchPricesForSets(setMappings) {
       }
       
       const csvText = await response.text();
-      const setPrices = parseCsvPrices(csvText, setAbbr);
+      
+      // NEW: Pre-process CSV to extract only essential fields
+      const cleanedData = preprocessCsvForPricing(csvText);
+      const setPrices = parseCleanedPriceData(cleanedData, setAbbr);
       
       // Merge into main price data
       Object.assign(allPrices, setPrices);
@@ -164,9 +167,221 @@ async function fetchPricesForSets(setMappings) {
 }
 
 /**
- * Normalize multi-line CSV records into single lines
+ * Pre-process CSV to extract only essential pricing fields
+ * Eliminates field shifting issues caused by multi-line descriptions
+ * FIELDS WE NEED: productId(0), name(1), marketPrice(14), extNumber(17)
+ */
+function preprocessCsvForPricing(csvText) {
+  const lines = csvText.split('\n');
+  const cleanedRecords = [];
+  let currentRecord = '';
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    // Check if this line starts a new record (6+ digit product ID at the beginning)  
+    const isNewRecord = /^\d{6,},/.test(line);
+    
+    if (isNewRecord && currentRecord) {
+      // Process the completed record
+      const essentialFields = extractEssentialFields(currentRecord);
+      if (essentialFields) {
+        cleanedRecords.push(essentialFields);
+      }
+      currentRecord = line;
+    } else if (isNewRecord && !currentRecord) {
+      currentRecord = line;
+    } else if (i === 0) {
+      // Skip header line - we'll create our own
+      continue;
+    } else {
+      // Continuation of current record - append with space
+      currentRecord += ' ' + line;
+    }
+  }
+  
+  // Process the final record
+  if (currentRecord.trim()) {
+    const essentialFields = extractEssentialFields(currentRecord);
+    if (essentialFields) {
+      cleanedRecords.push(essentialFields);
+    }
+  }
+  
+  console.log(`Preprocessed ${lines.length} CSV lines into ${cleanedRecords.length} clean records`);
+  return cleanedRecords;
+}
+
+/**
+ * Extract only the essential fields we need for pricing
+ * Returns: { productId, name, marketPrice, extNumber } or null
+ * Uses dynamic detection to handle field shifting from multi-line descriptions
+ */
+function extractEssentialFields(csvLine) {
+  try {
+    const fields = parseCSVLine(csvLine);
+    
+    if (fields.length < 15) {
+      return null; // Not enough fields for reliable parsing
+    }
+    
+    const productId = fields[0];
+    const name = fields[1];
+    
+    // Find extNumber by scanning for card number pattern (most reliable anchor)
+    let extNumber = null;
+    let extNumberIndex = -1;
+    for (let i = 5; i < fields.length; i++) {
+      if (fields[i] && fields[i].match(/^\d{1,3}\/\d{2,3}$/)) {
+        extNumber = fields[i];
+        extNumberIndex = i;
+        break;
+      }
+    }
+    
+    if (!extNumber) {
+      return null; // Can't identify this as a card record
+    }
+    
+    // Find price fields working backwards from extNumber
+    // TCGCSV typically has 3-5 fields before extNumber that contain prices
+    let marketPrice = 0;
+    const priceSearchStart = Math.max(extNumberIndex - 8, 8);
+    const priceSearchEnd = extNumberIndex;
+    
+    const candidatePrices = [];
+    for (let i = priceSearchStart; i < priceSearchEnd; i++) {
+      const value = parseFloat(fields[i]);
+      if (!isNaN(value) && value > 0 && isReasonablePrice(value)) {
+        candidatePrices.push({
+          index: i,
+          value: value
+        });
+      }
+    }
+    
+    // Select the best price from candidates
+    if (candidatePrices.length >= 4) {
+      // With 4+ prices, prefer the 4th one (usually marketPrice in TCGCSV)
+      marketPrice = candidatePrices[3].value;
+    } else if (candidatePrices.length >= 2) {
+      // With 2-3 prices, use the second one (usually midPrice, more reliable than low)
+      marketPrice = candidatePrices[1].value;
+    } else if (candidatePrices.length === 1) {
+      marketPrice = candidatePrices[0].value;
+    }
+    
+    // Only return if we have the essential data and reasonable price
+    if (productId && name && extNumber && marketPrice > 0) {
+      return {
+        productId,
+        name: name.replace(/"/g, '').trim(), // Clean quotes
+        marketPrice,
+        extNumber,
+        debugInfo: {
+          totalFields: fields.length,
+          extNumberIndex,
+          priceSearchRange: [priceSearchStart, priceSearchEnd],
+          candidatePrices: candidatePrices.map(p => `field[${p.index}]=${p.value}`)
+        }
+      };
+    }
+    
+    return null;
+    
+  } catch (error) {
+    // Skip malformed lines
+    return null;
+  }
+}
+
+/**
+ * Parse the cleaned, pre-processed price data
+ * Much simpler than the original complex parsing
+ */
+function parseCleanedPriceData(cleanedRecords, setAbbr) {
+  const prices = {};
+  let processedCount = 0;
+  let matchedCount = 0;
+  
+  for (const record of cleanedRecords) {
+    processedCount++;
+    
+    // Validate market price is reasonable (filter corruption)
+    if (!isReasonablePrice(record.marketPrice)) {
+      continue;
+    }
+    
+    // Clean up the card name - remove embedded card numbers
+    let cleanName = record.name.replace(/\s*-\s*\d{1,3}\/\d{2,3}$/, '').trim();
+    const cleanNumber = record.extNumber.split('/')[0];
+    
+    // Create the card key in database format
+    const cardKey = `${cleanName}::${setAbbr}::${cleanNumber.padStart(3, '0')}`;
+    const normalizedCardKey = `${normalizeAccentedChars(cleanName)}::${setAbbr}::${cleanNumber.padStart(3, '0')}`;
+    
+    // Check if this card exists in our database
+    const databaseHasCard = DATABASE_CARDS.has(cardKey) || Array.from(DATABASE_CARDS).some(dbCard => 
+      normalizeAccentedChars(dbCard) === normalizedCardKey
+    );
+    
+    if (databaseHasCard) {
+      matchedCount++;
+      
+      // Use the database version of the card key (with proper accents)
+      const finalCardKey = DATABASE_CARDS.has(cardKey) ? cardKey : 
+        Array.from(DATABASE_CARDS).find(dbCard => normalizeAccentedChars(dbCard) === normalizedCardKey);
+      
+      // Enhanced debugging for problematic cards
+      if (record.name && (record.name.toLowerCase().includes('noctowl') || 
+          record.name.toLowerCase().includes('pikachu ex') || 
+          record.name.toLowerCase().includes('gholdengo ex') ||
+          record.name.toLowerCase().includes('iron hands ex') ||
+          record.name.toLowerCase().includes('precious trolley') ||
+          record.name.toLowerCase().includes('area zero'))) {
+        
+        console.log(`CLEAN PARSING: ${record.name}`);
+        console.log(`  ProductId: ${record.productId}`);
+        console.log(`  ExtNumber: ${record.extNumber} (found at field ${record.debugInfo?.extNumberIndex})`);
+        console.log(`  MarketPrice: $${record.marketPrice}`);
+        console.log(`  Debug: ${record.debugInfo?.candidatePrices?.join(', ')}`);
+        console.log(`  FinalCardKey: ${finalCardKey}`);
+      }
+      
+      prices[finalCardKey] = {
+        price: record.marketPrice,
+        tcgPlayerId: record.productId
+      };
+    }
+  }
+  
+  console.log(`Clean parsing for ${setAbbr}: processed ${processedCount} records, matched ${matchedCount} database cards`);
+  return prices;
+}
+
+/**
+ * Helper function to validate if a price is reasonable (not corrupted)
+ */
+function isReasonablePrice(price) {
+  if (!price || isNaN(price) || price <= 0) return false;
+  
+  // Reject obviously corrupted prices:
+  // - Prices over $500 (very few cards worth more)
+  // - Common corruption patterns: 69420.xx, suspiciously high round numbers
+  if (price > 500) return false;
+  if (String(price).includes('69420')) return false;
+  if (price > 100 && price % 50 === 0) return false; // Round numbers over $100 are suspicious
+  if (price > 50 && price % 25 === 0) return false;  // Round numbers over $50 are suspicious
+  
+  return true;
+}
+
+/**
+ * LEGACY: Normalize multi-line CSV records into single lines
  * Uses product ID pattern (6+ digit number at start) to detect new records
  * This handles TCGCSV's malformed entries where descriptions span multiple lines
+ * NOTE: This function is now replaced by preprocessCsvForPricing but kept for compatibility
  */
 function normalizeCsvText(csvText) {
   const lines = csvText.split('\n');
@@ -206,8 +421,9 @@ function normalizeCsvText(csvText) {
 }
 
 /**
- * Parse CSV and extract price data
+ * LEGACY: Parse CSV and extract price data
  * ONLY returns prices for cards that exist in our database
+ * NOTE: This function is now replaced by preprocessCsvForPricing + parseCleanedPriceData
  */
 function parseCsvPrices(csvText, setAbbr) {
   const prices = {};
@@ -379,7 +595,7 @@ async function addBasicEnergyPrices(priceData, allGroups) {
 
 /**
  * Extract price data from CSV fields, handling TCGCSV's inconsistent field structure
- * CRITICAL FIX: Always prioritize marketPrice and validate against corrupted data
+ * CRITICAL FIX: Use dynamic detection with robust price validation to handle field shifting
  */
 function extractPricesFromFields(fields) {
   // 1. Find extNumber by scanning ALL fields for card number pattern
@@ -406,129 +622,125 @@ function extractPricesFromFields(fields) {
     }
   }
   
-  // 2. ROBUST price extraction with data validation
-  // TCGCSV structure: Field 11: lowPrice, Field 12: midPrice, Field 13: highPrice, Field 14: marketPrice
-  // NOTE: Corrected field indices based on actual CSV analysis
-  let marketPrice = 0;
-  let lowPrice = 0;
-  let midPrice = 0;
-  let highPrice = 0;
+  // 2. ROBUST price extraction with corruption filtering
+  // Due to multi-line descriptions, field indices are inconsistent - must use dynamic detection
   
   // Helper function to validate if a price is reasonable (not corrupted)
-  function isReasonablePrice(price, fieldIndex) {
+  function isReasonablePrice(price) {
     if (!price || isNaN(price) || price <= 0) return false;
     
     // Reject obviously corrupted prices common in TCGCSV:
-    // - Prices over $1000 (except for very rare collectibles)
-    // - Common corruption patterns: 69420.xx, exact values like 300.0, 800.0
-    // - High prices that are suspiciously round numbers
-    if (price > 1000) return false;
-    if (price > 500 && (price % 1 === 0 || String(price).includes('69420'))) return false;
-    if (price > 100 && fieldIndex === 13 && price % 50 === 0) return false; // highPrice field with round numbers
+    // - Prices over $500 (very few cards are worth more)
+    // - Common corruption patterns: 69420.xx, suspiciously high round numbers
+    // - Exact high values like 300.0, 800.0 that appear frequently in corrupt data
+    if (price > 500) return false;
+    if (String(price).includes('69420')) return false;
+    if (price > 100 && price % 50 === 0) return false; // Round numbers over $100 are suspicious
+    if (price > 50 && price % 25 === 0) return false;  // Round numbers over $50 are suspicious
     
     return true;
   }
   
-  // Try to extract prices from standard TCGCSV positions (corrected indices)
-  if (fields.length > 14) {
-    const field11 = parseFloat(fields[11]) || 0; // lowPrice  
-    const field12 = parseFloat(fields[12]) || 0; // midPrice
-    const field13 = parseFloat(fields[13]) || 0; // highPrice (OFTEN CORRUPTED)
-    const field14 = parseFloat(fields[14]) || 0; // marketPrice (MOST RELIABLE)
-    
-    // PRIORITY 1: Always use marketPrice (field 14) if valid and reasonable
-    if (isReasonablePrice(field14, 14)) {
-      marketPrice = field14;
-      console.log(`Using reliable marketPrice from field 14: $${marketPrice}`);
-    }
-    // PRIORITY 2: Use midPrice (field 12) if marketPrice unavailable
-    else if (isReasonablePrice(field12, 12)) {
-      marketPrice = field12;
-      console.log(`Using midPrice fallback from field 12: $${marketPrice}`);
-    }
-    // PRIORITY 3: Use lowPrice (field 11) as last resort
-    else if (isReasonablePrice(field11, 11)) {
-      marketPrice = field11;
-      console.log(`Using lowPrice fallback from field 11: $${marketPrice}`);
-    }
-    
-    // Store validated prices for reference (but don't use highPrice due to corruption)
-    if (isReasonablePrice(field11, 11)) lowPrice = field11;
-    if (isReasonablePrice(field12, 12)) midPrice = field12;
-    // Skip highPrice validation as it's frequently corrupted
-    
-    // If we found a reasonable marketPrice, return immediately
-    if (marketPrice > 0) {
-      return {
-        extNumber: extNumber ? extNumber.split('/')[0] : null,
-        marketPrice: marketPrice,
-        lowPrice: lowPrice,
-        highPrice: 0, // Don't trust highPrice due to frequent corruption
-        priceCount: [field11, field12, field14].filter(p => isReasonablePrice(p, 0)).length,
-        allPrices: [field11, field12, field14].filter(p => isReasonablePrice(p, 0)),
-        hadMalformedData: false,
-        source: 'standard_format'
-      };
+  // Find all potential price fields by scanning for decimal numbers
+  const potentialPrices = [];
+  const candidateFieldStart = Math.max(numberFieldIndex - 10, 8); // Start near expected price area
+  const candidateFieldEnd = Math.min(numberFieldIndex + 5, fields.length);
+  
+  for (let i = candidateFieldStart; i < candidateFieldEnd; i++) {
+    const field = fields[i];
+    // Look for decimal or whole numbers that could be prices (0.01 to 500.00)
+    if (field && field.match(/^\d{1,3}(\.\d{1,2})?$/) && parseFloat(field) >= 0.01) {
+      const value = parseFloat(field);
+      
+      if (isReasonablePrice(value)) {
+        potentialPrices.push({
+          index: i,
+          value: value,
+          fieldContent: field
+        });
+      }
     }
   }
   
-  // FALLBACK: Dynamic scanning with conservative price selection
-  if (marketPrice === 0) {
-    const potentialPrices = [];
+  // INTELLIGENT price selection based on TCGCSV patterns
+  let selectedPrice = 0;
+  let selectionMethod = 'none';
+  
+  if (potentialPrices.length >= 4) {
+    // With 4+ prices, TCGCSV usually follows: lowPrice, midPrice, highPrice, marketPrice
+    // Choose the 2nd price (midPrice) or 4th price (marketPrice) as they're most reliable
+    const sorted = potentialPrices.sort((a, b) => a.value - b.value);
     
-    // Scan for potential price fields (fields 10-20) with strict validation
-    for (let i = 10; i < Math.min(20, fields.length); i++) {
-      const field = fields[i];
-      if (field && field.match(/^\d{1,3}(\.\d{1,2})?$/)) {
-        const value = parseFloat(field);
-        
-        // Conservative price validation for fallback
-        if (isReasonablePrice(value, i) && value >= 0.01 && value <= 200) {
-          potentialPrices.push({
-            index: i,
-            value: value
-          });
-        }
-      }
+    // Prefer marketPrice if it exists (usually the 4th field in the sequence)
+    const likelyMarketPrice = potentialPrices.find((p, idx) => idx === 3); // 4th in sequence
+    if (likelyMarketPrice && isReasonablePrice(likelyMarketPrice.value)) {
+      selectedPrice = likelyMarketPrice.value;
+      selectionMethod = 'likely_market_price';
+    } else {
+      // Fallback to 2nd lowest (usually midPrice)
+      selectedPrice = sorted[1].value;
+      selectionMethod = 'second_lowest';
     }
     
-    // Conservative selection: Always prefer lower/middle prices to avoid inflated values
-    if (potentialPrices.length >= 3) {
-      const sorted = potentialPrices.sort((a, b) => a.value - b.value);
-      marketPrice = sorted[0].value; // Use lowest price to avoid corruption
-      console.log(`Dynamic fallback: using lowest price $${marketPrice} from ${potentialPrices.length} candidates`);
-    } else if (potentialPrices.length === 2) {
-      const sorted = potentialPrices.sort((a, b) => a.value - b.value);
-      marketPrice = sorted[0].value; // Use lower price
-    } else if (potentialPrices.length === 1) {
-      marketPrice = potentialPrices[0].value;
-    }
+  } else if (potentialPrices.length === 3) {
+    // With 3 prices, take middle value when sorted (avoids extremes)
+    const sorted = potentialPrices.sort((a, b) => a.value - b.value);
+    selectedPrice = sorted[1].value;
+    selectionMethod = 'middle_of_three';
     
-    if (marketPrice > 0) {
-      return {
-        extNumber: extNumber ? extNumber.split('/')[0] : null,
-        marketPrice: marketPrice,
-        lowPrice: marketPrice, // In fallback mode, use same value
-        highPrice: 0,
-        priceCount: potentialPrices.length,
-        allPrices: potentialPrices.map(p => p.value),
-        hadMalformedData: true,
-        source: 'dynamic_fallback'
-      };
-    }
+  } else if (potentialPrices.length === 2) {
+    // With 2 prices, prefer the lower one (avoid inflated prices)
+    const sorted = potentialPrices.sort((a, b) => a.value - b.value);
+    selectedPrice = sorted[0].value;
+    selectionMethod = 'lower_of_two';
+    
+  } else if (potentialPrices.length === 1) {
+    // Only one candidate price - use it
+    selectedPrice = potentialPrices[0].value;
+    selectionMethod = 'only_candidate';
+  }
+  
+  // Enhanced debugging for problematic cards
+  const cardName = fields[1] || 'Unknown';
+  if (cardName.toLowerCase().includes('noctowl') || 
+      cardName.toLowerCase().includes('pikachu ex') || 
+      cardName.toLowerCase().includes('gholdengo ex') ||
+      cardName.toLowerCase().includes('iron hands ex') ||
+      cardName.toLowerCase().includes('precious trolley') ||
+      cardName.toLowerCase().includes('area zero')) {
+    
+    console.log(`PRICING DEBUG for ${cardName}:`);
+    console.log(`  ExtNumber: ${extNumber} (found at field ${numberFieldIndex})`);
+    console.log(`  Scanned fields ${candidateFieldStart}-${candidateFieldEnd}`);
+    console.log(`  Found ${potentialPrices.length} price candidates:`, 
+      potentialPrices.map(p => `field[${p.index}]=${p.value}`));
+    console.log(`  Selected price: $${selectedPrice} (method: ${selectionMethod})`);
+  }
+  
+  if (selectedPrice > 0) {
+    return {
+      extNumber: extNumber ? extNumber.split('/')[0] : null,
+      marketPrice: selectedPrice,
+      lowPrice: potentialPrices.length > 0 ? Math.min(...potentialPrices.map(p => p.value)) : selectedPrice,
+      highPrice: 0, // Don't trust high prices due to frequent corruption
+      priceCount: potentialPrices.length,
+      allPrices: potentialPrices.map(p => p.value),
+      hadMalformedData: potentialPrices.length === 0,
+      source: selectionMethod,
+      debugInfo: `scanned fields ${candidateFieldStart}-${candidateFieldEnd}, found ${potentialPrices.length} candidates`
+    };
   }
   
   // FINAL FALLBACK: Special handling for energy cards
-  if (extNumber && marketPrice === 0) {
+  if (extNumber) {
     const possibleName = (fields[1] || '').toLowerCase();
     if (possibleName.includes('energy') && !possibleName.includes('basic')) {
-      marketPrice = 0.50; // Reasonable default for special energy cards
-      console.log(`Applied energy card default price $${marketPrice} for: ${fields[1]}`);
+      console.log(`Applied energy card default price $0.50 for: ${fields[1]}`);
       
       return {
         extNumber: extNumber.split('/')[0],
-        marketPrice: marketPrice,
-        lowPrice: marketPrice,
+        marketPrice: 0.50,
+        lowPrice: 0.50,
         highPrice: 0,
         priceCount: 0,
         allPrices: [],
