@@ -46,17 +46,47 @@ export async function onRequestGet({ env }) {
     // Step 3.5: Handle basic energy cards separately if needed
     await addBasicEnergyPrices(priceData, groupsData.results);
     
-    // Step 4: Store the results
+    // Step 4: Identify missing cards
+    const foundCards = new Set(Object.keys(priceData));
+    const missingCards = Array.from(DATABASE_CARDS).filter(card => !foundCards.has(card));
+    
+    // Group missing cards by set for better reporting
+    const missingBySet = {};
+    missingCards.forEach(card => {
+      const parts = card.split('::');
+      if (parts.length >= 2) {
+        const setCode = parts[1];
+        if (!missingBySet[setCode]) {
+          missingBySet[setCode] = [];
+        }
+        missingBySet[setCode].push(card);
+      }
+    });
+    
+    // Step 5: Store the results
     await storePriceData(env, priceData);
     
-    return new Response(JSON.stringify({ 
+    const response = { 
       success: true,
       setsProcessed: Object.keys(setMappings).length,
       cardsProcessed: Object.keys(priceData).length,
       databaseCards: DATABASE_CARDS.size,
       matchRate: `${((Object.keys(priceData).length / DATABASE_CARDS.size) * 100).toFixed(1)}%`,
       timestamp: new Date().toISOString()
-    }), {
+    };
+    
+    // Add missing cards info if there are any
+    if (missingCards.length > 0) {
+      response.missingCards = {
+        count: missingCards.length,
+        bySet: missingBySet,
+        // Include first 10 missing cards for quick reference
+        examples: missingCards.slice(0, 10)
+      };
+      console.log(`Missing ${missingCards.length} cards from pricing data:`, missingBySet);
+    }
+    
+    return new Response(JSON.stringify(response), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
