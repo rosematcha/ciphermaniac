@@ -379,11 +379,9 @@ async function addBasicEnergyPrices(priceData, allGroups) {
 
 /**
  * Extract price data from CSV fields, handling TCGCSV's inconsistent field structure
- * TCGCSV has variable field counts due to missing data, so we need dynamic parsing
+ * CRITICAL FIX: Always prioritize marketPrice and validate against corrupted data
  */
 function extractPricesFromFields(fields) {
-  // MUCH MORE ROBUST parsing for TCGCSV's inconsistent field structures
-  
   // 1. Find extNumber by scanning ALL fields for card number pattern
   let extNumber = null;
   let numberFieldIndex = -1;
@@ -408,84 +406,84 @@ function extractPricesFromFields(fields) {
     }
   }
   
-  // 2. Find price fields by scanning ALL numeric fields in reasonable range
-  const prices = {};
-  const potentialPrices = [];
-  
-  // TCGCSV has a fairly consistent structure for price fields:
-  // Field 10: lowPrice, Field 11: midPrice, Field 12: highPrice, Field 13: marketPrice
-  // But we still need to scan dynamically due to some format variations
-  
-  // First, try to extract prices from the expected positions if they exist
+  // 2. ROBUST price extraction with data validation
+  // TCGCSV structure: Field 11: lowPrice, Field 12: midPrice, Field 13: highPrice, Field 14: marketPrice
+  // NOTE: Corrected field indices based on actual CSV analysis
   let marketPrice = 0;
   let lowPrice = 0;
   let midPrice = 0;
   let highPrice = 0;
   
-  // Try to get prices from standard TCGCSV positions
-  if (fields.length > 13) {
-    const field10 = parseFloat(fields[10]) || 0; // lowPrice
-    const field11 = parseFloat(fields[11]) || 0; // midPrice
-    const field12 = parseFloat(fields[12]) || 0; // highPrice  
-    const field13 = parseFloat(fields[13]) || 0; // marketPrice
+  // Helper function to validate if a price is reasonable (not corrupted)
+  function isReasonablePrice(price, fieldIndex) {
+    if (!price || isNaN(price) || price <= 0) return false;
     
-    // Validate these look like reasonable prices
-    const standardPrices = [field10, field11, field12, field13].filter(p => p > 0 && p <= 999.99);
+    // Reject obviously corrupted prices common in TCGCSV:
+    // - Prices over $1000 (except for very rare collectibles)
+    // - Common corruption patterns: 69420.xx, exact values like 300.0, 800.0
+    // - High prices that are suspiciously round numbers
+    if (price > 1000) return false;
+    if (price > 500 && (price % 1 === 0 || String(price).includes('69420'))) return false;
+    if (price > 100 && fieldIndex === 13 && price % 50 === 0) return false; // highPrice field with round numbers
     
-    if (standardPrices.length >= 3) {
-      // We have good standard format data - use it directly
-      lowPrice = field10 > 0 ? field10 : 0;
-      midPrice = field11 > 0 ? field11 : 0;
-      highPrice = field12 > 0 ? field12 : 0;
-      
-      // CRITICAL FIX: Always prefer field 13 (marketPrice) if it exists and is reasonable
-      if (field13 > 0 && field13 <= 999.99) {
-        marketPrice = field13;
-      } else if (field11 > 0) {
-        marketPrice = field11; // Fallback to midPrice
-      } else {
-        marketPrice = field10; // Last resort: lowPrice
-      }
-      
-      prices.lowPrice = lowPrice;
-      prices.marketPrice = marketPrice;
-      prices.highPrice = highPrice;
-      
-      console.log(`Used standard TCGCSV format: low=${lowPrice}, mid=${midPrice}, high=${highPrice}, market=${marketPrice}`);
-      
-      // Return early to skip dynamic scanning
+    return true;
+  }
+  
+  // Try to extract prices from standard TCGCSV positions (corrected indices)
+  if (fields.length > 14) {
+    const field11 = parseFloat(fields[11]) || 0; // lowPrice  
+    const field12 = parseFloat(fields[12]) || 0; // midPrice
+    const field13 = parseFloat(fields[13]) || 0; // highPrice (OFTEN CORRUPTED)
+    const field14 = parseFloat(fields[14]) || 0; // marketPrice (MOST RELIABLE)
+    
+    // PRIORITY 1: Always use marketPrice (field 14) if valid and reasonable
+    if (isReasonablePrice(field14, 14)) {
+      marketPrice = field14;
+      console.log(`Using reliable marketPrice from field 14: $${marketPrice}`);
+    }
+    // PRIORITY 2: Use midPrice (field 12) if marketPrice unavailable
+    else if (isReasonablePrice(field12, 12)) {
+      marketPrice = field12;
+      console.log(`Using midPrice fallback from field 12: $${marketPrice}`);
+    }
+    // PRIORITY 3: Use lowPrice (field 11) as last resort
+    else if (isReasonablePrice(field11, 11)) {
+      marketPrice = field11;
+      console.log(`Using lowPrice fallback from field 11: $${marketPrice}`);
+    }
+    
+    // Store validated prices for reference (but don't use highPrice due to corruption)
+    if (isReasonablePrice(field11, 11)) lowPrice = field11;
+    if (isReasonablePrice(field12, 12)) midPrice = field12;
+    // Skip highPrice validation as it's frequently corrupted
+    
+    // If we found a reasonable marketPrice, return immediately
+    if (marketPrice > 0) {
       return {
         extNumber: extNumber ? extNumber.split('/')[0] : null,
         marketPrice: marketPrice,
         lowPrice: lowPrice,
-        highPrice: highPrice,
-        priceCount: standardPrices.length,
-        allPrices: [field10, field11, field12, field13].filter(p => p > 0),
-        hadMalformedData: false
+        highPrice: 0, // Don't trust highPrice due to frequent corruption
+        priceCount: [field11, field12, field14].filter(p => isReasonablePrice(p, 0)).length,
+        allPrices: [field11, field12, field14].filter(p => isReasonablePrice(p, 0)),
+        hadMalformedData: false,
+        source: 'standard_format'
       };
     }
   }
   
-  // If standard format didn't work, fall back to dynamic scanning
+  // FALLBACK: Dynamic scanning with conservative price selection
   if (marketPrice === 0) {
-    // Scan for potential price fields, but be smarter about filtering
-    // Start from field 10 onwards as earlier fields are typically metadata, not prices
-    for (let i = 10; i < Math.min(30, fields.length); i++) {
+    const potentialPrices = [];
+    
+    // Scan for potential price fields (fields 10-20) with strict validation
+    for (let i = 10; i < Math.min(20, fields.length); i++) {
       const field = fields[i];
-      // Look for decimal numbers that could be prices (0.01 to 999.99)
-      // Must be a valid price format with decimal OR whole numbers >= 2.00 (avoid single digits like "1", "2", "3")
-      if (field && field.match(/^\d{1,3}(\.\d{1,2})?$/) && parseFloat(field) >= 0.01 && parseFloat(field) <= 999.99) {
+      if (field && field.match(/^\d{1,3}(\.\d{1,2})?$/)) {
         const value = parseFloat(field);
         
-        // Filter out likely non-price fields:
-        // - Single digit integers (1, 2, 3, etc.) that are probably status codes
-        // - Very round numbers like 10, 20, 30 that might be quantity fields
-        const isLikelyPrice = (
-          value % 1 !== 0 || // Has decimal places (like 17.1, 16.0)
-          value >= 2.00     // Or is at least $2 (avoids status codes like 1, 0)
-        );
-        
-        if (isLikelyPrice) {
+        // Conservative price validation for fallback
+        if (isReasonablePrice(value, i) && value >= 0.01 && value <= 200) {
           potentialPrices.push({
             index: i,
             value: value
@@ -494,50 +492,61 @@ function extractPricesFromFields(fields) {
       }
     }
     
-    // 3. Smart price selection logic for dynamic scanning
-    if (potentialPrices.length >= 4) {
-      // With 4+ prices, use 2nd lowest to avoid extremes
+    // Conservative selection: Always prefer lower/middle prices to avoid inflated values
+    if (potentialPrices.length >= 3) {
       const sorted = potentialPrices.sort((a, b) => a.value - b.value);
-      marketPrice = sorted[1].value;
-      prices.lowPrice = sorted[0].value;
-      prices.marketPrice = sorted[1].value; 
-      prices.highPrice = sorted[sorted.length - 1].value;
-    } else if (potentialPrices.length === 3) {
-      // With 3 prices, take the middle one when sorted
-      const sorted = potentialPrices.sort((a, b) => a.value - b.value);
-      marketPrice = sorted[1].value;
-      prices.marketPrice = sorted[1].value;
+      marketPrice = sorted[0].value; // Use lowest price to avoid corruption
+      console.log(`Dynamic fallback: using lowest price $${marketPrice} from ${potentialPrices.length} candidates`);
     } else if (potentialPrices.length === 2) {
-      // With 2 prices, take the lower one (avoid high prices)
       const sorted = potentialPrices.sort((a, b) => a.value - b.value);
-      marketPrice = sorted[0].value;
-      prices.marketPrice = sorted[0].value;
+      marketPrice = sorted[0].value; // Use lower price
     } else if (potentialPrices.length === 1) {
-      // With 1 price, use it
       marketPrice = potentialPrices[0].value;
-      prices.marketPrice = potentialPrices[0].value;
+    }
+    
+    if (marketPrice > 0) {
+      return {
+        extNumber: extNumber ? extNumber.split('/')[0] : null,
+        marketPrice: marketPrice,
+        lowPrice: marketPrice, // In fallback mode, use same value
+        highPrice: 0,
+        priceCount: potentialPrices.length,
+        allPrices: potentialPrices.map(p => p.value),
+        hadMalformedData: true,
+        source: 'dynamic_fallback'
+      };
     }
   }
   
-  // SPECIAL HANDLING: For cards with valid extNumber but no price data (malformed CSV entries)
-  // Assign a reasonable default price rather than skipping the card entirely
-  if (extNumber && marketPrice === 0 && potentialPrices.length === 0) {
-    // Check if this might be a special energy card that should have a reasonable price
+  // FINAL FALLBACK: Special handling for energy cards
+  if (extNumber && marketPrice === 0) {
     const possibleName = (fields[1] || '').toLowerCase();
     if (possibleName.includes('energy') && !possibleName.includes('basic')) {
       marketPrice = 0.50; // Reasonable default for special energy cards
-      console.log(`Applied default price $${marketPrice} for malformed energy card: ${fields[1]}`);
+      console.log(`Applied energy card default price $${marketPrice} for: ${fields[1]}`);
+      
+      return {
+        extNumber: extNumber.split('/')[0],
+        marketPrice: marketPrice,
+        lowPrice: marketPrice,
+        highPrice: 0,
+        priceCount: 0,
+        allPrices: [],
+        hadMalformedData: true,
+        source: 'energy_default'
+      };
     }
   }
   
   return {
     extNumber: extNumber ? extNumber.split('/')[0] : null,
-    marketPrice: marketPrice,
-    lowPrice: prices.lowPrice || 0,
-    highPrice: prices.highPrice || 0,
-    priceCount: potentialPrices.length,
-    allPrices: potentialPrices.map(p => p.value), // For debugging
-    hadMalformedData: (extNumber && potentialPrices.length === 0) // Track malformed entries
+    marketPrice: 0,
+    lowPrice: 0,
+    highPrice: 0,
+    priceCount: 0,
+    allPrices: [],
+    hadMalformedData: true,
+    source: 'no_price_found'
   };
 }
 

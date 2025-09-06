@@ -19,7 +19,8 @@
       "mcp__atlassian__getJiraProjectIssueTypesMetadata",
       "Bash(npm run lint:*)",
       "Bash(npm install)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [],
     "ask": [],
