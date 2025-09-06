@@ -17,7 +17,10 @@
       "mcp__atlassian__getTransitionsForJiraIssue",
       "mcp__atlassian__transitionJiraIssue",
       "mcp__atlassian__getJiraProjectIssueTypesMetadata",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Bash(npm install)",
+      "Bash(curl:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [],
     "ask": [],

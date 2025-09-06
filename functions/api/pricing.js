@@ -1,6 +1,12 @@
 /**
  * CloudFlare Pages function for daily TCGCSV pricing scraping
- * Simple, focused approach: get only the sets we actually need
+ * 
+ * APPROACH: Excel-style CSV parsing for maximum accuracy
+ * 1. Parse CSV into structured table (handles multi-line fields properly)
+ * 2. Extract only essential columns by name: productId, name, marketPrice, extNumber
+ * 3. Use reliable marketPrice column directly (avoids corrupted highPrice data)
+ * 
+ * This eliminates field shifting issues and ensures consistent pricing.
  */
 
 const TCGCSV_GROUPS_URL = 'https://tcgcsv.com/tcgplayer/3/groups';
@@ -46,17 +52,47 @@ export async function onRequestGet({ env }) {
     // Step 3.5: Handle basic energy cards separately if needed
     await addBasicEnergyPrices(priceData, groupsData.results);
     
-    // Step 4: Store the results
+    // Step 4: Identify missing cards
+    const foundCards = new Set(Object.keys(priceData));
+    const missingCards = Array.from(DATABASE_CARDS).filter(card => !foundCards.has(card));
+    
+    // Group missing cards by set for better reporting
+    const missingBySet = {};
+    missingCards.forEach(card => {
+      const parts = card.split('::');
+      if (parts.length >= 2) {
+        const setCode = parts[1];
+        if (!missingBySet[setCode]) {
+          missingBySet[setCode] = [];
+        }
+        missingBySet[setCode].push(card);
+      }
+    });
+    
+    // Step 5: Store the results
     await storePriceData(env, priceData);
     
-    return new Response(JSON.stringify({ 
+    const response = { 
       success: true,
       setsProcessed: Object.keys(setMappings).length,
       cardsProcessed: Object.keys(priceData).length,
       databaseCards: DATABASE_CARDS.size,
       matchRate: `${((Object.keys(priceData).length / DATABASE_CARDS.size) * 100).toFixed(1)}%`,
       timestamp: new Date().toISOString()
-    }), {
+    };
+    
+    // Add missing cards info if there are any
+    if (missingCards.length > 0) {
+      response.missingCards = {
+        count: missingCards.length,
+        bySet: missingBySet,
+        // Include first 10 missing cards for quick reference
+        examples: missingCards.slice(0, 10)
+      };
+      console.log(`Missing ${missingCards.length} cards from pricing data:`, missingBySet);
+    }
+    
+    return new Response(JSON.stringify(response), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -97,8 +133,7 @@ function mapSetsToGroupIds(groups) {
 }
 
 /**
- * Download and parse CSV data for each set
- * Extract only the data we need: name, set number, market price
+ * Download and parse CSV data for each set using Excel-style table parsing
  */
 async function fetchPricesForSets(setMappings) {
   const allPrices = {};
@@ -117,7 +152,10 @@ async function fetchPricesForSets(setMappings) {
       }
       
       const csvText = await response.text();
-      const setPrices = parseCsvPrices(csvText, setAbbr);
+      
+      // Excel-style parsing: CSV → structured table → essential columns
+      const cleanedData = preprocessCsvForPricing(csvText);
+      const setPrices = parseCleanedPriceData(cleanedData, setAbbr);
       
       // Merge into main price data
       Object.assign(allPrices, setPrices);
@@ -134,137 +172,209 @@ async function fetchPricesForSets(setMappings) {
 }
 
 /**
- * Normalize multi-line CSV records into single lines
- * Uses product ID pattern (6+ digit number at start) to detect new records
- * This handles TCGCSV's malformed entries where descriptions span multiple lines
+ * Parse TCGCSV data using Excel-like approach: structured table parsing + column extraction
+ * This eliminates field shifting issues caused by multi-line descriptions
  */
-function normalizeCsvText(csvText) {
-  const lines = csvText.split('\n');
-  const normalizedLines = [];
-  let currentRecord = '';
+function preprocessCsvForPricing(csvText) {
+  console.log('Parsing CSV into structured table (Excel-style approach)...');
   
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue; // Skip empty lines
-    
-    // Check if this line starts a new record (6+ digit product ID at the beginning)
-    const isNewRecord = /^\d{6,},/.test(line);
-    
-    if (isNewRecord && currentRecord) {
-      // We found a new record and have a current record to save
-      normalizedLines.push(currentRecord);
-      currentRecord = line;
-    } else if (isNewRecord && !currentRecord) {
-      // First record or start of a new record
-      currentRecord = line;
-    } else if (i === 0) {
-      // Handle header line
-      normalizedLines.push(line);
-    } else {
-      // Continuation of current record - append with space
-      currentRecord += ' ' + line;
-    }
+  // Step 1: Parse CSV into proper table structure (handles multi-line quoted fields)
+  const table = parseCsvToTable(csvText);
+  
+  if (table.length === 0) {
+    console.warn('No valid CSV table parsed');
+    return [];
   }
   
-  // Add the final record
-  if (currentRecord.trim()) {
-    normalizedLines.push(currentRecord);
-  }
+  // Step 2: Extract only essential columns: productId, name, marketPrice, extNumber
+  const cleanedRecords = extractEssentialColumnsFromTable(table);
   
-  console.log(`Normalized ${lines.length} raw lines into ${normalizedLines.length} records`);
-  return normalizedLines;
+  console.log(`Excel-style parsing: ${table.length} rows → ${cleanedRecords.length} clean records`);
+  return cleanedRecords;
 }
 
 /**
- * Parse CSV and extract price data
- * ONLY returns prices for cards that exist in our database
+ * Parse CSV text into a structured table (array of row objects)
+ * Handles multi-line fields properly like Excel would
  */
-function parseCsvPrices(csvText, setAbbr) {
-  const prices = {};
+function parseCsvToTable(csvText) {
+  const lines = csvText.split('\n');
+  const rows = [];
+  let currentRow = '';
+  let inQuotedField = false;
   
-  // Normalize multi-line CSV records first (fixes PAL Luminous Energy etc.)
-  const lines = normalizeCsvText(csvText);
-  
-  if (lines.length < 2) {
-    console.warn(`Invalid CSV format for set ${setAbbr}`);
-    return prices;
-  }
-  
-  console.log(`Processing ${lines.length} normalized lines for ${setAbbr}`);
-  
-  // Skip header line
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
+  // First, reconstruct properly terminated rows (handle multi-line quoted fields)
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     
-    try {
-      // Parse CSV line - be careful with commas in quoted strings
-      const fields = parseCSVLine(line);
-      
-      if (fields.length < 10) continue; // Need reasonable number of fields
-      
-      const name = fields[1]; // Card name
-      
-      // CRITICAL FIX: Find price fields dynamically due to TCGCSV inconsistent format
-      const priceData = extractPricesFromFields(fields);
-      const marketPrice = priceData.marketPrice;
-      const extNumber = priceData.extNumber;
-      
-      if (!name || !extNumber || isNaN(marketPrice) || marketPrice <= 0) continue;
-      
-      // Clean up the card name and number
-      let cleanName = name.replace(/['"]/g, '').trim();
-      
-      // SPECIAL CASE: Remove embedded card numbers from name field
-      // e.g., "Superior Energy Retrieval - 189/193" -> "Superior Energy Retrieval"  
-      cleanName = cleanName.replace(/\s*-\s*\d{1,3}\/\d{2,3}$/, '').trim();
-      
-      const cleanNumber = extNumber.split('/')[0]; // Take just the number part (before slash)
-      
-      // Debug problematic cards - show actual field parsing
-      if (name && (name.toLowerCase().includes('teal mask ogerpon') || name.toLowerCase().includes('squawkabilly ex') || name.toLowerCase().includes('ceruledge') || name.toLowerCase().includes('energy retrieval') || name.toLowerCase().includes('luminous energy') || name.toLowerCase().includes('dunsparce') || name.toLowerCase().includes('superior energy'))) {
-        console.log(`DEBUG ${name} (${setAbbr}):`);
-        console.log(`  Total fields: ${fields.length}`);
-        console.log(`  Fields 10-13: [${fields[10]}, ${fields[11]}, ${fields[12]}, ${fields[13]}]`);
-        console.log(`  Found prices:`, priceData);
-        console.log(`  Using marketPrice: ${marketPrice}`);
-        console.log(`  ExtNumber: "${extNumber}"`);
-        console.log(`  Card key: "${cleanName}::${setAbbr}::${cleanNumber.padStart(3, '0')}"`);
-        console.log(`  In database: ${DATABASE_CARDS.has(`${cleanName}::${setAbbr}::${cleanNumber.padStart(3, '0')}`)}`);
-      }
-      
-      // Create the card key in your format
-      const cardKey = `${cleanName}::${setAbbr}::${cleanNumber.padStart(3, '0')}`;
-      
-      // CRITICAL: Only include cards that exist in our database
-      if (DATABASE_CARDS.has(cardKey)) {
-        const tcgPlayerId = fields[0]; // First field is always the TCGPlayer ID
-        
-        // HOTFIX: Override known incorrect prices with correct values
-        let finalPrice = marketPrice;
-        if (cardKey === "Teal Mask Ogerpon ex::TWM::025" && tcgPlayerId === "550069") {
-          finalPrice = 1.86; // Correct market price from TCGCSV
-          console.log(`Applied hotfix price for Teal Mask Ogerpon ex: $${finalPrice}`);
-        } else if (cardKey === "Squawkabilly ex::PAL::169" && tcgPlayerId === "497590") {
-          finalPrice = 0.92; // Correct market price from TCGCSV  
-          console.log(`Applied hotfix price for Squawkabilly ex: $${finalPrice}`);
-        }
-        
-        prices[cardKey] = {
-          price: finalPrice,
-          tcgPlayerId: tcgPlayerId
-        };
-      }
-      
-    } catch (error) {
-      // Skip malformed lines
-      continue;
+    // Count quotes to determine if we're inside a multi-line quoted field
+    const quoteCount = (line.match(/"/g) || []).length;
+    const unescapedQuotes = quoteCount - (line.match(/""/g) || []).length * 2;
+    
+    currentRow += (currentRow ? '\n' : '') + line;
+    
+    // Toggle quoted field state based on unescaped quotes
+    inQuotedField = unescapedQuotes % 2 !== 0 ? !inQuotedField : inQuotedField;
+    
+    // If we're not in a quoted field and the line has content, this row is complete
+    if (!inQuotedField && line.trim()) {
+      rows.push(currentRow);
+      currentRow = '';
     }
   }
   
-  console.log(`Found ${Object.keys(prices).length} database cards in ${setAbbr} set`);
+  // Add final row if it exists
+  if (currentRow.trim()) {
+    rows.push(currentRow);
+  }
+  
+  console.log(`Reconstructed ${rows.length} complete CSV rows from ${lines.length} raw lines`);
+  
+  // Parse each complete row into fields
+  const parsedRows = [];
+  let headers = null;
+  
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i].trim();
+    if (!row) continue;
+    
+    const fields = parseCSVLine(row);
+    
+    if (i === 0) {
+      // First row is headers
+      headers = fields;
+      continue;
+    }
+    
+    // Skip rows that don't look like product records
+    if (fields.length < 15 || !fields[0] || !fields[0].match(/^\d{6,}$/)) {
+      continue;
+    }
+    
+    // Create row object with named columns
+    const rowObj = {};
+    for (let j = 0; j < Math.min(fields.length, headers.length); j++) {
+      rowObj[headers[j]] = fields[j];
+    }
+    
+    parsedRows.push(rowObj);
+  }
+  
+  console.log(`Parsed ${parsedRows.length} valid product rows with ${headers?.length} columns`);
+  return parsedRows;
+}
+
+/**
+ * Extract only essential columns from the parsed table
+ * Much simpler now that we have properly structured data
+ */
+function extractEssentialColumnsFromTable(table) {
+  const cleanedRecords = [];
+  
+  for (const row of table) {
+    // Extract the exact columns we need by name
+    const productId = row.productId;
+    const name = row.name;
+    const marketPrice = parseFloat(row.marketPrice) || 0;
+    const extNumber = row.extNumber;
+    
+    // Validate we have the essential data
+    if (!productId || !name || !extNumber || !extNumber.match(/^\d{1,3}\/\d{2,3}$/)) {
+      continue;
+    }
+    
+    // Validate market price is reasonable (filter corruption)
+    if (!isReasonablePrice(marketPrice)) {
+      continue;
+    }
+    
+    cleanedRecords.push({
+      productId,
+      name: name.replace(/"/g, '').trim(), // Clean quotes
+      marketPrice,
+      extNumber
+    });
+  }
+  
+  return cleanedRecords;
+}
+
+
+/**
+ * Process clean table-based price data into final format
+ * Simple and reliable - no more complex field detection needed
+ */
+function parseCleanedPriceData(cleanedRecords, setAbbr) {
+  const prices = {};
+  let processedCount = 0;
+  let matchedCount = 0;
+  
+  for (const record of cleanedRecords) {
+    processedCount++;
+    
+    // Clean up the card name - remove embedded card numbers
+    let cleanName = record.name.replace(/\s*-\s*\d{1,3}\/\d{2,3}$/, '').trim();
+    const cleanNumber = record.extNumber.split('/')[0];
+    
+    // Create the card key in database format
+    const cardKey = `${cleanName}::${setAbbr}::${cleanNumber.padStart(3, '0')}`;
+    const normalizedCardKey = `${normalizeAccentedChars(cleanName)}::${setAbbr}::${cleanNumber.padStart(3, '0')}`;
+    
+    // Check if this card exists in our database
+    const databaseHasCard = DATABASE_CARDS.has(cardKey) || Array.from(DATABASE_CARDS).some(dbCard => 
+      normalizeAccentedChars(dbCard) === normalizedCardKey
+    );
+    
+    if (databaseHasCard) {
+      matchedCount++;
+      
+      // Use the database version of the card key (with proper accents)
+      const finalCardKey = DATABASE_CARDS.has(cardKey) ? cardKey : 
+        Array.from(DATABASE_CARDS).find(dbCard => normalizeAccentedChars(dbCard) === normalizedCardKey);
+      
+      // Enhanced debugging for problematic cards
+      if (record.name && (record.name.toLowerCase().includes('noctowl') || 
+          record.name.toLowerCase().includes('pikachu ex') || 
+          record.name.toLowerCase().includes('gholdengo ex') ||
+          record.name.toLowerCase().includes('iron hands ex') ||
+          record.name.toLowerCase().includes('precious trolley') ||
+          record.name.toLowerCase().includes('area zero'))) {
+        
+        console.log(`TABLE-BASED PARSING: ${record.name}`);
+        console.log(`  ProductId: ${record.productId}`);
+        console.log(`  ExtNumber: ${record.extNumber}`);
+        console.log(`  MarketPrice: $${record.marketPrice} (from marketPrice column)`);
+        console.log(`  FinalCardKey: ${finalCardKey}`);
+      }
+      
+      prices[finalCardKey] = {
+        price: record.marketPrice,
+        tcgPlayerId: record.productId
+      };
+    }
+  }
+  
+  console.log(`Table-based parsing for ${setAbbr}: processed ${processedCount} records, matched ${matchedCount} database cards`);
   return prices;
 }
+
+/**
+ * Validate if a price is reasonable and not corrupted data
+ * Filters out TCGCSV's common data corruption patterns
+ */
+function isReasonablePrice(price) {
+  if (!price || isNaN(price) || price <= 0) return false;
+  
+  // Reject TCGCSV corruption patterns:
+  if (price > 500) return false;                    // Very few cards worth >$500
+  if (String(price).includes('69420')) return false; // Common corruption pattern
+  if (price > 100 && price % 50 === 0) return false; // Suspicious round numbers >$100
+  if (price > 50 && price % 25 === 0) return false;  // Suspicious round numbers >$50
+  
+  return true;
+}
+
+
 
 /**
  * Add basic energy card prices if they exist in database
@@ -329,169 +439,6 @@ async function addBasicEnergyPrices(priceData, allGroups) {
   console.log(`Energy processing complete: ${allEnergyCards.length} total energy cards, ${missingBasicEnergies.length} set to $0.01`);
 }
 
-/**
- * Extract price data from CSV fields, handling TCGCSV's inconsistent field structure
- * TCGCSV has variable field counts due to missing data, so we need dynamic parsing
- */
-function extractPricesFromFields(fields) {
-  // MUCH MORE ROBUST parsing for TCGCSV's inconsistent field structures
-  
-  // 1. Find extNumber by scanning ALL fields for card number pattern
-  let extNumber = null;
-  let numberFieldIndex = -1;
-  
-  // Look for any field with pattern like "123/456" - card numbers can be 1-3 digits  
-  for (let i = 5; i < fields.length; i++) {
-    if (fields[i] && fields[i].match(/^\d{1,3}\/\d{2,3}$/)) {
-      extNumber = fields[i];
-      numberFieldIndex = i;
-      break;
-    }
-  }
-  
-  // SPECIAL CASE: If no extNumber found, check if it's embedded in name field (field[1])
-  // This handles malformed entries like "Superior Energy Retrieval - 189/193"
-  if (!extNumber && fields[1]) {
-    const nameField = fields[1];
-    const numberMatch = nameField.match(/(\d{1,3}\/\d{2,3})/);
-    if (numberMatch) {
-      extNumber = numberMatch[1];
-      console.log(`Found embedded extNumber in name field: "${nameField}" -> "${extNumber}"`);
-    }
-  }
-  
-  // 2. Find price fields by scanning ALL numeric fields in reasonable range
-  const prices = {};
-  const potentialPrices = [];
-  
-  // TCGCSV has a fairly consistent structure for price fields:
-  // Field 10: lowPrice, Field 11: midPrice, Field 12: highPrice, Field 13: marketPrice
-  // But we still need to scan dynamically due to some format variations
-  
-  // First, try to extract prices from the expected positions if they exist
-  let marketPrice = 0;
-  let lowPrice = 0;
-  let midPrice = 0;
-  let highPrice = 0;
-  
-  // Try to get prices from standard TCGCSV positions
-  if (fields.length > 13) {
-    const field10 = parseFloat(fields[10]) || 0; // lowPrice
-    const field11 = parseFloat(fields[11]) || 0; // midPrice
-    const field12 = parseFloat(fields[12]) || 0; // highPrice  
-    const field13 = parseFloat(fields[13]) || 0; // marketPrice
-    
-    // Validate these look like reasonable prices
-    const standardPrices = [field10, field11, field12, field13].filter(p => p > 0 && p <= 999.99);
-    
-    if (standardPrices.length >= 3) {
-      // We have good standard format data - use it directly
-      lowPrice = field10 > 0 ? field10 : 0;
-      midPrice = field11 > 0 ? field11 : 0;
-      highPrice = field12 > 0 ? field12 : 0;
-      
-      // CRITICAL FIX: Always prefer field 13 (marketPrice) if it exists and is reasonable
-      if (field13 > 0 && field13 <= 999.99) {
-        marketPrice = field13;
-      } else if (field11 > 0) {
-        marketPrice = field11; // Fallback to midPrice
-      } else {
-        marketPrice = field10; // Last resort: lowPrice
-      }
-      
-      prices.lowPrice = lowPrice;
-      prices.marketPrice = marketPrice;
-      prices.highPrice = highPrice;
-      
-      console.log(`Used standard TCGCSV format: low=${lowPrice}, mid=${midPrice}, high=${highPrice}, market=${marketPrice}`);
-      
-      // Return early to skip dynamic scanning
-      return {
-        extNumber: extNumber ? extNumber.split('/')[0] : null,
-        marketPrice: marketPrice,
-        lowPrice: lowPrice,
-        highPrice: highPrice,
-        priceCount: standardPrices.length,
-        allPrices: [field10, field11, field12, field13].filter(p => p > 0),
-        hadMalformedData: false
-      };
-    }
-  }
-  
-  // If standard format didn't work, fall back to dynamic scanning
-  if (marketPrice === 0) {
-    // Scan for potential price fields, but be smarter about filtering
-    // Start from field 10 onwards as earlier fields are typically metadata, not prices
-    for (let i = 10; i < Math.min(30, fields.length); i++) {
-      const field = fields[i];
-      // Look for decimal numbers that could be prices (0.01 to 999.99)
-      // Must be a valid price format with decimal OR whole numbers >= 2.00 (avoid single digits like "1", "2", "3")
-      if (field && field.match(/^\d{1,3}(\.\d{1,2})?$/) && parseFloat(field) >= 0.01 && parseFloat(field) <= 999.99) {
-        const value = parseFloat(field);
-        
-        // Filter out likely non-price fields:
-        // - Single digit integers (1, 2, 3, etc.) that are probably status codes
-        // - Very round numbers like 10, 20, 30 that might be quantity fields
-        const isLikelyPrice = (
-          value % 1 !== 0 || // Has decimal places (like 17.1, 16.0)
-          value >= 2.00     // Or is at least $2 (avoids status codes like 1, 0)
-        );
-        
-        if (isLikelyPrice) {
-          potentialPrices.push({
-            index: i,
-            value: value
-          });
-        }
-      }
-    }
-    
-    // 3. Smart price selection logic for dynamic scanning
-    if (potentialPrices.length >= 4) {
-      // With 4+ prices, use 2nd lowest to avoid extremes
-      const sorted = potentialPrices.sort((a, b) => a.value - b.value);
-      marketPrice = sorted[1].value;
-      prices.lowPrice = sorted[0].value;
-      prices.marketPrice = sorted[1].value; 
-      prices.highPrice = sorted[sorted.length - 1].value;
-    } else if (potentialPrices.length === 3) {
-      // With 3 prices, take the middle one when sorted
-      const sorted = potentialPrices.sort((a, b) => a.value - b.value);
-      marketPrice = sorted[1].value;
-      prices.marketPrice = sorted[1].value;
-    } else if (potentialPrices.length === 2) {
-      // With 2 prices, take the lower one (avoid high prices)
-      const sorted = potentialPrices.sort((a, b) => a.value - b.value);
-      marketPrice = sorted[0].value;
-      prices.marketPrice = sorted[0].value;
-    } else if (potentialPrices.length === 1) {
-      // With 1 price, use it
-      marketPrice = potentialPrices[0].value;
-      prices.marketPrice = potentialPrices[0].value;
-    }
-  }
-  
-  // SPECIAL HANDLING: For cards with valid extNumber but no price data (malformed CSV entries)
-  // Assign a reasonable default price rather than skipping the card entirely
-  if (extNumber && marketPrice === 0 && potentialPrices.length === 0) {
-    // Check if this might be a special energy card that should have a reasonable price
-    const possibleName = (fields[1] || '').toLowerCase();
-    if (possibleName.includes('energy') && !possibleName.includes('basic')) {
-      marketPrice = 0.50; // Reasonable default for special energy cards
-      console.log(`Applied default price $${marketPrice} for malformed energy card: ${fields[1]}`);
-    }
-  }
-  
-  return {
-    extNumber: extNumber ? extNumber.split('/')[0] : null,
-    marketPrice: marketPrice,
-    lowPrice: prices.lowPrice || 0,
-    highPrice: prices.highPrice || 0,
-    priceCount: potentialPrices.length,
-    allPrices: potentialPrices.map(p => p.value), // For debugging
-    hadMalformedData: (extNumber && potentialPrices.length === 0) // Track malformed entries
-  };
-}
 
 /**
  * RFC 4180 compliant CSV parser that properly handles quotes and escapes
@@ -534,6 +481,33 @@ function parseCSVLine(line) {
   
   // Trim whitespace from non-quoted fields only
   return fields.map(field => field.trim());
+}
+
+/**
+ * Normalize accented characters to ASCII equivalents
+ * @param {string} str - String with potential accented characters
+ * @returns {string} Normalized string with ASCII characters
+ */
+function normalizeAccentedChars(str) {
+  // Common accented character mappings used in Pokemon cards
+  const accentMap = {
+    'á': 'a', 'à': 'a', 'â': 'a', 'ä': 'a', 'ã': 'a', 'å': 'a',
+    'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+    'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+    'ó': 'o', 'ò': 'o', 'ô': 'o', 'ö': 'o', 'õ': 'o', 'ø': 'o',
+    'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+    'ñ': 'n', 'ç': 'c',
+    'Á': 'A', 'À': 'A', 'Â': 'A', 'Ä': 'A', 'Ã': 'A', 'Å': 'A',
+    'É': 'E', 'È': 'E', 'Ê': 'E', 'Ë': 'E',
+    'Í': 'I', 'Ì': 'I', 'Î': 'I', 'Ï': 'I',
+    'Ó': 'O', 'Ò': 'O', 'Ô': 'O', 'Ö': 'O', 'Õ': 'O', 'Ø': 'O',
+    'Ú': 'U', 'Ù': 'U', 'Û': 'U', 'Ü': 'U',
+    'Ñ': 'N', 'Ç': 'C'
+  };
+  
+  return str.replace(/[áàâäãåéèêëíìîïóòôöõøúùûüñçÁÀÂÄÃÅÉÈÊËÍÌÎÏÓÒÔÖÕØÚÙÛÜÑÇ]/g, function(match) {
+    return accentMap[match] || match;
+  });
 }
 
 /**
