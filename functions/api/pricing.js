@@ -252,18 +252,6 @@ function parseCsvPrices(csvText, setAbbr) {
       
       const cleanNumber = extNumber.split('/')[0]; // Take just the number part (before slash)
       
-      // Debug problematic cards - show actual field parsing
-      if (name && (name.toLowerCase().includes('teal mask ogerpon') || name.toLowerCase().includes('squawkabilly ex') || name.toLowerCase().includes('ceruledge') || name.toLowerCase().includes('energy retrieval') || name.toLowerCase().includes('luminous energy') || name.toLowerCase().includes('dunsparce') || name.toLowerCase().includes('superior energy') || name.toLowerCase().includes("hop's") || name.toLowerCase().includes('pokémon') || name.toLowerCase().includes('pokégear'))) {
-        console.log(`DEBUG ${name} (${setAbbr}):`);
-        console.log(`  Total fields: ${fields.length}`);
-        console.log(`  Fields 10-13: [${fields[10]}, ${fields[11]}, ${fields[12]}, ${fields[13]}]`);
-        console.log(`  Found prices:`, priceData);
-        console.log(`  Using marketPrice: ${marketPrice}`);
-        console.log(`  ExtNumber: "${extNumber}"`);
-        console.log(`  Card key: "${cleanName}::${setAbbr}::${cleanNumber.padStart(3, '0')}"`);
-        console.log(`  In database: ${DATABASE_CARDS.has(`${cleanName}::${setAbbr}::${cleanNumber.padStart(3, '0')}`)}`);
-      }
-      
       // Create the card key in your format
       const cardKey = `${cleanName}::${setAbbr}::${cleanNumber.padStart(3, '0')}`;
       
@@ -275,10 +263,29 @@ function parseCsvPrices(csvText, setAbbr) {
         normalizeAccentedChars(dbCard) === normalizedCardKey
       );
       
+      // Debug problematic cards - show actual field parsing
+      if (name && (name.toLowerCase().includes('teal mask ogerpon') || name.toLowerCase().includes('squawkabilly ex') || name.toLowerCase().includes('ceruledge') || name.toLowerCase().includes('energy retrieval') || name.toLowerCase().includes('luminous energy') || name.toLowerCase().includes('dunsparce') || name.toLowerCase().includes('superior energy') || name.toLowerCase().includes("hop's") || name.toLowerCase().includes('pokémon') || name.toLowerCase().includes('pokégear') || name.toLowerCase().includes('charmander') || name.toLowerCase().includes('shroodle') || name.toLowerCase().includes('pecharunt') || name.toLowerCase().includes('zacian'))) {
+        console.log(`DEBUG ${name} (${setAbbr}):`);
+        console.log(`  Total fields: ${fields.length}`);
+        console.log(`  Fields 10-13: [${fields[10]}, ${fields[11]}, ${fields[12]}, ${fields[13]}]`);
+        console.log(`  Found prices:`, priceData);
+        console.log(`  Using marketPrice: ${marketPrice}`);
+        console.log(`  ExtNumber: "${extNumber}"`);
+        console.log(`  Card key: "${cardKey}"`);
+        console.log(`  Normalized key: "${normalizedCardKey}"`);
+        console.log(`  In database (exact): ${DATABASE_CARDS.has(cardKey)}`);
+        console.log(`  Database has card: ${databaseHasCard}`);
+      }
+      
       if (databaseHasCard) {
         // Use the database version of the card key (with proper accents)
         const finalCardKey = DATABASE_CARDS.has(cardKey) ? cardKey : 
           Array.from(DATABASE_CARDS).find(dbCard => normalizeAccentedChars(dbCard) === normalizedCardKey);
+        
+        // Additional debug logging for matched cards
+        if (name && (name.toLowerCase().includes('charmander') || name.toLowerCase().includes('shroodle') || name.toLowerCase().includes('pecharunt') || name.toLowerCase().includes('zacian'))) {
+          console.log(`  MATCHED - Final card key: "${finalCardKey}"`);
+        }
         const tcgPlayerId = fields[0]; // First field is always the TCGPlayer ID
         
         // HOTFIX: Override known incorrect prices with correct values
