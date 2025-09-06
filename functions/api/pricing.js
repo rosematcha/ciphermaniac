@@ -246,9 +246,6 @@ function parseCsvPrices(csvText, setAbbr) {
       // Only remove double quotes, preserve apostrophes (like "Hop's Snorlax")
       let cleanName = name.replace(/"/g, '').trim();
       
-      // Normalize accented characters to ASCII equivalents
-      cleanName = normalizeAccentedChars(cleanName);
-      
       // SPECIAL CASE: Remove embedded card numbers from name field
       // e.g., "Superior Energy Retrieval - 189/193" -> "Superior Energy Retrieval"  
       cleanName = cleanName.replace(/\s*-\s*\d{1,3}\/\d{2,3}$/, '').trim();
@@ -270,21 +267,31 @@ function parseCsvPrices(csvText, setAbbr) {
       // Create the card key in your format
       const cardKey = `${cleanName}::${setAbbr}::${cleanNumber.padStart(3, '0')}`;
       
-      // CRITICAL: Only include cards that exist in our database
-      if (DATABASE_CARDS.has(cardKey)) {
+      // Create normalized version for accent-mismatched cards (e.g. "Pokemon Catcher" vs "Pokémon Catcher")
+      const normalizedCardKey = `${normalizeAccentedChars(cleanName)}::${setAbbr}::${cleanNumber.padStart(3, '0')}`;
+      
+      // CRITICAL: Only include cards that exist in our database (check both original and normalized)
+      const databaseHasCard = DATABASE_CARDS.has(cardKey) || Array.from(DATABASE_CARDS).some(dbCard => 
+        normalizeAccentedChars(dbCard) === normalizedCardKey
+      );
+      
+      if (databaseHasCard) {
+        // Use the database version of the card key (with proper accents)
+        const finalCardKey = DATABASE_CARDS.has(cardKey) ? cardKey : 
+          Array.from(DATABASE_CARDS).find(dbCard => normalizeAccentedChars(dbCard) === normalizedCardKey);
         const tcgPlayerId = fields[0]; // First field is always the TCGPlayer ID
         
         // HOTFIX: Override known incorrect prices with correct values
         let finalPrice = marketPrice;
-        if (cardKey === "Teal Mask Ogerpon ex::TWM::025" && tcgPlayerId === "550069") {
+        if (finalCardKey === "Teal Mask Ogerpon ex::TWM::025" && tcgPlayerId === "550069") {
           finalPrice = 1.86; // Correct market price from TCGCSV
           console.log(`Applied hotfix price for Teal Mask Ogerpon ex: $${finalPrice}`);
-        } else if (cardKey === "Squawkabilly ex::PAL::169" && tcgPlayerId === "497590") {
+        } else if (finalCardKey === "Squawkabilly ex::PAL::169" && tcgPlayerId === "497590") {
           finalPrice = 0.92; // Correct market price from TCGCSV  
           console.log(`Applied hotfix price for Squawkabilly ex: $${finalPrice}`);
         }
         
-        prices[cardKey] = {
+        prices[finalCardKey] = {
           price: finalPrice,
           tcgPlayerId: tcgPlayerId
         };
