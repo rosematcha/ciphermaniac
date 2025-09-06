@@ -243,7 +243,11 @@ function parseCsvPrices(csvText, setAbbr) {
       if (!name || !extNumber || isNaN(marketPrice) || marketPrice <= 0) continue;
       
       // Clean up the card name and number
-      let cleanName = name.replace(/['"]/g, '').trim();
+      // Only remove double quotes, preserve apostrophes (like "Hop's Snorlax")
+      let cleanName = name.replace(/"/g, '').trim();
+      
+      // Normalize accented characters to ASCII equivalents
+      cleanName = normalizeAccentedChars(cleanName);
       
       // SPECIAL CASE: Remove embedded card numbers from name field
       // e.g., "Superior Energy Retrieval - 189/193" -> "Superior Energy Retrieval"  
@@ -252,7 +256,7 @@ function parseCsvPrices(csvText, setAbbr) {
       const cleanNumber = extNumber.split('/')[0]; // Take just the number part (before slash)
       
       // Debug problematic cards - show actual field parsing
-      if (name && (name.toLowerCase().includes('teal mask ogerpon') || name.toLowerCase().includes('squawkabilly ex') || name.toLowerCase().includes('ceruledge') || name.toLowerCase().includes('energy retrieval') || name.toLowerCase().includes('luminous energy') || name.toLowerCase().includes('dunsparce') || name.toLowerCase().includes('superior energy'))) {
+      if (name && (name.toLowerCase().includes('teal mask ogerpon') || name.toLowerCase().includes('squawkabilly ex') || name.toLowerCase().includes('ceruledge') || name.toLowerCase().includes('energy retrieval') || name.toLowerCase().includes('luminous energy') || name.toLowerCase().includes('dunsparce') || name.toLowerCase().includes('superior energy') || name.toLowerCase().includes("hop's") || name.toLowerCase().includes('pokémon') || name.toLowerCase().includes('pokégear'))) {
         console.log(`DEBUG ${name} (${setAbbr}):`);
         console.log(`  Total fields: ${fields.length}`);
         console.log(`  Fields 10-13: [${fields[10]}, ${fields[11]}, ${fields[12]}, ${fields[13]}]`);
@@ -564,6 +568,33 @@ function parseCSVLine(line) {
   
   // Trim whitespace from non-quoted fields only
   return fields.map(field => field.trim());
+}
+
+/**
+ * Normalize accented characters to ASCII equivalents
+ * @param {string} str - String with potential accented characters
+ * @returns {string} Normalized string with ASCII characters
+ */
+function normalizeAccentedChars(str) {
+  // Common accented character mappings used in Pokemon cards
+  const accentMap = {
+    'á': 'a', 'à': 'a', 'â': 'a', 'ä': 'a', 'ã': 'a', 'å': 'a',
+    'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+    'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+    'ó': 'o', 'ò': 'o', 'ô': 'o', 'ö': 'o', 'õ': 'o', 'ø': 'o',
+    'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+    'ñ': 'n', 'ç': 'c',
+    'Á': 'A', 'À': 'A', 'Â': 'A', 'Ä': 'A', 'Ã': 'A', 'Å': 'A',
+    'É': 'E', 'È': 'E', 'Ê': 'E', 'Ë': 'E',
+    'Í': 'I', 'Ì': 'I', 'Î': 'I', 'Ï': 'I',
+    'Ó': 'O', 'Ò': 'O', 'Ô': 'O', 'Ö': 'O', 'Õ': 'O', 'Ø': 'O',
+    'Ú': 'U', 'Ù': 'U', 'Û': 'U', 'Ü': 'U',
+    'Ñ': 'N', 'Ç': 'C'
+  };
+  
+  return str.replace(/[áàâäãåéèêëíìîïóòôöõøúùûüñçÁÀÂÄÃÅÉÈÊËÍÌÎÏÓÒÔÖÕØÚÙÛÜÑÇ]/g, function(match) {
+    return accentMap[match] || match;
+  });
 }
 
 /**
