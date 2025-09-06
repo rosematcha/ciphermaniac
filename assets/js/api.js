@@ -316,8 +316,8 @@ export async function getCardPrice(cardId) {
       // Debug: Similar cards found
     }
 
-    // FIX: The pricing data stores prices as numbers directly, not as objects with .price property
-    return _cardData || null;
+    // The pricing data stores prices as objects with price and tcgPlayerId properties
+    return _cardData?.price || null;
   } catch (error) {
     logger.debug(`Failed to get price for ${cardId}`, error.message);
     logger.error('Error in getCardPrice:', error);
@@ -334,9 +334,8 @@ export async function getCardTCGPlayerId(cardId) {
   try {
     const pricing = await fetchPricingData();
     const _cardData = pricing.cardPrices[cardId];
-    // Since _cardData is now a number (price), we don't have TCGPlayer IDs stored anymore
-    // This function should return null or we need to restructure the data
-    return null;
+    // Return the TCGPlayer ID from the card data object
+    return _cardData?.tcgPlayerId || null;
   } catch (error) {
     logger.debug(`Failed to get TCGPlayer ID for ${cardId}`, error.message);
     return null;
@@ -351,9 +350,9 @@ export async function getCardTCGPlayerId(cardId) {
 export async function getCardData(cardId) {
   try {
     const pricing = await fetchPricingData();
-    const cardPrice = pricing.cardPrices[cardId];
-    // Since pricing data now stores numbers directly, return in expected object format
-    return cardPrice ? { price: cardPrice, tcgPlayerId: null } : null;
+    const cardData = pricing.cardPrices[cardId];
+    // Return the card data object directly (contains price and tcgPlayerId)
+    return cardData || null;
   } catch (error) {
     logger.debug(`Failed to get card data for ${cardId}`, error.message);
     return null;
