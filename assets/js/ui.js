@@ -29,9 +29,9 @@ export function initFiltersToggle() {
     if (expanded) { closePanel(); } else { openPanel(); }
   });
   // Close on Escape when focus is within the panel
-  panel.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      e.stopPropagation();
+  panel.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
       closePanel();
     }
   });

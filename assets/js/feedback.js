@@ -21,7 +21,7 @@ class FeedbackForm {
     desktopBrowserSelect.addEventListener('change', () => this.handleBrowserChange('desktop'));
     mobileBrowserSelect.addEventListener('change', () => this.handleBrowserChange('mobile'));
 
-    this.form.addEventListener('submit', e => this.handleSubmit(e));
+    this.form.addEventListener('submit', event => this.handleSubmit(event));
   }
 
   handleFeedbackTypeChange() {
@@ -97,13 +97,17 @@ class FeedbackForm {
     const inputs = container.querySelectorAll('input');
 
     selects.forEach(select => {
+      // eslint-disable-next-line no-param-reassign
       select.required = required;
+      // eslint-disable-next-line no-param-reassign
       if (!required) {select.value = '';}
     });
 
     inputs.forEach(input => {
       if (!input.closest('.form-group[style*="display: none"]')) {
+        // eslint-disable-next-line no-param-reassign
         input.required = required;
+        // eslint-disable-next-line no-param-reassign
         if (!required) {input.value = '';}
       }
     });
@@ -151,8 +155,8 @@ class FeedbackForm {
     }, 5000);
   }
 
-  async handleSubmit(e) {
-    e.preventDefault();
+  async handleSubmit(event) {
+    event.preventDefault();
 
     const submitButton = this.form.querySelector('.submit-button');
     const originalText = submitButton.textContent;

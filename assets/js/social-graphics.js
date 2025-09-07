@@ -29,7 +29,7 @@ class SocialGraphicsGenerator {
         folder: name,
         name,
         index
-      })).sort((a, b) => b.folder.localeCompare(a.folder)); // Sort by date desc
+      })).sort((first, second) => second.folder.localeCompare(first.folder)); // Sort by date desc
       this.populateTournamentSelect();
     } catch (error) {
       console.error('Failed to load tournaments:', error);
@@ -100,7 +100,7 @@ class SocialGraphicsGenerator {
       this.currentTournamentData = JSON.parse(text);
 
       // Load previous tournament for rising cards comparison
-      const currentIndex = this.tournaments.findIndex(t => t.folder === tournamentFolder);
+      const currentIndex = this.tournaments.findIndex(tournament => tournament.folder === tournamentFolder);
       if (currentIndex < this.tournaments.length - 1) {
         const previousFolder = this.tournaments[currentIndex + 1].folder;
         try {
@@ -187,7 +187,7 @@ class SocialGraphicsGenerator {
     tournamentMain.appendChild(bracketRight);
 
     // Bottom row (ranks 9-14)
-    let hasBottomRow = false;
+    let _hasBottomRow = false;
     if (filteredData.length > 8) {
       const bottomRow = document.createElement('div');
       bottomRow.className = 'bottom-row';
@@ -199,7 +199,7 @@ class SocialGraphicsGenerator {
 
       tournamentLayout.appendChild(tournamentMain);
       tournamentLayout.appendChild(bottomRow);
-      hasBottomRow = true;
+      const _hasBottomRow = true;
     } else {
       tournamentLayout.appendChild(tournamentMain);
     }
@@ -269,7 +269,7 @@ class SocialGraphicsGenerator {
     });
 
     // Sort by increase amount (descending)
-    return risingCards.sort((a, b) => b.increase - a.increase);
+    return risingCards.sort((first, second) => second.increase - first.increase);
   }
 
   isConsistentLeader(card) {
@@ -356,7 +356,7 @@ class SocialGraphicsGenerator {
     return `thumbnails/sm/${imageName}`;
   }
 
-  async loadImageWithFallback(card, cardSize = 'normal') {
+  async loadImageWithFallback(card, _cardSize = 'normal') {
     const baseName = card.name.replace(/[^a-zA-Z0-9]/g, '_');
 
     // Special case transformations for known patterns
@@ -416,7 +416,7 @@ class SocialGraphicsGenerator {
     return null;
   }
 
-  async applyCropping(img, card, cardSize = 'normal') {
+  applyCropping(img, card, _cardSize = 'normal') {
     return new Promise(resolve => {
       // Prevent recursive cropping by checking if already processed
       if (img.dataset.cropped === 'true') {
@@ -427,20 +427,21 @@ class SocialGraphicsGenerator {
       const originalOnload = () => {
         try {
           // Mark as processed to prevent recursion
+          // eslint-disable-next-line no-param-reassign
           img.dataset.cropped = 'true';
 
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
 
           // Use proper aspect ratios for card display
-          const canvasWidth = cardSize === 'featured' ? 400 :
-            cardSize === 'medium' ? 300 :
-              cardSize === 'small' ? 240 :
-                cardSize === 'tiny' ? 200 : 300;
-          const canvasHeight = cardSize === 'featured' ? 353 :
-            cardSize === 'medium' ? 160 :
-              cardSize === 'small' ? 150 :
-                cardSize === 'tiny' ? 125 : 200;
+          const canvasWidth = _cardSize === 'featured' ? 400 :
+            _cardSize === 'medium' ? 300 :
+              _cardSize === 'small' ? 240 :
+                _cardSize === 'tiny' ? 200 : 300;
+          const canvasHeight = _cardSize === 'featured' ? 353 :
+            _cardSize === 'medium' ? 160 :
+              _cardSize === 'small' ? 150 :
+                _cardSize === 'tiny' ? 125 : 200;
           canvas.width = canvasWidth;
           canvas.height = canvasHeight;
 
@@ -451,7 +452,9 @@ class SocialGraphicsGenerator {
 
           if (img.naturalWidth > 0 && img.naturalHeight > 0) {
             // Remove the onload handler before changing src to prevent recursion
+            // eslint-disable-next-line no-param-reassign
             img.onload = null;
+            // eslint-disable-next-line no-param-reassign
             img.onerror = null;
 
             // Calculate aspect ratios
@@ -480,6 +483,7 @@ class SocialGraphicsGenerator {
               drawX, drawY, drawWidth, drawHeight
             );
 
+            // eslint-disable-next-line no-param-reassign
             img.src = canvas.toDataURL();
           }
         } catch (error) {
@@ -488,8 +492,10 @@ class SocialGraphicsGenerator {
         resolve();
       };
 
+      // eslint-disable-next-line no-param-reassign
       img.onload = originalOnload;
 
+      // eslint-disable-next-line no-param-reassign
       img.onerror = () => {
         console.warn(`Failed to load image for ${card.name}`);
         resolve();
@@ -586,8 +592,8 @@ class SocialGraphicsGenerator {
     histogram.className = 'histogram';
 
     // Filter to only show 1-4 copies (Pokemon cards max 4)
-    const validDist = distribution.filter(d => d.copies <= 4);
-    const maxPlayers = Math.max(...validDist.map(d => d.players));
+    const validDist = distribution.filter(dist => dist.copies <= 4);
+    const maxPlayers = Math.max(...validDist.map(dist => dist.players));
 
     validDist.forEach(dist => {
       const bar = document.createElement('div');

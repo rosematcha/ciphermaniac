@@ -11,7 +11,7 @@ import {
 } from './api.js';
 import { parseReport } from './parse.js';
 import { logger } from './utils/logger.js';
-import { getCanonicalCard } from './utils/cardSynonyms.js';
+import { getCanonicalCard as _getCanonicalCard } from './utils/cardSynonyms.js';
 import {
   validateEvolutionRequirements,
   formatEvolutionWarnings,
@@ -49,7 +49,7 @@ async function init() {
     window.location.href = 'https://my.limitlesstcg.com/builder';
     return;
   }
-  
+
   setupDOMElements();
   await loadCardDatabase();
   setupEventListeners();
@@ -125,7 +125,7 @@ async function loadCardDatabase() {
   }
 }
 
-async function loadTournaments() {
+function loadTournaments() {
   tournamentSelect.innerHTML = '<option value="">Select tournament...</option>';
 
   tournaments.forEach(tournament => {
@@ -215,8 +215,8 @@ function handleCardSearch() {
     `;
 
     const addBtn = item.querySelector('.add-card-btn');
-    addBtn.addEventListener('click', e => {
-      e.preventDefault();
+    addBtn.addEventListener('click', event => {
+      event.preventDefault();
       addCardToDeck(card);
       cardSearchInput.value = '';
       cardSuggestions.classList.remove('is-open');
@@ -228,8 +228,8 @@ function handleCardSearch() {
   cardSuggestions.classList.add('is-open');
 }
 
-function handleClickOutside(e) {
-  if (!cardSuggestions.contains(e.target) && e.target !== cardSearchInput) {
+function handleClickOutside(event) {
+  if (!cardSuggestions.contains(event.target) && event.target !== cardSearchInput) {
     cardSuggestions.classList.remove('is-open');
   }
 }
@@ -340,7 +340,7 @@ function updateDeckDisplay() {
   renderDeckList();
 
   // Update evolution validation display
-  updateEvolutionValidationDisplay(evolutionWarnings);
+  updateEvolutionDisplay(evolutionWarnings);
 }
 
 function updateConstraintStatus(constraintId, isValid) {
@@ -351,7 +351,7 @@ function updateConstraintStatus(constraintId, isValid) {
   }
 }
 
-function updateEvolutionValidationDisplay(warnings) {
+function updateEvolutionDisplay(warnings) {
   const evolutionValidation = document.getElementById('evolution-validation');
   if (!evolutionValidation) {
     return; // Element doesn't exist in the HTML yet
@@ -418,7 +418,7 @@ function renderDeckList() {
 
   // Sort each category by user-defined order
   [pokemon, trainers, energy].forEach(category => {
-    category.sort((a, b) => a.order - b.order);
+    category.sort((first, second) => first.order - second.order);
   });
 
   // Render categories
@@ -446,9 +446,9 @@ function renderDeckList() {
 
   // Add event listeners for +/- buttons
   deckList.querySelectorAll('.deck-card-controls button').forEach(button => {
-    button.addEventListener('click', e => {
-      const { cardId } = e.target.dataset;
-      const { action } = e.target.dataset;
+    button.addEventListener('click', event => {
+      const { cardId } = event.target.dataset;
+      const { action } = event.target.dataset;
 
       if (action === 'add') {
         const { card } = currentDeck.get(cardId);
@@ -531,13 +531,17 @@ function findSmartInsertionOrder(newCard) {
     targetOrder = findPokemonInsertionOrder(newCard, pokemon);
   } else if (cardType === 'trainer') {
     // Insert at end of Pokemon, before existing trainers based on quantity
-    const pokemonMaxOrder = pokemon.length > 0 ? Math.max(...pokemon.map(p => p.order)) : 0;
+    const pokemonMaxOrder = pokemon.length > 0 ? Math.max(...pokemon.map(pokemonEntry => pokemonEntry.order)) : 0;
     const baseOrder = pokemonMaxOrder + 1000; // Leave space for Pokemon
     targetOrder = findQuantityBasedOrder(newCard, trainers, baseOrder);
   } else { // energy
     // Insert at end, after Pokemon and Trainers
-    const pokemonMaxOrder = pokemon.length > 0 ? Math.max(...pokemon.map(p => p.order)) : 0;
-    const trainerMaxOrder = trainers.length > 0 ? Math.max(...trainers.map(t => t.order)) : pokemonMaxOrder + 1000;
+    const pokemonMaxOrder = pokemon.length > 0
+      ? Math.max(...pokemon.map(pokemonEntry => pokemonEntry.order))
+      : 0;
+    const trainerMaxOrder = trainers.length > 0
+      ? Math.max(...trainers.map(trainerEntry => trainerEntry.order))
+      : pokemonMaxOrder + 1000;
     const baseOrder = Math.max(trainerMaxOrder + 1000, pokemonMaxOrder + 2000);
     targetOrder = findQuantityBasedOrder(newCard, energy, baseOrder);
   }
@@ -551,10 +555,10 @@ function findPokemonInsertionOrder(newCard, existingPokemon) {
   }
 
   const newEvolutionOrder = getEvolutionOrder(newCard);
-  const newQuantity = 1; // Default quantity when first added
+  const _newQuantity = 1; // Default quantity when first added
 
   // Sort existing Pokemon by current display order to maintain user arrangements
-  const sortedPokemon = existingPokemon.sort((a, b) => a.order - b.order);
+  const sortedPokemon = existingPokemon.sort((first, second) => first.order - second.order);
 
   // Try to find a good position based on evolution line and quantity
   for (let i = 0; i < sortedPokemon.length; i++) {
@@ -577,7 +581,7 @@ function findPokemonInsertionOrder(newCard, existingPokemon) {
   }
 
   // Insert at end of Pokemon section
-  const maxPokemonOrder = Math.max(...sortedPokemon.map(p => p.order));
+  const maxPokemonOrder = Math.max(...sortedPokemon.map(pokemonEntry => pokemonEntry.order));
   return maxPokemonOrder + 1;
 }
 
@@ -587,7 +591,7 @@ function findQuantityBasedOrder(newCard, existingSameType, baseOrder) {
   }
 
   // Sort by current order to preserve user arrangements
-  const sorted = existingSameType.sort((a, b) => a.order - b.order);
+  const sorted = existingSameType.sort((first, second) => first.order - second.order);
 
   // Find position based on similar quantity cards
   const newQuantity = 1; // Default quantity when first added
@@ -609,7 +613,7 @@ function findQuantityBasedOrder(newCard, existingSameType, baseOrder) {
   }
 
   // Insert at end
-  const maxOrder = Math.max(...sorted.map(c => c.order));
+  const maxOrder = Math.max(...sorted.map(cardEntry => cardEntry.order));
   return maxOrder + 1;
 }
 
@@ -737,33 +741,34 @@ function sortDeck() {
   let newOrder = 1;
 
   // Sort Pokemon by quantity (desc) -> evolution line -> alphabetical
-  pokemon.sort((a, b) => {
-    if (a.count !== b.count) {
-      return b.count - a.count;
+  pokemon.sort((first, second) => {
+    if (first.count !== second.count) {
+      return second.count - first.count;
     }
 
-    const evolutionOrderA = getEvolutionOrder(a.card);
-    const evolutionOrderB = getEvolutionOrder(b.card);
+    const evolutionOrderA = getEvolutionOrder(first.card);
+    const evolutionOrderB = getEvolutionOrder(second.card);
 
     if (evolutionOrderA !== evolutionOrderB) {
       return evolutionOrderA - evolutionOrderB;
     }
 
-    return a.card.displayName.localeCompare(b.card.displayName);
+    return first.card.displayName.localeCompare(second.card.displayName);
   });
 
   // Sort Trainers and Energy by quantity (desc) -> alphabetical
   [trainers, energy].forEach(category => {
-    category.sort((a, b) => {
-      if (a.count !== b.count) {
-        return b.count - a.count;
+    category.sort((first, second) => {
+      if (first.count !== second.count) {
+        return second.count - first.count;
       }
-      return a.card.displayName.localeCompare(b.card.displayName);
+      return first.card.displayName.localeCompare(second.card.displayName);
     });
   });
 
   // Assign new order values
   [...pokemon, ...trainers, ...energy].forEach(entry => {
+    // eslint-disable-next-line no-param-reassign
     entry.order = newOrder++;
   });
 
@@ -815,7 +820,7 @@ async function previewArchetype() {
   try {
     const report = await fetchArchetypeReport(tournament, archetype);
     const parsed = parseReport(report);
-    const threshold = parseInt(usageThreshold.value);
+    const threshold = parseInt(usageThreshold.value, 10);
 
     // Calculate proper usage percentages
     const cards = parsed.items
@@ -831,7 +836,7 @@ async function previewArchetype() {
         };
       })
       .filter(card => card.calculatedPct >= threshold)
-      .sort((a, b) => b.calculatedPct - a.calculatedPct)
+      .sort((first, second) => second.calculatedPct - first.calculatedPct)
       .slice(0, 20); // Top 20 cards
 
     let html = `<h4>${archetype.replace(/_/g, ' ')} - Cards ≥${threshold}% usage</h4>`;
@@ -845,8 +850,12 @@ async function previewArchetype() {
       let mostCommonCopies = '';
       if (Array.isArray(card.dist) && card.dist.length > 0) {
         const sortedDist = card.dist
-          .filter(d => Number.isFinite(d.copies) && d.copies >= 1 && d.copies <= 6)
-          .sort((a, b) => (b.players || 0) - (a.players || 0));
+          .filter(distribution =>
+            Number.isFinite(distribution.copies) &&
+            distribution.copies >= 1 &&
+            distribution.copies <= 6
+          )
+          .sort((first, second) => (second.players || 0) - (first.players || 0));
 
         if (sortedDist.length > 0) {
           mostCommonCopies = ` (${sortedDist[0].copies}x)`;
@@ -877,7 +886,7 @@ function updateUsageValue() {
 async function autoFillFromArchetype() {
   const tournament = tournamentSelect.value;
   const archetype = archetypeSelect.value;
-  const threshold = parseInt(usageThreshold.value);
+  const threshold = parseInt(usageThreshold.value, 10);
 
   if (!tournament || !archetype) {
     alert('Please select both a tournament and archetype first.');
@@ -909,7 +918,7 @@ async function autoFillFromArchetype() {
         };
       })
       .filter(card => card.calculatedPct >= threshold)
-      .sort((a, b) => b.calculatedPct - a.calculatedPct);
+      .sort((first, second) => second.calculatedPct - first.calculatedPct);
 
     let totalCards = 0;
     let aceSpecAdded = false;
@@ -936,8 +945,12 @@ async function autoFillFromArchetype() {
         // Use distribution data to find the most common copy count
         // Sort by player count (descending) to find the most popular copy count
         const sortedDist = cardData.dist
-          .filter(d => Number.isFinite(d.copies) && d.copies >= 1 && d.copies <= 6) // Allow up to 6 for Basic Energy
-          .sort((a, b) => (b.players || 0) - (a.players || 0));
+          .filter(distribution =>
+            Number.isFinite(distribution.copies) &&
+            distribution.copies >= 1 &&
+            distribution.copies <= 6 // Allow up to 6 for Basic Energy
+          )
+          .sort((first, second) => (second.players || 0) - (first.players || 0));
 
         if (sortedDist.length > 0) {
           // Use the most common copy count (highest player count)
@@ -1002,9 +1015,9 @@ function exportDeckToText() {
   // Sort cards by user-defined order, maintaining categories
   const sortedCards = Array.from(currentDeck.values())
     .map(entry => ({ ...entry, order: entry.order || nextCardOrder++ }))
-    .sort((a, b) => {
-      const typeA = getCardType(a.card);
-      const typeB = getCardType(b.card);
+    .sort((first, second) => {
+      const typeA = getCardType(first.card);
+      const typeB = getCardType(second.card);
 
       if (typeA !== typeB) {
         const order = { pokemon: 0, trainer: 1, energy: 2 };
@@ -1012,7 +1025,7 @@ function exportDeckToText() {
       }
 
       // Within same category, sort by user order
-      return a.order - b.order;
+      return first.order - second.order;
     });
 
   for (const { card, count } of sortedCards) {
@@ -1041,7 +1054,7 @@ function importDeck() {
       continue;
     }
 
-    const count = parseInt(match[1]);
+    const count = parseInt(match[1], 10);
     const cardName = match[2].trim();
 
     // Find card in database
@@ -1082,21 +1095,23 @@ function exportDeck() {
 
 // Drag and drop functionality
 let draggedElement = null;
-const dragIndicator = null;
+const _dragIndicator = null;
 let lastDropTarget = null;
 
-function handleDragStart(e) {
-  draggedElement = e.currentTarget;
-  e.currentTarget.classList.add('dragging');
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', e.currentTarget.dataset.cardId);
+function handleDragStart(event) {
+  draggedElement = event.currentTarget;
+  event.currentTarget.classList.add('dragging');
+  // eslint-disable-next-line no-param-reassign
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', event.currentTarget.dataset.cardId);
 }
 
-function handleDragOver(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
+function handleDragOver(event) {
+  event.preventDefault();
+  // eslint-disable-next-line no-param-reassign
+  event.dataTransfer.dropEffect = 'move';
 
-  const targetCard = e.currentTarget;
+  const targetCard = event.currentTarget;
   if (targetCard !== draggedElement && targetCard.classList.contains('deck-card')) {
     // Clear any existing indicators
     clearDragIndicators();
@@ -1133,20 +1148,20 @@ function handleDragOver(e) {
   }
 }
 
-function handleDragEnter(e) {
-  e.preventDefault();
+function handleDragEnter(event) {
+  event.preventDefault();
 }
 
-function handleDragLeave(e) {
+function handleDragLeave(event) {
   // Only clear visual feedback if we're actually leaving this element (not entering a child)
-  if (!e.currentTarget.contains(e.relatedTarget)) {
-    e.currentTarget.classList.remove('drag-over');
+  if (!event.currentTarget.contains(event.relatedTarget)) {
+    event.currentTarget.classList.remove('drag-over');
   }
 }
 
-function handleDrop(e) {
-  e.preventDefault();
-  e.stopPropagation();
+function handleDrop(event) {
+  event.preventDefault();
+  event.stopPropagation();
 
   clearDragIndicators();
 
@@ -1175,8 +1190,8 @@ function updateDeckOrderFromDOM() {
   nextCardOrder = deckCards.length + 1;
 }
 
-function handleDragEnd(e) {
-  e.currentTarget.classList.remove('dragging');
+function handleDragEnd(event) {
+  event.currentTarget.classList.remove('dragging');
   clearDragIndicators();
   draggedElement = null;
   lastDropTarget = null;
@@ -1191,7 +1206,7 @@ function clearDragIndicators() {
 
 // Show warning dialog before allowing deck builder access
 function showWarningDialog() {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const overlay = document.createElement('div');
     overlay.style.cssText = `
       position: fixed;
@@ -1275,9 +1290,9 @@ function showWarningDialog() {
     };
 
     // Prevent closing by clicking overlay
-    overlay.onclick = (e) => {
-      if (e.target === overlay) {
-        e.preventDefault();
+    overlay.onclick = event => {
+      if (event.target === overlay) {
+        event.preventDefault();
       }
     };
   });

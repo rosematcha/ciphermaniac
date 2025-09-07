@@ -226,6 +226,7 @@ export async function renderCardPrice(cardIdentifier) {
  * @returns {Promise<void>}
  */
 async function loadAndDisplayPrice(cardIdentifier, container) {
+  const priceElement = container;
   let price = null;
 
   // If cardIdentifier is already in UID format (Name::SET::NUMBER), use it directly
@@ -259,13 +260,13 @@ async function loadAndDisplayPrice(cardIdentifier, container) {
   }
 
   // Clear loading and show actual price
-  container.innerHTML = '';
+  priceElement.innerHTML = '';
 
   if (price !== null && price > 0) {
-    showPrice(container, price);
+    showPrice(priceElement, price);
     logger.debug('Successfully displayed price', { cardIdentifier, price });
   } else {
-    showPriceUnavailable(container, 'Price data not available');
+    showPriceUnavailable(priceElement, 'Price data not available');
     logger.debug('No price found', { cardIdentifier });
   }
 }
@@ -350,7 +351,10 @@ export async function renderCardSets(cardIdentifier) {
     );
   } catch (error) {
     logger.exception('renderCardSets failed', error, { cardIdentifier });
-    setsContainer.className = 'error';
-    setsContainer.textContent = '';
+    // Set error state atomically
+    Object.assign(setsContainer, {
+      className: 'error',
+      textContent: ''
+    });
   }
 }

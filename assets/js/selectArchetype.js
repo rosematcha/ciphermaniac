@@ -15,31 +15,32 @@
  */
 export function pickArchetype(candidates, top8Bases, opts) {
   if (!Array.isArray(candidates) || candidates.length === 0) {return null;}
-  const valid = candidates.filter(c => c && typeof c.base === 'string');
+  const valid = candidates.filter(candidate => candidate && typeof candidate.base === 'string');
   if (valid.length === 0) {return null;}
   const minTotal = Math.max(0, Number(opts?.minTotal) || 3); // minimum decks in archetype to consider by default
   // Score primarily by number of decks that played the card (found),
   // falling back to pct when found is unknown or ties; this favors larger samples.
-  const score = c => {
-    if (Number.isFinite(c?.found)) {return c.found;}
+  const score = candidate => {
+    if (Number.isFinite(candidate?.found)) {return candidate.found;}
     // Approximate from pct*total when available; else 0
-    if (Number.isFinite(c?.pct) && Number.isFinite(c?.total)) {
-      return Math.round((c.pct * c.total) / 100);
+    if (Number.isFinite(candidate?.pct) && Number.isFinite(candidate?.total)) {
+      return Math.round((candidate.pct * candidate.total) / 100);
     }
     return 0;
   };
-  const byFoundThenPctDesc = (a, b) => (score(b) - score(a)) || ((b.pct ?? -1) - (a.pct ?? -1)) || a.base.localeCompare(b.base);
+  const byFoundThenPctDesc = (first, second) =>
+    (score(second) - score(first)) || ((second.pct ?? -1) - (first.pct ?? -1)) || first.base.localeCompare(second.base);
   const poolFromTop8 = (() => {
     if (Array.isArray(top8Bases) && top8Bases.length) {
       const set = new Set(top8Bases);
-      const sub = valid.filter(c => set.has(c.base));
+      const sub = valid.filter(candidate => set.has(candidate.base));
       if (sub.length) {return sub;}
     }
     return valid;
   })();
 
   // Apply minTotal threshold; if all filtered out, fall back to original pool
-  const filtered = poolFromTop8.filter(c => (Number.isFinite(c.total) ? c.total : 0) >= minTotal);
+  const filtered = poolFromTop8.filter(candidate => (Number.isFinite(candidate.total) ? candidate.total : 0) >= minTotal);
   const pool = filtered.length ? filtered : poolFromTop8;
   return pool.sort(byFoundThenPctDesc)[0];
 }

@@ -113,13 +113,13 @@ function validateAndCleanItem(item, index) {
   if (Array.isArray(dist)) {
     // Keep v2 schema objects { copies, players, percent } if present; otherwise accept numeric array fallback
     cleanItem.dist = dist
-      .map(d => {
-        if (typeof d === 'number') {return { copies: d, players: undefined, percent: undefined };}
-        if (d && typeof d === 'object') {
+      .map(distItem => {
+        if (typeof distItem === 'number') {return { copies: distItem, players: undefined, percent: undefined };}
+        if (distItem && typeof distItem === 'object') {
           return {
-            copies: Number.isFinite(d.copies) ? d.copies : undefined,
-            players: Number.isFinite(d.players) ? d.players : undefined,
-            percent: Number.isFinite(d.percent) ? d.percent : undefined
+            copies: Number.isFinite(distItem.copies) ? distItem.copies : undefined,
+            players: Number.isFinite(distItem.players) ? distItem.players : undefined,
+            percent: Number.isFinite(distItem.percent) ? distItem.percent : undefined
           };
         }
         return null;

@@ -6,41 +6,41 @@ import { trackMissing } from './dev/missingThumbs.js';
 import { isFavorite, toggleFavorite, subscribeFavorites } from './favorites.js';
 // import { setupImagePreloading } from './utils/imagePreloader.js'; // Disabled - using parallelImageLoader instead
 import { parallelImageLoader } from './utils/parallelImageLoader.js';
-import { setProperties, setStyles, createElement, batchAppend } from './utils/dom.js';
+import { setProperties as _setProperties, setStyles, createElement, batchAppend } from './utils/dom.js';
 // Modal removed: navigate to card page instead
 
 // Lightweight floating tooltip used for thumbnails' histograms
 let __gridGraphTooltip = null;
 function ensureGridTooltip() {
   if (__gridGraphTooltip) {return __gridGraphTooltip;}
-  const t = document.createElement('div');
-  t.className = 'graph-tooltip';
-  t.setAttribute('role', 'status');
-  t.style.position = 'fixed';
-  t.style.pointerEvents = 'none';
-  t.style.zIndex = 9999;
-  t.style.display = 'none';
-  document.body.appendChild(t);
-  __gridGraphTooltip = t;
-  return t;
+  const tooltip = document.createElement('div');
+  tooltip.className = 'graph-tooltip';
+  tooltip.setAttribute('role', 'status');
+  tooltip.style.position = 'fixed';
+  tooltip.style.pointerEvents = 'none';
+  tooltip.style.zIndex = 9999;
+  tooltip.style.display = 'none';
+  document.body.appendChild(tooltip);
+  __gridGraphTooltip = tooltip;
+  return tooltip;
 }
 function showGridTooltip(html, x, y) {
-  const t = ensureGridTooltip();
-  t.innerHTML = html;
-  t.style.display = 'block';
+  const tooltip = ensureGridTooltip();
+  tooltip.innerHTML = html;
+  tooltip.style.display = 'block';
   const offsetX = 12; const offsetY = 12;
   const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
   const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
   let left = x + offsetX;
   let top = y + offsetY;
-  const rect = t.getBoundingClientRect();
+  const rect = tooltip.getBoundingClientRect();
   if (left + rect.width > vw) {left = Math.max(8, x - rect.width - offsetX);}
   if (top + rect.height > vh) {top = Math.max(8, y - rect.height - offsetY);}
-  t.style.left = `${left}px`;
-  t.style.top = `${top}px`;
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
 }
 function hideGridTooltip() { if (__gridGraphTooltip) {__gridGraphTooltip.style.display = 'none';} }
-function escapeHtml(s) { if (!s) {return '';} return String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
+function escapeHtml(str) { if (!str) {return '';} return String(str).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
 
 /**
  *
@@ -53,6 +53,7 @@ export function renderSummary(container, deckTotal, count) {
   const parts = [];
   if (deckTotal) {parts.push(`${deckTotal} decklists`);}
   parts.push(`${count} cards`);
+  // eslint-disable-next-line no-param-reassign
   container.textContent = parts.join(' • ');
 }
 
@@ -141,7 +142,12 @@ export function render(items, overrides = {}) {
   // Determine total rows that would be generated for all items
   const estimateTotalRows = (() => {
     let cnt = 0; let idx = 0;
-    while (idx < items.length) { cnt++; const isBigLocal = cnt - 1 < NUM_LARGE_ROWS; const maxCount = isBigLocal ? perRowBig : targetSmall; idx += maxCount; }
+    while (idx < items.length) {
+      cnt++;
+      const isBigLocal = cnt - 1 < NUM_LARGE_ROWS;
+      const maxCount = isBigLocal ? perRowBig : targetSmall;
+      idx += maxCount;
+    }
     return cnt;
   })();
   // Persist totals so resize handler can decide whether to show More after reflow
@@ -162,7 +168,7 @@ export function render(items, overrides = {}) {
 
   // Keyboard navigation: arrow keys move focus across cards by row/column
   if (!grid._kbNavAttached) {
-    grid.addEventListener('keydown', e => {
+    grid.addEventListener('keydown', event => {
       const active = document.activeElement;
       if (!active || !active.classList || !active.classList.contains('card')) {return;}
       const rowEl = active.closest('.row');
@@ -170,19 +176,19 @@ export function render(items, overrides = {}) {
       const colIdx = Number(active.dataset.col ?? 0);
       const move = (dr, dc) => {
         const rowsEls = Array.from(grid.querySelectorAll('.row'));
-        const r = Math.max(0, Math.min(rowsEls.length - 1, rowIdx + dr));
-        const targetRow = rowsEls[r];
+        const targetRowIndex = Math.max(0, Math.min(rowsEls.length - 1, rowIdx + dr));
+        const targetRow = rowsEls[targetRowIndex];
         if (!targetRow) {return;}
         const cards = Array.from(targetRow.querySelectorAll('.card'));
-        const c = Math.max(0, Math.min(cards.length - 1, colIdx + dc));
-        const next = cards[c];
+        const targetColIndex = Math.max(0, Math.min(cards.length - 1, colIdx + dc));
+        const next = cards[targetColIndex];
         if (next) { next.focus(); }
       };
-      switch (e.key) {
-        case 'ArrowRight': e.preventDefault(); move(0, +1); break;
-        case 'ArrowLeft': e.preventDefault(); move(0, -1); break;
-        case 'ArrowDown': e.preventDefault(); move(+1, 0); break;
-        case 'ArrowUp': e.preventDefault(); move(-1, 0); break;
+      switch (event.key) {
+        case 'ArrowRight': event.preventDefault(); move(0, +1); break;
+        case 'ArrowLeft': event.preventDefault(); move(0, -1); break;
+        case 'ArrowDown': event.preventDefault(); move(+1, 0); break;
+        case 'ArrowUp': event.preventDefault(); move(-1, 0); break;
         default:
       }
     });
@@ -312,8 +318,8 @@ function createStarButton(cardName) {
     starBtn.textContent = fav ? '★' : '☆';
   };
 
-  starBtn.addEventListener('click', e => {
-    e.stopPropagation();
+  starBtn.addEventListener('click', event => {
+    event.stopPropagation();
     toggleFavorite(cardName);
     updateStarState();
   });
@@ -490,37 +496,39 @@ function createCardHistogram(el, cardData) {
     }
   }
 
-  const minC = Math.min(...cardData.dist.map(d => d.copies));
-  const maxC = Math.max(...cardData.dist.map(d => d.copies));
-  const maxPct = Math.max(1, ...cardData.dist.map(d => d.percent));
+  const minCopies = Math.min(...cardData.dist.map(distItem => distItem.copies));
+  const maxCopies = Math.max(...cardData.dist.map(distItem => distItem.copies));
+  const maxPct = Math.max(1, ...cardData.dist.map(distItem => distItem.percent));
 
-  for (let c = minC; c <= maxC; c++) {
-    const d = cardData.dist.find(x => x.copies === c);
+  for (let copies = minCopies; copies <= maxCopies; copies++) {
+    const distData = cardData.dist.find(x => x.copies === copies);
     const col = createElement('div', { className: 'col' });
     const bar = createElement('div', { className: 'bar' });
     const lbl = createElement('div', {
       className: 'lbl',
-      textContent: String(c)
+      textContent: String(copies)
     });
 
-    const h = d ? Math.max(2, Math.round(54 * (d.percent / maxPct))) : 2;
+    const height = distData ? Math.max(2, Math.round(54 * (distData.percent / maxPct))) : 2;
     setStyles(bar, {
-      height: `${h}px`,
-      ...(d ? {} : { opacity: '0.25' })
+      height: `${height}px`,
+      ...(distData ? {} : { opacity: '0.25' })
     });
 
     // Setup tooltip
-    if (d) {
+    if (distData) {
       const total = Number.isFinite(cardData.total) ? cardData.total : null;
-      const players = Number.isFinite(d.players) ? d.players : null;
-      const exactPct = Number.isFinite(d.percent) ? d.percent : (players !== null && total ? (100 * players / total) : null);
+      const players = Number.isFinite(distData.players) ? distData.players : null;
+      const exactPct = Number.isFinite(distData.percent)
+        ? distData.percent
+        : (players !== null && total ? (100 * players / total) : null);
       const pctStr = exactPct !== null ? `${exactPct.toFixed(1)}%` : '—';
       const countsStr = (players !== null && total !== null) ? ` (${players}/${total})` : '';
-      const tip = `${c}x: ${pctStr}${countsStr}`;
+      const tip = `${copies}x: ${pctStr}${countsStr}`;
 
       setupHistogramTooltip(col, cardData.name, tip);
     } else {
-      const tip = `${c}x: 0%`;
+      const tip = `${copies}x: 0%`;
       setupHistogramTooltip(col, cardData.name, tip);
     }
 
@@ -547,17 +555,17 @@ function attachCardNavigation(card, cardData) {
   const cardIdentifier = cardData.uid || cardData.name;
   const url = `card.html#card/${encodeURIComponent(cardIdentifier)}`;
 
-  card.addEventListener('click', e => {
-    if (e.ctrlKey || e.metaKey) {
+  card.addEventListener('click', event => {
+    if (event.ctrlKey || event.metaKey) {
       window.open(url, '_blank');
     } else {
       location.assign(url);
     }
   });
 
-  card.addEventListener('keydown', e => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
+  card.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
       location.assign(url);
     }
   });
@@ -589,8 +597,10 @@ function makeCardElement(cardData, useSm, overrides) {
 
 // Extract card attributes setup
 function setupCardAttributes(card, cardData) {
+  // eslint-disable-next-line no-param-reassign
   card.dataset.name = cardData.name.toLowerCase();
   if (cardData.category) {
+    // eslint-disable-next-line no-param-reassign
     card.dataset.category = cardData.category;
   }
   card.setAttribute('role', 'link');
@@ -665,7 +675,12 @@ export function updateLayout() {
   const totalCards = Number.isInteger(grid._totalCards) ? grid._totalCards : cards.length;
   const newTotalRows = (() => {
     let cnt = 0; let idx = 0;
-    while (idx < totalCards) { cnt++; const isBigLocal = cnt - 1 < bigRows; const maxCount = isBigLocal ? perRowBig : targetSmall; idx += maxCount; }
+    while (idx < totalCards) {
+      cnt++;
+      const isBigLocal = cnt - 1 < bigRows;
+      const maxCount = isBigLocal ? perRowBig : targetSmall;
+      idx += maxCount;
+    }
     return cnt;
   })();
   while (i < cards.length) {

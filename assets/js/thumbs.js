@@ -1,12 +1,12 @@
 function sanitizePrimary(name) {
   // Normalize and keep Unicode letters/numbers, apostrophes, dashes, underscores; spaces -> underscores
-  const s = String(name).normalize('NFC')
+  const sanitized = String(name).normalize('NFC')
     .replace(/\u2019/g, '\'') // curly to straight apostrophe
     .replace(/[:!.,]/g, '')
     .replace(/\s+/g, '_')
     .replace(/[^\p{L}\p{N}_\-']/gu, '_')
     .replace(/_+/g, '_');
-  return s;
+  return sanitized;
 }
 
 function sanitizeNoApostrophes(name) {
@@ -66,9 +66,9 @@ export function buildThumbCandidates(name, useSm, overrides, variant) {
   out.push(`${base + sanitizeStripPossessive(ascii)}.png`);
   out.push(`${base + sanitizeNoApostrophes(ascii)}.png`);
   // Team Rocket's special case
-  for (const v of teamRocketVariants(name)) {
-    out.push(`${base + sanitizePrimary(v)}.png`);
-    out.push(`${base + sanitizeNoApostrophes(v)}.png`);
+  for (const variant of teamRocketVariants(name)) {
+    out.push(`${base + sanitizePrimary(variant)}.png`);
+    out.push(`${base + sanitizeNoApostrophes(variant)}.png`);
   }
   // Deduplicate while preserving order
   return Array.from(new Set(out));
