@@ -21,7 +21,7 @@ import {
 import {
   createProgressIndicator,
   processInParallel,
-  cleanupOrphanedProgressIndicators
+  cleanupOrphanedProgressDisplay
 } from './utils/parallelLoader.js';
 import { CleanupManager } from './utils/cleanupManager.js';
 import { logger, setupGlobalErrorHandler } from './utils/errorHandler.js';
@@ -1100,8 +1100,8 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
             found: globalFound,
             total: globalTotal
           };
-          // eslint-disable-next-line no-param-reassign
-          cacheObject[ck] = cacheEntry;
+          // Store cache entry atomically
+          Object.assign(cacheObject, { [ck]: cacheEntry });
           saveCache();
         }
       }
@@ -1268,7 +1268,7 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
                 // Combine distribution data
                 if (variantCard.dist && Array.isArray(variantCard.dist)) {
                   for (const distEntry of variantCard.dist) {
-                    const existing = combinedDist.find(d => d.copies === distEntry.copies);
+                    const existing = combinedDist.find(distItem => distItem.copies === distEntry.copies);
                     if (existing) {
                       existing.players += distEntry.players || 0;
                     } else {
@@ -1285,7 +1285,7 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
                 found: combinedFound,
                 total: combinedTotal,
                 pct: combinedTotal > 0 ? (100 * combinedFound / combinedTotal) : 0,
-                dist: combinedDist.sort((a, b) => a.copies - b.copies)
+                dist: combinedDist.sort((first, second) => first.copies - second.copies)
               };
             }
 
@@ -1449,7 +1449,9 @@ async function renderAnalysisTable(tournament) {
             : (overallItem.pct || 0);
           const minSample = overallPct > 20 ? 1 : 2; // Lower threshold for high-usage cards
           if (cardInfo.total >= minSample) {
-            const percentage = Number.isFinite(cardInfo.pct) ? cardInfo.pct : (cardInfo.total ? (100 * cardInfo.found / cardInfo.total) : 0);
+            const percentage = Number.isFinite(cardInfo.pct)
+              ? cardInfo.pct
+              : (cardInfo.total ? (100 * cardInfo.found / cardInfo.total) : 0);
 
             // Precompute percent of all decks in archetype by copies
             const copiesPct = numberOfCopies => {
@@ -1603,7 +1605,7 @@ async function renderAnalysisTable(tournament) {
 
     // Failsafe cleanup for any lingering progress indicators
     setTimeout(() => {
-      cleanupOrphanedProgressIndicators();
+      cleanupOrphanedProgressDisplay();
     }, 100);
   }
 }

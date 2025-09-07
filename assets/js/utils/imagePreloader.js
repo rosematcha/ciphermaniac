@@ -1,4 +1,4 @@
-import { buildThumbCandidates } from '../thumbs.js';
+import { buildThumbCandidates as _buildThumbCandidates } from '../thumbs.js';
 
 class ImagePreloader {
   constructor() {
@@ -16,30 +16,9 @@ class ImagePreloader {
    * @param {object} overrides - Image filename overrides
    * @param {number} priority - Higher number = higher priority (default: 1)
    */
-  preloadImages(cardNames, useSm = false, overrides = {}, priority = 1) {
+  preloadImages(_cardNames, _useSm = false, _overrides = {}, _priority = 1) {
     // DISABLED: Using parallelImageLoader instead
     return;
-
-    if (!Array.isArray(cardNames)) {
-      return;
-    }
-
-    const requests = cardNames.map(name => ({
-      name,
-      useSm,
-      overrides,
-      priority,
-      candidates: buildThumbCandidates(name, useSm, overrides)
-    }));
-
-    // Sort by priority (higher first)
-    requests.sort((a, b) => b.priority - a.priority);
-
-    // Add to queue
-    this.preloadQueue.push(...requests);
-
-    // Process queue
-    this.processQueue();
   }
 
   /**
@@ -109,66 +88,9 @@ class ImagePreloader {
    * @param items
    * @param overrides
    */
-  preloadVisibleCards(items, overrides = {}) {
+  preloadVisibleCards(_items, _overrides = {}) {
     // DISABLED: Using parallelImageLoader instead
     return;
-
-    if (!Array.isArray(items)) {
-      return;
-    }
-
-    // Get currently visible cards based on scroll position
-    const viewportHeight = window.innerHeight;
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-    const grid = document.getElementById('grid');
-
-    if (!grid) {
-      return;
-    }
-
-    const rows = grid.querySelectorAll('.row');
-    const visibleCardNames = [];
-    const nearVisibleCardNames = [];
-
-    rows.forEach(row => {
-      const rect = row.getBoundingClientRect();
-      const rowTop = rect.top + scrollTop;
-      const rowBottom = rowTop + rect.height;
-
-      // Check if row is visible or near-visible
-      const buffer = viewportHeight; // Preload 1 viewport height ahead
-      const isVisible = rowBottom >= scrollTop && rowTop <= scrollTop + viewportHeight;
-      const isNearVisible = rowBottom >= scrollTop - buffer && rowTop <= scrollTop + viewportHeight + buffer;
-
-      if (isVisible || isNearVisible) {
-        const cards = row.querySelectorAll('.card');
-        cards.forEach(card => {
-          const name = card.querySelector('.name')?.textContent;
-          if (name) {
-            const item = items.find(i => i.name === name);
-            if (item) {
-              if (isVisible) {
-                visibleCardNames.push(name);
-              } else {
-                nearVisibleCardNames.push(name);
-              }
-            }
-          }
-        });
-      }
-    });
-
-    // Preload visible cards with high priority
-    if (visibleCardNames.length > 0) {
-      this.preloadImages(visibleCardNames, true, overrides, 3); // sm thumbnails, high priority
-      this.preloadImages(visibleCardNames, false, overrides, 2); // xs thumbnails, medium priority
-    }
-
-    // Preload near-visible cards with lower priority
-    if (nearVisibleCardNames.length > 0) {
-      this.preloadImages(nearVisibleCardNames, true, overrides, 1); // sm thumbnails, low priority
-      this.preloadImages(nearVisibleCardNames, false, overrides, 1); // xs thumbnails, low priority
-    }
   }
 
   /**
@@ -198,38 +120,13 @@ class ImagePreloader {
 export const imagePreloader = new ImagePreloader();
 
 // Throttled scroll handler for preloading
-let scrollTimeout = null;
+let _scrollTimeout = null;
 /**
  *
  * @param items
  * @param overrides
  */
-export function setupImagePreloading(items, overrides = {}) {
+export function setupImagePreloading(_items, _overrides = {}) {
   // DISABLED: Using parallelImageLoader instead
   return () => {}; // Return empty cleanup function
-
-  const handleScroll = () => {
-    if (scrollTimeout) {
-      return;
-    }
-    scrollTimeout = setTimeout(() => {
-      imagePreloader.preloadVisibleCards(items, overrides);
-      scrollTimeout = null;
-    }, 100);
-  };
-
-  // Initial preload
-  imagePreloader.preloadVisibleCards(items, overrides);
-
-  // Set up scroll listener
-  window.addEventListener('scroll', handleScroll, { passive: true });
-
-  // Return cleanup function
-  return () => {
-    window.removeEventListener('scroll', handleScroll);
-    if (scrollTimeout) {
-      clearTimeout(scrollTimeout);
-      scrollTimeout = null;
-    }
-  };
 }

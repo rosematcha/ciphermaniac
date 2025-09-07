@@ -10,6 +10,6 @@
  */
 export function prettyTournamentName(key) {
   if (!key || typeof key !== 'string') {return key;}
-  const m = key.match(/^\d{4}-\d{2}-\d{2},\s*(.+)$/);
-  return m ? m[1] : key;
+  const match = key.match(/^\d{4}-\d{2}-\d{2},\s*(.+)$/);
+  return match ? match[1] : key;
 }

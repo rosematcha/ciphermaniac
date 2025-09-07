@@ -123,13 +123,18 @@ class ParallelImageLoader {
     } = options;
 
     // Set basic attributes
+    // eslint-disable-next-line no-param-reassign
     img.alt = alt;
+    // eslint-disable-next-line no-param-reassign
     img.decoding = 'async';
+    // eslint-disable-next-line no-param-reassign
     img.loading = img.loading || 'lazy';
 
     // Setup fade-in effect
     if (fadeIn) {
+      // eslint-disable-next-line no-param-reassign
       img.style.opacity = '0';
+      // eslint-disable-next-line no-param-reassign
       img.style.transition = 'opacity 0.18s ease-out';
     }
 
@@ -139,20 +144,25 @@ class ParallelImageLoader {
 
       if (successfulUrl) {
         // Set the successful URL
+        // eslint-disable-next-line no-param-reassign, require-atomic-updates
         img.src = successfulUrl;
 
         // Handle load event for fade-in
         if (fadeIn) {
+          // eslint-disable-next-line no-param-reassign
           img.onload = () => {
+            // eslint-disable-next-line no-param-reassign
             img.style.opacity = '1';
             if (onSuccess) {onSuccess(successfulUrl);}
           };
         } else if (onSuccess) {
+          // eslint-disable-next-line no-param-reassign
           img.onload = () => onSuccess(successfulUrl);
         }
 
         // If image is already cached and loaded, trigger fade-in immediately
         if (img.complete && img.naturalHeight !== 0) {
+          // eslint-disable-next-line no-param-reassign
           img.style.opacity = '1';
           if (onSuccess) {onSuccess(successfulUrl);}
         }

@@ -21,12 +21,12 @@ import { getCardPrice } from './api.js';
  * @type {Record<string, (a: any, b: any) => number>}
  */
 const SORT_COMPARATORS = {
-  'percent-desc': (a, b) => (b.pct ?? -1) - (a.pct ?? -1),
-  'percent-asc': (a, b) => (a.pct ?? Infinity) - (b.pct ?? Infinity),
-  'alpha-asc': (a, b) => a.name.localeCompare(b.name),
-  'alpha-desc': (a, b) => b.name.localeCompare(a.name),
-  'price-desc': (a, b) => (b.price ?? -1) - (a.price ?? -1),
-  'price-asc': (a, b) => (a.price ?? Infinity) - (b.price ?? Infinity)
+  'percent-desc': (first, second) => (second.pct ?? -1) - (first.pct ?? -1),
+  'percent-asc': (first, second) => (first.pct ?? Infinity) - (second.pct ?? Infinity),
+  'alpha-asc': (first, second) => first.name.localeCompare(second.name),
+  'alpha-desc': (first, second) => second.name.localeCompare(first.name),
+  'price-desc': (first, second) => (second.price ?? -1) - (first.price ?? -1),
+  'price-asc': (first, second) => (first.price ?? Infinity) - (second.price ?? Infinity)
 };
 
 /**

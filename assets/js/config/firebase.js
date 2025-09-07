@@ -14,7 +14,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase (will be loaded from CDN)
-let app, auth, db;
+let _app, auth, db;
 
 /**
  * Initialize Firebase services
@@ -25,7 +25,7 @@ export function initializeFirebase() {
     throw new Error('Firebase SDK not loaded');
   }
 
-  app = firebase.initializeApp(firebaseConfig);
+  _app = firebase.initializeApp(firebaseConfig);
   auth = firebase.auth();
   db = firebase.firestore();
 

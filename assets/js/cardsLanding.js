@@ -51,8 +51,8 @@ function makeCardItem(name, opts) {
   const cardIdentifier = opts?.uid || name;
   const url = `card.html#card/${encodeURIComponent(cardIdentifier)}`;
   const go = newTab => { newTab ? window.open(url, '_blank') : location.assign(url); };
-  card.addEventListener('click', e => { go(e.ctrlKey || e.metaKey); });
-  card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(false); } });
+  card.addEventListener('click', event => { go(event.ctrlKey || event.metaKey); });
+  card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); go(false); } });
   return card;
 }
 
@@ -61,29 +61,30 @@ const PREF_KEY = 'suggestionsView';
 function getPref() { try { return localStorage.getItem(PREF_KEY) || 'carousel'; } catch (error) { console.warn('Failed to get preference:', error); return 'carousel'; } }
 // Note: setPref currently unused but kept for future use
 // eslint-disable-next-line no-unused-vars
-function setPref(v) { try { localStorage.setItem(PREF_KEY, v); } catch (error) { console.warn('Failed to set preference:', error); } }
+function setPref(value) { try { localStorage.setItem(PREF_KEY, value); } catch (error) { console.warn('Failed to set preference:', error); } }
 
 // Note: rows view removed — suggestions now always render as a carousel
 
 // Accessible, centered carousel using scroll-snap + buttons
 function createArrow(dir) {
-  const b = document.createElement('button'); b.type = 'button';
-  b.className = `carousel-arrow ${dir}`;
-  b.innerHTML = dir === 'prev' ? '&#10094;' : '&#10095;';
-  b.setAttribute('aria-label', dir === 'prev' ? 'Previous' : 'Next');
-  return b;
+  const button = document.createElement('button'); button.type = 'button';
+  button.className = `carousel-arrow ${dir}`;
+  button.innerHTML = dir === 'prev' ? '&#10094;' : '&#10095;';
+  button.setAttribute('aria-label', dir === 'prev' ? 'Previous' : 'Next');
+  return button;
 }
 function renderCarousel(container, items) {
   // Use safe container update
-  container.innerHTML = '';
+  const containerElement = container;
+  containerElement.innerHTML = '';
   const prev = createArrow('prev'); const next = createArrow('next');
   const viewport = document.createElement('div'); viewport.className = 'carousel-viewport';
   const track = document.createElement('div'); track.className = 'carousel-track'; viewport.appendChild(track);
-  container.appendChild(prev); container.appendChild(viewport); container.appendChild(next);
+  containerElement.appendChild(prev); containerElement.appendChild(viewport); containerElement.appendChild(next);
 
   // sizing
   const measureBase = () => {
-    const rect = container.getBoundingClientRect();
+    const rect = containerElement.getBoundingClientRect();
     const cw = rect?.width || document.documentElement.clientWidth || window.innerWidth;
     const { base, smallScale } = computeLayout(cw);
     return Math.max(120, Math.round(base * smallScale));
@@ -110,7 +111,7 @@ function renderCarousel(container, items) {
 }
 
 // Controls per category
-function buildControls(/* current */) {
+function _buildControls(/* current */) {
   // No controls - return empty div
   const bar = document.createElement('div'); bar.className = 'suggestion-controls';
   return bar;
@@ -125,27 +126,29 @@ async function init() {
   if (!root || !sect) {return;}
   root.innerHTML = '';
 
-  const cats = (data.categories || []).filter(c => Array.isArray(c.items) && c.items.length);
+  const cats = (data.categories || []).filter(category => Array.isArray(category.items) && category.items.length);
   if (cats.length === 0) {
     const msg = document.createElement('div'); msg.className = 'note'; msg.textContent = 'No suggestions available.'; root.appendChild(msg);
   }
 
   const pref = getPref();
-  for (const c of cats) {
+  for (const category of cats) {
     const block = document.createElement('div'); block.className = 'suggestion-block';
     const header = document.createElement('div'); header.className = 'suggestion-header';
-    const title = document.createElement('h2'); title.textContent = c.title || c.id; header.appendChild(title);
+    const title = document.createElement('h2'); title.textContent = category.title || category.id; header.appendChild(title);
     const state = { value: pref, onchange: () => {} };
     // Controls removed as requested
     block.appendChild(header);
     const area = document.createElement('div'); area.className = 'suggestion-area'; block.appendChild(area);
     // Always render as carousel (rows option removed)
-    const render = () => { renderCarousel(area, c.items.slice(0, 48)); };
+    const render = () => { renderCarousel(area, category.items.slice(0, 48)); };
     state.onchange = render; render();
     root.appendChild(block);
   }
 
-  try { sect.style.display = ''; if (sect.hasAttribute && sect.hasAttribute('hidden')) {sect.removeAttribute('hidden');} } catch {}
+  try { sect.style.display = ''; if (sect.hasAttribute && sect.hasAttribute('hidden')) {sect.removeAttribute('hidden');} } catch {
+    // Ignore DOM manipulation errors
+  }
   const meta = document.getElementById('card-meta'); if (meta) {meta.style.display = 'none';}
   const analysis = document.getElementById('card-analysis'); if (analysis) {analysis.style.display = 'none';}
 }
