@@ -77,14 +77,14 @@ export function dumpMissingReport() {
   // Download as file
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'overrides.json';
-  a.textContent = 'Download overrides.json';
-  a.style = 'position:fixed;top:10px;right:10px;z-index:9999;background:#222;color:#fff;padding:8px;border-radius:6px;font-size:14px;';
-  document.body.appendChild(a);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'overrides.json';
+  link.textContent = 'Download overrides.json';
+  link.style = 'position:fixed;top:10px;right:10px;z-index:9999;background:#222;color:#fff;padding:8px;border-radius:6px;font-size:14px;';
+  document.body.appendChild(link);
   setTimeout(() => { URL.revokeObjectURL(url); }, 60000);
-  setTimeout(() => { a.remove(); }, 60000);
+  setTimeout(() => { link.remove(); }, 60000);
 }
 
 function pickBasename(path) {
@@ -116,11 +116,11 @@ export function downloadOverridesSkeleton() {
   const obj = proposeOverridesSkeleton();
   const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'overrides-skeleton.json';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'overrides-skeleton.json';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
   URL.revokeObjectURL(url);
 }

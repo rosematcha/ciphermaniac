@@ -20,7 +20,8 @@
       "Bash(npm run lint:*)",
       "Bash(npm install)",
       "Bash(curl:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": [],

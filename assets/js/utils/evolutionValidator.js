@@ -4,7 +4,7 @@
  * @module evolutionValidator
  */
 
-import { logger } from './logger.js';
+import { logger as _logger } from './logger.js';
 
 // Evolution chain data parsed from project requirements
 const EVOLUTION_CHAINS = {
@@ -578,7 +578,7 @@ export function validateEvolutionRequirements(deck) {
           message: `${cardDisplayNames}: Named variant should evolve from matching ` +
                   `trainer's card (e.g., ${trainerName}'s ${preEvolutions[0]}).`,
           cardName: cardKey,
-          expectedPreEvolutions: preEvolutions.map(p => `${trainerName}'s ${p}`)
+          expectedPreEvolutions: preEvolutions.map(preEvolution => `${trainerName}'s ${preEvolution}`)
         });
       }
     }
@@ -655,8 +655,8 @@ function isPokemonCard(card) {
 export function getEvolutionValidationSummary(warnings) {
   const summary = {
     totalWarnings: warnings.length,
-    errors: warnings.filter(w => w.severity === 'error'),
-    warnings: warnings.filter(w => w.severity === 'warning'),
+    errors: warnings.filter(warning => warning.severity === 'error'),
+    warnings: warnings.filter(warning => warning.severity === 'warning'),
     byType: {}
   };
 

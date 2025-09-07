@@ -77,7 +77,7 @@ class Logger {
    * @param {...any} args
    */
   info(message, ...args) {
-    console.log.apply(console, this._format('info', message, args));
+    console.log(...this._format('info', message, args));
   }
 
   /**
@@ -86,7 +86,7 @@ class Logger {
    * @param {...any} args
    */
   warn(message, ...args) {
-    console.warn.apply(console, this._format('warn', message, args));
+    console.warn(...this._format('warn', message, args));
   }
 
   /**
@@ -95,7 +95,7 @@ class Logger {
    * @param {...any} args
    */
   error(message, ...args) {
-    console.error.apply(console, this._format('error', message, args));
+    console.error(...this._format('error', message, args));
   }
 
   /**
@@ -121,4 +121,6 @@ try {
       logger.setLevel(debugLevel);
     }
   }
-} catch {}
+} catch {
+  // Ignore localStorage errors
+}

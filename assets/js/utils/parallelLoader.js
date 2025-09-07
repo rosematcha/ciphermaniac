@@ -242,7 +242,7 @@ export function createProgressIndicator(title, steps, options = {}) {
  * Cleanup utility to remove any orphaned progress indicators
  * Call this if you suspect progress indicators are not being cleaned up properly
  */
-export function cleanupOrphanedProgressIndicators() {
+export function cleanupOrphanedProgressDisplay() {
   const orphanedElements = document.querySelectorAll('.parallel-loader-progress');
   let cleaned = 0;
 
@@ -297,6 +297,7 @@ export async function processInParallel(items, processor, options = {}) {
   }
 
   for (const chunk of chunks) {
+    // eslint-disable-next-line no-loop-func
     const promises = chunk.map(async (item, chunkIndex) => {
       const globalIndex = chunks.indexOf(chunk) * config.concurrency + chunkIndex;
 
@@ -329,7 +330,7 @@ export async function processInParallel(items, processor, options = {}) {
         }
       };
 
-      return processWithRetry();
+      return await processWithRetry();
     });
 
     const chunkResults = await Promise.all(promises);
@@ -448,7 +449,7 @@ export async function loadWithCache(items, loader, cache, cacheKey, options = {}
   }
 
   if (uncachedItems.length === 0) {
-    return results.map(r => r.result);
+    return results.map(result => result.result);
   }
 
   // Load uncached items in parallel
@@ -456,6 +457,7 @@ export async function loadWithCache(items, loader, cache, cacheKey, options = {}
     try {
       const result = await loader(item, index);
       const key = cacheKey(item);
+      // eslint-disable-next-line no-param-reassign
       cache[key] = result;
 
       if (config.onCacheMiss) {

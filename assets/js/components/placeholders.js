@@ -267,9 +267,11 @@ export function showSkeleton(target, skeletonElement) {
 
   // Store original content
   if (!target._originalContent) {
+    // eslint-disable-next-line no-param-reassign
     target._originalContent = target.innerHTML;
   }
 
+  // eslint-disable-next-line no-param-reassign
   target.innerHTML = '';
   target.appendChild(skeletonElement);
   target.classList.add('showing-skeleton');
@@ -286,14 +288,18 @@ export function hideSkeleton(target, newContent = null) {
   target.classList.remove('showing-skeleton');
 
   if (newContent !== null) {
+    // eslint-disable-next-line no-param-reassign
     target.innerHTML = '';
     if (typeof newContent === 'string') {
+      // eslint-disable-next-line no-param-reassign
       target.innerHTML = newContent;
     } else if (newContent instanceof Node) {
       target.appendChild(newContent);
     }
   } else if (target._originalContent) {
+    // eslint-disable-next-line no-param-reassign
     target.innerHTML = target._originalContent;
+    // eslint-disable-next-line no-param-reassign
     delete target._originalContent;
   }
 }

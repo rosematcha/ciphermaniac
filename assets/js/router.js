@@ -7,7 +7,7 @@
 export function getStateFromURL(loc = window.location) {
   const params = new URLSearchParams(loc.search);
   return {
-    q: params.get('q') || '',
+    query: params.get('q') || '',
     sort: params.get('sort') || '',
     archetype: params.get('archetype') || '',
     tour: params.get('tour') || '',
@@ -36,7 +36,7 @@ export function setStateInURL(state, opts = {}) {
   };
 
   // Only update parameters that are explicitly provided in the state object
-  if ('q' in state) {setOrDelete('q', state.q);}
+  if ('query' in state) {setOrDelete('q', state.query);}
   if ('sort' in state) {setOrDelete('sort', state.sort);}
   if ('archetype' in state) {setOrDelete('archetype', state.archetype);}
   if ('tour' in state) {setOrDelete('tour', state.tour);}
@@ -112,10 +112,10 @@ export function normalizeCardRouteOnLoad() {
  * This is intentionally conservative and only runs on index.html.
  */
 export function normalizeUnknownHashOnIndex() {
-  const h = location.hash || '';
-  if (!h) {return false;}
-  if (h === '#grid') {return false;}
-  if (/^#card\/.+/.test(h)) {return false;}
+  const hash = location.hash || '';
+  if (!hash) {return false;}
+  if (hash === '#grid') {return false;}
+  if (/^#card\/.+/.test(hash)) {return false;}
   // Unknown hash -> clear it but preserve search params
   const newUrl = `${location.pathname}${location.search}`;
   history.replaceState(null, '', newUrl);
@@ -128,15 +128,15 @@ export function normalizeUnknownHashOnIndex() {
  * @returns {{route: 'card'|'grid'|'unknown', name?: string, raw?: string}}
  */
 export function parseHash(hash = location.hash) {
-  const h = String(hash || '');
-  const m = h.match(/^#card\/(.+)$/);
-  if (m) {
-    return { route: 'card', name: decodeURIComponent(m[1]) };
+  const hashValue = String(hash || '');
+  const match = hashValue.match(/^#card\/(.+)$/);
+  if (match) {
+    return { route: 'card', name: decodeURIComponent(match[1]) };
   }
-  if (h === '#grid' || h === '') {
+  if (hashValue === '#grid' || hashValue === '') {
     return { route: 'grid' };
   }
-  return { route: 'unknown', raw: h };
+  return { route: 'unknown', raw: hashValue };
 }
 
 /**

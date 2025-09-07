@@ -19,6 +19,7 @@ async function loadSynonymData() {
       console.warn('Card synonyms data not found, synonym resolution disabled');
       return { synonyms: {}, canonicals: {} };
     }
+    // eslint-disable-next-line require-atomic-updates
     synonymData = await response.json();
     return synonymData;
   } catch (error) {

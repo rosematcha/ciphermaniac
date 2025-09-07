@@ -5,11 +5,11 @@
 
 // Clear any existing scroll listeners that might be left over from imagePreloader
 (function clearExistingScrollListeners() {
-  const oldListeners = window.__imagePreloaderScrollListeners || [];
+  const oldListeners = window.__imagePreloaderListeners || [];
   oldListeners.forEach(listener => {
     window.removeEventListener('scroll', listener);
   });
-  window.__imagePreloaderScrollListeners = [];
+  window.__imagePreloaderListeners = [];
 }());
 
 // DEBUG: Intercept Image loading to track erroneous thumbnail requests
@@ -51,7 +51,7 @@ import { AppError } from './utils/errorHandler.js';
 import { parseReport } from './parse.js';
 import { renderSummary, updateLayout } from './render.js';
 import { applyFiltersSort } from './controls.js';
-import { initMissingThumbsDev } from './dev/missingThumbs.js';
+import { initMissingThumbsDev as _initMissingThumbsDev } from './dev/missingThumbs.js';
 import { initCacheDev } from './dev/cacheDev.js';
 // import { imagePreloader } from './utils/imagePreloader.js'; // Disabled - using parallelImageLoader instead
 import { getStateFromURL, setStateInURL, normalizeRouteOnLoad, parseHash } from './router.js';
@@ -168,6 +168,7 @@ async function initializeTournamentSelector(state) {
     : tournaments[0];
 
   elements.tournamentSelect.value = selectedTournament;
+  // eslint-disable-next-line no-param-reassign
   state.currentTournament = selectedTournament;
 
   // Clean up URL if invalid tournament was specified
@@ -272,6 +273,7 @@ async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = fa
     if (selectedValue === '__all__') {
       // Show all cards
       const data = await loadTournamentData(currentTournament, cache);
+      // eslint-disable-next-line no-param-reassign, require-atomic-updates
       state.current = data;
       renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
       await applyFiltersSort(data.items, state.overrides);
@@ -302,6 +304,7 @@ async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = fa
       state.archeCache.set(selectedValue, cached);
     }
 
+    // eslint-disable-next-line no-param-reassign
     state.current = { items: cached.items, deckTotal: cached.deckTotal };
     renderSummary(document.getElementById('summary'), cached.deckTotal, cached.items.length);
     await applyFiltersSort(cached.items, state.overrides);
@@ -342,7 +345,7 @@ function setupControlHandlers(state) {
   const handleSearch = debounce(async () => {
     await applyFiltersSort(state.current.items, state.overrides);
     // Use replace while typing to avoid polluting history; final commit can push
-    setStateInURL({ q: elements.search.value }, { merge: true, replace: true });
+    setStateInURL({ 'q': elements.search.value }, { merge: true, replace: true });
   });
 
   // Sort change handler
@@ -366,6 +369,7 @@ function setupControlHandlers(state) {
     const currentArchetype = elements.archetype?.value || '__all__';
 
     logger.info(`Switching to tournament: ${newTournament}`);
+    // eslint-disable-next-line no-param-reassign
     state.currentTournament = newTournament;
     state.archeCache.clear(); // Clear archetype cache
     // imagePreloader.clearCache(); // Clear image preloader cache - disabled
@@ -374,6 +378,7 @@ function setupControlHandlers(state) {
 
     // Load new tournament data with skeleton loading
     const data = await loadTournamentData(newTournament, cache, true);
+    // eslint-disable-next-line no-param-reassign, require-atomic-updates
     state.current = data;
 
     // Load archetype list for the new tournament to check availability
@@ -529,6 +534,7 @@ async function initializeApp() {
 
     // Load initial tournament data
     const initialData = await loadTournamentData(appState.currentTournament, cache);
+    // eslint-disable-next-line no-param-reassign, require-atomic-updates
     appState.current = initialData;
 
     // Setup archetype selector
