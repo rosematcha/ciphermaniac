@@ -1,0 +1,783 @@
+{
+  "deckTotal": 2,
+  "items": [
+    {
+      "rank": 1,
+      "name": "Slowking",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "SCR",
+      "number": "058",
+      "uid": "Slowking::SCR::058",
+      "category": "pokemon"
+    },
+    {
+      "rank": 2,
+      "name": "Natu",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "071",
+      "uid": "Natu::PAR::071",
+      "category": "pokemon"
+    },
+    {
+      "rank": 3,
+      "name": "Xatu",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "set": "PAR",
+      "number": "072",
+      "uid": "Xatu::PAR::072",
+      "category": "pokemon"
+    },
+    {
+      "rank": 4,
+      "name": "Kyurem",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "047",
+      "uid": "Kyurem::SFA::047",
+      "category": "pokemon"
+    },
+    {
+      "rank": 5,
+      "name": "Haxorus",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "BLK",
+      "number": "070",
+      "uid": "Haxorus::BLK::070",
+      "category": "pokemon"
+    },
+    {
+      "rank": 6,
+      "name": "Fezandipiti ex",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "038",
+      "uid": "Fezandipiti ex::SFA::038",
+      "category": "pokemon"
+    },
+    {
+      "rank": 7,
+      "name": "Squawkabilly ex",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "169",
+      "uid": "Squawkabilly ex::PAL::169",
+      "category": "pokemon"
+    },
+    {
+      "rank": 8,
+      "name": "Professor's Research",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "set": "JTG",
+      "number": "155",
+      "uid": "Professor's Research::JTG::155",
+      "category": "trainer"
+    },
+    {
+      "rank": 9,
+      "name": "Ciphermaniac's Codebreaking",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "set": "TEF",
+      "number": "145",
+      "uid": "Ciphermaniac's Codebreaking::TEF::145",
+      "category": "trainer"
+    },
+    {
+      "rank": 10,
+      "name": "Lana's Aid",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "set": "TWM",
+      "number": "155",
+      "uid": "Lana's Aid::TWM::155",
+      "category": "trainer"
+    },
+    {
+      "rank": 11,
+      "name": "Buddy-Buddy Poffin",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "set": "TEF",
+      "number": "144",
+      "uid": "Buddy-Buddy Poffin::TEF::144",
+      "category": "trainer"
+    },
+    {
+      "rank": 12,
+      "name": "Ultra Ball",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "196",
+      "uid": "Ultra Ball::SVI::196",
+      "category": "trainer"
+    },
+    {
+      "rank": 13,
+      "name": "Nest Ball",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "181",
+      "uid": "Nest Ball::SVI::181",
+      "category": "trainer"
+    },
+    {
+      "rank": 14,
+      "name": "Super Rod",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "188",
+      "uid": "Super Rod::PAL::188",
+      "category": "trainer"
+    },
+    {
+      "rank": 15,
+      "name": "Night Stretcher",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "set": "SFA",
+      "number": "061",
+      "uid": "Night Stretcher::SFA::061",
+      "category": "trainer"
+    },
+    {
+      "rank": 16,
+      "name": "Air Balloon",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "BLK",
+      "number": "079",
+      "uid": "Air Balloon::BLK::079",
+      "category": "trainer"
+    },
+    {
+      "rank": 17,
+      "name": "Academy at Night",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "054",
+      "uid": "Academy at Night::SFA::054",
+      "category": "trainer"
+    },
+    {
+      "rank": 18,
+      "name": "Psychic Energy",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 5,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 6,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "set": "SVE",
+      "number": "021",
+      "uid": "Psychic Energy::SVE::021",
+      "category": "energy"
+    },
+    {
+      "rank": 19,
+      "name": "Jet Energy",
+      "found": 2,
+      "total": 2,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "set": "PAL",
+      "number": "190",
+      "uid": "Jet Energy::PAL::190",
+      "category": "energy"
+    },
+    {
+      "rank": 20,
+      "name": "Slowpoke",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "042",
+      "uid": "Slowpoke::SVI::042",
+      "category": "pokemon"
+    },
+    {
+      "rank": 21,
+      "name": "Aerodactyl",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEW",
+      "number": "142",
+      "uid": "Aerodactyl::MEW::142",
+      "category": "pokemon"
+    },
+    {
+      "rank": 22,
+      "name": "Skwovet",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "151",
+      "uid": "Skwovet::SVI::151",
+      "category": "pokemon"
+    },
+    {
+      "rank": 23,
+      "name": "Luxray",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "071",
+      "uid": "Luxray::PAL::071",
+      "category": "pokemon"
+    },
+    {
+      "rank": 24,
+      "name": "Cleffa",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "OBF",
+      "number": "080",
+      "uid": "Cleffa::OBF::080",
+      "category": "pokemon"
+    },
+    {
+      "rank": 25,
+      "name": "Shaymin",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "DRI",
+      "number": "010",
+      "uid": "Shaymin::DRI::010",
+      "category": "pokemon"
+    },
+    {
+      "rank": 26,
+      "name": "Hilda",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "WHT",
+      "number": "084",
+      "uid": "Hilda::WHT::084",
+      "category": "trainer"
+    },
+    {
+      "rank": 27,
+      "name": "Brock's Scouting",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "JTG",
+      "number": "146",
+      "uid": "Brock's Scouting::JTG::146",
+      "category": "trainer"
+    },
+    {
+      "rank": 28,
+      "name": "Secret Box",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "163",
+      "uid": "Secret Box::TWM::163",
+      "category": "trainer"
+    },
+    {
+      "rank": 29,
+      "name": "Technical Machine: Devolution",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "177",
+      "uid": "Technical Machine: Devolution::PAR::177",
+      "category": "trainer"
+    },
+    {
+      "rank": 30,
+      "name": "Reversal Energy",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "192",
+      "uid": "Reversal Energy::PAL::192",
+      "category": "energy"
+    },
+    {
+      "rank": 31,
+      "name": "Slowpoke",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SCR",
+      "number": "057",
+      "uid": "Slowpoke::SCR::057",
+      "category": "pokemon"
+    },
+    {
+      "rank": 32,
+      "name": "Slowpoke",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PRE",
+      "number": "018",
+      "uid": "Slowpoke::PRE::018",
+      "category": "pokemon"
+    },
+    {
+      "rank": 33,
+      "name": "Tatsugiri",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "131",
+      "uid": "Tatsugiri::TWM::131",
+      "category": "pokemon"
+    },
+    {
+      "rank": 34,
+      "name": "Annihilape",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "100",
+      "uid": "Annihilape::SSP::100",
+      "category": "pokemon"
+    },
+    {
+      "rank": 35,
+      "name": "Zeraora",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "DRI",
+      "number": "078",
+      "uid": "Zeraora::DRI::078",
+      "category": "pokemon"
+    },
+    {
+      "rank": 36,
+      "name": "Regigigas",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PRE",
+      "number": "086",
+      "uid": "Regigigas::PRE::086",
+      "category": "pokemon"
+    },
+    {
+      "rank": 37,
+      "name": "Arven",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "OBF",
+      "number": "186",
+      "uid": "Arven::OBF::186",
+      "category": "trainer"
+    },
+    {
+      "rank": 38,
+      "name": "Earthen Vessel",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "163",
+      "uid": "Earthen Vessel::PAR::163",
+      "category": "trainer"
+    },
+    {
+      "rank": 39,
+      "name": "Precious Trolley",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "185",
+      "uid": "Precious Trolley::SSP::185",
+      "category": "trainer"
+    },
+    {
+      "rank": 40,
+      "name": "Technical Machine: Evolution",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "178",
+      "uid": "Technical Machine: Evolution::PAR::178",
+      "category": "trainer"
+    },
+    {
+      "rank": 41,
+      "name": "Counter Gain",
+      "found": 1,
+      "total": 2,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "169",
+      "uid": "Counter Gain::SSP::169",
+      "category": "trainer"
+    }
+  ]
+}

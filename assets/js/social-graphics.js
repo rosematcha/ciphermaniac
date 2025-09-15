@@ -3,9 +3,24 @@ class SocialGraphicsGenerator {
     this.tournaments = [];
     this.currentTournamentData = null;
     this.previousTournamentData = null;
+    this.comparisonTournamentData = null;
     this.consistentLeaders = new Set();
 
     this.init();
+  }
+
+  /**
+   * Safely read .value from an input/select element by id with JSDoc casting for type checkers
+   * @param {string} id
+   * @returns {string}
+   */
+  getFieldValue(id) {
+    const el = document.getElementById(id);
+    if (!el) return '';
+    /** @type {HTMLInputElement|HTMLSelectElement} */
+    // @ts-ignore - JSDoc cast for JS file
+    const typed = el;
+    return typed.value ?? '';
   }
 
   async init() {
@@ -39,13 +54,26 @@ class SocialGraphicsGenerator {
 
   populateTournamentSelect() {
     const select = document.getElementById('tournament-select');
+    const comparisonSelect = document.getElementById('comparison-tournament-select');
+    
     select.innerHTML = '<option value="">Select a tournament...</option>';
+    comparisonSelect.innerHTML = '<option value="">No comparison...</option>';
 
     this.tournaments.forEach(tournament => {
+      // Extract tournament name without date (remove "YYYY-MM-DD, " prefix)
+      const nameWithoutDate = tournament.name.replace(/^\d{4}-\d{2}-\d{2}, /, '');
+      
+      // Main tournament select
       const option = document.createElement('option');
       option.value = tournament.folder;
-      option.textContent = tournament.name;
+      option.textContent = nameWithoutDate;
       select.appendChild(option);
+      
+      // Comparison tournament select
+      const comparisonOption = document.createElement('option');
+      comparisonOption.value = tournament.folder;
+      comparisonOption.textContent = nameWithoutDate;
+      comparisonSelect.appendChild(comparisonOption);
     });
   }
 
@@ -85,19 +113,38 @@ class SocialGraphicsGenerator {
   }
 
   async generateGraphics() {
-    const tournamentFolder = document.getElementById('tournament-select').value;
+    const tournamentFolder = this.getFieldValue('tournament-select');
+    const comparisonTournamentFolder = this.getFieldValue('comparison-tournament-select');
+    
     if (!tournamentFolder) {
       this.showError('Please select a tournament first.');
       return;
     }
 
     try {
+      // Load main tournament data
       const response = await fetch(`/reports/${tournamentFolder}/master.json`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const text = await response.text();
       this.currentTournamentData = JSON.parse(text);
+
+      // Load comparison tournament data if selected
+      if (comparisonTournamentFolder && comparisonTournamentFolder !== tournamentFolder) {
+        try {
+          const compResponse = await fetch(`/reports/${comparisonTournamentFolder}/master.json`);
+          if (compResponse.ok) {
+            const compText = await compResponse.text();
+            this.comparisonTournamentData = JSON.parse(compText);
+          }
+        } catch (error) {
+          console.warn('Failed to load comparison tournament data:', error);
+          this.comparisonTournamentData = null;
+        }
+      } else {
+        this.comparisonTournamentData = null;
+      }
 
       // Load previous tournament for rising cards comparison
       const currentIndex = this.tournaments.findIndex(tournament => tournament.folder === tournamentFolder);
@@ -125,8 +172,9 @@ class SocialGraphicsGenerator {
   }
 
   async renderGraphics() {
-    const displayMode = document.getElementById('display-mode').value;
-    const layoutSize = parseInt(document.getElementById('graphics-layout').value) || 20;
+    const displayMode = this.getFieldValue('display-mode');
+    const layoutValue = this.getFieldValue('graphics-layout');
+    const layoutSize = parseInt(layoutValue) || 20;
 
     let filteredData = this.getFilteredData(displayMode);
     filteredData = filteredData.slice(0, layoutSize);
@@ -135,6 +183,10 @@ class SocialGraphicsGenerator {
     output.innerHTML = '';
 
     if (filteredData.length === 0) {return;}
+
+    // Create header section
+    const headerSection = this.createHeaderSection(displayMode);
+    output.appendChild(headerSection);
 
     // Create tournament layout structure
     const tournamentLayout = document.createElement('div');
@@ -220,6 +272,57 @@ class SocialGraphicsGenerator {
     output.appendChild(tournamentLayout);
   }
 
+  createHeaderSection(displayMode) {
+    const headerSection = document.createElement('div');
+    headerSection.className = 'graphics-header';
+
+    // Get tournament names without dates
+  const tournamentFolder = this.getFieldValue('tournament-select');
+  const comparisonTournamentFolder = this.getFieldValue('comparison-tournament-select');
+    
+    const currentTournament = this.tournaments.find(t => t.folder === tournamentFolder);
+    const comparisonTournament = this.tournaments.find(t => t.folder === comparisonTournamentFolder);
+    
+    const currentName = currentTournament ? currentTournament.name.replace(/^\d{4}-\d{2}-\d{2}, /, '') : '';
+    const comparisonName = comparisonTournament ? comparisonTournament.name.replace(/^\d{4}-\d{2}-\d{2}, /, '') : '';
+
+    // Main title based on display mode
+    const title = document.createElement('h2');
+    title.className = 'graphics-title';
+    
+    let titleText = '';
+    switch (displayMode) {
+      case 'standard':
+        titleText = 'Most Used Cards';
+        break;
+      case 'no-leaders':
+        titleText = 'Most Used Cards (Excluding Consistent Leaders)';
+        break;
+      case 'rising':
+        titleText = 'Most On-the-Rise Cards';
+        break;
+      default:
+        titleText = 'Tournament Usage';
+    }
+    title.textContent = titleText;
+
+    // Subtitle with tournament info
+    const subtitle = document.createElement('p');
+    subtitle.className = 'graphics-subtitle';
+    
+    let subtitleText = `at ${currentName}`;
+    // Only show comparison in subtitle for rising mode when comparison tournament is selected
+    if (displayMode === 'rising' && comparisonName && comparisonName !== currentName) {
+      subtitleText += ` vs. ${comparisonName}`;
+    }
+    subtitle.textContent = subtitleText;
+
+    headerSection.appendChild(title);
+    headerSection.appendChild(subtitle);
+
+    return headerSection;
+  }
+
   getFilteredData(displayMode) {
     const data = this.currentTournamentData.items.filter(card => card.set !== 'SVE');
 
@@ -239,30 +342,36 @@ class SocialGraphicsGenerator {
   }
 
   getRisingCards(currentData) {
-    if (!this.previousTournamentData) {
-      // If no previous data, show message and return empty
-      this.showError('No previous tournament data available for comparison. Rising cards mode requires historical data.');
+    // Use comparison tournament if available, otherwise fall back to previous tournament
+    const comparisonData = this.comparisonTournamentData || this.previousTournamentData;
+    
+    if (!comparisonData) {
+      // If no comparison data, show message and return empty
+      const message = this.comparisonTournamentData ? 
+        'No comparison tournament data available.' : 
+        'No previous tournament data available for comparison. Rising cards mode requires historical data.';
+      this.showError(message);
       return [];
     }
 
-    // Create lookup map for previous tournament data
-    const previousLookup = new Map();
-    this.previousTournamentData.items.forEach(card => {
-      previousLookup.set(card.uid, card.pct);
+    // Create lookup map for comparison tournament data
+    const comparisonLookup = new Map();
+    comparisonData.items.forEach(card => {
+      comparisonLookup.set(card.uid, card.pct);
     });
 
     // Calculate increases and filter out new cards (0% to something)
     const risingCards = [];
     currentData.forEach(card => {
-      const previousPct = previousLookup.get(card.uid);
+      const comparisonPct = comparisonLookup.get(card.uid);
 
-      if (previousPct !== undefined && previousPct > 0) {
-        const increase = card.pct - previousPct;
+      if (comparisonPct !== undefined && comparisonPct > 0) {
+        const increase = card.pct - comparisonPct;
         if (increase > 0) {
           risingCards.push({
             ...card,
             increase,
-            previousPct
+            previousPct: comparisonPct
           });
         }
       }
@@ -325,9 +434,7 @@ class SocialGraphicsGenerator {
     nameDiv.textContent = card.name;
 
     const usageInfo = document.createElement('div');
-    usageInfo.className = 'card-usage';
-    usageInfo.style.fontSize = 'var(--font-size-sm)';
-    usageInfo.style.color = 'var(--muted)';
+  usageInfo.className = 'card-usage';
 
     if (displayMode === 'rising' && card.increase !== undefined) {
       usageInfo.textContent = `+${card.increase.toFixed(1)}% increase`;
@@ -510,11 +617,11 @@ class SocialGraphicsGenerator {
   getCropParameters(card) {
     const cardType = this.determineCardType(card);
 
-    const sidesCrop = parseInt(document.getElementById('crop-sides').value) || 22;
+  const sidesCrop = parseInt(this.getFieldValue('crop-sides')) || 22;
 
     // Use card-type-specific top crop, calculate bottom to maintain consistent final height
     if (cardType === 'pokemon') {
-      const topCrop = parseInt(document.getElementById('pokemon-crop-top').value) || 13;
+  const topCrop = parseInt(this.getFieldValue('pokemon-crop-top')) || 13;
       const targetHeight = 144;
       const availableHeight = 381 - topCrop; // 274x381 thumbnails
       const bottomCrop = Math.max(0, availableHeight - targetHeight - 100); // Leave some buffer
@@ -527,7 +634,7 @@ class SocialGraphicsGenerator {
       };
     }
     // Trainers, special-energy, etc.
-    const topCrop = parseInt(document.getElementById('trainer-crop-top').value) || 23;
+  const topCrop = parseInt(this.getFieldValue('trainer-crop-top')) || 23;
     const targetHeight = 144;
     const availableHeight = 381 - topCrop;
     const bottomCrop = Math.max(0, availableHeight - targetHeight - 100);
@@ -649,13 +756,17 @@ document.addEventListener('DOMContentLoaded', () => {
 const html2canvas = (function () {
   return function (element, options) {
     return new Promise((resolve, reject) => {
-      if (typeof window.html2canvas !== 'undefined') {
-        window.html2canvas(element, options).then(resolve).catch(reject);
+      /** @type {any} */
+      // @ts-ignore - accessing global from CDN
+      const w = window;
+      if (typeof w.html2canvas !== 'undefined') {
+        w.html2canvas(element, options).then(resolve).catch(reject);
       } else {
         const script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
         script.onload = () => {
-          window.html2canvas(element, options).then(resolve).catch(reject);
+          // @ts-ignore
+          (window).html2canvas(element, options).then(resolve).catch(reject);
         };
         script.onerror = reject;
         document.head.appendChild(script);
