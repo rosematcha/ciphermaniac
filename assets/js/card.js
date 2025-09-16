@@ -726,7 +726,6 @@ async function renderMissingCardPage(cardIdentifier) {
                   <li><a href="index.html" class="card-404-link">Browse all cards with data</a></li>
                   <li><a href="index.html?q=${encodeURIComponent(getBaseName(cardIdentifier) || cardIdentifier)}" 
                         class="card-404-link">Search for similar cards</a></li>
-                  <li><a href="tools/deckbuilder.html" class="card-404-link">Use the deck builder</a></li>
                   <li><a href="feedback.html" class="card-404-link">Request this card be prioritized</a></li>
                 </ul>
               </div>
