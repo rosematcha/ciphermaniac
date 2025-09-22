@@ -14,7 +14,7 @@ This script is designed to run from the repo root.
 """
 from pathlib import Path
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from collections import defaultdict, Counter
 import math
 from typing import Dict, List, Tuple, Optional, Set
@@ -44,9 +44,9 @@ MIN_LEADER_AVG_PCT = 4.0  # minimum average usage to be considered a leader
 LEADER_RECENCY_WEIGHT = 0.1  # slight boost for recent performance
 
 # On The Rise - for genuine emerging trends
-MIN_RISE_CURRENT_PCT = 5.0  # must have meaningful current usage
-MIN_RISE_DELTA_ABS = 4.0  # significant absolute increase required
-MIN_RISE_DELTA_REL = 1.5  # 150% relative increase (2% to 5% = 150% growth)
+MIN_RISE_CURRENT_PCT = 2.0  # must have meaningful current usage (lowered from 5.0)
+MIN_RISE_DELTA_ABS = 1.5  # significant absolute increase required (lowered from 4.0)
+MIN_RISE_DELTA_REL = 1.25  # 125% relative increase (1% to 2.5% = 150% growth, lowered from 1.5)
 MIN_RISE_TOURNAMENTS = 3  # need data from multiple tournaments for trend
 
 # Chopped and Washed - for genuine former staples that crashed
@@ -78,6 +78,11 @@ class TournamentData:
     pct_map: Dict[str, float]
     format_name: Optional[str]
     name_map: Dict[str, str]
+    tournament_names: List[str] = None  # For grouped tournaments, track original names
+
+    def __post_init__(self):
+        if self.tournament_names is None:
+            self.tournament_names = [self.name]
 
 @dataclass
 class CardData:
@@ -165,18 +170,101 @@ class TournamentDataLoader:
                 self._load_tournament_metadata(t) for t in tournaments
             ]
         return self._tournament_data_cache
+
+    def _get_weekend_key(self, date: Optional[datetime]) -> Optional[str]:
+        """Get a weekend identifier (YYYY-MM-DD of the weekend's Saturday)."""
+        if not date:
+            return None
+
+        # Find the Saturday of the weekend this date falls in
+        # weekday(): Monday=0, Sunday=6
+        days_since_saturday = (date.weekday() + 2) % 7  # Adjust so Saturday=0
+        saturday = date - timedelta(days=days_since_saturday)
+        return saturday.strftime('%Y-%m-%d')
+
+    def _combine_tournament_data(self, tournaments: List[TournamentData]) -> TournamentData:
+        """Combine multiple tournaments from the same weekend into one."""
+        if len(tournaments) == 1:
+            return tournaments[0]
+
+        # Use the first tournament's basic info as base
+        base = tournaments[0]
+        combined_name = f"{len(tournaments)} regionals ({base.date.strftime('%Y-%m-%d') if base.date else 'unknown date'})"
+
+        # Combine percentage maps by averaging
+        all_cards = set()
+        for t in tournaments:
+            all_cards.update(t.pct_map.keys())
+
+        combined_pct_map = {}
+        combined_name_map = {}
+
+        for card in all_cards:
+            # Average the percentages across tournaments where the card appears
+            values = [t.pct_map.get(card, 0.0) for t in tournaments]
+            non_zero_values = [v for v in values if v > 0]
+
+            if non_zero_values:
+                # Take the average of non-zero values to avoid dilution
+                combined_pct_map[card] = sum(non_zero_values) / len(non_zero_values)
+            else:
+                combined_pct_map[card] = 0.0
+
+            # Use name from any tournament that has it
+            for t in tournaments:
+                if card in t.name_map:
+                    combined_name_map[card] = t.name_map[card]
+                    break
+
+        return TournamentData(
+            name=combined_name,
+            date=base.date,
+            pct_map=combined_pct_map,
+            format_name=base.format_name,
+            name_map=combined_name_map,
+            tournament_names=[t.name for t in tournaments]
+        )
+
+    def load_grouped_tournament_data(self, tournaments: List[str]) -> List[TournamentData]:
+        """Load tournament data and group same-weekend tournaments."""
+        raw_data = self.load_all_tournament_data(tournaments)
+
+        # Group by weekend
+        weekend_groups = defaultdict(list)
+        ungrouped = []
+
+        for data in raw_data:
+            weekend_key = self._get_weekend_key(data.date)
+            if weekend_key:
+                weekend_groups[weekend_key].append(data)
+            else:
+                ungrouped.append(data)
+
+        # Combine groups and maintain chronological order
+        result = []
+
+        # Process grouped tournaments
+        for weekend_key in sorted(weekend_groups.keys(), reverse=True):  # Most recent first
+            group = weekend_groups[weekend_key]
+            combined = self._combine_tournament_data(group)
+            result.append(combined)
+
+        # Add ungrouped tournaments (those without dates) at the end
+        result.extend(ungrouped)
+
+        return result
     
     def find_archetype_for_card(self, card_name: str, tournaments: List[str]) -> Optional[str]:
         """Find archetype for a card with caching."""
         if card_name in self._archetype_cache:
             return self._archetype_cache[card_name]
-        
+
         # Search through tournaments for the card
         for tournament in tournaments:
             decks_path = REPORTS / tournament / 'decks.json'
             if not decks_path.exists():
                 continue
-            
+
             try:
                 decks = json.loads(decks_path.read_text(encoding='utf-8'))
                 for deck in decks:
@@ -187,9 +275,21 @@ class TournamentDataLoader:
                             return archetype
             except Exception:
                 continue
-        
+
         self._archetype_cache[card_name] = None
         return None
+
+    def find_archetype_for_card_grouped(self, card_name: str, tournament_data: List[TournamentData]) -> Optional[str]:
+        """Find archetype for a card using grouped tournament data."""
+        if card_name in self._archetype_cache:
+            return self._archetype_cache[card_name]
+
+        # Extract all original tournament names from grouped data
+        all_tournament_names = []
+        for data in tournament_data:
+            all_tournament_names.extend(data.tournament_names)
+
+        return self.find_archetype_for_card(card_name, all_tournament_names)
 
 
 class CardAnalyzer:
@@ -227,15 +327,21 @@ class CardAnalyzer:
         set_code, number = self._parse_card_uid(key)
         archetype = self.loader.find_archetype_for_card(name, tournaments)
         return CardData(key, name, set_code, number, archetype)
+
+    def _create_card_data_grouped(self, key: str, name: str, tournament_data: List[TournamentData]) -> CardData:
+        """Create CardData object with parsed components using grouped tournament data."""
+        set_code, number = self._parse_card_uid(key)
+        archetype = self.loader.find_archetype_for_card_grouped(name, tournament_data)
+        return CardData(key, name, set_code, number, archetype)
     
     def _recency_weight(self, days_diff: float) -> float:
         """Calculate recency weight using exponential decay."""
         return 0.5 ** (days_diff / RECENT_WEIGHT_HALF_LIFE_DAYS)
 
 
-    def compute_chopped_and_washed(self, tournament_data: List[TournamentData], 
-                                   tournaments: List[str], exclude_names: Set[str] = None, 
-                                   max_limit: int = MAX_CANDIDATES, 
+    def compute_chopped_and_washed(self, tournament_data: List[TournamentData],
+                                   tournaments: List[str], exclude_names: Set[str] = None,
+                                   max_limit: int = MAX_CANDIDATES,
                                    cap_per_arch: int = MAX_PER_ARCHETYPE) -> List[dict]:
         """Enhanced computation of cards that were genuine staples but crashed hard."""
         if not tournament_data:
@@ -337,8 +443,8 @@ class CardAnalyzer:
             
             if best_crash_score <= 0.0 or best_peak_info is None:
                 continue
-            
-            card_data = self._create_card_data(key, name, tournaments)
+
+            card_data = self._create_card_data_grouped(key, name, tournament_data)
             candidates.append({
                 'key': key,
                 'name': name,
@@ -559,7 +665,7 @@ class CardAnalyzer:
                     continue
             else:
                 # If coming from 0%, must be substantial emergence
-                if latest < MIN_RISE_CURRENT_PCT * 1.5:
+                if latest < MIN_RISE_CURRENT_PCT * 1.2:  # lowered from 1.5 to 1.2
                     continue
                 delta_rel = float('inf')  # Represent infinite growth
             
@@ -577,8 +683,8 @@ class CardAnalyzer:
                 recent_trend = recent_past[0] - recent_past[1]  # Is it still rising?
                 if recent_trend > 0:
                     momentum_score *= 1.2
-            
-            card_data = self._create_card_data(key, name, tournaments)
+
+            card_data = self._create_card_data_grouped(key, name, tournament_data)
             candidates.append({
                 'name': name,
                 'uid': key,
@@ -616,13 +722,13 @@ class CardAnalyzer:
         
         return result
     
-    def compute_that_day2d(self, all_tournaments: List[str], exclude_names: Set[str] = None, 
+    def compute_that_day2d(self, all_tournaments: List[str], exclude_names: Set[str] = None,
                           max_limit: int = MAX_CANDIDATES,
                           cap_per_arch: int = MAX_PER_ARCHETYPE) -> List[dict]:
         """Enhanced computation of experimental one-offs that disappeared."""
         # For "That Day 2'd?", we need to look at ALL tournaments, not just current rotation
         # Load extended historical data directly from all tournaments
-        extended_data = self.loader.load_all_tournament_data(all_tournaments[:DAY2D_LOOKBACK_TOURNAMENTS])
+        extended_data = self.loader.load_grouped_tournament_data(all_tournaments[:DAY2D_LOOKBACK_TOURNAMENTS])
         
         if not extended_data:
             return []
@@ -725,7 +831,7 @@ class CardAnalyzer:
             )
             
             # Bonus if peak was in an established archetype (more interesting as failed experiment)
-            card_data = self._create_card_data(key, name, all_tournaments)
+            card_data = self._create_card_data_grouped(key, name, extended_data)
             archetype = card_data.archetype
             
             # Check if this appeared in a well-known archetype
@@ -847,11 +953,14 @@ def generate_suggestions():
         print("No tournaments found")
         return
     
-    tournament_data = loader.load_all_tournament_data(tournaments)
-    
+    tournament_data = loader.load_grouped_tournament_data(tournaments)
+
     # Apply rotation filtering
     tournament_data = RotationFilter.filter_by_current_rotation(tournament_data)
-    filtered_tournaments = [data.name for data in tournament_data]
+    # Extract all original tournament names for archetype lookup
+    filtered_tournaments = []
+    for data in tournament_data:
+        filtered_tournaments.extend(data.tournament_names)
     
     print(f"Processing {len(tournament_data)} tournaments...")
     

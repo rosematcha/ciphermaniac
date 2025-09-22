@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2025-09-22T21:00:42.461717+00:00",
+  "generatedAt": "2025-09-22T21:11:07.171268+00:00",
   "source": "generate_suggestions.py (optimized)",
   "categories": [
     {
@@ -11,7 +11,7 @@
           "uid": "Ultra Ball::SVI::196",
           "set": "SVI",
           "number": "196",
-          "avg_usage": 94.4,
+          "avg_usage": 94.7,
           "avg_ranking": 1.8,
           "top_5_rate": 1.0,
           "appearance_rate": 1.0
@@ -22,7 +22,7 @@
           "set": "SFA",
           "number": "038",
           "avg_usage": 93.2,
-          "avg_ranking": 2.4,
+          "avg_ranking": 2.3,
           "top_5_rate": 1.0,
           "appearance_rate": 1.0
         },
@@ -31,9 +31,9 @@
           "uid": "Nest Ball::SVI::181",
           "set": "SVI",
           "number": "181",
-          "avg_usage": 88.6,
-          "avg_ranking": 3.7,
-          "top_5_rate": 0.82,
+          "avg_usage": 88.5,
+          "avg_ranking": 3.9,
+          "top_5_rate": 0.78,
           "appearance_rate": 1.0
         },
         {
@@ -41,9 +41,9 @@
           "uid": "Night Stretcher::SFA::061",
           "set": "SFA",
           "number": "061",
-          "avg_usage": 87.4,
+          "avg_usage": 87.9,
           "avg_ranking": 4.2,
-          "top_5_rate": 0.91,
+          "top_5_rate": 0.89,
           "appearance_rate": 1.0
         },
         {
@@ -51,9 +51,9 @@
           "uid": "Boss's Orders::PAL::172",
           "set": "PAL",
           "number": "172",
-          "avg_usage": 87.0,
-          "avg_ranking": 4.3,
-          "top_5_rate": 0.64,
+          "avg_usage": 87.3,
+          "avg_ranking": 4.2,
+          "top_5_rate": 0.67,
           "appearance_rate": 1.0
         },
         {
@@ -61,9 +61,9 @@
           "uid": "Iono::PAL::185",
           "set": "PAL",
           "number": "185",
-          "avg_usage": 82.8,
-          "avg_ranking": 5.1,
-          "top_5_rate": 0.64,
+          "avg_usage": 83.4,
+          "avg_ranking": 5.0,
+          "top_5_rate": 0.67,
           "appearance_rate": 1.0
         },
         {
@@ -71,7 +71,7 @@
           "uid": "Counter Catcher::PAR::160",
           "set": "PAR",
           "number": "160",
-          "avg_usage": 71.8,
+          "avg_usage": 72.8,
           "avg_ranking": 7.7,
           "top_5_rate": 0.0,
           "appearance_rate": 1.0
@@ -81,8 +81,8 @@
           "uid": "Earthen Vessel::PAR::163",
           "set": "PAR",
           "number": "163",
-          "avg_usage": 71.1,
-          "avg_ranking": 8.1,
+          "avg_usage": 70.9,
+          "avg_ranking": 8.3,
           "top_5_rate": 0.0,
           "appearance_rate": 1.0
         },
@@ -91,8 +91,8 @@
           "uid": "Buddy-Buddy Poffin::TEF::144",
           "set": "TEF",
           "number": "144",
-          "avg_usage": 62.8,
-          "avg_ranking": 9.8,
+          "avg_usage": 63.9,
+          "avg_ranking": 9.3,
           "top_5_rate": 0.0,
           "appearance_rate": 1.0
         },
@@ -101,8 +101,8 @@
           "uid": "Arven::OBF::186",
           "set": "OBF",
           "number": "186",
-          "avg_usage": 55.0,
-          "avg_ranking": 12.8,
+          "avg_usage": 55.5,
+          "avg_ranking": 12.3,
           "top_5_rate": 0.0,
           "appearance_rate": 1.0
         },
@@ -111,8 +111,8 @@
           "uid": "Munkidori::TWM::095",
           "set": "TWM",
           "number": "095",
-          "avg_usage": 52.7,
-          "avg_ranking": 13.2,
+          "avg_usage": 53.9,
+          "avg_ranking": 12.8,
           "top_5_rate": 0.0,
           "appearance_rate": 1.0
         },
@@ -121,8 +121,8 @@
           "uid": "Professor's Research::JTG::155",
           "set": "JTG",
           "number": "155",
-          "avg_usage": 47.6,
-          "avg_ranking": 15.5,
+          "avg_usage": 47.7,
+          "avg_ranking": 15.8,
           "top_5_rate": 0.0,
           "appearance_rate": 1.0
         }
@@ -133,14 +133,184 @@
       "title": "On The Rise",
       "items": [
         {
+          "name": "Bravery Charm",
+          "uid": "Bravery Charm::PAL::173",
+          "set": "PAL",
+          "number": "173",
+          "archetype": "Gardevoir Jellicent",
+          "current_usage": 30.9,
+          "momentum_score": 22.72,
+          "growth_factor": 1.6
+        },
+        {
+          "name": "Timburr",
+          "uid": "Timburr::BLK::047",
+          "set": "BLK",
+          "number": "047",
+          "archetype": "Conkeldurr",
+          "current_usage": 2.7,
+          "momentum_score": 19.29,
+          "growth_factor": 5.7
+        },
+        {
+          "name": "Ancient Booster Energy Capsule",
+          "uid": "Ancient Booster Energy Capsule::TEF::140",
+          "set": "TEF",
+          "number": "140",
+          "archetype": "Conkeldurr",
+          "current_usage": 3.7,
+          "momentum_score": 18.4,
+          "growth_factor": 5.9
+        },
+        {
+          "name": "Rare Candy",
+          "uid": "Rare Candy::SVI::191",
+          "set": "SVI",
+          "number": "191",
+          "archetype": "Gardevoir Jellicent",
+          "current_usage": 45.1,
+          "momentum_score": 17.97,
+          "growth_factor": 1.3
+        },
+        {
+          "name": "Binding Mochi",
+          "uid": "Binding Mochi::PRE::095",
+          "set": "PRE",
+          "number": "095",
+          "archetype": "N's Zoroark",
+          "current_usage": 4.3,
+          "momentum_score": 15.34,
+          "growth_factor": 4.0
+        },
+        {
+          "name": "Artazon",
+          "uid": "Artazon::PAL::171",
+          "set": "PAL",
+          "number": "171",
+          "archetype": "N's Zoroark",
+          "current_usage": 38.9,
+          "momentum_score": 14.01,
+          "growth_factor": 1.3
+        },
+        {
+          "name": "Iron Hands ex",
+          "uid": "Iron Hands ex::PAR::070",
+          "set": "PAR",
+          "number": "070",
+          "archetype": "Gholdengo Joltik Box",
+          "current_usage": 15.6,
+          "momentum_score": 13.74,
+          "growth_factor": 1.6
+        },
+        {
           "name": "Shaymin",
           "uid": "Shaymin::DRI::010",
           "set": "DRI",
           "number": "010",
           "archetype": "Dragapult Dusknoir",
           "current_usage": 11.5,
-          "momentum_score": 10.91,
+          "momentum_score": 13.67,
+          "growth_factor": 2.0
+        },
+        {
+          "name": "Gimmighoul",
+          "uid": "Gimmighoul::PAF::044",
+          "set": "PAF",
+          "number": "044",
+          "archetype": "Gholdengo",
+          "current_usage": 2.0,
+          "momentum_score": 13.24,
+          "growth_factor": 10.0
+        },
+        {
+          "name": "Pikachu ex",
+          "uid": "Pikachu ex::SSP::057",
+          "set": "SSP",
+          "number": "057",
+          "archetype": "Tera Box",
+          "current_usage": 19.1,
+          "momentum_score": 12.97,
+          "growth_factor": 1.6
+        },
+        {
+          "name": "Joltik",
+          "uid": "Joltik::SCR::050",
+          "set": "SCR",
+          "number": "050",
+          "archetype": "Gholdengo Joltik Box",
+          "current_usage": 14.1,
+          "momentum_score": 12.13,
           "growth_factor": 1.7
+        },
+        {
+          "name": "Gravity Mountain",
+          "uid": "Gravity Mountain::SSP::177",
+          "set": "SSP",
+          "number": "177",
+          "archetype": "Tera Box",
+          "current_usage": 10.7,
+          "momentum_score": 11.12,
+          "growth_factor": 1.4
+        },
+        {
+          "name": "Energy Search",
+          "uid": "Energy Search::SVI::172",
+          "set": "SVI",
+          "number": "172",
+          "archetype": "Grimmsnarl Froslass",
+          "current_usage": 5.9,
+          "momentum_score": 7.91,
+          "growth_factor": 2.1
+        },
+        {
+          "name": "Brave Bangle",
+          "uid": "Brave Bangle::WHT::080",
+          "set": "WHT",
+          "number": "080",
+          "archetype": "Ethan's Typhlosion",
+          "current_usage": 3.3,
+          "momentum_score": 7.05,
+          "growth_factor": 1.9
+        },
+        {
+          "name": "Brock's Scouting",
+          "uid": "Brock's Scouting::JTG::146",
+          "set": "JTG",
+          "number": "146",
+          "archetype": "Dragapult Dusknoir",
+          "current_usage": 19.5,
+          "momentum_score": 6.54,
+          "growth_factor": 1.3
+        },
+        {
+          "name": "Galvantula",
+          "uid": "Galvantula::SFA::002",
+          "set": "SFA",
+          "number": "002",
+          "archetype": "Joltik Box",
+          "current_usage": 9.6,
+          "momentum_score": 5.94,
+          "growth_factor": 1.5
+        },
+        {
+          "name": "Pidgey",
+          "uid": "Pidgey::OBF::162",
+          "set": "OBF",
+          "number": "162",
+          "archetype": "Charizard Pidgeot",
+          "current_usage": 6.2,
+          "momentum_score": 5.04,
+          "growth_factor": 1.5
+        },
+        {
+          "name": "Pidgeot ex",
+          "uid": "Pidgeot ex::OBF::164",
+          "set": "OBF",
+          "number": "164",
+          "archetype": "Charizard Pidgeot",
+          "current_usage": 8.4,
+          "momentum_score": 4.77,
+          "growth_factor": 1.3
         }
       ]
     },
@@ -154,23 +324,11 @@
           "set": "TEF",
           "number": "159",
           "archetype": "Joltik Box",
-          "peak_usage": 39.2,
+          "peak_usage": 40.6,
           "current_usage": 0.2,
-          "drop_amount": 39.0,
-          "crash_severity": 0.99,
+          "drop_amount": 40.4,
+          "crash_severity": 1.0,
           "sustained_peak": 4
-        },
-        {
-          "name": "Unfair Stamp",
-          "uid": "Unfair Stamp::TWM::165",
-          "set": "TWM",
-          "number": "165",
-          "archetype": "Dragapult Charizard",
-          "peak_usage": 27.2,
-          "current_usage": 1.8,
-          "drop_amount": 25.4,
-          "crash_severity": 0.93,
-          "sustained_peak": 2
         },
         {
           "name": "Exp. Share",
@@ -178,9 +336,9 @@
           "set": "SVI",
           "number": "174",
           "archetype": "Blissey",
-          "peak_usage": 15.7,
+          "peak_usage": 15.0,
           "current_usage": 0.2,
-          "drop_amount": 15.5,
+          "drop_amount": 14.8,
           "crash_severity": 0.99,
           "sustained_peak": 4
         },
@@ -190,21 +348,9 @@
           "set": "SVI",
           "number": "176",
           "archetype": "Raging Bolt Ogerpon",
-          "peak_usage": 9.4,
+          "peak_usage": 9.6,
           "current_usage": 0.0,
-          "drop_amount": 9.4,
-          "crash_severity": 1.0,
-          "sustained_peak": 3
-        },
-        {
-          "name": "Pokémon League Headquarters",
-          "uid": "Pokémon League Headquarters::OBF::192",
-          "set": "OBF",
-          "number": "192",
-          "archetype": "Crustle",
-          "peak_usage": 8.2,
-          "current_usage": 0.0,
-          "drop_amount": 8.2,
+          "drop_amount": 9.6,
           "crash_severity": 1.0,
           "sustained_peak": 2
         },
@@ -217,18 +363,6 @@
           "peak_usage": 7.6,
           "current_usage": 0.0,
           "drop_amount": 7.6,
-          "crash_severity": 1.0,
-          "sustained_peak": 2
-        },
-        {
-          "name": "Volcanion ex",
-          "uid": "Volcanion ex::JTG::031",
-          "set": "JTG",
-          "number": "031",
-          "archetype": "Tera Box",
-          "peak_usage": 5.9,
-          "current_usage": 0.0,
-          "drop_amount": 5.9,
           "crash_severity": 1.0,
           "sustained_peak": 2
         },
@@ -287,18 +421,6 @@
       "title": "That Day 2'd?",
       "items": [
         {
-          "name": "Chi-Yu",
-          "uid": "Chi-Yu::TWM::039",
-          "set": "TWM",
-          "number": "039",
-          "archetype": "Charizard Pidgeot",
-          "peak_usage": 0.8,
-          "total_appearances": 1,
-          "total_usage": 0.8,
-          "tournaments_since_peak": 3,
-          "experimental_score": 77.59
-        },
-        {
           "name": "Walking Wake ex",
           "uid": "Walking Wake ex::TEF::050",
           "set": "TEF",
@@ -307,8 +429,8 @@
           "peak_usage": 0.3,
           "total_appearances": 1,
           "total_usage": 0.3,
-          "tournaments_since_peak": 5,
-          "experimental_score": 73.36
+          "tournaments_since_peak": 4,
+          "experimental_score": 70.76
         },
         {
           "name": "Charmeleon",
@@ -319,8 +441,8 @@
           "peak_usage": 0.5,
           "total_appearances": 1,
           "total_usage": 0.5,
-          "tournaments_since_peak": 6,
-          "experimental_score": 70.39
+          "tournaments_since_peak": 5,
+          "experimental_score": 67.8
         },
         {
           "name": "Indeedee",
@@ -331,8 +453,8 @@
           "peak_usage": 0.5,
           "total_appearances": 1,
           "total_usage": 0.5,
-          "tournaments_since_peak": 6,
-          "experimental_score": 70.39
+          "tournaments_since_peak": 5,
+          "experimental_score": 67.8
         },
         {
           "name": "Scyther",
@@ -343,20 +465,32 @@
           "peak_usage": 0.5,
           "total_appearances": 1,
           "total_usage": 0.5,
-          "tournaments_since_peak": 6,
-          "experimental_score": 70.39
+          "tournaments_since_peak": 5,
+          "experimental_score": 67.8
         },
         {
-          "name": "Dodrio",
-          "uid": "Dodrio::MEW::085",
-          "set": "MEW",
-          "number": "085",
-          "archetype": "Gholdengo",
+          "name": "Charmander",
+          "uid": "Charmander::SVP::047",
+          "set": "SVP",
+          "number": "047",
+          "archetype": "Charizard Pidgeot",
           "peak_usage": 0.5,
           "total_appearances": 2,
-          "total_usage": 1.0,
+          "total_usage": 0.8,
+          "tournaments_since_peak": 5,
+          "experimental_score": 65.54
+        },
+        {
+          "name": "Nymble",
+          "uid": "Nymble::PAR::013",
+          "set": "PAR",
+          "number": "013",
+          "archetype": "Gholdengo",
+          "peak_usage": 0.4,
+          "total_appearances": 1,
+          "total_usage": 0.4,
           "tournaments_since_peak": 6,
-          "experimental_score": 66.15
+          "experimental_score": 65.52
         },
         {
           "name": "Energy Sticker",
@@ -367,7 +501,7 @@
           "peak_usage": 0.5,
           "total_appearances": 1,
           "total_usage": 0.5,
-          "tournaments_since_peak": 9,
+          "tournaments_since_peak": 7,
           "experimental_score": 62.64
         },
         {
@@ -379,7 +513,7 @@
           "peak_usage": 1.0,
           "total_appearances": 1,
           "total_usage": 1.0,
-          "tournaments_since_peak": 9,
+          "tournaments_since_peak": 7,
           "experimental_score": 61.58
         },
         {
@@ -391,7 +525,7 @@
           "peak_usage": 0.4,
           "total_appearances": 1,
           "total_usage": 0.4,
-          "tournaments_since_peak": 10,
+          "tournaments_since_peak": 8,
           "experimental_score": 60.3
         },
         {
@@ -403,20 +537,8 @@
           "peak_usage": 0.4,
           "total_appearances": 1,
           "total_usage": 0.4,
-          "tournaments_since_peak": 10,
+          "tournaments_since_peak": 8,
           "experimental_score": 60.3
-        },
-        {
-          "name": "Harlequin",
-          "uid": "Harlequin::WHT::083",
-          "set": "WHT",
-          "number": "083",
-          "archetype": "Raging Bolt Ogerpon",
-          "peak_usage": 0.8,
-          "total_appearances": 1,
-          "total_usage": 0.8,
-          "tournaments_since_peak": 3,
-          "experimental_score": 59.68
         },
         {
           "name": "Glimmet",
@@ -427,7 +549,7 @@
           "peak_usage": 0.7,
           "total_appearances": 1,
           "total_usage": 0.7,
-          "tournaments_since_peak": 10,
+          "tournaments_since_peak": 8,
           "experimental_score": 59.5
         },
         {
@@ -439,7 +561,7 @@
           "peak_usage": 0.7,
           "total_appearances": 1,
           "total_usage": 0.7,
-          "tournaments_since_peak": 10,
+          "tournaments_since_peak": 8,
           "experimental_score": 59.5
         },
         {
@@ -451,8 +573,8 @@
           "peak_usage": 0.5,
           "total_appearances": 1,
           "total_usage": 0.5,
-          "tournaments_since_peak": 4,
-          "experimental_score": 58.15
+          "tournaments_since_peak": 3,
+          "experimental_score": 56.15
         },
         {
           "name": "Team Rocket's Archer",
@@ -463,8 +585,8 @@
           "peak_usage": 0.8,
           "total_appearances": 1,
           "total_usage": 0.8,
-          "tournaments_since_peak": 4,
-          "experimental_score": 57.72
+          "tournaments_since_peak": 3,
+          "experimental_score": 55.72
         },
         {
           "name": "Team Rocket's Ariana",
@@ -475,8 +597,8 @@
           "peak_usage": 0.8,
           "total_appearances": 1,
           "total_usage": 0.8,
-          "tournaments_since_peak": 4,
-          "experimental_score": 57.72
+          "tournaments_since_peak": 3,
+          "experimental_score": 55.72
         },
         {
           "name": "Deino",
@@ -487,8 +609,8 @@
           "peak_usage": 0.3,
           "total_appearances": 1,
           "total_usage": 0.3,
-          "tournaments_since_peak": 5,
-          "experimental_score": 56.43
+          "tournaments_since_peak": 4,
+          "experimental_score": 54.43
         },
         {
           "name": "Hydreigon ex",
@@ -499,8 +621,20 @@
           "peak_usage": 0.3,
           "total_appearances": 1,
           "total_usage": 0.3,
-          "tournaments_since_peak": 5,
-          "experimental_score": 56.43
+          "tournaments_since_peak": 4,
+          "experimental_score": 54.43
+        },
+        {
+          "name": "Hyper Aroma",
+          "uid": "Hyper Aroma::TWM::152",
+          "set": "TWM",
+          "number": "152",
+          "archetype": "N's Zoroark",
+          "peak_usage": 0.3,
+          "total_appearances": 1,
+          "total_usage": 0.3,
+          "tournaments_since_peak": 4,
+          "experimental_score": 54.43
         }
       ]
     }
