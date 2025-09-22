@@ -433,18 +433,6 @@
           "experimental_score": 70.76
         },
         {
-          "name": "Charmeleon",
-          "uid": "Charmeleon::OBF::027",
-          "set": "OBF",
-          "number": "027",
-          "archetype": "Charizard Pidgeot",
-          "peak_usage": 0.5,
-          "total_appearances": 1,
-          "total_usage": 0.5,
-          "tournaments_since_peak": 5,
-          "experimental_score": 67.8
-        },
-        {
           "name": "Indeedee",
           "uid": "Indeedee::SVI::153",
           "set": "SVI",
@@ -455,30 +443,6 @@
           "total_usage": 0.5,
           "tournaments_since_peak": 5,
           "experimental_score": 67.8
-        },
-        {
-          "name": "Scyther",
-          "uid": "Scyther::TEF::001",
-          "set": "TEF",
-          "number": "001",
-          "archetype": "Gholdengo",
-          "peak_usage": 0.5,
-          "total_appearances": 1,
-          "total_usage": 0.5,
-          "tournaments_since_peak": 5,
-          "experimental_score": 67.8
-        },
-        {
-          "name": "Charmander",
-          "uid": "Charmander::SVP::047",
-          "set": "SVP",
-          "number": "047",
-          "archetype": "Charizard Pidgeot",
-          "peak_usage": 0.5,
-          "total_appearances": 2,
-          "total_usage": 0.8,
-          "tournaments_since_peak": 5,
-          "experimental_score": 65.54
         },
         {
           "name": "Nymble",
@@ -505,18 +469,6 @@
           "experimental_score": 62.64
         },
         {
-          "name": "Shroodle",
-          "uid": "Shroodle::SVP::099",
-          "set": "SVP",
-          "number": "099",
-          "archetype": "Gholdengo Dudunsparce",
-          "peak_usage": 1.0,
-          "total_appearances": 1,
-          "total_usage": 1.0,
-          "tournaments_since_peak": 7,
-          "experimental_score": 61.58
-        },
-        {
           "name": "Flittle",
           "uid": "Flittle::SVI::100",
           "set": "SVI",
@@ -541,18 +493,6 @@
           "experimental_score": 60.3
         },
         {
-          "name": "Glimmet",
-          "uid": "Glimmet::PAL::124",
-          "set": "PAL",
-          "number": "124",
-          "archetype": "Terapagos Noctowl",
-          "peak_usage": 0.7,
-          "total_appearances": 1,
-          "total_usage": 0.7,
-          "tournaments_since_peak": 8,
-          "experimental_score": 59.5
-        },
-        {
           "name": "Glimmora ex",
           "uid": "Glimmora ex::OBF::123",
           "set": "OBF",
@@ -575,42 +515,6 @@
           "total_usage": 0.5,
           "tournaments_since_peak": 3,
           "experimental_score": 56.15
-        },
-        {
-          "name": "Team Rocket's Archer",
-          "uid": "Team Rocket's Archer::DRI::170",
-          "set": "DRI",
-          "number": "170",
-          "archetype": "Rocket's Mewtwo",
-          "peak_usage": 0.8,
-          "total_appearances": 1,
-          "total_usage": 0.8,
-          "tournaments_since_peak": 3,
-          "experimental_score": 55.72
-        },
-        {
-          "name": "Team Rocket's Ariana",
-          "uid": "Team Rocket's Ariana::DRI::171",
-          "set": "DRI",
-          "number": "171",
-          "archetype": "Rocket's Mewtwo",
-          "peak_usage": 0.8,
-          "total_appearances": 1,
-          "total_usage": 0.8,
-          "tournaments_since_peak": 3,
-          "experimental_score": 55.72
-        },
-        {
-          "name": "Deino",
-          "uid": "Deino::SSP::117",
-          "set": "SSP",
-          "number": "117",
-          "archetype": "Hydreigon",
-          "peak_usage": 0.3,
-          "total_appearances": 1,
-          "total_usage": 0.3,
-          "tournaments_since_peak": 4,
-          "experimental_score": 54.43
         },
         {
           "name": "Hydreigon ex",
