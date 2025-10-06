@@ -1,8 +1,7 @@
+/card.html /card.html 200
+/index.html /index.html 200
 /assets/* /assets/:splat 200
 /reports/* /reports/:splat 200
 /thumbnails/* /thumbnails/:splat 200
-/card.html /card.html 200
 /card /card.html 200
 /card/* /card.html 200
-/index.html /index.html 200
-/* /index.html 200
