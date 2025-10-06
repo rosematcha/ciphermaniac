@@ -473,13 +473,18 @@ export function validateEvolutionRequirements(deck) {
 
     // Debug logging for Gardevoir
     if (baseName === 'Gardevoir') {
-      console.log('DEBUGGING GARDEVOIR:', {
-        cardKey,
-        baseName,
-        isEx: entry.isEx,
-        originalNames: Array.from(entry.originalNames),
-        preEvolutions: getPreEvolutions(baseName)
-      });
+      // Use existing logger import to respect log level and avoid console warnings
+      try {
+        _logger.debug && _logger.debug('DEBUGGING GARDEVOIR:', {
+          cardKey,
+          baseName,
+          isEx: entry.isEx,
+          originalNames: Array.from(entry.originalNames),
+          preEvolutions: getPreEvolutions(baseName)
+        });
+      } catch (_) {
+        // Ignore logging errors silently
+      }
     }
 
     // Skip baby Pokemon (they don't need pre-evolutions)

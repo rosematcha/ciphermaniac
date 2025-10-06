@@ -2,7 +2,10 @@
 name = "ciphermaniac"
 compatibility_date = "2023-10-30"
 
-# Cron triggers removed - using external cron service instead
+# Cron Trigger: use Cloudflare Cron Triggers to run the daily pricing job at 20:30 UTC
+# (which is 3:30 PM CST during standard time). If you prefer an external cron, you
+# can still call the HTTP endpoint at /api/daily-pricing.
+triggers = { crons = [ "30 20 * * *" ] }
 
 # KV namespace binding for price data storage
 [[kv_namespaces]]

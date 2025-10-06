@@ -4,7 +4,6 @@
  */
 
 import { render } from './render.js';
-import { isFavorite } from './favorites.js';
 import { logger } from './utils/logger.js';
 import { CONFIG } from './config.js';
 import { getCardPrice } from './api.js';
@@ -50,12 +49,10 @@ export function getComparator(sortKey) {
 function getCurrentFilters() {
   const searchInput = document.getElementById('search');
   const sortSelect = document.getElementById('sort');
-  const favSelect = document.getElementById('fav-filter');
 
   return {
     query: searchInput?.value?.trim()?.toLowerCase() || '',
-    sort: sortSelect?.value || 'percent-desc',
-    favoritesOnly: favSelect?.value === 'fav'
+    sort: sortSelect?.value || 'percent-desc'
   };
 }
 
@@ -108,22 +105,6 @@ function applySearchFilter(items, query) {
 }
 
 /**
- * Apply favorites filter to items
- * @param {any[]} items
- * @param {boolean} favoritesOnly
- * @returns {any[]}
- */
-function applyFavoritesFilter(items, favoritesOnly) {
-  if (!favoritesOnly) {
-    return items;
-  }
-
-  const filtered = items.filter(item => isFavorite(item.name));
-  logger.debug(`Favorites filtered ${items.length} items to ${filtered.length}`);
-  return filtered;
-}
-
-/**
  * Apply sorting to items
  * @param {any[]} items
  * @param {string} sortKey
@@ -154,7 +135,6 @@ export async function applyFiltersSort(allItems, overrides = {}) {
 
   // Apply filters in sequence
   filtered = applySearchFilter(filtered, filters.query);
-  filtered = applyFavoritesFilter(filtered, filters.favoritesOnly);
 
   // Enrich with pricing data if needed for sorting
   if (filters.sort.startsWith('price-')) {

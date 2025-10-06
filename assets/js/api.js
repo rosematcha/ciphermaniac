@@ -133,7 +133,7 @@ export function fetchReport(tournament) {
 export async function fetchOverrides() {
   try {
     logger.debug('Fetching thumbnail overrides');
-    const url = 'assets/overrides.json';
+    const url = '/assets/overrides.json';
     const response = await safeFetch(url);
     const data = await safeJsonParse(response, url);
 

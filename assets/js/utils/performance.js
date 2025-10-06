@@ -11,7 +11,7 @@ import { CONFIG } from '../config.js';
  * @param {Function} func - Function to debounce
  * @param {number} [wait] - Wait time in milliseconds
  * @param {boolean} [immediate] - Whether to execute immediately on first call
- * @returns {Function} Debounced function
+ * @returns {(...args: any[]) => void} Debounced function
  */
 export function debounce(func, wait = CONFIG.UI.DEBOUNCE_MS, immediate = false) {
   let timeout;
@@ -31,7 +31,7 @@ export function debounce(func, wait = CONFIG.UI.DEBOUNCE_MS, immediate = false) 
  * Throttle function calls to limit execution frequency
  * @param {Function} func - Function to throttle
  * @param {number} [limit] - Maximum execution frequency in milliseconds
- * @returns {Function} Throttled function
+ * @returns {(...args: any[]) => void} Throttled function
  */
 export function throttle(func, limit = CONFIG.UI.DEBOUNCE_MS) {
   let inThrottle;
@@ -66,10 +66,10 @@ export class CleanupManager {
    * Add an event listener with automatic cleanup
    * @param {EventTarget} target
    * @param {string} event
-   * @param {Function} listener
-   * @param {object} [options]
+   * @param {EventListenerOrEventListenerObject} listener
+   * @param {boolean | AddEventListenerOptions} [options]
    */
-  addEventListener(target, event, listener, options = {}) {
+  addEventListener(target, event, listener, options) {
     target.addEventListener(event, listener, options);
     this.add(() => target.removeEventListener(event, listener, options));
   }

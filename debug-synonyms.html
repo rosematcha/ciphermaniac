@@ -15,6 +15,7 @@
   
   <script type="module">
     import { getCanonicalCard } from '/assets/js/utils/cardSynonyms.js';
+    import { buildCardPath } from '/assets/js/card/routing.js';
     
     window.testSynonym = async function() {
       const result = document.getElementById('result');
@@ -34,7 +35,7 @@
         `;
         
         if (canonical !== testUID) {
-          const newUrl = `card.html#card/${encodeURIComponent(canonical)}`;
+          const newUrl = buildCardPath(canonical);
           result.innerHTML += `<p>Should redirect to: <a href="${newUrl}">${newUrl}</a></p>`;
         }
         

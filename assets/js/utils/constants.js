@@ -15,7 +15,6 @@ export const SELECTORS = Object.freeze({
   SORT: '#sort',
   TOURNAMENT: '#tournament',
   ARCHETYPE: '#archetype',
-  FAV_FILTER: '#fav-filter',
   SUMMARY: '#summary',
   FILTERS_TOGGLE: '#filtersToggle',
   FILTERS: '#filters',
@@ -45,7 +44,6 @@ export const CSS_CLASSES = Object.freeze({
   // Component classes
   CARD: 'card',
   EMPTY_STATE: 'empty-state',
-  STAR_BTN: 'star-btn',
   GRAPH_TOOLTIP: 'graph-tooltip',
   SUGGESTIONS: 'suggestions',
   SUGGESTION_ITEM: 'item',
@@ -73,7 +71,6 @@ export const EVENTS = Object.freeze({
   BEFOREUNLOAD: 'beforeunload',
 
   // Custom application events
-  FAVORITES_CHANGED: 'favoritesChanged',
   CARD_SELECTED: 'cardSelected',
   TOURNAMENT_CHANGED: 'tournamentChanged'
 });
@@ -83,7 +80,6 @@ export const EVENTS = Object.freeze({
  */
 export const STORAGE_KEYS = Object.freeze({
   GRID_CACHE: 'gridCache',
-  FAVORITES: 'favorites',
   USER_PREFERENCES: 'userPreferences'
 });
 
@@ -95,7 +91,6 @@ export const URL_PARAMS = Object.freeze({
   SORT: 'sort',
   ARCHETYPE: 'archetype',
   TOURNAMENT: 'tour',
-  FAVORITES: 'fav',
   DEBUG: 'debug'
 });
 
@@ -105,7 +100,6 @@ export const URL_PARAMS = Object.freeze({
 export const DEFAULTS = Object.freeze({
   ARCHETYPE_ALL: '__all__',
   SORT_PERCENT_DESC: 'percent-desc',
-  FAV_FILTER_ALL: 'all',
   DEBOUNCE_DELAY: 300,
   ANIMATION_DURATION: 150
 });
