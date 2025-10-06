@@ -17,7 +17,7 @@ export function createHeader(options = {}) {
       </a>
       <nav class="main-nav" aria-label="Main navigation">
   <a class="nav-link${currentPage === 'home' ? ' active' : ''}" href="/">Home</a>
-  <a class="nav-link${currentPage === 'cards' ? ' active' : ''}" href="/card">Cards</a>
+  <a class="nav-link${currentPage === 'cards' ? ' active' : ''}" href="/suggested">Cards</a>
   <a class="nav-link${currentPage === 'feedback' ? ' active' : ''}" href="/feedback.html">Feedback</a>
       </nav>
     </div>

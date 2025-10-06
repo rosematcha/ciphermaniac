@@ -121,9 +121,12 @@ function _buildControls(/* current */) {
 
 // Main init
 async function init() {
-  // Only show landing on card page when no specific card is selected
-  const route = parseCardRoute();
-  if (route.source !== 'landing' && route.source !== 'other') {return;}
+  // Only run on /suggested page
+  const pathname = window.location.pathname;
+  if (!pathname.match(/\/suggested(?:\.html)?$/i)) {
+    return;
+  }
+
   const data = await fetchSuggestions();
   const root = document.getElementById('suggestions-root'); const sect = document.getElementById('cards-landing');
   if (!root || !sect) {return;}

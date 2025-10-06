@@ -37,9 +37,6 @@ import { renderChart, renderCopiesHistogram, renderEvents } from './card/charts.
 import { getCanonicalCard, getCardVariants } from './utils/cardSynonyms.js';
 import { parseCardRoute, resolveCardSlug, buildCardPath, makeCardSlug, describeSlug } from './card/routing.js';
 
-// Show curated suggestions on the card landing view
-import './cardsLanding.js';
-
 // Set up global error handling
 setupGlobalErrorHandler();
 
@@ -193,8 +190,8 @@ async function initializeCardPage() {
   }
 
   if (routeInfo.source === 'landing') {
-    updateCardTitle(null);
-    updateSearchLink();
+    // Redirect to /suggested for the suggestions landing page
+    window.location.replace('/suggested');
     return;
   }
 
