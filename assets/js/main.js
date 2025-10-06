@@ -5,7 +5,7 @@
 
 // Clear any existing scroll listeners that might be left over from imagePreloader
 (function clearExistingScrollListeners() {
-  const oldListeners = window.__imagePreloaderListeners || [];
+  const oldListeners = /** @type {EventListener[]} */ (window.__imagePreloaderListeners || []);
   oldListeners.forEach(listener => {
     window.removeEventListener('scroll', listener);
   });
@@ -17,33 +17,36 @@
   const OriginalImage = window.Image;
   const problematicCards = ['Boss\'s_Orders.png', 'Pokégear_3.0.png', 'Ethan\'s_', 'Team_Rocket\'s_', 'Lillie\'s_', 'Exp._Share.png', 'Pokémon_Catcher.png'];
 
-  window.Image = function (...args) {
-    const img = new OriginalImage(...args);
-    const originalSrcSetter = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src').set;
+  class DebugImage extends OriginalImage {
+    constructor(...args) {
+      super(...args);
 
-    Object.defineProperty(img, 'src', {
-      set(value) {
-        // Catch all problematic thumbnail requests without set/number codes
-        if (value.includes('thumbnails/') &&
-            problematicCards.some(card => value.includes(card)) &&
-            !value.match(/_[A-Z]+_\d+\.png$/)) { // Doesn't end with _SET_NUMBER.png
-          console.error('🚨 ERRONEOUS THUMBNAIL REQUEST:', value);
-          console.trace('Call stack:');
-          // debugger; // Uncomment to break
-        }
-        originalSrcSetter.call(this, value);
-      },
-      get() {
-        return this.getAttribute('src');
+      const descriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+      const originalSrcSetter = descriptor && descriptor.set;
+
+      if (originalSrcSetter) {
+        Object.defineProperty(this, 'src', {
+          configurable: true,
+          enumerable: true,
+          get() {
+            return this.getAttribute('src');
+          },
+          set(value) {
+            if (typeof value === 'string' &&
+                value.includes('thumbnails/') &&
+                problematicCards.some(card => value.includes(card)) &&
+                !/_ [A-Z]+_\d+\.png$/u.test(value.replace(/.*\//, ''))) {
+              console.error('🚨 ERRONEOUS THUMBNAIL REQUEST:', value);
+              console.trace('Call stack:');
+            }
+            originalSrcSetter.call(this, value);
+          }
+        });
       }
-    });
+    }
+  }
 
-    return img;
-  };
-
-  // Copy static properties
-  Object.setPrototypeOf(window.Image, OriginalImage);
-  Object.setPrototypeOf(window.Image.prototype, OriginalImage.prototype);
+  window.Image = DebugImage;
 }());
 
 import { fetchReport, fetchOverrides, fetchArchetypeReport, fetchTournamentsList, fetchArchetypesList } from './api.js';
@@ -55,6 +58,7 @@ import { initMissingThumbsDev as _initMissingThumbsDev } from './dev/missingThum
 import { initCacheDev } from './dev/cacheDev.js';
 // import { imagePreloader } from './utils/imagePreloader.js'; // Disabled - using parallelImageLoader instead
 import { getStateFromURL, setStateInURL, normalizeRouteOnLoad, parseHash } from './router.js';
+import { buildCardPath } from './card/routing.js';
 import { logger } from './utils/logger.js';
 import { storage } from './utils/storage.js';
 import { CleanupManager, debounce, validateElements } from './utils/performance.js';
@@ -73,6 +77,8 @@ const appState = {
   archeCache: new Map(),
   cleanup: new CleanupManager()
 };
+
+/** @typedef {typeof appState} AppState */
 
 /**
  * Cache management for tournament data
@@ -138,7 +144,7 @@ class DataCache {
 /**
  * Initialize tournament selector with data from API
  * @param {AppState} state
- * @returns {HTMLSelectElement}
+ * @returns {Promise<HTMLSelectElement>}
  */
 async function initializeTournamentSelector(state) {
   const elements = validateElements({
@@ -147,8 +153,8 @@ async function initializeTournamentSelector(state) {
 
   const tournaments = await safeAsync(
     () => fetchTournamentsList(),
-    ['2025-08-15, World Championships 2025'], // fallback
-    'fetching tournaments list'
+    'fetching tournaments list',
+    ['2025-08-15, World Championships 2025'] // fallback
   );
 
   const urlState = getStateFromURL();
@@ -240,8 +246,8 @@ async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = fa
   if (!archetypesList) {
     archetypesList = await safeAsync(
       () => fetchArchetypesList(tournament),
-      [], // fallback
-      `fetching archetypes for ${tournament}`
+      `fetching archetypes for ${tournament}`,
+      [] // fallback
     );
 
     if (archetypesList.length > 0) {
@@ -334,7 +340,6 @@ function setupControlHandlers(state) {
   const elements = validateElements({
     search: '#search',
     sort: '#sort',
-    favFilter: '#fav-filter',
     tournament: '#tournament',
     archetype: '#archetype'
   }, 'controls');
@@ -350,12 +355,6 @@ function setupControlHandlers(state) {
   const handleSort = async () => {
     await applyFiltersSort(state.current.items, state.overrides);
     setStateInURL({ sort: elements.sort.value }, { merge: true });
-  };
-
-  // Favorites filter handler
-  const handleFavoritesFilter = async () => {
-    await applyFiltersSort(state.current.items, state.overrides);
-    setStateInURL({ fav: elements.favFilter.value }, { merge: true });
   };
 
   // Tournament change handler
@@ -417,14 +416,12 @@ function setupControlHandlers(state) {
   // Add event listeners with cleanup
   state.cleanup.addEventListener(elements.search, 'input', handleSearch);
   state.cleanup.addEventListener(elements.sort, 'change', handleSort);
-  state.cleanup.addEventListener(elements.favFilter, 'change', handleFavoritesFilter);
   state.cleanup.addEventListener(elements.tournament, 'change', handleTournamentChange);
 
   // Restore initial state from URL
   const urlState = getStateFromURL();
   if (urlState.q) {elements.search.value = urlState.q;}
   if (urlState.sort) {elements.sort.value = urlState.sort;}
-  if (urlState.fav && elements.favFilter) {elements.favFilter.value = urlState.fav;}
 }
 
 // Restore state from URL when navigating back/forward
@@ -432,8 +429,7 @@ async function handlePopState(state) {
   logger.debug('popstate detected, restoring URL state');
   const parsed = parseHash();
   if (parsed.route === 'card' && parsed.name) {
-    const target = `${location.pathname.replace(/index\.html?$/i, 'card.html')}${location.search}#card/${encodeURIComponent(parsed.name)}`;
-    location.assign(target);
+    location.assign(buildCardPath(parsed.name));
     return;
   }
   await applyInitialState(state);
@@ -481,8 +477,7 @@ async function applyInitialState(state) {
   const elements = validateElements({
     search: '#search',
     sort: '#sort',
-    archetype: '#archetype',
-    favFilter: '#fav-filter'
+    archetype: '#archetype'
   }, 'applying initial state');
 
   // Apply URL state to controls and trigger filtering
@@ -498,9 +493,6 @@ async function applyInitialState(state) {
   } else {
     await applyFiltersSort(state.current.items, state.overrides);
   }
-  if (urlState.fav && elements.favFilter) {
-    elements.favFilter.value = urlState.fav === 'fav' ? 'fav' : 'all';
-  }
 }
 
 /**
@@ -508,7 +500,7 @@ async function applyInitialState(state) {
  */
 async function initializeApp() {
   try {
-    // Normalize hash routes like #card/... to card.html
+  // Normalize legacy hash routes like #card/... to the new card path
     if (normalizeRouteOnLoad()) {return;}
 
     logger.info('Initializing Ciphermaniac application');

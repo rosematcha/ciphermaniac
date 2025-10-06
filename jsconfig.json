@@ -17,7 +17,8 @@
     }
   },
   "include": [
-    "assets/js/**/*.js"
+    "assets/js/**/*.js",
+    "types/**/*.d.ts"
   ],
   "exclude": [
     "node_modules",

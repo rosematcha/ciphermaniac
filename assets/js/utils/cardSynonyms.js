@@ -38,14 +38,28 @@ export async function getCanonicalCard(cardIdentifier) {
 
   const data = await loadSynonymData();
 
-  // Check if it's a UID with synonym mapping
-  if (data.synonyms[cardIdentifier]) {
-    return data.synonyms[cardIdentifier];
+  // If this looks like a UID (Name::SET::NUMBER), prefer the name-based canonical
+  // when available (this keeps older canonicals prioritized), otherwise fall back
+  // to the explicit synonym mapping for the UID.
+  if (cardIdentifier.includes('::')) {
+    const baseName = String(cardIdentifier).split('::')[0];
+    if (data.canonicals && data.canonicals[baseName]) {
+      return data.canonicals[baseName];
+    }
+    if (data.synonyms && data.synonyms[cardIdentifier]) {
+      return data.synonyms[cardIdentifier];
+    }
+    return cardIdentifier;
   }
 
-  // Check if it's a card name with canonical mapping
-  if (data.canonicals[cardIdentifier]) {
+  // For name inputs, return configured canonical if present
+  if (data.canonicals && data.canonicals[cardIdentifier]) {
     return data.canonicals[cardIdentifier];
+  }
+
+  // Fall back to direct synonym mapping if someone passed a name mapped in synonyms
+  if (data.synonyms && data.synonyms[cardIdentifier]) {
+    return data.synonyms[cardIdentifier];
   }
 
   return cardIdentifier;
@@ -106,11 +120,20 @@ export const sync = {
    * @returns {string}
    */
   getCanonicalCard(cardIdentifier) {
-    if (!synonymData || !cardIdentifier) {return cardIdentifier;}
+    if (!synonymData || !cardIdentifier) {return cardIdentifier;} 
 
-    return synonymData.synonyms[cardIdentifier] ||
-           synonymData.canonicals[cardIdentifier] ||
-           cardIdentifier;
+    if (String(cardIdentifier).includes('::')) {
+      const baseName = String(cardIdentifier).split('::')[0];
+      if (synonymData.canonicals && synonymData.canonicals[baseName]) {
+        return synonymData.canonicals[baseName];
+      }
+      if (synonymData.synonyms && synonymData.synonyms[cardIdentifier]) {
+        return synonymData.synonyms[cardIdentifier];
+      }
+      return cardIdentifier;
+    }
+
+    return synonymData.canonicals[cardIdentifier] || synonymData.synonyms[cardIdentifier] || cardIdentifier;
   },
 
   /**

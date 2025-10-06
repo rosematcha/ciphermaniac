@@ -21,7 +21,8 @@
       "Bash(npm install)",
       "Bash(curl:*)",
       "Bash(npx eslint:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": [],

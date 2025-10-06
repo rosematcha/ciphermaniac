@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Centralized logging utility with consistent formatting and levels
  * (no private class fields to maximize mobile Firefox compatibility)
@@ -118,7 +119,7 @@ try {
     const params = new URLSearchParams(window.location.search || '');
     const debugLevel = params.get('debug');
     if (debugLevel && ['debug', 'info', 'warn', 'error'].includes(debugLevel)) {
-      logger.setLevel(debugLevel);
+      logger.setLevel(/** @type {LogLevel} */ (debugLevel));
     }
   }
 } catch {

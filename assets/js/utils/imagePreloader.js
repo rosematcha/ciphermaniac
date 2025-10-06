@@ -11,10 +11,10 @@ class ImagePreloader {
 
   /**
    * Preload images for a list of card names
-   * @param {Array} cardNames - Array of card names to preload
-   * @param {boolean} useSm - Whether to use small or extra-small thumbnails
-   * @param {object} overrides - Image filename overrides
-   * @param {number} priority - Higher number = higher priority (default: 1)
+   * @param {Array} _cardNames - Array of card names to preload
+   * @param {boolean} _useSm - Whether to use small or extra-small thumbnails
+   * @param {object} _overrides - Image filename overrides
+   * @param {number} _priority - Higher number = higher priority (default: 1)
    */
   preloadImages(_cardNames, _useSm = false, _overrides = {}, _priority = 1) {
     // DISABLED: Using parallelImageLoader instead
@@ -33,10 +33,7 @@ class ImagePreloader {
 
   /**
    * Load the first available image from candidates
-   * @param root0
-   * @param root0.name
-   * @param root0.candidates
-   * @param root0.useSm
+   * @param {{name: string, candidates: string[], useSm: boolean}} params
    */
   async loadImageCandidates({ name, candidates, useSm }) {
     if (this.preloadedImages.has(`${name}_${useSm}`)) {
@@ -72,7 +69,7 @@ class ImagePreloader {
 
   /**
    * Load a single image and return success/failure
-   * @param src
+   * @param {string} src
    */
   loadSingleImage(src) {
     return new Promise(resolve => {
@@ -85,8 +82,8 @@ class ImagePreloader {
 
   /**
    * Preload visible and near-visible cards in the grid
-   * @param items
-   * @param overrides
+   * @param {Array} _items
+   * @param {object} _overrides
    */
   preloadVisibleCards(_items, _overrides = {}) {
     // DISABLED: Using parallelImageLoader instead
@@ -123,8 +120,8 @@ export const imagePreloader = new ImagePreloader();
 let _scrollTimeout = null;
 /**
  *
- * @param items
- * @param overrides
+ * @param {Array} _items
+ * @param {object} _overrides
  */
 export function setupImagePreloading(_items, _overrides = {}) {
   // DISABLED: Using parallelImageLoader instead

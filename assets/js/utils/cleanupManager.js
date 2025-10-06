@@ -7,6 +7,11 @@
  * CleanupManager handles automatic cleanup of event listeners, timers, and other resources
  * to prevent memory leaks in long-running applications
  */
+import { logger } from './logger.js';
+
+/**
+ *
+ */
 export class CleanupManager {
   constructor() {
     this.eventListeners = new Set();
@@ -20,13 +25,13 @@ export class CleanupManager {
    * Add an event listener that will be automatically cleaned up
    * @param {EventTarget} target - Element to attach listener to
    * @param {string} eventType - Event type to listen for
-   * @param {Function} handler - Event handler function
-   * @param {object|boolean} options - Event listener options
-   * @returns {Function} Cleanup function for this specific listener
+   * @param {EventListenerOrEventListenerObject} handler - Event handler function
+   * @param {boolean|AddEventListenerOptions} [options] - Event listener options
+   * @returns {() => void} Cleanup function for this specific listener
    */
   addEventListener(target, eventType, handler, options = false) {
     if (!target || typeof target.addEventListener !== 'function') {
-      console.warn('CleanupManager: Invalid event target provided');
+      logger.warn('CleanupManager: Invalid event target provided');
       return () => {};
     }
 
@@ -139,7 +144,7 @@ export class CleanupManager {
       try {
         target.removeEventListener(eventType, handler, options);
       } catch (error) {
-        console.warn('CleanupManager: Error removing event listener:', error);
+        logger.warn('CleanupManager: Error removing event listener:', error);
       }
     }
     this.eventListeners.clear();
@@ -153,7 +158,7 @@ export class CleanupManager {
           clearInterval(timer.id);
         }
       } catch (error) {
-        console.warn('CleanupManager: Error clearing timer:', error);
+        logger.warn('CleanupManager: Error clearing timer:', error);
       }
     }
     this.timers.clear();
@@ -163,7 +168,7 @@ export class CleanupManager {
       try {
         observer.disconnect();
       } catch (error) {
-        console.warn('CleanupManager: Error disconnecting observer:', error);
+        logger.warn('CleanupManager: Error disconnecting observer:', error);
       }
     }
     this.observers.clear();
@@ -173,7 +178,7 @@ export class CleanupManager {
       try {
         controller.abort();
       } catch (error) {
-        console.warn('CleanupManager: Error aborting controller:', error);
+        logger.warn('CleanupManager: Error aborting controller:', error);
       }
     }
     this.abortControllers.clear();
@@ -183,7 +188,7 @@ export class CleanupManager {
       try {
         cleanupFunction();
       } catch (error) {
-        console.warn('CleanupManager: Error in cleanup callback:', error);
+        logger.warn('CleanupManager: Error in cleanup callback:', error);
       }
     }
     this.cleanupCallbacks.clear();

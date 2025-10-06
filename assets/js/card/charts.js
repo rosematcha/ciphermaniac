@@ -343,8 +343,8 @@ export function renderEvents(container, rows) {
   rows.forEach(rowData => {
     const tableRow = document.createElement('tr');
 
-    const tournamentLink = document.createElement('a');
-    tournamentLink.href = `index.html?tour=${encodeURIComponent(rowData.tournament)}`;
+  const tournamentLink = document.createElement('a');
+  tournamentLink.href = `/index.html?tour=${encodeURIComponent(rowData.tournament)}`;
     tournamentLink.textContent = prettyTournamentName(rowData.tournament);
 
     const cellValues = [tournamentLink, rowData.pct !== null ? `${rowData.pct.toFixed(1)}%` : '—'];

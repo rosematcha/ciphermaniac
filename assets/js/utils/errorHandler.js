@@ -282,9 +282,13 @@ export class ErrorBoundary {
 }
 
 /**
+ * @typedef {RequestInit & { timeout?: number; retries?: number; retryDelay?: number }} ExtendedRequestInit
+ */
+
+/**
  * Enhanced safe fetch with comprehensive error handling
  * @param {string|Request} input - URL or Request object
- * @param {RequestInit} init - Fetch options
+ * @param {ExtendedRequestInit} [init] - Fetch options
  * @returns {Promise<Response>} Enhanced response
  */
 export async function safeFetch(input, init = {}) {
@@ -454,11 +458,36 @@ export async function withRetry(operation, maxAttempts = 3, delayMs = 1000) {
 /**
  * Safe synchronous operation wrapper with error handling
  * @param {Function} operation - Synchronous operation to execute
- * @param {any} defaultValue - Default value to return on error
- * @param {string} errorMessage - Custom error message
+ * @param {any} [arg1] - Either default value or error message depending on invocation
+ * @param {any} [arg2] - Either default value or error message depending on invocation
  * @returns {any} Result of operation or default value
  */
-export function safeSync(operation, defaultValue = null, errorMessage = 'Operation failed') {
+export function safeSync(operation, arg1, arg2) {
+  let defaultValue = null;
+  let errorMessage = 'Operation failed';
+
+  const argCount = arguments.length;
+
+  if (argCount >= 3) {
+    if (typeof arg1 === 'string' && typeof arg2 !== 'string') {
+      errorMessage = arg1;
+      defaultValue = arg2 ?? null;
+    } else {
+      defaultValue = arg1 ?? null;
+      if (typeof arg2 === 'string') {
+        errorMessage = arg2;
+      } else if (arg2 !== undefined) {
+        defaultValue = arg2;
+      }
+    }
+  } else if (argCount === 2) {
+    if (typeof arg1 === 'string') {
+      errorMessage = arg1;
+    } else {
+      defaultValue = arg1;
+    }
+  }
+
   try {
     return operation();
   } catch (error) {
@@ -470,11 +499,36 @@ export function safeSync(operation, defaultValue = null, errorMessage = 'Operati
 /**
  * Safe asynchronous operation wrapper with error handling
  * @param {Function} operation - Async operation to execute
- * @param {any} defaultValue - Default value to return on error
- * @param {string} errorMessage - Custom error message
+ * @param {any} [arg1] - Either default value or error message depending on invocation
+ * @param {any} [arg2] - Either default value or error message depending on invocation
  * @returns {Promise<any>} Result of operation or default value
  */
-export async function safeAsync(operation, defaultValue = null, errorMessage = 'Async operation failed') {
+export async function safeAsync(operation, arg1, arg2) {
+  let defaultValue = null;
+  let errorMessage = 'Async operation failed';
+
+  const argCount = arguments.length;
+
+  if (argCount >= 3) {
+    if (typeof arg1 === 'string' && typeof arg2 !== 'string') {
+      errorMessage = arg1;
+      defaultValue = arg2 ?? null;
+    } else {
+      defaultValue = arg1 ?? null;
+      if (typeof arg2 === 'string') {
+        errorMessage = arg2;
+      } else if (arg2 !== undefined) {
+        defaultValue = arg2;
+      }
+    }
+  } else if (argCount === 2) {
+    if (typeof arg1 === 'string') {
+      errorMessage = arg1;
+    } else {
+      defaultValue = arg1;
+    }
+  }
+
   try {
     return await operation();
   } catch (error) {

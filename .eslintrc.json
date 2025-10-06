@@ -189,7 +189,9 @@
     "jsdoc/no-bad-blocks": "error",
     "jsdoc/no-defaults": "error",
     "jsdoc/no-types": "off",
-    "jsdoc/no-undefined-types": "warn",
+  // Temporarily disable this check to reduce noisy warnings around DOM/Fetch types
+  // We'll add stricter typedefs incrementally where it provides value.
+  "jsdoc/no-undefined-types": "off",
     "jsdoc/require-description": "off",
     "jsdoc/require-description-complete-sentence": "off",
     "jsdoc/require-example": "off",
@@ -224,6 +226,5 @@
     "jsdoc/valid-types": "warn"
   },
   "globals": {
-    "firebase": "readonly"
   }
 }
