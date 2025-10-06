@@ -18,7 +18,7 @@ class PricingManager {
    * @param {string} cardName - Card name
    * @param {string} setCode - Set abbreviation (SVI, PAL, etc.)
    * @param {string} cardNumber - Card number (padded to 3 digits)
-   * @returns {number|null} Price in USD or null if not found
+   * @returns {Promise<number|null>} Price in USD or null if not found
    */
   async getCardPrice(cardName, setCode, cardNumber) {
     await this.ensurePriceData();
@@ -40,7 +40,7 @@ class PricingManager {
    * @param {string} cardName - Card name
    * @param {string} setCode - Set abbreviation (SVI, PAL, etc.)
    * @param {string} cardNumber - Card number (padded to 3 digits)
-   * @returns {string|null} TCGPlayer ID or null if not found
+   * @returns {Promise<string|null>} TCGPlayer ID or null if not found
    */
   async getCardTCGPlayerId(cardName, setCode, cardNumber) {
     await this.ensurePriceData();
@@ -62,7 +62,7 @@ class PricingManager {
    * @param {string} cardName - Card name
    * @param {string} setCode - Set abbreviation (SVI, PAL, etc.)
    * @param {string} cardNumber - Card number (padded to 3 digits)
-   * @returns {object | null} Object with price and tcgPlayerId or null if not found
+   * @returns {Promise<object | null>} Object with price and tcgPlayerId or null if not found
    */
   async getCardData(cardName, setCode, cardNumber) {
     await this.ensurePriceData();
@@ -82,7 +82,7 @@ class PricingManager {
   /**
    * Get prices for multiple cards at once
    * @param {Array} cards - Array of {name, set, number} objects
-   * @returns {object} Object mapping card keys to prices
+   * @returns {Promise<object>} Object mapping card keys to prices
    */
   async getMultiplePrices(cards) {
     await this.ensurePriceData();
@@ -108,6 +108,7 @@ class PricingManager {
 
   /**
    * Get pricing metadata (last updated, source, etc.)
+   * @returns {Promise<{ lastUpdated: string, updateSource: string, cardCount: number } | null>}
    */
   async getPricingMetadata() {
     await this.ensurePriceData();
@@ -160,27 +161,22 @@ class PricingManager {
    * Fetch price data from API
    */
   async fetchPriceData() {
-    try {
-      const response = await fetch('/api/get-prices');
+    const response = await fetch('/api/get-prices');
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(data.message || data.error);
-      }
-
-      this.priceData = data;
-      this.lastFetch = Date.now();
-
-      // Price data updated successfully
-    } catch (error) {
-      // Failed to fetch price data
-      throw error;
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
     }
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.message || data.error);
+    }
+
+    this.priceData = data;
+    this.lastFetch = Date.now();
+
+    // Price data updated successfully
   }
 
   /**
@@ -193,6 +189,6 @@ class PricingManager {
 }
 
 // Create global instance
-window.pricingManager = new PricingManager();
+/** @type {Window & { pricingManager?: PricingManager }} */ (window).pricingManager = new PricingManager();
 
 export default PricingManager;

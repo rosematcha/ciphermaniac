@@ -298,7 +298,7 @@ export async function processInParallel(items, processor, options = {}) {
 
   for (const chunk of chunks) {
     // eslint-disable-next-line no-loop-func
-    const promises = chunk.map(async (item, chunkIndex) => {
+    const promises = chunk.map((item, chunkIndex) => {
       const globalIndex = chunks.indexOf(chunk) * config.concurrency + chunkIndex;
 
       const processWithRetry = async (attempts = 0) => {
@@ -330,7 +330,7 @@ export async function processInParallel(items, processor, options = {}) {
         }
       };
 
-      return await processWithRetry();
+      return processWithRetry();
     });
 
     const chunkResults = await Promise.all(promises);
