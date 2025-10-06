@@ -1,7 +1,2 @@
-/card.html /card.html 200
-/index.html /index.html 200
-/assets/* /assets/:splat 200
-/reports/* /reports/:splat 200
-/thumbnails/* /thumbnails/:splat 200
-/card /card.html 200
-/card/* /card.html 200
+# Static asset paths - Cloudflare Pages will serve these directly
+# Card rewrites are handled by functions/_middleware.js
