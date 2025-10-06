@@ -3,6 +3,8 @@
  * @module Deckbuilder
  */
 
+/* eslint-disable no-alert */
+
 import {
   fetchTournamentsList,
   fetchReport,
@@ -730,46 +732,54 @@ function sortDeck() {
     return;
   }
 
-  // Convert deck to array for sorting
-  const deckEntries = Array.from(currentDeck.values());
+  const groupedEntries = {
+    pokemon: [],
+    trainer: [],
+    energy: []
+  };
 
-  // Group by type
-  const pokemon = deckEntries.filter(entry => getCardType(entry.card) === 'pokemon');
-  const trainers = deckEntries.filter(entry => getCardType(entry.card) === 'trainer');
-  const energy = deckEntries.filter(entry => getCardType(entry.card) === 'energy');
+  for (const entry of currentDeck.values()) {
+    const cardType = getCardType(entry.card);
+    const targetGroup = cardType === 'pokemon'
+      ? groupedEntries.pokemon
+      : (cardType === 'energy' ? groupedEntries.energy : groupedEntries.trainer);
 
-  let newOrder = 1;
+    const displayName = entry.card.displayName || entry.card.name;
+    targetGroup.push({
+      entry,
+      count: entry.count,
+      displayName,
+      evolutionOrder: cardType === 'pokemon' ? getEvolutionOrder(entry.card) : null
+    });
+  }
 
-  // Sort Pokemon by quantity (desc) -> evolution line -> alphabetical
-  pokemon.sort((first, second) => {
+  groupedEntries.pokemon.sort((first, second) => {
     if (first.count !== second.count) {
       return second.count - first.count;
     }
 
-    const evolutionOrderA = getEvolutionOrder(first.card);
-    const evolutionOrderB = getEvolutionOrder(second.card);
-
-    if (evolutionOrderA !== evolutionOrderB) {
-      return evolutionOrderA - evolutionOrderB;
+    if (first.evolutionOrder !== second.evolutionOrder) {
+      return first.evolutionOrder - second.evolutionOrder;
     }
 
-    return first.card.displayName.localeCompare(second.card.displayName);
+    return first.displayName.localeCompare(second.displayName);
   });
 
-  // Sort Trainers and Energy by quantity (desc) -> alphabetical
-  [trainers, energy].forEach(category => {
+  [groupedEntries.trainer, groupedEntries.energy].forEach(category => {
     category.sort((first, second) => {
       if (first.count !== second.count) {
         return second.count - first.count;
       }
-      return first.card.displayName.localeCompare(second.card.displayName);
+      return first.displayName.localeCompare(second.displayName);
     });
   });
 
-  // Assign new order values
-  [...pokemon, ...trainers, ...energy].forEach(entry => {
-    // eslint-disable-next-line no-param-reassign
-    entry.order = newOrder++;
+  let newOrder = 1;
+  [groupedEntries.pokemon, groupedEntries.trainer, groupedEntries.energy].forEach(category => {
+    category.forEach(item => {
+      // eslint-disable-next-line no-param-reassign
+      item.entry.order = newOrder++;
+    });
   });
 
   nextCardOrder = newOrder;
@@ -849,7 +859,10 @@ async function previewArchetype() {
       // Find most common copy count from distribution data
       let mostCommonCopies = '';
       if (Array.isArray(card.dist) && card.dist.length > 0) {
-        const sortedDist = card.dist
+        const distributionStats = /** @type {Array<{copies?: number, players?: number}>} */ (
+          card.dist.filter(item => item && typeof item === 'object')
+        );
+        const sortedDist = distributionStats
           .filter(distribution =>
             Number.isFinite(distribution.copies) &&
             distribution.copies >= 1 &&
@@ -944,7 +957,10 @@ async function autoFillFromArchetype() {
       } else if (Array.isArray(cardData.dist) && cardData.dist.length > 0) {
         // Use distribution data to find the most common copy count
         // Sort by player count (descending) to find the most popular copy count
-        const sortedDist = cardData.dist
+        const distributionStats = /** @type {Array<{copies?: number, players?: number}>} */ (
+          cardData.dist.filter(item => item && typeof item === 'object')
+        );
+        const sortedDist = distributionStats
           .filter(distribution =>
             Number.isFinite(distribution.copies) &&
             distribution.copies >= 1 &&

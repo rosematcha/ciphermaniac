@@ -2,9 +2,9 @@ function sanitizePrimary(name) {
   // Normalize and keep Unicode letters/numbers, apostrophes, dashes, underscores; spaces -> underscores
   const sanitized = String(name).normalize('NFC')
     .replace(/\u2019/g, '\'') // curly to straight apostrophe
-    .replace(/[:!.,]/g, '')
+    .replace(/[:!,]/g, '')
     .replace(/\s+/g, '_')
-    .replace(/[^\p{L}\p{N}_\-']/gu, '_')
+    .replace(/[^\p{L}\p{N}_\-'.]/gu, '_')
     .replace(/_+/g, '_');
   return sanitized;
 }

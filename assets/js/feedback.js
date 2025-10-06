@@ -1,133 +1,170 @@
+import { logger } from './utils/logger.js';
+
 /**
  * Feedback form functionality
  */
 
+/**
+ * @template {HTMLElement} T
+ * @param {string} id
+ * @param {new (...args: any[]) => T} Constructor
+ * @returns {T}
+ */
+function getRequiredElement(id, Constructor) {
+  const element = document.getElementById(id);
+  if (!element || !(element instanceof Constructor)) {
+    throw new Error(`Element with id "${id}" not found or not a ${Constructor.name}`);
+  }
+  return element;
+}
+
+/**
+ * @param {HTMLElement} container
+ * @param {boolean} required
+ */
+function setRequiredFields(container, required) {
+  const selects = container.querySelectorAll('select');
+  const inputs = container.querySelectorAll('input');
+
+  selects.forEach(select => {
+    // eslint-disable-next-line no-param-reassign
+    select.required = required;
+    // eslint-disable-next-line no-param-reassign
+    if (!required) {select.value = '';}
+  });
+
+  inputs.forEach(input => {
+    if (!input.closest('.form-group[style*="display: none"]')) {
+      // eslint-disable-next-line no-param-reassign
+      input.required = required;
+      // eslint-disable-next-line no-param-reassign
+      if (!required) {input.value = '';}
+    }
+  });
+}
+
 class FeedbackForm {
-  constructor() {
-    this.form = document.getElementById('feedbackForm');
+  /**
+   * @param {HTMLFormElement} form
+   */
+  constructor(form) {
+    /** @type {HTMLFormElement} */
+    this.form = form;
+    this.elements = {
+      feedbackType: getRequiredElement('feedbackType', HTMLSelectElement),
+      bugDetails: getRequiredElement('bugDetails', HTMLElement),
+      platform: getRequiredElement('platform', HTMLSelectElement),
+      desktopDetails: getRequiredElement('desktopDetails', HTMLElement),
+      mobileDetails: getRequiredElement('mobileDetails', HTMLElement),
+      followUp: getRequiredElement('followUp', HTMLSelectElement),
+      contactDetails: getRequiredElement('contactDetails', HTMLElement),
+      desktopBrowser: getRequiredElement('desktopBrowser', HTMLSelectElement),
+      mobileBrowser: getRequiredElement('mobileBrowser', HTMLSelectElement),
+      otherDesktopBrowser: getRequiredElement('otherDesktopBrowser', HTMLElement),
+      otherMobileBrowser: getRequiredElement('otherMobileBrowser', HTMLElement),
+      status: getRequiredElement('submitStatus', HTMLElement)
+    };
     this.initializeEventListeners();
   }
 
   initializeEventListeners() {
-    const feedbackTypeSelect = document.getElementById('feedbackType');
-    const platformSelect = document.getElementById('platform');
-    const followUpSelect = document.getElementById('followUp');
-    const desktopBrowserSelect = document.getElementById('desktopBrowser');
-    const mobileBrowserSelect = document.getElementById('mobileBrowser');
-
-    feedbackTypeSelect.addEventListener('change', () => this.handleFeedbackTypeChange());
-    platformSelect.addEventListener('change', () => this.handlePlatformChange());
-    followUpSelect.addEventListener('change', () => this.handleFollowUpChange());
-    desktopBrowserSelect.addEventListener('change', () => this.handleBrowserChange('desktop'));
-    mobileBrowserSelect.addEventListener('change', () => this.handleBrowserChange('mobile'));
+    this.elements.feedbackType.addEventListener('change', () => this.handleFeedbackTypeChange());
+    this.elements.platform.addEventListener('change', () => this.handlePlatformChange());
+    this.elements.followUp.addEventListener('change', () => this.handleFollowUpChange());
+    this.elements.desktopBrowser.addEventListener('change', () => this.handleBrowserChange('desktop'));
+    this.elements.mobileBrowser.addEventListener('change', () => this.handleBrowserChange('mobile'));
 
     this.form.addEventListener('submit', event => this.handleSubmit(event));
   }
 
   handleFeedbackTypeChange() {
-    const feedbackType = document.getElementById('feedbackType').value;
-    const bugDetails = document.getElementById('bugDetails');
+    const { feedbackType, bugDetails } = this.elements;
 
-    if (feedbackType === 'bug') {
+    if (feedbackType.value === 'bug') {
       bugDetails.style.display = 'block';
-      this.setRequiredFields(bugDetails, true);
+      setRequiredFields(bugDetails, true);
     } else {
       bugDetails.style.display = 'none';
-      this.setRequiredFields(bugDetails, false);
+      setRequiredFields(bugDetails, false);
       this.resetPlatformFields();
     }
   }
 
   handlePlatformChange() {
-    const platform = document.getElementById('platform').value;
-    const desktopDetails = document.getElementById('desktopDetails');
-    const mobileDetails = document.getElementById('mobileDetails');
+    const { platform, desktopDetails, mobileDetails } = this.elements;
 
-    if (platform === 'desktop') {
+    if (platform.value === 'desktop') {
       desktopDetails.style.display = 'block';
       mobileDetails.style.display = 'none';
-      this.setRequiredFields(desktopDetails, true);
-      this.setRequiredFields(mobileDetails, false);
-    } else if (platform === 'mobile') {
+      setRequiredFields(desktopDetails, true);
+      setRequiredFields(mobileDetails, false);
+    } else if (platform.value === 'mobile') {
       mobileDetails.style.display = 'block';
       desktopDetails.style.display = 'none';
-      this.setRequiredFields(mobileDetails, true);
-      this.setRequiredFields(desktopDetails, false);
+      setRequiredFields(mobileDetails, true);
+      setRequiredFields(desktopDetails, false);
     } else {
       desktopDetails.style.display = 'none';
       mobileDetails.style.display = 'none';
-      this.setRequiredFields(desktopDetails, false);
-      this.setRequiredFields(mobileDetails, false);
+      setRequiredFields(desktopDetails, false);
+      setRequiredFields(mobileDetails, false);
     }
   }
 
   handleFollowUpChange() {
-    const followUp = document.getElementById('followUp').value;
-    const contactDetails = document.getElementById('contactDetails');
+    const { followUp, contactDetails } = this.elements;
 
-    if (followUp === 'yes') {
+    if (followUp.value === 'yes') {
       contactDetails.style.display = 'block';
-      this.setRequiredFields(contactDetails, true);
+      setRequiredFields(contactDetails, true);
     } else {
       contactDetails.style.display = 'none';
-      this.setRequiredFields(contactDetails, false);
+      setRequiredFields(contactDetails, false);
     }
   }
 
   handleBrowserChange(platform) {
-    const browserSelect = document.getElementById(`${platform}Browser`);
-    const otherBrowserDiv = document.getElementById(`other${platform.charAt(0).toUpperCase() + platform.slice(1)}Browser`);
+    const browserSelect = this.elements[`${platform}Browser`];
+    const otherBrowserDiv = this.elements[`other${platform.charAt(0).toUpperCase() + platform.slice(1)}Browser`];
 
     if (browserSelect.value === 'other') {
       otherBrowserDiv.style.display = 'block';
       const otherInput = otherBrowserDiv.querySelector('input');
-      if (otherInput) {otherInput.required = true;}
+      if (otherInput instanceof HTMLInputElement) {otherInput.required = true;}
     } else {
       otherBrowserDiv.style.display = 'none';
       const otherInput = otherBrowserDiv.querySelector('input');
-      if (otherInput) {
+      if (otherInput instanceof HTMLInputElement) {
         otherInput.required = false;
         otherInput.value = '';
       }
     }
   }
 
-  setRequiredFields(container, required) {
-    const selects = container.querySelectorAll('select');
-    const inputs = container.querySelectorAll('input');
-
-    selects.forEach(select => {
-      // eslint-disable-next-line no-param-reassign
-      select.required = required;
-      // eslint-disable-next-line no-param-reassign
-      if (!required) {select.value = '';}
-    });
-
-    inputs.forEach(input => {
-      if (!input.closest('.form-group[style*="display: none"]')) {
-        // eslint-disable-next-line no-param-reassign
-        input.required = required;
-        // eslint-disable-next-line no-param-reassign
-        if (!required) {input.value = '';}
-      }
-    });
-  }
-
   resetPlatformFields() {
-    document.getElementById('platform').value = '';
-    document.getElementById('desktopDetails').style.display = 'none';
-    document.getElementById('mobileDetails').style.display = 'none';
-    this.setRequiredFields(document.getElementById('desktopDetails'), false);
-    this.setRequiredFields(document.getElementById('mobileDetails'), false);
+    const { platform, desktopDetails, mobileDetails } = this.elements;
+
+    platform.value = '';
+    desktopDetails.style.display = 'none';
+    mobileDetails.style.display = 'none';
+    setRequiredFields(desktopDetails, false);
+    setRequiredFields(mobileDetails, false);
   }
 
+  /**
+   * @returns {Record<string, string>}
+   */
   collectFormData() {
     const formData = new FormData(this.form);
+    /** @type {Record<string, string>} */
     const data = {};
 
     for (const [key, value] of formData.entries()) {
-      if (value.trim()) {
-        data[key] = value.trim();
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed) {
+          data[key] = trimmed;
+        }
       }
     }
 
@@ -145,7 +182,7 @@ class FeedbackForm {
   }
 
   showStatus(message, isError = false) {
-    const status = document.getElementById('submitStatus');
+    const { status } = this.elements;
     status.textContent = message;
     status.className = `status-message ${isError ? 'error' : 'success'}`;
     status.style.display = 'block';
@@ -159,7 +196,10 @@ class FeedbackForm {
     event.preventDefault();
 
     const submitButton = this.form.querySelector('.submit-button');
-    const originalText = submitButton.textContent;
+    if (!(submitButton instanceof HTMLButtonElement)) {
+      throw new Error('Submit button not found');
+    }
+    const { textContent: originalText } = submitButton;
 
     try {
       submitButton.disabled = true;
@@ -182,11 +222,11 @@ class FeedbackForm {
         this.handleFollowUpChange();
       } else {
         const errorData = await response.text();
-        console.error('Server response:', errorData);
+        logger.error('Feedback submission rejected by server', errorData);
         throw new Error(`Server error: ${response.status} - ${errorData}`);
       }
     } catch (error) {
-      console.error('Submission error:', error);
+      logger.error('Submission error', error);
       this.showStatus('Sorry, there was an error submitting your feedback. Please try again later.', true);
     } finally {
       submitButton.disabled = false;
@@ -196,5 +236,9 @@ class FeedbackForm {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  new FeedbackForm();
+  const formElement = document.getElementById('feedbackForm');
+  if (formElement instanceof HTMLFormElement) {
+    // eslint-disable-next-line no-new
+    new FeedbackForm(formElement);
+  }
 });
