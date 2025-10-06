@@ -14,11 +14,11 @@
 
 // DEBUG: Intercept Image loading to track erroneous thumbnail requests
 (function setupImageLoadingDebug() {
-  const originalImage = window.Image;
+  const OriginalImage = window.Image;
   const problematicCards = ['Boss\'s_Orders.png', 'Pokégear_3.0.png', 'Ethan\'s_', 'Team_Rocket\'s_', 'Lillie\'s_', 'Exp._Share.png', 'Pokémon_Catcher.png'];
 
   window.Image = function (...args) {
-    const img = new originalImage(...args);
+    const img = new OriginalImage(...args);
     const originalSrcSetter = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src').set;
 
     Object.defineProperty(img, 'src', {
@@ -42,12 +42,12 @@
   };
 
   // Copy static properties
-  Object.setPrototypeOf(window.Image, originalImage);
-  Object.setPrototypeOf(window.Image.prototype, originalImage.prototype);
+  Object.setPrototypeOf(window.Image, OriginalImage);
+  Object.setPrototypeOf(window.Image.prototype, OriginalImage.prototype);
 }());
 
 import { fetchReport, fetchOverrides, fetchArchetypeReport, fetchTournamentsList, fetchArchetypesList } from './api.js';
-import { AppError } from './utils/errorHandler.js';
+import { AppError, safeAsync } from './utils/errorHandler.js';
 import { parseReport } from './parse.js';
 import { renderSummary, updateLayout } from './render.js';
 import { applyFiltersSort } from './controls.js';
@@ -59,7 +59,6 @@ import { logger } from './utils/logger.js';
 import { storage } from './utils/storage.js';
 import { CleanupManager, debounce, validateElements } from './utils/performance.js';
 import { CONFIG } from './config.js';
-import { safeAsync } from './utils/errorHandler.js';
 import { prettyTournamentName } from './utils/format.js';
 import { showGridSkeleton, hideGridSkeleton, updateSkeletonLayout } from './components/placeholders.js';
 
@@ -184,8 +183,7 @@ async function initializeTournamentSelector(state) {
  * Load and parse tournament data
  * @param {string} tournament
  * @param {DataCache} cache
- * @param {boolean} showSkeleton - Whether to show skeleton loading state
- * @param showSkeletonLoading
+ * @param {boolean} showSkeletonLoading - Whether to show skeleton loading state
  * @returns {Promise<{deckTotal: number, items: any[]}>}
  */
 async function loadTournamentData(tournament, cache, showSkeletonLoading = false) {
@@ -441,7 +439,9 @@ async function handlePopState(state) {
   await applyInitialState(state);
 }
 
-window.addEventListener('popstate', async () => await handlePopState(appState));
+window.addEventListener('popstate', () => {
+  handlePopState(appState).catch(error => logger.error('Failed to handle popstate', error));
+});
 
 /**
  * Setup layout resize handler

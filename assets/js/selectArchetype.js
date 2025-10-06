@@ -29,7 +29,9 @@ export function pickArchetype(candidates, top8Bases, opts) {
     return 0;
   };
   const byFoundThenPctDesc = (first, second) =>
-    (score(second) - score(first)) || ((second.pct ?? -1) - (first.pct ?? -1)) || first.base.localeCompare(second.base);
+    (score(second) - score(first))
+      || ((second.pct ?? -1) - (first.pct ?? -1))
+      || first.base.localeCompare(second.base);
   const poolFromTop8 = (() => {
     if (Array.isArray(top8Bases) && top8Bases.length) {
       const set = new Set(top8Bases);
@@ -40,7 +42,10 @@ export function pickArchetype(candidates, top8Bases, opts) {
   })();
 
   // Apply minTotal threshold; if all filtered out, fall back to original pool
-  const filtered = poolFromTop8.filter(candidate => (Number.isFinite(candidate.total) ? candidate.total : 0) >= minTotal);
+  const filtered = poolFromTop8.filter(candidate => {
+    const total = Number.isFinite(candidate.total) ? candidate.total : 0;
+    return total >= minTotal;
+  });
   const pool = filtered.length ? filtered : poolFromTop8;
   return pool.sort(byFoundThenPctDesc)[0];
 }

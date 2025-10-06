@@ -70,8 +70,8 @@ export async function hasCardSynonyms(cardIdentifier) {
  * @param {string} cardIdentifier - Card UID or name
  * @returns {Promise<string>} Normalized card identifier
  */
-export async function normalizeCardIdentifier(cardIdentifier) {
-  return await getCanonicalCard(cardIdentifier);
+export function normalizeCardIdentifier(cardIdentifier) {
+  return getCanonicalCard(cardIdentifier);
 }
 
 /**
