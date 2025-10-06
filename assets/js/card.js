@@ -23,12 +23,10 @@ import {
   processInParallel,
   cleanupOrphanedProgressDisplay
 } from './utils/parallelLoader.js';
-import { CleanupManager } from './utils/cleanupManager.js';
 import { logger, setupGlobalErrorHandler } from './utils/errorHandler.js';
 
 // Import card-specific modules
 import {
-  getCardNameFromLocation,
   getCanonicalId,
   getDisplayName,
   parseDisplayName,
@@ -37,6 +35,7 @@ import {
 import { findCard, renderCardPrice, renderCardSets } from './card/data.js';
 import { renderChart, renderCopiesHistogram, renderEvents } from './card/charts.js';
 import { getCanonicalCard, getCardVariants } from './utils/cardSynonyms.js';
+import { parseCardRoute, resolveCardSlug, buildCardPath, makeCardSlug, describeSlug } from './card/routing.js';
 
 // Show curated suggestions on the card landing view
 import './cardsLanding.js';
@@ -44,42 +43,116 @@ import './cardsLanding.js';
 // Set up global error handling
 setupGlobalErrorHandler();
 
-// Create cleanup manager for this page
-const pageCleanupManager = new CleanupManager();
+const CARD_META_TEMPLATE = `
+  <div class="header-title">
+    <div class="title-row">
+      <h1 id="card-title">Card Details</h1>
+      <div id="card-price" class="card-price skeleton-loading">
+        <div class="skeleton-text small"></div>
+      </div>
+    </div>
+    <div id="card-sets" class="card-sets skeleton-loading">
+      <div class="skeleton-text medium"></div>
+    </div>
+  </div>
+  <div id="card-hero" class="card-hero">
+    <div class="thumb skeleton-loading">
+      <div class="skeleton-image"></div>
+    </div>
+  </div>
+  <div id="card-center">
+    <div id="card-chart" class="skeleton-loading">
+      <div class="skeleton-chart"></div>
+    </div>
+    <div id="card-copies" class="skeleton-loading">
+      <div class="skeleton-histogram"></div>
+    </div>
+  </div>
+  <div id="card-events"></div>
+`;
 
-// Find canonical identifier for a given search term across all tournaments
+let cardTitleEl;
+let metaSection;
+let decksSection;
+let eventsSection;
+let copiesSection;
 
-// Normalize #grid route to index when landing on card page via hash
-const __ROUTE_REDIRECTING = normalizeCardRouteOnLoad();
-let cardIdentifier = getCardNameFromLocation();
-
-// Check for synonym redirect early - if this card has a canonical version, redirect to it
-if (cardIdentifier) {
-  getCanonicalCard(cardIdentifier).then(canonicalIdentifier => {
-    if (canonicalIdentifier !== cardIdentifier) {
-      // This is a non-canonical card, redirect to canonical version
-      console.log(`Redirecting ${cardIdentifier} to canonical version: ${canonicalIdentifier}`);
-      const newUrl = `card.html#card/${encodeURIComponent(canonicalIdentifier)}`;
-      window.location.replace(newUrl);
-    } else {
-      // Update cardIdentifier to canonical version for consistency
-      // (though in this case they're the same)
-      cardIdentifier = canonicalIdentifier;
-    }
-  }).catch(error => {
-    // Continue with original identifier if synonym lookup fails
-    console.warn('Synonym lookup failed:', error);
-  });
+function refreshDomRefs() {
+  cardTitleEl = document.getElementById('card-title');
+  metaSection = /** @type {HTMLElement|null} */ (document.getElementById('card-meta'));
+  decksSection = /** @type {HTMLElement|null} */ (document.getElementById('card-decks'));
+  eventsSection = /** @type {HTMLElement|null} */ (document.getElementById('card-events'));
+  copiesSection = /** @type {HTMLElement|null} */ (document.getElementById('card-copies'));
 }
 
-const cardName = getDisplayName(cardIdentifier) || cardIdentifier;
-const cardTitleEl = document.getElementById('card-title');
-if (cardName) {
-  const { name, setId } = parseDisplayName(cardName);
+function ensureCardMetaStructure() {
+  const meta = document.getElementById('card-meta');
+  if (!meta) {return false;}
+
+  const hasHeader = Boolean(meta.querySelector('.header-title'));
+  const hasHero = Boolean(meta.querySelector('#card-hero'));
+  const hasCenter = Boolean(meta.querySelector('#card-center'));
+  const hasChart = Boolean(document.getElementById('card-chart'));
+  const hasCopies = Boolean(document.getElementById('card-copies'));
+  const hasEvents = Boolean(document.getElementById('card-events'));
+
+  if (hasHeader && hasHero && hasCenter && hasChart && hasCopies && hasEvents) {
+    return false;
+  }
+
+  meta.innerHTML = CARD_META_TEMPLATE;
+  refreshDomRefs();
+  return true;
+}
+
+refreshDomRefs();
+if (ensureCardMetaStructure()) {
+  refreshDomRefs();
+}
+
+const __ROUTE_REDIRECTING = normalizeCardRouteOnLoad();
+const routeInfo = parseCardRoute();
+const shouldPrefillSearch = routeInfo.source === 'query' || routeInfo.source === 'hash';
+
+let cardIdentifier = null;
+let cardName = null;
+
+const backLink = /** @type {HTMLAnchorElement|null} */ (document.getElementById('back-link'));
+if (backLink) { backLink.href = '/'; }
+const analysisSel = /** @type {HTMLSelectElement|null} */ (document.getElementById('analysis-event'));
+const analysisTable = /** @type {HTMLElement|null} */ (document.getElementById('analysis-table'));
+const searchInGrid = /** @type {HTMLAnchorElement|null} */ (document.getElementById('search-in-grid'));
+// These will be set inside initCardSearch to ensure DOM is ready
+/** @type {HTMLInputElement|null} */
+let cardSearchInput;
+/** @type {HTMLDataListElement|null} */
+let cardNamesList;
+/** @type {HTMLElement|null} */
+let suggestionsBox;
+// Copy link button removed per request
+
+initializeCardPage().catch(error => logger.error('Failed to initialize card page', error));
+
+// Link to grid prefilled with search will be updated after card resolution
+
+function updateCardTitle(displayName, slugHint) {
+  if (!cardTitleEl) {return;}
+
   cardTitleEl.innerHTML = '';
 
+  if (!displayName && !slugHint) {
+    cardTitleEl.textContent = 'Card Details';
+    document.title = 'Card Details – Ciphermaniac';
+    return;
+  }
+
+  const label = displayName || slugHint || 'Card Details';
+  const parsed = displayName ? parseDisplayName(displayName) : null;
+  const resolvedName = parsed?.name || label;
+  const setId = parsed?.setId || '';
+
   const nameSpan = document.createElement('span');
-  nameSpan.textContent = name;
+  nameSpan.textContent = resolvedName;
   cardTitleEl.appendChild(nameSpan);
 
   if (setId) {
@@ -88,39 +161,98 @@ if (cardName) {
     setSpan.textContent = setId;
     cardTitleEl.appendChild(setSpan);
   }
-} else {
-  cardTitleEl.textContent = 'Card Details';
+
+  document.title = `${resolvedName}${setId ? ` ${setId}` : ''} – Ciphermaniac`;
 }
 
-const metaSection = document.getElementById('card-meta');
-const decksSection = document.getElementById('card-decks');
-const eventsSection = document.getElementById('card-events');
-const copiesSection = document.getElementById('card-copies');
-const backLink = document.getElementById('back-link');
-if (backLink) { backLink.href = 'index.html'; }
-const analysisSel = document.getElementById('analysis-event');
-const analysisTable = document.getElementById('analysis-table');
-const searchInGrid = document.getElementById('search-in-grid');
-// These will be set inside initCardSearch to ensure DOM is ready
-let cardSearchInput, cardNamesList, suggestionsBox;
-// Copy link button removed per request
+function updateSearchLink() {
+  if (!searchInGrid) {return;}
+  if (cardName) {
+    searchInGrid.href = `/index.html?q=${encodeURIComponent(cardName)}`;
+  } else {
+    searchInGrid.href = '/index.html';
+  }
+}
 
-// When navigating between cards via hash (e.g., from Suggestions), reload to re-init
-try {
-  pageCleanupManager.addEventListener(window, 'hashchange', () => {
-    // Only react if we're on card.html and the hash points to a card route
-    if (/^#card\//.test(location.hash)) {
-      location.reload();
+function syncSearchInputValue() {
+  if (!cardSearchInput || !cardName) {return;}
+  if (!shouldPrefillSearch) {return;}
+  if (document.activeElement === cardSearchInput) {return;}
+
+  cardSearchInput.value = cardName;
+}
+
+async function initializeCardPage() {
+  if (__ROUTE_REDIRECTING) {return;}
+
+  if (routeInfo.source === 'hash' && routeInfo.identifier) {
+    const search = location.search || '';
+    const target = `${buildCardPath(routeInfo.identifier)}${search}`;
+    window.location.replace(target);
+    return;
+  }
+
+  if (routeInfo.source === 'landing') {
+    updateCardTitle(null);
+    updateSearchLink();
+    return;
+  }
+
+  if (routeInfo.identifier) {
+    cardIdentifier = routeInfo.identifier;
+  } else if (routeInfo.slug) {
+    let resolvedIdentifier = null;
+    try {
+      resolvedIdentifier = await resolveCardSlug(routeInfo.slug);
+    } catch (error) {
+      logger.warn('Failed to resolve card slug', { slug: routeInfo.slug, error: error?.message || error });
     }
-  });
-} catch (error) {
-  logger.warn('Failed to set up hash change listener', error);
-}
 
-// Link to grid prefilled with search
-if (searchInGrid) {
-  const href = `index.html?q=${encodeURIComponent(cardName || '')}`;
-  searchInGrid.href = href;
+    if (resolvedIdentifier) {
+      cardIdentifier = resolvedIdentifier;
+    } else {
+      cardIdentifier = routeInfo.slug;
+      updateCardTitle(null, describeSlug(routeInfo.slug));
+    }
+  }
+
+  if (!cardIdentifier) {
+    updateCardTitle(null);
+    updateSearchLink();
+    return;
+  }
+
+  const identifierToCanonize = cardIdentifier;
+  let canonicalIdentifier = identifierToCanonize;
+  try {
+    const resolvedCanonical = await getCanonicalCard(identifierToCanonize);
+    if (resolvedCanonical) {
+      canonicalIdentifier = resolvedCanonical;
+    }
+  } catch (error) {
+    logger.warn('Canonical lookup failed', { cardIdentifier, error: error?.message || error });
+  }
+  if (cardIdentifier === identifierToCanonize) {
+    cardIdentifier = canonicalIdentifier;
+  }
+
+  cardName = getDisplayName(cardIdentifier) || cardIdentifier;
+  updateCardTitle(cardName);
+  updateSearchLink();
+  syncSearchInputValue();
+
+  const canonicalSlug = makeCardSlug(cardIdentifier);
+  if (canonicalSlug) {
+    const desiredPath = buildCardPath(cardIdentifier);
+    if (location.pathname !== desiredPath || location.hash) {
+      const newUrl = `${desiredPath}${location.search || ''}`;
+      history.replaceState(null, '', newUrl);
+    }
+  } else if (location.hash) {
+    history.replaceState(null, '', `${location.pathname}${location.search || ''}`);
+  }
+
+  await load();
 }
 
 // No tabs: all content on one page
@@ -254,9 +386,9 @@ async function processTournament(tournament, byExactName) {
 function initCardSearch() {
   try {
     // Get DOM elements when function is called to ensure DOM is ready
-    cardSearchInput = document.getElementById('card-search');
-    cardNamesList = document.getElementById('card-names');
-    suggestionsBox = document.getElementById('card-suggestions');
+    cardSearchInput = /** @type {HTMLInputElement|null} */ (document.getElementById('card-search'));
+    cardNamesList = /** @type {HTMLDataListElement|null} */ (document.getElementById('card-names'));
+    suggestionsBox = /** @type {HTMLElement|null} */ (document.getElementById('card-suggestions'));
 
     if (!(cardSearchInput && cardNamesList)) {
       return;
@@ -313,11 +445,8 @@ function initCardSearch() {
     // Incrementally enrich suggestions by scanning tournaments sequentially
     enrichSuggestions(tournaments, byExactName, updateDatalist);
 
-    if (cardName) {
-      cardSearchInput.value = cardName;
-    }
-
     setupSearchHandlers();
+    syncSearchInputValue();
   } catch (error) {
     // Ignore initialization errors
   }
@@ -471,16 +600,7 @@ function setupSearchHandlers() {
 
     // Try to get the UID for this display name
     const targetId = getUidForName(identifier) || identifier;
-    const clean = `${location.origin}${location.pathname.replace(/card\.html$/, 'card.html')}#card/${encodeURIComponent(targetId)}`;
-    location.assign(clean);
-
-    setTimeout(() => {
-      try {
-        location.reload();
-      } catch (error) {
-        // Ignore reload errors
-      }
-    }, 0);
+    location.assign(buildCardPath(targetId));
   }
   function updateSelection(idx) {
     if (!suggestionsBox) {
@@ -608,50 +728,77 @@ if (document.readyState === 'loading') {
  */
 async function checkCardExistsInDatabase(cardIdentifier) {
   try {
-    // First try to fetch cardpool data to check if card exists
-    const response = await fetch('/assets/data/deckbuilder-cardpool-with-pages.json');
-    if (!response.ok) {
-      // If cardpool data fails, assume card exists (fallback to normal behavior)
+    const tournaments = await fetchTournamentsList();
+    const tournamentList = Array.isArray(tournaments) ? tournaments : [];
+    if (tournamentList.length === 0) {
       return true;
     }
 
-    const cardpool = await response.json();
-
-    // Try to find card by UID or name
-    const cardEntry = cardpool.find(card => {
-      if (!card) {return false;}
-
-      // Direct UID match
-      if (card.uid && card.uid.toLowerCase() === cardIdentifier.toLowerCase()) {
-        return true;
+    let canonicalIdentifier = cardIdentifier;
+    try {
+      const canonical = await getCanonicalCard(cardIdentifier);
+      if (canonical) {
+        canonicalIdentifier = canonical;
       }
+    } catch (canonicalError) {
+      logger.debug('Canonical lookup failed during existence check', { cardIdentifier, error: canonicalError?.message || canonicalError });
+    }
 
-      // Name match
-      if (card.name && card.name.toLowerCase() === cardIdentifier.toLowerCase()) {
-        return true;
+    const searchKeys = new Set();
+    const lowerIdentifier = cardIdentifier.toLowerCase();
+    const canonicalLower = canonicalIdentifier ? canonicalIdentifier.toLowerCase() : null;
+    const baseName = getBaseName(cardIdentifier)?.toLowerCase();
+
+    const addIdentifier = value => {
+      if (value) {
+        searchKeys.add(String(value).toLowerCase());
       }
+    };
 
-      // Display name format match (Name SET NUMBER)
-      if (card.uid) {
-        const displayName = getDisplayName(card.uid);
-        if (displayName && displayName.toLowerCase() === cardIdentifier.toLowerCase()) {
-          return true;
+    addIdentifier(cardIdentifier);
+    if (canonicalIdentifier && canonicalIdentifier !== cardIdentifier) {
+      addIdentifier(canonicalIdentifier);
+    }
+    addIdentifier(lowerIdentifier);
+    if (canonicalLower) { addIdentifier(canonicalLower); }
+    if (baseName) { addIdentifier(baseName); }
+
+      // Add variant fallbacks (e.g., PAL, SVI) so that if the preferred canonical (MEG/MEE)
+      // isn't present in tournament indices, we can fall back to older reprints.
+      try {
+        const variants = await getCardVariants(cardIdentifier);
+        if (Array.isArray(variants) && variants.length > 0) {
+          // Ensure canonical is first, then add older variants
+          for (const v of variants) {
+            addIdentifier(v);
+          }
         }
+      } catch (variantErr) {
+        logger.debug('Failed to load card variants for fallback', { cardIdentifier, error: variantErr?.message || variantErr });
       }
 
-      return false;
-    });
-
-    if (!cardEntry) {
-      // Card not found in TCGMasters pool - assume it might exist in tournament data
-      return true;
+    const tournamentsToCheck = tournamentList.slice(0, 8);
+    for (const tournament of tournamentsToCheck) {
+      try {
+        const index = await fetchCardIndex(tournament);
+        const cards = index?.cards;
+        if (!cards || typeof cards !== 'object') {
+          continue;
+        }
+        const available = new Set(Object.keys(cards).map(name => name.toLowerCase()));
+        for (const key of searchKeys) {
+          if (available.has(key)) {
+            return true;
+          }
+        }
+      } catch (error) {
+        logger.debug('Card index unavailable during existence check', { cardIdentifier, tournament, error: error.message });
+      }
     }
 
-    // Card found in pool - check if it has a Ciphermaniac page
-    return cardEntry.hasCiphermaniacPage === true;
+    return false;
   } catch (error) {
-    logger.warn('Failed to check card existence', { cardIdentifier, error: error.message });
-    // On error, assume card exists (fallback to normal behavior)
+    logger.warn('Failed to check card existence via card indices', { cardIdentifier, error: error.message });
     return true;
   }
 }
@@ -660,73 +807,41 @@ async function checkCardExistsInDatabase(cardIdentifier) {
  * Render a user-friendly error page for missing cards
  * @param {string} cardIdentifier - The card that was requested
  */
-async function renderMissingCardPage(cardIdentifier) {
+function renderMissingCardPage(cardIdentifier) {
   try {
-    // Set proper HTTP status code
+    const displayName = getDisplayName(cardIdentifier) || cardIdentifier;
+
     if (typeof history !== 'undefined' && history.replaceState) {
-      // This helps with SEO and proper 404 handling
-      document.title = `Card Not Found - ${getDisplayName(cardIdentifier) || cardIdentifier} | Ciphermaniac`;
+      document.title = `Card Not Found - ${displayName} | Ciphermaniac`;
     }
 
-    // Get card details from cardpool if available
-    let cardInfo = null;
-    let cardImage = null;
-
-    try {
-      const response = await fetch('/assets/data/deckbuilder-cardpool-with-pages.json');
-      if (response.ok) {
-        const cardpool = await response.json();
-        cardInfo = cardpool.find(card => {
-          if (!card) {return false;}
-          return card.uid?.toLowerCase() === cardIdentifier.toLowerCase() ||
-                 card.name?.toLowerCase() === cardIdentifier.toLowerCase() ||
-                 getDisplayName(card.uid)?.toLowerCase() === cardIdentifier.toLowerCase();
-        });
-
-        if (cardInfo && cardInfo.image) {
-          cardImage = cardInfo.image;
-        }
-      }
-    } catch (error) {
-      logger.debug('Could not fetch card details for missing card page', error);
-    }
-
-    // Clear existing content and show error page
     const main = document.querySelector('main');
     if (main) {
+      const baseName = getBaseName(cardIdentifier) || cardIdentifier;
+      const encodedSearch = encodeURIComponent(baseName);
+
       main.innerHTML = `
         <section class="card-404-section">
           <div class="card-404-content">
             <div class="card-404-header">
               <h1>Card Page Not Available</h1>
-              <div class="card-404-subtitle">
-                ${getDisplayName(cardIdentifier) || cardIdentifier}
-              </div>
+              <div class="card-404-subtitle">${displayName}</div>
             </div>
-            
-            ${cardImage ? `
-              <div class="card-404-image">
-                <img src="${cardImage}" alt="${getDisplayName(cardIdentifier) || cardIdentifier}" 
-                     style="max-width: 300px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
-              </div>
-            ` : ''}
-            
+
+            <div class="card-404-image" aria-hidden="true"></div>
+
             <div class="card-404-explanation">
-              <p>This card exists in the TCGMasters card pool but doesn't have a Ciphermaniac page yet. 
-              This means we don't have tournament usage data for this card in our database.</p>
-              
-              <p>Cards get pages when they appear in tournament results that we've processed. 
-              If this card becomes popular in competitive play, its page will be created automatically.</p>
+              <p>We don't have tournament usage data for this card yet, so there's no dedicated page.</p>
+              <p>Once the card shows up in processed tournament results, its page will be created automatically.</p>
             </div>
-            
+
             <div class="card-404-actions">
               <div class="card-404-suggestions">
                 <h3>What you can do:</h3>
                 <ul>
-                  <li><a href="index.html" class="card-404-link">Browse all cards with data</a></li>
-                  <li><a href="index.html?q=${encodeURIComponent(getBaseName(cardIdentifier) || cardIdentifier)}" 
-                        class="card-404-link">Search for similar cards</a></li>
-                  <li><a href="feedback.html" class="card-404-link">Request this card be prioritized</a></li>
+                  <li><a href="/index.html" class="card-404-link">Browse all cards with data</a></li>
+                  <li><a href="/index.html?q=${encodedSearch}" class="card-404-link">Search for similar cards</a></li>
+                  <li><a href="/feedback.html" class="card-404-link">Request this card be prioritized</a></li>
                 </ul>
               </div>
             </div>
@@ -734,71 +849,54 @@ async function renderMissingCardPage(cardIdentifier) {
         </section>
       `;
 
-      // Add CSS styles for the 404 page
-      const style = document.createElement('style');
-      style.textContent = `
+      if (!document.getElementById('card-404-style')) {
+        const style = document.createElement('style');
+        style.id = 'card-404-style';
+        style.textContent = `
         .card-404-section {
           max-width: 600px;
           margin: 2rem auto;
           padding: 2rem;
           text-align: center;
         }
-        
+
         .card-404-content {
           background: var(--panel, #1a1f3a);
           border-radius: 12px;
           padding: 2rem;
           border: 1px solid var(--border, #2a3150);
         }
-        
+
         .card-404-header h1 {
           color: var(--text, #ffffff);
           margin: 0 0 0.5rem 0;
           font-size: 1.5rem;
         }
-        
+
         .card-404-subtitle {
-          color: var(--muted, #8b95b8);
-          font-size: 1.1rem;
-          margin-bottom: 1.5rem;
-          font-weight: 500;
+          color: var(--muted, #a3add8);
+          font-size: 1rem;
         }
-        
+
         .card-404-image {
           margin: 1.5rem 0;
         }
-        
+
         .card-404-explanation {
-          text-align: left;
-          margin: 1.5rem 0;
-          color: var(--text, #ffffff);
+          color: var(--text, #dbe2ff);
           line-height: 1.6;
+          margin-bottom: 2rem;
         }
-        
-        .card-404-explanation p {
-          margin-bottom: 1rem;
-        }
-        
+
         .card-404-actions {
-          margin-top: 2rem;
           text-align: left;
         }
-        
-        .card-404-suggestions h3 {
-          color: var(--text, #ffffff);
-          margin-bottom: 1rem;
-          font-size: 1.1rem;
-        }
-        
+
         .card-404-suggestions ul {
-          list-style: none;
-          padding: 0;
+          margin: 0;
+          padding-left: 1.5rem;
         }
-        
-        .card-404-suggestions li {
-          margin: 0.75rem 0;
-        }
-        
+
         .card-404-link {
           color: var(--accent, #4f8cf4);
           text-decoration: none;
@@ -806,42 +904,92 @@ async function renderMissingCardPage(cardIdentifier) {
           display: inline-block;
           transition: color 0.2s ease;
         }
-        
+
         .card-404-link:hover {
           color: var(--accent-hover, #6ba0f6);
           text-decoration: underline;
         }
-        
+
         @media (max-width: 640px) {
           .card-404-section {
             margin: 1rem;
             padding: 1rem;
           }
-          
+
           .card-404-content {
             padding: 1.5rem;
           }
-          
+
           .card-404-header h1 {
             font-size: 1.3rem;
           }
         }
-      `;
-      document.head.appendChild(style);
+        `;
+        document.head.appendChild(style);
+      }
+
+      const imageContainer = main.querySelector('.card-404-image');
+      if (imageContainer) {
+        const parsed = parseDisplayName(displayName) || {};
+        const variant = {};
+        if (parsed.setId) {
+          const match = parsed.setId.match(/^([A-Z]+)\s+(\d+[A-Za-z]?)$/);
+          if (match) {
+            variant.set = match[1];
+            variant.number = match[2];
+          }
+        }
+
+        const candidateName = parsed.name || baseName || displayName;
+        const candidates = buildThumbCandidates(candidateName, false, {}, variant);
+
+        if (candidates.length === 0) {
+          imageContainer.remove();
+        } else {
+          const img = document.createElement('img');
+          img.decoding = 'async';
+          img.loading = 'lazy';
+          img.alt = displayName;
+          img.style.maxWidth = '300px';
+          img.style.borderRadius = '8px';
+          img.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+
+          let idx = 0;
+          const tryNext = () => {
+            if (idx >= candidates.length) {
+              imageContainer.remove();
+              return;
+            }
+            img.src = candidates[idx++];
+          };
+
+          img.onerror = tryNext;
+          tryNext();
+
+          imageContainer.appendChild(img);
+        }
+      }
     }
 
     logger.info('Rendered missing card page', { cardIdentifier });
   } catch (error) {
     logger.error('Failed to render missing card page', { cardIdentifier, error: error.message });
-    // Fallback to simple error message
     if (metaSection) {
-      metaSection.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text);">Card page not available. This card exists in the TCGMasters pool but doesn\'t have tournament data yet.</div>';
+      metaSection.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text);">Card page not available. We do not have tournament data for this card yet.</div>';
     }
   }
 }
 
 async function load() {
-  if (!cardIdentifier) { metaSection.textContent = 'Missing card identifier.'; return; }
+  ensureCardMetaStructure();
+  refreshDomRefs();
+
+  if (!cardIdentifier) {
+    if (metaSection) {
+      metaSection.textContent = 'Missing card identifier.';
+    }
+    return;
+  }
 
   // Check if card exists in Ciphermaniac database before proceeding
   const cardExistsInDatabase = await checkCardExistsInDatabase(cardIdentifier);
@@ -1228,18 +1376,51 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
   };
 
   const refresh = () => {
-    const chartEl = document.getElementById('card-chart') || metaSection;
-    // Show chronological from oldest to newest
+    const rebuiltStructure = ensureCardMetaStructure();
+    refreshDomRefs();
+
+    if (rebuiltStructure) {
+      updateCardTitle(cardName);
+      updateSearchLink();
+      syncSearchInputValue();
+      try {
+        setupImmediateUI();
+      } catch (error) {
+        logger.debug('Failed to re-run immediate UI after rebuilding structure', error?.message || error);
+      }
+      if (cardIdentifier) {
+        // Re-run derived renderers so new DOM receives content
+        renderCardSets(cardIdentifier).catch(() => {});
+        renderCardPrice(cardIdentifier).catch(() => {});
+      }
+    }
+
     const ptsAll = [...timePoints].reverse();
     const rowsAll = [...deckRows].reverse();
     const pts = showAll ? ptsAll : ptsAll.slice(-LIMIT);
     const rows = showAll ? rowsAll : rowsAll.slice(-LIMIT);
-    renderChart(chartEl, pts);
-    // Copies histogram from the most recent event in the visible window if available
-    if (copiesSection) {
+
+    let chartContainer = document.getElementById('card-chart');
+    if (!chartContainer) {
+      const cardCenter = document.getElementById('card-center') || metaSection;
+      chartContainer = document.createElement('div');
+      chartContainer.id = 'card-chart';
+      chartContainer.className = 'card-chart skeleton-loading';
+      if (cardCenter) {
+        cardCenter.insertBefore(chartContainer, cardCenter.firstChild || null);
+      } else if (metaSection) {
+        metaSection.appendChild(chartContainer);
+      }
+      refreshDomRefs();
+    }
+    if (chartContainer) {
+      renderChart(chartContainer, pts);
+    }
+
+    const copiesTarget = document.getElementById('card-copies');
+    if (copiesTarget) {
       const latest = rows[rows.length - 1];
       if (latest) {
-        // Find overall stats for the same tournament
         (async () => {
           try {
             const canonical = await getCanonicalCard(cardIdentifier);
@@ -1248,7 +1429,6 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
             const master = await fetchReport(latest.tournament);
             const parsed = parseReport(master);
 
-            // Combine distribution data from all variants
             let overall = null;
             let combinedFound = 0;
             let combinedTotal = null;
@@ -1264,7 +1444,6 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
                   combinedTotal = variantCard.total;
                 }
 
-                // Combine distribution data
                 if (variantCard.dist && Array.isArray(variantCard.dist)) {
                   for (const distEntry of variantCard.dist) {
                     const existing = combinedDist.find(distItem => distItem.copies === distEntry.copies);
@@ -1288,14 +1467,30 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
               };
             }
 
-            if (overall) { renderCopiesHistogram(copiesSection, overall); } else { copiesSection.textContent = ''; }
-          } catch { copiesSection.textContent = ''; }
+            if (overall) {
+              renderCopiesHistogram(copiesTarget, overall);
+            } else {
+              copiesTarget.textContent = '';
+            }
+          } catch {
+            copiesTarget.textContent = '';
+          }
         })();
       } else {
-        copiesSection.textContent = '';
+        copiesTarget.textContent = '';
       }
     }
-    renderEvents(eventsSection || decksSection, rows);
+
+    let eventsTarget = document.getElementById('card-events');
+    if (!eventsTarget && metaSection) {
+      eventsTarget = document.createElement('div');
+      eventsTarget.id = 'card-events';
+      metaSection.appendChild(eventsTarget);
+      refreshDomRefs();
+      eventsTarget = document.getElementById('card-events');
+    }
+
+    renderEvents(eventsTarget || decksSection || metaSection || document.body, rows);
     renderToggles();
     renderAnalysisSelector(eventsWithCard);
 
@@ -1304,7 +1499,8 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
     const tableContainer = eventsSection || decksSection;
     if (tableContainer && !tableContainer._hoverPrefetchAttached) {
       tableContainer.addEventListener('mouseover', async eventTarget => {
-        const rowEl = eventTarget.target && eventTarget.target.closest ? eventTarget.target.closest('.event-row') : null;
+        const targetElement = eventTarget.target instanceof HTMLElement ? eventTarget.target : null;
+        const rowEl = targetElement ? targetElement.closest('.event-row') : null;
         if (!rowEl) {return;}
         const tournamentFromRow = rowEl.dataset.tournament;
         if (!tournamentFromRow) {return;}
@@ -1353,7 +1549,7 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
 }
 
 function renderAnalysisSelector(events) {
-  if (!analysisSel) {return;}
+  if (!(analysisSel && analysisTable)) {return;}
   analysisSel.innerHTML = '';
   if (!events || events.length === 0) {
     analysisTable.textContent = 'Select an event to view per-archetype usage.';
@@ -1508,11 +1704,17 @@ async function renderAnalysisTable(tournament) {
       const box = document.createElement('div');
       box.className = 'card-sect';
       box.style.margin = '0 0 8px 0';
-      const title = document.createElement('div');
-      title.className = 'summary';
-      const overallPct = (overall.total ? (100 * overall.found / overall.total) : (overall.pct || 0));
-      title.textContent = `Overall (All archetypes): Played ${overallPct.toFixed(1)}% of decks`;
-      title.title = 'Percentage of all decks in this event that included the card (any copies).';
+  const title = document.createElement('div');
+  title.className = 'summary';
+  const overallPct = (overall.total ? (100 * overall.found / overall.total) : (overall.pct || 0));
+  // Build the headline so the overall percentage can be bolded separately
+  title.title = 'Percentage of all decks in this event that included the card (any copies).';
+  title.appendChild(document.createTextNode('Overall (All archetypes): Played '));
+  const pctStrong = document.createElement('strong');
+  pctStrong.className = 'overall-pct';
+  pctStrong.textContent = `${Math.round(overallPct)}%`;
+  title.appendChild(pctStrong);
+  title.appendChild(document.createTextNode(' of decks'));
       box.appendChild(title);
       // 1x-4x list
       const listEl = document.createElement('div');
@@ -1521,7 +1723,8 @@ async function renderAnalysisTable(tournament) {
         if (!overall || !overall.total || !Array.isArray(overall.dist)) {return `${numCopies}x: —`;}
         const distEntry = overall.dist.find(x => x.copies === numCopies);
         const pct = distEntry ? (100 * (distEntry.players || 0) / overall.total) : 0;
-        return `${numCopies}x: ${pct.toFixed(1)}%`;
+  // Round to whole numbers for display
+  return `${numCopies}x: ${Math.round(pct)}%`;
       };
       listEl.textContent = `Copies across all decks — ${[1, 2, 3, 4].map(part).join('  •  ')}`;
       listEl.title = 'For each N, the percent of all decks in this event that ran exactly N copies.';
@@ -1562,7 +1765,8 @@ async function renderAnalysisTable(tournament) {
     const tbody = document.createElement('tbody');
     for (const rowData of rows) {
       const tableRow = document.createElement('tr');
-      const formatValue = value => (value === null ? '—' : `${value.toFixed(1)}%`);
+        // Format numeric percentage values as whole numbers (no decimals)
+        const formatValue = value => (value === null ? '—' : `${Math.round(value)}%`);
       // Compose archetype cell: bold archetype name + deck count in parentheses
       const archeCount = (rowData.total !== null) ? rowData.total : (rowData.found !== null ? rowData.found : null);
       const firstCell = document.createElement('td');
@@ -1574,12 +1778,24 @@ async function renderAnalysisTable(tournament) {
       firstCell.style.textAlign = 'left';
       tableRow.appendChild(firstCell);
 
-      const otherValues = [rowData.pct !== null ? `${rowData.pct.toFixed(1)}%` : '—', formatValue(rowData.c1), formatValue(rowData.c2), formatValue(rowData.c3), formatValue(rowData.c4)];
+  const otherValues = [rowData.pct !== null ? `${Math.round(rowData.pct)}%` : '—', formatValue(rowData.c1), formatValue(rowData.c2), formatValue(rowData.c3), formatValue(rowData.c4)];
       otherValues.forEach((valueText, valueIndex) => {
         const tableCell = document.createElement('td');
         tableCell.textContent = valueText;
+
+        // Add title text for accessibility / hover
         if (valueIndex === 0) { tableCell.title = 'Played % = (decks with the card / total decks in archetype)'; }
         if (valueIndex >= 1 && valueIndex <= 4) { const numberOfCopies = valueIndex; tableCell.title = `Percent of decks in archetype that ran exactly ${numberOfCopies}x`; }
+
+        // If the underlying numeric value is exactly 0 (e.g., "0%"), mark it so CSS can give it slightly darker color
+        // valueText is typically like "12%" or "—". Detect an exact zero by parsing the numeric prefix.
+        if (typeof valueText === 'string') {
+          const m = valueText.match(/^\s*(\d+)%$/);
+          if (m && Number(m[1]) === 0) {
+            tableCell.classList.add('zero-pct');
+          }
+        }
+
         tableCell.style.padding = '10px 12px';
         tableCell.style.textAlign = 'right';
         tableRow.appendChild(tableCell);
@@ -1589,6 +1805,15 @@ async function renderAnalysisTable(tournament) {
     }
     tbl.appendChild(tbody);
     analysisTable.appendChild(tbl);
+
+    // Make table header sticky via a floating cloned header as a fallback when CSS sticky doesn't work
+    // This ensures the header row stays visible even if ancestor overflow/transform prevents CSS sticky.
+    try {
+      enableFloatingTableHeader(tbl);
+    } catch (err) {
+      // Non-fatal: if anything goes wrong, don't block rendering
+      logger.debug('enableFloatingTableHeader failed:', err);
+    }
 
     progress.updateStep(1, 'complete', `Built table with ${rows.length} archetypes`);
     progress.setComplete(500); // Show for half a second then fade away
@@ -1631,3 +1856,86 @@ window.cleanupProgress = () => {
 
   return elements.length;
 };
+
+/**
+ * Creates a floating clone of the table header that appears fixed at the top of the viewport
+ * when the real header scrolls out of view. This is a robust fallback for cases where
+ * CSS position: sticky is prevented by overflow/transform on ancestor elements.
+ */
+function enableFloatingTableHeader(table) {
+  if (!table || !(table instanceof HTMLTableElement)) return;
+  const thead = table.querySelector('thead');
+  if (!thead) return;
+
+  // Create floating wrapper
+  const floating = document.createElement('div');
+  floating.className = 'floating-thead';
+  floating.style.position = 'fixed';
+  floating.style.top = '0';
+  floating.style.left = table.getBoundingClientRect().left + 'px';
+  floating.style.width = table.getBoundingClientRect().width + 'px';
+  floating.style.overflow = 'hidden';
+  floating.style.zIndex = '1000';
+  floating.style.pointerEvents = 'none';
+  floating.style.display = 'none';
+
+  // Clone header table structure
+  const cloneTable = document.createElement('table');
+  cloneTable.className = table.className;
+  cloneTable.style.borderCollapse = 'collapse';
+  const cloneThead = thead.cloneNode(true);
+  cloneTable.appendChild(cloneThead);
+  floating.appendChild(cloneTable);
+  document.body.appendChild(floating);
+
+  // Helper to sync column widths
+  function syncWidths() {
+    const srcCols = thead.querySelectorAll('th');
+    const dstCols = /** @type {HTMLElement} */ (cloneThead).querySelectorAll('th');
+    const srcRect = table.getBoundingClientRect();
+    floating.style.left = Math.max(0, srcRect.left) + 'px';
+    floating.style.width = srcRect.width + 'px';
+    for (let i = 0; i < srcCols.length; i++) {
+      const w = srcCols[i].getBoundingClientRect().width;
+      dstCols[i].style.width = w + 'px';
+    }
+  }
+
+  function onScroll() {
+    const rect = table.getBoundingClientRect();
+    const headerRect = thead.getBoundingClientRect();
+    // Show floating header once the real header is scrolled above the viewport top
+    if (headerRect.top < 0 && rect.bottom > 40) {
+      syncWidths();
+      floating.style.display = '';
+    } else {
+      floating.style.display = 'none';
+    }
+  }
+
+  // Throttle resize/scroll handlers lightly
+  let ticking = false;
+  function ticked() {
+    onScroll();
+    ticking = false;
+  }
+  function schedule() {
+    if (!ticking) { requestAnimationFrame(ticked); ticking = true; }
+  }
+
+  window.addEventListener('scroll', schedule, { passive: true });
+  window.addEventListener('resize', schedule);
+
+  // Initial sync
+  schedule();
+
+  // Return a cleanup function attached to the table for potential removal
+  Object.defineProperty(table, '_floatingHeaderCleanup', {
+    value: () => {
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      if (floating && floating.parentNode) floating.parentNode.removeChild(floating);
+    },
+    configurable: true,
+  });
+}

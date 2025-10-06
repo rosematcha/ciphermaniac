@@ -1,10 +1,12 @@
 import { buildThumbCandidates } from './thumbs.js';
+import { logger } from './utils/logger.js';
 import { computeLayout } from './layoutHelper.js';
+import { parseCardRoute, buildCardPath } from './card/routing.js';
 
 // Data fetch
 async function fetchSuggestions() {
   try {
-    const res = await fetch('reports/suggestions.json', { cache: 'no-store' });
+    const res = await fetch('/reports/suggestions.json', { cache: 'no-store' });
     if (!res.ok) {return { categories: [] };}
     const data = await res.json();
     return { categories: Array.isArray(data.categories) ? data.categories : [] };
@@ -49,7 +51,7 @@ function makeCardItem(name, opts) {
 
   // Use UID if available, otherwise fall back to name
   const cardIdentifier = opts?.uid || name;
-  const url = `card.html#card/${encodeURIComponent(cardIdentifier)}`;
+  const url = buildCardPath(cardIdentifier);
   const go = newTab => { newTab ? window.open(url, '_blank') : location.assign(url); };
   card.addEventListener('click', event => { go(event.ctrlKey || event.metaKey); });
   card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); go(false); } });
@@ -58,10 +60,10 @@ function makeCardItem(name, opts) {
 
 // View preference
 const PREF_KEY = 'suggestionsView';
-function getPref() { try { return localStorage.getItem(PREF_KEY) || 'carousel'; } catch (error) { console.warn('Failed to get preference:', error); return 'carousel'; } }
+function getPref() { try { return localStorage.getItem(PREF_KEY) || 'carousel'; } catch (error) { logger.warn('Failed to get preference:', error); return 'carousel'; } }
 // Note: setPref currently unused but kept for future use
 // eslint-disable-next-line no-unused-vars
-function setPref(value) { try { localStorage.setItem(PREF_KEY, value); } catch (error) { console.warn('Failed to set preference:', error); } }
+function setPref(value) { try { localStorage.setItem(PREF_KEY, value); } catch (error) { logger.warn('Failed to set preference:', error); } }
 
 // Note: rows view removed — suggestions now always render as a carousel
 
@@ -120,7 +122,8 @@ function _buildControls(/* current */) {
 // Main init
 async function init() {
   // Only show landing on card page when no specific card is selected
-  if (/^(?:#card\/)/.test(location.hash) || new URLSearchParams(location.search).has('name')) {return;}
+  const route = parseCardRoute();
+  if (route.source !== 'landing' && route.source !== 'other') {return;}
   const data = await fetchSuggestions();
   const root = document.getElementById('suggestions-root'); const sect = document.getElementById('cards-landing');
   if (!root || !sect) {return;}

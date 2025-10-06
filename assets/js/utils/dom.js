@@ -55,17 +55,22 @@ export function setStyles(element, styles) {
 }
 
 /**
+ * @typedef {object} CreateElementOptions
+ * @property {Record<string, any>} [attributes]
+ * @property {Record<string, string>} [styles]
+ * @property {string} [textContent]
+ * @property {string} [className]
+ */
+
+/**
  * Create element with attributes and content efficiently
  * @param {string} tagName
- * @param {object} options
- * @param {object} options.attributes
- * @param {object} options.styles
- * @param {string} options.textContent
- * @param {string} options.className
- * @returns {Element}
+ * @param {CreateElementOptions} [options]
+ * @returns {HTMLElement}
  */
-export function createElement(tagName, { attributes, styles, textContent, className } = {}) {
+export function createElement(tagName, options = {}) {
   const element = document.createElement(tagName);
+  const { attributes, styles, textContent, className } = /** @type {CreateElementOptions} */ (options);
 
   if (className) {
     element.className = className;

@@ -10,7 +10,6 @@ import { safeSync, AppError, ErrorTypes } from './errorHandler.js';
  * Storage configuration with versioning and defaults
  */
 const STORAGE_CONFIG = {
-  favorites: { key: 'favoritesV1', version: 1, default: [] },
   gridCache: { key: 'gridCacheV1', version: 1, default: {} },
   metaCache: { key: 'metaCacheV1', version: 1, default: {} },
   pickCache: { key: 'pickCacheV1', version: 1, default: {} },

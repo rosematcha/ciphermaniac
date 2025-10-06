@@ -1,4 +1,5 @@
 // Lightweight router and URL state helpers for the grid page
+import { buildCardPath } from './card/routing.js';
 
 /**
  *
@@ -10,8 +11,7 @@ export function getStateFromURL(loc = window.location) {
     query: params.get('q') || '',
     sort: params.get('sort') || '',
     archetype: params.get('archetype') || '',
-    tour: params.get('tour') || '',
-    fav: params.get('fav') || ''
+    tour: params.get('tour') || ''
   };
 }
 
@@ -40,7 +40,6 @@ export function setStateInURL(state, opts = {}) {
   if ('sort' in state) {setOrDelete('sort', state.sort);}
   if ('archetype' in state) {setOrDelete('archetype', state.archetype);}
   if ('tour' in state) {setOrDelete('tour', state.tour);}
-  if ('fav' in state) {setOrDelete('fav', state.fav);}
 
   const search = params.toString();
   const newUrl = `${location.pathname}${search ? `?${search}` : ''}${location.hash || ''}`;
@@ -57,9 +56,12 @@ export function setStateInURL(state, opts = {}) {
  * @param loc
  */
 export function planNormalizeIndexRoute(loc) {
-  if (/^#card\//.test(loc.hash)) {
-    const base = loc.pathname.replace(/index\.html?$/i, 'card.html');
-    return { redirect: true, url: `${base}${loc.search}${loc.hash}` };
+  const hash = loc.hash || '';
+  if (/^#card\//.test(hash)) {
+    const identifier = decodeURIComponent(hash.replace(/^#card\//, ''));
+    const search = loc.search || '';
+    const targetPath = buildCardPath(identifier);
+    return { redirect: true, url: `${targetPath}${search}` };
   }
   return { redirect: false };
 }
@@ -70,8 +72,9 @@ export function planNormalizeIndexRoute(loc) {
  */
 export function planNormalizeCardRoute(loc) {
   if (/^#grid$/.test(loc.hash)) {
-    const base = loc.pathname.replace(/card\.html?$/i, 'index.html');
-    return { redirect: true, url: `${base}${loc.search}#grid` };
+    const search = loc.search || '';
+    const base = /card\.html?$/i.test(loc.pathname) ? loc.pathname.replace(/card\.html?$/i, 'index.html') : '/';
+    return { redirect: true, url: `${base}${search}#grid` };
   }
   return { redirect: false };
 }
@@ -141,7 +144,7 @@ export function parseHash(hash = location.hash) {
 
 /**
  * Serialize a route object back into a hash string.
- * @param {{route: string, name?: string, raw?: string}} obj
+ * @param {{route?: string, name?: string, raw?: string}} [obj]
  * @returns {string}
  */
 export function stringifyRoute(obj = {}) {

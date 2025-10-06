@@ -73,7 +73,7 @@ A comprehensive Pokemon TCG tournament data visualization and analysis tool. Exp
    ```bash
    npm install
    ```
-3. Start the development server:
+3. Start the development server (uses the Node test server with hosting rewrites for `/card` routes):
    
    ```bash
    npm run dev

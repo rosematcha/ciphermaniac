@@ -81,32 +81,57 @@
   <script type="module">
     import { createHeader } from '/assets/js/components/header.js';
     import { createFooter } from '/assets/js/components/footer.js';
-    
+    import { describeSlug } from '/assets/js/card/routing.js';
+
     // Extract and display card name immediately for fast initial paint
-    function getCardNameFromLocation(){
+    function getInitialCardLabel(){
       const params = new URLSearchParams(location.search);
       const q = params.get('name');
       if(q) {return q;}
-      // Hash route: #card/<encoded name or UID>
-      const m = location.hash.match(/^#card\/(.+)$/);
-      if(m) {return decodeURIComponent(m[1]);}
+
+      const hashMatch = location.hash.match(/^#card\/(.+)$/);
+      if(hashMatch) {return decodeURIComponent(hashMatch[1]);}
+
+      const pathMatch = location.pathname.match(/\/card(?:\.html)?(?:\/([^/?#]+))?$/i);
+      if(pathMatch && pathMatch[1]) {
+        return describeSlug(decodeURIComponent(pathMatch[1]));
+      }
+
       return null;
     }
-    
+
     // Show card name immediately, no waiting for JS modules
-    const cardName = getCardNameFromLocation();
-    if (cardName) {
+    const initialLabel = getInitialCardLabel();
+    if (initialLabel) {
       const titleEl = document.getElementById('card-title');
       if (titleEl) {
-        // Extract display name from UID or use as-is
-        const displayName = cardName.includes('::') 
-          ? cardName.split('::')[0] 
-          : cardName;
-        titleEl.textContent = displayName;
-        document.title = `${displayName} – Ciphermaniac`;
+        let primary = initialLabel;
+        let setBadge = '';
+
+        if (initialLabel.includes('::')) {
+          const parts = initialLabel.split('::');
+          primary = parts[0] || initialLabel;
+          if (parts.length >= 3 && parts[1] && parts[2]) {
+            setBadge = `${parts[1]} ${parts[2]}`;
+          }
+        }
+
+        titleEl.textContent = '';
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = primary;
+        titleEl.appendChild(nameSpan);
+
+        if (setBadge) {
+          const setSpan = document.createElement('span');
+          setSpan.className = 'card-title-set';
+          setSpan.textContent = setBadge;
+          titleEl.appendChild(setSpan);
+        }
+
+        document.title = `${primary}${setBadge ? ` ${setBadge}` : ''} – Ciphermaniac`;
       }
     }
-    
+
     // Insert header and footer
     const header = createHeader({ currentPage: 'cards' });
     const footer = createFooter();

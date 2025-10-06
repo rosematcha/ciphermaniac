@@ -41,7 +41,7 @@ function teamRocketVariants(name) {
  */
 export function buildThumbCandidates(name, useSm, overrides, variant) {
   // useSm: true -> sm folder, false -> xs folder
-  const base = useSm ? 'thumbnails/sm/' : 'thumbnails/xs/';
+  const base = useSm ? '/thumbnails/sm/' : '/thumbnails/xs/';
   const out = [];
   if (overrides && overrides[name]) {
     out.push(base + overrides[name]);

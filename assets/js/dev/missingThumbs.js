@@ -81,7 +81,7 @@ export function dumpMissingReport() {
   link.href = url;
   link.download = 'overrides.json';
   link.textContent = 'Download overrides.json';
-  link.style = 'position:fixed;top:10px;right:10px;z-index:9999;background:#222;color:#fff;padding:8px;border-radius:6px;font-size:14px;';
+  link.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9999;background:#222;color:#fff;padding:8px;border-radius:6px;font-size:14px;';
   document.body.appendChild(link);
   setTimeout(() => { URL.revokeObjectURL(url); }, 60000);
   setTimeout(() => { link.remove(); }, 60000);

@@ -20,7 +20,7 @@ export function ensureGraphTooltip() {
   tooltip.setAttribute('role', 'status');
   tooltip.style.position = 'fixed';
   tooltip.style.pointerEvents = 'none';
-  tooltip.style.zIndex = 9999;
+  tooltip.style.zIndex = '9999';
   tooltip.style.display = 'none';
   document.body.appendChild(tooltip);
   graphTooltipElement = tooltip;

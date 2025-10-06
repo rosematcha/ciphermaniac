@@ -8,13 +8,18 @@
     ],
     "rewrites": [
       {
+        "source": "/card",
+        "destination": "/card.html"
+      },
+      {
+        "source": "/card/**",
+        "destination": "/card.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
     ]
-  },
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
   }
+
 }

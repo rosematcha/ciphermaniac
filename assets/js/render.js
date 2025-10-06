@@ -3,10 +3,10 @@ export const NUM_LARGE_ROWS = 2;
 import { buildThumbCandidates } from './thumbs.js';
 import { computeLayout, syncControlsWidth } from './layoutHelper.js';
 import { trackMissing } from './dev/missingThumbs.js';
-import { isFavorite, toggleFavorite, subscribeFavorites } from './favorites.js';
+import { buildCardPath } from './card/routing.js';
 // import { setupImagePreloading } from './utils/imagePreloader.js'; // Disabled - using parallelImageLoader instead
 import { parallelImageLoader } from './utils/parallelImageLoader.js';
-import { setProperties as _setProperties, setStyles, createElement, batchAppend } from './utils/dom.js';
+import { setProperties as _setProperties, setStyles, createElement } from './utils/dom.js';
 // Modal removed: navigate to card page instead
 
 // Lightweight floating tooltip used for thumbnails' histograms
@@ -18,7 +18,7 @@ function ensureGridTooltip() {
   tooltip.setAttribute('role', 'status');
   tooltip.style.position = 'fixed';
   tooltip.style.pointerEvents = 'none';
-  tooltip.style.zIndex = 9999;
+  tooltip.style.zIndex = '9999';
   tooltip.style.display = 'none';
   document.body.appendChild(tooltip);
   __gridGraphTooltip = tooltip;
@@ -194,23 +194,6 @@ export function render(items, overrides = {}) {
     });
     grid._kbNavAttached = true;
   }
-
-  // Live update stars if favorites change elsewhere
-  if (!grid._favSub) {
-    grid._favSub = subscribeFavorites(() => {
-      grid.querySelectorAll('.card').forEach(card => {
-        const name = card.querySelector('.name')?.textContent;
-        const btn = card.querySelector('.star-btn');
-        if (name && btn) {
-          const fav = isFavorite(name);
-          btn.classList.toggle('is-active', fav);
-          btn.setAttribute('aria-pressed', String(fav));
-          btn.title = fav ? 'Unfavorite' : 'Favorite';
-          btn.textContent = fav ? '★' : '☆';
-        }
-      });
-    });
-  }
 }
 
 // Expand grid by adding remaining rows without touching existing cards
@@ -301,31 +284,6 @@ function expandGridRows(items, overrides, targetTotalRows) {
       window.scrollTo(0, scrollY);
     }
   });
-}
-
-// Card creation helper functions
-function createStarButton(cardName) {
-  const starBtn = createElement('button', {
-    attributes: { type: 'button' },
-    className: 'star-btn'
-  });
-
-  const updateStarState = () => {
-    const fav = isFavorite(cardName);
-    starBtn.classList.toggle('is-active', fav);
-    starBtn.setAttribute('aria-pressed', String(fav));
-    starBtn.title = fav ? 'Unfavorite' : 'Favorite';
-    starBtn.textContent = fav ? '★' : '☆';
-  };
-
-  starBtn.addEventListener('click', event => {
-    event.stopPropagation();
-    toggleFavorite(cardName);
-    updateStarState();
-  });
-
-  updateStarState();
-  return starBtn;
 }
 
 function setupCardImage(img, cardName, useSm, overrides, cardData) {
@@ -553,7 +511,7 @@ function setupHistogramTooltip(col, cardName, tip) {
 
 function attachCardNavigation(card, cardData) {
   const cardIdentifier = cardData.uid || cardData.name;
-  const url = `card.html#card/${encodeURIComponent(cardIdentifier)}`;
+  const url = buildCardPath(cardIdentifier);
 
   card.addEventListener('click', event => {
     if (event.ctrlKey || event.metaKey) {
@@ -573,15 +531,24 @@ function attachCardNavigation(card, cardData) {
 
 // Simplified card creation - single responsibility
 function makeCardElement(cardData, useSm, overrides) {
-  const template = document.getElementById('card-template');
-  const fragment = template.content.cloneNode(true);
-  const card = fragment.querySelector('.card');
+  const template = /** @type {HTMLTemplateElement | null} */ (document.getElementById('card-template'));
+  const fragment = template
+    ? /** @type {DocumentFragment} */ (template.content.cloneNode(true))
+    : document.createDocumentFragment();
+
+  let card = fragment.querySelector('.card');
+
+  if (!(card instanceof HTMLElement)) {
+    card = document.createElement('div');
+    card.className = 'card';
+    fragment.appendChild(card);
+  }
 
   // Setup card attributes
   setupCardAttributes(card, cardData);
 
   // Setup image
-  const img = fragment.querySelector('img');
+  const img = /** @type {HTMLImageElement | null} */ (fragment.querySelector('img'));
   setupCardImage(img, cardData.name, useSm, overrides, cardData);
 
   // Populate content
@@ -621,9 +588,7 @@ function setupCardCounts(element, cardData) {
     const countsText = createElement('span', {
       textContent: hasValidCounts ? `${cardData.found} / ${cardData.total} decks` : 'no data'
     });
-
-    const starBtn = createStarButton(cardData.name);
-    batchAppend(counts, [countsText, starBtn]);
+    counts.appendChild(countsText);
   }
 }
 
@@ -667,7 +632,7 @@ export function updateLayout() {
 
   // Build rows and re-append existing cards
   // Preserve existing More... control, if any, to re-attach after rebuild
-  const savedMore = grid.querySelector('.more-rows') || grid._moreWrapRef || null;
+  const savedMore = /** @type {HTMLElement | null} */ (grid.querySelector('.more-rows')) || grid._moreWrapRef || null;
   const frag = document.createDocumentFragment();
   let i = 0;
   let rowIndex = 0;
