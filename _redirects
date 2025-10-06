@@ -1,2 +1,2 @@
-# Static asset paths - Cloudflare Pages will serve these directly
-# Card rewrites are handled by functions/_middleware.js
+# This file is for Netlify - not used on Cloudflare/Firebase
+# See firebase.json for Firebase Hosting configuration
