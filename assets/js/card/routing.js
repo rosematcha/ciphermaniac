@@ -6,6 +6,9 @@ import { logger } from '../utils/logger.js';
 
 const SLUG_CACHE_KEY = 'cardSlugCacheV1';
 const DEFAULT_SCAN_LIMIT = 12;
+const PATH_SAFE_SLUG_SEPARATOR = '~';
+const COLON_PATTERN = /:/g;
+const PATH_SEPARATOR_PATTERN = /~/g;
 const reportCache = new Map();
 let tournamentsCache = null;
 
@@ -38,14 +41,15 @@ function normalizeSlug(slug) {
   if (!slug) {return '';} // treat empty as missing
   const trimmed = String(slug).trim();
   if (!trimmed) {return '';} // skip blank
-  if (trimmed.includes(':')) {
-    const [rawSet, rawNumber] = trimmed.split(':');
+  const withColons = trimmed.replace(PATH_SEPARATOR_PATTERN, ':');
+  if (withColons.includes(':')) {
+    const [rawSet, rawNumber] = withColons.split(':');
     if (!rawSet || !rawNumber) {return sanitizeName(trimmed);} // fallback to sanitized string
     const setCode = rawSet.toUpperCase();
     const number = normalizeCardNumber(rawNumber);
     return `${setCode}:${number}`;
   }
-  return sanitizeName(trimmed);
+  return sanitizeName(withColons);
 }
 
 function loadSlugCache() {
@@ -171,21 +175,22 @@ async function resolveByName(slugName, options = {}) {
  */
 export function makeCardSlug(identifier) {
   if (!identifier) {return null;}
-  if (identifier.includes('::')) {
-    const parts = identifier.split('::');
+  const normalizedIdentifier = String(identifier).replace(PATH_SEPARATOR_PATTERN, ':');
+  if (normalizedIdentifier.includes('::')) {
+    const parts = normalizedIdentifier.split('::');
     if (parts.length >= 3 && parts[1] && parts[2]) {
       const setCode = parts[1].toUpperCase();
       const number = normalizeCardNumber(parts[2]);
       if (setCode && number) {return `${setCode}:${number}`;}
     }
   }
-  const setSlugMatch = String(identifier).match(/^([A-Za-z0-9]{2,5})[:-]([0-9]{1,4}[A-Za-z]?)$/);
+  const setSlugMatch = normalizedIdentifier.match(/^([A-Za-z0-9]{2,5})[:-]([0-9]{1,4}[A-Za-z]?)$/);
   if (setSlugMatch) {
     const setCode = setSlugMatch[1].toUpperCase();
     const number = normalizeCardNumber(setSlugMatch[2]);
     if (setCode && number) {return `${setCode}:${number}`;}
   }
-  const display = getDisplayName(identifier) || identifier;
+  const display = getDisplayName(normalizedIdentifier) || normalizedIdentifier;
   const sanitized = sanitizeName(display);
   return sanitized || null;
 }
@@ -197,7 +202,10 @@ export function makeCardSlug(identifier) {
 export function buildCardPath(identifier) {
   const slug = makeCardSlug(identifier);
   if (!slug) {return '/card';}
-  return `/card/${slug}`;
+  const pathSlug = slug.includes(':')
+    ? slug.replace(COLON_PATTERN, PATH_SAFE_SLUG_SEPARATOR)
+    : slug;
+  return `/card/${encodeURIComponent(pathSlug)}`;
 }
 
 /**
@@ -219,8 +227,9 @@ export function parseCardRoute(loc = window.location) {
   const path = loc.pathname || '';
   const match = path.match(/\/card(?:\.html)?(?:\/([^/?#]+))?\/?$/i);
   if (match) {
-    const slug = match[1] ? decodeURIComponent(match[1]) : null;
-    return { source: slug ? 'slug' : 'landing', identifier: null, slug };
+    const rawSlug = match[1] ? decodeURIComponent(match[1]) : null;
+    const normalizedSlug = rawSlug ? rawSlug.replace(PATH_SEPARATOR_PATTERN, ':') : null;
+    return { source: normalizedSlug ? 'slug' : 'landing', identifier: null, slug: normalizedSlug };
   }
 
   return { source: 'other', identifier: null, slug: null };
