@@ -1,33 +1,34 @@
-# CloudFlare Pages configuration for Ciphermaniac
+# Cloudflare Pages configuration for Ciphermaniac
 name = "ciphermaniac"
 compatibility_date = "2023-10-30"
 
 # Pages build output directory (required by Wrangler/Pages)
 pages_build_output_dir = "."
 
-# Cron Trigger: use Cloudflare Cron Triggers to run the daily pricing job at 20:30 UTC
-# (which is 3:30 PM CST during standard time). If you prefer an external cron, you
-# can still call the HTTP endpoint at /api/daily-pricing.
-triggers = { crons = [ "30 20 * * *" ] }
-
 # KV namespace binding for price data storage
 [[kv_namespaces]]
 binding = "PRICE_DATA"
-id = "c43f84feaa1049488390313c619610d8"  # You'll need to create this KV namespace
+id = "c43f84feaa1049488390313c619610d8"
 
 # R2 bucket binding for report storage
 [[r2_buckets]]
 bucket_name = "ciphermaniac-reports"
 binding = "REPORTS"
 
-# Environment variables (set these in CloudFlare dashboard)
+# Production environment configuration
+[env.production]
+
+# KV namespace binding for production
+[[env.production.kv_namespaces]]
+binding = "PRICE_DATA"
+id = "c43f84feaa1049488390313c619610d8"
+
+# R2 bucket binding for production
+[[env.production.r2_buckets]]
+bucket_name = "ciphermaniac-reports"
+binding = "REPORTS"
+
+# Environment variables (set these in Cloudflare dashboard)
 [env.production.vars]
 # MAILGUN_API_KEY = "your-mailgun-api-key"
 # MAILGUN_DOMAIN = "ciphermaniac.com"
-
-[build]
-command = "echo 'No build needed for static site'"
-publish = "."
-
-[build.environment]
-NODE_VERSION = "18"
