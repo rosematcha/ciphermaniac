@@ -1617,8 +1617,51 @@ async function renderAnalysisTable(tournament) {
     try {
       const master = await fetchReport(tournament);
       const parsed = parseReport(master);
-      const ci = findCard(parsed.items, cardIdentifier);
-      if (ci) { overall = ci; }
+
+      // Get canonical card and all its variants for combined usage statistics
+      const canonical = await getCanonicalCard(cardIdentifier);
+      const variants = await getCardVariants(canonical);
+
+      // Combine data from all variants
+      let combinedFound = 0;
+      let combinedTotal = null;
+      const combinedDist = [];
+      let hasAnyData = false;
+
+      for (const variant of variants) {
+        const variantCard = findCard(parsed.items, variant);
+        if (variantCard) {
+          hasAnyData = true;
+          if (Number.isFinite(variantCard.found)) {
+            combinedFound += variantCard.found;
+          }
+          if (combinedTotal === null && Number.isFinite(variantCard.total)) {
+            combinedTotal = variantCard.total;
+          }
+
+          // Combine distribution data
+          if (variantCard.dist && Array.isArray(variantCard.dist)) {
+            for (const distEntry of variantCard.dist) {
+              const existing = combinedDist.find(distItem => distItem.copies === distEntry.copies);
+              if (existing) {
+                existing.players += distEntry.players || 0;
+              } else {
+                combinedDist.push({ copies: distEntry.copies, players: distEntry.players || 0 });
+              }
+            }
+          }
+        }
+      }
+
+      if (hasAnyData && combinedTotal !== null) {
+        overall = {
+          name: getDisplayName(canonical),
+          found: combinedFound,
+          total: combinedTotal,
+          pct: combinedTotal > 0 ? (100 * combinedFound / combinedTotal) : 0,
+          dist: combinedDist.sort((first, second) => first.copies - second.copies)
+        };
+      }
     } catch {/* ignore */}
 
     // Per-archetype distributions using enhanced parallel loading
@@ -1626,38 +1669,71 @@ async function renderAnalysisTable(tournament) {
 
     progress.updateStep(0, 'loading');
 
+    // Get canonical card and all its variants for combined usage statistics
+    const canonical = await getCanonicalCard(cardIdentifier);
+    const variants = await getCardVariants(canonical);
+
     // Use parallel processing utility for better performance
     const archetypeResults = await processInParallel(list, async base => {
       try {
         const archetypeReport = await fetchArchetypeReport(tournament, base);
         const parsedReport = parseReport(archetypeReport);
-        const cardInfo = findCard(parsedReport.items, cardIdentifier);
 
-        if (cardInfo) {
+        // Combine data from all variants for this archetype
+        let combinedFound = 0;
+        let combinedTotal = null;
+        const combinedDist = [];
+        let hasAnyData = false;
+
+        for (const variant of variants) {
+          const variantCardInfo = findCard(parsedReport.items, variant);
+          if (variantCardInfo) {
+            hasAnyData = true;
+            if (Number.isFinite(variantCardInfo.found)) {
+              combinedFound += variantCardInfo.found;
+            }
+            if (combinedTotal === null && Number.isFinite(variantCardInfo.total)) {
+              combinedTotal = variantCardInfo.total;
+            }
+
+            // Combine distribution data
+            if (variantCardInfo.dist && Array.isArray(variantCardInfo.dist)) {
+              for (const distEntry of variantCardInfo.dist) {
+                const existing = combinedDist.find(distItem => distItem.copies === distEntry.copies);
+                if (existing) {
+                  existing.players += distEntry.players || 0;
+                } else {
+                  combinedDist.push({ copies: distEntry.copies, players: distEntry.players || 0 });
+                }
+              }
+            }
+          }
+        }
+
+        if (hasAnyData && combinedTotal !== null) {
           // For high-usage cards (>20%), include single-deck archetypes to show distribution
           const overallItem = overall || {};
           const overallPct = overallItem.total
             ? (100 * overallItem.found / overallItem.total)
             : (overallItem.pct || 0);
           const minSample = overallPct > 20 ? 1 : 2; // Lower threshold for high-usage cards
-          if (cardInfo.total >= minSample) {
-            const percentage = Number.isFinite(cardInfo.pct)
-              ? cardInfo.pct
-              : (cardInfo.total ? (100 * cardInfo.found / cardInfo.total) : 0);
+
+          if (combinedTotal >= minSample) {
+            const percentage = combinedTotal > 0 ? (100 * combinedFound / combinedTotal) : 0;
 
             // Precompute percent of all decks in archetype by copies
             const copiesPct = numberOfCopies => {
-              if (!Array.isArray(cardInfo.dist) || !(cardInfo.total > 0)) { return null; }
-              const distribution = cardInfo.dist.find(distItem => distItem.copies === numberOfCopies);
+              if (!Array.isArray(combinedDist) || !(combinedTotal > 0)) { return null; }
+              const distribution = combinedDist.find(distItem => distItem.copies === numberOfCopies);
               if (!distribution) { return 0; }
-              return 100 * (distribution.players ?? 0) / cardInfo.total;
+              return 100 * (distribution.players ?? 0) / combinedTotal;
             };
 
             return {
               archetype: base.replace(/_/g, ' '),
               pct: percentage,
-              found: cardInfo.found,
-              total: cardInfo.total,
+              found: combinedFound,
+              total: combinedTotal,
               c1: copiesPct(1),
               c2: copiesPct(2),
               c3: copiesPct(3),

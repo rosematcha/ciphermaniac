@@ -1,13 +1,61 @@
 // Number of rows to render as 'large' rows in grid view. Edit this value to change how many rows are 'large'.
-export const NUM_LARGE_ROWS = 2;
+export const NUM_LARGE_ROWS = 1;
+// Number of rows to render as 'medium' rows (after large rows)
+export const NUM_MEDIUM_ROWS = 1;
 import { buildThumbCandidates } from './thumbs.js';
 import { computeLayout, syncControlsWidth } from './layoutHelper.js';
 import { trackMissing } from './dev/missingThumbs.js';
-import { buildCardPath } from './card/routing.js';
+import { buildCardPath, normalizeCardNumber } from './card/routing.js';
 // import { setupImagePreloading } from './utils/imagePreloader.js'; // Disabled - using parallelImageLoader instead
 import { parallelImageLoader } from './utils/parallelImageLoader.js';
 import { setProperties as _setProperties, setStyles, createElement } from './utils/dom.js';
 // Modal removed: navigate to card page instead
+
+/* eslint-disable jsdoc/check-indentation, jsdoc/check-alignment */
+
+/**
+ * @typedef {'standard' | 'compact'} LayoutMode
+ */
+
+/**
+ * @typedef {object} RenderOptions
+ * @property {LayoutMode} [layoutMode]
+ */
+
+/**
+ * @typedef {object} CachedLayoutMetrics
+ * @property {number} base
+ * @property {number} perRowBig
+ * @property {number} bigRowContentWidth
+ * @property {number} targetMedium
+ * @property {number} mediumScale
+ * @property {number} targetSmall
+ * @property {number} smallScale
+ * @property {number} bigRows
+ * @property {number} mediumRows
+ * @property {boolean} useSmallRows
+ * @property {boolean} forceCompact
+ */
+
+/**
+ * @typedef {HTMLElement & {
+ *   _visibleRows?: number;
+ *   _totalRows?: number;
+ *   _totalCards?: number;
+ *   _moreWrapRef?: HTMLElement | null;
+ *   _layoutMetrics?: CachedLayoutMetrics;
+ *   _renderOptions?: RenderOptions;
+ *   _kbNavAttached?: boolean;
+ * }} GridElement
+*/
+/* eslint-enable jsdoc/check-indentation, jsdoc/check-alignment */
+
+/**
+ * @returns {GridElement | null}
+ */
+function getGridElement() {
+  return /** @type {GridElement | null} */ (document.getElementById('grid'));
+}
 
 // Lightweight floating tooltip used for thumbnails' histograms
 let __gridGraphTooltip = null;
@@ -62,8 +110,15 @@ export function renderSummary(container, deckTotal, count) {
  * @param items
  * @param overrides
  */
-export function render(items, overrides = {}) {
-  const grid = document.getElementById('grid');
+export function render(items, overrides = {}, options = {}) {
+  const grid = getGridElement();
+  if (!grid) {return;}
+
+  const layoutMode = options?.layoutMode === 'compact' ? 'compact' : 'standard';
+  const settings = /** @type {RenderOptions} */ ({ layoutMode });
+  const forceCompact = settings.layoutMode === 'compact';
+  grid._renderOptions = settings;
+
   grid.innerHTML = '';
 
   // Empty state for no results
@@ -78,14 +133,14 @@ export function render(items, overrides = {}) {
   // Compute per-row layout and sync controls width using helper
   const containerWidth = grid.clientWidth || grid.getBoundingClientRect().width || 0;
   const layout = computeLayout(containerWidth);
-  // Override bigRows with NUM_LARGE_ROWS
-  const { base } = layout;
-  const { perRowBig } = layout;
-  const { bigRowContentWidth } = layout;
-  const { targetSmall } = layout;
-  const { smallScale } = layout;
-  // Use NUM_LARGE_ROWS constant directly
+  const { base, perRowBig, bigRowContentWidth, targetMedium, mediumScale, targetSmall, smallScale } = layout;
   syncControlsWidth(bigRowContentWidth);
+
+  // Only use small rows if they can actually fit more cards than medium (when large row has 6 or more)
+  const useSmallRows = forceCompact || (perRowBig >= 6 && targetSmall > targetMedium);
+
+  const largeRowsLimit = forceCompact ? 0 : NUM_LARGE_ROWS;
+  const mediumRowsLimit = forceCompact ? 0 : NUM_MEDIUM_ROWS;
 
   // Use the shared card creation function
   const makeCard = (it, useSm) => {
@@ -106,19 +161,41 @@ export function render(items, overrides = {}) {
     const row = document.createElement('div');
     row.className = 'row';
     row.dataset.rowIndex = String(rowIndex);
-    const isBig = rowIndex < NUM_LARGE_ROWS;
-    const scale = isBig ? 1 : smallScale;
-    const maxCount = isBig ? perRowBig : targetSmall;
+
+    // Determine row type: large (0), medium (1), or small (2+)
+    const isLarge = !forceCompact && rowIndex < largeRowsLimit;
+    const isMedium = !forceCompact && !isLarge && rowIndex < largeRowsLimit + mediumRowsLimit;
+    const isSmall = forceCompact || (!isLarge && !isMedium && useSmallRows);
+
+    let scale, maxCount;
+    if (forceCompact) {
+      scale = smallScale;
+      maxCount = targetSmall;
+    } else if (isLarge) {
+      scale = 1;
+      maxCount = perRowBig;
+    } else if (isMedium) {
+      scale = mediumScale;
+      maxCount = targetMedium;
+    } else if (isSmall) {
+      scale = smallScale;
+      maxCount = targetSmall;
+    } else {
+      // If small rows aren't used, continue with medium sizing
+      scale = mediumScale;
+      maxCount = targetMedium;
+    }
+
     row.style.setProperty('--scale', String(scale));
-    // Use the base width for big rows and base for small rows (scaled via --scale)
     row.style.setProperty('--card-base', `${base}px`);
-    // Keep a consistent row width based on big row content and center it
     row.style.width = `${bigRowContentWidth}px`;
     row.style.margin = '0 auto';
+
     const count = Math.min(maxCount, items.length - i);
     for (let j = 0; j < count && i < items.length; j++, i++) {
-      // sm thumbs for big rows, xs for small rows
-      const elFrag = makeCard(items[i], isBig);
+      // Use sm thumbs for large/medium rows, xs for small rows
+      const useSm = isLarge || isMedium || !isSmall;
+      const elFrag = makeCard(items[i], useSm);
       const cardEl = elFrag.querySelector('.card');
       if (cardEl) { cardEl.dataset.row = String(rowIndex); cardEl.dataset.col = String(j); }
       row.appendChild(elFrag);
@@ -143,22 +220,51 @@ export function render(items, overrides = {}) {
   const estimateTotalRows = (() => {
     let cnt = 0; let idx = 0;
     while (idx < items.length) {
-      cnt++;
-      const isBigLocal = cnt - 1 < NUM_LARGE_ROWS;
-      const maxCount = isBigLocal ? perRowBig : targetSmall;
+      const rowIdx = cnt;
+      const isLargeLocal = !forceCompact && rowIdx < largeRowsLimit;
+      const isMediumLocal = !forceCompact && !isLargeLocal && rowIdx < largeRowsLimit + mediumRowsLimit;
+      const isSmallLocal = forceCompact || (!isLargeLocal && !isMediumLocal && useSmallRows);
+
+      let maxCount;
+      if (forceCompact) {
+        maxCount = targetSmall;
+      } else if (isLargeLocal) {
+        maxCount = perRowBig;
+      } else if (isMediumLocal) {
+        maxCount = targetMedium;
+      } else if (isSmallLocal) {
+        maxCount = targetSmall;
+      } else {
+        maxCount = targetMedium;
+      }
+
       idx += maxCount;
+      cnt++;
     }
     return cnt;
   })();
   // Persist totals so resize handler can decide whether to show More after reflow
   grid._totalRows = estimateTotalRows;
   grid._totalCards = items.length;
+  grid._layoutMetrics = /** @type {CachedLayoutMetrics} */ ({
+    base,
+    perRowBig,
+    bigRowContentWidth,
+    targetMedium,
+    mediumScale,
+    targetSmall,
+    smallScale,
+    bigRows: largeRowsLimit,
+    mediumRows: mediumRowsLimit,
+    useSmallRows,
+    forceCompact
+  });
   if (rowIndex < estimateTotalRows) {
     const moreWrap = document.createElement('div'); moreWrap.className = 'more-rows';
     const moreBtn = document.createElement('button'); moreBtn.className = 'btn'; moreBtn.type = 'button'; moreBtn.textContent = 'More...';
     moreBtn.addEventListener('click', () => {
       // Instead of re-rendering everything, just add the remaining rows
-      expandGridRows(items, overrides, estimateTotalRows);
+      expandGridRows(items, overrides, estimateTotalRows, settings);
     });
     moreWrap.appendChild(moreBtn);
     grid.appendChild(moreWrap);
@@ -197,11 +303,16 @@ export function render(items, overrides = {}) {
 }
 
 // Expand grid by adding remaining rows without touching existing cards
-function expandGridRows(items, overrides, targetTotalRows) {
-  const grid = document.getElementById('grid');
+function expandGridRows(items, overrides, targetTotalRows, options = {}) {
+  const grid = getGridElement();
   if (!grid || !Array.isArray(items)) {
     return;
   }
+
+  const fallbackMode = grid._renderOptions?.layoutMode === 'compact' ? 'compact' : 'standard';
+  const layoutMode = options?.layoutMode === 'compact' ? 'compact' : fallbackMode;
+  const forceCompact = layoutMode === 'compact';
+  grid._renderOptions = /** @type {RenderOptions} */ ({ layoutMode });
 
   // Preserve scroll position during DOM manipulation
   const { scrollY } = window;
@@ -215,13 +326,13 @@ function expandGridRows(items, overrides, targetTotalRows) {
   // Get current layout metrics
   const containerWidth = grid.clientWidth || grid.getBoundingClientRect().width || 0;
   const layout = computeLayout(containerWidth);
-  // Override bigRows with NUM_LARGE_ROWS
-  const { base } = layout;
-  const { perRowBig } = layout;
-  const { bigRowContentWidth } = layout;
-  const { targetSmall } = layout;
-  const { smallScale } = layout;
-  // Use NUM_LARGE_ROWS constant directly
+  const { base, perRowBig, bigRowContentWidth, targetMedium, mediumScale, targetSmall, smallScale } = layout;
+
+  // Only use small rows if they can actually fit more cards than medium (when large row has 6 or more)
+  const useSmallRows = forceCompact || (perRowBig >= 6 && targetSmall > targetMedium);
+
+  const largeRowsLimit = forceCompact ? 0 : NUM_LARGE_ROWS;
+  const mediumRowsLimit = forceCompact ? 0 : NUM_MEDIUM_ROWS;
 
   // Count existing cards and determine where to start adding new ones
   const existingCards = grid.querySelectorAll('.card').length;
@@ -236,9 +347,31 @@ function expandGridRows(items, overrides, targetTotalRows) {
     const row = document.createElement('div');
     row.className = 'row';
     row.dataset.rowIndex = String(rowIndex);
-    const isBig = rowIndex < NUM_LARGE_ROWS;
-    const scale = isBig ? 1 : smallScale;
-    const maxCount = isBig ? perRowBig : targetSmall;
+
+    // Determine row type: large (0), medium (1), or small (2+)
+    const isLarge = !forceCompact && rowIndex < largeRowsLimit;
+    const isMedium = !forceCompact && !isLarge && rowIndex < largeRowsLimit + mediumRowsLimit;
+    const isSmall = forceCompact || (!isLarge && !isMedium && useSmallRows);
+
+    let scale, maxCount;
+    if (forceCompact) {
+      scale = smallScale;
+      maxCount = targetSmall;
+    } else if (isLarge) {
+      scale = 1;
+      maxCount = perRowBig;
+    } else if (isMedium) {
+      scale = mediumScale;
+      maxCount = targetMedium;
+    } else if (isSmall) {
+      scale = smallScale;
+      maxCount = targetSmall;
+    } else {
+      // If small rows aren't used, continue with medium sizing
+      scale = mediumScale;
+      maxCount = targetMedium;
+    }
+
     row.style.setProperty('--scale', String(scale));
     row.style.setProperty('--card-base', `${base}px`);
     row.style.width = `${bigRowContentWidth}px`;
@@ -247,7 +380,8 @@ function expandGridRows(items, overrides, targetTotalRows) {
     const count = Math.min(maxCount, items.length - cardIndex);
     for (let j = 0; j < count && cardIndex < items.length; j++, cardIndex++) {
       const item = items[cardIndex];
-      const cardEl = makeCardElement(item, isBig, overrides);
+      const useSm = isLarge || isMedium || !isSmall;
+      const cardEl = makeCardElement(item, useSm, overrides);
       cardEl.dataset.row = String(rowIndex);
       cardEl.dataset.col = String(j);
       row.appendChild(cardEl);
@@ -262,6 +396,19 @@ function expandGridRows(items, overrides, targetTotalRows) {
   // Update grid metadata
   grid._visibleRows = targetTotalRows;
   grid._totalRows = targetTotalRows;
+  grid._layoutMetrics = /** @type {CachedLayoutMetrics} */ ({
+    base,
+    perRowBig,
+    bigRowContentWidth,
+    targetMedium,
+    mediumScale,
+    targetSmall,
+    smallScale,
+    bigRows: largeRowsLimit,
+    mediumRows: mediumRowsLimit,
+    useSmallRows,
+    forceCompact
+  });
 
   // Set up image preloading for new cards only
   const newItems = items.slice(existingCards);
@@ -270,10 +417,13 @@ function expandGridRows(items, overrides, targetTotalRows) {
   // Additionally preload new images in parallel for better performance
   if (newItems.length > 0) {
     requestAnimationFrame(() => {
-      const newCandidatesList = newItems.flatMap(item => [
-        buildThumbCandidates(item.name, true, overrides, { set: item.set, number: item.number }), // sm
-        buildThumbCandidates(item.name, false, overrides, { set: item.set, number: item.number }) // xs
-      ]);
+      const newCandidatesList = newItems.flatMap(item => {
+        const variant = { set: item.set, number: item.number };
+        return [
+          buildThumbCandidates(item.name, true, overrides, variant), // sm
+          buildThumbCandidates(item.name, false, overrides, variant) // xs
+        ];
+      });
       parallelImageLoader.preloadImages(newCandidatesList, 6);
     });
   }
@@ -329,7 +479,7 @@ function setupCardImage(img, cardName, useSm, overrides, cardData) {
  * @param overrides
  */
 function preloadVisibleImagesParallel(items, overrides = {}) {
-  const grid = document.getElementById('grid');
+  const grid = getGridElement();
   if (!grid || !Array.isArray(items)) {return;}
 
   // Get visible cards
@@ -337,21 +487,38 @@ function preloadVisibleImagesParallel(items, overrides = {}) {
   const candidatesList = [];
 
   visibleCards.forEach(cardEl => {
-    const nameEl = cardEl.querySelector('.name');
-    const cardName = nameEl?.textContent;
+    const { uid, cardId } = cardEl.dataset;
+    let cardData = null;
 
-    if (cardName) {
-      const cardData = items.find(item => item.name === cardName);
-      if (cardData) {
-        // Add both sm and xs candidates for each visible card
-        candidatesList.push(
-          buildThumbCandidates(cardName, true, overrides, { set: cardData.set, number: cardData.number }), // sm
-          buildThumbCandidates(cardName, false, overrides, { set: cardData.set, number: cardData.number }) // xs
-        );
-      } else {
-        // DEBUG: Log when cardData is not found
-        console.warn('Card data not found for preloading:', cardName, 'Available names:', items.slice(0, 5).map(i => i.name));
+    if (uid) {
+      cardData = items.find(item => item.uid === uid) || null;
+    }
+
+    if (!cardData && cardId) {
+      const [setCode, number] = cardId.split('~');
+      cardData = items.find(item => {
+        const candidateSet = String(item.set || '').toUpperCase();
+        const candidateNumber = normalizeCardNumber(item.number);
+        return candidateSet === setCode && candidateNumber === number;
+      }) || null;
+    }
+
+    if (!cardData) {
+      const baseNameSpan = cardEl.querySelector('.name span');
+      const baseName = baseNameSpan?.textContent || '';
+      if (baseName) {
+        cardData = items.find(item => item.name === baseName) || null;
       }
+    }
+
+    if (cardData) {
+      candidatesList.push(
+        buildThumbCandidates(cardData.name, true, overrides, { set: cardData.set, number: cardData.number }),
+        buildThumbCandidates(cardData.name, false, overrides, { set: cardData.set, number: cardData.number })
+      );
+    } else {
+      const debugName = cardEl.querySelector('.name')?.textContent || '(unknown card)';
+      console.warn('Card data not found for preloading:', debugName, 'Available names:', items.slice(0, 5).map(i => i.name));
     }
   });
 
@@ -383,6 +550,20 @@ function populateCardContent(el, cardData) {
 
   const pctText = Number.isFinite(pct) ? `${pct.toFixed(1)}%` : '—';
   const widthPct = `${Math.max(0, Math.min(100, pct))}%`;
+
+  // Update count badge with most frequent count
+  const countBadge = el.querySelector('.count-badge');
+  if (countBadge && cardData.dist && cardData.dist.length > 0) {
+    // Find the distribution entry with the highest percentage
+    const mostFrequent = cardData.dist.reduce((max, current) =>
+      (current.percent > max.percent) ? current : max
+    );
+    countBadge.textContent = String(mostFrequent.copies);
+    countBadge.title = `Most common: ${mostFrequent.copies}x (${mostFrequent.percent.toFixed(1)}%)`;
+  } else if (countBadge) {
+    // Hide badge if no distribution data
+    countBadge.style.display = 'none';
+  }
 
   // Update name element - remove skeleton and set real content
   const nameEl = el.querySelector('.name');
@@ -570,6 +751,22 @@ function setupCardAttributes(card, cardData) {
     // eslint-disable-next-line no-param-reassign
     card.dataset.category = cardData.category;
   }
+  if (cardData.uid) {
+    // eslint-disable-next-line no-param-reassign
+    card.dataset.uid = cardData.uid;
+  } else {
+    // eslint-disable-next-line no-param-reassign
+    delete card.dataset.uid;
+  }
+  const setCode = cardData.set ? String(cardData.set).toUpperCase() : '';
+  const number = cardData.number ? normalizeCardNumber(cardData.number) : '';
+  if (setCode && number) {
+    // eslint-disable-next-line no-param-reassign
+    card.dataset.cardId = `${setCode}~${number}`;
+  } else {
+    // eslint-disable-next-line no-param-reassign
+    delete card.dataset.cardId;
+  }
   card.setAttribute('role', 'link');
   card.setAttribute('aria-label', `${cardData.name} – open details`);
 }
@@ -594,7 +791,7 @@ function setupCardCounts(element, cardData) {
 
 // Reflow-only: recompute per-row sizing and move existing cards into new rows without rebuilding cards/images.
 export function updateLayout() {
-  const grid = document.getElementById('grid');
+  const grid = getGridElement();
   if (!grid) {return;}
   // Collect existing card elements in current order
   const cards = Array.from(grid.querySelectorAll('.card'));
@@ -602,22 +799,58 @@ export function updateLayout() {
 
   // Compute layout based on current container width
   const containerWidth = grid.clientWidth || grid.getBoundingClientRect().width || 0;
-  const { base, perRowBig, bigRowContentWidth, targetSmall, smallScale, bigRows } = computeLayout(containerWidth);
+  const {
+    base,
+    perRowBig,
+    bigRowContentWidth,
+    targetMedium,
+    mediumScale,
+    targetSmall,
+    smallScale,
+    bigRows,
+    mediumRows
+  } = computeLayout(containerWidth);
   syncControlsWidth(bigRowContentWidth);
+
+  const forceCompact = grid._renderOptions?.layoutMode === 'compact';
+  const effectiveBigRows = forceCompact ? 0 : bigRows;
+  const effectiveMediumRows = forceCompact ? 0 : mediumRows;
+
+  // Only use small rows if they can actually fit more cards than medium (when large row has 6 or more)
+  const useSmallRows = forceCompact || (perRowBig >= 6 && targetSmall > targetMedium);
 
   // Fast path: If row grouping hasn't changed, avoid rebuilding the entire grid.
   // Only update CSS vars and row widths/scales in-place to minimize DOM churn.
-  const prev = grid._layoutMetrics;
+  const prev = /** @type {CachedLayoutMetrics | undefined} */ (grid._layoutMetrics);
   const groupingUnchanged = prev
     && prev.perRowBig === perRowBig
+    && prev.forceCompact === forceCompact
+    && prev.targetMedium === targetMedium
     && prev.targetSmall === targetSmall
-    && prev.bigRows === bigRows;
+    && prev.bigRows === effectiveBigRows
+    && prev.mediumRows === effectiveMediumRows
+    && prev.useSmallRows === useSmallRows;
   if (groupingUnchanged) {
     const rows = Array.from(grid.querySelectorAll('.row'));
     for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
       const row = rows[rowIndex];
-      const isBig = rowIndex < NUM_LARGE_ROWS;
-      const scale = isBig ? 1 : smallScale;
+      const isLarge = !forceCompact && rowIndex < effectiveBigRows;
+      const isMedium = !forceCompact && !isLarge && rowIndex < effectiveBigRows + effectiveMediumRows;
+      const isSmall = forceCompact || (!isLarge && !isMedium && useSmallRows);
+
+      let scale;
+      if (forceCompact) {
+        scale = smallScale;
+      } else if (isLarge) {
+        scale = 1;
+      } else if (isMedium) {
+        scale = mediumScale;
+      } else if (isSmall) {
+        scale = smallScale;
+      } else {
+        scale = mediumScale;
+      }
+
       row.style.setProperty('--scale', String(scale));
       row.style.setProperty('--card-base', `${base}px`);
       // Keep consistent width and centering
@@ -626,13 +859,28 @@ export function updateLayout() {
       if (row.style.margin !== '0 auto') {row.style.margin = '0 auto';}
     }
     // Store latest metrics and return
-    grid._layoutMetrics = { base, perRowBig, bigRowContentWidth, targetSmall, smallScale, bigRows };
+    grid._layoutMetrics = /** @type {CachedLayoutMetrics} */ ({
+      base,
+      perRowBig,
+      bigRowContentWidth,
+      targetMedium,
+      mediumScale,
+      targetSmall,
+      smallScale,
+      bigRows: effectiveBigRows,
+      mediumRows: effectiveMediumRows,
+      useSmallRows,
+      forceCompact
+    });
     return;
   }
 
   // Build rows and re-append existing cards
   // Preserve existing More... control, if any, to re-attach after rebuild
-  const savedMore = /** @type {HTMLElement | null} */ (grid.querySelector('.more-rows')) || grid._moreWrapRef || null;
+  const savedMore =
+    /** @type {HTMLElement | null} */ (grid.querySelector('.more-rows'))
+    || grid._moreWrapRef
+    || null;
   const frag = document.createDocumentFragment();
   let i = 0;
   let rowIndex = 0;
@@ -641,10 +889,24 @@ export function updateLayout() {
   const newTotalRows = (() => {
     let cnt = 0; let idx = 0;
     while (idx < totalCards) {
-      cnt++;
-      const isBigLocal = cnt - 1 < bigRows;
-      const maxCount = isBigLocal ? perRowBig : targetSmall;
+      const rowIdx = cnt;
+      const isLargeLocal = !forceCompact && rowIdx < effectiveBigRows;
+      const isMediumLocal = !forceCompact && !isLargeLocal && rowIdx < effectiveBigRows + effectiveMediumRows;
+      const isSmallLocal = forceCompact || (!isLargeLocal && !isMediumLocal && useSmallRows);
+
+      let maxCount;
+      if (isLargeLocal) {
+        maxCount = perRowBig;
+      } else if (isMediumLocal) {
+        maxCount = targetMedium;
+      } else if (isSmallLocal) {
+        maxCount = targetSmall;
+      } else {
+        maxCount = targetMedium;
+      }
+
       idx += maxCount;
+      cnt++;
     }
     return cnt;
   })();
@@ -652,9 +914,29 @@ export function updateLayout() {
     const row = document.createElement('div');
     row.className = 'row';
     row.dataset.rowIndex = String(rowIndex);
-    const isBig = rowIndex < NUM_LARGE_ROWS;
-    const scale = isBig ? 1 : smallScale;
-    const maxCount = isBig ? perRowBig : targetSmall;
+
+    const isLarge = !forceCompact && rowIndex < effectiveBigRows;
+    const isMedium = !forceCompact && !isLarge && rowIndex < effectiveBigRows + effectiveMediumRows;
+    const isSmall = forceCompact || (!isLarge && !isMedium && useSmallRows);
+
+    let scale, maxCount;
+    if (forceCompact) {
+      scale = smallScale;
+      maxCount = targetSmall;
+    } else if (isLarge) {
+      scale = 1;
+      maxCount = perRowBig;
+    } else if (isMedium) {
+      scale = mediumScale;
+      maxCount = targetMedium;
+    } else if (isSmall) {
+      scale = smallScale;
+      maxCount = targetSmall;
+    } else {
+      scale = mediumScale;
+      maxCount = targetMedium;
+    }
+
     row.style.setProperty('--scale', String(scale));
     row.style.setProperty('--card-base', `${base}px`);
     row.style.width = `${bigRowContentWidth}px`;
@@ -679,6 +961,18 @@ export function updateLayout() {
     grid._moreWrapRef = savedMore;
   }
   // Cache last layout metrics for fast-path updates on minor resizes
-  grid._layoutMetrics = { base, perRowBig, bigRowContentWidth, targetSmall, smallScale, bigRows };
+  grid._layoutMetrics = /** @type {CachedLayoutMetrics} */ ({
+    base,
+    perRowBig,
+    bigRowContentWidth,
+    targetMedium,
+    mediumScale,
+    targetSmall,
+    smallScale,
+    bigRows: effectiveBigRows,
+    mediumRows: effectiveMediumRows,
+    useSmallRows,
+    forceCompact
+  });
   grid._totalRows = newTotalRows;
 }

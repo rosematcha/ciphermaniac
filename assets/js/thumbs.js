@@ -1,3 +1,5 @@
+import { normalizeCardNumber } from './card/routing.js';
+
 function sanitizePrimary(name) {
   // Normalize and keep Unicode letters/numbers, apostrophes, dashes, underscores; spaces -> underscores
   const sanitized = String(name).normalize('NFC')
@@ -32,46 +34,78 @@ function teamRocketVariants(name) {
   return variants;
 }
 
+function normalizeSetCode(value) {
+  return String(value ?? '').toUpperCase().trim();
+}
+
+function appendCandidate(list, base, relative) {
+  if (!relative) {return;}
+  const trimmed = relative.startsWith('/') ? relative.slice(1) : relative;
+  const fullPath = `${base}${trimmed}`;
+  if (!list.includes(fullPath)) {
+    list.push(fullPath);
+  }
+}
+
+function getVariantOverride(overrides, name, setCode, number) {
+  if (!overrides) {return null;}
+  const key = `${name}::${setCode}::${number}`;
+  return overrides[key] || null;
+}
+
 /**
- *
- * @param name
- * @param useSm
- * @param overrides
- * @param variant
+ * Build the ordered list of thumbnail candidate URLs for a given card.
+ * Variant-specific thumbnails are prioritized when set/number data is available.
+ * @param {string} name
+ * @param {boolean} useSm
+ * @param {Record<string, string>|undefined} overrides
+ * @param {{set?: string, number?: string|number}|undefined} variant
+ * @returns {string[]}
  */
 export function buildThumbCandidates(name, useSm, overrides, variant) {
-  // useSm: true -> sm folder, false -> xs folder
   const base = useSm ? '/thumbnails/sm/' : '/thumbnails/xs/';
-  const out = [];
-  if (overrides && overrides[name]) {
-    out.push(base + overrides[name]);
-  }
-  // If variant info is provided (set+number), ONLY use that filename (no fallbacks)
-  if (variant && variant.set && variant.number) {
-    const primaryVariant = `${sanitizePrimary(`${name}_${String(variant.set)}_${String(variant.number)}`)}.png`;
-    out.push(base + primaryVariant);
-    // Return early - don't add fallback candidates when we have specific variant info
-    return Array.from(new Set(out));
+  const candidates = [];
+
+  const hasVariant = variant && variant.set && variant.number;
+  if (hasVariant) {
+    const setCode = normalizeSetCode(variant.set);
+    const number = normalizeCardNumber(variant.number);
+    if (setCode && number) {
+      const variantFilename = `${sanitizePrimary(`${name}_${setCode}_${number}`)}.png`;
+      appendCandidate(candidates, base, variantFilename);
+
+      const variantOverride = getVariantOverride(overrides, name, setCode, number);
+      if (variantOverride) {
+        appendCandidate(candidates, base, variantOverride);
+      } else if (overrides && overrides[name]) {
+        appendCandidate(candidates, base, overrides[name]);
+      }
+
+      return candidates;
+    }
   }
 
-  // Fallback candidates (only when no variant info available)
-  const primary = `${sanitizePrimary(name)}.png`;
-  out.push(base + primary);
-  // Apostrophe handling variants
-  out.push(`${base + sanitizeStripPossessive(name)}.png`);
-  out.push(`${base + sanitizeNoApostrophes(name)}.png`);
-  // ASCII-folded variants (accents -> ASCII)
-  const ascii = asciiFold(name);
-  out.push(`${base + sanitizePrimary(ascii)}.png`);
-  out.push(`${base + sanitizeStripPossessive(ascii)}.png`);
-  out.push(`${base + sanitizeNoApostrophes(ascii)}.png`);
-  // Team Rocket's special case
-  for (const variant of teamRocketVariants(name)) {
-    out.push(`${base + sanitizePrimary(variant)}.png`);
-    out.push(`${base + sanitizeNoApostrophes(variant)}.png`);
+  if (overrides && overrides[name]) {
+    appendCandidate(candidates, base, overrides[name]);
   }
-  // Deduplicate while preserving order
-  return Array.from(new Set(out));
+
+  const primary = `${sanitizePrimary(name)}.png`;
+  appendCandidate(candidates, base, primary);
+
+  appendCandidate(candidates, base, `${sanitizeStripPossessive(name)}.png`);
+  appendCandidate(candidates, base, `${sanitizeNoApostrophes(name)}.png`);
+
+  const ascii = asciiFold(name);
+  appendCandidate(candidates, base, `${sanitizePrimary(ascii)}.png`);
+  appendCandidate(candidates, base, `${sanitizeStripPossessive(ascii)}.png`);
+  appendCandidate(candidates, base, `${sanitizeNoApostrophes(ascii)}.png`);
+
+  for (const rocketVariant of teamRocketVariants(name)) {
+    appendCandidate(candidates, base, `${sanitizePrimary(rocketVariant)}.png`);
+    appendCandidate(candidates, base, `${sanitizeNoApostrophes(rocketVariant)}.png`);
+  }
+
+  return candidates;
 }
 
 // buildThumbPath removed (unused)

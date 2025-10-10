@@ -2,6 +2,9 @@
 name = "ciphermaniac"
 compatibility_date = "2023-10-30"
 
+# Pages build output directory (required by Wrangler/Pages)
+pages_build_output_dir = "."
+
 # Cron Trigger: use Cloudflare Cron Triggers to run the daily pricing job at 20:30 UTC
 # (which is 3:30 PM CST during standard time). If you prefer an external cron, you
 # can still call the HTTP endpoint at /api/daily-pricing.
@@ -11,6 +14,11 @@ triggers = { crons = [ "30 20 * * *" ] }
 [[kv_namespaces]]
 binding = "PRICE_DATA"
 id = "c43f84feaa1049488390313c619610d8"  # You'll need to create this KV namespace
+
+# R2 bucket binding for report storage
+[[r2_buckets]]
+bucket_name = "ciphermaniac-reports"
+binding = "REPORTS"
 
 # Environment variables (set these in CloudFlare dashboard)
 [env.production.vars]

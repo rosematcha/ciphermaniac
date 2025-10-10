@@ -12,9 +12,12 @@ import { logger } from './utils/logger.js';
  * @property {number} base - Base card width
  * @property {number} perRowBig - Cards per big row
  * @property {number} bigRowContentWidth - Content width of big rows
+ * @property {number} targetMedium - Target cards per medium row
+ * @property {number} mediumScale - Scale factor for medium rows
  * @property {number} targetSmall - Target cards per small row
  * @property {number} smallScale - Scale factor for small rows
  * @property {number} bigRows - Number of big rows
+ * @property {number} mediumRows - Number of medium rows
  */
 
 /**
@@ -25,11 +28,15 @@ import { logger } from './utils/logger.js';
 export function computeLayout(containerWidth) {
   const { GAP, BASE_CARD_WIDTH, MIN_BASE_CARD_WIDTH, BIG_ROWS_COUNT, MIN_SCALE } = CONFIG.LAYOUT;
 
+  // Reserve minimum 20px padding (10px each side) to prevent horizontal scroll
+  const MIN_HORIZONTAL_PADDING = 20;
+  const effectiveWidth = Math.max(0, containerWidth - MIN_HORIZONTAL_PADDING);
+
   const gap = GAP;
   let base = BASE_CARD_WIDTH;
 
-  if (containerWidth > 0) {
-    const targetBaseForTwo = Math.floor(((containerWidth + gap) / 2) - gap);
+  if (effectiveWidth > 0) {
+    const targetBaseForTwo = Math.floor(((effectiveWidth + gap) / 2) - gap);
     if (targetBaseForTwo >= MIN_BASE_CARD_WIDTH) {
       base = Math.min(BASE_CARD_WIDTH, targetBaseForTwo);
     } else {
@@ -38,18 +45,31 @@ export function computeLayout(containerWidth) {
   }
 
   const cardOuter = base + gap;
-  const perRowBig = Math.max(1, Math.floor((containerWidth + gap) / cardOuter));
+  const perRowBig = Math.max(1, Math.floor((effectiveWidth + gap) / cardOuter));
   const bigRowContentWidth = perRowBig * base + Math.max(0, perRowBig - 1) * gap;
 
-  let targetSmall = Math.max(1, perRowBig + 1);
-  const rawScale = (((bigRowContentWidth + gap) / targetSmall) - gap) / base;
+  // Calculate medium row (perRowBig + 1 cards)
+  let targetMedium = Math.max(1, perRowBig + 1);
+  const rawMediumScale = (((bigRowContentWidth + gap) / targetMedium) - gap) / base;
+  let mediumScale;
+
+  if (rawMediumScale < MIN_SCALE) {
+    targetMedium = perRowBig;
+    mediumScale = 1;
+  } else {
+    mediumScale = Math.min(1, rawMediumScale);
+  }
+
+  // Calculate small row (perRowBig + 2 cards)
+  let targetSmall = Math.max(1, perRowBig + 2);
+  const rawSmallScale = (((bigRowContentWidth + gap) / targetSmall) - gap) / base;
   let smallScale;
 
-  if (rawScale < MIN_SCALE) {
+  if (rawSmallScale < MIN_SCALE) {
     targetSmall = perRowBig;
     smallScale = 1;
   } else {
-    smallScale = Math.min(1, rawScale);
+    smallScale = Math.min(1, rawSmallScale);
   }
 
   const metrics = {
@@ -57,9 +77,12 @@ export function computeLayout(containerWidth) {
     base,
     perRowBig,
     bigRowContentWidth,
+    targetMedium,
+    mediumScale,
     targetSmall,
     smallScale,
-    bigRows: BIG_ROWS_COUNT
+    bigRows: 1, // Only first row is large
+    mediumRows: 1 // Only second row is medium
   };
 
   logger.debug('Computed layout metrics', { containerWidth, ...metrics });

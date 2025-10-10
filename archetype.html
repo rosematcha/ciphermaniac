@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Archetype Detail · Ciphermaniac</title>
+  <link rel="stylesheet" href="/assets/style.css" />
+  <link rel="icon" href="data:," />
+</head>
+<body>
+  <div class="archetype-page" data-state="loading">
+    <main class="archetype-main">
+      <section class="archetype-content">
+        <div id="archetype-loading" class="archetype-loading" role="status">
+          <p>Loading archetype details…</p>
+        </div>
+
+        <div id="archetype-error" class="archetype-error" role="alert" hidden>
+          <h2>We couldn't load that archetype.</h2>
+          <p>Please refresh the page or choose another event.</p>
+        </div>
+
+        <div class="archetype-simple" hidden>
+          <div class="archetype-header-row">
+            <nav class="archetype-breadcrumb" aria-label="Breadcrumb">
+              <a class="archetype-breadcrumb__link" href="/archetype-analysis.html">← Back to Analysis</a>
+            </nav>
+            <h1 id="archetype-title" class="archetype-title">Loading archetype…</h1>
+          </div>
+
+          <div class="archetype-controls">
+            <div class="archetype-control-row">
+              <label for="archetype-granularity-range">
+                Show cards played in ≥ <output id="archetype-granularity-output" for="archetype-granularity-range">60%</output> of decks
+              </label>
+              <input type="range" id="archetype-granularity-range" min="0" max="100" value="60" step="5" />
+            </div>
+
+            <div class="archetype-filters">
+              <select id="archetype-include-card" title="Include Card">
+                <option value="">Include Card</option>
+              </select>
+
+              <select id="archetype-exclude-card" title="Exclude Card">
+                <option value="">Exclude Card</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="skeleton-summary" class="skeleton-summary" hidden>
+            <span class="skeleton-count">Skeleton: <strong id="skeleton-count-value">0</strong> cards</span>
+            <span id="skeleton-warnings" class="skeleton-warnings"></span>
+          </div>
+        </div>
+      </section>
+
+      <section id="grid" class="grid" role="grid" aria-label="Archetype card grid" hidden></section>
+    </main>
+  </div>
+
+  <template id="card-template">
+    <article class="card" tabindex="0">
+      <div class="thumb">
+        <img alt="" />
+        <div class="count-badge" aria-label="Most common count"></div>
+        <div class="overlay">
+          <div class="hist" aria-label="Count distribution per copies"></div>
+          <div class="usagebar" title="Usage %">
+            <div class="bar"></div>
+            <span class="pct"></span>
+          </div>
+        </div>
+      </div>
+      <div class="titleRow">
+        <h3 class="name"></h3>
+        <div class="counts"></div>
+      </div>
+    </article>
+  </template>
+
+  <script type="module">
+    import { createHeader } from '/assets/js/components/header.js';
+    import { createFooter } from '/assets/js/components/footer.js';
+
+    const header = createHeader({ currentPage: 'analysis' });
+    const footer = createFooter();
+
+    document.body.insertAdjacentElement('afterbegin', header);
+    document.body.insertAdjacentElement('beforeend', footer);
+  </script>
+  <script src="/assets/js/archetype.js" type="module"></script>
+</body>
+</html>
