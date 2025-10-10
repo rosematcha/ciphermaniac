@@ -79,14 +79,28 @@ class FeedbackForm {
 
   handleFeedbackTypeChange() {
     const { feedbackType, bugDetails } = this.elements;
+    const feedbackTextarea = document.getElementById('feedbackText');
 
     if (feedbackType.value === 'bug') {
       bugDetails.style.display = 'block';
       setRequiredFields(bugDetails, true);
+      if (feedbackTextarea instanceof HTMLTextAreaElement) {
+        feedbackTextarea.placeholder = 'Please describe your bug report or feature request in detail...';
+      }
+    } else if (feedbackType.value === 'love') {
+      bugDetails.style.display = 'none';
+      setRequiredFields(bugDetails, false);
+      this.resetPlatformFields();
+      if (feedbackTextarea instanceof HTMLTextAreaElement) {
+        feedbackTextarea.placeholder = 'User-sama... I didn\'t know you felt that way...';
+      }
     } else {
       bugDetails.style.display = 'none';
       setRequiredFields(bugDetails, false);
       this.resetPlatformFields();
+      if (feedbackTextarea instanceof HTMLTextAreaElement) {
+        feedbackTextarea.placeholder = 'Please describe your bug report or feature request in detail...';
+      }
     }
   }
 

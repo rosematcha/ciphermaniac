@@ -21,6 +21,7 @@ export const CONFIG = Object.freeze({
   // API configuration
   API: {
     REPORTS_BASE: '/reports',
+    R2_BASE: 'https://r2.ciphermaniac.com',
     TIMEOUT_MS: 10000,
     RETRY_ATTEMPTS: 3,
     RETRY_DELAY_MS: 1000
