@@ -1,0 +1,1599 @@
+------formdata-undici-065426445941
+Content-Disposition: form-data; name="metadata"
+
+{"main_module":"functionsWorker-0.23926606110226234.js"}
+------formdata-undici-065426445941
+Content-Disposition: form-data; name="functionsWorker-0.23926606110226234.js"; filename="functionsWorker-0.23926606110226234.js"
+Content-Type: application/javascript+module
+
+var __defProp = Object.defineProperty;
+var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+
+// api/pricing.js
+var TCGCSV_GROUPS_URL = "https://tcgcsv.com/tcgplayer/3/groups";
+var DATABASE_CARDS = /* @__PURE__ */ new Set([
+  "Academy at Night::SFA::054",
+  "Air Balloon::BLK::079",
+  "Ancient Booster Energy Capsule::TEF::140",
+  "Annihilape::SSP::100",
+  "Applin::TWM::017",
+  "Archaludon ex::SSP::130",
+  "Area Zero Underdepths::SCR::131",
+  "Armarouge::SVI::041",
+  "Artazon::PAL::171",
+  "Arven::OBF::186",
+  "Big Air Balloon::MEW::155",
+  "Binding Mochi::PRE::095",
+  "Black Belt's Training::JTG::145",
+  "Blaziken ex::JTG::024",
+  "Blaziken::DRI::042",
+  "Blissey ex::TWM::134",
+  "Bloodmoon Ursaluna ex::TWM::141",
+  "Bombirdier ex::PAR::156",
+  "Boomerang Energy::TWM::166",
+  "Boss's Orders::PAL::172",
+  "Bouffalant::SCR::119",
+  "Brave Bangle::WHT::080",
+  "Bravery Charm::PAL::173",
+  "Briar::SCR::132",
+  "Brilliant Blender::SSP::164",
+  "Brock's Scouting::JTG::146",
+  "Brute Bonnet::PAR::123",
+  "Buddy-Buddy Poffin::TEF::144",
+  "Budew::PRE::004",
+  "Bug Catching Set::TWM::143",
+  "Calamitous Snowy Mountain::PAL::174",
+  "Calamitous Wasteland::PAL::175",
+  "Carmine::TWM::145",
+  "Centiskorch::SSP::028",
+  "Ceruledge ex::SSP::036",
+  "Chansey::MEW::113",
+  "Chansey::TWM::133",
+  "Charcadet::PAL::039",
+  "Charcadet::PAR::026",
+  "Charcadet::SCR::029",
+  "Charcadet::SSP::032",
+  "Charizard ex::OBF::125",
+  "Charmander::OBF::026",
+  "Charmander::PAF::007",
+  "Charmander::SVP::047",
+  "Charmeleon::MEW::005",
+  "Charmeleon::OBF::027",
+  "Charmeleon::PAF::008",
+  "Chien-Pao::SSP::056",
+  "Chi-Yu::PAR::029",
+  "Chi-Yu::TWM::039",
+  "Ciphermaniac's Codebreaking::TEF::145",
+  "Clefable::TWM::079",
+  "Clefairy::OBF::081",
+  "Cleffa::OBF::080",
+  "Colress's Tenacity::SFA::057",
+  "Combusken::DRI::041",
+  "Combusken::JTG::023",
+  "Conkeldurr::TWM::105",
+  "Cornerstone Mask Ogerpon ex::TWM::112",
+  "Counter Catcher::PAR::160",
+  "Counter Gain::SSP::169",
+  "Crabominable::SCR::042",
+  "Crispin::SCR::133",
+  "Croconaw::TEF::040",
+  "Crushing Hammer::SVI::168",
+  "Crustle::DRI::012",
+  "Cycling Road::MEW::157",
+  "Cynthia's Gabite::DRI::103",
+  "Cynthia's Garchomp ex::DRI::104",
+  "Cynthia's Gible::DRI::102",
+  "Cynthia's Power Weight::DRI::162",
+  "Cynthia's Roselia::DRI::007",
+  "Cynthia's Roserade::DRI::008",
+  "Cynthia's Spiritomb::DRI::129",
+  "Cyrano::SSP::170",
+  "Darkness Energy::SVE::015",
+  "Defiance Band::SVI::169",
+  "Defiance Vest::PAR::162",
+  "Deino::SSP::117",
+  "Dipplin::TWM::018",
+  "Ditto::MEW::132",
+  "Dodrio::MEW::085",
+  "Doduo::MEW::084",
+  "Dragapult ex::TWM::130",
+  "Drakloak::TWM::129",
+  "Drayton::SSP::174",
+  "Dreepy::TWM::128",
+  "Drifloon::SVI::089",
+  "Dudunsparce ex::JTG::121",
+  "Dudunsparce::TEF::129",
+  "Dunsparce::JTG::120",
+  "Dunsparce::PAL::156",
+  "Dunsparce::TEF::128",
+  "Duraludon::SCR::106",
+  "Durant ex::SSP::004",
+  "Dusclops::PRE::036",
+  "Dusk Ball::SSP::175",
+  "Dusknoir::PRE::037",
+  "Duskull::PRE::035",
+  "Dwebble::DRI::011",
+  "Earthen Vessel::PAR::163",
+  "Eevee ex::PRE::075",
+  "Eevee::MEW::133",
+  "Eevee::SSP::143",
+  "Electric Generator::SVI::170",
+  "Elgyem::BLK::040",
+  "Enamorus::TWM::093",
+  "Energy Retrieval::SVI::171",
+  "Energy Search Pro::SSP::176",
+  "Energy Search::SVI::172",
+  "Energy Sticker::MEW::159",
+  "Energy Switch::SVI::173",
+  "Enhanced Hammer::TWM::148",
+  "Enriching Energy::SSP::191",
+  "Eri::TEF::146",
+  "Espathra ex::PAF::006",
+  "Eternatus::SSP::141",
+  "Ethan's Adventure::DRI::165",
+  "Ethan's Cyndaquil::DRI::032",
+  "Ethan's Ho-Oh ex::DRI::039",
+  "Ethan's Pichu::DRI::071",
+  "Ethan's Quilava::DRI::033",
+  "Ethan's Sudowoodo::DRI::093",
+  "Ethan's Typhlosion::DRI::034",
+  "Exp. Share::SVI::174",
+  "Explorer's Guidance::TEF::147",
+  "Fan Rotom::SCR::118",
+  "Farigiraf ex::TEF::108",
+  "Feebas::SSP::041",
+  "Feebas::TWM::049",
+  "Feraligatr::TEF::041",
+  "Festival Grounds::TWM::149",
+  "Fezandipiti ex::SFA::038",
+  "Fighting Energy::SVE::014",
+  "Fire Energy::SVE::010",
+  "Flamigo::PAR::106",
+  "Flareon ex::PRE::014",
+  "Flittle::PAR::080",
+  "Flittle::SCR::068",
+  "Flittle::SSP::094",
+  "Flittle::SVI::100",
+  "Flutter Mane::TEF::078",
+  "Frillish::WHT::044",
+  "Froakie::OBF::056",
+  "Frogadier::TWM::057",
+  "Froslass::TWM::053",
+  "Future Booster Energy Capsule::TEF::149",
+  "Galvantula ex::SCR::051",
+  "Galvantula::SFA::002",
+  "Gardevoir ex::SVI::086",
+  "Genesect ex::BLK::067",
+  "Genesect::SFA::040",
+  "Gholdengo ex::PAR::139",
+  "Gholdengo::SSP::131",
+  "Gimmighoul::PAR::087",
+  "Gimmighoul::PAR::088",
+  "Gimmighoul::SSP::097",
+  "Girafarig::PAL::154",
+  "Girafarig::TEF::066",
+  "Girafarig::TWM::083",
+  "Glass Trumpet::SCR::135",
+  "Glimmet::PAL::124",
+  "Glimmora ex::OBF::123",
+  "Gouging Fire ex::TEF::038",
+  "Gouging Fire::SSP::038",
+  "Grafaiai::PAL::146",
+  "Grand Tree::SCR::136",
+  "Grass Energy::SVE::009",
+  "Gravity Gemstone::SCR::137",
+  "Gravity Mountain::SSP::177",
+  "Great Ball::PAL::183",
+  "Great Tusk::TEF::097",
+  "Greninja ex::TWM::106",
+  "Grookey::TWM::014",
+  "Handheld Fan::TWM::150",
+  "Harlequin::WHT::083",
+  "Hassel::TWM::151",
+  "Hawlucha::SVI::118",
+  "Hearthflame Mask Ogerpon ex::TWM::040",
+  "Heavy Baton::TEF::151",
+  "Hero's Cape::TEF::152",
+  "Hilda::WHT::084",
+  "Ho-Oh::SSP::019",
+  "Hoopa ex::PAR::098",
+  "Hoothoot::PRE::077",
+  "Hoothoot::SCR::114",
+  "Hoothoot::TEF::126",
+  "Hop's Bag::JTG::147",
+  "Hop's Choice Band::JTG::148",
+  "Hop's Cramorant::JTG::138",
+  "Hop's Dubwool::JTG::136",
+  "Hop's Snorlax::JTG::117",
+  "Hop's Wooloo::JTG::135",
+  "Hop's Zacian ex::JTG::111",
+  "Hydrapple::DRI::018",
+  "Hydreigon ex::SSP::119",
+  "Hyper Aroma::TWM::152",
+  "Indeedee::SVI::153",
+  "Iono::PAL::185",
+  "Iron Bundle::PAR::056",
+  "Iron Crown ex::TEF::081",
+  "Iron Hands ex::PAR::070",
+  "Iron Leaves ex::TEF::025",
+  "Iron Thorns ex::TWM::077",
+  "Iron Valiant ex::PAR::089",
+  "Jacq::SVI::175",
+  "Jamming Tower::TWM::153",
+  "Janine's Secret Art::PRE::112",
+  "Jellicent ex::WHT::045",
+  "Jet Energy::PAL::190",
+  "Joltik::SCR::050",
+  "Judge::DRI::167",
+  "Judge::SVI::176",
+  "Kieran::TWM::154",
+  "Kirlia::SVI::085",
+  "Klawf::PAR::105",
+  "Klefki::SVI::096",
+  "Koraidon::SSP::116",
+  "Koraidon::TEF::119",
+  "Kyurem::SFA::047",
+  "Lacey::SCR::139",
+  "Lana's Aid::TWM::155",
+  "Larry's Skill::PRE::115",
+  "Larvitar::JTG::080",
+  "Latias ex::SSP::076",
+  "Leafeon ex::PRE::006",
+  "Leftovers::MEW::163",
+  "Legacy Energy::TWM::167",
+  "Letter of Encouragement::OBF::189",
+  "Levincia::JTG::150",
+  "Lightning Energy::SVE::012",
+  "Lillie's Clefairy ex::JTG::056",
+  "Lillie's Pearl::JTG::151",
+  "Lively Stadium::SSP::180",
+  "Lokix::PAL::021",
+  "Lucky Helmet::TWM::158",
+  "Luminous Energy::PAL::191",
+  "Luxray::PAL::071",
+  "Luxurious Cape::PAR::166",
+  "Magmar::MEW::126",
+  "Magmortar::JTG::021",
+  "Magnemite::SSP::058",
+  "Magneton::SSP::059",
+  "Mamoswine ex::JTG::079",
+  "Mankey::SSP::098",
+  "Maractus::JTG::008",
+  "Marnie's Grimmsnarl ex::DRI::136",
+  "Marnie's Impidimp::DRI::134",
+  "Marnie's Morgrem::DRI::135",
+  "Max Rod::PRE::116",
+  "Maximum Belt::TEF::154",
+  "Medical Energy::PAR::182",
+  "Mesagoza::SVI::178",
+  "Metal Energy::SVE::016",
+  "Mew ex::MEW::151",
+  "Milotic ex::SSP::042",
+  "Mimikyu::PAL::097",
+  "Minior::PAR::099",
+  "Miraidon ex::SVI::081",
+  "Miraidon::TEF::121",
+  "Miriam::SVI::179",
+  "Mist Energy::TEF::161",
+  "Moonlit Hill::PAF::081",
+  "Morty's Conviction::TEF::155",
+  "Munkidori ex::SFA::037",
+  "Munkidori::TWM::095",
+  "Natu::PAR::071",
+  "Neo Upper Energy::TEF::162",
+  "Nest Ball::SVI::181",
+  "Neutralization Zone::SFA::060",
+  "Night Stretcher::SFA::061",
+  "Noctowl::SCR::115",
+  "N's Castle::JTG::152",
+  "N's Darmanitan::JTG::027",
+  "N's Darumaka::JTG::026",
+  "N's PP Up::JTG::153",
+  "N's Reshiram::JTG::116",
+  "N's Sigilyph::JTG::064",
+  "N's Zoroark ex::JTG::098",
+  "N's Zorua::JTG::097",
+  "Nymble::PAR::013",
+  "Ogre's Mask::TWM::159",
+  "Okidogi::TWM::111",
+  "Pal Pad::SVI::182",
+  "Pecharunt ex::SFA::039",
+  "Pecharunt::SVP::149",
+  "Penny::SVI::183",
+  "Perilous Jungle::TEF::156",
+  "Picnic Basket::SVI::184",
+  "Pidgeot ex::OBF::164",
+  "Pidgeotto::MEW::017",
+  "Pidgeotto::OBF::163",
+  "Pidgey::MEW::016",
+  "Pidgey::OBF::162",
+  "Pikachu ex::SSP::057",
+  "Piloswine::JTG::078",
+  "Pok\xE9 Vital A::SFA::062",
+  "Pok\xE9gear 3.0::SVI::186",
+  "Pok\xE9mon Catcher::SVI::187",
+  "Pok\xE9mon League Headquarters::OBF::192",
+  "Postwick::JTG::154",
+  "Powerglass::SFA::063",
+  "Practice Studio::PAL::186",
+  "Precious Trolley::SSP::185",
+  "Prime Catcher::TEF::157",
+  "Prism Energy::BLK::086",
+  "Professor Sada's Vitality::PAR::170",
+  "Professor Turo's Scenario::PAR::171",
+  "Professor's Research::JTG::155",
+  "Protective Goggles::MEW::164",
+  "Psychic Energy::SVE::013",
+  "Pupitar::PRE::048",
+  "Rabsca::TEF::024",
+  "Raging Bolt ex::TEF::123",
+  "Raging Bolt::SCR::111",
+  "Ralts::SVI::084",
+  "Rare Candy::SVI::191",
+  "Reboot Pod::TEF::158",
+  "Redeemable Ticket::JTG::156",
+  "Regigigas::PRE::086",
+  "Relicanth::TEF::084",
+  "Rellor::PAL::025",
+  "Rellor::TEF::023",
+  "Rescue Board::TEF::159",
+  "Reshiram ex::WHT::020",
+  "Revavroom::SVI::142",
+  "Reversal Energy::PAL::192",
+  "Rigid Band::MEW::165",
+  "Roaring Moon ex::PAR::124",
+  "Roaring Moon::TEF::109",
+  "Rocky Helmet::SVI::193",
+  "Ruffian::JTG::157",
+  "Sacred Ash::DRI::168",
+  "Sandy Shocks ex::PAR::108",
+  "Scizor ex::TEF::111",
+  "Scizor::OBF::141",
+  "Scoop Up Cyclone::TWM::162",
+  "Scream Tail::PAR::086",
+  "Scyther::MEW::123",
+  "Scyther::OBF::004",
+  "Scyther::TEF::001",
+  "Secret Box::TWM::163",
+  "Shaymin::DRI::010",
+  "Shroodle::SSP::120",
+  "Shroodle::SVP::099",
+  "Sizzlipede::SSP::027",
+  "Sizzlipede::TEF::036",
+  "Slaking ex::SSP::147",
+  "Slakoth::PAL::160",
+  "Slither Wing::PAR::107",
+  "Slowking::SCR::058",
+  "Slowpoke::PRE::018",
+  "Slowpoke::SVI::042",
+  "Snorunt::PAR::037",
+  "Snorunt::TWM::051",
+  "Sparkling Crystal::SCR::142",
+  "Spikemuth Gym::DRI::169",
+  "Squawkabilly ex::PAL::169",
+  "Super Potion::JTG::158",
+  "Super Rod::PAL::188",
+  "Superior Energy Retrieval::PAL::189",
+  "Surfer::SSP::187",
+  "Survival Brace::TWM::164",
+  "Swinub::JTG::077",
+  "Switch::SVI::194",
+  "Sylveon ex::SSP::086",
+  "Tapu Koko ex::JTG::051",
+  "Tatsugiri::TWM::131",
+  "Teal Mask Ogerpon ex::TWM::025",
+  "Team Rocket's Archer::DRI::170",
+  "Team Rocket's Ariana::DRI::171",
+  "Team Rocket's Articuno::DRI::051",
+  "Team Rocket's Energy::DRI::182",
+  "Team Rocket's Factory::DRI::173",
+  "Team Rocket's Giovanni::DRI::174",
+  "Team Rocket's Mewtwo ex::DRI::081",
+  "Team Rocket's Mimikyu::DRI::087",
+  "Team Rocket's Murkrow::DRI::127",
+  "Team Rocket's Petrel::DRI::176",
+  "Team Rocket's Proton::DRI::177",
+  "Team Rocket's Spidops::DRI::020",
+  "Team Rocket's Tarountula::DRI::019",
+  "Team Rocket's Transceiver::DRI::178",
+  "Team Rocket's Venture Bomb::DRI::179",
+  "Team Rocket's Watchtower::DRI::180",
+  "Team Rocket's Wobbuffet::DRI::082",
+  "Technical Machine: Devolution::PAR::177",
+  "Technical Machine: Evolution::PAR::178",
+  "Technical Machine: Turbo Energize::PAR::179",
+  "Techno Radar::PAR::180",
+  "Tera Orb::SSP::189",
+  "Terapagos ex::SCR::128",
+  "Thwackey::TWM::015",
+  "Ting-Lu ex::PAL::127",
+  "Toedscool::OBF::118",
+  "Toedscool::PAR::015",
+  "Toedscool::PAR::016",
+  "Toedscool::SCR::017",
+  "Toedscool::SVI::025",
+  "Toedscruel ex::OBF::022",
+  "Toedscruel::PAR::017",
+  "Togekiss::SSP::072",
+  "Togepi::OBF::083",
+  "Tool Scrapper::WHT::085",
+  "Torchic::DRI::040",
+  "Torchic::JTG::022",
+  "Totodile::TEF::039",
+  "Town Store::OBF::196",
+  "Tyranitar::JTG::095",
+  "Ultra Ball::SVI::196",
+  "Umbreon ex::PRE::060",
+  "Unfair Stamp::TWM::165",
+  "Varoom::SFA::043",
+  "Varoom::SVI::141",
+  "Vengeful Punch::OBF::197",
+  "Victini::SSP::021",
+  "Vigoroth::PAL::161",
+  "Vitality Band::SVI::197",
+  "Volcanion ex::JTG::031",
+  "Walking Wake ex::TEF::050",
+  "Water Energy::SVE::011",
+  "Wellspring Mask Ogerpon ex::TWM::064",
+  "Xatu::PAR::072",
+  "Xerosic's Machinations::SFA::064",
+  "Zacian ex::SVP::198",
+  "Zeraora::SCR::055",
+  "Zweilous::SSP::118"
+]);
+var DATABASE_CARD_LIST = Array.from(DATABASE_CARDS);
+var DATABASE_SETS = /* @__PURE__ */ new Set();
+DATABASE_CARD_LIST.forEach((card) => {
+  const parts = card.split("::");
+  if (parts.length >= 2) {
+    DATABASE_SETS.add(parts[1]);
+  }
+});
+var NORMALIZED_DATABASE_CARD_MAP = buildNormalizedCardMap(DATABASE_CARD_LIST);
+var DATABASE_ENERGY_CARDS = DATABASE_CARD_LIST.filter((card) => card.toLowerCase().includes("energy"));
+var BASIC_ENERGY_NAMES = /* @__PURE__ */ new Set([
+  "Darkness Energy",
+  "Fighting Energy",
+  "Fire Energy",
+  "Grass Energy",
+  "Lightning Energy",
+  "Metal Energy",
+  "Psychic Energy",
+  "Water Energy"
+]);
+console.log(`Database contains ${DATABASE_CARDS.size} cards across ${DATABASE_SETS.size} sets:`, Array.from(DATABASE_SETS));
+async function onRequestGet({ env }) {
+  try {
+    console.log("Starting daily pricing update...");
+    const groupsResponse = await fetch(TCGCSV_GROUPS_URL);
+    if (!groupsResponse.ok) {
+      throw new Error(`TCGCSV groups API error: ${groupsResponse.status}`);
+    }
+    const groupsData = await groupsResponse.json();
+    if (!groupsData.success) {
+      throw new Error("TCGCSV groups API returned success: false");
+    }
+    const setMappings = mapSetsToGroupIds(groupsData.results);
+    const priceData = await fetchPricesForSets(setMappings);
+    await addBasicEnergyPrices(priceData);
+    const foundCards = new Set(Object.keys(priceData));
+    const missingCards = DATABASE_CARD_LIST.filter((card) => !foundCards.has(card));
+    const missingBySet = {};
+    missingCards.forEach((card) => {
+      const parts = card.split("::");
+      if (parts.length >= 2) {
+        const setCode = parts[1];
+        if (!missingBySet[setCode]) {
+          missingBySet[setCode] = [];
+        }
+        missingBySet[setCode].push(card);
+      }
+    });
+    await storePriceData(env, priceData);
+    const response = {
+      success: true,
+      setsProcessed: Object.keys(setMappings).length,
+      cardsProcessed: Object.keys(priceData).length,
+      databaseCards: DATABASE_CARDS.size,
+      matchRate: `${(Object.keys(priceData).length / DATABASE_CARDS.size * 100).toFixed(1)}%`,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    if (missingCards.length > 0) {
+      response.missingCards = {
+        count: missingCards.length,
+        bySet: missingBySet,
+        // Include first 10 missing cards for quick reference
+        examples: missingCards.slice(0, 10)
+      };
+      console.log(`Missing ${missingCards.length} cards from pricing data:`, missingBySet);
+    }
+    return new Response(JSON.stringify(response), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+  } catch (error) {
+    console.error("Pricing update error:", error);
+    return new Response(JSON.stringify({
+      error: "Pricing update failed",
+      message: error.message,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+}
+__name(onRequestGet, "onRequestGet");
+function mapSetsToGroupIds(groups) {
+  const mappings = {};
+  const groupIndex = buildGroupIndex(groups);
+  for (const setAbbr of DATABASE_SETS) {
+    const group = groupIndex.get(setAbbr);
+    if (group) {
+      mappings[setAbbr] = group.groupId;
+      console.log(`Found mapping: ${setAbbr} -> ${group.groupId} (${group.name})`);
+    } else {
+      console.warn(`No TCGCSV group found for database set: ${setAbbr}`);
+    }
+  }
+  return mappings;
+}
+__name(mapSetsToGroupIds, "mapSetsToGroupIds");
+function buildGroupIndex(groups) {
+  const index = /* @__PURE__ */ new Map();
+  if (!Array.isArray(groups)) {
+    return index;
+  }
+  for (const group of groups) {
+    if (group && typeof group === "object" && group.abbreviation) {
+      index.set(group.abbreviation, group);
+    }
+  }
+  return index;
+}
+__name(buildGroupIndex, "buildGroupIndex");
+async function fetchPricesForSets(setMappings) {
+  const allPrices = {};
+  for (const [setAbbr, groupId] of Object.entries(setMappings)) {
+    if (!groupId) continue;
+    try {
+      console.log(`Fetching prices for set: ${setAbbr} (${groupId})`);
+      const csvUrl = `https://tcgcsv.com/tcgplayer/3/${groupId}/ProductsAndPrices.csv`;
+      const response = await fetch(csvUrl);
+      if (!response.ok) {
+        console.warn(`Failed to fetch CSV for ${setAbbr}: ${response.status}`);
+        continue;
+      }
+      const csvText = await response.text();
+      const cleanedData = preprocessCsvForPricing(csvText);
+      const setPrices = parseCleanedPriceData(cleanedData, setAbbr);
+      Object.assign(allPrices, setPrices);
+      console.log(`Processed ${Object.keys(setPrices).length} cards from ${setAbbr}`);
+    } catch (error) {
+      console.error(`Error processing set ${setAbbr}:`, error);
+    }
+  }
+  return allPrices;
+}
+__name(fetchPricesForSets, "fetchPricesForSets");
+function preprocessCsvForPricing(csvText) {
+  console.log("Parsing CSV into structured table (Excel-style approach)...");
+  const table = parseCsvToTable(csvText);
+  if (table.length === 0) {
+    console.warn("No valid CSV table parsed");
+    return [];
+  }
+  const cleanedRecords = extractEssentialColumnsFromTable(table);
+  console.log(`Excel-style parsing: ${table.length} rows \u2192 ${cleanedRecords.length} clean records`);
+  return cleanedRecords;
+}
+__name(preprocessCsvForPricing, "preprocessCsvForPricing");
+function parseCsvToTable(csvText) {
+  const lines = csvText.split("\n");
+  const rows = [];
+  let currentRow = "";
+  let inQuotedField = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const quoteCount = (line.match(/"/g) || []).length;
+    const unescapedQuotes = quoteCount - (line.match(/""/g) || []).length * 2;
+    currentRow += (currentRow ? "\n" : "") + line;
+    inQuotedField = unescapedQuotes % 2 !== 0 ? !inQuotedField : inQuotedField;
+    if (!inQuotedField && line.trim()) {
+      rows.push(currentRow);
+      currentRow = "";
+    }
+  }
+  if (currentRow.trim()) {
+    rows.push(currentRow);
+  }
+  console.log(`Reconstructed ${rows.length} complete CSV rows from ${lines.length} raw lines`);
+  const parsedRows = [];
+  let headers = null;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i].trim();
+    if (!row) continue;
+    const fields = parseCSVLine(row);
+    if (i === 0) {
+      headers = fields;
+      continue;
+    }
+    if (fields.length < 15 || !fields[0] || !fields[0].match(/^\d{6,}$/)) {
+      continue;
+    }
+    const rowObj = {};
+    for (let j = 0; j < Math.min(fields.length, headers.length); j++) {
+      rowObj[headers[j]] = fields[j];
+    }
+    parsedRows.push(rowObj);
+  }
+  console.log(`Parsed ${parsedRows.length} valid product rows with ${headers?.length} columns`);
+  return parsedRows;
+}
+__name(parseCsvToTable, "parseCsvToTable");
+function extractEssentialColumnsFromTable(table) {
+  const cleanedRecords = [];
+  for (const row of table) {
+    const productId = row.productId;
+    const name = row.name;
+    const marketPrice = parseFloat(row.marketPrice) || 0;
+    const extNumber = row.extNumber;
+    if (!productId || !name || !extNumber || !extNumber.match(/^\d{1,3}\/\d{2,3}$/)) {
+      continue;
+    }
+    if (!isReasonablePrice(marketPrice)) {
+      continue;
+    }
+    cleanedRecords.push({
+      productId,
+      name: name.replace(/"/g, "").trim(),
+      // Clean quotes
+      marketPrice,
+      extNumber
+    });
+  }
+  return cleanedRecords;
+}
+__name(extractEssentialColumnsFromTable, "extractEssentialColumnsFromTable");
+function parseCleanedPriceData(cleanedRecords, setAbbr) {
+  const prices = {};
+  let processedCount = 0;
+  let matchedCount = 0;
+  for (const record of cleanedRecords) {
+    processedCount++;
+    const cleanName = record.name.replace(/\s*-\s*\d{1,3}\/\d{2,3}$/, "").trim();
+    const cleanNumber = record.extNumber.split("/")[0].padStart(3, "0");
+    const cardKey = `${cleanName}::${setAbbr}::${cleanNumber}`;
+    const normalizedCardKey = normalizeAccentedChars(cardKey);
+    const finalCardKey = DATABASE_CARDS.has(cardKey) ? cardKey : NORMALIZED_DATABASE_CARD_MAP.get(normalizedCardKey);
+    if (!finalCardKey) {
+      continue;
+    }
+    matchedCount++;
+    const recordNameLower = record.name ? record.name.toLowerCase() : "";
+    if (recordNameLower.includes("noctowl") || recordNameLower.includes("pikachu ex") || recordNameLower.includes("gholdengo ex") || recordNameLower.includes("iron hands ex") || recordNameLower.includes("precious trolley") || recordNameLower.includes("area zero")) {
+      console.log(`TABLE-BASED PARSING: ${record.name}`);
+      console.log(`  ProductId: ${record.productId}`);
+      console.log(`  ExtNumber: ${record.extNumber}`);
+      console.log(`  MarketPrice: $${record.marketPrice} (from marketPrice column)`);
+      console.log(`  FinalCardKey: ${finalCardKey}`);
+    }
+    prices[finalCardKey] = {
+      price: record.marketPrice,
+      tcgPlayerId: record.productId
+    };
+  }
+  console.log(`Table-based parsing for ${setAbbr}: processed ${processedCount} records, matched ${matchedCount} database cards`);
+  return prices;
+}
+__name(parseCleanedPriceData, "parseCleanedPriceData");
+function isReasonablePrice(price) {
+  if (!price || isNaN(price) || price <= 0) return false;
+  if (price > 500) return false;
+  if (String(price).includes("69420")) return false;
+  if (price > 100 && price % 50 === 0) return false;
+  if (price > 50 && price % 25 === 0) return false;
+  return true;
+}
+__name(isReasonablePrice, "isReasonablePrice");
+async function addBasicEnergyPrices(priceData) {
+  const missingBasicEnergies = DATABASE_CARD_LIST.filter((card) => {
+    if (priceData[card]) return false;
+    const cardName = card.split("::")[0];
+    return BASIC_ENERGY_NAMES.has(cardName);
+  });
+  if (missingBasicEnergies.length > 0) {
+    console.log(`Setting ${missingBasicEnergies.length} basic energy cards to $0.01:`, missingBasicEnergies);
+    missingBasicEnergies.forEach((card) => {
+      priceData[card] = {
+        price: 0.01,
+        // Only basic energies are practically free
+        tcgPlayerId: null
+        // Basic energies don't have TCGPlayer IDs
+      };
+    });
+  }
+  const knownMalformedCards = [
+    "Superior Energy Retrieval::PAL::189"
+  ];
+  knownMalformedCards.forEach((card) => {
+    if (!priceData[card] && DATABASE_CARDS.has(card)) {
+      priceData[card] = {
+        price: 0.75,
+        // Reasonable default for special energy cards
+        tcgPlayerId: null
+        // Malformed entries don't have reliable TCGPlayer IDs
+      };
+      console.log(`Applied fallback price for malformed CSV entry: ${card} = $0.75`);
+    }
+  });
+  const otherMissingEnergies = DATABASE_ENERGY_CARDS.filter((card) => {
+    if (priceData[card]) return false;
+    const cardName = card.split("::")[0];
+    return !BASIC_ENERGY_NAMES.has(cardName);
+  });
+  if (otherMissingEnergies.length > 0) {
+    console.warn(`Missing prices for special energy cards (should come from regular sets):`, otherMissingEnergies);
+  }
+  console.log(`Energy processing complete: ${DATABASE_ENERGY_CARDS.length} total energy cards, ${missingBasicEnergies.length} set to $0.01`);
+}
+__name(addBasicEnergyPrices, "addBasicEnergyPrices");
+function parseCSVLine(line) {
+  const fields = [];
+  let current = "";
+  let inQuotes = false;
+  let i = 0;
+  while (i < line.length) {
+    const char = line[i];
+    if (char === '"') {
+      if (!inQuotes) {
+        inQuotes = true;
+      } else if (i + 1 < line.length && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = false;
+      }
+    } else if (char === "," && !inQuotes) {
+      fields.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+    i++;
+  }
+  fields.push(current);
+  return fields.map((field) => field.trim());
+}
+__name(parseCSVLine, "parseCSVLine");
+function normalizeAccentedChars(str) {
+  const accentMap = {
+    "\xE1": "a",
+    "\xE0": "a",
+    "\xE2": "a",
+    "\xE4": "a",
+    "\xE3": "a",
+    "\xE5": "a",
+    "\xE9": "e",
+    "\xE8": "e",
+    "\xEA": "e",
+    "\xEB": "e",
+    "\xED": "i",
+    "\xEC": "i",
+    "\xEE": "i",
+    "\xEF": "i",
+    "\xF3": "o",
+    "\xF2": "o",
+    "\xF4": "o",
+    "\xF6": "o",
+    "\xF5": "o",
+    "\xF8": "o",
+    "\xFA": "u",
+    "\xF9": "u",
+    "\xFB": "u",
+    "\xFC": "u",
+    "\xF1": "n",
+    "\xE7": "c",
+    "\xC1": "A",
+    "\xC0": "A",
+    "\xC2": "A",
+    "\xC4": "A",
+    "\xC3": "A",
+    "\xC5": "A",
+    "\xC9": "E",
+    "\xC8": "E",
+    "\xCA": "E",
+    "\xCB": "E",
+    "\xCD": "I",
+    "\xCC": "I",
+    "\xCE": "I",
+    "\xCF": "I",
+    "\xD3": "O",
+    "\xD2": "O",
+    "\xD4": "O",
+    "\xD6": "O",
+    "\xD5": "O",
+    "\xD8": "O",
+    "\xDA": "U",
+    "\xD9": "U",
+    "\xDB": "U",
+    "\xDC": "U",
+    "\xD1": "N",
+    "\xC7": "C"
+  };
+  return str.replace(/[áàâäãåéèêëíìîïóòôöõøúùûüñçÁÀÂÄÃÅÉÈÊËÍÌÎÏÓÒÔÖÕØÚÙÛÜÑÇ]/g, function(match2) {
+    return accentMap[match2] || match2;
+  });
+}
+__name(normalizeAccentedChars, "normalizeAccentedChars");
+function buildNormalizedCardMap(cards) {
+  const normalizedMap = /* @__PURE__ */ new Map();
+  for (const card of cards) {
+    const normalizedKey = normalizeAccentedChars(card);
+    if (!normalizedMap.has(normalizedKey)) {
+      normalizedMap.set(normalizedKey, card);
+    }
+  }
+  return normalizedMap;
+}
+__name(buildNormalizedCardMap, "buildNormalizedCardMap");
+async function storePriceData(env, priceData) {
+  const jsonData = {
+    lastUpdated: (/* @__PURE__ */ new Date()).toISOString(),
+    updateSource: "TCGCSV",
+    cardPrices: priceData
+  };
+  if (env.PRICE_DATA) {
+    await env.PRICE_DATA.put("current_prices", JSON.stringify(jsonData));
+    console.log("Price data stored in KV");
+  }
+  console.log(`Price update complete: ${Object.keys(priceData).length} cards updated`);
+  return jsonData;
+}
+__name(storePriceData, "storePriceData");
+
+// lib/runDailyPricingJob.js
+async function runDailyPricingJob(env) {
+  console.log("Daily pricing job triggered at:", (/* @__PURE__ */ new Date()).toISOString());
+  try {
+    const response = await onRequestGet({ env });
+    const result = await response.json();
+    console.log("Pricing update completed successfully:", result);
+    return new Response(JSON.stringify({
+      success: true,
+      message: "Daily pricing update completed",
+      result,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+  } catch (error) {
+    console.error("Daily pricing update failed:", error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: "Pricing update failed",
+      message: error.message,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+}
+__name(runDailyPricingJob, "runDailyPricingJob");
+
+// _cron/daily-pricing.js
+async function onRequestGet2({ env }) {
+  return runDailyPricingJob(env);
+}
+__name(onRequestGet2, "onRequestGet");
+
+// api/daily-pricing.js
+async function onRequestGet3({ env }) {
+  return runDailyPricingJob(env);
+}
+__name(onRequestGet3, "onRequestGet");
+async function onRequestPost({ env }) {
+  return runDailyPricingJob(env);
+}
+__name(onRequestPost, "onRequestPost");
+
+// api/feedback.js
+async function onRequestPost2({ request, env }) {
+  try {
+    const feedbackData = await request.json();
+    if (!feedbackData.feedbackType || !feedbackData.feedbackText) {
+      return new Response(JSON.stringify({ error: "Missing required fields" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+    const recipient = "reese@ciphermaniac.com";
+    const emailContent = buildEmailContent(feedbackData);
+    const resendResponse = await sendEmail(env, recipient, emailContent, feedbackData);
+    if (!resendResponse.ok) {
+      const errorText = await resendResponse.text();
+      console.error("Resend API Error Response:", errorText);
+      throw new Error(`Resend API error: ${resendResponse.status} - ${errorText}`);
+    }
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      }
+    });
+  } catch (error) {
+    console.error("Feedback submission error:", error);
+    return new Response(JSON.stringify({
+      error: "Internal server error",
+      message: error.message
+    }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      }
+    });
+  }
+}
+__name(onRequestPost2, "onRequestPost");
+async function onRequestOptions() {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type"
+    }
+  });
+}
+__name(onRequestOptions, "onRequestOptions");
+function buildEmailContent(data) {
+  const lines = [
+    `New ${data.feedbackType} submission from Ciphermaniac`,
+    "",
+    `Feedback Type: ${data.feedbackType}`,
+    ""
+  ];
+  if (data.feedbackType === "bug") {
+    lines.push("Technical Details:");
+    if (data.platform) {
+      lines.push(`Platform: ${data.platform}`);
+      if (data.platform === "desktop") {
+        if (data.desktopOS) lines.push(`OS: ${data.desktopOS}`);
+        if (data.desktopBrowser) lines.push(`Browser: ${data.desktopBrowser}`);
+      } else if (data.platform === "mobile") {
+        if (data.mobileOS) lines.push(`Mobile OS: ${data.mobileOS}`);
+        if (data.mobileBrowser) lines.push(`Browser: ${data.mobileBrowser}`);
+      }
+    }
+    lines.push("");
+  }
+  lines.push("Feedback:");
+  lines.push(data.feedbackText);
+  lines.push("");
+  if (data.followUp === "yes" && data.contactMethod && data.contactInfo) {
+    lines.push("Contact Information:");
+    lines.push(`Method: ${data.contactMethod}`);
+    lines.push(`Contact: ${data.contactInfo}`);
+  } else {
+    lines.push("No follow-up requested");
+  }
+  lines.push("");
+  lines.push(`Submitted at: ${(/* @__PURE__ */ new Date()).toISOString()}`);
+  return lines.join("\n");
+}
+__name(buildEmailContent, "buildEmailContent");
+async function sendEmail(env, recipient, content, feedbackData) {
+  const resendApiKey = env.RESEND_API_KEY;
+  if (!resendApiKey) {
+    throw new Error("RESEND_API_KEY environment variable not set");
+  }
+  const subject = `[Ciphermaniac] ${feedbackData.feedbackType === "bug" ? "Bug Report" : "Feature Request"}`;
+  const emailPayload = {
+    from: "Ciphermaniac Feedback <onboarding@resend.dev>",
+    to: recipient,
+    subject,
+    text: content
+  };
+  return fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${resendApiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(emailPayload)
+  });
+}
+__name(sendEmail, "sendEmail");
+
+// api/get-prices.js
+async function onRequestGet4({ env }) {
+  try {
+    if (!env.PRICE_DATA) {
+      return new Response(JSON.stringify({
+        error: "Price data not available",
+        message: "KV storage not configured"
+      }), {
+        status: 503,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        }
+      });
+    }
+    const priceDataJson = await env.PRICE_DATA.get("current_prices");
+    if (!priceDataJson) {
+      return new Response(JSON.stringify({
+        error: "No price data available",
+        message: "Price data has not been generated yet. Check back after 3:30 PM CST."
+      }), {
+        status: 404,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        }
+      });
+    }
+    const priceData = JSON.parse(priceDataJson);
+    return new Response(JSON.stringify(priceData), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "public, max-age=3600"
+        // Cache for 1 hour
+      }
+    });
+  } catch (error) {
+    console.error("Error serving price data:", error);
+    return new Response(JSON.stringify({
+      error: "Internal server error",
+      message: error.message
+    }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      }
+    });
+  }
+}
+__name(onRequestGet4, "onRequestGet");
+async function onRequestOptions2() {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type"
+    }
+  });
+}
+__name(onRequestOptions2, "onRequestOptions");
+
+// card/[[path]].js
+async function onRequest(context) {
+  return context.env.ASSETS.fetch(new URL("/card.html", context.request.url));
+}
+__name(onRequest, "onRequest");
+
+// ../.wrangler/tmp/pages-FAEz8z/functionsRoutes-0.010658033797763977.mjs
+var routes = [
+  {
+    routePath: "/_cron/daily-pricing",
+    mountPath: "/_cron",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet2]
+  },
+  {
+    routePath: "/api/daily-pricing",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet3]
+  },
+  {
+    routePath: "/api/daily-pricing",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost]
+  },
+  {
+    routePath: "/api/feedback",
+    mountPath: "/api",
+    method: "OPTIONS",
+    middlewares: [],
+    modules: [onRequestOptions]
+  },
+  {
+    routePath: "/api/feedback",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost2]
+  },
+  {
+    routePath: "/api/get-prices",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet4]
+  },
+  {
+    routePath: "/api/get-prices",
+    mountPath: "/api",
+    method: "OPTIONS",
+    middlewares: [],
+    modules: [onRequestOptions2]
+  },
+  {
+    routePath: "/api/pricing",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet]
+  },
+  {
+    routePath: "/card/:path*",
+    mountPath: "/card",
+    method: "",
+    middlewares: [],
+    modules: [onRequest]
+  }
+];
+
+// ../../../../AppData/Local/npm-cache/_npx/32026684e21afda6/node_modules/path-to-regexp/dist.es2015/index.js
+function lexer(str) {
+  var tokens = [];
+  var i = 0;
+  while (i < str.length) {
+    var char = str[i];
+    if (char === "*" || char === "+" || char === "?") {
+      tokens.push({ type: "MODIFIER", index: i, value: str[i++] });
+      continue;
+    }
+    if (char === "\\") {
+      tokens.push({ type: "ESCAPED_CHAR", index: i++, value: str[i++] });
+      continue;
+    }
+    if (char === "{") {
+      tokens.push({ type: "OPEN", index: i, value: str[i++] });
+      continue;
+    }
+    if (char === "}") {
+      tokens.push({ type: "CLOSE", index: i, value: str[i++] });
+      continue;
+    }
+    if (char === ":") {
+      var name = "";
+      var j = i + 1;
+      while (j < str.length) {
+        var code = str.charCodeAt(j);
+        if (
+          // `0-9`
+          code >= 48 && code <= 57 || // `A-Z`
+          code >= 65 && code <= 90 || // `a-z`
+          code >= 97 && code <= 122 || // `_`
+          code === 95
+        ) {
+          name += str[j++];
+          continue;
+        }
+        break;
+      }
+      if (!name)
+        throw new TypeError("Missing parameter name at ".concat(i));
+      tokens.push({ type: "NAME", index: i, value: name });
+      i = j;
+      continue;
+    }
+    if (char === "(") {
+      var count = 1;
+      var pattern = "";
+      var j = i + 1;
+      if (str[j] === "?") {
+        throw new TypeError('Pattern cannot start with "?" at '.concat(j));
+      }
+      while (j < str.length) {
+        if (str[j] === "\\") {
+          pattern += str[j++] + str[j++];
+          continue;
+        }
+        if (str[j] === ")") {
+          count--;
+          if (count === 0) {
+            j++;
+            break;
+          }
+        } else if (str[j] === "(") {
+          count++;
+          if (str[j + 1] !== "?") {
+            throw new TypeError("Capturing groups are not allowed at ".concat(j));
+          }
+        }
+        pattern += str[j++];
+      }
+      if (count)
+        throw new TypeError("Unbalanced pattern at ".concat(i));
+      if (!pattern)
+        throw new TypeError("Missing pattern at ".concat(i));
+      tokens.push({ type: "PATTERN", index: i, value: pattern });
+      i = j;
+      continue;
+    }
+    tokens.push({ type: "CHAR", index: i, value: str[i++] });
+  }
+  tokens.push({ type: "END", index: i, value: "" });
+  return tokens;
+}
+__name(lexer, "lexer");
+function parse(str, options) {
+  if (options === void 0) {
+    options = {};
+  }
+  var tokens = lexer(str);
+  var _a = options.prefixes, prefixes = _a === void 0 ? "./" : _a, _b = options.delimiter, delimiter = _b === void 0 ? "/#?" : _b;
+  var result = [];
+  var key = 0;
+  var i = 0;
+  var path = "";
+  var tryConsume = /* @__PURE__ */ __name(function(type) {
+    if (i < tokens.length && tokens[i].type === type)
+      return tokens[i++].value;
+  }, "tryConsume");
+  var mustConsume = /* @__PURE__ */ __name(function(type) {
+    var value2 = tryConsume(type);
+    if (value2 !== void 0)
+      return value2;
+    var _a2 = tokens[i], nextType = _a2.type, index = _a2.index;
+    throw new TypeError("Unexpected ".concat(nextType, " at ").concat(index, ", expected ").concat(type));
+  }, "mustConsume");
+  var consumeText = /* @__PURE__ */ __name(function() {
+    var result2 = "";
+    var value2;
+    while (value2 = tryConsume("CHAR") || tryConsume("ESCAPED_CHAR")) {
+      result2 += value2;
+    }
+    return result2;
+  }, "consumeText");
+  var isSafe = /* @__PURE__ */ __name(function(value2) {
+    for (var _i = 0, delimiter_1 = delimiter; _i < delimiter_1.length; _i++) {
+      var char2 = delimiter_1[_i];
+      if (value2.indexOf(char2) > -1)
+        return true;
+    }
+    return false;
+  }, "isSafe");
+  var safePattern = /* @__PURE__ */ __name(function(prefix2) {
+    var prev = result[result.length - 1];
+    var prevText = prefix2 || (prev && typeof prev === "string" ? prev : "");
+    if (prev && !prevText) {
+      throw new TypeError('Must have text between two parameters, missing text after "'.concat(prev.name, '"'));
+    }
+    if (!prevText || isSafe(prevText))
+      return "[^".concat(escapeString(delimiter), "]+?");
+    return "(?:(?!".concat(escapeString(prevText), ")[^").concat(escapeString(delimiter), "])+?");
+  }, "safePattern");
+  while (i < tokens.length) {
+    var char = tryConsume("CHAR");
+    var name = tryConsume("NAME");
+    var pattern = tryConsume("PATTERN");
+    if (name || pattern) {
+      var prefix = char || "";
+      if (prefixes.indexOf(prefix) === -1) {
+        path += prefix;
+        prefix = "";
+      }
+      if (path) {
+        result.push(path);
+        path = "";
+      }
+      result.push({
+        name: name || key++,
+        prefix,
+        suffix: "",
+        pattern: pattern || safePattern(prefix),
+        modifier: tryConsume("MODIFIER") || ""
+      });
+      continue;
+    }
+    var value = char || tryConsume("ESCAPED_CHAR");
+    if (value) {
+      path += value;
+      continue;
+    }
+    if (path) {
+      result.push(path);
+      path = "";
+    }
+    var open = tryConsume("OPEN");
+    if (open) {
+      var prefix = consumeText();
+      var name_1 = tryConsume("NAME") || "";
+      var pattern_1 = tryConsume("PATTERN") || "";
+      var suffix = consumeText();
+      mustConsume("CLOSE");
+      result.push({
+        name: name_1 || (pattern_1 ? key++ : ""),
+        pattern: name_1 && !pattern_1 ? safePattern(prefix) : pattern_1,
+        prefix,
+        suffix,
+        modifier: tryConsume("MODIFIER") || ""
+      });
+      continue;
+    }
+    mustConsume("END");
+  }
+  return result;
+}
+__name(parse, "parse");
+function match(str, options) {
+  var keys = [];
+  var re = pathToRegexp(str, keys, options);
+  return regexpToFunction(re, keys, options);
+}
+__name(match, "match");
+function regexpToFunction(re, keys, options) {
+  if (options === void 0) {
+    options = {};
+  }
+  var _a = options.decode, decode = _a === void 0 ? function(x) {
+    return x;
+  } : _a;
+  return function(pathname) {
+    var m = re.exec(pathname);
+    if (!m)
+      return false;
+    var path = m[0], index = m.index;
+    var params = /* @__PURE__ */ Object.create(null);
+    var _loop_1 = /* @__PURE__ */ __name(function(i2) {
+      if (m[i2] === void 0)
+        return "continue";
+      var key = keys[i2 - 1];
+      if (key.modifier === "*" || key.modifier === "+") {
+        params[key.name] = m[i2].split(key.prefix + key.suffix).map(function(value) {
+          return decode(value, key);
+        });
+      } else {
+        params[key.name] = decode(m[i2], key);
+      }
+    }, "_loop_1");
+    for (var i = 1; i < m.length; i++) {
+      _loop_1(i);
+    }
+    return { path, index, params };
+  };
+}
+__name(regexpToFunction, "regexpToFunction");
+function escapeString(str) {
+  return str.replace(/([.+*?=^!:${}()[\]|/\\])/g, "\\$1");
+}
+__name(escapeString, "escapeString");
+function flags(options) {
+  return options && options.sensitive ? "" : "i";
+}
+__name(flags, "flags");
+function regexpToRegexp(path, keys) {
+  if (!keys)
+    return path;
+  var groupsRegex = /\((?:\?<(.*?)>)?(?!\?)/g;
+  var index = 0;
+  var execResult = groupsRegex.exec(path.source);
+  while (execResult) {
+    keys.push({
+      // Use parenthesized substring match if available, index otherwise
+      name: execResult[1] || index++,
+      prefix: "",
+      suffix: "",
+      modifier: "",
+      pattern: ""
+    });
+    execResult = groupsRegex.exec(path.source);
+  }
+  return path;
+}
+__name(regexpToRegexp, "regexpToRegexp");
+function arrayToRegexp(paths, keys, options) {
+  var parts = paths.map(function(path) {
+    return pathToRegexp(path, keys, options).source;
+  });
+  return new RegExp("(?:".concat(parts.join("|"), ")"), flags(options));
+}
+__name(arrayToRegexp, "arrayToRegexp");
+function stringToRegexp(path, keys, options) {
+  return tokensToRegexp(parse(path, options), keys, options);
+}
+__name(stringToRegexp, "stringToRegexp");
+function tokensToRegexp(tokens, keys, options) {
+  if (options === void 0) {
+    options = {};
+  }
+  var _a = options.strict, strict = _a === void 0 ? false : _a, _b = options.start, start = _b === void 0 ? true : _b, _c = options.end, end = _c === void 0 ? true : _c, _d = options.encode, encode = _d === void 0 ? function(x) {
+    return x;
+  } : _d, _e = options.delimiter, delimiter = _e === void 0 ? "/#?" : _e, _f = options.endsWith, endsWith = _f === void 0 ? "" : _f;
+  var endsWithRe = "[".concat(escapeString(endsWith), "]|$");
+  var delimiterRe = "[".concat(escapeString(delimiter), "]");
+  var route = start ? "^" : "";
+  for (var _i = 0, tokens_1 = tokens; _i < tokens_1.length; _i++) {
+    var token = tokens_1[_i];
+    if (typeof token === "string") {
+      route += escapeString(encode(token));
+    } else {
+      var prefix = escapeString(encode(token.prefix));
+      var suffix = escapeString(encode(token.suffix));
+      if (token.pattern) {
+        if (keys)
+          keys.push(token);
+        if (prefix || suffix) {
+          if (token.modifier === "+" || token.modifier === "*") {
+            var mod = token.modifier === "*" ? "?" : "";
+            route += "(?:".concat(prefix, "((?:").concat(token.pattern, ")(?:").concat(suffix).concat(prefix, "(?:").concat(token.pattern, "))*)").concat(suffix, ")").concat(mod);
+          } else {
+            route += "(?:".concat(prefix, "(").concat(token.pattern, ")").concat(suffix, ")").concat(token.modifier);
+          }
+        } else {
+          if (token.modifier === "+" || token.modifier === "*") {
+            throw new TypeError('Can not repeat "'.concat(token.name, '" without a prefix and suffix'));
+          }
+          route += "(".concat(token.pattern, ")").concat(token.modifier);
+        }
+      } else {
+        route += "(?:".concat(prefix).concat(suffix, ")").concat(token.modifier);
+      }
+    }
+  }
+  if (end) {
+    if (!strict)
+      route += "".concat(delimiterRe, "?");
+    route += !options.endsWith ? "$" : "(?=".concat(endsWithRe, ")");
+  } else {
+    var endToken = tokens[tokens.length - 1];
+    var isEndDelimited = typeof endToken === "string" ? delimiterRe.indexOf(endToken[endToken.length - 1]) > -1 : endToken === void 0;
+    if (!strict) {
+      route += "(?:".concat(delimiterRe, "(?=").concat(endsWithRe, "))?");
+    }
+    if (!isEndDelimited) {
+      route += "(?=".concat(delimiterRe, "|").concat(endsWithRe, ")");
+    }
+  }
+  return new RegExp(route, flags(options));
+}
+__name(tokensToRegexp, "tokensToRegexp");
+function pathToRegexp(path, keys, options) {
+  if (path instanceof RegExp)
+    return regexpToRegexp(path, keys);
+  if (Array.isArray(path))
+    return arrayToRegexp(path, keys, options);
+  return stringToRegexp(path, keys, options);
+}
+__name(pathToRegexp, "pathToRegexp");
+
+// ../../../../AppData/Local/npm-cache/_npx/32026684e21afda6/node_modules/wrangler/templates/pages-template-worker.ts
+var escapeRegex = /[.+?^${}()|[\]\\]/g;
+function* executeRequest(request) {
+  const requestPath = new URL(request.url).pathname;
+  for (const route of [...routes].reverse()) {
+    if (route.method && route.method !== request.method) {
+      continue;
+    }
+    const routeMatcher = match(route.routePath.replace(escapeRegex, "\\$&"), {
+      end: false
+    });
+    const mountMatcher = match(route.mountPath.replace(escapeRegex, "\\$&"), {
+      end: false
+    });
+    const matchResult = routeMatcher(requestPath);
+    const mountMatchResult = mountMatcher(requestPath);
+    if (matchResult && mountMatchResult) {
+      for (const handler of route.middlewares.flat()) {
+        yield {
+          handler,
+          params: matchResult.params,
+          path: mountMatchResult.path
+        };
+      }
+    }
+  }
+  for (const route of routes) {
+    if (route.method && route.method !== request.method) {
+      continue;
+    }
+    const routeMatcher = match(route.routePath.replace(escapeRegex, "\\$&"), {
+      end: true
+    });
+    const mountMatcher = match(route.mountPath.replace(escapeRegex, "\\$&"), {
+      end: false
+    });
+    const matchResult = routeMatcher(requestPath);
+    const mountMatchResult = mountMatcher(requestPath);
+    if (matchResult && mountMatchResult && route.modules.length) {
+      for (const handler of route.modules.flat()) {
+        yield {
+          handler,
+          params: matchResult.params,
+          path: matchResult.path
+        };
+      }
+      break;
+    }
+  }
+}
+__name(executeRequest, "executeRequest");
+var pages_template_worker_default = {
+  async fetch(originalRequest, env, workerContext) {
+    let request = originalRequest;
+    const handlerIterator = executeRequest(request);
+    let data = {};
+    let isFailOpen = false;
+    const next = /* @__PURE__ */ __name(async (input, init) => {
+      if (input !== void 0) {
+        let url = input;
+        if (typeof input === "string") {
+          url = new URL(input, request.url).toString();
+        }
+        request = new Request(url, init);
+      }
+      const result = handlerIterator.next();
+      if (result.done === false) {
+        const { handler, params, path } = result.value;
+        const context = {
+          request: new Request(request.clone()),
+          functionPath: path,
+          next,
+          params,
+          get data() {
+            return data;
+          },
+          set data(value) {
+            if (typeof value !== "object" || value === null) {
+              throw new Error("context.data must be an object");
+            }
+            data = value;
+          },
+          env,
+          waitUntil: workerContext.waitUntil.bind(workerContext),
+          passThroughOnException: /* @__PURE__ */ __name(() => {
+            isFailOpen = true;
+          }, "passThroughOnException")
+        };
+        const response = await handler(context);
+        if (!(response instanceof Response)) {
+          throw new Error("Your Pages function should return a Response");
+        }
+        return cloneResponse(response);
+      } else if ("ASSETS") {
+        const response = await env["ASSETS"].fetch(request);
+        return cloneResponse(response);
+      } else {
+        const response = await fetch(request);
+        return cloneResponse(response);
+      }
+    }, "next");
+    try {
+      return await next();
+    } catch (error) {
+      if (isFailOpen) {
+        const response = await env["ASSETS"].fetch(request);
+        return cloneResponse(response);
+      }
+      throw error;
+    }
+  }
+};
+var cloneResponse = /* @__PURE__ */ __name((response) => (
+  // https://fetch.spec.whatwg.org/#null-body-status
+  new Response(
+    [101, 204, 205, 304].includes(response.status) ? null : response.body,
+    response
+  )
+), "cloneResponse");
+export {
+  pages_template_worker_default as default
+};
+
+------formdata-undici-065426445941--

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "include": [
+    "/api/*",
+    "/_cron/*",
+    "/card/*"
+  ],
+  "exclude": [
+    "/assets/*"
+  ]
+}

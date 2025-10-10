@@ -193,6 +193,70 @@ export async function fetchArchetypeReport(tournament, archetypeBase) {
 }
 
 /**
+ * Fetch include/exclude filtered archetype report data
+ * @param {string} tournament
+ * @param {string} archetypeBase
+ * @param {string|null} includeId
+ * @param {string|null} excludeId
+ * @returns {Promise<object>}
+ */
+export async function fetchArchetypeFiltersReport(tournament, archetypeBase, includeId, excludeId) {
+  const includeSegment = includeId ? includeId : 'null';
+  const excludeSegment = excludeId ? excludeId : 'null';
+
+  // If both include and exclude are null, fetch from local reports (base archetype)
+  // Otherwise fetch from R2 (filtered combinations)
+  const isBaseReport = includeSegment === 'null' && excludeSegment === 'null';
+
+  let url;
+  if (isBaseReport) {
+    url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
+  } else {
+    const folder = `${CONFIG.API.R2_BASE}/include-exclude/${encodeURIComponent(archetypeBase)}`;
+    const fileName = `${encodeURIComponent(archetypeBase)}_${encodeURIComponent(includeSegment)}_${encodeURIComponent(excludeSegment)}.json`;
+    url = `${folder}/${fileName}`;
+  }
+
+  logger.debug('Fetching include/exclude archetype report', {
+    tournament,
+    archetypeBase,
+    include: includeSegment,
+    exclude: excludeSegment,
+    isBaseReport,
+    url
+  });
+
+  try {
+    const response = await safeFetch(url);
+    const data = await safeJsonParse(response, url);
+    validateType(data, 'object', 'archetype include/exclude report');
+    logger.info(`Loaded include/exclude archetype report ${archetypeBase}`, {
+      include: includeSegment,
+      exclude: excludeSegment,
+      deckTotal: data.deckTotal
+    });
+    return data;
+  } catch (error) {
+    if (error instanceof AppError && error.context?.status === 404) {
+      logger.debug('Include/exclude archetype report not found', {
+        tournament,
+        archetypeBase,
+        include: includeSegment,
+        exclude: excludeSegment
+      });
+      throw error;
+    }
+
+    return withRetry(async () => {
+      const response = await safeFetch(url);
+      const data = await safeJsonParse(response, url);
+      validateType(data, 'object', 'archetype include/exclude report');
+      return data;
+    }, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+  }
+}
+
+/**
  * Fetch tournament metadata (meta.json)
  * @param {string} tournament
  * @returns {Promise<object>}

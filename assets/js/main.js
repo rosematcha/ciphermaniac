@@ -261,8 +261,21 @@ async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = fa
     archetypesList = [];
   }
 
-  // Populate archetype options
-  archetypesList.forEach(archetype => {
+  // Fetch deckTotal for each archetype and sort by usage
+  const archetypeUsage = await Promise.all(
+    archetypesList.map(async (archetype) => {
+      try {
+        const report = await fetchArchetypeReport(tournament, archetype);
+        return { archetype, deckTotal: report.deckTotal || 0 };
+      } catch {
+        return { archetype, deckTotal: 0 };
+      }
+    })
+  );
+  archetypeUsage.sort((a, b) => b.deckTotal - a.deckTotal);
+
+  // Populate archetype options sorted by usage
+  archetypeUsage.forEach(({ archetype }) => {
     const option = document.createElement('option');
     option.value = archetype;
     option.textContent = archetype.replace(/_/g, ' ');

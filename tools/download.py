@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse, parse_qs
 from bs4 import BeautifulSoup
 from collections import Counter, defaultdict
+from itertools import product
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import sys
 import shutil
@@ -339,6 +340,243 @@ def generate_report_json(deck_list, deck_total, all_decks_for_variants):
         report_items.append(card_obj)
         
     return {"deckTotal": deck_total, "items": report_items}
+
+
+def _normalize_card_number(value):
+    """Normalize card numbers to a consistent three-digit format with optional suffix."""
+    if value is None:
+        return ""
+    raw = str(value).strip()
+    if not raw:
+        return ""
+    match = re.match(r"^(\d+)([A-Za-z]*)$", raw)
+    if not match:
+        return raw.upper()
+    digits, suffix = match.groups()
+    normalized = digits.zfill(3)
+    if suffix:
+        normalized += suffix.upper()
+    return normalized
+
+
+def _build_card_identifier(set_code, number):
+    """Build the include/exclude identifier string (e.g., SVI~118)."""
+    sc = (set_code or "").upper().strip()
+    if not sc:
+        return None
+    normalized_number = _normalize_card_number(number)
+    if not normalized_number:
+        return None
+    return f"{sc}~{normalized_number}"
+
+
+def _serialize_filter_card(card_info):
+    if not card_info:
+        return None
+    return {
+        "id": card_info["id"],
+        "name": card_info.get("name"),
+        "set": card_info.get("set"),
+        "number": card_info.get("number"),
+        "found": card_info.get("found"),
+        "total": card_info.get("total"),
+        "pct": card_info.get("pct"),
+        "alwaysIncluded": card_info.get("alwaysIncluded", False)
+    }
+
+
+def generate_include_exclude_reports(archetype_label, archetype_base, deck_list, archetype_data, output_root):
+    """Generate include/exclude analysis JSON files for an archetype."""
+
+    deck_total = len(deck_list)
+    if deck_total < 4:
+        print(f"    - Skipping include/exclude analysis for {archetype_label}: only {deck_total} decks available.")
+        # Clean up any prior artifacts if they exist
+        if os.path.exists(output_root):
+            try:
+                shutil.rmtree(output_root)
+            except Exception:
+                pass
+        return
+
+    os.makedirs(output_root, exist_ok=True)
+
+    existing_files = set()
+    try:
+        existing_files = {name for name in os.listdir(output_root) if name.endswith('.json')}
+    except FileNotFoundError:
+        existing_files = set()
+
+    card_lookup = {}
+    candidate_cards = []
+    cards_summary = {}
+
+    items = (archetype_data or {}).get("items", [])
+    for item in items:
+        set_code = item.get("set")
+        number = item.get("number")
+        card_id = _build_card_identifier(set_code, number)
+        if not card_id:
+            continue
+        found = int(item.get("found", 0) or 0)
+        total = int(item.get("total", deck_total) or deck_total)
+        pct = round((found / total) * 100, 2) if total else 0.0
+        normalized_number = _normalize_card_number(number)
+        info = {
+            "id": card_id,
+            "name": item.get("name"),
+            "set": (set_code or "").upper().strip() or None,
+            "number": normalized_number,
+            "found": found,
+            "total": total,
+            "pct": pct,
+            "alwaysIncluded": total > 0 and found == total
+        }
+        card_lookup[card_id] = info
+        cards_summary[card_id] = {
+            "name": info["name"],
+            "set": info["set"],
+            "number": info["number"],
+            "pct": info["pct"],
+            "found": info["found"],
+            "total": info["total"],
+            "alwaysIncluded": info["alwaysIncluded"]
+        }
+        if not info["alwaysIncluded"]:
+            candidate_cards.append(info)
+
+    if not candidate_cards:
+        print(f"    - No optional cards to analyze for {archetype_label}. Cleaning up include/exclude directory.")
+        if os.path.exists(output_root):
+            try:
+                shutil.rmtree(output_root)
+            except Exception:
+                pass
+        return
+
+    deck_by_id = {}
+    card_presence = defaultdict(set)
+
+    for deck in deck_list:
+        deck_id = deck.get("deckHash") or deck.get("id") or deck.get("player")
+        if not deck_id:
+            deck_id = hashlib.sha1(json.dumps(deck, sort_keys=True).encode()).hexdigest()
+        deck_by_id[deck_id] = deck
+
+        seen_cards = set()
+        for card in deck.get("cards", []):
+            card_id = _build_card_identifier(card.get("set"), card.get("number"))
+            if not card_id:
+                continue
+            if card_id in seen_cards:
+                continue
+            seen_cards.add(card_id)
+            card_presence[card_id].add(deck_id)
+
+    written_files = set()
+    summaries = []
+    all_deck_ids = set(deck_by_id.keys())
+
+    def build_subset(include_ids, exclude_ids):
+        include_ids = tuple(sorted(include_ids))
+        exclude_ids = tuple(sorted(exclude_ids))
+
+        if include_ids:
+            # start with intersection of decks that contain all include cards
+            candidate_sets = [set(card_presence.get(cid, set())) for cid in include_ids]
+            if not all(candidate_sets):
+                return None, set()
+            eligible = set(deck_by_id.keys()) if not candidate_sets else set.intersection(*candidate_sets)
+        else:
+            eligible = set(deck_by_id.keys())
+
+        for cid in exclude_ids:
+            eligible -= card_presence.get(cid, set())
+
+        eligible = {deck_id for deck_id in eligible if deck_id in deck_by_id}
+        if not eligible:
+            return None, set()
+
+        subset_decks = [deck_by_id[d] for d in eligible]
+        report = generate_report_json(subset_decks, len(subset_decks), deck_list)
+        report["filters"] = {
+            "include": [
+                _serialize_filter_card(card_lookup.get(cid))
+                for cid in include_ids
+                if card_lookup.get(cid)
+            ],
+            "exclude": [
+                _serialize_filter_card(card_lookup.get(cid))
+                for cid in exclude_ids
+                if card_lookup.get(cid)
+            ],
+            "baseDeckTotal": deck_total
+        }
+        report["source"] = {
+            "archetype": archetype_label,
+            "generatedAt": datetime.now(timezone.utc).isoformat()
+        }
+        return report, eligible
+
+    def persist(include_ids, exclude_ids):
+        include_ids = tuple(sorted(include_ids))
+        exclude_ids = tuple(sorted(exclude_ids))
+        include_label = "+".join(include_ids) if include_ids else "null"
+        exclude_label = "+".join(exclude_ids) if exclude_ids else "null"
+        filename = f"{archetype_base}_{include_label}_{exclude_label}.json"
+
+        report, deck_ids = build_subset(include_ids, exclude_ids)
+        if not report or not deck_ids:
+            print(f"      • Skip include={include_label} exclude={exclude_label}: no decks match")
+            return
+
+        if not include_ids and deck_ids == all_deck_ids:
+            print(f"      • Skip include={include_label} exclude={exclude_label}: combination matches baseline")
+            return
+
+        path = os.path.join(output_root, filename)
+        write_json_atomic(path, report)
+        written_files.add(filename)
+        summaries.append({
+            "include": list(include_ids),
+            "exclude": list(exclude_ids),
+            "deckTotal": len(deck_ids),
+            "file": filename
+        })
+        print(f"      • Saved include={include_label} exclude={exclude_label} ({len(deck_ids)} decks)")
+
+    print(f"    - Building include/exclude reports for {archetype_label} ({len(candidate_cards)} variable cards)")
+
+    # Single include / exclude combinations
+    for card in candidate_cards:
+        persist([card["id"]], [])
+        persist([], [card["id"]])
+
+    # Cross include-exclude combinations (distinct cards)
+    for include_card, exclude_card in product(candidate_cards, repeat=2):
+        if include_card["id"] == exclude_card["id"]:
+            continue
+        persist([include_card["id"]], [exclude_card["id"]])
+
+    index_payload = {
+        "archetype": archetype_label,
+        "deckTotal": deck_total,
+        "cards": cards_summary,
+        "combinations": summaries,
+        "generatedAt": datetime.now(timezone.utc).isoformat()
+    }
+
+    index_path = os.path.join(output_root, "index.json")
+    write_json_atomic(index_path, index_payload)
+    written_files.add("index.json")
+
+    # Remove stale files that were not regenerated this run
+    stale_files = existing_files - written_files
+    for filename in stale_files:
+        try:
+            os.remove(os.path.join(output_root, filename))
+        except Exception:
+            pass
 
 # --- THUMBNAIL DOWNLOADER ---
 
@@ -786,6 +1024,9 @@ def process_tournament(session, args, url: str):
         archetype_filename = f"{json_filename_base}.json"
         archetype_index_list.append(json_filename_base)
         write_json_atomic(os.path.join(archetype_report_path, archetype_filename), archetype_data)
+
+        include_exclude_dir = os.path.join(archetype_report_path, "include-exclude", json_filename_base)
+        generate_include_exclude_reports(proper_name, json_filename_base, deck_list, archetype_data, include_exclude_dir)
     print("Archetype reports saved.")
 
     # Generate archetype index
