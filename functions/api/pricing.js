@@ -319,9 +319,10 @@ function extractEssentialColumnsFromTable(table) {
     const name = row.name;
     const marketPrice = parseFloat(row.marketPrice) || 0;
     const extNumber = row.extNumber;
+    const numberInfo = normalizeCardNumberInfo(extNumber);
     
     // Validate we have the essential data
-    if (!productId || !name || !extNumber || !extNumber.match(/^\d{1,3}\/\d{2,3}$/)) {
+    if (!productId || !name || !numberInfo) {
       continue;
     }
     
@@ -334,11 +335,71 @@ function extractEssentialColumnsFromTable(table) {
       productId,
       name: name.replace(/"/g, '').trim(), // Clean quotes
       marketPrice,
-      extNumber
+      extNumber: numberInfo.raw,
+      cardNumber: numberInfo.cardNumber
     });
   }
   
   return cleanedRecords;
+}
+
+
+function normalizeCardNumberInfo(extNumber) {
+  if (extNumber === undefined || extNumber === null) {
+    return null;
+  }
+
+  const raw = String(extNumber).trim();
+  if (!raw) {
+    return null;
+  }
+
+  const slashMatch = raw.match(/^(\d{1,3})\/(\d{2,3})$/);
+  if (slashMatch) {
+    return {
+      raw,
+      cardNumber: slashMatch[1].padStart(3, '0')
+    };
+  }
+
+  const plainDigits = raw.match(/^(\d{1,3})$/);
+  if (plainDigits) {
+    return {
+      raw,
+      cardNumber: plainDigits[1].padStart(3, '0')
+    };
+  }
+
+  const trailingDigits = raw.match(/(\d{1,4})$/);
+  if (trailingDigits) {
+    const digits = trailingDigits[1].slice(-3);
+    return {
+      raw,
+      cardNumber: digits.padStart(3, '0')
+    };
+  }
+
+  const digitMatches = raw.match(/\d+/g);
+  if (digitMatches && digitMatches.length > 0) {
+    const last = digitMatches[digitMatches.length - 1];
+    const digits = last.slice(-3);
+    return {
+      raw,
+      cardNumber: digits.padStart(3, '0')
+    };
+  }
+
+  return null;
+}
+
+
+function deriveCardNumber(record) {
+  if (record?.cardNumber) {
+    return record.cardNumber;
+  }
+
+  const info = normalizeCardNumberInfo(record?.extNumber);
+  return info ? info.cardNumber : null;
 }
 
 
@@ -356,7 +417,10 @@ function parseCleanedPriceData(cleanedRecords, setAbbr, context) {
     
     // Clean up the card name - remove embedded card numbers
     const cleanName = record.name.replace(/\s*-\s*\d{1,3}\/\d{2,3}$/, '').trim();
-    const cleanNumber = record.extNumber.split('/')[0].padStart(3, '0');
+    const cleanNumber = deriveCardNumber(record);
+    if (!cleanNumber) {
+      continue;
+    }
 
     // Create the card key in database format
     const cardKey = `${cleanName}::${setAbbr}::${cleanNumber}`;
