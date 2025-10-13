@@ -53,24 +53,40 @@ function extractArchetypeFromLocation(loc = window.location) {
 
   const pathname = loc.pathname || '';
   const trimmedPath = pathname.replace(/\/+$/u, '');
-  const segments = trimmedPath.split('/').filter(Boolean);
-  const archetypeIndex = segments.indexOf('archetype');
-  if (archetypeIndex === -1) {
-    return null;
-  }
+  const candidatePaths = new Set([trimmedPath]);
 
-  const slugSegments = segments.slice(archetypeIndex + 1);
-  if (slugSegments.length === 0) {
-    return null;
-  }
-
-  const rawSlug = slugSegments.join('/');
   try {
-    return decodeURIComponent(rawSlug);
+    const decoded = decodeURIComponent(trimmedPath);
+    candidatePaths.add(decoded);
   } catch (error) {
-    logger.warn('Failed to decode archetype slug from path', { rawSlug, error: error?.message });
-    return rawSlug;
+    logger.debug('Failed to decode pathname when searching for archetype slug', {
+      pathname,
+      message: error?.message
+    });
   }
+
+  for (const candidate of candidatePaths) {
+    const segments = candidate.split('/').filter(Boolean);
+    const archetypeIndex = segments.indexOf('archetype');
+    if (archetypeIndex === -1) {
+      continue;
+    }
+
+    const slugSegments = segments.slice(archetypeIndex + 1);
+    if (slugSegments.length === 0) {
+      continue;
+    }
+
+    const rawSlug = slugSegments.join('/');
+    try {
+      return decodeURIComponent(rawSlug);
+    } catch (error) {
+      logger.warn('Failed to decode archetype slug from path', { rawSlug, error: error?.message });
+      return rawSlug;
+    }
+  }
+
+  return null;
 }
 
 function decodeArchetypeLabel(value) {
