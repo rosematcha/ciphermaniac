@@ -12,6 +12,10 @@
 const TCGCSV_GROUPS_URL = 'https://tcgcsv.com/tcgplayer/3/groups';
 const CARD_SYNONYMS_URL = 'https://ciphermaniac.com/assets/card-synonyms.json';
 const REPORTS_BASE_URL = 'https://ciphermaniac.com/reports';
+const MANUAL_GROUP_ID_MAP = {
+  MEP: 24451,
+  SVP: 22872
+};
 
 const BASIC_ENERGY_CANONICALS = {
   'Grass Energy': 'Grass Energy::SVE::017',
@@ -130,7 +134,13 @@ function mapSetsToGroupIds(groups, databaseSets) {
       mappings[setAbbr] = group.groupId;
       console.log(`Found mapping: ${setAbbr} -> ${group.groupId} (${group.name})`);
     } else {
-      console.warn(`No TCGCSV group found for database set: ${setAbbr}`);
+      const manualGroupId = MANUAL_GROUP_ID_MAP[setAbbr];
+      if (manualGroupId) {
+        mappings[setAbbr] = manualGroupId;
+        console.log(`Manual group mapping applied: ${setAbbr} -> ${manualGroupId}`);
+      } else {
+        console.warn(`No TCGCSV group found for database set: ${setAbbr}`);
+      }
     }
   }
   
