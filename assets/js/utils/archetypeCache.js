@@ -56,20 +56,31 @@ class ArchetypeCacheManager {
   }
 
   /**
-   * Build the base URL for an archetype's include-exclude directory
+   * Build the candidate base URLs for an archetype's include-exclude directory
    * @param {string} tournament
    * @param {string} archetypeBase
-   * @returns {string}
+    * @returns {string[]}
    */
-  static getArchetypeBaseUrl(tournament, archetypeBase) {
-    const reportsBase = typeof CONFIG.API.REPORTS_BASE === 'string' ? CONFIG.API.REPORTS_BASE : '/reports';
-    const normalizedReportsBase = reportsBase.startsWith('/') ? reportsBase : `/${reportsBase}`;
+  static getArchetypeBaseUrls(tournament, archetypeBase) {
+    const reportsBaseRaw = typeof CONFIG.API.REPORTS_BASE === 'string' ? CONFIG.API.REPORTS_BASE.trim() : '/reports';
+  const trimmedReportsBase = reportsBaseRaw.replace(/^\/+/, '').replace(/\/+$/, '');
     const r2Base = (CONFIG.API.R2_BASE || '').trim();
-    const basePath = r2Base
-      ? `${r2Base.replace(/\/+$/, '')}${normalizedReportsBase}`
-      : normalizedReportsBase;
+    const suffix = `${encodeURIComponent(tournament)}/archetypes/include-exclude/${encodeURIComponent(archetypeBase)}`;
+  /** @type {Set<string>} */
+  const candidates = new Set();
 
-    return `${basePath}/${encodeURIComponent(tournament)}/archetypes/include-exclude/${encodeURIComponent(archetypeBase)}`;
+    if (r2Base) {
+      const normalizedR2Base = r2Base.replace(/\/+$/, '');
+      candidates.add(`${normalizedR2Base}/${suffix}`);
+      if (trimmedReportsBase) {
+        candidates.add(`${normalizedR2Base}/${trimmedReportsBase}/${suffix}`);
+      }
+    }
+
+    const relativeBase = trimmedReportsBase ? `/${trimmedReportsBase}` : '';
+    candidates.add(`${relativeBase}/${suffix}`.replace(/\/+/, '/'));
+
+    return Array.from(candidates);
   }
 
   /**
@@ -120,33 +131,46 @@ class ArchetypeCacheManager {
     }
 
     const fetchPromise = (async () => {
-      const baseUrl = ArchetypeCacheManager.getArchetypeBaseUrl(tournament, archetypeBase);
-      const url = `${baseUrl}/index.json`;
-
-      logger.debug(`Fetching index for ${archetypeBase}`, { url });
+      const baseUrls = ArchetypeCacheManager.getArchetypeBaseUrls(tournament, archetypeBase);
       this.pendingFetches.add(cacheKey);
 
       try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new AppError(
-            `HTTP ${response.status}: ${response.statusText}`,
-            ErrorTypes.NETWORK,
-            { url, status: response.status }
-          );
+        let lastError = null;
+
+        for (const baseUrl of baseUrls) {
+          const url = `${baseUrl}/index.json`;
+          logger.debug(`Fetching index for ${archetypeBase}`, { url });
+
+          try {
+            const response = await fetch(url);
+            if (!response.ok) {
+              throw new AppError(
+                `HTTP ${response.status}: ${response.statusText}`,
+                ErrorTypes.NETWORK,
+                { url, status: response.status }
+              );
+            }
+
+            const data = await response.json();
+            logger.info(`Loaded index for ${archetypeBase}`, {
+              uniqueSubsets: data.uniqueSubsets,
+              totalCombinations: data.totalCombinations,
+              deduplicationRate: data.deduplicationRate
+            });
+            return data;
+          } catch (error) {
+            lastError = error;
+            logger.debug(`Index fetch attempt failed for ${archetypeBase}`, {
+              url,
+              message: error?.message || error
+            });
+          }
         }
 
-        const data = await response.json();
-        logger.info(`Loaded index for ${archetypeBase}`, {
-          uniqueSubsets: data.uniqueSubsets,
-          totalCombinations: data.totalCombinations,
-          deduplicationRate: data.deduplicationRate
-        });
-        return data;
-      } catch (error) {
         this.indexCache.delete(cacheKey);
-        logger.warn(`Failed to fetch index for ${archetypeBase}`, error.message);
-        throw error;
+        const message = lastError?.message || `Failed to fetch index for ${archetypeBase}`;
+        logger.warn(message);
+        throw lastError || new AppError(message, ErrorTypes.NETWORK, { tournament, archetypeBase });
       } finally {
         this.pendingFetches.delete(cacheKey);
       }
@@ -172,32 +196,49 @@ class ArchetypeCacheManager {
     }
 
     const fetchPromise = (async () => {
-      const baseUrl = ArchetypeCacheManager.getArchetypeBaseUrl(tournament, archetypeBase);
-      const url = `${baseUrl}/unique_subsets/${subsetId}.json`;
-
-      logger.debug(`Fetching subset ${subsetId} for ${archetypeBase}`, { url });
+      const baseUrls = ArchetypeCacheManager.getArchetypeBaseUrls(tournament, archetypeBase);
       this.pendingFetches.add(cacheKey);
 
       try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new AppError(
-            `HTTP ${response.status}: ${response.statusText}`,
-            ErrorTypes.NETWORK,
-            { url, status: response.status }
-          );
+        let lastError = null;
+
+        for (const baseUrl of baseUrls) {
+          const url = `${baseUrl}/unique_subsets/${subsetId}.json`;
+          logger.debug(`Fetching subset ${subsetId} for ${archetypeBase}`, { url });
+
+          try {
+            const response = await fetch(url);
+            if (!response.ok) {
+              throw new AppError(
+                `HTTP ${response.status}: ${response.statusText}`,
+                ErrorTypes.NETWORK,
+                { url, status: response.status }
+              );
+            }
+
+            const data = await response.json();
+            logger.info(`Loaded subset ${subsetId} for ${archetypeBase}`, {
+              deckTotal: data.deckTotal,
+              items: data.items?.length || 0
+            });
+            return data;
+          } catch (error) {
+            lastError = error;
+            logger.debug(`Subset fetch attempt failed for ${archetypeBase}`, {
+              url,
+              message: error?.message || error
+            });
+          }
         }
 
-        const data = await response.json();
-        logger.info(`Loaded subset ${subsetId} for ${archetypeBase}`, {
-          deckTotal: data.deckTotal,
-          items: data.items?.length || 0
-        });
-        return data;
-      } catch (error) {
         this.subsetCache.delete(cacheKey);
-        logger.warn(`Failed to fetch subset ${subsetId} for ${archetypeBase}`, error.message);
-        throw error;
+        const message = lastError?.message || `Failed to fetch subset ${subsetId} for ${archetypeBase}`;
+        logger.warn(message);
+        throw lastError || new AppError(message, ErrorTypes.NETWORK, {
+          tournament,
+          archetypeBase,
+          subsetId
+        });
       } finally {
         this.pendingFetches.delete(cacheKey);
       }
