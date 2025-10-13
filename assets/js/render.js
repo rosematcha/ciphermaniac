@@ -12,6 +12,20 @@ import { parallelImageLoader } from './utils/parallelImageLoader.js';
 import { setProperties as _setProperties, setStyles, createElement } from './utils/dom.js';
 // Modal removed: navigate to card page instead
 
+const USD_FORMATTER = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
+
+function formatCardPrice(rawPrice) {
+  if (typeof rawPrice === 'number' && Number.isFinite(rawPrice)) {
+    return USD_FORMATTER.format(rawPrice);
+  }
+  return null;
+}
+
 /* eslint-disable jsdoc/check-indentation, jsdoc/check-alignment */
 
 /**
@@ -21,6 +35,7 @@ import { setProperties as _setProperties, setStyles, createElement } from './uti
 /**
  * @typedef {object} RenderOptions
  * @property {LayoutMode} [layoutMode]
+ * @property {boolean} [showPrice]
  */
 
 /**
@@ -119,7 +134,11 @@ export function render(items, overrides = {}, options = {}) {
   const prefersCompact = typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX_WIDTH;
   const requestedLayout = options?.layoutMode === 'compact' ? 'compact' : 'standard';
   const layoutMode = requestedLayout;
-  const settings = /** @type {RenderOptions} */ ({ layoutMode });
+  const showPrice = Boolean(options?.showPrice);
+  const settings = /** @type {RenderOptions} */ ({
+    layoutMode,
+    showPrice
+  });
   const forceCompact = prefersCompact || settings.layoutMode === 'compact';
   grid._renderOptions = settings;
   grid._autoCompact = prefersCompact;
@@ -148,7 +167,7 @@ export function render(items, overrides = {}, options = {}) {
 
   // Use the shared card creation function
   const makeCard = (it, useSm) => {
-    const cardEl = makeCardElement(it, useSm, overrides);
+    const cardEl = makeCardElement(it, useSm, overrides, { showPrice });
     // Wrap in document fragment to match expected return type
     const frag = document.createDocumentFragment();
     frag.appendChild(cardEl);
@@ -314,11 +333,16 @@ function expandGridRows(items, overrides, targetTotalRows, options = {}) {
   }
 
   const prefersCompact = typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX_WIDTH;
-  const fallbackMode = grid._renderOptions?.layoutMode === 'compact' ? 'compact' : 'standard';
+  const previousOptions = grid._renderOptions ?? {};
+  const fallbackMode = previousOptions.layoutMode === 'compact' ? 'compact' : 'standard';
   const requestedLayout = options?.layoutMode === 'compact' ? 'compact' : fallbackMode;
   const layoutMode = requestedLayout;
+  const showPrice = Boolean(options?.showPrice ?? previousOptions.showPrice);
   const forceCompact = prefersCompact || layoutMode === 'compact';
-  grid._renderOptions = /** @type {RenderOptions} */ ({ layoutMode });
+  grid._renderOptions = /** @type {RenderOptions} */ ({
+    layoutMode,
+    showPrice
+  });
   grid._autoCompact = prefersCompact;
 
   // Preserve scroll position during DOM manipulation
@@ -387,7 +411,7 @@ function expandGridRows(items, overrides, targetTotalRows, options = {}) {
     for (let j = 0; j < count && cardIndex < items.length; j++, cardIndex++) {
       const item = items[cardIndex];
       const useSm = isLarge || isMedium || !isSmall;
-      const cardEl = makeCardElement(item, useSm, overrides);
+  const cardEl = makeCardElement(item, useSm, overrides, { showPrice });
       cardEl.dataset.row = String(rowIndex);
       cardEl.dataset.col = String(j);
       row.appendChild(cardEl);
@@ -534,7 +558,7 @@ function preloadVisibleImagesParallel(items, overrides = {}) {
   }
 }
 
-function populateCardContent(el, cardData) {
+function populateCardContent(el, cardData, renderFlags = {}) {
   // Remove skeleton classes from the card element itself
   // el could be the card directly or a fragment containing the card
   let card = null;
@@ -544,9 +568,32 @@ function populateCardContent(el, cardData) {
     card = el.querySelector('.card'); // el is a fragment, find the card
   }
 
+  const shouldShowPrice = Boolean(renderFlags.showPrice);
+  const formattedPrice = shouldShowPrice ? formatCardPrice(cardData.price) : null;
+
   if (card) {
     card.classList.remove('skeleton-card');
     card.removeAttribute('aria-hidden');
+    card.classList.toggle('has-price', shouldShowPrice);
+
+    const thumb = card.querySelector('.thumb');
+    if (thumb) {
+      let priceBadge = thumb.querySelector('.price-badge');
+      if (shouldShowPrice) {
+        if (!priceBadge) {
+          priceBadge = document.createElement('div');
+          priceBadge.className = 'price-badge';
+          thumb.appendChild(priceBadge);
+        }
+        priceBadge.textContent = formattedPrice ?? '—';
+        priceBadge.classList.toggle('price-badge--missing', !formattedPrice);
+        priceBadge.setAttribute('aria-label', formattedPrice ? `Price ${formattedPrice}` : 'Price unavailable');
+        priceBadge.setAttribute('role', 'status');
+        priceBadge.title = formattedPrice ?? 'Price unavailable';
+      } else if (priceBadge) {
+        priceBadge.remove();
+      }
+    }
   }
 
   // Calculate percentage once
@@ -720,7 +767,7 @@ function attachCardNavigation(card, cardData) {
 }
 
 // Simplified card creation - single responsibility
-function makeCardElement(cardData, useSm, overrides) {
+function makeCardElement(cardData, useSm, overrides, renderFlags = {}) {
   const template = /** @type {HTMLTemplateElement | null} */ (document.getElementById('card-template'));
   const fragment = template
     ? /** @type {DocumentFragment} */ (template.content.cloneNode(true))
@@ -742,8 +789,8 @@ function makeCardElement(cardData, useSm, overrides) {
   setupCardImage(img, cardData.name, useSm, overrides, cardData);
 
   // Populate content
-  populateCardContent(fragment, cardData);
-  setupCardCounts(fragment, cardData);
+  populateCardContent(fragment, cardData, renderFlags);
+    setupCardCounts(fragment, cardData);
   createCardHistogram(fragment, cardData);
 
   // Attach behavior
@@ -784,18 +831,20 @@ function setupCardAttributes(card, cardData) {
 function setupCardCounts(element, cardData) {
   const counts = element.querySelector('.counts');
 
-  if (counts) {
-    // Remove any skeleton elements and classes
-    counts.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
-    counts.classList.remove('skeleton-text', 'counts');
-    counts.innerHTML = '';
-
-    const hasValidCounts = Number.isFinite(cardData.found) && Number.isFinite(cardData.total);
-    const countsText = createElement('span', {
-      textContent: hasValidCounts ? `${cardData.found} / ${cardData.total} decks` : 'no data'
-    });
-    counts.appendChild(countsText);
+  if (!counts) {
+    return;
   }
+
+  // Remove any skeleton elements and classes
+  counts.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
+  counts.classList.remove('skeleton-text');
+  counts.innerHTML = '';
+
+  const hasValidCounts = Number.isFinite(cardData.found) && Number.isFinite(cardData.total);
+  const countsText = createElement('span', {
+    textContent: hasValidCounts ? `${cardData.found} / ${cardData.total} decks` : 'no data'
+  });
+  counts.appendChild(countsText);
 }
 
 // Reflow-only: recompute per-row sizing and move existing cards into new rows without rebuilding cards/images.
