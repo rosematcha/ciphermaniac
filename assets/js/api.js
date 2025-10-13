@@ -194,6 +194,7 @@ export async function fetchArchetypeReport(tournament, archetypeBase) {
 
 /**
  * Fetch include/exclude filtered archetype report data
+ * Uses the new deduplicated structure with index.json + unique_subsets/
  * @param {string} tournament
  * @param {string} archetypeBase
  * @param {string|null} includeId
@@ -201,58 +202,68 @@ export async function fetchArchetypeReport(tournament, archetypeBase) {
  * @returns {Promise<object>}
  */
 export async function fetchArchetypeFiltersReport(tournament, archetypeBase, includeId, excludeId) {
-  const includeSegment = includeId ? includeId : 'null';
-  const excludeSegment = excludeId ? excludeId : 'null';
+  // If both include and exclude are null, fetch the base archetype report
+  const isBaseReport = !includeId && !excludeId;
 
-  // If both include and exclude are null, fetch from local reports (base archetype)
-  // Otherwise fetch from R2 (filtered combinations)
-  const isBaseReport = includeSegment === 'null' && excludeSegment === 'null';
-
-  let url;
   if (isBaseReport) {
-    url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
-  } else {
-    const folder = `${CONFIG.API.R2_BASE}/include-exclude/${encodeURIComponent(archetypeBase)}`;
-    const fileName = `${encodeURIComponent(archetypeBase)}_${encodeURIComponent(includeSegment)}_${encodeURIComponent(excludeSegment)}.json`;
-    url = `${folder}/${fileName}`;
+    const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
+    logger.debug('Fetching base archetype report', { tournament, archetypeBase, url });
+
+    try {
+      const response = await safeFetch(url);
+      const data = await safeJsonParse(response, url);
+      validateType(data, 'object', 'archetype report');
+      logger.info(`Loaded base archetype report ${archetypeBase}`, {
+        deckTotal: data.deckTotal
+      });
+      return data;
+    } catch (error) {
+      if (error instanceof AppError && error.context?.status === 404) {
+        logger.debug('Base archetype report not found', { tournament, archetypeBase });
+        throw error;
+      }
+
+      return withRetry(async () => {
+        const response = await safeFetch(url);
+        const data = await safeJsonParse(response, url);
+        validateType(data, 'object', 'archetype report');
+        return data;
+      }, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+    }
   }
 
-  logger.debug('Fetching include/exclude archetype report', {
+  // Use the new deduplicated structure via archetypeCache
+  const { archetypeCache } = await import('./utils/archetypeCache.js');
+
+  logger.debug('Fetching filtered archetype report via cache', {
     tournament,
     archetypeBase,
-    include: includeSegment,
-    exclude: excludeSegment,
-    isBaseReport,
-    url
+    include: includeId,
+    exclude: excludeId
   });
 
   try {
-    const response = await safeFetch(url);
-    const data = await safeJsonParse(response, url);
+    const data = await archetypeCache.getFilteredData(tournament, archetypeBase, includeId, excludeId);
     validateType(data, 'object', 'archetype include/exclude report');
-    logger.info(`Loaded include/exclude archetype report ${archetypeBase}`, {
-      include: includeSegment,
-      exclude: excludeSegment,
+    logger.info(`Loaded filtered archetype report ${archetypeBase}`, {
+      include: includeId,
+      exclude: excludeId,
       deckTotal: data.deckTotal
     });
     return data;
   } catch (error) {
     if (error instanceof AppError && error.context?.status === 404) {
-      logger.debug('Include/exclude archetype report not found', {
+      logger.debug('Filtered archetype report not found', {
         tournament,
         archetypeBase,
-        include: includeSegment,
-        exclude: excludeSegment
+        include: includeId,
+        exclude: excludeId
       });
       throw error;
     }
 
-    return withRetry(async () => {
-      const response = await safeFetch(url);
-      const data = await safeJsonParse(response, url);
-      validateType(data, 'object', 'archetype include/exclude report');
-      return data;
-    }, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+    // Retry logic is already built into archetypeCache
+    throw error;
   }
 }
 
@@ -359,29 +370,51 @@ export async function fetchPricingData() {
 }
 
 /**
- * Get price for a specific card
+ * Get price for a specific card (with canonical fallback)
  * @param {string} cardId - Card identifier in format "Name::SET::NUMBER"
  * @returns {Promise<number|null>} Price in USD or null if not found
  */
 export async function getCardPrice(cardId) {
   try {
-    // Debug: getCardPrice called with cardId
     const pricing = await fetchPricingData();
-    // Debug: Pricing data loaded
 
-    const _cardData = pricing.cardPrices[cardId];
-    // Debug: Lookup result for cardId
-
-    if (!_cardData) {
-      // If exact match failed, let's see if there are similar cards
-      const _similarKeys = Object.keys(pricing.cardPrices).filter(key =>
-        key.toLowerCase().includes(cardId.toLowerCase().split('::')[0])
-      ).slice(0, 3);
-      // Debug: Similar cards found
+    // Try exact match first
+    let cardData = pricing.cardPrices[cardId];
+    if (cardData?.price) {
+      return cardData.price;
     }
 
-    // The pricing data stores prices as objects with price and tcgPlayerId properties
-    return _cardData?.price || null;
+    // Try canonical resolution if exact match failed
+    try {
+      const { getCanonicalCard, getCardVariants } = await import('./utils/cardSynonyms.js');
+
+      // Get canonical version
+      const canonical = await getCanonicalCard(cardId);
+      if (canonical && canonical !== cardId) {
+        cardData = pricing.cardPrices[canonical];
+        if (cardData?.price) {
+          logger.debug(`Found price via canonical: ${canonical}`, { original: cardId });
+          return cardData.price;
+        }
+      }
+
+      // Try all variants if canonical didn't work
+      const variants = await getCardVariants(cardId);
+      for (const variant of variants) {
+        if (variant !== cardId) {
+          cardData = pricing.cardPrices[variant];
+          if (cardData?.price) {
+            logger.debug(`Found price via variant: ${variant}`, { original: cardId });
+            return cardData.price;
+          }
+        }
+      }
+    } catch (synonymError) {
+      logger.debug('Synonym resolution failed during price lookup', synonymError.message);
+    }
+
+    logger.debug(`No price found for ${cardId} or its variants`);
+    return null;
   } catch (error) {
     logger.debug(`Failed to get price for ${cardId}`, error.message);
     logger.error('Error in getCardPrice:', error);
@@ -390,16 +423,51 @@ export async function getCardPrice(cardId) {
 }
 
 /**
- * Get TCGPlayer ID for a specific card
+ * Get TCGPlayer ID for a specific card (with canonical fallback)
  * @param {string} cardId - Card identifier in format "Name::SET::NUMBER"
  * @returns {Promise<string|null>} TCGPlayer ID or null if not found
  */
 export async function getCardTCGPlayerId(cardId) {
   try {
     const pricing = await fetchPricingData();
-    const _cardData = pricing.cardPrices[cardId];
-    // Return the TCGPlayer ID from the card data object
-    return _cardData?.tcgPlayerId || null;
+
+    // Try exact match first
+    let cardData = pricing.cardPrices[cardId];
+    if (cardData?.tcgPlayerId) {
+      return cardData.tcgPlayerId;
+    }
+
+    // Try canonical resolution if exact match failed
+    try {
+      const { getCanonicalCard, getCardVariants } = await import('./utils/cardSynonyms.js');
+
+      // Get canonical version
+      const canonical = await getCanonicalCard(cardId);
+      if (canonical && canonical !== cardId) {
+        cardData = pricing.cardPrices[canonical];
+        if (cardData?.tcgPlayerId) {
+          logger.debug(`Found TCGPlayer ID via canonical: ${canonical}`, { original: cardId });
+          return cardData.tcgPlayerId;
+        }
+      }
+
+      // Try all variants if canonical didn't work
+      const variants = await getCardVariants(cardId);
+      for (const variant of variants) {
+        if (variant !== cardId) {
+          cardData = pricing.cardPrices[variant];
+          if (cardData?.tcgPlayerId) {
+            logger.debug(`Found TCGPlayer ID via variant: ${variant}`, { original: cardId });
+            return cardData.tcgPlayerId;
+          }
+        }
+      }
+    } catch (synonymError) {
+      logger.debug('Synonym resolution failed during TCGPlayer ID lookup', synonymError.message);
+    }
+
+    logger.debug(`No TCGPlayer ID found for ${cardId} or its variants`);
+    return null;
   } catch (error) {
     logger.debug(`Failed to get TCGPlayer ID for ${cardId}`, error.message);
     return null;
@@ -407,16 +475,51 @@ export async function getCardTCGPlayerId(cardId) {
 }
 
 /**
- * Get complete card data (price and TCGPlayer ID)
+ * Get complete card data (price and TCGPlayer ID) (with canonical fallback)
  * @param {string} cardId - Card identifier in format "Name::SET::NUMBER"
  * @returns {Promise<object | null>} Object with price and tcgPlayerId or null if not found
  */
 export async function getCardData(cardId) {
   try {
     const pricing = await fetchPricingData();
-    const cardData = pricing.cardPrices[cardId];
-    // Return the card data object directly (contains price and tcgPlayerId)
-    return cardData || null;
+
+    // Try exact match first
+    let cardData = pricing.cardPrices[cardId];
+    if (cardData) {
+      return cardData;
+    }
+
+    // Try canonical resolution if exact match failed
+    try {
+      const { getCanonicalCard, getCardVariants } = await import('./utils/cardSynonyms.js');
+
+      // Get canonical version
+      const canonical = await getCanonicalCard(cardId);
+      if (canonical && canonical !== cardId) {
+        cardData = pricing.cardPrices[canonical];
+        if (cardData) {
+          logger.debug(`Found card data via canonical: ${canonical}`, { original: cardId });
+          return cardData;
+        }
+      }
+
+      // Try all variants if canonical didn't work
+      const variants = await getCardVariants(cardId);
+      for (const variant of variants) {
+        if (variant !== cardId) {
+          cardData = pricing.cardPrices[variant];
+          if (cardData) {
+            logger.debug(`Found card data via variant: ${variant}`, { original: cardId });
+            return cardData;
+          }
+        }
+      }
+    } catch (synonymError) {
+      logger.debug('Synonym resolution failed during card data lookup', synonymError.message);
+    }
+
+    logger.debug(`No card data found for ${cardId} or its variants`);
+    return null;
   } catch (error) {
     logger.debug(`Failed to get card data for ${cardId}`, error.message);
     return null;

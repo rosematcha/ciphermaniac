@@ -147,7 +147,9 @@ export async function applyFiltersSort(allItems, overrides = {}) {
   logger.info(`Filtered and sorted: ${allItems.length} → ${sorted.length} items`);
 
   // Render the results
-  render(sorted, overrides);
+  render(sorted, overrides, {
+    showPrice: filters.sort.startsWith('price-')
+  });
 }
 
 /**
@@ -162,15 +164,19 @@ async function enrichWithPricingData(items) {
       const cardId = buildCardIdentifier(item);
       const price = cardId ? await getCardPrice(cardId) : null;
 
+      const normalizedPrice = typeof price === 'number' && Number.isFinite(price)
+        ? price
+        : null;
+
       return {
         ...item,
-        price: price || 0
+        price: normalizedPrice
       };
     } catch (error) {
       logger.debug(`Failed to get price for ${item.name}`, error.message);
       return {
         ...item,
-        price: 0
+        price: null
       };
     }
   }));

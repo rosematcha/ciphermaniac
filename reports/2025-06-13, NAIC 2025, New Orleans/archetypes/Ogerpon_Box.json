@@ -411,8 +411,8 @@
         }
       ],
       "set": "SVE",
-      "number": "009",
-      "uid": "Grass Energy::SVE::009",
+      "number": "017",
+      "uid": "Grass Energy::SVE::017",
       "category": "energy"
     },
     {
@@ -465,8 +465,8 @@
         }
       ],
       "set": "SVE",
-      "number": "013",
-      "uid": "Psychic Energy::SVE::013",
+      "number": "021",
+      "uid": "Psychic Energy::SVE::021",
       "category": "energy"
     }
   ]

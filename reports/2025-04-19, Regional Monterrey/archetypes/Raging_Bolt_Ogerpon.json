@@ -288,8 +288,8 @@
         }
       ],
       "set": "SVE",
-      "number": "009",
-      "uid": "Grass Energy::SVE::009",
+      "number": "017",
+      "uid": "Grass Energy::SVE::017",
       "category": "energy"
     },
     {
@@ -306,8 +306,8 @@
         }
       ],
       "set": "SVE",
-      "number": "012",
-      "uid": "Lightning Energy::SVE::012",
+      "number": "020",
+      "uid": "Lightning Energy::SVE::020",
       "category": "energy"
     },
     {
@@ -329,8 +329,8 @@
         }
       ],
       "set": "SVE",
-      "number": "014",
-      "uid": "Fighting Energy::SVE::014",
+      "number": "022",
+      "uid": "Fighting Energy::SVE::022",
       "category": "energy"
     },
     {

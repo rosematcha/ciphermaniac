@@ -4,7 +4,7 @@ import { getDisplayName } from './identifiers.js';
 import { getCanonicalCard } from '../utils/cardSynonyms.js';
 import { logger } from '../utils/logger.js';
 
-const SLUG_CACHE_KEY = 'cardSlugCacheV1';
+const SLUG_CACHE_KEY = 'cardSlugCacheV2';
 const DEFAULT_SCAN_LIMIT = 12;
 const PATH_SAFE_SLUG_SEPARATOR = '~';
 const COLON_PATTERN = /:/g;
@@ -139,6 +139,45 @@ async function resolveBySetAndNumber(setCode, number, options = {}) {
         return canonical;
       }
     }
+  }
+
+  // Fallback: Try synonym resolution if exact match wasn't found in tournaments
+  // This handles cases where canonical cards (like MEG 131) aren't in recent tournaments
+  try {
+    const response = await fetch('/assets/card-synonyms.json');
+    if (response.ok) {
+      const synonymData = await response.json();
+      const normalizedNumber = normalizeCardNumber(number);
+
+      // Search for any UID that has this set:number combination
+      // Check both synonyms (variants) and their canonical values
+      for (const [uid, canonicalUid] of Object.entries(synonymData.synonyms || {})) {
+        if (uid.includes('::')) {
+          const parts = uid.split('::');
+          if (parts.length >= 3 && parts[1].toUpperCase() === setCode.toUpperCase() && normalizeCardNumber(parts[2]) === normalizedNumber) {
+            // Found a matching variant, return its canonical
+            cache[normalizedKey] = canonicalUid;
+            saveSlugCache(cache);
+            return canonicalUid;
+          }
+        }
+      }
+
+      // Also check if this set:number IS a canonical by checking all canonical values
+      for (const canonicalUid of Object.values(synonymData.canonicals || {})) {
+        if (canonicalUid.includes('::')) {
+          const parts = canonicalUid.split('::');
+          if (parts.length >= 3 && parts[1].toUpperCase() === setCode.toUpperCase() && normalizeCardNumber(parts[2]) === normalizedNumber) {
+            // This set:number is itself a canonical
+            cache[normalizedKey] = canonicalUid;
+            saveSlugCache(cache);
+            return canonicalUid;
+          }
+        }
+      }
+    }
+  } catch (error) {
+    logger.debug('Synonym fallback failed for set:number resolution', { setCode, number, error: error?.message || error });
   }
 
   return null;

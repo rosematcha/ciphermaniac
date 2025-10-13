@@ -1,7 +1,24 @@
 import { buildThumbCandidates } from './thumbs.js';
 import { logger } from './utils/logger.js';
 import { computeLayout } from './layoutHelper.js';
-import { parseCardRoute, buildCardPath } from './card/routing.js';
+import { buildCardPath } from './card/routing.js';
+import { getVariantImageCandidates } from './utils/cardSynonyms.js';
+
+function buildFallbackLabel(name) {
+  if (!name) {return 'Card';}
+  const trimmed = String(name).trim();
+  if (trimmed.length <= 24) {return trimmed;}
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length === 0) {return trimmed.slice(0, 24);} 
+  if (words.length === 1) {return `${words[0].slice(0, 21)}...`;}
+  const first = words[0];
+  if (first.length >= 12) {return `${first.slice(0, 12)}...`;}
+  const remaining = trimmed.slice(first.length + 1);
+  const available = 24 - first.length - 1;
+  const tail = remaining.slice(0, available);
+  const suffix = remaining.length > available ? '...' : '';
+  return `${first} ${tail}${suffix}`;
+}
 
 // Data fetch
 async function fetchSuggestions() {
@@ -25,10 +42,108 @@ function makeCardItem(name, opts) {
   const thumb = document.createElement('div'); thumb.className = 'thumb';
   const img = document.createElement('img'); img.alt = name; img.loading = 'lazy'; img.decoding = 'async';
   img.style.opacity = '0'; img.style.transition = 'opacity .18s ease-out';
-  const candidates = buildThumbCandidates(name, /* useSm*/ false, {}, { set: opts?.set, number: opts?.number });
-  let idx = 0; const tryNext = () => { if (idx >= candidates.length) {return;} img.src = candidates[idx++]; };
-  img.onerror = tryNext; img.onload = () => { img.style.opacity = '1'; };
-  tryNext(); thumb.appendChild(img);
+  const fallback = document.createElement('div');
+  fallback.className = 'thumb-fallback';
+  fallback.textContent = buildFallbackLabel(name);
+  fallback.setAttribute('aria-hidden', 'true');
+  fallback.hidden = true;
+  const candidates = [];
+  const seenSources = new Set();
+  let idx = 0;
+  let variantFetchPromise = null;
+  let variantFetchAttempted = false;
+
+  const addCandidates = list => {
+    if (!Array.isArray(list)) {return;}
+    for (const candidate of list) {
+      if (!candidate || seenSources.has(candidate)) {continue;}
+      seenSources.add(candidate);
+      candidates.push(candidate);
+    }
+  };
+
+  const variantInfo = opts?.set && opts?.number ? { set: opts.set, number: opts.number } : null;
+  addCandidates(buildThumbCandidates(name, /* useSm */ false, {}, variantInfo || undefined));
+  addCandidates(buildThumbCandidates(name, /* useSm */ true, {}, variantInfo || undefined));
+  // Add name-based fallbacks as a safety net
+  addCandidates(buildThumbCandidates(name, /* useSm */ false, {}, undefined));
+  addCandidates(buildThumbCandidates(name, /* useSm */ true, {}, undefined));
+
+  const showFallback = () => {
+    fallback.hidden = false;
+    thumb.classList.add('is-fallback');
+    img.style.display = 'none';
+    img.style.opacity = '1';
+    img.onerror = null;
+  };
+
+  const hideFallback = () => {
+    fallback.hidden = true;
+    thumb.classList.remove('is-fallback');
+    img.style.display = 'block';
+  };
+
+  const loadNext = () => {
+    if (idx < candidates.length) {
+      img.onerror = handleError;
+      hideFallback();
+      const nextSrc = candidates[idx++];
+      const currentSrc = img.getAttribute('src');
+      if (currentSrc === nextSrc) {
+        // Prevent infinite loop if browser didn't trigger onerror for identical src
+        loadNext();
+      } else {
+        img.src = nextSrc;
+      }
+      return;
+    }
+
+    if (!variantFetchAttempted) {
+      const identifier = opts?.uid || name;
+      if (!identifier) {
+        showFallback();
+        return;
+      }
+
+      variantFetchAttempted = true;
+      variantFetchPromise = Promise.allSettled([
+        getVariantImageCandidates(identifier, false, {}),
+        getVariantImageCandidates(identifier, true, {})
+      ])
+        .then(results => {
+          for (const result of results) {
+            if (result.status === 'fulfilled') {
+              addCandidates(result.value);
+            }
+          }
+        })
+        .catch(error => {
+          logger.debug('Failed to load synonym thumbnail candidates', { identifier, error: error?.message || error });
+        })
+        .finally(() => {
+          variantFetchPromise = null;
+          loadNext();
+        });
+      showFallback();
+      return;
+    }
+
+    // Either we're waiting for variants or none are available; show fallback
+    showFallback();
+  };
+
+  const handleError = () => {
+    loadNext();
+  };
+
+  img.onerror = handleError;
+  img.onload = () => {
+    hideFallback();
+    img.style.opacity = '1';
+  };
+  loadNext();
+  thumb.appendChild(img);
+  thumb.appendChild(fallback);
 
   const titleRow = document.createElement('div'); titleRow.className = 'titleRow';
   const h3 = document.createElement('h3'); h3.className = 'name'; h3.title = name;
@@ -121,9 +236,9 @@ function _buildControls(/* current */) {
 
 // Main init
 async function init() {
-  // Only run on /suggested page
-  const pathname = window.location.pathname;
-  if (!pathname.match(/\/suggested(?:\.html)?$/i)) {
+  // Only run on /trends page
+  const { pathname } = window.location;
+  if (!pathname.match(/\/trends(?:\.html)?$/i)) {
     return;
   }
 
