@@ -343,8 +343,8 @@
         }
       ],
       "set": "SVE",
-      "number": "010",
-      "uid": "Fire Energy::SVE::010",
+      "number": "018",
+      "uid": "Fire Energy::SVE::018",
       "category": "energy"
     },
     {
@@ -366,8 +366,8 @@
         }
       ],
       "set": "SVE",
-      "number": "013",
-      "uid": "Psychic Energy::SVE::013",
+      "number": "021",
+      "uid": "Psychic Energy::SVE::021",
       "category": "energy"
     },
     {
@@ -836,8 +836,8 @@
         }
       ],
       "set": "SVE",
-      "number": "015",
-      "uid": "Darkness Energy::SVE::015",
+      "number": "023",
+      "uid": "Darkness Energy::SVE::023",
       "category": "energy"
     }
   ]

@@ -2,6 +2,7 @@
 export const NUM_LARGE_ROWS = 1;
 // Number of rows to render as 'medium' rows (after large rows)
 export const NUM_MEDIUM_ROWS = 1;
+const MOBILE_MAX_WIDTH = 880;
 import { buildThumbCandidates } from './thumbs.js';
 import { computeLayout, syncControlsWidth } from './layoutHelper.js';
 import { trackMissing } from './dev/missingThumbs.js';
@@ -45,6 +46,7 @@ import { setProperties as _setProperties, setStyles, createElement } from './uti
  *   _moreWrapRef?: HTMLElement | null;
  *   _layoutMetrics?: CachedLayoutMetrics;
  *   _renderOptions?: RenderOptions;
+ *   _autoCompact?: boolean;
  *   _kbNavAttached?: boolean;
  * }} GridElement
 */
@@ -114,10 +116,13 @@ export function render(items, overrides = {}, options = {}) {
   const grid = getGridElement();
   if (!grid) {return;}
 
-  const layoutMode = options?.layoutMode === 'compact' ? 'compact' : 'standard';
+  const prefersCompact = typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX_WIDTH;
+  const requestedLayout = options?.layoutMode === 'compact' ? 'compact' : 'standard';
+  const layoutMode = requestedLayout;
   const settings = /** @type {RenderOptions} */ ({ layoutMode });
-  const forceCompact = settings.layoutMode === 'compact';
+  const forceCompact = prefersCompact || settings.layoutMode === 'compact';
   grid._renderOptions = settings;
+  grid._autoCompact = prefersCompact;
 
   grid.innerHTML = '';
 
@@ -136,7 +141,6 @@ export function render(items, overrides = {}, options = {}) {
   const { base, perRowBig, bigRowContentWidth, targetMedium, mediumScale, targetSmall, smallScale } = layout;
   syncControlsWidth(bigRowContentWidth);
 
-  // Only use small rows if they can actually fit more cards than medium (when large row has 6 or more)
   const useSmallRows = forceCompact || (perRowBig >= 6 && targetSmall > targetMedium);
 
   const largeRowsLimit = forceCompact ? 0 : NUM_LARGE_ROWS;
@@ -309,10 +313,13 @@ function expandGridRows(items, overrides, targetTotalRows, options = {}) {
     return;
   }
 
+  const prefersCompact = typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX_WIDTH;
   const fallbackMode = grid._renderOptions?.layoutMode === 'compact' ? 'compact' : 'standard';
-  const layoutMode = options?.layoutMode === 'compact' ? 'compact' : fallbackMode;
-  const forceCompact = layoutMode === 'compact';
+  const requestedLayout = options?.layoutMode === 'compact' ? 'compact' : fallbackMode;
+  const layoutMode = requestedLayout;
+  const forceCompact = prefersCompact || layoutMode === 'compact';
   grid._renderOptions = /** @type {RenderOptions} */ ({ layoutMode });
+  grid._autoCompact = prefersCompact;
 
   // Preserve scroll position during DOM manipulation
   const { scrollY } = window;
@@ -328,7 +335,6 @@ function expandGridRows(items, overrides, targetTotalRows, options = {}) {
   const layout = computeLayout(containerWidth);
   const { base, perRowBig, bigRowContentWidth, targetMedium, mediumScale, targetSmall, smallScale } = layout;
 
-  // Only use small rows if they can actually fit more cards than medium (when large row has 6 or more)
   const useSmallRows = forceCompact || (perRowBig >= 6 && targetSmall > targetMedium);
 
   const largeRowsLimit = forceCompact ? 0 : NUM_LARGE_ROWS;
@@ -420,8 +426,8 @@ function expandGridRows(items, overrides, targetTotalRows, options = {}) {
       const newCandidatesList = newItems.flatMap(item => {
         const variant = { set: item.set, number: item.number };
         return [
-          buildThumbCandidates(item.name, true, overrides, variant), // sm
-          buildThumbCandidates(item.name, false, overrides, variant) // xs
+          buildThumbCandidates(item.name, true, overrides, variant),
+          buildThumbCandidates(item.name, false, overrides, variant)
         ];
       });
       parallelImageLoader.preloadImages(newCandidatesList, 6);
@@ -555,9 +561,12 @@ function populateCardContent(el, cardData) {
   const countBadge = el.querySelector('.count-badge');
   if (countBadge && cardData.dist && cardData.dist.length > 0) {
     // Find the distribution entry with the highest percentage
-    const mostFrequent = cardData.dist.reduce((max, current) =>
-      (current.percent > max.percent) ? current : max
-    );
+    const mostFrequent = cardData.dist.reduce((max, current) => {
+      if (current.percent > max.percent) {
+        return current;
+      }
+      return max;
+    });
     countBadge.textContent = String(mostFrequent.copies);
     countBadge.title = `Most common: ${mostFrequent.copies}x (${mostFrequent.percent.toFixed(1)}%)`;
   } else if (countBadge) {
@@ -812,11 +821,12 @@ export function updateLayout() {
   } = computeLayout(containerWidth);
   syncControlsWidth(bigRowContentWidth);
 
-  const forceCompact = grid._renderOptions?.layoutMode === 'compact';
+  const prefersCompact = typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX_WIDTH;
+  const forceCompact = prefersCompact || grid._renderOptions?.layoutMode === 'compact';
+  grid._autoCompact = prefersCompact;
   const effectiveBigRows = forceCompact ? 0 : bigRows;
   const effectiveMediumRows = forceCompact ? 0 : mediumRows;
 
-  // Only use small rows if they can actually fit more cards than medium (when large row has 6 or more)
   const useSmallRows = forceCompact || (perRowBig >= 6 && targetSmall > targetMedium);
 
   // Fast path: If row grouping hasn't changed, avoid rebuilding the entire grid.

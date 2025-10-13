@@ -263,7 +263,7 @@ async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = fa
 
   // Fetch deckTotal for each archetype and sort by usage
   const archetypeUsage = await Promise.all(
-    archetypesList.map(async (archetype) => {
+    archetypesList.map(async archetype => {
       try {
         const report = await fetchArchetypeReport(tournament, archetype);
         return { archetype, deckTotal: report.deckTotal || 0 };
@@ -272,7 +272,7 @@ async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = fa
       }
     })
   );
-  archetypeUsage.sort((a, b) => b.deckTotal - a.deckTotal);
+  archetypeUsage.sort((leftUsage, rightUsage) => rightUsage.deckTotal - leftUsage.deckTotal);
 
   // Populate archetype options sorted by usage
   archetypeUsage.forEach(({ archetype }) => {

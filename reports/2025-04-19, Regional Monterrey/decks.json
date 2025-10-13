@@ -1,6 +1,6 @@
 [
   {
-    "id": "122e25a4a9",
+    "id": "26a85a3ce0",
     "player": "Brent Tonisson",
     "placement": 1,
     "archetype": "Gardevoir",
@@ -163,21 +163,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "122e25a4a9389d7c522b0361b6b47868e0777d0e"
+    "deckHash": "26a85a3ce0310883734c909431e13e904a8e7cb0"
   },
   {
-    "id": "6545642115",
+    "id": "c40ff22f21",
     "player": "Fernando Cifuentes",
     "placement": 2,
     "archetype": "Blissey",
@@ -333,28 +333,28 @@
         "count": 7,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "654564211590e37b43be8d3e31b162e65061569b"
+    "deckHash": "c40ff22f216842d1b5dd25205e157c8501e4bb59"
   },
   {
-    "id": "a3e44a7021",
+    "id": "ae39b5dafa",
     "player": "Yerco Valencia",
     "placement": 3,
     "archetype": "Tera Box",
@@ -580,49 +580,49 @@
         "count": 4,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "a3e44a7021e125eafece24d266221f862f02db31"
+    "deckHash": "ae39b5dafa40477e50f13c774e327d9b29c3fc08"
   },
   {
-    "id": "dc00e62325",
+    "id": "228193de6c",
     "player": "Caleb Rogerson",
     "placement": 4,
     "archetype": "Gholdengo Dragapult",
@@ -813,63 +813,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "dc00e6232567c0759a9f45ac636410bb5ff95f97"
+    "deckHash": "228193de6cef51a1469f30aa873624e760cc30ec"
   },
   {
-    "id": "dc00e62325",
+    "id": "228193de6c",
     "player": "Grant Shen",
     "placement": 5,
     "archetype": "Gholdengo Dragapult",
@@ -1060,63 +1060,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "dc00e6232567c0759a9f45ac636410bb5ff95f97"
+    "deckHash": "228193de6cef51a1469f30aa873624e760cc30ec"
   },
   {
-    "id": "5e7b1763b5",
+    "id": "86daecbd1b",
     "player": "Eder Jarillo Soto",
     "placement": 6,
     "archetype": "Dragapult",
@@ -1314,21 +1314,21 @@
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "5e7b1763b5a6a0ec18376574bee953fea1abf26b"
+    "deckHash": "86daecbd1ba049ee1049bd0af3de135227259c6a"
   },
   {
-    "id": "ad359e9cca",
+    "id": "c85607b0db",
     "player": "Tyler Mathews",
     "placement": 7,
     "archetype": "Joltik Box",
@@ -1505,35 +1505,35 @@
         "count": 5,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "ad359e9cca1942c3571c12ef0311ee56358b2ae3"
+    "deckHash": "c85607b0db6d5e66833274107c1be245e4f5d382"
   },
   {
-    "id": "81f6f3a200",
+    "id": "1dfd683c3b",
     "player": "Tanner Hurley",
     "placement": 8,
     "archetype": "Dragapult",
@@ -1738,21 +1738,21 @@
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "81f6f3a200fdd58ef9a3b9a3dfda847ceef6fb62"
+    "deckHash": "1dfd683c3b71837352b92e1fc0224daf3305136f"
   },
   {
-    "id": "52e5c9bf68",
+    "id": "e82d266939",
     "player": "Victor Arano",
     "placement": 9,
     "archetype": "Raging Bolt Ogerpon",
@@ -1943,28 +1943,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "52e5c9bf685167df7af41e469e215e0411cf24cd"
+    "deckHash": "e82d26693971bae2e00e71596cec25f010356418"
   },
   {
-    "id": "6c741500e4",
+    "id": "ba7526ea6d",
     "player": "Raul Avila Jr",
     "placement": 10,
     "archetype": "Roaring Moon Dudunsparce",
@@ -2099,14 +2099,14 @@
         "count": 6,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "6c741500e41dc2f2ad37482a993ae3fc0a7ca4a6"
+    "deckHash": "ba7526ea6d5341ce5e25b2377a2be0bb7a28c166"
   },
   {
-    "id": "24d4cbccda",
+    "id": "a4b817949a",
     "player": "Ross Cawthon",
     "placement": 11,
     "archetype": "Gholdengo Dragapult",
@@ -2283,56 +2283,56 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "24d4cbccda8cef077b273aebb8442d58220f72bd"
+    "deckHash": "a4b817949a353953ba7f4e46492dcfc439fdb4ea"
   },
   {
-    "id": "8a9a205c2c",
+    "id": "c0b222c0f6",
     "player": "Armando Cervantes",
     "placement": 12,
     "archetype": "Gholdengo",
@@ -2516,63 +2516,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "8a9a205c2c47e7430a0f0ce0c8bb7eda410f6d48"
+    "deckHash": "c0b222c0f6e2de45e1ee49d3c6257f194cce3f6d"
   },
   {
-    "id": "2e4e62ec28",
+    "id": "b35e4df3c1",
     "player": "Andre Bortoni Miranda",
     "placement": 13,
     "archetype": "Raging Bolt Ogerpon",
@@ -2770,28 +2770,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "2e4e62ec28cbbd8ffbc52c35aee25047a9afafb4"
+    "deckHash": "b35e4df3c1db10e995fb0d0bae5c2855f69f726a"
   },
   {
-    "id": "8b8790b501",
+    "id": "0bdc45352f",
     "player": "Diego Cassiraga",
     "placement": 14,
     "archetype": "Dragapult",
@@ -3003,21 +3003,21 @@
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "8b8790b501a36f825661edbe98960ea1795b4856"
+    "deckHash": "0bdc45352f654b64a89c8573fb912e8e128d7b28"
   },
   {
-    "id": "a600268672",
+    "id": "4c9b1b858f",
     "player": "Jonhathan Vazquez",
     "placement": 15,
     "archetype": "Dragapult",
@@ -3215,21 +3215,21 @@
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "a600268672f59d37125cadf3dc77f96b6220e4e3"
+    "deckHash": "4c9b1b858fe7438ddbbbeb8a2b4c490c43af0d81"
   },
   {
-    "id": "b38de36daa",
+    "id": "7d1646fdc8",
     "player": "Matias Matricardi",
     "placement": 16,
     "archetype": "Gardevoir",
@@ -3406,21 +3406,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "b38de36daab206ad4cbf0b27b4a9d0979717cd76"
+    "deckHash": "7d1646fdc8b5d79c7b13fe3a54448afaf73c5bdf"
   },
   {
-    "id": "8fd06d9f48",
+    "id": "51079949f8",
     "player": "Aidan Khus",
     "placement": 17,
     "archetype": "Dragapult Dusknoir",
@@ -3611,21 +3611,21 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "8fd06d9f48af606a1fbe531b49000007e0c26d2a"
+    "deckHash": "51079949f85e2742ff3bc84fc33859d1fb15129c"
   },
   {
-    "id": "f18165d815",
+    "id": "3b8f8f40cf",
     "player": "José Eduardo Rodríguez",
     "placement": 18,
     "archetype": "Tera Box",
@@ -3816,42 +3816,42 @@
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "f18165d815a7b8728ba43329a720bb1b70b75713"
+    "deckHash": "3b8f8f40cf9a1919a61c6ff07cbe5e84043c62e0"
   },
   {
-    "id": "f50a348473",
+    "id": "dda4fe9a52",
     "player": "Muhammad Ideis",
     "placement": 19,
     "archetype": "Gardevoir",
@@ -4063,21 +4063,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "f50a3484736313fd44ad33d61b199975092feb8b"
+    "deckHash": "dda4fe9a525ee49c4072b92365647d5c5ee6e742"
   },
   {
-    "id": "238157970e",
+    "id": "1856f18112",
     "player": "Carlos Sepúlveda",
     "placement": 20,
     "archetype": "Gholdengo Dudunsparce",
@@ -4254,63 +4254,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "238157970ece23761e16f21c947f94682c4822ca"
+    "deckHash": "1856f18112bee10a0457ee5ebedb2d50caee5e90"
   },
   {
-    "id": "dc00e62325",
+    "id": "228193de6c",
     "player": "Michael Davidson",
     "placement": 21,
     "archetype": "Gholdengo Dragapult",
@@ -4501,63 +4501,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "dc00e6232567c0759a9f45ac636410bb5ff95f97"
+    "deckHash": "228193de6cef51a1469f30aa873624e760cc30ec"
   },
   {
-    "id": "45e6520daa",
+    "id": "dedaa5b111",
     "player": "Ethan Hegyi",
     "placement": 22,
     "archetype": "Gardevoir",
@@ -4769,21 +4769,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "45e6520daa696553260890a16eb9c05ac7163a80"
+    "deckHash": "dedaa5b111421efc21d3bec8c9b6b3244b565247"
   },
   {
-    "id": "a64be9cb33",
+    "id": "be78cf8874",
     "player": "Marco Cifuentes Meta",
     "placement": 23,
     "archetype": "Gardevoir",
@@ -4974,21 +4974,21 @@
         "count": 6,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "a64be9cb33f3f8e8cd945fa532c564cc9e21933b"
+    "deckHash": "be78cf8874892170f0c87cd62d339cfae51a6031"
   },
   {
-    "id": "6545642115",
+    "id": "c40ff22f21",
     "player": "Gonzalo Zamorano",
     "placement": 24,
     "archetype": "Blissey",
@@ -5144,28 +5144,28 @@
         "count": 7,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "654564211590e37b43be8d3e31b162e65061569b"
+    "deckHash": "c40ff22f216842d1b5dd25205e157c8501e4bb59"
   },
   {
-    "id": "dc00e62325",
+    "id": "228193de6c",
     "player": "Benny Billinger",
     "placement": 25,
     "archetype": "Gholdengo Dragapult",
@@ -5356,63 +5356,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "dc00e6232567c0759a9f45ac636410bb5ff95f97"
+    "deckHash": "228193de6cef51a1469f30aa873624e760cc30ec"
   },
   {
-    "id": "bb3fcb7a19",
+    "id": "0f90077051",
     "player": "David Ernesto Chuc Herrera",
     "placement": 26,
     "archetype": "Gholdengo",
@@ -5589,63 +5589,63 @@
         "count": 4,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "bb3fcb7a19f3602fca0e1f7fc4a4d6c9359c7f57"
+    "deckHash": "0f90077051b8bf69e1ac948a8d9d83a543f429b5"
   },
   {
-    "id": "c8b7cde5ba",
+    "id": "b3fa28475a",
     "player": "Bernardo Damian Valdespino Zapata",
     "placement": 27,
     "archetype": "Dragapult",
@@ -5864,21 +5864,21 @@
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "c8b7cde5ba59bafa700b9f83b13a30c84520233b"
+    "deckHash": "b3fa28475a177316ca0f8360847666cf94cfbe1f"
   },
   {
-    "id": "c4d07de63f",
+    "id": "a06259a7c4",
     "player": "Owen Dalgard",
     "placement": 28,
     "archetype": "Dragapult Dusknoir",
@@ -6062,21 +6062,21 @@
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "c4d07de63fbf8d0430338f6edd3f31a762e24a84"
+    "deckHash": "a06259a7c46ea9988a50520532a8c093fd2bf4de"
   },
   {
-    "id": "5cf2028003",
+    "id": "fa2082db69",
     "player": "Diego Varea Barrera",
     "placement": 29,
     "archetype": "Gardevoir",
@@ -6246,21 +6246,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "5cf2028003cf68346c5e86a6e47d27c158a96f35"
+    "deckHash": "fa2082db69e8a31558565ce85f5b633742f5b7aa"
   },
   {
-    "id": "238157970e",
+    "id": "1856f18112",
     "player": "Andres Estefano Gajardo Lopehandia",
     "placement": 30,
     "archetype": "Gholdengo Dudunsparce",
@@ -6437,63 +6437,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "238157970ece23761e16f21c947f94682c4822ca"
+    "deckHash": "1856f18112bee10a0457ee5ebedb2d50caee5e90"
   },
   {
-    "id": "57714007a5",
+    "id": "1fac39abde",
     "player": "Pablo Meza",
     "placement": 31,
     "archetype": "Gardevoir",
@@ -6649,21 +6649,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "57714007a5275a14d00b1777c5c258a1abb3b32a"
+    "deckHash": "1fac39abdece394bf411c553189f5c8514f71e7a"
   },
   {
-    "id": "50d1855906",
+    "id": "d5fb3edf59",
     "player": "Ivan Chan",
     "placement": 32,
     "archetype": "Joltik Box",
@@ -6840,35 +6840,35 @@
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 5,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "50d18559060f4714b1fadcd48f2ea5ccc3333de9"
+    "deckHash": "d5fb3edf59347e2967f5e79a3fb663e4e6e77ca7"
   },
   {
-    "id": "f790e6b10a",
+    "id": "e9df4931d2",
     "player": "Fernando Cornelio",
     "placement": 33,
     "archetype": "Raging Bolt Ogerpon",
@@ -7066,28 +7066,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "f790e6b10aed917d0a0a9dce048416da31f4180e"
+    "deckHash": "e9df4931d27b74af2aa8c0245b83ab760368921f"
   },
   {
-    "id": "f7ccfc495f",
+    "id": "0d9f430768",
     "player": "Enrique Saenz",
     "placement": 34,
     "archetype": "Gardevoir",
@@ -7278,21 +7278,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "f7ccfc495f775ff2ee7482fc72aabb68141a9731"
+    "deckHash": "0d9f430768d7b10b297c2fd33108aea9cf840eb7"
   },
   {
-    "id": "eb5ffa7d12",
+    "id": "cfc6c887c2",
     "player": "Niko Dos Santos Mendoza Soto",
     "placement": 35,
     "archetype": "Gardevoir",
@@ -7469,21 +7469,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "eb5ffa7d1271ddfacfef003723b0f877b198d51d"
+    "deckHash": "cfc6c887c2bd67ca6313840d571a984860a797ef"
   },
   {
-    "id": "c1a1dfa326",
+    "id": "6f9798ab56",
     "player": "Jose Alberto Penafort",
     "placement": 36,
     "archetype": "Dragapult Dusknoir",
@@ -7681,21 +7681,21 @@
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "c1a1dfa326cdcddb2031a9d34228e67e4e05ea88"
+    "deckHash": "6f9798ab5671636cb4d22b567a6b538bf6c2c822"
   },
   {
-    "id": "7772a323e7",
+    "id": "1a57f17c10",
     "player": "Brandon Alejandro Aviles Montaño",
     "placement": 37,
     "archetype": "Terapagos Noctowl",
@@ -7900,14 +7900,14 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
@@ -7921,14 +7921,14 @@
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "7772a323e75d285d6f8c86c4f48ea65babdbdfd7"
+    "deckHash": "1a57f17c102deb4c8953a36c405a92c572037527"
   },
   {
-    "id": "1451e17594",
+    "id": "f06fb0d19e",
     "player": "Juan Flores",
     "placement": 38,
     "archetype": "Raging Bolt Ogerpon",
@@ -8119,28 +8119,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "1451e17594d20ca885071824320cc1c876d0f0f3"
+    "deckHash": "f06fb0d19eb5687bf78cd687e51360cf382c77b5"
   },
   {
-    "id": "ed4d77d31f",
+    "id": "7346f9cef4",
     "player": "Jaime Riva",
     "placement": 39,
     "archetype": "Joltik Box",
@@ -8324,35 +8324,35 @@
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 5,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "ed4d77d31fc533020a2bfd9d879a574e3712e865"
+    "deckHash": "7346f9cef42eb366a995a185ce6a11cd5ce8bb9a"
   },
   {
-    "id": "5b7cc8056c",
+    "id": "f56438a989",
     "player": "Fabrizio Inga Silva",
     "placement": 40,
     "archetype": "Dragapult Dusknoir",
@@ -8550,21 +8550,21 @@
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "5b7cc8056c78bb47d846330bbc777b777a04f832"
+    "deckHash": "f56438a98944b7bf85a838010435178e20aa97b9"
   },
   {
-    "id": "feabb93a34",
+    "id": "b1fb83d94b",
     "player": "Jonatan Torres",
     "placement": 41,
     "archetype": "Terapagos Noctowl",
@@ -8783,28 +8783,28 @@
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "feabb93a34a519b876bcd177009eec23072a99b9"
+    "deckHash": "b1fb83d94b89b3d95c2a9fb52e0840629b02eee7"
   },
   {
-    "id": "6343d241cd",
+    "id": "cfb39f86f3",
     "player": "Andres Diosdado",
     "placement": 42,
     "archetype": "Dragapult Dusknoir",
@@ -9002,21 +9002,21 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "6343d241cd4484ec8553faaaa83b9883164fa0db"
+    "deckHash": "cfb39f86f3889dff626c1bae84fdfd2fdd633aed"
   },
   {
-    "id": "95abb66cf9",
+    "id": "f7115a2a9a",
     "player": "Pablo Gonzalez",
     "placement": 43,
     "archetype": "Poison Archaludon",
@@ -9214,14 +9214,14 @@
         "count": 6,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       }
     ],
-    "deckHash": "95abb66cf99f50eb9a3984abe1f007f5e3fb8b99"
+    "deckHash": "f7115a2a9ae082225babe91a56dbf889a90ea84a"
   },
   {
-    "id": "21a0b33693",
+    "id": "a74bfcb4c5",
     "player": "Aldo Castillo Sanchez",
     "placement": 44,
     "archetype": "Dragapult",
@@ -9433,21 +9433,21 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
@@ -9458,10 +9458,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "21a0b336931f7e19bf990b089a7f00a2b2ee9690"
+    "deckHash": "a74bfcb4c5a8023d670604d93f6a72f18e44868d"
   },
   {
-    "id": "1705969d92",
+    "id": "07a729700f",
     "player": "Justin Turner",
     "placement": 45,
     "archetype": "Dragapult",
@@ -9666,21 +9666,21 @@
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "1705969d92c708e17b9fd9e7b6fd48ef6acf9a89"
+    "deckHash": "07a729700fcec740213bbbab26a551cc30889b2c"
   },
   {
-    "id": "9b98d9e809",
+    "id": "5819ea60f2",
     "player": "Matt Chuang",
     "placement": 46,
     "archetype": "Dragapult",
@@ -9885,21 +9885,21 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
@@ -9910,10 +9910,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "9b98d9e8091195433ee493ce03c33d50cc17fc31"
+    "deckHash": "5819ea60f229b1836dfb71a91170b380eb050a0a"
   },
   {
-    "id": "a128220fb7",
+    "id": "0ccb100d1c",
     "player": "Gabriel Smart",
     "placement": 47,
     "archetype": "Flareon Noctowl",
@@ -10132,35 +10132,35 @@
         "count": 3,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "a128220fb70ea059ac23d57871294d1a0db06da2"
+    "deckHash": "0ccb100d1c0b95e9564c48251fedd5b01fe3127c"
   },
   {
-    "id": "3dd357049d",
+    "id": "3809e7e7af",
     "player": "Pablo Jesús López Salcido",
     "placement": 48,
     "archetype": "Poison Archaludon",
@@ -10365,14 +10365,14 @@
         "count": 6,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       }
     ],
-    "deckHash": "3dd357049d125b00a84d713238fc0c4fc06ee137"
+    "deckHash": "3809e7e7afffcba4ad770881baea30e877a8480b"
   },
   {
-    "id": "13091520be",
+    "id": "799e6d432f",
     "player": "Rodrigo Vazquez Miranda",
     "placement": 49,
     "archetype": "Charizard Dusknoir",
@@ -10591,7 +10591,7 @@
         "count": 5,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
@@ -10602,10 +10602,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "13091520be9609f64b8a7b8127b1a6e2d0520d4d"
+    "deckHash": "799e6d432fc98042e4bcaefffe141c4430d20a0d"
   },
   {
-    "id": "dc00e62325",
+    "id": "228193de6c",
     "player": "Rahul Reddy",
     "placement": 50,
     "archetype": "Gholdengo Dragapult",
@@ -10796,63 +10796,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "dc00e6232567c0759a9f45ac636410bb5ff95f97"
+    "deckHash": "228193de6cef51a1469f30aa873624e760cc30ec"
   },
   {
-    "id": "a128220fb7",
+    "id": "0ccb100d1c",
     "player": "Zach Lesage",
     "placement": 51,
     "archetype": "Flareon Noctowl",
@@ -11071,35 +11071,35 @@
         "count": 3,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "a128220fb70ea059ac23d57871294d1a0db06da2"
+    "deckHash": "0ccb100d1c0b95e9564c48251fedd5b01fe3127c"
   },
   {
-    "id": "05b399334e",
+    "id": "b8aa34592c",
     "player": "David Veronica",
     "placement": 52,
     "archetype": "Gholdengo",
@@ -11276,63 +11276,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "05b399334ee3165cb8e130369631cc5c3e5c1a36"
+    "deckHash": "b8aa34592caa4f4f905cbbbeda86288bd69a6ba5"
   },
   {
-    "id": "67ff9a290c",
+    "id": "8d5f60faa3",
     "player": "Giovanni Vargas Virgen",
     "placement": 53,
     "archetype": "Raging Bolt Ogerpon",
@@ -11481,28 +11481,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "67ff9a290c285a583b0d0792a4a978d05db97d78"
+    "deckHash": "8d5f60faa3d141d7e4eea94a9d03915f0842ff20"
   },
   {
-    "id": "35b8b28399",
+    "id": "c68066a03a",
     "player": "Blake Wray",
     "placement": 54,
     "archetype": "Dragapult",
@@ -11707,21 +11707,21 @@
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "35b8b28399083025bb0f827a4ad8e11edb740f32"
+    "deckHash": "c68066a03a8195fb1289a29c0176bb5545690e1f"
   },
   {
-    "id": "5797964061",
+    "id": "71303fb037",
     "player": "Ciaran Farah",
     "placement": 55,
     "archetype": "Froslass Munkidori",
@@ -11898,7 +11898,7 @@
         "count": 5,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
@@ -11909,10 +11909,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "5797964061049cb71c32103b76618524045b4cb1"
+    "deckHash": "71303fb0378a0ece2e5ee4007735469eb60859ce"
   },
   {
-    "id": "9fa872c2af",
+    "id": "00474f44bd",
     "player": "Rodolfo Borunda",
     "placement": 56,
     "archetype": "Archaludon",
@@ -12082,14 +12082,14 @@
         "count": 8,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       }
     ],
-    "deckHash": "9fa872c2af7869058b2adc3a41bb72d4a6cda9c2"
+    "deckHash": "00474f44bdd66675641ee9f773712b2a950728ae"
   },
   {
-    "id": "e0328a4b07",
+    "id": "cd75a9e999",
     "player": "Felipe Martinez",
     "placement": 57,
     "archetype": "Joltik Box",
@@ -12273,35 +12273,35 @@
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 5,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "e0328a4b076948cc52f85996b9e610b9c42d73c9"
+    "deckHash": "cd75a9e9994d1cb64e3d868902aabdc28e0f41ae"
   },
   {
-    "id": "0689b1949c",
+    "id": "df10015164",
     "player": "Jose Lagunes Maitret",
     "placement": 58,
     "archetype": "Dragapult Dusknoir",
@@ -12492,21 +12492,21 @@
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "0689b1949ce1dd2bd85b322fea554079f834fa55"
+    "deckHash": "df10015164fce903b0cb4a833abb2b662540bb63"
   },
   {
-    "id": "27f314c33f",
+    "id": "e2ce4ed3b9",
     "player": "Rodrigo Ortiz Rio",
     "placement": 59,
     "archetype": "Dragapult",
@@ -12711,14 +12711,14 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
@@ -12732,14 +12732,14 @@
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "27f314c33f28ae9ffbbbe4ecad694eefce0390be"
+    "deckHash": "e2ce4ed3b9427ba29715183fc476f5d6b701bbcf"
   },
   {
-    "id": "1b8d14e3d4",
+    "id": "ace931abf8",
     "player": "Francisco Rocha",
     "placement": 60,
     "archetype": "Gardevoir",
@@ -12916,21 +12916,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "1b8d14e3d437c205bd151c09334da83661399b1b"
+    "deckHash": "ace931abf8c19856ebc03aa2842352e62d0e9fce"
   },
   {
-    "id": "809e09ce5b",
+    "id": "6284e06494",
     "player": "Rolando Gabriel Coronado Jimenez",
     "placement": 61,
     "archetype": "Poison Archaludon",
@@ -13121,21 +13121,21 @@
         "count": 6,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "809e09ce5b7a6043ad16aafd2941d614dbf0c2db"
+    "deckHash": "6284e064940b50afacdc0ea818684efbdc20ccd0"
   },
   {
-    "id": "ed4d77d31f",
+    "id": "7346f9cef4",
     "player": "Sergio Alan Silva Aguilar",
     "placement": 62,
     "archetype": "Joltik Box",
@@ -13319,35 +13319,35 @@
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 5,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "ed4d77d31fc533020a2bfd9d879a574e3712e865"
+    "deckHash": "7346f9cef42eb366a995a185ce6a11cd5ce8bb9a"
   },
   {
-    "id": "34b7e87113",
+    "id": "13cd1ef155",
     "player": "Jorge Hernandez",
     "placement": 63,
     "archetype": "Archaludon",
@@ -13552,14 +13552,14 @@
         "count": 8,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       }
     ],
-    "deckHash": "34b7e87113164c5c2eb8afde6a24987a6ca0f4ad"
+    "deckHash": "13cd1ef155a573215d760122e55fb5ef8f2678f2"
   },
   {
-    "id": "77f3bce0b7",
+    "id": "314e792ece",
     "player": "Raul Merino",
     "placement": 64,
     "archetype": "Raging Bolt Ogerpon",
@@ -13743,28 +13743,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "77f3bce0b71e74aafcebc470c83c6e7643332db1"
+    "deckHash": "314e792ece38543f01d556133c564cfbbf82f6db"
   },
   {
-    "id": "3555a1725b",
+    "id": "1f98281b39",
     "player": "Ajay Sridhar",
     "placement": 65,
     "archetype": "Gardevoir",
@@ -13976,21 +13976,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "3555a1725b7a458c75067b9869e8b403a6b593b8"
+    "deckHash": "1f98281b39a24cdcba104287fd7b2ae9589fa692"
   },
   {
-    "id": "a9d5abf9a1",
+    "id": "9f1b10d38c",
     "player": "Franco De Crescenzo",
     "placement": 66,
     "archetype": "Joltik Box",
@@ -14160,35 +14160,35 @@
         "count": 5,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "a9d5abf9a1fa5a030eb1001d242a22a28dd384b8"
+    "deckHash": "9f1b10d38c97309207bfa95f3c4ede10b0179aba"
   },
   {
-    "id": "e88e65484b",
+    "id": "a2db70ed4b",
     "player": "Naim Legñar",
     "placement": 67,
     "archetype": "Dragapult Dusknoir",
@@ -14393,21 +14393,21 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "e88e65484b618b33089284c8f033182c6802175f"
+    "deckHash": "a2db70ed4b4ec199363cbde0992fb62f89d0a413"
   },
   {
-    "id": "095405d599",
+    "id": "4ee736c2f7",
     "player": "Francisco Hernandez",
     "placement": 68,
     "archetype": "Gholdengo",
@@ -14584,63 +14584,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "095405d599b012d547f318771d0b77691609eaf8"
+    "deckHash": "4ee736c2f7f54f16441942cb3bbddc68bbd4ca7b"
   },
   {
-    "id": "0bd2d76e5f",
+    "id": "5589e500d3",
     "player": "Israel Guadalupe Garcia Belmares",
     "placement": 69,
     "archetype": "Raging Bolt Ogerpon",
@@ -14817,28 +14817,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "0bd2d76e5f6c7294435a51e370408eafec5e66be"
+    "deckHash": "5589e500d3556ebc015289039a4ae39c9dcf0d32"
   },
   {
-    "id": "95fa620cbf",
+    "id": "885d4ea169",
     "player": "Vincent Vargas",
     "placement": 70,
     "archetype": "Flareon Noctowl",
@@ -15057,35 +15057,35 @@
         "count": 3,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "95fa620cbf5cab1f549048149b740cd50f262b49"
+    "deckHash": "885d4ea1693f737d20bccd9abdbe387cf6ac1631"
   },
   {
-    "id": "6d4057ead1",
+    "id": "a82e4162a8",
     "player": "Guillermo Ruiz Reyes",
     "placement": 71,
     "archetype": "Raging Bolt Ogerpon",
@@ -15255,28 +15255,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "6d4057ead105b3dde302ef6e0cb06a144e971b62"
+    "deckHash": "a82e4162a8766dcf2a8c114ebf439af285beaa3d"
   },
   {
-    "id": "81298f0584",
+    "id": "475ccb42aa",
     "player": "Johnatan Sedeño",
     "placement": 72,
     "archetype": "Tera Box",
@@ -15474,42 +15474,42 @@
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "81298f0584f18d7a6860b98d7e18c5da0b35a653"
+    "deckHash": "475ccb42aaf04bfabc516ebd743c0825d392583a"
   },
   {
-    "id": "bf167be5b5",
+    "id": "f426724f6e",
     "player": "Felipe Luna Herrera",
     "placement": 73,
     "archetype": "Poison Archaludon",
@@ -15693,14 +15693,14 @@
         "count": 6,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       }
     ],
-    "deckHash": "bf167be5b54ca766fc8126d7afaf8ba87dc0fa00"
+    "deckHash": "f426724f6e4aeea17c2487994a1662301425a5e9"
   },
   {
-    "id": "cd34fc92ad",
+    "id": "6e48b5929f",
     "player": "Christian Cruz Esquivel",
     "placement": 74,
     "archetype": "Gardevoir",
@@ -15912,21 +15912,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "cd34fc92add9354500a89091b973b6a5561a2f39"
+    "deckHash": "6e48b5929fc94b7ef5568f0db09a5b26c0a82c81"
   },
   {
-    "id": "f74b26228c",
+    "id": "49c09838a2",
     "player": "Fernando Elias Vega",
     "placement": 75,
     "archetype": "Terapagos Noctowl",
@@ -16152,14 +16152,14 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
@@ -16173,14 +16173,14 @@
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "f74b26228ce86300bef284f5c1f0c4b64b870bc4"
+    "deckHash": "49c09838a2188080d533196563fce14f7777bc4c"
   },
   {
-    "id": "27f314c33f",
+    "id": "e2ce4ed3b9",
     "player": "Victor Manuel Garcia Montes",
     "placement": 76,
     "archetype": "Dragapult",
@@ -16385,14 +16385,14 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
@@ -16406,14 +16406,14 @@
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "27f314c33f28ae9ffbbbe4ecad694eefce0390be"
+    "deckHash": "e2ce4ed3b9427ba29715183fc476f5d6b701bbcf"
   },
   {
-    "id": "6cc8a65cde",
+    "id": "6a0cd25756",
     "player": "Arturo Espinoza",
     "placement": 77,
     "archetype": "Tera Box",
@@ -16625,49 +16625,49 @@
         "count": 4,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "6cc8a65cdec7848c3b65d15fd4e08be47033ed31"
+    "deckHash": "6a0cd257563a991a5eaf08e4107ca40ba89fe7d1"
   },
   {
-    "id": "fe3f9dd40a",
+    "id": "39209ad63d",
     "player": "Christhian Ehunis Lopez Mayoral",
     "placement": 78,
     "archetype": "Gholdengo Dudunsparce",
@@ -16865,63 +16865,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "fe3f9dd40a73eac7366142bfb5c88314686ca994"
+    "deckHash": "39209ad63da7d30a545c8669909b1cce6516702a"
   },
   {
-    "id": "7833729a15",
+    "id": "b13edb0ae5",
     "player": "Juan Betancourt",
     "placement": 79,
     "archetype": "Raging Bolt Ogerpon",
@@ -17098,28 +17098,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "7833729a15bfc61bddfbf2690763960254e45376"
+    "deckHash": "b13edb0ae57f932a6e97181e11874789f5cc2001"
   },
   {
-    "id": "5e1715c858",
+    "id": "727af5cd59",
     "player": "Huri Jaaciel Flores Gonzalez",
     "placement": 80,
     "archetype": "Dragapult Dusknoir",
@@ -17317,7 +17317,7 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
@@ -17331,14 +17331,14 @@
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "5e1715c8582440151476592934c3c7eeb97fbc9a"
+    "deckHash": "727af5cd59c433fe8376b74097fe259787620d26"
   },
   {
-    "id": "ad62a5c7ca",
+    "id": "4bfe61e3b5",
     "player": "Roger Luna",
     "placement": 81,
     "archetype": "Raging Bolt Ogerpon",
@@ -17536,28 +17536,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "ad62a5c7caf1f8629a24a3ed2fc9f1d308196d38"
+    "deckHash": "4bfe61e3b5041b456d769ef6b03217fed8eca17b"
   },
   {
-    "id": "6ba80b4183",
+    "id": "f4edd2f7a3",
     "player": "Raul Rodriguez",
     "placement": 82,
     "archetype": "N's Zoroark",
@@ -17755,7 +17755,7 @@
         "count": 6,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
@@ -17766,10 +17766,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "6ba80b4183aa28d7e3668364d53513bebc935650"
+    "deckHash": "f4edd2f7a3cd1892f792be5a6269cf43401dd70e"
   },
   {
-    "id": "05b399334e",
+    "id": "b8aa34592c",
     "player": "Jonathan Rodriguez",
     "placement": 83,
     "archetype": "Gholdengo",
@@ -17946,63 +17946,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "05b399334ee3165cb8e130369631cc5c3e5c1a36"
+    "deckHash": "b8aa34592caa4f4f905cbbbeda86288bd69a6ba5"
   },
   {
-    "id": "874eb008b9",
+    "id": "ba0021ef45",
     "player": "Alejandro Herrera Orejuela",
     "placement": 84,
     "archetype": "Raging Bolt Ogerpon",
@@ -18200,28 +18200,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "874eb008b92cb0f72698e26be5ebcb80311364c8"
+    "deckHash": "ba0021ef45af569481998bd8f9182a4cca043eb2"
   },
   {
-    "id": "c26a3c5ccc",
+    "id": "5da0cd732b",
     "player": "Erick Emmanuel Villaseñor Chagoya",
     "placement": 85,
     "archetype": "Dragapult",
@@ -18433,14 +18433,14 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
@@ -18454,14 +18454,14 @@
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "c26a3c5ccc69055a84bef179b495b90130c77ccd"
+    "deckHash": "5da0cd732bfc443e2dd27748bac2876931758567"
   },
   {
-    "id": "6f96f594c5",
+    "id": "e5331eb4a2",
     "player": "Christopher Ricardo Talavera Damian",
     "placement": 86,
     "archetype": "Dragapult Dusknoir",
@@ -18673,21 +18673,21 @@
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "6f96f594c57fe204e1acc78f1d1720308c3c542b"
+    "deckHash": "e5331eb4a204b0c1dc4bee749272f0d2b01a1006"
   },
   {
-    "id": "6ffa7bc39a",
+    "id": "f9da7e15cb",
     "player": "Cody Graham",
     "placement": 87,
     "archetype": "Gholdengo",
@@ -18885,63 +18885,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "6ffa7bc39a6d271e08187ed4a5ac383f2ec639a9"
+    "deckHash": "f9da7e15cb6b6aad2f147635976e57ac272cb0fe"
   },
   {
-    "id": "d826670925",
+    "id": "4c4b9a3fb3",
     "player": "Jose Luis Aguilar Lugo",
     "placement": 88,
     "archetype": "Gholdengo Dudunsparce",
@@ -19139,63 +19139,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "d8266709254128124392e0e79b18e8e3ffb95646"
+    "deckHash": "4c4b9a3fb38c9c6cb849bf63d819e64c1a0495d3"
   },
   {
-    "id": "23621c7f1d",
+    "id": "70b127d229",
     "player": "Diego Omar Campos",
     "placement": 89,
     "archetype": "Terapagos Noctowl",
@@ -19414,14 +19414,14 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
@@ -19435,14 +19435,14 @@
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "23621c7f1d73ab3ba9fa18d23e7e3866aa6fe6ba"
+    "deckHash": "70b127d22984f279a6842cb45d71cfd73269be66"
   },
   {
-    "id": "0069753107",
+    "id": "181252ca9c",
     "player": "Carlos Cardenas",
     "placement": 90,
     "archetype": "Terapagos Noctowl",
@@ -19640,28 +19640,28 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "00697531078fd5762a6dc2cdab5dec4c32930bd5"
+    "deckHash": "181252ca9c4fb8970047a05012ffc5aeb42830b7"
   },
   {
-    "id": "c4ba842f80",
+    "id": "58bcadd28b",
     "player": "Luis Bañon",
     "placement": 91,
     "archetype": "Flareon Noctowl",
@@ -19873,35 +19873,35 @@
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       }
     ],
-    "deckHash": "c4ba842f8021398d2a47f4a195111ff7a0277dd4"
+    "deckHash": "58bcadd28b73e2abb68458a0c5f333b4088583a1"
   },
   {
-    "id": "33c6613d16",
+    "id": "be87ce6a1e",
     "player": "Emilio Garcia",
     "placement": 92,
     "archetype": "Gholdengo Dudunsparce",
@@ -20106,63 +20106,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "33c6613d16f29e6bddc16c813237954de559ecc4"
+    "deckHash": "be87ce6a1ef9cd0e9f72e94fb060cae2dc1d4c49"
   },
   {
-    "id": "318c8e761a",
+    "id": "d8bd09de95",
     "player": "Tony Vuong",
     "placement": 93,
     "archetype": "Poison Archaludon",
@@ -20353,21 +20353,21 @@
         "count": 5,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "318c8e761a24a2a162bd0ec33abb91d6512b7160"
+    "deckHash": "d8bd09de95e4523a867a0d10315c1286d3bec84b"
   },
   {
-    "id": "c71b5db18e",
+    "id": "07b08dabdb",
     "player": "Kyle Sanchez",
     "placement": 94,
     "archetype": "Dragapult Dusknoir",
@@ -20558,21 +20558,21 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "c71b5db18edf7d7efbaaee49cbb3bdf0586ab8f0"
+    "deckHash": "07b08dabdbe98581e7ddbb80893af50083834b52"
   },
   {
-    "id": "dc55e89d0a",
+    "id": "98ad28b91b",
     "player": "Luis Enrique Vazquez Ordaz",
     "placement": 95,
     "archetype": "Tera Box",
@@ -20791,42 +20791,42 @@
         "count": 4,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "dc55e89d0aeb1b2387adcc6369fad358bea89430"
+    "deckHash": "98ad28b91be9d6118e0744f28daacfa824b28485"
   },
   {
-    "id": "095405d599",
+    "id": "4ee736c2f7",
     "player": "Jose Daniel Sandoval Rios",
     "placement": 96,
     "archetype": "Gholdengo",
@@ -21003,63 +21003,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "095405d599b012d547f318771d0b77691609eaf8"
+    "deckHash": "4ee736c2f7f54f16441942cb3bbddc68bbd4ca7b"
   },
   {
-    "id": "accf08da8d",
+    "id": "2d9b3447ba",
     "player": "Douglas Cox",
     "placement": 97,
     "archetype": "Dragapult",
@@ -21264,21 +21264,21 @@
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "accf08da8d7f4429ddae7f9f286806ac3c0e2ebf"
+    "deckHash": "2d9b3447ba5055227e5940b3aa9bb6eaa221b71b"
   },
   {
-    "id": "4852acc100",
+    "id": "d383296048",
     "player": "Maxwell Johnson",
     "placement": 98,
     "archetype": "Gholdengo",
@@ -21476,63 +21476,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       }
     ],
-    "deckHash": "4852acc1003d9e750485a9704f4961d0a5df8c2a"
+    "deckHash": "d38329604857578b7719d2919c5b6af023d7c59e"
   },
   {
-    "id": "e2e7c722c4",
+    "id": "ae86eaa37f",
     "player": "Jose Garcia",
     "placement": 99,
     "archetype": "Raging Bolt Ogerpon",
@@ -21730,28 +21730,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "e2e7c722c4dffe01728a793d34c4d28fdb157994"
+    "deckHash": "ae86eaa37f38bb1e31563b5ef2530527b33a0318"
   },
   {
-    "id": "f711a5e400",
+    "id": "87ea4cc08a",
     "player": "Daniel Contreras Ortega",
     "placement": 100,
     "archetype": "Joltik Box",
@@ -21935,35 +21935,35 @@
         "count": 5,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 4,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "f711a5e400655b2ba81ce4b24bbc1e56b59690b5"
+    "deckHash": "87ea4cc08a4bf75f3859bff6afa11cf7f1eeaacd"
   },
   {
-    "id": "e5bf6dd90f",
+    "id": "d9973581f2",
     "player": "Jose Luis Jimenez",
     "placement": 101,
     "archetype": "Tera Box",
@@ -22175,42 +22175,42 @@
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       }
     ],
-    "deckHash": "e5bf6dd90fc55588d24a576e550036cddbc45381"
+    "deckHash": "d9973581f27030d612a3c14c59bfde28718aaf56"
   },
   {
-    "id": "6c01b57ce0",
+    "id": "5a400c2920",
     "player": "Juan Espinola",
     "placement": 102,
     "archetype": "Slowking",
@@ -22366,7 +22366,7 @@
         "count": 5,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
@@ -22384,10 +22384,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "6c01b57ce0cac39cfdc5de8686a80a3962a33504"
+    "deckHash": "5a400c29202d658fde3333c07318ccdb699f7da6"
   },
   {
-    "id": "d824971e4b",
+    "id": "c0ce6429fd",
     "player": "Hamlet Figueroa",
     "placement": 103,
     "archetype": "Tera Box",
@@ -22613,42 +22613,42 @@
         "count": 3,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       }
     ],
-    "deckHash": "d824971e4b3b7278bf944d695fadf5d928823913"
+    "deckHash": "c0ce6429fd6f1c9317ca23d9208b460f9b697681"
   },
   {
-    "id": "ad359e9cca",
+    "id": "c85607b0db",
     "player": "Andrew Nunez",
     "placement": 104,
     "archetype": "Joltik Box",
@@ -22825,35 +22825,35 @@
         "count": 5,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "ad359e9cca1942c3571c12ef0311ee56358b2ae3"
+    "deckHash": "c85607b0db6d5e66833274107c1be245e4f5d382"
   },
   {
-    "id": "73d75eac1a",
+    "id": "5a04f5faed",
     "player": "Steven Hamula",
     "placement": 105,
     "archetype": "Gardevoir",
@@ -23030,21 +23030,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "73d75eac1adac0e4e6090fcd6aa92e87c1be525c"
+    "deckHash": "5a04f5faed1578ec6dde7545f4f3a3be6bd76377"
   },
   {
-    "id": "2281ac2a61",
+    "id": "dca51f6a26",
     "player": "Diego Marin",
     "placement": 106,
     "archetype": "Terapagos Noctowl",
@@ -23256,28 +23256,28 @@
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "2281ac2a61d07296a575e5623bba97e5a8839688"
+    "deckHash": "dca51f6a26e63e8a629f5a530aeca09100850a51"
   },
   {
-    "id": "c89aab3cbe",
+    "id": "b34fbb25a5",
     "player": "Miguel Angel Lopez Bernal",
     "placement": 107,
     "archetype": "Raging Bolt Ogerpon",
@@ -23482,28 +23482,28 @@
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "c89aab3cbeb2cc8451ab37a192c1e87a286f5068"
+    "deckHash": "b34fbb25a55164b0d6e3a4f56c669fdffb733541"
   },
   {
-    "id": "4a25b4a31d",
+    "id": "a9dbf65cd2",
     "player": "José Zair Garza Sánchez",
     "placement": 108,
     "archetype": "Gholdengo Dudunsparce",
@@ -23687,63 +23687,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       }
     ],
-    "deckHash": "4a25b4a31d465c4662eac19584aa01c84562e4d2"
+    "deckHash": "a9dbf65cd245420f90e272ba00cb09148d57365a"
   },
   {
-    "id": "7554c6fb3a",
+    "id": "7a8937a5a1",
     "player": "Fernando Dorame",
     "placement": 109,
     "archetype": "Gholdengo Dragapult",
@@ -23927,63 +23927,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "7554c6fb3aca1b0e8b215c695589a09b42ffe519"
+    "deckHash": "7a8937a5a13efb8f06a9a51b2b5b99380551aa9c"
   },
   {
-    "id": "070ff4de1e",
+    "id": "6010b2ac43",
     "player": "Jorge Enrique Osorio Rivera",
     "placement": 110,
     "archetype": "Dragapult Dusknoir",
@@ -24195,21 +24195,21 @@
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "070ff4de1eab4ec1419918cc13569b33cf1f3340"
+    "deckHash": "6010b2ac43517ccb4b3185daaa012da45faa4b0d"
   },
   {
-    "id": "c053029420",
+    "id": "fbaf664452",
     "player": "Carlos Manuel Figueroa Del Toro",
     "placement": 111,
     "archetype": "Raging Bolt Ogerpon",
@@ -24414,28 +24414,28 @@
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "c05302942068ed710d0444f33e25c915b12b1d15"
+    "deckHash": "fbaf664452c87e82933936ed4efd03bcec2b4035"
   },
   {
-    "id": "8dbde79ab4",
+    "id": "b7c7da61da",
     "player": "Christian Fernandez",
     "placement": 112,
     "archetype": "Poison Archaludon",
@@ -24612,14 +24612,14 @@
         "count": 7,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       }
     ],
-    "deckHash": "8dbde79ab4bec8bd8fe3a9337182c5b611849fce"
+    "deckHash": "b7c7da61da5cc1c6b76689445ac0e9813a2043ee"
   },
   {
-    "id": "26cc346260",
+    "id": "3671ed75d0",
     "player": "Dionicio Castor",
     "placement": 113,
     "archetype": "Hop's Zacian",
@@ -24824,7 +24824,7 @@
         "count": 5,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
@@ -24835,10 +24835,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "26cc34626069438f87d6c6a8e8ea34f846578386"
+    "deckHash": "3671ed75d0c2663f79a0e5563ef971a9dac836c3"
   },
   {
-    "id": "44ad786805",
+    "id": "ed28719d8a",
     "player": "Jose De Jesus Pozos Fonseca",
     "placement": 114,
     "archetype": "Dragapult Dusknoir",
@@ -25050,21 +25050,21 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
@@ -25075,10 +25075,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "44ad786805537a65730ccf6190a9ebca10e04344"
+    "deckHash": "ed28719d8ad1d503da3779cd7a9abd8f2db14e36"
   },
   {
-    "id": "dded268a35",
+    "id": "a55d5742c1",
     "player": "Armando Adame",
     "placement": 115,
     "archetype": "Tera Box",
@@ -25304,14 +25304,14 @@
         "count": 4,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
@@ -25325,35 +25325,35 @@
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       }
     ],
-    "deckHash": "dded268a3523988b38fc782aae1856e77e16eb89"
+    "deckHash": "a55d5742c1e1581d5eb9bf876f1421afefecd345"
   },
   {
-    "id": "5f2d385219",
+    "id": "6b2a898314",
     "player": "Isaac López Diaz",
     "placement": 116,
     "archetype": "Dragapult Dusknoir",
@@ -25537,21 +25537,21 @@
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "5f2d385219286d99c76be3148adcec62900976fe"
+    "deckHash": "6b2a898314d7c243298cb815ffb1b285944db7a0"
   },
   {
-    "id": "c71b5db18e",
+    "id": "07b08dabdb",
     "player": "Erick Manuel Lopez Basulto",
     "placement": 117,
     "archetype": "Dragapult Dusknoir",
@@ -25742,21 +25742,21 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "c71b5db18edf7d7efbaaee49cbb3bdf0586ab8f0"
+    "deckHash": "07b08dabdbe98581e7ddbb80893af50083834b52"
   },
   {
-    "id": "f8e33b423e",
+    "id": "4bf56ed504",
     "player": "José Ronaldo Mendoza Ponce",
     "placement": 118,
     "archetype": "Flareon Noctowl",
@@ -25968,35 +25968,35 @@
         "count": 3,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "f8e33b423e6283247e5e64e39f84518043b9984f"
+    "deckHash": "4bf56ed504d3c413e3c5741d511a9fb0f83ffd32"
   },
   {
-    "id": "5e2a628042",
+    "id": "1f31c51d7d",
     "player": "Jesus Arnoldo Lopez Bernal",
     "placement": 119,
     "archetype": "Gardevoir",
@@ -26194,21 +26194,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "5e2a628042590d3f6aff8441cbaf92777cdde870"
+    "deckHash": "1f31c51d7d7ac9f92c6a7e63d44a190759126182"
   },
   {
-    "id": "655f5a3933",
+    "id": "bfeb8e4415",
     "player": "Andres Duran",
     "placement": 120,
     "archetype": "Raging Bolt Ogerpon",
@@ -26385,28 +26385,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "655f5a3933c1626b7d0687cac647bd441cc8f14b"
+    "deckHash": "bfeb8e44156e4e9b2d6b385eb606cba48c0b4a62"
   },
   {
-    "id": "b173c9c8d1",
+    "id": "457a18342e",
     "player": "Bayardo Aarón Velasco Rios",
     "placement": 121,
     "archetype": "Ceruledge",
@@ -26541,7 +26541,7 @@
         "count": 9,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
@@ -26562,14 +26562,14 @@
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "b173c9c8d139aa9f9259c1ba4b4f6539e407eff6"
+    "deckHash": "457a18342e6609ddb0aa450aa6da7e55e7f1ce4a"
   },
   {
-    "id": "d76862f0cc",
+    "id": "355da450e2",
     "player": "Jonathan Mena",
     "placement": 122,
     "archetype": "Dragapult Charizard",
@@ -26781,21 +26781,21 @@
         "count": 5,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "d76862f0cc7fdf336c48efd3eaaf4ea758058960"
+    "deckHash": "355da450e2487729107b3e0035238b63112cfdf6"
   },
   {
-    "id": "e63736885f",
+    "id": "56f66b7c84",
     "player": "Hector Adrian Pio Robles Sánchez",
     "placement": 123,
     "archetype": "Tera Box",
@@ -27007,42 +27007,42 @@
         "count": 4,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       }
     ],
-    "deckHash": "e63736885ffbafb8c5f339dee25adb43b878e941"
+    "deckHash": "56f66b7c84bd8e0283aa9fc5f01e16507c9fb092"
   },
   {
-    "id": "7ceca94f7c",
+    "id": "b9dfbb818f",
     "player": "Aaron Alcantar",
     "placement": 124,
     "archetype": "Dragapult Dusknoir",
@@ -27240,21 +27240,21 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "7ceca94f7cc3276e5ac0f8f2ae3e24aca3624f1a"
+    "deckHash": "b9dfbb818f768dccd2794626005ba1fae270392a"
   },
   {
-    "id": "d8047dd7eb",
+    "id": "bb4da52ad7",
     "player": "Alan Rubio",
     "placement": 125,
     "archetype": "Milotic Farigiraf",
@@ -27452,35 +27452,35 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "d8047dd7eba0d0ef831d009099240eae69898bd5"
+    "deckHash": "bb4da52ad7d39e5f644f0bfd34f470ef92c8ea39"
   },
   {
-    "id": "cafcd53c89",
+    "id": "a108c649b6",
     "player": "Nestor Ivan Monroy",
     "placement": 126,
     "archetype": "Raging Bolt Ogerpon",
@@ -27678,28 +27678,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "cafcd53c898d79ab8bc3b5b21f82bf8c39e7652c"
+    "deckHash": "a108c649b6dfae615d30130b8a8ed26fa3931ce3"
   },
   {
-    "id": "a7e1250b36",
+    "id": "666931e223",
     "player": "Alexis Mendoza",
     "placement": 127,
     "archetype": "Dragapult",
@@ -27904,14 +27904,14 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
@@ -27925,14 +27925,14 @@
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "a7e1250b3643b5dd792026d125834d4590259615"
+    "deckHash": "666931e2238b7337e28fda78fa6d1d7c55faf516"
   },
   {
-    "id": "da7ad30d0b",
+    "id": "b95967a3e9",
     "player": "Diego Saul Santos Viguerias",
     "placement": 128,
     "archetype": "Raging Bolt Ogerpon",
@@ -28123,28 +28123,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "da7ad30d0ba973902dba6a2b19a9273721dc3ad1"
+    "deckHash": "b95967a3e96cacc5297cf48d78cd42f1e3f82001"
   },
   {
-    "id": "b13b3905e9",
+    "id": "b143744e6f",
     "player": "Jeancarlo De Jesus Sanchez Bolon",
     "placement": 129,
     "archetype": "Tera Box",
@@ -28356,42 +28356,42 @@
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       }
     ],
-    "deckHash": "b13b3905e958bec4ffb83466b6017a25d03dfe4e"
+    "deckHash": "b143744e6f70b78f5b0aa6cee3b6aee5e9bd3971"
   },
   {
-    "id": "7974aa7273",
+    "id": "b9241b3716",
     "player": "Carlos Andres Leyva Rodriguez",
     "placement": 130,
     "archetype": "Dragapult Dusknoir",
@@ -28631,21 +28631,21 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "7974aa72731f919f6e2c00f321b34b5fd745d267"
+    "deckHash": "b9241b37165d3755a82a889ad339b0d66b085877"
   },
   {
-    "id": "c259c59a45",
+    "id": "e446d732e9",
     "player": "Francisco Colunga",
     "placement": 131,
     "archetype": "Dragapult Dusknoir",
@@ -28850,21 +28850,21 @@
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "c259c59a45d3451f5477ee0d98b0367fcba94d6a"
+    "deckHash": "e446d732e98674bab4118338ce474913862edc55"
   },
   {
-    "id": "db9dcab2d3",
+    "id": "1d8d71cb8a",
     "player": "Gerardo Morales",
     "placement": 132,
     "archetype": "Gardevoir",
@@ -29076,21 +29076,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "db9dcab2d33809336b81a41d359f94ed74acd1da"
+    "deckHash": "1d8d71cb8a39b680e2dc546107408b156be19b77"
   },
   {
-    "id": "97360ae6c5",
+    "id": "86faaa4a06",
     "player": "Diego García Rueda",
     "placement": 133,
     "archetype": "Gholdengo Dudunsparce",
@@ -29267,63 +29267,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "97360ae6c5a8923f5dba5c1a09fb81a72fa74544"
+    "deckHash": "86faaa4a0673a62b8ad49835270a50c47a863ec2"
   },
   {
-    "id": "c94b2a6bd5",
+    "id": "7c59aef9b2",
     "player": "Rodrigo Alejandro Medina Cruz",
     "placement": 134,
     "archetype": "Dragapult Dusknoir",
@@ -29514,21 +29514,21 @@
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "c94b2a6bd5e70eb0a188867ac128b7f782870f98"
+    "deckHash": "7c59aef9b23f24fb646b87cbe00cb8182fa9bad7"
   },
   {
-    "id": "cea2f25403",
+    "id": "01bae01e1d",
     "player": "Mauricio Serrano Ramirez",
     "placement": 135,
     "archetype": "Gholdengo Dudunsparce",
@@ -29733,63 +29733,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       }
     ],
-    "deckHash": "cea2f25403a21b1e0e14f9b2a7717fe5bb4f7468"
+    "deckHash": "01bae01e1d98744402afd83fb10be37d59038ad2"
   },
   {
-    "id": "dd611b21c3",
+    "id": "4c94023410",
     "player": "Sergio Martin Sanchez Betancourt",
     "placement": 136,
     "archetype": "Lillie's Clefairy",
@@ -29952,21 +29952,21 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 5,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "dd611b21c3930d4b5679df01b852eb693f5b7a69"
+    "deckHash": "4c94023410e34c5dd3c985bd2574b2c7aeae5bd2"
   },
   {
-    "id": "f0f0488db6",
+    "id": "2bcee34253",
     "player": "Diego Barrera Moreno",
     "placement": 137,
     "archetype": "Flareon Noctowl",
@@ -30192,35 +30192,35 @@
         "count": 3,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "f0f0488db6193cb1167c5bdbddc6f716b78656d6"
+    "deckHash": "2bcee3425302b66fb9a70aa6a08a7549e1377979"
   },
   {
-    "id": "40d983e1a2",
+    "id": "5dee57f584",
     "player": "Dre Alderette",
     "placement": 138,
     "archetype": "Dragapult Dusknoir",
@@ -30425,21 +30425,21 @@
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "40d983e1a2431cf53edd02857cb32f91c736c75a"
+    "deckHash": "5dee57f584c655234ca3bf4f31f6f9e7110db8a9"
   },
   {
-    "id": "e965ecb5cc",
+    "id": "d39d080fe6",
     "player": "Evelyn López Rodríguez",
     "placement": 139,
     "archetype": "Terapagos Noctowl",
@@ -30602,35 +30602,35 @@
         "count": 3,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "e965ecb5cced941d4e314bde0ca8847d6c1ac310"
+    "deckHash": "d39d080fe6ee7fdf005242d1dcc95a265eb06f6b"
   },
   {
-    "id": "5d788c7afa",
+    "id": "d6baa83809",
     "player": "Juan Carlos Pulido Aripes",
     "placement": 140,
     "archetype": "Gholdengo",
@@ -30828,63 +30828,63 @@
         "count": 4,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "5d788c7afa933239f46d7eb24e7e279709d8665f"
+    "deckHash": "d6baa8380943bbfa52ccaaddc5e8837c26170168"
   },
   {
-    "id": "dc114f087f",
+    "id": "39dff523ef",
     "player": "Carlos Edgardo Lopez Gonzalez",
     "placement": 141,
     "archetype": "Tera Box",
@@ -31089,42 +31089,42 @@
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       }
     ],
-    "deckHash": "dc114f087f24ac0a8317b7c3999cffe1388e4105"
+    "deckHash": "39dff523ef659bcdda7947fb721478f94e773882"
   },
   {
-    "id": "ff021245eb",
+    "id": "a38ed36b12",
     "player": "Jesús Ismael Cisneros Cano",
     "placement": 142,
     "archetype": "Terapagos Noctowl",
@@ -31343,21 +31343,21 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
@@ -31368,10 +31368,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "ff021245eb2634082f395a031dee9cb9c028c57b"
+    "deckHash": "a38ed36b12fde6bb06c50ae9c901cd368c968699"
   },
   {
-    "id": "e807aaf00a",
+    "id": "b70044f926",
     "player": "Omar Alejandro Suarez Gurrola",
     "placement": 143,
     "archetype": "Raging Bolt Ogerpon",
@@ -31562,28 +31562,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "e807aaf00ac93bb9ce50a59fb375cef17a3caaf0"
+    "deckHash": "b70044f9262b7c6c80e760a33a993bf2af97bafe"
   },
   {
-    "id": "5ae919a530",
+    "id": "19318bb67d",
     "player": "Jonathan Sáenz",
     "placement": 144,
     "archetype": "Gholdengo Dudunsparce",
@@ -31788,63 +31788,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       }
     ],
-    "deckHash": "5ae919a53049c38904c3b8fe63d10646f7165691"
+    "deckHash": "19318bb67d6084a205976d275c73c090c4f51044"
   },
   {
-    "id": "3555a1725b",
+    "id": "1f98281b39",
     "player": "Jorge Chiñas",
     "placement": 145,
     "archetype": "Gardevoir",
@@ -32056,21 +32056,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "3555a1725b7a458c75067b9869e8b403a6b593b8"
+    "deckHash": "1f98281b39a24cdcba104287fd7b2ae9589fa692"
   },
   {
-    "id": "3482396250",
+    "id": "9d7360a116",
     "player": "Alan Gomez",
     "placement": 146,
     "archetype": "Charizard Pidgeot",
@@ -32282,14 +32282,14 @@
         "count": 6,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "348239625087ba628ae2a3cd9d16983437cfe972"
+    "deckHash": "9d7360a1161f309a5d94c93b7ba745481e539ea6"
   },
   {
-    "id": "78ac96127a",
+    "id": "a0d13c01ff",
     "player": "Rodrigo Torres",
     "placement": 147,
     "archetype": "Raging Bolt Ogerpon",
@@ -32480,28 +32480,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "78ac96127a59474c3fef7b5b5617f93d4678173d"
+    "deckHash": "a0d13c01ff4043b82b1644bd168251f963c01ddc"
   },
   {
-    "id": "bc0078fdab",
+    "id": "d77b555235",
     "player": "Cory Tangman",
     "placement": 148,
     "archetype": "Raging Bolt Ogerpon",
@@ -32699,28 +32699,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "bc0078fdab1722e83836f6e2d23ed26a208028dc"
+    "deckHash": "d77b5552356075f068bed129e993dcfd8cc8a920"
   },
   {
-    "id": "4f04570464",
+    "id": "bc7f3b14a8",
     "player": "Andrés Perea Benítez",
     "placement": 149,
     "archetype": "Terapagos Noctowl",
@@ -32939,35 +32939,35 @@
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
@@ -32978,10 +32978,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "4f0457046458a8c024812e65336b97203d2c098b"
+    "deckHash": "bc7f3b14a834e77b7d83bd872655a986d5c9c265"
   },
   {
-    "id": "ced53a3710",
+    "id": "95054ba243",
     "player": "Cesar Viera Gaytan",
     "placement": 150,
     "archetype": "Dragapult Dusknoir",
@@ -33200,21 +33200,21 @@
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "ced53a3710eb02d060b76cc7f63125f7bf33dbb2"
+    "deckHash": "95054ba243ed3d11d932ee692d78bec8ccd8c869"
   },
   {
-    "id": "bad2b347f4",
+    "id": "57947a0aea",
     "player": "Luis Angel Vazquez Ruiz",
     "placement": 151,
     "archetype": "Roaring Moon",
@@ -33377,14 +33377,14 @@
         "count": 6,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
@@ -33395,10 +33395,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "bad2b347f410877d7b026ad3c64b14a26695be3d"
+    "deckHash": "57947a0aeabd8573472a6b9c04d2242f060a6afd"
   },
   {
-    "id": "e7268297c8",
+    "id": "b12ed42bfa",
     "player": "Carlos Alexis Gonzalez Ramirez",
     "placement": 152,
     "archetype": "Gholdengo",
@@ -33603,63 +33603,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "e7268297c85b141bc720d3e44648932f61db37bc"
+    "deckHash": "b12ed42bfa601d8bf8461642f7cf2e0460a10a7f"
   },
   {
-    "id": "a600268672",
+    "id": "4c9b1b858f",
     "player": "Carlos Adrián García Ávila Sosa",
     "placement": 153,
     "archetype": "Dragapult",
@@ -33857,21 +33857,21 @@
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "a600268672f59d37125cadf3dc77f96b6220e4e3"
+    "deckHash": "4c9b1b858fe7438ddbbbeb8a2b4c490c43af0d81"
   },
   {
-    "id": "32745f2553",
+    "id": "6d45349e64",
     "player": "Joseph Sanchez",
     "placement": 154,
     "archetype": "Gholdengo Dragapult",
@@ -34069,63 +34069,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "32745f25534fd75823e6edeba4e96c9d8cf42e3e"
+    "deckHash": "6d45349e64dd940cb793e00a58bb2346f2cf3eef"
   },
   {
-    "id": "bb4a335851",
+    "id": "37040d9194",
     "player": "Angel López",
     "placement": 155,
     "archetype": "Poison Archaludon",
@@ -34323,14 +34323,14 @@
         "count": 6,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       }
     ],
-    "deckHash": "bb4a33585164f13b036f52bc398a6a4282a864e9"
+    "deckHash": "37040d9194653273c1f9cf3b02c3128374c8ed0d"
   },
   {
-    "id": "5a47a9c64e",
+    "id": "83983a4e2f",
     "player": "Milton Miguel Vázquez Gallegos",
     "placement": 156,
     "archetype": "Tera Box",
@@ -34542,49 +34542,49 @@
         "count": 4,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       }
     ],
-    "deckHash": "5a47a9c64e6893ff4f34486bbfae86a35cd7f53f"
+    "deckHash": "83983a4e2f66be820ab7fe36ec2716fe7c70ac2f"
   },
   {
-    "id": "fb579e58cd",
+    "id": "30075ceb62",
     "player": "Ventura Quiñones",
     "placement": 157,
     "archetype": "Raging Bolt Ogerpon",
@@ -34789,28 +34789,28 @@
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "fb579e58cd2c4716a5689d84993b445e139db76b"
+    "deckHash": "30075ceb6273a013de41a6dd2d7167149b8360c6"
   },
   {
-    "id": "9a9cf981ed",
+    "id": "79f77ff2af",
     "player": "Josue Garcia",
     "placement": 158,
     "archetype": "Gholdengo Dudunsparce",
@@ -35015,63 +35015,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "9a9cf981ed7e53616f52cc09cdb56d70ec29059a"
+    "deckHash": "79f77ff2afe7804a00594c38d2c3d3c5f647ca98"
   },
   {
-    "id": "721d2c89d3",
+    "id": "dedc72ff85",
     "player": "James Washer",
     "placement": 159,
     "archetype": "Dragapult",
@@ -35241,21 +35241,21 @@
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
@@ -35273,10 +35273,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "721d2c89d321e5788e96dec7cfefe45fff779d06"
+    "deckHash": "dedc72ff853d7ec68e64143c22036e1adbc06859"
   },
   {
-    "id": "37a0f55175",
+    "id": "f392bed22d",
     "player": "Javier Zamora",
     "placement": 160,
     "archetype": "Terapagos Noctowl",
@@ -35481,28 +35481,28 @@
         "count": 4,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "37a0f551752ba9107c928a8e33f513c1cc8f330e"
+    "deckHash": "f392bed22d89ff34a077b2ed479632be43db9c9d"
   },
   {
-    "id": "95936bf356",
+    "id": "4e7628893b",
     "player": "Erick Alán Cortés Gutiérrez",
     "placement": 161,
     "archetype": "Raging Bolt Ogerpon",
@@ -35700,28 +35700,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "95936bf35682e0ede545509caf528da9bbc4ecf5"
+    "deckHash": "4e7628893b15ae1862f2d3994ef91bad92a3b17e"
   },
   {
-    "id": "c4b66854d9",
+    "id": "644eb68d56",
     "player": "Adrian Rodriguez",
     "placement": 162,
     "archetype": "Gardevoir",
@@ -35891,21 +35891,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "c4b66854d99358233704ba066982e9bd19336825"
+    "deckHash": "644eb68d563d3e87e107dd1fb3570e0b8fbcd771"
   },
   {
-    "id": "37d0f8d01d",
+    "id": "7ba04a1a6c",
     "player": "Jesus Emmanuel Saucedo",
     "placement": 163,
     "archetype": "Dragapult Charizard",
@@ -36117,21 +36117,21 @@
         "count": 5,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "37d0f8d01ddca87b93a182fc714f295c7f391a34"
+    "deckHash": "7ba04a1a6c10b52daf93f4a50287962e6055eab5"
   },
   {
-    "id": "5900bcdb68",
+    "id": "2011bc777c",
     "player": "Cesar Diaz",
     "placement": 164,
     "archetype": "Tera Box",
@@ -36329,42 +36329,42 @@
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       }
     ],
-    "deckHash": "5900bcdb68ce53178cbdadf42f7748cff8145659"
+    "deckHash": "2011bc777c9f765e91cc268b89cfbd5625f22a82"
   },
   {
-    "id": "4ee68ad275",
+    "id": "02e27404e4",
     "player": "Jonathan Emmanuel Quevedo Ramírez",
     "placement": 165,
     "archetype": "Roaring Moon",
@@ -36534,14 +36534,14 @@
         "count": 8,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "4ee68ad27556847ac4ff51bf6c45483b1596d674"
+    "deckHash": "02e27404e41f53e8505fd0c8df6b1dbac25236e5"
   },
   {
-    "id": "14931a29e3",
+    "id": "fce5526d29",
     "player": "Jose De Jesus Valle Vazquez",
     "placement": 166,
     "archetype": "Roaring Moon",
@@ -36711,14 +36711,14 @@
         "count": 7,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "14931a29e3e25cabb0fcf2f2df06cc5a3a6ef523"
+    "deckHash": "fce5526d29766fb73c066e4de1355f1b92572d89"
   },
   {
-    "id": "1cdbb17a58",
+    "id": "fd06e63591",
     "player": "Andrés Flores",
     "placement": 167,
     "archetype": "Raging Bolt Ogerpon",
@@ -36909,28 +36909,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "1cdbb17a5880d130a36b295abe95d798833b1ecd"
+    "deckHash": "fd06e63591f76b19c110f4d50b973bf7d4e86b68"
   },
   {
-    "id": "752ad0edea",
+    "id": "21872d8a3c",
     "player": "Dario Carbajal",
     "placement": 168,
     "archetype": "N's Zoroark",
@@ -37114,7 +37114,7 @@
         "count": 7,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
@@ -37125,10 +37125,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "752ad0edeab5a51d3e69a098a4bed60090abfeac"
+    "deckHash": "21872d8a3c5f8b3fc9e7571bff2c43c56b30957c"
   },
   {
-    "id": "b9e5fc7019",
+    "id": "5ce1845413",
     "player": "Jose Alonso Casarez Nuñez",
     "placement": 169,
     "archetype": "Dragapult",
@@ -37347,21 +37347,21 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
@@ -37372,10 +37372,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "b9e5fc70198febe3d9ebd4d9461b31401fcbb4bb"
+    "deckHash": "5ce18454134249b6c37bf12bf52c9f786201fd47"
   },
   {
-    "id": "b32a225365",
+    "id": "97482542e6",
     "player": "Axel Matias",
     "placement": 170,
     "archetype": "Raging Bolt Ogerpon",
@@ -37545,28 +37545,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "b32a225365a7b52c45590d26b3621fe159833abd"
+    "deckHash": "97482542e622167c47fe02e99da6123b01c6165d"
   },
   {
-    "id": "0aae592a2c",
+    "id": "46249f1998",
     "player": "Cristian Daniel Becerra Aguirre",
     "placement": 171,
     "archetype": "Gardevoir",
@@ -37806,21 +37806,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "0aae592a2ce940288d30aec5fb4f2bc5c720d070"
+    "deckHash": "46249f199881104887cf6f889835714740d60bcc"
   },
   {
-    "id": "fba7df8266",
+    "id": "e2871f650a",
     "player": "Oscar Luévano",
     "placement": 172,
     "archetype": "Dragapult",
@@ -38032,14 +38032,14 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
@@ -38053,14 +38053,14 @@
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "fba7df826609973f2b43becb2f40bfb101be4400"
+    "deckHash": "e2871f650a5ac7b926c307d3f038f2da46026cca"
   },
   {
-    "id": "ae9459864a",
+    "id": "1a6539fa23",
     "player": "Martin Viruete",
     "placement": 173,
     "archetype": "Froslass Munkidori",
@@ -38202,7 +38202,7 @@
         "count": 5,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
@@ -38213,10 +38213,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "ae9459864ae25032a7497764ab9a83f5c611804a"
+    "deckHash": "1a6539fa232a5fe7f18be1d86d2a55c5606d8022"
   },
   {
-    "id": "5bc469649c",
+    "id": "3cf04872bd",
     "player": "Guillermo Villicaña Santillan",
     "placement": 174,
     "archetype": "Poison Archaludon",
@@ -38393,14 +38393,14 @@
         "count": 7,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       }
     ],
-    "deckHash": "5bc469649c4bf8e78cd2a9a92810da7f34ed8320"
+    "deckHash": "3cf04872bd5258da276907b097fdfb618556a64e"
   },
   {
-    "id": "6a0d03bbac",
+    "id": "81f55f423c",
     "player": "Diego Lezama",
     "placement": 175,
     "archetype": "Poison Archaludon",
@@ -38598,14 +38598,14 @@
         "count": 6,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       }
     ],
-    "deckHash": "6a0d03bbac1e1bce6273a1b3edcb3ae7c6173e64"
+    "deckHash": "81f55f423c92d843b47db39dfc67473629d7a350"
   },
   {
-    "id": "c71b5db18e",
+    "id": "07b08dabdb",
     "player": "Javier Alberto Sandoval Tirado",
     "placement": 176,
     "archetype": "Dragapult Dusknoir",
@@ -38796,21 +38796,21 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "c71b5db18edf7d7efbaaee49cbb3bdf0586ab8f0"
+    "deckHash": "07b08dabdbe98581e7ddbb80893af50083834b52"
   },
   {
-    "id": "bf1aa6de50",
+    "id": "4a4b1a4fc2",
     "player": "Tyler Perry",
     "placement": 177,
     "archetype": "Charizard Pidgeot",
@@ -39029,14 +39029,14 @@
         "count": 8,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "bf1aa6de50af038605c40b7da7a4198d39935ac4"
+    "deckHash": "4a4b1a4fc21fbcc429ab2be9dc0e136abb4e9fe3"
   },
   {
-    "id": "9d0d090d37",
+    "id": "dffdde3f55",
     "player": "Ashley Gutierrez",
     "placement": 178,
     "archetype": "Gholdengo Dragapult",
@@ -39220,63 +39220,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "9d0d090d374cb147309aa42b75903dae7733d859"
+    "deckHash": "dffdde3f55940b04b1cd7b1e4150d67bd849e048"
   },
   {
-    "id": "be389bd0ba",
+    "id": "89932107f6",
     "player": "Noel Reyes",
     "placement": 179,
     "archetype": "Raging Bolt Ogerpon",
@@ -39460,28 +39460,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "be389bd0ba9e5d203a2d12779982941370c933ea"
+    "deckHash": "89932107f6e7825b8f0028109c8d110b87241bf6"
   },
   {
-    "id": "ccf2e587de",
+    "id": "6840e34305",
     "player": "Glenn Ubaldo Gómez González",
     "placement": 180,
     "archetype": "Gardevoir",
@@ -39693,21 +39693,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "ccf2e587de6fbafa7f87eee80289f1e62006ed80"
+    "deckHash": "6840e343052a16e08c0a81b870f1320283fe7ad3"
   },
   {
-    "id": "c36d9c82e0",
+    "id": "666ac72e98",
     "player": "Jose Alberto Orozco López",
     "placement": 181,
     "archetype": "Mamoswine",
@@ -39940,14 +39940,14 @@
         "count": 5,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
@@ -39958,10 +39958,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "c36d9c82e075d26d803a26cbf93e52a94a47113d"
+    "deckHash": "666ac72e98140e4691594ec810e3ef9db2b0b32b"
   },
   {
-    "id": "8a9a205c2c",
+    "id": "c0b222c0f6",
     "player": "Roberto Jesus Soto Montalvo",
     "placement": 182,
     "archetype": "Gholdengo",
@@ -40145,63 +40145,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "8a9a205c2c47e7430a0f0ce0c8bb7eda410f6d48"
+    "deckHash": "c0b222c0f6e2de45e1ee49d3c6257f194cce3f6d"
   },
   {
-    "id": "099c49342c",
+    "id": "82bb06df64",
     "player": "Jesús Eli Reyes",
     "placement": 183,
     "archetype": "Gardevoir",
@@ -40385,21 +40385,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "099c49342c8dde8fd0d2404a9f3fd68ddb64edfa"
+    "deckHash": "82bb06df64375b7c29571ad5f8626c9864fe413d"
   },
   {
-    "id": "14931a29e3",
+    "id": "fce5526d29",
     "player": "Israel Bernal",
     "placement": 184,
     "archetype": "Roaring Moon",
@@ -40569,14 +40569,14 @@
         "count": 7,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "14931a29e3e25cabb0fcf2f2df06cc5a3a6ef523"
+    "deckHash": "fce5526d29766fb73c066e4de1355f1b92572d89"
   },
   {
-    "id": "c1cfe9424b",
+    "id": "ae56f92bdf",
     "player": "Carlos Lobo",
     "placement": 185,
     "archetype": "Dragapult",
@@ -40802,14 +40802,14 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
@@ -40823,14 +40823,14 @@
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "c1cfe9424b949642793c79e2cc59125262477e23"
+    "deckHash": "ae56f92bdf436842a457af05eed089e743f3e645"
   },
   {
-    "id": "a127028d46",
+    "id": "1fd0edd0e4",
     "player": "Carlos Decina",
     "placement": 186,
     "archetype": "Gardevoir",
@@ -41007,21 +41007,21 @@
         "count": 7,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       }
     ],
-    "deckHash": "a127028d468b15cdd928611162d627add4af1acc"
+    "deckHash": "1fd0edd0e48bcd429593319ff4f83625e0a15d94"
   },
   {
-    "id": "2b147c8524",
+    "id": "4440336c13",
     "player": "Jesus Riva",
     "placement": 187,
     "archetype": "Froslass Munkidori",
@@ -41233,14 +41233,14 @@
         "count": 4,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
@@ -41254,14 +41254,14 @@
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "2b147c8524c83e87cce969bdc090d277e9981b9d"
+    "deckHash": "4440336c138a455417de4521d0d53f9eef4370b3"
   },
   {
-    "id": "10d2fd6c0f",
+    "id": "658109f7da",
     "player": "Juan Miguel Medina Díaz",
     "placement": 188,
     "archetype": "Future Iron Hands",
@@ -41424,21 +41424,21 @@
         "count": 12,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "10d2fd6c0fe136691488d8f95b4eef06a213e31b"
+    "deckHash": "658109f7daaa62d20ee6ddc82155e97d172f8b0a"
   },
   {
-    "id": "7357b56d15",
+    "id": "3aa3bafac1",
     "player": "Enrique Cano",
     "placement": 189,
     "archetype": "Gholdengo Dragapult",
@@ -41615,63 +41615,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "7357b56d15b008d6e9e7ac5a8b5a7109647b108a"
+    "deckHash": "3aa3bafac1d7f5971a831b5fde5e84b4eeffda00"
   },
   {
-    "id": "0f4e70b7fa",
+    "id": "1a289fe42c",
     "player": "Jesús Corral",
     "placement": 190,
     "archetype": "Raging Bolt Ogerpon",
@@ -41876,28 +41876,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "0f4e70b7fa081b0a308687aae089ad9fe381f60e"
+    "deckHash": "1a289fe42c162fd74395bd86465ef6a56459c0e7"
   },
   {
-    "id": "150996e3c8",
+    "id": "a482b4ac92",
     "player": "Jose Ricardo Hernandez",
     "placement": 191,
     "archetype": "Archaludon",
@@ -42060,14 +42060,14 @@
         "count": 8,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       }
     ],
-    "deckHash": "150996e3c83b409526a4de4148ab24a188a8ed89"
+    "deckHash": "a482b4ac922a288177c666f3c5f4161ba0794bb1"
   },
   {
-    "id": "e070894f75",
+    "id": "062bc5fd95",
     "player": "Sergio Barragan",
     "placement": 192,
     "archetype": "Terapagos Noctowl",
@@ -42279,21 +42279,21 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
@@ -42304,10 +42304,10 @@
         "category": "energy"
       }
     ],
-    "deckHash": "e070894f753f82b2870d12b9d9b9e05dc56510f8"
+    "deckHash": "062bc5fd959bf20c91ad974cc5deb04a4c3a47ac"
   },
   {
-    "id": "3922f48b04",
+    "id": "969ed66af6",
     "player": "Alejandro Manuel Vazquez Guerena",
     "placement": 193,
     "archetype": "Tera Box",
@@ -42512,49 +42512,49 @@
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "3922f48b04de957a5fe8be535efc75a639ff81a7"
+    "deckHash": "969ed66af6b4c04e436018191c20f010a0eb1e3b"
   },
   {
-    "id": "5985c71d05",
+    "id": "4c96621373",
     "player": "Aldo De Leon",
     "placement": 194,
     "archetype": "Raging Bolt Ogerpon",
@@ -42745,28 +42745,28 @@
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "5985c71d05ed9aefd49c128b52765e567e63ce23"
+    "deckHash": "4c96621373c8ea6302ed28a9c8737b28d7f40852"
   },
   {
-    "id": "1b56cea90a",
+    "id": "7bd3adb1d6",
     "player": "Victor Zamora",
     "placement": 195,
     "archetype": "Dragapult Dusknoir",
@@ -42964,21 +42964,21 @@
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "1b56cea90acd624006216674f429c0e2a191d41c"
+    "deckHash": "7bd3adb1d6349548b73b91696e18c764466cff75"
   },
   {
-    "id": "7e9d4e73c6",
+    "id": "e0a4cee870",
     "player": "Andres Gerardo Lopez Almazo",
     "placement": 196,
     "archetype": "Raging Bolt Ogerpon",
@@ -43155,28 +43155,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "7e9d4e73c6c1cf42bbd42de450196e3abe5348b0"
+    "deckHash": "e0a4cee8707fd3833fd9040f11f1484c7c7803d7"
   },
   {
-    "id": "366e8e5fd1",
+    "id": "8c642b6533",
     "player": "Gustavo Baez",
     "placement": 197,
     "archetype": "Raging Bolt Ogerpon",
@@ -43353,28 +43353,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "366e8e5fd18ace8f6daeddf75b04580b64602147"
+    "deckHash": "8c642b6533c65351236f614204fa92f15a029ec7"
   },
   {
-    "id": "6a6d0bf5af",
+    "id": "093af37c63",
     "player": "Alan Rivera",
     "placement": 198,
     "archetype": "Poison Archaludon",
@@ -43565,14 +43565,14 @@
         "count": 6,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       }
     ],
-    "deckHash": "6a6d0bf5afa2dd0421f620e7931f4795dbce7ef4"
+    "deckHash": "093af37c63fc0695564e6517eb1e1f9777551206"
   },
   {
-    "id": "0a092bdde9",
+    "id": "6adb486628",
     "player": "Alejandro Trevino",
     "placement": 199,
     "archetype": "Gholdengo Dudunsparce",
@@ -43763,63 +43763,63 @@
         "count": 4,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       }
     ],
-    "deckHash": "0a092bdde97a8d9148a8ffa9a7d883abfd6d09c1"
+    "deckHash": "6adb486628d9d106f421f3e3230e56dc2cac4946"
   },
   {
-    "id": "478da23603",
+    "id": "4d754eaf08",
     "player": "Mike Solis",
     "placement": 200,
     "archetype": "Dragapult Dusknoir",
@@ -44017,21 +44017,21 @@
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       }
     ],
-    "deckHash": "478da23603772f684a29e937e9c849670d7e9933"
+    "deckHash": "4d754eaf08c421a4623adcfeb8fdafc7e6a39338"
   },
   {
-    "id": "4409d011ee",
+    "id": "bf395485f3",
     "player": "Julio César Villanueva Chávez",
     "placement": 201,
     "archetype": "Gholdengo Dragapult",
@@ -44215,63 +44215,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       }
     ],
-    "deckHash": "4409d011ee425ba21c82bc061be7b406441ccb84"
+    "deckHash": "bf395485f3e113ec7ce2295ff2b7c38457e6f2a1"
   },
   {
-    "id": "ac4f18855f",
+    "id": "4815f3e235",
     "player": "Luis Roberto Segura Torres",
     "placement": 202,
     "archetype": "Raging Bolt Ogerpon",
@@ -44476,28 +44476,28 @@
         "count": 6,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "ac4f18855f39d468e1ce2d4d1f66e87dd5b44791"
+    "deckHash": "4815f3e235379670df50fce6251d5863eb30515c"
   },
   {
-    "id": "ed84804738",
+    "id": "8cc6d47571",
     "player": "Miguel Angel Marin Herrera",
     "placement": 203,
     "archetype": "Dragapult Dusknoir",
@@ -44695,21 +44695,21 @@
         "count": 3,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       }
     ],
-    "deckHash": "ed84804738ba713f4c41efeb85540b25e2258792"
+    "deckHash": "8cc6d47571fc8d60348639d8617892fd84059a33"
   },
   {
-    "id": "97360ae6c5",
+    "id": "86faaa4a06",
     "player": "Pablo Martinez",
     "placement": 204,
     "archetype": "Gholdengo Dudunsparce",
@@ -44886,63 +44886,63 @@
         "count": 3,
         "name": "Metal Energy",
         "set": "SVE",
-        "number": "016",
+        "number": "024",
         "category": "energy"
       },
       {
         "count": 2,
         "name": "Darkness Energy",
         "set": "SVE",
-        "number": "015",
+        "number": "023",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fire Energy",
         "set": "SVE",
-        "number": "010",
+        "number": "018",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Water Energy",
         "set": "SVE",
-        "number": "011",
+        "number": "019",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Psychic Energy",
         "set": "SVE",
-        "number": "013",
+        "number": "021",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 1,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "97360ae6c5a8923f5dba5c1a09fb81a72fa74544"
+    "deckHash": "86faaa4a0673a62b8ad49835270a50c47a863ec2"
   },
   {
-    "id": "a41c109511",
+    "id": "ddf94284c1",
     "player": "Gabriel Reyes",
     "placement": 205,
     "archetype": "Raging Bolt Ogerpon",
@@ -45126,24 +45126,24 @@
         "count": 5,
         "name": "Grass Energy",
         "set": "SVE",
-        "number": "009",
+        "number": "017",
         "category": "energy"
       },
       {
         "count": 4,
         "name": "Fighting Energy",
         "set": "SVE",
-        "number": "014",
+        "number": "022",
         "category": "energy"
       },
       {
         "count": 3,
         "name": "Lightning Energy",
         "set": "SVE",
-        "number": "012",
+        "number": "020",
         "category": "energy"
       }
     ],
-    "deckHash": "a41c109511857b23982023bbf9e321063d1e72e9"
+    "deckHash": "ddf94284c11d3d42704ab50de9699f04de7f9ca1"
   }
 ]

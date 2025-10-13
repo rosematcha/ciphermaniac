@@ -29,7 +29,12 @@ BASIC_ENERGY = frozenset({
 
 ROOT = Path(__file__).resolve().parents[1]
 REPORTS = ROOT / 'reports'
+ASSETS = ROOT / 'assets'
 TOURNAMENTS_FILE = REPORTS / 'tournaments.json'
+CARD_SYNONYM_PATHS = [
+    ASSETS / 'card-synonyms.json',
+    REPORTS / 'cardSynonyms.json'
+]
 OUT_FILE = REPORTS / 'suggestions.json'
 DAY2D_CANDIDATES_FILE = REPORTS / 'that_day2d_candidates.json'
 DAY2D_SELECTION_FILE = REPORTS / 'that_day2d_selection.json'
@@ -94,12 +99,81 @@ class CardData:
     archetype: Optional[str] = None
 
 
+class CardCanonicalizer:
+    """Resolve card names and UIDs to canonical references."""
+
+    def __init__(self, paths: List[Path]):
+        self.paths = paths
+        self.synonyms: Dict[str, str] = {}
+        self.name_to_canonical: Dict[str, str] = {}
+        self._cache: Dict[Tuple[Optional[str], Optional[str]], Tuple[Optional[str], Optional[str]]] = {}
+        self._load()
+
+    def _load(self) -> None:
+        for path in self.paths:
+            if not path.exists():
+                continue
+            try:
+                raw = json.loads(path.read_text(encoding='utf-8'))
+                synonyms = raw.get('synonyms') or {}
+                canonicals = raw.get('canonicals') or {}
+                # Keep only well-formed mappings
+                self.synonyms = {
+                    str(uid): str(target)
+                    for uid, target in synonyms.items()
+                    if uid and target
+                }
+                self.name_to_canonical = {
+                    str(name): str(uid)
+                    for name, uid in canonicals.items()
+                    if name and uid
+                }
+                # Ensure canonical entries self-resolve
+                for canonical in self.name_to_canonical.values():
+                    self.synonyms.setdefault(canonical, canonical)
+                return
+            except Exception:
+                self.synonyms = {}
+                self.name_to_canonical = {}
+        # If no path succeeded, ensure dictionaries are empty
+        if not self.synonyms:
+            self.synonyms = {}
+        if not self.name_to_canonical:
+            self.name_to_canonical = {}
+
+    def canonicalize(self, uid: Optional[str], name: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
+        key = (uid, name)
+        if key in self._cache:
+            return self._cache[key]
+
+        canonical_uid: Optional[str] = None
+        canonical_name: Optional[str] = None
+
+        if uid:
+            canonical_uid = self.synonyms.get(uid, uid)
+
+        if not canonical_uid and name:
+            canonical_uid = self.name_to_canonical.get(name)
+
+        if canonical_uid:
+            canonical_name = canonical_uid.split('::', 1)[0]
+        elif name:
+            canonical_name = name
+
+        result_uid = canonical_uid or uid or name
+        result_name = canonical_name or name
+
+        self._cache[key] = (result_uid, result_name)
+        return result_uid, result_name
+
+
 class TournamentDataLoader:
     """Optimized tournament data loader with caching and batch operations."""
     
-    def __init__(self):
+    def __init__(self, canonicalizer: Optional[CardCanonicalizer] = None):
         self._archetype_cache: Dict[str, Optional[str]] = {}
         self._tournament_data_cache: Optional[List[TournamentData]] = None
+        self.canonicalizer = canonicalizer
     
     def load_tournament_order(self) -> List[str]:
         """Load tournament order from tournaments.json."""
@@ -120,6 +194,11 @@ class TournamentDataLoader:
         except Exception:
             return None
     
+    def _canonicalize(self, uid: Optional[str], name: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
+        if not self.canonicalizer:
+            return uid or name, name
+        return self.canonicalizer.canonicalize(uid, name)
+
     def _extract_pct_map(self, master: dict) -> Tuple[Dict[str, float], Dict[str, str]]:
         """Extract percentage and name mappings from master.json."""
         pct_map = {}
@@ -131,8 +210,14 @@ class TournamentDataLoader:
                 continue
             
             pct = float(item.get('pct', 0.0) or 0.0)
-            pct_map[key] = pct
-            name_map.setdefault(key, display_name)
+            canonical_key, canonical_name = self._canonicalize(item.get('uid'), display_name)
+            if not canonical_key:
+                canonical_key = key
+            pct_map[canonical_key] = min(100.0, pct_map.get(canonical_key, 0.0) + pct)
+            if canonical_name:
+                name_map[canonical_key] = canonical_name
+            elif display_name:
+                name_map.setdefault(canonical_key, display_name)
         
         return pct_map, name_map
     
@@ -916,14 +1001,15 @@ class RotationFilter:
         if not current_prefix:
             return tournament_data
         
-        # Count events in current rotation
-        current_rotation_events = [
-            data for data in tournament_data 
-            if RotationFilter._normalize_rotation_prefix(data.format_name) == current_prefix
-        ]
-        
+        # Count events in current rotation, keeping events that lack rotation metadata
+        filtered_events = []
+        for data in tournament_data:
+            prefix = RotationFilter._normalize_rotation_prefix(data.format_name)
+            if prefix == current_prefix or prefix is None:
+                filtered_events.append(data)
+
         # Return filtered list if we have enough events, otherwise return all
-        return current_rotation_events if len(current_rotation_events) >= 3 else tournament_data
+        return filtered_events if len(filtered_events) >= 3 else tournament_data
 
 
 def generate_suggestions():
@@ -944,7 +1030,8 @@ def generate_suggestions():
         args.day2d_selection = ''
         args.no_candidate_files = False
     # Initialize components
-    loader = TournamentDataLoader()
+    canonicalizer = CardCanonicalizer(CARD_SYNONYM_PATHS)
+    loader = TournamentDataLoader(canonicalizer)
     analyzer = CardAnalyzer(loader)
     
     # Load tournament data

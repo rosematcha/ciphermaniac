@@ -7,13 +7,17 @@ import argparse
 import tempfile
 import time
 from datetime import datetime, timezone
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, urljoin
 from bs4 import BeautifulSoup
 from collections import Counter, defaultdict
 from itertools import product
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import sys
 import shutil
+
+LIMITLESS_BASE_URL = "https://play.limitlesstcg.com"
+LIMITLESS_LABS_BASE_URL = "https://labs.limitlesstcg.com"
+_LIMITLESS_ARCHETYPE_CACHE = None
 
 # --- UTILITY FUNCTIONS ---
 
@@ -90,6 +94,469 @@ def write_json_atomic(path, data):
             os.remove(tmp_path)
         except Exception:
             pass
+
+# --- SYNONYM DETECTION ---
+
+def scrape_set_acronyms(session):
+    """Scrapes set acronyms from pkmncards.com and returns a mapping of set names to acronyms."""
+    url = "https://pkmncards.com/sets/"
+    print(f"Scraping set acronyms from {url}...")
+
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    resp = request_with_retries(session, 'GET', url, headers=headers, timeout=20)
+    if not resp:
+        print("Warning: Could not fetch set acronyms from pkmncards.com")
+        return {}
+
+    soup = BeautifulSoup(resp.text, 'html.parser')
+    set_mapping = {}
+
+    # Find the entry-content div which contains all the sets
+    entry_content = soup.find('div', class_='entry-content')
+    if not entry_content:
+        print("Warning: Could not find entry-content div on pkmncards.com")
+        return {}
+
+    # Find all list items containing set information
+    # The structure is: "Set Name (ACRONYM)"
+    for li in entry_content.find_all('li'):
+        text = li.get_text(strip=True)
+        # Match pattern like "Crown Zenith (CRZ)" or "Stellar Crown (SCR)"
+        match = re.match(r'^(.+?)\s+\(([A-Z0-9]+)\)$', text)
+        if match:
+            set_name = match.group(1).strip()
+            acronym = match.group(2).strip()
+            # Store bidirectional mapping
+            set_mapping[set_name] = acronym
+            set_mapping[acronym] = acronym
+
+    print(f"Found {len(set_mapping) // 2} set acronyms")
+    return set_mapping
+
+
+def scrape_card_print_variations(session, set_code, number, set_acronym_mapping=None):
+    """
+    Scrapes print variations for a specific card from Limitless.
+    Returns list of dicts: [{'set': 'SFA', 'number': '038', 'price_usd': 19.67}, ...]
+    Only includes international prints, not Japanese.
+
+    Args:
+        session: requests Session
+        set_code: Set code like 'SFA'
+        number: Card number like '038'
+        set_acronym_mapping: Optional dict mapping set names to acronyms from pkmncards.com
+    """
+    # Remove leading zeros for Limitless URL
+    number_clean = str(number).lstrip('0')
+    url = f"https://limitlesstcg.com/cards/{set_code}/{number_clean}"
+
+    print(f"  Checking print variations for {set_code}/{number}...")
+
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    resp = request_with_retries(session, 'GET', url, headers=headers, timeout=20, retries=2)
+    if not resp:
+        print(f"    Warning: Could not fetch print variations from {url}")
+        return []
+
+    soup = BeautifulSoup(resp.text, 'html.parser')
+    variations = []
+
+    # Find the card-prints-versions table
+    table = soup.find('table', class_='card-prints-versions')
+    if not table:
+        return []
+
+    # Track whether we're in the international or Japanese section
+    in_jp_section = False
+
+    for row in table.find_all('tr'):
+        # Check if this is the JP section header
+        th = row.find('th')
+        if th and 'JP. Prints' in th.get_text():
+            in_jp_section = True
+            continue
+
+        # Skip if we're in the JP section
+        if in_jp_section:
+            continue
+
+        # Skip header rows
+        if th:
+            continue
+
+        # Find all table cells
+        cells = row.find_all('td')
+        if len(cells) < 2:
+            continue
+
+        # First cell has set name and number
+        first_cell = cells[0]
+
+        # Look for the card number span first
+        number_elem = first_cell.find('span', class_='prints-table-card-number')
+        if not number_elem:
+            continue
+
+        # Extract number from "#130" format
+        card_num = number_elem.get_text(strip=True).lstrip('#')
+
+        # Extract set acronym - try href first, then fallback to text parsing
+        set_name_elem = first_cell.find('a')
+        set_acronym = None
+
+        if set_name_elem:
+            href = set_name_elem.get('href', '')
+            if href:
+                # href format: /cards/SFA/38
+                match = re.search(r'/cards/([A-Z0-9]+)/\d+', href)
+                if match:
+                    set_acronym = match.group(1)
+
+            # If no href (current card has class="current" and no href), use set name mapping
+            if not set_acronym:
+                # Get text but exclude the span with class 'prints-table-card-number'
+                # Clone the element to avoid modifying the original
+                set_name_elem_clone = set_name_elem
+                # Remove the card number span to get clean set name
+                span_to_remove = set_name_elem.find('span', class_='prints-table-card-number')
+                if span_to_remove:
+                    # Get all text nodes that are direct children of the <a>, excluding the span
+                    set_text = set_name_elem.get_text(strip=True)
+                    span_text = span_to_remove.get_text(strip=True)
+                    # Remove the span text from the full text
+                    set_text = set_text.replace(span_text, '').strip()
+                else:
+                    set_text = set_name_elem.get_text(strip=True)
+
+                # Normalize set text for better matching
+                # "Pokémon 151" -> "151", "Pokémon GO" -> "Pokémon GO"
+                set_text_normalized = set_text.replace('Pokémon ', '')
+
+                # Use the dynamic mapping from pkmncards.com
+                if set_acronym_mapping:
+                    # Try exact match first
+                    set_acronym = set_acronym_mapping.get(set_text)
+                    # If not found, try normalized version
+                    if not set_acronym:
+                        set_acronym = set_acronym_mapping.get(set_text_normalized)
+
+        if not set_acronym:
+            # Log when we can't find a set acronym
+            set_text_debug = set_name_elem.get_text(strip=True) if set_name_elem else 'unknown'
+            print(f"    Warning: Could not determine set acronym for '{set_text_debug}' #{card_num}")
+            continue
+
+        # Normalize to 3 digits with leading zeros
+        normalized_num = card_num.zfill(3)
+
+        # Extract USD price from second cell if available
+        price_usd = None
+        if len(cells) >= 2:
+            price_link = cells[1].find('a', class_='card-price')
+            if price_link:
+                price_text = price_link.get_text(strip=True)
+                # Extract numeric value from "$19.67" format
+                price_match = re.search(r'\$?([\d.]+)', price_text)
+                if price_match:
+                    try:
+                        price_usd = float(price_match.group(1))
+                    except ValueError:
+                        pass
+
+        variations.append({
+            'set': set_acronym,
+            'number': normalized_num,
+            'price_usd': price_usd
+        })
+
+    if variations:
+        print(f"    Found {len(variations)} international print(s)")
+
+    return variations
+
+
+def _choose_canonical_print(variations, card_name):
+    """
+    Choose the canonical print from a list of variations.
+    Prefers: Standard-legal sets > Non-promo > Lowest price > Lower card number
+    Promo cards (SVP, MEP, etc.) are only chosen if no non-promo exists.
+
+    Args:
+        variations: List of dicts with 'set', 'number', 'price_usd' keys
+        card_name: Name of the card for logging
+
+    Returns:
+        The canonical variation dict
+    """
+    if not variations:
+        return None
+
+    # Define standard-legal sets (Scarlet & Violet era onwards, including Mega Evolution)
+    # Sword & Shield sets are rotated and not included
+    STANDARD_LEGAL_SETS = {
+        # Mega Evolution era
+        'MEG', 'MEE', 'MEP',
+        # Scarlet & Violet era (all SV sets are standard legal)
+        'WHT', 'BLK', 'DRI', 'JTG', 'PRE', 'SSP', 'SCR', 'SFA', 'TWM', 'TEF',
+        'PAF', 'PAR', 'MEW', 'M23', 'OBF', 'PAL', 'SVE', 'SVI', 'SVP'
+    }
+
+    # Define promo sets (should be deprioritized unless they're the only option)
+    PROMO_SETS = {'SVP', 'MEP', 'PRE', 'M23', 'PAF'}
+
+    def get_set_priority(set_code):
+        """Lower number = higher priority. Standard-legal sets are all equal priority."""
+        if set_code in STANDARD_LEGAL_SETS:
+            return 0  # Standard legal - all equal priority
+        else:
+            return 1  # Non-standard sets - lower priority
+
+    def is_promo(set_code):
+        """Check if a set is a promo set."""
+        return set_code in PROMO_SETS
+
+    # Sort variations by priority
+    def sort_key(var):
+        set_priority = get_set_priority(var['set'])
+        promo_priority = 1 if is_promo(var['set']) else 0  # Non-promos come first
+        price = var.get('price_usd') or 999999  # High value if no price
+        card_num = int(var['number']) if var['number'].isdigit() else 999999
+
+        # Sort by: 1) Standard legal (yes/no), 2) Non-promo, 3) Price, 4) Card number
+        return (set_priority, promo_priority, price, card_num)
+
+    sorted_variations = sorted(variations, key=sort_key)
+    canonical = sorted_variations[0]
+
+    # Log the selection
+    price_str = f"${canonical.get('price_usd', 'N/A')}" if canonical.get('price_usd') else 'N/A'
+    is_standard = "standard" if canonical['set'] in STANDARD_LEGAL_SETS else "non-standard"
+    is_promo_card = "promo" if is_promo(canonical['set']) else "regular"
+    print(f"    {card_name}: Selected {canonical['set']}~{canonical['number']} ({price_str}, {is_standard}, {is_promo_card}) from {len(variations)} prints")
+
+    return canonical
+
+
+def _load_synonym_cache():
+    """Load the persistent synonym cache from disk."""
+    cache_path = os.path.join("tools", "synonym_cache.json")
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def _save_synonym_cache(cache):
+    """Save the persistent synonym cache to disk."""
+    cache_path = os.path.join("tools", "synonym_cache.json")
+    write_json_atomic(cache_path, cache)
+
+
+def generate_card_synonyms(all_decks, session, set_acronym_mapping=None, use_cache=True):
+    """
+    Generates synonym mappings for cards based on their print variations.
+    Returns a dict in the format expected by the app:
+    {
+      "synonyms": {
+        "Card Name::SET::NUMBER": "Card Name::SET::NUMBER",  # canonical maps to itself
+        "Card Name::SET2::NUMBER2": "Card Name::SET::NUMBER"  # variants map to canonical
+      },
+      "canonicals": {
+        "Card Name": "Card Name::SET::NUMBER"  # name maps to canonical UID
+      },
+      "metadata": {
+        "generated": "ISO timestamp",
+        "totalSynonyms": count,
+        "totalCanonicals": count
+      }
+    }
+
+    Cache persists ONLY within a single script run (in-memory cache).
+    Each time the script is executed, the cache is cleared and re-built.
+
+    Args:
+        all_decks: List of deck dictionaries
+        session: requests Session
+        set_acronym_mapping: Optional pre-fetched set acronym mapping
+        use_cache: If True, uses in-memory cache within this run (default: True)
+    """
+    if set_acronym_mapping is None:
+        set_acronym_mapping = scrape_set_acronyms(session)
+
+    print("\nGenerating card synonyms from print variations...")
+
+    # Use in-memory cache that persists only for this run
+    # Cache is attached to the function itself
+    if not hasattr(generate_card_synonyms, '_run_cache'):
+        generate_card_synonyms._run_cache = {}
+
+    cache = generate_card_synonyms._run_cache if use_cache else {}
+    cache_hits = 0
+    cache_misses = 0
+
+    # Collect all unique cards by name AND track all unique set::number combinations
+    # This allows us to detect when multiple mechanically different cards share the same name
+    unique_cards_by_name = {}  # card name -> first occurrence for scraping
+    card_uids_by_name = {}     # card name -> set of all unique UIDs seen in decks
+
+    for deck in all_decks:
+        for card in deck.get('cards', []):
+            card_name = card.get('name', '').strip()
+            if not card_name:
+                continue
+
+            set_code = (card.get('set', '') or '').upper().strip()
+            number = (card.get('number', '') or '').lstrip('0').zfill(3)
+
+            if set_code and number:
+                # Track all unique UIDs for this card name
+                if card_name not in card_uids_by_name:
+                    card_uids_by_name[card_name] = set()
+                card_uids_by_name[card_name].add(f"{set_code}::{number}")
+
+                # Use card name as the dedup key - only store first occurrence for scraping
+                if card_name not in unique_cards_by_name:
+                    unique_cards_by_name[card_name] = {
+                        'name': card_name,
+                        'set': set_code,
+                        'number': number
+                    }
+
+    # Build output structure
+    synonyms_dict = {}  # variant UID -> canonical UID
+    canonicals_dict = {}  # card name -> canonical UID
+    newly_scraped = 0
+
+    total_cards = len(unique_cards_by_name)
+    current = 0
+
+    for card_name, card_info in unique_cards_by_name.items():
+        current += 1
+        if current % 10 == 0 or current == total_cards:
+            print(f"  Progress: {current}/{total_cards} unique cards checked (cache hits: {cache_hits}, new scrapes: {newly_scraped})")
+
+        # Check if we have this card in cache
+        if card_name in cache:
+            cache_hits += 1
+            cached_data = cache[card_name]
+            # Skip if this card has no synonyms (single print only)
+            if not cached_data.get('canonical') or not cached_data.get('synonyms'):
+                continue
+            # Skip if only has one print
+            if len(cached_data['synonyms']) < 2:
+                continue
+
+            # Use cached data to rebuild synonyms in app format
+            # Try to use new format if available, otherwise build from old format
+            if 'canonical_uid' in cached_data:
+                canonical_uid = cached_data['canonical_uid']
+            else:
+                # Build from old format: "SFA~038" -> "Card Name::SFA::038"
+                old_canonical = cached_data['canonical']
+                if '~' in old_canonical:
+                    set_code, number = old_canonical.split('~')
+                    canonical_uid = f"{card_name}::{set_code}::{number}"
+                else:
+                    # Fallback if format is unexpected
+                    canonical_uid = f"{card_name}::{old_canonical}"
+
+            # Build variant UIDs from old format synonyms list (excluding canonical)
+            for old_variant in cached_data['synonyms']:
+                if '~' in old_variant:
+                    set_code, number = old_variant.split('~')
+                    variant_uid = f"{card_name}::{set_code}::{number}"
+                    # Only add non-canonical variants
+                    if variant_uid != canonical_uid:
+                        synonyms_dict[variant_uid] = canonical_uid
+                else:
+                    # Fallback for unexpected format
+                    variant_uid = f"{card_name}::{old_variant}"
+                    if variant_uid != canonical_uid:
+                        synonyms_dict[variant_uid] = canonical_uid
+
+            # Add canonical to canonicals dict ONLY if there's only one unique UID
+            # for this card name in the tournament data (prevents mapping different cards
+            # with the same name, like Ralts SVI 084 vs Ralts MEG 058)
+            if len(card_uids_by_name.get(card_name, set())) <= 1:
+                canonicals_dict[card_name] = canonical_uid
+            continue
+
+        # Not in cache - need to scrape
+        cache_misses += 1
+        newly_scraped += 1
+
+        # Scrape print variations for this card
+        variations = scrape_card_print_variations(
+            session,
+            card_info['set'],
+            card_info['number'],
+            set_acronym_mapping
+        )
+
+        if not variations:
+            # No variations found, card stands alone - cache this result
+            cache[card_name] = {'canonical': None, 'synonyms': []}
+            continue
+
+        # Choose the canonical print intelligently
+        canonical_var = _choose_canonical_print(variations, card_info['name'])
+        if not canonical_var:
+            cache[card_name] = {'canonical': None, 'synonyms': []}
+            continue
+
+        # Only include cards with multiple prints (2 or more variations)
+        if len(variations) < 2:
+            # Cache as single-print card (no synonyms needed)
+            cache[card_name] = {'canonical': None, 'synonyms': []}
+            continue
+
+        # Build canonical UID in format: Name::SET::NUMBER
+        canonical_uid = f"{card_name}::{canonical_var['set']}::{canonical_var['number']}"
+
+        # Build synonym UIDs and add to synonyms dict (excluding the canonical itself)
+        for var in variations:
+            variant_uid = f"{card_name}::{var['set']}::{var['number']}"
+            # Only add non-canonical variants to synonyms dict
+            if variant_uid != canonical_uid:
+                synonyms_dict[variant_uid] = canonical_uid
+
+        # Add to canonicals dict ONLY if there's only one unique UID for this card name
+        # in the tournament data (prevents mapping different cards with the same name)
+        if len(card_uids_by_name.get(card_name, set())) <= 1:
+            canonicals_dict[card_name] = canonical_uid
+
+        # Cache this result (keep old format for backward compatibility with cache)
+        cache_synonyms = [f"{var['set']}~{var['number']}" for var in variations]
+        cache[card_name] = {
+            'canonical': f"{canonical_var['set']}~{canonical_var['number']}",
+            'synonyms': cache_synonyms,
+            'canonical_uid': canonical_uid  # Also store new format
+        }
+
+    # Cache is in-memory only (persists for this run only)
+    # No disk persistence - cache resets on next run
+    if newly_scraped > 0:
+        print(f"  Added {newly_scraped} new entries to in-memory cache (resets per run)")
+
+    # Build final output
+    output = {
+        "synonyms": synonyms_dict,
+        "canonicals": canonicals_dict,
+        "metadata": {
+            "generated": datetime.now(timezone.utc).isoformat(),
+            "totalSynonyms": len(synonyms_dict),
+            "totalCanonicals": len(canonicals_dict),
+            "description": "Card synonym mappings for handling reprints and alternate versions"
+        }
+    }
+
+    print(f"\nSynonym generation complete: {len(canonicals_dict)} unique cards with {len(synonyms_dict)} total variants")
+    print(f"  Cache statistics: {cache_hits} hits, {newly_scraped} new scrapes")
+    return output
+
 
 # --- DATA EXTRACTION ---
 
@@ -207,6 +674,10 @@ def extract_all_decklists(soup, anonymize=False):
         placement = int(placement_match.group(1)) if placement_match else None
         player_name = re.sub(r'^(\d+)[stndrh]+\s', '', player_info)
 
+        if anonymize and player_name:
+            digest = hashlib.sha1(player_name.encode('utf-8')).hexdigest()[:10]
+            player_name = f"Player-{digest}"
+
         cards = []
         cards_container = container.find('div', attrs={'data-text-decklist': True})
         if not cards_container: continue
@@ -217,11 +688,11 @@ def extract_all_decklists(soup, anonymize=False):
             set_acronym = card_div.get('data-set', '').upper().strip()
             number_raw = card_div.get('data-number', '').lstrip('0')
             number = number_raw.zfill(3) if number_raw else number_raw
-            
+
             # Ensure all cards (Pokemon, Trainer, Energy) have set and number identifiers
             if not set_acronym or not number:
                 print(f"Warning: Card '{card_div.find('span', class_='card-name').text.strip()}' missing set ({set_acronym}) or number ({number}) identifiers")
-            
+
             cards.append({
                 "count": int(card_div.find('span', class_='card-count').text.strip()),
                 "name": card_div.find('span', class_='card-name').text.strip(),
@@ -229,22 +700,407 @@ def extract_all_decklists(soup, anonymize=False):
                 "number": number,
                 "category": category
             })
-        
+
         # Create a canonical string for hashing by sorting cards
         canonical_card_list = sorted([f"{c['count']}x{c['name']}{c['set']}{c['number']}" for c in cards])
         deck_hash = hashlib.sha1(json.dumps(canonical_card_list).encode()).hexdigest()
 
         all_decks.append({
             "id": deck_hash[:10],
-            "player": hashlib.sha1(player_name.encode()).hexdigest()[:10] if anonymize else player_name,
+            "player": player_name,
             "placement": placement,
             "archetype": container.find('div', class_='decklist-title').text.strip().split('\n')[0].strip(),
             "cards": cards,
             "deckHash": deck_hash
         })
-    
+
     print(f"Extracted and processed {len(all_decks)} decks.")
     return all_decks
+
+# --- RK9 SUPPORT ---
+
+def _is_rk9_url(value: str) -> bool:
+    if not value:
+        return False
+    norm = (value or "").strip().lower()
+    return "rk9.gg" in norm
+
+
+def _normalize_rk9_url(u: str) -> str:
+    if not u:
+        return u
+    s = u.strip()
+    if not s.startswith(('http://', 'https://')):
+        s = 'https://' + s
+    return s
+
+
+def _extract_rk9_roster_entries(soup, roster_url):
+    table = soup.find('table', id='dtLiveRoster')
+    if not table:
+        print("Warning: RK9 roster table not found.")
+        return []
+
+    tbody = table.find('tbody') or table
+    rows = []
+    for tr in tbody.find_all('tr'):
+        cells = tr.find_all('td')
+        if len(cells) < 7:
+            continue
+
+        player_id = cells[0].get_text(strip=True)
+        first = cells[1].get_text(strip=True)
+        last = cells[2].get_text(strip=True)
+        country = cells[3].get_text(strip=True)
+        division = cells[4].get_text(strip=True)
+        deck_link = cells[5].find('a', href=True)
+        standing_text = cells[6].get_text(strip=True)
+
+        try:
+            standing = int(standing_text)
+        except Exception:
+            standing = None
+
+        deck_url = urljoin(roster_url, deck_link['href']) if deck_link else None
+        rows.append({
+            "player_id": player_id,
+            "first_name": first,
+            "last_name": last,
+            "name": (first + " " + last).strip() or player_id,
+            "country": country,
+            "division": division,
+            "deck_url": deck_url,
+            "standing": standing,
+        })
+
+    def _division_sort_key(value):
+        mapping = {
+            'junior': 0,
+            'juniors': 0,
+            'master': 1,
+            'masters': 1,
+            'senior': 2,
+            'seniors': 2,
+        }
+        return mapping.get((value or '').strip().lower(), 99)
+
+    rows.sort(key=lambda r: (_division_sort_key(r.get('division')), r.get('standing') or 999999))
+    return rows
+
+
+def _split_rk9_setnum(setnum: str):
+    if not setnum:
+        return '', ''
+    parts = setnum.strip().upper().split('-', 1)
+    set_code = parts[0].strip() if parts else ''
+    number = parts[1].strip() if len(parts) > 1 else ''
+    return set_code, number
+
+
+def _clean_rk9_energy_name(name: str) -> str:
+    if not name:
+        return name
+    return re.sub(r"\s*-\s*(Basic|Special)$", "", name, flags=re.IGNORECASE).strip()
+
+
+def extract_rk9_decklist(soup):
+    cards = []
+    if not soup:
+        return cards
+
+    for category in ("pokemon", "trainer", "energy"):
+        ul = soup.find('ul', class_=category)
+        if not ul:
+            continue
+        for li in ul.find_all('li', class_=category):
+            quantity_text = li.get('data-quantity') or ''
+            try:
+                quantity = int(quantity_text)
+            except Exception:
+                quantity = None
+
+            raw_name = (li.get('data-cardname') or '').strip()
+            name = _clean_rk9_energy_name(raw_name) if category == 'energy' else raw_name
+
+            set_code, number_raw = _split_rk9_setnum(li.get('data-setnum') or '')
+            normalized_number = _normalize_card_number(number_raw)
+
+            if quantity is None:
+                print(f"    Warning: Skipping card with invalid quantity: {raw_name}")
+                continue
+
+            if not set_code or not normalized_number:
+                print(f"    Warning: Card '{name}' missing set/number identifiers (set='{set_code}', number='{normalized_number}')")
+
+            cards.append({
+                "count": quantity,
+                "name": name,
+                "set": set_code,
+                "number": normalized_number,
+                "category": category
+            })
+
+    return cards
+
+# --- LIMITLESS ARCHETYPE MATCHING ---
+
+def _limitless_headers():
+    return {'User-Agent': 'Mozilla/5.0'}
+
+
+def _fetch_limitless_archetype_rows(session):
+    overview_url = f"{LIMITLESS_BASE_URL}/decks"
+    resp = request_with_retries(session, 'GET', overview_url, headers=_limitless_headers(), timeout=25)
+    if not resp:
+        print("Warning: Could not fetch Limitless archetype overview.")
+        return []
+
+    soup = BeautifulSoup(resp.text, 'html.parser')
+    table = soup.find('table', class_='meta')
+    if not table:
+        print("Warning: Limitless archetype table not found on overview page.")
+        return []
+
+    entries = []
+    for row in table.find_all('tr'):
+        if row.find('th'):
+            continue
+        cells = row.find_all('td')
+        if len(cells) < 3:
+            continue
+        link = cells[2].find('a', href=True)
+        if not link:
+            continue
+        href = link['href']
+        name = link.get_text(strip=True)
+        if not href or not name:
+            continue
+        full_url = urljoin(LIMITLESS_BASE_URL, href)
+        entries.append({
+            "name": name,
+            "url": full_url
+        })
+
+    unique_entries = []
+    seen = set()
+    for entry in entries:
+        key = normalize_archetype_name(entry['name'])
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_entries.append(entry)
+    return unique_entries
+
+
+def _fetch_limitless_decklist_pokemon(session, deck_url):
+    resp = request_with_retries(session, 'GET', deck_url, headers=_limitless_headers(), timeout=25)
+    if not resp:
+        print(f"Warning: Could not fetch Limitless decklist: {deck_url}")
+        return None
+
+    soup = BeautifulSoup(resp.text, 'html.parser')
+    deck_container = soup.find('div', class_='decklist')
+    if not deck_container:
+        print(f"Warning: Pokémon section missing on Limitless decklist page: {deck_url}")
+        return None
+
+    pokemon_counter = Counter()
+    cards = []
+
+    for column in deck_container.find_all('div', class_='column'):
+        heading = column.find('div', class_='heading')
+        if not heading:
+            continue
+        label = heading.get_text(strip=True).lower()
+        if 'pokémon' not in label and 'pokemon' not in label:
+            continue
+        for node in column.find_all('p'):
+            text = node.get_text(" ", strip=True)
+            match = re.match(r'(\d+)\s+(.+?)(?:\s+\(([^)]+)\))?$', text)
+            if not match:
+                continue
+            try:
+                count = int(match.group(1))
+            except Exception:
+                continue
+            name = match.group(2).strip()
+            if not name:
+                continue
+            cards.append({"count": count, "name": name})
+            pokemon_counter[name] += count
+
+    if not pokemon_counter:
+        print(f"Warning: No Pokémon cards parsed from {deck_url}")
+        return None
+
+    return {
+        "cards": cards,
+        "counter": pokemon_counter
+    }
+
+
+def _fetch_limitless_archetype_top_deck(session, archetype_url):
+    resp = request_with_retries(session, 'GET', archetype_url, headers=_limitless_headers(), timeout=25)
+    if not resp:
+        print(f"Warning: Could not load Limitless archetype page: {archetype_url}")
+        return None
+
+    soup = BeautifulSoup(resp.text, 'html.parser')
+    top_row = None
+    for tr in soup.find_all('tr'):
+        if tr.has_attr('data-player'):
+            top_row = tr
+            break
+
+    if not top_row:
+        print(f"Warning: No deck entries found for archetype page: {archetype_url}")
+        return None
+
+    deck_link = top_row.find('a', href=re.compile(r'/decklist'))
+    if not deck_link:
+        print(f"Warning: Decklist link missing for archetype page: {archetype_url}")
+        return None
+
+    deck_url = urljoin(LIMITLESS_BASE_URL, deck_link['href'])
+    deck_data = _fetch_limitless_decklist_pokemon(session, deck_url)
+    if not deck_data:
+        return None
+
+    deck_data["decklistUrl"] = deck_url
+    deck_data["player"] = top_row.get('data-player')
+    deck_data["tournament"] = top_row.get('data-tournament')
+    return deck_data
+
+
+def build_limitless_archetype_prototypes(session, limit=None):
+    global _LIMITLESS_ARCHETYPE_CACHE
+
+    if limit is None and _LIMITLESS_ARCHETYPE_CACHE is not None:
+        return _LIMITLESS_ARCHETYPE_CACHE
+
+    if _LIMITLESS_ARCHETYPE_CACHE is not None and limit is not None:
+        cached_items = list(_LIMITLESS_ARCHETYPE_CACHE.items())[:limit]
+        return {k: v for k, v in cached_items}
+
+    entries = _fetch_limitless_archetype_rows(session)
+    if not entries:
+        if limit is None:
+            _LIMITLESS_ARCHETYPE_CACHE = {}
+        return {}
+
+    if limit is not None:
+        entries = entries[:limit]
+
+    total = len(entries)
+    print(f"\nFetching Limitless archetype prototypes ({total} archetype(s))...")
+    prototypes = {}
+    for idx, entry in enumerate(entries, 1):
+        print(f"  [{idx}/{total}] {entry['name']}...", end='')
+        archetype_data = _fetch_limitless_archetype_top_deck(session, entry['url'])
+        if not archetype_data:
+            print(" skipped")
+            continue
+        prototypes[normalize_archetype_name(entry['name'])] = {
+            "name": entry['name'],
+            "url": entry['url'],
+            "counter": archetype_data['counter'],
+            "cards": archetype_data['cards'],
+            "decklistUrl": archetype_data.get('decklistUrl')
+        }
+        print(" ok")
+
+    if not prototypes:
+        print("Warning: Archetype prototypes could not be collected from Limitless.")
+
+    if limit is None:
+        _LIMITLESS_ARCHETYPE_CACHE = prototypes
+        return prototypes
+
+    return prototypes
+
+
+def _pokemon_counter_for_deck(deck):
+    counts = Counter()
+    for card in deck.get("cards", []):
+        category = (card.get("category") or "").lower()
+        if category != "pokemon":
+            continue
+        try:
+            qty = int(card.get("count", 0) or 0)
+        except Exception:
+            qty = 0
+        if qty <= 0:
+            continue
+        name = (card.get("name") or "").strip()
+        if not name:
+            continue
+        counts[name] += qty
+    return counts
+
+
+def _score_archetype_match(deck_counter, proto_counter):
+    if not deck_counter or not proto_counter:
+        return 0.0, 0.0, 0
+
+    deck_names = set(deck_counter.keys())
+    proto_names = set(proto_counter.keys())
+    shared = deck_names & proto_names
+    if not shared:
+        return 0.0, 0.0, 0
+
+    intersection = sum(min(deck_counter[name], proto_counter[name]) for name in shared)
+    union = sum(max(deck_counter.get(name, 0), proto_counter.get(name, 0)) for name in deck_names | proto_names)
+    deck_total = sum(deck_counter.values()) or 1
+
+    score = intersection / union if union else 0.0
+    coverage = intersection / deck_total if deck_total else 0.0
+    return score, coverage, len(shared)
+
+
+def assign_archetypes_from_prototypes(decks, prototypes, min_score=0.6, min_coverage=0.6, min_unique=5):
+    if not decks or not prototypes:
+        return
+
+    print("\nMatching RK9 decks to Limitless archetypes...")
+    for deck in decks:
+        counter = _pokemon_counter_for_deck(deck)
+        if not counter:
+            continue
+
+        best = None
+        for proto in prototypes.values():
+            score, coverage, overlap_unique = _score_archetype_match(counter, proto['counter'])
+            candidate = {
+                "proto": proto,
+                "score": score,
+                "coverage": coverage,
+                "overlap": overlap_unique
+            }
+            if best is None or candidate['score'] > best['score']:
+                best = candidate
+
+        if not best or best['proto'] is None:
+            continue
+
+        proto_name = best['proto']['name']
+        match_info = {
+            "name": proto_name,
+            "score": round(best['score'], 4),
+            "coverage": round(best['coverage'], 4),
+            "overlapUnique": best['overlap'],
+            "decklistUrl": best['proto'].get('decklistUrl'),
+            "referenceUrl": best['proto']['url']
+        }
+
+        player_label = deck.get('player') or deck.get('playerId') or 'Unknown player'
+        if best['score'] >= min_score and best['coverage'] >= min_coverage and best['overlap'] >= min_unique:
+            deck['archetype'] = proto_name
+            deck['archetypeMatch'] = match_info
+            print(f"  ✓ {player_label}: {proto_name} (score {best['score']:.2f}, coverage {best['coverage']:.2f}, overlap {best['overlap']})")
+        else:
+            deck.setdefault('archetype', deck.get('archetype') or 'Unknown')
+            deck['archetypeMatch'] = match_info
+            print(f"  - {player_label}: no confident match (best {proto_name}, score {best['score']:.2f}, coverage {best['coverage']:.2f}, overlap {best['overlap']})")
 
 # --- REPORT GENERATION ---
 
@@ -386,7 +1242,7 @@ def _serialize_filter_card(card_info):
 
 
 def generate_include_exclude_reports(archetype_label, archetype_base, deck_list, archetype_data, output_root):
-    """Generate include/exclude analysis JSON files for an archetype."""
+    """Generate include/exclude analysis JSON files for an archetype with deduplication."""
 
     deck_total = len(deck_list)
     if deck_total < 4:
@@ -400,12 +1256,6 @@ def generate_include_exclude_reports(archetype_label, archetype_base, deck_list,
         return
 
     os.makedirs(output_root, exist_ok=True)
-
-    existing_files = set()
-    try:
-        existing_files = {name for name in os.listdir(output_root) if name.endswith('.json')}
-    except FileNotFoundError:
-        existing_files = set()
 
     card_lookup = {}
     candidate_cards = []
@@ -473,8 +1323,6 @@ def generate_include_exclude_reports(archetype_label, archetype_base, deck_list,
             seen_cards.add(card_id)
             card_presence[card_id].add(deck_id)
 
-    written_files = set()
-    summaries = []
     all_deck_ids = set(deck_by_id.keys())
 
     def build_subset(include_ids, exclude_ids):
@@ -518,65 +1366,124 @@ def generate_include_exclude_reports(archetype_label, archetype_base, deck_list,
         }
         return report, eligible
 
-    def persist(include_ids, exclude_ids):
-        include_ids = tuple(sorted(include_ids))
-        exclude_ids = tuple(sorted(exclude_ids))
-        include_label = "+".join(include_ids) if include_ids else "null"
-        exclude_label = "+".join(exclude_ids) if exclude_ids else "null"
-        filename = f"{archetype_base}_{include_label}_{exclude_label}.json"
-
-        report, deck_ids = build_subset(include_ids, exclude_ids)
-        if not report or not deck_ids:
-            print(f"      • Skip include={include_label} exclude={exclude_label}: no decks match")
-            return
-
-        if not include_ids and deck_ids == all_deck_ids:
-            print(f"      • Skip include={include_label} exclude={exclude_label}: combination matches baseline")
-            return
-
-        path = os.path.join(output_root, filename)
-        write_json_atomic(path, report)
-        written_files.add(filename)
-        summaries.append({
-            "include": list(include_ids),
-            "exclude": list(exclude_ids),
-            "deckTotal": len(deck_ids),
-            "file": filename
-        })
-        print(f"      • Saved include={include_label} exclude={exclude_label} ({len(deck_ids)} decks)")
-
     print(f"    - Building include/exclude reports for {archetype_label} ({len(candidate_cards)} variable cards)")
 
-    # Single include / exclude combinations
+    # PHASE 1: Generate all filter combinations
+    all_combinations = []
+
+    # Single includes
     for card in candidate_cards:
-        persist([card["id"]], [])
-        persist([], [card["id"]])
+        all_combinations.append(([card["id"]], []))
+
+    # Single excludes
+    for card in candidate_cards:
+        all_combinations.append(([], [card["id"]]))
 
     # Cross include-exclude combinations (distinct cards)
     for include_card, exclude_card in product(candidate_cards, repeat=2):
-        if include_card["id"] == exclude_card["id"]:
-            continue
-        persist([include_card["id"]], [exclude_card["id"]])
+        if include_card["id"] != exclude_card["id"]:
+            all_combinations.append(([include_card["id"]], [exclude_card["id"]]))
 
-    index_payload = {
-        "archetype": archetype_label,
-        "deckTotal": deck_total,
-        "cards": cards_summary,
-        "combinations": summaries,
-        "generatedAt": datetime.now(timezone.utc).isoformat()
+    # PHASE 2: Compute subsets and deduplicate
+    unique_subsets = {}  # content_hash -> subset_info
+    filter_map = {}      # "inc:X|exc:Y" -> subset_id
+
+    for include_ids, exclude_ids in all_combinations:
+        # Compute subset
+        report, deck_ids = build_subset(include_ids, exclude_ids)
+
+        if not report or not deck_ids:
+            continue
+
+        # Skip exclude-only combinations that match the baseline
+        if not include_ids and deck_ids == all_deck_ids:
+            continue
+
+        # Hash the subset content (items only, ignore filters/source)
+        items_str = json.dumps(report["items"], sort_keys=True)
+        content_hash = hashlib.sha256(items_str.encode()).hexdigest()
+
+        # Build filter key
+        inc_key = '+'.join(sorted(include_ids)) if include_ids else ''
+        exc_key = '+'.join(sorted(exclude_ids)) if exclude_ids else ''
+        filter_key = f"inc:{inc_key}|exc:{exc_key}"
+
+        # Store or update
+        if content_hash not in unique_subsets:
+            subset_id = f"subset_{len(unique_subsets) + 1:03d}"
+            unique_subsets[content_hash] = {
+                'id': subset_id,
+                'data': report,
+                'primary_filter': (include_ids, exclude_ids),
+                'alternate_filters': []
+            }
+        else:
+            # Add to alternates
+            unique_subsets[content_hash]['alternate_filters'].append(
+                (include_ids, exclude_ids)
+            )
+
+        subset_id = unique_subsets[content_hash]['id']
+        filter_map[filter_key] = subset_id
+
+    # PHASE 3: Write files
+    subsets_dir = os.path.join(output_root, 'unique_subsets')
+    os.makedirs(subsets_dir, exist_ok=True)
+
+    subsets_metadata = {}
+
+    for content_hash, subset_info in unique_subsets.items():
+        subset_id = subset_info['id']
+        data = subset_info['data']
+
+        # Write subset file
+        subset_path = os.path.join(subsets_dir, f"{subset_id}.json")
+        write_json_atomic(subset_path, data)
+
+        # Store metadata
+        primary_inc, primary_exc = subset_info['primary_filter']
+        subsets_metadata[subset_id] = {
+            'deckTotal': data['deckTotal'],
+            'primaryFilters': {
+                'include': list(primary_inc),
+                'exclude': list(primary_exc)
+            },
+            'alternateFilters': [
+                {'include': list(inc), 'exclude': list(exc)}
+                for inc, exc in subset_info['alternate_filters']
+            ]
+        }
+
+    # PHASE 4: Write index
+    index_data = {
+        'archetype': archetype_label,
+        'deckTotal': deck_total,
+        'totalCombinations': len(all_combinations),
+        'uniqueSubsets': len(unique_subsets),
+        'deduplicationRate': round(
+            (len(all_combinations) - len(unique_subsets)) / len(all_combinations) * 100,
+            2
+        ) if all_combinations else 0,
+        'cards': cards_summary,
+        'filterMap': filter_map,
+        'subsets': subsets_metadata,
+        'generatedAt': datetime.now(timezone.utc).isoformat()
     }
 
-    index_path = os.path.join(output_root, "index.json")
-    write_json_atomic(index_path, index_payload)
-    written_files.add("index.json")
+    index_path = os.path.join(output_root, 'index.json')
+    write_json_atomic(index_path, index_data)
 
-    # Remove stale files that were not regenerated this run
-    stale_files = existing_files - written_files
-    for filename in stale_files:
-        try:
-            os.remove(os.path.join(output_root, filename))
-        except Exception:
-            pass
+    print(f"      • Generated {len(unique_subsets)} unique subsets from {len(all_combinations)} combinations")
+    print(f"      • Deduplication: {index_data['deduplicationRate']:.1f}% reduction")
+
+    # Clean up old structure files if they exist
+    try:
+        for filename in os.listdir(output_root):
+            filepath = os.path.join(output_root, filename)
+            if filename.endswith('.json') and filename != 'index.json' and os.path.isfile(filepath):
+                os.remove(filepath)
+    except Exception:
+        pass
 
 # --- THUMBNAIL DOWNLOADER ---
 
@@ -935,7 +1842,480 @@ def generate_card_index(all_decks):
 
     return {"deckTotal": deck_total, "cards": index}
 
+# --- R2 MANAGEMENT ---
+
+# Hardcoded R2 configuration
+R2_REMOTE = "r2"
+R2_BASE_PATH = "archetype"
+
+
+def clear_r2_bucket(remote, path):
+    """Clear an arbitrary R2 bucket path using rclone."""
+    target = f"{remote}:{path}"
+    print(f"\nClearing R2 bucket: {target}")
+    try:
+        result = os.system(f'rclone purge "{target}" 2>nul' if os.name == 'nt' else f'rclone purge "{target}" 2>/dev/null')
+        if result == 0:
+            print("  ✓ R2 bucket cleared.")
+            return True
+        print("  ✗ Failed to clear R2 bucket.")
+        return False
+    except Exception as exc:
+        print(f"✗ Error clearing R2 bucket: {exc}")
+        return False
+
+
+def upload_to_r2(local_path, remote, path):
+    """Upload a local directory to R2 using rclone."""
+    destination = f"{remote}:{path}"
+    print(f"\nUploading to R2: {destination}")
+    try:
+        result = os.system(f'rclone sync "{local_path}" "{destination}" --quiet')
+        if result == 0:
+            print("  ✓ Upload complete.")
+            return True
+        print("  ✗ Upload failed.")
+        return False
+    except Exception as exc:
+        print(f"  ✗ Error uploading to R2: {exc}")
+        return False
+
+
+def clear_r2_archetypes():
+    """Clear the R2 archetype bucket using rclone."""
+    print(f"\nClearing R2 bucket: {R2_REMOTE}:{R2_BASE_PATH}")
+    try:
+        result = os.system(f'rclone purge "{R2_REMOTE}:{R2_BASE_PATH}" 2>nul' if os.name == 'nt' else f'rclone purge "{R2_REMOTE}:{R2_BASE_PATH}" 2>/dev/null')
+        if result == 0:
+            print("✓ R2 bucket cleared successfully.")
+            return True
+        else:
+            print(f"✗ Failed to clear R2 bucket (exit code: {result})")
+            return False
+    except Exception as e:
+        print(f"✗ Error clearing R2 bucket: {e}")
+        return False
+
+
+def upload_archetype_to_r2(local_archetype_path, tournament_name, archetype_name, r2_remote=None, r2_path=None):
+    """Upload a single archetype's include-exclude data to R2."""
+    try:
+        # Only upload include-exclude data
+        include_exclude_dir = os.path.join(local_archetype_path, "include-exclude", archetype_name)
+        if not os.path.exists(include_exclude_dir):
+            return True  # No include-exclude data to upload
+
+        # Construct the R2 destination path
+        remote = r2_remote or R2_REMOTE
+        base_path = r2_path or R2_BASE_PATH
+        r2_dest = f"{base_path}/{tournament_name}/archetypes/include-exclude/{archetype_name}"
+
+        result = os.system(f'rclone sync "{include_exclude_dir}" "{remote}:{r2_dest}" --quiet')
+        if result != 0:
+            print(f"      ✗ Failed to upload include-exclude for {archetype_name} to R2")
+            return False
+
+        print(f"      ✓ Uploaded {archetype_name} include-exclude to R2")
+        return True
+    except Exception as e:
+        print(f"      ✗ Error uploading archetype to R2: {e}")
+        return False
+
+
 # --- MAIN WORKFLOW ---
+
+def process_rk9_roster(session, args, url: str):
+    rk9_url = _normalize_rk9_url(url)
+    soup, headers, html_text = get_soup(rk9_url, session)
+    if not soup:
+        print(f"Skip: failed to fetch {rk9_url}")
+        return False
+
+    roster_entries = _extract_rk9_roster_entries(soup, rk9_url)
+    if not roster_entries:
+        print("No roster entries found on RK9 page.")
+        return False
+
+    masters = [entry for entry in roster_entries if (entry.get('division') or '').lower().startswith('master')]
+    total_masters = len(masters)
+    if not masters:
+        print("No Masters players found on RK9 roster.")
+        return False
+
+    cutoff = getattr(args, 'rk9_cutoff', None) if hasattr(args, 'rk9_cutoff') else None
+    if cutoff is not None and cutoff <= 0:
+        cutoff = None
+    if cutoff is None:
+        while True:
+            try:
+                prompt = f"Enter Masters Day 2 cutoff (1-{total_masters}) or press Enter to include everyone: "
+                user_input = input(prompt).strip()
+            except (EOFError, KeyboardInterrupt):
+                print()
+                user_input = ''
+            if not user_input:
+                break
+            try:
+                value = int(user_input)
+                if value <= 0:
+                    print("  Please enter a positive number.")
+                    continue
+                cutoff = min(value, total_masters)
+                setattr(args, 'rk9_cutoff', cutoff)
+                break
+            except ValueError:
+                print("  Please enter a valid number or leave blank.")
+
+    if cutoff is not None:
+        masters = masters[:cutoff]
+
+    print(f"Processing {len(masters)} Masters player(s) from RK9 roster...")
+
+    roster_id = urlparse(rk9_url).path.rstrip('/').split('/')[-1] or 'rk9-roster'
+    folder_name = sanitize_for_path(f"RK9 {roster_id}")
+    base_report_path = os.path.join("reports", folder_name)
+    archetype_report_path = os.path.join(base_report_path, "archetypes")
+    os.makedirs(archetype_report_path, exist_ok=True)
+
+    if getattr(args, 'save_raw_html', False) and html_text:
+        html_path = os.path.join(base_report_path, "source.html")
+        with open(html_path, 'w', encoding='utf-8') as f:
+            f.write(html_text)
+
+    def _maybe_anonymize(name: str) -> str:
+        if not getattr(args, 'anonymize', False):
+            return name
+        digest = hashlib.sha1(name.encode('utf-8')).hexdigest()[:10]
+        return f"Player-{digest}"
+
+    all_decks = []
+    total_selected = len(masters)
+    for idx, entry in enumerate(masters, 1):
+        player_name = entry.get('name') or entry.get('player_id')
+        deck_url = entry.get('deck_url')
+        print(f"  [{idx}/{total_selected}] Fetching decklist for {player_name}...")
+        if not deck_url:
+            print(f"  - Skipping {player_name}: decklist link unavailable.")
+            continue
+
+        deck_soup, _, _ = get_soup(deck_url, session)
+        if not deck_soup:
+            print(f"  - Skipping {player_name}: failed to fetch decklist.")
+            continue
+
+        cards = extract_rk9_decklist(deck_soup)
+        if not cards:
+            print(f"  - Skipping {player_name}: no cards found on decklist page.")
+            continue
+
+        canonical_card_list = sorted([f"{c['count']}x{c['name']}{c['set']}{c['number']}" for c in cards])
+        deck_hash = hashlib.sha1(json.dumps(canonical_card_list).encode()).hexdigest()
+
+        deck_record = {
+            "id": deck_hash[:10],
+            "player": _maybe_anonymize(player_name or "Unknown"),
+            "playerId": entry.get('player_id'),
+            "country": entry.get('country'),
+            "placement": entry.get('standing'),
+            "division": entry.get('division'),
+            "archetype": "Unknown",
+            "cards": cards,
+            "deckHash": deck_hash,
+            "sources": {
+                "rk9DecklistUrl": deck_url,
+                "rk9RosterUrl": rk9_url
+            }
+        }
+        all_decks.append(deck_record)
+
+    if not all_decks:
+        print("No decklists were successfully parsed from RK9 roster.")
+        return False
+
+    prototypes = {}
+    if getattr(args, 'skip_rk9_archetypes', False):
+        print("Skipping RK9 archetype assignment (per flag).")
+    else:
+        prototypes = build_limitless_archetype_prototypes(session)
+        if prototypes:
+            assign_archetypes_from_prototypes(all_decks, prototypes)
+        else:
+            print("Warning: Could not build Limitless archetype prototypes; archetypes remain unknown.")
+
+    metadata = {
+        "name": folder_name,
+        "sourceUrl": rk9_url,
+        "reportVersion": "2.0",
+        "fetchedAt": datetime.now(timezone.utc).isoformat(),
+        "source": "rk9",
+        "rosterId": roster_id,
+        "totalMasters": total_masters,
+        "processedMasters": len(all_decks),
+        "cutoff": getattr(args, 'rk9_cutoff', None),
+        "etag": headers.get('ETag') if headers else None,
+        "lastModified": headers.get('Last-Modified') if headers else None
+    }
+    write_json_atomic(os.path.join(base_report_path, "meta.json"), metadata)
+    print("Metadata saved to meta.json.")
+
+    write_json_atomic(os.path.join(base_report_path, "decks.json"), all_decks)
+    print("Raw deck data saved to decks.json.")
+
+    print("Generating master report...")
+    master_report = generate_report_json(all_decks, len(all_decks), all_decks)
+    write_json_atomic(os.path.join(base_report_path, "master.json"), master_report)
+    print("Master report saved.")
+
+    print("Generating card index...")
+    card_index = generate_card_index(all_decks)
+    write_json_atomic(os.path.join(base_report_path, "cardIndex.json"), card_index)
+    print("Card index saved.")
+
+    if getattr(args, 'generate_synonyms', False):
+        print("\nGenerating card synonyms...")
+        global_synonyms_path = os.path.join("assets", "card-synonyms.json")
+        existing_data = {"synonyms": {}, "canonicals": {}, "metadata": {}}
+        if os.path.exists(global_synonyms_path):
+            try:
+                with open(global_synonyms_path, 'r', encoding='utf-8') as f:
+                    existing_data = json.load(f)
+                    if "synonyms" not in existing_data:
+                        existing_data = {"synonyms": existing_data, "canonicals": {}, "metadata": {}}
+            except Exception:
+                pass
+
+        new_data = generate_card_synonyms(all_decks, session)
+        if new_data and (new_data.get("synonyms") or new_data.get("canonicals")):
+            existing_data["synonyms"].update(new_data.get("synonyms", {}))
+            existing_data["canonicals"].update(new_data.get("canonicals", {}))
+            existing_data["metadata"] = new_data.get("metadata", {})
+            write_json_atomic(global_synonyms_path, existing_data)
+            print(f"Card synonyms updated: total canonicals now {len(existing_data['canonicals'])}.")
+        else:
+            print("No new card synonyms found")
+
+    print("Generating archetype reports...")
+    archetype_groups = defaultdict(list)
+    archetype_casing = {}
+    for deck in all_decks:
+        norm_name = normalize_archetype_name(deck["archetype"])
+        archetype_groups[norm_name].append(deck)
+        if norm_name not in archetype_casing:
+            archetype_casing[norm_name] = deck["archetype"]
+
+    archetype_index_list = []
+    for norm_name, deck_list in archetype_groups.items():
+        proper_name = archetype_casing[norm_name]
+        print(f"  - Analyzing {proper_name} ({len(deck_list)} decks)...")
+        archetype_data = generate_report_json(deck_list, len(deck_list), all_decks)
+        json_filename_base = sanitize_for_filename(proper_name)
+        archetype_filename = f"{json_filename_base}.json"
+        archetype_index_list.append(json_filename_base)
+        write_json_atomic(os.path.join(archetype_report_path, archetype_filename), archetype_data)
+
+        if getattr(args, 'include_exclude', False):
+            include_exclude_dir = os.path.join(archetype_report_path, "include-exclude", json_filename_base)
+            generate_include_exclude_reports(proper_name, json_filename_base, deck_list, archetype_data, include_exclude_dir)
+
+        if getattr(args, 'upload_archetypes_r2', False):
+            r2_remote = getattr(args, 'r2_remote', 'r2')
+            r2_path = getattr(args, 'r2_path', 'reports')
+            upload_archetype_to_r2(archetype_report_path, folder_name, json_filename_base, r2_remote, r2_path)
+    print("Archetype reports saved.")
+
+    write_json_atomic(os.path.join(archetype_report_path, "index.json"), sorted(archetype_index_list))
+    print("Archetype index saved.")
+
+    if getattr(args, 'upload_archetypes_r2', False):
+        r2_remote = getattr(args, 'r2_remote', 'r2')
+        r2_path = getattr(args, 'r2_path', 'reports')
+        index_file = os.path.join(archetype_report_path, "index.json")
+        r2_dest = f"{r2_path}/{folder_name}/archetypes"
+        result = os.system(f'rclone copy "{index_file}" "{r2_remote}:{r2_dest}" --quiet')
+        if result == 0:
+            print("  ✓ Uploaded archetype index to R2")
+
+    try:
+        tournaments_path = os.path.join("reports", "tournaments.json")
+        existing = []
+        if os.path.exists(tournaments_path):
+            try:
+                with open(tournaments_path, 'r', encoding='utf-8') as f:
+                    existing = json.load(f)
+            except Exception:
+                existing = []
+        existing = [x for x in existing if x != folder_name]
+        updated = [folder_name] + existing
+        updated.sort(reverse=True)
+        write_json_atomic(tournaments_path, updated)
+        print("tournaments.json updated.")
+    except Exception as e:
+        print(f"Could not update tournaments.json: {e}")
+
+    if not args.skip_thumbs:
+        missing_thumbs = download_thumbnails(
+            all_decks,
+            ".",
+            session,
+            workers=args.thumb_workers,
+            download_log_path=getattr(args, 'download_log', None),
+            tournament_name=folder_name,
+            force=getattr(args, 'force', False)
+        )
+        if missing_thumbs:
+            with open(os.path.join(base_report_path, "missingThumbs.json"), 'w') as f:
+                json.dump(missing_thumbs, f, indent=2)
+            print("Missing thumbnails report saved.")
+
+    print("\nProcess complete!")
+    print(f"All reports saved in: {base_report_path}")
+    if not args.skip_thumbs:
+        print("Thumbnails saved in: thumbnails/")
+    return True
+
+
+def _finalize_tournament_outputs(args, session, folder_name, base_report_path, archetype_report_path, metadata, all_decks, html_text=None):
+    """Shared reporting pipeline for tournament-like sources."""
+    os.makedirs(base_report_path, exist_ok=True)
+    os.makedirs(archetype_report_path, exist_ok=True)
+
+    if getattr(args, 'save_raw_html', False) and html_text:
+        html_path = os.path.join(base_report_path, "source.html")
+        with open(html_path, 'w', encoding='utf-8') as f:
+            f.write(html_text)
+
+    write_json_atomic(os.path.join(base_report_path, "meta.json"), metadata)
+    print("Metadata saved to meta.json.")
+
+    write_json_atomic(os.path.join(base_report_path, "decks.json"), all_decks)
+    print("Raw deck data saved to decks.json.")
+
+    print("Generating master report...")
+    master_report = generate_report_json(all_decks, len(all_decks), all_decks)
+    write_json_atomic(os.path.join(base_report_path, "master.json"), master_report)
+    print("Master report saved.")
+
+    print("Generating card index...")
+    card_index = generate_card_index(all_decks)
+    write_json_atomic(os.path.join(base_report_path, "cardIndex.json"), card_index)
+    print("Card index saved.")
+
+    if getattr(args, 'generate_synonyms', False):
+        print("\nGenerating card synonyms...")
+        global_synonyms_path = os.path.join("assets", "card-synonyms.json")
+        existing_data = {"synonyms": {}, "canonicals": {}, "metadata": {}}
+        if os.path.exists(global_synonyms_path):
+            try:
+                with open(global_synonyms_path, 'r', encoding='utf-8') as f:
+                    existing_data = json.load(f)
+                    if "synonyms" not in existing_data:
+                        existing_data = {"synonyms": existing_data, "canonicals": {}, "metadata": {}}
+            except Exception:
+                existing_data = {"synonyms": {}, "canonicals": {}, "metadata": {}}
+
+        new_data = generate_card_synonyms(all_decks, session)
+
+        if new_data and (new_data.get("synonyms") or new_data.get("canonicals")):
+            existing_data["synonyms"].update(new_data.get("synonyms", {}))
+            existing_data["canonicals"].update(new_data.get("canonicals", {}))
+            existing_data["metadata"] = new_data.get("metadata", {})
+            write_json_atomic(global_synonyms_path, existing_data)
+            new_count = len(new_data.get("canonicals", {}))
+            total_count = len(existing_data["canonicals"])
+            print(f"Card synonyms updated: Added/updated {new_count} cards")
+            print(f"  Global file now contains {total_count} unique cards with {len(existing_data['synonyms'])} total variants")
+        else:
+            print("No new card synonyms found")
+
+    print("Generating archetype reports...")
+    archetype_groups = defaultdict(list)
+    archetype_casing = {}
+    for deck in all_decks:
+        archetype_label = deck.get("archetype", "Unknown")
+        norm_name = normalize_archetype_name(archetype_label)
+        archetype_groups[norm_name].append(deck)
+        if norm_name not in archetype_casing:
+            archetype_casing[norm_name] = archetype_label
+
+    archetype_index_list = []
+    for norm_name, deck_list in archetype_groups.items():
+        proper_name = archetype_casing[norm_name]
+        print(f"  - Analyzing {proper_name} ({len(deck_list)} decks)...")
+        archetype_data = generate_report_json(deck_list, len(deck_list), all_decks)
+        json_filename_base = sanitize_for_filename(proper_name)
+        archetype_filename = f"{json_filename_base}.json"
+        archetype_index_list.append(json_filename_base)
+        write_json_atomic(os.path.join(archetype_report_path, archetype_filename), archetype_data)
+
+        if getattr(args, 'include_exclude', False):
+            include_exclude_dir = os.path.join(archetype_report_path, "include-exclude", json_filename_base)
+            generate_include_exclude_reports(proper_name, json_filename_base, deck_list, archetype_data, include_exclude_dir)
+
+        if getattr(args, 'upload_archetypes_r2', False):
+            r2_remote = getattr(args, 'r2_remote', 'r2')
+            r2_path = getattr(args, 'r2_path', 'reports')
+            upload_archetype_to_r2(archetype_report_path, folder_name, json_filename_base, r2_remote, r2_path)
+    print("Archetype reports saved.")
+
+    print("Generating archetype index file...")
+    write_json_atomic(os.path.join(archetype_report_path, "index.json"), sorted(archetype_index_list))
+    print("Archetype index saved.")
+
+    if getattr(args, 'upload_archetypes_r2', False):
+        r2_remote = getattr(args, 'r2_remote', 'r2')
+        r2_path = getattr(args, 'r2_path', 'reports')
+        index_file = os.path.join(archetype_report_path, "index.json")
+        r2_dest = f"{r2_path}/{folder_name}/archetypes"
+        result = os.system(f'rclone copy "{index_file}" "{r2_remote}:{r2_dest}" --quiet')
+        if result == 0:
+            print("  ✓ Uploaded archetype index to R2")
+
+    try:
+        tournaments_path = os.path.join("reports", "tournaments.json")
+        existing = []
+        if os.path.exists(tournaments_path):
+            try:
+                with open(tournaments_path, 'r', encoding='utf-8') as f:
+                    existing = json.load(f)
+            except Exception:
+                existing = []
+        existing = [x for x in existing if x != folder_name]
+        updated = [folder_name] + existing
+
+        def _date_key(value):
+            try:
+                pref = value.split(',', 1)[0].strip()
+                return datetime.fromisoformat(pref)
+            except Exception:
+                return datetime.min
+
+        updated.sort(key=_date_key, reverse=True)
+        write_json_atomic(tournaments_path, updated)
+        print("tournaments.json updated.")
+    except Exception as e:
+        print(f"Could not update tournaments.json: {e}")
+
+    if not getattr(args, 'skip_thumbs', False):
+        missing_thumbs = download_thumbnails(
+            all_decks,
+            ".",
+            session,
+            workers=getattr(args, 'thumb_workers', 1),
+            download_log_path=getattr(args, 'download_log', None),
+            tournament_name=folder_name,
+            force=getattr(args, 'force', False)
+        )
+        if missing_thumbs:
+            with open(os.path.join(base_report_path, "missingThumbs.json"), 'w') as f:
+                json.dump(missing_thumbs, f, indent=2)
+            print("Missing thumbnails report saved.")
+
+    print("\nProcess complete!")
+    print(f"All reports saved in: {base_report_path}")
+    if not getattr(args, 'skip_thumbs', False):
+        print("Thumbnails saved in: thumbnails/")
+    return True
+
 
 def _normalize_url_for_tournament(u: str) -> str:
     """Normalize user input to a full https URL ending with /decklists."""
@@ -972,115 +2352,532 @@ def process_tournament(session, args, url: str):
 
     base_report_path = os.path.join("reports", tournament_name)
     archetype_report_path = os.path.join(base_report_path, "archetypes")
-    os.makedirs(archetype_report_path, exist_ok=True)
-
-    # Optionally save raw HTML snapshot
-    if getattr(args, 'save_raw_html', False) and html_text:
-        html_path = os.path.join(base_report_path, "source.html")
-        with open(html_path, 'w', encoding='utf-8') as f:
-            f.write(html_text)
 
     # Extract and save metadata
     metadata = extract_metadata(soup, norm_url, headers)
-    write_json_atomic(os.path.join(base_report_path, "meta.json"), metadata)
-    print("Metadata saved to meta.json.")
 
     # Extract all deck data
-    all_decks = extract_all_decklists(soup, args.anonymize)
+    all_decks = extract_all_decklists(soup, getattr(args, 'anonymize', False))
     if not all_decks:
         print("No decklists found. Exiting.")
         return False
-    write_json_atomic(os.path.join(base_report_path, "decks.json"), all_decks)
-    print("Raw deck data saved to decks.json.")
+    return _finalize_tournament_outputs(
+        args,
+        session,
+        tournament_name,
+        base_report_path,
+        archetype_report_path,
+        metadata,
+        all_decks,
+        html_text,
+    )
 
-    # Generate master report from deck data
-    print("Generating master report...")
-    master_report = generate_report_json(all_decks, len(all_decks), all_decks)
-    write_json_atomic(os.path.join(base_report_path, "master.json"), master_report)
-    print("Master report saved.")
 
-    # Generate per-tournament card index
-    print("Generating card index...")
-    card_index = generate_card_index(all_decks)
-    write_json_atomic(os.path.join(base_report_path, "cardIndex.json"), card_index)
-    print("Card index saved.")
+# --- LIMITLESS LABS SUPPORT ---
 
-    # Generate archetype reports
-    print("Generating archetype reports...")
-    archetype_groups = defaultdict(list)
-    archetype_casing = {}
-    for deck in all_decks:
-        norm_name = normalize_archetype_name(deck["archetype"])
-        archetype_groups[norm_name].append(deck)
-        if norm_name not in archetype_casing:
-            archetype_casing[norm_name] = deck["archetype"]
+def _is_labs_url(value: str) -> bool:
+    if not value:
+        return False
+    return 'labs.limitlesstcg.com' in value.lower()
 
-    archetype_index_list = []
-    for norm_name, deck_list in archetype_groups.items():
-        proper_name = archetype_casing[norm_name]
-        print(f"  - Analyzing {proper_name} ({len(deck_list)} decks)...")
-        archetype_data = generate_report_json(deck_list, len(deck_list), all_decks)
-        json_filename_base = sanitize_for_filename(proper_name)
-        archetype_filename = f"{json_filename_base}.json"
-        archetype_index_list.append(json_filename_base)
-        write_json_atomic(os.path.join(archetype_report_path, archetype_filename), archetype_data)
 
-        include_exclude_dir = os.path.join(archetype_report_path, "include-exclude", json_filename_base)
-        generate_include_exclude_reports(proper_name, json_filename_base, deck_list, archetype_data, include_exclude_dir)
-    print("Archetype reports saved.")
+def _normalize_labs_url(value: str) -> str:
+    if not value:
+        return value
+    s = value.strip()
+    if s.lower().startswith('labs:'):
+        s = s.split(':', 1)[1]
+    if not s.startswith(('http://', 'https://')):
+        s = s.lstrip('/')
+        s = urljoin(LIMITLESS_LABS_BASE_URL + '/', s)
+    parsed = urlparse(s)
+    scheme = parsed.scheme or 'https'
+    netloc = parsed.netloc or urlparse(LIMITLESS_LABS_BASE_URL).netloc
+    path = (parsed.path or '').rstrip('/')
+    segments = [seg for seg in path.split('/') if seg]
+    if not any(seg.lower() == 'standings' for seg in segments):
+        path = f"{path}/standings" if path else '/standings'
+    if not path.startswith('/'):
+        path = '/' + path
+    normalized = f"{scheme}://{netloc}{path}"
+    if parsed.query:
+        normalized = f"{normalized}?{parsed.query}"
+    return normalized
 
-    # Generate archetype index
-    print("Generating archetype index file...")
-    write_json_atomic(os.path.join(archetype_report_path, "index.json"), sorted(archetype_index_list))
-    print("Archetype index saved.")
 
-    # Update reports/tournaments.json (newest-first list of folder names)
-    try:
-        tournaments_path = os.path.join("reports", "tournaments.json")
-        existing = []
-        if os.path.exists(tournaments_path):
-            try:
-                with open(tournaments_path, 'r', encoding='utf-8') as f:
-                    existing = json.load(f)
-            except Exception:
-                existing = []
-        # Remove any prior occurrences and prepend
-        existing = [x for x in existing if x != tournament_name]
-        updated = [tournament_name] + existing
-        # Sort by leading ISO date prefix desc when present
-        def _date_key(s):
-            try:
-                pref = s.split(',', 1)[0].strip()
-                return datetime.fromisoformat(pref)
-            except Exception:
-                return datetime.min
-        updated.sort(key=_date_key, reverse=True)
-        write_json_atomic(tournaments_path, updated)
-        print("tournaments.json updated.")
-    except Exception as e:
-        print(f"Could not update tournaments.json: {e}")
+def _format_labs_tokens(tokens):
+    special_upper = {'ex', 'gx', 'v', 'vmax', 'vstar', 'glc'}
+    formatted = []
+    for token in tokens:
+        cleaned = token.strip()
+        if not cleaned:
+            continue
+        lower = cleaned.lower()
+        if lower in special_upper:
+            formatted.append(lower.upper())
+        else:
+            formatted.append(cleaned.capitalize())
+    return ' '.join(formatted)
 
-    # Download thumbnails
-    if not args.skip_thumbs:
-        missing_thumbs = download_thumbnails(
-            all_decks,
-            ".",
-            session,
-            workers=args.thumb_workers,
-            download_log_path=getattr(args, 'download_log', None),
-            tournament_name=tournament_name,
-            force=getattr(args, 'force', False)
-        )
-        if missing_thumbs:
-            with open(os.path.join(base_report_path, "missingThumbs.json"), 'w') as f:
-                json.dump(missing_thumbs, f, indent=2)
-            print("Missing thumbnails report saved.")
 
-    print("\nProcess complete!")
-    print(f"All reports saved in: {base_report_path}")
-    if not args.skip_thumbs:
-        print("Thumbnails saved in: thumbnails/")
+def _clean_labs_deck_name(title):
+    if not title:
+        return None
+    working = title.strip()
+    if '|' in working:
+        working = working.split('|', 1)[0].strip()
+    for sep in (' – ', ' — ', ' - '):
+        if sep in working:
+            parts = [p.strip() for p in working.split(sep) if p.strip()]
+            if len(parts) >= 2:
+                working = parts[-1]
+    working = re.sub(r'\bDecklist\b', '', working, flags=re.IGNORECASE).strip()
+    return working or None
+
+
+def _derive_labs_archetype_name(anchor, slug=None):
+    if anchor:
+        labels = []
+        for img in anchor.find_all('img', alt=True):
+            alt_text = (img.get('alt') or '').strip()
+            if alt_text:
+                tokens = re.split(r'[-_/]+', alt_text)
+                labels.append(_format_labs_tokens(tokens))
+        labels = [label for label in labels if label]
+        if labels:
+            return ' '.join(labels)
+    if slug:
+        tokens = re.split(r'[-_/]+', slug)
+        return _format_labs_tokens(tokens)
+    return "Unknown"
+
+
+def extract_labs_metadata(soup, url, headers):
+    if not soup:
+        return {}
+    header_candidates = [
+        soup.find('h1'),
+        soup.select_one('header h1'),
+        soup.select_one('main h1')
+    ]
+    name = None
+    for node in header_candidates:
+        if node and node.get_text(strip=True):
+            name = node.get_text(strip=True)
+            break
+    if not name:
+        title_tag = soup.find('title')
+        if title_tag and title_tag.text:
+            name = title_tag.text.split('|')[0].strip()
+
+    month_pattern = re.compile(r'(January|February|March|April|May|June|July|August|September|October|November|December)', re.I)
+    date_text = None
+    for candidate in soup.select('h1 + p, header p, .event-info p, .event-header p, .text-sm, .uppercase'):
+        text = candidate.get_text(' ', strip=True)
+        if text and month_pattern.search(text) and any(ch.isdigit() for ch in text):
+            date_text = text
+            break
+
+    start_iso = start_text = None
+    if date_text:
+        start_iso, start_text = _parse_start_date(date_text)
+
+    format_name = None
+    format_pattern = re.compile(r'\b(Standard|Expanded|GLC)\b', re.I)
+    for candidate in soup.select('h1 + p, header p, .event-info p, .event-header p, .text-sm, .uppercase'):
+        text = candidate.get_text(' ', strip=True)
+        if not text:
+            continue
+        match = format_pattern.search(text)
+        if match:
+            format_name = match.group(1).title()
+            break
+
+    metadata = {
+        "name": name,
+        "sourceUrl": url,
+        "date": date_text,
+        "format": format_name,
+        "players": None,
+        "fetchedAt": datetime.now(timezone.utc).isoformat(),
+        "etag": headers.get('ETag') if headers else None,
+        "lastModified": headers.get('Last-Modified') if headers else None,
+        "reportVersion": "2.0",
+        "startDate": start_iso,
+        "startDateText": start_text,
+        "formatCode": format_name.lower() if format_name else None,
+        "formatName": format_name,
+        "source": "limitless-labs"
+    }
+    return metadata
+
+
+def extract_labs_day2_players(soup, base_url):
+    table = soup.find('table', class_=re.compile(r'data-table'))
+    if not table:
+        print("Warning: Limitless Labs standings table not found.")
+        return []
+    tbody = table.find('tbody') or table
+    players = []
+    for row in tbody.find_all('tr'):
+        classes = [c.lower() for c in (row.get('class') or [])]
+        if not any('day2' in c for c in classes):
+            continue
+        cells = row.find_all('td')
+        if len(cells) < 2:
+            continue
+
+        def _text(cell):
+            return cell.get_text(strip=True)
+
+        try:
+            placement = int(_text(cells[0]))
+        except Exception:
+            placement = None
+
+        player_link = cells[1].find('a', href=True)
+        player_name = player_link.get_text(strip=True) if player_link else _text(cells[1])
+        player_url = urljoin(base_url, player_link['href']) if player_link else None
+
+        deck_cell = cells[-2] if len(cells) >= 2 else None
+        deck_anchor = deck_cell.find('a', href=True) if deck_cell else None
+        deck_href = deck_anchor['href'] if deck_anchor else None
+        deck_slug = deck_href.strip('/').split('/')[-1] if deck_href else None
+        deck_name = _derive_labs_archetype_name(deck_anchor, deck_slug)
+        deck_url = urljoin(base_url, deck_href) if deck_href else None
+
+        decklist_cell = cells[-1] if len(cells) >= 1 else None
+        decklist_anchor = decklist_cell.find('a', href=True) if decklist_cell else None
+        decklist_url = urljoin(base_url, decklist_anchor['href']) if decklist_anchor else None
+
+        country = None
+        if len(cells) > 2:
+            flag_img = cells[2].find('img', alt=True)
+            if flag_img:
+                country = (flag_img.get('alt') or flag_img.get('title') or '').strip() or None
+
+        points = _text(cells[3]) if len(cells) > 3 else None
+        record = _text(cells[4]) if len(cells) > 4 else None
+        opw = _text(cells[5]) if len(cells) > 5 else None
+        oopw = _text(cells[6]) if len(cells) > 6 else None
+
+        player_id = None
+        if player_url:
+            player_id = player_url.rstrip('/').split('/')[-1]
+
+        players.append({
+            "placement": placement,
+            "player_name": player_name,
+            "player_url": player_url,
+            "player_id": player_id,
+            "country": country,
+            "points": points,
+            "record": record,
+            "opw": opw,
+            "oopw": oopw,
+            "deck_name": deck_name,
+            "deck_url": deck_url,
+            "deck_slug": deck_slug,
+            "decklist_url": decklist_url
+        })
+    return players
+
+
+def _is_card_number_token(token):
+    if not token:
+        return False
+    token = token.strip()
+    if not token:
+        return False
+    token_upper = token.upper()
+    cleaned = token_upper.replace('-', '').replace('_', '')
+    if not any(ch.isdigit() for ch in cleaned):
+        return False
+    if not re.fullmatch(r'[A-Z0-9/]+', token_upper):
+        return False
     return True
+
+
+def _parse_labs_decklist_text(deck_text):
+    if not deck_text:
+        return []
+    suffix_tokens = {'EX', 'GX', 'V', 'VMAX', 'VSTAR', 'LV.X', 'BREAK', 'V-UNION', 'SP'}
+    cards = []
+    current_category = None
+    for raw_line in deck_text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        lowered = line.lower()
+        if lowered.startswith('total cards') or lowered.startswith('deck list') or lowered.startswith('decklist') or lowered.startswith('format:'):
+            continue
+        category_match = re.match(r'^(pok[eé]mon|pokemon|trainer[s]?|energy|energies)(?:\s*\(\d+\))?$', lowered)
+        if category_match:
+            key = category_match.group(1)
+            if key.startswith('pok'):
+                current_category = 'pokemon'
+            elif key.startswith('train'):
+                current_category = 'trainer'
+            else:
+                current_category = 'energy'
+            continue
+        card_match = re.match(r'^(\d+)\s+(.+)$', line)
+        if not card_match:
+            continue
+        count = int(card_match.group(1))
+        rest = card_match.group(2).strip()
+        tokens = rest.split()
+        set_code = ''
+        number = ''
+        if tokens:
+            last_token = tokens[-1]
+            if _is_card_number_token(last_token):
+                number = _normalize_card_number(last_token)
+                tokens = tokens[:-1]
+                if tokens:
+                    potential_set = tokens[-1]
+                    if re.fullmatch(r'[A-Za-z0-9]{2,5}', potential_set) and potential_set.upper() not in suffix_tokens:
+                        set_code = potential_set.upper()
+                        tokens = tokens[:-1]
+        name = ' '.join(tokens).strip() if tokens else rest
+        if not name:
+            name = rest
+        category = current_category
+        if not category:
+            if 'energy' in name.lower():
+                category = 'energy'
+            else:
+                category = 'pokemon'
+        cards.append({
+            "count": count,
+            "name": name,
+            "set": set_code,
+            "number": number,
+            "category": category
+        })
+    return cards
+
+
+def _extract_labs_decklist_text(soup, html_text):
+    if not soup:
+        return None
+    for node in soup.select('textarea'):
+        text = node.get_text()
+        if text:
+            candidate = text.strip()
+            if candidate and candidate.count('\n') >= 4:
+                return candidate
+    for attr in ('data-clipboard-text', 'data-copy', 'data-list'):
+        for node in soup.select(f'[{attr}]'):
+            raw = node.get(attr)
+            if raw:
+                candidate = raw.strip()
+                if candidate and candidate.count('\n') >= 4:
+                    return candidate
+    for node in soup.select('pre, code'):
+        text = node.get_text()
+        if text:
+            candidate = text.strip()
+            if candidate and candidate.count('\n') >= 4:
+                return candidate
+    if html_text:
+        patterns = [
+            r'"decklist"\s*:\s*"(.*?)"',
+            r'"decklistText"\s*:\s*"(.*?)"',
+            r'"list"\s*:\s*"(.*?)"'
+        ]
+        for pattern in patterns:
+            for match in re.finditer(pattern, html_text, re.S):
+                raw = match.group(1)
+                try:
+                    decoded = json.loads(f'"{raw}"')
+                except json.JSONDecodeError:
+                    decoded = raw.encode('utf-8').decode('unicode_escape')
+                candidate = decoded.strip()
+                if candidate and candidate.count('\n') >= 4:
+                    return candidate
+    return None
+
+
+def fetch_labs_decklist(session, decklist_url):
+    if not decklist_url:
+        return None
+    deck_soup, _, html_text = get_soup(decklist_url, session)
+    if not deck_soup:
+        return None
+    deck_title = None
+    for heading in deck_soup.select('h1, h2'):
+        text = heading.get_text(' ', strip=True)
+        if text:
+            deck_title = text
+            break
+    deck_name = _clean_labs_deck_name(deck_title) or None
+    deck_text = _extract_labs_decklist_text(deck_soup, html_text)
+    cards = _parse_labs_decklist_text(deck_text)
+    if not cards:
+        print(f"  - Warning: No cards parsed from {decklist_url}")
+    return {
+        "deck_name": deck_name,
+        "cards": cards,
+        "raw_text": deck_text
+    }
+
+
+def process_labs_tournament(session, args, url: str):
+    labs_url = _normalize_labs_url(url)
+    soup, headers, html_text = get_soup(labs_url, session)
+    if not soup:
+        print(f"Skip: failed to fetch {labs_url}")
+        return False
+
+    metadata = extract_labs_metadata(soup, labs_url, headers)
+    parsed = urlparse(labs_url)
+    path_parts = [part for part in parsed.path.split('/') if part]
+    event_id = path_parts[0] if path_parts else None
+    if event_id:
+        metadata['labsEventId'] = event_id
+
+    players = extract_labs_day2_players(soup, labs_url)
+    if not players:
+        print("No Day 2 players found on Limitless Labs standings page.")
+        return False
+
+    metadata['totalDay2'] = len(players)
+
+    start_iso = metadata.get('startDate')
+    base_name = metadata.get('name') or (f"Limitless Labs {event_id}" if event_id else "Limitless Labs Event")
+    folder_name = sanitize_for_path(f"{start_iso}, {base_name}" if start_iso else base_name)
+    base_report_path = os.path.join("reports", folder_name)
+    archetype_report_path = os.path.join(base_report_path, "archetypes")
+
+    def _maybe_anonymize(name: str) -> str:
+        if not name:
+            return "Unknown"
+        if not getattr(args, 'anonymize', False):
+            return name
+        digest = hashlib.sha1(name.encode('utf-8')).hexdigest()[:10]
+        return f"Player-{digest}"
+
+    all_decks = []
+    total_players = len(players)
+    for idx, player in enumerate(players, 1):
+        label = player.get('player_name') or 'Unknown'
+        print(f"  [{idx}/{total_players}] Fetching decklist for {label}...")
+        decklist_url = player.get('decklist_url')
+        deck_data = fetch_labs_decklist(session, decklist_url)
+        cards = deck_data.get('cards') if deck_data else []
+        if not cards:
+            print(f"  - Skipping {label}: decklist missing or empty.")
+            continue
+        deck_name = deck_data.get('deck_name') or player.get('deck_name') or "Unknown"
+        player_label = _maybe_anonymize(player.get('player_name'))
+        canonical_card_list = sorted([f"{c['count']}x{c['name']}{c.get('set', '')}{c.get('number', '')}" for c in cards])
+        deck_hash = hashlib.sha1(json.dumps(canonical_card_list).encode()).hexdigest()
+        deck_record = {
+            "id": deck_hash[:10],
+            "player": player_label,
+            "placement": player.get('placement'),
+            "archetype": deck_name,
+            "cards": cards,
+            "deckHash": deck_hash,
+            "sources": {
+                "labsStandingsUrl": labs_url,
+                "labsDecklistUrl": decklist_url,
+                "labsPlayerUrl": player.get('player_url')
+            },
+            "points": player.get('points'),
+            "record": player.get('record'),
+            "opw": player.get('opw'),
+            "oopw": player.get('oopw'),
+            "playerId": player.get('player_id'),
+            "country": player.get('country')
+        }
+        all_decks.append(deck_record)
+
+    if not all_decks:
+        print("No decklists were successfully parsed from Limitless Labs.")
+        return False
+
+    return _finalize_tournament_outputs(
+        args,
+        session,
+        folder_name,
+        base_report_path,
+        archetype_report_path,
+        metadata,
+        all_decks,
+        html_text,
+    )
+
+def regenerate_synonyms_only(session, tournament_path=None):
+    """Regenerate synonyms for existing tournament(s) without re-downloading.
+
+    Creates a single global cardSynonyms.json file in the reports directory
+    containing all unique card synonyms across all tournaments.
+    """
+    if tournament_path:
+        # Single tournament mode
+        paths = [tournament_path]
+    else:
+        # All tournaments mode
+        tournaments_file = os.path.join("reports", "tournaments.json")
+        if not os.path.exists(tournaments_file):
+            print("No tournaments.json found. Have you downloaded any tournaments?")
+            return False
+
+        with open(tournaments_file, 'r', encoding='utf-8') as f:
+            tournament_names = json.load(f)
+
+        paths = [os.path.join("reports", name) for name in tournament_names]
+
+    total = len(paths)
+
+    # Collect all decks from all tournaments
+    all_decks = []
+
+    print(f"\nCollecting decks from {total} tournament(s)...")
+    for i, path in enumerate(paths, 1):
+        print(f"  [{i}/{total}] Loading: {os.path.basename(path)}")
+
+        decks_file = os.path.join(path, "decks.json")
+        if not os.path.exists(decks_file):
+            print(f"    Skipping: decks.json not found")
+            continue
+
+        # Load existing deck data
+        try:
+            with open(decks_file, 'r', encoding='utf-8') as f:
+                decks = json.load(f)
+                all_decks.extend(decks)
+                print(f"    Loaded {len(decks)} decks")
+        except Exception as e:
+            print(f"    Error loading decks.json: {e}")
+            continue
+
+    if not all_decks:
+        print("\nNo decks found across all tournaments")
+        return False
+
+    print(f"\nTotal decks collected: {len(all_decks)}")
+
+    # Generate synonyms for ALL decks at once
+    print("\nGenerating global synonym mapping...")
+    synonym_data = generate_card_synonyms(all_decks, session)
+
+    if synonym_data and (synonym_data.get("synonyms") or synonym_data.get("canonicals")):
+        # Write single global file
+        global_output_path = os.path.join("assets", "card-synonyms.json")
+        write_json_atomic(global_output_path, synonym_data)
+        num_cards = len(synonym_data.get("canonicals", {}))
+        num_variants = len(synonym_data.get("synonyms", {}))
+        print(f"\n✓ Saved synonym data to {global_output_path}")
+        print(f"  {num_cards} unique cards with {num_variants} total variants")
+        print(f"  This file covers {len(all_decks)} decks from {total} tournament(s)")
+        return True
+    else:
+        print("\nNo synonyms found")
+        return False
+
 
 def main(args):
     """Main function to run the entire process or a batch."""
@@ -1088,10 +2885,52 @@ def main(args):
     session = requests.Session()
     session.headers.update({'User-Agent': 'Mozilla/5.0'})
 
+    # R2 clear mode: clear the R2 bucket
+    if getattr(args, 'clear_r2', False):
+        r2_remote = getattr(args, 'r2_remote', 'r2')
+        r2_path = getattr(args, 'r2_path', 'reports')
+        clear_r2_bucket(r2_remote, r2_path)
+        return
+
+    # Synonym regeneration mode: generate synonyms from existing data
+    if getattr(args, 'regenerate_synonyms', False):
+        tournament_path = args.tournament_path if hasattr(args, 'tournament_path') and args.tournament_path else None
+        regenerate_synonyms_only(session, tournament_path)
+        return
+
     # Replay mode: bulk re-download from log and exit
     if getattr(args, 'replay_log', None):
         replay_downloads(args.replay_log, session, workers=args.thumb_workers, force=args.force)
         return
+
+    # Interactive prompts for include-exclude and R2 upload when not in batch mode
+    if not getattr(args, 'download_all', False) and not args.url:
+        # Ask about synonym generation
+        if not hasattr(args, 'generate_synonyms'):
+            try:
+                response = input("\nGenerate card synonyms from print variations? (scrapes Limitless for each card) [y/N]: ").strip().lower()
+                args.generate_synonyms = response in ('y', 'yes')
+            except (EOFError, KeyboardInterrupt):
+                print()
+                args.generate_synonyms = False
+
+        # Ask about include-exclude generation
+        if not hasattr(args, 'include_exclude'):
+            try:
+                response = input("Generate include-exclude filter reports? (can take extra time) [y/N]: ").strip().lower()
+                args.include_exclude = response in ('y', 'yes')
+            except (EOFError, KeyboardInterrupt):
+                print()
+                args.include_exclude = False
+
+        # Ask about R2 upload
+        if not hasattr(args, 'upload_r2'):
+            try:
+                response = input("Upload to R2 after processing? [y/N]: ").strip().lower()
+                args.upload_r2 = response in ('y', 'yes')
+            except (EOFError, KeyboardInterrupt):
+                print()
+                args.upload_r2 = False
 
     # Batch mode: process URLs from file
     if getattr(args, 'download_all', False):
@@ -1115,7 +2954,10 @@ def main(args):
         for i, u in enumerate(urls, start=1):
             print(f"\n=== [{i}/{total}] Processing: {u} ===")
             try:
-                succeeded = process_tournament(session, args, u)
+                if _is_rk9_url(u):
+                    succeeded = process_rk9_roster(session, args, u)
+                else:
+                    succeeded = process_tournament(session, args, u)
                 if succeeded:
                     ok += 1
                 else:
@@ -1124,6 +2966,13 @@ def main(args):
                 fail += 1
                 print(f"Error processing {u}: {e}")
         print(f"\nBatch complete. Success: {ok}, Failed: {fail}, Total: {total}")
+
+        # After batch processing, offer to upload to R2
+        if getattr(args, 'upload_r2', False):
+            r2_remote = getattr(args, 'r2_remote', 'r2')
+            r2_path = getattr(args, 'r2_path', 'reports')
+            upload_to_r2('reports', r2_remote, r2_path)
+
         return
 
     # Single URL mode
@@ -1142,23 +2991,78 @@ def main(args):
     def _normalize_input(u):
         return re.sub(r'^https?://', '', (u or '').strip()).rstrip('/').lower()
 
-    special_inputs = {
-        'limitlesstcg.com/tournaments/500/decklists',
-        'limitlesstcg.com/tournaments/500',
-        '500',
-        'https://limitlesstcg.com/tournaments/500/decklists',
-        'https://limitlesstcg.com/tournaments/500'
-    }
+    raw_url = (args.url or '').strip()
+    normalized_input = _normalize_input(raw_url)
+    processed = False
 
-    if _normalize_input(args.url) in {_normalize_input(s) for s in special_inputs}:
-        url = 'https://limitlesstcg.com/tournaments/500/decklists'
+    if raw_url.lower().startswith('labs:') or _is_labs_url(raw_url) or normalized_input.startswith('labs.limitlesstcg.com'):
+        url = _normalize_labs_url(raw_url)
+        processed = process_labs_tournament(session, args, url)
+    elif _is_rk9_url(raw_url):
+        url = _normalize_rk9_url(raw_url)
+        processed = process_rk9_roster(session, args, url)
     else:
-        url = _normalize_url_for_tournament(args.url)
+        special_inputs = {
+            'limitlesstcg.com/tournaments/500/decklists',
+            'limitlesstcg.com/tournaments/500',
+            '500',
+            'https://limitlesstcg.com/tournaments/500/decklists',
+            'https://limitlesstcg.com/tournaments/500'
+        }
 
-    process_tournament(session, args, url)
+        if normalized_input in {_normalize_input(s) for s in special_inputs}:
+            url = 'https://limitlesstcg.com/tournaments/500/decklists'
+        else:
+            url = _normalize_url_for_tournament(raw_url)
+
+        processed = process_tournament(session, args, url)
+
+    # After single tournament processing, offer to upload to R2
+    if getattr(args, 'upload_r2', False):
+        r2_remote = getattr(args, 'r2_remote', 'r2')
+        r2_path = getattr(args, 'r2_path', 'reports')
+        upload_to_r2('reports', r2_remote, r2_path)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Scrape and analyze Pokémon TCG tournament data from LimitlessTCG.")
+    parser = argparse.ArgumentParser(
+        description="Scrape and analyze Pokémon TCG tournament data from LimitlessTCG.",
+        epilog="""
+USAGE MODES:
+
+  1. SINGLE TOURNAMENT MODE (default)
+     Process a single tournament and generate reports.
+     Example: python download.py https://limitlesstcg.com/tournaments/500/decklists
+     Example: python download.py 500
+     Example: python download.py  (prompts for URL)
+
+  2. BATCH MODE
+     Process multiple tournaments from a file.
+     Example: python download.py --download-all --batch-file tournaments.txt
+
+  3. SYNONYM REGENERATION MODE
+     Regenerate card synonyms from existing tournament data without re-downloading.
+     Example: python download.py --regenerate-synonyms  (all tournaments)
+     Example: python download.py --regenerate-synonyms --tournament-path "reports/2025-08-15, World Championships 2025"
+
+  4. REPLAY MODE
+     Re-download missing thumbnails from a download log.
+     Example: python download.py --replay-log tools/download_log.jsonl
+
+  5. R2 MANAGEMENT MODE
+     Clear or upload tournament reports to R2 storage.
+     Example: python download.py --clear-r2
+     Example: python download.py --url 500 --upload-r2
+
+OPTIONAL FEATURES:
+  - Card synonyms: Add --generate-synonyms to scrape print variations (slower)
+  - Include/exclude reports: Add --include-exclude for archetype filtering analysis
+  - R2 upload: Add --upload-r2 to automatically upload reports after processing
+  - Archetype R2 upload: Add --upload-archetypes-r2 to upload individual archetype reports
+
+For more details on each option, see the argument descriptions below.
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     # Make the URL positional optional; if missing we'll prompt the user interactively.
     parser.add_argument("url", nargs='?', help="The URL or identifier of the Limitless TCG tournament (if omitted you'll be prompted).")
     parser.add_argument("--anonymize", action="store_true", help="Anonymize player names using a hash.")
@@ -1170,7 +3074,22 @@ if __name__ == "__main__":
     parser.add_argument("--force", action="store_true", help="Force re-download even if local files exist.")
     parser.add_argument("--download-all", action="store_true", help="Process all tournaments listed in --batch-file and exit.")
     parser.add_argument("--batch-file", default=os.path.join("tools", "download_list.txt"), help="Path to a text file with one tournament URL per line.")
-    
+    parser.add_argument("--rk9-cutoff", type=int, help="Masters Day 2 cutoff when processing RK9 rosters (prompts when omitted).")
+    parser.add_argument("--skip-rk9-archetypes", action="store_true", help="Skip Limitless archetype matching when processing RK9 rosters.")
+
+    # Synonym generation options
+    parser.add_argument("--generate-synonyms", action="store_true", help="Generate card synonyms by scraping print variations from Limitless. Optional, not generated by default.")
+    parser.add_argument("--regenerate-synonyms", action="store_true", help="Regenerate synonyms for existing tournament(s) without re-downloading. Use with --tournament-path for a specific tournament, or alone to process all tournaments.")
+    parser.add_argument("--tournament-path", help="Path to a specific tournament folder (e.g., 'reports/2025-08-15, World Championships 2025'). Used with --regenerate-synonyms.")
+
+    # Include-exclude and R2 options
+    parser.add_argument("--include-exclude", action="store_true", help="Generate include/exclude filter reports (deduplicated). Optional, not generated by default.")
+    parser.add_argument("--upload-r2", action="store_true", help="Upload reports to R2 after processing.")
+    parser.add_argument("--upload-archetypes-r2", action="store_true", help="Upload individual archetype reports to R2 as they are generated. Useful for real-time updates during processing.")
+    parser.add_argument("--clear-r2", action="store_true", help="Clear the R2 bucket before uploading. Requires confirmation.")
+    parser.add_argument("--r2-remote", default="r2", help="rclone remote name for R2 (default: r2)")
+    parser.add_argument("--r2-path", default="reports", help="Path in R2 bucket (default: reports)")
+
     args = parser.parse_args()
 
     # If no URL was provided on the command line, prompt the user.

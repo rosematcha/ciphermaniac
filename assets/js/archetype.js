@@ -44,6 +44,35 @@ const state = {
   currentFilters: { include: null, exclude: null }
 };
 
+function extractArchetypeFromLocation(loc = window.location) {
+  const params = new URLSearchParams(loc.search);
+  const paramValue = params.get('archetype');
+  if (paramValue) {
+    return paramValue;
+  }
+
+  const pathname = loc.pathname || '';
+  const trimmedPath = pathname.replace(/\/+$/u, '');
+  const segments = trimmedPath.split('/').filter(Boolean);
+  const archetypeIndex = segments.indexOf('archetype');
+  if (archetypeIndex === -1) {
+    return null;
+  }
+
+  const slugSegments = segments.slice(archetypeIndex + 1);
+  if (slugSegments.length === 0) {
+    return null;
+  }
+
+  const rawSlug = slugSegments.join('/');
+  try {
+    return decodeURIComponent(rawSlug);
+  } catch (error) {
+    logger.warn('Failed to decode archetype slug from path', { rawSlug, error: error?.message });
+    return rawSlug;
+  }
+}
+
 function decodeArchetypeLabel(value) {
   return value.replace(/_/g, ' ');
 }
@@ -320,9 +349,12 @@ function updateSkeletonSummary(items) {
   items.forEach(item => {
     if (item.dist && item.dist.length > 0) {
       // Find the distribution entry with the highest percentage
-      const mostFrequent = item.dist.reduce((max, current) =>
-        (current.percent > max.percent) ? current : max
-      );
+      const mostFrequent = item.dist.reduce((max, current) => {
+        if (current.percent > max.percent) {
+          return current;
+        }
+        return max;
+      });
       totalCount += mostFrequent.copies;
 
       // Check if this is an Ace Spec card
@@ -523,6 +555,9 @@ function setupFilterListeners() {
         logger.debug('Include filter change failed', error?.message || error);
       });
     });
+
+    // Add hover listeners for aggressive pre-caching
+    setupFilterHoverHandler(elements.includeCard, 'include');
   }
   if (elements.excludeCard) {
     elements.excludeCard.addEventListener('change', () => {
@@ -530,7 +565,78 @@ function setupFilterListeners() {
         logger.debug('Exclude filter change failed', error?.message || error);
       });
     });
+
+    // Add hover listeners for aggressive pre-caching
+    setupFilterHoverHandler(elements.excludeCard, 'exclude');
   }
+}
+
+/**
+ * Setup hover event handlers for filter dropdowns
+ * Pre-resolves filter combinations when user hovers over options
+ * @param {HTMLSelectElement} selectElement
+ * @param {string} filterType - 'include' or 'exclude'
+ */
+function setupFilterHoverHandler(selectElement, filterType) {
+  /** @type {Promise<any>|null} */
+  let cacheInstancePromise = null;
+
+  const loadCacheInstance = () => {
+    if (!cacheInstancePromise) {
+      cacheInstancePromise = import('./utils/archetypeCache.js')
+        .then(module => module.archetypeCache)
+        .catch(error => {
+          cacheInstancePromise = null;
+          throw error;
+        });
+    }
+    return cacheInstancePromise;
+  };
+
+  // Track when dropdown is focused/opened
+  selectElement.addEventListener('focus', async () => {
+    try {
+      const cache = await loadCacheInstance();
+
+      // Pre-cache the index when dropdown opens
+      if (state.tournament && state.archetypeBase) {
+        await cache.preCacheIndex(state.tournament, state.archetypeBase);
+      }
+    } catch (error) {
+      logger.debug('Failed to pre-cache index on dropdown focus', error.message);
+    }
+  });
+
+  // Track hover over individual options (if supported by browser)
+  selectElement.addEventListener('mousemove', async event => {
+    if (!state.tournament || !state.archetypeBase) {return;}
+
+    const { target } = event;
+    if (target instanceof HTMLOptionElement && target.value) {
+      try {
+        const cache = await loadCacheInstance();
+        const hoveredCardId = target.value;
+
+        // Get the current value from the other dropdown
+        const includeId = filterType === 'include'
+          ? hoveredCardId
+          : (elements.includeCard ? elements.includeCard.value || null : null);
+        const excludeId = filterType === 'exclude'
+          ? hoveredCardId
+          : (elements.excludeCard ? elements.excludeCard.value || null : null);
+
+        // Start timer to pre-resolve this filter combination
+        cache.startFilterHoverTimer(
+          state.tournament,
+          state.archetypeBase,
+          includeId,
+          excludeId
+        );
+      } catch (error) {
+        logger.debug('Failed to pre-cache combination on hover', error.message);
+      }
+    }
+  });
 }
 
 function handleGranularityInput(event) {
@@ -581,10 +687,9 @@ function resolveTournamentPreference(defaultTournament, tournamentsList) {
 }
 
 async function initialize() {
-  const params = new URLSearchParams(window.location.search);
-  const base = params.get('archetype');
+  const base = extractArchetypeFromLocation();
   if (!base) {
-    showError('Choose an archetype from the analysis page first.');
+    showError('Choose an archetype from the archetypes page first.');
     setPageState('error');
     toggleLoading(false);
     return;

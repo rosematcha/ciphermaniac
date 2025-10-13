@@ -30,5 +30,3 @@ binding = "REPORTS"
 
 # Environment variables (set these in Cloudflare dashboard)
 [env.production.vars]
-# MAILGUN_API_KEY = "your-mailgun-api-key"
-# MAILGUN_DOMAIN = "ciphermaniac.com"

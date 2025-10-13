@@ -402,8 +402,8 @@
         }
       ],
       "set": "SVE",
-      "number": "015",
-      "uid": "Darkness Energy::SVE::015",
+      "number": "023",
+      "uid": "Darkness Energy::SVE::023",
       "category": "energy"
     },
     {
@@ -564,8 +564,8 @@
         }
       ],
       "set": "SVE",
-      "number": "011",
-      "uid": "Water Energy::SVE::011",
+      "number": "019",
+      "uid": "Water Energy::SVE::019",
       "category": "energy"
     },
     {

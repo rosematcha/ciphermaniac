@@ -1,11 +1,8 @@
 declare global {
-  const firebase: any;
-
   interface Window {
     cleanupProgress?: () => void;
     __imagePreloaderListeners?: EventListener[];
     Image: typeof Image;
-    firebase?: typeof firebase;
   }
 
   interface Element {
@@ -43,6 +40,7 @@ declare global {
       candidates: string[];
       idx: number;
       loading: boolean;
+      fallbackAttempted?: boolean;
     };
   }
 }

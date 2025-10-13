@@ -1,19 +1,22 @@
+/* eslint-env browser */
 import { fetchTournamentsList, fetchReport, fetchArchetypesList, fetchArchetypeReport } from './api.js';
 import { parseReport } from './parse.js';
 import { safeAsync } from './utils/errorHandler.js';
 import { logger } from './utils/logger.js';
+
+const { document, HTMLElement, HTMLImageElement } = globalThis;
 
 const elements = {
   container: document.querySelector('.analysis-page'),
   eventName: document.getElementById('analysis-event-name'),
   archetypeList: document.getElementById('analysis-archetype-list'),
   listLoading: document.getElementById('analysis-list-loading'),
-  listEmpty: document.getElementById('analysis-list-empty'),
+  listEmpty: document.getElementById('analysis-list-empty')
   // listSummary removed
 };
 
 const templates = {
-  listItem: /** @type {HTMLTemplateElement|null} */ (document.getElementById('analysis-list-item'))
+  listItem: /** @type {globalThis.HTMLTemplateElement|null} */ (document.getElementById('analysis-list-item'))
 };
 
 const state = {
@@ -74,6 +77,7 @@ const deckThumbnailConfig = {
   'Alakazam Dudunsparce': { cardSlug: 'Alakazam_ex', set: 'MEG', number: '056', alt: 'Alakazam ex' },
   Lucario: { cardSlug: 'Lucario_ex', set: 'MEG', number: '077', alt: 'Lucario ex' },
   'Lucario Hariyama': { cardSlug: 'Lucario_ex', set: 'MEG', number: '077', alt: 'Lucario ex' },
+  Slowking: { cardSlug: 'Slowking', set: 'SCR', number: '058', alt: 'Slowking' },
   Conkeldurr: { cardSlug: 'Conkeldurr', set: 'TWM', number: '105', alt: 'Conkeldurr' },
   Crustle: { cardSlug: 'Crustle', set: 'DRI', number: '012', alt: 'Crustle' },
   'Ethan\'s Typhlosion': { cardSlug: 'Ethan\'s_Typhlosion', set: 'DRI', number: '034', alt: 'Ethan\'s Typhlosion' },
@@ -127,7 +131,7 @@ function buildThumbnailSourceFromCard(card) {
   if (!card || !card.cardSlug || !card.set || !card.number) {
     return null;
   }
-  const safeSlug = card.cardSlug.replace(/[^a-zA-Z0-9'\-]/g, '_');
+  const safeSlug = card.cardSlug.replace(/[^a-zA-Z0-9'-]/g, '_');
   return `/thumbnails/sm/${safeSlug}_${card.set}_${card.number}.png`;
 }
 
@@ -142,11 +146,12 @@ function applySplitThumbnail(thumbnailEl, baseImgEl, fallbackEl, config, sources
     return;
   }
 
-  baseImgEl.style.display = 'none';
-  baseImgEl.dataset.cropped = '';
-  baseImgEl.onload = null;
-  baseImgEl.onerror = null;
-  baseImgEl.removeAttribute('src');
+  const baseImage = baseImgEl;
+  baseImage.style.display = 'none';
+  baseImage.dataset.cropped = '';
+  baseImage.onload = null;
+  baseImage.onerror = null;
+  baseImage.removeAttribute('src');
 
   thumbnailEl.classList.remove('is-placeholder');
   thumbnailEl.classList.add('analysis-list-item__thumbnail--split');
@@ -163,14 +168,16 @@ function applySplitThumbnail(thumbnailEl, baseImgEl, fallbackEl, config, sources
   };
 
   splitWrapper.replaceChildren();
-  cards.forEach((card, index) => {
+  for (let index = 0; index < cards.length; index += 1) {
+    const card = cards[index];
     const src = sources[index];
     if (!src) {
-      return;
+      continue;
     }
-  const slice = document.createElement('div');
-  const orientation = index === 0 ? 'left' : 'right';
-  slice.className = `analysis-list-item__slice analysis-list-item__slice--${orientation}`;
+
+    const slice = document.createElement('div');
+    const orientation = index === 0 ? 'left' : 'right';
+    slice.className = `analysis-list-item__slice analysis-list-item__slice--${orientation}`;
 
     const splitImg = document.createElement('img');
     splitImg.className = 'analysis-list-item__thumbnail-image analysis-list-item__thumbnail-image--split';
@@ -183,16 +190,16 @@ function applySplitThumbnail(thumbnailEl, baseImgEl, fallbackEl, config, sources
 
     splitImg.src = src;
     slice.appendChild(splitImg);
-  splitWrapper.appendChild(slice);
-  });
+    splitWrapper.appendChild(slice);
+  }
 
   if (!splitWrapper.hasChildNodes()) {
     usePlaceholder();
-    return;
   }
 }
 
 function applySplitCropStyles(imgEl, crop, orientation) {
+  const imageElement = imgEl;
   const defaultX = orientation === 'left' ? 0 : 0.5;
   const defaultWidth = 0.5;
   const defaultY = 0;
@@ -209,17 +216,17 @@ function applySplitCropStyles(imgEl, crop, orientation) {
   const bottomInset = clamp((1 - (y + height)) * 100, 0, 100);
 
 
-  imgEl.style.position = 'absolute';
-  imgEl.style.top = '0';
-  imgEl.style.left = '0';
-  imgEl.style.width = '100%';
-  imgEl.style.height = '100%';
-  imgEl.style.objectFit = 'cover';
-  imgEl.style.objectPosition = '';
-  imgEl.style.marginTop = '';
-  imgEl.style.clipPath = `inset(${topInset}% ${rightInset}% ${bottomInset}% ${leftInset}%)`;
-  imgEl.style.transformOrigin = '';
-  imgEl.style.transform = 'none';
+  imageElement.style.position = 'absolute';
+  imageElement.style.top = '0';
+  imageElement.style.left = '0';
+  imageElement.style.width = '100%';
+  imageElement.style.height = '100%';
+  imageElement.style.objectFit = 'cover';
+  imageElement.style.objectPosition = '';
+  imageElement.style.marginTop = '';
+  imageElement.style.clipPath = `inset(${topInset}% ${rightInset}% ${bottomInset}% ${leftInset}%)`;
+  imageElement.style.transformOrigin = '';
+  imageElement.style.transform = 'none';
 }
 
 function getDeckFallbackText(rawName) {
@@ -231,28 +238,31 @@ function getDeckFallbackText(rawName) {
 }
 
 function applyDeckThumbnail(thumbnailEl, imgEl, fallbackEl, deckName) {
+  const thumbnailElement = thumbnailEl;
+  const imageElement = imgEl;
+  const fallbackElement = fallbackEl;
   const config = getDeckThumbnail(deckName);
   const sources = buildThumbnailSources(config);
   const fallbackText = getDeckFallbackText(deckName);
 
-  fallbackEl.textContent = fallbackText;
+  fallbackElement.textContent = fallbackText;
 
   const clearSplitImages = () => {
-    const splitWrapper = thumbnailEl.querySelector('.analysis-list-item__split');
+    const splitWrapper = thumbnailElement.querySelector('.analysis-list-item__split');
     if (splitWrapper) {
       splitWrapper.remove();
     }
-    thumbnailEl.classList.remove('analysis-list-item__thumbnail--split');
+    thumbnailElement.classList.remove('analysis-list-item__thumbnail--split');
   };
 
   const usePlaceholder = () => {
     clearSplitImages();
-    thumbnailEl.classList.add('is-placeholder');
-    imgEl.style.display = '';
-    imgEl.dataset.cropped = '';
-    imgEl.onload = null;
-    imgEl.onerror = null;
-    imgEl.removeAttribute('src');
+    thumbnailElement.classList.add('is-placeholder');
+    imageElement.style.display = '';
+    imageElement.dataset.cropped = '';
+    imageElement.onload = null;
+    imageElement.onerror = null;
+    imageElement.removeAttribute('src');
   };
 
   if (sources.length === 0) {
@@ -261,37 +271,22 @@ function applyDeckThumbnail(thumbnailEl, imgEl, fallbackEl, deckName) {
   }
 
   if (isSplitThumbnailConfig(config)) {
-    applySplitThumbnail(thumbnailEl, imgEl, fallbackEl, config, sources, usePlaceholder, deckName);
+    applySplitThumbnail(thumbnailElement, imageElement, fallbackElement, config, sources, usePlaceholder, deckName);
     return;
   }
 
   clearSplitImages();
-  thumbnailEl.classList.remove('is-placeholder');
-  imgEl.style.display = 'block';
-  imgEl.dataset.cropped = '';
-  imgEl.alt = config?.alt ?? deckName.replace(/_/g, ' ');
-  imgEl.onerror = usePlaceholder;
+  thumbnailElement.classList.remove('is-placeholder');
+  imageElement.style.display = 'block';
+  imageElement.dataset.cropped = '';
+  imageElement.alt = config?.alt ?? deckName.replace(/_/g, ' ');
+  imageElement.onerror = usePlaceholder;
 
-  imgEl.onload = () => {
-    thumbnailEl.classList.remove('is-placeholder');
+  imageElement.onload = () => {
+    thumbnailElement.classList.remove('is-placeholder');
   };
 
-  imgEl.src = sources[0];
-}
-
-// Lightweight determineCardType that mirrors the social-graphics heuristic but accepts an object or a name
-function determineCardType(card) {
-  const name = typeof card === 'string' ? card : (card && card.name) ? card.name : '';
-
-  if (!name) return 'pokemon';
-
-  if (name.endsWith(' Energy')) return 'special-energy';
-  if (name.includes(' ex') || name.includes(' V') || name.includes(' VMAX') || name.includes(' VSTAR')) return 'pokemon';
-
-  const trainerHints = ['Ball', 'Rod', 'Catcher', 'Switch', 'Belt', 'Helmet', 'Orders', 'Research', 'Scenario', 'Potion', 'Stadium', 'Training', 'Machine', 'Retrieval', 'Hammer'];
-  if (trainerHints.some(h => name.includes(h))) return 'trainer';
-
-  return 'pokemon';
+  imageElement.src = sources[0];
 }
 
 function assertElement(value, message) {
@@ -302,7 +297,9 @@ function assertElement(value, message) {
 }
 
 function updateContainerState(status) {
-  if (!elements.container) {return;}
+  if (!elements.container) {
+    return;
+  }
   elements.container.setAttribute('data-state', status);
 }
 
@@ -313,12 +310,8 @@ function formatPercent(value) {
 // updateListSummary removed
 
 function buildDetailUrl(archetype) {
-  const params = new URLSearchParams();
-  params.set('archetype', archetype);
-  if (state.tournament) {
-    params.set('tour', state.tournament);
-  }
-  return `/archetype.html?${params.toString()}`;
+  const safeName = encodeURIComponent(archetype);
+  return `/archetype/${safeName}`;
 }
 
 function toggleLoading(isLoading) {
@@ -334,12 +327,16 @@ function toggleLoading(isLoading) {
 }
 
 function renderList() {
-  if (!elements.archetypeList || !templates.listItem) {return;}
+  if (!elements.archetypeList || !templates.listItem) {
+    return;
+  }
 
   elements.archetypeList.innerHTML = '';
 
   if (state.archetypes.length === 0) {
-    if (elements.listEmpty) {elements.listEmpty.hidden = false;}
+    if (elements.listEmpty) {
+      elements.listEmpty.hidden = false;
+    }
     return;
   }
 
@@ -360,22 +357,94 @@ function renderList() {
     anchor.href = buildDetailUrl(name);
     anchor.dataset.archetype = name;
 
-    if (previewEl && thumbnailContainer instanceof HTMLElement && thumbnailImage instanceof HTMLImageElement && thumbnailFallback instanceof HTMLElement) {
+    // Add hover event listeners for aggressive pre-caching
+    setupArchetypeHoverHandlers(anchor, name);
+
+    if (
+      previewEl &&
+      thumbnailContainer instanceof HTMLElement &&
+      thumbnailImage instanceof HTMLImageElement &&
+      thumbnailFallback instanceof HTMLElement
+    ) {
       applyDeckThumbnail(thumbnailContainer, thumbnailImage, thumbnailFallback, name);
     } else if (previewEl instanceof HTMLElement) {
       previewEl.classList.add('analysis-list-item__preview--no-thumb');
     }
 
-    if (nameEl) {nameEl.textContent = name.replace(/_/g, ' ');}
-    if (pctEl) {pctEl.textContent = formatPercent(percent);}
-    if (countEl) {countEl.textContent = `${deckTotal} decks`;}
+    if (nameEl) {
+      nameEl.textContent = name.replace(/_/g, ' ');
+    }
+    if (pctEl) {
+      pctEl.textContent = formatPercent(percent);
+    }
+    if (countEl) {
+      countEl.textContent = `${deckTotal} decks`;
+    }
 
     fragment.appendChild(itemEl);
   });
 
   elements.archetypeList.appendChild(fragment);
   elements.archetypeList.hidden = false;
-  if (elements.listEmpty) {elements.listEmpty.hidden = true;}
+  if (elements.listEmpty) {
+    elements.listEmpty.hidden = true;
+  }
+}
+
+/**
+ * Setup hover event handlers for aggressive pre-caching
+ * @param {HTMLElement} element
+ * @param {string} archetypeName
+ */
+function setupArchetypeHoverHandlers(element, archetypeName) {
+  let cacheInstance = null;
+  let cacheInstancePromise = null;
+
+  const resolveCacheInstance = async () => {
+    if (cacheInstance) {
+      return cacheInstance;
+    }
+
+    if (!cacheInstancePromise) {
+      cacheInstancePromise = import('./utils/archetypeCache.js').then(module => module.archetypeCache);
+    }
+
+    const resolved = await cacheInstancePromise;
+    if (!cacheInstance) {
+      cacheInstance = resolved;
+    }
+    return cacheInstance;
+  };
+
+  element.addEventListener('mouseenter', async () => {
+    if (!state.tournament) {
+      return;
+    }
+
+    const localCache = await resolveCacheInstance();
+
+    // Start hover timer - will pre-cache index.json after 200ms
+    localCache.startHoverTimer(state.tournament, archetypeName, async () => {
+      // Also pre-fetch the archetype report from the most recent regional
+      try {
+        if (!state.cache.has(archetypeName)) {
+          logger.debug(`Pre-fetching archetype report for ${archetypeName}`);
+          await loadArchetype(archetypeName);
+        }
+      } catch (error) {
+        logger.debug(`Pre-fetch failed for ${archetypeName}`, error.message);
+      }
+    });
+  });
+
+  element.addEventListener('mouseleave', () => {
+    if (!state.tournament || !cacheInstance) {
+      return;
+    }
+
+    // Clear hover timer if user moves away before delay expires
+    cacheInstance.clearHoverTimer(state.tournament, archetypeName);
+  });
 }
 
 async function loadArchetype(name) {

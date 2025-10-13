@@ -1,0 +1,1139 @@
+{
+  "deckTotal": 7,
+  "items": [
+    {
+      "rank": 1,
+      "name": "Dwebble",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "DRI",
+      "number": "011",
+      "uid": "Dwebble::DRI::011",
+      "category": "pokemon"
+    },
+    {
+      "rank": 2,
+      "name": "Crustle",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "DRI",
+      "number": "012",
+      "uid": "Crustle::DRI::012",
+      "category": "pokemon"
+    },
+    {
+      "rank": 3,
+      "name": "Boss's Orders",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEG",
+      "number": "114",
+      "uid": "Boss's Orders::MEG::114",
+      "category": "trainer"
+    },
+    {
+      "rank": 4,
+      "name": "Arven",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 14.29
+        },
+        {
+          "copies": 4,
+          "players": 6,
+          "percent": 85.71
+        }
+      ],
+      "set": "OBF",
+      "number": "186",
+      "uid": "Arven::OBF::186",
+      "category": "trainer"
+    },
+    {
+      "rank": 5,
+      "name": "Crispin",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 5,
+          "percent": 71.43
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 28.57
+        }
+      ],
+      "set": "SCR",
+      "number": "133",
+      "uid": "Crispin::SCR::133",
+      "category": "trainer"
+    },
+    {
+      "rank": 6,
+      "name": "Colress's Tenacity",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "057",
+      "uid": "Colress's Tenacity::SFA::057",
+      "category": "trainer"
+    },
+    {
+      "rank": 7,
+      "name": "Pokégear 3.0",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 14.29
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 42.86
+        },
+        {
+          "copies": 4,
+          "players": 3,
+          "percent": 42.86
+        }
+      ],
+      "set": "SVI",
+      "number": "186",
+      "uid": "Pokégear 3.0::SVI::186",
+      "category": "trainer"
+    },
+    {
+      "rank": 8,
+      "name": "Nest Ball",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 28.57
+        },
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 57.14
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 14.29
+        }
+      ],
+      "set": "SVI",
+      "number": "181",
+      "uid": "Nest Ball::SVI::181",
+      "category": "trainer"
+    },
+    {
+      "rank": 9,
+      "name": "Luxurious Cape",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 14.29
+        },
+        {
+          "copies": 2,
+          "players": 6,
+          "percent": 85.71
+        }
+      ],
+      "set": "PAR",
+      "number": "166",
+      "uid": "Luxurious Cape::PAR::166",
+      "category": "trainer"
+    },
+    {
+      "rank": 10,
+      "name": "Grass Energy",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 14.29
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 28.57
+        },
+        {
+          "copies": 5,
+          "players": 4,
+          "percent": 57.14
+        }
+      ],
+      "set": "SVE",
+      "number": "017",
+      "uid": "Grass Energy::SVE::017",
+      "category": "energy"
+    },
+    {
+      "rank": 11,
+      "name": "Mist Energy",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 57.14
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 42.86
+        }
+      ],
+      "set": "TEF",
+      "number": "161",
+      "uid": "Mist Energy::TEF::161",
+      "category": "energy"
+    },
+    {
+      "rank": 12,
+      "name": "Jet Energy",
+      "found": 7,
+      "total": 7,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "190",
+      "uid": "Jet Energy::PAL::190",
+      "category": "energy"
+    },
+    {
+      "rank": 13,
+      "name": "Munkidori",
+      "found": 6,
+      "total": 7,
+      "pct": 85.71,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 5,
+          "percent": 83.33
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 16.67
+        }
+      ],
+      "set": "TWM",
+      "number": "095",
+      "uid": "Munkidori::TWM::095",
+      "category": "pokemon"
+    },
+    {
+      "rank": 14,
+      "name": "Cornerstone Mask Ogerpon ex",
+      "found": 6,
+      "total": 7,
+      "pct": 85.71,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 66.67
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 33.33
+        }
+      ],
+      "set": "TWM",
+      "number": "112",
+      "uid": "Cornerstone Mask Ogerpon ex::TWM::112",
+      "category": "pokemon"
+    },
+    {
+      "rank": 15,
+      "name": "Lillie's Determination",
+      "found": 6,
+      "total": 7,
+      "pct": 85.71,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 16.67
+        },
+        {
+          "copies": 4,
+          "players": 5,
+          "percent": 83.33
+        }
+      ],
+      "set": "MEG",
+      "number": "119",
+      "uid": "Lillie's Determination::MEG::119",
+      "category": "trainer"
+    },
+    {
+      "rank": 16,
+      "name": "Lana's Aid",
+      "found": 6,
+      "total": 7,
+      "pct": 85.71,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "155",
+      "uid": "Lana's Aid::TWM::155",
+      "category": "trainer"
+    },
+    {
+      "rank": 17,
+      "name": "Technical Machine: Turbo Energize",
+      "found": 6,
+      "total": 7,
+      "pct": 85.71,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "179",
+      "uid": "Technical Machine: Turbo Energize::PAR::179",
+      "category": "trainer"
+    },
+    {
+      "rank": 18,
+      "name": "Artazon",
+      "found": 6,
+      "total": 7,
+      "pct": 85.71,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 33.33
+        },
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 66.67
+        }
+      ],
+      "set": "PAL",
+      "number": "171",
+      "uid": "Artazon::PAL::171",
+      "category": "trainer"
+    },
+    {
+      "rank": 19,
+      "name": "Darkness Energy",
+      "found": 6,
+      "total": 7,
+      "pct": 85.71,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 66.67
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 33.33
+        }
+      ],
+      "set": "SVE",
+      "number": "023",
+      "uid": "Darkness Energy::SVE::023",
+      "category": "energy"
+    },
+    {
+      "rank": 20,
+      "name": "Fighting Energy",
+      "found": 6,
+      "total": 7,
+      "pct": 85.71,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 6,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVE",
+      "number": "022",
+      "uid": "Fighting Energy::SVE::022",
+      "category": "energy"
+    },
+    {
+      "rank": 21,
+      "name": "Psyduck",
+      "found": 5,
+      "total": 7,
+      "pct": 71.43,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEP",
+      "number": "007",
+      "uid": "Psyduck::MEP::007",
+      "category": "pokemon"
+    },
+    {
+      "rank": 22,
+      "name": "Counter Catcher",
+      "found": 5,
+      "total": 7,
+      "pct": 71.43,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "160",
+      "uid": "Counter Catcher::PAR::160",
+      "category": "trainer"
+    },
+    {
+      "rank": 23,
+      "name": "Earthen Vessel",
+      "found": 5,
+      "total": 7,
+      "pct": 71.43,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "163",
+      "uid": "Earthen Vessel::PAR::163",
+      "category": "trainer"
+    },
+    {
+      "rank": 24,
+      "name": "Buddy-Buddy Poffin",
+      "found": 5,
+      "total": 7,
+      "pct": 71.43,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "144",
+      "uid": "Buddy-Buddy Poffin::TEF::144",
+      "category": "trainer"
+    },
+    {
+      "rank": 25,
+      "name": "Air Balloon",
+      "found": 5,
+      "total": 7,
+      "pct": 71.43,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 80.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 20.0
+        }
+      ],
+      "set": "BLK",
+      "number": "079",
+      "uid": "Air Balloon::BLK::079",
+      "category": "trainer"
+    },
+    {
+      "rank": 26,
+      "name": "Ethan's Sudowoodo",
+      "found": 4,
+      "total": 7,
+      "pct": 57.14,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "DRI",
+      "number": "093",
+      "uid": "Ethan's Sudowoodo::DRI::093",
+      "category": "pokemon"
+    },
+    {
+      "rank": 27,
+      "name": "Shuckle",
+      "found": 4,
+      "total": 7,
+      "pct": 57.14,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEG",
+      "number": "011",
+      "uid": "Shuckle::MEG::011",
+      "category": "pokemon"
+    },
+    {
+      "rank": 28,
+      "name": "Therapeutic Energy",
+      "found": 4,
+      "total": 7,
+      "pct": 57.14,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "193",
+      "uid": "Therapeutic Energy::PAL::193",
+      "category": "energy"
+    },
+    {
+      "rank": 29,
+      "name": "Poké Vital A",
+      "found": 4,
+      "total": 7,
+      "pct": 57.14,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "062",
+      "uid": "Poké Vital A::SFA::062",
+      "category": "trainer"
+    },
+    {
+      "rank": 30,
+      "name": "Secret Box",
+      "found": 3,
+      "total": 7,
+      "pct": 42.86,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "163",
+      "uid": "Secret Box::TWM::163",
+      "category": "trainer"
+    },
+    {
+      "rank": 31,
+      "name": "Defiance Vest",
+      "found": 3,
+      "total": 7,
+      "pct": 42.86,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "162",
+      "uid": "Defiance Vest::PAR::162",
+      "category": "trainer"
+    },
+    {
+      "rank": 32,
+      "name": "Xerosic's Machinations",
+      "found": 3,
+      "total": 7,
+      "pct": 42.86,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "064",
+      "uid": "Xerosic's Machinations::SFA::064",
+      "category": "trainer"
+    },
+    {
+      "rank": 33,
+      "name": "Iono",
+      "found": 3,
+      "total": 7,
+      "pct": 42.86,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 33.33
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 33.33
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 33.33
+        }
+      ],
+      "set": "PAL",
+      "number": "185",
+      "uid": "Iono::PAL::185",
+      "category": "trainer"
+    },
+    {
+      "rank": 34,
+      "name": "Town Store",
+      "found": 3,
+      "total": 7,
+      "pct": 42.86,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "set": "OBF",
+      "number": "196",
+      "uid": "Town Store::OBF::196",
+      "category": "trainer"
+    },
+    {
+      "rank": 35,
+      "name": "Picnic Basket",
+      "found": 2,
+      "total": 7,
+      "pct": 28.57,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "184",
+      "uid": "Picnic Basket::SVI::184",
+      "category": "trainer"
+    },
+    {
+      "rank": 36,
+      "name": "Super Potion",
+      "found": 2,
+      "total": 7,
+      "pct": 28.57,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "JTG",
+      "number": "158",
+      "uid": "Super Potion::JTG::158",
+      "category": "trainer"
+    },
+    {
+      "rank": 37,
+      "name": "Night Stretcher",
+      "found": 2,
+      "total": 7,
+      "pct": 28.57,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "061",
+      "uid": "Night Stretcher::SFA::061",
+      "category": "trainer"
+    },
+    {
+      "rank": 38,
+      "name": "Energy Search",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "172",
+      "uid": "Energy Search::SVI::172",
+      "category": "trainer"
+    },
+    {
+      "rank": 39,
+      "name": "Iron Thorns ex",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "077",
+      "uid": "Iron Thorns ex::TWM::077",
+      "category": "pokemon"
+    },
+    {
+      "rank": 40,
+      "name": "Professor's Research",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "JTG",
+      "number": "155",
+      "uid": "Professor's Research::JTG::155",
+      "category": "trainer"
+    },
+    {
+      "rank": 41,
+      "name": "Professor Turo's Scenario",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "171",
+      "uid": "Professor Turo's Scenario::PAR::171",
+      "category": "trainer"
+    },
+    {
+      "rank": 42,
+      "name": "Super Rod",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "188",
+      "uid": "Super Rod::PAL::188",
+      "category": "trainer"
+    },
+    {
+      "rank": 43,
+      "name": "Techno Radar",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "180",
+      "uid": "Techno Radar::PAR::180",
+      "category": "trainer"
+    },
+    {
+      "rank": 44,
+      "name": "Future Booster Energy Capsule",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "149",
+      "uid": "Future Booster Energy Capsule::TEF::149",
+      "category": "trainer"
+    },
+    {
+      "rank": 45,
+      "name": "Team Rocket's Watchtower",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "DRI",
+      "number": "180",
+      "uid": "Team Rocket's Watchtower::DRI::180",
+      "category": "trainer"
+    },
+    {
+      "rank": 46,
+      "name": "Lightning Energy",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVE",
+      "number": "020",
+      "uid": "Lightning Energy::SVE::020",
+      "category": "energy"
+    },
+    {
+      "rank": 47,
+      "name": "Medical Energy",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "182",
+      "uid": "Medical Energy::PAR::182",
+      "category": "energy"
+    },
+    {
+      "rank": 48,
+      "name": "Hilda",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "WHT",
+      "number": "084",
+      "uid": "Hilda::WHT::084",
+      "category": "trainer"
+    },
+    {
+      "rank": 49,
+      "name": "Kieran",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "154",
+      "uid": "Kieran::TWM::154",
+      "category": "trainer"
+    },
+    {
+      "rank": 50,
+      "name": "Tool Scrapper",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "WHT",
+      "number": "085",
+      "uid": "Tool Scrapper::WHT::085",
+      "category": "trainer"
+    },
+    {
+      "rank": 51,
+      "name": "Energy Retrieval",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "171",
+      "uid": "Energy Retrieval::SVI::171",
+      "category": "trainer"
+    },
+    {
+      "rank": 52,
+      "name": "Switch",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEG",
+      "number": "130",
+      "uid": "Switch::MEG::130",
+      "category": "trainer"
+    },
+    {
+      "rank": 53,
+      "name": "Powerglass",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "063",
+      "uid": "Powerglass::SFA::063",
+      "category": "trainer"
+    },
+    {
+      "rank": 54,
+      "name": "Technical Machine: Blindside",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "176",
+      "uid": "Technical Machine: Blindside::PAR::176",
+      "category": "trainer"
+    },
+    {
+      "rank": 55,
+      "name": "Lucky Helmet",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "158",
+      "uid": "Lucky Helmet::TWM::158",
+      "category": "trainer"
+    },
+    {
+      "rank": 56,
+      "name": "Practice Studio",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "186",
+      "uid": "Practice Studio::PAL::186",
+      "category": "trainer"
+    },
+    {
+      "rank": 57,
+      "name": "Reversal Energy",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "192",
+      "uid": "Reversal Energy::PAL::192",
+      "category": "energy"
+    },
+    {
+      "rank": 58,
+      "name": "Rock Chestplate",
+      "found": 1,
+      "total": 7,
+      "pct": 14.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "192",
+      "uid": "Rock Chestplate::SVI::192",
+      "category": "trainer"
+    }
+  ]
+}

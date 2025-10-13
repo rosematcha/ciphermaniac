@@ -26,29 +26,66 @@ import { logger } from './utils/logger.js';
  * @returns {LayoutMetrics}
  */
 export function computeLayout(containerWidth) {
-  const { GAP, BASE_CARD_WIDTH, MIN_BASE_CARD_WIDTH, BIG_ROWS_COUNT, MIN_SCALE } = CONFIG.LAYOUT;
+  const { GAP, BASE_CARD_WIDTH, MIN_BASE_CARD_WIDTH, MIN_SCALE } = CONFIG.LAYOUT;
 
-  // Reserve minimum 20px padding (10px each side) to prevent horizontal scroll
   const MIN_HORIZONTAL_PADDING = 20;
-  const effectiveWidth = Math.max(0, containerWidth - MIN_HORIZONTAL_PADDING);
-
   const gap = GAP;
+  const effectiveWidth = Math.max(0, containerWidth - MIN_HORIZONTAL_PADDING);
+  const prefersCompact = typeof window !== 'undefined' && window.innerWidth <= 880;
+
+  if (prefersCompact) {
+    const columns = Math.max(1, Math.floor((effectiveWidth + gap) / (MIN_BASE_CARD_WIDTH + gap)));
+    const computedBase = columns > 0
+      ? Math.floor(((effectiveWidth + gap) / columns) - gap)
+      : MIN_BASE_CARD_WIDTH;
+    const base = Math.max(MIN_BASE_CARD_WIDTH, Math.min(BASE_CARD_WIDTH, computedBase || MIN_BASE_CARD_WIDTH));
+    const contentWidth = columns * base + Math.max(0, columns - 1) * gap;
+
+    const compactMetrics = {
+      gap,
+      base,
+      perRowBig: Math.max(1, columns),
+      bigRowContentWidth: contentWidth || base,
+      targetMedium: Math.max(1, columns),
+      mediumScale: 1,
+      targetSmall: Math.max(1, columns),
+      smallScale: 1,
+      bigRows: 0,
+      mediumRows: 0
+    };
+
+    logger.debug('Computed layout metrics (compact)', { containerWidth, ...compactMetrics });
+    return compactMetrics;
+  }
+
+  if (effectiveWidth <= 0) {
+    const fallbackMetrics = {
+      gap,
+      base: MIN_BASE_CARD_WIDTH,
+      perRowBig: 1,
+      bigRowContentWidth: MIN_BASE_CARD_WIDTH,
+      targetMedium: 1,
+      mediumScale: 1,
+      targetSmall: 1,
+      smallScale: 1,
+      bigRows: 0,
+      mediumRows: 0
+    };
+    logger.debug('Computed layout metrics (fallback)', { containerWidth, ...fallbackMetrics });
+    return fallbackMetrics;
+  }
+
   let base = BASE_CARD_WIDTH;
 
-  if (effectiveWidth > 0) {
-    const targetBaseForTwo = Math.floor(((effectiveWidth + gap) / 2) - gap);
-    if (targetBaseForTwo >= MIN_BASE_CARD_WIDTH) {
-      base = Math.min(BASE_CARD_WIDTH, targetBaseForTwo);
-    } else {
-      base = BASE_CARD_WIDTH;
-    }
+  const targetBaseForTwo = Math.floor(((effectiveWidth + gap) / 2) - gap);
+  if (targetBaseForTwo >= MIN_BASE_CARD_WIDTH) {
+    base = Math.min(BASE_CARD_WIDTH, targetBaseForTwo);
   }
 
   const cardOuter = base + gap;
   const perRowBig = Math.max(1, Math.floor((effectiveWidth + gap) / cardOuter));
   const bigRowContentWidth = perRowBig * base + Math.max(0, perRowBig - 1) * gap;
 
-  // Calculate medium row (perRowBig + 1 cards)
   let targetMedium = Math.max(1, perRowBig + 1);
   const rawMediumScale = (((bigRowContentWidth + gap) / targetMedium) - gap) / base;
   let mediumScale;
@@ -60,7 +97,6 @@ export function computeLayout(containerWidth) {
     mediumScale = Math.min(1, rawMediumScale);
   }
 
-  // Calculate small row (perRowBig + 2 cards)
   let targetSmall = Math.max(1, perRowBig + 2);
   const rawSmallScale = (((bigRowContentWidth + gap) / targetSmall) - gap) / base;
   let smallScale;
@@ -81,11 +117,11 @@ export function computeLayout(containerWidth) {
     mediumScale,
     targetSmall,
     smallScale,
-    bigRows: 1, // Only first row is large
-    mediumRows: 1 // Only second row is medium
+    bigRows: 1,
+    mediumRows: 1
   };
 
-  logger.debug('Computed layout metrics', { containerWidth, ...metrics });
+  logger.debug('Computed layout metrics (standard)', { containerWidth, ...metrics });
 
   return metrics;
 }
