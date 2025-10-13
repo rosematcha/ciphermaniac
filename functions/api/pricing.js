@@ -403,6 +403,24 @@ function deriveCardNumber(record) {
 }
 
 
+function normalizeCardName(name) {
+  if (!name) {
+    return '';
+  }
+
+  let cleaned = String(name).trim();
+
+  cleaned = cleaned.replace(/\s*-\s*\d{1,3}\/?\d{0,3}$/u, '');
+  cleaned = cleaned.replace(/\s+#?\d{1,3}$/u, '');
+  cleaned = cleaned.replace(/\s+Promo$/iu, '');
+  cleaned = cleaned.replace(/\s+Prerelease$/iu, '');
+  cleaned = cleaned.replace(/\s+Alt Art$/iu, '');
+  cleaned = cleaned.replace(/\s+\((Promo|Prerelease|Alt Art|Alternate Art|Illustration Rare|Special Illustration Rare)\)$/iu, '');
+
+  return cleaned.trim();
+}
+
+
 /**
  * Process clean table-based price data into final format
  * Simple and reliable - no more complex field detection needed
@@ -415,8 +433,7 @@ function parseCleanedPriceData(cleanedRecords, setAbbr, context) {
   for (const record of cleanedRecords) {
     processedCount++;
     
-    // Clean up the card name - remove embedded card numbers
-    const cleanName = record.name.replace(/\s*-\s*\d{1,3}\/\d{2,3}$/, '').trim();
+  const cleanName = normalizeCardName(record.name);
     const cleanNumber = deriveCardNumber(record);
     if (!cleanNumber) {
       continue;
