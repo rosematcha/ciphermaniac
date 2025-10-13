@@ -89,6 +89,9 @@ function validateConfig(config) {
   // Validate API config
   assert(config.API, 'CONFIG.API is required');
   assert(typeof config.API.REPORTS_BASE === 'string', 'REPORTS_BASE must be string');
+  if ('R2_BASE' in config.API && config.API.R2_BASE !== undefined && config.API.R2_BASE !== null) {
+    assert(typeof config.API.R2_BASE === 'string', 'R2_BASE must be string');
+  }
   assert(typeof config.API.TIMEOUT_MS === 'number' && config.API.TIMEOUT_MS > 0, 'TIMEOUT_MS must be positive number');
 
   // Validate archetypes

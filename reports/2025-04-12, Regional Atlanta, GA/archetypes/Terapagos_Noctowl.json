@@ -368,8 +368,8 @@
         }
       ],
       "set": "SVE",
-      "number": "013",
-      "uid": "Psychic Energy::SVE::013",
+      "number": "021",
+      "uid": "Psychic Energy::SVE::021",
       "category": "energy"
     },
     {
@@ -396,8 +396,8 @@
         }
       ],
       "set": "SVE",
-      "number": "015",
-      "uid": "Darkness Energy::SVE::015",
+      "number": "023",
+      "uid": "Darkness Energy::SVE::023",
       "category": "energy"
     },
     {
@@ -493,8 +493,8 @@
         }
       ],
       "set": "SVE",
-      "number": "014",
-      "uid": "Fighting Energy::SVE::014",
+      "number": "022",
+      "uid": "Fighting Energy::SVE::022",
       "category": "energy"
     },
     {
@@ -872,8 +872,8 @@
         }
       ],
       "set": "SVE",
-      "number": "011",
-      "uid": "Water Energy::SVE::011",
+      "number": "019",
+      "uid": "Water Energy::SVE::019",
       "category": "energy"
     },
     {
@@ -1178,8 +1178,8 @@
         }
       ],
       "set": "SVE",
-      "number": "012",
-      "uid": "Lightning Energy::SVE::012",
+      "number": "020",
+      "uid": "Lightning Energy::SVE::020",
       "category": "energy"
     },
     {

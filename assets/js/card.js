@@ -34,7 +34,7 @@ import {
 } from './card/identifiers.js';
 import { findCard, renderCardPrice, renderCardSets } from './card/data.js';
 import { renderChart, renderCopiesHistogram, renderEvents } from './card/charts.js';
-import { getCanonicalCard, getCardVariants } from './utils/cardSynonyms.js';
+import { getCanonicalCard, getCardVariants, getVariantImageCandidates } from './utils/cardSynonyms.js';
 import { parseCardRoute, resolveCardSlug, buildCardPath, makeCardSlug, describeSlug } from './card/routing.js';
 
 // Set up global error handling
@@ -190,8 +190,8 @@ async function initializeCardPage() {
   }
 
   if (routeInfo.source === 'landing') {
-    // Redirect to /suggested for the suggestions landing page
-    window.location.replace('/suggested');
+  // Redirect to /trends for the trends landing page
+  window.location.replace('/trends');
     return;
   }
 
@@ -285,7 +285,6 @@ function createCardOption(item) {
 }
 
 function updateCardDatalist(byExactName, cardNamesList) {
-  const MAX = 600;
   const allCards = Array.from(byExactName.values())
     .sort((cardA, cardB) => cardA.display.localeCompare(cardB.display));
 
@@ -295,48 +294,48 @@ function updateCardDatalist(byExactName, cardNamesList) {
     listElement.removeChild(listElement.firstChild);
   }
 
-  const itemsToShow = allCards.slice(0, MAX);
-  itemsToShow.forEach(item => {
+  allCards.forEach(item => {
     listElement.appendChild(createCardOption(item));
   });
 
   // Update cache
-  const namesToCache = itemsToShow.map(cardItem => cardItem.display);
+  const namesToCache = allCards.map(cardItem => cardItem.display);
   saveCachedNames(namesToCache);
 }
 
-function enrichSuggestions(tournaments, byExactName, updateDatalist, skipFirst = false) {
+function enrichSuggestions(tournaments, byExactName, updateDatalist, processedTournaments) {
   // Process tournaments in parallel with limited concurrency for better performance
   const MAX_PARALLEL = 3; // Process max 3 tournaments simultaneously
 
-  const tournamentsToProcess = skipFirst ? tournaments.slice(1) : tournaments;
+  const tournamentsToProcess = tournaments.filter(tournament => !processedTournaments.has(tournament));
+  if (tournamentsToProcess.length === 0) {
+    return;
+  }
 
   // Don't await anything - run everything in background to avoid blocking
   // Process first tournament immediately for quickest feedback
-  if (tournamentsToProcess.length > 0 && !skipFirst) {
-    processTournament(tournamentsToProcess[0], byExactName).then(added => {
-      if (added) {
-        updateDatalist();
-      }
-    }).catch(() => {
-      // Silently continue
-    });
-  }
+  const [firstTournament, ...rest] = tournamentsToProcess;
+  processTournament(firstTournament, byExactName, processedTournaments).then(added => {
+    if (added) {
+      updateDatalist();
+    }
+  }).catch(() => {
+    // Silently continue
+  });
 
   // Process remaining tournaments in parallel batches (background)
-  const remainingTournaments = skipFirst ? tournamentsToProcess : tournamentsToProcess.slice(1);
-  if (remainingTournaments.length > 0) {
-    processTournamentBatch(remainingTournaments, byExactName, updateDatalist, MAX_PARALLEL);
+  if (rest.length > 0) {
+    processTournamentBatch(rest, byExactName, updateDatalist, MAX_PARALLEL, processedTournaments);
   }
 }
 
-async function processTournamentBatch(tournaments, byExactName, updateDatalist, maxParallel) {
+async function processTournamentBatch(tournaments, byExactName, updateDatalist, maxParallel, processedTournaments) {
   // Process tournaments in parallel batches
   for (let i = 0; i < tournaments.length; i += maxParallel) {
     const batch = tournaments.slice(i, i + maxParallel);
 
     // Process batch in parallel
-    const promises = batch.map(tournament => processTournament(tournament, byExactName));
+    const promises = batch.map(tournament => processTournament(tournament, byExactName, processedTournaments));
     const results = await Promise.allSettled(promises);
 
     // Check if any new cards were added
@@ -348,7 +347,10 @@ async function processTournamentBatch(tournaments, byExactName, updateDatalist, 
   }
 }
 
-async function processTournament(tournament, byExactName) {
+async function processTournament(tournament, byExactName, processedTournaments) {
+  if (processedTournaments.has(tournament)) {
+    return false;
+  }
   try {
     const master = await fetchReport(tournament);
     const parsed = parseReport(master);
@@ -372,6 +374,8 @@ async function processTournament(tournament, byExactName) {
       }
     }
 
+    processedTournaments.add(tournament);
+
     return added;
   } catch (error) {
     // Skip missing tournaments
@@ -393,13 +397,13 @@ function initCardSearch() {
 
     // Use fallback immediately to avoid blocking, fetch in background
     let tournaments = ['2025-08-15, World Championships 2025'];
+    const processedTournaments = new Set();
 
     // Fetch tournaments list in background and update later
     fetchTournamentsList().then(fetchedTournaments => {
       if (Array.isArray(fetchedTournaments) && fetchedTournaments.length > 0) {
         tournaments = fetchedTournaments;
-        // Re-run enrichment with full tournament list, skip first since already processed
-        enrichSuggestions(tournaments, byExactName, updateDatalist, true);
+        enrichSuggestions(tournaments, byExactName, updateDatalist, processedTournaments);
       }
     }).catch(() => {
       // Silently continue with fallback
@@ -440,7 +444,7 @@ function initCardSearch() {
     updateDatalist();
 
     // Incrementally enrich suggestions by scanning tournaments sequentially
-    enrichSuggestions(tournaments, byExactName, updateDatalist);
+    enrichSuggestions(tournaments, byExactName, updateDatalist, processedTournaments);
 
     setupSearchHandlers();
     syncSearchInputValue();
@@ -760,19 +764,19 @@ async function checkCardExistsInDatabase(cardIdentifier) {
     if (canonicalLower) { addIdentifier(canonicalLower); }
     if (baseName) { addIdentifier(baseName); }
 
-      // Add variant fallbacks (e.g., PAL, SVI) so that if the preferred canonical (MEG/MEE)
-      // isn't present in tournament indices, we can fall back to older reprints.
-      try {
-        const variants = await getCardVariants(cardIdentifier);
-        if (Array.isArray(variants) && variants.length > 0) {
-          // Ensure canonical is first, then add older variants
-          for (const v of variants) {
-            addIdentifier(v);
-          }
+    // Add variant fallbacks (e.g., PAL, SVI) so that if the preferred canonical (MEG/MEE)
+    // isn't present in tournament indices, we can fall back to older reprints.
+    try {
+      const variants = await getCardVariants(cardIdentifier);
+      if (Array.isArray(variants) && variants.length > 0) {
+        // Ensure canonical is first, then add older variants
+        for (const variantIdentifier of variants) {
+          addIdentifier(variantIdentifier);
         }
-      } catch (variantErr) {
-        logger.debug('Failed to load card variants for fallback', { cardIdentifier, error: variantErr?.message || variantErr });
       }
+    } catch (variantError) {
+      logger.debug('Failed to load card variants for fallback', { cardIdentifier, error: variantError?.message || variantError });
+    }
 
     const tournamentsToCheck = tournamentList.slice(0, 8);
     for (const tournament of tournamentsToCheck) {
@@ -952,7 +956,30 @@ function renderMissingCardPage(cardIdentifier) {
           img.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
 
           let idx = 0;
-          const tryNext = () => {
+          let fallbackAttempted = false;
+
+          const tryNext = async () => {
+            // If we've exhausted all candidates and haven't tried fallback yet, try synonym variants
+            if (idx >= candidates.length && !fallbackAttempted) {
+              fallbackAttempted = true;
+              try {
+                const fallbackCandidates = await getVariantImageCandidates(cardIdentifier, false, {});
+                if (fallbackCandidates.length > 0) {
+                  candidates.push(...fallbackCandidates);
+                  if (idx < candidates.length) {
+                    img.src = candidates[idx++];
+                  } else {
+                    imageContainer.remove();
+                  }
+                } else {
+                  imageContainer.remove();
+                }
+              } catch (error) {
+                imageContainer.remove();
+              }
+              return;
+            }
+
             if (idx >= candidates.length) {
               imageContainer.remove();
               return;
@@ -1038,11 +1065,32 @@ function setupImmediateUI() {
     hero.removeAttribute('aria-hidden');
 
     // Store image loading state on the element
-    img._loadingState = { candidates: [], idx: 0, loading: false };
+    img._loadingState = { candidates: [], idx: 0, loading: false, fallbackAttempted: false };
 
-    const tryNextImage = () => {
+    const tryNextImage = async () => {
       const state = img._loadingState;
-      if (state.loading || state.idx >= state.candidates.length) {return;}
+      if (state.loading) {return;}
+
+      // If we've exhausted all candidates and haven't tried fallback yet, try synonym variants
+      if (state.idx >= state.candidates.length && !state.fallbackAttempted) {
+        state.fallbackAttempted = true;
+        try {
+          const fallbackCandidates = await getVariantImageCandidates(cardIdentifier, true, {});
+          if (fallbackCandidates.length > 0) {
+            // Append fallback candidates and continue trying
+            state.candidates.push(...fallbackCandidates);
+            if (state.idx < state.candidates.length) {
+              state.loading = true;
+              img.src = state.candidates[state.idx++];
+            }
+          }
+        } catch (error) {
+          // Silently continue if fallback fails
+        }
+        return;
+      }
+
+      if (state.idx >= state.candidates.length) {return;}
 
       state.loading = true;
       img.src = state.candidates[state.idx++];
@@ -1104,7 +1152,7 @@ async function renderProgressively(dataPromises) {
   }
 
   // Enhance hero image with overrides when available (non-blocking)
-  dataPromises.overrides.then(overrides => {
+  dataPromises.overrides.then(async overrides => {
     const hero = document.getElementById('card-hero');
     const img = hero?.querySelector('img');
     if (hero && img && cardName && img.style.opacity === '0' && img._loadingState) {
@@ -1121,10 +1169,11 @@ async function renderProgressively(dataPromises) {
       const state = img._loadingState;
 
       // If we haven't started loading or failed on default candidates, use enhanced ones
-      if (state.idx === 0 || (state.idx >= state.candidates.length && !state.loading)) {
+      if (state.idx === 0 || (state.idx >= state.candidates.length && !state.loading && !state.fallbackAttempted)) {
         state.candidates = enhancedCandidates;
         state.idx = 0;
         state.loading = false;
+        state.fallbackAttempted = false; // Reset fallback flag for new candidates
 
         // Retry with enhanced candidates
         if (state.idx < state.candidates.length && !state.loading) {
@@ -1348,28 +1397,7 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
   }
 
   const renderToggles = () => {
-    if (!metaSection) {return;}
-    // Clear previous notes
-    const oldNotes = metaSection.querySelectorAll('.summary.toggle-note');
-    oldNotes.forEach(note => note.remove());
-    const totalP = timePoints.length;
-    const shown = Math.min(LIMIT, totalP);
-    const note = document.createElement('div');
-    note.className = 'summary toggle-note';
-    note.textContent = `Chronological (oldest to newest). Showing most recent ${shown} of ${totalP}. Limited to 6 tournaments for optimal performance.`;
-    metaSection.appendChild(note);
-    // Events/decks toggle mirrors chart (attach to eventsSection if present)
-    const tableSection = eventsSection || decksSection;
-    if (tableSection) {
-      const oldNotes2 = tableSection.querySelectorAll('.summary.toggle-note');
-      oldNotes2.forEach(note => note.remove());
-      const totalR = deckRows.length;
-      const shownR = Math.min(LIMIT, totalR);
-      const note2 = document.createElement('div');
-      note2.className = 'summary toggle-note';
-      note2.textContent = `Chronological (oldest to newest). Showing most recent ${shownR} of ${totalR}.`;
-      tableSection.appendChild(note2);
-    }
+    // Removed all toggle notes
   };
 
   const refresh = () => {
@@ -1772,51 +1800,23 @@ async function renderAnalysisTable(tournament) {
     // eslint-disable-next-line require-atomic-updates
     analysisTable.innerHTML = '';
 
-    // Overall summary block
-    if (overall) {
-      const box = document.createElement('div');
-      box.className = 'card-sect';
-      box.style.margin = '0 0 8px 0';
-  const title = document.createElement('div');
-  title.className = 'summary';
-  const overallPct = (overall.total ? (100 * overall.found / overall.total) : (overall.pct || 0));
-  // Build the headline so the overall percentage can be bolded separately
-  title.title = 'Percentage of all decks in this event that included the card (any copies).';
-  title.appendChild(document.createTextNode('Overall (All archetypes): Played '));
-  const pctStrong = document.createElement('strong');
-  pctStrong.className = 'overall-pct';
-  pctStrong.textContent = `${Math.round(overallPct)}%`;
-  title.appendChild(pctStrong);
-  title.appendChild(document.createTextNode(' of decks'));
-      box.appendChild(title);
-      // 1x-4x list
-      const listEl = document.createElement('div');
-      listEl.className = 'summary';
-      const part = numCopies => {
-        if (!overall || !overall.total || !Array.isArray(overall.dist)) {return `${numCopies}x: —`;}
-        const distEntry = overall.dist.find(x => x.copies === numCopies);
-        const pct = distEntry ? (100 * (distEntry.players || 0) / overall.total) : 0;
-  // Round to whole numbers for display
-  return `${numCopies}x: ${Math.round(pct)}%`;
-      };
-      listEl.textContent = `Copies across all decks — ${[1, 2, 3, 4].map(part).join('  •  ')}`;
-      listEl.title = 'For each N, the percent of all decks in this event that ran exactly N copies.';
-      box.appendChild(listEl);
-      analysisTable.appendChild(box);
-    }
-
     // Per-archetype table
     if (rows.length === 0) {
       const note = document.createElement('div');
       note.className = 'summary';
-      note.textContent = 'No per-archetype usage found for this event (or all archetypes have only one deck).';
+      note.textContent = 'No per-archetype usage found for this event '
+        + '(or all archetypes have only one deck).';
       analysisTable.appendChild(note);
       progress.updateStep(1, 'complete');
       progress.setComplete(500); // Show for half a second then fade
       return;
     }
     const tbl = document.createElement('table');
-    tbl.style.width = '100%'; tbl.style.borderCollapse = 'collapse'; tbl.style.background = 'var(--panel)'; tbl.style.border = '1px solid #242a4a'; tbl.style.borderRadius = '8px';
+    tbl.style.width = '100%';
+    tbl.style.borderCollapse = 'collapse';
+    tbl.style.background = 'var(--panel)';
+    tbl.style.border = '1px solid #242a4a';
+    tbl.style.borderRadius = '8px';
     const thead = document.createElement('thead');
     const trh = document.createElement('tr');
     ['Archetype', 'Played %', '1x', '2x', '3x', '4x'].forEach((header, i) => {
@@ -1834,37 +1834,50 @@ async function renderAnalysisTable(tournament) {
       th.style.color = 'var(--muted)';
       trh.appendChild(th);
     });
-    thead.appendChild(trh); tbl.appendChild(thead);
+    thead.appendChild(trh);
+    tbl.appendChild(thead);
     const tbody = document.createElement('tbody');
     for (const rowData of rows) {
       const tableRow = document.createElement('tr');
-        // Format numeric percentage values as whole numbers (no decimals)
-        const formatValue = value => (value === null ? '—' : `${Math.round(value)}%`);
-      // Compose archetype cell: bold archetype name + deck count in parentheses
-      const archeCount = (rowData.total !== null) ? rowData.total : (rowData.found !== null ? rowData.found : null);
+      const formatValue = value => (value === null ? '—' : `${Math.round(value)}%`);
+
+      const archetypeDeckCount = rowData.total !== null
+        ? rowData.total
+        : (rowData.found !== null ? rowData.found : null);
       const firstCell = document.createElement('td');
       const strong = document.createElement('strong');
       strong.textContent = rowData.archetype;
       firstCell.appendChild(strong);
-      if (archeCount !== null) { firstCell.appendChild(document.createTextNode(` (${archeCount})`)); }
+      if (archetypeDeckCount !== null) {
+        firstCell.appendChild(document.createTextNode(` (${archetypeDeckCount})`));
+      }
       firstCell.style.padding = '10px 12px';
       firstCell.style.textAlign = 'left';
       tableRow.appendChild(firstCell);
 
-  const otherValues = [rowData.pct !== null ? `${Math.round(rowData.pct)}%` : '—', formatValue(rowData.c1), formatValue(rowData.c2), formatValue(rowData.c3), formatValue(rowData.c4)];
+      const otherValues = [
+        rowData.pct !== null ? `${Math.round(rowData.pct)}%` : '—',
+        formatValue(rowData.c1),
+        formatValue(rowData.c2),
+        formatValue(rowData.c3),
+        formatValue(rowData.c4)
+      ];
+
       otherValues.forEach((valueText, valueIndex) => {
         const tableCell = document.createElement('td');
         tableCell.textContent = valueText;
 
-        // Add title text for accessibility / hover
-        if (valueIndex === 0) { tableCell.title = 'Played % = (decks with the card / total decks in archetype)'; }
-        if (valueIndex >= 1 && valueIndex <= 4) { const numberOfCopies = valueIndex; tableCell.title = `Percent of decks in archetype that ran exactly ${numberOfCopies}x`; }
+        if (valueIndex === 0) {
+          tableCell.title = 'Played % = (decks with the card / total decks in archetype)';
+        }
+        if (valueIndex >= 1 && valueIndex <= 4) {
+          const numberOfCopies = valueIndex;
+          tableCell.title = `Percent of decks in archetype that ran exactly ${numberOfCopies}x`;
+        }
 
-        // If the underlying numeric value is exactly 0 (e.g., "0%"), mark it so CSS can give it slightly darker color
-        // valueText is typically like "12%" or "—". Detect an exact zero by parsing the numeric prefix.
         if (typeof valueText === 'string') {
-          const m = valueText.match(/^\s*(\d+)%$/);
-          if (m && Number(m[1]) === 0) {
+          const percentageMatch = valueText.match(/^\s*(\d+)%$/);
+          if (percentageMatch && Number(percentageMatch[1]) === 0) {
             tableCell.classList.add('zero-pct');
           }
         }
@@ -1936,17 +1949,22 @@ window.cleanupProgress = () => {
  * CSS position: sticky is prevented by overflow/transform on ancestor elements.
  */
 function enableFloatingTableHeader(table) {
-  if (!table || !(table instanceof HTMLTableElement)) return;
+  if (!table || !(table instanceof HTMLTableElement)) {
+    return;
+  }
   const thead = table.querySelector('thead');
-  if (!thead) return;
+  if (!thead) {
+    return;
+  }
 
   // Create floating wrapper
   const floating = document.createElement('div');
   floating.className = 'floating-thead';
   floating.style.position = 'fixed';
   floating.style.top = '0';
-  floating.style.left = table.getBoundingClientRect().left + 'px';
-  floating.style.width = table.getBoundingClientRect().width + 'px';
+  const initialRect = table.getBoundingClientRect();
+  floating.style.left = `${initialRect.left}px`;
+  floating.style.width = `${initialRect.width}px`;
   floating.style.overflow = 'hidden';
   floating.style.zIndex = '1000';
   floating.style.pointerEvents = 'none';
@@ -1966,11 +1984,11 @@ function enableFloatingTableHeader(table) {
     const srcCols = thead.querySelectorAll('th');
     const dstCols = /** @type {HTMLElement} */ (cloneThead).querySelectorAll('th');
     const srcRect = table.getBoundingClientRect();
-    floating.style.left = Math.max(0, srcRect.left) + 'px';
-    floating.style.width = srcRect.width + 'px';
+    floating.style.left = `${Math.max(0, srcRect.left)}px`;
+    floating.style.width = `${srcRect.width}px`;
     for (let i = 0; i < srcCols.length; i++) {
-      const w = srcCols[i].getBoundingClientRect().width;
-      dstCols[i].style.width = w + 'px';
+      const columnWidth = srcCols[i].getBoundingClientRect().width;
+      dstCols[i].style.width = `${columnWidth}px`;
     }
   }
 
@@ -1993,7 +2011,10 @@ function enableFloatingTableHeader(table) {
     ticking = false;
   }
   function schedule() {
-    if (!ticking) { requestAnimationFrame(ticked); ticking = true; }
+    if (!ticking) {
+      requestAnimationFrame(ticked);
+      ticking = true;
+    }
   }
 
   window.addEventListener('scroll', schedule, { passive: true });
@@ -2007,8 +2028,10 @@ function enableFloatingTableHeader(table) {
     value: () => {
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
-      if (floating && floating.parentNode) floating.parentNode.removeChild(floating);
+      if (floating && floating.parentNode) {
+        floating.parentNode.removeChild(floating);
+      }
     },
-    configurable: true,
+    configurable: true
   });
 }

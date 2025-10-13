@@ -42,3 +42,8 @@ reports/that_day2d_candidates.json
 test-server.js
 .claude/settings.local.json
 nul
+include-exclude/
+tools/download.py
+tools/download.py
+/.codacy
+/.claude

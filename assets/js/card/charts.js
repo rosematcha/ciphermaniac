@@ -205,11 +205,6 @@ export function renderChart(container, points) {
   const chartContent = document.createDocumentFragment();
   chartContent.appendChild(svg);
 
-  const caption = document.createElement('div');
-  caption.className = 'summary';
-  caption.textContent = 'Meta-share over tournaments (All archetypes)';
-  chartContent.appendChild(caption);
-
   if (container.classList.contains('showing-skeleton')) {
     hideSkeleton(container, chartContent);
   } else {
@@ -226,11 +221,6 @@ export function renderChart(container, points) {
  */
 export function renderCopiesHistogram(container, overall) {
   const histogramContent = document.createDocumentFragment();
-
-  const summaryBox = document.createElement('div');
-  summaryBox.className = 'summary';
-  summaryBox.textContent = 'Copies distribution in the most recent visible event:';
-  histogramContent.appendChild(summaryBox);
 
   const histogramElement = document.createElement('div');
   histogramElement.className = 'hist';
@@ -257,7 +247,7 @@ export function renderCopiesHistogram(container, overall) {
 
     const bar = document.createElement('div');
     bar.className = 'bar';
-    bar.style.height = `${Math.max(2, Math.round(54 * (percentage / maxPercentage)))}px`;
+    bar.style.height = `${Math.max(2, Math.round(86 * (percentage / maxPercentage)))}px`;
 
     const label = document.createElement('div');
     label.className = 'lbl';
@@ -318,7 +308,6 @@ export function renderEvents(container, rows) {
   table.style.marginLeft = 'auto';
   table.style.marginRight = 'auto';
   table.style.borderCollapse = 'collapse';
-  table.style.marginTop = '8px';
   table.style.background = 'var(--panel)';
   table.style.border = '1px solid #242a4a';
   table.style.borderRadius = '8px';
@@ -326,11 +315,11 @@ export function renderEvents(container, rows) {
   const tableHead = document.createElement('thead');
   const headerRow = document.createElement('tr');
 
-  ['Tournament', 'Usage % (All)'].forEach((headerText, index) => {
+  ['Tournament', 'Usage %'].forEach((headerText, index) => {
     const tableHeader = document.createElement('th');
     tableHeader.textContent = headerText;
     tableHeader.style.textAlign = index === 1 ? 'right' : 'left';
-    tableHeader.style.padding = '10px 12px';
+    tableHeader.style.padding = '11px 12px';
     tableHeader.style.borderBottom = '1px solid #2c335a';
     tableHeader.style.color = 'var(--muted)';
     headerRow.appendChild(tableHeader);
@@ -343,8 +332,8 @@ export function renderEvents(container, rows) {
   rows.forEach(rowData => {
     const tableRow = document.createElement('tr');
 
-  const tournamentLink = document.createElement('a');
-  tournamentLink.href = `/index.html?tour=${encodeURIComponent(rowData.tournament)}`;
+    const tournamentLink = document.createElement('a');
+    tournamentLink.href = `/index.html?tour=${encodeURIComponent(rowData.tournament)}`;
     tournamentLink.textContent = prettyTournamentName(rowData.tournament);
 
     const cellValues = [tournamentLink, rowData.pct !== null ? `${rowData.pct.toFixed(1)}%` : '—'];
@@ -356,7 +345,7 @@ export function renderEvents(container, rows) {
       } else {
         tableCell.textContent = value;
       }
-      tableCell.style.padding = '10px 12px';
+      tableCell.style.padding = '11px 12px';
       if (index === 1) {
         tableCell.style.textAlign = 'right';
       }

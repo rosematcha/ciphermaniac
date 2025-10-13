@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Archetypes · Ciphermaniac</title>
+  <link rel="stylesheet" href="/assets/style.css" />
+  <link rel="icon" href="data:," />
+</head>
+<body>
+  <div class="analysis-page" data-state="loading">
+    <main class="analysis-main">
+      <div id="analysis-list-loading" class="analysis-loading" role="status">Loading archetypes…</div>
+      <div id="analysis-list-empty" class="analysis-empty-state" hidden>
+        <h2>No archetypes available</h2>
+        <p>Try again later once new tournaments are published.</p>
+      </div>
+      <ul id="analysis-archetype-list" class="analysis-list__items" hidden></ul>
+    </main>
+  </div>
+
+  <template id="analysis-list-item">
+    <li class="analysis-list-item">
+      <a class="analysis-list-item__button" href="#">
+        <div class="analysis-list-item__preview">
+          <div class="analysis-list-item__thumbnail" aria-hidden="true">
+            <img class="analysis-list-item__thumbnail-image" alt="" loading="lazy" />
+            <span class="analysis-list-item__thumbnail-fallback"></span>
+          </div>
+          <div class="analysis-list-item__main">
+            <span class="analysis-list-item__name"></span>
+            <span class="analysis-list-item__count"></span>
+          </div>
+        </div>
+        <div class="analysis-list-item__stats">
+          <span class="analysis-list-item__percent"></span>
+          <span class="analysis-list-item__chevron" aria-hidden="true">→</span>
+        </div>
+      </a>
+    </li>
+  </template>
+
+  <script type="module">
+    import { createHeader } from '/assets/js/components/header.js';
+    import { createFooter } from '/assets/js/components/footer.js';
+
+    const header = createHeader({ currentPage: 'archetypes' });
+    const footer = createFooter();
+    document.body.insertAdjacentElement('afterbegin', header);
+    const pageRoot = document.querySelector('.analysis-page');
+    if (pageRoot) {
+      pageRoot.insertAdjacentElement('afterend', footer);
+    } else {
+      document.body.insertAdjacentElement('beforeend', footer);
+    }
+  </script>
+  <script src="/assets/js/archetype-analysis.js" type="module"></script>
+</body>
+</html>

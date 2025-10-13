@@ -59,13 +59,14 @@
       <!-- Card meta-share and copy count graph will go here -->
     </section>
   <section id="card-analysis" class="card-sect">
-      <h2>In-Depth Analysis</h2>
-      <div class="controls" style="margin-top:8px">
-        <label>
-          Event:
-          <select id="analysis-event"></select>
-        </label>
-  <!-- Min decks selector removed; using sensible default in code -->
+      <div class="analysis-header">
+        <h2>In-Depth Analysis</h2>
+        <div class="controls">
+          <label>
+            Event:
+            <select id="analysis-event"></select>
+          </label>
+        </div>
       </div>
       <div id="analysis-table" style="margin-top:8px"></div>
     </section>
@@ -126,7 +127,7 @@
     }
 
     // Insert header and footer
-    const header = createHeader({ currentPage: 'cards' });
+  const header = createHeader({ currentPage: 'trends' });
     const footer = createFooter();
     
     document.body.insertAdjacentElement('afterbegin', header);

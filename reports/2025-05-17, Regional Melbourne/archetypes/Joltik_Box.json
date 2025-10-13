@@ -420,8 +420,8 @@
         }
       ],
       "set": "SVE",
-      "number": "012",
-      "uid": "Lightning Energy::SVE::012",
+      "number": "020",
+      "uid": "Lightning Energy::SVE::020",
       "category": "energy"
     },
     {
@@ -443,8 +443,8 @@
         }
       ],
       "set": "SVE",
-      "number": "009",
-      "uid": "Grass Energy::SVE::009",
+      "number": "017",
+      "uid": "Grass Energy::SVE::017",
       "category": "energy"
     },
     {
@@ -461,8 +461,8 @@
         }
       ],
       "set": "SVE",
-      "number": "016",
-      "uid": "Metal Energy::SVE::016",
+      "number": "024",
+      "uid": "Metal Energy::SVE::024",
       "category": "energy"
     },
     {
@@ -484,8 +484,8 @@
         }
       ],
       "set": "SVE",
-      "number": "013",
-      "uid": "Psychic Energy::SVE::013",
+      "number": "021",
+      "uid": "Psychic Energy::SVE::021",
       "category": "energy"
     },
     {
