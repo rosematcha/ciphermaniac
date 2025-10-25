@@ -14,6 +14,9 @@ import { AppError, ErrorTypes, validateType } from './utils/errorHandler.js';
  * @property {string} [set] - Optional set code for Pokémon variants
  * @property {string|number} [number] - Optional card number for Pokémon variants
  * @property {string} [category] - Card classification: 'pokemon', 'trainer', or 'energy'
+ * @property {string} [trainerType] - Trainer subtype when category is trainer (e.g., 'supporter')
+ * @property {string} [energyType] - Energy subtype when category is energy (e.g., 'basic')
+ * @property {string} [displayCategory] - Combined category label for UI sorting (e.g., 'trainer-supporter')
  * @property {number} found - Number of decks containing this card
  * @property {number} total - Total number of decks
  * @property {number} pct - Usage percentage
@@ -34,13 +37,13 @@ import { AppError, ErrorTypes, validateType } from './utils/errorHandler.js';
  */
 export function parseReport(data) {
   if (!data) {
-    throw new AppError('Report data is null or undefined', ErrorTypes.PARSE);
+    throw new AppError(ErrorTypes.PARSE, 'Report data is null or undefined');
   }
 
   validateType(data, 'object', 'report data');
 
   if (!Array.isArray(data.items)) {
-    throw new AppError('Report data must contain an items array', ErrorTypes.PARSE, { data });
+    throw new AppError(ErrorTypes.PARSE, 'Report data must contain an items array', null, { data });
   }
 
   const { deckTotal } = data;
@@ -103,6 +106,18 @@ function validateAndCleanItem(item, index) {
   if (typeof item.number === 'string' || typeof item.number === 'number') {cleanItem.number = item.number;}
   if (typeof category === 'string' && ['pokemon', 'trainer', 'energy'].includes(category.toLowerCase())) {
     cleanItem.category = category.toLowerCase();
+  }
+  const trainerType = typeof item.trainerType === 'string' ? item.trainerType.trim().toLowerCase() : '';
+  if (trainerType) {
+    cleanItem.trainerType = trainerType;
+  }
+  const energyType = typeof item.energyType === 'string' ? item.energyType.trim().toLowerCase() : '';
+  if (energyType) {
+    cleanItem.energyType = energyType;
+  }
+  const displayCategory = typeof item.displayCategory === 'string' ? item.displayCategory.trim().toLowerCase() : '';
+  if (displayCategory) {
+    cleanItem.displayCategory = displayCategory;
   }
 
   // Optional fields

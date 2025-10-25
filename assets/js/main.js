@@ -1,3 +1,4 @@
+/* eslint-disable no-console, id-length, max-lines-per-function, max-statements, complexity, no-param-reassign, prefer-destructuring, max-len, no-multiple-empty-lines, require-atomic-updates, jsdoc/require-param, jsdoc/check-param-names */
 /**
  * Main application bootstrap and initialization
  * @module Main
@@ -65,17 +66,43 @@ import { CleanupManager, debounce, validateElements } from './utils/performance.
 import { CONFIG } from './config.js';
 import { prettyTournamentName } from './utils/format.js';
 import { showGridSkeleton, hideGridSkeleton, updateSkeletonLayout } from './components/placeholders.js';
+import { aggregateReports } from './utils/reportAggregator.js';
+import { formatSetLabel, sortSetCodesByRelease } from './data/setCatalog.js';
+import {
+  openFiltersPanel as openFiltersPanelState,
+  closeFiltersPanel as closeFiltersPanelState,
+  toggleFiltersPanel as toggleFiltersPanelState
+} from './utils/filtersPanel.js';
+import {
+  readSelectedSets,
+  readCardType,
+  normalizeSetValues,
+  parseSetList,
+  writeSelectedSets
+} from './utils/filterState.js';
 
 /**
  * Application state - simple object
  */
 const appState = {
   currentTournament: null,
+  selectedTournaments: [],
+  selectedSets: [],
+  selectedCardType: '__all__',
+  availableTournaments: [],
+  availableSets: [],
   current: { items: [], deckTotal: 0 },
   overrides: {},
   masterCache: new Map(),
   archeCache: new Map(),
-  cleanup: new CleanupManager()
+  cleanup: new CleanupManager(),
+  cache: null,
+  ui: {
+    dropdowns: {},
+    openDropdown: null,
+    onTournamentSelection: null,
+    onSetSelection: null
+  }
 };
 
 /** @typedef {typeof appState} AppState */
@@ -142,15 +169,888 @@ class DataCache {
 }
 
 /**
+ * Deduplicate and normalize a selection of tournaments.
+ * @param {string|string[]} selection
+ * @returns {string[]}
+ */
+function normalizeTournamentSelection(selection) {
+  if (!selection) {return [];}
+  const array = Array.isArray(selection) ? selection : [selection];
+  const seen = new Set();
+  const normalized = [];
+  for (const value of array) {
+    if (typeof value !== 'string') {
+      continue;
+    }
+    const trimmed = value.trim();
+    if (!trimmed || seen.has(trimmed)) {
+      continue;
+    }
+    seen.add(trimmed);
+    normalized.push(trimmed);
+  }
+  return normalized;
+}
+
+/**
+ * Populate the set filter with available set codes from the current dataset.
+ * @param {Array<{set?: string, uid?: string}>} items
+ */
+function updateSetFilterOptions(items) {
+  const dropdown = appState.ui?.dropdowns?.sets || null;
+
+  const setCodes = new Set();
+  if (Array.isArray(items)) {
+    for (const item of items) {
+      if (item && typeof item.set === 'string' && item.set.trim()) {
+        setCodes.add(item.set.trim().toUpperCase());
+      } else if (item && typeof item.uid === 'string' && item.uid.includes('::')) {
+        const [, code] = item.uid.split('::');
+        if (code) {
+          setCodes.add(code.trim().toUpperCase());
+        }
+      }
+    }
+  }
+
+  (appState.selectedSets || []).forEach(code => {
+    if (code) {
+      setCodes.add(code.toUpperCase());
+    }
+  });
+
+  const orderedCodes = sortSetCodesByRelease(setCodes);
+  appState.availableSets = orderedCodes;
+
+  const nextSelected = (appState.selectedSets || []).filter(code => orderedCodes.includes(code));
+  if (nextSelected.length !== (appState.selectedSets || []).length) {
+    appState.selectedSets = nextSelected;
+  }
+
+  writeSelectedSets(appState.selectedSets);
+
+  if (dropdown) {
+    dropdown.setDisabled(orderedCodes.length === 0);
+    dropdown.render(orderedCodes, appState.selectedSets);
+  }
+}
+
+function closeAllDropdowns(exceptKey) {
+  const dropdowns = appState.ui?.dropdowns || {};
+  Object.entries(dropdowns).forEach(([key, dropdown]) => {
+    if (!dropdown) {return;}
+    if (exceptKey && key === exceptKey) {return;}
+    dropdown.close();
+  });
+}
+
+function createMultiSelectDropdown(state, config) {
+  const trigger = document.getElementById(config.triggerId);
+  const menu = document.getElementById(config.menuId);
+  const list = document.getElementById(config.listId);
+  const summary = document.getElementById(config.summaryId);
+  const search = config.searchId ? document.getElementById(config.searchId) : null;
+  const chipsContainer = config.chipsId ? document.getElementById(config.chipsId) : null;
+  const addButton = config.addButtonId ? document.getElementById(config.addButtonId) : null;
+  const labelElement = config.labelId ? document.getElementById(config.labelId) : null;
+  const comboRoot = trigger ? trigger.closest('.filter-combobox') : null;
+  const root = trigger ? trigger.closest('.filter-dropdown') : null;
+  const actionsFooter = menu.querySelector('[data-multi-only]') || null;
+
+  if (!(trigger && menu && list && summary && chipsContainer && addButton)) {
+    return null;
+  }
+
+  const baseWidth = config.baseWidth || 320;
+  const maxWidth = config.maxWidth || 500;
+  const placeholderSummary = config.placeholder || 'Select option';
+  const emptyMessage = config.emptyMessage || 'No results';
+  const formatOption = config.formatOption || (value => String(value));
+  const addButtonLabel = config.addButtonLabel || 'Add another';
+  const addButtonAriaLabel = config.addAriaLabel || 'Add another selection';
+  const allSelectedLabel = config.allSelectedLabel || 'All selected';
+  const includeAllOption = config.includeAllOption === true;
+  const allOptionLabel = config.allOptionLabel || 'All';
+  const maxVisibleChips = Number.isFinite(config.maxVisibleChips) ? Number(config.maxVisibleChips) : 2;
+  const singularLabel = config.singularLabel ||
+    labelElement?.dataset.labelSingular ||
+    labelElement?.textContent?.trim() ||
+    'Selection';
+  const pluralLabel = config.pluralLabel ||
+    labelElement?.dataset.labelPlural ||
+    singularLabel;
+  const placeholderAriaLabel = config.placeholderAriaLabel || placeholderSummary;
+  const measureCanvas = document.createElement('canvas');
+  const measureContext = measureCanvas.getContext('2d');
+  chipsContainer.setAttribute('role', 'list');
+  addButton.textContent = addButtonLabel;
+
+  const getDisplayParts = optionValue => {
+    const raw = formatOption(optionValue);
+    if (raw && typeof raw === 'object') {
+      const label = typeof raw.label === 'string' ? raw.label : '';
+      const fullName = typeof raw.fullName === 'string' ? raw.fullName : (label || String(optionValue ?? ''));
+      const codeValue = typeof raw.code === 'string' ? raw.code : '';
+      const codeLabel = typeof raw.codeLabel === 'string' ? raw.codeLabel : codeValue;
+      const finalLabel = label || `${fullName}${codeLabel ? ` (${codeLabel})` : ''}`;
+      return {
+        label: finalLabel,
+        name: fullName,
+        code: codeValue,
+        codeLabel
+      };
+    }
+    const fallback = String(raw ?? optionValue ?? '');
+    return {
+      label: fallback,
+      name: fallback,
+      code: '',
+      codeLabel: ''
+    };
+  };
+
+  const dropdownState = {
+    options: [],
+    selected: [],
+    filterText: '',
+    isOpen: false,
+    disabled: false,
+    chipsExpanded: false,
+    multi: false
+  };
+
+  const updateLabelText = () => {
+    if (!labelElement) {return;}
+    const count = dropdownState.selected.length;
+    const nextLabel = count > 1 ? pluralLabel : singularLabel;
+    labelElement.textContent = nextLabel;
+  };
+
+  const updateTriggerState = () => {
+    const totalOptions = dropdownState.options.length;
+    const count = dropdownState.selected.length;
+    const hasSelection = count > 0;
+    const allSelected = hasSelection && totalOptions > 0 && count === totalOptions;
+    const firstValue = hasSelection ? dropdownState.selected[0] : null;
+    const firstDisplay = firstValue ? getDisplayParts(firstValue) : null;
+    const firstLabel = firstDisplay ? firstDisplay.label : '';
+
+    let summaryText = placeholderSummary;
+    let ariaLabel = placeholderAriaLabel;
+    let stateValue = 'empty';
+
+    if (dropdownState.disabled) {
+      summaryText = config.disabledSummary || 'Not available';
+      ariaLabel = summaryText;
+      stateValue = 'disabled';
+    } else if (!hasSelection) {
+      summaryText = placeholderSummary;
+      ariaLabel = placeholderAriaLabel;
+      stateValue = 'empty';
+    } else if (allSelected) {
+      summaryText = allSelectedLabel;
+      ariaLabel = `${pluralLabel} fully selected`;
+      stateValue = 'full';
+    } else {
+      summaryText = count > 1 ? `${firstLabel} +${count - 1}` : firstLabel;
+      ariaLabel = count > 1
+        ? `${count} ${pluralLabel.toLowerCase()} selected. First: ${firstLabel}`
+        : `${singularLabel} ${firstLabel} selected`;
+      stateValue = count > 1 ? 'multi' : 'single';
+    }
+
+    const shouldDisableTrigger = dropdownState.disabled || totalOptions === 0;
+    trigger.disabled = shouldDisableTrigger;
+    trigger.setAttribute('aria-disabled', shouldDisableTrigger ? 'true' : 'false');
+    summary.textContent = summaryText;
+    trigger.dataset.state = stateValue;
+    trigger.setAttribute('aria-label', ariaLabel);
+
+    if (addButton) {
+      const showAdd = hasSelection && !allSelected && !dropdownState.disabled;
+      addButton.hidden = !showAdd;
+      addButton.classList.toggle('is-visible', showAdd);
+      addButton.disabled = !showAdd;
+      if (showAdd) {
+        addButton.setAttribute('aria-label', addButtonAriaLabel);
+      }
+    }
+
+    if (comboRoot) {
+      comboRoot.classList.toggle('is-disabled', shouldDisableTrigger);
+      comboRoot.classList.toggle('is-full', allSelected);
+      comboRoot.classList.toggle('has-selection', hasSelection);
+      comboRoot.setAttribute('data-state', stateValue);
+    }
+
+    if (root) {
+      root.classList.toggle('has-selection', hasSelection);
+      root.classList.toggle('is-disabled', shouldDisableTrigger);
+      root.classList.toggle('is-multi', count > 1);
+    }
+
+    if (actionsFooter) {
+      const multiActive = dropdownState.multi && !shouldDisableTrigger;
+      actionsFooter.hidden = !multiActive;
+    }
+  };
+
+  const renderChips = () => {
+    if (!chipsContainer) {return;}
+    const selection = dropdownState.selected;
+    chipsContainer.innerHTML = '';
+
+    const showMulti = selection.length > 1;
+    chipsContainer.hidden = !showMulti;
+
+    if (!showMulti) {
+      dropdownState.chipsExpanded = false;
+      chipsContainer.removeAttribute('aria-label');
+      return;
+    }
+
+    chipsContainer.setAttribute('aria-label', `${selection.length} ${pluralLabel.toLowerCase()} selected`);
+
+    if (selection.length <= maxVisibleChips) {
+      dropdownState.chipsExpanded = false;
+    }
+
+    const visibleCount = dropdownState.chipsExpanded
+      ? selection.length
+      : Math.min(selection.length, maxVisibleChips);
+
+    selection.slice(0, visibleCount).forEach(value => {
+      const chip = document.createElement('span');
+      chip.className = 'filter-chip';
+      chip.setAttribute('role', 'listitem');
+
+      const label = document.createElement('span');
+      const display = getDisplayParts(value);
+      label.className = 'filter-chip-label';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'filter-chip-name';
+      nameSpan.textContent = display.name;
+      label.appendChild(nameSpan);
+
+      if (display.code) {
+        const codeSpan = document.createElement('span');
+        codeSpan.className = 'filter-chip-code';
+        codeSpan.textContent = display.code;
+        label.appendChild(codeSpan);
+      }
+
+      const removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.className = 'filter-chip-remove';
+      removeButton.setAttribute('aria-label', `Remove ${display.label}`);
+      removeButton.textContent = 'x';
+      removeButton.addEventListener('click', () => {
+        const nextSelection = dropdownState.selected.filter(item => item !== value);
+        commitSelection(nextSelection);
+        renderOptions();
+      });
+
+      chip.appendChild(label);
+      chip.appendChild(removeButton);
+      chipsContainer.appendChild(chip);
+    });
+
+    if (selection.length > maxVisibleChips) {
+      if (!dropdownState.chipsExpanded) {
+        const hiddenCount = selection.length - maxVisibleChips;
+        const expandButton = document.createElement('button');
+        expandButton.type = 'button';
+        expandButton.className = 'filter-chip filter-chip--more';
+        expandButton.textContent = `+${hiddenCount} more`;
+        expandButton.setAttribute('aria-label', `Show ${hiddenCount} more selections`);
+        expandButton.setAttribute('aria-expanded', 'false');
+        expandButton.addEventListener('click', () => {
+          dropdownState.chipsExpanded = true;
+          renderChips();
+        });
+        chipsContainer.appendChild(expandButton);
+      } else {
+        const collapseButton = document.createElement('button');
+        collapseButton.type = 'button';
+        collapseButton.className = 'filter-chip filter-chip--collapse';
+        collapseButton.textContent = 'Show less';
+        collapseButton.setAttribute('aria-label', 'Collapse selected list');
+        collapseButton.setAttribute('aria-expanded', 'true');
+        collapseButton.addEventListener('click', () => {
+          dropdownState.chipsExpanded = false;
+          renderChips();
+        });
+        chipsContainer.appendChild(collapseButton);
+      }
+    }
+  };
+
+  const measureWidth = textValue => {
+    const safeValue = typeof textValue === 'string' ? textValue : String(textValue ?? '');
+    if (!measureContext) {return safeValue.length * 8;}
+    const computedStyle = window.getComputedStyle(trigger);
+    const font = `${computedStyle.fontWeight} ${computedStyle.fontSize} ${computedStyle.fontFamily}`;
+    measureContext.font = font;
+    return measureContext.measureText(safeValue).width;
+  };
+
+  const updateWidth = () => {
+    if (!menu) {return;}
+    let width = baseWidth;
+    if (dropdownState.options.length) {
+      const optionWidths = dropdownState.options.map(option => measureWidth(getDisplayParts(option).label));
+      const longest = Math.max(...optionWidths, measureWidth(summary?.textContent || ''));
+      width = Math.min(Math.max(Math.ceil(longest + 120), baseWidth), maxWidth);
+    }
+    menu.style.minWidth = `${width}px`;
+    menu.style.maxWidth = `${width}px`;
+  };
+
+  const getFilteredOptions = () => {
+    if (!dropdownState.filterText) {
+      return dropdownState.options;
+    }
+    const term = dropdownState.filterText.toLowerCase();
+    return dropdownState.options.filter(option => {
+      const display = getDisplayParts(option);
+      return display.label.toLowerCase().includes(term);
+    });
+  };
+
+  const commitSelection = (selection, { silent = false } = {}) => {
+    const wasMulti = dropdownState.multi;
+    let normalized = Array.isArray(selection)
+      ? dropdownState.options.filter(option => selection.includes(option))
+      : [];
+
+    if (!dropdownState.multi && normalized.length > 1) {
+      let chosen = null;
+      if (Array.isArray(selection)) {
+        for (let index = selection.length - 1; index >= 0; index -= 1) {
+          const candidate = selection[index];
+          if (normalized.includes(candidate)) {
+            chosen = candidate;
+            break;
+          }
+        }
+      }
+      if (chosen !== null && chosen !== undefined) {
+        normalized = dropdownState.options.filter(option => option === chosen);
+      } else {
+        normalized = normalized.slice(-1);
+      }
+    }
+
+    const unchanged = normalized.length === dropdownState.selected.length &&
+      normalized.every((value, index) => value === dropdownState.selected[index]);
+
+    if (!unchanged) {
+      dropdownState.selected = normalized;
+      if (!silent && typeof config.onChange === 'function') {
+        try {
+          const result = config.onChange([...dropdownState.selected]);
+          if (result && typeof result.catch === 'function') {
+            result.catch(error => logger.error(`Dropdown ${config.key} change handler rejected`, error));
+          }
+        } catch (error) {
+          logger.error(`Dropdown ${config.key} change handler threw`, error);
+        }
+      }
+    }
+
+    dropdownState.multi = dropdownState.selected.length > 1 || (dropdownState.isOpen && wasMulti);
+    if (!dropdownState.multi) {
+      dropdownState.chipsExpanded = false;
+    }
+
+    updateLabelText();
+    updateTriggerState();
+    renderChips();
+    updateWidth();
+  };
+
+  const renderOptions = () => {
+    list.innerHTML = '';
+    if (!dropdownState.multi && dropdownState.selected.length > 1) {
+      dropdownState.multi = true;
+    }
+
+    if (includeAllOption) {
+      const allButton = document.createElement('button');
+      allButton.type = 'button';
+      allButton.className = 'filter-option filter-option--single filter-option--all';
+      const isAllActive = dropdownState.selected.length === 0;
+      allButton.textContent = allOptionLabel;
+      allButton.setAttribute('role', 'option');
+      allButton.setAttribute('aria-selected', isAllActive ? 'true' : 'false');
+      if (isAllActive) {
+        allButton.classList.add('is-active');
+      }
+      allButton.addEventListener('click', () => {
+        dropdownState.multi = false;
+        commitSelection([]);
+        renderOptions();
+        close();
+        trigger.focus();
+      });
+      list.appendChild(allButton);
+    }
+
+    const filtered = getFilteredOptions();
+    if (!filtered.length) {
+      const empty = document.createElement('div');
+      empty.className = 'filter-menu-empty';
+      empty.textContent = emptyMessage;
+      list.appendChild(empty);
+      return;
+    }
+
+    filtered.forEach(optionValue => {
+      const display = getDisplayParts(optionValue);
+      const isSelected = dropdownState.selected.includes(optionValue);
+
+      if (dropdownState.multi) {
+        const optionLabel = document.createElement('label');
+        optionLabel.className = 'filter-option filter-option--multi';
+        optionLabel.setAttribute('role', 'option');
+        optionLabel.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = optionValue;
+        checkbox.checked = isSelected;
+        checkbox.addEventListener('change', () => {
+          const nextSelection = checkbox.checked
+            ? [...dropdownState.selected, optionValue]
+            : dropdownState.selected.filter(value => value !== optionValue);
+          commitSelection(nextSelection);
+          renderOptions();
+        });
+
+        const textSpan = document.createElement('span');
+        textSpan.textContent = display.label;
+
+        optionLabel.appendChild(checkbox);
+        optionLabel.appendChild(textSpan);
+        list.appendChild(optionLabel);
+      } else {
+        const optionButton = document.createElement('button');
+        optionButton.type = 'button';
+        optionButton.className = 'filter-option filter-option--single';
+        optionButton.setAttribute('role', 'option');
+
+        const labelWrapper = document.createElement('span');
+        labelWrapper.className = 'filter-option-label';
+
+        const fullNameSpan = document.createElement('span');
+        fullNameSpan.className = 'filter-option-name';
+        fullNameSpan.textContent = display.name || display.label;
+        labelWrapper.appendChild(fullNameSpan);
+
+        const codeSpan = document.createElement('span');
+        codeSpan.className = 'filter-option-code';
+        codeSpan.textContent = display.code || display.codeLabel || '';
+
+        if (codeSpan.textContent) {
+          labelWrapper.appendChild(codeSpan);
+        }
+
+        optionButton.appendChild(labelWrapper);
+        if (isSelected) {
+          optionButton.classList.add('is-active');
+        }
+        optionButton.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+
+        optionButton.addEventListener('click', () => {
+          const nextSelection = [optionValue];
+          commitSelection(nextSelection);
+          renderOptions();
+          close();
+          trigger.focus();
+        });
+
+        list.appendChild(optionButton);
+      }
+    });
+  };
+
+  const render = (options = dropdownState.options, selection = dropdownState.selected) => {
+    dropdownState.options = Array.isArray(options) ? options.slice() : [];
+    dropdownState.selected = Array.isArray(selection)
+      ? dropdownState.options.filter(option => selection.includes(option))
+      : [];
+    dropdownState.multi = dropdownState.selected.length > 1;
+    dropdownState.chipsExpanded = false;
+    renderOptions();
+    updateLabelText();
+    updateTriggerState();
+    renderChips();
+    updateWidth();
+  };
+
+  const setSelection = (selection, options = {}) => {
+    commitSelection(selection, { silent: options.silent === true });
+    renderOptions();
+  };
+
+  const setDisabled = disabled => {
+    dropdownState.disabled = Boolean(disabled);
+    if (dropdownState.disabled) {
+      close();
+    }
+    updateLabelText();
+    updateTriggerState();
+    renderChips();
+    updateWidth();
+  };
+
+  const open = ({ multi } = {}) => {
+    if (dropdownState.disabled || dropdownState.isOpen) {return;}
+    closeAllDropdowns(config.key);
+    dropdownState.isOpen = true;
+    menu.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    if (root) {root.classList.add('is-open');}
+    dropdownState.filterText = '';
+    dropdownState.chipsExpanded = false;
+    const shouldUseMulti = typeof multi === 'boolean'
+      ? multi
+      : dropdownState.selected.length > 1;
+    dropdownState.multi = shouldUseMulti;
+    if (search) {
+      search.value = '';
+    }
+    renderOptions();
+    updateWidth();
+    if (search) {
+      window.requestAnimationFrame(() => search.focus());
+    }
+    appState.ui.openDropdown = config.key;
+  };
+
+  const close = () => {
+    if (!dropdownState.isOpen) {return;}
+    dropdownState.isOpen = false;
+    menu.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+    if (root) {root.classList.remove('is-open');}
+    dropdownState.multi = dropdownState.selected.length > 1;
+    updateWidth();
+    if (appState.ui.openDropdown === config.key) {
+      appState.ui.openDropdown = null;
+    }
+  };
+
+  const toggle = () => {
+    if (trigger.disabled) {return;}
+    if (dropdownState.isOpen) {
+      close();
+    } else {
+      open();
+    }
+  };
+
+  const contains = node => {
+    if (!node) {return false;}
+    if (addButton) {
+      return menu.contains(node) || trigger.contains(node) || addButton.contains(node);
+    }
+    return menu.contains(node) || trigger.contains(node);
+  };
+
+  state.cleanup.addEventListener(trigger, 'click', toggle);
+  state.cleanup.addEventListener(trigger, 'keydown', event => {
+    if (trigger.disabled) {return;}
+    if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      open();
+    } else if ((event.key === 'Backspace' || event.key === 'Delete') && !dropdownState.isOpen && dropdownState.selected.length > 0) {
+      event.preventDefault();
+      const nextSelection = dropdownState.selected.slice(0, -1);
+      commitSelection(nextSelection);
+      renderOptions();
+    } else if (event.key === 'Escape') {
+      close();
+    }
+  });
+  state.cleanup.addEventListener(menu, 'keydown', event => {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      close();
+      trigger.focus();
+    }
+  });
+
+  if (search) {
+    state.cleanup.addEventListener(search, 'input', event => {
+      dropdownState.filterText = event.target.value.trim().toLowerCase();
+      renderOptions();
+    });
+  }
+
+  if (addButton) {
+    state.cleanup.addEventListener(addButton, 'click', () => {
+      if (addButton.disabled) {return;}
+      if (!dropdownState.isOpen) {
+        open({ multi: true });
+      } else {
+        dropdownState.multi = true;
+        renderOptions();
+        updateWidth();
+      }
+      if (search) {
+        search.value = '';
+        window.requestAnimationFrame(() => search.focus());
+      }
+      appState.ui.openDropdown = config.key;
+    });
+  }
+
+  menu.querySelectorAll('[data-action]').forEach(actionButton => {
+    const action = actionButton.getAttribute('data-action');
+    state.cleanup.addEventListener(actionButton, 'click', () => {
+      if (action === 'select-all') {
+        dropdownState.multi = true;
+        commitSelection([...dropdownState.options]);
+        renderOptions();
+      } else if (action === 'clear') {
+        dropdownState.multi = false;
+        commitSelection([]);
+        renderOptions();
+      } else if (action === 'close') {
+        close();
+        trigger.focus();
+      }
+    });
+  });
+
+  render();
+
+  return {
+    key: config.key,
+    render,
+    setSelection,
+    open,
+    close,
+    contains,
+    setDisabled,
+    refresh: () => {
+      updateLabelText();
+      updateTriggerState();
+      renderChips();
+      updateWidth();
+    }
+  };
+}
+
+function setupDropdownFilters(state) {
+  const dropdowns = {
+    tournaments: createMultiSelectDropdown(state, {
+      key: 'tournaments',
+      triggerId: 'tournament-trigger',
+      summaryId: 'tournament-summary',
+      menuId: 'tournament-menu',
+      listId: 'tournament-options',
+      chipsId: 'tournament-chips',
+      addButtonId: 'tournament-add',
+      labelId: 'tournament-label',
+      searchId: 'tournament-search',
+      formatOption: prettyTournamentName,
+      placeholder: 'Latest event',
+      placeholderAriaLabel: 'Select tournament',
+      emptyMessage: 'No tournaments found',
+      singularLabel: 'Tournament',
+      pluralLabel: 'Tournaments',
+      addButtonLabel: 'Add another',
+      addAriaLabel: 'Add another tournament',
+      allSelectedLabel: 'All tournaments selected',
+      maxVisibleChips: 2,
+      baseWidth: 380,
+      maxWidth: 520,
+      onChange: selection => state.ui.onTournamentSelection?.(selection)
+    }),
+    sets: createMultiSelectDropdown(state, {
+      key: 'sets',
+      triggerId: 'set-trigger',
+      summaryId: 'set-summary',
+      menuId: 'set-menu',
+      listId: 'set-options',
+      chipsId: 'set-chips',
+      addButtonId: 'set-add',
+      labelId: 'set-label',
+      searchId: 'set-search',
+      formatOption: formatSetLabel,
+      placeholder: 'All sets',
+      placeholderAriaLabel: 'Select a set',
+      emptyMessage: 'No matching sets',
+      singularLabel: 'Set',
+      pluralLabel: 'Sets',
+      addButtonLabel: 'Add another set',
+      addAriaLabel: 'Add another set',
+      allSelectedLabel: 'All sets selected',
+      includeAllOption: true,
+      allOptionLabel: 'All Sets',
+      maxVisibleChips: 3,
+      baseWidth: 300,
+      maxWidth: 440,
+      onChange: selection => state.ui.onSetSelection?.(selection)
+    })
+  };
+
+  state.ui.dropdowns = dropdowns;
+
+  const onDocumentPointerDown = event => {
+    const target = event.target;
+    const dropdownList = Object.values(dropdowns).filter(Boolean);
+    const clickedInsideDropdown = dropdownList.some(dropdown => dropdown.contains(target));
+
+    if (!clickedInsideDropdown) {
+      closeAllDropdowns();
+    }
+  };
+
+  const onDocumentKeydown = event => {
+    if (event.key === 'Escape') {
+      closeAllDropdowns();
+    }
+  };
+
+  state.cleanup.addEventListener(document, 'pointerdown', onDocumentPointerDown);
+  state.cleanup.addEventListener(document, 'keydown', onDocumentKeydown);
+
+  closeFiltersPanel({ skipDropdownClose: true });
+
+  const filtersToggle = document.getElementById('filtersToggle');
+  if (filtersToggle) {
+    state.cleanup.addEventListener(filtersToggle, 'click', () => {
+      toggleFiltersPanel();
+    });
+  }
+
+  if (dropdowns.tournaments && Array.isArray(state.availableTournaments) && state.availableTournaments.length) {
+    dropdowns.tournaments.render(state.availableTournaments, state.selectedTournaments);
+  } else if (dropdowns.tournaments) {
+    dropdowns.tournaments.render();
+  }
+
+  if (dropdowns.sets && Array.isArray(state.availableSets) && state.availableSets.length) {
+    dropdowns.sets.render(state.availableSets, state.selectedSets);
+  } else if (dropdowns.sets) {
+    dropdowns.sets.render();
+  }
+}
+
+
+
+function consumeFiltersRedirectFlag() {
+  if (typeof sessionStorage === 'undefined') { return null; }
+
+  try {
+    const payload = sessionStorage.getItem('cmFiltersRedirect');
+    if (!payload) {
+      return null;
+    }
+    sessionStorage.removeItem('cmFiltersRedirect');
+    return JSON.parse(payload);
+  } catch (error) {
+    logger.debug('Failed to consume filters redirect payload', error);
+    return null;
+  }
+}
+
+function refreshFiltersDropdowns() {
+  const dropdowns = appState.ui?.dropdowns || {};
+  Object.values(dropdowns).forEach(dropdown => {
+    if (dropdown && typeof dropdown.refresh === 'function') {
+      dropdown.refresh();
+    }
+  });
+}
+
+function openFiltersPanel() {
+  const result = openFiltersPanelState({ focusFirstControl: false });
+  if (result === 'opened') {
+    refreshFiltersDropdowns();
+  }
+  return result;
+}
+
+function closeFiltersPanel(options = {}) {
+  const { skipDropdownClose = false } = options;
+  const result = closeFiltersPanelState({ restoreFocus: false });
+  if (result === 'closed' && !skipDropdownClose) {
+    closeAllDropdowns();
+  }
+  return result;
+}
+
+function toggleFiltersPanel() {
+  const result = toggleFiltersPanelState({
+    focusFirstControlOnOpen: false,
+    restoreFocusOnClose: false
+  });
+  if (result === 'opened') {
+    refreshFiltersDropdowns();
+  } else if (result === 'closed') {
+    closeAllDropdowns();
+  }
+  return result;
+}
+
+async function applyCurrentFilters(state) {
+  await applyFiltersSort(state.current.items, state.overrides);
+  const existingSets = Array.isArray(state.selectedSets) && state.selectedSets.length > 0
+    ? [...state.selectedSets]
+    : readSelectedSets();
+  state.selectedSets = existingSets;
+  state.selectedCardType = readCardType();
+}
+/**
+ * Load and optionally aggregate tournament data for the provided selection.
+ * @param {string|string[]} selection
+ * @param {DataCache} cache
+ * @param {{ showSkeleton?: boolean }} [options]
+ * @returns {Promise<{ deckTotal: number, items: any[] }>}
+ */
+async function loadSelectionData(selection, cache, options = {}) {
+  const { showSkeleton = false } = options;
+  const tournaments = normalizeTournamentSelection(selection);
+
+  if (tournaments.length === 0) {
+    return { deckTotal: 0, items: [] };
+  }
+
+  if (showSkeleton) {
+    showGridSkeleton();
+  }
+
+  try {
+    const reports = [];
+    for (const tournament of tournaments) {
+      // eslint-disable-next-line no-await-in-loop
+      const report = await loadTournamentData(tournament, cache);
+      reports.push(report);
+    }
+
+    if (reports.length === 1) {
+      return reports[0];
+    }
+
+    return aggregateReports(reports);
+  } finally {
+    if (showSkeleton) {
+      hideGridSkeleton();
+    }
+  }
+}
+
+/**
  * Initialize tournament selector with data from API
  * @param {AppState} state
  * @returns {Promise<HTMLSelectElement>}
  */
 async function initializeTournamentSelector(state) {
-  const elements = validateElements({
-    tournamentSelect: '#tournament'
-  }, 'tournament selector');
-
   const tournaments = await safeAsync(
     () => fetchTournamentsList(),
     'fetching tournaments list',
@@ -158,31 +1058,39 @@ async function initializeTournamentSelector(state) {
   );
 
   const urlState = getStateFromURL();
+  const urlSelectionRaw = urlState.tour ? urlState.tour.split(',') : [];
+  const normalizedFromUrl = normalizeTournamentSelection(urlSelectionRaw);
 
-  // Populate tournament options
-  tournaments.forEach(tournament => {
-    const option = document.createElement('option');
-    option.value = tournament;
-    option.textContent = prettyTournamentName(tournament);
-    elements.tournamentSelect.appendChild(option);
-  });
+  let selection = normalizedFromUrl.filter(value => tournaments.includes(value));
 
-  // Set selected tournament from URL or use first as default
-  const selectedTournament = urlState.tour && tournaments.includes(urlState.tour)
-    ? urlState.tour
-    : tournaments[0];
-
-  elements.tournamentSelect.value = selectedTournament;
-  // eslint-disable-next-line no-param-reassign
-  state.currentTournament = selectedTournament;
-
-  // Clean up URL if invalid tournament was specified
-  if (urlState.tour && !tournaments.includes(urlState.tour)) {
-    setStateInURL({ tour: selectedTournament }, { merge: true, replace: true });
+  if (selection.length === 0 && state.selectedTournaments.length > 0) {
+    selection = normalizeTournamentSelection(state.selectedTournaments).filter(value => tournaments.includes(value));
   }
 
-  logger.info(`Initialized with tournament: ${selectedTournament}`);
-  return elements.tournamentSelect;
+  if (selection.length === 0 && tournaments.length > 0) {
+    selection = [tournaments[0]];
+  }
+
+  state.availableTournaments = tournaments;
+  state.selectedTournaments = selection;
+  state.currentTournament = selection[0] || null;
+
+  if (urlState.tour) {
+    const normalizedParam = selection.join(',');
+    const normalizedUrlParam = normalizeTournamentSelection(urlSelectionRaw)
+      .filter(value => tournaments.includes(value))
+      .join(',');
+    if (normalizedUrlParam !== normalizedParam) {
+      setStateInURL({ tour: normalizedParam }, { merge: true, replace: true });
+    }
+  }
+
+  const dropdown = state.ui?.dropdowns?.tournaments;
+  if (dropdown) {
+    dropdown.render(tournaments, selection);
+  }
+
+  logger.info(`Initialized with tournaments: ${selection.join(', ') || 'None'}`);
 }
 
 /**
@@ -231,7 +1139,7 @@ async function loadTournamentData(tournament, cache, showSkeletonLoading = false
  * @param {AppState} state
  * @param {boolean} skipUrlInit - Skip URL-based initialization (e.g., during tournament change)
  */
-async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = false) {
+async function setupArchetypeSelector(tournaments, cache, state, skipUrlInit = false) {
   const archeSel = document.getElementById('archetype');
   if (!archeSel) {return;}
 
@@ -240,102 +1148,114 @@ async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = fa
     archeSel.removeChild(archeSel.lastChild);
   }
 
-  // Try to load archetype index
-  let archetypesList = cache.getCachedArcheIndex(tournament);
+  const normalizedTournaments = normalizeTournamentSelection(tournaments);
+  const combinedArchetypes = new Set();
 
-  if (!archetypesList) {
-    archetypesList = await safeAsync(
-      () => fetchArchetypesList(tournament),
-      `fetching archetypes for ${tournament}`,
-      [] // fallback
-    );
+  for (const tournament of normalizedTournaments) {
+    let archetypesList = cache.getCachedArcheIndex(tournament);
 
-    if (archetypesList.length > 0) {
-      cache.setCachedArcheIndex(tournament, archetypesList);
+    if (!archetypesList) {
+      // eslint-disable-next-line no-await-in-loop
+      archetypesList = await safeAsync(
+        () => fetchArchetypesList(tournament),
+        `fetching archetypes for ${tournament}`,
+        [] // fallback
+      );
+
+      if (Array.isArray(archetypesList) && archetypesList.length > 0) {
+        cache.setCachedArcheIndex(tournament, archetypesList);
+      }
+    }
+
+    if (Array.isArray(archetypesList)) {
+      archetypesList.forEach(archetype => combinedArchetypes.add(archetype));
+    } else {
+      logger.warn('archetypesList is not an array, using empty array as fallback', { archetypesList, tournament });
     }
   }
 
-  // Ensure we have an array
-  if (!Array.isArray(archetypesList)) {
-    logger.warn('archetypesList is not an array, using empty array as fallback', { archetypesList, tournament });
-    archetypesList = [];
-  }
+  const archetypesList = Array.from(combinedArchetypes).sort((left, right) => left.localeCompare(right));
 
-  // Fetch deckTotal for each archetype and sort by usage
-  const archetypeUsage = await Promise.all(
-    archetypesList.map(async archetype => {
-      try {
-        const report = await fetchArchetypeReport(tournament, archetype);
-        return { archetype, deckTotal: report.deckTotal || 0 };
-      } catch {
-        return { archetype, deckTotal: 0 };
-      }
-    })
-  );
-  archetypeUsage.sort((leftUsage, rightUsage) => rightUsage.deckTotal - leftUsage.deckTotal);
-
-  // Populate archetype options sorted by usage
-  archetypeUsage.forEach(({ archetype }) => {
+  archetypesList.forEach(archetype => {
     const option = document.createElement('option');
     option.value = archetype;
     option.textContent = archetype.replace(/_/g, ' ');
     archeSel.appendChild(option);
   });
 
-  // Set up change handler with caching
   const handleArchetypeChange = async () => {
     const selectedValue = archeSel.value;
-    const { currentTournament } = state;
 
-    if (selectedValue === '__all__') {
-      // Show all cards
-      const data = await loadTournamentData(currentTournament, cache);
-      // eslint-disable-next-line no-param-reassign, require-atomic-updates
+    if (!selectedValue || selectedValue === '__all__') {
+      const selection = state.selectedTournaments.length
+        ? state.selectedTournaments
+        : normalizeTournamentSelection(state.currentTournament ? [state.currentTournament] : []);
+      const cache = state.cache || (state.cache = new DataCache());
+      const data = await loadSelectionData(selection, cache);
       state.current = data;
       renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
-      await applyFiltersSort(data.items, state.overrides);
-      setStateInURL({ archetype: selectedValue }, { merge: true });
+      updateSetFilterOptions(data.items);
+      await applyCurrentFilters(state);
+      setStateInURL({ archetype: '' }, { merge: true });
       return;
     }
 
-    // Load specific archetype data
-    let cached = state.archeCache.get(selectedValue);
+    const currentSelection = normalizeTournamentSelection(state.selectedTournaments.length
+      ? state.selectedTournaments
+      : state.currentTournament);
+
+    if (currentSelection.length === 0) {
+      logger.warn('No tournaments selected while trying to load archetype data');
+      return;
+    }
+
+    const archetypeCacheKey = `${selectedValue}::${currentSelection.join('|')}`;
+
+    let cached = state.archeCache.get(archetypeCacheKey);
     if (!cached) {
-      let data;
-      try {
-        data = await fetchArchetypeReport(currentTournament, selectedValue);
-      } catch (error) {
-        // Handle missing archetype files gracefully
-        if (error instanceof AppError && error.context?.status === 404) {
-          logger.debug(`Archetype ${selectedValue} not available for ${currentTournament}, using empty data`);
-          data = { items: [], deckTotal: 0 };
-        } else {
-          // Log other errors normally and use fallback
-          logger.exception(`Failed fetching archetype ${selectedValue}`, error);
-          data = { items: [], deckTotal: 0 };
+      const archetypeReports = [];
+
+      for (const tournament of currentSelection) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const data = await fetchArchetypeReport(tournament, selectedValue);
+          const parsed = parseReport(data);
+          archetypeReports.push(parsed);
+        } catch (error) {
+          if (error instanceof AppError && error.context?.status === 404) {
+            logger.debug(`Archetype ${selectedValue} not available for ${tournament}, skipping`);
+          } else {
+            logger.exception(`Failed fetching archetype ${selectedValue} for ${tournament}`, error);
+          }
         }
       }
 
-      const parsed = parseReport(data);
-      cached = { data, deckTotal: parsed.deckTotal, items: parsed.items };
-      state.archeCache.set(selectedValue, cached);
+      let aggregate;
+      if (archetypeReports.length === 0) {
+        aggregate = { deckTotal: 0, items: [] };
+      } else if (archetypeReports.length === 1) {
+        aggregate = archetypeReports[0];
+      } else {
+        aggregate = aggregateReports(archetypeReports);
+      }
+
+      cached = aggregate;
+      state.archeCache.set(archetypeCacheKey, cached);
     }
 
     // eslint-disable-next-line no-param-reassign
     state.current = { items: cached.items, deckTotal: cached.deckTotal };
+    updateSetFilterOptions(cached.items);
     renderSummary(document.getElementById('summary'), cached.deckTotal, cached.items.length);
-    await applyFiltersSort(cached.items, state.overrides);
+    await applyCurrentFilters(state);
     setStateInURL({ archetype: selectedValue }, { merge: true });
   };
 
-  // Add event listener with cleanup
   state.cleanup.addEventListener(archeSel, 'change', handleArchetypeChange);
 
-  // Set initial value from URL state (unless skipping URL initialization)
   if (!skipUrlInit) {
     const urlState = getStateFromURL();
     if (urlState.archetype && urlState.archetype !== '__all__') {
-      // Check if this archetype exists in the list
       const hasArchetype = archetypesList.includes(urlState.archetype);
       archeSel.value = hasArchetype ? urlState.archetype : '__all__';
       if (hasArchetype) {
@@ -345,6 +1265,7 @@ async function setupArchetypeSelector(tournament, cache, state, skipUrlInit = fa
   }
 }
 
+
 /**
  * Setup control event handlers
  * @param {AppState} state
@@ -353,88 +1274,120 @@ function setupControlHandlers(state) {
   const elements = validateElements({
     search: '#search',
     sort: '#sort',
-    tournament: '#tournament',
-    archetype: '#archetype'
+    archetype: '#archetype',
+    cardType: '#card-type'
   }, 'controls');
 
-  // Debounced search handler
   const handleSearch = debounce(async () => {
     await applyFiltersSort(state.current.items, state.overrides);
-    // Use replace while typing to avoid polluting history; final commit can push
-    setStateInURL({ 'q': elements.search.value }, { merge: true, replace: true });
+    setStateInURL({ q: elements.search.value }, { merge: true, replace: true });
   });
 
-  // Sort change handler
   const handleSort = async () => {
     await applyFiltersSort(state.current.items, state.overrides);
     setStateInURL({ sort: elements.sort.value }, { merge: true });
   };
 
-  // Tournament change handler
-  const handleTournamentChange = async () => {
-    const newTournament = elements.tournament.value;
-    if (newTournament === state.currentTournament) {return;}
-
-    // Get currently selected archetype before switching
-    const currentArchetype = elements.archetype?.value || '__all__';
-
-    logger.info(`Switching to tournament: ${newTournament}`);
-    // eslint-disable-next-line no-param-reassign
-    state.currentTournament = newTournament;
-    state.archeCache.clear(); // Clear archetype cache
-    // imagePreloader.clearCache(); // Clear image preloader cache - disabled
-
-    const cache = new DataCache();
-
-    // Load new tournament data with skeleton loading
-    const data = await loadTournamentData(newTournament, cache, true);
-    // eslint-disable-next-line no-param-reassign, require-atomic-updates
-    state.current = data;
-
-    // Load archetype list for the new tournament to check availability
-    const newArchetypesList = await safeAsync(
-      () => fetchArchetypesList(newTournament),
-      `fetching archetypes for ${newTournament}`,
-      []
-    );
-
-    // Determine if we can preserve the current archetype
-    const canPreserveArchetype = currentArchetype !== '__all__' && newArchetypesList.includes(currentArchetype);
-    const targetArchetype = canPreserveArchetype ? currentArchetype : '__all__';
-
-    logger.debug(`Archetype preservation: ${currentArchetype} → ${targetArchetype} (available: ${canPreserveArchetype})`);
-
-    // Update archetype selector (skip URL initialization to avoid conflicts)
-    await setupArchetypeSelector(newTournament, cache, state, true);
-
-    // Set archetype to preserved value or "All"
-    const archetypeElement = elements.archetype;
-    archetypeElement.value = targetArchetype;
-
-    // Load archetype data if preserving a specific archetype
-    if (canPreserveArchetype) {
-      // Trigger archetype change to load the specific archetype data
-      const archetypeChangeEvent = new Event('change');
-      elements.archetype.dispatchEvent(archetypeChangeEvent);
-    } else {
-      // Update display with all tournament data
-      renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
-      await applyFiltersSort(data.items, state.overrides);
+  const handleSetSelectionChange = async (selection, { silent = false } = {}) => {
+    const normalized = normalizeSetValues(selection);
+    state.selectedSets = normalized;
+    writeSelectedSets(normalized);
+    if (silent) {
+      const setsDropdown = state.ui?.dropdowns?.sets;
+      if (setsDropdown) {
+        setsDropdown.setSelection(normalized, { silent: true });
+      }
     }
-
-    // Update URL with both tournament and archetype
-    setStateInURL({ tour: newTournament, archetype: targetArchetype }, { merge: true });
+    if (!silent) {
+      await applyCurrentFilters(state);
+    }
   };
 
-  // Add event listeners with cleanup
+  const selectionsEqual = (first, second) => {
+    if (!Array.isArray(first) || !Array.isArray(second)) {return false;}
+    if (first.length !== second.length) {return false;}
+    return first.every((value, index) => value === second[index]);
+  };
+
+  const handleTournamentSelectionChange = async newSelection => {
+    const previousSelection = Array.isArray(state.selectedTournaments) ? [...state.selectedTournaments] : [];
+    let selection = normalizeTournamentSelection(newSelection);
+
+    if (selection.length === 0) {
+      const fallbackSource = previousSelection.length ? previousSelection : state.availableTournaments;
+      if (fallbackSource.length === 0) {
+        logger.warn('Tournament selection is empty; skipping refresh');
+        return;
+      }
+      selection = [fallbackSource[0]];
+      const dropdown = state.ui?.dropdowns?.tournaments;
+      if (dropdown) {
+        dropdown.setSelection(selection, { silent: true });
+      }
+    }
+
+    if (selectionsEqual(selection, state.selectedTournaments)) {
+      return;
+    }
+
+    const previousArchetype = elements.archetype?.value || '__all__';
+
+    logger.info(`Switching to tournaments: ${selection.join(', ')}`);
+    state.selectedTournaments = selection;
+    state.currentTournament = selection[0] || null;
+    state.archeCache.clear();
+
+    const cache = state.cache || (state.cache = new DataCache());
+
+    const data = await loadSelectionData(selection, cache, { showSkeleton: true });
+    state.current = data;
+    updateSetFilterOptions(data.items);
+    await applyCurrentFilters(state);
+
+    await setupArchetypeSelector(selection, cache, state, true);
+
+    const archetypeElement = /** @type {HTMLSelectElement} */ (elements.archetype);
+    const availableValues = Array.from(archetypeElement.options).map(option => option.value);
+    const canPreserveArchetype = previousArchetype !== '__all__' && availableValues.includes(previousArchetype);
+    const targetArchetype = canPreserveArchetype ? previousArchetype : '__all__';
+
+    archetypeElement.value = targetArchetype;
+
+    if (canPreserveArchetype) {
+      archetypeElement.dispatchEvent(new Event('change'));
+    } else {
+      renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
+    }
+
+    setStateInURL({
+      tour: selection.join(','),
+      archetype: canPreserveArchetype ? previousArchetype : ''
+    }, { merge: true });
+  };
+
+  const handleCardTypeChange = async () => {
+    state.selectedCardType = readCardType();
+    await applyCurrentFilters(state);
+  };
+
   state.cleanup.addEventListener(elements.search, 'input', handleSearch);
   state.cleanup.addEventListener(elements.sort, 'change', handleSort);
-  state.cleanup.addEventListener(elements.tournament, 'change', handleTournamentChange);
+  state.cleanup.addEventListener(elements.cardType, 'change', handleCardTypeChange);
+
+  state.ui.onTournamentSelection = selection => {
+    handleTournamentSelectionChange(selection).catch(error => logger.error('Failed to update tournaments', error));
+  };
+
+  state.ui.onSetSelection = (selection, options = {}) => {
+    handleSetSelectionChange(selection, options).catch(error => logger.error('Failed to update sets', error));
+  };
 
   // Restore initial state from URL
   const urlState = getStateFromURL();
   if (urlState.q) {elements.search.value = urlState.q;}
   if (urlState.sort) {elements.sort.value = urlState.sort;}
+  writeSelectedSets(state.selectedSets);
+  state.selectedCardType = readCardType();
 }
 
 // Restore state from URL when navigating back/forward
@@ -490,7 +1443,8 @@ async function applyInitialState(state) {
   const elements = validateElements({
     search: '#search',
     sort: '#sort',
-    archetype: '#archetype'
+    archetype: '#archetype',
+    cardType: '#card-type'
   }, 'applying initial state');
 
   // Apply URL state to controls and trigger filtering
@@ -500,11 +1454,42 @@ async function applyInitialState(state) {
   if (urlState.sort) {
     elements.sort.value = urlState.sort;
   }
+
+  if (elements.cardType instanceof HTMLSelectElement && urlState.cardType) {
+    const hasCardTypeOption = Array.from(elements.cardType.options).some(option => option.value === urlState.cardType);
+    if (hasCardTypeOption) {
+      elements.cardType.value = urlState.cardType;
+      state.selectedCardType = urlState.cardType;
+      setStateInURL({ cardType: '' }, { merge: true, replace: true });
+    }
+  }
+
+  const setSelection = parseSetList(urlState.sets);
+
+  if (setSelection.length > 0) {
+    if (typeof state.ui.onSetSelection === 'function') {
+      state.ui.onSetSelection(setSelection, { silent: true });
+    } else {
+      state.selectedSets = setSelection;
+      writeSelectedSets(setSelection);
+    }
+    const setsDropdown = state.ui?.dropdowns?.sets;
+    if (setsDropdown) {
+      setsDropdown.setSelection(setSelection, { silent: true });
+    }
+    setStateInURL({ sets: '' }, { merge: true, replace: true });
+  }
+
+  let filtersHandled = false;
   if (urlState.archetype && urlState.archetype !== '__all__') {
     elements.archetype.value = urlState.archetype;
     elements.archetype.dispatchEvent(new Event('change'));
-  } else {
-    await applyFiltersSort(state.current.items, state.overrides);
+    filtersHandled = true;
+  }
+
+  if (!filtersHandled) {
+    await applyCurrentFilters(state);
+    filtersHandled = true;
   }
 }
 
@@ -525,7 +1510,8 @@ async function initializeApp() {
     // initMissingThumbsDev(); // Disabled to prevent redundant thumbnail requests
     initCacheDev();
 
-    const cache = new DataCache();
+    appState.cache = appState.cache || new DataCache();
+    const cache = appState.cache;
 
     // Load configuration data
     appState.overrides = await safeAsync(
@@ -534,19 +1520,23 @@ async function initializeApp() {
       {}
     );
 
+    // Setup control handlers and dropdown UI
+    setupControlHandlers(appState);
+    setupDropdownFilters(appState);
+
     // Initialize tournament selector
     await initializeTournamentSelector(appState);
 
-    // Load initial tournament data
-    const initialData = await loadTournamentData(appState.currentTournament, cache);
-    // eslint-disable-next-line no-param-reassign, require-atomic-updates
+    const initialSelection = appState.selectedTournaments.length > 0
+      ? appState.selectedTournaments
+      : normalizeTournamentSelection(appState.currentTournament ? [appState.currentTournament] : []);
+
+    const initialData = await loadSelectionData(initialSelection, cache);
+    // eslint-disable-next-line no-param-reassign
     appState.current = initialData;
+    updateSetFilterOptions(initialData.items);
 
-    // Setup archetype selector
-    await setupArchetypeSelector(appState.currentTournament, cache, appState);
-
-    // Setup all control handlers
-    setupControlHandlers(appState);
+    await setupArchetypeSelector(initialSelection, cache, appState);
 
     // Setup resize handler
     setupResizeHandler(appState);
@@ -559,6 +1549,19 @@ async function initializeApp() {
 
     // Apply initial state from URL
     await applyInitialState(appState);
+    setStateInURL({ advanced: '' }, { merge: true, replace: true });
+
+    const redirectState = consumeFiltersRedirectFlag();
+    if (redirectState) {
+      const searchInput = document.getElementById('search');
+      if (redirectState.query && searchInput && !searchInput.value) {
+        searchInput.value = redirectState.query;
+      }
+      await applyCurrentFilters(appState);
+      if (redirectState.open) {
+        openFiltersPanel();
+      }
+    }
 
     logger.info('Application initialization complete');
   } catch (error) {

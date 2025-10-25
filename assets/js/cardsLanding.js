@@ -9,7 +9,7 @@ function buildFallbackLabel(name) {
   const trimmed = String(name).trim();
   if (trimmed.length <= 24) {return trimmed;}
   const words = trimmed.split(/\s+/).filter(Boolean);
-  if (words.length === 0) {return trimmed.slice(0, 24);} 
+  if (words.length === 0) {return trimmed.slice(0, 24);}
   if (words.length === 1) {return `${words[0].slice(0, 21)}...`;}
   const first = words[0];
   if (first.length >= 12) {return `${first.slice(0, 12)}...`;}
@@ -84,6 +84,10 @@ function makeCardItem(name, opts) {
   };
 
   const loadNext = () => {
+    if (variantFetchPromise) {
+      return;
+    }
+
     if (idx < candidates.length) {
       img.onerror = handleError;
       hideFallback();

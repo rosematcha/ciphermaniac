@@ -1,6 +1,7 @@
 import { fetchTournamentsList, fetchReport, fetchArchetypeReport, fetchOverrides, fetchArchetypeFiltersReport } from './api.js';
 import { parseReport } from './parse.js';
 import { render, updateLayout } from './render.js';
+import { normalizeCardNumber } from './card/routing.js';
 import { safeAsync, AppError } from './utils/errorHandler.js';
 import { logger } from './utils/logger.js';
 
@@ -24,7 +25,9 @@ const elements = {
   filterMessage: /** @type {HTMLElement|null} */ (null),
   skeletonSummary: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-summary')),
   skeletonCountValue: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-count-value')),
-  skeletonWarnings: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-warnings'))
+  skeletonWarnings: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-warnings')),
+  skeletonExportButton: /** @type {HTMLButtonElement|null} */ (document.getElementById('skeleton-export-live')),
+  skeletonExportStatus: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-export-status'))
 };
 
 const state = {
@@ -41,8 +44,216 @@ const state = {
   defaultDeckTotal: 0,
   cardLookup: new Map(),
   filterCache: new Map(),
-  currentFilters: { include: null, exclude: null }
+  currentFilters: { include: null, exclude: null },
+  skeleton: {
+    totalCards: 0,
+    exportEntries: /** @type {Array<{
+      name: string,
+      copies: number,
+      set: string,
+      number: string,
+      primaryCategory: string
+    }>} */ ([]),
+    plainWarnings: /** @type {string[]} */ ([]),
+    displayWarnings: /** @type {string[]} */ ([]),
+    lastExportText: ''
+  }
 };
+
+const CARD_CATEGORY_SORT_PRIORITY = new Map([
+  ['pokemon', 0],
+  ['trainer-supporter', 1],
+  ['trainer-item', 2],
+  ['trainer-tool', 3],
+  ['trainer-stadium', 4],
+  ['trainer-other', 5],
+  ['trainer', 5],
+  ['energy-basic', 6],
+  ['energy-special', 7],
+  ['energy', 6]
+]);
+
+const WARNING_ICON = '\u26A0\uFE0F';
+
+const TCG_LIVE_SECTION_ORDER = [
+  { key: 'pokemon', label: 'Pok\u00E9mon' },
+  { key: 'trainer', label: 'Trainer' },
+  { key: 'energy', label: 'Energy' }
+];
+
+const TRAINER_SUPPORTER_OVERRIDES = new Set([
+  'iono',
+  'arven',
+  'penny',
+  'briar',
+  'crispin',
+  'cyrano',
+  'jacq',
+  'clavell',
+  'hilda',
+  'hop',
+  'n',
+  'cynthia',
+  'guzma',
+  'melony',
+  'nessa',
+  'grant',
+  'irida',
+  'adaman',
+  'raihan',
+  'rika',
+  'mela',
+  'peonia',
+  'peony',
+  'shauna',
+  'rosa',
+  'hilbert',
+  'gloria',
+  'selene',
+  'gladion',
+  'grimsley',
+  'volo',
+  'lucian',
+  'gardenia',
+  'clair',
+  'clay',
+  'bede',
+  'katie',
+  'sparky'
+]);
+
+const TRAINER_SUPPORTER_KEYWORDS = [
+  'professor\'',
+  'professor ',
+  'boss\'s orders',
+  'boss\u2019s orders',
+  'orders',
+  'judge',
+  'research',
+  'scenario',
+  'vitality',
+  'assistant',
+  'team star',
+  'team rocket',
+  'gym leader',
+  'n\'s ',
+  'n\u2019s '
+];
+
+const TRAINER_STADIUM_KEYWORDS = [
+  ' stadium',
+  ' arena',
+  ' park',
+  ' tower',
+  ' city',
+  ' town',
+  ' plaza',
+  ' hq',
+  ' headquarters',
+  ' laboratory',
+  ' lab',
+  ' factory',
+  ' ruins',
+  ' temple',
+  ' beach',
+  ' garden',
+  ' library',
+  ' forest',
+  ' village',
+  ' court',
+  ' academy',
+  ' grand tree',
+  ' jamming tower',
+  ' artazon',
+  ' mesagoza',
+  ' levincia',
+  ' area zero',
+  ' dojo',
+  ' mine',
+  ' depot',
+  ' square',
+  ' colosseum',
+  ' hall',
+  ' palace',
+  ' lake',
+  ' mountain',
+  ' hideout',
+  ' cave'
+];
+
+const TRAINER_TOOL_KEYWORDS = [
+  ' belt',
+  ' band',
+  ' cape',
+  ' mask',
+  ' goggles',
+  ' boots',
+  ' helmet',
+  ' gloves',
+  ' shield',
+  ' vest',
+  ' charm',
+  ' stone',
+  ' tablet',
+  ' capsule',
+  ' scope',
+  ' cloak',
+  ' glasses',
+  ' amplifier',
+  ' weight',
+  ' booster',
+  ' anklet'
+];
+
+const TRAINER_ITEM_KEYWORDS = [
+  ' ball',
+  ' switch',
+  ' rope',
+  ' catcher',
+  ' rod',
+  ' capsule',
+  ' tablet',
+  ' candy',
+  ' vessel',
+  ' bag',
+  ' phone',
+  ' transceiver',
+  ' generator',
+  ' pass',
+  ' gear',
+  ' pad',
+  ' vacuum',
+  ' machine',
+  ' pickaxe',
+  ' basket',
+  ' hammer',
+  ' letter',
+  ' map',
+  ' board',
+  ' pouch',
+  ' poffin',
+  ' incense',
+  ' cart',
+  ' camera',
+  ' shoes',
+  ' energy search',
+  'energy switch',
+  'energy recycler',
+  'energy retrieval',
+  'technical machine'
+];
+
+const TRAINER_HINT_KEYWORDS = [
+  ...TRAINER_SUPPORTER_KEYWORDS,
+  ...TRAINER_STADIUM_KEYWORDS,
+  ...TRAINER_TOOL_KEYWORDS,
+  ...TRAINER_ITEM_KEYWORDS,
+  ' trainer',
+  'orders',
+  'supporter',
+  'stadium',
+  'tool'
+];
 
 function extractArchetypeFromLocation(loc = window.location) {
   const params = new URLSearchParams(loc.search);
@@ -97,14 +308,19 @@ function formatEventName(eventName) {
   return eventName.replace(/^[\d-]+,\s*/u, '');
 }
 
-function normalizeCardNumber(value) {
+function formatTcgliveCardNumber(value) {
   const raw = String(value ?? '').trim();
   if (!raw) {return '';}
-  const match = raw.match(/^(\d+)([A-Za-z]*)$/);
-  if (!match) {return raw.toUpperCase();}
-  const digits = match[1];
-  const suffix = match[2] || '';
-  return `${digits.padStart(3, '0')}${suffix.toUpperCase()}`;
+  const match = raw.match(/^0*([0-9]+)([A-Za-z]*)$/);
+  if (match) {
+    const digits = match[1] ? String(Number(match[1])) : '0';
+    const suffix = match[2] || '';
+    return `${digits}${suffix.toUpperCase()}`;
+  }
+  if (/^\d+$/.test(raw)) {
+    return String(Number(raw));
+  }
+  return raw.toUpperCase();
 }
 
 function buildCardId(card) {
@@ -206,7 +422,7 @@ function showError(message) {
     elements.error.hidden = false;
     const heading = elements.error.querySelector('h2');
     if (heading) {
-      heading.textContent = message || 'We couldn’t load that archetype.';
+      heading.textContent = message || 'We couldn\'t load that archetype.';
     }
   }
 }
@@ -215,7 +431,7 @@ function updateHero() {
   if (elements.title) {
     elements.title.textContent = state.archetypeLabel;
   }
-  document.title = `${state.archetypeLabel} · ${formatEventName(state.tournament)} – Ciphermaniac`;
+  document.title = `${state.archetypeLabel} \u00B7 ${formatEventName(state.tournament)} \u2013 Ciphermaniac`;
 }
 
 function getUsagePercent(card) {
@@ -226,6 +442,180 @@ function getUsagePercent(card) {
     return (card.found / card.total) * 100;
   }
   return 0;
+}
+
+function toLower(value) {
+  return typeof value === 'string' ? value.toLowerCase() : '';
+}
+
+function inferPrimaryCategory(card) {
+  const directDisplay = toLower(card?.displayCategory);
+  if (directDisplay.startsWith('trainer')) {
+    return 'trainer';
+  }
+  if (directDisplay.startsWith('energy')) {
+    return 'energy';
+  }
+  if (directDisplay === 'pokemon') {
+    return 'pokemon';
+  }
+  const rawCategory = toLower(card?.category);
+  if (rawCategory === 'pokemon' || rawCategory === 'trainer' || rawCategory === 'energy') {
+    return rawCategory;
+  }
+
+  const name = toLower(card?.name);
+  const uid = toLower(card?.uid);
+
+  if (name && TRAINER_HINT_KEYWORDS.some(keyword => name.includes(keyword))) {
+    return 'trainer';
+  }
+  if (uid && TRAINER_HINT_KEYWORDS.some(keyword => uid.includes(keyword))) {
+    return 'trainer';
+  }
+
+  const endsWithEnergy = name && name.endsWith(' energy');
+  if (endsWithEnergy) {
+    return 'energy';
+  }
+  if (!endsWithEnergy && uid && (uid.endsWith(' energy') || uid.includes(' energy::'))) {
+    return 'energy';
+  }
+  if (name && name.includes(' energy ') && !TRAINER_HINT_KEYWORDS.some(keyword => name.includes(keyword))) {
+    return 'energy';
+  }
+  return 'pokemon';
+}
+
+function inferTrainerSubtype(card) {
+  const name = toLower(card?.name);
+  const uid = toLower(card?.uid);
+
+  if (TRAINER_SUPPORTER_OVERRIDES.has(name) || TRAINER_SUPPORTER_OVERRIDES.has(uid)) {
+    return 'trainer-supporter';
+  }
+
+  if (name.startsWith('technical machine') || uid.includes('technical_machine')) {
+    return 'trainer-item';
+  }
+
+  if (name.includes('ace spec') || uid.includes('ace_spec')) {
+    return 'trainer-item';
+  }
+
+  if (
+    TRAINER_STADIUM_KEYWORDS.some(keyword => name.includes(keyword)) ||
+    TRAINER_STADIUM_KEYWORDS.some(keyword => uid.includes(keyword))
+  ) {
+    return 'trainer-stadium';
+  }
+
+  if (
+    TRAINER_TOOL_KEYWORDS.some(keyword => name.includes(keyword)) ||
+    TRAINER_TOOL_KEYWORDS.some(keyword => uid.includes(keyword))
+  ) {
+    return 'trainer-tool';
+  }
+
+  if (
+    TRAINER_SUPPORTER_KEYWORDS.some(keyword => name.includes(keyword)) ||
+    TRAINER_SUPPORTER_KEYWORDS.some(keyword => uid.includes(keyword))
+  ) {
+    return 'trainer-supporter';
+  }
+
+  if (
+    TRAINER_ITEM_KEYWORDS.some(keyword => name.includes(keyword)) ||
+    TRAINER_ITEM_KEYWORDS.some(keyword => uid.includes(keyword))
+  ) {
+    return 'trainer-item';
+  }
+
+  return 'trainer-other';
+}
+
+function deriveDisplayCategory(card) {
+  const direct = toLower(card?.displayCategory);
+  if (direct) {
+    return direct;
+  }
+  const baseCategory = toLower(card?.category);
+  const trainerType = toLower(card?.trainerType);
+  if (baseCategory === 'trainer' && trainerType) {
+    return `trainer-${trainerType}`;
+  }
+  const energyType = toLower(card?.energyType);
+  if (baseCategory === 'energy' && energyType) {
+    return `energy-${energyType}`;
+  }
+  const primary = inferPrimaryCategory(card);
+  if (primary === 'trainer') {
+    const inferred = inferTrainerSubtype(card);
+    if (inferred && inferred !== 'trainer') {
+      return inferred;
+    }
+    return 'trainer-other';
+  }
+  if (primary === 'energy') {
+    return energyType ? `energy-${energyType}` : 'energy';
+  }
+  return primary || 'pokemon';
+}
+
+function getCategorySortWeight(category) {
+  if (!category) {
+    return CARD_CATEGORY_SORT_PRIORITY.get('trainer') ?? 5;
+  }
+  return CARD_CATEGORY_SORT_PRIORITY.get(category) ?? (category.startsWith('trainer') ? 5 : 6);
+}
+
+function sortItemsForDisplay(items) {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  const decorated = items.map((card, index) => {
+    const displayCategory = deriveDisplayCategory(card);
+    const weight = getCategorySortWeight(displayCategory);
+    const rank = Number.isFinite(card?.rank) ? Number(card.rank) : index;
+    const usage = getUsagePercent(card);
+    return {
+      card,
+      displayCategory,
+      weight,
+      rank,
+      usage,
+      index
+    };
+  });
+
+  decorated.sort((left, right) => {
+    if (left.weight !== right.weight) {
+      return left.weight - right.weight;
+    }
+    if (left.rank !== right.rank) {
+      return left.rank - right.rank;
+    }
+    if (right.usage !== left.usage) {
+      return right.usage - left.usage;
+    }
+    const leftName = toLower(left.card?.name);
+    const rightName = toLower(right.card?.name);
+    if (leftName && rightName && leftName !== rightName) {
+      return leftName.localeCompare(rightName);
+    }
+    return left.index - right.index;
+  });
+
+  return decorated.map(entry => {
+    if (!entry.card) {
+      return entry.card;
+    }
+    if (entry.card.displayCategory === entry.displayCategory) {
+      return entry.card;
+    }
+    return { ...entry.card, displayCategory: entry.displayCategory };
+  });
 }
 
 function syncGranularityOutput(threshold) {
@@ -345,6 +735,270 @@ function populateCardDropdowns() {
   });
 }
 
+function resolveCardPrintInfo(card) {
+  let setCode = typeof card?.set === 'string' ? card.set.trim().toUpperCase() : '';
+  let numberValue = typeof card?.number === 'string' || typeof card?.number === 'number' ? card.number : '';
+
+  if ((!setCode || !numberValue) && typeof card?.uid === 'string') {
+    const segments = card.uid.split('::');
+    if (segments.length >= 3) {
+      if (!setCode) {
+        setCode = segments[1].trim().toUpperCase();
+      }
+      if (!numberValue) {
+        numberValue = segments[2].trim();
+      }
+    }
+  }
+
+  return {
+    set: setCode,
+    number: formatTcgliveCardNumber(numberValue)
+  };
+}
+
+function pickCommonDistEntry(card) {
+  if (!card || !Array.isArray(card.dist) || card.dist.length === 0) {
+    return null;
+  }
+
+  return card.dist.reduce((best, candidate) => {
+    if (!candidate) {
+      return best;
+    }
+    if (!best) {
+      return candidate;
+    }
+
+    const bestPercent = Number(best.percent) || 0;
+    const candidatePercent = Number(candidate.percent) || 0;
+    if (candidatePercent !== bestPercent) {
+      return candidatePercent > bestPercent ? candidate : best;
+    }
+
+    const bestPlayers = Number(best.players) || 0;
+    const candidatePlayers = Number(candidate.players) || 0;
+    if (candidatePlayers !== bestPlayers) {
+      return candidatePlayers > bestPlayers ? candidate : best;
+    }
+
+    const bestCopies = Number(best.copies) || 0;
+    const candidateCopies = Number(candidate.copies) || 0;
+    if (candidateCopies !== bestCopies) {
+      return candidateCopies > bestCopies ? candidate : best;
+    }
+
+    return best;
+  }, null);
+}
+
+function buildSkeletonExportEntries(items) {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  return items.reduce((entries, item) => {
+    const mostCommon = pickCommonDistEntry(item);
+    const copies = Number(mostCommon?.copies) || 0;
+    if (copies <= 0) {
+      return entries;
+    }
+
+    const name = typeof item?.name === 'string' ? item.name.trim() : '';
+    if (!name) {
+      return entries;
+    }
+
+    const printInfo = resolveCardPrintInfo(item);
+    const primaryCategory = inferPrimaryCategory(item);
+    const normalizedCategory = ['pokemon', 'trainer', 'energy'].includes(primaryCategory) ? primaryCategory : 'pokemon';
+
+    entries.push({
+      name,
+      copies,
+      set: printInfo.set,
+      number: printInfo.number,
+      primaryCategory: normalizedCategory
+    });
+    return entries;
+  }, /** @type {Array<{name:string,copies:number,set:string,number:string,primaryCategory:string}>} */ ([]));
+}
+
+function buildTcgliveExportString(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return '';
+  }
+
+  const sections = {
+    pokemon: /** @type {typeof entries} */ ([]),
+    trainer: /** @type {typeof entries} */ ([]),
+    energy: /** @type {typeof entries} */ ([])
+  };
+
+  entries.forEach(entry => {
+    if (!entry || !Number.isFinite(entry.copies) || entry.copies <= 0) {
+      return;
+    }
+    const key = entry.primaryCategory === 'trainer'
+      ? 'trainer'
+      : entry.primaryCategory === 'energy'
+        ? 'energy'
+        : 'pokemon';
+    sections[key].push(entry);
+  });
+
+  const lines = [];
+
+  TCG_LIVE_SECTION_ORDER.forEach(({ key, label }) => {
+    const cards = sections[key];
+    if (!cards || cards.length === 0) {
+      return;
+    }
+    const sectionTotal = cards.reduce((total, card) => total + card.copies, 0);
+    lines.push(`${label}: ${sectionTotal}`);
+    cards.forEach(card => {
+      const parts = [String(card.copies), card.name];
+      if (card.set) {
+        parts.push(card.set);
+      }
+      if (card.number) {
+        parts.push(card.number);
+      }
+      lines.push(parts.join(' '));
+    });
+    lines.push('');
+  });
+
+  while (lines.length > 0 && lines[lines.length - 1] === '') {
+    lines.pop();
+  }
+
+  return lines.join('\n');
+}
+
+function updateSkeletonExportStatus(message, tone) {
+  if (!elements.skeletonExportStatus) {
+    return;
+  }
+  if (!message) {
+    elements.skeletonExportStatus.textContent = '';
+    elements.skeletonExportStatus.hidden = true;
+    elements.skeletonExportStatus.removeAttribute('data-tone');
+    return;
+  }
+  elements.skeletonExportStatus.textContent = message;
+  elements.skeletonExportStatus.hidden = false;
+  if (tone) {
+    elements.skeletonExportStatus.dataset.tone = tone;
+  } else {
+    elements.skeletonExportStatus.removeAttribute('data-tone');
+  }
+}
+
+function syncSkeletonExportState() {
+  if (!elements.skeletonExportButton) {
+    return;
+  }
+
+  const hasCards = state.skeleton.exportEntries.length > 0;
+  elements.skeletonExportButton.disabled = !hasCards;
+  if (!hasCards) {
+    updateSkeletonExportStatus('');
+  }
+}
+
+function attemptExecCommandCopy(text) {
+  if (!globalThis.document || typeof globalThis.document.createElement !== 'function') {
+    return false;
+  }
+  try {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-1000px';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const success = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return success;
+  } catch (error) {
+    logger.warn('execCommand clipboard copy failed', error);
+    return false;
+  }
+}
+
+async function copyDecklistToClipboard(text) {
+  const clipboard = globalThis.navigator?.clipboard;
+  if (clipboard?.writeText) {
+    try {
+      await clipboard.writeText(text);
+      return 'clipboard';
+    } catch (error) {
+      logger.warn('navigator.clipboard.writeText failed, falling back', error);
+    }
+  }
+
+  if (attemptExecCommandCopy(text)) {
+    return 'execCommand';
+  }
+
+  const promptFn = typeof globalThis.window?.prompt === 'function' ? globalThis.window.prompt : null;
+  if (promptFn) {
+    const result = promptFn('Copy this TCG Live deck list:', text);
+    if (result !== null) {
+      return 'prompt';
+    }
+  }
+
+  throw new Error('TCGLiveExportCopyCancelled');
+}
+
+async function handleSkeletonExport(event) {
+  event.preventDefault();
+
+  const { exportEntries, plainWarnings } = state.skeleton;
+  if (!Array.isArray(exportEntries) || exportEntries.length === 0) {
+    updateSkeletonExportStatus('No cards are available to export yet.', 'warning');
+    return;
+  }
+
+  const exportText = buildTcgliveExportString(exportEntries);
+  if (!exportText) {
+    updateSkeletonExportStatus('Unable to build the TCG Live export.', 'error');
+    return;
+  }
+
+  state.skeleton.lastExportText = exportText;
+
+  try {
+    const method = await copyDecklistToClipboard(exportText);
+    const hasWarnings = Array.isArray(plainWarnings) && plainWarnings.length > 0;
+    const warningNote = hasWarnings ? ` Warning: ${plainWarnings.join('; ')}` : '';
+    const baseMessage = method === 'prompt'
+      ? 'Deck list ready in a prompt for manual copy.'
+      : 'Copied TCG Live deck list to clipboard.';
+    const tone = hasWarnings ? 'warning' : 'success';
+    updateSkeletonExportStatus(`${baseMessage}${warningNote}`, tone);
+  } catch (error) {
+    logger.warn('TCG Live export cancelled or failed', error);
+    const isCancelled = error instanceof Error && error.message === 'TCGLiveExportCopyCancelled';
+    const message = isCancelled
+      ? 'Export cancelled before copy. Try again when you are ready.'
+      : 'Unable to copy the deck list. Please try again.';
+    updateSkeletonExportStatus(message, 'error');
+  }
+}
+
+function setupSkeletonExport() {
+  if (!elements.skeletonExportButton) {
+    return;
+  }
+  elements.skeletonExportButton.addEventListener('click', handleSkeletonExport);
+  syncSkeletonExportState();
+}
+
 function isAceSpec(cardName) {
   // Common Ace Spec card names - you can expand this list
   const aceSpecKeywords = ['ace spec', 'computer search', 'dowsing machine', 'scramble switch', 'master ball', 'legacy energy', 'prime catcher', 'reboot pod', 'secret box'];
@@ -357,26 +1011,20 @@ function updateSkeletonSummary(items) {
     return;
   }
 
-  // Calculate total count by summing the most frequent count for each card
+  updateSkeletonExportStatus('');
+
+  const exportEntries = buildSkeletonExportEntries(items);
+
   let totalCount = 0;
   let aceSpecCount = 0;
   const aceSpecCards = [];
 
-  items.forEach(item => {
-    if (item.dist && item.dist.length > 0) {
-      // Find the distribution entry with the highest percentage
-      const mostFrequent = item.dist.reduce((max, current) => {
-        if (current.percent > max.percent) {
-          return current;
-        }
-        return max;
-      });
-      totalCount += mostFrequent.copies;
-
-      // Check if this is an Ace Spec card
-      if (isAceSpec(item.name)) {
-        aceSpecCount += mostFrequent.copies;
-        aceSpecCards.push(item.name);
+  exportEntries.forEach(entry => {
+    totalCount += entry.copies;
+    if (isAceSpec(entry.name)) {
+      aceSpecCount += entry.copies;
+      if (!aceSpecCards.includes(entry.name)) {
+        aceSpecCards.push(entry.name);
       }
     }
   });
@@ -385,25 +1033,36 @@ function updateSkeletonSummary(items) {
   elements.skeletonCountValue.textContent = String(totalCount);
 
   // Generate warnings
-  const warnings = [];
+  const plainWarnings = [];
+  const displayWarnings = [];
   if (aceSpecCount > 1) {
-    warnings.push(`⚠️ Multiple Ace Spec cards detected: ${aceSpecCards.join(', ')}`);
+    const warningText = `Multiple Ace Spec cards detected: ${aceSpecCards.join(', ')}`;
+    plainWarnings.push(warningText);
+    displayWarnings.push(`${WARNING_ICON} ${warningText}`);
   }
   if (totalCount > 60) {
-    warnings.push(`⚠️ Deck exceeds 60 cards (${totalCount} cards)`);
+    const warningText = `Deck exceeds 60 cards (${totalCount} cards)`;
+    plainWarnings.push(warningText);
+    displayWarnings.push(`${WARNING_ICON} ${warningText}`);
   }
 
   // Update warnings display
-  if (warnings.length > 0) {
-    elements.skeletonWarnings.textContent = warnings.join(' • ');
+  if (displayWarnings.length > 0) {
+    elements.skeletonWarnings.textContent = displayWarnings.join(' \u2022 ');
     elements.skeletonWarnings.hidden = false;
   } else {
     elements.skeletonWarnings.textContent = '';
     elements.skeletonWarnings.hidden = true;
   }
 
-  // Show the summary
   elements.skeletonSummary.hidden = false;
+
+  state.skeleton.totalCards = totalCount;
+  state.skeleton.exportEntries = exportEntries;
+  state.skeleton.plainWarnings = plainWarnings;
+  state.skeleton.displayWarnings = displayWarnings;
+
+  syncSkeletonExportState();
 }
 
 function renderCards() {
@@ -416,14 +1075,15 @@ function renderCards() {
     ? state.thresholdPercent
     : GRANULARITY_DEFAULT_PERCENT;
   const visibleItems = filterItemsByThreshold(state.items, threshold);
+  const sortedVisibleItems = sortItemsForDisplay(visibleItems);
 
   const grid = document.getElementById('grid');
   if (grid) {
     grid._visibleRows = 24;
   }
-  render(visibleItems, state.overrides, RENDER_COMPACT_OPTIONS);
+  render(sortedVisibleItems, state.overrides, RENDER_COMPACT_OPTIONS);
   syncGranularityOutput(threshold);
-  updateSkeletonSummary(visibleItems);
+  updateSkeletonSummary(sortedVisibleItems);
   requestAnimationFrame(() => {
     updateLayout();
   });
@@ -519,7 +1179,7 @@ async function applyFilters() {
   }
 
   const comboLabel = describeFilters(includeId, excludeId);
-  updateFilterMessage(`Crunching the numbers for decks ${comboLabel}…`, 'info');
+  updateFilterMessage(`Crunching the numbers for decks ${comboLabel}...`, 'info');
 
   const requestKey = getFilterKey(includeId, excludeId);
 
@@ -776,7 +1436,7 @@ async function initialize() {
   } catch (error) {
     logger.exception('Failed to load archetype detail', error);
     toggleLoading(false);
-    showError('We couldn’t load that archetype.');
+    showError('We couldn\'t load that archetype.');
     setPageState('error');
   }
 }
@@ -789,5 +1449,6 @@ window.addEventListener('resize', () => {
 
 setupGranularityListeners();
 setupFilterListeners();
+setupSkeletonExport();
 
 initialize();
