@@ -42,7 +42,7 @@ class StorageManager {
   static get(storageKey) {
     const config = STORAGE_CONFIG[storageKey];
     if (!config) {
-      throw new AppError(`Unknown storage key: ${storageKey}`, ErrorTypes.VALIDATION);
+      throw new AppError(ErrorTypes.VALIDATION, `Unknown storage key: ${storageKey}`);
     }
 
     return safeSync(() => {
@@ -67,7 +67,7 @@ class StorageManager {
   static set(storageKey, data) {
     const config = STORAGE_CONFIG[storageKey];
     if (!config) {
-      throw new AppError(`Unknown storage key: ${storageKey}`, ErrorTypes.VALIDATION);
+      throw new AppError(ErrorTypes.VALIDATION, `Unknown storage key: ${storageKey}`);
     }
 
     return safeSync(() => {
@@ -86,7 +86,7 @@ class StorageManager {
   static remove(storageKey) {
     const config = STORAGE_CONFIG[storageKey];
     if (!config) {
-      throw new AppError(`Unknown storage key: ${storageKey}`, ErrorTypes.VALIDATION);
+      throw new AppError(ErrorTypes.VALIDATION, `Unknown storage key: ${storageKey}`);
     }
 
     return safeSync(() => {

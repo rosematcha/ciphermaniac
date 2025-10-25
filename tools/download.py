@@ -14,10 +14,241 @@ from itertools import product
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import sys
 import shutil
+from pathlib import Path
+import unicodedata
+import atexit
 
 LIMITLESS_BASE_URL = "https://play.limitlesstcg.com"
 LIMITLESS_LABS_BASE_URL = "https://labs.limitlesstcg.com"
 _LIMITLESS_ARCHETYPE_CACHE = None
+
+CARD_METADATA_FILE = Path(__file__).resolve().parent / "card_categories.json"
+_CARD_METADATA = {"version": 1, "cards": {}}
+_CARD_METADATA_DIRTY = False
+
+_TRAINER_TYPE_CHOICES = {
+    's': 'supporter',
+    'i': 'item',
+    't': 'tool',
+    'd': 'stadium',
+    'o': 'other'
+}
+
+_ENERGY_TYPE_CHOICES = {
+    'b': 'basic',
+    's': 'special'
+}
+
+
+def _compose_display_category(category, trainer_type=None, energy_type=None):
+    base = (category or '').strip().lower()
+    if not base:
+        return ''
+    if base == 'trainer' and trainer_type:
+        return f"trainer-{trainer_type.strip().lower()}"
+    if base == 'energy' and energy_type:
+        return f"energy-{energy_type.strip().lower()}"
+    return base
+
+
+def _normalize_card_key(name):
+    if not name:
+        return ''
+    normalized = unicodedata.normalize('NFKC', name)
+    normalized = normalized.replace('’', "'").replace('“', '"').replace('”', '"')
+    normalized = re.sub(r'\s+', ' ', normalized)
+    return normalized.strip().lower()
+
+
+def _load_card_metadata():
+    global _CARD_METADATA
+    if not CARD_METADATA_FILE.exists():
+        _CARD_METADATA = {"version": 1, "cards": {}}
+        return
+    try:
+        with CARD_METADATA_FILE.open('r', encoding='utf-8') as handle:
+            raw = json.load(handle)
+        if not isinstance(raw, dict):
+            raise ValueError("metadata root must be an object")
+        cards_raw = raw.get('cards')
+        if not isinstance(cards_raw, dict):
+            cards_raw = {}
+        normalized_cards = {}
+        for key, meta in cards_raw.items():
+            if not isinstance(meta, dict):
+                continue
+            display_name = meta.get('name') or key
+            category = (meta.get('category') or '').strip().lower() or None
+            trainer_type = (meta.get('trainerType') or '').strip().lower() or None
+            energy_type = (meta.get('energyType') or '').strip().lower() or None
+            norm_key = _normalize_card_key(display_name)
+            normalized_cards[norm_key] = {
+                "name": display_name,
+                "category": category,
+                "trainerType": trainer_type,
+                "energyType": energy_type,
+                "updatedAt": meta.get('updatedAt')
+            }
+        _CARD_METADATA = {"version": int(raw.get('version') or 1), "cards": normalized_cards}
+    except Exception as error:
+        print(f"Warning: Failed to load card metadata ({CARD_METADATA_FILE}): {error}")
+        _CARD_METADATA = {"version": 1, "cards": {}}
+
+
+def _serialize_card_metadata():
+    cards_out = {}
+    for key, meta in _CARD_METADATA.get('cards', {}).items():
+        if not isinstance(meta, dict):
+            continue
+        entry = {
+            "name": meta.get("name") or key,
+            "category": (meta.get("category") or '').strip().lower() or None
+        }
+        if meta.get("trainerType"):
+            entry["trainerType"] = meta["trainerType"]
+        if meta.get("energyType"):
+            entry["energyType"] = meta["energyType"]
+        if meta.get("updatedAt"):
+            entry["updatedAt"] = meta["updatedAt"]
+        cards_out[key] = entry
+    return {"version": _CARD_METADATA.get("version", 1), "cards": cards_out}
+
+
+def _save_card_metadata(force=False):
+    global _CARD_METADATA_DIRTY
+    if not (_CARD_METADATA_DIRTY or force):
+        return
+    try:
+        CARD_METADATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+        payload = _serialize_card_metadata()
+        with CARD_METADATA_FILE.open('w', encoding='utf-8') as handle:
+            json.dump(payload, handle, indent=2, sort_keys=True)
+        _CARD_METADATA_DIRTY = False
+    except Exception as error:
+        print(f"Warning: Failed to save card metadata ({CARD_METADATA_FILE}): {error}")
+
+
+def _get_card_metadata_entry(name):
+    key = _normalize_card_key(name)
+    meta = _CARD_METADATA.get('cards', {}).get(key)
+    if not meta:
+        return None
+    category = (meta.get('category') or '').strip().lower() or None
+    trainer_type = (meta.get('trainerType') or '').strip().lower() or None
+    energy_type = (meta.get('energyType') or '').strip().lower() or None
+    display_category = _compose_display_category(category, trainer_type, energy_type)
+    result = {
+        "name": meta.get("name") or name,
+        "category": category,
+        "trainerType": trainer_type,
+        "energyType": energy_type,
+        "displayCategory": display_category
+    }
+    if meta.get('updatedAt'):
+        result['updatedAt'] = meta['updatedAt']
+    return result
+
+
+def _update_card_metadata(name, category=None, trainer_type=None, energy_type=None):
+    global _CARD_METADATA_DIRTY
+    key = _normalize_card_key(name)
+    entry = _CARD_METADATA.setdefault('cards', {}).get(key, {}).copy()
+    entry['name'] = name
+    if category:
+        entry['category'] = category.strip().lower()
+    if trainer_type:
+        entry['trainerType'] = trainer_type.strip().lower()
+    elif entry.get('trainerType') and entry.get('category') != 'trainer':
+        entry.pop('trainerType', None)
+    if energy_type:
+        entry['energyType'] = energy_type.strip().lower()
+    elif entry.get('energyType') and entry.get('category') != 'energy':
+        entry.pop('energyType', None)
+    entry['updatedAt'] = datetime.now(timezone.utc).isoformat()
+    _CARD_METADATA.setdefault('cards', {})[key] = entry
+    _CARD_METADATA_DIRTY = True
+    _save_card_metadata()
+
+
+def _prompt_choice(label, choices, default=None):
+    formatted_options = ', '.join(f"[{key.upper()}]{value[1:]}" if value.lower().startswith(key) else f"[{key.upper()}]{value}" for key, value in choices.items())
+    prompt = f"{label} ({formatted_options}"
+    if default:
+        prompt += f", default {default}"
+    prompt += "): "
+    while True:
+        try:
+            response = input(prompt)
+        except (EOFError, KeyboardInterrupt):
+            response = ''
+        response = (response or '').strip().lower()
+        if not response and default:
+            return default
+        if response in choices:
+            return choices[response]
+        for key, value in choices.items():
+            if response == value.lower():
+                return value
+        print("  Please choose one of the available options.")
+
+
+def _prompt_trainer_type(card_name):
+    print(f"\nAssign trainer subtype for card: {card_name}")
+    print("  Options: Supporter, Item, Tool, Stadium, Other")
+    value = _prompt_choice("Enter trainer subtype", _TRAINER_TYPE_CHOICES)
+    return value.lower()
+
+
+def _prompt_energy_type(card_name):
+    print(f"\nAssign energy subtype for card: {card_name}")
+    print("  Options: Basic, Special")
+    value = _prompt_choice("Enter energy subtype", _ENERGY_TYPE_CHOICES, default='basic')
+    return value.lower()
+
+
+def _ensure_card_metadata(name, base_category):
+    normalized_category = (base_category or '').strip().lower() or 'pokemon'
+    entry = _get_card_metadata_entry(name)
+
+    if normalized_category == 'trainer':
+        trainer_type = entry.get('trainerType') if entry else None
+        if not trainer_type:
+            trainer_type = _prompt_trainer_type(name)
+            _update_card_metadata(name, category='trainer', trainer_type=trainer_type)
+        else:
+            if not entry.get('category'):
+                _update_card_metadata(name, category='trainer', trainer_type=trainer_type)
+        entry = _get_card_metadata_entry(name)
+    elif normalized_category == 'energy':
+        energy_type = entry.get('energyType') if entry else None
+        if not energy_type:
+            energy_type = _prompt_energy_type(name)
+            _update_card_metadata(name, category='energy', energy_type=energy_type)
+        else:
+            if not entry.get('category'):
+                _update_card_metadata(name, category='energy', energy_type=energy_type)
+        entry = _get_card_metadata_entry(name)
+    else:
+        if not entry or not entry.get('category'):
+            _update_card_metadata(name, category=normalized_category)
+            entry = _get_card_metadata_entry(name)
+
+    if not entry:
+        entry = {"name": name, "category": normalized_category}
+
+    category = entry.get('category') or normalized_category
+    trainer_type = entry.get('trainerType')
+    energy_type = entry.get('energyType')
+    entry['displayCategory'] = _compose_display_category(category, trainer_type, energy_type)
+    return entry
+
+
+def _flush_card_metadata():
+    _save_card_metadata(force=True)
+
+
+_load_card_metadata()
+atexit.register(_flush_card_metadata)
 
 # --- UTILITY FUNCTIONS ---
 
@@ -693,13 +924,22 @@ def extract_all_decklists(soup, anonymize=False):
             if not set_acronym or not number:
                 print(f"Warning: Card '{card_div.find('span', class_='card-name').text.strip()}' missing set ({set_acronym}) or number ({number}) identifiers")
 
-            cards.append({
+            card_name = card_div.find('span', class_='card-name').text.strip()
+            category_meta = _ensure_card_metadata(card_name, category)
+            card_entry = {
                 "count": int(card_div.find('span', class_='card-count').text.strip()),
-                "name": card_div.find('span', class_='card-name').text.strip(),
+                "name": card_name,
                 "set": set_acronym,
                 "number": number,
-                "category": category
-            })
+                "category": category_meta.get('category') or category
+            }
+            if category_meta.get('trainerType'):
+                card_entry['trainerType'] = category_meta['trainerType']
+            if category_meta.get('energyType'):
+                card_entry['energyType'] = category_meta['energyType']
+            if category_meta.get('displayCategory'):
+                card_entry['displayCategory'] = category_meta['displayCategory']
+            cards.append(card_entry)
 
         # Create a canonical string for hashing by sorting cards
         canonical_card_list = sorted([f"{c['count']}x{c['name']}{c['set']}{c['number']}" for c in cards])
@@ -832,13 +1072,21 @@ def extract_rk9_decklist(soup):
             if not set_code or not normalized_number:
                 print(f"    Warning: Card '{name}' missing set/number identifiers (set='{set_code}', number='{normalized_number}')")
 
-            cards.append({
+            meta = _ensure_card_metadata(name, category)
+            card_entry = {
                 "count": quantity,
                 "name": name,
                 "set": set_code,
                 "number": normalized_number,
-                "category": category
-            })
+                "category": meta.get('category') or category
+            }
+            if meta.get('trainerType'):
+                card_entry['trainerType'] = meta['trainerType']
+            if meta.get('energyType'):
+                card_entry['energyType'] = meta['energyType']
+            if meta.get('displayCategory'):
+                card_entry['displayCategory'] = meta['displayCategory']
+            cards.append(card_entry)
 
     return cards
 
@@ -1141,7 +1389,16 @@ def generate_report_json(deck_list, deck_total, all_decks_for_variants):
         per_deck_seen_meta = {}
         for card in deck["cards"]:
             name = card.get("name", "")
-            cat = card.get("category")
+            cat = (card.get("category") or "").lower() or None
+            trainer_type = (card.get("trainerType") or "").lower() or None
+            energy_type = (card.get("energyType") or "").lower() or None
+            display_category = card.get("displayCategory") or _compose_display_category(cat, trainer_type, energy_type)
+            category_payload = {
+                "category": cat,
+                "trainerType": trainer_type,
+                "energyType": energy_type,
+                "displayCategory": display_category
+            }
             set_code = card.get("set", "")
             number = card.get("number", "")
             sc, num = canonicalize_variant(set_code, number)
@@ -1150,24 +1407,46 @@ def generate_report_json(deck_list, deck_total, all_decks_for_variants):
                 uid = f"{name}::{sc}::{num}"
                 display = name
                 per_deck_counts[uid] += int(card.get('count', 0))
-                per_deck_seen_meta[uid] = {"set": sc, "number": num}
-                if cat:
-                    uid_category[uid] = cat
+                per_deck_seen_meta[uid] = {
+                    "set": sc,
+                    "number": num,
+                    "category": cat,
+                    "trainerType": trainer_type,
+                    "energyType": energy_type,
+                    "displayCategory": display_category
+                }
+                if cat or trainer_type or energy_type:
+                    existing = uid_category.get(uid)
+                    if not existing or not existing.get("displayCategory"):
+                        uid_category[uid] = category_payload
             else:
                 # Fallback for cards without set/number identifiers
                 uid = name
                 display = name
                 per_deck_counts[uid] += int(card.get('count', 0))
-                if cat:
-                    uid_category[uid] = cat
+                if cat or trainer_type or energy_type:
+                    existing = uid_category.get(uid)
+                    if not existing or not existing.get("displayCategory"):
+                        uid_category[uid] = category_payload
+                per_deck_seen_meta[uid] = {
+                    "set": sc,
+                    "number": num,
+                    "category": cat,
+                    "trainerType": trainer_type,
+                    "energyType": energy_type,
+                    "displayCategory": display_category
+                }
         # After scanning deck, record one entry per uid
         for uid, tot in per_deck_counts.items():
             card_data[uid].append(tot)
             if uid not in name_casing:
                 # Display is base name (before ::)
                 name_casing[uid] = uid.split('::',1)[0] if '::' in uid else uid
+            meta_payload = per_deck_seen_meta.get(uid, uid_meta.get(uid, {}))
             if '::' in uid:
-                uid_meta[uid] = per_deck_seen_meta.get(uid, uid_meta.get(uid, {}))
+                uid_meta[uid] = meta_payload or {}
+            elif meta_payload:
+                uid_meta.setdefault(uid, meta_payload)
         
         for lname, count in cards_in_this_deck:
             card_data[lname].append(count)
@@ -1184,15 +1463,46 @@ def generate_report_json(deck_list, deck_total, all_decks_for_variants):
             "total": deck_total, "pct": round((found_count / deck_total) * 100, 2),
             "dist": [{"copies": c, "players": p, "percent": round((p / found_count) * 100, 2)} for c, p in sorted(dist_counter.items())]
         }
+        meta = uid_meta.get(uid) or {}
         # Include variant metadata for Pokémon
         if '::' in uid:
-            meta = uid_meta.get(uid) or {}
             card_obj["set"] = meta.get("set")
             card_obj["number"] = meta.get("number")
             card_obj["uid"] = uid
-        # Include category if available
-        if uid in uid_category:
-            card_obj["category"] = uid_category[uid]
+        # Include category details if available
+        category_info = uid_category.get(uid)
+        if isinstance(category_info, dict):
+            base_category = category_info.get("category") or meta.get("category")
+            if base_category:
+                card_obj["category"] = base_category
+            if category_info.get("trainerType"):
+                card_obj["trainerType"] = category_info["trainerType"]
+            if category_info.get("energyType"):
+                card_obj["energyType"] = category_info["energyType"]
+            display_category = category_info.get("displayCategory") or _compose_display_category(
+                base_category,
+                category_info.get("trainerType"),
+                category_info.get("energyType")
+            )
+            if display_category:
+                card_obj["displayCategory"] = display_category
+        elif category_info:
+            card_obj["category"] = category_info
+        else:
+            base_category = meta.get("category")
+            if base_category:
+                card_obj["category"] = base_category
+            if meta.get("trainerType"):
+                card_obj["trainerType"] = meta["trainerType"]
+            if meta.get("energyType"):
+                card_obj["energyType"] = meta["energyType"]
+            display_category = meta.get("displayCategory") or _compose_display_category(
+                base_category,
+                meta.get("trainerType"),
+                meta.get("energyType")
+            )
+            if display_category:
+                card_obj["displayCategory"] = display_category
         report_items.append(card_obj)
         
     return {"deckTotal": deck_total, "items": report_items}
@@ -2648,13 +2958,21 @@ def _parse_labs_decklist_text(deck_text):
                 category = 'energy'
             else:
                 category = 'pokemon'
-        cards.append({
+        meta = _ensure_card_metadata(name, category)
+        card_entry = {
             "count": count,
             "name": name,
             "set": set_code,
             "number": number,
-            "category": category
-        })
+            "category": meta.get('category') or category
+        }
+        if meta.get('trainerType'):
+            card_entry['trainerType'] = meta['trainerType']
+        if meta.get('energyType'):
+            card_entry['energyType'] = meta['energyType']
+        if meta.get('displayCategory'):
+            card_entry['displayCategory'] = meta['displayCategory']
+        cards.append(card_entry)
     return cards
 
 

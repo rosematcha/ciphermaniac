@@ -1,4 +1,3 @@
-/* global document, window, Element */
 /**
  * Reusable header component
  */
@@ -56,7 +55,7 @@ export function createHeader(options = {}) {
     });
 
     nav.addEventListener('click', event => {
-      const target = event.target;
+      const { target } = event;
       if (target instanceof Element && target.closest('.nav-link')) {
         closeNav();
       }
@@ -69,7 +68,8 @@ export function createHeader(options = {}) {
       }
     });
 
-    const mq = window.matchMedia('(min-width: 721px)');
+    const { matchMedia } = window;
+    const mq = matchMedia('(min-width: 721px)');
     const handleChange = event => {
       if (event.matches) {
         closeNav();

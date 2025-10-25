@@ -24,7 +24,8 @@ export const CONFIG = Object.freeze({
     R2_BASE: 'https://r2.ciphermaniac.com',
     TIMEOUT_MS: 10000,
     RETRY_ATTEMPTS: 3,
-    RETRY_DELAY_MS: 1000
+    RETRY_DELAY_MS: 1000,
+    JSON_CACHE_TTL_MS: 1000 * 60 * 5 // 5 minutes
   },
 
   // Cache configuration
@@ -93,6 +94,7 @@ function validateConfig(config) {
     assert(typeof config.API.R2_BASE === 'string', 'R2_BASE must be string');
   }
   assert(typeof config.API.TIMEOUT_MS === 'number' && config.API.TIMEOUT_MS > 0, 'TIMEOUT_MS must be positive number');
+  assert(typeof config.API.JSON_CACHE_TTL_MS === 'number' && config.API.JSON_CACHE_TTL_MS > 0, 'JSON_CACHE_TTL_MS must be positive number');
 
   // Validate archetypes
   assert(Array.isArray(config.ARCHETYPES), 'ARCHETYPES must be array');

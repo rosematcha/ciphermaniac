@@ -802,10 +802,35 @@ function makeCardElement(cardData, useSm, overrides, renderFlags = {}) {
 // Extract card attributes setup
 function setupCardAttributes(card, cardData) {
   // eslint-disable-next-line no-param-reassign
-  card.dataset.name = cardData.name.toLowerCase();
-  if (cardData.category) {
+  if (cardData.name) {
+    card.dataset.name = cardData.name.toLowerCase();
+  } else {
+    delete card.dataset.name;
+  }
+  const displayCategory = cardData.displayCategory || cardData.category;
+  if (displayCategory) {
     // eslint-disable-next-line no-param-reassign
-    card.dataset.category = cardData.category;
+    card.dataset.category = displayCategory;
+  } else {
+    delete card.dataset.category;
+  }
+  if (cardData.trainerType) {
+    // eslint-disable-next-line no-param-reassign
+    card.dataset.trainerType = cardData.trainerType;
+  } else {
+    delete card.dataset.trainerType;
+  }
+  if (cardData.energyType) {
+    // eslint-disable-next-line no-param-reassign
+    card.dataset.energyType = cardData.energyType;
+  } else {
+    delete card.dataset.energyType;
+  }
+  if (cardData.displayCategory && cardData.category && cardData.displayCategory !== cardData.category) {
+    // eslint-disable-next-line no-param-reassign
+    card.dataset.categoryPrimary = cardData.category;
+  } else {
+    delete card.dataset.categoryPrimary;
   }
   if (cardData.uid) {
     // eslint-disable-next-line no-param-reassign

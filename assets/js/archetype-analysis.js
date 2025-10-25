@@ -76,7 +76,7 @@ const deckThumbnailConfig = {
   Alakazam: { cardSlug: 'Alakazam_ex', set: 'MEG', number: '056', alt: 'Alakazam ex' },
   'Alakazam Dudunsparce': { cardSlug: 'Alakazam_ex', set: 'MEG', number: '056', alt: 'Alakazam ex' },
   Lucario: { cardSlug: 'Lucario_ex', set: 'MEG', number: '077', alt: 'Lucario ex' },
-  'Lucario Hariyama': { cardSlug: 'Lucario_ex', set: 'MEG', number: '077', alt: 'Lucario ex' },
+  'Lucario Hariyama': { cardSlug: 'Mega_Lucario_ex', set: 'MEG', number: '077', alt: 'Mega Lucario ex' },
   Slowking: { cardSlug: 'Slowking', set: 'SCR', number: '058', alt: 'Slowking' },
   Conkeldurr: { cardSlug: 'Conkeldurr', set: 'TWM', number: '105', alt: 'Conkeldurr' },
   Crustle: { cardSlug: 'Crustle', set: 'DRI', number: '012', alt: 'Crustle' },

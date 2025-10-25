@@ -59,15 +59,15 @@ class ArchetypeCacheManager {
    * Build the candidate base URLs for an archetype's include-exclude directory
    * @param {string} tournament
    * @param {string} archetypeBase
-    * @returns {string[]}
+   * @returns {string[]}
    */
   static getArchetypeBaseUrls(tournament, archetypeBase) {
     const reportsBaseRaw = typeof CONFIG.API.REPORTS_BASE === 'string' ? CONFIG.API.REPORTS_BASE.trim() : '/reports';
-  const trimmedReportsBase = reportsBaseRaw.replace(/^\/+/, '').replace(/\/+$/, '');
+    const trimmedReportsBase = reportsBaseRaw.replace(/^\/+/, '').replace(/\/+$/, '');
     const r2Base = (CONFIG.API.R2_BASE || '').trim();
     const suffix = `${encodeURIComponent(tournament)}/archetypes/include-exclude/${encodeURIComponent(archetypeBase)}`;
-  /** @type {Set<string>} */
-  const candidates = new Set();
+    /** @type {Set<string>} */
+    const candidates = new Set();
 
     if (r2Base) {
       const normalizedR2Base = r2Base.replace(/\/+$/, '');
@@ -145,8 +145,9 @@ class ArchetypeCacheManager {
             const response = await fetch(url);
             if (!response.ok) {
               throw new AppError(
-                `HTTP ${response.status}: ${response.statusText}`,
                 ErrorTypes.NETWORK,
+                `HTTP ${response.status}: ${response.statusText}`,
+                null,
                 { url, status: response.status }
               );
             }
@@ -170,7 +171,7 @@ class ArchetypeCacheManager {
         this.indexCache.delete(cacheKey);
         const message = lastError?.message || `Failed to fetch index for ${archetypeBase}`;
         logger.warn(message);
-        throw lastError || new AppError(message, ErrorTypes.NETWORK, { tournament, archetypeBase });
+        throw lastError || new AppError(ErrorTypes.NETWORK, message, null, { tournament, archetypeBase });
       } finally {
         this.pendingFetches.delete(cacheKey);
       }
@@ -210,8 +211,9 @@ class ArchetypeCacheManager {
             const response = await fetch(url);
             if (!response.ok) {
               throw new AppError(
-                `HTTP ${response.status}: ${response.statusText}`,
                 ErrorTypes.NETWORK,
+                `HTTP ${response.status}: ${response.statusText}`,
+                null,
                 { url, status: response.status }
               );
             }
@@ -234,7 +236,7 @@ class ArchetypeCacheManager {
         this.subsetCache.delete(cacheKey);
         const message = lastError?.message || `Failed to fetch subset ${subsetId} for ${archetypeBase}`;
         logger.warn(message);
-        throw lastError || new AppError(message, ErrorTypes.NETWORK, {
+        throw lastError || new AppError(ErrorTypes.NETWORK, message, null, {
           tournament,
           archetypeBase,
           subsetId
@@ -273,8 +275,9 @@ class ArchetypeCacheManager {
         filterKey
       });
       throw new AppError(
-        `Filter combination not found: ${filterKey}`,
         ErrorTypes.PARSE,
+        `Filter combination not found: ${filterKey}`,
+        null,
         { filterKey, archetype: archetypeBase }
       );
     }
