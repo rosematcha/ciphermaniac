@@ -7,7 +7,10 @@
 
 /** @typedef {'debug' | 'info' | 'warn' | 'error'} LogLevel */
 
-class Logger {
+/**
+ * Lightweight logger tuned for browser environments with configurable levels.
+ */
+export class Logger {
   /**
    * Constructor initializes logger with default settings
    */
@@ -50,7 +53,7 @@ class Logger {
    * @param {any[]} args
    * @returns {[string, ...any[]]}
    */
-  _format(level, message, args) {
+  static format(level, message, args) {
     try {
       const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
       const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
@@ -68,7 +71,8 @@ class Logger {
   debug(message, ...args) {
     if (this._shouldLog('debug')) {
       // Use console.log for broader support where console.debug may be filtered
-      (console.debug || console.log).apply(console, this._format('debug', message, args));
+      const parts = this.constructor.format('debug', message, args);
+      (console.debug || console.log).apply(console, parts);
     }
   }
 
@@ -78,7 +82,7 @@ class Logger {
    * @param {...any} args
    */
   info(message, ...args) {
-    console.log(...this._format('info', message, args));
+    console.log(...this.constructor.format('info', message, args));
   }
 
   /**
@@ -87,7 +91,7 @@ class Logger {
    * @param {...any} args
    */
   warn(message, ...args) {
-    console.warn(...this._format('warn', message, args));
+    console.warn(...this.constructor.format('warn', message, args));
   }
 
   /**
@@ -96,7 +100,7 @@ class Logger {
    * @param {...any} args
    */
   error(message, ...args) {
-    console.error(...this._format('error', message, args));
+    console.error(...this.constructor.format('error', message, args));
   }
 
   /**

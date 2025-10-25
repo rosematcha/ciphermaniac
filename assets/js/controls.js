@@ -7,6 +7,7 @@ import { render } from './render.js';
 import { logger } from './utils/logger.js';
 import { CONFIG } from './config.js';
 import { getCardPrice } from './api.js';
+import { readSelectedSets, readCardType, normalizeSetCode } from './utils/filterState.js';
 
 /**
  * @typedef {object} SortOption
@@ -49,10 +50,14 @@ export function getComparator(sortKey) {
 function getCurrentFilters() {
   const searchInput = document.getElementById('search');
   const sortSelect = document.getElementById('sort');
+  const selectedSets = readSelectedSets();
+  const cardType = readCardType();
 
   return {
     query: searchInput?.value?.trim()?.toLowerCase() || '',
-    sort: sortSelect?.value || 'percent-desc'
+    sort: sortSelect?.value || 'percent-desc',
+    sets: selectedSets,
+    cardType
   };
 }
 
@@ -105,6 +110,95 @@ function applySearchFilter(items, query) {
 }
 
 /**
+ * Extract all known set codes for a card item.
+ * @param {any} item
+ * @returns {Set<string>}
+ */
+function extractItemSets(item) {
+  const sets = new Set();
+  if (item.set) {
+    sets.add(normalizeSetCode(item.set));
+  }
+  if (typeof item.uid === 'string' && item.uid.includes('::')) {
+    const [, setCode] = item.uid.split('::');
+    if (setCode) {
+      sets.add(normalizeSetCode(setCode));
+    }
+  }
+  return sets;
+}
+
+/**
+ * Check if an item matches the active set filter.
+ * @param {any} item
+ * @param {string[]} activeSets
+ * @returns {boolean}
+ */
+function matchesSetFilter(item, activeSets = []) {
+  if (!Array.isArray(activeSets) || activeSets.length === 0) {
+    return true;
+  }
+  const itemSets = extractItemSets(item);
+  if (itemSets.size === 0) {
+    return false;
+  }
+  return activeSets.some(setCode => itemSets.has(setCode));
+}
+
+/**
+ * Determine whether an item matches the requested card type filter.
+ * @param {any} item
+ * @param {string} cardType
+ * @returns {boolean}
+ */
+function matchesCardType(item, cardType) {
+  if (!cardType || cardType === '__all__' || cardType === 'any') {
+    return true;
+  }
+
+  const category = (item.category || '').toLowerCase();
+  const trainerType = (item.trainerType || '').toLowerCase();
+  const energyType = (item.energyType || '').toLowerCase();
+
+  if (cardType === 'pokemon') {
+    return category === 'pokemon';
+  }
+
+  if (cardType === 'trainer') {
+    return category === 'trainer';
+  }
+
+  if (cardType.startsWith('trainer:')) {
+    const subtype = cardType.split(':')[1];
+    return category === 'trainer' && trainerType === subtype;
+  }
+
+  if (cardType === 'energy') {
+    return category === 'energy';
+  }
+
+  if (cardType.startsWith('energy:')) {
+    const subtype = cardType.split(':')[1];
+    return category === 'energy' && energyType === subtype;
+  }
+
+  return true;
+}
+
+/**
+ * Apply advanced filters (set, type, etc.) to the items list.
+ * @param {any[]} items
+ * @param {{ sets?: string[], cardType?: string }} filters
+ * @returns {any[]}
+ */
+function applyAdvancedFilters(items, filters) {
+  return items.filter(item =>
+    matchesSetFilter(item, filters.sets) &&
+    matchesCardType(item, filters.cardType)
+  );
+}
+
+/**
  * Apply sorting to items
  * @param {any[]} items
  * @param {string} sortKey
@@ -135,6 +229,7 @@ export async function applyFiltersSort(allItems, overrides = {}) {
 
   // Apply filters in sequence
   filtered = applySearchFilter(filtered, filters.query);
+  filtered = applyAdvancedFilters(filtered, filters);
 
   // Enrich with pricing data if needed for sorting
   if (filters.sort.startsWith('price-')) {
@@ -144,7 +239,7 @@ export async function applyFiltersSort(allItems, overrides = {}) {
   // Apply sorting
   const sorted = applySorting(filtered, filters.sort);
 
-  logger.info(`Filtered and sorted: ${allItems.length} → ${sorted.length} items`);
+  logger.info(`Filtered and sorted: ${allItems.length} -> ${sorted.length} items`);
 
   // Render the results
   render(sorted, overrides, {

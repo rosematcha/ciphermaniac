@@ -1,4 +1,5 @@
 import { normalizeCardNumber } from './card/routing.js';
+import { normalizeSetCode } from './utils/filterState.js';
 
 function sanitizePrimary(name) {
   // Normalize and keep Unicode letters/numbers, apostrophes, dashes, underscores; spaces -> underscores
@@ -32,10 +33,6 @@ function teamRocketVariants(name) {
     variants.push(name.replace(/Team Rocket's/gi, 'Team Rockets'));
   }
   return variants;
-}
-
-function normalizeSetCode(value) {
-  return String(value ?? '').toUpperCase().trim();
 }
 
 function appendCandidate(list, base, relative) {

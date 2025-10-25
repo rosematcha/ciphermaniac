@@ -5,45 +5,58 @@
 
 import { CONFIG } from './config.js';
 import { logger } from './utils/logger.js';
-import { AppError, ErrorTypes, withRetry, validateType } from './utils/errorHandler.js';
+import { AppError, ErrorTypes, safeFetch, withRetry, validateType } from './utils/errorHandler.js';
 
 let pricingData = null;
+const jsonCache = new Map();
 
-/**
- * Enhanced fetch with timeout and error handling
- * @param {string} url
- * @param {object} [options]
- * @returns {Promise<Response>}
- */
-async function safeFetch(url, options = {}) {
-  const supportsAbort = (typeof AbortController !== 'undefined');
-  const controller = supportsAbort ? new AbortController() : null;
-  const timeoutId = supportsAbort ? setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS) : null;
+function hasCachedData(entry) {
+  return Object.prototype.hasOwnProperty.call(entry, 'data');
+}
 
-  try {
-    const response = await fetch(url, {
-      ...options,
-      // Only pass signal when supported to avoid ReferenceErrors on older engines
-      ...(controller ? { signal: controller.signal } : {})
-    });
-
-    if (!response.ok) {
-      throw new AppError(
-        `HTTP ${response.status}: ${response.statusText}`,
-        ErrorTypes.NETWORK,
-        { url, status: response.status }
-      );
-    }
-
-    return response;
-  } catch (error) {
-    if (error && (error.name === 'AbortError' || error.code === 20)) {
-      throw new AppError(`Request timeout after ${CONFIG.API.TIMEOUT_MS}ms`, ErrorTypes.NETWORK, { url });
-    }
-    throw error;
-  } finally {
-    if (timeoutId) {clearTimeout(timeoutId);}
+function pruneJsonCache() {
+  if (jsonCache.size <= CONFIG.CACHE.CLEANUP_THRESHOLD) {
+    return;
   }
+
+  const now = Date.now();
+  for (const [key, entry] of jsonCache.entries()) {
+    if (!entry.promise && entry.expiresAt <= now) {
+      jsonCache.delete(key);
+    }
+  }
+
+  if (jsonCache.size <= CONFIG.CACHE.MAX_ENTRIES) {
+    return;
+  }
+
+  const reclaimable = Array.from(jsonCache.entries())
+    .filter(([, entry]) => !entry.promise)
+    .sort((entryA, entryB) => (entryA[1].expiresAt || 0) - (entryB[1].expiresAt || 0));
+
+  for (const [key] of reclaimable) {
+    if (jsonCache.size <= CONFIG.CACHE.MAX_ENTRIES) {
+      break;
+    }
+    jsonCache.delete(key);
+  }
+}
+
+function cacheResolvedJson(cacheKey, data, ttl) {
+  jsonCache.set(cacheKey, { data, expiresAt: Date.now() + ttl });
+  pruneJsonCache();
+}
+
+function cachePendingJson(cacheKey, promise, ttl) {
+  jsonCache.set(cacheKey, { promise, expiresAt: Date.now() + ttl });
+}
+
+export function clearApiCache() {
+  jsonCache.clear();
+}
+
+function fetchWithTimeout(url, options = {}) {
+  return safeFetch(url, { timeout: CONFIG.API.TIMEOUT_MS, ...options });
 }
 
 /**
@@ -58,14 +71,15 @@ async function safeJsonParse(response, url) {
   const text = await response.text();
 
   if (!text.trim()) {
-    throw new AppError('Empty response body', ErrorTypes.PARSE, { url, contentType });
+    throw new AppError(ErrorTypes.PARSE, 'Empty response body', null, { url, contentType });
   }
 
   if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
     const preview = text.slice(0, 100) + (text.length > 100 ? '...' : '');
     throw new AppError(
-      `Expected JSON response but got ${contentType || 'unknown content type'}`,
       ErrorTypes.PARSE,
+      `Expected JSON response but got ${contentType || 'unknown content type'}`,
+      null,
       { url, contentType, preview }
     );
   }
@@ -76,8 +90,9 @@ async function safeJsonParse(response, url) {
     if (error.name === 'SyntaxError') {
       const preview = text.slice(0, 100) + (text.length > 100 ? '...' : '');
       throw new AppError(
-        `Invalid JSON response: ${error.message}`,
         ErrorTypes.PARSE,
+        `Invalid JSON response: ${error.message}`,
+        null,
         { url, contentType, preview }
       );
     }
@@ -92,19 +107,69 @@ async function safeJsonParse(response, url) {
  * @param {string} operation - Description for logging
  * @param {string} expectedType - Expected data type for validation
  * @param {string} [fieldName] - Field name for validation errors
+ * @param {object} [options]
+ * @param {boolean} [options.cache]
+ * @param {string} [options.cacheKey]
+ * @param {number} [options.ttl]
  * @returns {Promise<T>}
  */
-function fetchWithRetry(url, operation, expectedType, fieldName) {
-  return withRetry(async () => {
+function fetchWithRetry(url, operation, expectedType, fieldName, options = {}) {
+  const {
+    cache = false,
+    cacheKey = url,
+    ttl = CONFIG.API.JSON_CACHE_TTL_MS
+  } = options;
+
+  if (cache) {
+    const entry = jsonCache.get(cacheKey);
+    const now = Date.now();
+    if (entry) {
+      if (hasCachedData(entry) && entry.expiresAt > now) {
+        logger.debug(`Cache hit for ${operation}`, { cacheKey });
+        return Promise.resolve(entry.data);
+      }
+      if (entry.promise) {
+        logger.debug(`Awaiting in-flight request for ${operation}`, { cacheKey });
+        return entry.promise;
+      }
+      if (!entry.promise && entry.expiresAt <= now) {
+        jsonCache.delete(cacheKey);
+      }
+    }
+  }
+
+  const loader = async () => {
     logger.debug(`Fetching ${operation}`);
-    const response = await safeFetch(url);
+    const response = await fetchWithTimeout(url);
     const data = await safeJsonParse(response, url);
 
     validateType(data, expectedType, fieldName || operation);
     const count = Array.isArray(data) ? data.length : (data.items?.length || 'unknown');
     logger.info(`Loaded ${operation}`, { count });
     return data;
-  }, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+  };
+
+  const fetchPromise = withRetry(loader, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+
+  if (!cache) {
+    return fetchPromise;
+  }
+
+  const trackedPromise = fetchPromise
+    .then(data => {
+      cacheResolvedJson(cacheKey, data, ttl);
+      return data;
+    })
+    .catch(error => {
+      const entry = jsonCache.get(cacheKey);
+      if (entry && entry.promise === trackedPromise) {
+        jsonCache.delete(cacheKey);
+      }
+      throw error;
+    });
+
+  cachePendingJson(cacheKey, trackedPromise, ttl);
+  return trackedPromise;
 }
 
 /**
@@ -113,7 +178,7 @@ function fetchWithRetry(url, operation, expectedType, fieldName) {
  */
 export function fetchTournamentsList() {
   const url = `${CONFIG.API.REPORTS_BASE}/tournaments.json`;
-  return fetchWithRetry(url, 'tournaments list', 'array', 'tournaments list');
+  return fetchWithRetry(url, 'tournaments list', 'array', 'tournaments list', { cache: true });
 }
 
 /**
@@ -123,7 +188,13 @@ export function fetchTournamentsList() {
  */
 export function fetchReport(tournament) {
   const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/master.json`;
-  return fetchWithRetry(url, `report for ${tournament}`, 'object', 'tournament report');
+  return fetchWithRetry(
+    url,
+    `report for ${tournament}`,
+    'object',
+    'tournament report',
+    { cache: true }
+  );
 }
 
 /**
@@ -132,13 +203,15 @@ export function fetchReport(tournament) {
  */
 export async function fetchOverrides() {
   try {
-    logger.debug('Fetching thumbnail overrides');
     const url = '/assets/overrides.json';
-    const response = await safeFetch(url);
-    const data = await safeJsonParse(response, url);
-
-    validateType(data, 'object', 'overrides');
-    logger.info(`Loaded ${Object.keys(data).length} thumbnail overrides`);
+    const data = await fetchWithRetry(
+      url,
+      'thumbnail overrides',
+      'object',
+      'thumbnail overrides',
+      { cache: true, cacheKey: 'thumbnail-overrides' }
+    );
+    logger.debug(`Loaded ${Object.keys(data).length} thumbnail overrides`);
     return data;
   } catch (error) {
     logger.warn('Failed to load overrides, using empty object', error.message);
@@ -153,7 +226,54 @@ export async function fetchOverrides() {
  */
 export function fetchArchetypesList(tournament) {
   const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/index.json`;
-  return fetchWithRetry(url, `archetypes for ${tournament}`, 'array', 'archetypes list');
+  return fetchWithRetry(
+    url,
+    `archetypes for ${tournament}`,
+    'array',
+    'archetypes list',
+    { cache: true }
+  );
+}
+
+/**
+ * Fetch archetype JSON payload with common retry/error handling
+ * @param {object} options
+ * @param {string} options.url
+ * @param {string} options.validateLabel
+ * @param {(data: object, context: { isRetry: boolean }) => void} [options.onSuccess]
+ * @param {{ message: string, meta?: object }} [options.notFoundLog]
+ * @param {boolean} [options.logOnRetry] - Defaults to true.
+ * @returns {Promise<object>}
+ */
+async function fetchArchetypeData({
+  url,
+  validateLabel,
+  onSuccess,
+  notFoundLog,
+  logOnRetry = true
+}) {
+  const attempt = async isRetry => {
+    const response = await fetchWithTimeout(url);
+    const data = await safeJsonParse(response, url);
+    validateType(data, 'object', validateLabel);
+    if (onSuccess && (!isRetry || logOnRetry)) {
+      onSuccess(data, { isRetry });
+    }
+    return data;
+  };
+
+  try {
+    return await attempt(false);
+  } catch (error) {
+    if (error instanceof AppError && error.context?.status === 404) {
+      if (notFoundLog) {
+        logger.debug(notFoundLog.message, notFoundLog.meta);
+      }
+      throw error;
+    }
+
+    return withRetry(() => attempt(true), CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+  }
 }
 
 /**
@@ -163,33 +283,21 @@ export function fetchArchetypesList(tournament) {
  * @returns {Promise<object>}
  * @throws {AppError}
  */
-export async function fetchArchetypeReport(tournament, archetypeBase) {
+export function fetchArchetypeReport(tournament, archetypeBase) {
   logger.debug(`Fetching archetype report: ${tournament}/${archetypeBase}`);
   const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
 
-  try {
-    const response = await safeFetch(url);
-    const data = await safeJsonParse(response, url);
-
-    validateType(data, 'object', 'archetype report');
-    logger.info(`Loaded archetype report ${archetypeBase} for ${tournament}`, { itemCount: data.items?.length });
-    return data;
-  } catch (error) {
-    // For 404 errors (archetype doesn't exist), don't retry and log at debug level
-    if (error instanceof AppError && error.context?.status === 404) {
-      logger.debug(`Archetype ${archetypeBase} not found for ${tournament}`, { url });
-      throw error;
-    }
-
-    // For other errors, use retry logic
-    return withRetry(async () => {
-      const response = await safeFetch(url);
-      const data = await safeJsonParse(response, url);
-      validateType(data, 'object', 'archetype report');
+  return fetchArchetypeData({
+    url,
+    validateLabel: 'archetype report',
+    onSuccess: data => {
       logger.info(`Loaded archetype report ${archetypeBase} for ${tournament}`, { itemCount: data.items?.length });
-      return data;
-    }, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
-  }
+    },
+    notFoundLog: {
+      message: `Archetype ${archetypeBase} not found for ${tournament}`,
+      meta: { url }
+    }
+  });
 }
 
 /**
@@ -209,27 +317,20 @@ export async function fetchArchetypeFiltersReport(tournament, archetypeBase, inc
     const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
     logger.debug('Fetching base archetype report', { tournament, archetypeBase, url });
 
-    try {
-      const response = await safeFetch(url);
-      const data = await safeJsonParse(response, url);
-      validateType(data, 'object', 'archetype report');
-      logger.info(`Loaded base archetype report ${archetypeBase}`, {
-        deckTotal: data.deckTotal
-      });
-      return data;
-    } catch (error) {
-      if (error instanceof AppError && error.context?.status === 404) {
-        logger.debug('Base archetype report not found', { tournament, archetypeBase });
-        throw error;
-      }
-
-      return withRetry(async () => {
-        const response = await safeFetch(url);
-        const data = await safeJsonParse(response, url);
-        validateType(data, 'object', 'archetype report');
-        return data;
-      }, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
-    }
+    return fetchArchetypeData({
+      url,
+      validateLabel: 'archetype report',
+      onSuccess: data => {
+        logger.info(`Loaded base archetype report ${archetypeBase}`, {
+          deckTotal: data.deckTotal
+        });
+      },
+      notFoundLog: {
+        message: 'Base archetype report not found',
+        meta: { tournament, archetypeBase }
+      },
+      logOnRetry: false
+    });
   }
 
   // Use the new deduplicated structure via archetypeCache
@@ -274,7 +375,13 @@ export async function fetchArchetypeFiltersReport(tournament, archetypeBase, inc
  */
 export function fetchMeta(tournament) {
   const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/meta.json`;
-  return fetchWithRetry(url, `meta for ${tournament}`, 'object', 'tournament meta');
+  return fetchWithRetry(
+    url,
+    `meta for ${tournament}`,
+    'object',
+    'tournament meta',
+    { cache: true }
+  );
 }
 
 /**
@@ -282,36 +389,73 @@ export function fetchMeta(tournament) {
  * @param {string} tournament
  * @returns {Promise<{deckTotal:number, cards: Record<string, any>}>}
  */
-export function fetchCardIndex(tournament) {
-  return withRetry(async () => {
-    const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/cardIndex.json`;
-    const response = await safeFetch(url);
-    const data = await safeJsonParse(response, url);
-    validateType(data, 'object', 'card index');
-    if (typeof data.deckTotal !== 'number' || !data.cards || typeof data.cards !== 'object') {
-      throw new AppError('Invalid card index schema', ErrorTypes.PARSE, { tournament });
-    }
-    return data;
-  }, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+export async function fetchCardIndex(tournament) {
+  const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/cardIndex.json`;
+  const data = await fetchWithRetry(
+    url,
+    `card index for ${tournament}`,
+    'object',
+    'card index',
+    { cache: true }
+  );
+  if (typeof data.deckTotal !== 'number' || !data.cards || typeof data.cards !== 'object') {
+    throw new AppError(ErrorTypes.PARSE, 'Invalid card index schema', null, { tournament });
+  }
+  return data;
 }
 
 /**
  * Fetch raw deck list export (decks.json)
  * @param {string} tournament
- * @returns {Promise<Array>|null}
+ * @returns {Promise<Array|null>}
  */
-export async function fetchDecks(tournament) {
-  try {
-    logger.debug(`Fetching decks.json for: ${tournament}`);
-    const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/decks.json`;
-    const response = await safeFetch(url);
-    const data = await safeJsonParse(response, url);
-    validateType(data, 'array', 'decks');
-    return data;
-  } catch (err) {
-    logger.debug('decks.json not available', err.message);
-    return null;
+export function fetchDecks(tournament) {
+  const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/decks.json`;
+  const cacheKey = `decks:${url}`;
+  const now = Date.now();
+  const existing = jsonCache.get(cacheKey);
+
+  if (existing) {
+    if (hasCachedData(existing) && existing.expiresAt > now) {
+      logger.debug('Cache hit for decks.json', { tournament });
+      return Promise.resolve(existing.data);
+    }
+    if (existing.promise) {
+      return existing.promise;
+    }
+    if (!existing.promise && existing.expiresAt <= now) {
+      jsonCache.delete(cacheKey);
+    }
   }
+
+  const loader = (async () => {
+    try {
+      logger.debug(`Fetching decks.json for: ${tournament}`);
+      const response = await fetchWithTimeout(url);
+      const data = await safeJsonParse(response, url);
+      validateType(data, 'array', 'decks');
+      return data;
+    } catch (err) {
+      logger.debug('decks.json not available', err.message);
+      return null;
+    }
+  })();
+
+  const tracked = loader
+    .then(data => {
+      cacheResolvedJson(cacheKey, data, CONFIG.API.JSON_CACHE_TTL_MS);
+      return data;
+    })
+    .catch(error => {
+      const entry = jsonCache.get(cacheKey);
+      if (entry && entry.promise === tracked) {
+        jsonCache.delete(cacheKey);
+      }
+      throw error;
+    });
+
+  cachePendingJson(cacheKey, tracked, CONFIG.API.JSON_CACHE_TTL_MS);
+  return tracked;
 }
 
 /**
@@ -319,24 +463,59 @@ export async function fetchDecks(tournament) {
  * @param {string} tournament
  * @returns {Promise<string[]|null>}
  */
-export async function fetchTop8ArchetypesList(tournament) {
-  try {
-    logger.debug(`Fetching top 8 archetypes for: ${tournament}`);
-    const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/top8.json`;
-    const response = await safeFetch(url);
-    const data = await safeJsonParse(response, url);
+export function fetchTop8ArchetypesList(tournament) {
+  const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/top8.json`;
+  const cacheKey = `top8:${url}`;
+  const now = Date.now();
+  const existing = jsonCache.get(cacheKey);
 
-    if (Array.isArray(data)) {
-      logger.info(`Loaded ${data.length} top 8 archetypes for ${tournament}`);
-      return data;
+  if (existing) {
+    if (hasCachedData(existing) && existing.expiresAt > now) {
+      logger.debug('Cache hit for top8 archetypes', { tournament });
+      return Promise.resolve(existing.data);
     }
-
-    logger.warn('Top 8 data is not an array, returning null');
-    return null;
-  } catch (error) {
-    logger.debug(`Top 8 archetypes not available for ${tournament}`, error.message);
-    return null;
+    if (existing.promise) {
+      return existing.promise;
+    }
+    if (!existing.promise && existing.expiresAt <= now) {
+      jsonCache.delete(cacheKey);
+    }
   }
+
+  const loader = (async () => {
+    try {
+      logger.debug(`Fetching top 8 archetypes for: ${tournament}`);
+      const response = await fetchWithTimeout(url);
+      const data = await safeJsonParse(response, url);
+
+      if (Array.isArray(data)) {
+        logger.info(`Loaded ${data.length} top 8 archetypes for ${tournament}`);
+        return data;
+      }
+
+      logger.warn('Top 8 data is not an array, returning null');
+      return null;
+    } catch (error) {
+      logger.debug(`Top 8 archetypes not available for ${tournament}`, error.message);
+      return null;
+    }
+  })();
+
+  const tracked = loader
+    .then(data => {
+      cacheResolvedJson(cacheKey, data, CONFIG.API.JSON_CACHE_TTL_MS);
+      return data;
+    })
+    .catch(error => {
+      const entry = jsonCache.get(cacheKey);
+      if (entry && entry.promise === tracked) {
+        jsonCache.delete(cacheKey);
+      }
+      throw error;
+    });
+
+  cachePendingJson(cacheKey, tracked, CONFIG.API.JSON_CACHE_TTL_MS);
+  return tracked;
 }
 
 /**
@@ -351,12 +530,12 @@ export async function fetchPricingData() {
   try {
     logger.debug('Fetching pricing data...');
     const url = 'https://ciphermaniac.com/api/get-prices';
-    const response = await safeFetch(url);
+    const response = await fetchWithTimeout(url);
     const data = await safeJsonParse(response, url);
 
     validateType(data, 'object', 'pricing data');
     if (!data.cardPrices || typeof data.cardPrices !== 'object') {
-      throw new AppError('Invalid pricing data schema', ErrorTypes.PARSE);
+      throw new AppError(ErrorTypes.PARSE, 'Invalid pricing data schema');
     }
 
     // eslint-disable-next-line require-atomic-updates
@@ -370,51 +549,70 @@ export async function fetchPricingData() {
 }
 
 /**
+ * Resolve pricing entry for a card, optionally requiring a field on the entry
+ * @param {string} cardId
+ * @param {string|null} requiredField
+ * @param {string} logLabel
+ * @returns {Promise<object|null>}
+ */
+async function resolveCardPricingEntry(cardId, requiredField, logLabel) {
+  const pricing = await fetchPricingData();
+  const cardPrices = pricing.cardPrices || {};
+
+  const getEntry = candidateId => {
+    if (!candidateId) {return null;}
+    const entry = cardPrices[candidateId];
+    if (!entry) {return null;}
+    if (requiredField && entry[requiredField] == null) {return null;}
+    return entry;
+  };
+
+  let entry = getEntry(cardId);
+  if (entry) {
+    return entry;
+  }
+
+  try {
+    const { getCanonicalCard, getCardVariants } = await import('./utils/cardSynonyms.js');
+
+    const canonical = await getCanonicalCard(cardId);
+    if (canonical && canonical !== cardId) {
+      entry = getEntry(canonical);
+      if (entry) {
+        logger.debug(`Found ${logLabel} via canonical: ${canonical}`, { original: cardId });
+        return entry;
+      }
+    }
+
+    const variants = await getCardVariants(cardId);
+    for (const variant of variants) {
+      if (variant === cardId) {
+        continue;
+      }
+
+      entry = getEntry(variant);
+      if (entry) {
+        logger.debug(`Found ${logLabel} via variant: ${variant}`, { original: cardId });
+        return entry;
+      }
+    }
+  } catch (synonymError) {
+    logger.debug(`Synonym resolution failed during ${logLabel} lookup`, synonymError.message);
+  }
+
+  logger.debug(`No ${logLabel} found for ${cardId} or its variants`);
+  return null;
+}
+
+/**
  * Get price for a specific card (with canonical fallback)
  * @param {string} cardId - Card identifier in format "Name::SET::NUMBER"
  * @returns {Promise<number|null>} Price in USD or null if not found
  */
 export async function getCardPrice(cardId) {
   try {
-    const pricing = await fetchPricingData();
-
-    // Try exact match first
-    let cardData = pricing.cardPrices[cardId];
-    if (cardData?.price) {
-      return cardData.price;
-    }
-
-    // Try canonical resolution if exact match failed
-    try {
-      const { getCanonicalCard, getCardVariants } = await import('./utils/cardSynonyms.js');
-
-      // Get canonical version
-      const canonical = await getCanonicalCard(cardId);
-      if (canonical && canonical !== cardId) {
-        cardData = pricing.cardPrices[canonical];
-        if (cardData?.price) {
-          logger.debug(`Found price via canonical: ${canonical}`, { original: cardId });
-          return cardData.price;
-        }
-      }
-
-      // Try all variants if canonical didn't work
-      const variants = await getCardVariants(cardId);
-      for (const variant of variants) {
-        if (variant !== cardId) {
-          cardData = pricing.cardPrices[variant];
-          if (cardData?.price) {
-            logger.debug(`Found price via variant: ${variant}`, { original: cardId });
-            return cardData.price;
-          }
-        }
-      }
-    } catch (synonymError) {
-      logger.debug('Synonym resolution failed during price lookup', synonymError.message);
-    }
-
-    logger.debug(`No price found for ${cardId} or its variants`);
-    return null;
+    const entry = await resolveCardPricingEntry(cardId, 'price', 'price');
+    return entry?.price ?? null;
   } catch (error) {
     logger.debug(`Failed to get price for ${cardId}`, error.message);
     logger.error('Error in getCardPrice:', error);
@@ -429,45 +627,8 @@ export async function getCardPrice(cardId) {
  */
 export async function getCardTCGPlayerId(cardId) {
   try {
-    const pricing = await fetchPricingData();
-
-    // Try exact match first
-    let cardData = pricing.cardPrices[cardId];
-    if (cardData?.tcgPlayerId) {
-      return cardData.tcgPlayerId;
-    }
-
-    // Try canonical resolution if exact match failed
-    try {
-      const { getCanonicalCard, getCardVariants } = await import('./utils/cardSynonyms.js');
-
-      // Get canonical version
-      const canonical = await getCanonicalCard(cardId);
-      if (canonical && canonical !== cardId) {
-        cardData = pricing.cardPrices[canonical];
-        if (cardData?.tcgPlayerId) {
-          logger.debug(`Found TCGPlayer ID via canonical: ${canonical}`, { original: cardId });
-          return cardData.tcgPlayerId;
-        }
-      }
-
-      // Try all variants if canonical didn't work
-      const variants = await getCardVariants(cardId);
-      for (const variant of variants) {
-        if (variant !== cardId) {
-          cardData = pricing.cardPrices[variant];
-          if (cardData?.tcgPlayerId) {
-            logger.debug(`Found TCGPlayer ID via variant: ${variant}`, { original: cardId });
-            return cardData.tcgPlayerId;
-          }
-        }
-      }
-    } catch (synonymError) {
-      logger.debug('Synonym resolution failed during TCGPlayer ID lookup', synonymError.message);
-    }
-
-    logger.debug(`No TCGPlayer ID found for ${cardId} or its variants`);
-    return null;
+    const entry = await resolveCardPricingEntry(cardId, 'tcgPlayerId', 'TCGPlayer ID');
+    return entry?.tcgPlayerId ?? null;
   } catch (error) {
     logger.debug(`Failed to get TCGPlayer ID for ${cardId}`, error.message);
     return null;
@@ -481,45 +642,8 @@ export async function getCardTCGPlayerId(cardId) {
  */
 export async function getCardData(cardId) {
   try {
-    const pricing = await fetchPricingData();
-
-    // Try exact match first
-    let cardData = pricing.cardPrices[cardId];
-    if (cardData) {
-      return cardData;
-    }
-
-    // Try canonical resolution if exact match failed
-    try {
-      const { getCanonicalCard, getCardVariants } = await import('./utils/cardSynonyms.js');
-
-      // Get canonical version
-      const canonical = await getCanonicalCard(cardId);
-      if (canonical && canonical !== cardId) {
-        cardData = pricing.cardPrices[canonical];
-        if (cardData) {
-          logger.debug(`Found card data via canonical: ${canonical}`, { original: cardId });
-          return cardData;
-        }
-      }
-
-      // Try all variants if canonical didn't work
-      const variants = await getCardVariants(cardId);
-      for (const variant of variants) {
-        if (variant !== cardId) {
-          cardData = pricing.cardPrices[variant];
-          if (cardData) {
-            logger.debug(`Found card data via variant: ${variant}`, { original: cardId });
-            return cardData;
-          }
-        }
-      }
-    } catch (synonymError) {
-      logger.debug('Synonym resolution failed during card data lookup', synonymError.message);
-    }
-
-    logger.debug(`No card data found for ${cardId} or its variants`);
-    return null;
+    const entry = await resolveCardPricingEntry(cardId, null, 'card data');
+    return entry ?? null;
   } catch (error) {
     logger.debug(`Failed to get card data for ${cardId}`, error.message);
     return null;

@@ -11,7 +11,10 @@ export function getStateFromURL(loc = window.location) {
     query: params.get('q') || '',
     sort: params.get('sort') || '',
     archetype: params.get('archetype') || '',
-    tour: params.get('tour') || ''
+    tour: params.get('tour') || '',
+    sets: params.get('sets') || '',
+    cardType: params.get('type') || '',
+    advanced: params.get('advanced') || ''
   };
 }
 
@@ -40,6 +43,9 @@ export function setStateInURL(state, opts = {}) {
   if ('sort' in state) {setOrDelete('sort', state.sort);}
   if ('archetype' in state) {setOrDelete('archetype', state.archetype);}
   if ('tour' in state) {setOrDelete('tour', state.tour);}
+  if ('sets' in state) {setOrDelete('sets', state.sets);}
+  if ('cardType' in state) {setOrDelete('type', state.cardType);}
+  if ('advanced' in state) {setOrDelete('advanced', state.advanced);}
 
   const search = params.toString();
   const newUrl = `${location.pathname}${search ? `?${search}` : ''}${location.hash || ''}`;

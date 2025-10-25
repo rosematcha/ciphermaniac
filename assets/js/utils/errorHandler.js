@@ -3,6 +3,9 @@
  * @module utils/errorHandler
  */
 
+import { logger } from './logger.js';
+export { logger, Logger } from './logger.js';
+
 /**
  * Error types for categorizing different failure modes
  */
@@ -32,7 +35,7 @@ export class AppError extends Error {
     super(message);
     this.name = 'AppError';
     this.type = type;
-    this.userMessage = userMessage || this.getDefaultUserMessage(type);
+    this.userMessage = userMessage || AppError.getDefaultUserMessage(type);
     this.context = context;
     this.timestamp = Date.now();
   }
@@ -41,7 +44,7 @@ export class AppError extends Error {
    *
    * @param type
    */
-  getDefaultUserMessage(type) {
+  static getDefaultUserMessage(type) {
     const messages = {
       [ErrorTypes.NETWORK]: 'Connection problem. Please check your internet and try again.',
       [ErrorTypes.VALIDATION]: 'Please check your input and try again.',
@@ -55,91 +58,6 @@ export class AppError extends Error {
     return messages[type] || 'Something went wrong. Please try again.';
   }
 }
-
-/**
- * Logger utility for tracking errors and debugging
- */
-export class Logger {
-  /**
-   *
-   * @param level
-   */
-  constructor(level = 'info') {
-    this.level = level;
-    this.levels = { debug: 0, info: 1, warn: 2, error: 3 };
-  }
-
-  /**
-   *
-   * @param level
-   */
-  shouldLog(level) {
-    return this.levels[level] >= this.levels[this.level];
-  }
-
-  /**
-   *
-   * @param message
-   * @param data
-   */
-  debug(message, data = null) {
-    if (this.shouldLog('debug')) {
-      console.debug(`[DEBUG] ${message}`, data);
-    }
-  }
-
-  /**
-   *
-   * @param message
-   * @param data
-   */
-  info(message, data = null) {
-    if (this.shouldLog('info')) {
-      console.info(`[INFO] ${message}`, data);
-    }
-  }
-
-  /**
-   *
-   * @param message
-   * @param data
-   */
-  warn(message, data = null) {
-    if (this.shouldLog('warn')) {
-      console.warn(`[WARN] ${message}`, data);
-    }
-  }
-
-  /**
-   *
-   * @param message
-   * @param error
-   */
-  error(message, error = null) {
-    if (this.shouldLog('error')) {
-      console.error(`[ERROR] ${message}`, error);
-    }
-  }
-
-  /**
-   *
-   * @param message
-   * @param error
-   * @param context
-   */
-  exception(message, error, context = {}) {
-    if (this.shouldLog('error')) {
-      console.error(`[EXCEPTION] ${message}`, {
-        error: error.message || error,
-        stack: error.stack,
-        context,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-}
-
-export const logger = new Logger('info');
 
 /**
  * Error boundary for handling async operations with user feedback
