@@ -691,11 +691,15 @@ function createCardHistogram(el, cardData) {
     }
   }
 
-  const minCopies = Math.min(...cardData.dist.map(distItem => distItem.copies));
-  const maxCopies = Math.max(...cardData.dist.map(distItem => distItem.copies));
-  const maxPct = Math.max(1, ...cardData.dist.map(distItem => distItem.percent));
+  // Sort distribution by percentage (descending) and take top 4
+  const sortedDist = [...cardData.dist].sort((a, b) => b.percent - a.percent);
+  const topFourDist = sortedDist.slice(0, 4);
+  
+  // Get the copy counts we're showing and sort them for display
+  const copiesToShow = topFourDist.map(d => d.copies).sort((a, b) => a - b);
+  const maxPct = Math.max(1, ...topFourDist.map(distItem => distItem.percent));
 
-  for (let copies = minCopies; copies <= maxCopies; copies++) {
+  for (const copies of copiesToShow) {
     const distData = cardData.dist.find(x => x.copies === copies);
     const col = createElement('div', { className: 'col' });
     const bar = createElement('div', { className: 'bar' });
@@ -802,10 +806,35 @@ function makeCardElement(cardData, useSm, overrides, renderFlags = {}) {
 // Extract card attributes setup
 function setupCardAttributes(card, cardData) {
   // eslint-disable-next-line no-param-reassign
-  card.dataset.name = cardData.name.toLowerCase();
-  if (cardData.category) {
+  if (cardData.name) {
+    card.dataset.name = cardData.name.toLowerCase();
+  } else {
+    delete card.dataset.name;
+  }
+  const displayCategory = cardData.displayCategory || cardData.category;
+  if (displayCategory) {
     // eslint-disable-next-line no-param-reassign
-    card.dataset.category = cardData.category;
+    card.dataset.category = displayCategory;
+  } else {
+    delete card.dataset.category;
+  }
+  if (cardData.trainerType) {
+    // eslint-disable-next-line no-param-reassign
+    card.dataset.trainerType = cardData.trainerType;
+  } else {
+    delete card.dataset.trainerType;
+  }
+  if (cardData.energyType) {
+    // eslint-disable-next-line no-param-reassign
+    card.dataset.energyType = cardData.energyType;
+  } else {
+    delete card.dataset.energyType;
+  }
+  if (cardData.displayCategory && cardData.category && cardData.displayCategory !== cardData.category) {
+    // eslint-disable-next-line no-param-reassign
+    card.dataset.categoryPrimary = cardData.category;
+  } else {
+    delete card.dataset.categoryPrimary;
   }
   if (cardData.uid) {
     // eslint-disable-next-line no-param-reassign

@@ -154,7 +154,11 @@ async function resolveBySetAndNumber(setCode, number, options = {}) {
       for (const [uid, canonicalUid] of Object.entries(synonymData.synonyms || {})) {
         if (uid.includes('::')) {
           const parts = uid.split('::');
-          if (parts.length >= 3 && parts[1].toUpperCase() === setCode.toUpperCase() && normalizeCardNumber(parts[2]) === normalizedNumber) {
+          if (
+            parts.length >= 3 &&
+            parts[1].toUpperCase() === setCode.toUpperCase() &&
+            normalizeCardNumber(parts[2]) === normalizedNumber
+          ) {
             // Found a matching variant, return its canonical
             cache[normalizedKey] = canonicalUid;
             saveSlugCache(cache);
@@ -167,7 +171,11 @@ async function resolveBySetAndNumber(setCode, number, options = {}) {
       for (const canonicalUid of Object.values(synonymData.canonicals || {})) {
         if (canonicalUid.includes('::')) {
           const parts = canonicalUid.split('::');
-          if (parts.length >= 3 && parts[1].toUpperCase() === setCode.toUpperCase() && normalizeCardNumber(parts[2]) === normalizedNumber) {
+          if (
+            parts.length >= 3 &&
+            parts[1].toUpperCase() === setCode.toUpperCase() &&
+            normalizeCardNumber(parts[2]) === normalizedNumber
+          ) {
             // This set:number is itself a canonical
             cache[normalizedKey] = canonicalUid;
             saveSlugCache(cache);

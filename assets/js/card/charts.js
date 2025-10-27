@@ -234,7 +234,13 @@ export function renderCopiesHistogram(container, overall) {
     )
   );
 
-  for (let copies = 1; copies <= 4; copies++) {
+  // Get all copy counts from the distribution data and sort them
+  const copyCountsInData = distribution.map(item => item.copies).sort((a, b) => a - b);
+  
+  // If no distribution data, default to 1-4
+  const copiesToShow = copyCountsInData.length > 0 ? copyCountsInData : [1, 2, 3, 4];
+
+  for (const copies of copiesToShow) {
     const distributionData = distribution.find(item => item.copies === copies);
     const percentage = distributionData
       ? totalPlayers
