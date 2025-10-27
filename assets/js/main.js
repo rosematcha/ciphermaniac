@@ -330,6 +330,7 @@ function createMultiSelectDropdown(state, config) {
     const totalOptions = dropdownState.options.length;
     const count = dropdownState.selected.length;
     const hasSelection = count > 0;
+    const hasMultiple = count > 1;
     const allSelected = hasSelection && totalOptions > 0 && count === totalOptions;
     const firstValue = hasSelection ? dropdownState.selected[0] : null;
     const firstDisplay = firstValue ? getDisplayParts(firstValue) : null;
@@ -352,17 +353,19 @@ function createMultiSelectDropdown(state, config) {
       ariaLabel = `${pluralLabel} fully selected`;
       stateValue = 'full';
     } else {
-      summaryText = count > 1 ? `${firstLabel} +${count - 1}` : firstLabel;
-      ariaLabel = count > 1
+      summaryText = hasMultiple ? `${firstLabel} +${count - 1}` : firstLabel;
+      ariaLabel = hasMultiple
         ? `${count} ${pluralLabel.toLowerCase()} selected. First: ${firstLabel}`
         : `${singularLabel} ${firstLabel} selected`;
-      stateValue = count > 1 ? 'multi' : 'single';
+      stateValue = hasMultiple ? 'multi' : 'single';
     }
 
     const shouldDisableTrigger = dropdownState.disabled || totalOptions === 0;
     trigger.disabled = shouldDisableTrigger;
     trigger.setAttribute('aria-disabled', shouldDisableTrigger ? 'true' : 'false');
-    summary.textContent = summaryText;
+    summary.textContent = hasMultiple ? '' : summaryText;
+    summary.setAttribute('aria-hidden', hasMultiple ? 'true' : 'false');
+    summary.classList.toggle('is-hidden', hasMultiple);
     trigger.dataset.state = stateValue;
     trigger.setAttribute('aria-label', ariaLabel);
 
@@ -386,7 +389,7 @@ function createMultiSelectDropdown(state, config) {
     if (root) {
       root.classList.toggle('has-selection', hasSelection);
       root.classList.toggle('is-disabled', shouldDisableTrigger);
-      root.classList.toggle('is-multi', count > 1);
+      root.classList.toggle('is-multi', hasMultiple);
     }
 
     if (actionsFooter) {
@@ -400,22 +403,26 @@ function createMultiSelectDropdown(state, config) {
     const selection = dropdownState.selected;
     chipsContainer.innerHTML = '';
 
-    const showMulti = selection.length > 1;
-    chipsContainer.hidden = !showMulti;
+    const showChips = selection.length > 1;
+    chipsContainer.hidden = !showChips;
 
-    if (!showMulti) {
+    if (!showChips) {
       dropdownState.chipsExpanded = false;
       chipsContainer.removeAttribute('aria-label');
       return;
     }
 
-    chipsContainer.setAttribute('aria-label', `${selection.length} ${pluralLabel.toLowerCase()} selected`);
+    const labelCount = selection.length;
+    const ariaSummary = labelCount === 1
+      ? `${singularLabel} ${getDisplayParts(selection[0]).label} selected`
+      : `${labelCount} ${pluralLabel.toLowerCase()} selected`;
+    chipsContainer.setAttribute('aria-label', ariaSummary);
 
     if (selection.length <= maxVisibleChips) {
       dropdownState.chipsExpanded = false;
     }
 
-    const visibleCount = dropdownState.chipsExpanded
+    const visibleCount = dropdownState.chipsExpanded || selection.length <= maxVisibleChips
       ? selection.length
       : Math.min(selection.length, maxVisibleChips);
 
@@ -433,7 +440,7 @@ function createMultiSelectDropdown(state, config) {
       nameSpan.textContent = display.name;
       label.appendChild(nameSpan);
 
-      if (display.code) {
+      if (config.key !== 'sets' && display.code) {
         const codeSpan = document.createElement('span');
         codeSpan.className = 'filter-chip-code';
         codeSpan.textContent = display.code;

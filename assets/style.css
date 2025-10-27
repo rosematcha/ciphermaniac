@@ -361,7 +361,9 @@ body.filters-panel-open #filters{
   align-items:center;
   flex-wrap:wrap;
   gap:6px;
-  margin-top:10px;
+  margin:0;
+  flex:1 1 auto;
+  min-height:28px;
 }
 .filter-chip-list[hidden]{
   display:none;
@@ -461,7 +463,7 @@ body.filters-panel-open #filters{
 .filter-add-btn[hidden]{
   display:none !important;
 }
-.filter-value{
+.filter-value {
   font-size:14px;
   color:var(--text);
   font-weight:600;
@@ -473,22 +475,30 @@ body.filters-panel-open #filters{
   min-height:18px;
   max-width:100%;
 }
-.filter-combobox[data-state="empty"] .filter-value{
+.filter-value.is-hidden {
+  opacity:0;
+  width:0;
+  padding:0;
+  margin:0;
+}
+.filter-combobox[data-state="empty"] .filter-value {
   color:var(--muted);
   font-weight:500;
 }
 .filter-trigger{
   display:flex;
   align-items:center;
+  justify-content:space-between;
   gap:8px;
-  flex:1 1 auto;
-  padding:6px 0;
+  flex:0 0 auto;
+  padding:6px 6px 6px 0;
   border:none;
   background:transparent;
   color:inherit;
   font:inherit;
   text-align:left;
   cursor:pointer;
+  min-height:28px;
 }
 .filter-trigger::after{
   content:'';
@@ -500,6 +510,7 @@ body.filters-panel-open #filters{
   transition:transform 0.2s ease;
   flex-shrink:0;
   opacity:0.7;
+  margin-left:auto;
 }
 .filter-dropdown.is-open .filter-trigger::after{
   transform:rotate(225deg);
@@ -2518,6 +2529,13 @@ h2{margin:8px 0 6px}
   gap: var(--spacing-lg);
 }
 
+.incidents-title {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--text);
+}
+
 .incidents-content {
   display: flex;
   flex-direction: column;
@@ -2893,23 +2911,6 @@ h2{margin:8px 0 6px}
   .conditional-subsection {
     margin-left: var(--spacing-sm);
     padding-left: var(--spacing-sm);
-  }
-}
-
-
-.incidents-footer{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-md);
-}
-
-@media (max-width: 720px){
-  .incidents-footer{
-    flex-direction:column;
-    align-items:flex-start;
-    gap: var(--spacing-sm);
   }
 }
 /* Incidents footer alignment tweaks */

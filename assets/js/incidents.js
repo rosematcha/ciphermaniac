@@ -16,6 +16,10 @@ const STATUS_DETAILS = {
 const INCIDENTS_PER_PAGE = 8;
 
 const INCIDENT_OVERRIDES = {
+  '2025-10-25, Regional Lille': {
+    status: 'yes',
+    evidence: 'https://x.com/LeonardoLatta9/status/1981989975928541429?t=3mpUx0iwnf6jlS79P8Fqhw&s=19'
+  },
   '2025-10-11, Regional Milwaukee, WI': {
     status: 'yes',
     evidence: 'https://x.com/Soy_Sauxe/status/1977100274113405403?t=dlJOy6BVnqBt9ibUDHjDYw&s=19'
@@ -56,7 +60,7 @@ export async function initIncidentsPage(options = {}) {
 
   try {
     const tournaments = await fetchTournamentsList();
-    const items = Array.isArray(tournaments) ? tournaments : [];
+    const items = collectTournamentEntries(Array.isArray(tournaments) ? tournaments : []);
     initializeIncidentsPagination({
       tournaments: items,
       listContainer,
@@ -108,6 +112,64 @@ function renderError(container) {
   item.className = 'incidents-error';
   item.textContent = 'Unable to load tournaments. Please try again later.';
   container.replaceChildren(item);
+}
+
+/**
+ * Collect tournaments including override-only entries and sort them
+ * @param {string[]} tournaments
+ * @returns {string[]}
+ */
+function collectTournamentEntries(tournaments) {
+  const merged = new Set(Array.isArray(tournaments) ? tournaments : []);
+  for (const key of Object.keys(INCIDENT_OVERRIDES)) {
+    merged.add(key);
+  }
+  return Array.from(merged).sort(compareTournamentEntries);
+}
+
+/**
+ * Compare tournaments by date (desc), then lexicographically
+ * @param {string} entryA
+ * @param {string} entryB
+ * @returns {number}
+ */
+function compareTournamentEntries(entryA, entryB) {
+  const timeA = extractTournamentTime(entryA);
+  const timeB = extractTournamentTime(entryB);
+
+  const hasTimeA = Number.isFinite(timeA);
+  const hasTimeB = Number.isFinite(timeB);
+
+  if (hasTimeA && hasTimeB && timeA !== timeB) {
+    return timeB - timeA; // newest first
+  }
+
+  if (hasTimeA && !hasTimeB) {
+    return -1;
+  }
+  if (!hasTimeA && hasTimeB) {
+    return 1;
+  }
+
+  return String(entryA).localeCompare(String(entryB));
+}
+
+/**
+ * Parse a tournament entry's leading date portion
+ * @param {string} entry
+ * @returns {number}
+ */
+function extractTournamentTime(entry) {
+  if (typeof entry !== 'string') {
+    return Number.NaN;
+  }
+  const [rawDate] = entry.split(',');
+  if (!rawDate) {
+    return Number.NaN;
+  }
+  const date = new Date(rawDate.trim());
+  const time = date.getTime();
+  return Number.isNaN(time) ? Number.NaN : time;
 }
 
 /**
