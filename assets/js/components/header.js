@@ -2,6 +2,8 @@
  * Reusable header component
  */
 
+import '../utils/buildVersion.js';
+
 /**
  *
  * @param options

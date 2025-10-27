@@ -2,6 +2,7 @@
  * Incidents page renderer
  */
 
+import './utils/buildVersion.js';
 import { fetchTournamentsList } from './api.js';
 import { logger } from './utils/logger.js';
 

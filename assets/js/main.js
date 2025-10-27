@@ -50,6 +50,7 @@
   window.Image = DebugImage;
 }());
 
+import './utils/buildVersion.js';
 import { fetchReport, fetchOverrides, fetchArchetypeReport, fetchTournamentsList, fetchArchetypesList } from './api.js';
 import { AppError, safeAsync } from './utils/errorHandler.js';
 import { parseReport } from './parse.js';
