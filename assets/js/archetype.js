@@ -1,3 +1,4 @@
+import './utils/buildVersion.js';
 import { fetchTournamentsList, fetchReport, fetchArchetypeReport, fetchOverrides, fetchArchetypeFiltersReport } from './api.js';
 import { parseReport } from './parse.js';
 import { render, updateLayout } from './render.js';

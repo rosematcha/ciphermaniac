@@ -1,4 +1,5 @@
 /* eslint-env browser */
+import './utils/buildVersion.js';
 import { fetchTournamentsList, fetchReport, fetchArchetypesList, fetchArchetypeReport } from './api.js';
 import { parseReport } from './parse.js';
 import { safeAsync } from './utils/errorHandler.js';

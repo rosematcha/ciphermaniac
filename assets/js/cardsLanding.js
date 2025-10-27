@@ -1,3 +1,4 @@
+import './utils/buildVersion.js';
 import { buildThumbCandidates } from './thumbs.js';
 import { logger } from './utils/logger.js';
 import { computeLayout } from './layoutHelper.js';
