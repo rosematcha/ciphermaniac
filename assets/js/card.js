@@ -1,4 +1,5 @@
 // Entry for per-card page: loads meta-share over tournaments and common decks
+import './utils/buildVersion.js';
 import {
   fetchTournamentsList,
   fetchReport,

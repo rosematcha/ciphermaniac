@@ -691,11 +691,15 @@ function createCardHistogram(el, cardData) {
     }
   }
 
-  const minCopies = Math.min(...cardData.dist.map(distItem => distItem.copies));
-  const maxCopies = Math.max(...cardData.dist.map(distItem => distItem.copies));
-  const maxPct = Math.max(1, ...cardData.dist.map(distItem => distItem.percent));
+  // Sort distribution by percentage (descending) and take top 4
+  const sortedDist = [...cardData.dist].sort((a, b) => b.percent - a.percent);
+  const topFourDist = sortedDist.slice(0, 4);
+  
+  // Get the copy counts we're showing and sort them for display
+  const copiesToShow = topFourDist.map(d => d.copies).sort((a, b) => a - b);
+  const maxPct = Math.max(1, ...topFourDist.map(distItem => distItem.percent));
 
-  for (let copies = minCopies; copies <= maxCopies; copies++) {
+  for (const copies of copiesToShow) {
     const distData = cardData.dist.find(x => x.copies === copies);
     const col = createElement('div', { className: 'col' });
     const bar = createElement('div', { className: 'bar' });

@@ -1,0 +1,6053 @@
+{
+  "deckTotal": 356,
+  "cards": {
+    "Dreepy": {
+      "found": 46,
+      "total": 356,
+      "pct": 12.92,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 4.35
+        },
+        {
+          "copies": 4,
+          "players": 44,
+          "percent": 95.65
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Drakloak": {
+      "found": 46,
+      "total": 356,
+      "pct": 12.92,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 4.35
+        },
+        {
+          "copies": 4,
+          "players": 44,
+          "percent": 95.65
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Dragapult ex": {
+      "found": 46,
+      "total": 356,
+      "pct": 12.92,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 2.17
+        },
+        {
+          "copies": 2,
+          "players": 13,
+          "percent": 28.26
+        },
+        {
+          "copies": 3,
+          "players": 32,
+          "percent": 69.57
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Duskull": {
+      "found": 70,
+      "total": 356,
+      "pct": 19.66,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 2.86
+        },
+        {
+          "copies": 2,
+          "players": 62,
+          "percent": 88.57
+        },
+        {
+          "copies": 3,
+          "players": 6,
+          "percent": 8.57
+        }
+      ],
+      "sets": [
+        "PRE"
+      ]
+    },
+    "Dusclops": {
+      "found": 70,
+      "total": 356,
+      "pct": 19.66,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 30,
+          "percent": 42.86
+        },
+        {
+          "copies": 2,
+          "players": 40,
+          "percent": 57.14
+        }
+      ],
+      "sets": [
+        "PRE"
+      ]
+    },
+    "Dusknoir": {
+      "found": 69,
+      "total": 356,
+      "pct": 19.38,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 68,
+          "percent": 98.55
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 1.45
+        }
+      ],
+      "sets": [
+        "PRE"
+      ]
+    },
+    "Budew": {
+      "found": 64,
+      "total": 356,
+      "pct": 17.98,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 19,
+          "percent": 29.69
+        },
+        {
+          "copies": 2,
+          "players": 44,
+          "percent": 68.75
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 1.56
+        }
+      ],
+      "sets": [
+        "PRE"
+      ]
+    },
+    "Bloodmoon Ursaluna ex": {
+      "found": 127,
+      "total": 356,
+      "pct": 35.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 127,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Fezandipiti ex": {
+      "found": 304,
+      "total": 356,
+      "pct": 85.39,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 304,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SFA"
+      ]
+    },
+    "Latias ex": {
+      "found": 125,
+      "total": 356,
+      "pct": 35.11,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 125,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Munkidori": {
+      "found": 187,
+      "total": 356,
+      "pct": 52.53,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 35,
+          "percent": 18.72
+        },
+        {
+          "copies": 2,
+          "players": 22,
+          "percent": 11.76
+        },
+        {
+          "copies": 3,
+          "players": 102,
+          "percent": 54.55
+        },
+        {
+          "copies": 4,
+          "players": 28,
+          "percent": 14.97
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Hawlucha": {
+      "found": 43,
+      "total": 356,
+      "pct": 12.08,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 43,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Lillie's Determination": {
+      "found": 248,
+      "total": 356,
+      "pct": 69.66,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 22,
+          "percent": 8.87
+        },
+        {
+          "copies": 2,
+          "players": 30,
+          "percent": 12.1
+        },
+        {
+          "copies": 3,
+          "players": 88,
+          "percent": 35.48
+        },
+        {
+          "copies": 4,
+          "players": 108,
+          "percent": 43.55
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Iono": {
+      "found": 256,
+      "total": 356,
+      "pct": 71.91,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 46,
+          "percent": 17.97
+        },
+        {
+          "copies": 2,
+          "players": 49,
+          "percent": 19.14
+        },
+        {
+          "copies": 3,
+          "players": 25,
+          "percent": 9.77
+        },
+        {
+          "copies": 4,
+          "players": 136,
+          "percent": 53.12
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Boss's Orders": {
+      "found": 283,
+      "total": 356,
+      "pct": 79.49,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 24,
+          "percent": 8.48
+        },
+        {
+          "copies": 2,
+          "players": 134,
+          "percent": 47.35
+        },
+        {
+          "copies": 3,
+          "players": 76,
+          "percent": 26.86
+        },
+        {
+          "copies": 4,
+          "players": 49,
+          "percent": 17.31
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Hilda": {
+      "found": 60,
+      "total": 356,
+      "pct": 16.85,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 21,
+          "percent": 35.0
+        },
+        {
+          "copies": 2,
+          "players": 31,
+          "percent": 51.67
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 5.0
+        },
+        {
+          "copies": 4,
+          "players": 5,
+          "percent": 8.33
+        }
+      ],
+      "sets": [
+        "WHT"
+      ]
+    },
+    "Professor Turo's Scenario": {
+      "found": 176,
+      "total": 356,
+      "pct": 49.44,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 137,
+          "percent": 77.84
+        },
+        {
+          "copies": 2,
+          "players": 39,
+          "percent": 22.16
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Buddy-Buddy Poffin": {
+      "found": 187,
+      "total": 356,
+      "pct": 52.53,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 48,
+          "percent": 25.67
+        },
+        {
+          "copies": 2,
+          "players": 39,
+          "percent": 20.86
+        },
+        {
+          "copies": 3,
+          "players": 9,
+          "percent": 4.81
+        },
+        {
+          "copies": 4,
+          "players": 91,
+          "percent": 48.66
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Ultra Ball": {
+      "found": 281,
+      "total": 356,
+      "pct": 78.93,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 43,
+          "percent": 15.3
+        },
+        {
+          "copies": 2,
+          "players": 5,
+          "percent": 1.78
+        },
+        {
+          "copies": 3,
+          "players": 37,
+          "percent": 13.17
+        },
+        {
+          "copies": 4,
+          "players": 196,
+          "percent": 69.75
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Counter Catcher": {
+      "found": 243,
+      "total": 356,
+      "pct": 68.26,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 81,
+          "percent": 33.33
+        },
+        {
+          "copies": 2,
+          "players": 120,
+          "percent": 49.38
+        },
+        {
+          "copies": 3,
+          "players": 42,
+          "percent": 17.28
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Night Stretcher": {
+      "found": 276,
+      "total": 356,
+      "pct": 77.53,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 44,
+          "percent": 15.94
+        },
+        {
+          "copies": 2,
+          "players": 169,
+          "percent": 61.23
+        },
+        {
+          "copies": 3,
+          "players": 55,
+          "percent": 19.93
+        },
+        {
+          "copies": 4,
+          "players": 8,
+          "percent": 2.9
+        }
+      ],
+      "sets": [
+        "SFA"
+      ]
+    },
+    "Nest Ball": {
+      "found": 290,
+      "total": 356,
+      "pct": 81.46,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 83,
+          "percent": 28.62
+        },
+        {
+          "copies": 2,
+          "players": 106,
+          "percent": 36.55
+        },
+        {
+          "copies": 3,
+          "players": 17,
+          "percent": 5.86
+        },
+        {
+          "copies": 4,
+          "players": 84,
+          "percent": 28.97
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Jamming Tower": {
+      "found": 73,
+      "total": 356,
+      "pct": 20.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 33,
+          "percent": 45.21
+        },
+        {
+          "copies": 2,
+          "players": 40,
+          "percent": 54.79
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Luminous Energy": {
+      "found": 51,
+      "total": 356,
+      "pct": 14.33,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 15.69
+        },
+        {
+          "copies": 2,
+          "players": 9,
+          "percent": 17.65
+        },
+        {
+          "copies": 3,
+          "players": 30,
+          "percent": 58.82
+        },
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 7.84
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Psychic Energy": {
+      "found": 153,
+      "total": 356,
+      "pct": 42.98,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 21,
+          "percent": 13.73
+        },
+        {
+          "copies": 2,
+          "players": 52,
+          "percent": 33.99
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 0.65
+        },
+        {
+          "copies": 4,
+          "players": 3,
+          "percent": 1.96
+        },
+        {
+          "copies": 5,
+          "players": 1,
+          "percent": 0.65
+        },
+        {
+          "copies": 6,
+          "players": 1,
+          "percent": 0.65
+        },
+        {
+          "copies": 7,
+          "players": 30,
+          "percent": 19.61
+        },
+        {
+          "copies": 8,
+          "players": 44,
+          "percent": 28.76
+        }
+      ],
+      "sets": [
+        "SVE"
+      ]
+    },
+    "Fire Energy": {
+      "found": 114,
+      "total": 356,
+      "pct": 32.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 39,
+          "percent": 34.21
+        },
+        {
+          "copies": 2,
+          "players": 17,
+          "percent": 14.91
+        },
+        {
+          "copies": 5,
+          "players": 40,
+          "percent": 35.09
+        },
+        {
+          "copies": 6,
+          "players": 13,
+          "percent": 11.4
+        },
+        {
+          "copies": 7,
+          "players": 4,
+          "percent": 3.51
+        },
+        {
+          "copies": 8,
+          "players": 1,
+          "percent": 0.88
+        }
+      ],
+      "sets": [
+        "SVE"
+      ]
+    },
+    "Neo Upper Energy": {
+      "found": 45,
+      "total": 356,
+      "pct": 12.64,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 45,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Brock's Scouting": {
+      "found": 17,
+      "total": 356,
+      "pct": 4.78,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 52.94
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 17.65
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 17.65
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 11.76
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "N's Zorua": {
+      "found": 5,
+      "total": 356,
+      "pct": 1.4,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "N's Zoroark ex": {
+      "found": 5,
+      "total": 356,
+      "pct": 1.4,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "N's Darumaka": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "N's Darmanitan": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "N's Reshiram": {
+      "found": 5,
+      "total": 356,
+      "pct": 1.4,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 40.0
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 60.0
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "Yveltal": {
+      "found": 50,
+      "total": 356,
+      "pct": 14.04,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 33,
+          "percent": 66.0
+        },
+        {
+          "copies": 2,
+          "players": 17,
+          "percent": 34.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Pecharunt ex": {
+      "found": 40,
+      "total": 356,
+      "pct": 11.24,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 39,
+          "percent": 97.5
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 2.5
+        }
+      ],
+      "sets": [
+        "SFA"
+      ]
+    },
+    "Okidogi ex": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SFA"
+      ]
+    },
+    "Cleffa": {
+      "found": 17,
+      "total": 356,
+      "pct": 4.78,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 17,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "OBF"
+      ]
+    },
+    "Psyduck": {
+      "found": 59,
+      "total": 356,
+      "pct": 16.57,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 58,
+          "percent": 98.31
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 1.69
+        }
+      ],
+      "sets": [
+        "MEP"
+      ]
+    },
+    "Cyrano": {
+      "found": 12,
+      "total": 356,
+      "pct": 3.37,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 58.33
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 8.33
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 16.67
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 16.67
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "N's PP Up": {
+      "found": 5,
+      "total": 356,
+      "pct": 1.4,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "Super Rod": {
+      "found": 206,
+      "total": 356,
+      "pct": 57.87,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 172,
+          "percent": 83.5
+        },
+        {
+          "copies": 2,
+          "players": 32,
+          "percent": 15.53
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 0.97
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Pal Pad": {
+      "found": 55,
+      "total": 356,
+      "pct": 15.45,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 50,
+          "percent": 90.91
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 3.64
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 5.45
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Energy Switch": {
+      "found": 87,
+      "total": 356,
+      "pct": 24.44,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 49,
+          "percent": 56.32
+        },
+        {
+          "copies": 2,
+          "players": 35,
+          "percent": 40.23
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 3.45
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Secret Box": {
+      "found": 130,
+      "total": 356,
+      "pct": 36.52,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 130,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Air Balloon": {
+      "found": 116,
+      "total": 356,
+      "pct": 32.58,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 78,
+          "percent": 67.24
+        },
+        {
+          "copies": 2,
+          "players": 37,
+          "percent": 31.9
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 0.86
+        }
+      ],
+      "sets": [
+        "BLK"
+      ]
+    },
+    "Binding Mochi": {
+      "found": 7,
+      "total": 356,
+      "pct": 1.97,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 57.14
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 42.86
+        }
+      ],
+      "sets": [
+        "PRE"
+      ]
+    },
+    "Artazon": {
+      "found": 189,
+      "total": 356,
+      "pct": 53.09,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 117,
+          "percent": 61.9
+        },
+        {
+          "copies": 2,
+          "players": 69,
+          "percent": 36.51
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 1.59
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Team Rocket's Watchtower": {
+      "found": 7,
+      "total": 356,
+      "pct": 1.97,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 42.86
+        },
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 57.14
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Darkness Energy": {
+      "found": 159,
+      "total": 356,
+      "pct": 44.66,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 1.89
+        },
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 5.03
+        },
+        {
+          "copies": 3,
+          "players": 84,
+          "percent": 52.83
+        },
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 2.52
+        },
+        {
+          "copies": 5,
+          "players": 4,
+          "percent": 2.52
+        },
+        {
+          "copies": 6,
+          "players": 16,
+          "percent": 10.06
+        },
+        {
+          "copies": 7,
+          "players": 11,
+          "percent": 6.92
+        },
+        {
+          "copies": 8,
+          "players": 20,
+          "percent": 12.58
+        },
+        {
+          "copies": 9,
+          "players": 9,
+          "percent": 5.66
+        }
+      ],
+      "sets": [
+        "SVE"
+      ]
+    },
+    "Reversal Energy": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 75.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 25.0
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Hoothoot": {
+      "found": 37,
+      "total": 356,
+      "pct": 10.39,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 9,
+          "percent": 24.32
+        },
+        {
+          "copies": 4,
+          "players": 28,
+          "percent": 75.68
+        }
+      ],
+      "sets": [
+        "PRE",
+        "SCR",
+        "TEF"
+      ]
+    },
+    "Noctowl": {
+      "found": 37,
+      "total": 356,
+      "pct": 10.39,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 13,
+          "percent": 35.14
+        },
+        {
+          "copies": 4,
+          "players": 24,
+          "percent": 64.86
+        }
+      ],
+      "sets": [
+        "SCR"
+      ]
+    },
+    "Fan Rotom": {
+      "found": 43,
+      "total": 356,
+      "pct": 12.08,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 6.98
+        },
+        {
+          "copies": 2,
+          "players": 40,
+          "percent": 93.02
+        }
+      ],
+      "sets": [
+        "SCR"
+      ]
+    },
+    "Wellspring Mask Ogerpon ex": {
+      "found": 32,
+      "total": 356,
+      "pct": 8.99,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 15,
+          "percent": 46.88
+        },
+        {
+          "copies": 2,
+          "players": 17,
+          "percent": 53.12
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Pikachu ex": {
+      "found": 26,
+      "total": 356,
+      "pct": 7.3,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 19,
+          "percent": 73.08
+        },
+        {
+          "copies": 2,
+          "players": 7,
+          "percent": 26.92
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Teal Mask Ogerpon ex": {
+      "found": 35,
+      "total": 356,
+      "pct": 9.83,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 37.14
+        },
+        {
+          "copies": 2,
+          "players": 12,
+          "percent": 34.29
+        },
+        {
+          "copies": 3,
+          "players": 9,
+          "percent": 25.71
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 2.86
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Terapagos ex": {
+      "found": 19,
+      "total": 356,
+      "pct": 5.34,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 19,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SCR"
+      ]
+    },
+    "Lillie's Clefairy ex": {
+      "found": 98,
+      "total": 356,
+      "pct": 27.53,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 98,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "Mega Mawile ex": {
+      "found": 9,
+      "total": 356,
+      "pct": 2.53,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Iron Leaves ex": {
+      "found": 30,
+      "total": 356,
+      "pct": 8.43,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 30,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Mew ex": {
+      "found": 113,
+      "total": 356,
+      "pct": 31.74,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 113,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEW"
+      ]
+    },
+    "Iron Bundle": {
+      "found": 64,
+      "total": 356,
+      "pct": 17.98,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 64,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Ditto": {
+      "found": 31,
+      "total": 356,
+      "pct": 8.71,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 31,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEW"
+      ]
+    },
+    "Crispin": {
+      "found": 65,
+      "total": 356,
+      "pct": 18.26,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 6.15
+        },
+        {
+          "copies": 2,
+          "players": 15,
+          "percent": 23.08
+        },
+        {
+          "copies": 3,
+          "players": 27,
+          "percent": 41.54
+        },
+        {
+          "copies": 4,
+          "players": 19,
+          "percent": 29.23
+        }
+      ],
+      "sets": [
+        "SCR"
+      ]
+    },
+    "Earthen Vessel": {
+      "found": 218,
+      "total": 356,
+      "pct": 61.24,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 48,
+          "percent": 22.02
+        },
+        {
+          "copies": 2,
+          "players": 54,
+          "percent": 24.77
+        },
+        {
+          "copies": 3,
+          "players": 112,
+          "percent": 51.38
+        },
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 1.83
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Sparkling Crystal": {
+      "found": 24,
+      "total": 356,
+      "pct": 6.74,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 24,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SCR"
+      ]
+    },
+    "Area Zero Underdepths": {
+      "found": 40,
+      "total": 356,
+      "pct": 11.24,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 2.5
+        },
+        {
+          "copies": 2,
+          "players": 37,
+          "percent": 92.5
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 5.0
+        }
+      ],
+      "sets": [
+        "SCR"
+      ]
+    },
+    "Grass Energy": {
+      "found": 64,
+      "total": 356,
+      "pct": 17.98,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 10.94
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 3.12
+        },
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 6.25
+        },
+        {
+          "copies": 4,
+          "players": 21,
+          "percent": 32.81
+        },
+        {
+          "copies": 5,
+          "players": 23,
+          "percent": 35.94
+        },
+        {
+          "copies": 6,
+          "players": 5,
+          "percent": 7.81
+        },
+        {
+          "copies": 8,
+          "players": 1,
+          "percent": 1.56
+        },
+        {
+          "copies": 12,
+          "players": 1,
+          "percent": 1.56
+        }
+      ],
+      "sets": [
+        "SVE"
+      ]
+    },
+    "Metal Energy": {
+      "found": 59,
+      "total": 356,
+      "pct": 16.57,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 16,
+          "percent": 27.12
+        },
+        {
+          "copies": 2,
+          "players": 7,
+          "percent": 11.86
+        },
+        {
+          "copies": 3,
+          "players": 29,
+          "percent": 49.15
+        },
+        {
+          "copies": 4,
+          "players": 5,
+          "percent": 8.47
+        },
+        {
+          "copies": 5,
+          "players": 1,
+          "percent": 1.69
+        },
+        {
+          "copies": 8,
+          "players": 1,
+          "percent": 1.69
+        }
+      ],
+      "sets": [
+        "SVE"
+      ]
+    },
+    "Water Energy": {
+      "found": 33,
+      "total": 356,
+      "pct": 9.27,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 28,
+          "percent": 84.85
+        },
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 12.12
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 3.03
+        }
+      ],
+      "sets": [
+        "SVE"
+      ]
+    },
+    "Lightning Energy": {
+      "found": 54,
+      "total": 356,
+      "pct": 15.17,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 19,
+          "percent": 35.19
+        },
+        {
+          "copies": 2,
+          "players": 5,
+          "percent": 9.26
+        },
+        {
+          "copies": 3,
+          "players": 19,
+          "percent": 35.19
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 3.7
+        },
+        {
+          "copies": 5,
+          "players": 7,
+          "percent": 12.96
+        },
+        {
+          "copies": 15,
+          "players": 2,
+          "percent": 3.7
+        }
+      ],
+      "sets": [
+        "SVE"
+      ]
+    },
+    "Charmander": {
+      "found": 31,
+      "total": 356,
+      "pct": 8.71,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 6.45
+        },
+        {
+          "copies": 3,
+          "players": 28,
+          "percent": 90.32
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 3.23
+        }
+      ],
+      "sets": [
+        "OBF",
+        "PAF"
+      ]
+    },
+    "Charmeleon": {
+      "found": 31,
+      "total": 356,
+      "pct": 8.71,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 12.9
+        },
+        {
+          "copies": 2,
+          "players": 26,
+          "percent": 83.87
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 3.23
+        }
+      ],
+      "sets": [
+        "MEW",
+        "PAF"
+      ]
+    },
+    "Charizard ex": {
+      "found": 31,
+      "total": 356,
+      "pct": 8.71,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 27,
+          "percent": 87.1
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 9.68
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 3.23
+        }
+      ],
+      "sets": [
+        "MEW",
+        "OBF"
+      ]
+    },
+    "Pidgey": {
+      "found": 43,
+      "total": 356,
+      "pct": 12.08,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 18.6
+        },
+        {
+          "copies": 2,
+          "players": 35,
+          "percent": 81.4
+        }
+      ],
+      "sets": [
+        "MEW",
+        "OBF"
+      ]
+    },
+    "Pidgeotto": {
+      "found": 35,
+      "total": 356,
+      "pct": 9.83,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 35,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEW",
+        "OBF"
+      ]
+    },
+    "Pidgeot ex": {
+      "found": 43,
+      "total": 356,
+      "pct": 12.08,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 18.6
+        },
+        {
+          "copies": 2,
+          "players": 35,
+          "percent": 81.4
+        }
+      ],
+      "sets": [
+        "OBF"
+      ]
+    },
+    "Tatsugiri": {
+      "found": 52,
+      "total": 356,
+      "pct": 14.61,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 51,
+          "percent": 98.08
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 1.92
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Klefki": {
+      "found": 29,
+      "total": 356,
+      "pct": 8.15,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 29,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Arven": {
+      "found": 216,
+      "total": 356,
+      "pct": 60.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 29,
+          "percent": 13.43
+        },
+        {
+          "copies": 2,
+          "players": 51,
+          "percent": 23.61
+        },
+        {
+          "copies": 3,
+          "players": 18,
+          "percent": 8.33
+        },
+        {
+          "copies": 4,
+          "players": 118,
+          "percent": 54.63
+        }
+      ],
+      "sets": [
+        "OBF"
+      ]
+    },
+    "Briar": {
+      "found": 58,
+      "total": 356,
+      "pct": 16.29,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 58,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SCR"
+      ]
+    },
+    "Rare Candy": {
+      "found": 178,
+      "total": 356,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 31,
+          "percent": 17.42
+        },
+        {
+          "copies": 2,
+          "players": 69,
+          "percent": 38.76
+        },
+        {
+          "copies": 3,
+          "players": 65,
+          "percent": 36.52
+        },
+        {
+          "copies": 4,
+          "players": 13,
+          "percent": 7.3
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Defiance Band": {
+      "found": 9,
+      "total": 356,
+      "pct": 2.53,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Technical Machine: Evolution": {
+      "found": 118,
+      "total": 356,
+      "pct": 33.15,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 50,
+          "percent": 42.37
+        },
+        {
+          "copies": 2,
+          "players": 68,
+          "percent": 57.63
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Mesagoza": {
+      "found": 6,
+      "total": 356,
+      "pct": 1.69,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 50.0
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Jet Energy": {
+      "found": 65,
+      "total": 356,
+      "pct": 18.26,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 14,
+          "percent": 21.54
+        },
+        {
+          "copies": 2,
+          "players": 30,
+          "percent": 46.15
+        },
+        {
+          "copies": 3,
+          "players": 19,
+          "percent": 29.23
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 3.08
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Mist Energy": {
+      "found": 69,
+      "total": 356,
+      "pct": 19.38,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 34,
+          "percent": 49.28
+        },
+        {
+          "copies": 2,
+          "players": 25,
+          "percent": 36.23
+        },
+        {
+          "copies": 3,
+          "players": 10,
+          "percent": 14.49
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Hoopa ex": {
+      "found": 15,
+      "total": 356,
+      "pct": 4.21,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 15,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Penny": {
+      "found": 38,
+      "total": 356,
+      "pct": 10.67,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 18.42
+        },
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 21.05
+        },
+        {
+          "copies": 3,
+          "players": 23,
+          "percent": 60.53
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Hero's Cape": {
+      "found": 10,
+      "total": 356,
+      "pct": 2.81,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 10,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Gimmighoul": {
+      "found": 33,
+      "total": 356,
+      "pct": 9.27,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 3.03
+        },
+        {
+          "copies": 4,
+          "players": 32,
+          "percent": 96.97
+        }
+      ],
+      "sets": [
+        "MEG",
+        "PAR",
+        "SSP"
+      ]
+    },
+    "Gholdengo ex": {
+      "found": 33,
+      "total": 356,
+      "pct": 9.27,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 6.06
+        },
+        {
+          "copies": 4,
+          "players": 31,
+          "percent": 93.94
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Gholdengo": {
+      "found": 3,
+      "total": 356,
+      "pct": 0.84,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Solrock": {
+      "found": 63,
+      "total": 356,
+      "pct": 17.7,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 62,
+          "percent": 98.41
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 1.59
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Lunatone": {
+      "found": 63,
+      "total": 356,
+      "pct": 17.7,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 63,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Genesect ex": {
+      "found": 33,
+      "total": 356,
+      "pct": 9.27,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 30,
+          "percent": 90.91
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 9.09
+        }
+      ],
+      "sets": [
+        "BLK"
+      ]
+    },
+    "Erika's Invitation": {
+      "found": 7,
+      "total": 356,
+      "pct": 1.97,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEW"
+      ]
+    },
+    "Fighting Gong": {
+      "found": 62,
+      "total": 356,
+      "pct": 17.42,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 3.23
+        },
+        {
+          "copies": 2,
+          "players": 26,
+          "percent": 41.94
+        },
+        {
+          "copies": 3,
+          "players": 19,
+          "percent": 30.65
+        },
+        {
+          "copies": 4,
+          "players": 15,
+          "percent": 24.19
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Superior Energy Retrieval": {
+      "found": 36,
+      "total": 356,
+      "pct": 10.11,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 8.33
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 2.78
+        },
+        {
+          "copies": 4,
+          "players": 32,
+          "percent": 88.89
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Premium Power Pro": {
+      "found": 24,
+      "total": 356,
+      "pct": 6.74,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 17,
+          "percent": 70.83
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 12.5
+        },
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 16.67
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Picnic Basket": {
+      "found": 21,
+      "total": 356,
+      "pct": 5.9,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 17,
+          "percent": 80.95
+        },
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 19.05
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Prime Catcher": {
+      "found": 33,
+      "total": 356,
+      "pct": 9.27,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 33,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Vitality Band": {
+      "found": 32,
+      "total": 356,
+      "pct": 8.99,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 32,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Fighting Energy": {
+      "found": 109,
+      "total": 356,
+      "pct": 30.62,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 17,
+          "percent": 15.6
+        },
+        {
+          "copies": 2,
+          "players": 10,
+          "percent": 9.17
+        },
+        {
+          "copies": 3,
+          "players": 18,
+          "percent": 16.51
+        },
+        {
+          "copies": 5,
+          "players": 1,
+          "percent": 0.92
+        },
+        {
+          "copies": 6,
+          "players": 1,
+          "percent": 0.92
+        },
+        {
+          "copies": 7,
+          "players": 5,
+          "percent": 4.59
+        },
+        {
+          "copies": 8,
+          "players": 28,
+          "percent": 25.69
+        },
+        {
+          "copies": 9,
+          "players": 5,
+          "percent": 4.59
+        },
+        {
+          "copies": 10,
+          "players": 19,
+          "percent": 17.43
+        },
+        {
+          "copies": 11,
+          "players": 5,
+          "percent": 4.59
+        }
+      ],
+      "sets": [
+        "SVE"
+      ]
+    },
+    "Eevee": {
+      "found": 13,
+      "total": 356,
+      "pct": 3.65,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 12,
+          "percent": 92.31
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 7.69
+        }
+      ],
+      "sets": [
+        "MEW",
+        "SSP"
+      ]
+    },
+    "Flareon ex": {
+      "found": 13,
+      "total": 356,
+      "pct": 3.65,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 46.15
+        },
+        {
+          "copies": 2,
+          "players": 7,
+          "percent": 53.85
+        }
+      ],
+      "sets": [
+        "PRE"
+      ]
+    },
+    "Leafeon ex": {
+      "found": 13,
+      "total": 356,
+      "pct": 3.65,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PRE"
+      ]
+    },
+    "Eevee ex": {
+      "found": 7,
+      "total": 356,
+      "pct": 1.97,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PRE"
+      ]
+    },
+    "Black Belt's Training": {
+      "found": 7,
+      "total": 356,
+      "pct": 1.97,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "Switch": {
+      "found": 46,
+      "total": 356,
+      "pct": 12.92,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 45,
+          "percent": 97.83
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 2.17
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Glass Trumpet": {
+      "found": 18,
+      "total": 356,
+      "pct": 5.06,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 18,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SCR"
+      ]
+    },
+    "Gravity Mountain": {
+      "found": 18,
+      "total": 356,
+      "pct": 5.06,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 17,
+          "percent": 94.44
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 5.56
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Mega Absol ex": {
+      "found": 29,
+      "total": 356,
+      "pct": 8.15,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 20.69
+        },
+        {
+          "copies": 2,
+          "players": 23,
+          "percent": 79.31
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Mega Kangaskhan ex": {
+      "found": 33,
+      "total": 356,
+      "pct": 9.27,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 21.21
+        },
+        {
+          "copies": 2,
+          "players": 24,
+          "percent": 72.73
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 6.06
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Ralts": {
+      "found": 74,
+      "total": 356,
+      "pct": 20.79,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 1.35
+        },
+        {
+          "copies": 3,
+          "players": 73,
+          "percent": 98.65
+        }
+      ],
+      "sets": [
+        "MEG",
+        "SVI"
+      ]
+    },
+    "Kirlia": {
+      "found": 73,
+      "total": 356,
+      "pct": 20.51,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 12,
+          "percent": 16.44
+        },
+        {
+          "copies": 2,
+          "players": 61,
+          "percent": 83.56
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Gardevoir ex": {
+      "found": 74,
+      "total": 356,
+      "pct": 20.79,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 74,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Frillish": {
+      "found": 27,
+      "total": 356,
+      "pct": 7.58,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 22.22
+        },
+        {
+          "copies": 2,
+          "players": 21,
+          "percent": 77.78
+        }
+      ],
+      "sets": [
+        "WHT"
+      ]
+    },
+    "Jellicent ex": {
+      "found": 21,
+      "total": 356,
+      "pct": 5.9,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 20,
+          "percent": 95.24
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 4.76
+        }
+      ],
+      "sets": [
+        "WHT"
+      ]
+    },
+    "Scream Tail": {
+      "found": 74,
+      "total": 356,
+      "pct": 20.79,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 74,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Professor's Research": {
+      "found": 108,
+      "total": 356,
+      "pct": 30.34,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 55,
+          "percent": 50.93
+        },
+        {
+          "copies": 2,
+          "players": 42,
+          "percent": 38.89
+        },
+        {
+          "copies": 3,
+          "players": 7,
+          "percent": 6.48
+        },
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 3.7
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "Bravery Charm": {
+      "found": 115,
+      "total": 356,
+      "pct": 32.3,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 27,
+          "percent": 23.48
+        },
+        {
+          "copies": 2,
+          "players": 75,
+          "percent": 65.22
+        },
+        {
+          "copies": 3,
+          "players": 13,
+          "percent": 11.3
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Tool Scrapper": {
+      "found": 19,
+      "total": 356,
+      "pct": 5.34,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 19,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "WHT"
+      ]
+    },
+    "Mega Gardevoir ex": {
+      "found": 20,
+      "total": 356,
+      "pct": 5.62,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 20,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Technical Machine: Devolution": {
+      "found": 61,
+      "total": 356,
+      "pct": 17.13,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 60,
+          "percent": 98.36
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 1.64
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Team Rocket's Petrel": {
+      "found": 7,
+      "total": 356,
+      "pct": 1.97,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Technical Machine: Turbo Energize": {
+      "found": 53,
+      "total": 356,
+      "pct": 14.89,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 21,
+          "percent": 39.62
+        },
+        {
+          "copies": 2,
+          "players": 32,
+          "percent": 60.38
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Drifloon": {
+      "found": 50,
+      "total": 356,
+      "pct": 14.04,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 50,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Mystery Garden": {
+      "found": 31,
+      "total": 356,
+      "pct": 8.71,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 14,
+          "percent": 45.16
+        },
+        {
+          "copies": 2,
+          "players": 17,
+          "percent": 54.84
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Dwebble": {
+      "found": 12,
+      "total": 356,
+      "pct": 3.37,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 8.33
+        },
+        {
+          "copies": 3,
+          "players": 10,
+          "percent": 83.33
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 8.33
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Crustle": {
+      "found": 12,
+      "total": 356,
+      "pct": 3.37,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 16.67
+        },
+        {
+          "copies": 3,
+          "players": 9,
+          "percent": 75.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 8.33
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Cornerstone Mask Ogerpon ex": {
+      "found": 27,
+      "total": 356,
+      "pct": 7.58,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 15,
+          "percent": 55.56
+        },
+        {
+          "copies": 2,
+          "players": 12,
+          "percent": 44.44
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Colress's Tenacity": {
+      "found": 15,
+      "total": 356,
+      "pct": 4.21,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 53.33
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 20.0
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 20.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 6.67
+        }
+      ],
+      "sets": [
+        "SFA"
+      ]
+    },
+    "Pokégear 3.0": {
+      "found": 57,
+      "total": 356,
+      "pct": 16.01,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 14.04
+        },
+        {
+          "copies": 2,
+          "players": 18,
+          "percent": 31.58
+        },
+        {
+          "copies": 3,
+          "players": 20,
+          "percent": 35.09
+        },
+        {
+          "copies": 4,
+          "players": 11,
+          "percent": 19.3
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Poké Vital A": {
+      "found": 5,
+      "total": 356,
+      "pct": 1.4,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SFA"
+      ]
+    },
+    "Luxurious Cape": {
+      "found": 14,
+      "total": 356,
+      "pct": 3.93,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 21.43
+        },
+        {
+          "copies": 2,
+          "players": 10,
+          "percent": 71.43
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 7.14
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Town Store": {
+      "found": 33,
+      "total": 356,
+      "pct": 9.27,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 29,
+          "percent": 87.88
+        },
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 12.12
+        }
+      ],
+      "sets": [
+        "OBF"
+      ]
+    },
+    "Practice Studio": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Therapeutic Energy": {
+      "found": 6,
+      "total": 356,
+      "pct": 1.69,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Hop's Cramorant": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "Eri": {
+      "found": 10,
+      "total": 356,
+      "pct": 2.81,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 70.0
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 30.0
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Xerosic's Machinations": {
+      "found": 15,
+      "total": 356,
+      "pct": 4.21,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 15,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SFA"
+      ]
+    },
+    "Precious Trolley": {
+      "found": 49,
+      "total": 356,
+      "pct": 13.76,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 49,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Enhanced Hammer": {
+      "found": 28,
+      "total": 356,
+      "pct": 7.87,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 24,
+          "percent": 85.71
+        },
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 14.29
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Lively Stadium": {
+      "found": 23,
+      "total": 356,
+      "pct": 6.46,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 8.7
+        },
+        {
+          "copies": 2,
+          "players": 21,
+          "percent": 91.3
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Raging Bolt ex": {
+      "found": 17,
+      "total": 356,
+      "pct": 4.78,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 13,
+          "percent": 76.47
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 17.65
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 5.88
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Raging Bolt": {
+      "found": 13,
+      "total": 356,
+      "pct": 3.65,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SCR"
+      ]
+    },
+    "Slither Wing": {
+      "found": 14,
+      "total": 356,
+      "pct": 3.93,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 14,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Professor Sada's Vitality": {
+      "found": 18,
+      "total": 356,
+      "pct": 5.06,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 5.56
+        },
+        {
+          "copies": 4,
+          "players": 17,
+          "percent": 94.44
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Enamorus": {
+      "found": 7,
+      "total": 356,
+      "pct": 1.97,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Marnie's Impidimp": {
+      "found": 29,
+      "total": 356,
+      "pct": 8.15,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 29,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Marnie's Morgrem": {
+      "found": 29,
+      "total": 356,
+      "pct": 8.15,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 29,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Marnie's Grimmsnarl ex": {
+      "found": 29,
+      "total": 356,
+      "pct": 8.15,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 29,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Snorunt": {
+      "found": 30,
+      "total": 356,
+      "pct": 8.43,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 17,
+          "percent": 56.67
+        },
+        {
+          "copies": 3,
+          "players": 13,
+          "percent": 43.33
+        }
+      ],
+      "sets": [
+        "PAR",
+        "TWM"
+      ]
+    },
+    "Froslass": {
+      "found": 30,
+      "total": 356,
+      "pct": 8.43,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 28,
+          "percent": 93.33
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 3.33
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 3.33
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Energy Search": {
+      "found": 19,
+      "total": 356,
+      "pct": 5.34,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 19,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Spikemuth Gym": {
+      "found": 29,
+      "total": 356,
+      "pct": 8.15,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 28,
+          "percent": 96.55
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 3.45
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Kieran": {
+      "found": 5,
+      "total": 356,
+      "pct": 1.4,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Shaymin": {
+      "found": 44,
+      "total": 356,
+      "pct": 12.36,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 44,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Ting-Lu ex": {
+      "found": 5,
+      "total": 356,
+      "pct": 1.4,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Crushing Hammer": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Neutralization Zone": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SFA"
+      ]
+    },
+    "Prism Energy": {
+      "found": 7,
+      "total": 356,
+      "pct": 1.97,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 42.86
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 14.29
+        },
+        {
+          "copies": 4,
+          "players": 3,
+          "percent": 42.86
+        }
+      ],
+      "sets": [
+        "BLK"
+      ]
+    },
+    "Iron Hands ex": {
+      "found": 12,
+      "total": 356,
+      "pct": 3.37,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 8.33
+        },
+        {
+          "copies": 2,
+          "players": 11,
+          "percent": 91.67
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Joltik": {
+      "found": 9,
+      "total": 356,
+      "pct": 2.53,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 9,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SCR"
+      ]
+    },
+    "Onix": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "sets": [
+        "MEG",
+        "PAR"
+      ]
+    },
+    "Steelix": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "sets": [
+        "MEG",
+        "PAR"
+      ]
+    },
+    "Miraidon ex": {
+      "found": 11,
+      "total": 356,
+      "pct": 3.09,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 27.27
+        },
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 72.73
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Levincia": {
+      "found": 5,
+      "total": 356,
+      "pct": 1.4,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 60.0
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 40.0
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "Elgyem": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 50.0
+        }
+      ],
+      "sets": [
+        "BLK"
+      ]
+    },
+    "Golduck": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEP"
+      ]
+    },
+    "Feebas": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAR",
+        "SSP"
+      ]
+    },
+    "Milotic": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Genesect": {
+      "found": 5,
+      "total": 356,
+      "pct": 1.4,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SFA"
+      ]
+    },
+    "Ethan's Sudowoodo": {
+      "found": 10,
+      "total": 356,
+      "pct": 2.81,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 90.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 10.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Chi-Yu ex": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Lana's Aid": {
+      "found": 18,
+      "total": 356,
+      "pct": 5.06,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 18,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Ruffian": {
+      "found": 5,
+      "total": 356,
+      "pct": 1.4,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "Redeemable Ticket": {
+      "found": 8,
+      "total": 356,
+      "pct": 2.25,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "Accompanying Flute": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Handheld Fan": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 75.0
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 25.0
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Counter Gain": {
+      "found": 13,
+      "total": 356,
+      "pct": 3.65,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 13,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Dedenne": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Turtonator": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Exp. Share": {
+      "found": 12,
+      "total": 356,
+      "pct": 3.37,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 75.0
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 25.0
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Roaring Moon ex": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Squawkabilly ex": {
+      "found": 34,
+      "total": 356,
+      "pct": 9.55,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 31,
+          "percent": 91.18
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 8.82
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Pecharunt": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SVP"
+      ]
+    },
+    "Brute Bonnet": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 50.0
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 50.0
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Sableye": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Carmine": {
+      "found": 24,
+      "total": 356,
+      "pct": 6.74,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 8.33
+        },
+        {
+          "copies": 4,
+          "players": 22,
+          "percent": 91.67
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Ancient Booster Energy Capsule": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 75.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 25.0
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Perilous Jungle": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Dunsparce": {
+      "found": 9,
+      "total": 356,
+      "pct": 2.53,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 22.22
+        },
+        {
+          "copies": 4,
+          "players": 7,
+          "percent": 77.78
+        }
+      ],
+      "sets": [
+        "JTG",
+        "PAL"
+      ]
+    },
+    "Dudunsparce": {
+      "found": 9,
+      "total": 356,
+      "pct": 2.53,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 33.33
+        },
+        {
+          "copies": 4,
+          "players": 6,
+          "percent": 66.67
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Abra": {
+      "found": 6,
+      "total": 356,
+      "pct": 1.69,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 6,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Kadabra": {
+      "found": 6,
+      "total": 356,
+      "pct": 1.69,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 33.33
+        },
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 66.67
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Alakazam": {
+      "found": 6,
+      "total": 356,
+      "pct": 1.69,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 33.33
+        },
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 66.67
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Ciphermaniac's Codebreaking": {
+      "found": 22,
+      "total": 356,
+      "pct": 6.18,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 27.27
+        },
+        {
+          "copies": 2,
+          "players": 15,
+          "percent": 68.18
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 4.55
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Dusk Ball": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Enriching Energy": {
+      "found": 7,
+      "total": 356,
+      "pct": 1.97,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Makuhita": {
+      "found": 3,
+      "total": 356,
+      "pct": 0.84,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 33.33
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 66.67
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Hariyama": {
+      "found": 3,
+      "total": 356,
+      "pct": 0.84,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Riolu": {
+      "found": 25,
+      "total": 356,
+      "pct": 7.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 22,
+          "percent": 88.0
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 8.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 4.0
+        }
+      ],
+      "sets": [
+        "MEG",
+        "PRE",
+        "SVI"
+      ]
+    },
+    "Mega Lucario ex": {
+      "found": 25,
+      "total": 356,
+      "pct": 7.02,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 22,
+          "percent": 88.0
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 8.0
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 4.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Mega Signal": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Energy Retrieval": {
+      "found": 14,
+      "total": 356,
+      "pct": 3.93,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 57.14
+        },
+        {
+          "copies": 2,
+          "players": 6,
+          "percent": 42.86
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Chi-Yu": {
+      "found": 20,
+      "total": 356,
+      "pct": 5.62,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 20,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAR",
+        "TWM"
+      ]
+    },
+    "Charcadet": {
+      "found": 24,
+      "total": 356,
+      "pct": 6.74,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 4.17
+        },
+        {
+          "copies": 4,
+          "players": 23,
+          "percent": 95.83
+        }
+      ],
+      "sets": [
+        "PAL",
+        "PAR",
+        "SCR",
+        "SSP"
+      ]
+    },
+    "Ceruledge ex": {
+      "found": 24,
+      "total": 356,
+      "pct": 6.74,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 24,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Legacy Energy": {
+      "found": 22,
+      "total": 356,
+      "pct": 6.18,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 22,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Magnemite": {
+      "found": 3,
+      "total": 356,
+      "pct": 0.84,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 66.67
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 33.33
+        }
+      ],
+      "sets": [
+        "MEG",
+        "PAL"
+      ]
+    },
+    "Magneton": {
+      "found": 3,
+      "total": 356,
+      "pct": 0.84,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 66.67
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 33.33
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Zekrom ex": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "BLK"
+      ]
+    },
+    "Electric Generator": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Gouging Fire ex": {
+      "found": 7,
+      "total": 356,
+      "pct": 1.97,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Maximum Belt": {
+      "found": 23,
+      "total": 356,
+      "pct": 6.46,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 23,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Iron Leaves": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Maractus": {
+      "found": 10,
+      "total": 356,
+      "pct": 2.81,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 10,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "Ho-Oh": {
+      "found": 10,
+      "total": 356,
+      "pct": 2.81,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 10,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Galvantula": {
+      "found": 7,
+      "total": 356,
+      "pct": 1.97,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SFA"
+      ]
+    },
+    "Future Booster Energy Capsule": {
+      "found": 9,
+      "total": 356,
+      "pct": 2.53,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 77.78
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 22.22
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Rescue Board": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Powerglass": {
+      "found": 3,
+      "total": 356,
+      "pct": 0.84,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SFA"
+      ]
+    },
+    "Jacq": {
+      "found": 11,
+      "total": 356,
+      "pct": 3.09,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 9,
+          "percent": 81.82
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 18.18
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Timburr": {
+      "found": 3,
+      "total": 356,
+      "pct": 0.84,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "BLK"
+      ]
+    },
+    "Gurdurr": {
+      "found": 3,
+      "total": 356,
+      "pct": 0.84,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 66.67
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 33.33
+        }
+      ],
+      "sets": [
+        "BLK"
+      ]
+    },
+    "Conkeldurr": {
+      "found": 3,
+      "total": 356,
+      "pct": 0.84,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Sacred Ash": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Koraidon": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Bloodmoon Ursaluna": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PRE"
+      ]
+    },
+    "Terrakion": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "WHT"
+      ]
+    },
+    "Vengeful Punch": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "OBF"
+      ]
+    },
+    "Calamitous Snowy Mountain": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 75.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 25.0
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Team Rocket's Mimikyu": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Team Rocket's Energy": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Bill's Transfer": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 50.0
+        }
+      ],
+      "sets": [
+        "MEW"
+      ]
+    },
+    "Tulip": {
+      "found": 5,
+      "total": 356,
+      "pct": 1.4,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 80.0
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 20.0
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Miriam": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Great Ball": {
+      "found": 6,
+      "total": 356,
+      "pct": 1.69,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 16.67
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 33.33
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Iron Thorns ex": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Techno Radar": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Super Potion": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "Deino": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Zweilous": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Hydreigon ex": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Tera Orb": {
+      "found": 8,
+      "total": 356,
+      "pct": 2.25,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Unfair Stamp": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Ethan's Cyndaquil": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Ethan's Quilava": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 4,
+          "players": 3,
+          "percent": 75.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Ethan's Typhlosion": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Victini": {
+      "found": 3,
+      "total": 356,
+      "pct": 0.84,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 66.67
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 33.33
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Ethan's Adventure": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Brave Bangle": {
+      "found": 5,
+      "total": 356,
+      "pct": 1.4,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 60.0
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 40.0
+        }
+      ],
+      "sets": [
+        "WHT"
+      ]
+    },
+    "Defiance Vest": {
+      "found": 4,
+      "total": 356,
+      "pct": 1.12,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Team Star Grunt": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "OBF"
+      ]
+    },
+    "Torchic": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Combusken": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Blaziken ex": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "JTG"
+      ]
+    },
+    "Judge": {
+      "found": 6,
+      "total": 356,
+      "pct": 1.69,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Drilbur": {
+      "found": 5,
+      "total": 356,
+      "pct": 1.4,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Togepi": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "OBF"
+      ]
+    },
+    "Togekiss": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Shuckle": {
+      "found": 5,
+      "total": 356,
+      "pct": 1.4,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 80.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 20.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Gravity Gemstone": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SCR"
+      ]
+    },
+    "Flutter Mane": {
+      "found": 8,
+      "total": 356,
+      "pct": 2.25,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Sandy Shocks ex": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Mawile": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "OBF"
+      ]
+    },
+    "Chien-Pao": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Shuppet": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Banette ex": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Girafarig": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Farigiraf ex": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Brilliant Blender": {
+      "found": 3,
+      "total": 356,
+      "pct": 0.84,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Froakie": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "OBF"
+      ]
+    },
+    "Frogadier": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Greninja ex": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Grand Tree": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SCR"
+      ]
+    },
+    "Ignition Energy": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "WHT"
+      ]
+    },
+    "Bouffalant": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SCR"
+      ]
+    },
+    "Tynamo": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "BLK"
+      ]
+    },
+    "Eelektrik": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "BLK"
+      ]
+    },
+    "Electrike": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Mega Manectric ex": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Zeraora": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Academy at Night": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SFA"
+      ]
+    },
+    "Sylveon ex": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Max Rod": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PRE"
+      ]
+    },
+    "Galvantula ex": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SCR"
+      ]
+    },
+    "Chikorita": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Bayleef": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Meganium": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Tapu Bulu": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SFA"
+      ]
+    },
+    "Regigigas": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PRE"
+      ]
+    },
+    "Bug Catching Set": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "sets": [
+        "TWM"
+      ]
+    },
+    "Forest of Vitality": {
+      "found": 2,
+      "total": 356,
+      "pct": 0.56,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Rock Chestplate": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Bulbasaur": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Ivysaur": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Mega Venusaur ex": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "MEG"
+      ]
+    },
+    "Beach Court": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SVI"
+      ]
+    },
+    "Heavy Baton": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    },
+    "Pokémon League Headquarters": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "OBF"
+      ]
+    },
+    "Natu": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Xatu": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAR"
+      ]
+    },
+    "Giacomo": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "PAL"
+      ]
+    },
+    "Cynthia's Gible": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Cynthia's Gabite": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Cynthia's Garchomp ex": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Cynthia's Roselia": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Cynthia's Roserade": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Cynthia's Spiritomb": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Cynthia's Power Weight": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "DRI"
+      ]
+    },
+    "Duraludon": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SCR"
+      ]
+    },
+    "Archaludon ex": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "SSP"
+      ]
+    },
+    "Relicanth": {
+      "found": 1,
+      "total": 356,
+      "pct": 0.28,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "sets": [
+        "TEF"
+      ]
+    }
+  }
+}
