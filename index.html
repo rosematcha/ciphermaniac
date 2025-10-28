@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -27,14 +27,8 @@
             <select id="card-type" title="Filter by card type" aria-label="Filter by card type">
               <option value="__all__">All card types</option>
               <option value="pokemon">Pokemon</option>
-              <option value="trainer">Trainer (all)</option>
-              <option value="trainer:item">Trainer - Item</option>
-              <option value="trainer:supporter">Trainer - Supporter</option>
-              <option value="trainer:tool">Trainer - Tool</option>
-              <option value="trainer:stadium">Trainer - Stadium</option>
-              <option value="energy">Energy (all)</option>
-              <option value="energy:basic">Energy - Basic</option>
-              <option value="energy:special">Energy - Special</option>
+              <option value="trainer">Trainer</option>
+              <option value="energy">Energy</option>
             </select>
           </div>
 
@@ -56,9 +50,9 @@
               <button id="tournament-trigger" class="filter-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="tournament-menu">
                 <span class="filter-value" id="tournament-summary">Latest event</span>
               </button>
+              <div id="tournament-chips" class="filter-chip-list" role="list" aria-live="polite" aria-relevant="additions removals" hidden></div>
               <button id="tournament-add" class="filter-add-btn" type="button" aria-label="Add another tournament" hidden>Add another</button>
             </div>
-            <div id="tournament-chips" class="filter-chip-list" role="list" aria-live="polite" aria-relevant="additions removals" hidden></div>
             <div id="tournament-menu" class="filter-menu" role="dialog" aria-label="Select tournaments" hidden>
               <div class="filter-menu-header">
                 <input id="tournament-search" type="search" placeholder="Search tournaments" aria-label="Search tournaments" />
@@ -80,9 +74,9 @@
               <button id="set-trigger" class="filter-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="set-menu">
                 <span class="filter-value" id="set-summary">All sets</span>
               </button>
+              <div id="set-chips" class="filter-chip-list" role="list" aria-live="polite" aria-relevant="additions removals" hidden></div>
               <button id="set-add" class="filter-add-btn" type="button" aria-label="Add another set" hidden>Add another</button>
             </div>
-            <div id="set-chips" class="filter-chip-list" role="list" aria-live="polite" aria-relevant="additions removals" hidden></div>
             <div id="set-menu" class="filter-menu" role="dialog" aria-label="Filter by set" hidden>
               <div class="filter-menu-header">
                 <input id="set-search" type="search" placeholder="Search sets" aria-label="Search sets" />
@@ -144,3 +138,5 @@
   <script src="/assets/js/ui.js" type="module"></script>
 </body>
 </html>
+
+

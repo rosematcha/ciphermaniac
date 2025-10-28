@@ -2827,12 +2827,15 @@ def extract_labs_day2_players(soup, base_url):
     if not table:
         print("Warning: Limitless Labs standings table not found.")
         return []
+    
     tbody = table.find('tbody') or table
     players = []
+    
     for row in tbody.find_all('tr'):
         classes = [c.lower() for c in (row.get('class') or [])]
         if not any('day2' in c for c in classes):
             continue
+        
         cells = row.find_all('td')
         if len(cells) < 2:
             continue
@@ -2840,15 +2843,24 @@ def extract_labs_day2_players(soup, base_url):
         def _text(cell):
             return cell.get_text(strip=True)
 
+        # Cell 0: Placement
         try:
             placement = int(_text(cells[0]))
         except Exception:
             placement = None
 
+        # Cell 1: Player name and link
         player_link = cells[1].find('a', href=True)
         player_name = player_link.get_text(strip=True) if player_link else _text(cells[1])
         player_url = urljoin(base_url, player_link['href']) if player_link else None
 
+        # Extract player ID from player URL for building decklist URL
+        player_id = None
+        if player_url:
+            # URL format: /0041/player/0090
+            player_id = player_url.rstrip('/').split('/')[-1]
+
+        # Cell -2: Deck archetype (second to last)
         deck_cell = cells[-2] if len(cells) >= 2 else None
         deck_anchor = deck_cell.find('a', href=True) if deck_cell else None
         deck_href = deck_anchor['href'] if deck_anchor else None
@@ -2856,24 +2868,34 @@ def extract_labs_day2_players(soup, base_url):
         deck_name = _derive_labs_archetype_name(deck_anchor, deck_slug)
         deck_url = urljoin(base_url, deck_href) if deck_href else None
 
+        # Cell -1: Decklist link (last cell)
+        # This should have an <a> with href ending in /decklist
         decklist_cell = cells[-1] if len(cells) >= 1 else None
         decklist_anchor = decklist_cell.find('a', href=True) if decklist_cell else None
-        decklist_url = urljoin(base_url, decklist_anchor['href']) if decklist_anchor else None
+        
+        # Build decklist URL - prefer the anchor href, but can construct from player URL
+        decklist_url = None
+        if decklist_anchor:
+            decklist_url = urljoin(base_url, decklist_anchor['href'])
+        elif player_url and not player_url.endswith('/decklist'):
+            # Construct decklist URL from player URL: /0041/player/0090 -> /0041/player/0090/decklist
+            decklist_url = player_url.rstrip('/') + '/decklist'
 
+        # Cell 2: Country flag
         country = None
         if len(cells) > 2:
             flag_img = cells[2].find('img', alt=True)
             if flag_img:
                 country = (flag_img.get('alt') or flag_img.get('title') or '').strip() or None
 
+        # Cells 3-6: Stats
+        points = _text(cells[3]) if len(cells) > 3 else None
+        record = _text(cells[4]) if len(cells) > 4 else None
+        # Cells 3-6: Stats
         points = _text(cells[3]) if len(cells) > 3 else None
         record = _text(cells[4]) if len(cells) > 4 else None
         opw = _text(cells[5]) if len(cells) > 5 else None
         oopw = _text(cells[6]) if len(cells) > 6 else None
-
-        player_id = None
-        if player_url:
-            player_id = player_url.rstrip('/').split('/')[-1]
 
         players.append({
             "placement": placement,
@@ -2890,6 +2912,8 @@ def extract_labs_day2_players(soup, base_url):
             "deck_slug": deck_slug,
             "decklist_url": decklist_url
         })
+    
+    print(f"Found {len(players)} Day 2 players with decklists")
     return players
 
 
@@ -2934,6 +2958,46 @@ def _parse_labs_decklist_text(deck_text):
         card_match = re.match(r'^(\d+)\s+(.+)$', line)
         if not card_match:
             continue
+
+    def _format_labs_decklist_from_message(message):
+        if not isinstance(message, dict):
+            return None
+
+        sections = [
+            ("pokemon", "Pokémon"),
+            ("trainer", "Trainer"),
+            ("energy", "Energy")
+        ]
+
+        lines = []
+        for key, label in sections:
+            cards = message.get(key) or []
+            if not cards:
+                continue
+            try:
+                total = sum(int(card.get('count', 0) or 0) for card in cards)
+            except Exception:
+                total = None
+            heading = f"{label}: {total}" if total is not None else f"{label}:"
+            lines.append(heading)
+            for card in cards:
+                count = card.get('count')
+                name = card.get('name') or ''
+                set_code = (card.get('set') or '').upper().strip()
+                number = str(card.get('number') or '').strip()
+                parts = [str(count).strip() if count is not None else '', name.strip()]
+                if set_code:
+                    parts.append(set_code)
+                if number:
+                    parts.append(number)
+                line = ' '.join(part for part in parts if part)
+                if line:
+                    lines.append(line)
+            lines.append('')
+
+        deck_text = '\n'.join(lines).strip()
+        return deck_text or None
+
         count = int(card_match.group(1))
         rest = card_match.group(2).strip()
         tokens = rest.split()
@@ -2968,6 +3032,33 @@ def _parse_labs_decklist_text(deck_text):
         }
         if meta.get('trainerType'):
             card_entry['trainerType'] = meta['trainerType']
+
+        # Next, check SvelteKit fetched data embedded in the page
+        for script in soup.find_all('script'):
+            if script.get('data-sveltekit-fetched') is None:
+                continue
+            data_url = script.get('data-url') or ''
+            if 'labs/data/decklist' not in data_url:
+                continue
+            script_text = script.string or script.get_text()
+            if not script_text:
+                continue
+            try:
+                payload = json.loads(script_text)
+            except json.JSONDecodeError:
+                continue
+            body = payload.get('body')
+            if isinstance(body, str):
+                try:
+                    body = json.loads(body)
+                except json.JSONDecodeError:
+                    body = None
+            if not isinstance(body, dict):
+                continue
+            message = body.get('message')
+            deck_text = _format_labs_decklist_from_message(message)
+            if deck_text:
+                return deck_text
         if meta.get('energyType'):
             card_entry['energyType'] = meta['energyType']
         if meta.get('displayCategory'):
@@ -2979,61 +3070,118 @@ def _parse_labs_decklist_text(deck_text):
 def _extract_labs_decklist_text(soup, html_text):
     if not soup:
         return None
+    
+    # First, try to find the decklist in the HTML state (Vue app data)
+    if html_text:
+        # Look for decklist in various JSON patterns in the HTML
+        patterns = [
+            # Try to find decklist in Vue app state or similar
+            r'"decklist"\s*:\s*"((?:[^"\\]|\\.)*)"',
+            r'"decklistText"\s*:\s*"((?:[^"\\]|\\.)*)"',
+            r'"list"\s*:\s*"((?:[^"\\]|\\.)*)"',
+            r'"exportText"\s*:\s*"((?:[^"\\]|\\.)*)"',
+            r'"text"\s*:\s*"((?:[^"\\]|\\.)*Pokémon(?:[^"\\]|\\.)*)"',
+        ]
+        
+        for pattern in patterns:
+            for match in re.finditer(pattern, html_text, re.DOTALL):
+                raw = match.group(1)
+                try:
+                    # Decode JSON-escaped string
+                    decoded = json.loads(f'"{raw}"')
+                except json.JSONDecodeError:
+                    # Try manual unescape
+                    try:
+                        decoded = raw.encode('utf-8').decode('unicode_escape')
+                    except Exception:
+                        decoded = raw.replace('\\n', '\n').replace('\\r', '').replace('\\"', '"')
+                
+                candidate = decoded.strip()
+                # Check if it looks like a decklist (has Pokémon section and multiple lines)
+                if candidate and candidate.count('\n') >= 4 and 'Pokémon' in candidate:
+                    return candidate
+    
+    # Fallback: Try textarea
     for node in soup.select('textarea'):
         text = node.get_text()
         if text:
             candidate = text.strip()
             if candidate and candidate.count('\n') >= 4:
                 return candidate
-    for attr in ('data-clipboard-text', 'data-copy', 'data-list'):
+    
+    # Try data attributes
+    for attr in ('data-clipboard-text', 'data-copy', 'data-list', 'data-text'):
         for node in soup.select(f'[{attr}]'):
             raw = node.get(attr)
             if raw:
                 candidate = raw.strip()
                 if candidate and candidate.count('\n') >= 4:
                     return candidate
+    
+    # Try pre, code elements
     for node in soup.select('pre, code'):
         text = node.get_text()
         if text:
             candidate = text.strip()
             if candidate and candidate.count('\n') >= 4:
                 return candidate
-    if html_text:
-        patterns = [
-            r'"decklist"\s*:\s*"(.*?)"',
-            r'"decklistText"\s*:\s*"(.*?)"',
-            r'"list"\s*:\s*"(.*?)"'
-        ]
-        for pattern in patterns:
-            for match in re.finditer(pattern, html_text, re.S):
-                raw = match.group(1)
-                try:
-                    decoded = json.loads(f'"{raw}"')
-                except json.JSONDecodeError:
-                    decoded = raw.encode('utf-8').decode('unicode_escape')
-                candidate = decoded.strip()
-                if candidate and candidate.count('\n') >= 4:
-                    return candidate
+    
     return None
 
 
 def fetch_labs_decklist(session, decklist_url):
     if not decklist_url:
         return None
+    
+    print(f"    Fetching decklist from: {decklist_url}")
     deck_soup, _, html_text = get_soup(decklist_url, session)
     if not deck_soup:
+        print(f"    ERROR: Failed to fetch decklist page")
         return None
+    
     deck_title = None
     for heading in deck_soup.select('h1, h2'):
         text = heading.get_text(' ', strip=True)
         if text:
             deck_title = text
             break
+    
     deck_name = _clean_labs_deck_name(deck_title) or None
     deck_text = _extract_labs_decklist_text(deck_soup, html_text)
+    
+    if not deck_text:
+        print(f"    WARNING: Could not extract decklist text from page")
+        print(f"    Trying to find decklist data in page...")
+        
+        # Additional debugging: look for any JSON-like data
+        if html_text:
+            # Try to find window.__NUXT__ or similar state
+            nuxt_match = re.search(r'window\.__NUXT__\s*=\s*(\{.+?\});', html_text, re.DOTALL)
+            if nuxt_match:
+                try:
+                    # Try to extract and parse the state
+                    state_str = nuxt_match.group(1)
+                    # Look for decklist within this state
+                    decklist_in_state = re.search(r'"(?:decklist|text|exportText)"\s*:\s*"((?:[^"\\]|\\.)*)"', state_str)
+                    if decklist_in_state:
+                        raw = decklist_in_state.group(1)
+                        try:
+                            deck_text = json.loads(f'"{raw}"')
+                            print(f"    Found decklist in window.__NUXT__ state")
+                        except Exception:
+                            deck_text = raw.replace('\\n', '\n').replace('\\r', '').replace('\\"', '"')
+                            print(f"    Found decklist in window.__NUXT__ state (manual decode)")
+                except Exception as e:
+                    print(f"    Could not parse window.__NUXT__ state: {e}")
+    
     cards = _parse_labs_decklist_text(deck_text)
     if not cards:
-        print(f"  - Warning: No cards parsed from {decklist_url}")
+        print(f"    ERROR: No cards parsed from decklist")
+        if deck_text:
+            print(f"    Decklist text preview: {deck_text[:200]}...")
+    else:
+        print(f"    Successfully parsed {len(cards)} cards")
+    
     return {
         "deck_name": deck_name,
         "cards": cards,

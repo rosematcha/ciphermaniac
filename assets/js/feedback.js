@@ -1,3 +1,4 @@
+import './utils/buildVersion.js';
 import { logger } from './utils/logger.js';
 
 /**
