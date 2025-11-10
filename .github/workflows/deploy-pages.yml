@@ -31,7 +31,7 @@ jobs:
         run: |
           # Deploy the Pages site and publish the functions bundle.
           # The wrangler 'pages deploy' command will read triggers from wrangler.toml
-          npx wrangler pages deploy . --project-name $PAGES_PROJECT_NAME --branch main --account-id $CLOUDFLARE_ACCOUNT_ID
+          npx wrangler pages deploy . --project-name $PAGES_PROJECT_NAME --branch main
 
       - name: Post-deploy note
         run: echo "Deployed Pages. Check Cloudflare dashboard > Pages > Triggers to confirm the Cron Trigger is registered."
