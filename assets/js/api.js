@@ -9,6 +9,8 @@ import { AppError, ErrorTypes, safeFetch, withRetry, validateType } from './util
 
 let pricingData = null;
 const jsonCache = new Map();
+const ONLINE_META_NAME = 'Online - Last 14 Days';
+const ONLINE_META_SEGMENT = `/${encodeURIComponent(ONLINE_META_NAME)}`;
 
 function hasCachedData(entry) {
   return Object.prototype.hasOwnProperty.call(entry, 'data');
@@ -187,7 +189,14 @@ function fetchWithRetry(url, operation, expectedType, fieldName, options = {}) {
     return data;
   };
 
-  const fetchPromise = withRetry(loader, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+  const fetchPromise = withRetry(loader, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS).catch(error => {
+    logger.error(`Failed ${operation}`, {
+      url,
+      message: error?.message || error,
+      preview: error?.context?.preview
+    });
+    throw error;
+  });
 
   if (!cache) {
     return fetchPromise;
@@ -210,13 +219,37 @@ function fetchWithRetry(url, operation, expectedType, fieldName, options = {}) {
   return trackedPromise;
 }
 
-/**
- * Fetch tournaments list
- * @returns {Promise<string[]>}
- */
+function buildReportUrls(relativePath) {
+  const normalizedPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+  const urls = [];
+
+  const isOnlineMetaPath = normalizedPath.startsWith(ONLINE_META_SEGMENT);
+  if (isOnlineMetaPath && CONFIG.API.R2_BASE) {
+    urls.push(`${CONFIG.API.R2_BASE}/reports${normalizedPath}`);
+  }
+
+  urls.push(`${CONFIG.API.REPORTS_BASE}${normalizedPath}`.replace('//', '/'));
+  return urls;
+}
+
+async function fetchReportResource(relativePath, operation, expectedType, fieldName, options = {}) {
+  const urls = buildReportUrls(relativePath);
+  let lastError = null;
+
+  for (const url of urls) {
+    try {
+      return await fetchWithRetry(url, operation, expectedType, fieldName, { ...options, cacheKey: url });
+    } catch (error) {
+      lastError = error;
+      logger.warn(`${operation} failed via ${url}`, { message: error?.message || error });
+    }
+  }
+
+  throw lastError;
+}
+
 export function fetchTournamentsList() {
-  const url = `${CONFIG.API.REPORTS_BASE}/tournaments.json`;
-  return fetchWithRetry(url, 'tournaments list', 'array', 'tournaments list', { cache: true });
+  return fetchReportResource('tournaments.json', 'tournaments list', 'array', 'tournaments list', { cache: true });
 }
 
 /**
@@ -290,9 +323,9 @@ export async function fetchLimitlessTournaments(filters = {}) {
  * @returns {Promise<object>}
  */
 export function fetchReport(tournament) {
-  const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/master.json`;
-  return fetchWithRetry(
-    url,
+  const encodedTournament = encodeURIComponent(tournament);
+  return fetchReportResource(
+    `${encodedTournament}/master.json`,
     `report for ${tournament}`,
     'object',
     'tournament report',
@@ -328,9 +361,8 @@ export async function fetchOverrides() {
  * @returns {Promise<string[]>}
  */
 export function fetchArchetypesList(tournament) {
-  const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/index.json`;
-  return fetchWithRetry(
-    url,
+  return fetchReportResource(
+    `${encodeURIComponent(tournament)}/archetypes/index.json`,
     `archetypes for ${tournament}`,
     'array',
     'archetypes list',
@@ -388,18 +420,22 @@ async function fetchArchetypeData({
  */
 export function fetchArchetypeReport(tournament, archetypeBase) {
   logger.debug(`Fetching archetype report: ${tournament}/${archetypeBase}`);
-  const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
+  const relativePath = `${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
 
-  return fetchArchetypeData({
-    url,
-    validateLabel: 'archetype report',
-    onSuccess: data => {
-      logger.info(`Loaded archetype report ${archetypeBase} for ${tournament}`, { itemCount: data.items?.length });
-    },
-    notFoundLog: {
-      message: `Archetype ${archetypeBase} not found for ${tournament}`,
-      meta: { url }
+  return fetchReportResource(
+    relativePath,
+    `archetype report ${archetypeBase} for ${tournament}`,
+    'object',
+    'archetype report',
+    { cache: true }
+  ).then(data => {
+    logger.info(`Loaded archetype report ${archetypeBase} for ${tournament}`, { itemCount: data.items?.length });
+    return data;
+  }).catch(error => {
+    if (error instanceof AppError && error.context?.status === 404) {
+      logger.debug(`Archetype ${archetypeBase} not found for ${tournament}`, { relativePath });
     }
+    throw error;
   });
 }
 
@@ -417,22 +453,23 @@ export async function fetchArchetypeFiltersReport(tournament, archetypeBase, inc
   const isBaseReport = !includeId && !excludeId;
 
   if (isBaseReport) {
-    const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
-    logger.debug('Fetching base archetype report', { tournament, archetypeBase, url });
+    const relativePath = `${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
+    logger.debug('Fetching base archetype report', { tournament, archetypeBase });
 
-    return fetchArchetypeData({
-      url,
-      validateLabel: 'archetype report',
-      onSuccess: data => {
-        logger.info(`Loaded base archetype report ${archetypeBase}`, {
-          deckTotal: data.deckTotal
-        });
-      },
-      notFoundLog: {
-        message: 'Base archetype report not found',
-        meta: { tournament, archetypeBase }
-      },
-      logOnRetry: false
+    return fetchReportResource(
+      relativePath,
+      `base archetype report ${archetypeBase}`,
+      'object',
+      'archetype report',
+      { cache: true }
+    ).then(data => {
+      logger.info(`Loaded base archetype report ${archetypeBase}`, { deckTotal: data.deckTotal });
+      return data;
+    }).catch(error => {
+      if (error instanceof AppError && error.context?.status === 404) {
+        logger.debug('Base archetype report not found', { tournament, archetypeBase });
+      }
+      throw error;
     });
   }
 
@@ -477,9 +514,8 @@ export async function fetchArchetypeFiltersReport(tournament, archetypeBase, inc
  * @returns {Promise<object>}
  */
 export function fetchMeta(tournament) {
-  const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/meta.json`;
-  return fetchWithRetry(
-    url,
+  return fetchReportResource(
+    `${encodeURIComponent(tournament)}/meta.json`,
     `meta for ${tournament}`,
     'object',
     'tournament meta',
@@ -493,9 +529,8 @@ export function fetchMeta(tournament) {
  * @returns {Promise<{deckTotal:number, cards: Record<string, any>}>}
  */
 export async function fetchCardIndex(tournament) {
-  const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/cardIndex.json`;
-  const data = await fetchWithRetry(
-    url,
+  const data = await fetchReportResource(
+    `${encodeURIComponent(tournament)}/cardIndex.json`,
     `card index for ${tournament}`,
     'object',
     'card index',
@@ -513,8 +548,9 @@ export async function fetchCardIndex(tournament) {
  * @returns {Promise<Array|null>}
  */
 export function fetchDecks(tournament) {
-  const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/decks.json`;
-  const cacheKey = `decks:${url}`;
+  const relativePath = `${encodeURIComponent(tournament)}/decks.json`;
+  const urls = buildReportUrls(relativePath);
+  const cacheKey = `decks:${relativePath}`;
   const now = Date.now();
   const existing = jsonCache.get(cacheKey);
 
@@ -532,16 +568,18 @@ export function fetchDecks(tournament) {
   }
 
   const loader = (async () => {
-    try {
-      logger.debug(`Fetching decks.json for: ${tournament}`);
-      const response = await fetchWithTimeout(url);
-      const data = await safeJsonParse(response, url);
-      validateType(data, 'array', 'decks');
-      return data;
-    } catch (err) {
-      logger.debug('decks.json not available', err.message);
-      return null;
+    for (const url of urls) {
+      try {
+        logger.debug(`Fetching decks.json for: ${tournament}`, { url });
+        const response = await fetchWithTimeout(url);
+        const data = await safeJsonParse(response, url);
+        validateType(data, 'array', 'decks');
+        return data;
+      } catch (err) {
+        logger.debug('decks.json not available via url', { url, message: err.message });
+      }
     }
+    return null;
   })();
 
   const tracked = loader
@@ -567,8 +605,9 @@ export function fetchDecks(tournament) {
  * @returns {Promise<string[]|null>}
  */
 export function fetchTop8ArchetypesList(tournament) {
-  const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/archetypes/top8.json`;
-  const cacheKey = `top8:${url}`;
+  const relativePath = `${encodeURIComponent(tournament)}/archetypes/top8.json`;
+  const urls = buildReportUrls(relativePath);
+  const cacheKey = `top8:${relativePath}`;
   const now = Date.now();
   const existing = jsonCache.get(cacheKey);
 
@@ -586,22 +625,22 @@ export function fetchTop8ArchetypesList(tournament) {
   }
 
   const loader = (async () => {
-    try {
-      logger.debug(`Fetching top 8 archetypes for: ${tournament}`);
-      const response = await fetchWithTimeout(url);
-      const data = await safeJsonParse(response, url);
+    for (const url of urls) {
+      try {
+        logger.debug(`Fetching top 8 archetypes for: ${tournament}`, { url });
+        const response = await fetchWithTimeout(url);
+        const data = await safeJsonParse(response, url);
 
-      if (Array.isArray(data)) {
-        logger.info(`Loaded ${data.length} top 8 archetypes for ${tournament}`);
-        return data;
+        if (Array.isArray(data)) {
+          logger.info(`Loaded ${data.length} top 8 archetypes for ${tournament}`);
+          return data;
+        }
+        logger.warn('Top 8 data is not an array, continuing fallback');
+      } catch (error) {
+        logger.debug(`Top 8 archetypes not available via ${url}`, error.message);
       }
-
-      logger.warn('Top 8 data is not an array, returning null');
-      return null;
-    } catch (error) {
-      logger.debug(`Top 8 archetypes not available for ${tournament}`, error.message);
-      return null;
     }
+    return null;
   })();
 
   const tracked = loader

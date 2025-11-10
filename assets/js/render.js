@@ -10,6 +10,7 @@ import { buildCardPath, normalizeCardNumber } from './card/routing.js';
 // import { setupImagePreloading } from './utils/imagePreloader.js'; // Disabled - using parallelImageLoader instead
 import { parallelImageLoader } from './utils/parallelImageLoader.js';
 import { setProperties as _setProperties, setStyles, createElement } from './utils/dom.js';
+import { CONFIG } from './config.js';
 // Modal removed: navigate to card page instead
 
 const USD_FORMATTER = new Intl.NumberFormat('en-US', {
@@ -108,18 +109,43 @@ function hideGridTooltip() { if (__gridGraphTooltip) {__gridGraphTooltip.style.d
 function escapeHtml(str) { if (!str) {return '';} return String(str).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
 
 /**
- *
- * @param container
- * @param deckTotal
- * @param count
+ * Render summary information including deck count, card count, and row visibility
+ * @param container - Summary container element
+ * @param deckTotal - Total number of decks
+ * @param count - Total number of cards
+ * @param visibleRows - Number of currently visible rows (optional)
+ * @param totalRows - Total number of rows available (optional)
  */
-export function renderSummary(container, deckTotal, count) {
+export function renderSummary(container, deckTotal, count, visibleRows = null, totalRows = null) {
   if (!container) {return;} // Handle case where summary element doesn't exist
   const parts = [];
   if (deckTotal) {parts.push(`${deckTotal} decklists`);}
   parts.push(`${count} cards`);
+  
+  // Add row count if provided and there are more rows to show
+  if (Number.isFinite(visibleRows) && Number.isFinite(totalRows) && totalRows > visibleRows) {
+    parts.push(`showing ${visibleRows} of ${totalRows} rows`);
+  }
+  
   // eslint-disable-next-line no-param-reassign
   container.textContent = parts.join(' • ');
+}
+
+/**
+ * Update the summary with current grid row visibility state
+ * @param deckTotal - Total number of decks
+ * @param cardCount - Total number of cards
+ */
+export function updateSummaryWithRowCounts(deckTotal, cardCount) {
+  const grid = getGridElement();
+  const summaryEl = document.getElementById('summary');
+  
+  if (!grid || !summaryEl) {return;}
+  
+  const currentVisibleRows = grid.querySelectorAll('.row').length;
+  const totalRows = grid._totalRows || currentVisibleRows;
+  
+  renderSummary(summaryEl, deckTotal, cardCount, currentVisibleRows, totalRows);
 }
 
 /**
@@ -177,8 +203,8 @@ export function render(items, overrides = {}, options = {}) {
   const frag = document.createDocumentFragment();
   let i = 0;
   let rowIndex = 0;
-  // visible rows limit (rows, not cards). Default to 6; clicking More loads +8 rows
-  if (!Number.isInteger(grid._visibleRows)) {grid._visibleRows = 6;}
+  // visible rows limit (rows, not cards). Default to initial value from config; clicking More loads incremental rows
+  if (!Number.isInteger(grid._visibleRows)) {grid._visibleRows = CONFIG.UI.INITIAL_VISIBLE_ROWS;}
   const visibleRowsLimit = grid._visibleRows;
   while (i < items.length && rowIndex < visibleRowsLimit) {
     const row = document.createElement('div');
@@ -232,6 +258,7 @@ export function render(items, overrides = {}, options = {}) {
   // setupImagePreloading(items, overrides); // Disabled - using parallelImageLoader instead
 
   // Additionally, preload visible images in parallel batches for even faster loading
+  // Use moderate concurrency to balance performance with browser resources
   if (items.length > 0) {
     requestAnimationFrame(() => {
       preloadVisibleImagesParallel(items, overrides);
@@ -282,12 +309,43 @@ export function render(items, overrides = {}, options = {}) {
     useSmallRows,
     forceCompact
   });
+  
   if (rowIndex < estimateTotalRows) {
     const moreWrap = document.createElement('div'); moreWrap.className = 'more-rows';
-    const moreBtn = document.createElement('button'); moreBtn.className = 'btn'; moreBtn.type = 'button'; moreBtn.textContent = 'More...';
+    const moreBtn = document.createElement('button'); moreBtn.className = 'btn'; moreBtn.type = 'button';
+    
+    // Calculate how many more rows are available
+    const remainingRows = estimateTotalRows - rowIndex;
+    const nextBatchSize = Math.min(CONFIG.UI.ROWS_PER_LOAD, remainingRows);
+    
+    // Update button text to show how many more will load
+    moreBtn.textContent = remainingRows <= CONFIG.UI.ROWS_PER_LOAD 
+      ? `Load ${remainingRows} more row${remainingRows === 1 ? '' : 's'}...`
+      : `Load more (${nextBatchSize} of ${remainingRows} rows)...`;
+    
     moreBtn.addEventListener('click', () => {
-      // Instead of re-rendering everything, just add the remaining rows
-      expandGridRows(items, overrides, estimateTotalRows, settings);
+      // Load the next batch of rows incrementally
+      const targetRows = Math.min(rowIndex + CONFIG.UI.ROWS_PER_LOAD, estimateTotalRows);
+      
+      // Add loading state
+      const originalText = moreBtn.textContent;
+      moreBtn.textContent = 'Loading...';
+      moreBtn.disabled = true;
+      moreBtn.style.opacity = '0.6';
+      
+      // Use requestAnimationFrame to ensure DOM updates before heavy work
+      requestAnimationFrame(() => {
+        expandGridRows(items, overrides, targetRows, settings);
+        
+        // Restore button state (if it still exists - it might be removed if all rows loaded)
+        requestAnimationFrame(() => {
+          if (moreBtn.isConnected) {
+            moreBtn.textContent = originalText;
+            moreBtn.disabled = false;
+            moreBtn.style.opacity = '';
+          }
+        });
+      });
     });
     moreWrap.appendChild(moreBtn);
     grid.appendChild(moreWrap);
@@ -299,6 +357,29 @@ export function render(items, overrides = {}, options = {}) {
   if (!grid._kbNavAttached) {
     grid.addEventListener('keydown', event => {
       const active = document.activeElement;
+      
+      // Check for 'Load more' shortcut (M key) when not focused on an input
+      if (event.key === 'm' || event.key === 'M') {
+        const activeTag = active?.tagName?.toLowerCase();
+        const isInputFocused = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
+        
+        if (!isInputFocused) {
+          const moreBtn = /** @type {HTMLButtonElement | null} */ (grid.querySelector('.more-rows .btn'));
+          if (moreBtn && !moreBtn.disabled) {
+            event.preventDefault();
+            moreBtn.click();
+            // Briefly highlight the button to provide feedback
+            moreBtn.style.outline = '2px solid var(--primary, #4a9eff)';
+            moreBtn.style.outlineOffset = '2px';
+            setTimeout(() => {
+              moreBtn.style.outline = '';
+              moreBtn.style.outlineOffset = '';
+            }, 200);
+            return;
+          }
+        }
+      }
+      
       if (!active || !active.classList || !active.classList.contains('card')) {return;}
       const rowEl = active.closest('.row');
       const rowIdx = Number(active.dataset.row ?? rowEl?.dataset.rowIndex ?? 0);
@@ -425,7 +506,7 @@ function expandGridRows(items, overrides, targetTotalRows, options = {}) {
 
   // Update grid metadata
   grid._visibleRows = targetTotalRows;
-  grid._totalRows = targetTotalRows;
+  const totalAvailableRows = grid._totalRows || 0;
   grid._layoutMetrics = /** @type {CachedLayoutMetrics} */ ({
     base,
     perRowBig,
@@ -440,11 +521,70 @@ function expandGridRows(items, overrides, targetTotalRows, options = {}) {
     forceCompact
   });
 
+  // Update or remove the "More..." button based on remaining rows
+  const currentRowCount = grid.querySelectorAll('.row').length;
+  const remainingRows = totalAvailableRows - currentRowCount;
+  
+  // Update summary with new row counts
+  const summaryEl = document.getElementById('summary');
+  if (summaryEl && grid._totalCards) {
+    // Try to get deck total from summary's current text or use a fallback
+    const currentText = summaryEl.textContent || '';
+    const deckMatch = currentText.match(/(\d+)\s+decklists/);
+    const deckTotal = deckMatch ? Number(deckMatch[1]) : 0;
+    renderSummary(summaryEl, deckTotal, grid._totalCards, currentRowCount, totalAvailableRows);
+  }
+  
+  if (remainingRows > 0) {
+    // There are more rows to load - update or create the button
+    let moreWrap = /** @type {HTMLElement | null} */ (grid.querySelector('.more-rows'));
+    if (!moreWrap) {
+      moreWrap = document.createElement('div');
+      moreWrap.className = 'more-rows';
+      grid.appendChild(moreWrap);
+      grid._moreWrapRef = moreWrap;
+    }
+    
+    let moreBtn = /** @type {HTMLButtonElement | null} */ (moreWrap.querySelector('.btn'));
+    if (!moreBtn) {
+      moreBtn = document.createElement('button');
+      moreBtn.className = 'btn';
+      moreBtn.type = 'button';
+      moreWrap.appendChild(moreBtn);
+    }
+    
+    // Update button text with remaining count
+    const nextBatchSize = Math.min(CONFIG.UI.ROWS_PER_LOAD, remainingRows);
+    moreBtn.textContent = remainingRows <= CONFIG.UI.ROWS_PER_LOAD 
+      ? `Load ${remainingRows} more row${remainingRows === 1 ? '' : 's'}...`
+      : `Load more (${nextBatchSize} of ${remainingRows} rows)...`;
+    
+    // Remove old event listeners by cloning the button
+    const newBtn = /** @type {HTMLButtonElement} */ (moreBtn.cloneNode(true));
+    if (moreBtn.parentNode) {
+      moreBtn.parentNode.replaceChild(newBtn, moreBtn);
+    }
+    
+    // Add new event listener for the next batch
+    newBtn.addEventListener('click', () => {
+      const nextTargetRows = Math.min(currentRowCount + CONFIG.UI.ROWS_PER_LOAD, totalAvailableRows);
+      expandGridRows(items, overrides, nextTargetRows, options);
+    });
+  } else {
+    // No more rows to load - remove the button
+    const moreWrap = grid.querySelector('.more-rows');
+    if (moreWrap) {
+      moreWrap.remove();
+      grid._moreWrapRef = null;
+    }
+  }
+
   // Set up image preloading for new cards only
   const newItems = items.slice(existingCards);
   // setupImagePreloading(newItems, overrides); // Disabled - using parallelImageLoader instead
 
   // Additionally preload new images in parallel for better performance
+  // Use lower concurrency to avoid overwhelming the browser
   if (newItems.length > 0) {
     requestAnimationFrame(() => {
       const newCandidatesList = newItems.flatMap(item => {
@@ -454,7 +594,7 @@ function expandGridRows(items, overrides, targetTotalRows, options = {}) {
           buildThumbCandidates(item.name, false, overrides, variant)
         ];
       });
-      parallelImageLoader.preloadImages(newCandidatesList, 6);
+      parallelImageLoader.preloadImages(newCandidatesList, 4);
     });
   }
 
@@ -552,9 +692,10 @@ function preloadVisibleImagesParallel(items, overrides = {}) {
     }
   });
 
-  // Preload in batches with high concurrency for visible images
+  // Preload in batches with moderate concurrency for visible images
+  // Reduced from 8 to 6 to be more conservative with resources
   if (candidatesList.length > 0) {
-    parallelImageLoader.preloadImages(candidatesList, 8); // Higher concurrency for visible images
+    parallelImageLoader.preloadImages(candidatesList, 6);
   }
 }
 
