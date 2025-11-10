@@ -10,7 +10,7 @@ import { AppError, ErrorTypes, safeFetch, withRetry, validateType } from './util
 let pricingData = null;
 const jsonCache = new Map();
 const ONLINE_META_NAME = 'Online - Last 14 Days';
-const ONLINE_META_SEGMENT = `/reports/${encodeURIComponent(ONLINE_META_NAME)}`;
+const ONLINE_META_SEGMENT = `/${encodeURIComponent(ONLINE_META_NAME)}`;
 
 function hasCachedData(entry) {
   return Object.prototype.hasOwnProperty.call(entry, 'data');
@@ -225,7 +225,7 @@ function buildReportUrls(relativePath) {
 
   const isOnlineMetaPath = normalizedPath.startsWith(ONLINE_META_SEGMENT);
   if (isOnlineMetaPath && CONFIG.API.R2_BASE) {
-    urls.push(`${CONFIG.API.R2_BASE}${normalizedPath}`);
+    urls.push(`${CONFIG.API.R2_BASE}/reports${normalizedPath}`);
   }
 
   urls.push(`${CONFIG.API.REPORTS_BASE}${normalizedPath}`.replace('//', '/'));
@@ -325,7 +325,7 @@ export async function fetchLimitlessTournaments(filters = {}) {
 export function fetchReport(tournament) {
   const encodedTournament = encodeURIComponent(tournament);
   return fetchReportResource(
-    `/reports/${encodedTournament}/master.json`,
+    `${encodedTournament}/master.json`,
     `report for ${tournament}`,
     'object',
     'tournament report',
@@ -362,7 +362,7 @@ export async function fetchOverrides() {
  */
 export function fetchArchetypesList(tournament) {
   return fetchReportResource(
-    `/reports/${encodeURIComponent(tournament)}/archetypes/index.json`,
+    `${encodeURIComponent(tournament)}/archetypes/index.json`,
     `archetypes for ${tournament}`,
     'array',
     'archetypes list',
@@ -420,7 +420,7 @@ async function fetchArchetypeData({
  */
 export function fetchArchetypeReport(tournament, archetypeBase) {
   logger.debug(`Fetching archetype report: ${tournament}/${archetypeBase}`);
-  const relativePath = `/reports/${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
+  const relativePath = `${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
 
   return fetchReportResource(
     relativePath,
@@ -453,7 +453,7 @@ export async function fetchArchetypeFiltersReport(tournament, archetypeBase, inc
   const isBaseReport = !includeId && !excludeId;
 
   if (isBaseReport) {
-    const relativePath = `/reports/${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
+    const relativePath = `${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
     logger.debug('Fetching base archetype report', { tournament, archetypeBase });
 
     return fetchReportResource(
@@ -515,7 +515,7 @@ export async function fetchArchetypeFiltersReport(tournament, archetypeBase, inc
  */
 export function fetchMeta(tournament) {
   return fetchReportResource(
-    `/reports/${encodeURIComponent(tournament)}/meta.json`,
+    `${encodeURIComponent(tournament)}/meta.json`,
     `meta for ${tournament}`,
     'object',
     'tournament meta',
@@ -530,7 +530,7 @@ export function fetchMeta(tournament) {
  */
 export async function fetchCardIndex(tournament) {
   const data = await fetchReportResource(
-    `/reports/${encodeURIComponent(tournament)}/cardIndex.json`,
+    `${encodeURIComponent(tournament)}/cardIndex.json`,
     `card index for ${tournament}`,
     'object',
     'card index',
@@ -548,7 +548,7 @@ export async function fetchCardIndex(tournament) {
  * @returns {Promise<Array|null>}
  */
 export function fetchDecks(tournament) {
-  const relativePath = `/reports/${encodeURIComponent(tournament)}/decks.json`;
+  const relativePath = `${encodeURIComponent(tournament)}/decks.json`;
   const urls = buildReportUrls(relativePath);
   const cacheKey = `decks:${relativePath}`;
   const now = Date.now();
@@ -605,7 +605,7 @@ export function fetchDecks(tournament) {
  * @returns {Promise<string[]|null>}
  */
 export function fetchTop8ArchetypesList(tournament) {
-  const relativePath = `/reports/${encodeURIComponent(tournament)}/archetypes/top8.json`;
+  const relativePath = `${encodeURIComponent(tournament)}/archetypes/top8.json`;
   const urls = buildReportUrls(relativePath);
   const cacheKey = `top8:${relativePath}`;
   const now = Date.now();
