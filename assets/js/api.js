@@ -187,7 +187,14 @@ function fetchWithRetry(url, operation, expectedType, fieldName, options = {}) {
     return data;
   };
 
-  const fetchPromise = withRetry(loader, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+  const fetchPromise = withRetry(loader, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS).catch(error => {
+    logger.error(`Failed ${operation}`, {
+      url,
+      message: error?.message || error,
+      preview: error?.context?.preview
+    });
+    throw error;
+  });
 
   if (!cache) {
     return fetchPromise;
