@@ -1075,6 +1075,10 @@ async function initializeTournamentSelector(state) {
     ['2025-08-15, World Championships 2025'] // fallback
   );
 
+  if (!tournaments.includes(DEFAULT_ONLINE_META)) {
+    tournaments.unshift(DEFAULT_ONLINE_META);
+  }
+
   const urlState = getStateFromURL();
   const urlSelectionRaw = urlState.tour ? urlState.tour.split(',') : [];
   const normalizedFromUrl = normalizeTournamentSelection(urlSelectionRaw);
