@@ -100,6 +100,18 @@ LIMITLESS_API_KEY=your_limitless_api_key_here
 
 Cloudflare Pages/Workers deployments should define the same `LIMITLESS_API_KEY` variable in the dashboard or via `wrangler` so serverless functions can reach the Limitless API without leaking the key to the browser.
 
+### Online Meta Automation
+
+The GitHub Action at `.github/workflows/online-meta.yml` regenerates the “Online – Last 14 Days” aggregated report. Configure these repository secrets before enabling the workflow:
+
+- `LIMITLESS_API_KEY`
+- `R2_ACCOUNT_ID`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET_NAME`
+
+The workflow runs daily (12:00 UTC) and on manual dispatch, calling `node scripts/run-online-meta.mjs` to push the refreshed JSON into `reports/Online - Last 14 Days/` inside the `ciphermaniac-reports` R2 bucket.
+
 ## Data Sources
 
 Tournament data is sourced from [LimitlessTCG](https://limitlesstcg.com) including:

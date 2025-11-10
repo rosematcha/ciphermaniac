@@ -114,6 +114,8 @@ const appState = {
   }
 };
 
+const DEFAULT_ONLINE_META = 'Online - Last 14 Days';
+
 /** @typedef {typeof appState} AppState */
 
 /**
@@ -1081,6 +1083,10 @@ async function initializeTournamentSelector(state) {
 
   if (selection.length === 0 && state.selectedTournaments.length > 0) {
     selection = normalizeTournamentSelection(state.selectedTournaments).filter(value => tournaments.includes(value));
+  }
+
+  if (selection.length === 0 && tournaments.includes(DEFAULT_ONLINE_META)) {
+    selection = [DEFAULT_ONLINE_META];
   }
 
   if (selection.length === 0 && tournaments.length > 0) {
