@@ -44,7 +44,10 @@ export const CONFIG = Object.freeze({
     ANIMATION_DURATION_MS: 150,
     PAGINATION_LIMIT: 50,
     SEARCH_MIN_LENGTH: 2,
-    CHART_TIME_LIMIT: 6
+    CHART_TIME_LIMIT: 6,
+    // Pagination for card grid
+    INITIAL_VISIBLE_ROWS: 6,
+    ROWS_PER_LOAD: 8
   },
 
   // Known archetype base names
