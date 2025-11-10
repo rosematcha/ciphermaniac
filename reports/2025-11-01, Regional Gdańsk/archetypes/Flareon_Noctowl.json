@@ -1,0 +1,1113 @@
+{
+  "deckTotal": 8,
+  "items": [
+    {
+      "rank": 1,
+      "name": "Noctowl",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "SCR",
+      "number": "115",
+      "uid": "Noctowl::SCR::115",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 2,
+      "name": "Eevee",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "143",
+      "uid": "Eevee::SSP::143",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 3,
+      "name": "Eevee ex",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "PRE",
+      "number": "075",
+      "uid": "Eevee ex::PRE::075",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 4,
+      "name": "Flareon ex",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "PRE",
+      "number": "014",
+      "uid": "Flareon ex::PRE::014",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 5,
+      "name": "Leafeon ex",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "PRE",
+      "number": "006",
+      "uid": "Leafeon ex::PRE::006",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 6,
+      "name": "Fan Rotom",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "SCR",
+      "number": "118",
+      "uid": "Fan Rotom::SCR::118",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 7,
+      "name": "Pidgeot ex",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "OBF",
+      "number": "164",
+      "uid": "Pidgeot ex::OBF::164",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 8,
+      "name": "Wellspring Mask Ogerpon ex",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "064",
+      "uid": "Wellspring Mask Ogerpon ex::TWM::064",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 9,
+      "name": "Terapagos ex",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "SCR",
+      "number": "128",
+      "uid": "Terapagos ex::SCR::128",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 10,
+      "name": "Fezandipiti ex",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "038",
+      "uid": "Fezandipiti ex::SFA::038",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 11,
+      "name": "Latias ex",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "076",
+      "uid": "Latias ex::SSP::076",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 12,
+      "name": "Crispin",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 7,
+          "percent": 87.5
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 12.5
+        }
+      ],
+      "set": "SCR",
+      "number": "133",
+      "uid": "Crispin::SCR::133",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 13,
+      "name": "Boss's Orders",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEG",
+      "number": "114",
+      "uid": "Boss's Orders::MEG::114",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 14,
+      "name": "Iono",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 87.5
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 12.5
+        }
+      ],
+      "set": "PAL",
+      "number": "185",
+      "uid": "Iono::PAL::185",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 15,
+      "name": "Briar",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "SCR",
+      "number": "132",
+      "uid": "Briar::SCR::132",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 16,
+      "name": "Nest Ball",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "181",
+      "uid": "Nest Ball::SVI::181",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 17,
+      "name": "Buddy-Buddy Poffin",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 12.5
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 37.5
+        },
+        {
+          "copies": 3,
+          "players": 4,
+          "percent": 50.0
+        }
+      ],
+      "set": "TEF",
+      "number": "144",
+      "uid": "Buddy-Buddy Poffin::TEF::144",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 18,
+      "name": "Ultra Ball",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEG",
+      "number": "131",
+      "uid": "Ultra Ball::MEG::131",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 19,
+      "name": "Night Stretcher",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 12.5
+        },
+        {
+          "copies": 2,
+          "players": 7,
+          "percent": 87.5
+        }
+      ],
+      "set": "SFA",
+      "number": "061",
+      "uid": "Night Stretcher::SFA::061",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 20,
+      "name": "Rare Candy",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEG",
+      "number": "125",
+      "uid": "Rare Candy::MEG::125",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 21,
+      "name": "Counter Catcher",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 62.5
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 37.5
+        }
+      ],
+      "set": "PAR",
+      "number": "160",
+      "uid": "Counter Catcher::PAR::160",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 22,
+      "name": "Sparkling Crystal",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "SCR",
+      "number": "142",
+      "uid": "Sparkling Crystal::SCR::142",
+      "category": "trainer",
+      "trainerType": "tool",
+      "displayCategory": "trainer-tool"
+    },
+    {
+      "rank": 23,
+      "name": "Area Zero Underdepths",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "SCR",
+      "number": "131",
+      "uid": "Area Zero Underdepths::SCR::131",
+      "category": "trainer",
+      "trainerType": "stadium",
+      "displayCategory": "trainer-stadium"
+    },
+    {
+      "rank": 24,
+      "name": "Fire Energy",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVE",
+      "number": "018",
+      "uid": "Fire Energy::SVE::018",
+      "category": "energy",
+      "energyType": "basic",
+      "displayCategory": "energy-basic"
+    },
+    {
+      "rank": 25,
+      "name": "Water Energy",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 12.5
+        },
+        {
+          "copies": 2,
+          "players": 7,
+          "percent": 87.5
+        }
+      ],
+      "set": "SVE",
+      "number": "019",
+      "uid": "Water Energy::SVE::019",
+      "category": "energy",
+      "energyType": "basic",
+      "displayCategory": "energy-basic"
+    },
+    {
+      "rank": 26,
+      "name": "Lightning Energy",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 75.0
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 25.0
+        }
+      ],
+      "set": "SVE",
+      "number": "020",
+      "uid": "Lightning Energy::SVE::020",
+      "category": "energy",
+      "energyType": "basic",
+      "displayCategory": "energy-basic"
+    },
+    {
+      "rank": 27,
+      "name": "Grass Energy",
+      "found": 8,
+      "total": 8,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 8,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVE",
+      "number": "017",
+      "uid": "Grass Energy::SVE::017",
+      "category": "energy",
+      "energyType": "basic",
+      "displayCategory": "energy-basic"
+    },
+    {
+      "rank": 28,
+      "name": "Hoothoot",
+      "found": 7,
+      "total": 8,
+      "pct": 87.5,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 42.86
+        },
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 57.14
+        }
+      ],
+      "set": "SCR",
+      "number": "114",
+      "uid": "Hoothoot::SCR::114",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 29,
+      "name": "Pidgey",
+      "found": 7,
+      "total": 8,
+      "pct": 87.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEW",
+      "number": "016",
+      "uid": "Pidgey::MEW::016",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 30,
+      "name": "Bloodmoon Ursaluna ex",
+      "found": 7,
+      "total": 8,
+      "pct": 87.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "141",
+      "uid": "Bloodmoon Ursaluna ex::TWM::141",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 31,
+      "name": "Cyrano",
+      "found": 7,
+      "total": 8,
+      "pct": 87.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "170",
+      "uid": "Cyrano::SSP::170",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 32,
+      "name": "Black Belt's Training",
+      "found": 7,
+      "total": 8,
+      "pct": 87.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "JTG",
+      "number": "145",
+      "uid": "Black Belt's Training::JTG::145",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 33,
+      "name": "Glass Trumpet",
+      "found": 7,
+      "total": 8,
+      "pct": 87.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "SCR",
+      "number": "135",
+      "uid": "Glass Trumpet::SCR::135",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 34,
+      "name": "Energy Switch",
+      "found": 7,
+      "total": 8,
+      "pct": 87.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEG",
+      "number": "115",
+      "uid": "Energy Switch::MEG::115",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 35,
+      "name": "Gravity Mountain",
+      "found": 7,
+      "total": 8,
+      "pct": 87.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 7,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "177",
+      "uid": "Gravity Mountain::SSP::177",
+      "category": "trainer",
+      "trainerType": "stadium",
+      "displayCategory": "trainer-stadium"
+    },
+    {
+      "rank": 36,
+      "name": "Hilda",
+      "found": 6,
+      "total": 8,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 6,
+          "percent": 100.0
+        }
+      ],
+      "set": "WHT",
+      "number": "084",
+      "uid": "Hilda::WHT::084",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 37,
+      "name": "Jet Energy",
+      "found": 6,
+      "total": 8,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 33.33
+        },
+        {
+          "copies": 2,
+          "players": 4,
+          "percent": 66.67
+        }
+      ],
+      "set": "PAL",
+      "number": "190",
+      "uid": "Jet Energy::PAL::190",
+      "category": "energy",
+      "energyType": "special",
+      "displayCategory": "energy-special"
+    },
+    {
+      "rank": 38,
+      "name": "Tera Orb",
+      "found": 5,
+      "total": 8,
+      "pct": 62.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 5,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "189",
+      "uid": "Tera Orb::SSP::189",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 39,
+      "name": "Switch",
+      "found": 4,
+      "total": 8,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEG",
+      "number": "130",
+      "uid": "Switch::MEG::130",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 40,
+      "name": "Hoothoot",
+      "found": 3,
+      "total": 8,
+      "pct": 37.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "set": "PRE",
+      "number": "077",
+      "uid": "Hoothoot::PRE::077",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 41,
+      "name": "Hoopa ex",
+      "found": 1,
+      "total": 8,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "098",
+      "uid": "Hoopa ex::PAR::098",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 42,
+      "name": "Darkness Energy",
+      "found": 1,
+      "total": 8,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVE",
+      "number": "023",
+      "uid": "Darkness Energy::SVE::023",
+      "category": "energy",
+      "energyType": "basic",
+      "displayCategory": "energy-basic"
+    },
+    {
+      "rank": 43,
+      "name": "Luminous Energy",
+      "found": 1,
+      "total": 8,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "191",
+      "uid": "Luminous Energy::PAL::191",
+      "category": "energy",
+      "energyType": "special",
+      "displayCategory": "energy-special"
+    },
+    {
+      "rank": 44,
+      "name": "Hoothoot",
+      "found": 1,
+      "total": 8,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "126",
+      "uid": "Hoothoot::TEF::126",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 45,
+      "name": "Eevee",
+      "found": 1,
+      "total": 8,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEW",
+      "number": "133",
+      "uid": "Eevee::MEW::133",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 46,
+      "name": "Sylveon ex",
+      "found": 1,
+      "total": 8,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "086",
+      "uid": "Sylveon ex::SSP::086",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 47,
+      "name": "Lillie's Clefairy ex",
+      "found": 1,
+      "total": 8,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "JTG",
+      "number": "056",
+      "uid": "Lillie's Clefairy ex::JTG::056",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 48,
+      "name": "Brock's Scouting",
+      "found": 1,
+      "total": 8,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "JTG",
+      "number": "146",
+      "uid": "Brock's Scouting::JTG::146",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 49,
+      "name": "Professor Turo's Scenario",
+      "found": 1,
+      "total": 8,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "171",
+      "uid": "Professor Turo's Scenario::PAR::171",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 50,
+      "name": "Super Rod",
+      "found": 1,
+      "total": 8,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "188",
+      "uid": "Super Rod::PAL::188",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 51,
+      "name": "Psychic Energy",
+      "found": 1,
+      "total": 8,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVE",
+      "number": "021",
+      "uid": "Psychic Energy::SVE::021",
+      "category": "energy",
+      "energyType": "basic",
+      "displayCategory": "energy-basic"
+    },
+    {
+      "rank": 52,
+      "name": "Pecharunt ex",
+      "found": 1,
+      "total": 8,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "039",
+      "uid": "Pecharunt ex::SFA::039",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 53,
+      "name": "Kieran",
+      "found": 1,
+      "total": 8,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "154",
+      "uid": "Kieran::TWM::154",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 54,
+      "name": "Pidgey",
+      "found": 1,
+      "total": 8,
+      "pct": 12.5,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "OBF",
+      "number": "162",
+      "uid": "Pidgey::OBF::162",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    }
+  ]
+}

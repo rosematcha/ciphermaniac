@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Centralized storage utilities with error handling and validation
  * @module StorageManager
  */
@@ -13,7 +13,8 @@ const STORAGE_CONFIG = {
   gridCache: { key: 'gridCacheV1', version: 1, default: {} },
   metaCache: { key: 'metaCacheV1', version: 1, default: {} },
   pickCache: { key: 'pickCacheV1', version: 1, default: {} },
-  searchCache: { key: 'searchCacheV1', version: 1, default: { names: [] } }
+  searchCache: { key: 'searchCacheV1', version: 1, default: { names: [] } },
+  binderSelections: { key: 'binderSelectionsV1', version: 1, default: { tournaments: [], archetypes: [] } }
 };
 
 /**

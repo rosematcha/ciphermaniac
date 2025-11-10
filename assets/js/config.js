@@ -21,6 +21,9 @@ export const CONFIG = Object.freeze({
   // API configuration
   API: {
     REPORTS_BASE: '/reports',
+    LIMITLESS_BASE: '/api/limitless',
+    LIMITLESS_DEFAULT_GAME: 'PTCG',
+    LIMITLESS_DEFAULT_LIMIT: 50,
     R2_BASE: 'https://r2.ciphermaniac.com',
     TIMEOUT_MS: 10000,
     RETRY_ATTEMPTS: 3,
@@ -90,6 +93,12 @@ function validateConfig(config) {
   // Validate API config
   assert(config.API, 'CONFIG.API is required');
   assert(typeof config.API.REPORTS_BASE === 'string', 'REPORTS_BASE must be string');
+  assert(typeof config.API.LIMITLESS_BASE === 'string', 'LIMITLESS_BASE must be string');
+  assert(typeof config.API.LIMITLESS_DEFAULT_GAME === 'string', 'LIMITLESS_DEFAULT_GAME must be string');
+  assert(
+    Number.isInteger(config.API.LIMITLESS_DEFAULT_LIMIT) && config.API.LIMITLESS_DEFAULT_LIMIT > 0,
+    'LIMITLESS_DEFAULT_LIMIT must be a positive integer'
+  );
   if ('R2_BASE' in config.API && config.API.R2_BASE !== undefined && config.API.R2_BASE !== null) {
     assert(typeof config.API.R2_BASE === 'string', 'R2_BASE must be string');
   }

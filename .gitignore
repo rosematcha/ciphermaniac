@@ -33,7 +33,11 @@ coverage/
 # dev stuff
 *.md
 !README.md
-tools/
+tools/*
+!tools/meta-binder.html
+!assets/js/tools/
+!assets/js/tools/metaBinder.js
+!assets/js/tools/metaBinderData.js
 .claude/
 .mcp.json
 package-lock.json
@@ -47,3 +51,6 @@ tools/download.py
 tools/download.py
 /.codacy
 /.claude
+.env
+/.wrangler
+/.wrangler

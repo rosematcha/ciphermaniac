@@ -59,6 +59,44 @@ function fetchWithTimeout(url, options = {}) {
   return safeFetch(url, { timeout: CONFIG.API.TIMEOUT_MS, ...options });
 }
 
+function buildQueryString(params = {}) {
+  const query = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null) {
+      return;
+    }
+    const normalized = typeof value === 'number' ? String(value) : String(value).trim();
+    if (normalized) {
+      query.set(key, normalized);
+    }
+  });
+
+  const serialized = query.toString();
+  return serialized ? `?${serialized}` : '';
+}
+
+function normalizeLimitlessTournament(entry) {
+  if (!entry || typeof entry !== 'object') {
+    return null;
+  }
+
+  const id = typeof entry.id === 'string' ? entry.id.trim() : String(entry.id ?? '').trim();
+  if (!id) {
+    return null;
+  }
+
+  return {
+    id,
+    name: typeof entry.name === 'string' && entry.name.trim() ? entry.name.trim() : 'Unnamed Tournament',
+    game: typeof entry.game === 'string' ? entry.game.trim() : null,
+    format: typeof entry.format === 'string' ? entry.format.trim() : null,
+    date: typeof entry.date === 'string' ? entry.date : null,
+    players: typeof entry.players === 'number' ? entry.players : null,
+    source: 'limitless'
+  };
+}
+
 /**
  * Safe JSON parsing with improved error handling
  * @param {Response} response
@@ -179,6 +217,71 @@ function fetchWithRetry(url, operation, expectedType, fieldName, options = {}) {
 export function fetchTournamentsList() {
   const url = `${CONFIG.API.REPORTS_BASE}/tournaments.json`;
   return fetchWithRetry(url, 'tournaments list', 'array', 'tournaments list', { cache: true });
+}
+
+/**
+ * Fetch tournament summaries from the Limitless API via our proxy.
+ * @param {{game?: string, format?: string, organizerId?: number|string, limit?: number, page?: number}} [filters]
+ * @returns {Promise<Array<{id:string,name:string,game:string|null,format:string|null,date:string|null,players:number|null,source:string}>>}
+ */
+export async function fetchLimitlessTournaments(filters = {}) {
+  const {
+    game = CONFIG.API.LIMITLESS_DEFAULT_GAME,
+    format,
+    organizerId,
+    limit = CONFIG.API.LIMITLESS_DEFAULT_LIMIT,
+    page
+  } = filters;
+
+  const params = {
+    ...(game ? { game } : {}),
+    ...(format ? { format } : {}),
+    ...(organizerId ? { organizerId } : {}),
+    ...(limit ? { limit } : {}),
+    ...(page ? { page } : {})
+  };
+
+  const query = buildQueryString(params);
+  const baseUrl = `${CONFIG.API.LIMITLESS_BASE}/tournaments`;
+  const url = `${baseUrl}${query}`;
+  const cacheKey = `limitless:tournaments:${query || 'default'}`;
+
+  const payload = await fetchWithRetry(
+    url,
+    'Limitless tournaments',
+    'object',
+    'Limitless tournaments payload',
+    { cache: true, cacheKey }
+  );
+
+  if (!payload || payload.success !== true) {
+    throw new AppError(
+      ErrorTypes.API,
+      'Limitless tournaments request failed',
+      null,
+      { url, payload }
+    );
+  }
+
+  if (!Array.isArray(payload.data)) {
+    throw new AppError(
+      ErrorTypes.DATA_FORMAT,
+      'Limitless tournaments response missing data array',
+      null,
+      { url, payload }
+    );
+  }
+
+  const normalized = payload.data
+    .map(normalizeLimitlessTournament)
+    .filter(Boolean);
+
+  logger.info('Fetched Limitless tournaments', {
+    query: params,
+    count: normalized.length
+  });
+
+  return normalized;
 }
 
 /**

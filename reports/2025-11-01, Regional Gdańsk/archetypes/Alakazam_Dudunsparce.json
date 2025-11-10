@@ -1,0 +1,981 @@
+{
+  "deckTotal": 4,
+  "items": [
+    {
+      "rank": 1,
+      "name": "Abra",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 50.0
+        }
+      ],
+      "set": "MEG",
+      "number": "054",
+      "uid": "Abra::MEG::054",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 2,
+      "name": "Kadabra",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEG",
+      "number": "055",
+      "uid": "Kadabra::MEG::055",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 3,
+      "name": "Alakazam",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 50.0
+        }
+      ],
+      "set": "MEG",
+      "number": "056",
+      "uid": "Alakazam::MEG::056",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 4,
+      "name": "Dudunsparce",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 50.0
+        }
+      ],
+      "set": "TEF",
+      "number": "129",
+      "uid": "Dudunsparce::TEF::129",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 5,
+      "name": "Fezandipiti ex",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "038",
+      "uid": "Fezandipiti ex::SFA::038",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 6,
+      "name": "Hilda",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 50.0
+        }
+      ],
+      "set": "WHT",
+      "number": "084",
+      "uid": "Hilda::WHT::084",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 7,
+      "name": "Boss's Orders",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 3,
+          "players": 3,
+          "percent": 75.0
+        }
+      ],
+      "set": "MEG",
+      "number": "114",
+      "uid": "Boss's Orders::MEG::114",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 8,
+      "name": "Tulip",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "181",
+      "uid": "Tulip::PAR::181",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 9,
+      "name": "Buddy-Buddy Poffin",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 4,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "144",
+      "uid": "Buddy-Buddy Poffin::TEF::144",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 10,
+      "name": "Rare Candy",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 4,
+          "players": 2,
+          "percent": 50.0
+        }
+      ],
+      "set": "MEG",
+      "number": "125",
+      "uid": "Rare Candy::MEG::125",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 11,
+      "name": "Enhanced Hammer",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 25.0
+        },
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 75.0
+        }
+      ],
+      "set": "TWM",
+      "number": "148",
+      "uid": "Enhanced Hammer::TWM::148",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 12,
+      "name": "Artazon",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 50.0
+        },
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 50.0
+        }
+      ],
+      "set": "PAL",
+      "number": "171",
+      "uid": "Artazon::PAL::171",
+      "category": "trainer",
+      "trainerType": "stadium",
+      "displayCategory": "trainer-stadium"
+    },
+    {
+      "rank": 13,
+      "name": "Psychic Energy",
+      "found": 4,
+      "total": 4,
+      "pct": 100.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 3,
+          "percent": 75.0
+        },
+        {
+          "copies": 5,
+          "players": 1,
+          "percent": 25.0
+        }
+      ],
+      "set": "SVE",
+      "number": "021",
+      "uid": "Psychic Energy::SVE::021",
+      "category": "energy",
+      "energyType": "basic",
+      "displayCategory": "energy-basic"
+    },
+    {
+      "rank": 14,
+      "name": "Dunsparce",
+      "found": 3,
+      "total": 4,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 3,
+          "players": 2,
+          "percent": 66.67
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 33.33
+        }
+      ],
+      "set": "PAL",
+      "number": "156",
+      "uid": "Dunsparce::PAL::156",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 15,
+      "name": "Fan Rotom",
+      "found": 3,
+      "total": 4,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "set": "SCR",
+      "number": "118",
+      "uid": "Fan Rotom::SCR::118",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 16,
+      "name": "Great Ball",
+      "found": 3,
+      "total": 4,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 33.33
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 33.33
+        },
+        {
+          "copies": 3,
+          "players": 1,
+          "percent": 33.33
+        }
+      ],
+      "set": "PAL",
+      "number": "183",
+      "uid": "Great Ball::PAL::183",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 17,
+      "name": "Night Stretcher",
+      "found": 3,
+      "total": 4,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "061",
+      "uid": "Night Stretcher::SFA::061",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 18,
+      "name": "Nest Ball",
+      "found": 3,
+      "total": 4,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 33.33
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 66.67
+        }
+      ],
+      "set": "SVI",
+      "number": "181",
+      "uid": "Nest Ball::SVI::181",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 19,
+      "name": "Counter Catcher",
+      "found": 3,
+      "total": 4,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "160",
+      "uid": "Counter Catcher::PAR::160",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 20,
+      "name": "Exp. Share",
+      "found": 3,
+      "total": 4,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 33.33
+        },
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 66.67
+        }
+      ],
+      "set": "SVI",
+      "number": "174",
+      "uid": "Exp. Share::SVI::174",
+      "category": "trainer",
+      "trainerType": "tool",
+      "displayCategory": "trainer-tool"
+    },
+    {
+      "rank": 21,
+      "name": "Enriching Energy",
+      "found": 3,
+      "total": 4,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "set": "SSP",
+      "number": "191",
+      "uid": "Enriching Energy::SSP::191",
+      "category": "energy",
+      "energyType": "special",
+      "displayCategory": "energy-special"
+    },
+    {
+      "rank": 22,
+      "name": "Psyduck",
+      "found": 3,
+      "total": 4,
+      "pct": 75.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 3,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEP",
+      "number": "007",
+      "uid": "Psyduck::MEP::007",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 23,
+      "name": "Abra",
+      "found": 2,
+      "total": 4,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "set": "TWM",
+      "number": "080",
+      "uid": "Abra::TWM::080",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 24,
+      "name": "Dunsparce",
+      "found": 2,
+      "total": 4,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "set": "TEF",
+      "number": "128",
+      "uid": "Dunsparce::TEF::128",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 25,
+      "name": "Professor Turo's Scenario",
+      "found": 2,
+      "total": 4,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "171",
+      "uid": "Professor Turo's Scenario::PAR::171",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 26,
+      "name": "Shaymin",
+      "found": 2,
+      "total": 4,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "DRI",
+      "number": "010",
+      "uid": "Shaymin::DRI::010",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 27,
+      "name": "Picnic Basket",
+      "found": 2,
+      "total": 4,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 50.0
+        },
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 50.0
+        }
+      ],
+      "set": "SVI",
+      "number": "184",
+      "uid": "Picnic Basket::SVI::184",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 28,
+      "name": "Jet Energy",
+      "found": 2,
+      "total": 4,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "190",
+      "uid": "Jet Energy::PAL::190",
+      "category": "energy",
+      "energyType": "special",
+      "displayCategory": "energy-special"
+    },
+    {
+      "rank": 29,
+      "name": "Lillie's Determination",
+      "found": 2,
+      "total": 4,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEG",
+      "number": "119",
+      "uid": "Lillie's Determination::MEG::119",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 30,
+      "name": "Bill's Transfer",
+      "found": 2,
+      "total": 4,
+      "pct": 50.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 2,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEW",
+      "number": "156",
+      "uid": "Bill's Transfer::MEW::156",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 31,
+      "name": "Duskull",
+      "found": 1,
+      "total": 4,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PRE",
+      "number": "035",
+      "uid": "Duskull::PRE::035",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 32,
+      "name": "Dusclops",
+      "found": 1,
+      "total": 4,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PRE",
+      "number": "036",
+      "uid": "Dusclops::PRE::036",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 33,
+      "name": "Dusknoir",
+      "found": 1,
+      "total": 4,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PRE",
+      "number": "037",
+      "uid": "Dusknoir::PRE::037",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 34,
+      "name": "Iron Bundle",
+      "found": 1,
+      "total": 4,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAR",
+      "number": "056",
+      "uid": "Iron Bundle::PAR::056",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 35,
+      "name": "Rellor",
+      "found": 1,
+      "total": 4,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "023",
+      "uid": "Rellor::TEF::023",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 36,
+      "name": "Rabsca",
+      "found": 1,
+      "total": 4,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TEF",
+      "number": "024",
+      "uid": "Rabsca::TEF::024",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 37,
+      "name": "Klefki",
+      "found": 1,
+      "total": 4,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "096",
+      "uid": "Klefki::SVI::096",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 38,
+      "name": "Mimikyu",
+      "found": 1,
+      "total": 4,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "PAL",
+      "number": "097",
+      "uid": "Mimikyu::PAL::097",
+      "category": "pokemon",
+      "displayCategory": "pokemon"
+    },
+    {
+      "rank": 39,
+      "name": "Arven",
+      "found": 1,
+      "total": 4,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 4,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "OBF",
+      "number": "186",
+      "uid": "Arven::OBF::186",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 40,
+      "name": "Brock's Scouting",
+      "found": 1,
+      "total": 4,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "JTG",
+      "number": "146",
+      "uid": "Brock's Scouting::JTG::146",
+      "category": "trainer",
+      "trainerType": "supporter",
+      "displayCategory": "trainer-supporter"
+    },
+    {
+      "rank": 41,
+      "name": "Strange Timepiece",
+      "found": 1,
+      "total": 4,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "MEG",
+      "number": "128",
+      "uid": "Strange Timepiece::MEG::128",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 42,
+      "name": "Energy Search",
+      "found": 1,
+      "total": 4,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SVI",
+      "number": "172",
+      "uid": "Energy Search::SVI::172",
+      "category": "trainer",
+      "trainerType": "item",
+      "displayCategory": "trainer-item"
+    },
+    {
+      "rank": 43,
+      "name": "Lucky Helmet",
+      "found": 1,
+      "total": 4,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "TWM",
+      "number": "158",
+      "uid": "Lucky Helmet::TWM::158",
+      "category": "trainer",
+      "trainerType": "tool",
+      "displayCategory": "trainer-tool"
+    },
+    {
+      "rank": 44,
+      "name": "Air Balloon",
+      "found": 1,
+      "total": 4,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 2,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "BLK",
+      "number": "079",
+      "uid": "Air Balloon::BLK::079",
+      "category": "trainer",
+      "trainerType": "tool",
+      "displayCategory": "trainer-tool"
+    },
+    {
+      "rank": 45,
+      "name": "Neutralization Zone",
+      "found": 1,
+      "total": 4,
+      "pct": 25.0,
+      "dist": [
+        {
+          "copies": 1,
+          "players": 1,
+          "percent": 100.0
+        }
+      ],
+      "set": "SFA",
+      "number": "060",
+      "uid": "Neutralization Zone::SFA::060",
+      "category": "trainer",
+      "trainerType": "stadium",
+      "displayCategory": "trainer-stadium"
+    }
+  ]
+}

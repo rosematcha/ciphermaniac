@@ -40,5 +40,8 @@
     "frontend"
   ],
   "author": "Ciphermaniac",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.928.0"
+  }
 }
