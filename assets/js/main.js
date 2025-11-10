@@ -1075,6 +1075,23 @@ async function initializeTournamentSelector(state) {
     ['2025-08-15, World Championships 2025'] // fallback
   );
 
+  let hasOnlineMeta = tournaments.includes(DEFAULT_ONLINE_META);
+  if (!hasOnlineMeta) {
+    hasOnlineMeta = await safeAsync(
+      async () => {
+        const response = await fetch(`${CONFIG.API.R2_BASE}/reports/${encodeURIComponent(DEFAULT_ONLINE_META)}/master.json`, {
+          method: 'HEAD'
+        });
+        return response.ok;
+      },
+      'checking availability of online meta report',
+      false
+    );
+    if (hasOnlineMeta) {
+      tournaments.unshift(DEFAULT_ONLINE_META);
+    }
+  }
+
   const urlState = getStateFromURL();
   const urlSelectionRaw = urlState.tour ? urlState.tour.split(',') : [];
   const normalizedFromUrl = normalizeTournamentSelection(urlSelectionRaw);

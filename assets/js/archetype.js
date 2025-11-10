@@ -1442,10 +1442,15 @@ async function initialize() {
   }
 }
 
+// Throttle resize handler to improve performance
+let resizeTicking = false;
 window.addEventListener('resize', () => {
-  if (state.items.length > 0) {
+  if (resizeTicking || state.items.length === 0) {return;}
+  resizeTicking = true;
+  requestAnimationFrame(() => {
     updateLayout();
-  }
+    resizeTicking = false;
+  });
 });
 
 setupGranularityListeners();
