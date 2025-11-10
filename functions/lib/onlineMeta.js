@@ -22,6 +22,7 @@ async function fetchRecentOnlineTournaments(env, since, options = {}) {
   const sinceMs = since.getTime();
   const pageSize = options.pageSize || PAGE_SIZE;
   const maxPages = options.maxPages || MAX_TOURNAMENT_PAGES;
+  const diagnostics = options.diagnostics;
   const unique = new Map();
 
   for (let page = 1; page <= maxPages; page += 1) {
@@ -59,9 +60,17 @@ async function fetchRecentOnlineTournaments(env, since, options = {}) {
     try {
       const details = await fetchLimitlessJson(`/tournaments/${summary.id}/details`, { env });
       if (details.decklists === false) {
+        diagnostics?.detailsWithoutDecklists.push({
+          tournamentId: summary.id,
+          name: summary.name
+        });
         continue;
       }
       if (details.isOnline === false) {
+        diagnostics?.detailsOffline.push({
+          tournamentId: summary.id,
+          name: summary.name
+        });
         continue;
       }
       detailed.push({
@@ -137,7 +146,7 @@ async function hashDeck(cards, playerId = '') {
   return bytes.map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-async function gatherDecks(env, tournaments) {
+async function gatherDecks(env, tournaments, diagnostics) {
   const decks = [];
 
   for (const tournament of tournaments) {
@@ -146,16 +155,29 @@ async function gatherDecks(env, tournaments) {
       standings = await fetchLimitlessJson(`/tournaments/${tournament.id}/standings`, { env });
     } catch (error) {
       console.warn('Failed to fetch standings', tournament.id, error?.message || error);
+      diagnostics?.standingsFetchFailures.push({
+        tournamentId: tournament.id,
+        name: tournament.name,
+        message: error?.message || 'Unknown standings fetch error'
+      });
       continue;
     }
 
     if (!Array.isArray(standings)) {
+      diagnostics?.invalidStandingsPayload.push({
+        tournamentId: tournament.id,
+        name: tournament.name
+      });
       continue;
     }
 
     for (const entry of standings) {
       const cards = toCardEntries(entry?.decklist);
       if (!cards.length) {
+        diagnostics?.entriesWithoutDecklists.push({
+          tournamentId: tournament.id,
+          player: entry?.name || entry?.player || 'Unknown Player'
+        });
         continue;
       }
 
@@ -271,21 +293,34 @@ export async function runOnlineMetaJob(env, options = {}) {
   const now = options.now ? new Date(options.now) : new Date();
   const since = options.since ? new Date(options.since) : daysAgo(WINDOW_DAYS);
 
-  const tournaments = await fetchRecentOnlineTournaments(env, since);
+  const diagnostics = {
+    detailsWithoutDecklists: [],
+    detailsOffline: [],
+    standingsFetchFailures: [],
+    invalidStandingsPayload: [],
+    entriesWithoutDecklists: []
+  };
+
+  const tournaments = await fetchRecentOnlineTournaments(env, since, {
+    diagnostics
+  });
   if (!tournaments.length) {
     return {
       success: false,
       reason: 'No online tournaments found within the lookback window',
-      windowStart: since.toISOString()
+      windowStart: since.toISOString(),
+      diagnostics
     };
   }
 
-  const decks = await gatherDecks(env, tournaments);
+  const decks = await gatherDecks(env, tournaments, diagnostics);
   if (!decks.length) {
+    console.error('[OnlineMeta] No decklists aggregated', diagnostics);
     return {
       success: false,
       reason: 'No decklists available for online tournaments',
-      windowStart: since.toISOString()
+      windowStart: since.toISOString(),
+      diagnostics
     };
   }
 
@@ -328,11 +363,18 @@ export async function runOnlineMetaJob(env, options = {}) {
 
   await updateTournamentsList(env, TARGET_FOLDER);
 
+  console.info('[OnlineMeta] Aggregated online tournaments', {
+    deckTotal,
+    tournamentCount: tournaments.length,
+    archetypes: archetypeFiles.length
+  });
+
   return {
     success: true,
     decks: deckTotal,
     tournaments: tournaments.length,
     archetypes: archetypeFiles.length,
-    folder: TARGET_FOLDER
+    folder: TARGET_FOLDER,
+    diagnostics
   };
 }
