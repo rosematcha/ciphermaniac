@@ -249,7 +249,7 @@ async function fetchReportResource(relativePath, operation, expectedType, fieldN
 }
 
 export function fetchTournamentsList() {
-  return fetchReportResource('/reports/tournaments.json', 'tournaments list', 'array', 'tournaments list', { cache: true });
+  return fetchReportResource('tournaments.json', 'tournaments list', 'array', 'tournaments list', { cache: true });
 }
 
 /**
