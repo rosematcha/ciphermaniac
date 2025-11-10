@@ -13,6 +13,7 @@ const TARGET_FOLDER = 'Online - Last 14 Days';
 const REPORT_BASE_KEY = `reports/${TARGET_FOLDER}`;
 const PAGE_SIZE = 100;
 const MAX_TOURNAMENT_PAGES = 10;
+const SUPPORTED_FORMATS = new Set(['STANDARD']);
 
 function daysAgo(count) {
   return new Date(Date.now() - count * 24 * 60 * 60 * 1000);
@@ -22,7 +23,7 @@ async function fetchRecentOnlineTournaments(env, since, options = {}) {
   const sinceMs = since.getTime();
   const pageSize = options.pageSize || PAGE_SIZE;
   const maxPages = options.maxPages || MAX_TOURNAMENT_PAGES;
-  const diagnostics = options.diagnostics;
+const diagnostics = options.diagnostics;
   const unique = new Map();
 
   for (let page = 1; page <= maxPages; page += 1) {
@@ -70,6 +71,16 @@ async function fetchRecentOnlineTournaments(env, since, options = {}) {
         diagnostics?.detailsOffline.push({
           tournamentId: summary.id,
           name: summary.name
+        });
+        continue;
+      }
+
+      const formatId = (details.format || summary.format || '').toUpperCase();
+      if (formatId && !SUPPORTED_FORMATS.has(formatId)) {
+        diagnostics?.detailsUnsupportedFormat.push({
+          tournamentId: summary.id,
+          name: summary.name,
+          format: formatId
         });
         continue;
       }
@@ -150,6 +161,16 @@ async function gatherDecks(env, tournaments, diagnostics) {
   const decks = [];
 
   for (const tournament of tournaments) {
+    const limit = determinePlacementLimit(tournament?.players);
+    if (limit === 0) {
+      diagnostics?.tournamentsBelowMinimum.push({
+        tournamentId: tournament.id,
+        name: tournament.name,
+        players: tournament.players
+      });
+      continue;
+    }
+
     let standings;
     try {
       standings = await fetchLimitlessJson(`/tournaments/${tournament.id}/standings`, { env });
@@ -171,7 +192,23 @@ async function gatherDecks(env, tournaments, diagnostics) {
       continue;
     }
 
-    for (const entry of standings) {
+    const sortedStandings = [...standings].sort((a, b) => {
+      const placingA = Number.isFinite(a?.placing) ? a.placing : Number.POSITIVE_INFINITY;
+      const placingB = Number.isFinite(b?.placing) ? b.placing : Number.POSITIVE_INFINITY;
+      return placingA - placingB;
+    });
+
+    const cappedStandings = sortedStandings.slice(0, limit);
+
+    for (const entry of cappedStandings) {
+      if (!Number.isFinite(entry?.placing)) {
+        diagnostics?.entriesWithoutPlacing.push({
+          tournamentId: tournament.id,
+          name: tournament.name,
+          player: entry?.name || entry?.player || 'Unknown Player'
+        });
+      }
+
       const cards = toCardEntries(entry?.decklist);
       if (!cards.length) {
         diagnostics?.entriesWithoutDecklists.push({
@@ -289,6 +326,30 @@ async function updateTournamentsList(env, folderName) {
   await putJson(env, key, deduped);
 }
 
+function determinePlacementLimit(players) {
+  const count = Number(players) || 0;
+  if (count > 0 && count <= 4) {
+    return 0;
+  }
+  if (count <= 8) {
+    return 4;
+  }
+  if (count <= 16) {
+    return 8;
+  }
+  if (count <= 32) {
+    return 16;
+  }
+  if (count <= 64) {
+    return 24;
+  }
+  if (count >= 65) {
+    return 32;
+  }
+  // Unknown player counts default to the maximum capture to keep data rich.
+  return 32;
+}
+
 export async function runOnlineMetaJob(env, options = {}) {
   const now = options.now ? new Date(options.now) : new Date();
   const since = options.since ? new Date(options.since) : daysAgo(WINDOW_DAYS);
@@ -296,9 +357,12 @@ export async function runOnlineMetaJob(env, options = {}) {
   const diagnostics = {
     detailsWithoutDecklists: [],
     detailsOffline: [],
+    detailsUnsupportedFormat: [],
     standingsFetchFailures: [],
     invalidStandingsPayload: [],
-    entriesWithoutDecklists: []
+    entriesWithoutDecklists: [],
+    entriesWithoutPlacing: [],
+    tournamentsBelowMinimum: []
   };
 
   const tournaments = await fetchRecentOnlineTournaments(env, since, {
