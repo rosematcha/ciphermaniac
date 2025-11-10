@@ -51,7 +51,14 @@
 }());
 
 import './utils/buildVersion.js';
-import { fetchReport, fetchOverrides, fetchArchetypeReport, fetchTournamentsList, fetchArchetypesList } from './api.js';
+import {
+  fetchReport,
+  fetchOverrides,
+  fetchArchetypeReport,
+  fetchTournamentsList,
+  fetchArchetypesList,
+  fetchLimitlessTournaments
+} from './api.js';
 import { AppError, safeAsync } from './utils/errorHandler.js';
 import { parseReport } from './parse.js';
 import { renderSummary, updateLayout } from './render.js';
@@ -91,6 +98,7 @@ const appState = {
   selectedSets: [],
   selectedCardType: '__all__',
   availableTournaments: [],
+  onlineTournaments: [],
   availableSets: [],
   current: { items: [], deckTotal: 0 },
   overrides: {},
@@ -105,6 +113,8 @@ const appState = {
     onSetSelection: null
   }
 };
+
+const DEFAULT_ONLINE_META = 'Online - Last 14 Days';
 
 /** @typedef {typeof appState} AppState */
 
@@ -1065,6 +1075,10 @@ async function initializeTournamentSelector(state) {
     ['2025-08-15, World Championships 2025'] // fallback
   );
 
+  if (!tournaments.includes(DEFAULT_ONLINE_META)) {
+    tournaments.unshift(DEFAULT_ONLINE_META);
+  }
+
   const urlState = getStateFromURL();
   const urlSelectionRaw = urlState.tour ? urlState.tour.split(',') : [];
   const normalizedFromUrl = normalizeTournamentSelection(urlSelectionRaw);
@@ -1073,6 +1087,10 @@ async function initializeTournamentSelector(state) {
 
   if (selection.length === 0 && state.selectedTournaments.length > 0) {
     selection = normalizeTournamentSelection(state.selectedTournaments).filter(value => tournaments.includes(value));
+  }
+
+  if (selection.length === 0 && tournaments.includes(DEFAULT_ONLINE_META)) {
+    selection = [DEFAULT_ONLINE_META];
   }
 
   if (selection.length === 0 && tournaments.length > 0) {
@@ -1099,6 +1117,35 @@ async function initializeTournamentSelector(state) {
   }
 
   logger.info(`Initialized with tournaments: ${selection.join(', ') || 'None'}`);
+
+  // Kick off a background fetch for online Limitless events (does not block UI init)
+  void hydrateOnlineTournaments(state, {
+    game: CONFIG.API.LIMITLESS_DEFAULT_GAME,
+    limit: Math.max(CONFIG.API.LIMITLESS_DEFAULT_LIMIT, 100)
+  });
+  // TODO: Merge state.onlineTournaments into the selector once UX for online data is finalized.
+}
+
+/**
+ * Fetch online tournaments from Limitless and stash them for future UI integration.
+ * @param {AppState} state
+ * @param {{game?: string, format?: string, limit?: number, page?: number}} options
+ * @returns {Promise<void>}
+ */
+async function hydrateOnlineTournaments(state, options = {}) {
+  const tournaments = await safeAsync(
+    () => fetchLimitlessTournaments(options),
+    'fetching Limitless online tournaments',
+    []
+  );
+
+  state.onlineTournaments = tournaments;
+
+  if (tournaments.length > 0) {
+    logger.info(`Loaded ${tournaments.length} online tournaments from Limitless`, options);
+  } else {
+    logger.debug('No Limitless tournaments returned for query', options);
+  }
 }
 
 /**
