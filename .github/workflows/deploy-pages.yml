@@ -24,7 +24,8 @@ jobs:
 
       - name: Deploy Pages (includes updating triggers from wrangler.toml)
         env:
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           PAGES_PROJECT_NAME: ciphermaniac
         run: |
