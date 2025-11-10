@@ -1079,8 +1079,10 @@ async function initializeTournamentSelector(state) {
   if (!hasOnlineMeta) {
     hasOnlineMeta = await safeAsync(
       async () => {
-        await fetchReport(DEFAULT_ONLINE_META);
-        return true;
+        const response = await fetch(`${CONFIG.API.R2_BASE}/reports/${encodeURIComponent(DEFAULT_ONLINE_META)}/master.json`, {
+          method: 'HEAD'
+        });
+        return response.ok;
       },
       'checking availability of online meta report',
       false

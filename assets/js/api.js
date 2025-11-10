@@ -9,6 +9,8 @@ import { AppError, ErrorTypes, safeFetch, withRetry, validateType } from './util
 
 let pricingData = null;
 const jsonCache = new Map();
+const ONLINE_META_NAME = 'Online - Last 14 Days';
+const ONLINE_META_SEGMENT = `/reports/${encodeURIComponent(ONLINE_META_NAME)}`;
 
 function hasCachedData(entry) {
   return Object.prototype.hasOwnProperty.call(entry, 'data');
@@ -220,10 +222,13 @@ function fetchWithRetry(url, operation, expectedType, fieldName, options = {}) {
 function buildReportUrls(relativePath) {
   const normalizedPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
   const urls = [];
-  if (CONFIG.API.R2_BASE) {
+
+  const isOnlineMetaPath = normalizedPath.startsWith(ONLINE_META_SEGMENT);
+  if (isOnlineMetaPath && CONFIG.API.R2_BASE) {
     urls.push(`${CONFIG.API.R2_BASE}${normalizedPath}`);
   }
-  urls.push(normalizedPath);
+
+  urls.push(`${CONFIG.API.REPORTS_BASE}${normalizedPath}`.replace('//', '/'));
   return urls;
 }
 
