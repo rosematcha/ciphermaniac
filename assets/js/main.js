@@ -51,7 +51,14 @@
 }());
 
 import './utils/buildVersion.js';
-import { fetchReport, fetchOverrides, fetchArchetypeReport, fetchTournamentsList, fetchArchetypesList } from './api.js';
+import {
+  fetchReport,
+  fetchOverrides,
+  fetchArchetypeReport,
+  fetchTournamentsList,
+  fetchArchetypesList,
+  fetchLimitlessTournaments
+} from './api.js';
 import { AppError, safeAsync } from './utils/errorHandler.js';
 import { parseReport } from './parse.js';
 import { renderSummary, updateLayout } from './render.js';
@@ -91,6 +98,7 @@ const appState = {
   selectedSets: [],
   selectedCardType: '__all__',
   availableTournaments: [],
+  onlineTournaments: [],
   availableSets: [],
   current: { items: [], deckTotal: 0 },
   overrides: {},
@@ -1099,6 +1107,35 @@ async function initializeTournamentSelector(state) {
   }
 
   logger.info(`Initialized with tournaments: ${selection.join(', ') || 'None'}`);
+
+  // Kick off a background fetch for online Limitless events (does not block UI init)
+  void hydrateOnlineTournaments(state, {
+    game: CONFIG.API.LIMITLESS_DEFAULT_GAME,
+    limit: Math.max(CONFIG.API.LIMITLESS_DEFAULT_LIMIT, 100)
+  });
+  // TODO: Merge state.onlineTournaments into the selector once UX for online data is finalized.
+}
+
+/**
+ * Fetch online tournaments from Limitless and stash them for future UI integration.
+ * @param {AppState} state
+ * @param {{game?: string, format?: string, limit?: number, page?: number}} options
+ * @returns {Promise<void>}
+ */
+async function hydrateOnlineTournaments(state, options = {}) {
+  const tournaments = await safeAsync(
+    () => fetchLimitlessTournaments(options),
+    'fetching Limitless online tournaments',
+    []
+  );
+
+  state.onlineTournaments = tournaments;
+
+  if (tournaments.length > 0) {
+    logger.info(`Loaded ${tournaments.length} online tournaments from Limitless`, options);
+  } else {
+    logger.debug('No Limitless tournaments returned for query', options);
+  }
 }
 
 /**

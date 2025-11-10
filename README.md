@@ -90,6 +90,16 @@ npm run validate      # Run all validation checks
 npm run dev           # Start development server
 ```
 
+### Environment Variables
+
+Copy `.env.example` to `.env` and add your secrets before running tooling that talks to third‑party services:
+
+```
+LIMITLESS_API_KEY=your_limitless_api_key_here
+```
+
+Cloudflare Pages/Workers deployments should define the same `LIMITLESS_API_KEY` variable in the dashboard or via `wrangler` so serverless functions can reach the Limitless API without leaking the key to the browser.
+
 ## Data Sources
 
 Tournament data is sourced from [LimitlessTCG](https://limitlesstcg.com) including:
