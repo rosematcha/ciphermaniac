@@ -296,15 +296,37 @@ export async function fetchLimitlessTournaments(filters = {}) {
  * @param {string} tournament
  * @returns {Promise<object>}
  */
-export function fetchReport(tournament) {
-  const url = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/master.json`;
-  return fetchWithRetry(
-    url,
-    `report for ${tournament}`,
-    'object',
-    'tournament report',
-    { cache: true }
-  );
+export async function fetchReport(tournament) {
+  const encodedTournament = encodeURIComponent(tournament);
+  const primaryUrl = `${CONFIG.API.REPORTS_BASE}/${encodedTournament}/master.json`;
+
+  const attempt = url =>
+    fetchWithRetry(
+      url,
+      `report for ${tournament}`,
+      'object',
+      'tournament report',
+      { cache: true, cacheKey: url }
+    );
+
+  try {
+    return await attempt(primaryUrl);
+  } catch (error) {
+    const hasR2Fallback = Boolean(CONFIG.API.R2_BASE);
+    if (!hasR2Fallback) {
+      throw error;
+    }
+
+    const r2Url = `${CONFIG.API.R2_BASE}/reports/${encodedTournament}/master.json`;
+    logger.warn('Primary report fetch failed, attempting R2 fallback', {
+      tournament,
+      primaryUrl,
+      fallbackUrl: r2Url,
+      error: error?.message || error
+    });
+
+    return attempt(r2Url);
+  }
 }
 
 /**
