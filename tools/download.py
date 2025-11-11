@@ -262,9 +262,9 @@ def sanitize_for_filename(text):
     return re.sub(r'[<>:"/\\|?*]', '', text)
 
 def normalize_archetype_name(name):
-    """Sorts words in an archetype name to group similar decks."""
+    """Normalizes whitespace in an archetype name."""
     name = name.replace('_', ' ')
-    return ' '.join(sorted(name.split()))
+    return ' '.join(name.split())
 
 def request_with_retries(session, method, url, retries=3, backoff_factor=0.5, **kwargs):
     """Simple retry wrapper around requests.Session methods."""

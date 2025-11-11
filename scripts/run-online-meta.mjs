@@ -274,10 +274,7 @@ function normalizeArchetypeName(name) {
   if (!cleaned) {
     return 'unknown';
   }
-  return cleaned
-    .split(/\s+/)
-    .sort((a, b) => a.localeCompare(b))
-    .join(' ');
+  return cleaned.replace(/\s+/g, ' ');
 }
 
 function canonicalizeVariant(setCode, number) {
@@ -486,13 +483,8 @@ async function readJson(key) {
   }
 }
 
-async function updateTournamentsList(folderName) {
-  const key = `${R2_REPORTS_PREFIX}/tournaments.json`;
-  const current = (await readJson(key)) || [];
-  const filtered = Array.isArray(current) ? current.filter(entry => entry !== folderName) : [];
-  filtered.unshift(folderName);
-  await putJson(key, filtered);
-}
+// Note: updateTournamentsList() has been removed because online tournaments
+// are now treated as a special case and are NOT added to tournaments.json
 
 async function main() {
   const now = new Date();
@@ -542,7 +534,8 @@ async function main() {
     await putJson(`${basePath}/archetypes/${file.filename}`, file.data);
   }
 
-  await updateTournamentsList(TARGET_FOLDER);
+  // Note: Online tournaments are NOT added to tournaments.json
+  // They are treated as a special case in the UI
 
   console.log(
     `[online-meta] Uploaded master + ${archetypeFiles.length} archetypes to ${R2_BUCKET_NAME}/${basePath}`

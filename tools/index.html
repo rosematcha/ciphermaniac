@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dev Tools – Ciphermaniac</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/style.css" />
+  <link rel="icon" href="data:," />
+</head>
+<body>
+
+  <main>
+    <section class="card-sect">
+      <h1>Development Tools</h1>
+      <p>Internal tools and utilities for development and testing.</p>
+    </section>
+
+    <section class="tools-grid">
+      <div class="tool-card">
+        <h3><a href="tcgmasters-test.html">TCGMasters Card Pool Test</a></h3>
+        <p>Test page displaying all 809 cards from the TCGMasters curated pool with visual indicators for Ciphermaniac page availability.</p>
+        <div class="tool-meta">
+          <span class="badge">Card Pool</span>
+          <span class="badge">Testing</span>
+        </div>
+      </div>
+
+      <div class="tool-card">
+        <h3><a href="social-graphics.html">Social Graphics Generator</a></h3>
+        <p>Generate tournament usage graphics and social media assets with customizable layouts and card selections.</p>
+        <div class="tool-meta">
+          <span class="badge">Graphics</span>
+          <span class="badge">Social Media</span>
+        </div>
+      </div>
+
+      <div class="tool-card">
+        <h3><a href="deckbuilder.html">Deck Builder</a></h3>
+        <p>Build and test Pokemon TCG decks with smart sorting, evolution line grouping, and drag-and-drop reordering. Import/export deck lists and auto-fill from tournament archetypes.</p>
+        <div class="tool-meta">
+          <span class="badge">Deck Building</span>
+          <span class="badge">Tournament Data</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { createHeader } from '../assets/js/components/header.js';
+    import { createFooter } from '../assets/js/components/footer.js';
+    
+    // Insert header and footer
+    const header = createHeader({ currentPage: 'tools' });
+    const footer = createFooter();
+    
+    document.body.insertAdjacentElement('afterbegin', header);
+    document.body.insertAdjacentElement('beforeend', footer);
+  </script>
+
+  <style>
+    /* Match home page main padding */
+    main { 
+      padding: 0 12px 24px; 
+      flex: 1; 
+    }
+    
+    @media (min-width: 720px) {
+      main { 
+        padding: 0 20px 24px; 
+      }
+    }
+    
+    @media (max-width: 520px) {
+      main { 
+        padding: 0 8px 16px; 
+      }
+    }
+
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: var(--spacing-lg);
+      margin-top: var(--spacing-xl);
+    }
+
+    .tool-card {
+      background: var(--panel);
+      border: 1px solid #242a4a;
+      border-radius: var(--border-radius-lg);
+      padding: var(--spacing-lg);
+      transition: all 0.2s ease;
+    }
+
+    .tool-card:hover {
+      border-color: var(--accent-2);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .tool-card h3 {
+      margin: 0 0 var(--spacing-md) 0;
+      font-size: var(--font-size-xl);
+    }
+
+    .tool-card h3 a {
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .tool-card h3 a:hover {
+      color: var(--accent-2);
+      text-decoration: underline;
+    }
+
+    .tool-card p {
+      color: var(--muted);
+      line-height: 1.5;
+      margin: 0 0 var(--spacing-lg) 0;
+    }
+
+    .tool-meta {
+      display: flex;
+      gap: var(--spacing-sm);
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      background: rgba(106, 163, 255, 0.1);
+      color: var(--accent-2);
+      padding: var(--spacing-xs) var(--spacing-sm);
+      border-radius: var(--border-radius);
+      font-size: var(--font-size-sm);
+      font-weight: 500;
+      border: 1px solid rgba(106, 163, 255, 0.2);
+    }
+
+    @media (max-width: 768px) {
+      .tools-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+      }
+      
+      .tool-card {
+        padding: var(--spacing-md);
+      }
+    }
+  </style>
+
+</body>
+</html>
