@@ -15,6 +15,7 @@ Thumbs.db
 # Build/output
 /dist/
 /build/
+/dev/_worker.bundle
 
 # Logs
 *.log
@@ -31,26 +32,24 @@ coverage/
 .github/*
 !.github/workflows/
 
-# dev stuff
+# Dev stuff - keep organized in dev/ directory
 *.md
 !README.md
-tools/*
-!tools/meta-binder.html
-!assets/js/tools/
-!assets/js/tools/metaBinder.js
-!assets/js/tools/metaBinderData.js
-.claude/
-.mcp.json
-*test*.html
+config/*.md
+dev/*test*.html
 reports/that_day2d_candidates.json
-test-server.js
-.claude/settings.local.json
 nul
 include-exclude/
-tools/download.py
-tools/download.py
 /.codacy
 /.claude
 .env
 /.wrangler
 /.wrangler
+
+# Tools - keep organized but exclude temporary files
+tools/download.py
+tools/download_log.jsonl
+tools/download_list.txt
+tools/__pycache__/
+tools/synonym_cache.json
+tools/temp_inspect.py

@@ -315,16 +315,8 @@ async function readJson(env, key) {
   }
 }
 
-async function updateTournamentsList(env, folderName) {
-  const key = 'reports/tournaments.json';
-  const current = (await readJson(env, key)) || [];
-  const sanitized = sanitizeForPath(folderName);
-  const deduped = Array.isArray(current)
-    ? current.filter(entry => entry !== sanitized)
-    : [];
-  deduped.unshift(sanitized);
-  await putJson(env, key, deduped);
-}
+// Note: updateTournamentsList() has been removed because online tournaments
+// are now treated as a special case and are NOT added to tournaments.json
 
 function determinePlacementLimit(players) {
   const count = Number(players) || 0;
@@ -425,7 +417,8 @@ export async function runOnlineMetaJob(env, options = {}) {
     await putJson(env, `${REPORT_BASE_KEY}/archetypes/${file.filename}`, file.data);
   }
 
-  await updateTournamentsList(env, TARGET_FOLDER);
+  // Note: Online tournaments are NOT added to tournaments.json
+  // They are treated as a special case in the UI
 
   console.info('[OnlineMeta] Aggregated online tournaments', {
     deckTotal,

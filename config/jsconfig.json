@@ -11,20 +11,20 @@
     "skipLibCheck": true,
     "checkJs": true,
     "allowJs": true,
-    "baseUrl": ".",
+    "baseUrl": "..",
     "paths": {
       "*": ["public/assets/js/*"]
     }
   },
   "include": [
-    "public/assets/js/**/*.js",
-    "types/**/*.d.ts"
+    "../public/assets/js/**/*.js",
+    "../types/**/*.d.ts"
   ],
   "exclude": [
-    "node_modules",
-    "backend",
-    "functions",
-    "dev",
-    "config"
+    "../node_modules",
+    "../backend",
+    "../functions",
+    "../dev",
+    "../config"
   ]
 }

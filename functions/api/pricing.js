@@ -471,11 +471,12 @@ function parseCleanedPriceData(cleanedRecords, setAbbr, context) {
         recordNameLower.includes('precious trolley') ||
         recordNameLower.includes('area zero')) {
 
-      console.log(`TABLE-BASED PARSING: ${record.name}`);
-      console.log(`  ProductId: ${record.productId}`);
-      console.log(`  ExtNumber: ${record.extNumber}`);
-      console.log(`  MarketPrice: $${record.marketPrice} (from marketPrice column)`);
-      console.log(`  FinalCardKey: ${finalCardKey}`);
+      // Debug logging for specific cards (disabled in production)
+      // console.log(`TABLE-BASED PARSING: ${record.name}`);
+      // console.log(`  ProductId: ${record.productId}`);
+      // console.log(`  ExtNumber: ${record.extNumber}`);
+      // console.log(`  MarketPrice: $${record.marketPrice} (from marketPrice column)`);
+      // console.log(`  FinalCardKey: ${finalCardKey}`);
     }
 
     const entry = {
