@@ -1,6 +1,6 @@
 /* eslint-env browser */
 import './utils/buildVersion.js';
-import { fetchArchetypeReport, fetchArchetypesList, fetchReport, fetchTournamentsList } from './api.js';
+import { fetchArchetypeReport, fetchArchetypesList, fetchReport } from './api.js';
 import { parseReport } from './parse.js';
 import { safeAsync } from './utils/errorHandler.js';
 import { logger } from './utils/logger.js';
@@ -497,31 +497,27 @@ async function initialize() {
     updateContainerState('loading');
     toggleLoading(true);
 
-    const tournaments = await safeAsync(() => fetchTournamentsList(), 'fetching tournaments list', []);
-    if (!Array.isArray(tournaments) || tournaments.length === 0) {
-      throw new Error('No tournaments available for analysis.');
-    }
+    // Always use "Online - Last 14 Days" data
+    const tournament = 'Online - Last 14 Days';
+    state.tournament = tournament;
 
-    const [latestTournament] = tournaments;
-    state.tournament = latestTournament;
-
-    const report = await safeAsync(() => fetchReport(latestTournament), `fetching ${latestTournament} report`, null);
+    const report = await safeAsync(() => fetchReport(tournament), `fetching ${tournament} report`, null);
     if (!report || typeof report.deckTotal !== 'number') {
-      throw new Error(`Tournament report for ${latestTournament} is missing deck totals.`);
+      throw new Error(`Tournament report for ${tournament} is missing deck totals.`);
     }
     state.tournamentDeckTotal = report.deckTotal;
 
     if (elements.eventName) {
-      elements.eventName.textContent = latestTournament.replace(/^[\d-]+,\s*/u, '');
+      elements.eventName.textContent = tournament;
     }
 
     const archetypes = await safeAsync(
-      () => fetchArchetypesList(latestTournament),
-      `fetching archetypes for ${latestTournament}`,
+      () => fetchArchetypesList(tournament),
+      `fetching archetypes for ${tournament}`,
       []
     );
     if (!Array.isArray(archetypes) || archetypes.length === 0) {
-      throw new Error(`No archetypes found for ${latestTournament}.`);
+      throw new Error(`No archetypes found for ${tournament}.`);
     }
 
     await loadArchetypeSummaries(archetypes);
