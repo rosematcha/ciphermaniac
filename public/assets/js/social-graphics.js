@@ -403,6 +403,8 @@ class SocialGraphicsGenerator {
 
     const img = document.createElement('img');
     img.className = 'card-image';
+    // Enable CORS for external images (Limitless CDN)
+    img.crossOrigin = 'anonymous';
 
     const imagePath = await this.loadImageWithFallback(card, cardSize);
     if (imagePath) {
@@ -486,16 +488,22 @@ class SocialGraphicsGenerator {
       specialName = card.name.replace(/\s+/g, '_'); // Only convert spaces to underscores
     }
 
+    // Build Limitless CDN URL
+    const limitlessUrl = this.buildLimitlessUrl(card.set, card.number);
+
     const possiblePaths = [
       `/thumbnails/sm/${baseName}_${card.set}_${card.number}.png`,
       `/thumbnails/sm/${card.name.replace(/[^a-zA-Z0-9']/g, '_')}_${card.set}_${card.number}.png`,
       `/thumbnails/sm/${card.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '_')}_${card.set}_${card.number}.png`,
-      `/thumbnails/sm/${specialName.replace(/[^a-zA-Z0-9\-]/g, '_')}_${card.set}_${card.number}.png`
-    ];
+      `/thumbnails/sm/${specialName.replace(/[^a-zA-Z0-9\-]/g, '_')}_${card.set}_${card.number}.png`,
+      limitlessUrl // Add Limitless CDN as fallback
+    ].filter(Boolean); // Remove null values
 
     for (const path of possiblePaths) {
       try {
         const img = new Image();
+        // Enable CORS for external images
+        img.crossOrigin = 'anonymous';
         const loadPromise = new Promise((resolve, reject) => {
           img.onload = () => resolve(path);
           img.onerror = reject;
@@ -514,6 +522,25 @@ class SocialGraphicsGenerator {
     }
 
     return null;
+  }
+
+  buildLimitlessUrl(setCode, number) {
+    if (!setCode || !number) {
+      return null;
+    }
+    
+    const normalizedSet = String(setCode).toUpperCase().trim();
+    const normalizedNumber = String(number).trim();
+    
+    if (!normalizedSet || !normalizedNumber) {
+      return null;
+    }
+    
+    // Pad number with leading zeroes to at least 3 digits
+    const paddedNumber = normalizedNumber.padStart(3, '0');
+    
+    // Use SM size for social graphics (small thumbnails)
+    return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${normalizedSet}/${normalizedSet}_${paddedNumber}_R_EN_SM.png`;
   }
 
   applyCropping(img, card, _cardSize = 'normal') {

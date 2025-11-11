@@ -274,10 +274,7 @@ function normalizeArchetypeName(name) {
   if (!cleaned) {
     return 'unknown';
   }
-  return cleaned
-    .split(/\s+/)
-    .sort((a, b) => a.localeCompare(b))
-    .join(' ');
+  return cleaned.replace(/\s+/g, ' ');
 }
 
 function canonicalizeVariant(setCode, number) {
