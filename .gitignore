@@ -41,6 +41,7 @@ include-exclude/
 .env
 /.wrangler
 /.wrangler
+dev/
 
 # Tools - keep organized but exclude temporary files
 tools/download.py
@@ -49,3 +50,5 @@ tools/download_list.txt
 tools/__pycache__/
 tools/synonym_cache.json
 tools/temp_inspect.py
+tools/generate_suggestions.py
+global.d.ts
