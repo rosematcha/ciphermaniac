@@ -4,6 +4,7 @@ import { logger } from './utils/logger.js';
 import { computeLayout } from './layoutHelper.js';
 import { buildCardPath } from './card/routing.js';
 import { getVariantImageCandidates } from './utils/cardSynonyms.js';
+import { fetchReportResource } from './api.js';
 
 function buildFallbackLabel(name) {
   if (!name) {
@@ -34,11 +35,7 @@ function buildFallbackLabel(name) {
 // Data fetch
 async function fetchSuggestions() {
   try {
-    const res = await fetch('/reports/suggestions.json', { cache: 'no-store' });
-    if (!res.ok) {
-      return { categories: [] };
-    }
-    const data = await res.json();
+    const data = await fetchReportResource('suggestions.json', 'suggestions', 'object', 'suggestions', { cache: false });
     return { categories: Array.isArray(data.categories) ? data.categories : [] };
   } catch {
     return { categories: [] };
