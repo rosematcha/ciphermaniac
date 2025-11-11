@@ -6,6 +6,10 @@ import {
   sanitizeForFilename,
   sanitizeForPath
 } from './reportBuilder.js';
+import {
+  generateIncludeExcludeReports,
+  writeIncludeExcludeReports
+} from './onlineMetaIncludeExclude.js';
 
 const WINDOW_DAYS = 14;
 const MIN_USAGE_PERCENT = 0.5;
@@ -417,13 +421,52 @@ export async function runOnlineMetaJob(env, options = {}) {
     await putJson(env, `${REPORT_BASE_KEY}/archetypes/${file.filename}`, file.data);
   }
 
+  // Generate include-exclude reports for eligible archetypes
+  console.info('[OnlineMeta] Generating include-exclude reports...');
+  let includeExcludeCount = 0;
+  const includeExcludeErrors = [];
+  
+  for (const file of archetypeFiles) {
+    const archetypeName = file.base.replace(/_/g, ' ');
+    const archetypeDecks = decks.filter(d => {
+      const normalized = normalizeArchetypeName(d.archetype || 'Unknown');
+      return sanitizeForFilename(normalized.replace(/ /g, '_')) === file.base;
+    });
+
+    try {
+      const reports = await generateIncludeExcludeReports(
+        archetypeName,
+        archetypeDecks,
+        file.data,
+        env
+      );
+
+      if (reports) {
+        await writeIncludeExcludeReports(archetypeName, reports, env, TARGET_FOLDER);
+        includeExcludeCount++;
+      }
+    } catch (error) {
+      console.error(`[OnlineMeta] Failed to generate include-exclude for ${archetypeName}:`, error);
+      includeExcludeErrors.push({
+        archetype: archetypeName,
+        error: error.message || String(error)
+      });
+    }
+  }
+
+  console.info('[OnlineMeta] Include-exclude generation complete', {
+    archetypesWithReports: includeExcludeCount,
+    errors: includeExcludeErrors.length
+  });
+
   // Note: Online tournaments are NOT added to tournaments.json
   // They are treated as a special case in the UI
 
   console.info('[OnlineMeta] Aggregated online tournaments', {
     deckTotal,
     tournamentCount: tournaments.length,
-    archetypes: archetypeFiles.length
+    archetypes: archetypeFiles.length,
+    includeExcludeReports: includeExcludeCount
   });
 
   return {
@@ -431,6 +474,8 @@ export async function runOnlineMetaJob(env, options = {}) {
     decks: deckTotal,
     tournaments: tournaments.length,
     archetypes: archetypeFiles.length,
+    includeExcludeReports: includeExcludeCount,
+    includeExcludeErrors,
     folder: TARGET_FOLDER,
     diagnostics
   };
