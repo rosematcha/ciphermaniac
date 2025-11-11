@@ -13,16 +13,18 @@
     "allowJs": true,
     "baseUrl": ".",
     "paths": {
-      "*": ["assets/js/*"]
+      "*": ["public/assets/js/*"]
     }
   },
   "include": [
-    "assets/js/**/*.js",
+    "public/assets/js/**/*.js",
     "types/**/*.d.ts"
   ],
   "exclude": [
     "node_modules",
     "backend",
-    "functions"
+    "functions",
+    "dev",
+    "config"
   ]
 }

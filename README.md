@@ -30,28 +30,46 @@ A comprehensive Pokemon TCG tournament data visualization and analysis tool. Exp
 ## Project Structure
 
 ```
-├── assets/                 # Frontend assets
-│   ├── js/                # JavaScript modules
-│   │   ├── components/    # Reusable UI components
-│   │   ├── config/        # Configuration files
-│   │   ├── dev/           # Development utilities
-│   │   └── utils/         # Helper functions
-│   └── style.css          # Main stylesheet
-├── backend/               # Backend services
-│   └── database/          # Database schema and setup
-├── functions/             # Cloud functions
-│   ├── api/              # API endpoints
-│   └── _cron/            # Scheduled tasks
-├── reports/               # Tournament data
-│   └── [tournament]/      # Individual tournament reports
-│       ├── archetypes/    # Deck archetype data
-│       ├── cardIndex.json # Card usage index
-│       ├── decks.json     # Deck lists
-│       └── meta.json      # Meta analysis
-├── thumbnails/            # Card image assets
-│   ├── sm/               # Small thumbnails
-│   └── xs/               # Extra small thumbnails
-└── tools/                # Data processing tools
+├── public/                # Frontend application
+│   ├── assets/           # Static assets
+│   │   ├── js/          # JavaScript modules
+│   │   │   ├── components/  # Reusable UI components
+│   │   │   ├── config/      # Configuration files
+│   │   │   ├── dev/         # Development utilities
+│   │   │   └── utils/       # Helper functions
+│   │   └── style.css    # Main stylesheet
+│   ├── thumbnails/      # Card image assets
+│   │   ├── sm/         # Small thumbnails
+│   │   └── xs/         # Extra small thumbnails
+│   └── *.html          # HTML pages
+├── functions/           # Cloudflare Functions (API endpoints)
+│   ├── api/            # API endpoints
+│   ├── _cron/          # Scheduled tasks
+│   ├── card/           # Card routing
+│   ├── archetype/      # Archetype routing
+│   └── lib/            # Shared library code
+├── reports/            # Tournament data
+│   └── [tournament]/   # Individual tournament reports
+│       ├── archetypes/ # Deck archetype data
+│       ├── cardIndex.json  # Card usage index
+│       ├── decks.json      # Deck lists
+│       └── meta.json       # Meta analysis
+├── config/             # Configuration files (master copies)
+│   ├── jsconfig.json   # TypeScript/JavaScript configuration
+│   ├── .eslintrc.json  # ESLint configuration
+│   ├── jsdoc.config.js # JSDoc configuration
+│   ├── wrangler.toml   # Cloudflare Workers configuration
+│   └── ...            # Other config files
+├── dev/                # Development tools
+│   ├── test-server.js  # Local development server
+│   └── tests/         # Test files
+├── docs/               # Documentation
+│   ├── api/           # Generated API documentation
+│   └── *.md           # Documentation files
+├── scripts/           # Build and automation scripts
+├── tools/             # Data processing tools
+├── types/             # TypeScript type definitions
+└── workers/           # Cloudflare Workers
 ```
 ## Getting Started
 
