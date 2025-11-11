@@ -1,104 +1,7 @@
+
 # Ciphermaniac
 
-A comprehensive Pokemon TCG tournament data visualization and analysis tool. Explore card usage statistics, pricing trends, and meta analysis from major tournaments worldwide.
-
-**Live Site:** [ciphermaniac.com](https://ciphermaniac.com)
-
-## Features
-
-### Tournament Analysis
-
-- **Card Usage Statistics**: View usage percentages and distribution across tournament decks
-- **Archetype Analysis**: Filter by popular deck archetypes and strategies
-- **Meta Tracking**: Compare performance across different tournament formats and regions
-- **Historical Data**: Access tournament reports from major events including Regionals, NAIC, and World Championships
-
-### Interactive Interface
-
-- **Search & Filter**: Find specific cards, archetypes, or tournament formats
-- **Sorting Options**: Sort by usage percentage, alphabetical order, or card prices
-- **Responsive Grid**: Optimized layout for desktop and mobile viewing
-- **Card Thumbnails**: Visual card identification with hover overlays
-
-### Pricing Integration
-
-- **Real-time Pricing**: Current market prices for competitive cards
-- **Price Tracking**: Monitor price trends over time
-- **Budget Analysis**: Evaluate deck costs and card value
-
-
-## Project Structure
-
-```
-├── public/                # Frontend application
-│   ├── assets/           # Static assets
-│   │   ├── js/          # JavaScript modules
-│   │   │   ├── components/  # Reusable UI components
-│   │   │   ├── config/      # Configuration files
-│   │   │   ├── dev/         # Development utilities
-│   │   │   └── utils/       # Helper functions
-│   │   └── style.css    # Main stylesheet
-│   ├── thumbnails/      # Card image assets
-│   │   ├── sm/         # Small thumbnails
-│   │   └── xs/         # Extra small thumbnails
-│   └── *.html          # HTML pages
-├── functions/           # Cloudflare Functions (API endpoints)
-│   ├── api/            # API endpoints
-│   ├── _cron/          # Scheduled tasks
-│   ├── card/           # Card routing
-│   ├── archetype/      # Archetype routing
-│   └── lib/            # Shared library code
-├── reports/            # Tournament data
-│   └── [tournament]/   # Individual tournament reports
-│       ├── archetypes/ # Deck archetype data
-│       ├── cardIndex.json  # Card usage index
-│       ├── decks.json      # Deck lists
-│       └── meta.json       # Meta analysis
-├── config/             # Configuration files (master copies)
-│   ├── jsconfig.json   # TypeScript/JavaScript configuration
-│   ├── .eslintrc.json  # ESLint configuration
-│   ├── jsdoc.config.js # JSDoc configuration
-│   ├── wrangler.toml   # Cloudflare Workers configuration
-│   └── ...            # Other config files
-├── dev/                # Development tools
-│   ├── test-server.js  # Local development server
-│   └── tests/         # Test files
-├── docs/               # Documentation
-│   ├── api/           # Generated API documentation
-│   └── *.md           # Documentation files
-├── scripts/           # Build and automation scripts
-├── tools/             # Data processing tools
-├── types/             # TypeScript type definitions
-└── workers/           # Cloudflare Workers
-```
-## Getting Started
-
-### Prerequisites
-
-- Node.js 16.0.0 or higher
-- Python 3.x (for data processing tools)
-
-### Installation
-
-1. Clone the repository:
-   
-   ```bash
-   git clone https://github.com/your-username/Ciphermaniac.git
-   cd Ciphermaniac
-   ```
-2. Install dependencies:
-   
-   ```bash
-   npm install
-   ```
-3. Start the development server (uses the Node test server with hosting rewrites for `/card` routes):
-   
-   ```bash
-   npm run dev
-   ```
-4. Open [http://localhost:8000](http://localhost:8000) in your browser
-
-### Development Commands
+## Development Commands
 
 ```bash
 npm run lint          # Check code quality
@@ -108,60 +11,48 @@ npm run validate      # Run all validation checks
 npm run dev           # Start development server
 ```
 
-### Environment Variables
-
-Copy `.env.example` to `.env` and add your secrets before running tooling that talks to third‑party services:
-
-```
-LIMITLESS_API_KEY=your_limitless_api_key_here
-```
-
-Cloudflare Pages/Workers deployments should define the same `LIMITLESS_API_KEY` variable in the dashboard or via `wrangler` so serverless functions can reach the Limitless API without leaking the key to the browser.
-
-### Online Meta Automation
-
-The GitHub Action at `.github/workflows/online-meta.yml` regenerates the “Online – Last 14 Days” aggregated report. Configure these repository secrets before enabling the workflow:
-
-- `LIMITLESS_API_KEY`
-- `R2_ACCOUNT_ID`
-- `R2_ACCESS_KEY_ID`
-- `R2_SECRET_ACCESS_KEY`
-- `R2_BUCKET_NAME`
-
-The workflow runs daily (12:00 UTC) and on manual dispatch, calling `node scripts/run-online-meta.mjs` to push the refreshed JSON into `reports/Online - Last 14 Days/` inside the `ciphermaniac-reports` R2 bucket.
-
-## Data Sources
-
-Tournament data is sourced from [LimitlessTCG](https://limitlesstcg.com) including:
-
-- Regional Championships
-- Special Events
-- North American International Championships (NAIC)
-- World Championships
-- Local tournaments and league events
-
-Card pricing data is integrated from multiple market sources to provide accurate valuations.
 
 
-## Contributing
+## GitHub Actions
+This repo uses a few GitHub Actions to automate its functionality.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### Online Meta Report (`online-meta.yml`)
+Using data from [PlayLimitless](https://play.limitlesstcg.com/), we aggregate the last 14 days of online tournaments into a single meta report. Runs once a day at noon UTC.
+* Fetches recent online tournaments from the Limitless API and filters for PTCG Standard format events.
+* Downloads decklists from top placements, scaled by tournament size (larger tournaments = more decks analyzed).
+* Aggregates card usage statistics and generates archetype breakdowns.
+* Generates include/exclude filtered reports for archetype variants (e.g., "Gardevoir with Munkidori", "Gardevoir without Munkidori").
+* Uploads all reports (master, meta, decks, archetypes, and filtered variants) to our Cloudflare R2 storage bucket.
 
-Please ensure your code passes all validation checks before submitting.
+### Daily Price Check (`daily-pricing.yml`)
+Using data from [TCGCSV](https://tcgcsv.com/), we create a condensed JSON with only the prices we need. Runs once a day at noon UTC.
+* Reviews the most recent online report and our synonyms, creating a list of card UIDS (ie. TEF 097) which need their price checked.
+* Downloads the CSVs of prices for every set with cards on the site from TCGCSV, using their static map of set IDs.
+* Scans the CSVs for market prices for each card (ie. TEF 097 has a market value of $0.07), and hardcodes a one-cent price for Basic Energy.
+* Uploads the resulting report to our Cloudflare R2 storage bucket.
+
+### Download Tournament Report (`download-tournament.yml`)
+This will add all Day 2 entries from a major tournament to the database. Runs only on user command.
+* Input is accepted in the form of a LimitlessTCG link (ie. `https://limitlesstcg.com/tournaments/500`), and all decklists are scraped in a Pokémon TCG Live-compliant format.
+* Synonyms are generated for each card, ie. Psychic Energy SVE 013 and Psychic Energy SVE 021, to keep data consistent.
+* From the scraped and normalized data, all expected reports (master, meta, decks, cardIndex, synonyms, and archetypes) are generated.
+* All outputs are uploaded to our Cloudflare R2 storage bucket.
+
+### Deploy Pages (`deploy-pages.yml`)
+Deploys the Ciphermaniac website to Cloudflare Pages. Runs automatically on every push to the main branch.
+* Checks out the repository and sets up Node.js.
+* Installs dependencies and builds Cloudflare Pages Functions.
+* Deploys the `public/` directory to Cloudflare Pages.
+* Updates any cron triggers defined in the wrangler configuration.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
+## Credits
 
-- Tournament data provided by [LimitlessTCG](https://limitlesstcg.com)
-- Pokemon Trading Card Game and all related intellectual property are owned by The Pokemon Company International
-- This project is not affiliated with or endorsed by The Pokemon Company International
-- Community contributors and data collectors
+* [LimitlessTCG](https://limitlesstcg.com), [PlayLimitless](https://play.limitlesstcg.com), and [Robin](https://x.com/limitless_robin) for providing incredibly in-depth and easy to access data. The work the Limitless team does is foundational to the modern Pokémon community, and our game wouldn't be the same without their incredible work.
+* [TrainerHill](https://trainerhill.com) and Brad for high-fidelity, granular, and modular deck archetype analysis enabling creative deck building, as well as support in the early stages of development.
+* [TCGCSV](https://tcgcsv.com) and CptSpaceToaster for exposing TCGPlayer market price in a compatible and malleable form after TCGPlayer's API crackdown.
 
-
+As a reminder, we are not and do not claim to be affiliated with The Pokémon Company, Nintendo, Game Freak, Creatures Inc., RK9, or any of their subsidiaries.
