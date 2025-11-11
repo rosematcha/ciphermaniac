@@ -72,12 +72,14 @@ function getVariantOverride(overrides, name, setCode, number) {
 function buildLimitlessUrl(setCode, number, useSm) {
   if (!setCode || !number) {
     return null;
+  }
 
   const normalizedSet = String(setCode).toUpperCase().trim();
   const normalizedNumber = String(number).trim();
 
   if (!normalizedSet || !normalizedNumber) {
     return null;
+  }
 
   // Pad number with leading zeroes to at least 3 digits
   const paddedNumber = normalizedNumber.padStart(3, "0");
