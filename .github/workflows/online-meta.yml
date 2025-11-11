@@ -4,6 +4,27 @@ on:
   schedule:
     - cron: '0 12 * * *'
   workflow_dispatch:
+    inputs:
+      generate_master:
+        description: 'Generate master.json (aggregated card statistics)'
+        required: false
+        type: boolean
+        default: true
+      generate_archetypes:
+        description: 'Generate archetype reports'
+        required: false
+        type: boolean
+        default: true
+      generate_include_exclude:
+        description: 'Generate include-exclude filtered reports'
+        required: false
+        type: boolean
+        default: true
+      generate_decks:
+        description: 'Upload decks.json (raw deck data)'
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -32,3 +53,8 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           R2_REPORTS_PREFIX: reports
+          GENERATE_MASTER: ${{ inputs.generate_master == '' && 'true' || inputs.generate_master }}
+          GENERATE_ARCHETYPES: ${{ inputs.generate_archetypes == '' && 'true' || inputs.generate_archetypes }}
+          GENERATE_INCLUDE_EXCLUDE: ${{ inputs.generate_include_exclude == '' && 'true' || inputs.generate_include_exclude }}
+          GENERATE_DECKS: ${{ inputs.generate_decks == '' && 'true' || inputs.generate_decks }}
+

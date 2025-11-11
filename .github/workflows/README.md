@@ -70,11 +70,17 @@ Generates the "Online - Last 14 Days" meta report by aggregating recent online t
 ### When It Runs
 **Automatic**: Daily at 12:00 UTC (7:00 AM EST / 6:00 AM CST)
 
-**Manual**: Can be triggered via "Run workflow" button in GitHub Actions
+**Manual**: Can be triggered via "Run workflow" button in GitHub Actions with optional granular control:
+- **Generate master.json**: Aggregated card statistics (default: enabled)
+- **Generate archetype reports**: Per-archetype breakdowns (default: enabled)
+- **Generate include-exclude filtered reports**: Archetype variants (default: enabled)
+- **Upload decks.json**: Raw deck data (default: enabled)
+
+*Note: You can disable any of these to speed up runs or test specific components. For example, to regenerate only include-exclude reports without touching other data.*
 
 ### Trigger Type
 - `schedule`: `cron: '0 12 * * *'` (daily)
-- `workflow_dispatch`: Manual trigger
+- `workflow_dispatch`: Manual trigger with optional inputs
 
 ### Required Secrets
 - `LIMITLESS_API_KEY` - API key for Limitless TCG
@@ -85,6 +91,12 @@ Generates the "Online - Last 14 Days" meta report by aggregating recent online t
 
 ### Script
 `.github/scripts/run-online-meta.mjs` (Node.js/JavaScript)
+
+**Configuration Flags** (environment variables):
+- `GENERATE_MASTER` - Generate master.json (default: true)
+- `GENERATE_ARCHETYPES` - Generate archetype reports (default: true)
+- `GENERATE_INCLUDE_EXCLUDE` - Generate include-exclude reports (default: true)
+- `GENERATE_DECKS` - Upload decks.json (default: true)
 
 ### Output
 - Creates/updates: `reports/Online - Last 14 Days/` in R2
