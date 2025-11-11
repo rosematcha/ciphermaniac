@@ -17,7 +17,7 @@ export const ErrorTypes = {
   CACHE: 'CacheError',
   RENDER: 'RenderError',
   API: 'ApiError',
-  USER_INPUT: 'UserInputError'
+  USER_INPUT: 'UserInputError',
 };
 
 /**
@@ -46,14 +46,17 @@ export class AppError extends Error {
    */
   static getDefaultUserMessage(type) {
     const messages = {
-      [ErrorTypes.NETWORK]: 'Connection problem. Please check your internet and try again.',
+      [ErrorTypes.NETWORK]:
+        'Connection problem. Please check your internet and try again.',
       [ErrorTypes.VALIDATION]: 'Please check your input and try again.',
-      [ErrorTypes.DATA_FORMAT]: 'Data format issue. Please refresh and try again.',
+      [ErrorTypes.DATA_FORMAT]:
+        'Data format issue. Please refresh and try again.',
       [ErrorTypes.TIMEOUT]: 'Request timed out. Please try again.',
       [ErrorTypes.CACHE]: 'Storage issue. Clearing cache might help.',
       [ErrorTypes.RENDER]: 'Display issue. Please refresh the page.',
-      [ErrorTypes.API]: 'Service temporarily unavailable. Please try again later.',
-      [ErrorTypes.USER_INPUT]: 'Invalid input provided.'
+      [ErrorTypes.API]:
+        'Service temporarily unavailable. Please try again later.',
+      [ErrorTypes.USER_INPUT]: 'Invalid input provided.',
     };
     return messages[type] || 'Something went wrong. Please try again.';
   }
@@ -86,7 +89,11 @@ export class ErrorBoundary {
    * @returns {Promise} Operation promise
    */
   async execute(operation, onSuccess = null, config = {}) {
-    const { loadingMessage = 'Loading...', retryAttempts = 2, retryDelay = 1000 } = config;
+    const {
+      loadingMessage = 'Loading...',
+      retryAttempts = 2,
+      retryDelay = 1000
+    } = config;
 
     this.showLoading(loadingMessage);
 
@@ -106,7 +113,10 @@ export class ErrorBoundary {
         lastError = error;
 
         if (this.options.logErrors) {
-          logger.exception(`Operation failed (attempt ${attempt + 1}/${retryAttempts + 1})`, error);
+          logger.exception(
+            `Operation failed (attempt ${attempt + 1}/${retryAttempts + 1})`,
+            error
+          );
         }
 
         // If this wasn't the last attempt, wait before retrying
@@ -147,7 +157,10 @@ export class ErrorBoundary {
       return;
     }
 
-    const appError = error instanceof AppError ? error : new AppError(ErrorTypes.API, error.message);
+    const appError =
+      error instanceof AppError
+        ? error
+        : new AppError(ErrorTypes.API, error.message);
 
     const retryButton = this.options.showRetryButton
       ? `<button class="error-retry-btn" onclick="location.reload()">Try Again</button>`
@@ -212,7 +225,12 @@ export class ErrorBoundary {
  * @returns {Promise<Response>} Enhanced response
  */
 export async function safeFetch(input, init = {}) {
-  const { timeout = 10000, retries = 2, retryDelay = 1000, ...fetchOptions } = init;
+  const {
+    timeout = 10000,
+    retries = 2,
+    retryDelay = 1000,
+    ...fetchOptions
+  } = init;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -237,7 +255,7 @@ export async function safeFetch(input, init = {}) {
               ? 'The requested data was not found.'
               : response.status >= 500
                 ? 'Server is temporarily unavailable.'
-                : 'Request failed. Please try again.'
+                : 'Request failed. Please try again.',
           );
           throw error;
         }
@@ -247,16 +265,25 @@ export async function safeFetch(input, init = {}) {
         lastError = error;
 
         if (error.name === 'AbortError') {
-          throw new AppError(ErrorTypes.TIMEOUT, 'Request timed out', null, { timeout });
+          throw new AppError(ErrorTypes.TIMEOUT, 'Request timed out', null, {
+            timeout
+          });
         }
 
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
-          throw new AppError(ErrorTypes.NETWORK, 'Network connection failed', null, { originalError: error });
+          throw new AppError(
+            ErrorTypes.NETWORK,
+            'Network connection failed',
+            null,
+            { originalError: error }
+          );
         }
 
         // If this wasn't the last attempt, wait before retrying
         if (attempt < retries) {
-          await new Promise(resolve => setTimeout(resolve, retryDelay * 2 ** attempt));
+          await new Promise(resolve =>
+            setTimeout(resolve, retryDelay * 2 ** attempt)
+          );
         }
       }
     }
@@ -273,12 +300,18 @@ export async function safeFetch(input, init = {}) {
 export const validators = {
   cardIdentifier(identifier) {
     if (!identifier || typeof identifier !== 'string') {
-      throw new AppError(ErrorTypes.VALIDATION, 'Card identifier must be a non-empty string');
+      throw new AppError(
+        ErrorTypes.VALIDATION,
+        'Card identifier must be a non-empty string',
+      );
     }
 
     const trimmed = identifier.trim();
     if (trimmed.length === 0) {
-      throw new AppError(ErrorTypes.VALIDATION, 'Card identifier cannot be empty');
+      throw new AppError(
+        ErrorTypes.VALIDATION,
+        'Card identifier cannot be empty',
+      );
     }
 
     if (trimmed.length > 200) {
@@ -290,7 +323,10 @@ export const validators = {
 
   tournament(tournament) {
     if (!tournament || typeof tournament !== 'string') {
-      throw new AppError(ErrorTypes.VALIDATION, 'Tournament name must be a non-empty string');
+      throw new AppError(
+        ErrorTypes.VALIDATION,
+        'Tournament name must be a non-empty string',
+      );
     }
     return tournament.trim();
   },
@@ -300,7 +336,10 @@ export const validators = {
       throw new AppError(ErrorTypes.VALIDATION, 'Expected an array');
     }
     if (arr.length < minLength) {
-      throw new AppError(ErrorTypes.VALIDATION, `Array must have at least ${minLength} items`);
+      throw new AppError(
+        ErrorTypes.VALIDATION,
+        `Array must have at least ${minLength} items`
+      );
     }
     return arr;
   }

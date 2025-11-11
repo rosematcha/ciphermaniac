@@ -82,23 +82,30 @@ class ArchetypeCacheManager {
   }
 
   /**
-   * Build filter key for index.json lookup
-   * @param {string|null} includeId - Card ID like "PAL~188"
-   * @param {string|null} excludeId - Card ID like "SVI~089"
+   * Build filter key for looking up subset IDs in the index
+   * @param {string|null} includeId
+   * @param {string|null} excludeId
+   * @param {number} includeCount
+   * @param {number} excludeCount
    * @returns {string}
    */
-  static buildFilterKey(includeId, excludeId) {
+  static buildFilterKey(
+    includeId,
+    excludeId,
+    includeCount = 1,
+    excludeCount = 0
+  ) {
     const incKey = includeId ? includeId : '';
     const excKey = excludeId ? excludeId : '';
-    return `inc:${incKey}|exc:${excKey}`;
-  }
-
-  /**
-   * Build cache key for index files
-   * @param {string} tournament
-   * @param {string} archetypeBase
-   * @returns {string}
-   */
+    const incCnt = includeId ? includeCount : 1;
+    const excCnt = excludeId ? excludeCount : 0;
+    return `inc:${incKey}:${incCnt}|exc:${excKey}:${excCnt}`;
+  } /**
+     * Build cache key for index files
+     * @param {string} tournament
+     * @param {string} archetypeBase
+     * @returns {string}
+     */
   static getIndexCacheKey(tournament, archetypeBase) {
     return `${tournament}::${archetypeBase}::index`;
   }
@@ -121,7 +128,10 @@ class ArchetypeCacheManager {
    * @returns {Promise<ArchetypeIndex>}
    */
   fetchIndex(tournament, archetypeBase) {
-    const cacheKey = ArchetypeCacheManager.getIndexCacheKey(tournament, archetypeBase);
+    const cacheKey = ArchetypeCacheManager.getIndexCacheKey(
+      tournament,
+      archetypeBase
+    );
 
     if (this.indexCache.has(cacheKey)) {
       logger.debug(`Index cache hit for ${archetypeBase}`);
@@ -129,7 +139,10 @@ class ArchetypeCacheManager {
     }
 
     const fetchPromise = (async () => {
-      const baseUrls = ArchetypeCacheManager.getArchetypeBaseUrls(tournament, archetypeBase);
+      const baseUrls = ArchetypeCacheManager.getArchetypeBaseUrls(
+        tournament,
+        archetypeBase
+      );
       this.pendingFetches.add(cacheKey);
 
       try {
@@ -142,10 +155,15 @@ class ArchetypeCacheManager {
           try {
             const response = await fetch(url);
             if (!response.ok) {
-              throw new AppError(ErrorTypes.NETWORK, `HTTP ${response.status}: ${response.statusText}`, null, {
-                url,
-                status: response.status
-              });
+              throw new AppError(
+                ErrorTypes.NETWORK,
+                `HTTP ${response.status}: ${response.statusText}`,
+                null,
+                {
+                  url,
+                  status: response.status
+                },
+              );
             }
 
             const data = await response.json();
@@ -165,9 +183,16 @@ class ArchetypeCacheManager {
         }
 
         this.indexCache.delete(cacheKey);
-        const message = lastError?.message || `Failed to fetch index for ${archetypeBase}`;
+        const message =
+          lastError?.message || `Failed to fetch index for ${archetypeBase}`;
         logger.warn(message);
-        throw lastError || new AppError(ErrorTypes.NETWORK, message, null, { tournament, archetypeBase });
+        throw (
+          lastError ||
+          new AppError(ErrorTypes.NETWORK, message, null, {
+            tournament,
+            archetypeBase
+          })
+        );
       } finally {
         this.pendingFetches.delete(cacheKey);
       }
@@ -185,7 +210,11 @@ class ArchetypeCacheManager {
    * @returns {Promise<SubsetData>}
    */
   fetchSubset(tournament, archetypeBase, subsetId) {
-    const cacheKey = ArchetypeCacheManager.getSubsetCacheKey(tournament, archetypeBase, subsetId);
+    const cacheKey = ArchetypeCacheManager.getSubsetCacheKey(
+      tournament,
+      archetypeBase,
+      subsetId
+    );
 
     if (this.subsetCache.has(cacheKey)) {
       logger.debug(`Subset cache hit for ${archetypeBase}/${subsetId}`);
@@ -193,7 +222,10 @@ class ArchetypeCacheManager {
     }
 
     const fetchPromise = (async () => {
-      const baseUrls = ArchetypeCacheManager.getArchetypeBaseUrls(tournament, archetypeBase);
+      const baseUrls = ArchetypeCacheManager.getArchetypeBaseUrls(
+        tournament,
+        archetypeBase
+      );
       this.pendingFetches.add(cacheKey);
 
       try {
@@ -201,15 +233,22 @@ class ArchetypeCacheManager {
 
         for (const baseUrl of baseUrls) {
           const url = `${baseUrl}/unique_subsets/${subsetId}.json`;
-          logger.debug(`Fetching subset ${subsetId} for ${archetypeBase}`, { url });
+          logger.debug(`Fetching subset ${subsetId} for ${archetypeBase}`, {
+            url
+          });
 
           try {
             const response = await fetch(url);
             if (!response.ok) {
-              throw new AppError(ErrorTypes.NETWORK, `HTTP ${response.status}: ${response.statusText}`, null, {
-                url,
-                status: response.status
-              });
+              throw new AppError(
+                ErrorTypes.NETWORK,
+                `HTTP ${response.status}: ${response.statusText}`,
+                null,
+                {
+                  url,
+                  status: response.status
+                },
+              );
             }
 
             const data = await response.json();
@@ -228,7 +267,9 @@ class ArchetypeCacheManager {
         }
 
         this.subsetCache.delete(cacheKey);
-        const message = lastError?.message || `Failed to fetch subset ${subsetId} for ${archetypeBase}`;
+        const message =
+          lastError?.message ||
+          `Failed to fetch subset ${subsetId} for ${archetypeBase}`;
         logger.warn(message);
         throw (
           lastError ||
@@ -253,14 +294,28 @@ class ArchetypeCacheManager {
    * @param {string} archetypeBase
    * @param {string|null} includeId
    * @param {string|null} excludeId
+   * @param {number} includeCount
+   * @param {number} excludeCount
    * @returns {Promise<SubsetData>}
    */
-  async getFilteredData(tournament, archetypeBase, includeId, excludeId) {
+  async getFilteredData(
+    tournament,
+    archetypeBase,
+    includeId,
+    excludeId,
+    includeCount = 1,
+    excludeCount = 0
+  ) {
     // First, fetch the index to get the filterMap
     const index = await this.fetchIndex(tournament, archetypeBase);
 
     // Build the filter key
-    const filterKey = ArchetypeCacheManager.buildFilterKey(includeId, excludeId);
+    const filterKey = ArchetypeCacheManager.buildFilterKey(
+      includeId,
+      excludeId,
+      includeCount,
+      excludeCount
+    );
 
     // Look up the subset ID
     const subsetId = index.filterMap[filterKey];
@@ -268,13 +323,20 @@ class ArchetypeCacheManager {
       logger.warn(`No subset found for filter combination`, {
         archetype: archetypeBase,
         include: includeId,
+        includeCount,
         exclude: excludeId,
+        excludeCount,
         filterKey
       });
-      throw new AppError(ErrorTypes.PARSE, `Filter combination not found: ${filterKey}`, null, {
-        filterKey,
-        archetype: archetypeBase
-      });
+      throw new AppError(
+        ErrorTypes.PARSE,
+        `Filter combination not found: ${filterKey}`,
+        null,
+        {
+          filterKey,
+          archetype: archetypeBase
+        },
+      );
     }
 
     logger.debug(`Resolved filter to subset`, {
@@ -299,7 +361,10 @@ class ArchetypeCacheManager {
       logger.debug(`Pre-cached index for ${archetypeBase}`);
     } catch (error) {
       // Silent failure for pre-caching
-      logger.debug(`Pre-cache index failed for ${archetypeBase}`, error.message);
+      logger.debug(
+        `Pre-cache index failed for ${archetypeBase}`,
+        error.message
+      );
     }
   }
 
@@ -315,7 +380,10 @@ class ArchetypeCacheManager {
   async preResolveFilter(tournament, archetypeBase, includeId, excludeId) {
     try {
       const index = await this.fetchIndex(tournament, archetypeBase);
-      const filterKey = ArchetypeCacheManager.buildFilterKey(includeId, excludeId);
+      const filterKey = ArchetypeCacheManager.buildFilterKey(
+        includeId,
+        excludeId
+      );
       const subsetId = index.filterMap[filterKey];
 
       if (subsetId) {
@@ -327,7 +395,10 @@ class ArchetypeCacheManager {
 
       return subsetId || null;
     } catch (error) {
-      logger.debug(`Pre-resolve filter failed for ${archetypeBase}`, error.message);
+      logger.debug(
+        `Pre-resolve filter failed for ${archetypeBase}`,
+        error.message
+      );
       return null;
     }
   }
@@ -345,7 +416,9 @@ class ArchetypeCacheManager {
     this.clearHoverTimer(tournament, archetypeBase);
 
     const timerId = window.setTimeout(() => {
-      logger.debug(`Hover delay expired for ${archetypeBase}, triggering pre-cache`);
+      logger.debug(
+        `Hover delay expired for ${archetypeBase}, triggering pre-cache`
+      );
       this.preCacheIndex(tournament, archetypeBase);
       if (onTrigger) {
         onTrigger();
@@ -377,7 +450,10 @@ class ArchetypeCacheManager {
    * @param {string|null} excludeId
    */
   startFilterHoverTimer(tournament, archetypeBase, includeId, excludeId) {
-    const filterKey = ArchetypeCacheManager.buildFilterKey(includeId, excludeId);
+    const filterKey = ArchetypeCacheManager.buildFilterKey(
+      includeId,
+      excludeId
+    );
     const key = `${tournament}::${archetypeBase}::filter::${filterKey}`;
 
     // Clear existing timer if any
@@ -404,7 +480,10 @@ class ArchetypeCacheManager {
    * @param {string|null} excludeId
    */
   clearFilterHoverTimer(tournament, archetypeBase, includeId, excludeId) {
-    const filterKey = ArchetypeCacheManager.buildFilterKey(includeId, excludeId);
+    const filterKey = ArchetypeCacheManager.buildFilterKey(
+      includeId,
+      excludeId
+    );
     const key = `${tournament}::${archetypeBase}::filter::${filterKey}`;
     const timerId = this.hoverTimers.get(key);
     if (timerId) {

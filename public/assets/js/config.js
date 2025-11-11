@@ -68,7 +68,7 @@ export const CONFIG = Object.freeze({
     'Milotic_Farigiraf',
     'Ns_Zoroark',
     'Raging_Bolt_Ogerpon',
-    'Tera_Box'
+    'Tera_Box',
   ],
 
   // Development flags
@@ -76,7 +76,7 @@ export const CONFIG = Object.freeze({
     ENABLE_LOGGING: true,
     ENABLE_PERF_MONITORING: false,
     MOCK_NETWORK_DELAY: false
-  }
+  },
 });
 
 /**
@@ -89,32 +89,55 @@ function validateConfig(config) {
 
   // Validate layout constants
   assert(config.LAYOUT, 'CONFIG.LAYOUT is required');
-  assert(typeof config.LAYOUT.GAP === 'number' && config.LAYOUT.GAP > 0, 'GAP must be positive number');
   assert(
-    typeof config.LAYOUT.BASE_CARD_WIDTH === 'number' && config.LAYOUT.BASE_CARD_WIDTH > 0,
-    'BASE_CARD_WIDTH must be positive number'
+    typeof config.LAYOUT.GAP === 'number' && config.LAYOUT.GAP > 0,
+    'GAP must be positive number',
   );
   assert(
-    typeof config.LAYOUT.BIG_ROWS_COUNT === 'number' && config.LAYOUT.BIG_ROWS_COUNT > 0,
-    'BIG_ROWS_COUNT must be positive number'
+    typeof config.LAYOUT.BASE_CARD_WIDTH === 'number' &&
+      config.LAYOUT.BASE_CARD_WIDTH > 0,
+    'BASE_CARD_WIDTH must be positive number',
+  );
+  assert(
+    typeof config.LAYOUT.BIG_ROWS_COUNT === 'number' &&
+      config.LAYOUT.BIG_ROWS_COUNT > 0,
+    'BIG_ROWS_COUNT must be positive number',
   );
 
   // Validate API config
   assert(config.API, 'CONFIG.API is required');
-  assert(typeof config.API.REPORTS_BASE === 'string', 'REPORTS_BASE must be string');
-  assert(typeof config.API.LIMITLESS_BASE === 'string', 'LIMITLESS_BASE must be string');
-  assert(typeof config.API.LIMITLESS_DEFAULT_GAME === 'string', 'LIMITLESS_DEFAULT_GAME must be string');
   assert(
-    Number.isInteger(config.API.LIMITLESS_DEFAULT_LIMIT) && config.API.LIMITLESS_DEFAULT_LIMIT > 0,
-    'LIMITLESS_DEFAULT_LIMIT must be a positive integer'
+    typeof config.API.REPORTS_BASE === 'string',
+    'REPORTS_BASE must be string',
   );
-  if ('R2_BASE' in config.API && config.API.R2_BASE !== undefined && config.API.R2_BASE !== null) {
+  assert(
+    typeof config.API.LIMITLESS_BASE === 'string',
+    'LIMITLESS_BASE must be string',
+  );
+  assert(
+    typeof config.API.LIMITLESS_DEFAULT_GAME === 'string',
+    'LIMITLESS_DEFAULT_GAME must be string',
+  );
+  assert(
+    Number.isInteger(config.API.LIMITLESS_DEFAULT_LIMIT) &&
+      config.API.LIMITLESS_DEFAULT_LIMIT > 0,
+    'LIMITLESS_DEFAULT_LIMIT must be a positive integer',
+  );
+  if (
+    'R2_BASE' in config.API &&
+    config.API.R2_BASE !== undefined &&
+    config.API.R2_BASE !== null
+  ) {
     assert(typeof config.API.R2_BASE === 'string', 'R2_BASE must be string');
   }
-  assert(typeof config.API.TIMEOUT_MS === 'number' && config.API.TIMEOUT_MS > 0, 'TIMEOUT_MS must be positive number');
   assert(
-    typeof config.API.JSON_CACHE_TTL_MS === 'number' && config.API.JSON_CACHE_TTL_MS > 0,
-    'JSON_CACHE_TTL_MS must be positive number'
+    typeof config.API.TIMEOUT_MS === 'number' && config.API.TIMEOUT_MS > 0,
+    'TIMEOUT_MS must be positive number',
+  );
+  assert(
+    typeof config.API.JSON_CACHE_TTL_MS === 'number' &&
+      config.API.JSON_CACHE_TTL_MS > 0,
+    'JSON_CACHE_TTL_MS must be positive number',
   );
 
   // Validate archetypes

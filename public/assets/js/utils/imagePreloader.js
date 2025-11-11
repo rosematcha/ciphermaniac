@@ -18,14 +18,16 @@ class ImagePreloader {
    */
   preloadImages(_cardNames, _useSm = false, _overrides = {}, _priority = 1) {
     // DISABLED: Using parallelImageLoader instead
-    return;
   }
 
   /**
    * Process the preload queue
    */
   processQueue() {
-    while (this.currentlyLoading < this.maxConcurrent && this.preloadQueue.length > 0) {
+    while (
+      this.currentlyLoading < this.maxConcurrent &&
+      this.preloadQueue.length > 0
+    ) {
       const request = this.preloadQueue.shift();
       this.loadImageCandidates(request);
     }
@@ -87,7 +89,6 @@ class ImagePreloader {
    */
   preloadVisibleCards(_items, _overrides = {}) {
     // DISABLED: Using parallelImageLoader instead
-    return;
   }
 
   /**
@@ -117,7 +118,7 @@ class ImagePreloader {
 export const imagePreloader = new ImagePreloader();
 
 // Throttled scroll handler for preloading
-let _scrollTimeout = null;
+const _scrollTimeout = null;
 /**
  *
  * @param {Array} _items

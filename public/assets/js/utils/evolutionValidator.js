@@ -82,7 +82,16 @@ const EVOLUTION_CHAINS = {
   Eelektrik: ['Eelektross'],
 
   // Eevee evolution tree (9 evolutions)
-  Eevee: ['Vaporeon', 'Jolteon', 'Flareon', 'Espeon', 'Umbreon', 'Leafeon', 'Glaceon', 'Sylveon'],
+  Eevee: [
+    'Vaporeon',
+    'Jolteon',
+    'Flareon',
+    'Espeon',
+    'Umbreon',
+    'Leafeon',
+    'Glaceon',
+    'Sylveon',
+  ],
 
   Elekid: ['Electabuzz', 'Electivire'], // Baby -> Basic -> Stage 1
   Electabuzz: ['Electivire'],
@@ -302,7 +311,7 @@ const EVOLUTION_CHAINS = {
   Clefairy: ['Clefable'],
   Yamask: ['Cofagrigus'],
   Baltoy: ['Claydol'],
-  Shuppet: ['Banette']
+  Shuppet: ['Banette'],
 };
 
 // Baby Pokemon (can be played alone, but are not required for evolution)
@@ -316,18 +325,18 @@ const BABY_POKEMON = new Set([
   'Pichu',
   'Igglybuff',
   'Magby',
-  'Bonsly'
+  'Bonsly',
 ]);
 
 // Special exception cards that can be played without smaller evolutions
 const EVOLUTION_EXCEPTIONS = new Set([
   'Klinklang SCR 101', // Can be put down conditionally
-  'Luxray PAL 071' // Can be put down conditionally
+  'Luxray PAL 071', // Can be put down conditionally
 ]);
 
 // Cards that allow bypassing evolution checks
 const EVOLUTION_BYPASS_CARDS = new Set([
-  'Slowking SCR 058' // Bypasses check if deck also contains Slowpoke
+  'Slowking SCR 058', // Bypasses check if deck also contains Slowpoke
 ]);
 
 /**
@@ -541,7 +550,11 @@ export function validateEvolutionRequirements(deck) {
     }
 
     // Check for Slowking bypass special case
-    if (baseName === 'Slowking' && hasSlowkingBypass.has('Slowpoke') && deckCards.has('Slowpoke')) {
+    if (
+      baseName === 'Slowking' &&
+      hasSlowkingBypass.has('Slowpoke') &&
+      deckCards.has('Slowpoke')
+    ) {
       hasPreEvolution = true;
     }
 
@@ -594,7 +607,9 @@ export function validateEvolutionRequirements(deck) {
             `${cardDisplayNames}: Named variant should evolve from matching ` +
             `trainer's card (e.g., ${trainerName}'s ${preEvolutions[0]}).`,
           cardName: cardKey,
-          expectedPreEvolutions: preEvolutions.map(preEvolution => `${trainerName}'s ${preEvolution}`)
+          expectedPreEvolutions: preEvolutions.map(
+            preEvolution => `${trainerName}'s ${preEvolution}`
+          ),
         });
       }
     }
@@ -617,7 +632,9 @@ export function validateEvolutionRequirements(deck) {
     if (evolutions.length > 0) {
       // Check if deck contains evolution stages of this ex Pokemon
       for (const evolution of evolutions) {
-        const evolutionKey = entry.trainerName ? `${entry.trainerName}'s ${evolution}` : evolution;
+        const evolutionKey = entry.trainerName
+          ? `${entry.trainerName}'s ${evolution}`
+          : evolution;
 
         if (deckCards.has(evolutionKey)) {
           const cardDisplayNames = Array.from(entry.originalNames).join(', ');
@@ -675,7 +692,7 @@ function isPokemonCard(card) {
     'Training',
     'Academy',
     'Festival',
-    'Court'
+    'Court',
   ];
 
   for (const keyword of nonPokemonKeywords) {
@@ -724,7 +741,9 @@ export function formatEvolutionWarnings(warnings) {
   const output = [];
 
   if (summary.errors.length > 0) {
-    output.push(`❌ ${summary.errors.length} Evolution Error${summary.errors.length > 1 ? 's' : ''}:`);
+    output.push(
+      `❌ ${summary.errors.length} Evolution Error${summary.errors.length > 1 ? 's' : ''}:`,
+    );
     for (const error of summary.errors) {
       output.push(`  • ${error.message}`);
     }
@@ -732,7 +751,9 @@ export function formatEvolutionWarnings(warnings) {
   }
 
   if (summary.warnings.length > 0) {
-    output.push(`⚠️ ${summary.warnings.length} Evolution Warning${summary.warnings.length > 1 ? 's' : ''}:`);
+    output.push(
+      `⚠️ ${summary.warnings.length} Evolution Warning${summary.warnings.length > 1 ? 's' : ''}:`,
+    );
     for (const warning of summary.warnings) {
       output.push(`  • ${warning.message}`);
     }

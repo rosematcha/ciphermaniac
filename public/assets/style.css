@@ -1,6 +1,5 @@
 /* ==========================================================================
-   Ciphermaniac - Minimal, readable, and responsive
-   Inspired by TrainerHill's compact cards
+   Ciphermaniac CSS
    ========================================================================== */
 
 /* ==========================================================================
@@ -912,12 +911,12 @@ h2{margin:8px 0 6px}
   --scale:1;
 }
 
-/* Smooth fade-in for newly added rows to prevent flash */
-.row {
-  animation: fadeInRow 0.2s ease-out;
+/* Smooth fade-in for newly added cards to prevent flash */
+.card.card-entering {
+  animation: fadeInCard 0.2s ease-out;
 }
 
-@keyframes fadeInRow {
+@keyframes fadeInCard {
   from {
     opacity: 0;
     transform: translateY(8px);
@@ -2353,6 +2352,12 @@ h2{margin:8px 0 6px}
     display: contents;
   }
 
+  .archetype-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
   .archetype-filters select {
     background: var(--panel);
     color: var(--text);
@@ -2372,6 +2377,42 @@ h2{margin:8px 0 6px}
     outline: none;
     border-color: var(--accent-2);
     box-shadow: 0 0 0 3px rgba(106, 163, 255, 0.1);
+  }
+
+  .archetype-count-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(106, 163, 255, 0.05);
+    border-radius: 6px;
+    font-size: 12px;
+  }
+
+  .archetype-count-filter label {
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .archetype-count-filter input[type="number"] {
+    width: 60px;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid #2c335a;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 13px;
+    transition: border-color 0.2s ease;
+  }
+
+  .archetype-count-filter input[type="number"]:hover {
+    border-color: rgba(106, 163, 255, 0.4);
+  }
+
+  .archetype-count-filter input[type="number"]:focus {
+    outline: none;
+    border-color: var(--accent-2);
+    box-shadow: 0 0 0 2px rgba(106, 163, 255, 0.1);
   }
 
   .archetype-filter-message {

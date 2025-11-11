@@ -5,7 +5,13 @@
 
 import { CONFIG } from './config.js';
 import { logger } from './utils/logger.js';
-import { AppError, ErrorTypes, safeFetch, validateType, withRetry } from './utils/errorHandler.js';
+import {
+  AppError,
+  ErrorTypes,
+  safeFetch,
+  validateType,
+  withRetry
+} from './utils/errorHandler.js';
 
 let pricingData = null;
 const jsonCache = new Map();
@@ -34,7 +40,10 @@ function pruneJsonCache() {
 
   const reclaimable = Array.from(jsonCache.entries())
     .filter(([, entry]) => !entry.promise)
-    .sort((entryA, entryB) => (entryA[1].expiresAt || 0) - (entryB[1].expiresAt || 0));
+    .sort(
+      (entryA, entryB) =>
+        (entryA[1].expiresAt || 0) - (entryB[1].expiresAt || 0)
+    );
 
   for (const [key] of reclaimable) {
     if (jsonCache.size <= CONFIG.CACHE.MAX_ENTRIES) {
@@ -68,7 +77,8 @@ function buildQueryString(params = {}) {
     if (value === undefined || value === null) {
       return;
     }
-    const normalized = typeof value === 'number' ? String(value) : String(value).trim();
+    const normalized =
+      typeof value === 'number' ? String(value) : String(value).trim();
     if (normalized) {
       query.set(key, normalized);
     }
@@ -83,19 +93,25 @@ function normalizeLimitlessTournament(entry) {
     return null;
   }
 
-  const id = typeof entry.id === 'string' ? entry.id.trim() : String(entry.id ?? '').trim();
+  const id =
+    typeof entry.id === 'string'
+      ? entry.id.trim()
+      : String(entry.id ?? '').trim();
   if (!id) {
     return null;
   }
 
   return {
     id,
-    name: typeof entry.name === 'string' && entry.name.trim() ? entry.name.trim() : 'Unnamed Tournament',
+    name:
+      typeof entry.name === 'string' && entry.name.trim()
+        ? entry.name.trim()
+        : 'Unnamed Tournament',
     game: typeof entry.game === 'string' ? entry.game.trim() : null,
     format: typeof entry.format === 'string' ? entry.format.trim() : null,
     date: typeof entry.date === 'string' ? entry.date : null,
     players: typeof entry.players === 'number' ? entry.players : null,
-    source: 'limitless'
+    source: 'limitless',
   };
 }
 
@@ -111,10 +127,16 @@ async function safeJsonParse(response, url) {
   const text = await response.text();
 
   if (!text.trim()) {
-    throw new AppError(ErrorTypes.PARSE, 'Empty response body', null, { url, contentType });
+    throw new AppError(ErrorTypes.PARSE, 'Empty response body', null, {
+      url,
+      contentType
+    });
   }
 
-  if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
+  if (
+    !contentType.includes('application/json') &&
+    !contentType.includes('text/json')
+  ) {
     const preview = text.slice(0, 100) + (text.length > 100 ? '...' : '');
     throw new AppError(
       ErrorTypes.PARSE,
@@ -129,11 +151,16 @@ async function safeJsonParse(response, url) {
   } catch (error) {
     if (error.name === 'SyntaxError') {
       const preview = text.slice(0, 100) + (text.length > 100 ? '...' : '');
-      throw new AppError(ErrorTypes.PARSE, `Invalid JSON response: ${error.message}`, null, {
-        url,
-        contentType,
-        preview
-      });
+      throw new AppError(
+        ErrorTypes.PARSE,
+        `Invalid JSON response: ${error.message}`,
+        null,
+        {
+          url,
+          contentType,
+          preview
+        },
+      );
     }
     throw error;
   }
@@ -153,7 +180,11 @@ async function safeJsonParse(response, url) {
  * @returns {Promise<T>}
  */
 function fetchWithRetry(url, operation, expectedType, fieldName, options = {}) {
-  const { cache = false, cacheKey = url, ttl = CONFIG.API.JSON_CACHE_TTL_MS } = options;
+  const {
+    cache = false,
+    cacheKey = url,
+    ttl = CONFIG.API.JSON_CACHE_TTL_MS
+  } = options;
 
   if (cache) {
     const entry = jsonCache.get(cacheKey);
@@ -164,7 +195,9 @@ function fetchWithRetry(url, operation, expectedType, fieldName, options = {}) {
         return Promise.resolve(entry.data);
       }
       if (entry.promise) {
-        logger.debug(`Awaiting in-flight request for ${operation}`, { cacheKey });
+        logger.debug(`Awaiting in-flight request for ${operation}`, {
+          cacheKey
+        });
         return entry.promise;
       }
       if (!entry.promise && entry.expiresAt <= now) {
@@ -179,12 +212,18 @@ function fetchWithRetry(url, operation, expectedType, fieldName, options = {}) {
     const data = await safeJsonParse(response, url);
 
     validateType(data, expectedType, fieldName || operation);
-    const count = Array.isArray(data) ? data.length : data.items?.length || 'unknown';
+    const count = Array.isArray(data)
+      ? data.length
+      : data.items?.length || 'unknown';
     logger.info(`Loaded ${operation}`, { count });
     return data;
   };
 
-  const fetchPromise = withRetry(loader, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS).catch(error => {
+  const fetchPromise = withRetry(
+    loader,
+    CONFIG.API.RETRY_ATTEMPTS,
+    CONFIG.API.RETRY_DELAY_MS
+  ).catch(error => {
     logger.error(`Failed ${operation}`, {
       url,
       message: error?.message || error,
@@ -215,7 +254,9 @@ function fetchWithRetry(url, operation, expectedType, fieldName, options = {}) {
 }
 
 function buildReportUrls(relativePath) {
-  const normalizedPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+  const normalizedPath = relativePath.startsWith('/')
+    ? relativePath
+    : `/${relativePath}`;
   const urls = [];
 
   // ALWAYS try R2 first for all reports
@@ -228,16 +269,35 @@ function buildReportUrls(relativePath) {
   return urls;
 }
 
-export async function fetchReportResource(relativePath, operation, expectedType, fieldName, options = {}) {
+/**
+ *
+ * @param relativePath
+ * @param operation
+ * @param expectedType
+ * @param fieldName
+ * @param options
+ */
+export async function fetchReportResource(
+  relativePath,
+  operation,
+  expectedType,
+  fieldName,
+  options = {}
+) {
   const urls = buildReportUrls(relativePath);
   let lastError = null;
 
   for (const url of urls) {
     try {
-      return await fetchWithRetry(url, operation, expectedType, fieldName, { ...options, cacheKey: url });
+      return await fetchWithRetry(url, operation, expectedType, fieldName, {
+        ...options,
+        cacheKey: url
+      });
     } catch (error) {
       lastError = error;
-      logger.warn(`${operation} failed via ${url}`, { message: error?.message || error });
+      logger.warn(`${operation} failed via ${url}`, {
+        message: error?.message || error
+      });
     }
   }
 
@@ -248,7 +308,13 @@ export async function fetchReportResource(relativePath, operation, expectedType,
  *
  */
 export function fetchTournamentsList() {
-  return fetchReportResource('tournaments.json', 'tournaments list', 'array', 'tournaments list', { cache: true });
+  return fetchReportResource(
+    'tournaments.json',
+    'tournaments list',
+    'array',
+    'tournaments list',
+    { cache: true }
+  );
 }
 
 /**
@@ -278,23 +344,41 @@ export async function fetchLimitlessTournaments(filters = {}) {
   const url = `${baseUrl}${query}`;
   const cacheKey = `limitless:tournaments:${query || 'default'}`;
 
-  const payload = await fetchWithRetry(url, 'Limitless tournaments', 'object', 'Limitless tournaments payload', {
-    cache: true,
-    cacheKey
-  });
+  const payload = await fetchWithRetry(
+    url,
+    'Limitless tournaments',
+    'object',
+    'Limitless tournaments payload',
+    {
+      cache: true,
+      cacheKey
+    },
+  );
 
   if (!payload || payload.success !== true) {
-    throw new AppError(ErrorTypes.API, 'Limitless tournaments request failed', null, { url, payload });
+    throw new AppError(
+      ErrorTypes.API,
+      'Limitless tournaments request failed',
+      null,
+      { url, payload }
+    );
   }
 
   if (!Array.isArray(payload.data)) {
-    throw new AppError(ErrorTypes.DATA_FORMAT, 'Limitless tournaments response missing data array', null, {
-      url,
-      payload
-    });
+    throw new AppError(
+      ErrorTypes.DATA_FORMAT,
+      'Limitless tournaments response missing data array',
+      null,
+      {
+        url,
+        payload
+      },
+    );
   }
 
-  const normalized = payload.data.map(normalizeLimitlessTournament).filter(Boolean);
+  const normalized = payload.data
+    .map(normalizeLimitlessTournament)
+    .filter(Boolean);
 
   logger.info('Fetched Limitless tournaments', {
     query: params,
@@ -327,10 +411,16 @@ export function fetchReport(tournament) {
 export async function fetchOverrides() {
   try {
     const url = '/assets/overrides.json';
-    const data = await fetchWithRetry(url, 'thumbnail overrides', 'object', 'thumbnail overrides', {
-      cache: true,
-      cacheKey: 'thumbnail-overrides'
-    });
+    const data = await fetchWithRetry(
+      url,
+      'thumbnail overrides',
+      'object',
+      'thumbnail overrides',
+      {
+        cache: true,
+        cacheKey: 'thumbnail-overrides',
+      }
+    );
     logger.debug(`Loaded ${Object.keys(data).length} thumbnail overrides`);
     return data;
   } catch (error) {
@@ -364,7 +454,13 @@ export function fetchArchetypesList(tournament) {
  * @param {boolean} [options.logOnRetry] - Defaults to true.
  * @returns {Promise<object>}
  */
-async function fetchArchetypeData({ url, validateLabel, onSuccess, notFoundLog, logOnRetry = true }) {
+async function fetchArchetypeData({
+  url,
+  validateLabel,
+  onSuccess,
+  notFoundLog,
+  logOnRetry = true
+}) {
   const attempt = async isRetry => {
     const response = await fetchWithTimeout(url);
     const data = await safeJsonParse(response, url);
@@ -385,7 +481,11 @@ async function fetchArchetypeData({ url, validateLabel, onSuccess, notFoundLog, 
       throw error;
     }
 
-    return withRetry(() => attempt(true), CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS);
+    return withRetry(
+      () => attempt(true),
+      CONFIG.API.RETRY_ATTEMPTS,
+      CONFIG.API.RETRY_DELAY_MS
+    );
   }
 }
 
@@ -408,12 +508,17 @@ export function fetchArchetypeReport(tournament, archetypeBase) {
     { cache: true }
   )
     .then(data => {
-      logger.info(`Loaded archetype report ${archetypeBase} for ${tournament}`, { itemCount: data.items?.length });
+      logger.info(
+        `Loaded archetype report ${archetypeBase} for ${tournament}`,
+        { itemCount: data.items?.length }
+      );
       return data;
     })
     .catch(error => {
       if (error instanceof AppError && error.context?.status === 404) {
-        logger.debug(`Archetype ${archetypeBase} not found for ${tournament}`, { relativePath });
+        logger.debug(`Archetype ${archetypeBase} not found for ${tournament}`, {
+          relativePath
+        });
       }
       throw error;
     });
@@ -426,26 +531,49 @@ export function fetchArchetypeReport(tournament, archetypeBase) {
  * @param {string} archetypeBase
  * @param {string|null} includeId
  * @param {string|null} excludeId
+ * @param {number} includeCount
+ * @param {number} excludeCount
  * @returns {Promise<object>}
  */
-export async function fetchArchetypeFiltersReport(tournament, archetypeBase, includeId, excludeId) {
+export async function fetchArchetypeFiltersReport(
+  tournament,
+  archetypeBase,
+  includeId,
+  excludeId,
+  includeCount = 1,
+  excludeCount = 0
+) {
   // If both include and exclude are null, fetch the base archetype report
   const isBaseReport = !includeId && !excludeId;
 
   if (isBaseReport) {
     const relativePath = `${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
-    logger.debug('Fetching base archetype report', { tournament, archetypeBase });
+    logger.debug('Fetching base archetype report', {
+      tournament,
+      archetypeBase
+    });
 
-    return fetchReportResource(relativePath, `base archetype report ${archetypeBase}`, 'object', 'archetype report', {
-      cache: true
-    })
+    return fetchReportResource(
+      relativePath,
+      `base archetype report ${archetypeBase}`,
+      'object',
+      'archetype report',
+      {
+        cache: true
+      },
+    )
       .then(data => {
-        logger.info(`Loaded base archetype report ${archetypeBase}`, { deckTotal: data.deckTotal });
+        logger.info(`Loaded base archetype report ${archetypeBase}`, {
+          deckTotal: data.deckTotal
+        });
         return data;
       })
       .catch(error => {
         if (error instanceof AppError && error.context?.status === 404) {
-          logger.debug('Base archetype report not found', { tournament, archetypeBase });
+          logger.debug('Base archetype report not found', {
+            tournament,
+            archetypeBase
+          });
         }
         throw error;
       });
@@ -458,15 +586,26 @@ export async function fetchArchetypeFiltersReport(tournament, archetypeBase, inc
     tournament,
     archetypeBase,
     include: includeId,
-    exclude: excludeId
+    includeCount,
+    exclude: excludeId,
+    excludeCount
   });
 
   try {
-    const data = await archetypeCache.getFilteredData(tournament, archetypeBase, includeId, excludeId);
+    const data = await archetypeCache.getFilteredData(
+      tournament,
+      archetypeBase,
+      includeId,
+      excludeId,
+      includeCount,
+      excludeCount
+    );
     validateType(data, 'object', 'archetype include/exclude report');
     logger.info(`Loaded filtered archetype report ${archetypeBase}`, {
       include: includeId,
+      includeCount,
       exclude: excludeId,
+      excludeCount,
       deckTotal: data.deckTotal
     });
     return data;
@@ -514,8 +653,14 @@ export async function fetchCardIndex(tournament) {
     'card index',
     { cache: true }
   );
-  if (typeof data.deckTotal !== 'number' || !data.cards || typeof data.cards !== 'object') {
-    throw new AppError(ErrorTypes.PARSE, 'Invalid card index schema', null, { tournament });
+  if (
+    typeof data.deckTotal !== 'number' ||
+    !data.cards ||
+    typeof data.cards !== 'object'
+  ) {
+    throw new AppError(ErrorTypes.PARSE, 'Invalid card index schema', null, {
+      tournament
+    });
   }
   return data;
 }
@@ -554,7 +699,10 @@ export function fetchDecks(tournament) {
         validateType(data, 'array', 'decks');
         return data;
       } catch (err) {
-        logger.debug('decks.json not available via url', { url, message: err.message });
+        logger.debug('decks.json not available via url', {
+          url,
+          message: err.message
+        });
       }
     }
     return null;
@@ -610,12 +758,17 @@ export function fetchTop8ArchetypesList(tournament) {
         const data = await safeJsonParse(response, url);
 
         if (Array.isArray(data)) {
-          logger.info(`Loaded ${data.length} top 8 archetypes for ${tournament}`);
+          logger.info(
+            `Loaded ${data.length} top 8 archetypes for ${tournament}`
+          );
           return data;
         }
         logger.warn('Top 8 data is not an array, continuing fallback');
       } catch (error) {
-        logger.debug(`Top 8 archetypes not available via ${url}`, error.message);
+        logger.debug(
+          `Top 8 archetypes not available via ${url}`,
+          error.message
+        );
       }
     }
     return null;
@@ -660,7 +813,9 @@ export async function fetchPricingData() {
 
     // eslint-disable-next-line require-atomic-updates
     pricingData = data;
-    logger.info(`Loaded pricing data for ${Object.keys(data.cardPrices).length} cards`);
+    logger.info(
+      `Loaded pricing data for ${Object.keys(data.cardPrices).length} cards`
+    );
     return data;
   } catch (error) {
     logger.warn('Failed to fetch pricing data', error.message);
@@ -699,13 +854,17 @@ async function resolveCardPricingEntry(cardId, requiredField, logLabel) {
   }
 
   try {
-    const { getCanonicalCard, getCardVariants } = await import('./utils/cardSynonyms.js');
+    const { getCanonicalCard, getCardVariants } = await import(
+      './utils/cardSynonyms.js'
+    );
 
     const canonical = await getCanonicalCard(cardId);
     if (canonical && canonical !== cardId) {
       entry = getEntry(canonical);
       if (entry) {
-        logger.debug(`Found ${logLabel} via canonical: ${canonical}`, { original: cardId });
+        logger.debug(`Found ${logLabel} via canonical: ${canonical}`, {
+          original: cardId
+        });
         return entry;
       }
     }
@@ -718,12 +877,17 @@ async function resolveCardPricingEntry(cardId, requiredField, logLabel) {
 
       entry = getEntry(variant);
       if (entry) {
-        logger.debug(`Found ${logLabel} via variant: ${variant}`, { original: cardId });
+        logger.debug(`Found ${logLabel} via variant: ${variant}`, {
+          original: cardId
+        });
         return entry;
       }
     }
   } catch (synonymError) {
-    logger.debug(`Synonym resolution failed during ${logLabel} lookup`, synonymError.message);
+    logger.debug(
+      `Synonym resolution failed during ${logLabel} lookup`,
+      synonymError.message
+    );
   }
 
   logger.debug(`No ${logLabel} found for ${cardId} or its variants`);
@@ -753,7 +917,11 @@ export async function getCardPrice(cardId) {
  */
 export async function getCardTCGPlayerId(cardId) {
   try {
-    const entry = await resolveCardPricingEntry(cardId, 'tcgPlayerId', 'TCGPlayer ID');
+    const entry = await resolveCardPricingEntry(
+      cardId,
+      'tcgPlayerId',
+      'TCGPlayer ID',
+    );
     return entry?.tcgPlayerId ?? null;
   } catch (error) {
     logger.debug(`Failed to get TCGPlayer ID for ${cardId}`, error.message);

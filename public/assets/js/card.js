@@ -19,15 +19,38 @@ import {
   createHistogramSkeleton,
   showSkeleton
 } from './components/placeholders.js';
-import { cleanupOrphanedProgressDisplay, createProgressIndicator, processInParallel } from './utils/parallelLoader.js';
+import {
+  cleanupOrphanedProgressDisplay,
+  createProgressIndicator,
+  processInParallel
+} from './utils/parallelLoader.js';
 import { logger, setupGlobalErrorHandler } from './utils/errorHandler.js';
 
 // Import card-specific modules
-import { getBaseName, getCanonicalId, getDisplayName, parseDisplayName } from './card/identifiers.js';
+import {
+  getBaseName,
+  getCanonicalId,
+  getDisplayName,
+  parseDisplayName
+} from './card/identifiers.js';
 import { findCard, renderCardPrice, renderCardSets } from './card/data.js';
-import { renderChart, renderCopiesHistogram, renderEvents } from './card/charts.js';
-import { getCanonicalCard, getCardVariants, getVariantImageCandidates } from './utils/cardSynonyms.js';
-import { buildCardPath, describeSlug, makeCardSlug, parseCardRoute, resolveCardSlug } from './card/routing.js';
+import {
+  renderChart,
+  renderCopiesHistogram,
+  renderEvents
+} from './card/charts.js';
+import {
+  getCanonicalCard,
+  getCardVariants,
+  getVariantImageCandidates
+} from './utils/cardSynonyms.js';
+import {
+  buildCardPath,
+  describeSlug,
+  makeCardSlug,
+  parseCardRoute,
+  resolveCardSlug
+} from './card/routing.js';
 
 // Set up global error handling
 setupGlobalErrorHandler();
@@ -68,10 +91,18 @@ let copiesSection;
 
 function refreshDomRefs() {
   cardTitleEl = document.getElementById('card-title');
-  metaSection = /** @type {HTMLElement|null} */ (document.getElementById('card-meta'));
-  decksSection = /** @type {HTMLElement|null} */ (document.getElementById('card-decks'));
-  eventsSection = /** @type {HTMLElement|null} */ (document.getElementById('card-events'));
-  copiesSection = /** @type {HTMLElement|null} */ (document.getElementById('card-copies'));
+  metaSection = /** @type {HTMLElement|null} */ (
+    document.getElementById('card-meta')
+  );
+  decksSection = /** @type {HTMLElement|null} */ (
+    document.getElementById('card-decks')
+  );
+  eventsSection = /** @type {HTMLElement|null} */ (
+    document.getElementById('card-events')
+  );
+  copiesSection = /** @type {HTMLElement|null} */ (
+    document.getElementById('card-copies')
+  );
 }
 
 function ensureCardMetaStructure() {
@@ -103,18 +134,27 @@ if (ensureCardMetaStructure()) {
 
 const __ROUTE_REDIRECTING = normalizeCardRouteOnLoad();
 const routeInfo = parseCardRoute();
-const shouldPrefillSearch = routeInfo.source === 'query' || routeInfo.source === 'hash';
+const shouldPrefillSearch =
+  routeInfo.source === 'query' || routeInfo.source === 'hash';
 
 let cardIdentifier = null;
 let cardName = null;
 
-const backLink = /** @type {HTMLAnchorElement|null} */ (document.getElementById('back-link'));
+const backLink = /** @type {HTMLAnchorElement|null} */ (
+  document.getElementById('back-link')
+);
 if (backLink) {
   backLink.href = '/';
 }
-const analysisSel = /** @type {HTMLSelectElement|null} */ (document.getElementById('analysis-event'));
-const analysisTable = /** @type {HTMLElement|null} */ (document.getElementById('analysis-table'));
-const searchInGrid = /** @type {HTMLAnchorElement|null} */ (document.getElementById('search-in-grid'));
+const analysisSel = /** @type {HTMLSelectElement|null} */ (
+  document.getElementById('analysis-event')
+);
+const analysisTable = /** @type {HTMLElement|null} */ (
+  document.getElementById('analysis-table')
+);
+const searchInGrid = /** @type {HTMLAnchorElement|null} */ (
+  document.getElementById('search-in-grid')
+);
 // These will be set inside initCardSearch to ensure DOM is ready
 /** @type {HTMLInputElement|null} */
 let cardSearchInput;
@@ -124,7 +164,9 @@ let cardNamesList;
 let suggestionsBox;
 // Copy link button removed per request
 
-initializeCardPage().catch(error => logger.error('Failed to initialize card page', error));
+initializeCardPage().catch(error =>
+  logger.error('Failed to initialize card page', error)
+);
 
 // Link to grid prefilled with search will be updated after card resolution
 
@@ -210,7 +252,10 @@ async function initializeCardPage() {
     try {
       resolvedIdentifier = await resolveCardSlug(routeInfo.slug);
     } catch (error) {
-      logger.warn('Failed to resolve card slug', { slug: routeInfo.slug, error: error?.message || error });
+      logger.warn('Failed to resolve card slug', {
+        slug: routeInfo.slug,
+        error: error?.message || error
+      });
     }
 
     if (resolvedIdentifier) {
@@ -235,7 +280,10 @@ async function initializeCardPage() {
       canonicalIdentifier = resolvedCanonical;
     }
   } catch (error) {
-    logger.warn('Canonical lookup failed', { cardIdentifier, error: error?.message || error });
+    logger.warn('Canonical lookup failed', {
+      cardIdentifier,
+      error: error?.message || error
+    });
   }
   if (cardIdentifier === identifierToCanonize) {
     cardIdentifier = canonicalIdentifier;
@@ -254,7 +302,11 @@ async function initializeCardPage() {
       history.replaceState(null, '', newUrl);
     }
   } else if (location.hash) {
-    history.replaceState(null, '', `${location.pathname}${location.search || ''}`);
+    history.replaceState(
+      null,
+      '',
+      `${location.pathname}${location.search || ''}`,
+    );
   }
 
   await load();
@@ -293,7 +345,9 @@ function createCardOption(item) {
 }
 
 function updateCardDatalist(byExactName, cardNamesList) {
-  const allCards = Array.from(byExactName.values()).sort((cardA, cardB) => cardA.display.localeCompare(cardB.display));
+  const allCards = Array.from(byExactName.values()).sort((cardA, cardB) =>
+    cardA.display.localeCompare(cardB.display)
+  );
 
   // Clear existing options without parameter reassignment
   const listElement = cardNamesList;
@@ -310,11 +364,18 @@ function updateCardDatalist(byExactName, cardNamesList) {
   saveCachedNames(namesToCache);
 }
 
-function enrichSuggestions(tournaments, byExactName, updateDatalist, processedTournaments) {
+function enrichSuggestions(
+  tournaments,
+  byExactName,
+  updateDatalist,
+  processedTournaments
+) {
   // Process tournaments in parallel with limited concurrency for better performance
   const MAX_PARALLEL = 3; // Process max 3 tournaments simultaneously
 
-  const tournamentsToProcess = tournaments.filter(tournament => !processedTournaments.has(tournament));
+  const tournamentsToProcess = tournaments.filter(
+    tournament => !processedTournaments.has(tournament)
+  );
   if (tournamentsToProcess.length === 0) {
     return;
   }
@@ -334,21 +395,37 @@ function enrichSuggestions(tournaments, byExactName, updateDatalist, processedTo
 
   // Process remaining tournaments in parallel batches (background)
   if (rest.length > 0) {
-    processTournamentBatch(rest, byExactName, updateDatalist, MAX_PARALLEL, processedTournaments);
+    processTournamentBatch(
+      rest,
+      byExactName,
+      updateDatalist,
+      MAX_PARALLEL,
+      processedTournaments
+    );
   }
 }
 
-async function processTournamentBatch(tournaments, byExactName, updateDatalist, maxParallel, processedTournaments) {
+async function processTournamentBatch(
+  tournaments,
+  byExactName,
+  updateDatalist,
+  maxParallel,
+  processedTournaments
+) {
   // Process tournaments in parallel batches
   for (let i = 0; i < tournaments.length; i += maxParallel) {
     const batch = tournaments.slice(i, i + maxParallel);
 
     // Process batch in parallel
-    const promises = batch.map(tournament => processTournament(tournament, byExactName, processedTournaments));
+    const promises = batch.map(tournament =>
+      processTournament(tournament, byExactName, processedTournaments)
+    );
     const results = await Promise.allSettled(promises);
 
     // Check if any new cards were added
-    const hasNewCards = results.some(result => result.status === 'fulfilled' && result.value);
+    const hasNewCards = results.some(
+      result => result.status === 'fulfilled' && result.value
+    );
 
     if (hasNewCards) {
       updateDatalist();
@@ -356,7 +433,11 @@ async function processTournamentBatch(tournaments, byExactName, updateDatalist, 
   }
 }
 
-async function processTournament(tournament, byExactName, processedTournaments) {
+async function processTournament(
+  tournament,
+  byExactName,
+  processedTournaments
+) {
   if (processedTournaments.has(tournament)) {
     return false;
   }
@@ -378,7 +459,10 @@ async function processTournament(tournament, byExactName, processedTournaments) 
 
       // Store all cards: Pokemon with full identifiers, Trainers/Energies with base names
       if (displayName && !byExactName.has(displayName)) {
-        byExactName.set(displayName, { display: displayName, uid: canonicalId || displayName });
+        byExactName.set(displayName, {
+          display: displayName,
+          uid: canonicalId || displayName
+        });
         added = true;
       }
     }
@@ -396,9 +480,15 @@ async function processTournament(tournament, byExactName, processedTournaments) 
 function initCardSearch() {
   try {
     // Get DOM elements when function is called to ensure DOM is ready
-    cardSearchInput = /** @type {HTMLInputElement|null} */ (document.getElementById('card-search'));
-    cardNamesList = /** @type {HTMLDataListElement|null} */ (document.getElementById('card-names'));
-    suggestionsBox = /** @type {HTMLElement|null} */ (document.getElementById('card-suggestions'));
+    cardSearchInput = /** @type {HTMLInputElement|null} */ (
+      document.getElementById('card-search')
+    );
+    cardNamesList = /** @type {HTMLDataListElement|null} */ (
+      document.getElementById('card-names')
+    );
+    suggestionsBox = /** @type {HTMLElement|null} */ (
+      document.getElementById('card-suggestions')
+    );
 
     if (!(cardSearchInput && cardNamesList)) {
       return;
@@ -411,9 +501,17 @@ function initCardSearch() {
     // Fetch tournaments list in background and update later
     fetchTournamentsList()
       .then(fetchedTournaments => {
-        if (Array.isArray(fetchedTournaments) && fetchedTournaments.length > 0) {
+        if (
+          Array.isArray(fetchedTournaments) &&
+          fetchedTournaments.length > 0
+        ) {
           tournaments = fetchedTournaments;
-          enrichSuggestions(tournaments, byExactName, updateDatalist, processedTournaments);
+          enrichSuggestions(
+            tournaments,
+            byExactName,
+            updateDatalist,
+            processedTournaments
+          );
         }
       })
       .catch(() => {
@@ -428,7 +526,10 @@ function initCardSearch() {
     if (Array.isArray(cached.names) && cached.names.length > 0) {
       cached.names.forEach(cardNameFromCache => {
         if (cardNameFromCache) {
-          byExactName.set(cardNameFromCache, { display: cardNameFromCache, uid: cardNameFromCache });
+          byExactName.set(cardNameFromCache, {
+            display: cardNameFromCache,
+            uid: cardNameFromCache
+          });
         }
       });
     } else {
@@ -441,7 +542,7 @@ function initCardSearch() {
         'Rare Candy SVI 191',
         'Night Stretcher SFA 061',
         'Nest Ball SVI 181',
-        'Counter Catcher PAR 160'
+        'Counter Catcher PAR 160',
       ];
       commonCards.forEach(cardName => {
         byExactName.set(cardName, { display: cardName, uid: cardName });
@@ -455,7 +556,12 @@ function initCardSearch() {
     updateDatalist();
 
     // Incrementally enrich suggestions by scanning tournaments sequentially
-    enrichSuggestions(tournaments, byExactName, updateDatalist, processedTournaments);
+    enrichSuggestions(
+      tournaments,
+      byExactName,
+      updateDatalist,
+      processedTournaments
+    );
 
     setupSearchHandlers();
     syncSearchInputValue();
@@ -466,11 +572,15 @@ function initCardSearch() {
 
 // Search helper functions
 function getAllNames() {
-  return Array.from(cardNamesList?.options || []).map(option => String(option.value || ''));
+  return Array.from(cardNamesList?.options || []).map(option =>
+    String(option.value || ''),
+  );
 }
 
 function getUidForName(displayName) {
-  const option = Array.from(cardNamesList?.options || []).find(opt => opt.value === displayName);
+  const option = Array.from(cardNamesList?.options || []).find(
+    opt => opt.value === displayName
+  );
   return option?.getAttribute('data-uid') || displayName;
 }
 
@@ -599,7 +709,10 @@ function setupSearchHandlers() {
     if (!suggestionsBox) {
       return;
     }
-    if (!suggestionsBox.contains(event.target) && event.target !== cardSearchInput) {
+    if (
+      !suggestionsBox.contains(event.target) &&
+      event.target !== cardSearchInput
+    ) {
       suggestionsBox.classList.remove('is-open');
     }
   }
@@ -686,10 +799,12 @@ function setupSearchHandlers() {
       }
 
       if (event.key === 'ArrowDown') {
-        const next = selectedIndex < currentMatches.length - 1 ? selectedIndex + 1 : 0;
+        const next =
+          selectedIndex < currentMatches.length - 1 ? selectedIndex + 1 : 0;
         updateSelection(next);
       } else {
-        const prev = selectedIndex > 0 ? selectedIndex - 1 : currentMatches.length - 1;
+        const prev =
+          selectedIndex > 0 ? selectedIndex - 1 : currentMatches.length - 1;
         updateSelection(prev);
       }
       return;
@@ -761,7 +876,9 @@ async function checkCardExistsInDatabase(cardIdentifier) {
 
     const searchKeys = new Set();
     const lowerIdentifier = cardIdentifier.toLowerCase();
-    const canonicalLower = canonicalIdentifier ? canonicalIdentifier.toLowerCase() : null;
+    const canonicalLower = canonicalIdentifier
+      ? canonicalIdentifier.toLowerCase()
+      : null;
     const baseName = getBaseName(cardIdentifier)?.toLowerCase();
 
     const addIdentifier = value => {
@@ -807,7 +924,9 @@ async function checkCardExistsInDatabase(cardIdentifier) {
         if (!cards || typeof cards !== 'object') {
           continue;
         }
-        const available = new Set(Object.keys(cards).map(name => name.toLowerCase()));
+        const available = new Set(
+          Object.keys(cards).map(name => name.toLowerCase())
+        );
         for (const key of searchKeys) {
           if (available.has(key)) {
             return true;
@@ -824,7 +943,10 @@ async function checkCardExistsInDatabase(cardIdentifier) {
 
     return false;
   } catch (error) {
-    logger.warn('Failed to check card existence via card indices', { cardIdentifier, error: error.message });
+    logger.warn('Failed to check card existence via card indices', {
+      cardIdentifier,
+      error: error.message
+    });
     return true;
   }
 }
@@ -967,7 +1089,12 @@ function renderMissingCardPage(cardIdentifier) {
         }
 
         const candidateName = parsed.name || baseName || displayName;
-        const candidates = buildThumbCandidates(candidateName, false, {}, variant);
+        const candidates = buildThumbCandidates(
+          candidateName,
+          false,
+          {},
+          variant
+        );
 
         if (candidates.length === 0) {
           imageContainer.remove();
@@ -988,7 +1115,11 @@ function renderMissingCardPage(cardIdentifier) {
             if (idx >= candidates.length && !fallbackAttempted) {
               fallbackAttempted = true;
               try {
-                const fallbackCandidates = await getVariantImageCandidates(cardIdentifier, false, {});
+                const fallbackCandidates = await getVariantImageCandidates(
+                  cardIdentifier,
+                  false,
+                  {}
+                );
                 if (fallbackCandidates.length > 0) {
                   candidates.push(...fallbackCandidates);
                   if (idx < candidates.length) {
@@ -1022,7 +1153,10 @@ function renderMissingCardPage(cardIdentifier) {
 
     logger.info('Rendered missing card page', { cardIdentifier });
   } catch (error) {
-    logger.error('Failed to render missing card page', { cardIdentifier, error: error.message });
+    logger.error('Failed to render missing card page', {
+      cardIdentifier,
+      error: error.message
+    });
     if (metaSection) {
       metaSection.innerHTML =
         '<div style="text-align: center; padding: 2rem; color: var(--text);">Card page not available. We do not have tournament data for this card yet.</div>';
@@ -1094,7 +1228,12 @@ function setupImmediateUI() {
     hero.removeAttribute('aria-hidden');
 
     // Store image loading state on the element
-    img._loadingState = { candidates: [], idx: 0, loading: false, fallbackAttempted: false };
+    img._loadingState = {
+      candidates: [],
+      idx: 0,
+      loading: false,
+      fallbackAttempted: false
+    };
 
     const tryNextImage = async () => {
       const state = img._loadingState;
@@ -1106,7 +1245,11 @@ function setupImmediateUI() {
       if (state.idx >= state.candidates.length && !state.fallbackAttempted) {
         state.fallbackAttempted = true;
         try {
-          const fallbackCandidates = await getVariantImageCandidates(cardIdentifier, true, {});
+          const fallbackCandidates = await getVariantImageCandidates(
+            cardIdentifier,
+            true,
+            {}
+          );
           if (fallbackCandidates.length > 0) {
             // Append fallback candidates and continue trying
             state.candidates.push(...fallbackCandidates);
@@ -1157,7 +1300,9 @@ function setupImmediateUI() {
 
 function startParallelDataLoading() {
   // Start all data fetching in parallel immediately
-  const tournamentsPromise = fetchTournamentsList().catch(() => ['2025-08-15, World Championships 2025']);
+  const tournamentsPromise = fetchTournamentsList().catch(() => [
+    '2025-08-15, World Championships 2025',
+  ]);
   const overridesPromise = fetchOverrides();
 
   // Secondary data that doesn't block initial content
@@ -1189,7 +1334,13 @@ async function renderProgressively(dataPromises) {
     .then(async overrides => {
       const hero = document.getElementById('card-hero');
       const img = hero?.querySelector('img');
-      if (hero && img && cardName && img.style.opacity === '0' && img._loadingState) {
+      if (
+        hero &&
+        img &&
+        cardName &&
+        img.style.opacity === '0' &&
+        img._loadingState
+      ) {
         // Only enhance if image hasn't loaded yet and we have better candidates
         const { name, setId } = parseDisplayName(cardName);
         let variant = {};
@@ -1199,11 +1350,21 @@ async function renderProgressively(dataPromises) {
             variant = { set: setMatch[1], number: setMatch[2] };
           }
         }
-        const enhancedCandidates = buildThumbCandidates(name, true, overrides, variant);
+        const enhancedCandidates = buildThumbCandidates(
+          name,
+          true,
+          overrides,
+          variant
+        );
         const state = img._loadingState;
 
         // If we haven't started loading or failed on default candidates, use enhanced ones
-        if (state.idx === 0 || (state.idx >= state.candidates.length && !state.loading && !state.fallbackAttempted)) {
+        if (
+          state.idx === 0 ||
+          (state.idx >= state.candidates.length &&
+            !state.loading &&
+            !state.fallbackAttempted)
+        ) {
           state.candidates = enhancedCandidates;
           state.idx = 0;
           state.loading = false;
@@ -1259,7 +1420,11 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
       let globalFound = null;
       let globalTotal = null;
       if (cacheObject[ck]) {
-        ({ pct: globalPct, found: globalFound, total: globalTotal } = cacheObject[ck]);
+        ({
+          pct: globalPct,
+          found: globalFound,
+          total: globalTotal
+        } = cacheObject[ck]);
       } else {
         // Get all variants of this card and combine their usage data
         let card = null;
@@ -1271,7 +1436,9 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
             const idx = await fetchCardIndex(tournamentName);
             const baseName = getBaseName(cardIdentifier);
             const matchingKey =
-              Object.keys(idx.cards || {}).find(k => k.toLowerCase() === baseName.toLowerCase()) || '';
+              Object.keys(idx.cards || {}).find(
+                k => k.toLowerCase() === baseName.toLowerCase()
+              ) || '';
             const entry = idx.cards?.[baseName] || idx.cards?.[matchingKey];
             if (entry) {
               card = {
@@ -1308,7 +1475,10 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
                 combinedFound += variantCard.found;
               }
               // Use the total from any variant (should be the same across all variants in a tournament)
-              if (combinedTotal === null && Number.isFinite(variantCard.total)) {
+              if (
+                combinedTotal === null &&
+                Number.isFinite(variantCard.total)
+              ) {
                 combinedTotal = variantCard.total;
               }
             }
@@ -1319,12 +1489,17 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
               name: getDisplayName(canonical),
               found: combinedFound,
               total: combinedTotal,
-              pct: combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0
+              pct:
+                combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0
             };
           }
         }
         if (card) {
-          globalPct = Number.isFinite(card.pct) ? card.pct : card.total ? (100 * card.found) / card.total : 0;
+          globalPct = Number.isFinite(card.pct)
+            ? card.pct
+            : card.total
+              ? (100 * card.found) / card.total
+              : 0;
           globalFound = Number.isFinite(card.found) ? card.found : null;
           globalTotal = Number.isFinite(card.total) ? card.total : null;
           const cacheEntry = {
@@ -1338,7 +1513,12 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
         }
       }
       if (globalPct !== null) {
-        return { tournament: tournamentName, pct: globalPct, found: globalFound, total: globalTotal };
+        return {
+          tournament: tournamentName,
+          pct: globalPct,
+          found: globalFound,
+          total: globalTotal
+        };
       }
       return null;
     } catch {
@@ -1414,15 +1594,24 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
               if (Number.isFinite(variantCardInfo.found)) {
                 combinedFound += variantCardInfo.found;
               }
-              if (combinedTotal === null && Number.isFinite(variantCardInfo.total)) {
+              if (
+                combinedTotal === null &&
+                Number.isFinite(variantCardInfo.total)
+              ) {
                 combinedTotal = variantCardInfo.total;
               }
             }
           }
 
           if (hasAnyData && combinedTotal !== null) {
-            const pct = combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0;
-            candidates.push({ base, pct, found: combinedFound, total: combinedTotal });
+            const pct =
+              combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0;
+            candidates.push({
+              base,
+              pct,
+              found: combinedFound,
+              total: combinedTotal
+            });
           }
         } catch {
           /* missing archetype file */
@@ -1430,7 +1619,8 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
       }
       // Dynamic minimum based on card usage: if card has high overall usage but low per-archetype,
       // use a lower threshold to capture distributed usage patterns
-      const overallUsage = cacheObject[`${tournament}::${cardIdentifier}`]?.pct || 0;
+      const overallUsage =
+        cacheObject[`${tournament}::${cardIdentifier}`]?.pct || 0;
       const minTotal = overallUsage > 20 ? 1 : 3; // Lower threshold for high-usage cards
       const chosen = pickArchetype(candidates, top8 || undefined, { minTotal });
       const label = chosen ? baseToLabel(chosen.base) : null;
@@ -1458,7 +1648,10 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
       try {
         setupImmediateUI();
       } catch (error) {
-        logger.debug('Failed to re-run immediate UI after rebuilding structure', error?.message || error);
+        logger.debug(
+          'Failed to re-run immediate UI after rebuilding structure',
+          error?.message || error
+        );
       }
       if (cardIdentifier) {
         // Re-run derived renderers so new DOM receives content
@@ -1512,17 +1705,25 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
                 if (Number.isFinite(variantCard.found)) {
                   combinedFound += variantCard.found;
                 }
-                if (combinedTotal === null && Number.isFinite(variantCard.total)) {
+                if (
+                  combinedTotal === null &&
+                  Number.isFinite(variantCard.total)
+                ) {
                   combinedTotal = variantCard.total;
                 }
 
                 if (variantCard.dist && Array.isArray(variantCard.dist)) {
                   for (const distEntry of variantCard.dist) {
-                    const existing = combinedDist.find(distItem => distItem.copies === distEntry.copies);
+                    const existing = combinedDist.find(
+                      distItem => distItem.copies === distEntry.copies
+                    );
                     if (existing) {
                       existing.players += distEntry.players || 0;
                     } else {
-                      combinedDist.push({ copies: distEntry.copies, players: distEntry.players || 0 });
+                      combinedDist.push({
+                        copies: distEntry.copies,
+                        players: distEntry.players || 0
+                      });
                     }
                   }
                 }
@@ -1534,8 +1735,11 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
                 name: getDisplayName(canonical),
                 found: combinedFound,
                 total: combinedTotal,
-                pct: combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0,
-                dist: combinedDist.sort((first, second) => first.copies - second.copies)
+                pct:
+                  combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0,
+                dist: combinedDist.sort(
+                  (first, second) => first.copies - second.copies
+                ),
               };
             }
 
@@ -1562,7 +1766,10 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
       eventsTarget = document.getElementById('card-events');
     }
 
-    renderEvents(eventsTarget || decksSection || metaSection || document.body, rows);
+    renderEvents(
+      eventsTarget || decksSection || metaSection || document.body,
+      rows
+    );
     renderToggles();
     renderAnalysisSelector(eventsWithCard);
 
@@ -1571,8 +1778,11 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
     const tableContainer = eventsSection || decksSection;
     if (tableContainer && !tableContainer._hoverPrefetchAttached) {
       tableContainer.addEventListener('mouseover', async eventTarget => {
-        const targetElement = eventTarget.target instanceof HTMLElement ? eventTarget.target : null;
-        const rowEl = targetElement ? targetElement.closest('.event-row') : null;
+        const targetElement =
+          eventTarget.target instanceof HTMLElement ? eventTarget.target : null;
+        const rowEl = targetElement
+          ? targetElement.closest('.event-row')
+          : null;
         if (!rowEl) {
           return;
         }
@@ -1583,12 +1793,16 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
         // Prefetch event master if not present
         // await loadTournament(t); // Function not defined - commented out
         // Compute archetype label if missing
-        const target = deckRows.find(deckRow => deckRow.tournament === tournamentFromRow);
+        const target = deckRows.find(
+          deckRow => deckRow.tournament === tournamentFromRow
+        );
         if (target && !target.archetype) {
           const label = await chooseArchetypeForTournament(tournamentFromRow);
           if (label) {
             target.archetype = label;
-            const eventsToRender = showAll ? [...deckRows].reverse() : [...deckRows].reverse().slice(-LIMIT);
+            const eventsToRender = showAll
+              ? [...deckRows].reverse()
+              : [...deckRows].reverse().slice(-LIMIT);
             renderEvents(tableContainer, eventsToRender);
             renderToggles();
           }
@@ -1611,8 +1825,11 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
 
     resizeTimer = setTimeout(() => {
       resizeTimer = null;
-      const elementToRender = document.getElementById('card-chart') || metaSection;
-      const pointsToRender = showAll ? [...timePoints].reverse() : [...timePoints].reverse().slice(-LIMIT);
+      const elementToRender =
+        document.getElementById('card-chart') || metaSection;
+      const pointsToRender = showAll
+        ? [...timePoints].reverse()
+        : [...timePoints].reverse().slice(-LIMIT);
       renderChart(elementToRender, pointsToRender);
     }, 120);
   });
@@ -1674,7 +1891,7 @@ async function renderAnalysisTable(tournament) {
         <div class="skeleton-text small"></div>
       </div>
     `
-    )
+      )
     .join('')}
   `;
 
@@ -1689,7 +1906,7 @@ async function renderAnalysisTable(tournament) {
       container: analysisTable,
       autoRemove: true,
       showPercentage: true
-    }
+    },
   );
 
   analysisTable.appendChild(loadingSkeleton);
@@ -1725,11 +1942,16 @@ async function renderAnalysisTable(tournament) {
           // Combine distribution data
           if (variantCard.dist && Array.isArray(variantCard.dist)) {
             for (const distEntry of variantCard.dist) {
-              const existing = combinedDist.find(distItem => distItem.copies === distEntry.copies);
+              const existing = combinedDist.find(
+                distItem => distItem.copies === distEntry.copies
+              );
               if (existing) {
                 existing.players += distEntry.players || 0;
               } else {
-                combinedDist.push({ copies: distEntry.copies, players: distEntry.players || 0 });
+                combinedDist.push({
+                  copies: distEntry.copies,
+                  players: distEntry.players || 0
+                });
               }
             }
           }
@@ -1742,7 +1964,9 @@ async function renderAnalysisTable(tournament) {
           found: combinedFound,
           total: combinedTotal,
           pct: combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0,
-          dist: combinedDist.sort((first, second) => first.copies - second.copies)
+          dist: combinedDist.sort(
+            (first, second) => first.copies - second.copies
+          ),
         };
       }
     } catch {
@@ -1779,18 +2003,26 @@ async function renderAnalysisTable(tournament) {
               if (Number.isFinite(variantCardInfo.found)) {
                 combinedFound += variantCardInfo.found;
               }
-              if (combinedTotal === null && Number.isFinite(variantCardInfo.total)) {
+              if (
+                combinedTotal === null &&
+                Number.isFinite(variantCardInfo.total)
+              ) {
                 combinedTotal = variantCardInfo.total;
               }
 
               // Combine distribution data
               if (variantCardInfo.dist && Array.isArray(variantCardInfo.dist)) {
                 for (const distEntry of variantCardInfo.dist) {
-                  const existing = combinedDist.find(distItem => distItem.copies === distEntry.copies);
+                  const existing = combinedDist.find(
+                    distItem => distItem.copies === distEntry.copies
+                  );
                   if (existing) {
                     existing.players += distEntry.players || 0;
                   } else {
-                    combinedDist.push({ copies: distEntry.copies, players: distEntry.players || 0 });
+                    combinedDist.push({
+                      copies: distEntry.copies,
+                      players: distEntry.players || 0
+                    });
                   }
                 }
               }
@@ -1800,18 +2032,23 @@ async function renderAnalysisTable(tournament) {
           if (hasAnyData && combinedTotal !== null) {
             // For high-usage cards (>20%), include single-deck archetypes to show distribution
             const overallItem = overall || {};
-            const overallPct = overallItem.total ? (100 * overallItem.found) / overallItem.total : overallItem.pct || 0;
+            const overallPct = overallItem.total
+              ? (100 * overallItem.found) / overallItem.total
+              : overallItem.pct || 0;
             const minSample = overallPct > 20 ? 1 : 2; // Lower threshold for high-usage cards
 
             if (combinedTotal >= minSample) {
-              const percentage = combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0;
+              const percentage =
+                combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0;
 
               // Precompute percent of all decks in archetype by copies
               const copiesPct = numberOfCopies => {
                 if (!Array.isArray(combinedDist) || !(combinedTotal > 0)) {
                   return null;
                 }
-                const distribution = combinedDist.find(distItem => distItem.copies === numberOfCopies);
+                const distribution = combinedDist.find(
+                  distItem => distItem.copies === numberOfCopies
+                );
                 if (!distribution) {
                   return 0;
                 }
@@ -1838,14 +2075,22 @@ async function renderAnalysisTable(tournament) {
       {
         concurrency: 6, // Reasonable limit to avoid overwhelming the server
         onProgress: (processed, total) => {
-          progress.updateProgress(processed, total, `${processed}/${total} archetypes processed`);
+          progress.updateProgress(
+            processed,
+            total,
+            `${processed}/${total} archetypes processed`
+          );
         }
-      }
+      },
     );
 
     // Filter out null results
     const rows = archetypeResults.filter(result => result !== null);
-    progress.updateStep(0, 'complete', `Processed ${rows.length} archetypes with data`);
+    progress.updateStep(
+      0,
+      'complete',
+      `Processed ${rows.length} archetypes with data`
+    );
     progress.updateStep(1, 'loading');
     rows.sort((archA, archB) => {
       // Primary sort: actual deck count (found)
@@ -1871,7 +2116,9 @@ async function renderAnalysisTable(tournament) {
     if (rows.length === 0) {
       const note = document.createElement('div');
       note.className = 'summary';
-      note.textContent = 'No per-archetype usage found for this event ' + '(or all archetypes have only one deck).';
+      note.textContent =
+        'No per-archetype usage found for this event ' +
+        '(or all archetypes have only one deck).';
       analysisTable.appendChild(note);
       progress.updateStep(1, 'complete');
       progress.setComplete(500); // Show for half a second then fade
@@ -1889,7 +2136,8 @@ async function renderAnalysisTable(tournament) {
       const th = document.createElement('th');
       th.textContent = header;
       if (header === 'Played %') {
-        th.title = 'Percent of decks in the archetype that ran the card (any copies).';
+        th.title =
+          'Percent of decks in the archetype that ran the card (any copies).';
       }
       if (['1x', '2x', '3x', '4x'].includes(header)) {
         th.title = `Percent of decks in the archetype that ran exactly ${header}`;
@@ -1905,15 +2153,23 @@ async function renderAnalysisTable(tournament) {
     const tbody = document.createElement('tbody');
     for (const rowData of rows) {
       const tableRow = document.createElement('tr');
-      const formatValue = value => (value === null ? '—' : `${Math.round(value)}%`);
+      const formatValue = value =>
+        (value === null ? "—" : `${Math.round(value)}%`);
 
-      const archetypeDeckCount = rowData.total !== null ? rowData.total : rowData.found !== null ? rowData.found : null;
+      const archetypeDeckCount =
+        rowData.total !== null
+          ? rowData.total
+          : rowData.found !== null
+            ? rowData.found
+            : null;
       const firstCell = document.createElement('td');
       const strong = document.createElement('strong');
       strong.textContent = rowData.archetype;
       firstCell.appendChild(strong);
       if (archetypeDeckCount !== null) {
-        firstCell.appendChild(document.createTextNode(` (${archetypeDeckCount})`));
+        firstCell.appendChild(
+          document.createTextNode(` (${archetypeDeckCount})`)
+        );
       }
       firstCell.style.padding = '10px 12px';
       firstCell.style.textAlign = 'left';
@@ -1932,7 +2188,8 @@ async function renderAnalysisTable(tournament) {
         tableCell.textContent = valueText;
 
         if (valueIndex === 0) {
-          tableCell.title = 'Played % = (decks with the card / total decks in archetype)';
+          tableCell.title =
+            'Played % = (decks with the card / total decks in archetype)';
         }
         if (valueIndex >= 1 && valueIndex <= 4) {
           const numberOfCopies = valueIndex;
@@ -1965,7 +2222,11 @@ async function renderAnalysisTable(tournament) {
       logger.debug('enableFloatingTableHeader failed:', err);
     }
 
-    progress.updateStep(1, 'complete', `Built table with ${rows.length} archetypes`);
+    progress.updateStep(
+      1,
+      'complete',
+      `Built table with ${rows.length} archetypes`
+    );
     progress.setComplete(500); // Show for half a second then fade away
   } catch (error) {
     logger.error('Analysis table error:', error);
@@ -1990,11 +2251,15 @@ if (!__ROUTE_REDIRECTING) {
 
 // Debug utility - expose cleanup function globally for troubleshooting
 window.cleanupProgress = () => {
-  const elements = document.querySelectorAll('.parallel-loader-progress, [id^="progress-"]');
+  const elements = document.querySelectorAll(
+    '.parallel-loader-progress, [id^="progress-"]'
+  );
   logger.debug(`Found ${elements.length} progress indicator(s) to clean up`);
 
   elements.forEach((element, index) => {
-    logger.debug(`Removing progress indicator ${index + 1}: ${element.id || element.className}`);
+    logger.debug(
+      `Removing progress indicator ${index + 1}: ${element.id || element.className}`
+    );
     element.style.transition = 'opacity 0.3s ease-out';
     element.style.opacity = '0';
 
@@ -2049,7 +2314,9 @@ function enableFloatingTableHeader(table) {
   // Helper to sync column widths
   function syncWidths() {
     const srcCols = thead.querySelectorAll('th');
-    const dstCols = /** @type {HTMLElement} */ (cloneThead).querySelectorAll('th');
+    const dstCols = /** @type {HTMLElement} */ (cloneThead).querySelectorAll(
+      'th',
+    );
     const srcRect = table.getBoundingClientRect();
     floating.style.left = `${Math.max(0, srcRect.left)}px`;
     floating.style.width = `${srcRect.width}px`;

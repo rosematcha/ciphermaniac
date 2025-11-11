@@ -11,7 +11,10 @@ const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 const STATUS_DETAILS = {
   yes: { label: 'Yes', description: 'Incident confirmed at this event.' },
   no: { label: 'No', description: 'No incident reported at this event.' },
-  pending: { label: 'Pending', description: 'Investigation pending for this event.' }
+  pending: {
+    label: 'Pending',
+    description: 'Investigation pending for this event.',
+  }
 };
 
 const INCIDENTS_PER_PAGE = 8;
@@ -19,15 +22,18 @@ const INCIDENTS_PER_PAGE = 8;
 const INCIDENT_OVERRIDES = {
   '2025-10-25, Regional Lille': {
     status: 'yes',
-    evidence: 'https://x.com/LeonardoLatta9/status/1981989975928541429?t=3mpUx0iwnf6jlS79P8Fqhw&s=19'
+    evidence:
+      'https://x.com/LeonardoLatta9/status/1981989975928541429?t=3mpUx0iwnf6jlS79P8Fqhw&s=19',
   },
   '2025-10-11, Regional Milwaukee, WI': {
     status: 'yes',
-    evidence: 'https://x.com/Soy_Sauxe/status/1977100274113405403?t=dlJOy6BVnqBt9ibUDHjDYw&s=19'
+    evidence:
+      'https://x.com/Soy_Sauxe/status/1977100274113405403?t=dlJOy6BVnqBt9ibUDHjDYw&s=19',
   },
   '2025-09-20, Regional Pittsburgh, PA': {
     status: 'yes',
-    evidence: 'https://x.com/Unboundqueen27/status/1969482210412478847?t=3BBrXXHQNnKQpWFVPyFRvQ&s=19'
+    evidence:
+      'https://x.com/Unboundqueen27/status/1969482210412478847?t=3BBrXXHQNnKQpWFVPyFRvQ&s=19',
   }
 };
 
@@ -38,11 +44,18 @@ const INCIDENT_OVERRIDES = {
  * @returns {Promise<void>}
  */
 export async function initIncidentsPage(options = {}) {
-  const { listSelector = '#incidentsList', paginationSelector = '#incidentsPagination' } = options;
+  const {
+    listSelector = '#incidentsList',
+    paginationSelector = '#incidentsPagination',
+  } = options;
 
-  const listContainer = /** @type {HTMLElement | null} */ (document.querySelector(listSelector));
+  const listContainer = /** @type {HTMLElement | null} */ (
+    document.querySelector(listSelector)
+  );
   const paginationContainer = paginationSelector
-    ? /** @type {HTMLElement | null} */ (document.querySelector(paginationSelector))
+    ? /** @type {HTMLElement | null} */ (
+      document.querySelector(paginationSelector)
+    )
     : null;
 
   if (!listContainer) {
@@ -58,7 +71,9 @@ export async function initIncidentsPage(options = {}) {
 
   try {
     const tournaments = await fetchTournamentsList();
-    const items = collectTournamentEntries(Array.isArray(tournaments) ? tournaments : []);
+    const items = collectTournamentEntries(
+      Array.isArray(tournaments) ? tournaments : []
+    );
     initializeIncidentsPagination({
       tournaments: items,
       listContainer,
@@ -251,21 +266,29 @@ function renderPagination(container, options) {
   container.classList.remove('is-hidden');
   container.removeAttribute('aria-hidden');
 
-  const previousButton = createPaginationButton('Previous', currentPage > 1, () => {
-    if (typeof onPageChange === 'function') {
-      onPageChange(currentPage - 1);
+  const previousButton = createPaginationButton(
+    'Previous',
+    currentPage > 1,
+    () => {
+      if (typeof onPageChange === 'function') {
+        onPageChange(currentPage - 1);
+      }
     }
-  });
+  );
 
   const status = document.createElement('span');
   status.className = 'pagination-status';
   status.textContent = `Page ${currentPage} of ${totalPages}`;
 
-  const nextButton = createPaginationButton('Next', currentPage < totalPages, () => {
-    if (typeof onPageChange === 'function') {
-      onPageChange(currentPage + 1);
+  const nextButton = createPaginationButton(
+    'Next',
+    currentPage < totalPages,
+    () => {
+      if (typeof onPageChange === 'function') {
+        onPageChange(currentPage + 1);
+      }
     }
-  });
+  );
 
   container.append(previousButton, status, nextButton);
 }
@@ -411,7 +434,7 @@ function formatDate(value) {
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
-    year: 'numeric'
+    year: 'numeric',
   }).format(date);
 }
 
@@ -455,7 +478,10 @@ function createEvidenceIcon() {
   svg.setAttribute('class', 'evidence-icon');
 
   const path = document.createElementNS(SVG_NAMESPACE, 'path');
-  path.setAttribute('d', 'M14 3h7v7M10 14L21 3M21 10v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10');
+  path.setAttribute(
+    'd',
+    'M14 3h7v7M10 14L21 3M21 10v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10',
+  );
   path.setAttribute('fill', 'none');
   path.setAttribute('stroke', 'currentColor');
   path.setAttribute('stroke-width', '2');

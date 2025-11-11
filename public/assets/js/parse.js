@@ -43,21 +43,36 @@ export function parseReport(data) {
   validateType(data, 'object', 'report data');
 
   if (!Array.isArray(data.items)) {
-    throw new AppError(ErrorTypes.PARSE, 'Report data must contain an items array', null, { data });
+    throw new AppError(
+      ErrorTypes.PARSE,
+      'Report data must contain an items array',
+      null,
+      { data }
+    );
   }
 
   const { deckTotal } = data;
   if (typeof deckTotal !== 'number' || deckTotal < 0) {
-    logger.warn('Invalid or missing deckTotal, using items length as fallback', { deckTotal });
+    logger.warn(
+      'Invalid or missing deckTotal, using items length as fallback',
+      { deckTotal }
+    );
   }
 
   // Validate and clean items
-  const validItems = data.items.map((item, index) => validateAndCleanItem(item, index)).filter(item => item !== null);
+  const validItems = data.items
+    .map((item, index) => validateAndCleanItem(item, index))
+    .filter(item => item !== null);
 
-  logger.info(`Parsed report with ${validItems.length} valid items out of ${data.items.length} total`);
+  logger.info(
+    `Parsed report with ${validItems.length} valid items out of ${data.items.length} total`
+  );
 
   return {
-    deckTotal: typeof deckTotal === 'number' && deckTotal >= 0 ? deckTotal : validItems.length,
+    deckTotal:
+      typeof deckTotal === 'number' && deckTotal >= 0
+        ? deckTotal
+        : validItems.length,
     items: validItems
   };
 }
@@ -108,18 +123,30 @@ function validateAndCleanItem(item, index) {
   if (typeof item.number === 'string' || typeof item.number === 'number') {
     cleanItem.number = item.number;
   }
-  if (typeof category === 'string' && ['pokemon', 'trainer', 'energy'].includes(category.toLowerCase())) {
+  if (
+    typeof category === 'string' &&
+    ['pokemon', 'trainer', 'energy'].includes(category.toLowerCase())
+  ) {
     cleanItem.category = category.toLowerCase();
   }
-  const trainerType = typeof item.trainerType === 'string' ? item.trainerType.trim().toLowerCase() : '';
+  const trainerType =
+    typeof item.trainerType === 'string'
+      ? item.trainerType.trim().toLowerCase()
+      : '';
   if (trainerType) {
     cleanItem.trainerType = trainerType;
   }
-  const energyType = typeof item.energyType === 'string' ? item.energyType.trim().toLowerCase() : '';
+  const energyType =
+    typeof item.energyType === 'string'
+      ? item.energyType.trim().toLowerCase()
+      : '';
   if (energyType) {
     cleanItem.energyType = energyType;
   }
-  const displayCategory = typeof item.displayCategory === 'string' ? item.displayCategory.trim().toLowerCase() : '';
+  const displayCategory =
+    typeof item.displayCategory === 'string'
+      ? item.displayCategory.trim().toLowerCase()
+      : '';
   if (displayCategory) {
     cleanItem.displayCategory = displayCategory;
   }
@@ -138,9 +165,15 @@ function validateAndCleanItem(item, index) {
         }
         if (distItem && typeof distItem === 'object') {
           return {
-            copies: Number.isFinite(distItem.copies) ? distItem.copies : undefined,
-            players: Number.isFinite(distItem.players) ? distItem.players : undefined,
-            percent: Number.isFinite(distItem.percent) ? distItem.percent : undefined
+            copies: Number.isFinite(distItem.copies)
+              ? distItem.copies
+              : undefined,
+            players: Number.isFinite(distItem.players)
+              ? distItem.players
+              : undefined,
+            percent: Number.isFinite(distItem.percent)
+              ? distItem.percent
+              : undefined
           };
         }
         return null;

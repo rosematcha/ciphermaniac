@@ -38,13 +38,25 @@
             </div>
 
             <div class="archetype-filters">
-              <select id="archetype-include-card" title="Include Card">
-                <option value="">Include Card</option>
-              </select>
+              <div class="archetype-filter-group">
+                <select id="archetype-include-card" title="Include Card">
+                  <option value="">Include Card</option>
+                </select>
+                <div class="archetype-count-filter" id="include-count-filter" hidden>
+                  <label for="archetype-include-count">Min copies:</label>
+                  <input type="number" id="archetype-include-count" min="1" max="4" value="1" />
+                </div>
+              </div>
 
-              <select id="archetype-exclude-card" title="Exclude Card">
-                <option value="">Exclude Card</option>
-              </select>
+              <div class="archetype-filter-group">
+                <select id="archetype-exclude-card" title="Exclude Card">
+                  <option value="">Exclude Card</option>
+                </select>
+                <div class="archetype-count-filter" id="exclude-count-filter" hidden>
+                  <label for="archetype-exclude-count">Max copies:</label>
+                  <input type="number" id="archetype-exclude-count" min="0" max="3" value="0" />
+                </div>
+              </div>
             </div>
           </div>
 

@@ -7,7 +7,11 @@ import { render } from './render.js';
 import { logger } from './utils/logger.js';
 import { CONFIG } from './config.js';
 import { getCardPrice } from './api.js';
-import { normalizeSetCode, readCardType, readSelectedSets } from './utils/filterState.js';
+import {
+  normalizeSetCode,
+  readCardType,
+  readSelectedSets
+} from './utils/filterState.js';
 
 /**
  * @typedef {object} SortOption
@@ -22,11 +26,13 @@ import { normalizeSetCode, readCardType, readSelectedSets } from './utils/filter
  */
 const SORT_COMPARATORS = {
   'percent-desc': (first, second) => (second.pct ?? -1) - (first.pct ?? -1),
-  'percent-asc': (first, second) => (first.pct ?? Infinity) - (second.pct ?? Infinity),
+  'percent-asc': (first, second) =>
+    (first.pct ?? Infinity) - (second.pct ?? Infinity),
   'alpha-asc': (first, second) => first.name.localeCompare(second.name),
   'alpha-desc': (first, second) => second.name.localeCompare(first.name),
   'price-desc': (first, second) => (second.price ?? -1) - (first.price ?? -1),
-  'price-asc': (first, second) => (first.price ?? Infinity) - (second.price ?? Infinity)
+  'price-asc': (first, second) =>
+    (first.price ?? Infinity) - (second.price ?? Infinity)
 };
 
 /**
@@ -98,7 +104,8 @@ function applySearchFilter(items, query) {
 
     // Search in combined "name set number" format
     if (item.set && item.number) {
-      const combinedSearch = `${item.name} ${item.set} ${item.number}`.toLowerCase();
+      const combinedSearch =
+        `${item.name} ${item.set} ${item.number}`.toLowerCase();
       if (combinedSearch.includes(query)) {
         return true;
       }
@@ -107,7 +114,9 @@ function applySearchFilter(items, query) {
     return false;
   });
 
-  logger.debug(`Search filtered ${items.length} items to ${filtered.length}`, { query });
+  logger.debug(`Search filtered ${items.length} items to ${filtered.length}`, {
+    query
+  });
   return filtered;
 }
 
@@ -194,7 +203,11 @@ function matchesCardType(item, cardType) {
  * @returns {any[]}
  */
 function applyAdvancedFilters(items, filters) {
-  return items.filter(item => matchesSetFilter(item, filters.sets) && matchesCardType(item, filters.cardType));
+  return items.filter(
+    item =>
+      matchesSetFilter(item, filters.sets) &&
+      matchesCardType(item, filters.cardType)
+  );
 }
 
 /**
@@ -238,11 +251,13 @@ export async function applyFiltersSort(allItems, overrides = {}) {
   // Apply sorting
   const sorted = applySorting(filtered, filters.sort);
 
-  logger.info(`Filtered and sorted: ${allItems.length} -> ${sorted.length} items`);
+  logger.info(
+    `Filtered and sorted: ${allItems.length} -> ${sorted.length} items`
+  );
 
   // Render the results
   render(sorted, overrides, {
-    showPrice: filters.sort.startsWith('price-')
+    showPrice: filters.sort.startsWith('price-'),
   });
 }
 
@@ -259,7 +274,8 @@ async function enrichWithPricingData(items) {
         const cardId = buildCardIdentifier(item);
         const price = cardId ? await getCardPrice(cardId) : null;
 
-        const normalizedPrice = typeof price === 'number' && Number.isFinite(price) ? price : null;
+        const normalizedPrice =
+          typeof price === 'number' && Number.isFinite(price) ? price : null;
 
         return {
           ...item,
