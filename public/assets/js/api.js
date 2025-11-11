@@ -649,7 +649,7 @@ export async function fetchPricingData() {
 
   try {
     logger.debug('Fetching pricing data...');
-    const url = 'https://ciphermaniac.com/api/get-prices';
+    const url = 'https://r2.ciphermaniac.com/reports/prices.json';
     const response = await fetchWithTimeout(url);
     const data = await safeJsonParse(response, url);
 

@@ -372,6 +372,239 @@ def generate_card_index(all_decks):
     return {"deckTotal": deck_total, "cards": index}
 
 
+def scrape_card_print_variations(session, set_code, number):
+    """
+    Scrapes print variations for a specific card from Limitless.
+    Returns list of dicts: [{'set': 'SFA', 'number': '038', 'price_usd': 19.67}, ...]
+    Only includes international prints, not Japanese.
+    """
+    number_clean = str(number).lstrip('0')
+    url = f"https://limitlesstcg.com/cards/{set_code}/{number_clean}"
+
+    print(f"  Checking print variations for {set_code}/{number}...")
+
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    resp = request_with_retries(session, 'GET', url, headers=headers, timeout=20, retries=2)
+    if not resp:
+        print(f"    Warning: Could not fetch print variations from {url}")
+        return []
+
+    soup = BeautifulSoup(resp.text, 'html.parser')
+    variations = []
+
+    # Find the card-prints-versions table
+    table = soup.find('table', class_='card-prints-versions')
+    if not table:
+        return []
+
+    # Track whether we're in the international or Japanese section
+    in_jp_section = False
+
+    for row in table.find_all('tr'):
+        # Check if this is the JP section header
+        th = row.find('th')
+        if th and 'JP. Prints' in th.get_text():
+            in_jp_section = True
+            continue
+
+        # Skip if we're in the JP section
+        if in_jp_section:
+            continue
+
+        # Skip header rows
+        if th:
+            continue
+
+        # Find all table cells
+        cells = row.find_all('td')
+        if len(cells) < 2:
+            continue
+
+        # First cell has set name and number
+        first_cell = cells[0]
+
+        # Look for the card number span first
+        number_elem = first_cell.find('span', class_='prints-table-card-number')
+        if not number_elem:
+            continue
+
+        # Extract number from "#130" format
+        card_num = number_elem.get_text(strip=True).lstrip('#')
+
+        # Extract set acronym from href
+        set_name_elem = first_cell.find('a')
+        set_acronym = None
+
+        if set_name_elem:
+            href = set_name_elem.get('href', '')
+            if href:
+                # href format: /cards/SFA/38
+                match = re.search(r'/cards/([A-Z0-9]+)/\d+', href)
+                if match:
+                    set_acronym = match.group(1)
+
+        if not set_acronym:
+            continue
+
+        # Normalize to 3 digits with leading zeros
+        normalized_num = card_num.zfill(3)
+
+        # Extract USD price from second cell if available
+        price_usd = None
+        if len(cells) >= 2:
+            price_link = cells[1].find('a', class_='card-price')
+            if price_link:
+                price_text = price_link.get_text(strip=True)
+                # Extract numeric value from "$19.67" format
+                price_match = re.search(r'\$?([\d.]+)', price_text)
+                if price_match:
+                    try:
+                        price_usd = float(price_match.group(1))
+                    except ValueError:
+                        pass
+
+        variations.append({
+            'set': set_acronym,
+            'number': normalized_num,
+            'price_usd': price_usd
+        })
+
+    if variations:
+        print(f"    Found {len(variations)} international print(s)")
+
+    return variations
+
+
+def choose_canonical_print(variations, card_name):
+    """
+    Choose the canonical print from a list of variations.
+    Prefers: Standard-legal sets > Non-promo > Lowest price > Lower card number
+    """
+    if not variations:
+        return None
+
+    # Define standard-legal sets (Scarlet & Violet era onwards, including Mega Evolution)
+    STANDARD_LEGAL_SETS = {
+        'MEG', 'MEE', 'MEP',
+        'WHT', 'BLK', 'DRI', 'JTG', 'PRE', 'SSP', 'SCR', 'SFA', 'TWM', 'TEF',
+        'PAF', 'PAR', 'MEW', 'M23', 'OBF', 'PAL', 'SVE', 'SVI', 'SVP'
+    }
+
+    # Define promo sets (should be deprioritized)
+    PROMO_SETS = {'SVP', 'MEP', 'PRE', 'M23', 'PAF'}
+
+    def get_set_priority(set_code):
+        return 0 if set_code in STANDARD_LEGAL_SETS else 1
+
+    def is_promo(set_code):
+        return set_code in PROMO_SETS
+
+    def sort_key(var):
+        set_priority = get_set_priority(var['set'])
+        promo_priority = 1 if is_promo(var['set']) else 0
+        price = var.get('price_usd') or 999999
+        card_num = int(var['number']) if var['number'].isdigit() else 999999
+        return (set_priority, promo_priority, price, card_num)
+
+    sorted_variations = sorted(variations, key=sort_key)
+    canonical = sorted_variations[0]
+
+    price_str = f"${canonical.get('price_usd', 'N/A')}" if canonical.get('price_usd') else 'N/A'
+    print(f"    {card_name}: Selected {canonical['set']}~{canonical['number']} ({price_str}) from {len(variations)} prints")
+
+    return canonical
+
+
+def generate_card_synonyms(all_decks, session):
+    """
+    Generates synonym mappings for cards based on their print variations.
+    Returns a dict with synonyms and canonicals for handling card reprints.
+    """
+    print("\nGenerating card synonyms from print variations...")
+
+    # Collect all unique cards by name
+    unique_cards_by_name = {}
+    card_uids_by_name = {}
+
+    for deck in all_decks:
+        for card in deck.get('cards', []):
+            card_name = card.get('name', '').strip()
+            if not card_name:
+                continue
+
+            set_code = (card.get('set', '') or '').upper().strip()
+            number = (card.get('number', '') or '').lstrip('0').zfill(3)
+
+            if set_code and number:
+                # Track all unique UIDs for this card name
+                if card_name not in card_uids_by_name:
+                    card_uids_by_name[card_name] = set()
+                card_uids_by_name[card_name].add(f"{set_code}::{number}")
+
+                # Store first occurrence for scraping
+                if card_name not in unique_cards_by_name:
+                    unique_cards_by_name[card_name] = {
+                        'name': card_name,
+                        'set': set_code,
+                        'number': number
+                    }
+
+    # Build output structure
+    synonyms_dict = {}
+    canonicals_dict = {}
+
+    total_cards = len(unique_cards_by_name)
+    current = 0
+
+    for card_name, card_info in unique_cards_by_name.items():
+        current += 1
+        if current % 10 == 0 or current == total_cards:
+            print(f"  Progress: {current}/{total_cards} unique cards checked")
+
+        # Scrape print variations for this card
+        variations = scrape_card_print_variations(
+            session,
+            card_info['set'],
+            card_info['number']
+        )
+
+        if not variations or len(variations) < 2:
+            # Single print or no variations found
+            continue
+
+        # Choose the canonical print
+        canonical_var = choose_canonical_print(variations, card_name)
+        if not canonical_var:
+            continue
+
+        # Build canonical UID
+        canonical_uid = f"{card_name}::{canonical_var['set']}::{canonical_var['number']}"
+
+        # Build synonym UIDs
+        for var in variations:
+            variant_uid = f"{card_name}::{var['set']}::{var['number']}"
+            if variant_uid != canonical_uid:
+                synonyms_dict[variant_uid] = canonical_uid
+
+        # Add to canonicals dict only if single unique UID in tournament
+        if len(card_uids_by_name.get(card_name, set())) <= 1:
+            canonicals_dict[card_name] = canonical_uid
+
+    output = {
+        "synonyms": synonyms_dict,
+        "canonicals": canonicals_dict,
+        "metadata": {
+            "generated": datetime.now(timezone.utc).isoformat(),
+            "totalSynonyms": len(synonyms_dict),
+            "totalCanonicals": len(canonicals_dict),
+            "description": "Card synonym mappings for handling reprints and alternate versions"
+        }
+    }
+
+    print(f"\nSynonym generation complete: {len(canonicals_dict)} unique cards with {len(synonyms_dict)} total variants")
+    return output
+
+
 def upload_to_r2(r2_client, bucket_name, key, data):
     """Upload JSON data to R2."""
     print(f"  Uploading {key}...")
@@ -481,6 +714,9 @@ def main():
     print("Generating card index...")
     card_index = generate_card_index(all_decks)
 
+    print("Generating card synonyms...")
+    synonyms_data = generate_card_synonyms(all_decks, session)
+
     print("Generating archetype reports...")
     archetype_groups = defaultdict(list)
     archetype_casing = {}
@@ -511,6 +747,7 @@ def main():
     upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/decks.json", all_decks)
     upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/master.json", master_report)
     upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/cardIndex.json", card_index)
+    upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/synonyms.json", synonyms_data)
     upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/archetypes/index.json", sorted(archetype_index_list))
 
     for filename, data in archetype_files.items():
@@ -524,6 +761,7 @@ def main():
     print(f"  Tournament: {folder_name}")
     print(f"  Decks: {len(all_decks)}")
     print(f"  Archetypes: {len(archetype_files)}")
+    print(f"  Synonyms: {len(synonyms_data.get('synonyms', {}))} variants, {len(synonyms_data.get('canonicals', {}))} canonicals")
 
 
 if __name__ == '__main__':
