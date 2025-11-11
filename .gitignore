@@ -28,10 +28,6 @@ coverage/
 *.bak
 *.tmp
 
-# Github files
-.github/*
-!.github/workflows/
-
 # Dev stuff - keep organized in dev/ directory
 *.md
 !README.md
