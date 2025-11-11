@@ -1,3 +1,5 @@
+import { fetchReportResource, fetchTournamentsList } from './api.js';
+
 class SocialGraphicsGenerator {
   constructor() {
     this.tournaments = [];
@@ -35,11 +37,7 @@ class SocialGraphicsGenerator {
 
   async loadTournaments() {
     try {
-      const response = await fetch('/reports/tournaments.json');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const tournamentNames = await response.json();
+      const tournamentNames = await fetchTournamentsList();
       this.tournaments = tournamentNames.map((name, index) => ({
         folder: name,
         name,
@@ -79,11 +77,7 @@ class SocialGraphicsGenerator {
 
   async loadConsistentLeaders() {
     try {
-      const response = await fetch('/reports/suggestions.json');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const suggestions = await response.json();
+      const suggestions = await fetchReportResource('suggestions.json', 'suggestions', 'object', 'suggestions', { cache: true });
 
       // Find the consistent leaders category
       const consistentLeadersCategory = suggestions.categories.find(cat => cat.id === 'consistent-leaders');
@@ -122,21 +116,22 @@ class SocialGraphicsGenerator {
 
     try {
       // Load main tournament data
-      const response = await fetch(`/reports/${tournamentFolder}/master.json`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const text = await response.text();
-      this.currentTournamentData = JSON.parse(text);
+      this.currentTournamentData = await fetchReportResource(
+        `${tournamentFolder}/master.json`,
+        'tournament data',
+        'object',
+        'tournament data'
+      );
 
       // Load comparison tournament data if selected
       if (comparisonTournamentFolder && comparisonTournamentFolder !== tournamentFolder) {
         try {
-          const compResponse = await fetch(`/reports/${comparisonTournamentFolder}/master.json`);
-          if (compResponse.ok) {
-            const compText = await compResponse.text();
-            this.comparisonTournamentData = JSON.parse(compText);
-          }
+          this.comparisonTournamentData = await fetchReportResource(
+            `${comparisonTournamentFolder}/master.json`,
+            'comparison tournament data',
+            'object',
+            'comparison tournament data'
+          );
         } catch (error) {
           console.warn('Failed to load comparison tournament data:', error);
           this.comparisonTournamentData = null;
@@ -150,11 +145,12 @@ class SocialGraphicsGenerator {
       if (currentIndex < this.tournaments.length - 1) {
         const previousFolder = this.tournaments[currentIndex + 1].folder;
         try {
-          const prevResponse = await fetch(`/reports/${previousFolder}/master.json`);
-          if (prevResponse.ok) {
-            const prevText = await prevResponse.text();
-            this.previousTournamentData = JSON.parse(prevText);
-          }
+          this.previousTournamentData = await fetchReportResource(
+            `${previousFolder}/master.json`,
+            'previous tournament data',
+            'object',
+            'previous tournament data'
+          );
         } catch (error) {
           console.warn('Failed to load previous tournament data:', error);
           this.previousTournamentData = null;

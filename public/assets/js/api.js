@@ -218,16 +218,17 @@ function buildReportUrls(relativePath) {
   const normalizedPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
   const urls = [];
 
-  const isOnlineMetaPath = normalizedPath.startsWith(ONLINE_META_SEGMENT);
-  if (isOnlineMetaPath && CONFIG.API.R2_BASE) {
+  // ALWAYS try R2 first for all reports
+  if (CONFIG.API.R2_BASE) {
     urls.push(`${CONFIG.API.R2_BASE}/reports${normalizedPath}`);
   }
 
+  // Fallback to local path (for development only)
   urls.push(`${CONFIG.API.REPORTS_BASE}${normalizedPath}`.replace('//', '/'));
   return urls;
 }
 
-async function fetchReportResource(relativePath, operation, expectedType, fieldName, options = {}) {
+export async function fetchReportResource(relativePath, operation, expectedType, fieldName, options = {}) {
   const urls = buildReportUrls(relativePath);
   let lastError = null;
 
