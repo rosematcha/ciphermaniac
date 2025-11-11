@@ -1,8 +1,8 @@
 /*
  * Aggressive caching layer for deduplicated archetype include-exclude data.
  *
- * New structure:
- * /reports/{tournament}/archetypes/include-exclude/{archetype}/
+ * New structure (root-level at r2.ciphermaniac.com):
+ * /include-exclude/{tournament}/{archetype}/
  *   index.json              - Master index with filterMap and subsets metadata
  *   unique_subsets/
  *     subset_001.json       - Unique deck subset data
@@ -57,28 +57,26 @@ class ArchetypeCacheManager {
 
   /**
    * Build the candidate base URLs for an archetype's include-exclude directory
+   * New path structure: include-exclude/{tournament}/{archetype}/
+   * Available at: r2.ciphermaniac.com/include-exclude/{tournament}/{archetype}/
    * @param {string} tournament
    * @param {string} archetypeBase
    * @returns {string[]}
    */
   static getArchetypeBaseUrls(tournament, archetypeBase) {
-    const reportsBaseRaw = typeof CONFIG.API.REPORTS_BASE === 'string' ? CONFIG.API.REPORTS_BASE.trim() : '/reports';
-    const trimmedReportsBase = reportsBaseRaw.replace(/^\/+/, '').replace(/\/+$/, '');
     const r2Base = (CONFIG.API.R2_BASE || '').trim();
-    const suffix = `${encodeURIComponent(tournament)}/archetypes/include-exclude/${encodeURIComponent(archetypeBase)}`;
+    const suffix = `include-exclude/${encodeURIComponent(tournament)}/${encodeURIComponent(archetypeBase)}`;
     /** @type {Set<string>} */
     const candidates = new Set();
 
+    // Primary: R2 storage at root level
     if (r2Base) {
       const normalizedR2Base = r2Base.replace(/\/+$/, '');
       candidates.add(`${normalizedR2Base}/${suffix}`);
-      if (trimmedReportsBase) {
-        candidates.add(`${normalizedR2Base}/${trimmedReportsBase}/${suffix}`);
-      }
     }
 
-    const relativeBase = trimmedReportsBase ? `/${trimmedReportsBase}` : '';
-    candidates.add(`${relativeBase}/${suffix}`.replace(/\/+/, '/'));
+    // Fallback: Relative path (for local development)
+    candidates.add(`/${suffix}`);
 
     return Array.from(candidates);
   }
