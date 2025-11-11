@@ -85,21 +85,27 @@ class ArchetypeCacheManager {
    * Build filter key for looking up subset IDs in the index
    * @param {string|null} includeId
    * @param {string|null} excludeId
-   * @param {number} includeCount
-   * @param {number} excludeCount
+   * @param {number} includeMin
+   * @param {number} includeMax
+   * @param {number} excludeMin
+   * @param {number} excludeMax
    * @returns {string}
    */
   static buildFilterKey(
     includeId,
     excludeId,
-    includeCount = 1,
-    excludeCount = 0
+    includeMin = 1,
+    includeMax = 4,
+    excludeMin = 0,
+    excludeMax = 4
   ) {
     const incKey = includeId ? includeId : '';
     const excKey = excludeId ? excludeId : '';
-    const incCnt = includeId ? includeCount : 1;
-    const excCnt = excludeId ? excludeCount : 0;
-    return `inc:${incKey}:${incCnt}|exc:${excKey}:${excCnt}`;
+    const incMin = includeId ? includeMin : 1;
+    const incMax = includeId ? includeMax : 4;
+    const excMin = excludeId ? excludeMin : 0;
+    const excMax = excludeId ? excludeMax : 4;
+    return `inc:${incKey}:${incMin}:${incMax}|exc:${excKey}:${excMin}:${excMax}`;
   } /**
      * Build cache key for index files
      * @param {string} tournament
@@ -294,8 +300,10 @@ class ArchetypeCacheManager {
    * @param {string} archetypeBase
    * @param {string|null} includeId
    * @param {string|null} excludeId
-   * @param {number} includeCount
-   * @param {number} excludeCount
+   * @param {number} includeMin
+   * @param {number} includeMax
+   * @param {number} excludeMin
+   * @param {number} excludeMax
    * @returns {Promise<SubsetData>}
    */
   async getFilteredData(
@@ -303,8 +311,10 @@ class ArchetypeCacheManager {
     archetypeBase,
     includeId,
     excludeId,
-    includeCount = 1,
-    excludeCount = 0
+    includeMin = 1,
+    includeMax = 4,
+    excludeMin = 0,
+    excludeMax = 4
   ) {
     // First, fetch the index to get the filterMap
     const index = await this.fetchIndex(tournament, archetypeBase);
@@ -313,8 +323,10 @@ class ArchetypeCacheManager {
     const filterKey = ArchetypeCacheManager.buildFilterKey(
       includeId,
       excludeId,
-      includeCount,
-      excludeCount
+      includeMin,
+      includeMax,
+      excludeMin,
+      excludeMax
     );
 
     // Look up the subset ID
@@ -323,9 +335,11 @@ class ArchetypeCacheManager {
       logger.warn(`No subset found for filter combination`, {
         archetype: archetypeBase,
         include: includeId,
-        includeCount,
+        includeMin,
+        includeMax,
         exclude: excludeId,
-        excludeCount,
+        excludeMin,
+        excludeMax,
         filterKey
       });
       throw new AppError(

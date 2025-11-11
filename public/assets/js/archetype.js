@@ -38,11 +38,17 @@ const elements = {
   excludeCard: /** @type {HTMLSelectElement|null} */ (
     document.getElementById('archetype-exclude-card')
   ),
-  includeCount: /** @type {HTMLInputElement|null} */ (
-    document.getElementById('archetype-include-count')
+  includeMin: /** @type {HTMLInputElement|null} */ (
+    document.getElementById('archetype-include-min')
   ),
-  excludeCount: /** @type {HTMLInputElement|null} */ (
-    document.getElementById('archetype-exclude-count')
+  includeMax: /** @type {HTMLInputElement|null} */ (
+    document.getElementById('archetype-include-max')
+  ),
+  excludeMin: /** @type {HTMLInputElement|null} */ (
+    document.getElementById('archetype-exclude-min')
+  ),
+  excludeMax: /** @type {HTMLInputElement|null} */ (
+    document.getElementById('archetype-exclude-max')
   ),
   includeCountFilter: /** @type {HTMLElement|null} */ (
     document.getElementById('include-count-filter')
@@ -88,8 +94,10 @@ const state = {
   currentFilters: {
     include: null,
     exclude: null,
-    includeCount: 1,
-    excludeCount: 0
+    includeMin: 1,
+    includeMax: 4,
+    excludeMin: 0,
+    excludeMax: 4
   },
   skeleton: {
     totalCards: 0,
@@ -465,10 +473,12 @@ function describeFilters(includeId, excludeId) {
 function getFilterKey(
   includeId,
   excludeId,
-  includeCount = 1,
-  excludeCount = 0
+  includeMin = 1,
+  includeMax = 4,
+  excludeMin = 0,
+  excludeMax = 4
 ) {
-  return `${includeId || 'null'}::${excludeId || 'null'}::${includeCount}::${excludeCount}`;
+  return `${includeId || 'null'}::${excludeId || 'null'}::${includeMin}::${includeMax}::${excludeMin}::${excludeMax}`;
 }
 
 function normalizeThreshold(value, min, max) {
@@ -1250,10 +1260,19 @@ function renderCards() {
 function loadFilterCombination(
   includeId,
   excludeId,
-  includeCount = 1,
-  excludeCount = 0
+  includeMin = 1,
+  includeMax = 4,
+  excludeMin = 0,
+  excludeMax = 4
 ) {
-  const key = getFilterKey(includeId, excludeId, includeCount, excludeCount);
+  const key = getFilterKey(
+    includeId,
+    excludeId,
+    includeMin,
+    includeMax,
+    excludeMin,
+    excludeMax
+  );
   if (state.filterCache.has(key)) {
     return state.filterCache.get(key);
   }
@@ -1265,8 +1284,10 @@ function loadFilterCombination(
         state.archetypeBase,
         includeId,
         excludeId,
-        includeCount,
-        excludeCount
+        includeMin,
+        includeMax,
+        excludeMin,
+        excludeMax
       );
       const parsed = parseReport(raw);
       return {
@@ -1290,8 +1311,10 @@ function resetToDefaultData() {
   state.currentFilters = {
     include: null,
     exclude: null,
-    includeCount: 1,
-    excludeCount: 0
+    includeMin: 1,
+    includeMax: 4,
+    excludeMin: 0,
+    excludeMax: 4
   };
   updateFilterMessage('');
   renderCards();
@@ -1325,8 +1348,10 @@ function handleImpossibleExclusion(excludeId) {
   state.currentFilters = {
     include: null,
     exclude: excludeId,
-    includeCount: 1,
-    excludeCount: 0
+    includeMin: 1,
+    includeMax: 4,
+    excludeMin: 0,
+    excludeMax: 4
   };
   renderCards();
   return true;
@@ -1344,15 +1369,23 @@ async function applyFilters() {
   let includeId = originalIncludeValue;
   const excludeId = elements.excludeCard.value || null;
 
-  // Get count values
-  const includeCount =
-    includeId && elements.includeCount
-      ? parseInt(elements.includeCount.value, 10) || 1
+  // Get count range values
+  const includeMin =
+    includeId && elements.includeMin
+      ? parseInt(elements.includeMin.value, 10) || 1
       : 1;
-  const excludeCount =
-    excludeId && elements.excludeCount
-      ? parseInt(elements.excludeCount.value, 10) || 0
+  const includeMax =
+    includeId && elements.includeMax
+      ? parseInt(elements.includeMax.value, 10) || 4
+      : 4;
+  const excludeMin =
+    excludeId && elements.excludeMin
+      ? parseInt(elements.excludeMin.value, 10) || 0
       : 0;
+  const excludeMax =
+    excludeId && elements.excludeMax
+      ? parseInt(elements.excludeMax.value, 10) || 4
+      : 4;
 
   // Show/hide count filters based on card selection
   if (elements.includeCountFilter) {
@@ -1382,8 +1415,10 @@ async function applyFilters() {
     state.currentFilters = {
       include: includeId,
       exclude: excludeId,
-      includeCount,
-      excludeCount
+      includeMin: 1,
+      includeMax: 4,
+      excludeMin: 0,
+      excludeMax: 4
     };
     renderCards();
     return;
@@ -1402,16 +1437,20 @@ async function applyFilters() {
   const requestKey = getFilterKey(
     includeId,
     excludeId,
-    includeCount,
-    excludeCount
+    includeMin,
+    includeMax,
+    excludeMin,
+    excludeMax
   );
 
   try {
     const result = await loadFilterCombination(
       includeId,
       excludeId,
-      includeCount,
-      excludeCount
+      includeMin,
+      includeMax,
+      excludeMin,
+      excludeMax
     );
 
     const currentInclude = applyAlwaysIncludedGuard(
@@ -1420,19 +1459,29 @@ async function applyFilters() {
     const currentExclude = elements.excludeCard
       ? elements.excludeCard.value || null
       : null;
-    const currentIncludeCount =
-      currentInclude && elements.includeCount
-        ? parseInt(elements.includeCount.value, 10) || 1
+    const currentIncludeMin =
+      currentInclude && elements.includeMin
+        ? parseInt(elements.includeMin.value, 10) || 1
         : 1;
-    const currentExcludeCount =
-      currentExclude && elements.excludeCount
-        ? parseInt(elements.excludeCount.value, 10) || 0
+    const currentIncludeMax =
+      currentInclude && elements.includeMax
+        ? parseInt(elements.includeMax.value, 10) || 4
+        : 4;
+    const currentExcludeMin =
+      currentExclude && elements.excludeMin
+        ? parseInt(elements.excludeMin.value, 10) || 0
         : 0;
+    const currentExcludeMax =
+      currentExclude && elements.excludeMax
+        ? parseInt(elements.excludeMax.value, 10) || 4
+        : 4;
     const activeKey = getFilterKey(
       currentInclude,
       currentExclude,
-      currentIncludeCount,
-      currentExcludeCount
+      currentIncludeMin,
+      currentIncludeMax,
+      currentExcludeMin,
+      currentExcludeMax
     );
     if (activeKey !== requestKey) {
       return;
@@ -1445,8 +1494,10 @@ async function applyFilters() {
       currentFilters: {
         include: includeId,
         exclude: excludeId,
-        includeCount,
-        excludeCount
+        includeMin,
+        includeMax,
+        excludeMin,
+        excludeMax
       },
     });
 
@@ -1476,8 +1527,10 @@ async function applyFilters() {
         currentFilters: {
           include: includeId,
           exclude: excludeId,
-          includeCount,
-          excludeCount
+          includeMin,
+          includeMax,
+          excludeMin,
+          excludeMax
         },
       });
       renderCards();
@@ -1513,22 +1566,42 @@ function setupFilterListeners() {
     setupFilterHoverHandler(elements.excludeCard, 'exclude');
   }
 
-  // Add event listeners for count inputs
-  if (elements.includeCount) {
-    elements.includeCount.addEventListener('change', () => {
+  // Add event listeners for count range inputs
+  if (elements.includeMin) {
+    elements.includeMin.addEventListener('change', () => {
       applyFilters().catch(error => {
         logger.debug(
-          'Include count filter change failed',
+          'Include min filter change failed',
           error?.message || error
         );
       });
     });
   }
-  if (elements.excludeCount) {
-    elements.excludeCount.addEventListener('change', () => {
+  if (elements.includeMax) {
+    elements.includeMax.addEventListener('change', () => {
       applyFilters().catch(error => {
         logger.debug(
-          'Exclude count filter change failed',
+          'Include max filter change failed',
+          error?.message || error
+        );
+      });
+    });
+  }
+  if (elements.excludeMin) {
+    elements.excludeMin.addEventListener('change', () => {
+      applyFilters().catch(error => {
+        logger.debug(
+          'Exclude min filter change failed',
+          error?.message || error
+        );
+      });
+    });
+  }
+  if (elements.excludeMax) {
+    elements.excludeMax.addEventListener('change', () => {
+      applyFilters().catch(error => {
+        logger.debug(
+          'Exclude max filter change failed',
           error?.message || error
         );
       });
