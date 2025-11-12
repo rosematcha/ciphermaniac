@@ -9,7 +9,7 @@ import {
 import { parseReport } from './parse.js';
 import { render, updateLayout } from './render.js';
 import { normalizeCardNumber } from './card/routing.js';
-import { AppError, safeAsync } from './utils/errorHandler.js';
+import { AppError, ErrorTypes, safeAsync } from './utils/errorHandler.js';
 import { logger } from './utils/logger.js';
 
 const GRANULARITY_MIN_PERCENT = 0;
@@ -73,6 +73,7 @@ const state = {
   defaultDeckTotal: 0,
   cardLookup: new Map(),
   filterCache: new Map(),
+  filterIndex: null, // Store the include-exclude index for dynamic dropdown updates
   currentFilters: {
     include: null,
     exclude: null
@@ -770,15 +771,85 @@ function configureGranularity(items) {
   syncGranularityOutput(normalized);
 }
 
-function populateCardDropdowns() {
+async function populateCardDropdowns() {
   if (!elements.includeCard || !elements.excludeCard) {
     return;
+  }
+
+  // Fetch the index to see what filter combinations are available
+  let filterIndex = null;
+  
+  try {
+    const { archetypeCache } = await import('./utils/archetypeCache.js');
+    filterIndex = await archetypeCache.fetchIndex(state.tournament, state.archetypeBase);
+  } catch (error) {
+    logger.warn('Could not fetch filter index, showing all cards', error);
+  }
+
+  // Store the filter index in state for dynamic updates
+  state.filterIndex = filterIndex;
+
+  updateCardDropdowns();
+}
+
+/**
+ * Update card dropdowns based on current filter selections
+ * Called on initial load and whenever a filter changes
+ */
+function updateCardDropdowns() {
+  if (!elements.includeCard || !elements.excludeCard) {
+    return;
+  }
+
+  const currentInclude = elements.includeCard.value || null;
+  const currentExclude = elements.excludeCard.value || null;
+
+  // Build sets of available card IDs based on current selections
+  let availableForInclude = new Set();
+  let availableForExclude = new Set();
+  
+  if (state.filterIndex?.filterMap) {
+    Object.keys(state.filterIndex.filterMap).forEach(filterKey => {
+      // Match simple presence filters: inc:CARDID|exc:CARDID or inc:|exc:CARDID or inc:CARDID|exc:
+      const match = filterKey.match(/^inc:([^:|]+)?\|exc:([^:|]+)?$/);
+      if (match) {
+        const [, includeId, excludeId] = match;
+        
+        // If we have an exclude selected, only show includes that work with it
+        if (currentExclude) {
+          if (excludeId === currentExclude && includeId) {
+            availableForInclude.add(includeId);
+          }
+        } else {
+          // No exclude selected, show all available includes
+          if (includeId) {
+            availableForInclude.add(includeId);
+          }
+        }
+        
+        // If we have an include selected, only show excludes that work with it
+        if (currentInclude) {
+          if (includeId === currentInclude && excludeId) {
+            availableForExclude.add(excludeId);
+          }
+        } else {
+          // No include selected, show all available excludes
+          if (excludeId) {
+            availableForExclude.add(excludeId);
+          }
+        }
+      }
+    });
   }
 
   // Sort cards alphabetically by name
   const sortedCards = [...state.allCards].sort((left, right) =>
     (left.name || '').localeCompare(right.name || ''),
   );
+
+  // Store current selection to restore after repopulating
+  const previousInclude = currentInclude;
+  const previousExclude = currentExclude;
 
   // Clear existing options (except the first "Select a card" option)
   elements.includeCard.length = 1;
@@ -797,7 +868,7 @@ function populateCardDropdowns() {
     duplicateCounts.set(baseName, (duplicateCounts.get(baseName) || 0) + 1);
   });
 
-  // Populate both dropdowns with all cards from master JSON
+  // Populate both dropdowns with cards that have available filters
   sortedCards.forEach(card => {
     const cardId = buildCardId(card);
     const found = Number(card.found ?? 0);
@@ -823,18 +894,32 @@ function populateCardDropdowns() {
       return;
     }
 
-    const optionInclude = document.createElement('option');
-    optionInclude.value = cardId;
-    optionInclude.textContent = formatCardOptionLabel(card, duplicateCounts);
-    optionInclude.dataset.cardName = card.name || cardId;
-    elements.includeCard.appendChild(optionInclude);
+    // Only add to Include dropdown if this card has an include filter (or if we couldn't fetch the index)
+    if (availableForInclude.size === 0 || availableForInclude.has(cardId)) {
+      const optionInclude = document.createElement('option');
+      optionInclude.value = cardId;
+      optionInclude.textContent = formatCardOptionLabel(card, duplicateCounts);
+      optionInclude.dataset.cardName = card.name || cardId;
+      elements.includeCard.appendChild(optionInclude);
+    }
 
-    const optionExclude = document.createElement('option');
-    optionExclude.value = cardId;
-    optionExclude.textContent = formatCardOptionLabel(card, duplicateCounts);
-    optionExclude.dataset.cardName = card.name || cardId;
-    elements.excludeCard.appendChild(optionExclude);
+    // Only add to Exclude dropdown if this card has an exclude filter (or if we couldn't fetch the index)
+    if (availableForExclude.size === 0 || availableForExclude.has(cardId)) {
+      const optionExclude = document.createElement('option');
+      optionExclude.value = cardId;
+      optionExclude.textContent = formatCardOptionLabel(card, duplicateCounts);
+      optionExclude.dataset.cardName = card.name || cardId;
+      elements.excludeCard.appendChild(optionExclude);
+    }
   });
+
+  // Restore previous selections if they're still available
+  if (previousInclude && availableForInclude.has(previousInclude)) {
+    elements.includeCard.value = previousInclude;
+  }
+  if (previousExclude && availableForExclude.has(previousExclude)) {
+    elements.excludeCard.value = previousExclude;
+  }
 }
 
 function resolveCardPrintInfo(card) {
@@ -1410,6 +1495,28 @@ async function applyFilters() {
       renderCards();
       return;
     }
+    
+    // Check if this is a filter not found error - likely a low-usage card
+    if (error instanceof AppError && error.type === ErrorTypes.PARSE && error.message.includes('Filter combination not found')) {
+      const card = includeId || excludeId;
+      const action = includeId ? 'include' : 'exclude';
+      updateFilterMessage(
+        `This card appears in too few decks to filter by ${action}. Try ${includeId ? 'excluding' : 'including'} it instead, or choose a more common card.`,
+        'warning',
+      );
+      // eslint-disable-next-line require-atomic-updates -- Selection validated above
+      Object.assign(state, {
+        items: [],
+        archetypeDeckTotal: 0,
+        currentFilters: {
+          include: includeId,
+          exclude: excludeId
+        },
+      });
+      renderCards();
+      return;
+    }
+    
     logger.exception('Failed to apply include/exclude filters', error);
     updateFilterMessage(
       'We ran into an issue loading that combination. Please try again.',
@@ -1421,6 +1528,9 @@ async function applyFilters() {
 function setupFilterListeners() {
   if (elements.includeCard) {
     elements.includeCard.addEventListener('change', () => {
+      // Update the exclude dropdown based on the new include selection
+      updateCardDropdowns();
+      
       applyFilters().catch(error => {
         logger.debug('Include filter change failed', error?.message || error);
       });
@@ -1431,6 +1541,9 @@ function setupFilterListeners() {
   }
   if (elements.excludeCard) {
     elements.excludeCard.addEventListener('change', () => {
+      // Update the include dropdown based on the new exclude selection
+      updateCardDropdowns();
+      
       applyFilters().catch(error => {
         logger.debug('Exclude filter change failed', error?.message || error);
       });
@@ -1632,7 +1745,7 @@ async function initialize() {
     updateHero();
     ensureFilterMessageElement();
     updateFilterMessage('');
-    populateCardDropdowns();
+    await populateCardDropdowns();
     renderCards();
 
     if (elements.loading) {
