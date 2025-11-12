@@ -126,7 +126,19 @@ class ArchetypeCacheManager {
     const excludeKeys = excludeId ? [excludeId] : [];
     const excKey = excludeKeys.join('+');
     
-    return `inc:${incKey}|exc:${excKey}`;
+    const filterKey = `inc:${incKey}|exc:${excKey}`;
+    
+    // Log for debugging
+    logger.debug('Built filter key', {
+      includeId,
+      excludeId,
+      includeMin,
+      includeMax,
+      hasCountRange: includeId ? (includeMin !== 1 || includeMax !== 4) : false,
+      filterKey
+    });
+    
+    return filterKey;
   } /**
      * Build cache key for index files
      * @param {string} tournament
