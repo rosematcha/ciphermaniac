@@ -1126,37 +1126,54 @@ function bindControlEvents() {
 }
 
 function handleExportLayout() {
+  logger.info('Export layout clicked', { hasBinderData: !!state.binderData });
+  
   if (!state.binderData) {
-    alert('Please generate a binder layout first before exporting.');
+    const message = 'Please generate a binder layout first before exporting.';
+    alert(message);
+    logger.warn(message);
     return;
   }
 
-  const exportData = {
-    version: 1,
-    timestamp: new Date().toISOString(),
-    tournaments: Array.from(state.selectedTournaments),
-    archetypes: Array.from(state.selectedArchetypes).filter(
-      arch => arch !== '__NONE__'
-    ),
-    binderData: state.binderData,
-    metrics: state.metrics
-  };
+  try {
+    const exportData = {
+      version: 1,
+      timestamp: new Date().toISOString(),
+      tournaments: Array.from(state.selectedTournaments),
+      archetypes: Array.from(state.selectedArchetypes).filter(
+        arch => arch !== '__NONE__'
+      ),
+      binderData: state.binderData,
+      metrics: state.metrics
+    };
 
-  const json = JSON.stringify(exportData, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `meta-binder-${new Date().toISOString().slice(0, 10)}.json`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+    const json = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const filename = `meta-binder-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    
+    // Clean up after a delay to ensure download starts
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 100);
 
-  logger.info('Exported binder layout', {
-    tournaments: exportData.tournaments.length,
-    archetypes: exportData.archetypes.length
-  });
+    logger.info('Exported binder layout', {
+      filename,
+      tournaments: exportData.tournaments.length,
+      archetypes: exportData.archetypes.length,
+      size: json.length
+    });
+  } catch (error) {
+    logger.error('Failed to export binder layout', error);
+    alert('Failed to export layout. Check the console for details.');
+  }
 }
 
 async function handleImportLayout(event) {
