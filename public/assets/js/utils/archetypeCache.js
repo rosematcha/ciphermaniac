@@ -285,6 +285,7 @@ class ArchetypeCacheManager {
 
   /**
    * Resolve filter combination to subset ID and fetch the data
+   * Falls back to client-side generation if filter not found
    * @param {string} tournament
    * @param {string} archetypeBase
    * @param {string|null} includeId
@@ -297,43 +298,83 @@ class ArchetypeCacheManager {
     includeId,
     excludeId
   ) {
-    // First, fetch the index to get the filterMap
-    const index = await this.fetchIndex(tournament, archetypeBase);
+    // First, try to fetch the pre-generated index
+    try {
+      const index = await this.fetchIndex(tournament, archetypeBase);
 
-    // Build the filter key
-    const filterKey = ArchetypeCacheManager.buildFilterKey(
-      includeId,
-      excludeId
-    );
+      // Build the filter key
+      const filterKey = ArchetypeCacheManager.buildFilterKey(
+        includeId,
+        excludeId
+      );
 
-    // Look up the subset ID
-    const subsetId = index.filterMap[filterKey];
-    if (!subsetId) {
-      logger.warn(`No subset found for filter combination`, {
-        archetype: archetypeBase,
-        include: includeId,
-        exclude: excludeId,
-        filterKey
+      // Look up the subset ID
+      const subsetId = index.filterMap[filterKey];
+      
+      if (subsetId) {
+        logger.debug('Resolved filter combination to pre-generated subset', {
+          filterKey,
+          subsetId,
+          includeId,
+          excludeId
+        });
+
+        // Fetch the pre-generated subset
+        return await this.fetchSubset(tournament, archetypeBase, subsetId);
+      }
+      
+      // Filter not found in pre-generated data
+      logger.info('Filter combination not pre-generated, attempting client-side generation', {
+        filterKey,
+        includeId,
+        excludeId
       });
+      
+    } catch (error) {
+      logger.warn('Could not fetch filter index, falling back to client-side generation', {
+        error: error.message
+      });
+    }
+
+    // Fallback: Generate the filtered report client-side
+    try {
+      const { fetchAllDecks, generateFilteredReport } = await import('./clientSideFiltering.js');
+      
+      logger.info('Attempting client-side report generation', {
+        archetypeBase,
+        includeId,
+        excludeId
+      });
+
+      const decks = await fetchAllDecks(tournament);
+      const report = generateFilteredReport(decks, archetypeBase, includeId, excludeId);
+      
+      logger.info('Successfully generated client-side filtered report', {
+        archetypeBase,
+        includeId,
+        excludeId,
+        deckTotal: report.deckTotal
+      });
+
+      return report;
+    } catch (clientError) {
+      logger.error('Client-side filtering failed', {
+        error: clientError.message,
+        includeId,
+        excludeId
+      });
+      
       throw new AppError(
         ErrorTypes.PARSE,
-        `Filter combination not found: ${filterKey}`,
-        null,
+        `Filter combination not found and client-side generation failed: inc:${includeId || ''}|exc:${excludeId || ''}`,
+        clientError,
         {
-          filterKey,
-          archetype: archetypeBase
+          filterKey: `inc:${includeId || ''}|exc:${excludeId || ''}`,
+          archetype: archetypeBase,
+          clientSideFailed: true
         },
       );
     }
-
-    logger.debug(`Resolved filter to subset`, {
-      archetype: archetypeBase,
-      filterKey,
-      subsetId
-    });
-
-    // Fetch the subset data
-    return this.fetchSubset(tournament, archetypeBase, subsetId);
   }
 
   /**

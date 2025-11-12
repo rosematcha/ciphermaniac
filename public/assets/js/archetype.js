@@ -1471,8 +1471,11 @@ async function applyFilters() {
       );
     } else {
       const deckLabel = result.deckTotal === 1 ? 'deck' : 'decks';
+      const clientSideNote = result.generatedClientSide 
+        ? ' (generated on-demand)' 
+        : '';
       updateFilterMessage(
-        `${result.deckTotal} ${deckLabel} match the combination ${comboLabel}.`,
+        `${result.deckTotal} ${deckLabel} match the combination ${comboLabel}${clientSideNote}.`,
         'info',
       );
     }

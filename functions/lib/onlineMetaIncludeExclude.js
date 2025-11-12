@@ -15,11 +15,12 @@ const MIN_DECKS_FOR_ANALYSIS = 4;
 const ALWAYS_INCLUDED_THRESHOLD = 1.0; // 100% of decks must have the card
 
 // Optimization thresholds
-// Design philosophy: Keep granular filtering (5%+ cards) for comprehensive user searches,
+// Design philosophy: Keep granular filtering (3%+ cards) for comprehensive user searches,
 // but filter out small subsets (<2 decks) to reduce noise. GitHub Action runs daily at noon UTC.
 // Analysis shows MIN_SUBSET_SIZE=2 saves ~13% upload/processing time while preserving
 // meaningful filter combinations. See dev/PERFORMANCE_ANALYSIS_RESULTS.md
-const MIN_CARD_USAGE_PERCENT = 5; // Only generate filters for cards in 5%+ of decks
+// Updated to 3% threshold to allow more interesting low-usage card analysis
+const MIN_CARD_USAGE_PERCENT = 3; // Only generate filters for cards in 3%+ of decks
 const MAX_CROSS_FILTERS = 10; // Limit cross-combinations to top N cards by usage
 const MIN_SUBSET_SIZE = 2; // Skip subsets with fewer than 2 decks
 const MAX_COUNT_VARIATIONS = 3; // Limit count variations (e.g., only =1, =2, >=2)
