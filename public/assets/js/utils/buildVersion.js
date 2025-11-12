@@ -6,7 +6,7 @@
 import { storage } from './storage.js';
 import { logger } from './logger.js';
 
-export const BUILD_VERSION = '2025-11-12T15:35Z';
+export const BUILD_VERSION = '2025-11-12T15:45Z';
 
 const VERSION_STORAGE_KEY = 'cm:build-version';
 const CACHE_CLEANUP_FLAG = 'cm:build-cache-cleared';
@@ -81,6 +81,12 @@ export function ensureBuildVersion() {
     }
 
     localStorage.setItem(VERSION_STORAGE_KEY, BUILD_VERSION);
+
+    // Log build version on every page load
+    logger.info(`Build version: ${BUILD_VERSION}`, {
+      isUpgrade,
+      previousVersion: previousVersion || 'none'
+    });
 
     try {
       if (sessionStorage?.getItem(CACHE_CLEANUP_FLAG)) {

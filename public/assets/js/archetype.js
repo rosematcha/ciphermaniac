@@ -842,6 +842,9 @@ function updateCardDropdowns() {
     });
   }
 
+  // If no pre-generated filters found, show all cards (client-side generation will handle it)
+  const showAllCards = availableForInclude.size === 0 && availableForExclude.size === 0;
+
   // Sort cards alphabetically by name
   const sortedCards = [...state.allCards].sort((left, right) =>
     (left.name || '').localeCompare(right.name || ''),
@@ -894,8 +897,8 @@ function updateCardDropdowns() {
       return;
     }
 
-    // Only add to Include dropdown if this card has an include filter (or if we couldn't fetch the index)
-    if (availableForInclude.size === 0 || availableForInclude.has(cardId)) {
+    // Only add to Include dropdown if this card has an include filter OR if we're showing all cards
+    if (showAllCards || availableForInclude.size === 0 || availableForInclude.has(cardId)) {
       const optionInclude = document.createElement('option');
       optionInclude.value = cardId;
       optionInclude.textContent = formatCardOptionLabel(card, duplicateCounts);
@@ -903,8 +906,8 @@ function updateCardDropdowns() {
       elements.includeCard.appendChild(optionInclude);
     }
 
-    // Only add to Exclude dropdown if this card has an exclude filter (or if we couldn't fetch the index)
-    if (availableForExclude.size === 0 || availableForExclude.has(cardId)) {
+    // Only add to Exclude dropdown if this card has an exclude filter OR if we're showing all cards
+    if (showAllCards || availableForExclude.size === 0 || availableForExclude.has(cardId)) {
       const optionExclude = document.createElement('option');
       optionExclude.value = cardId;
       optionExclude.textContent = formatCardOptionLabel(card, duplicateCounts);
@@ -914,10 +917,10 @@ function updateCardDropdowns() {
   });
 
   // Restore previous selections if they're still available
-  if (previousInclude && availableForInclude.has(previousInclude)) {
+  if (previousInclude) {
     elements.includeCard.value = previousInclude;
   }
-  if (previousExclude && availableForExclude.has(previousExclude)) {
+  if (previousExclude) {
     elements.excludeCard.value = previousExclude;
   }
 }
