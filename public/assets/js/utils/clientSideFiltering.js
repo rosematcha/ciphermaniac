@@ -26,9 +26,11 @@ function buildCardId(set, number) {
  */
 function deckMatchesArchetype(deck, archetypeBase) {
   const deckArchetype = deck.archetype || '';
-  // Normalize both for comparison (handle spaces, case, etc.)
-  const normalizedDeck = deckArchetype.toLowerCase().trim();
-  const normalizedArchetype = archetypeBase.toLowerCase().trim();
+  
+  // Normalize both for comparison: lowercase, replace underscores with spaces, trim
+  const normalizedDeck = deckArchetype.toLowerCase().replace(/_/g, ' ').trim();
+  const normalizedArchetype = archetypeBase.toLowerCase().replace(/_/g, ' ').trim();
+  
   return normalizedDeck === normalizedArchetype;
 }
 
@@ -82,8 +84,9 @@ export function generateFilteredReport(decks, archetypeBase, includeId, excludeI
     deckMatchesArchetype(deck, archetypeBase)
   );
 
-  logger.debug(`Archetype filtering: ${archetypeDecks.length} of ${decks.length} decks match archetype`, {
-    archetypeBase
+  logger.info(`Archetype filtering: ${archetypeDecks.length} of ${decks.length} decks match archetype`, {
+    archetypeBase,
+    sampleDeckArchetypes: decks.slice(0, 5).map(d => d.archetype)
   });
 
   // Second filter: only decks matching include/exclude criteria
