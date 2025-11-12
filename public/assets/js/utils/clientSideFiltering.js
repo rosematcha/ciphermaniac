@@ -72,11 +72,15 @@ function deckMatchesFilter(deck, includeId, excludeId) {
  * @returns {object} Report data with items array and deckTotal
  */
 export function generateFilteredReport(decks, archetypeBase, includeId, excludeId) {
-  logger.debug('Generating client-side filtered report', {
+  logger.info('Generating client-side filtered report', {
     totalDecks: decks.length,
     archetypeBase,
     includeId,
-    excludeId
+    excludeId,
+    sampleDeck: decks[0] ? {
+      archetype: decks[0].archetype,
+      cardCount: decks[0].cards?.length
+    } : null
   });
 
   // First filter: only decks matching the archetype
@@ -84,9 +88,13 @@ export function generateFilteredReport(decks, archetypeBase, includeId, excludeI
     deckMatchesArchetype(deck, archetypeBase)
   );
 
+  // Get unique archetype names for debugging
+  const uniqueArchetypes = [...new Set(decks.slice(0, 20).map(d => d.archetype))];
+
   logger.info(`Archetype filtering: ${archetypeDecks.length} of ${decks.length} decks match archetype`, {
     archetypeBase,
-    sampleDeckArchetypes: decks.slice(0, 5).map(d => d.archetype)
+    normalizedArchetype: archetypeBase.toLowerCase().replace(/_/g, ' ').trim(),
+    sampleArchetypes: uniqueArchetypes.slice(0, 10)
   });
 
   // Second filter: only decks matching include/exclude criteria
