@@ -10,6 +10,7 @@ import json
 import re
 import csv
 import boto3
+import unicodedata
 from datetime import datetime, timezone
 from collections import defaultdict
 from io import StringIO
@@ -41,6 +42,27 @@ BASIC_ENERGY_NAMES = {
     'Darkness Energy', 'Fighting Energy', 'Fire Energy', 'Grass Energy',
     'Lightning Energy', 'Metal Energy', 'Psychic Energy', 'Water Energy'
 }
+
+
+def normalize_card_name(name):
+    """
+    Normalize card name for matching:
+    - Remove accents (é → e, etc.)
+    - Remove bracketed text like [Ghetsis]
+    - Lowercase for comparison
+    """
+    if not name:
+        return ''
+    
+    # Remove bracketed text (e.g., "Boss's Orders [Ghetsis]" → "Boss's Orders")
+    name = re.sub(r'\s*\[.*?\]\s*', '', name)
+    
+    # Normalize unicode characters (é → e)
+    name = unicodedata.normalize('NFD', name)
+    name = ''.join(char for char in name if unicodedata.category(char) != 'Mn')
+    
+    # Lowercase and strip
+    return name.lower().strip()
 
 
 def fetch_json(url):
@@ -226,7 +248,7 @@ def parse_csv_to_records(csv_text):
     return list(reader)
 
 
-def extract_price_from_record(record, set_code, card_uid_lookup):
+def extract_price_from_record(record, set_code, card_uid_lookup, normalized_lookup):
     """Extract price data from a CSV record."""
     product_id = record.get('productId', '').strip()
     name = record.get('name', '').strip()
@@ -263,18 +285,26 @@ def extract_price_from_record(record, set_code, card_uid_lookup):
     # Normalize card number (pad to 3 digits if it's purely numeric)
     normalized_number = card_number.zfill(3) if card_number.isdigit() else card_number
     
-    # Build UID
+    # Try exact match first
     card_uid = f"{card_name}::{set_code}::{normalized_number}"
+    if card_uid in card_uid_lookup:
+        return {
+            'uid': card_uid,
+            'price': price,
+            'tcgPlayerId': product_id
+        }
     
-    # Only keep if this card is in our lookup
-    if card_uid not in card_uid_lookup:
-        return None
+    # Try normalized/fuzzy match
+    normalized_key = f"{normalize_card_name(card_name)}::{normalized_number}"
+    if normalized_key in normalized_lookup:
+        matched_uid = normalized_lookup[normalized_key]
+        return {
+            'uid': matched_uid,
+            'price': price,
+            'tcgPlayerId': product_id
+        }
     
-    return {
-        'uid': card_uid,
-        'price': price,
-        'tcgPlayerId': product_id
-    }
+    return None
 
 
 def fetch_prices_for_set(set_code, group_id, card_uids):
@@ -286,13 +316,24 @@ def fetch_prices_for_set(set_code, group_id, card_uids):
         csv_text = fetch_csv(csv_url)
         records = parse_csv_to_records(csv_text)
         
-        # Create lookup for faster checking
+        # Create lookup for exact matching
         card_uid_lookup = set(card_uids)
+        
+        # Create normalized lookup for fuzzy matching
+        # Maps "normalized_name::number" to actual UID
+        normalized_lookup = {}
+        for uid in card_uids:
+            parts = uid.split('::')
+            if len(parts) >= 3:
+                card_name = parts[0]
+                card_number = parts[2]
+                normalized_key = f"{normalize_card_name(card_name)}::{card_number}"
+                normalized_lookup[normalized_key] = uid
         
         # Extract prices
         prices = {}
         for record in records:
-            price_data = extract_price_from_record(record, set_code, card_uid_lookup)
+            price_data = extract_price_from_record(record, set_code, card_uid_lookup, normalized_lookup)
             if price_data:
                 prices[price_data['uid']] = {
                     'price': price_data['price'],
@@ -325,13 +366,13 @@ def fetch_all_prices(card_sets_map, set_mappings):
 
 
 def add_basic_energy_prices(price_data, card_list):
-    """Add hardcoded $0.10 prices for basic energy."""
+    """Add hardcoded $0.01 prices for basic energy."""
     for energy_name in BASIC_ENERGY_NAMES:
         canonical_uid = BASIC_ENERGY_CANONICALS.get(energy_name)
         if canonical_uid and canonical_uid in card_list:
             if canonical_uid not in price_data:
                 price_data[canonical_uid] = {
-                    'price': 0.10,
+                    'price': 0.01,
                     'tcgPlayerId': None
                 }
     print(f"\nAdded {len([k for k in price_data if 'Energy::' in k])} basic energy prices")
