@@ -14,7 +14,7 @@ export function getStateFromURL(loc = window.location) {
     tour: params.get('tour') || '',
     sets: params.get('sets') || '',
     cardType: params.get('type') || '',
-    advanced: params.get('advanced') || '',
+    advanced: params.get('advanced') || ''
   };
 }
 
@@ -27,9 +27,7 @@ export function setStateInURL(state, opts = {}) {
   const { replace = false, merge = false } = opts;
 
   // Start from existing params when merging, otherwise build a fresh set
-  const params = merge
-    ? new URLSearchParams(location.search)
-    : new URLSearchParams();
+  const params = merge ? new URLSearchParams(location.search) : new URLSearchParams();
 
   // Helper to set or remove a param depending on value
   const setOrDelete = (key, val) => {
@@ -95,9 +93,7 @@ export function planNormalizeIndexRoute(loc) {
 export function planNormalizeCardRoute(loc) {
   if (/^#grid$/.test(loc.hash)) {
     const search = loc.search || '';
-    const base = /card\.html?$/i.test(loc.pathname)
-      ? loc.pathname.replace(/card\.html?$/i, 'index.html')
-      : '/';
+    const base = /card\.html?$/i.test(loc.pathname) ? loc.pathname.replace(/card\.html?$/i, 'index.html') : '/';
     return { redirect: true, url: `${base}${search}#grid` };
   }
   return { redirect: false };

@@ -38,15 +38,10 @@ export function renderChart(container, points) {
   const xValues = points.map((_, index) => index);
   const yValues = points.map(point => point.pct || 0);
   const maxY = Math.max(10, Math.ceil(Math.max(...yValues)));
-  const scaleX = index =>
-    padding + (index * (width - 2 * padding)) / Math.max(1, xValues.length - 1);
-  const scaleY = yValue =>
-    height - padding - (yValue * (height - 2 * padding)) / maxY;
+  const scaleX = index => padding + (index * (width - 2 * padding)) / Math.max(1, xValues.length - 1);
+  const scaleY = yValue => height - padding - (yValue * (height - 2 * padding)) / maxY;
   const path = points
-    .map(
-      (point, index) =>
-        `${index === 0 ? 'M' : 'L'}${scaleX(index)},${scaleY(point.pct || 0)}`
-    )
+    .map((point, index) => `${index === 0 ? 'M' : 'L'}${scaleX(index)},${scaleY(point.pct || 0)}`)
     .join(' ');
 
   const svgNamespace = 'http://www.w3.org/2000/svg';
@@ -143,9 +138,7 @@ export function renderChart(container, points) {
       const rect = svg.getBoundingClientRect();
       const svgX = event.clientX - rect.left;
       const normalizedPosition = (svgX - padding) / (width - 2 * padding);
-      const index = Math.round(
-        normalizedPosition * Math.max(1, xValues.length - 1)
-      );
+      const index = Math.round(normalizedPosition * Math.max(1, xValues.length - 1));
       const clampedIndex = Math.max(0, Math.min(xValues.length - 1, index));
       const point = points[clampedIndex];
       if (point) {
@@ -195,14 +188,14 @@ export function renderChart(container, points) {
         `<strong>${escapeHtml(prettyTournamentName(point.tournament))}</strong><div>${(point.pct || 0).toFixed(1)}%</div>`,
         event.clientX,
         event.clientY
-      ),
+      )
     );
     hitDot.addEventListener('mouseenter', event =>
       showGraphTooltip(
         `<strong>${escapeHtml(prettyTournamentName(point.tournament))}</strong><div>${(point.pct || 0).toFixed(1)}%</div>`,
         event.clientX,
         event.clientY
-      ),
+      )
     );
     hitDot.addEventListener('mouseleave', hideGraphTooltip);
     hitDot.addEventListener('blur', hideGraphTooltip);
@@ -236,26 +229,19 @@ export function renderCopiesHistogram(container, overall) {
   const totalPlayers = overall?.total || 0;
   const maxPercentage = Math.max(
     1,
-    ...distribution.map(distributionItem =>
-      (totalPlayers
-        ? (100 * (distributionItem.players || 0)) / totalPlayers
-        : distributionItem.percent || 0),
-    )
+    ...distribution.map(distributionItem => {
+      return totalPlayers ? (100 * (distributionItem.players || 0)) / totalPlayers : distributionItem.percent || 0;
+    })
   );
 
   // Get all copy counts from the distribution data and sort them
-  const copyCountsInData = distribution
-    .map(item => item.copies)
-    .sort((a, b) => a - b);
+  const copyCountsInData = distribution.map(item => item.copies).sort((countA, countB) => countA - countB);
 
   // If no distribution data, default to 1-4
-  const copiesToShow =
-    copyCountsInData.length > 0 ? copyCountsInData : [1, 2, 3, 4];
+  const copiesToShow = copyCountsInData.length > 0 ? copyCountsInData : [1, 2, 3, 4];
 
   for (const copies of copiesToShow) {
-    const distributionData = distribution.find(
-      item => item.copies === copies
-    );
+    const distributionData = distribution.find(item => item.copies === copies);
     const percentage = distributionData
       ? totalPlayers
         ? (100 * (distributionData.players || 0)) / totalPlayers
@@ -356,10 +342,7 @@ export function renderEvents(container, rows) {
     tournamentLink.href = `/index.html?tour=${encodeURIComponent(rowData.tournament)}`;
     tournamentLink.textContent = prettyTournamentName(rowData.tournament);
 
-    const cellValues = [
-      tournamentLink,
-      rowData.pct !== null ? `${rowData.pct.toFixed(1)}%` : '—',
-    ];
+    const cellValues = [tournamentLink, rowData.pct !== null ? `${rowData.pct.toFixed(1)}%` : '—'];
 
     cellValues.forEach((value, index) => {
       const tableCell = document.createElement('td');

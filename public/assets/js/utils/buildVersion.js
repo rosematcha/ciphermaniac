@@ -6,7 +6,7 @@
 import { storage } from './storage.js';
 import { logger } from './logger.js';
 
-export const BUILD_VERSION = '2025-11-12T15:55Z';
+export const BUILD_VERSION = '2025-11-12T16:00Z';
 
 const VERSION_STORAGE_KEY = 'cm:build-version';
 const CACHE_CLEANUP_FLAG = 'cm:build-cache-cleared';
@@ -36,18 +36,13 @@ export function ensureBuildVersion() {
     }
 
     const previousVersion = localStorage.getItem(VERSION_STORAGE_KEY);
-    const isUpgrade = Boolean(
-      previousVersion && previousVersion !== BUILD_VERSION
-    );
+    const isUpgrade = Boolean(previousVersion && previousVersion !== BUILD_VERSION);
 
     if (isUpgrade) {
       try {
         storage.clearAll();
       } catch (error) {
-        logger.warn(
-          'Failed to clear storage caches during build upgrade',
-          error
-        );
+        logger.warn('Failed to clear storage caches during build upgrade', error);
       }
 
       try {
@@ -67,10 +62,7 @@ export function ensureBuildVersion() {
             });
           })
           .catch(error => {
-            logger.debug(
-              'Failed to iterate CacheStorage during build upgrade',
-              error
-            );
+            logger.debug('Failed to iterate CacheStorage during build upgrade', error);
           });
       }
 

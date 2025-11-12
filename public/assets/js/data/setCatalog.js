@@ -32,7 +32,7 @@ export const SET_CATALOG = [
   { code: 'BST', name: 'Battle Styles' },
   { code: 'SHF', name: 'Shining Fates' },
   { code: 'VIV', name: 'Vivid Voltage' },
-  { code: 'CPA', name: 'Champion\'s Path' },
+  { code: 'CPA', name: "Champion's Path" },
   { code: 'DAA', name: 'Darkness Ablaze' },
   { code: 'RCL', name: 'Rebel Clash' },
   { code: 'SSH', name: 'Sword & Shield' },
@@ -148,12 +148,8 @@ export const SET_CATALOG = [
   { code: 'WP', name: 'WotC Promos' }
 ];
 
-const SET_RELEASE_INDEX = new Map(
-  SET_CATALOG.map((entry, index) => [entry.code, index])
-);
-const SET_NAME_MAP = new Map(
-  SET_CATALOG.map(entry => [entry.code, entry.name])
-);
+const SET_RELEASE_INDEX = new Map(SET_CATALOG.map((entry, index) => [entry.code, index]));
+const SET_NAME_MAP = new Map(SET_CATALOG.map(entry => [entry.code, entry.name]));
 
 export const ALL_SET_CODES = SET_CATALOG.map(entry => entry.code);
 
@@ -181,15 +177,11 @@ export function sortSetCodesByRelease(codes) {
       Array.from(codes)
         .map(code => code.toUpperCase())
         .filter(Boolean)
-    ),
+    )
   );
   return unique.sort((left, right) => {
-    const indexA = SET_RELEASE_INDEX.has(left)
-      ? SET_RELEASE_INDEX.get(left)
-      : Number.MAX_SAFE_INTEGER;
-    const indexB = SET_RELEASE_INDEX.has(right)
-      ? SET_RELEASE_INDEX.get(right)
-      : Number.MAX_SAFE_INTEGER;
+    const indexA = SET_RELEASE_INDEX.has(left) ? SET_RELEASE_INDEX.get(left) : Number.MAX_SAFE_INTEGER;
+    const indexB = SET_RELEASE_INDEX.has(right) ? SET_RELEASE_INDEX.get(right) : Number.MAX_SAFE_INTEGER;
     if (indexA !== indexB) {
       return indexA - indexB;
     }
@@ -213,7 +205,7 @@ export function formatSetLabel(code) {
       label: upper,
       fullName: upper,
       code: upper,
-      codeLabel: '',
+      codeLabel: ''
     };
   }
   return {

@@ -24,10 +24,7 @@ class ImagePreloader {
    * Process the preload queue
    */
   processQueue() {
-    while (
-      this.currentlyLoading < this.maxConcurrent &&
-      this.preloadQueue.length > 0
-    ) {
+    while (this.currentlyLoading < this.maxConcurrent && this.preloadQueue.length > 0) {
       const request = this.preloadQueue.shift();
       this.loadImageCandidates(request);
     }
@@ -61,7 +58,7 @@ class ImagePreloader {
       }
     } catch (error) {
       // Silently handle preload failures
-      void error;
+      void error; // eslint-disable-line no-void
     } finally {
       this.loadingImages.delete(cacheKey);
       this.currentlyLoading--;
