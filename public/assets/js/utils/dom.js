@@ -70,8 +70,7 @@ export function setStyles(element, styles) {
  */
 export function createElement(tagName, options = {}) {
   const element = document.createElement(tagName);
-  const { attributes, styles, textContent, className } =
-    /** @type {CreateElementOptions} */ (options);
+  const { attributes, styles, textContent, className } = /** @type {CreateElementOptions} */ (options);
 
   if (className) {
     element.className = className;
@@ -80,9 +79,7 @@ export function createElement(tagName, options = {}) {
     element.textContent = textContent;
   }
   if (attributes) {
-    Object.entries(attributes).forEach(([key, value]) =>
-      element.setAttribute(key, value)
-    );
+    Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
   }
   if (styles) {
     setStyles(element, styles);

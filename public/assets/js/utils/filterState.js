@@ -35,11 +35,7 @@ function readSelectedSetsFromSelect(selectEl) {
  * @returns {string[]}
  */
 function readSelectedSetsFromHidden(hiddenInput) {
-  if (
-    !hiddenInput ||
-    typeof hiddenInput.value !== 'string' ||
-    !hiddenInput.value
-  ) {
+  if (!hiddenInput || typeof hiddenInput.value !== 'string' || !hiddenInput.value) {
     return [];
   }
 
@@ -54,10 +50,7 @@ function readSelectedSetsFromHidden(hiddenInput) {
  * @param {{selectId?: string, hiddenId?: string}} [options]
  * @returns {string[]}
  */
-export function readSelectedSets({
-  selectId = DEFAULT_SET_SELECT_ID,
-  hiddenId = DEFAULT_SET_HIDDEN_ID
-} = {}) {
+export function readSelectedSets({ selectId = DEFAULT_SET_SELECT_ID, hiddenId = DEFAULT_SET_HIDDEN_ID } = {}) {
   const selectEl = document.getElementById(selectId);
   const hiddenInput = document.getElementById(hiddenId);
 
@@ -113,10 +106,7 @@ export function parseSetList(value) {
  * @param {{hiddenId?: string}} [options]
  * @returns {void}
  */
-export function writeSelectedSets(
-  selected,
-  { hiddenId = DEFAULT_SET_HIDDEN_ID } = {}
-) {
+export function writeSelectedSets(selected, { hiddenId = DEFAULT_SET_HIDDEN_ID } = {}) {
   const hiddenInput = document.getElementById(hiddenId);
   if (!hiddenInput) {
     return;

@@ -12,14 +12,10 @@ export function runLayoutSmoke() {
       throw new Error(`perRowBig < 1 for width ${width}`);
     }
     if (metrics.base < 100 || metrics.base > 200) {
-      throw new Error(
-        `base out of expected bounds for width ${width}: ${metrics.base}`
-      );
+      throw new Error(`base out of expected bounds for width ${width}: ${metrics.base}`);
     }
     // Ensure small rows do not exceed big row width when using computed scale
-    const smallTotal =
-      metrics.targetSmall * metrics.base +
-      Math.max(0, metrics.targetSmall - 1) * metrics.gap;
+    const smallTotal = metrics.targetSmall * metrics.base + Math.max(0, metrics.targetSmall - 1) * metrics.gap;
     if (Math.round(smallTotal) > Math.round(metrics.bigRowContentWidth) + 1) {
       throw new Error(`small row width exceeds big row width for ${width}`);
     }

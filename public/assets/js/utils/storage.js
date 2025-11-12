@@ -18,7 +18,7 @@ const STORAGE_CONFIG = {
     key: 'binderSelectionsV1',
     version: 1,
     default: { tournaments: [], archetypes: [] }
-  },
+  }
 };
 
 /**
@@ -51,10 +51,7 @@ class StorageManager {
   static get(storageKey) {
     const config = STORAGE_CONFIG[storageKey];
     if (!config) {
-      throw new AppError(
-        ErrorTypes.VALIDATION,
-        `Unknown storage key: ${storageKey}`
-      );
+      throw new AppError(ErrorTypes.VALIDATION, `Unknown storage key: ${storageKey}`);
     }
 
     return safeSync(
@@ -85,10 +82,7 @@ class StorageManager {
   static set(storageKey, data) {
     const config = STORAGE_CONFIG[storageKey];
     if (!config) {
-      throw new AppError(
-        ErrorTypes.VALIDATION,
-        `Unknown storage key: ${storageKey}`
-      );
+      throw new AppError(ErrorTypes.VALIDATION, `Unknown storage key: ${storageKey}`);
     }
 
     return safeSync(
@@ -113,10 +107,7 @@ class StorageManager {
   static remove(storageKey) {
     const config = STORAGE_CONFIG[storageKey];
     if (!config) {
-      throw new AppError(
-        ErrorTypes.VALIDATION,
-        `Unknown storage key: ${storageKey}`
-      );
+      throw new AppError(ErrorTypes.VALIDATION, `Unknown storage key: ${storageKey}`);
     }
 
     return safeSync(
@@ -155,11 +146,7 @@ class StorageManager {
     let totalSize = 0;
 
     Object.entries(STORAGE_CONFIG).forEach(([key, config]) => {
-      const data = safeSync(
-        () => localStorage.getItem(config.key),
-        `getting ${key} size`,
-        '',
-      );
+      const data = safeSync(() => localStorage.getItem(config.key), `getting ${key} size`, '');
       const { size } = new Blob([data || '']);
       stats[key] = { size, exists: Boolean(data) };
       totalSize += size;

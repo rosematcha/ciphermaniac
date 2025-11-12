@@ -30,9 +30,9 @@
     "eqeqeq": ["error", "always", { "null": "ignore" }],
     "curly": ["error", "all"],
     "no-console": "warn",
-    "semi": ["error", "always"],
-    "quotes": ["error", "single", { "allowTemplateLiterals": true }],
-    "indent": ["warn", 2, { "SwitchCase": 1 }],
+    "semi": "off", // Handled by Prettier
+    "quotes": "off", // Handled by Prettier
+    "indent": "off", // Handled by Prettier
     "no-trailing-spaces": "error",
     "eol-last": "error",
     "no-implicit-coercion": "error",
@@ -134,11 +134,11 @@
     "yoda": ["error", "never"],
 
     // ES6+ Features
-    "arrow-body-style": ["error", "as-needed"],
-    "arrow-parens": ["error", "as-needed"],
-    "arrow-spacing": "error",
+    "arrow-body-style": "off", // Handled by Prettier
+    "arrow-parens": "off", // Handled by Prettier
+    "arrow-spacing": "off", // Handled by Prettier
     "constructor-super": "error",
-    "generator-star-spacing": ["error", { "before": false, "after": true }],
+    "generator-star-spacing": "off", // Handled by Prettier
     "no-class-assign": "error",
     "no-confusing-arrow": ["error", { "allowParens": true }],
     "no-const-assign": "error",
@@ -157,36 +157,36 @@
     "prefer-spread": "error",
     "prefer-template": "error",
     "require-yield": "error",
-    "rest-spread-spacing": ["error", "never"],
+    "rest-spread-spacing": "off", // Handled by Prettier
     "sort-imports": ["warn", { "ignoreCase": true, "ignoreDeclarationSort": true }],
     "symbol-description": "error",
-    "template-curly-spacing": "error",
-    "yield-star-spacing": ["error", "after"],
+    "template-curly-spacing": "off", // Handled by Prettier
+    "yield-star-spacing": "off", // Handled by Prettier
 
-    // Stylistic Issues
-    "array-bracket-spacing": ["error", "never"],
-    "brace-style": ["error", "1tbs", { "allowSingleLine": true }],
-    "comma-dangle": ["error", "never"],
-    "comma-spacing": ["error", { "before": false, "after": true }],
-    "comma-style": ["error", "last"],
-    "computed-property-spacing": ["error", "never"],
-    "func-call-spacing": ["error", "never"],
-    "key-spacing": ["error", { "beforeColon": false, "afterColon": true }],
-    "keyword-spacing": ["error", { "before": true, "after": true }],
+    // Stylistic Issues (most handled by Prettier)
+    "array-bracket-spacing": "off", // Handled by Prettier
+    "brace-style": "off", // Handled by Prettier
+    "comma-dangle": "off", // Handled by Prettier
+    "comma-spacing": "off", // Handled by Prettier
+    "comma-style": "off", // Handled by Prettier
+    "computed-property-spacing": "off", // Handled by Prettier
+    "func-call-spacing": "off", // Handled by Prettier
+    "key-spacing": "off", // Handled by Prettier
+    "keyword-spacing": "off", // Handled by Prettier
     "linebreak-style": "off",
-    "max-len": ["error", { "code": 120, "ignoreUrls": true, "ignoreStrings": true, "ignoreTemplateLiterals": true }],
+    "max-len": "off", // Handled by Prettier
     "no-mixed-spaces-and-tabs": "error",
-    "no-multiple-empty-lines": ["error", { "max": 2, "maxEOF": 1 }],
+    "no-multiple-empty-lines": "off", // Handled by Prettier
     "no-tabs": "error",
-    "no-whitespace-before-property": "error",
-    "object-curly-spacing": ["error", "always"],
-    "padded-blocks": ["error", "never"],
-    "space-before-blocks": "error",
-    "space-before-function-paren": ["error", { "anonymous": "always", "named": "never", "asyncArrow": "always" }],
-    "space-in-parens": ["error", "never"],
-    "space-infix-ops": "error",
-    "space-unary-ops": ["error", { "words": true, "nonwords": false }],
-    "spaced-comment": ["error", "always", { "exceptions": ["-", "=", "*"] }],
+    "no-whitespace-before-property": "off", // Handled by Prettier
+    "object-curly-spacing": "off", // Handled by Prettier
+    "padded-blocks": "off", // Handled by Prettier
+    "space-before-blocks": "off", // Handled by Prettier
+    "space-before-function-paren": "off", // Handled by Prettier
+    "space-in-parens": "off", // Handled by Prettier
+    "space-infix-ops": "off", // Handled by Prettier
+    "space-unary-ops": "off", // Handled by Prettier
+    "spaced-comment": "off", // Handled by Prettier
 
     // Code Organization
     "no-inline-comments": "off",

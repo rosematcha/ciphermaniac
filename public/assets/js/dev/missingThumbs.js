@@ -25,7 +25,7 @@ export function initMissingThumbsDev() {
       ciphermaniacDownloadOverrides: downloadOverridesSkeleton
     });
     logger.info(
-      '[dev] Missing thumbs dev mode enabled. Run ciphermaniacDumpMissingReport(), ciphermaniacProposeOverrides(), or ciphermaniacDownloadOverrides() in console.',
+      '[dev] Missing thumbs dev mode enabled. Run ciphermaniacDumpMissingReport(), ciphermaniacProposeOverrides(), or ciphermaniacDownloadOverrides() in console.'
     );
   }
 }
@@ -43,7 +43,7 @@ export function trackMissing(name, useSm, overrides) {
   const tried = buildThumbCandidates(name, useSm, overrides);
   const rec = state.missing.get(name) || {
     tried: [],
-    lastFolder: useSm ? 'sm' : 'xs',
+    lastFolder: useSm ? 'sm' : 'xs'
   };
   rec.tried = Array.from(new Set(rec.tried.concat(tried)));
   rec.lastFolder = useSm ? 'sm' : 'xs';
@@ -116,15 +116,12 @@ export function proposeOverridesSkeleton() {
   const out = {};
   for (const [name, info] of state.missing.entries()) {
     // Choose the first candidate's basename as a starting point
-    const tried =
-      info.tried || buildThumbCandidates(name, info.lastFolder === 'sm', {});
+    const tried = info.tried || buildThumbCandidates(name, info.lastFolder === 'sm', {});
     if (tried.length > 0) {
       out[name] = pickBasename(tried[0]);
     }
   }
-  console.info(
-    '[dev] Proposed overrides skeleton (copy into assets/overrides.json and adjust as needed):',
-  );
+  console.info('[dev] Proposed overrides skeleton (copy into assets/overrides.json and adjust as needed):');
   console.log(JSON.stringify(out, null, 2));
   return out;
 }
@@ -133,7 +130,7 @@ export function proposeOverridesSkeleton() {
 export function downloadOverridesSkeleton() {
   const obj = proposeOverridesSkeleton();
   const blob = new Blob([JSON.stringify(obj, null, 2)], {
-    type: 'application/json',
+    type: 'application/json'
   });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

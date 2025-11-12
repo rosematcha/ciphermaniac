@@ -43,14 +43,8 @@ export function showGraphTooltip(html, x, y) {
   const offsetY = 12;
 
   // Clamp to viewport
-  const viewportWidth = Math.max(
-    document.documentElement.clientWidth || 0,
-    window.innerWidth || 0
-  );
-  const viewportHeight = Math.max(
-    document.documentElement.clientHeight || 0,
-    window.innerHeight || 0
-  );
+  const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+  const viewportHeight = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
   let left = x + offsetX;
   let top = y + offsetY;
 
@@ -92,7 +86,7 @@ export function escapeHtml(str) {
       '&': '&amp;',
       '<': '&lt;',
       '>': '&gt;',
-      '"': '&quot;',
+      '"': '&quot;'
     };
     return htmlEntities[character];
   });

@@ -239,7 +239,7 @@ export function throttle(func, limit, cleanupManager = null) {
 
   const throttled = (...args) => {
     if (!inThrottle) {
-      func.apply(this, args);
+      func.apply(this, args); // eslint-disable-line no-invalid-this
       inThrottle = true;
       timerId = setTimeout(() => {
         inThrottle = false;
@@ -280,7 +280,7 @@ export function debounce(func, delay, cleanupManager = null) {
     }
 
     timerId = setTimeout(() => {
-      func.apply(this, args);
+      func.apply(this, args); // eslint-disable-line no-invalid-this
       timerId = null;
     }, delay);
 
