@@ -531,21 +531,13 @@ export function fetchArchetypeReport(tournament, archetypeBase) {
  * @param {string} archetypeBase
  * @param {string|null} includeId
  * @param {string|null} excludeId
- * @param {number} includeMin
- * @param {number} includeMax
- * @param {number} excludeMin
- * @param {number} excludeMax
  * @returns {Promise<object>}
  */
 export async function fetchArchetypeFiltersReport(
   tournament,
   archetypeBase,
   includeId,
-  excludeId,
-  includeMin = 1,
-  includeMax = 4,
-  excludeMin = 0,
-  excludeMax = 4
+  excludeId
 ) {
   // If both include and exclude are null, fetch the base archetype report
   const isBaseReport = !includeId && !excludeId;
@@ -590,11 +582,7 @@ export async function fetchArchetypeFiltersReport(
     tournament,
     archetypeBase,
     include: includeId,
-    includeMin,
-    includeMax,
-    exclude: excludeId,
-    excludeMin,
-    excludeMax
+    exclude: excludeId
   });
 
   try {
@@ -602,20 +590,12 @@ export async function fetchArchetypeFiltersReport(
       tournament,
       archetypeBase,
       includeId,
-      excludeId,
-      includeMin,
-      includeMax,
-      excludeMin,
-      excludeMax
+      excludeId
     );
     validateType(data, 'object', 'archetype include/exclude report');
     logger.info(`Loaded filtered archetype report ${archetypeBase}`, {
       include: includeId,
-      includeMin,
-      includeMax,
       exclude: excludeId,
-      excludeMin,
-      excludeMax,
       deckTotal: data.deckTotal
     });
     return data;

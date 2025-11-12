@@ -9,7 +9,7 @@ import {
 import { parseReport } from './parse.js';
 import { render, updateLayout } from './render.js';
 import { normalizeCardNumber } from './card/routing.js';
-import { AppError, safeAsync } from './utils/errorHandler.js';
+import { AppError, ErrorTypes, safeAsync } from './utils/errorHandler.js';
 import { logger } from './utils/logger.js';
 
 const GRANULARITY_MIN_PERCENT = 0;
@@ -37,24 +37,6 @@ const elements = {
   ),
   excludeCard: /** @type {HTMLSelectElement|null} */ (
     document.getElementById('archetype-exclude-card')
-  ),
-  includeMin: /** @type {HTMLInputElement|null} */ (
-    document.getElementById('archetype-include-min')
-  ),
-  includeMax: /** @type {HTMLInputElement|null} */ (
-    document.getElementById('archetype-include-max')
-  ),
-  excludeMin: /** @type {HTMLInputElement|null} */ (
-    document.getElementById('archetype-exclude-min')
-  ),
-  excludeMax: /** @type {HTMLInputElement|null} */ (
-    document.getElementById('archetype-exclude-max')
-  ),
-  includeCountFilter: /** @type {HTMLElement|null} */ (
-    document.getElementById('include-count-filter')
-  ),
-  excludeCountFilter: /** @type {HTMLElement|null} */ (
-    document.getElementById('exclude-count-filter')
   ),
   filtersContainer: /** @type {HTMLElement|null} */ (
     document.querySelector('.archetype-controls')
@@ -91,13 +73,10 @@ const state = {
   defaultDeckTotal: 0,
   cardLookup: new Map(),
   filterCache: new Map(),
+  filterIndex: null, // Store the include-exclude index for dynamic dropdown updates
   currentFilters: {
     include: null,
-    exclude: null,
-    includeMin: 1,
-    includeMax: 4,
-    excludeMin: 0,
-    excludeMax: 4
+    exclude: null
   },
   skeleton: {
     totalCards: 0,
@@ -470,15 +449,8 @@ function describeFilters(includeId, excludeId) {
   return parts.join(' and ');
 }
 
-function getFilterKey(
-  includeId,
-  excludeId,
-  includeMin = 1,
-  includeMax = 4,
-  excludeMin = 0,
-  excludeMax = 4
-) {
-  return `${includeId || 'null'}::${excludeId || 'null'}::${includeMin}::${includeMax}::${excludeMin}::${excludeMax}`;
+function getFilterKey(includeId, excludeId) {
+  return `${includeId || 'null'}::${excludeId || 'null'}`;
 }
 
 function normalizeThreshold(value, min, max) {
@@ -799,15 +771,88 @@ function configureGranularity(items) {
   syncGranularityOutput(normalized);
 }
 
-function populateCardDropdowns() {
+async function populateCardDropdowns() {
   if (!elements.includeCard || !elements.excludeCard) {
     return;
   }
+
+  // Fetch the index to see what filter combinations are available
+  let filterIndex = null;
+  
+  try {
+    const { archetypeCache } = await import('./utils/archetypeCache.js');
+    filterIndex = await archetypeCache.fetchIndex(state.tournament, state.archetypeBase);
+  } catch (error) {
+    logger.warn('Could not fetch filter index, showing all cards', error);
+  }
+
+  // Store the filter index in state for dynamic updates
+  state.filterIndex = filterIndex;
+
+  updateCardDropdowns();
+}
+
+/**
+ * Update card dropdowns based on current filter selections
+ * Called on initial load and whenever a filter changes
+ */
+function updateCardDropdowns() {
+  if (!elements.includeCard || !elements.excludeCard) {
+    return;
+  }
+
+  const currentInclude = elements.includeCard.value || null;
+  const currentExclude = elements.excludeCard.value || null;
+
+  // Build sets of available card IDs based on current selections
+  let availableForInclude = new Set();
+  let availableForExclude = new Set();
+  
+  if (state.filterIndex?.filterMap) {
+    Object.keys(state.filterIndex.filterMap).forEach(filterKey => {
+      // Match simple presence filters: inc:CARDID|exc:CARDID or inc:|exc:CARDID or inc:CARDID|exc:
+      const match = filterKey.match(/^inc:([^:|]+)?\|exc:([^:|]+)?$/);
+      if (match) {
+        const [, includeId, excludeId] = match;
+        
+        // If we have an exclude selected, only show includes that work with it
+        if (currentExclude) {
+          if (excludeId === currentExclude && includeId) {
+            availableForInclude.add(includeId);
+          }
+        } else {
+          // No exclude selected, show all available includes
+          if (includeId) {
+            availableForInclude.add(includeId);
+          }
+        }
+        
+        // If we have an include selected, only show excludes that work with it
+        if (currentInclude) {
+          if (includeId === currentInclude && excludeId) {
+            availableForExclude.add(excludeId);
+          }
+        } else {
+          // No include selected, show all available excludes
+          if (excludeId) {
+            availableForExclude.add(excludeId);
+          }
+        }
+      }
+    });
+  }
+
+  // If no pre-generated filters found, show all cards (client-side generation will handle it)
+  const showAllCards = availableForInclude.size === 0 && availableForExclude.size === 0;
 
   // Sort cards alphabetically by name
   const sortedCards = [...state.allCards].sort((left, right) =>
     (left.name || '').localeCompare(right.name || ''),
   );
+
+  // Store current selection to restore after repopulating
+  const previousInclude = currentInclude;
+  const previousExclude = currentExclude;
 
   // Clear existing options (except the first "Select a card" option)
   elements.includeCard.length = 1;
@@ -826,7 +871,7 @@ function populateCardDropdowns() {
     duplicateCounts.set(baseName, (duplicateCounts.get(baseName) || 0) + 1);
   });
 
-  // Populate both dropdowns with all cards from master JSON
+  // Populate both dropdowns with cards that have available filters
   sortedCards.forEach(card => {
     const cardId = buildCardId(card);
     const found = Number(card.found ?? 0);
@@ -852,18 +897,32 @@ function populateCardDropdowns() {
       return;
     }
 
-    const optionInclude = document.createElement('option');
-    optionInclude.value = cardId;
-    optionInclude.textContent = formatCardOptionLabel(card, duplicateCounts);
-    optionInclude.dataset.cardName = card.name || cardId;
-    elements.includeCard.appendChild(optionInclude);
+    // Only add to Include dropdown if this card has an include filter OR if we're showing all cards
+    if (showAllCards || availableForInclude.size === 0 || availableForInclude.has(cardId)) {
+      const optionInclude = document.createElement('option');
+      optionInclude.value = cardId;
+      optionInclude.textContent = formatCardOptionLabel(card, duplicateCounts);
+      optionInclude.dataset.cardName = card.name || cardId;
+      elements.includeCard.appendChild(optionInclude);
+    }
 
-    const optionExclude = document.createElement('option');
-    optionExclude.value = cardId;
-    optionExclude.textContent = formatCardOptionLabel(card, duplicateCounts);
-    optionExclude.dataset.cardName = card.name || cardId;
-    elements.excludeCard.appendChild(optionExclude);
+    // Only add to Exclude dropdown if this card has an exclude filter OR if we're showing all cards
+    if (showAllCards || availableForExclude.size === 0 || availableForExclude.has(cardId)) {
+      const optionExclude = document.createElement('option');
+      optionExclude.value = cardId;
+      optionExclude.textContent = formatCardOptionLabel(card, duplicateCounts);
+      optionExclude.dataset.cardName = card.name || cardId;
+      elements.excludeCard.appendChild(optionExclude);
+    }
   });
+
+  // Restore previous selections if they're still available
+  if (previousInclude) {
+    elements.includeCard.value = previousInclude;
+  }
+  if (previousExclude) {
+    elements.excludeCard.value = previousExclude;
+  }
 }
 
 function resolveCardPrintInfo(card) {
@@ -1257,22 +1316,8 @@ function renderCards() {
   });
 }
 
-function loadFilterCombination(
-  includeId,
-  excludeId,
-  includeMin = 1,
-  includeMax = 4,
-  excludeMin = 0,
-  excludeMax = 4
-) {
-  const key = getFilterKey(
-    includeId,
-    excludeId,
-    includeMin,
-    includeMax,
-    excludeMin,
-    excludeMax
-  );
+function loadFilterCombination(includeId, excludeId) {
+  const key = getFilterKey(includeId, excludeId);
   if (state.filterCache.has(key)) {
     return state.filterCache.get(key);
   }
@@ -1283,11 +1328,7 @@ function loadFilterCombination(
         state.tournament,
         state.archetypeBase,
         includeId,
-        excludeId,
-        includeMin,
-        includeMax,
-        excludeMin,
-        excludeMax
+        excludeId
       );
       const parsed = parseReport(raw);
       return {
@@ -1310,11 +1351,7 @@ function resetToDefaultData() {
   state.archetypeDeckTotal = state.defaultDeckTotal;
   state.currentFilters = {
     include: null,
-    exclude: null,
-    includeMin: 1,
-    includeMax: 4,
-    excludeMin: 0,
-    excludeMax: 4
+    exclude: null
   };
   updateFilterMessage('');
   renderCards();
@@ -1369,32 +1406,6 @@ async function applyFilters() {
   let includeId = originalIncludeValue;
   const excludeId = elements.excludeCard.value || null;
 
-  // Get count range values
-  const includeMin =
-    includeId && elements.includeMin
-      ? parseInt(elements.includeMin.value, 10) || 1
-      : 1;
-  const includeMax =
-    includeId && elements.includeMax
-      ? parseInt(elements.includeMax.value, 10) || 4
-      : 4;
-  const excludeMin =
-    excludeId && elements.excludeMin
-      ? parseInt(elements.excludeMin.value, 10) || 0
-      : 0;
-  const excludeMax =
-    excludeId && elements.excludeMax
-      ? parseInt(elements.excludeMax.value, 10) || 4
-      : 4;
-
-  // Show/hide count filters based on card selection
-  if (elements.includeCountFilter) {
-    elements.includeCountFilter.hidden = !includeId;
-  }
-  if (elements.excludeCountFilter) {
-    elements.excludeCountFilter.hidden = !excludeId;
-  }
-
   includeId = applyAlwaysIncludedGuard(includeId);
   if (!includeId && originalIncludeValue) {
     elements.includeCard.value = '';
@@ -1414,11 +1425,7 @@ async function applyFilters() {
     state.archetypeDeckTotal = 0;
     state.currentFilters = {
       include: includeId,
-      exclude: excludeId,
-      includeMin: 1,
-      includeMax: 4,
-      excludeMin: 0,
-      excludeMax: 4
+      exclude: excludeId
     };
     renderCards();
     return;
@@ -1434,24 +1441,10 @@ async function applyFilters() {
     'info',
   );
 
-  const requestKey = getFilterKey(
-    includeId,
-    excludeId,
-    includeMin,
-    includeMax,
-    excludeMin,
-    excludeMax
-  );
+  const requestKey = getFilterKey(includeId, excludeId);
 
   try {
-    const result = await loadFilterCombination(
-      includeId,
-      excludeId,
-      includeMin,
-      includeMax,
-      excludeMin,
-      excludeMax
-    );
+    const result = await loadFilterCombination(includeId, excludeId);
 
     const currentInclude = applyAlwaysIncludedGuard(
       elements.includeCard ? elements.includeCard.value || null : null
@@ -1459,30 +1452,7 @@ async function applyFilters() {
     const currentExclude = elements.excludeCard
       ? elements.excludeCard.value || null
       : null;
-    const currentIncludeMin =
-      currentInclude && elements.includeMin
-        ? parseInt(elements.includeMin.value, 10) || 1
-        : 1;
-    const currentIncludeMax =
-      currentInclude && elements.includeMax
-        ? parseInt(elements.includeMax.value, 10) || 4
-        : 4;
-    const currentExcludeMin =
-      currentExclude && elements.excludeMin
-        ? parseInt(elements.excludeMin.value, 10) || 0
-        : 0;
-    const currentExcludeMax =
-      currentExclude && elements.excludeMax
-        ? parseInt(elements.excludeMax.value, 10) || 4
-        : 4;
-    const activeKey = getFilterKey(
-      currentInclude,
-      currentExclude,
-      currentIncludeMin,
-      currentIncludeMax,
-      currentExcludeMin,
-      currentExcludeMax
-    );
+    const activeKey = getFilterKey(currentInclude, currentExclude);
     if (activeKey !== requestKey) {
       return;
     }
@@ -1493,11 +1463,7 @@ async function applyFilters() {
       archetypeDeckTotal: result.deckTotal,
       currentFilters: {
         include: includeId,
-        exclude: excludeId,
-        includeMin,
-        includeMax,
-        excludeMin,
-        excludeMax
+        exclude: excludeId
       },
     });
 
@@ -1508,8 +1474,11 @@ async function applyFilters() {
       );
     } else {
       const deckLabel = result.deckTotal === 1 ? 'deck' : 'decks';
+      const clientSideNote = result.generatedClientSide 
+        ? ' (generated on-demand)' 
+        : '';
       updateFilterMessage(
-        `${result.deckTotal} ${deckLabel} match the combination ${comboLabel}.`,
+        `${result.deckTotal} ${deckLabel} match the combination ${comboLabel}${clientSideNote}.`,
         'info',
       );
     }
@@ -1526,16 +1495,34 @@ async function applyFilters() {
         archetypeDeckTotal: 0,
         currentFilters: {
           include: includeId,
-          exclude: excludeId,
-          includeMin,
-          includeMax,
-          excludeMin,
-          excludeMax
+          exclude: excludeId
         },
       });
       renderCards();
       return;
     }
+    
+    // Check if this is a filter not found error - likely a low-usage card
+    if (error instanceof AppError && error.type === ErrorTypes.PARSE && error.message.includes('Filter combination not found')) {
+      const card = includeId || excludeId;
+      const action = includeId ? 'include' : 'exclude';
+      updateFilterMessage(
+        `This card appears in too few decks to filter by ${action}. Try ${includeId ? 'excluding' : 'including'} it instead, or choose a more common card.`,
+        'warning',
+      );
+      // eslint-disable-next-line require-atomic-updates -- Selection validated above
+      Object.assign(state, {
+        items: [],
+        archetypeDeckTotal: 0,
+        currentFilters: {
+          include: includeId,
+          exclude: excludeId
+        },
+      });
+      renderCards();
+      return;
+    }
+    
     logger.exception('Failed to apply include/exclude filters', error);
     updateFilterMessage(
       'We ran into an issue loading that combination. Please try again.',
@@ -1547,6 +1534,9 @@ async function applyFilters() {
 function setupFilterListeners() {
   if (elements.includeCard) {
     elements.includeCard.addEventListener('change', () => {
+      // Update the exclude dropdown based on the new include selection
+      updateCardDropdowns();
+      
       applyFilters().catch(error => {
         logger.debug('Include filter change failed', error?.message || error);
       });
@@ -1557,6 +1547,9 @@ function setupFilterListeners() {
   }
   if (elements.excludeCard) {
     elements.excludeCard.addEventListener('change', () => {
+      // Update the include dropdown based on the new exclude selection
+      updateCardDropdowns();
+      
       applyFilters().catch(error => {
         logger.debug('Exclude filter change failed', error?.message || error);
       });
@@ -1564,48 +1557,6 @@ function setupFilterListeners() {
 
     // Add hover listeners for aggressive pre-caching
     setupFilterHoverHandler(elements.excludeCard, 'exclude');
-  }
-
-  // Add event listeners for count range inputs
-  if (elements.includeMin) {
-    elements.includeMin.addEventListener('change', () => {
-      applyFilters().catch(error => {
-        logger.debug(
-          'Include min filter change failed',
-          error?.message || error
-        );
-      });
-    });
-  }
-  if (elements.includeMax) {
-    elements.includeMax.addEventListener('change', () => {
-      applyFilters().catch(error => {
-        logger.debug(
-          'Include max filter change failed',
-          error?.message || error
-        );
-      });
-    });
-  }
-  if (elements.excludeMin) {
-    elements.excludeMin.addEventListener('change', () => {
-      applyFilters().catch(error => {
-        logger.debug(
-          'Exclude min filter change failed',
-          error?.message || error
-        );
-      });
-    });
-  }
-  if (elements.excludeMax) {
-    elements.excludeMax.addEventListener('change', () => {
-      applyFilters().catch(error => {
-        logger.debug(
-          'Exclude max filter change failed',
-          error?.message || error
-        );
-      });
-    });
   }
 }
 
@@ -1767,30 +1718,14 @@ async function initialize() {
     setPageState('loading');
     toggleLoading(true);
 
-    const tournaments = await safeAsync(
-      () => fetchTournamentsList(),
-      'fetching tournaments list',
-      []
-    );
-    if (!Array.isArray(tournaments) || tournaments.length === 0) {
-      throw new Error('No tournaments available for archetype analysis.');
-    }
-    // Always prefer "Online - Last 14 Days" as the default for archetype analysis
-    // since include-exclude filtering is only available for the online meta aggregation
+    // Archetype analysis always uses "Online - Last 14 Days" for include-exclude support
+    // We don't need tournaments.json since we're only working with online meta
     const onlineMeta = 'Online - Last 14 Days';
-    const latestTournament = tournaments[0];
-    state.tournament = resolveTournamentPreference(onlineMeta, [
-      onlineMeta,
-      ...tournaments
-    ]);
+    state.tournament = onlineMeta;
 
     const [overrides, tournamentReport, archetypeRaw] = await Promise.all([
       safeAsync(() => fetchOverrides(), 'fetching thumbnail overrides', {}),
-      safeAsync(
-        () => fetchReport(state.tournament),
-        `fetching ${state.tournament} report`,
-        null
-      ),
+      fetchReport(state.tournament),
       fetchArchetypeReport(state.tournament, state.archetypeBase)
     ]);
 
@@ -1816,7 +1751,7 @@ async function initialize() {
     updateHero();
     ensureFilterMessageElement();
     updateFilterMessage('');
-    populateCardDropdowns();
+    await populateCardDropdowns();
     renderCards();
 
     if (elements.loading) {
