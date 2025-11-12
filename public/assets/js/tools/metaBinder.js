@@ -58,6 +58,11 @@ const elements = {
   ),
   placeholderTemplate: /** @type {HTMLTemplateElement|null} */ (
     document.getElementById('binder-card-placeholder')
+  ),
+  exportButton: document.getElementById('binder-export'),
+  importButton: document.getElementById('binder-import'),
+  importFile: /** @type {HTMLInputElement|null} */ (
+    document.getElementById('binder-import-file')
   )
 };
 
@@ -1106,6 +1111,110 @@ function bindControlEvents() {
   elements.generate?.addEventListener('click', () => {
     generateBinder();
   });
+
+  elements.exportButton?.addEventListener('click', () => {
+    handleExportLayout();
+  });
+
+  elements.importButton?.addEventListener('click', () => {
+    elements.importFile?.click();
+  });
+
+  elements.importFile?.addEventListener('change', event => {
+    handleImportLayout(event);
+  });
+}
+
+function handleExportLayout() {
+  if (!state.binderData) {
+    alert('Please generate a binder layout first before exporting.');
+    return;
+  }
+
+  const exportData = {
+    version: 1,
+    timestamp: new Date().toISOString(),
+    tournaments: Array.from(state.selectedTournaments),
+    archetypes: Array.from(state.selectedArchetypes).filter(
+      arch => arch !== '__NONE__'
+    ),
+    binderData: state.binderData,
+    metrics: state.metrics
+  };
+
+  const json = JSON.stringify(exportData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `meta-binder-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+
+  logger.info('Exported binder layout', {
+    tournaments: exportData.tournaments.length,
+    archetypes: exportData.archetypes.length
+  });
+}
+
+async function handleImportLayout(event) {
+  const input = /** @type {HTMLInputElement} */ (event.target);
+  const file = input.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  try {
+    const text = await file.text();
+    const importData = JSON.parse(text);
+
+    if (!importData.version || !importData.binderData) {
+      throw new Error('Invalid binder export file format');
+    }
+
+    // Validate tournaments exist
+    const validTournaments = importData.tournaments.filter(t =>
+      state.tournaments.includes(t)
+    );
+    if (validTournaments.length === 0) {
+      alert(
+        'None of the tournaments in this export are currently available. Please ensure the same tournaments are loaded.',
+      );
+      return;
+    }
+
+    // Set state from import
+    state.selectedTournaments = new Set(validTournaments);
+    state.selectedArchetypes = new Set(importData.archetypes || []);
+    state.binderData = importData.binderData;
+    state.metrics = importData.metrics || null;
+    state.isBinderDirty = false;
+
+    // Re-analyze to ensure data consistency
+    await recomputeFromSelection();
+
+    // Update UI
+    renderTournamentsControls();
+    renderArchetypeControls();
+    renderBinderSections();
+    updateStats();
+    saveSelections();
+
+    logger.info('Imported binder layout', {
+      tournaments: validTournaments.length,
+      archetypes: importData.archetypes?.length || 0
+    });
+
+    alert('Binder layout imported successfully!');
+  } catch (error) {
+    logger.error('Failed to import binder layout', error);
+    alert('Failed to import binder layout. Please ensure the file is valid.');
+  } finally {
+    // Reset file input
+    input.value = '';
+  }
 }
 
 async function checkOnlineMetaAvailability() {
