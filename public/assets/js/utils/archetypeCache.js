@@ -338,30 +338,42 @@ class ArchetypeCacheManager {
 
     // Fallback: Generate the filtered report client-side
     try {
-      const { fetchAllDecks, generateFilteredReport } = await import('./clientSideFiltering.js');
-      
-      logger.info('Attempting client-side report generation', {
+      logger.info('Starting client-side generation fallback', {
         archetypeBase,
         includeId,
-        excludeId
+        excludeId,
+        tournament
       });
 
+      const { fetchAllDecks, generateFilteredReport } = await import('./clientSideFiltering.js');
+      
+      logger.info('Client-side filtering module loaded, fetching decks');
+
       const decks = await fetchAllDecks(tournament);
+      
+      logger.info('Decks fetched, generating filtered report', {
+        totalDecks: decks.length
+      });
+
       const report = generateFilteredReport(decks, archetypeBase, includeId, excludeId);
       
       logger.info('Successfully generated client-side filtered report', {
         archetypeBase,
         includeId,
         excludeId,
-        deckTotal: report.deckTotal
+        deckTotal: report.deckTotal,
+        itemCount: report.items?.length
       });
 
       return report;
     } catch (clientError) {
       logger.error('Client-side filtering failed', {
         error: clientError.message,
+        stack: clientError.stack,
         includeId,
-        excludeId
+        excludeId,
+        archetypeBase,
+        tournament
       });
       
       throw new AppError(
