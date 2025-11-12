@@ -23,9 +23,7 @@ function buildAggregationKey(item) {
 
   const setPart = item.set ? item.set.toUpperCase() : '';
   const numberPart =
-    typeof item.number === 'string' || typeof item.number === 'number'
-      ? String(item.number).toUpperCase()
-      : '';
+    typeof item.number === 'string' || typeof item.number === 'number' ? String(item.number).toUpperCase() : '';
 
   return `${item.name}::${setPart}::${numberPart}`;
 }
@@ -99,17 +97,13 @@ function finalizeAggregates(map, totalDecks) {
   const items = [];
 
   for (const aggregate of map.values()) {
-    const pct =
-      totalDecks > 0
-        ? Math.round((aggregate.found / totalDecks) * 100 * 100) / 100
-        : 0;
+    const pct = totalDecks > 0 ? Math.round((aggregate.found / totalDecks) * 100 * 100) / 100 : 0;
 
     let dist = [];
     if (aggregate.distBuckets.size > 0) {
       dist = Array.from(aggregate.distBuckets.values())
         .map(bucket => {
-          const percent =
-            totalDecks > 0 ? (bucket.players / totalDecks) * 100 : 0;
+          const percent = totalDecks > 0 ? (bucket.players / totalDecks) * 100 : 0;
 
           return {
             copies: bucket.copies,
@@ -117,10 +111,7 @@ function finalizeAggregates(map, totalDecks) {
             percent: Math.round(percent * 100) / 100
           };
         })
-        .sort(
-          (firstBucket, secondBucket) =>
-            firstBucket.copies - secondBucket.copies
-        );
+        .sort((firstBucket, secondBucket) => firstBucket.copies - secondBucket.copies);
     }
 
     /** @type {CardItem} */
@@ -135,9 +126,7 @@ function finalizeAggregates(map, totalDecks) {
       ...(aggregate.category ? { category: aggregate.category } : {}),
       ...(aggregate.trainerType ? { trainerType: aggregate.trainerType } : {}),
       ...(aggregate.energyType ? { energyType: aggregate.energyType } : {}),
-      ...(aggregate.displayCategory
-        ? { displayCategory: aggregate.displayCategory }
-        : {}),
+      ...(aggregate.displayCategory ? { displayCategory: aggregate.displayCategory } : {}),
       ...(aggregate.rank !== null ? { rank: aggregate.rank } : {}),
       ...(dist.length ? { dist } : {})
     };
@@ -193,10 +182,7 @@ export function aggregateReports(reports) {
       if (!aggregate.set && item.set) {
         aggregate.set = item.set;
       }
-      if (
-        !aggregate.number &&
-        (typeof item.number === 'string' || typeof item.number === 'number')
-      ) {
+      if (!aggregate.number && (typeof item.number === 'string' || typeof item.number === 'number')) {
         aggregate.number = item.number;
       }
       if (!aggregate.category && item.category) {

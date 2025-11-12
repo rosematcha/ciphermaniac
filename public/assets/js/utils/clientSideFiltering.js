@@ -1,6 +1,6 @@
 /**
  * Client-side filtering for archetype analysis
- * 
+ *
  * When a filter combination isn't pre-generated on the server, this module
  * can generate the filtered report client-side using the raw deck data.
  */
@@ -26,11 +26,11 @@ function buildCardId(set, number) {
  */
 function deckMatchesArchetype(deck, archetypeBase) {
   const deckArchetype = deck.archetype || '';
-  
+
   // Normalize both for comparison: lowercase, replace underscores with spaces, trim
   const normalizedDeck = deckArchetype.toLowerCase().replace(/_/g, ' ').trim();
   const normalizedArchetype = archetypeBase.toLowerCase().replace(/_/g, ' ').trim();
-  
+
   return normalizedDeck === normalizedArchetype;
 }
 
@@ -44,22 +44,22 @@ function deckMatchesArchetype(deck, archetypeBase) {
 function deckMatchesFilter(deck, includeId, excludeId) {
   const cards = deck.cards || [];
   const cardIds = new Set();
-  
+
   for (const card of cards) {
     const cardId = buildCardId(card.set, card.number);
     cardIds.add(cardId);
   }
-  
+
   // Check include requirement
   if (includeId && !cardIds.has(includeId)) {
     return false;
   }
-  
+
   // Check exclude requirement
   if (excludeId && cardIds.has(excludeId)) {
     return false;
   }
-  
+
   return true;
 }
 
@@ -77,19 +77,19 @@ export function generateFilteredReport(decks, archetypeBase, includeId, excludeI
     archetypeBase,
     includeId,
     excludeId,
-    sampleDeck: decks[0] ? {
-      archetype: decks[0].archetype,
-      cardCount: decks[0].cards?.length
-    } : null
+    sampleDeck: decks[0]
+      ? {
+          archetype: decks[0].archetype,
+          cardCount: decks[0].cards?.length
+        }
+      : null
   });
 
   // First filter: only decks matching the archetype
-  const archetypeDecks = decks.filter(deck => 
-    deckMatchesArchetype(deck, archetypeBase)
-  );
+  const archetypeDecks = decks.filter(deck => deckMatchesArchetype(deck, archetypeBase));
 
   // Get unique archetype names for debugging
-  const uniqueArchetypes = [...new Set(decks.slice(0, 20).map(d => d.archetype))];
+  const uniqueArchetypes = [...new Set(decks.slice(0, 20).map(deck => deck.archetype))];
 
   logger.info(`Archetype filtering: ${archetypeDecks.length} of ${decks.length} decks match archetype`, {
     archetypeBase,
@@ -98,9 +98,7 @@ export function generateFilteredReport(decks, archetypeBase, includeId, excludeI
   });
 
   // Second filter: only decks matching include/exclude criteria
-  const filteredDecks = archetypeDecks.filter(deck => 
-    deckMatchesFilter(deck, includeId, excludeId)
-  );
+  const filteredDecks = archetypeDecks.filter(deck => deckMatchesFilter(deck, includeId, excludeId));
 
   logger.info(`Client-side filtering: ${filteredDecks.length} of ${archetypeDecks.length} archetype decks match`, {
     archetypeBase,
@@ -120,7 +118,7 @@ export function generateFilteredReport(decks, archetypeBase, includeId, excludeI
 
   for (const deck of filteredDecks) {
     const seenInDeck = new Map(); // cardId -> total count in this deck
-    
+
     for (const card of deck.cards || []) {
       const cardId = buildCardId(card.set, card.number);
       const count = Number(card.count) || 0;
@@ -168,7 +166,7 @@ export function generateFilteredReport(decks, archetypeBase, includeId, excludeI
 
   for (const stats of cardStats.values()) {
     const pct = (stats.found / deckTotal) * 100;
-    
+
     // Build distribution array
     const dist = [];
     for (const [copies, players] of stats.counts.entries()) {
@@ -180,7 +178,7 @@ export function generateFilteredReport(decks, archetypeBase, includeId, excludeI
       });
     }
     // Sort by copies descending
-    dist.sort((a, b) => b.copies - a.copies);
+    dist.sort((itemA, itemB) => itemB.copies - itemA.copies);
 
     items.push({
       uid: stats.cardId,
@@ -197,11 +195,11 @@ export function generateFilteredReport(decks, archetypeBase, includeId, excludeI
   }
 
   // Sort items by percentage descending, then by name
-  items.sort((a, b) => {
-    if (b.pct !== a.pct) {
-      return b.pct - a.pct;
+  items.sort((itemA, itemB) => {
+    if (itemB.pct !== itemA.pct) {
+      return itemB.pct - itemA.pct;
     }
-    return (a.name || '').localeCompare(b.name || '');
+    return (itemA.name || '').localeCompare(itemB.name || '');
   });
 
   return {
@@ -218,10 +216,10 @@ export function generateFilteredReport(decks, archetypeBase, includeId, excludeI
  */
 export async function fetchAllDecks(tournament) {
   const tournamentEncoded = encodeURIComponent(tournament);
-  
+
   // Fetch the centralized decks.json file
   const url = `https://r2.ciphermaniac.com/reports/${tournamentEncoded}/decks.json`;
-  
+
   logger.debug('Fetching all decks data', { url });
 
   try {
@@ -230,12 +228,12 @@ export async function fetchAllDecks(tournament) {
       throw new Error(`HTTP ${response.status}`);
     }
     const data = await response.json();
-    
-    logger.info('Fetched all decks', { 
-      url, 
-      deckCount: data?.length || 0 
+
+    logger.info('Fetched all decks', {
+      url,
+      deckCount: data?.length || 0
     });
-    
+
     return data || [];
   } catch (error) {
     logger.warn('Could not fetch decks for client-side filtering', {

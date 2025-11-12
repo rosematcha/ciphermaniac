@@ -29,7 +29,7 @@ export const SELECTORS = Object.freeze({
 
   // Template elements
   CARDS_LANDING: '#cards-landing',
-  SUGGESTIONS_ROOT: '#suggestions-root',
+  SUGGESTIONS_ROOT: '#suggestions-root'
 });
 
 /**
@@ -52,7 +52,7 @@ export const CSS_CLASSES = Object.freeze({
   ROW: 'row',
   GRID: 'grid',
   TOOLBAR: 'toolbar',
-  CONTROLS: 'controls',
+  CONTROLS: 'controls'
 });
 
 /**
@@ -72,7 +72,7 @@ export const EVENTS = Object.freeze({
 
   // Custom application events
   CARD_SELECTED: 'cardSelected',
-  TOURNAMENT_CHANGED: 'tournamentChanged',
+  TOURNAMENT_CHANGED: 'tournamentChanged'
 });
 
 /**
@@ -80,7 +80,7 @@ export const EVENTS = Object.freeze({
  */
 export const STORAGE_KEYS = Object.freeze({
   GRID_CACHE: 'gridCache',
-  USER_PREFERENCES: 'userPreferences',
+  USER_PREFERENCES: 'userPreferences'
 });
 
 /**
@@ -91,7 +91,7 @@ export const URL_PARAMS = Object.freeze({
   SORT: 'sort',
   ARCHETYPE: 'archetype',
   TOURNAMENT: 'tour',
-  DEBUG: 'debug',
+  DEBUG: 'debug'
 });
 
 /**
@@ -110,5 +110,5 @@ export const DEFAULTS = Object.freeze({
 export const FILE_TYPES = Object.freeze({
   JSON: 'application/json',
   PNG: 'image/png',
-  JPG: 'image/jpeg',
+  JPG: 'image/jpeg'
 });

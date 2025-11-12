@@ -13,24 +13,20 @@ import { CONFIG } from '../config.js';
  * @param {boolean} [immediate] - Whether to execute immediately on first call
  * @returns {(...args: any[]) => void} Debounced function
  */
-export function debounce(
-  func,
-  wait = CONFIG.UI.DEBOUNCE_MS,
-  immediate = false
-) {
+export function debounce(func, wait = CONFIG.UI.DEBOUNCE_MS, immediate = false) {
   let timeout;
   return function executedFunction(...args) {
     const later = () => {
       timeout = null;
       if (!immediate) {
-        func.apply(this, args);
+        func.apply(this, args); // eslint-disable-line no-invalid-this
       }
     };
     const callNow = immediate && !timeout;
     clearTimeout(timeout);
     timeout = setTimeout(later, wait);
     if (callNow) {
-      func.apply(this, args);
+      func.apply(this, args); // eslint-disable-line no-invalid-this
     }
   };
 }
@@ -45,7 +41,7 @@ export function throttle(func, limit = CONFIG.UI.DEBOUNCE_MS) {
   let inThrottle;
   return function (...args) {
     if (!inThrottle) {
-      func.apply(this, args);
+      func.apply(this, args); // eslint-disable-line no-invalid-this
       inThrottle = true;
       setTimeout(() => {
         inThrottle = false;
@@ -155,9 +151,7 @@ export function validateElements(selectors, context = 'page') {
   });
 
   if (missing.length > 0) {
-    throw new Error(
-      `Missing required elements in ${context}: ${missing.join(', ')}`
-    );
+    throw new Error(`Missing required elements in ${context}: ${missing.join(', ')}`);
   }
 
   return elements;

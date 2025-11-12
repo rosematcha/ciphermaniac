@@ -241,9 +241,9 @@ export function createEventsTableSkeleton() {
             </thead>
             <tbody>
                 ${Array(6)
-    .fill(0)
-    .map(
-      () => `
+                  .fill(0)
+                  .map(
+                    () => `
                     <tr>
                         <td style="padding: 10px 12px;">
                             <div class="skeleton-text medium"></div>
@@ -254,7 +254,7 @@ export function createEventsTableSkeleton() {
                     </tr>
                 `
                   )
-    .join('')}
+                  .join('')}
             </tbody>
         </table>
     `;

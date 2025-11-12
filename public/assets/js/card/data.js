@@ -37,17 +37,13 @@ export function findCard(items, cardIdentifier) {
   const lower = cardIdentifier.toLowerCase();
 
   // First try direct UID match
-  const directUidMatch = items.find(
-    item => item.uid && item.uid.toLowerCase() === lower
-  );
+  const directUidMatch = items.find(item => item.uid && item.uid.toLowerCase() === lower);
   if (directUidMatch) {
     return directUidMatch;
   }
 
   // Try exact name match (for trainers without UIDs)
-  const exactNameMatch = items.find(
-    item => item.name && item.name.toLowerCase() === lower
-  );
+  const exactNameMatch = items.find(item => item.name && item.name.toLowerCase() === lower);
   if (exactNameMatch) {
     return exactNameMatch;
   }
@@ -126,9 +122,7 @@ export async function collectCardVariants(cardIdentifier) {
 
   let variantsCache;
   try {
-    variantsCache = JSON.parse(
-      localStorage.getItem(VARIANTS_CACHE_KEY) || '{}',
-    );
+    variantsCache = JSON.parse(localStorage.getItem(VARIANTS_CACHE_KEY) || '{}');
   } catch {
     variantsCache = {};
   }
@@ -170,10 +164,7 @@ export async function collectCardVariants(cardIdentifier) {
         const canonicalId = getCanonicalId(item);
         const itemBaseName = getBaseName(canonicalId);
 
-        if (
-          itemBaseName &&
-          itemBaseName.toLowerCase() === searchBaseName.toLowerCase()
-        ) {
+        if (itemBaseName && itemBaseName.toLowerCase() === searchBaseName.toLowerCase()) {
           // Add canonical display name
           tournamentVariants.add(getDisplayName(canonicalId));
         }
@@ -234,14 +225,10 @@ export async function renderCardPrice(cardIdentifier) {
       showErrorDetails: false
     });
 
-    await errorBoundary.execute(
-      () => loadAndDisplayPrice(validatedIdentifier, priceContainer),
-      null,
-      {
-        loadingMessage: 'Loading price...',
-        retryAttempts: 1
-      },
-    );
+    await errorBoundary.execute(() => loadAndDisplayPrice(validatedIdentifier, priceContainer), null, {
+      loadingMessage: 'Loading price...',
+      retryAttempts: 1
+    });
   } catch (error) {
     logger.exception('renderCardPrice failed', error, { cardIdentifier });
     showPriceError(priceContainer, 'Unable to load price data');
@@ -395,7 +382,7 @@ export async function renderCardSets(cardIdentifier) {
     // Set error state atomically
     Object.assign(setsContainer, {
       className: 'error',
-      textContent: '',
+      textContent: ''
     });
   }
 }

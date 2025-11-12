@@ -4,7 +4,7 @@ import {
   fetchArchetypeReport,
   fetchOverrides,
   fetchReport,
-  fetchTournamentsList
+  fetchTournamentsList as _fetchTournamentsList // Reserved for future use
 } from './api.js';
 import { parseReport } from './parse.js';
 import { render, updateLayout } from './render.js';
@@ -21,42 +21,20 @@ const elements = {
   page: document.querySelector('.archetype-page'),
   loading: document.getElementById('archetype-loading'),
   error: document.getElementById('archetype-error'),
-  simple: /** @type {HTMLElement|null} */ (
-    document.querySelector('.archetype-simple')
-  ),
+  simple: /** @type {HTMLElement|null} */ (document.querySelector('.archetype-simple')),
   grid: /** @type {HTMLElement|null} */ (document.getElementById('grid')),
   title: document.getElementById('archetype-title'),
-  granularityRange: /** @type {HTMLInputElement|null} */ (
-    document.getElementById('archetype-granularity-range')
-  ),
-  granularityOutput: /** @type {HTMLOutputElement|null} */ (
-    document.getElementById('archetype-granularity-output')
-  ),
-  includeCard: /** @type {HTMLSelectElement|null} */ (
-    document.getElementById('archetype-include-card')
-  ),
-  excludeCard: /** @type {HTMLSelectElement|null} */ (
-    document.getElementById('archetype-exclude-card')
-  ),
-  filtersContainer: /** @type {HTMLElement|null} */ (
-    document.querySelector('.archetype-controls')
-  ),
+  granularityRange: /** @type {HTMLInputElement|null} */ (document.getElementById('archetype-granularity-range')),
+  granularityOutput: /** @type {HTMLOutputElement|null} */ (document.getElementById('archetype-granularity-output')),
+  includeCard: /** @type {HTMLSelectElement|null} */ (document.getElementById('archetype-include-card')),
+  excludeCard: /** @type {HTMLSelectElement|null} */ (document.getElementById('archetype-exclude-card')),
+  filtersContainer: /** @type {HTMLElement|null} */ (document.querySelector('.archetype-controls')),
   filterMessage: /** @type {HTMLElement|null} */ (null),
-  skeletonSummary: /** @type {HTMLElement|null} */ (
-    document.getElementById('skeleton-summary')
-  ),
-  skeletonCountValue: /** @type {HTMLElement|null} */ (
-    document.getElementById('skeleton-count-value')
-  ),
-  skeletonWarnings: /** @type {HTMLElement|null} */ (
-    document.getElementById('skeleton-warnings')
-  ),
-  skeletonExportButton: /** @type {HTMLButtonElement|null} */ (
-    document.getElementById('skeleton-export-live')
-  ),
-  skeletonExportStatus: /** @type {HTMLElement|null} */ (
-    document.getElementById('skeleton-export-status')
-  )
+  skeletonSummary: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-summary')),
+  skeletonCountValue: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-count-value')),
+  skeletonWarnings: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-warnings')),
+  skeletonExportButton: /** @type {HTMLButtonElement|null} */ (document.getElementById('skeleton-export-live')),
+  skeletonExportStatus: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-export-status'))
 };
 
 const state = {
@@ -90,7 +68,7 @@ const state = {
     }>} */ ([]),
     plainWarnings: /** @type {string[]} */ ([]),
     displayWarnings: /** @type {string[]} */ ([]),
-    lastExportText: '',
+    lastExportText: ''
   }
 };
 
@@ -153,13 +131,13 @@ const TRAINER_SUPPORTER_OVERRIDES = new Set([
   'clay',
   'bede',
   'katie',
-  'sparky',
+  'sparky'
 ]);
 
 const TRAINER_SUPPORTER_KEYWORDS = [
-  'professor\'',
+  "professor'",
   'professor ',
-  'boss\'s orders',
+  "boss's orders",
   'boss\u2019s orders',
   'orders',
   'judge',
@@ -170,8 +148,8 @@ const TRAINER_SUPPORTER_KEYWORDS = [
   'team star',
   'team rocket',
   'gym leader',
-  'n\'s ',
-  'n\u2019s ',
+  "n's ",
+  'n\u2019s '
 ];
 
 const TRAINER_STADIUM_KEYWORDS = [
@@ -212,7 +190,7 @@ const TRAINER_STADIUM_KEYWORDS = [
   ' lake',
   ' mountain',
   ' hideout',
-  ' cave',
+  ' cave'
 ];
 
 const TRAINER_TOOL_KEYWORDS = [
@@ -236,7 +214,7 @@ const TRAINER_TOOL_KEYWORDS = [
   ' amplifier',
   ' weight',
   ' booster',
-  ' anklet',
+  ' anklet'
 ];
 
 const TRAINER_ITEM_KEYWORDS = [
@@ -274,7 +252,7 @@ const TRAINER_ITEM_KEYWORDS = [
   'energy switch',
   'energy recycler',
   'energy retrieval',
-  'technical machine',
+  'technical machine'
 ];
 
 const TRAINER_HINT_KEYWORDS = [
@@ -286,7 +264,7 @@ const TRAINER_HINT_KEYWORDS = [
   'orders',
   'supporter',
   'stadium',
-  'tool',
+  'tool'
 ];
 
 function extractArchetypeFromLocation(loc = window.location) {
@@ -304,13 +282,10 @@ function extractArchetypeFromLocation(loc = window.location) {
     const decoded = decodeURIComponent(trimmedPath);
     candidatePaths.add(decoded);
   } catch (error) {
-    logger.debug(
-      'Failed to decode pathname when searching for archetype slug',
-      {
-        pathname,
-        message: error?.message
-      },
-    );
+    logger.debug('Failed to decode pathname when searching for archetype slug', {
+      pathname,
+      message: error?.message
+    });
   }
 
   for (const candidate of candidatePaths) {
@@ -396,9 +371,7 @@ function formatCardOptionLabel(card, duplicateCounts) {
     return `${baseName} (${setCode} ${number})`;
   }
   const fallbackId = buildCardId(card);
-  return fallbackId
-    ? `${baseName} (${fallbackId.replace('~', ' ')})`
-    : baseName;
+  return fallbackId ? `${baseName} (${fallbackId.replace('~', ' ')})` : baseName;
 }
 
 function ensureFilterMessageElement() {
@@ -462,10 +435,7 @@ function normalizeThreshold(value, min, max) {
   }
 
   const clamped = Math.max(min, Math.min(max, value));
-  const rounded =
-    min +
-    Math.round((clamped - min) / GRANULARITY_STEP_PERCENT) *
-      GRANULARITY_STEP_PERCENT;
+  const rounded = min + Math.round((clamped - min) / GRANULARITY_STEP_PERCENT) * GRANULARITY_STEP_PERCENT;
   return Math.max(min, Math.min(max, rounded));
 }
 
@@ -487,7 +457,7 @@ function showError(message) {
     elements.error.hidden = false;
     const heading = elements.error.querySelector('h2');
     if (heading) {
-      heading.textContent = message || 'We couldn\'t load that archetype.';
+      heading.textContent = message || "We couldn't load that archetype.";
     }
   }
 }
@@ -503,11 +473,7 @@ function getUsagePercent(card) {
   if (Number.isFinite(card.pct)) {
     return Number(card.pct);
   }
-  if (
-    Number.isFinite(card.found) &&
-    Number.isFinite(card.total) &&
-    card.total > 0
-  ) {
+  if (Number.isFinite(card.found) && Number.isFinite(card.total) && card.total > 0) {
     return (card.found / card.total) * 100;
   }
   return 0;
@@ -529,11 +495,7 @@ function inferPrimaryCategory(card) {
     return 'pokemon';
   }
   const rawCategory = toLower(card?.category);
-  if (
-    rawCategory === 'pokemon' ||
-    rawCategory === 'trainer' ||
-    rawCategory === 'energy'
-  ) {
+  if (rawCategory === 'pokemon' || rawCategory === 'trainer' || rawCategory === 'energy') {
     return rawCategory;
   }
 
@@ -551,18 +513,10 @@ function inferPrimaryCategory(card) {
   if (endsWithEnergy) {
     return 'energy';
   }
-  if (
-    !endsWithEnergy &&
-    uid &&
-    (uid.endsWith(' energy') || uid.includes(' energy::'))
-  ) {
+  if (!endsWithEnergy && uid && (uid.endsWith(' energy') || uid.includes(' energy::'))) {
     return 'energy';
   }
-  if (
-    name &&
-    name.includes(' energy ') &&
-    !TRAINER_HINT_KEYWORDS.some(keyword => name.includes(keyword))
-  ) {
+  if (name && name.includes(' energy ') && !TRAINER_HINT_KEYWORDS.some(keyword => name.includes(keyword))) {
     return 'energy';
   }
   return 'pokemon';
@@ -572,17 +526,11 @@ function inferTrainerSubtype(card) {
   const name = toLower(card?.name);
   const uid = toLower(card?.uid);
 
-  if (
-    TRAINER_SUPPORTER_OVERRIDES.has(name) ||
-    TRAINER_SUPPORTER_OVERRIDES.has(uid)
-  ) {
+  if (TRAINER_SUPPORTER_OVERRIDES.has(name) || TRAINER_SUPPORTER_OVERRIDES.has(uid)) {
     return 'trainer-supporter';
   }
 
-  if (
-    name.startsWith('technical machine') ||
-    uid.includes('technical_machine')
-  ) {
+  if (name.startsWith('technical machine') || uid.includes('technical_machine')) {
     return 'trainer-item';
   }
 
@@ -653,10 +601,7 @@ function getCategorySortWeight(category) {
   if (!category) {
     return CARD_CATEGORY_SORT_PRIORITY.get('trainer') ?? 5;
   }
-  return (
-    CARD_CATEGORY_SORT_PRIORITY.get(category) ??
-    (category.startsWith('trainer') ? 5 : 6)
-  );
+  return CARD_CATEGORY_SORT_PRIORITY.get(category) ?? (category.startsWith('trainer') ? 5 : 6);
 }
 
 function sortItemsForDisplay(items) {
@@ -709,14 +654,9 @@ function sortItemsForDisplay(items) {
 }
 
 function syncGranularityOutput(threshold) {
-  const safeValue = Number.isFinite(threshold)
-    ? Math.max(GRANULARITY_MIN_PERCENT, threshold)
-    : GRANULARITY_MIN_PERCENT;
+  const safeValue = Number.isFinite(threshold) ? Math.max(GRANULARITY_MIN_PERCENT, threshold) : GRANULARITY_MIN_PERCENT;
   const step = elements.granularityRange
-    ? Math.max(
-      1,
-      Number(elements.granularityRange.step) || GRANULARITY_STEP_PERCENT
-      )
+    ? Math.max(1, Number(elements.granularityRange.step) || GRANULARITY_STEP_PERCENT)
     : 1;
   const roundedValue = Math.round(safeValue / step) * step;
   const clampedValue = Math.max(GRANULARITY_MIN_PERCENT, roundedValue);
@@ -730,12 +670,8 @@ function syncGranularityOutput(threshold) {
 }
 
 function filterItemsByThreshold(items, threshold) {
-  const numericThreshold = Number.isFinite(threshold)
-    ? threshold
-    : GRANULARITY_MIN_PERCENT;
-  const filtered = items.filter(
-    item => getUsagePercent(item) >= numericThreshold
-  );
+  const numericThreshold = Number.isFinite(threshold) ? threshold : GRANULARITY_MIN_PERCENT;
+  const filtered = items.filter(item => getUsagePercent(item) >= numericThreshold);
   if (filtered.length === 0 && items.length > 0) {
     return [items[0]];
   }
@@ -754,18 +690,12 @@ function configureGranularity(items) {
   const computedMax = Math.max(...percents, GRANULARITY_MIN_PERCENT);
 
   const minValue = GRANULARITY_MIN_PERCENT;
-  const maxValue = Math.min(
-    100,
-    Math.ceil(computedMax / GRANULARITY_STEP_PERCENT) *
-      GRANULARITY_STEP_PERCENT
-  );
+  const maxValue = Math.min(100, Math.ceil(computedMax / GRANULARITY_STEP_PERCENT) * GRANULARITY_STEP_PERCENT);
   range.min = String(minValue);
   range.max = String(maxValue);
   range.step = String(GRANULARITY_STEP_PERCENT);
 
-  const desired = Number.isFinite(state.thresholdPercent)
-    ? state.thresholdPercent
-    : GRANULARITY_DEFAULT_PERCENT;
+  const desired = Number.isFinite(state.thresholdPercent) ? state.thresholdPercent : GRANULARITY_DEFAULT_PERCENT;
   const normalized = normalizeThreshold(desired, minValue, maxValue);
   state.thresholdPercent = normalized;
   syncGranularityOutput(normalized);
@@ -778,7 +708,7 @@ async function populateCardDropdowns() {
 
   // Fetch the index to see what filter combinations are available
   let filterIndex = null;
-  
+
   try {
     const { archetypeCache } = await import('./utils/archetypeCache.js');
     filterIndex = await archetypeCache.fetchIndex(state.tournament, state.archetypeBase);
@@ -805,16 +735,16 @@ function updateCardDropdowns() {
   const currentExclude = elements.excludeCard.value || null;
 
   // Build sets of available card IDs based on current selections
-  let availableForInclude = new Set();
-  let availableForExclude = new Set();
-  
+  const availableForInclude = new Set();
+  const availableForExclude = new Set();
+
   if (state.filterIndex?.filterMap) {
     Object.keys(state.filterIndex.filterMap).forEach(filterKey => {
       // Match simple presence filters: inc:CARDID|exc:CARDID or inc:|exc:CARDID or inc:CARDID|exc:
       const match = filterKey.match(/^inc:([^:|]+)?\|exc:([^:|]+)?$/);
       if (match) {
         const [, includeId, excludeId] = match;
-        
+
         // If we have an exclude selected, only show includes that work with it
         if (currentExclude) {
           if (excludeId === currentExclude && includeId) {
@@ -826,7 +756,7 @@ function updateCardDropdowns() {
             availableForInclude.add(includeId);
           }
         }
-        
+
         // If we have an include selected, only show excludes that work with it
         if (currentInclude) {
           if (includeId === currentInclude && excludeId) {
@@ -846,9 +776,7 @@ function updateCardDropdowns() {
   const showAllCards = availableForInclude.size === 0 && availableForExclude.size === 0;
 
   // Sort cards alphabetically by name
-  const sortedCards = [...state.allCards].sort((left, right) =>
-    (left.name || '').localeCompare(right.name || ''),
-  );
+  const sortedCards = [...state.allCards].sort((left, right) => (left.name || '').localeCompare(right.name || ''));
 
   // Store current selection to restore after repopulating
   const previousInclude = currentInclude;
@@ -926,12 +854,8 @@ function updateCardDropdowns() {
 }
 
 function resolveCardPrintInfo(card) {
-  let setCode =
-    typeof card?.set === 'string' ? card.set.trim().toUpperCase() : '';
-  let numberValue =
-    typeof card?.number === 'string' || typeof card?.number === 'number'
-      ? card.number
-      : '';
+  let setCode = typeof card?.set === 'string' ? card.set.trim().toUpperCase() : '';
+  let numberValue = typeof card?.number === 'string' || typeof card?.number === 'number' ? card.number : '';
 
   if ((!setCode || !numberValue) && typeof card?.uid === 'string') {
     const segments = card.uid.split('::');
@@ -1005,11 +929,7 @@ function buildSkeletonExportEntries(items) {
 
     const printInfo = resolveCardPrintInfo(item);
     const primaryCategory = inferPrimaryCategory(item);
-    const normalizedCategory = ['pokemon', 'trainer', 'energy'].includes(
-      primaryCategory
-    )
-      ? primaryCategory
-      : 'pokemon';
+    const normalizedCategory = ['pokemon', 'trainer', 'energy'].includes(primaryCategory) ? primaryCategory : 'pokemon';
 
     entries.push({
       name,
@@ -1038,11 +958,7 @@ function buildTcgliveExportString(entries) {
       return;
     }
     const key =
-      entry.primaryCategory === 'trainer'
-        ? 'trainer'
-        : entry.primaryCategory === 'energy'
-          ? 'energy'
-          : 'pokemon';
+      entry.primaryCategory === 'trainer' ? 'trainer' : entry.primaryCategory === 'energy' ? 'energy' : 'pokemon';
     sections[key].push(entry);
   });
 
@@ -1107,10 +1023,7 @@ function syncSkeletonExportState() {
 }
 
 function attemptExecCommandCopy(text) {
-  if (
-    !globalThis.document ||
-    typeof globalThis.document.createElement !== 'function'
-  ) {
+  if (!globalThis.document || typeof globalThis.document.createElement !== 'function') {
     return false;
   }
   try {
@@ -1146,10 +1059,7 @@ async function copyDecklistToClipboard(text) {
     return 'execCommand';
   }
 
-  const promptFn =
-    typeof globalThis.window?.prompt === 'function'
-      ? globalThis.window.prompt
-      : null;
+  const promptFn = typeof globalThis.window?.prompt === 'function' ? globalThis.window.prompt : null;
   if (promptFn) {
     const result = promptFn('Copy this TCG Live deck list:', text);
     if (result !== null) {
@@ -1165,10 +1075,7 @@ async function handleSkeletonExport(event) {
 
   const { exportEntries, plainWarnings } = state.skeleton;
   if (!Array.isArray(exportEntries) || exportEntries.length === 0) {
-    updateSkeletonExportStatus(
-      'No cards are available to export yet.',
-      'warning',
-    );
+    updateSkeletonExportStatus('No cards are available to export yet.', 'warning');
     return;
   }
 
@@ -1182,21 +1089,15 @@ async function handleSkeletonExport(event) {
 
   try {
     const method = await copyDecklistToClipboard(exportText);
-    const hasWarnings =
-      Array.isArray(plainWarnings) && plainWarnings.length > 0;
-    const warningNote = hasWarnings
-      ? ` Warning: ${plainWarnings.join('; ')}`
-      : '';
+    const hasWarnings = Array.isArray(plainWarnings) && plainWarnings.length > 0;
+    const warningNote = hasWarnings ? ` Warning: ${plainWarnings.join('; ')}` : '';
     const baseMessage =
-      method === 'prompt'
-        ? 'Deck list ready in a prompt for manual copy.'
-        : 'Copied TCG Live deck list to clipboard.';
+      method === 'prompt' ? 'Deck list ready in a prompt for manual copy.' : 'Copied TCG Live deck list to clipboard.';
     const tone = hasWarnings ? 'warning' : 'success';
     updateSkeletonExportStatus(`${baseMessage}${warningNote}`, tone);
   } catch (error) {
     logger.warn('TCG Live export cancelled or failed', error);
-    const isCancelled =
-      error instanceof Error && error.message === 'TCGLiveExportCopyCancelled';
+    const isCancelled = error instanceof Error && error.message === 'TCGLiveExportCopyCancelled';
     const message = isCancelled
       ? 'Export cancelled before copy. Try again when you are ready.'
       : 'Unable to copy the deck list. Please try again.';
@@ -1223,18 +1124,14 @@ function isAceSpec(cardName) {
     'legacy energy',
     'prime catcher',
     'reboot pod',
-    'secret box',
+    'secret box'
   ];
   const lowerName = cardName.toLowerCase();
   return aceSpecKeywords.some(keyword => lowerName.includes(keyword));
 }
 
 function updateSkeletonSummary(items) {
-  if (
-    !elements.skeletonSummary ||
-    !elements.skeletonCountValue ||
-    !elements.skeletonWarnings
-  ) {
+  if (!elements.skeletonSummary || !elements.skeletonCountValue || !elements.skeletonWarnings) {
     return;
   }
 
@@ -1298,9 +1195,7 @@ function renderCards() {
   }
 
   configureGranularity(state.items);
-  const threshold = Number.isFinite(state.thresholdPercent)
-    ? state.thresholdPercent
-    : GRANULARITY_DEFAULT_PERCENT;
+  const threshold = Number.isFinite(state.thresholdPercent) ? state.thresholdPercent : GRANULARITY_DEFAULT_PERCENT;
   const visibleItems = filterItemsByThreshold(state.items, threshold);
   const sortedVisibleItems = sortItemsForDisplay(visibleItems);
 
@@ -1324,12 +1219,7 @@ function loadFilterCombination(includeId, excludeId) {
 
   const promise = (async () => {
     try {
-      const raw = await fetchArchetypeFiltersReport(
-        state.tournament,
-        state.archetypeBase,
-        includeId,
-        excludeId
-      );
+      const raw = await fetchArchetypeFiltersReport(state.tournament, state.archetypeBase, includeId, excludeId);
       const parsed = parseReport(raw);
       return {
         deckTotal: parsed.deckTotal,
@@ -1376,10 +1266,7 @@ function handleImpossibleExclusion(excludeId) {
   if (!info?.alwaysIncluded) {
     return false;
   }
-  updateFilterMessage(
-    `${state.archetypeLabel} decks always play ${info.name}. Try a different exclusion.`,
-    'warning',
-  );
+  updateFilterMessage(`${state.archetypeLabel} decks always play ${info.name}. Try a different exclusion.`, 'warning');
   state.items = [];
   state.archetypeDeckTotal = 0;
   state.currentFilters = {
@@ -1417,10 +1304,7 @@ async function applyFilters() {
   }
 
   if (includeId && excludeId && includeId === excludeId) {
-    updateFilterMessage(
-      'Choose different cards to include and exclude.',
-      'warning',
-    );
+    updateFilterMessage('Choose different cards to include and exclude.', 'warning');
     state.items = [];
     state.archetypeDeckTotal = 0;
     state.currentFilters = {
@@ -1436,22 +1320,15 @@ async function applyFilters() {
   }
 
   const comboLabel = describeFilters(includeId, excludeId);
-  updateFilterMessage(
-    `Crunching the numbers for decks ${comboLabel}...`,
-    'info',
-  );
+  updateFilterMessage(`Crunching the numbers for decks ${comboLabel}...`, 'info');
 
   const requestKey = getFilterKey(includeId, excludeId);
 
   try {
     const result = await loadFilterCombination(includeId, excludeId);
 
-    const currentInclude = applyAlwaysIncludedGuard(
-      elements.includeCard ? elements.includeCard.value || null : null
-    );
-    const currentExclude = elements.excludeCard
-      ? elements.excludeCard.value || null
-      : null;
+    const currentInclude = applyAlwaysIncludedGuard(elements.includeCard ? elements.includeCard.value || null : null);
+    const currentExclude = elements.excludeCard ? elements.excludeCard.value || null : null;
     const activeKey = getFilterKey(currentInclude, currentExclude);
     if (activeKey !== requestKey) {
       return;
@@ -1464,31 +1341,23 @@ async function applyFilters() {
       currentFilters: {
         include: includeId,
         exclude: excludeId
-      },
+      }
     });
 
     if (!result.deckTotal || result.items.length === 0) {
-      updateFilterMessage(
-        `No decks match the combination ${comboLabel}.`,
-        'warning',
-      );
+      updateFilterMessage(`No decks match the combination ${comboLabel}.`, 'warning');
     } else {
       const deckLabel = result.deckTotal === 1 ? 'deck' : 'decks';
-      const clientSideNote = result.generatedClientSide 
-        ? ' (generated on-demand)' 
-        : '';
+      const clientSideNote = result.generatedClientSide ? ' (generated on-demand)' : '';
       updateFilterMessage(
         `${result.deckTotal} ${deckLabel} match the combination ${comboLabel}${clientSideNote}.`,
-        'info',
+        'info'
       );
     }
     renderCards();
   } catch (error) {
     if (error instanceof AppError && error.context?.status === 404) {
-      updateFilterMessage(
-        `No decks match the combination ${comboLabel}.`,
-        'warning',
-      );
+      updateFilterMessage(`No decks match the combination ${comboLabel}.`, 'warning');
       // eslint-disable-next-line require-atomic-updates -- Selection validated above
       Object.assign(state, {
         items: [],
@@ -1496,19 +1365,23 @@ async function applyFilters() {
         currentFilters: {
           include: includeId,
           exclude: excludeId
-        },
+        }
       });
       renderCards();
       return;
     }
-    
+
     // Check if this is a filter not found error - likely a low-usage card
-    if (error instanceof AppError && error.type === ErrorTypes.PARSE && error.message.includes('Filter combination not found')) {
-      const card = includeId || excludeId;
+    if (
+      error instanceof AppError &&
+      error.type === ErrorTypes.PARSE &&
+      error.message.includes('Filter combination not found')
+    ) {
+      const _card = includeId || excludeId; // Unused but kept for potential debugging
       const action = includeId ? 'include' : 'exclude';
       updateFilterMessage(
         `This card appears in too few decks to filter by ${action}. Try ${includeId ? 'excluding' : 'including'} it instead, or choose a more common card.`,
-        'warning',
+        'warning'
       );
       // eslint-disable-next-line require-atomic-updates -- Selection validated above
       Object.assign(state, {
@@ -1517,17 +1390,14 @@ async function applyFilters() {
         currentFilters: {
           include: includeId,
           exclude: excludeId
-        },
+        }
       });
       renderCards();
       return;
     }
-    
+
     logger.exception('Failed to apply include/exclude filters', error);
-    updateFilterMessage(
-      'We ran into an issue loading that combination. Please try again.',
-      'warning',
-    );
+    updateFilterMessage('We ran into an issue loading that combination. Please try again.', 'warning');
   }
 }
 
@@ -1536,7 +1406,7 @@ function setupFilterListeners() {
     elements.includeCard.addEventListener('change', () => {
       // Update the exclude dropdown based on the new include selection
       updateCardDropdowns();
-      
+
       applyFilters().catch(error => {
         logger.debug('Include filter change failed', error?.message || error);
       });
@@ -1549,7 +1419,7 @@ function setupFilterListeners() {
     elements.excludeCard.addEventListener('change', () => {
       // Update the include dropdown based on the new exclude selection
       updateCardDropdowns();
-      
+
       applyFilters().catch(error => {
         logger.debug('Exclude filter change failed', error?.message || error);
       });
@@ -1592,10 +1462,7 @@ function setupFilterHoverHandler(selectElement, filterType) {
         await cache.preCacheIndex(state.tournament, state.archetypeBase);
       }
     } catch (error) {
-      logger.debug(
-        'Failed to pre-cache index on dropdown focus',
-        error.message
-      );
+      logger.debug('Failed to pre-cache index on dropdown focus', error.message);
     }
   });
 
@@ -1613,25 +1480,12 @@ function setupFilterHoverHandler(selectElement, filterType) {
 
         // Get the current value from the other dropdown
         const includeId =
-          filterType === 'include'
-            ? hoveredCardId
-            : elements.includeCard
-              ? elements.includeCard.value || null
-              : null;
+          filterType === 'include' ? hoveredCardId : elements.includeCard ? elements.includeCard.value || null : null;
         const excludeId =
-          filterType === 'exclude'
-            ? hoveredCardId
-            : elements.excludeCard
-              ? elements.excludeCard.value || null
-              : null;
+          filterType === 'exclude' ? hoveredCardId : elements.excludeCard ? elements.excludeCard.value || null : null;
 
         // Start timer to pre-resolve this filter combination
-        cache.startFilterHoverTimer(
-          state.tournament,
-          state.archetypeBase,
-          includeId,
-          excludeId
-        );
+        cache.startFilterHoverTimer(state.tournament, state.archetypeBase, includeId, excludeId);
       } catch (error) {
         logger.debug('Failed to pre-cache combination on hover', error.message);
       }
@@ -1640,9 +1494,7 @@ function setupFilterHoverHandler(selectElement, filterType) {
 }
 
 function handleGranularityInput(event) {
-  const target = /** @type {HTMLInputElement|null} */ (
-    event.currentTarget || event.target
-  );
+  const target = /** @type {HTMLInputElement|null} */ (event.currentTarget || event.target);
   if (!target || !Array.isArray(state.items) || state.items.length === 0) {
     return;
   }
@@ -1655,17 +1507,9 @@ function handleGranularityInput(event) {
     return;
   }
 
-  const maxPercent = Math.min(
-    100,
-    Math.ceil(computedMax / GRANULARITY_STEP_PERCENT) *
-      GRANULARITY_STEP_PERCENT
-  );
+  const maxPercent = Math.min(100, Math.ceil(computedMax / GRANULARITY_STEP_PERCENT) * GRANULARITY_STEP_PERCENT);
   const rawValue = Number(target.value);
-  const normalized = normalizeThreshold(
-    rawValue,
-    GRANULARITY_MIN_PERCENT,
-    maxPercent
-  );
+  const normalized = normalizeThreshold(rawValue, GRANULARITY_MIN_PERCENT, maxPercent);
 
   if (state.thresholdPercent !== normalized) {
     state.thresholdPercent = normalized;
@@ -1682,7 +1526,7 @@ function setupGranularityListeners() {
   }
 }
 
-function resolveTournamentPreference(defaultTournament, tournamentsList) {
+function _resolveTournamentPreference(defaultTournament, tournamentsList) {
   const params = new URLSearchParams(window.location.search);
   const preferredTournament = params.get('tour');
 
@@ -1694,9 +1538,7 @@ function resolveTournamentPreference(defaultTournament, tournamentsList) {
   if (tournaments.includes(preferredTournament)) {
     return preferredTournament;
   }
-  logger.warn(
-    `Preferred tournament ${preferredTournament} not found, falling back to ${defaultTournament}`
-  );
+  logger.warn(`Preferred tournament ${preferredTournament} not found, falling back to ${defaultTournament}`);
   return defaultTournament;
 }
 
@@ -1730,9 +1572,7 @@ async function initialize() {
     ]);
 
     if (!tournamentReport || typeof tournamentReport.deckTotal !== 'number') {
-      throw new Error(
-        `Tournament report for ${state.tournament} is missing deck totals.`
-      );
+      throw new Error(`Tournament report for ${state.tournament} is missing deck totals.`);
     }
 
     const parsedArchetype = parseReport(archetypeRaw);
@@ -1770,7 +1610,7 @@ async function initialize() {
   } catch (error) {
     logger.exception('Failed to load archetype detail', error);
     toggleLoading(false);
-    showError('We couldn\'t load that archetype.');
+    showError("We couldn't load that archetype.");
     setPageState('error');
   }
 }

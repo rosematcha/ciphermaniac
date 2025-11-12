@@ -23,7 +23,7 @@ const ARCHETYPE_PREFIX_ALIASES = [
   { prefix: 'charizard', canonical: 'Charizard' },
   { prefix: 'gholdengo', canonical: 'Gholdengo' },
   { prefix: 'miraidon', canonical: 'Miraidon' },
-  { prefix: 'ns_zoroark', canonical: 'N\'s Zoroark' }
+  { prefix: 'ns_zoroark', canonical: "N's Zoroark" }
 ];
 
 const ACE_SPEC_KEYWORDS = [
@@ -37,7 +37,7 @@ const ACE_SPEC_KEYWORDS = [
   'secret box',
   'sparkling crystal',
   "hero's cape",
-  'hero\'s cape',
+  "hero's cape",
   'scramble switch',
   'dowsing machine',
   'computer search',
@@ -56,7 +56,7 @@ const ACE_SPEC_KEYWORDS = [
   'precious trolley',
   'poke vital a',
   'unfair stamp',
-  'brilliant blender',
+  'brilliant blender'
 ].map(keyword => keyword.toLowerCase());
 
 /**
@@ -166,9 +166,7 @@ function formatArchetypeName(rawName) {
   if (!name) {
     return 'Unknown';
   }
-  return name
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, letter => letter.toUpperCase());
+  return name.replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 }
 
 function canonicalizeArchetype(rawName) {
@@ -326,9 +324,7 @@ function isCrossArchetypeStaple(card, deckShare) {
   if (deckShare < CROSS_ARCH_MIN_DECK_SHARE) {
     return false;
   }
-  const qualifying = card.usageByArchetype.filter(
-    item => item.ratio >= HIGH_USAGE_RATIO
-  );
+  const qualifying = card.usageByArchetype.filter(item => item.ratio >= HIGH_USAGE_RATIO);
   if (qualifying.length < STAPLE_POKEMON_MIN_ARCHETYPES) {
     return false;
   }
@@ -345,8 +341,7 @@ const sortByPriority = (first, second) => {
   if (shareDiff !== 0) {
     return shareDiff;
   }
-  const totalDiff =
-    (second.totalDecksWithCard || 0) - (first.totalDecksWithCard || 0);
+  const totalDiff = (second.totalDecksWithCard || 0) - (first.totalDecksWithCard || 0);
   if (totalDiff !== 0) {
     return totalDiff;
   }
@@ -360,12 +355,8 @@ function sortArchetypeCards(archetype) {
       return copyDiff;
     }
 
-    const firstUsage = first.usageByArchetype.find(
-      item => item.archetype === archetype
-    );
-    const secondUsage = second.usageByArchetype.find(
-      item => item.archetype === archetype
-    );
+    const firstUsage = first.usageByArchetype.find(item => item.archetype === archetype);
+    const secondUsage = second.usageByArchetype.find(item => item.archetype === archetype);
     const ratioDiff = (secondUsage?.ratio || 0) - (firstUsage?.ratio || 0);
     if (ratioDiff !== 0) {
       return ratioDiff;
@@ -385,8 +376,7 @@ function sortArchetypeCards(archetype) {
  * @returns {BinderDataset}
  */
 export function buildBinderDataset(analysis, includedArchetypes) {
-  const allowedArchetypes =
-    includedArchetypes instanceof Set ? includedArchetypes : null;
+  const allowedArchetypes = includedArchetypes instanceof Set ? includedArchetypes : null;
 
   const cardMap = new Map();
   const archetypeDeckCounts = new Map();
@@ -405,10 +395,7 @@ export function buildBinderDataset(analysis, includedArchetypes) {
         continue;
       }
 
-      archetypeDeckCounts.set(
-        archetype,
-        (archetypeDeckCounts.get(archetype) || 0) + 1
-      );
+      archetypeDeckCounts.set(archetype, (archetypeDeckCounts.get(archetype) || 0) + 1);
       totalDecks += 1;
 
       for (const card of deck.cards) {
@@ -417,68 +404,41 @@ export function buildBinderDataset(analysis, includedArchetypes) {
         }
 
         const key = normalizeCardKey(card.name);
-        const accumulator = ensureMapEntry(cardMap, key, () =>
-          createCardAccumulator(card)
-        );
+        const accumulator = ensureMapEntry(cardMap, key, () => createCardAccumulator(card));
         accumulator.name = accumulator.name || card.name;
         accumulator.category = accumulator.category || card.category || null;
-        accumulator.trainerType =
-          accumulator.trainerType || card.trainerType || null;
-        accumulator.energyType =
-          accumulator.energyType || card.energyType || null;
+        accumulator.trainerType = accumulator.trainerType || card.trainerType || null;
+        accumulator.energyType = accumulator.energyType || card.energyType || null;
 
         accumulator.totalDecksWithCard += 1;
-        accumulator.maxCopies = Math.max(
-          accumulator.maxCopies,
-          Number(card.count) || 0
-        );
+        accumulator.maxCopies = Math.max(accumulator.maxCopies, Number(card.count) || 0);
 
         const setCode = card.set ? String(card.set).toUpperCase() : null;
-        const numberCode = card.number
-          ? String(card.number).toUpperCase()
-          : null;
+        const numberCode = card.number ? String(card.number).toUpperCase() : null;
         if (setCode && numberCode) {
           const variantKey = `${setCode}::${numberCode}`;
-          const variant = ensureMapEntry(
-            accumulator.variants,
-            variantKey,
-            () => ({
-              set: setCode,
-              number: numberCode,
-              decks: 0
-            }),
-          );
+          const variant = ensureMapEntry(accumulator.variants, variantKey, () => ({
+            set: setCode,
+            number: numberCode,
+            decks: 0
+          }));
           variant.decks += 1;
         }
 
-        const archetypeUsage = ensureMapEntry(
-          accumulator.perArchetype,
-          archetype,
-          () => ({
-            decks: 0,
-            maxCopies: 0
-          }),
-        );
+        const archetypeUsage = ensureMapEntry(accumulator.perArchetype, archetype, () => ({
+          decks: 0,
+          maxCopies: 0
+        }));
         archetypeUsage.decks += 1;
-        archetypeUsage.maxCopies = Math.max(
-          archetypeUsage.maxCopies,
-          Number(card.count) || 0
-        );
+        archetypeUsage.maxCopies = Math.max(archetypeUsage.maxCopies, Number(card.count) || 0);
 
-        const tournamentUsage = ensureMapEntry(
-          accumulator.perTournament,
-          event.tournament,
-          () => ({ decks: 0 })
-        );
+        const tournamentUsage = ensureMapEntry(accumulator.perTournament, event.tournament, () => ({ decks: 0 }));
         tournamentUsage.decks += 1;
       }
     }
   }
 
-  const totalDecksAll = analysis.events.reduce(
-    (sum, event) => sum + (event.decks?.length || 0),
-    0
-  );
+  const totalDecksAll = analysis.events.reduce((sum, event) => sum + (event.decks?.length || 0), 0);
 
   if (!totalDecks) {
     return {
@@ -500,7 +460,7 @@ export function buildBinderDataset(analysis, includedArchetypes) {
         nicheItems: [],
         specialEnergy: [],
         basicEnergy: []
-      },
+      }
     };
   }
 
@@ -529,20 +489,15 @@ export function buildBinderDataset(analysis, includedArchetypes) {
   for (const entry of cardMap.values()) {
     const usageByArchetype = deriveUsageByArchetype(entry, archetypeDeckCounts);
     const usageByTournament = deriveUsageByTournament(entry);
-    const qualifiesOnEvent = usageByTournament.some(
-      usage => usage.decks >= MIN_DECKS_PER_EVENT
-    );
+    const qualifiesOnEvent = usageByTournament.some(usage => usage.decks >= MIN_DECKS_PER_EVENT);
     if (!qualifiesOnEvent) {
       continue;
     }
 
     const variant = pickPrimaryVariant(entry);
     const setCode = variant.set ? String(variant.set).toUpperCase() : null;
-    const numberCode = variant.number
-      ? String(variant.number).toUpperCase()
-      : null;
-    const priceKey =
-      setCode && numberCode ? `${entry.name}::${setCode}::${numberCode}` : null;
+    const numberCode = variant.number ? String(variant.number).toUpperCase() : null;
+    const priceKey = setCode && numberCode ? `${entry.name}::${setCode}::${numberCode}` : null;
 
     const deckShare = entry.totalDecksWithCard / totalDecks;
     const card = /** @type {BinderCard} */ ({
@@ -559,12 +514,8 @@ export function buildBinderDataset(analysis, includedArchetypes) {
       deckShare,
       usageByArchetype,
       usageByTournament,
-      highUsageArchetypes: usageByArchetype.filter(
-        usage => usage.ratio >= HIGH_USAGE_RATIO
-      ).length,
-      moderateUsageArchetypes: usageByArchetype.filter(
-        usage => usage.ratio >= MODERATE_USAGE_RATIO
-      ).length
+      highUsageArchetypes: usageByArchetype.filter(usage => usage.ratio >= HIGH_USAGE_RATIO).length,
+      moderateUsageArchetypes: usageByArchetype.filter(usage => usage.ratio >= MODERATE_USAGE_RATIO).length
     });
 
     if (isAceSpec(card.name, card.trainerType)) {
@@ -586,11 +537,7 @@ export function buildBinderDataset(analysis, includedArchetypes) {
       let addedToArchetype = false;
       for (const usage of usageByArchetype) {
         if (usage.ratio >= ARCHETYPE_CORE_RATIO) {
-          const list = ensureMapEntry(
-            archetypePokemonMap,
-            usage.archetype,
-            () => []
-          );
+          const list = ensureMapEntry(archetypePokemonMap, usage.archetype, () => []);
           list.push(card);
           addedToArchetype = true;
         }
@@ -603,10 +550,7 @@ export function buildBinderDataset(analysis, includedArchetypes) {
 
     if (card.category === 'trainer') {
       if (card.trainerType === 'supporter') {
-        if (
-          deckShare >= SUPPORTER_FREQUENT_GLOBAL_RATE ||
-          card.highUsageArchetypes >= SUPPORTER_HIGH_USAGE_ARCH_MIN
-        ) {
+        if (deckShare >= SUPPORTER_FREQUENT_GLOBAL_RATE || card.highUsageArchetypes >= SUPPORTER_HIGH_USAGE_ARCH_MIN) {
           placeCard(card, frequentSupporters);
         } else {
           placeCard(card, nicheSupporters);
@@ -625,10 +569,7 @@ export function buildBinderDataset(analysis, includedArchetypes) {
       }
 
       if (card.trainerType === 'item') {
-        if (
-          deckShare >= ITEM_FREQUENT_GLOBAL_RATE ||
-          card.moderateUsageArchetypes >= ITEM_MOD_USAGE_ARCH_MIN
-        ) {
+        if (deckShare >= ITEM_FREQUENT_GLOBAL_RATE || card.moderateUsageArchetypes >= ITEM_MOD_USAGE_ARCH_MIN) {
           placeCard(card, frequentItems);
         } else {
           placeCard(card, nicheItems);
@@ -712,7 +653,7 @@ export function buildBinderDataset(analysis, includedArchetypes) {
       nicheItems,
       specialEnergy,
       basicEnergy
-    },
+    }
   };
 }
 

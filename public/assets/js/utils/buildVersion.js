@@ -36,18 +36,13 @@ export function ensureBuildVersion() {
     }
 
     const previousVersion = localStorage.getItem(VERSION_STORAGE_KEY);
-    const isUpgrade = Boolean(
-      previousVersion && previousVersion !== BUILD_VERSION
-    );
+    const isUpgrade = Boolean(previousVersion && previousVersion !== BUILD_VERSION);
 
     if (isUpgrade) {
       try {
         storage.clearAll();
       } catch (error) {
-        logger.warn(
-          'Failed to clear storage caches during build upgrade',
-          error
-        );
+        logger.warn('Failed to clear storage caches during build upgrade', error);
       }
 
       try {
@@ -67,10 +62,7 @@ export function ensureBuildVersion() {
             });
           })
           .catch(error => {
-            logger.debug(
-              'Failed to iterate CacheStorage during build upgrade',
-              error
-            );
+            logger.debug('Failed to iterate CacheStorage during build upgrade', error);
           });
       }
 

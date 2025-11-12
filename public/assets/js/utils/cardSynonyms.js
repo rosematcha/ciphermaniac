@@ -19,7 +19,7 @@ const BASIC_ENERGY_CANONICALS = {
   'Darkness Energy': 'Darkness Energy::SVE::015',
   'Metal Energy': 'Metal Energy::SVE::020',
   'Fighting Energy': 'Fighting Energy::SVE::016',
-  'Water Energy': 'Water Energy::SVE::022',
+  'Water Energy': 'Water Energy::SVE::022'
 };
 
 /**
@@ -108,9 +108,7 @@ export async function hasCardSynonyms(cardIdentifier) {
 
   const data = await loadSynonymData();
 
-  return Boolean(
-    data.synonyms[cardIdentifier] || data.canonicals[cardIdentifier]
-  );
+  return Boolean(data.synonyms[cardIdentifier] || data.canonicals[cardIdentifier]);
 }
 
 /**
@@ -137,9 +135,7 @@ export async function getCardVariants(cardIdentifier) {
   let jsonCanonical = canonical;
 
   // Check if this is a basic energy
-  const baseName = cardIdentifier.includes('::')
-    ? String(cardIdentifier).split('::')[0]
-    : cardIdentifier;
+  const baseName = cardIdentifier.includes('::') ? String(cardIdentifier).split('::')[0] : cardIdentifier;
 
   if (BASIC_ENERGY_CANONICALS[baseName]) {
     // Get the "real" canonical from the JSON data (expensive version)
@@ -206,11 +202,7 @@ export const sync = {
       return cardIdentifier;
     }
 
-    return (
-      synonymData.canonicals[cardIdentifier] ||
-      synonymData.synonyms[cardIdentifier] ||
-      cardIdentifier
-    );
+    return synonymData.canonicals[cardIdentifier] || synonymData.synonyms[cardIdentifier] || cardIdentifier;
   },
 
   /**
@@ -230,11 +222,7 @@ export const sync = {
  * @param {object} overrides - Image filename overrides
  * @returns {Promise<string[]>} Array of image URL candidates from variants
  */
-export async function getVariantImageCandidates(
-  cardIdentifier,
-  useSm = false,
-  overrides = {}
-) {
+export async function getVariantImageCandidates(cardIdentifier, useSm = false, overrides = {}) {
   try {
     const variants = await getCardVariants(cardIdentifier);
     if (!variants || variants.length <= 1) {
@@ -243,9 +231,7 @@ export async function getVariantImageCandidates(
 
     // Import dependencies dynamically to avoid circular dependency
     const { buildThumbCandidates } = await import('../thumbs.js');
-    const { getDisplayName, parseDisplayName } = await import(
-      '../card/identifiers.js'
-    );
+    const { getDisplayName, parseDisplayName } = await import('../card/identifiers.js');
 
     const candidates = [];
 
@@ -282,12 +268,7 @@ export async function getVariantImageCandidates(
       }
 
       // Get candidates for this variant
-      const variantCandidates = buildThumbCandidates(
-        parsed.name,
-        useSm,
-        overrides,
-        variant
-      );
+      const variantCandidates = buildThumbCandidates(parsed.name, useSm, overrides, variant);
       candidates.push(...variantCandidates);
     }
 
