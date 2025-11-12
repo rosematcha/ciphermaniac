@@ -785,7 +785,8 @@ function handleSelectAllArchetypes() {
   if (!state.analysis) {
     return;
   }
-  state.selectedArchetypes = new Set(state.analysis.archetypeStats.keys());
+  // Empty set means "all selected" in our logic
+  state.selectedArchetypes.clear();
   renderArchetypeControls();
   computeSelectionDecks();
   markBinderDirty();
@@ -794,7 +795,12 @@ function handleSelectAllArchetypes() {
 }
 
 function handleClearArchetypes() {
-  state.selectedArchetypes.clear();
+  if (!state.analysis) {
+    return;
+  }
+  // Create a set with a sentinel value that won't match any real archetype
+  // This ensures no archetypes are selected
+  state.selectedArchetypes = new Set(['__NONE__']);
   renderArchetypeControls();
   computeSelectionDecks();
   markBinderDirty();
@@ -1140,7 +1146,7 @@ async function initialize() {
 
     if (!state.tournaments.length) {
       showError(
-        'No tournaments are available. Add reports to /reports to use this tool.',
+        'No tournaments are available. This may be a temporary network issue. Please refresh the page to try again.',
       );
       return;
     }
