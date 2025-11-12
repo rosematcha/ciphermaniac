@@ -85,67 +85,16 @@ class ArchetypeCacheManager {
    * Build filter key for looking up subset IDs in the index
    * MUST match the backend format in onlineMetaIncludeExclude.js buildFilterKey()
    * 
-   * NOTE: The current backend implementation (as of the first automated run) only generates
-   * simple presence/exclusion filters without count ranges. Count-based filtering will be
-   * added in a future backend update.
+   * Simple presence/exclusion only - no count ranges
    * 
    * @param {string|null} includeId
    * @param {string|null} excludeId
-   * @param {number} includeMin
-   * @param {number} includeMax
-   * @param {number} excludeMin
-   * @param {number} excludeMax
    * @returns {string}
    */
-  static buildFilterKey(
-    includeId,
-    excludeId,
-    includeMin = 1,
-    includeMax = 4,
-    excludeMin = 0,
-    excludeMax = 4
-  ) {
-    // Build include key with count range if specified
-    const includeKeys = [];
-    if (includeId) {
-      // Check if we have non-default count ranges
-      const hasCountRange = (includeMin !== 1 || includeMax !== 4);
-      if (hasCountRange) {
-        // Format: cardId:operator+count (e.g., "BLK~079:=2" or "BLK~079:>=2")
-        // NOTE: Count-based filters are not yet available in the backend index.
-        // This code is prepared for future backend support.
-        if (includeMin === includeMax) {
-          // Exact count
-          includeKeys.push(`${includeId}:=${includeMin}`);
-        } else {
-          // Range - use >= operator for min
-          includeKeys.push(`${includeId}:>=${includeMin}`);
-        }
-      } else {
-        // Simple presence-based filter (no count)
-        includeKeys.push(includeId);
-      }
-    }
-    
-    const incKey = includeKeys.join('+');
-    
-    // Build exclude key (excludes don't have count ranges)
-    const excludeKeys = excludeId ? [excludeId] : [];
-    const excKey = excludeKeys.join('+');
-    
-    const filterKey = `inc:${incKey}|exc:${excKey}`;
-    
-    // Log for debugging
-    logger.debug('Built filter key', {
-      includeId,
-      excludeId,
-      includeMin,
-      includeMax,
-      hasCountRange: includeId ? (includeMin !== 1 || includeMax !== 4) : false,
-      filterKey
-    });
-    
-    return filterKey;
+  static buildFilterKey(includeId, excludeId) {
+    const incKey = includeId || '';
+    const excKey = excludeId || '';
+    return `inc:${incKey}|exc:${excKey}`;
   } /**
      * Build cache key for index files
      * @param {string} tournament

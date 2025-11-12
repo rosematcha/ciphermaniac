@@ -6,7 +6,7 @@
 import { storage } from './storage.js';
 import { logger } from './logger.js';
 
-export const BUILD_VERSION = '2025-11-11T00:00Z';
+export const BUILD_VERSION = '2025-11-12T14:30Z';
 
 const VERSION_STORAGE_KEY = 'cm:build-version';
 const CACHE_CLEANUP_FLAG = 'cm:build-cache-cleared';
