@@ -237,17 +237,34 @@ def extract_price_from_record(record, set_code, card_uid_lookup):
     if not product_id or not name or not ext_number:
         return None
     
+    # Parse card name - TCGCSV format can be:
+    # - "CardName" or
+    # - "CardName - Number/Total"
+    # We need to extract just the card name part
+    if ' - ' in name and '/' in name:
+        # Has the " - Number/Total" suffix, extract just the name
+        card_name = name.split(' - ')[0].strip()
+    else:
+        card_name = name
+    
     # Parse price
     try:
         price = float(market_price) if market_price else 0.0
     except ValueError:
         price = 0.0
     
-    # Normalize card number (pad to 3 digits)
-    normalized_number = ext_number.zfill(3) if ext_number.isdigit() else ext_number
+    # Extract card number from extNumber (format is "Number/Total")
+    # We only want the number part before the slash
+    if '/' in ext_number:
+        card_number = ext_number.split('/')[0]
+    else:
+        card_number = ext_number
+    
+    # Normalize card number (pad to 3 digits if it's purely numeric)
+    normalized_number = card_number.zfill(3) if card_number.isdigit() else card_number
     
     # Build UID
-    card_uid = f"{name}::{set_code}::{normalized_number}"
+    card_uid = f"{card_name}::{set_code}::{normalized_number}"
     
     # Only keep if this card is in our lookup
     if card_uid not in card_uid_lookup:
