@@ -19,7 +19,10 @@ class ParallelImageLoader {
    * @param {number} maxParallel - Maximum candidates to try in parallel
    * @returns {Promise<string|null>} - First successful URL or null
    */
-  async loadImageParallel(candidates, maxParallel = this.maxConcurrentPerImage) {
+  async loadImageParallel(
+    candidates,
+    maxParallel = this.maxConcurrentPerImage
+  ) {
     if (!Array.isArray(candidates) || candidates.length === 0) {
       return null;
     }
@@ -40,7 +43,10 @@ class ParallelImageLoader {
     }
 
     // Create loading promise
-    const loadingPromise = this._loadCandidatesParallel(candidates, maxParallel);
+    const loadingPromise = this._loadCandidatesParallel(
+      candidates,
+      maxParallel
+    );
     this.loadingImages.set(cacheKey, loadingPromise);
 
     try {
@@ -67,7 +73,9 @@ class ParallelImageLoader {
 
     try {
       // Race the first batch - return as soon as any succeeds
-      const result = await Promise.any(firstBatch.map(url => this._loadSingleImage(url)));
+      const result = await Promise.any(
+        firstBatch.map(url => this._loadSingleImage(url))
+      );
       return result;
     } catch (firstBatchError) {
       // All first batch failed, try remaining candidates sequentially
@@ -138,7 +146,10 @@ class ParallelImageLoader {
 
     try {
       // Load image in parallel
-      const successfulUrl = await this.loadImageParallel(candidates, maxParallel);
+      const successfulUrl = await this.loadImageParallel(
+        candidates,
+        maxParallel
+      );
 
       if (successfulUrl) {
         // Set the successful URL
@@ -194,7 +205,9 @@ class ParallelImageLoader {
     }
 
     for (const chunk of chunks) {
-      await Promise.allSettled(chunk.map(candidates => this.loadImageParallel(candidates)));
+      await Promise.allSettled(
+        chunk.map(candidates => this.loadImageParallel(candidates))
+      );
     }
   }
 

@@ -13,7 +13,11 @@ import { CONFIG } from '../config.js';
  * @param {boolean} [immediate] - Whether to execute immediately on first call
  * @returns {(...args: any[]) => void} Debounced function
  */
-export function debounce(func, wait = CONFIG.UI.DEBOUNCE_MS, immediate = false) {
+export function debounce(
+  func,
+  wait = CONFIG.UI.DEBOUNCE_MS,
+  immediate = false
+) {
   let timeout;
   return function executedFunction(...args) {
     const later = () => {
@@ -151,7 +155,9 @@ export function validateElements(selectors, context = 'page') {
   });
 
   if (missing.length > 0) {
-    throw new Error(`Missing required elements in ${context}: ${missing.join(', ')}`);
+    throw new Error(
+      `Missing required elements in ${context}: ${missing.join(', ')}`
+    );
   }
 
   return elements;

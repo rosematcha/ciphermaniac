@@ -14,7 +14,9 @@ import { logger } from './utils/logger.js';
 function getRequiredElement(id, Constructor) {
   const element = document.getElementById(id);
   if (!element || !(element instanceof Constructor)) {
-    throw new Error(`Element with id "${id}" not found or not a ${Constructor.name}`);
+    throw new Error(
+      `Element with id "${id}" not found or not a ${Constructor.name}`
+    );
   }
   return element;
 }
@@ -65,7 +67,10 @@ class FeedbackForm {
       contactDetails: getRequiredElement('contactDetails', HTMLElement),
       desktopBrowser: getRequiredElement('desktopBrowser', HTMLSelectElement),
       mobileBrowser: getRequiredElement('mobileBrowser', HTMLSelectElement),
-      otherDesktopBrowser: getRequiredElement('otherDesktopBrowser', HTMLElement),
+      otherDesktopBrowser: getRequiredElement(
+        'otherDesktopBrowser',
+        HTMLElement
+      ),
       otherMobileBrowser: getRequiredElement('otherMobileBrowser', HTMLElement),
       status: getRequiredElement('submitStatus', HTMLElement)
     };
@@ -73,11 +78,21 @@ class FeedbackForm {
   }
 
   initializeEventListeners() {
-    this.elements.feedbackType.addEventListener('change', () => this.handleFeedbackTypeChange());
-    this.elements.platform.addEventListener('change', () => this.handlePlatformChange());
-    this.elements.followUp.addEventListener('change', () => this.handleFollowUpChange());
-    this.elements.desktopBrowser.addEventListener('change', () => this.handleBrowserChange('desktop'));
-    this.elements.mobileBrowser.addEventListener('change', () => this.handleBrowserChange('mobile'));
+    this.elements.feedbackType.addEventListener('change', () =>
+      this.handleFeedbackTypeChange()
+    );
+    this.elements.platform.addEventListener('change', () =>
+      this.handlePlatformChange()
+    );
+    this.elements.followUp.addEventListener('change', () =>
+      this.handleFollowUpChange()
+    );
+    this.elements.desktopBrowser.addEventListener('change', () =>
+      this.handleBrowserChange('desktop'),
+    );
+    this.elements.mobileBrowser.addEventListener('change', () =>
+      this.handleBrowserChange('mobile'),
+    );
 
     this.form.addEventListener('submit', event => this.handleSubmit(event));
   }
@@ -90,21 +105,24 @@ class FeedbackForm {
       bugDetails.style.display = 'block';
       setRequiredFields(bugDetails, true);
       if (feedbackTextarea instanceof HTMLTextAreaElement) {
-        feedbackTextarea.placeholder = 'Please describe your bug report or feature request in detail...';
+        feedbackTextarea.placeholder =
+          'Please describe your bug report or feature request in detail...';
       }
     } else if (feedbackType.value === 'love') {
       bugDetails.style.display = 'none';
       setRequiredFields(bugDetails, false);
       this.resetPlatformFields();
       if (feedbackTextarea instanceof HTMLTextAreaElement) {
-        feedbackTextarea.placeholder = 'User-sama... I didn\'t know you felt that way...';
+        feedbackTextarea.placeholder =
+          'User-sama... I didn\'t know you felt that way...';
       }
     } else {
       bugDetails.style.display = 'none';
       setRequiredFields(bugDetails, false);
       this.resetPlatformFields();
       if (feedbackTextarea instanceof HTMLTextAreaElement) {
-        feedbackTextarea.placeholder = 'Please describe your bug report or feature request in detail...';
+        feedbackTextarea.placeholder =
+          'Please describe your bug report or feature request in detail...';
       }
     }
   }
@@ -144,7 +162,10 @@ class FeedbackForm {
 
   handleBrowserChange(platform) {
     const browserSelect = this.elements[`${platform}Browser`];
-    const otherBrowserDiv = this.elements[`other${platform.charAt(0).toUpperCase() + platform.slice(1)}Browser`];
+    const otherBrowserDiv =
+      this.elements[
+        `other${platform.charAt(0).toUpperCase() + platform.slice(1)}Browser`
+      ];
 
     if (browserSelect.value === 'other') {
       otherBrowserDiv.style.display = 'block';
@@ -231,13 +252,15 @@ class FeedbackForm {
       const response = await fetch('/api/feedback', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData)
       });
 
       if (response.ok) {
-        this.showStatus('Thank you! Your feedback has been submitted successfully.');
+        this.showStatus(
+          'Thank you! Your feedback has been submitted successfully.',
+        );
         this.form.reset();
         this.handleFeedbackTypeChange();
         this.handleFollowUpChange();
@@ -248,7 +271,10 @@ class FeedbackForm {
       }
     } catch (error) {
       logger.error('Submission error', error);
-      this.showStatus('Sorry, there was an error submitting your feedback. Please try again later.', true);
+      this.showStatus(
+        'Sorry, there was an error submitting your feedback. Please try again later.',
+        true
+      );
     } finally {
       submitButton.disabled = false;
       submitButton.textContent = originalText;

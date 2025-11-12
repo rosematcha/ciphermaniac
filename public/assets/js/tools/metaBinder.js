@@ -1,13 +1,20 @@
-﻿import { fetchDecks, fetchOverrides, fetchTournamentsList, getCardPrice } from '../api.js';
+﻿import {
+  fetchDecks,
+  fetchOverrides,
+  fetchTournamentsList,
+  getCardPrice
+} from '../api.js';
 import { analyzeEvents, buildBinderDataset } from './metaBinderData.js';
 import { buildThumbCandidates } from '../thumbs.js';
 import { debounce } from '../utils/performance.js';
 import { storage } from '../utils/storage.js';
 import { logger } from '../utils/logger.js';
+import { CONFIG } from '../config.js';
 
 const DEFAULT_RECENT_EVENTS = 6;
 const CARDS_PER_PAGE = 12;
 const STORAGE_KEY = 'binderSelections';
+const DEFAULT_ONLINE_META = 'Online - Last 14 Days';
 
 const state = {
   tournaments: [],
@@ -35,7 +42,9 @@ const elements = {
   archetypesList: document.getElementById('binder-archetypes'),
   archetypesAll: document.getElementById('binder-archetypes-all'),
   archetypesClear: document.getElementById('binder-archetypes-clear'),
-  archetypeSearch: /** @type {HTMLInputElement|null} */ (document.getElementById('binder-archetype-search')),
+  archetypeSearch: /** @type {HTMLInputElement|null} */ (
+    document.getElementById('binder-archetype-search')
+  ),
   stats: document.getElementById('binder-stats'),
   loading: document.getElementById('binder-loading'),
   error: document.getElementById('binder-error'),
@@ -44,8 +53,17 @@ const elements = {
   app: document.querySelector('.binder-app'),
   generate: document.getElementById('binder-generate'),
   pendingMessage: document.getElementById('binder-pending'),
-  cardTemplate: /** @type {HTMLTemplateElement|null} */ (document.getElementById('binder-card-template')),
-  placeholderTemplate: /** @type {HTMLTemplateElement|null} */ (document.getElementById('binder-card-placeholder'))
+  cardTemplate: /** @type {HTMLTemplateElement|null} */ (
+    document.getElementById('binder-card-template')
+  ),
+  placeholderTemplate: /** @type {HTMLTemplateElement|null} */ (
+    document.getElementById('binder-card-placeholder')
+  ),
+  exportButton: document.getElementById('binder-export'),
+  importButton: document.getElementById('binder-import'),
+  importFile: /** @type {HTMLInputElement|null} */ (
+    document.getElementById('binder-import-file')
+  )
 };
 
 function setLoading(isLoading) {
@@ -65,7 +83,12 @@ function setLoading(isLoading) {
 }
 
 function showError(message) {
-  if (!elements.error || !elements.errorMessage || !elements.content || !elements.loading) {
+  if (
+    !elements.error ||
+    !elements.errorMessage ||
+    !elements.content ||
+    !elements.loading
+  ) {
     return;
   }
   elements.loading.hidden = true;
@@ -90,7 +113,8 @@ function setPendingMessage(message) {
 function updateGenerateState() {
   if (elements.generate) {
     const hasSelection = state.selectedTournaments.size > 0;
-    const actionable = !state.isLoading && !state.isGenerating && state.analysis && hasSelection;
+    const actionable =
+      !state.isLoading && !state.isGenerating && state.analysis && hasSelection;
     elements.generate.disabled = !actionable;
   }
 
@@ -107,12 +131,16 @@ function updateGenerateState() {
     return;
   }
   if (state.isBinderDirty) {
-    setPendingMessage('Selections updated. Click "Generate Binder" to refresh the layout.');
+    setPendingMessage(
+      'Selections updated. Click "Generate Binder" to refresh the layout.'
+    );
     return;
   }
   if (state.binderData) {
     const decks = state.binderData.meta.totalDecks;
-    setPendingMessage(`Layout generated for ${decks} deck${decks === 1 ? '' : 's'}.`);
+    setPendingMessage(
+      `Layout generated for ${decks} deck${decks === 1 ? '' : 's'}.`,
+    );
     return;
   }
   setPendingMessage('Click "Generate Binder" to build your layout.');
@@ -130,7 +158,8 @@ function computeSelectionDecks() {
     state.selectionDecks = 0;
     return;
   }
-  const allowed = state.selectedArchetypes.size > 0 ? state.selectedArchetypes : null;
+  const allowed =
+    state.selectedArchetypes.size > 0 ? state.selectedArchetypes : null;
   let count = 0;
   for (const event of state.analysis.events) {
     for (const deck of event.decks) {
@@ -203,14 +232,19 @@ function inflateCards(cards) {
 
 function createCardElement(card, options = {}) {
   const template = ensureCardTemplate();
-  const clone = /** @type {HTMLElement} */ (template.content.firstElementChild.cloneNode(true));
+  const clone = /** @type {HTMLElement} */ (
+    template.content.firstElementChild.cloneNode(true)
+  );
   const img = /** @type {HTMLImageElement|null} */ (clone.querySelector('img'));
   const copies = clone.querySelector('.binder-card__copies');
   const nameEl = clone.querySelector('.binder-card__name');
   const metaEl = clone.querySelector('.binder-card__meta');
 
   if (copies) {
-    const totalCopies = Math.max(1, Number(card.copyTotal) || Number(card.maxCopies) || 1);
+    const totalCopies = Math.max(
+      1,
+      Number(card.copyTotal) || Number(card.maxCopies) || 1
+    );
     const copyIndex = Math.max(1, Number(card.copyIndex) || 1);
     if (totalCopies > 1) {
       copies.textContent = `${copyIndex}/${totalCopies}`;
@@ -240,13 +274,23 @@ function createCardElement(card, options = {}) {
 
 function createPlaceholderElement() {
   const template = ensurePlaceholderTemplate();
-  return /** @type {HTMLElement} */ (template.content.firstElementChild.cloneNode(true));
+  return /** @type {HTMLElement} */ (
+    template.content.firstElementChild.cloneNode(true)
+  );
 }
 
 function applyCardImage(imageElement, card) {
   const imgEl = imageElement;
-  const variant = card.set && card.number ? { set: card.set, number: card.number } : undefined;
-  const candidates = buildThumbCandidates(card.name, false, state.overrides, variant);
+  const variant =
+    card.set && card.number
+      ? { set: card.set, number: card.number }
+      : undefined;
+  const candidates = buildThumbCandidates(
+    card.name,
+    false,
+    state.overrides,
+    variant
+  );
   const wrapper = imgEl.closest('.binder-card__thumb');
 
   if (!candidates.length) {
@@ -292,13 +336,18 @@ function applyCardImage(imageElement, card) {
 
 function buildMetaLine(card, options) {
   if (options.mode === 'archetype' && options.archetype) {
-    const usage = card.usageByArchetype.find(entry => entry.archetype === options.archetype);
+    const usage = card.usageByArchetype.find(
+      entry => entry.archetype === options.archetype
+    );
     if (usage) {
       return `${formatPercent(usage.ratio)} | ${formatFractionUsage(usage.decks, usage.totalDecks)}`;
     }
   }
 
-  const parts = [`${formatPercent(card.deckShare)} of decks`, `${card.totalDecksWithCard} decks`];
+  const parts = [
+    `${formatPercent(card.deckShare)} of decks`,
+    `${card.totalDecksWithCard} decks`
+  ];
 
   if (card.usageByArchetype.length > 0) {
     const top = card.usageByArchetype[0];
@@ -311,7 +360,9 @@ function buildMetaLine(card, options) {
 function buildTooltip(card, options) {
   const lines = [`Max copies: ${Math.max(1, Number(card.maxCopies) || 1)}`];
   if (options.mode === 'archetype' && options.archetype) {
-    const usage = card.usageByArchetype.find(entry => entry.archetype === options.archetype);
+    const usage = card.usageByArchetype.find(
+      entry => entry.archetype === options.archetype
+    );
     if (usage) {
       lines.push(
         `Primary usage: ${formatPercent(usage.ratio)} in ${usage.displayName} ` +
@@ -319,11 +370,15 @@ function buildTooltip(card, options) {
       );
     }
   } else {
-    lines.push(`Overall usage: ${formatPercent(card.deckShare)} (${card.totalDecksWithCard} decks)`);
+    lines.push(
+      `Overall usage: ${formatPercent(card.deckShare)} (${card.totalDecksWithCard} decks)`
+    );
   }
 
   const spill = card.usageByArchetype
-    .filter(entry => !options.archetype || entry.archetype !== options.archetype)
+    .filter(
+      entry => !options.archetype || entry.archetype !== options.archetype
+    )
     .slice(0, 3)
     .map(entry => `${formatPercent(entry.ratio)} in ${entry.displayName}`);
 
@@ -377,7 +432,11 @@ function renderBinderSections() {
     return;
   }
 
-  if (!state.binderData || state.isBinderDirty || state.binderData.meta.totalDecks === 0) {
+  if (
+    !state.binderData ||
+    state.isBinderDirty ||
+    state.binderData.meta.totalDecks === 0
+  ) {
     const prompt =
       state.isBinderDirty && state.binderData
         ? 'Selections changed. Click "Generate Binder" to refresh the layout.'
@@ -392,15 +451,38 @@ function renderBinderSections() {
 
   const staticSections = [
     { key: 'aceSpecs', title: 'Ace Specs', cards: sections.aceSpecs },
-    { key: 'staplePokemon', title: 'High-Usage Pokemon Across Archetypes', cards: sections.staplePokemon },
-    { key: 'frequentSupporters', title: 'Frequent Supporters', cards: sections.frequentSupporters },
-    { key: 'nicheSupporters', title: 'Niche / Archetype Supporters', cards: sections.nicheSupporters },
-    { key: 'stadiums', title: 'Stadiums', cards: sections.stadiums },
+    {
+      key: 'frequentItems',
+      title: 'Frequent Items',
+      cards: sections.frequentItems
+    },
+    {
+      key: 'nicheItems',
+      title: 'Niche / Tech Items',
+      cards: sections.nicheItems
+    },
+    {
+      key: 'frequentSupporters',
+      title: 'Frequent Supporters',
+      cards: sections.frequentSupporters
+    },
+    {
+      key: 'nicheSupporters',
+      title: 'Niche / Archetype Supporters',
+      cards: sections.nicheSupporters
+    },
     { key: 'tools', title: 'Tools', cards: sections.tools },
-    { key: 'frequentItems', title: 'Frequent Items', cards: sections.frequentItems },
-    { key: 'nicheItems', title: 'Niche / Tech Items', cards: sections.nicheItems },
-    { key: 'specialEnergy', title: 'Special Energy', cards: sections.specialEnergy },
-    { key: 'basicEnergy', title: 'Basic Energy', cards: sections.basicEnergy }
+    { key: 'stadiums', title: 'Stadiums', cards: sections.stadiums },
+    {
+      key: 'specialEnergy',
+      title: 'Special Energy',
+      cards: sections.specialEnergy
+    },
+    {
+      key: 'staplePokemon',
+      title: 'High-Usage Pokemon Across Archetypes',
+      cards: sections.staplePokemon
+    }
   ];
 
   for (const info of staticSections) {
@@ -432,7 +514,8 @@ function renderBinderSections() {
   if (sections.archetypePokemon.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'binder-empty';
-    empty.textContent = 'No archetype-specific Pokemon meet the current criteria.';
+    empty.textContent =
+      'No archetype-specific Pokemon meet the current criteria.';
     archetypeSection.appendChild(empty);
   } else {
     for (const group of sections.archetypePokemon) {
@@ -446,7 +529,9 @@ function renderBinderSections() {
       title.textContent = group.displayName;
       header.appendChild(title);
 
-      const stat = meta.archetypeStats.find(entry => entry.canonical === group.canonical);
+      const stat = meta.archetypeStats.find(
+        entry => entry.canonical === group.canonical
+      );
       const summary = document.createElement('p');
       summary.className = 'binder-archetype__summary';
       const deckCount = stat ? stat.deckCount : 0;
@@ -457,7 +542,10 @@ function renderBinderSections() {
 
       const pagesContainer = document.createElement('div');
       pagesContainer.className = 'binder-pages';
-      renderBinderPages(group.cards, pagesContainer, { mode: 'archetype', archetype: group.canonical });
+      renderBinderPages(group.cards, pagesContainer, {
+        mode: 'archetype',
+        archetype: group.canonical
+      });
       article.appendChild(pagesContainer);
 
       archetypeSection.appendChild(article);
@@ -499,7 +587,9 @@ function updateStats() {
   if (!binderData || state.isBinderDirty) {
     const parts = [];
     parts.push(`${eventCount} event${eventCount === 1 ? '' : 's'} selected`);
-    parts.push(`${selectionDecks} deck${selectionDecks === 1 ? '' : 's'} available`);
+    parts.push(
+      `${selectionDecks} deck${selectionDecks === 1 ? '' : 's'} available`,
+    );
     if (state.isBinderDirty && binderData) {
       parts.push('Re-generate binder to update the layout');
     }
@@ -513,7 +603,11 @@ function updateStats() {
     : selectionDecks
       ? Math.min(1, binderDecks / selectionDecks)
       : 0;
-  const coverageMeta = metrics ? metrics.coverageMeta : metaDecks ? Math.min(1, binderDecks / metaDecks) : 0;
+  const coverageMeta = metrics
+    ? metrics.coverageMeta
+    : metaDecks
+      ? Math.min(1, binderDecks / metaDecks)
+      : 0;
   const priceText = metrics ? formatCurrency(metrics.priceTotal) : '$0.00';
   const missingText =
     metrics && metrics.missingPrices
@@ -578,7 +672,8 @@ function renderArchetypeControls() {
   }
 
   if (!state.analysis) {
-    elements.archetypesList.innerHTML = '<p class="binder-empty">Select events to load archetypes.</p>';
+    elements.archetypesList.innerHTML =
+      '<p class="binder-empty">Select events to load archetypes.</p>';
     return;
   }
 
@@ -614,7 +709,10 @@ function renderArchetypeControls() {
     checkbox.type = 'checkbox';
     checkbox.id = id;
     checkbox.value = archetype.canonical;
-    checkbox.checked = state.selectedArchetypes.size === 0 ? true : state.selectedArchetypes.has(archetype.canonical);
+    checkbox.checked =
+      state.selectedArchetypes.size === 0
+        ? true
+        : state.selectedArchetypes.has(archetype.canonical);
     checkbox.addEventListener('change', () => {
       handleArchetypeToggle(archetype.canonical, checkbox.checked);
     });
@@ -632,7 +730,9 @@ function renderArchetypeControls() {
   if (!fragment.childElementCount) {
     const empty = document.createElement('p');
     empty.className = 'binder-empty';
-    empty.textContent = filter ? 'No archetypes match your search.' : 'No archetypes available.';
+    empty.textContent = filter
+      ? 'No archetypes match your search.'
+      : 'No archetypes available.';
     elements.archetypesList.appendChild(empty);
     return;
   }
@@ -659,7 +759,9 @@ function handleSelectAllTournaments() {
 
 function handleSelectRecentTournaments() {
   const recent = state.tournaments.slice(0, DEFAULT_RECENT_EVENTS);
-  state.selectedTournaments = recent.length ? new Set(recent) : new Set(state.tournaments);
+  state.selectedTournaments = recent.length
+    ? new Set(recent)
+    : new Set(state.tournaments);
   renderTournamentsControls();
   saveSelections();
   recomputeFromSelection();
@@ -688,7 +790,8 @@ function handleSelectAllArchetypes() {
   if (!state.analysis) {
     return;
   }
-  state.selectedArchetypes = new Set(state.analysis.archetypeStats.keys());
+  // Empty set means "all selected" in our logic
+  state.selectedArchetypes.clear();
   renderArchetypeControls();
   computeSelectionDecks();
   markBinderDirty();
@@ -697,7 +800,12 @@ function handleSelectAllArchetypes() {
 }
 
 function handleClearArchetypes() {
-  state.selectedArchetypes.clear();
+  if (!state.analysis) {
+    return;
+  }
+  // Create a set with a sentinel value that won't match any real archetype
+  // This ensures no archetypes are selected
+  state.selectedArchetypes = new Set(['__NONE__']);
   renderArchetypeControls();
   computeSelectionDecks();
   markBinderDirty();
@@ -715,7 +823,10 @@ async function ensureDecksLoaded(tournaments) {
     const decks = await fetchDecks(tournament);
     const deckList = Array.isArray(decks) ? decks : [];
     state.decksCache.set(tournament, deckList);
-    logger.debug('Loaded decks for binder', { tournament, decks: deckList.length });
+    logger.debug('Loaded decks for binder', {
+      tournament,
+      decks: deckList.length
+    });
   });
 
   await Promise.all(loaders);
@@ -780,7 +891,11 @@ async function computeBinderMetrics(binderData, context) {
 
   for (const card of allCards) {
     const quantity = Math.max(1, Number(card.maxCopies) || 1);
-    const priceKey = card.priceKey || (card.set && card.number ? `${card.name}::${card.set}::${card.number}` : null);
+    const priceKey =
+      card.priceKey ||
+      (card.set && card.number
+        ? `${card.name}::${card.set}::${card.number}`
+        : null);
     const mapKey = priceKey || card.name;
     if (!unique.has(mapKey)) {
       unique.set(mapKey, { card, quantity });
@@ -793,20 +908,30 @@ async function computeBinderMetrics(binderData, context) {
   const priceEntries = await Promise.all(
     Array.from(unique.values()).map(async entry => {
       const { card, quantity } = entry;
-      const lookupId = card.priceKey || (card.set && card.number ? `${card.name}::${card.set}::${card.number}` : null);
+      const lookupId =
+        card.priceKey ||
+        (card.set && card.number
+          ? `${card.name}::${card.set}::${card.number}`
+          : null);
       let price = null;
       if (lookupId) {
         try {
           price = await getCardPrice(lookupId);
         } catch (error) {
-          logger.debug('Price lookup failed', { id: lookupId, error: error.message });
+          logger.debug('Price lookup failed', {
+            id: lookupId,
+            error: error.message
+          });
         }
       }
       if (price == null && !lookupId) {
         try {
           price = await getCardPrice(card.name);
         } catch (error) {
-          logger.debug('Fallback price lookup failed', { name: card.name, error: error.message });
+          logger.debug('Fallback price lookup failed', {
+            name: card.name,
+            error: error.message
+          });
         }
       }
       const numericPrice = typeof price === 'number' ? price : Number(price);
@@ -834,8 +959,12 @@ async function computeBinderMetrics(binderData, context) {
   return {
     priceTotal,
     missingPrices,
-    coverageSelected: selectedDecks ? Math.min(1, binderData.meta.totalDecks / selectedDecks) : 0,
-    coverageMeta: metaDecks ? Math.min(1, binderData.meta.totalDecks / metaDecks) : 0
+    coverageSelected: selectedDecks
+      ? Math.min(1, binderData.meta.totalDecks / selectedDecks)
+      : 0,
+    coverageMeta: metaDecks
+      ? Math.min(1, binderData.meta.totalDecks / metaDecks)
+      : 0
   };
 }
 
@@ -870,7 +999,9 @@ async function recomputeFromSelection() {
     let nextSelectedArchetypes;
     if (pendingArchetypeSelection) {
       nextSelectedArchetypes = new Set(
-        Array.from(pendingArchetypeSelection).filter(archetype => availableArchetypes.has(archetype))
+        Array.from(pendingArchetypeSelection).filter(archetype =>
+          availableArchetypes.has(archetype)
+        ),
       );
       pendingArchetypeSelection = null;
       if (!nextSelectedArchetypes.size) {
@@ -882,7 +1013,9 @@ async function recomputeFromSelection() {
         nextSelectedArchetypes = new Set(availableArchetypes);
       } else {
         nextSelectedArchetypes = new Set(
-          Array.from(nextSelectedArchetypes).filter(archetype => availableArchetypes.has(archetype))
+          Array.from(nextSelectedArchetypes).filter(archetype =>
+            availableArchetypes.has(archetype)
+          ),
         );
         if (!nextSelectedArchetypes.size) {
           nextSelectedArchetypes = new Set(availableArchetypes);
@@ -906,7 +1039,12 @@ async function recomputeFromSelection() {
 }
 
 async function generateBinder() {
-  if (state.isLoading || state.isGenerating || !state.analysis || !state.selectedTournaments.size) {
+  if (
+    state.isLoading ||
+    state.isGenerating ||
+    !state.analysis ||
+    !state.selectedTournaments.size
+  ) {
     return;
   }
 
@@ -915,7 +1053,10 @@ async function generateBinder() {
     updateGenerateState();
     setPendingMessage('Generating binder layout...');
 
-    const filterSet = state.selectedArchetypes.size > 0 ? new Set(state.selectedArchetypes) : null;
+    const filterSet =
+      state.selectedArchetypes.size > 0
+        ? new Set(state.selectedArchetypes)
+        : null;
     const binderData = buildBinderDataset(state.analysis, filterSet);
     const metrics = await computeBinderMetrics(binderData, {
       selectedDecks: state.selectionDecks,
@@ -970,6 +1111,142 @@ function bindControlEvents() {
   elements.generate?.addEventListener('click', () => {
     generateBinder();
   });
+
+  elements.exportButton?.addEventListener('click', () => {
+    handleExportLayout();
+  });
+
+  elements.importButton?.addEventListener('click', () => {
+    elements.importFile?.click();
+  });
+
+  elements.importFile?.addEventListener('change', event => {
+    handleImportLayout(event);
+  });
+}
+
+function handleExportLayout() {
+  logger.info('Export layout clicked', { hasBinderData: !!state.binderData });
+  
+  if (!state.binderData) {
+    const message = 'Please generate a binder layout first before exporting.';
+    alert(message);
+    logger.warn(message);
+    return;
+  }
+
+  try {
+    const exportData = {
+      version: 1,
+      timestamp: new Date().toISOString(),
+      tournaments: Array.from(state.selectedTournaments),
+      archetypes: Array.from(state.selectedArchetypes).filter(
+        arch => arch !== '__NONE__'
+      ),
+      binderData: state.binderData,
+      metrics: state.metrics
+    };
+
+    const json = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const filename = `meta-binder-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    
+    // Clean up after a delay to ensure download starts
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 100);
+
+    logger.info('Exported binder layout', {
+      filename,
+      tournaments: exportData.tournaments.length,
+      archetypes: exportData.archetypes.length,
+      size: json.length
+    });
+  } catch (error) {
+    logger.error('Failed to export binder layout', error);
+    alert('Failed to export layout. Check the console for details.');
+  }
+}
+
+async function handleImportLayout(event) {
+  const input = /** @type {HTMLInputElement} */ (event.target);
+  const file = input.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  try {
+    const text = await file.text();
+    const importData = JSON.parse(text);
+
+    if (!importData.version || !importData.binderData) {
+      throw new Error('Invalid binder export file format');
+    }
+
+    // Validate tournaments exist
+    const validTournaments = importData.tournaments.filter(t =>
+      state.tournaments.includes(t)
+    );
+    if (validTournaments.length === 0) {
+      alert(
+        'None of the tournaments in this export are currently available. Please ensure the same tournaments are loaded.',
+      );
+      return;
+    }
+
+    // Set state from import
+    state.selectedTournaments = new Set(validTournaments);
+    state.selectedArchetypes = new Set(importData.archetypes || []);
+    state.binderData = importData.binderData;
+    state.metrics = importData.metrics || null;
+    state.isBinderDirty = false;
+
+    // Re-analyze to ensure data consistency
+    await recomputeFromSelection();
+
+    // Update UI
+    renderTournamentsControls();
+    renderArchetypeControls();
+    renderBinderSections();
+    updateStats();
+    saveSelections();
+
+    logger.info('Imported binder layout', {
+      tournaments: validTournaments.length,
+      archetypes: importData.archetypes?.length || 0
+    });
+
+    alert('Binder layout imported successfully!');
+  } catch (error) {
+    logger.error('Failed to import binder layout', error);
+    alert('Failed to import binder layout. Please ensure the file is valid.');
+  } finally {
+    // Reset file input
+    input.value = '';
+  }
+}
+
+async function checkOnlineMetaAvailability() {
+  try {
+    const response = await fetch(
+      `${CONFIG.API.R2_BASE}/reports/${encodeURIComponent(DEFAULT_ONLINE_META)}/master.json`,
+      {
+        method: 'HEAD'
+      }
+    );
+    return response.ok;
+  } catch (error) {
+    logger.debug('Online meta availability check failed', error);
+    return false;
+  }
 }
 
 async function initialize() {
@@ -979,20 +1256,33 @@ async function initialize() {
     hideError();
     setPendingMessage('Select events, then click "Generate Binder" to begin.');
 
-    const [tournaments, overrides] = await Promise.all([fetchTournamentsList(), fetchOverrides().catch(() => ({}))]);
+    const [tournaments, overrides, hasOnlineMeta] = await Promise.all([
+      fetchTournamentsList(),
+      fetchOverrides().catch(() => ({})),
+      checkOnlineMetaAvailability()
+    ]);
 
     state.tournaments = tournaments;
     state.overrides = overrides || {};
 
+    // Add online meta at the top if it exists
+    if (hasOnlineMeta && !state.tournaments.includes(DEFAULT_ONLINE_META)) {
+      state.tournaments.unshift(DEFAULT_ONLINE_META);
+    }
+
     if (!state.tournaments.length) {
-      showError('No tournaments are available. Add reports to /reports to use this tool.');
+      showError(
+        'No tournaments are available. This may be a temporary network issue. Please refresh the page to try again.',
+      );
       return;
     }
 
     const savedSelections = loadSelections();
     if (savedSelections && savedSelections.tournaments.length) {
       state.selectedTournaments = new Set(
-        savedSelections.tournaments.filter(tournament => state.tournaments.includes(tournament))
+        savedSelections.tournaments.filter(tournament =>
+          state.tournaments.includes(tournament)
+        ),
       );
       if (savedSelections.archetypes.length) {
         pendingArchetypeSelection = new Set(savedSelections.archetypes);
@@ -1001,7 +1291,9 @@ async function initialize() {
 
     if (!state.selectedTournaments.size) {
       const defaults = state.tournaments.slice(0, DEFAULT_RECENT_EVENTS);
-      state.selectedTournaments = defaults.length ? new Set(defaults) : new Set(state.tournaments);
+      state.selectedTournaments = defaults.length
+        ? new Set(defaults)
+        : new Set(state.tournaments);
     }
 
     renderTournamentsControls();

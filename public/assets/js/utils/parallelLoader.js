@@ -35,11 +35,11 @@ export function createProgressIndicator(title, steps, options = {}) {
         bottom: config.location.includes('bottom') ? '20px' : 'auto',
         left: config.location.includes('left') ? '20px' : 'auto',
         right: config.location.includes('right') ? '20px' : 'auto',
-        zIndex: '10000'
+        zIndex: '10000',
       }
       : {
         position: 'relative',
-        margin: '16px 0'
+        margin: '16px 0',
       };
 
   const positionCss = Object.entries(positionStyles)
@@ -61,7 +61,8 @@ export function createProgressIndicator(title, steps, options = {}) {
 
   // Title
   const titleEl = document.createElement('div');
-  titleEl.style.cssText = 'font-weight: bold; margin-bottom: 12px; font-size: 14px;';
+  titleEl.style.cssText =
+    'font-weight: bold; margin-bottom: 12px; font-size: 14px;';
   titleEl.textContent = title;
   container.appendChild(titleEl);
 
@@ -102,7 +103,8 @@ export function createProgressIndicator(title, steps, options = {}) {
   const stepElements = steps.map(stepName => {
     const stepEl = document.createElement('div');
     stepEl.className = 'progress-step';
-    stepEl.style.cssText = 'display: flex; align-items: center; margin-bottom: 6px; font-size: 13px;';
+    stepEl.style.cssText =
+      'display: flex; align-items: center; margin-bottom: 6px; font-size: 13px;';
 
     const icon = document.createElement('span');
     icon.className = 'step-icon';
@@ -172,7 +174,8 @@ export function createProgressIndicator(title, steps, options = {}) {
 
     updateStep(index, status, details) {
       if (index >= 0 && index < stepElements.length) {
-        const wasCompleted = stepElements[index].classList.contains('completed');
+        const wasCompleted =
+          stepElements[index].classList.contains('completed');
         stepElements[index].updateStatus(status, details);
 
         if (status === 'complete' && !wasCompleted) {
@@ -249,7 +252,9 @@ export function createProgressIndicator(title, steps, options = {}) {
  * Call this if you suspect progress indicators are not being cleaned up properly
  */
 export function cleanupOrphanedProgressDisplay() {
-  const orphanedElements = document.querySelectorAll('.parallel-loader-progress');
+  const orphanedElements = document.querySelectorAll(
+    '.parallel-loader-progress',
+  );
   let cleaned = 0;
 
   orphanedElements.forEach(element => {
@@ -305,7 +310,8 @@ export async function processInParallel(items, processor, options = {}) {
   for (const chunk of chunks) {
     // eslint-disable-next-line no-loop-func
     const promises = chunk.map((item, chunkIndex) => {
-      const globalIndex = chunks.indexOf(chunk) * config.concurrency + chunkIndex;
+      const globalIndex =
+        chunks.indexOf(chunk) * config.concurrency + chunkIndex;
 
       const processWithRetry = async (attempts = 0) => {
         try {
@@ -319,7 +325,9 @@ export async function processInParallel(items, processor, options = {}) {
           return result;
         } catch (error) {
           if (attempts < config.retryAttempts && config.onError !== 'stop') {
-            await new Promise(resolve => setTimeout(resolve, config.retryDelay));
+            await new Promise(resolve =>
+              setTimeout(resolve, config.retryDelay)
+            );
             return processWithRetry(attempts + 1);
           }
 
@@ -425,7 +433,13 @@ export async function processBatched(items, processor, options = {}) {
  * @param {object} options - Configuration options
  * @returns {Promise<Array>} Results array
  */
-export async function loadWithCache(items, loader, cache, cacheKey, options = {}) {
+export async function loadWithCache(
+  items,
+  loader,
+  cache,
+  cacheKey,
+  options = {}
+) {
   const config = {
     concurrency: 6,
     onProgress: null,
@@ -475,7 +489,13 @@ export async function loadWithCache(items, loader, cache, cacheKey, options = {}
         return { item, result, fromCache: false };
       } catch (error) {
         if (config.onProgress) {
-          config.onProgress(cacheHits.length + index + 1, items.length, item, null, error);
+          config.onProgress(
+            cacheHits.length + index + 1,
+            items.length,
+            item,
+            null,
+            error
+          );
         }
         throw error;
       }
@@ -484,14 +504,22 @@ export async function loadWithCache(items, loader, cache, cacheKey, options = {}
       concurrency: config.concurrency,
       onProgress: config.onProgress
         ? (processed, total, item, result) => {
-          config.onProgress(cacheHits.length + processed, items.length, item, result);
+          config.onProgress(
+            cacheHits.length + processed,
+            items.length,
+            item,
+            result,
+          );
         }
         : null
-    }
+    },
   );
 
   // Save cache if function provided
-  if (config.saveCache && uncachedResults.some(resultItem => resultItem !== null)) {
+  if (
+    config.saveCache &&
+    uncachedResults.some(resultItem => resultItem !== null)
+  ) {
     try {
       config.saveCache();
     } catch (error) {
@@ -500,11 +528,19 @@ export async function loadWithCache(items, loader, cache, cacheKey, options = {}
   }
 
   // Merge results maintaining original order
-  const allResults = [...results, ...uncachedResults.filter(resultItem => resultItem !== null)];
+  const allResults = [
+    ...results,
+    ...uncachedResults.filter(resultItem => resultItem !== null)
+  ];
 
   // Sort back to original order
-  const itemIndexMap = new Map(items.map((item, itemIndex) => [item, itemIndex]));
-  allResults.sort((resultA, resultB) => itemIndexMap.get(resultA.item) - itemIndexMap.get(resultB.item));
+  const itemIndexMap = new Map(
+    items.map((item, itemIndex) => [item, itemIndex])
+  );
+  allResults.sort(
+    (resultA, resultB) =>
+      itemIndexMap.get(resultA.item) - itemIndexMap.get(resultB.item)
+  );
 
   return allResults.map(resultItem => resultItem.result);
 }

@@ -9,7 +9,11 @@ import { trackMissing } from './dev/missingThumbs.js';
 import { buildCardPath, normalizeCardNumber } from './card/routing.js';
 // import { setupImagePreloading } from './utils/imagePreloader.js'; // Disabled - using parallelImageLoader instead
 import { parallelImageLoader } from './utils/parallelImageLoader.js';
-import { setProperties as _setProperties, createElement, setStyles } from './utils/dom.js';
+import {
+  setProperties as _setProperties,
+  createElement,
+  setStyles
+} from './utils/dom.js';
 import { CONFIG } from './config.js';
 // Modal removed: navigate to card page instead
 
@@ -98,8 +102,14 @@ function showGridTooltip(html, x, y) {
   tooltip.style.display = 'block';
   const offsetX = 12;
   const offsetY = 12;
-  const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-  const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+  const vw = Math.max(
+    document.documentElement.clientWidth || 0,
+    window.innerWidth || 0
+  );
+  const vh = Math.max(
+    document.documentElement.clientHeight || 0,
+    window.innerHeight || 0
+  );
   let left = x + offsetX;
   let top = y + offsetY;
   const rect = tooltip.getBoundingClientRect();
@@ -121,7 +131,10 @@ function escapeHtml(str) {
   if (!str) {
     return '';
   }
-  return String(str).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
+  return String(str).replace(
+    /[&<>"]/g,
+    ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]
+  );
 }
 
 /**
@@ -132,7 +145,13 @@ function escapeHtml(str) {
  * @param visibleRows - Number of currently visible rows (optional)
  * @param totalRows - Total number of rows available (optional)
  */
-export function renderSummary(container, deckTotal, count, visibleRows = null, totalRows = null) {
+export function renderSummary(
+  container,
+  deckTotal,
+  count,
+  visibleRows = null,
+  totalRows = null
+) {
   if (!container) {
     return;
   } // Handle case where summary element doesn't exist
@@ -143,7 +162,11 @@ export function renderSummary(container, deckTotal, count, visibleRows = null, t
   parts.push(`${count} cards`);
 
   // Add row count if provided and there are more rows to show
-  if (Number.isFinite(visibleRows) && Number.isFinite(totalRows) && totalRows > visibleRows) {
+  if (
+    Number.isFinite(visibleRows) &&
+    Number.isFinite(totalRows) &&
+    totalRows > visibleRows
+  ) {
     parts.push(`showing ${visibleRows} of ${totalRows} rows`);
   }
 
@@ -182,8 +205,28 @@ export function render(items, overrides = {}, options = {}) {
     return;
   }
 
-  const prefersCompact = typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX_WIDTH;
-  const requestedLayout = options?.layoutMode === 'compact' ? 'compact' : 'standard';
+  // Track which cards were visible before this render
+  const previousCardIds = new Set();
+  const existingCards = grid.querySelectorAll('.card');
+  existingCards.forEach(card => {
+    const { uid } = card.dataset;
+    const { cardId } = card.dataset;
+    const { name } = card.dataset;
+    if (uid) {
+      previousCardIds.add(uid);
+    }
+    if (cardId) {
+      previousCardIds.add(cardId);
+    }
+    if (name) {
+      previousCardIds.add(name);
+    }
+  });
+
+  const prefersCompact =
+    typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX_WIDTH;
+  const requestedLayout =
+    options?.layoutMode === 'compact' ? 'compact' : 'standard';
   const layoutMode = requestedLayout;
   const showPrice = Boolean(options?.showPrice);
   const settings = /** @type {RenderOptions} */ ({
@@ -206,19 +249,35 @@ export function render(items, overrides = {}, options = {}) {
   }
 
   // Compute per-row layout and sync controls width using helper
-  const containerWidth = grid.clientWidth || grid.getBoundingClientRect().width || 0;
+  const containerWidth =
+    grid.clientWidth || grid.getBoundingClientRect().width || 0;
   const layout = computeLayout(containerWidth);
-  const { base, perRowBig, bigRowContentWidth, targetMedium, mediumScale, targetSmall, smallScale } = layout;
+  const {
+    base,
+    perRowBig,
+    bigRowContentWidth,
+    targetMedium,
+    mediumScale,
+    targetSmall,
+    smallScale
+  } = layout;
   syncControlsWidth(bigRowContentWidth);
 
-  const useSmallRows = forceCompact || (perRowBig >= 6 && targetSmall > targetMedium);
+  const useSmallRows =
+    forceCompact || (perRowBig >= 6 && targetSmall > targetMedium);
 
   const largeRowsLimit = forceCompact ? 0 : NUM_LARGE_ROWS;
   const mediumRowsLimit = forceCompact ? 0 : NUM_MEDIUM_ROWS;
 
   // Use the shared card creation function
   const makeCard = (it, useSm) => {
-    const cardEl = makeCardElement(it, useSm, overrides, { showPrice });
+    const cardEl = makeCardElement(
+      it,
+      useSm,
+      overrides,
+      { showPrice },
+      previousCardIds
+    );
     // Wrap in document fragment to match expected return type
     const frag = document.createDocumentFragment();
     frag.appendChild(cardEl);
@@ -240,11 +299,12 @@ export function render(items, overrides = {}, options = {}) {
 
     // Determine row type: large (0), medium (1), or small (2+)
     const isLarge = !forceCompact && rowIndex < largeRowsLimit;
-    const isMedium = !forceCompact && !isLarge && rowIndex < largeRowsLimit + mediumRowsLimit;
+    const isMedium =
+      !forceCompact && !isLarge && rowIndex < largeRowsLimit + mediumRowsLimit;
     const isSmall = forceCompact || (!isLarge && !isMedium && useSmallRows);
 
-    let scale; let 
-maxCount;
+    let scale;
+    let maxCount;
     if (forceCompact) {
       scale = smallScale;
       maxCount = targetSmall;
@@ -304,8 +364,12 @@ maxCount;
     while (idx < items.length) {
       const rowIdx = cnt;
       const isLargeLocal = !forceCompact && rowIdx < largeRowsLimit;
-      const isMediumLocal = !forceCompact && !isLargeLocal && rowIdx < largeRowsLimit + mediumRowsLimit;
-      const isSmallLocal = forceCompact || (!isLargeLocal && !isMediumLocal && useSmallRows);
+      const isMediumLocal =
+        !forceCompact &&
+        !isLargeLocal &&
+        rowIdx < largeRowsLimit + mediumRowsLimit;
+      const isSmallLocal =
+        forceCompact || (!isLargeLocal && !isMediumLocal && useSmallRows);
 
       let maxCount;
       if (forceCompact) {
@@ -361,7 +425,10 @@ maxCount;
 
     moreBtn.addEventListener('click', () => {
       // Load the next batch of rows incrementally
-      const targetRows = Math.min(rowIndex + CONFIG.UI.ROWS_PER_LOAD, estimateTotalRows);
+      const targetRows = Math.min(
+        rowIndex + CONFIG.UI.ROWS_PER_LOAD,
+        estimateTotalRows
+      );
 
       // Add loading state
       const originalText = moreBtn.textContent;
@@ -397,10 +464,15 @@ maxCount;
       // Check for 'Load more' shortcut (M key) when not focused on an input
       if (event.key === 'm' || event.key === 'M') {
         const activeTag = active?.tagName?.toLowerCase();
-        const isInputFocused = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
+        const isInputFocused =
+          activeTag === 'input' ||
+          activeTag === 'textarea' ||
+          activeTag === 'select';
 
         if (!isInputFocused) {
-          const moreBtn = /** @type {HTMLButtonElement | null} */ (grid.querySelector('.more-rows .btn'));
+          const moreBtn = /** @type {HTMLButtonElement | null} */ (
+            grid.querySelector('.more-rows .btn')
+          );
           if (moreBtn && !moreBtn.disabled) {
             event.preventDefault();
             moreBtn.click();
@@ -424,13 +496,19 @@ maxCount;
       const colIdx = Number(active.dataset.col ?? 0);
       const move = (dr, dc) => {
         const rowsEls = Array.from(grid.querySelectorAll('.row'));
-        const targetRowIndex = Math.max(0, Math.min(rowsEls.length - 1, rowIdx + dr));
+        const targetRowIndex = Math.max(
+          0,
+          Math.min(rowsEls.length - 1, rowIdx + dr)
+        );
         const targetRow = rowsEls[targetRowIndex];
         if (!targetRow) {
           return;
         }
         const cards = Array.from(targetRow.querySelectorAll('.card'));
-        const targetColIndex = Math.max(0, Math.min(cards.length - 1, colIdx + dc));
+        const targetColIndex = Math.max(
+          0,
+          Math.min(cards.length - 1, colIdx + dc)
+        );
         const next = cards[targetColIndex];
         if (next) {
           next.focus();
@@ -467,10 +545,13 @@ function expandGridRows(items, overrides, targetTotalRows, options = {}) {
     return;
   }
 
-  const prefersCompact = typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX_WIDTH;
+  const prefersCompact =
+    typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX_WIDTH;
   const previousOptions = grid._renderOptions ?? {};
-  const fallbackMode = previousOptions.layoutMode === 'compact' ? 'compact' : 'standard';
-  const requestedLayout = options?.layoutMode === 'compact' ? 'compact' : fallbackMode;
+  const fallbackMode =
+    previousOptions.layoutMode === 'compact' ? 'compact' : 'standard';
+  const requestedLayout =
+    options?.layoutMode === 'compact' ? 'compact' : fallbackMode;
   const layoutMode = requestedLayout;
   const showPrice = Boolean(options?.showPrice ?? previousOptions.showPrice);
   const forceCompact = prefersCompact || layoutMode === 'compact';
@@ -479,6 +560,24 @@ function expandGridRows(items, overrides, targetTotalRows, options = {}) {
     showPrice
   });
   grid._autoCompact = prefersCompact;
+
+  // Track which cards were visible before expanding
+  const previousCardIds = new Set();
+  const existingCardEls = grid.querySelectorAll('.card');
+  existingCardEls.forEach(card => {
+    const { uid } = card.dataset;
+    const { cardId } = card.dataset;
+    const { name } = card.dataset;
+    if (uid) {
+      previousCardIds.add(uid);
+    }
+    if (cardId) {
+      previousCardIds.add(cardId);
+    }
+    if (name) {
+      previousCardIds.add(name);
+    }
+  });
 
   // Preserve scroll position during DOM manipulation
   const { scrollY } = window;
@@ -490,11 +589,21 @@ function expandGridRows(items, overrides, targetTotalRows, options = {}) {
   }
 
   // Get current layout metrics
-  const containerWidth = grid.clientWidth || grid.getBoundingClientRect().width || 0;
+  const containerWidth =
+    grid.clientWidth || grid.getBoundingClientRect().width || 0;
   const layout = computeLayout(containerWidth);
-  const { base, perRowBig, bigRowContentWidth, targetMedium, mediumScale, targetSmall, smallScale } = layout;
+  const {
+    base,
+    perRowBig,
+    bigRowContentWidth,
+    targetMedium,
+    mediumScale,
+    targetSmall,
+    smallScale
+  } = layout;
 
-  const useSmallRows = forceCompact || (perRowBig >= 6 && targetSmall > targetMedium);
+  const useSmallRows =
+    forceCompact || (perRowBig >= 6 && targetSmall > targetMedium);
 
   const largeRowsLimit = forceCompact ? 0 : NUM_LARGE_ROWS;
   const mediumRowsLimit = forceCompact ? 0 : NUM_MEDIUM_ROWS;
@@ -515,11 +624,12 @@ function expandGridRows(items, overrides, targetTotalRows, options = {}) {
 
     // Determine row type: large (0), medium (1), or small (2+)
     const isLarge = !forceCompact && rowIndex < largeRowsLimit;
-    const isMedium = !forceCompact && !isLarge && rowIndex < largeRowsLimit + mediumRowsLimit;
+    const isMedium =
+      !forceCompact && !isLarge && rowIndex < largeRowsLimit + mediumRowsLimit;
     const isSmall = forceCompact || (!isLarge && !isMedium && useSmallRows);
 
-    let scale; let 
-maxCount;
+    let scale;
+    let maxCount;
     if (forceCompact) {
       scale = smallScale;
       maxCount = targetSmall;
@@ -547,7 +657,13 @@ maxCount;
     for (let j = 0; j < count && cardIndex < items.length; j++, cardIndex++) {
       const item = items[cardIndex];
       const useSm = isLarge || isMedium || !isSmall;
-      const cardEl = makeCardElement(item, useSm, overrides, { showPrice });
+      const cardEl = makeCardElement(
+        item,
+        useSm,
+        overrides,
+        { showPrice },
+        previousCardIds
+      );
       cardEl.dataset.row = String(rowIndex);
       cardEl.dataset.col = String(j);
       row.appendChild(cardEl);
@@ -587,12 +703,20 @@ maxCount;
     const currentText = summaryEl.textContent || '';
     const deckMatch = currentText.match(/(\d+)\s+decklists/);
     const deckTotal = deckMatch ? Number(deckMatch[1]) : 0;
-    renderSummary(summaryEl, deckTotal, grid._totalCards, currentRowCount, totalAvailableRows);
+    renderSummary(
+      summaryEl,
+      deckTotal,
+      grid._totalCards,
+      currentRowCount,
+      totalAvailableRows
+    );
   }
 
   if (remainingRows > 0) {
     // There are more rows to load - update or create the button
-    let moreWrap = /** @type {HTMLElement | null} */ (grid.querySelector('.more-rows'));
+    let moreWrap = /** @type {HTMLElement | null} */ (
+      grid.querySelector('.more-rows')
+    );
     if (!moreWrap) {
       moreWrap = document.createElement('div');
       moreWrap.className = 'more-rows';
@@ -600,7 +724,9 @@ maxCount;
       grid._moreWrapRef = moreWrap;
     }
 
-    let moreBtn = /** @type {HTMLButtonElement | null} */ (moreWrap.querySelector('.btn'));
+    let moreBtn = /** @type {HTMLButtonElement | null} */ (
+      moreWrap.querySelector('.btn')
+    );
     if (!moreBtn) {
       moreBtn = document.createElement('button');
       moreBtn.className = 'btn';
@@ -623,7 +749,10 @@ maxCount;
 
     // Add new event listener for the next batch
     newBtn.addEventListener('click', () => {
-      const nextTargetRows = Math.min(currentRowCount + CONFIG.UI.ROWS_PER_LOAD, totalAvailableRows);
+      const nextTargetRows = Math.min(
+        currentRowCount + CONFIG.UI.ROWS_PER_LOAD,
+        totalAvailableRows
+      );
       expandGridRows(items, overrides, nextTargetRows, options);
     });
   } else {
@@ -677,7 +806,9 @@ function setupCardImage(img, cardName, useSm, overrides, cardData) {
 
   // Only pass variant info if cardData exists and has both set and number
   const variant =
-    cardData && cardData.set && cardData.number ? { set: cardData.set, number: cardData.number } : undefined;
+    cardData && cardData.set && cardData.number
+      ? { set: cardData.set, number: cardData.number }
+      : undefined;
 
   const candidates = buildThumbCandidates(cardName, useSm, overrides, variant);
 
@@ -736,8 +867,14 @@ function preloadVisibleImagesParallel(items, overrides = {}) {
 
     if (cardData) {
       candidatesList.push(
-        buildThumbCandidates(cardData.name, true, overrides, { set: cardData.set, number: cardData.number }),
-        buildThumbCandidates(cardData.name, false, overrides, { set: cardData.set, number: cardData.number })
+        buildThumbCandidates(cardData.name, true, overrides, {
+          set: cardData.set,
+          number: cardData.number
+        }),
+        buildThumbCandidates(cardData.name, false, overrides, {
+          set: cardData.set,
+          number: cardData.number
+        }),
       );
     }
   });
@@ -760,7 +897,9 @@ function populateCardContent(el, cardData, renderFlags = {}) {
   }
 
   const shouldShowPrice = Boolean(renderFlags.showPrice);
-  const formattedPrice = shouldShowPrice ? formatCardPrice(cardData.price) : null;
+  const formattedPrice = shouldShowPrice
+    ? formatCardPrice(cardData.price)
+    : null;
 
   if (card) {
     card.classList.remove('skeleton-card');
@@ -778,7 +917,10 @@ function populateCardContent(el, cardData, renderFlags = {}) {
         }
         priceBadge.textContent = formattedPrice ?? '—';
         priceBadge.classList.toggle('price-badge--missing', !formattedPrice);
-        priceBadge.setAttribute('aria-label', formattedPrice ? `Price ${formattedPrice}` : 'Price unavailable');
+        priceBadge.setAttribute(
+          'aria-label',
+          formattedPrice ? `Price ${formattedPrice}` : 'Price unavailable',
+        );
         priceBadge.setAttribute('role', 'status');
         priceBadge.title = formattedPrice ?? 'Price unavailable';
       } else if (priceBadge) {
@@ -818,7 +960,9 @@ function populateCardContent(el, cardData, renderFlags = {}) {
   const nameEl = el.querySelector('.name');
   if (nameEl) {
     // Remove any existing skeleton-text elements and classes
-    nameEl.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
+    nameEl
+      .querySelectorAll('.skeleton-text')
+      .forEach(skeleton => skeleton.remove());
     nameEl.classList.remove('skeleton-text');
 
     // Clear existing content
@@ -839,7 +983,9 @@ function populateCardContent(el, cardData, renderFlags = {}) {
 
     // Set tooltip with full card name and set info if available
     const tooltipText =
-      cardData.set && cardData.number ? `${cardData.name} ${cardData.set} ${cardData.number}` : cardData.name;
+      cardData.set && cardData.number
+        ? `${cardData.name} ${cardData.set} ${cardData.number}`
+        : cardData.name;
     nameEl.title = tooltipText;
   }
 
@@ -854,7 +1000,9 @@ function populateCardContent(el, cardData, renderFlags = {}) {
 
   if (pctEl) {
     // Remove skeleton text elements and classes
-    pctEl.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
+    pctEl
+      .querySelectorAll('.skeleton-text')
+      .forEach(skeleton => skeleton.remove());
     pctEl.classList.remove('skeleton-text', 'small');
     pctEl.textContent = pctText;
   }
@@ -862,8 +1010,11 @@ function populateCardContent(el, cardData, renderFlags = {}) {
   // Update usage tooltip
   const usageEl = el.querySelector('.usagebar');
   if (usageEl) {
-    const haveCounts = Number.isFinite(cardData.found) && Number.isFinite(cardData.total);
-    const countsText = haveCounts ? ` (${cardData.found}/${cardData.total} decks)` : '';
+    const haveCounts =
+      Number.isFinite(cardData.found) && Number.isFinite(cardData.total);
+    const countsText = haveCounts
+      ? ` (${cardData.found}/${cardData.total} decks)`
+      : '';
     usageEl.title = `Played ${pctText}${countsText}`;
   }
 }
@@ -873,7 +1024,9 @@ function createCardHistogram(el, cardData) {
 
   if (hist) {
     // Remove skeleton elements and classes
-    hist.querySelectorAll('.skeleton-bar').forEach(skeleton => skeleton.remove());
+    hist
+      .querySelectorAll('.skeleton-bar')
+      .forEach(skeleton => skeleton.remove());
     hist.classList.remove('skeleton-loading');
     hist.innerHTML = '';
 
@@ -888,7 +1041,10 @@ function createCardHistogram(el, cardData) {
 
   // Get the copy counts we're showing and sort them for display
   const copiesToShow = topFourDist.map(d => d.copies).sort((a, b) => a - b);
-  const maxPct = Math.max(1, ...topFourDist.map(distItem => distItem.percent));
+  const maxPct = Math.max(
+    1,
+    ...topFourDist.map(distItem => distItem.percent)
+  );
 
   for (const copies of copiesToShow) {
     const distData = cardData.dist.find(x => x.copies === copies);
@@ -899,7 +1055,9 @@ function createCardHistogram(el, cardData) {
       textContent: String(copies)
     });
 
-    const height = distData ? Math.max(2, Math.round(54 * (distData.percent / maxPct))) : 2;
+    const height = distData
+      ? Math.max(2, Math.round(54 * (distData.percent / maxPct)))
+      : 2;
     setStyles(bar, {
       height: `${height}px`,
       ...(distData ? {} : { opacity: '0.25' })
@@ -908,14 +1066,17 @@ function createCardHistogram(el, cardData) {
     // Setup tooltip
     if (distData) {
       const total = Number.isFinite(cardData.total) ? cardData.total : null;
-      const players = Number.isFinite(distData.players) ? distData.players : null;
+      const players = Number.isFinite(distData.players)
+        ? distData.players
+        : null;
       const exactPct = Number.isFinite(distData.percent)
         ? distData.percent
         : players !== null && total
           ? (100 * players) / total
           : null;
       const pctStr = exactPct !== null ? `${exactPct.toFixed(1)}%` : '—';
-      const countsStr = players !== null && total !== null ? ` (${players}/${total})` : '';
+      const countsStr =
+        players !== null && total !== null ? ` (${players}/${total})` : '';
       const tip = `${copies}x: ${pctStr}${countsStr}`;
 
       setupHistogramTooltip(col, cardData.name, tip);
@@ -969,8 +1130,16 @@ function attachCardNavigation(card, cardData) {
 }
 
 // Simplified card creation - single responsibility
-function makeCardElement(cardData, useSm, overrides, renderFlags = {}) {
-  const template = /** @type {HTMLTemplateElement | null} */ (document.getElementById('card-template'));
+function makeCardElement(
+  cardData,
+  useSm,
+  overrides,
+  renderFlags = {},
+  previousCardIds = null
+) {
+  const template = /** @type {HTMLTemplateElement | null} */ (
+    document.getElementById('card-template')
+  );
   const fragment = template
     ? /** @type {DocumentFragment} */ (template.content.cloneNode(true))
     : document.createDocumentFragment();
@@ -983,11 +1152,38 @@ function makeCardElement(cardData, useSm, overrides, renderFlags = {}) {
     fragment.appendChild(card);
   }
 
+  // Mark card as newly entering for animation only if it wasn't visible before
+  if (previousCardIds) {
+    const { uid } = cardData;
+    const setCode = cardData.set ? String(cardData.set).toUpperCase() : '';
+    const number = cardData.number ? normalizeCardNumber(cardData.number) : '';
+    const cardId = setCode && number ? `${setCode}~${number}` : null;
+    const name = cardData.name ? cardData.name.toLowerCase() : null;
+
+    const wasVisible =
+      (uid && previousCardIds.has(uid)) ||
+      (cardId && previousCardIds.has(cardId)) ||
+      (name && previousCardIds.has(name));
+
+    if (!wasVisible) {
+      card.classList.add('card-entering');
+
+      // Remove the entering class after animation completes
+      const removeEnteringClass = () => {
+        card.classList.remove('card-entering');
+        card.removeEventListener('animationend', removeEnteringClass);
+      };
+      card.addEventListener('animationend', removeEnteringClass);
+    }
+  }
+
   // Setup card attributes
   setupCardAttributes(card, cardData);
 
   // Setup image
-  const img = /** @type {HTMLImageElement | null} */ (fragment.querySelector('img'));
+  const img = /** @type {HTMLImageElement | null} */ (
+    fragment.querySelector('img')
+  );
   setupCardImage(img, cardData.name, useSm, overrides, cardData);
 
   // Populate content
@@ -1028,7 +1224,11 @@ function setupCardAttributes(card, cardData) {
   } else {
     delete card.dataset.energyType;
   }
-  if (cardData.displayCategory && cardData.category && cardData.displayCategory !== cardData.category) {
+  if (
+    cardData.displayCategory &&
+    cardData.category &&
+    cardData.displayCategory !== cardData.category
+  ) {
     // eslint-disable-next-line no-param-reassign
     card.dataset.categoryPrimary = cardData.category;
   } else {
@@ -1063,13 +1263,18 @@ function setupCardCounts(element, cardData) {
   }
 
   // Remove any skeleton elements and classes
-  counts.querySelectorAll('.skeleton-text').forEach(skeleton => skeleton.remove());
+  counts
+    .querySelectorAll('.skeleton-text')
+    .forEach(skeleton => skeleton.remove());
   counts.classList.remove('skeleton-text');
   counts.innerHTML = '';
 
-  const hasValidCounts = Number.isFinite(cardData.found) && Number.isFinite(cardData.total);
+  const hasValidCounts =
+    Number.isFinite(cardData.found) && Number.isFinite(cardData.total);
   const countsText = createElement('span', {
-    textContent: hasValidCounts ? `${cardData.found} / ${cardData.total} decks` : 'no data'
+    textContent: hasValidCounts
+      ? `${cardData.found} / ${cardData.total} decks`
+      : 'no data',
   });
   counts.appendChild(countsText);
 }
@@ -1087,7 +1292,8 @@ export function updateLayout() {
   }
 
   // Compute layout based on current container width
-  const containerWidth = grid.clientWidth || grid.getBoundingClientRect().width || 0;
+  const containerWidth =
+    grid.clientWidth || grid.getBoundingClientRect().width || 0;
   const {
     base,
     perRowBig,
@@ -1101,17 +1307,22 @@ export function updateLayout() {
   } = computeLayout(containerWidth);
   syncControlsWidth(bigRowContentWidth);
 
-  const prefersCompact = typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX_WIDTH;
-  const forceCompact = prefersCompact || grid._renderOptions?.layoutMode === 'compact';
+  const prefersCompact =
+    typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX_WIDTH;
+  const forceCompact =
+    prefersCompact || grid._renderOptions?.layoutMode === 'compact';
   grid._autoCompact = prefersCompact;
   const effectiveBigRows = forceCompact ? 0 : bigRows;
   const effectiveMediumRows = forceCompact ? 0 : mediumRows;
 
-  const useSmallRows = forceCompact || (perRowBig >= 6 && targetSmall > targetMedium);
+  const useSmallRows =
+    forceCompact || (perRowBig >= 6 && targetSmall > targetMedium);
 
   // Fast path: If row grouping hasn't changed, avoid rebuilding the entire grid.
   // Only update CSS vars and row widths/scales in-place to minimize DOM churn.
-  const prev = /** @type {CachedLayoutMetrics | undefined} */ (grid._layoutMetrics);
+  const prev = /** @type {CachedLayoutMetrics | undefined} */ (
+    grid._layoutMetrics
+  );
   const groupingUnchanged =
     prev &&
     prev.perRowBig === perRowBig &&
@@ -1126,7 +1337,10 @@ export function updateLayout() {
     for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
       const row = rows[rowIndex];
       const isLarge = !forceCompact && rowIndex < effectiveBigRows;
-      const isMedium = !forceCompact && !isLarge && rowIndex < effectiveBigRows + effectiveMediumRows;
+      const isMedium =
+        !forceCompact &&
+        !isLarge &&
+        rowIndex < effectiveBigRows + effectiveMediumRows;
       const isSmall = forceCompact || (!isLarge && !isMedium && useSmallRows);
 
       let scale;
@@ -1172,20 +1386,29 @@ export function updateLayout() {
 
   // Build rows and re-append existing cards
   // Preserve existing More... control, if any, to re-attach after rebuild
-  const savedMore = /** @type {HTMLElement | null} */ (grid.querySelector('.more-rows')) || grid._moreWrapRef || null;
+  const savedMore =
+    /** @type {HTMLElement | null} */ (grid.querySelector('.more-rows')) ||
+    grid._moreWrapRef ||
+    null;
   const frag = document.createDocumentFragment();
   let i = 0;
   let rowIndex = 0;
   // Compute the total number of rows for ALL items based on latest layout
-  const totalCards = Number.isInteger(grid._totalCards) ? grid._totalCards : cards.length;
+  const totalCards = Number.isInteger(grid._totalCards)
+    ? grid._totalCards
+    : cards.length;
   const newTotalRows = (() => {
     let cnt = 0;
     let idx = 0;
     while (idx < totalCards) {
       const rowIdx = cnt;
       const isLargeLocal = !forceCompact && rowIdx < effectiveBigRows;
-      const isMediumLocal = !forceCompact && !isLargeLocal && rowIdx < effectiveBigRows + effectiveMediumRows;
-      const isSmallLocal = forceCompact || (!isLargeLocal && !isMediumLocal && useSmallRows);
+      const isMediumLocal =
+        !forceCompact &&
+        !isLargeLocal &&
+        rowIdx < effectiveBigRows + effectiveMediumRows;
+      const isSmallLocal =
+        forceCompact || (!isLargeLocal && !isMediumLocal && useSmallRows);
 
       let maxCount;
       if (isLargeLocal) {
@@ -1209,11 +1432,14 @@ export function updateLayout() {
     row.dataset.rowIndex = String(rowIndex);
 
     const isLarge = !forceCompact && rowIndex < effectiveBigRows;
-    const isMedium = !forceCompact && !isLarge && rowIndex < effectiveBigRows + effectiveMediumRows;
+    const isMedium =
+      !forceCompact &&
+      !isLarge &&
+      rowIndex < effectiveBigRows + effectiveMediumRows;
     const isSmall = forceCompact || (!isLarge && !isMedium && useSmallRows);
 
-    let scale; let 
-maxCount;
+    let scale;
+    let maxCount;
     if (forceCompact) {
       scale = smallScale;
       maxCount = targetSmall;

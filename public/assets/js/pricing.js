@@ -148,7 +148,11 @@ class PricingManager {
     const now = Date.now();
 
     // Check if we need to fetch new data
-    if (!this.priceData || !this.lastFetch || now - this.lastFetch > this.cacheExpiry) {
+    if (
+      !this.priceData ||
+      !this.lastFetch ||
+      now - this.lastFetch > this.cacheExpiry
+    ) {
       try {
         await this.fetchPriceData();
       } catch (error) {
@@ -189,6 +193,8 @@ class PricingManager {
 }
 
 // Create global instance
-/** @type {Window & { pricingManager?: PricingManager }} */ (window).pricingManager = new PricingManager();
+/** @type {Window & { pricingManager?: PricingManager }} */ (
+  window
+).pricingManager = new PricingManager();
 
 export default PricingManager;

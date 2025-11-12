@@ -17,7 +17,9 @@ export function pickArchetype(candidates, top8Bases, opts) {
   if (!Array.isArray(candidates) || candidates.length === 0) {
     return null;
   }
-  const valid = candidates.filter(candidate => candidate && typeof candidate.base === 'string');
+  const valid = candidates.filter(
+    candidate => candidate && typeof candidate.base === 'string',
+  );
   if (valid.length === 0) {
     return null;
   }
@@ -35,7 +37,9 @@ export function pickArchetype(candidates, top8Bases, opts) {
     return 0;
   };
   const byFoundThenPctDesc = (first, second) =>
-    score(second) - score(first) || (second.pct ?? -1) - (first.pct ?? -1) || first.base.localeCompare(second.base);
+    score(second) - score(first) ||
+    (second.pct ?? -1) - (first.pct ?? -1) ||
+    first.base.localeCompare(second.base);
   const poolFromTop8 = (() => {
     if (Array.isArray(top8Bases) && top8Bases.length) {
       const set = new Set(top8Bases);

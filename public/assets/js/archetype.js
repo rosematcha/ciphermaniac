@@ -21,20 +21,60 @@ const elements = {
   page: document.querySelector('.archetype-page'),
   loading: document.getElementById('archetype-loading'),
   error: document.getElementById('archetype-error'),
-  simple: /** @type {HTMLElement|null} */ (document.querySelector('.archetype-simple')),
+  simple: /** @type {HTMLElement|null} */ (
+    document.querySelector('.archetype-simple')
+  ),
   grid: /** @type {HTMLElement|null} */ (document.getElementById('grid')),
   title: document.getElementById('archetype-title'),
-  granularityRange: /** @type {HTMLInputElement|null} */ (document.getElementById('archetype-granularity-range')),
-  granularityOutput: /** @type {HTMLOutputElement|null} */ (document.getElementById('archetype-granularity-output')),
-  includeCard: /** @type {HTMLSelectElement|null} */ (document.getElementById('archetype-include-card')),
-  excludeCard: /** @type {HTMLSelectElement|null} */ (document.getElementById('archetype-exclude-card')),
-  filtersContainer: /** @type {HTMLElement|null} */ (document.querySelector('.archetype-controls')),
+  granularityRange: /** @type {HTMLInputElement|null} */ (
+    document.getElementById('archetype-granularity-range')
+  ),
+  granularityOutput: /** @type {HTMLOutputElement|null} */ (
+    document.getElementById('archetype-granularity-output')
+  ),
+  includeCard: /** @type {HTMLSelectElement|null} */ (
+    document.getElementById('archetype-include-card')
+  ),
+  excludeCard: /** @type {HTMLSelectElement|null} */ (
+    document.getElementById('archetype-exclude-card')
+  ),
+  includeMin: /** @type {HTMLInputElement|null} */ (
+    document.getElementById('archetype-include-min')
+  ),
+  includeMax: /** @type {HTMLInputElement|null} */ (
+    document.getElementById('archetype-include-max')
+  ),
+  excludeMin: /** @type {HTMLInputElement|null} */ (
+    document.getElementById('archetype-exclude-min')
+  ),
+  excludeMax: /** @type {HTMLInputElement|null} */ (
+    document.getElementById('archetype-exclude-max')
+  ),
+  includeCountFilter: /** @type {HTMLElement|null} */ (
+    document.getElementById('include-count-filter')
+  ),
+  excludeCountFilter: /** @type {HTMLElement|null} */ (
+    document.getElementById('exclude-count-filter')
+  ),
+  filtersContainer: /** @type {HTMLElement|null} */ (
+    document.querySelector('.archetype-controls')
+  ),
   filterMessage: /** @type {HTMLElement|null} */ (null),
-  skeletonSummary: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-summary')),
-  skeletonCountValue: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-count-value')),
-  skeletonWarnings: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-warnings')),
-  skeletonExportButton: /** @type {HTMLButtonElement|null} */ (document.getElementById('skeleton-export-live')),
-  skeletonExportStatus: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-export-status'))
+  skeletonSummary: /** @type {HTMLElement|null} */ (
+    document.getElementById('skeleton-summary')
+  ),
+  skeletonCountValue: /** @type {HTMLElement|null} */ (
+    document.getElementById('skeleton-count-value')
+  ),
+  skeletonWarnings: /** @type {HTMLElement|null} */ (
+    document.getElementById('skeleton-warnings')
+  ),
+  skeletonExportButton: /** @type {HTMLButtonElement|null} */ (
+    document.getElementById('skeleton-export-live')
+  ),
+  skeletonExportStatus: /** @type {HTMLElement|null} */ (
+    document.getElementById('skeleton-export-status')
+  )
 };
 
 const state = {
@@ -51,7 +91,14 @@ const state = {
   defaultDeckTotal: 0,
   cardLookup: new Map(),
   filterCache: new Map(),
-  currentFilters: { include: null, exclude: null },
+  currentFilters: {
+    include: null,
+    exclude: null,
+    includeMin: 1,
+    includeMax: 4,
+    excludeMin: 0,
+    excludeMax: 4
+  },
   skeleton: {
     totalCards: 0,
     exportEntries: /**
@@ -64,7 +111,7 @@ const state = {
     }>} */ ([]),
     plainWarnings: /** @type {string[]} */ ([]),
     displayWarnings: /** @type {string[]} */ ([]),
-    lastExportText: ''
+    lastExportText: '',
   }
 };
 
@@ -127,7 +174,7 @@ const TRAINER_SUPPORTER_OVERRIDES = new Set([
   'clay',
   'bede',
   'katie',
-  'sparky'
+  'sparky',
 ]);
 
 const TRAINER_SUPPORTER_KEYWORDS = [
@@ -145,7 +192,7 @@ const TRAINER_SUPPORTER_KEYWORDS = [
   'team rocket',
   'gym leader',
   'n\'s ',
-  'n\u2019s '
+  'n\u2019s ',
 ];
 
 const TRAINER_STADIUM_KEYWORDS = [
@@ -186,7 +233,7 @@ const TRAINER_STADIUM_KEYWORDS = [
   ' lake',
   ' mountain',
   ' hideout',
-  ' cave'
+  ' cave',
 ];
 
 const TRAINER_TOOL_KEYWORDS = [
@@ -210,7 +257,7 @@ const TRAINER_TOOL_KEYWORDS = [
   ' amplifier',
   ' weight',
   ' booster',
-  ' anklet'
+  ' anklet',
 ];
 
 const TRAINER_ITEM_KEYWORDS = [
@@ -248,7 +295,7 @@ const TRAINER_ITEM_KEYWORDS = [
   'energy switch',
   'energy recycler',
   'energy retrieval',
-  'technical machine'
+  'technical machine',
 ];
 
 const TRAINER_HINT_KEYWORDS = [
@@ -260,7 +307,7 @@ const TRAINER_HINT_KEYWORDS = [
   'orders',
   'supporter',
   'stadium',
-  'tool'
+  'tool',
 ];
 
 function extractArchetypeFromLocation(loc = window.location) {
@@ -278,10 +325,13 @@ function extractArchetypeFromLocation(loc = window.location) {
     const decoded = decodeURIComponent(trimmedPath);
     candidatePaths.add(decoded);
   } catch (error) {
-    logger.debug('Failed to decode pathname when searching for archetype slug', {
-      pathname,
-      message: error?.message
-    });
+    logger.debug(
+      'Failed to decode pathname when searching for archetype slug',
+      {
+        pathname,
+        message: error?.message
+      },
+    );
   }
 
   for (const candidate of candidatePaths) {
@@ -300,7 +350,10 @@ function extractArchetypeFromLocation(loc = window.location) {
     try {
       return decodeURIComponent(rawSlug);
     } catch (error) {
-      logger.warn('Failed to decode archetype slug from path', { rawSlug, error: error?.message });
+      logger.warn('Failed to decode archetype slug from path', {
+        rawSlug,
+        error: error?.message
+      });
       return rawSlug;
     }
   }
@@ -364,7 +417,9 @@ function formatCardOptionLabel(card, duplicateCounts) {
     return `${baseName} (${setCode} ${number})`;
   }
   const fallbackId = buildCardId(card);
-  return fallbackId ? `${baseName} (${fallbackId.replace('~', ' ')})` : baseName;
+  return fallbackId
+    ? `${baseName} (${fallbackId.replace('~', ' ')})`
+    : baseName;
 }
 
 function ensureFilterMessageElement() {
@@ -415,8 +470,15 @@ function describeFilters(includeId, excludeId) {
   return parts.join(' and ');
 }
 
-function getFilterKey(includeId, excludeId) {
-  return `${includeId || 'null'}::${excludeId || 'null'}`;
+function getFilterKey(
+  includeId,
+  excludeId,
+  includeMin = 1,
+  includeMax = 4,
+  excludeMin = 0,
+  excludeMax = 4
+) {
+  return `${includeId || 'null'}::${excludeId || 'null'}::${includeMin}::${includeMax}::${excludeMin}::${excludeMax}`;
 }
 
 function normalizeThreshold(value, min, max) {
@@ -428,7 +490,10 @@ function normalizeThreshold(value, min, max) {
   }
 
   const clamped = Math.max(min, Math.min(max, value));
-  const rounded = min + Math.round((clamped - min) / GRANULARITY_STEP_PERCENT) * GRANULARITY_STEP_PERCENT;
+  const rounded =
+    min +
+    Math.round((clamped - min) / GRANULARITY_STEP_PERCENT) *
+      GRANULARITY_STEP_PERCENT;
   return Math.max(min, Math.min(max, rounded));
 }
 
@@ -466,7 +531,11 @@ function getUsagePercent(card) {
   if (Number.isFinite(card.pct)) {
     return Number(card.pct);
   }
-  if (Number.isFinite(card.found) && Number.isFinite(card.total) && card.total > 0) {
+  if (
+    Number.isFinite(card.found) &&
+    Number.isFinite(card.total) &&
+    card.total > 0
+  ) {
     return (card.found / card.total) * 100;
   }
   return 0;
@@ -488,7 +557,11 @@ function inferPrimaryCategory(card) {
     return 'pokemon';
   }
   const rawCategory = toLower(card?.category);
-  if (rawCategory === 'pokemon' || rawCategory === 'trainer' || rawCategory === 'energy') {
+  if (
+    rawCategory === 'pokemon' ||
+    rawCategory === 'trainer' ||
+    rawCategory === 'energy'
+  ) {
     return rawCategory;
   }
 
@@ -506,10 +579,18 @@ function inferPrimaryCategory(card) {
   if (endsWithEnergy) {
     return 'energy';
   }
-  if (!endsWithEnergy && uid && (uid.endsWith(' energy') || uid.includes(' energy::'))) {
+  if (
+    !endsWithEnergy &&
+    uid &&
+    (uid.endsWith(' energy') || uid.includes(' energy::'))
+  ) {
     return 'energy';
   }
-  if (name && name.includes(' energy ') && !TRAINER_HINT_KEYWORDS.some(keyword => name.includes(keyword))) {
+  if (
+    name &&
+    name.includes(' energy ') &&
+    !TRAINER_HINT_KEYWORDS.some(keyword => name.includes(keyword))
+  ) {
     return 'energy';
   }
   return 'pokemon';
@@ -519,11 +600,17 @@ function inferTrainerSubtype(card) {
   const name = toLower(card?.name);
   const uid = toLower(card?.uid);
 
-  if (TRAINER_SUPPORTER_OVERRIDES.has(name) || TRAINER_SUPPORTER_OVERRIDES.has(uid)) {
+  if (
+    TRAINER_SUPPORTER_OVERRIDES.has(name) ||
+    TRAINER_SUPPORTER_OVERRIDES.has(uid)
+  ) {
     return 'trainer-supporter';
   }
 
-  if (name.startsWith('technical machine') || uid.includes('technical_machine')) {
+  if (
+    name.startsWith('technical machine') ||
+    uid.includes('technical_machine')
+  ) {
     return 'trainer-item';
   }
 
@@ -594,7 +681,10 @@ function getCategorySortWeight(category) {
   if (!category) {
     return CARD_CATEGORY_SORT_PRIORITY.get('trainer') ?? 5;
   }
-  return CARD_CATEGORY_SORT_PRIORITY.get(category) ?? (category.startsWith('trainer') ? 5 : 6);
+  return (
+    CARD_CATEGORY_SORT_PRIORITY.get(category) ??
+    (category.startsWith('trainer') ? 5 : 6)
+  );
 }
 
 function sortItemsForDisplay(items) {
@@ -647,9 +737,14 @@ function sortItemsForDisplay(items) {
 }
 
 function syncGranularityOutput(threshold) {
-  const safeValue = Number.isFinite(threshold) ? Math.max(GRANULARITY_MIN_PERCENT, threshold) : GRANULARITY_MIN_PERCENT;
+  const safeValue = Number.isFinite(threshold)
+    ? Math.max(GRANULARITY_MIN_PERCENT, threshold)
+    : GRANULARITY_MIN_PERCENT;
   const step = elements.granularityRange
-    ? Math.max(1, Number(elements.granularityRange.step) || GRANULARITY_STEP_PERCENT)
+    ? Math.max(
+      1,
+      Number(elements.granularityRange.step) || GRANULARITY_STEP_PERCENT
+      )
     : 1;
   const roundedValue = Math.round(safeValue / step) * step;
   const clampedValue = Math.max(GRANULARITY_MIN_PERCENT, roundedValue);
@@ -663,8 +758,12 @@ function syncGranularityOutput(threshold) {
 }
 
 function filterItemsByThreshold(items, threshold) {
-  const numericThreshold = Number.isFinite(threshold) ? threshold : GRANULARITY_MIN_PERCENT;
-  const filtered = items.filter(item => getUsagePercent(item) >= numericThreshold);
+  const numericThreshold = Number.isFinite(threshold)
+    ? threshold
+    : GRANULARITY_MIN_PERCENT;
+  const filtered = items.filter(
+    item => getUsagePercent(item) >= numericThreshold
+  );
   if (filtered.length === 0 && items.length > 0) {
     return [items[0]];
   }
@@ -683,12 +782,18 @@ function configureGranularity(items) {
   const computedMax = Math.max(...percents, GRANULARITY_MIN_PERCENT);
 
   const minValue = GRANULARITY_MIN_PERCENT;
-  const maxValue = Math.min(100, Math.ceil(computedMax / GRANULARITY_STEP_PERCENT) * GRANULARITY_STEP_PERCENT);
+  const maxValue = Math.min(
+    100,
+    Math.ceil(computedMax / GRANULARITY_STEP_PERCENT) *
+      GRANULARITY_STEP_PERCENT
+  );
   range.min = String(minValue);
   range.max = String(maxValue);
   range.step = String(GRANULARITY_STEP_PERCENT);
 
-  const desired = Number.isFinite(state.thresholdPercent) ? state.thresholdPercent : GRANULARITY_DEFAULT_PERCENT;
+  const desired = Number.isFinite(state.thresholdPercent)
+    ? state.thresholdPercent
+    : GRANULARITY_DEFAULT_PERCENT;
   const normalized = normalizeThreshold(desired, minValue, maxValue);
   state.thresholdPercent = normalized;
   syncGranularityOutput(normalized);
@@ -700,7 +805,9 @@ function populateCardDropdowns() {
   }
 
   // Sort cards alphabetically by name
-  const sortedCards = [...state.allCards].sort((left, right) => (left.name || '').localeCompare(right.name || ''));
+  const sortedCards = [...state.allCards].sort((left, right) =>
+    (left.name || '').localeCompare(right.name || ''),
+  );
 
   // Clear existing options (except the first "Select a card" option)
   elements.includeCard.length = 1;
@@ -760,8 +867,12 @@ function populateCardDropdowns() {
 }
 
 function resolveCardPrintInfo(card) {
-  let setCode = typeof card?.set === 'string' ? card.set.trim().toUpperCase() : '';
-  let numberValue = typeof card?.number === 'string' || typeof card?.number === 'number' ? card.number : '';
+  let setCode =
+    typeof card?.set === 'string' ? card.set.trim().toUpperCase() : '';
+  let numberValue =
+    typeof card?.number === 'string' || typeof card?.number === 'number'
+      ? card.number
+      : '';
 
   if ((!setCode || !numberValue) && typeof card?.uid === 'string') {
     const segments = card.uid.split('::');
@@ -835,7 +946,11 @@ function buildSkeletonExportEntries(items) {
 
     const printInfo = resolveCardPrintInfo(item);
     const primaryCategory = inferPrimaryCategory(item);
-    const normalizedCategory = ['pokemon', 'trainer', 'energy'].includes(primaryCategory) ? primaryCategory : 'pokemon';
+    const normalizedCategory = ['pokemon', 'trainer', 'energy'].includes(
+      primaryCategory
+    )
+      ? primaryCategory
+      : 'pokemon';
 
     entries.push({
       name,
@@ -864,7 +979,11 @@ function buildTcgliveExportString(entries) {
       return;
     }
     const key =
-      entry.primaryCategory === 'trainer' ? 'trainer' : entry.primaryCategory === 'energy' ? 'energy' : 'pokemon';
+      entry.primaryCategory === 'trainer'
+        ? 'trainer'
+        : entry.primaryCategory === 'energy'
+          ? 'energy'
+          : 'pokemon';
     sections[key].push(entry);
   });
 
@@ -929,7 +1048,10 @@ function syncSkeletonExportState() {
 }
 
 function attemptExecCommandCopy(text) {
-  if (!globalThis.document || typeof globalThis.document.createElement !== 'function') {
+  if (
+    !globalThis.document ||
+    typeof globalThis.document.createElement !== 'function'
+  ) {
     return false;
   }
   try {
@@ -965,7 +1087,10 @@ async function copyDecklistToClipboard(text) {
     return 'execCommand';
   }
 
-  const promptFn = typeof globalThis.window?.prompt === 'function' ? globalThis.window.prompt : null;
+  const promptFn =
+    typeof globalThis.window?.prompt === 'function'
+      ? globalThis.window.prompt
+      : null;
   if (promptFn) {
     const result = promptFn('Copy this TCG Live deck list:', text);
     if (result !== null) {
@@ -981,7 +1106,10 @@ async function handleSkeletonExport(event) {
 
   const { exportEntries, plainWarnings } = state.skeleton;
   if (!Array.isArray(exportEntries) || exportEntries.length === 0) {
-    updateSkeletonExportStatus('No cards are available to export yet.', 'warning');
+    updateSkeletonExportStatus(
+      'No cards are available to export yet.',
+      'warning',
+    );
     return;
   }
 
@@ -995,15 +1123,21 @@ async function handleSkeletonExport(event) {
 
   try {
     const method = await copyDecklistToClipboard(exportText);
-    const hasWarnings = Array.isArray(plainWarnings) && plainWarnings.length > 0;
-    const warningNote = hasWarnings ? ` Warning: ${plainWarnings.join('; ')}` : '';
+    const hasWarnings =
+      Array.isArray(plainWarnings) && plainWarnings.length > 0;
+    const warningNote = hasWarnings
+      ? ` Warning: ${plainWarnings.join('; ')}`
+      : '';
     const baseMessage =
-      method === 'prompt' ? 'Deck list ready in a prompt for manual copy.' : 'Copied TCG Live deck list to clipboard.';
+      method === 'prompt'
+        ? 'Deck list ready in a prompt for manual copy.'
+        : 'Copied TCG Live deck list to clipboard.';
     const tone = hasWarnings ? 'warning' : 'success';
     updateSkeletonExportStatus(`${baseMessage}${warningNote}`, tone);
   } catch (error) {
     logger.warn('TCG Live export cancelled or failed', error);
-    const isCancelled = error instanceof Error && error.message === 'TCGLiveExportCopyCancelled';
+    const isCancelled =
+      error instanceof Error && error.message === 'TCGLiveExportCopyCancelled';
     const message = isCancelled
       ? 'Export cancelled before copy. Try again when you are ready.'
       : 'Unable to copy the deck list. Please try again.';
@@ -1030,14 +1164,18 @@ function isAceSpec(cardName) {
     'legacy energy',
     'prime catcher',
     'reboot pod',
-    'secret box'
+    'secret box',
   ];
   const lowerName = cardName.toLowerCase();
   return aceSpecKeywords.some(keyword => lowerName.includes(keyword));
 }
 
 function updateSkeletonSummary(items) {
-  if (!elements.skeletonSummary || !elements.skeletonCountValue || !elements.skeletonWarnings) {
+  if (
+    !elements.skeletonSummary ||
+    !elements.skeletonCountValue ||
+    !elements.skeletonWarnings
+  ) {
     return;
   }
 
@@ -1101,7 +1239,9 @@ function renderCards() {
   }
 
   configureGranularity(state.items);
-  const threshold = Number.isFinite(state.thresholdPercent) ? state.thresholdPercent : GRANULARITY_DEFAULT_PERCENT;
+  const threshold = Number.isFinite(state.thresholdPercent)
+    ? state.thresholdPercent
+    : GRANULARITY_DEFAULT_PERCENT;
   const visibleItems = filterItemsByThreshold(state.items, threshold);
   const sortedVisibleItems = sortItemsForDisplay(visibleItems);
 
@@ -1117,15 +1257,38 @@ function renderCards() {
   });
 }
 
-function loadFilterCombination(includeId, excludeId) {
-  const key = getFilterKey(includeId, excludeId);
+function loadFilterCombination(
+  includeId,
+  excludeId,
+  includeMin = 1,
+  includeMax = 4,
+  excludeMin = 0,
+  excludeMax = 4
+) {
+  const key = getFilterKey(
+    includeId,
+    excludeId,
+    includeMin,
+    includeMax,
+    excludeMin,
+    excludeMax
+  );
   if (state.filterCache.has(key)) {
     return state.filterCache.get(key);
   }
 
   const promise = (async () => {
     try {
-      const raw = await fetchArchetypeFiltersReport(state.tournament, state.archetypeBase, includeId, excludeId);
+      const raw = await fetchArchetypeFiltersReport(
+        state.tournament,
+        state.archetypeBase,
+        includeId,
+        excludeId,
+        includeMin,
+        includeMax,
+        excludeMin,
+        excludeMax
+      );
       const parsed = parseReport(raw);
       return {
         deckTotal: parsed.deckTotal,
@@ -1145,7 +1308,14 @@ function loadFilterCombination(includeId, excludeId) {
 function resetToDefaultData() {
   state.items = state.defaultItems;
   state.archetypeDeckTotal = state.defaultDeckTotal;
-  state.currentFilters = { include: null, exclude: null };
+  state.currentFilters = {
+    include: null,
+    exclude: null,
+    includeMin: 1,
+    includeMax: 4,
+    excludeMin: 0,
+    excludeMax: 4
+  };
   updateFilterMessage('');
   renderCards();
 }
@@ -1169,10 +1339,20 @@ function handleImpossibleExclusion(excludeId) {
   if (!info?.alwaysIncluded) {
     return false;
   }
-  updateFilterMessage(`${state.archetypeLabel} decks always play ${info.name}. Try a different exclusion.`, 'warning');
+  updateFilterMessage(
+    `${state.archetypeLabel} decks always play ${info.name}. Try a different exclusion.`,
+    'warning',
+  );
   state.items = [];
   state.archetypeDeckTotal = 0;
-  state.currentFilters = { include: null, exclude: excludeId };
+  state.currentFilters = {
+    include: null,
+    exclude: excludeId,
+    includeMin: 1,
+    includeMax: 4,
+    excludeMin: 0,
+    excludeMax: 4
+  };
   renderCards();
   return true;
 }
@@ -1189,6 +1369,32 @@ async function applyFilters() {
   let includeId = originalIncludeValue;
   const excludeId = elements.excludeCard.value || null;
 
+  // Get count range values
+  const includeMin =
+    includeId && elements.includeMin
+      ? parseInt(elements.includeMin.value, 10) || 1
+      : 1;
+  const includeMax =
+    includeId && elements.includeMax
+      ? parseInt(elements.includeMax.value, 10) || 4
+      : 4;
+  const excludeMin =
+    excludeId && elements.excludeMin
+      ? parseInt(elements.excludeMin.value, 10) || 0
+      : 0;
+  const excludeMax =
+    excludeId && elements.excludeMax
+      ? parseInt(elements.excludeMax.value, 10) || 4
+      : 4;
+
+  // Show/hide count filters based on card selection
+  if (elements.includeCountFilter) {
+    elements.includeCountFilter.hidden = !includeId;
+  }
+  if (elements.excludeCountFilter) {
+    elements.excludeCountFilter.hidden = !excludeId;
+  }
+
   includeId = applyAlwaysIncludedGuard(includeId);
   if (!includeId && originalIncludeValue) {
     elements.includeCard.value = '';
@@ -1200,10 +1406,20 @@ async function applyFilters() {
   }
 
   if (includeId && excludeId && includeId === excludeId) {
-    updateFilterMessage('Choose different cards to include and exclude.', 'warning');
+    updateFilterMessage(
+      'Choose different cards to include and exclude.',
+      'warning',
+    );
     state.items = [];
     state.archetypeDeckTotal = 0;
-    state.currentFilters = { include: includeId, exclude: excludeId };
+    state.currentFilters = {
+      include: includeId,
+      exclude: excludeId,
+      includeMin: 1,
+      includeMax: 4,
+      excludeMin: 0,
+      excludeMax: 4
+    };
     renderCards();
     return;
   }
@@ -1213,16 +1429,60 @@ async function applyFilters() {
   }
 
   const comboLabel = describeFilters(includeId, excludeId);
-  updateFilterMessage(`Crunching the numbers for decks ${comboLabel}...`, 'info');
+  updateFilterMessage(
+    `Crunching the numbers for decks ${comboLabel}...`,
+    'info',
+  );
 
-  const requestKey = getFilterKey(includeId, excludeId);
+  const requestKey = getFilterKey(
+    includeId,
+    excludeId,
+    includeMin,
+    includeMax,
+    excludeMin,
+    excludeMax
+  );
 
   try {
-    const result = await loadFilterCombination(includeId, excludeId);
+    const result = await loadFilterCombination(
+      includeId,
+      excludeId,
+      includeMin,
+      includeMax,
+      excludeMin,
+      excludeMax
+    );
 
-    const currentInclude = applyAlwaysIncludedGuard(elements.includeCard ? elements.includeCard.value || null : null);
-    const currentExclude = elements.excludeCard ? elements.excludeCard.value || null : null;
-    const activeKey = getFilterKey(currentInclude, currentExclude);
+    const currentInclude = applyAlwaysIncludedGuard(
+      elements.includeCard ? elements.includeCard.value || null : null
+    );
+    const currentExclude = elements.excludeCard
+      ? elements.excludeCard.value || null
+      : null;
+    const currentIncludeMin =
+      currentInclude && elements.includeMin
+        ? parseInt(elements.includeMin.value, 10) || 1
+        : 1;
+    const currentIncludeMax =
+      currentInclude && elements.includeMax
+        ? parseInt(elements.includeMax.value, 10) || 4
+        : 4;
+    const currentExcludeMin =
+      currentExclude && elements.excludeMin
+        ? parseInt(elements.excludeMin.value, 10) || 0
+        : 0;
+    const currentExcludeMax =
+      currentExclude && elements.excludeMax
+        ? parseInt(elements.excludeMax.value, 10) || 4
+        : 4;
+    const activeKey = getFilterKey(
+      currentInclude,
+      currentExclude,
+      currentIncludeMin,
+      currentIncludeMax,
+      currentExcludeMin,
+      currentExcludeMax
+    );
     if (activeKey !== requestKey) {
       return;
     }
@@ -1231,30 +1491,56 @@ async function applyFilters() {
     Object.assign(state, {
       items: result.items,
       archetypeDeckTotal: result.deckTotal,
-      currentFilters: { include: includeId, exclude: excludeId }
+      currentFilters: {
+        include: includeId,
+        exclude: excludeId,
+        includeMin,
+        includeMax,
+        excludeMin,
+        excludeMax
+      },
     });
 
     if (!result.deckTotal || result.items.length === 0) {
-      updateFilterMessage(`No decks match the combination ${comboLabel}.`, 'warning');
+      updateFilterMessage(
+        `No decks match the combination ${comboLabel}.`,
+        'warning',
+      );
     } else {
       const deckLabel = result.deckTotal === 1 ? 'deck' : 'decks';
-      updateFilterMessage(`${result.deckTotal} ${deckLabel} match the combination ${comboLabel}.`, 'info');
+      updateFilterMessage(
+        `${result.deckTotal} ${deckLabel} match the combination ${comboLabel}.`,
+        'info',
+      );
     }
     renderCards();
   } catch (error) {
     if (error instanceof AppError && error.context?.status === 404) {
-      updateFilterMessage(`No decks match the combination ${comboLabel}.`, 'warning');
+      updateFilterMessage(
+        `No decks match the combination ${comboLabel}.`,
+        'warning',
+      );
       // eslint-disable-next-line require-atomic-updates -- Selection validated above
       Object.assign(state, {
         items: [],
         archetypeDeckTotal: 0,
-        currentFilters: { include: includeId, exclude: excludeId }
+        currentFilters: {
+          include: includeId,
+          exclude: excludeId,
+          includeMin,
+          includeMax,
+          excludeMin,
+          excludeMax
+        },
       });
       renderCards();
       return;
     }
     logger.exception('Failed to apply include/exclude filters', error);
-    updateFilterMessage('We ran into an issue loading that combination. Please try again.', 'warning');
+    updateFilterMessage(
+      'We ran into an issue loading that combination. Please try again.',
+      'warning',
+    );
   }
 }
 
@@ -1278,6 +1564,48 @@ function setupFilterListeners() {
 
     // Add hover listeners for aggressive pre-caching
     setupFilterHoverHandler(elements.excludeCard, 'exclude');
+  }
+
+  // Add event listeners for count range inputs
+  if (elements.includeMin) {
+    elements.includeMin.addEventListener('change', () => {
+      applyFilters().catch(error => {
+        logger.debug(
+          'Include min filter change failed',
+          error?.message || error
+        );
+      });
+    });
+  }
+  if (elements.includeMax) {
+    elements.includeMax.addEventListener('change', () => {
+      applyFilters().catch(error => {
+        logger.debug(
+          'Include max filter change failed',
+          error?.message || error
+        );
+      });
+    });
+  }
+  if (elements.excludeMin) {
+    elements.excludeMin.addEventListener('change', () => {
+      applyFilters().catch(error => {
+        logger.debug(
+          'Exclude min filter change failed',
+          error?.message || error
+        );
+      });
+    });
+  }
+  if (elements.excludeMax) {
+    elements.excludeMax.addEventListener('change', () => {
+      applyFilters().catch(error => {
+        logger.debug(
+          'Exclude max filter change failed',
+          error?.message || error
+        );
+      });
+    });
   }
 }
 
@@ -1313,7 +1641,10 @@ function setupFilterHoverHandler(selectElement, filterType) {
         await cache.preCacheIndex(state.tournament, state.archetypeBase);
       }
     } catch (error) {
-      logger.debug('Failed to pre-cache index on dropdown focus', error.message);
+      logger.debug(
+        'Failed to pre-cache index on dropdown focus',
+        error.message
+      );
     }
   });
 
@@ -1331,12 +1662,25 @@ function setupFilterHoverHandler(selectElement, filterType) {
 
         // Get the current value from the other dropdown
         const includeId =
-          filterType === 'include' ? hoveredCardId : elements.includeCard ? elements.includeCard.value || null : null;
+          filterType === 'include'
+            ? hoveredCardId
+            : elements.includeCard
+              ? elements.includeCard.value || null
+              : null;
         const excludeId =
-          filterType === 'exclude' ? hoveredCardId : elements.excludeCard ? elements.excludeCard.value || null : null;
+          filterType === 'exclude'
+            ? hoveredCardId
+            : elements.excludeCard
+              ? elements.excludeCard.value || null
+              : null;
 
         // Start timer to pre-resolve this filter combination
-        cache.startFilterHoverTimer(state.tournament, state.archetypeBase, includeId, excludeId);
+        cache.startFilterHoverTimer(
+          state.tournament,
+          state.archetypeBase,
+          includeId,
+          excludeId
+        );
       } catch (error) {
         logger.debug('Failed to pre-cache combination on hover', error.message);
       }
@@ -1345,7 +1689,9 @@ function setupFilterHoverHandler(selectElement, filterType) {
 }
 
 function handleGranularityInput(event) {
-  const target = /** @type {HTMLInputElement|null} */ (event.currentTarget || event.target);
+  const target = /** @type {HTMLInputElement|null} */ (
+    event.currentTarget || event.target
+  );
   if (!target || !Array.isArray(state.items) || state.items.length === 0) {
     return;
   }
@@ -1358,9 +1704,17 @@ function handleGranularityInput(event) {
     return;
   }
 
-  const maxPercent = Math.min(100, Math.ceil(computedMax / GRANULARITY_STEP_PERCENT) * GRANULARITY_STEP_PERCENT);
+  const maxPercent = Math.min(
+    100,
+    Math.ceil(computedMax / GRANULARITY_STEP_PERCENT) *
+      GRANULARITY_STEP_PERCENT
+  );
   const rawValue = Number(target.value);
-  const normalized = normalizeThreshold(rawValue, GRANULARITY_MIN_PERCENT, maxPercent);
+  const normalized = normalizeThreshold(
+    rawValue,
+    GRANULARITY_MIN_PERCENT,
+    maxPercent
+  );
 
   if (state.thresholdPercent !== normalized) {
     state.thresholdPercent = normalized;
@@ -1389,7 +1743,9 @@ function resolveTournamentPreference(defaultTournament, tournamentsList) {
   if (tournaments.includes(preferredTournament)) {
     return preferredTournament;
   }
-  logger.warn(`Preferred tournament ${preferredTournament} not found, falling back to ${defaultTournament}`);
+  logger.warn(
+    `Preferred tournament ${preferredTournament} not found, falling back to ${defaultTournament}`
+  );
   return defaultTournament;
 }
 
@@ -1411,7 +1767,11 @@ async function initialize() {
     setPageState('loading');
     toggleLoading(true);
 
-    const tournaments = await safeAsync(() => fetchTournamentsList(), 'fetching tournaments list', []);
+    const tournaments = await safeAsync(
+      () => fetchTournamentsList(),
+      'fetching tournaments list',
+      []
+    );
     if (!Array.isArray(tournaments) || tournaments.length === 0) {
       throw new Error('No tournaments available for archetype analysis.');
     }
@@ -1419,16 +1779,25 @@ async function initialize() {
     // since include-exclude filtering is only available for the online meta aggregation
     const onlineMeta = 'Online - Last 14 Days';
     const latestTournament = tournaments[0];
-    state.tournament = resolveTournamentPreference(onlineMeta, [onlineMeta, ...tournaments]);
+    state.tournament = resolveTournamentPreference(onlineMeta, [
+      onlineMeta,
+      ...tournaments
+    ]);
 
     const [overrides, tournamentReport, archetypeRaw] = await Promise.all([
       safeAsync(() => fetchOverrides(), 'fetching thumbnail overrides', {}),
-      safeAsync(() => fetchReport(state.tournament), `fetching ${state.tournament} report`, null),
+      safeAsync(
+        () => fetchReport(state.tournament),
+        `fetching ${state.tournament} report`,
+        null
+      ),
       fetchArchetypeReport(state.tournament, state.archetypeBase)
     ]);
 
     if (!tournamentReport || typeof tournamentReport.deckTotal !== 'number') {
-      throw new Error(`Tournament report for ${state.tournament} is missing deck totals.`);
+      throw new Error(
+        `Tournament report for ${state.tournament} is missing deck totals.`
+      );
     }
 
     const parsedArchetype = parseReport(archetypeRaw);

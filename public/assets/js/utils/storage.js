@@ -14,7 +14,11 @@ const STORAGE_CONFIG = {
   metaCache: { key: 'metaCacheV1', version: 1, default: {} },
   pickCache: { key: 'pickCacheV1', version: 1, default: {} },
   searchCache: { key: 'searchCacheV1', version: 1, default: { names: [] } },
-  binderSelections: { key: 'binderSelectionsV1', version: 1, default: { tournaments: [], archetypes: [] } }
+  binderSelections: {
+    key: 'binderSelectionsV1',
+    version: 1,
+    default: { tournaments: [], archetypes: [] }
+  },
 };
 
 /**
@@ -47,7 +51,10 @@ class StorageManager {
   static get(storageKey) {
     const config = STORAGE_CONFIG[storageKey];
     if (!config) {
-      throw new AppError(ErrorTypes.VALIDATION, `Unknown storage key: ${storageKey}`);
+      throw new AppError(
+        ErrorTypes.VALIDATION,
+        `Unknown storage key: ${storageKey}`
+      );
     }
 
     return safeSync(
@@ -59,7 +66,9 @@ class StorageManager {
         }
 
         const parsed = JSON.parse(rawData);
-        logger.debug(`Retrieved ${storageKey} from localStorage`, { size: JSON.stringify(parsed).length });
+        logger.debug(`Retrieved ${storageKey} from localStorage`, {
+          size: JSON.stringify(parsed).length
+        });
         return parsed;
       },
       `retrieving ${storageKey} from localStorage`,
@@ -76,14 +85,19 @@ class StorageManager {
   static set(storageKey, data) {
     const config = STORAGE_CONFIG[storageKey];
     if (!config) {
-      throw new AppError(ErrorTypes.VALIDATION, `Unknown storage key: ${storageKey}`);
+      throw new AppError(
+        ErrorTypes.VALIDATION,
+        `Unknown storage key: ${storageKey}`
+      );
     }
 
     return safeSync(
       () => {
         const serialized = JSON.stringify(data);
         localStorage.setItem(config.key, serialized);
-        logger.debug(`Saved ${storageKey} to localStorage`, { size: serialized.length });
+        logger.debug(`Saved ${storageKey} to localStorage`, {
+          size: serialized.length
+        });
         return true;
       },
       `saving ${storageKey} to localStorage`,
@@ -99,7 +113,10 @@ class StorageManager {
   static remove(storageKey) {
     const config = STORAGE_CONFIG[storageKey];
     if (!config) {
-      throw new AppError(ErrorTypes.VALIDATION, `Unknown storage key: ${storageKey}`);
+      throw new AppError(
+        ErrorTypes.VALIDATION,
+        `Unknown storage key: ${storageKey}`
+      );
     }
 
     return safeSync(
@@ -138,7 +155,11 @@ class StorageManager {
     let totalSize = 0;
 
     Object.entries(STORAGE_CONFIG).forEach(([key, config]) => {
-      const data = safeSync(() => localStorage.getItem(config.key), `getting ${key} size`, '');
+      const data = safeSync(
+        () => localStorage.getItem(config.key),
+        `getting ${key} size`,
+        '',
+      );
       const { size } = new Blob([data || '']);
       stats[key] = { size, exists: Boolean(data) };
       totalSize += size;

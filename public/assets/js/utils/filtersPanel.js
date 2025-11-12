@@ -1,6 +1,7 @@
 const PANEL_SELECTOR = '#filters';
 const TOGGLE_SELECTOR = '#filtersToggle';
-const DEFAULT_FOCUS_SELECTOR = 'select, input, button, textarea, [tabindex]:not([tabindex="-1"])';
+const DEFAULT_FOCUS_SELECTOR =
+  'select, input, button, textarea, [tabindex]:not([tabindex="-1"])';
 
 function getElements() {
   /** @type {HTMLElement|null} */
@@ -51,7 +52,10 @@ function shouldHandle(ownerAttr, owner) {
  * @param {string} [options.focusSelector]
  * @returns {'opened'|'noop'}
  */
-export function openFiltersPanel({ focusFirstControl = false, focusSelector = DEFAULT_FOCUS_SELECTOR } = {}) {
+export function openFiltersPanel({
+  focusFirstControl = false,
+  focusSelector = DEFAULT_FOCUS_SELECTOR
+} = {}) {
   const { panel, toggle } = getElements();
   if (!panel) {
     return 'noop';
@@ -144,12 +148,15 @@ export function initFiltersToggle({
     return;
   }
 
-  const configuredOwner = toggle.dataset?.cmFiltersOwner || panel.dataset?.cmFiltersOwner;
+  const configuredOwner =
+    toggle.dataset?.cmFiltersOwner || panel.dataset?.cmFiltersOwner;
   if (!shouldHandle(configuredOwner, owner)) {
     return;
   }
 
-  const isSmallScreen = typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 899px)').matches;
+  const isSmallScreen =
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(max-width: 899px)').matches;
 
   if (!panel.hasAttribute('aria-hidden') && isSmallScreen) {
     applyPanelState({ panel, toggle }, false);
