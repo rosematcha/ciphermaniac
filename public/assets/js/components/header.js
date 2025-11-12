@@ -29,8 +29,12 @@ export function createHeader(options = {}) {
     </div>
   `;
 
-  const nav = /** @type {HTMLElement | null} */ (header.querySelector('.main-nav'));
-  const toggle = /** @type {HTMLButtonElement | null} */ (header.querySelector('.nav-toggle'));
+  const nav = /** @type {HTMLElement | null} */ (
+    header.querySelector('.main-nav')
+  );
+  const toggle = /** @type {HTMLButtonElement | null} */ (
+    header.querySelector('.nav-toggle')
+  );
 
   if (nav && toggle) {
     nav.id = 'mainNav';

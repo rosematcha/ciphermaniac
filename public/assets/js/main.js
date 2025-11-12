@@ -6,7 +6,9 @@
 
 // Clear any existing scroll listeners that might be left over from imagePreloader
 (function clearExistingScrollListeners() {
-  const oldListeners = /** @type {EventListener[]} */ (window.__imagePreloaderListeners || []);
+  const oldListeners = /** @type {EventListener[]} */ (
+    window.__imagePreloaderListeners || []
+  );
   oldListeners.forEach(listener => {
     window.removeEventListener('scroll', listener);
   });
@@ -77,14 +79,27 @@ import { applyFiltersSort } from './controls.js';
 import { initMissingThumbsDev as _initMissingThumbsDev } from './dev/missingThumbs.js';
 import { initCacheDev } from './dev/cacheDev.js';
 // import { imagePreloader } from './utils/imagePreloader.js'; // Disabled - using parallelImageLoader instead
-import { getStateFromURL, normalizeRouteOnLoad, parseHash, setStateInURL } from './router.js';
+import {
+  getStateFromURL,
+  normalizeRouteOnLoad,
+  parseHash,
+  setStateInURL
+} from './router.js';
 import { buildCardPath } from './card/routing.js';
 import { logger } from './utils/logger.js';
 import { storage } from './utils/storage.js';
-import { CleanupManager, debounce, validateElements } from './utils/performance.js';
+import {
+  CleanupManager,
+  debounce,
+  validateElements
+} from './utils/performance.js';
 import { CONFIG } from './config.js';
 import { prettyTournamentName } from './utils/format.js';
-import { hideGridSkeleton, showGridSkeleton, updateSkeletonLayout } from './components/placeholders.js';
+import {
+  hideGridSkeleton,
+  showGridSkeleton,
+  updateSkeletonLayout
+} from './components/placeholders.js';
 import { aggregateReports } from './utils/reportAggregator.js';
 import { formatSetLabel, sortSetCodesByRelease } from './data/setCatalog.js';
 import {
@@ -122,7 +137,7 @@ const appState = {
     openDropdown: null,
     onTournamentSelection: null,
     onSetSelection: null
-  }
+  },
 };
 
 const DEFAULT_ONLINE_META = 'Online - Last 14 Days';
@@ -230,7 +245,11 @@ function updateSetFilterOptions(items) {
     for (const item of items) {
       if (item && typeof item.set === 'string' && item.set.trim()) {
         setCodes.add(item.set.trim().toUpperCase());
-      } else if (item && typeof item.uid === 'string' && item.uid.includes('::')) {
+      } else if (
+        item &&
+        typeof item.uid === 'string' &&
+        item.uid.includes('::')
+      ) {
         const [, code] = item.uid.split('::');
         if (code) {
           setCodes.add(code.trim().toUpperCase());
@@ -248,7 +267,9 @@ function updateSetFilterOptions(items) {
   const orderedCodes = sortSetCodesByRelease(setCodes);
   appState.availableSets = orderedCodes;
 
-  const nextSelected = (appState.selectedSets || []).filter(code => orderedCodes.includes(code));
+  const nextSelected = (appState.selectedSets || []).filter(code =>
+    orderedCodes.includes(code)
+  );
   if (nextSelected.length !== (appState.selectedSets || []).length) {
     appState.selectedSets = nextSelected;
   }
@@ -279,10 +300,18 @@ function createMultiSelectDropdown(state, config) {
   const menu = document.getElementById(config.menuId);
   const list = document.getElementById(config.listId);
   const summary = document.getElementById(config.summaryId);
-  const search = config.searchId ? document.getElementById(config.searchId) : null;
-  const chipsContainer = config.chipsId ? document.getElementById(config.chipsId) : null;
-  const addButton = config.addButtonId ? document.getElementById(config.addButtonId) : null;
-  const labelElement = config.labelId ? document.getElementById(config.labelId) : null;
+  const search = config.searchId
+    ? document.getElementById(config.searchId)
+    : null;
+  const chipsContainer = config.chipsId
+    ? document.getElementById(config.chipsId)
+    : null;
+  const addButton = config.addButtonId
+    ? document.getElementById(config.addButtonId)
+    : null;
+  const labelElement = config.labelId
+    ? document.getElementById(config.labelId)
+    : null;
   const comboRoot = trigger ? trigger.closest('.filter-combobox') : null;
   const root = trigger ? trigger.closest('.filter-dropdown') : null;
   const actionsFooter = menu.querySelector('[data-multi-only]') || null;
@@ -301,11 +330,18 @@ function createMultiSelectDropdown(state, config) {
   const allSelectedLabel = config.allSelectedLabel || 'All selected';
   const includeAllOption = config.includeAllOption === true;
   const allOptionLabel = config.allOptionLabel || 'All';
-  const maxVisibleChips = Number.isFinite(config.maxVisibleChips) ? Number(config.maxVisibleChips) : 2;
+  const maxVisibleChips = Number.isFinite(config.maxVisibleChips)
+    ? Number(config.maxVisibleChips)
+    : 2;
   const singularLabel =
-    config.singularLabel || labelElement?.dataset.labelSingular || labelElement?.textContent?.trim() || 'Selection';
-  const pluralLabel = config.pluralLabel || labelElement?.dataset.labelPlural || singularLabel;
-  const placeholderAriaLabel = config.placeholderAriaLabel || placeholderSummary;
+    config.singularLabel ||
+    labelElement?.dataset.labelSingular ||
+    labelElement?.textContent?.trim() ||
+    'Selection';
+  const pluralLabel =
+    config.pluralLabel || labelElement?.dataset.labelPlural || singularLabel;
+  const placeholderAriaLabel =
+    config.placeholderAriaLabel || placeholderSummary;
   const measureCanvas = document.createElement('canvas');
   const measureContext = measureCanvas.getContext('2d');
   chipsContainer.setAttribute('role', 'list');
@@ -315,10 +351,15 @@ function createMultiSelectDropdown(state, config) {
     const raw = formatOption(optionValue);
     if (raw && typeof raw === 'object') {
       const label = typeof raw.label === 'string' ? raw.label : '';
-      const fullName = typeof raw.fullName === 'string' ? raw.fullName : label || String(optionValue ?? '');
+      const fullName =
+        typeof raw.fullName === 'string'
+          ? raw.fullName
+          : label || String(optionValue ?? '');
       const codeValue = typeof raw.code === 'string' ? raw.code : '';
-      const codeLabel = typeof raw.codeLabel === 'string' ? raw.codeLabel : codeValue;
-      const finalLabel = label || `${fullName}${codeLabel ? ` (${codeLabel})` : ''}`;
+      const codeLabel =
+        typeof raw.codeLabel === 'string' ? raw.codeLabel : codeValue;
+      const finalLabel =
+        label || `${fullName}${codeLabel ? ` (${codeLabel})` : ''}`;
       return {
         label: finalLabel,
         name: fullName,
@@ -331,7 +372,7 @@ function createMultiSelectDropdown(state, config) {
       label: fallback,
       name: fallback,
       code: '',
-      codeLabel: ''
+      codeLabel: '',
     };
   };
 
@@ -359,7 +400,8 @@ function createMultiSelectDropdown(state, config) {
     const count = dropdownState.selected.length;
     const hasSelection = count > 0;
     const hasMultiple = count > 1;
-    const allSelected = hasSelection && totalOptions > 0 && count === totalOptions;
+    const allSelected =
+      hasSelection && totalOptions > 0 && count === totalOptions;
     const firstValue = hasSelection ? dropdownState.selected[0] : null;
     const firstDisplay = firstValue ? getDisplayParts(firstValue) : null;
     const firstLabel = firstDisplay ? firstDisplay.label : '';
@@ -390,7 +432,10 @@ function createMultiSelectDropdown(state, config) {
 
     const shouldDisableTrigger = dropdownState.disabled || totalOptions === 0;
     trigger.disabled = shouldDisableTrigger;
-    trigger.setAttribute('aria-disabled', shouldDisableTrigger ? 'true' : 'false');
+    trigger.setAttribute(
+      'aria-disabled',
+      shouldDisableTrigger ? 'true' : 'false',
+    );
     summary.textContent = hasMultiple ? '' : summaryText;
     summary.setAttribute('aria-hidden', hasMultiple ? 'true' : 'false');
     summary.classList.toggle('is-hidden', hasMultiple);
@@ -485,7 +530,9 @@ function createMultiSelectDropdown(state, config) {
       removeButton.setAttribute('aria-label', `Remove ${display.label}`);
       removeButton.textContent = 'x';
       removeButton.addEventListener('click', () => {
-        const nextSelection = dropdownState.selected.filter(item => item !== value);
+        const nextSelection = dropdownState.selected.filter(
+          item => item !== value
+        );
         commitSelection(nextSelection);
         renderOptions();
       });
@@ -502,7 +549,10 @@ function createMultiSelectDropdown(state, config) {
         expandButton.type = 'button';
         expandButton.className = 'filter-chip filter-chip--more';
         expandButton.textContent = `+${hiddenCount} more`;
-        expandButton.setAttribute('aria-label', `Show ${hiddenCount} more selections`);
+        expandButton.setAttribute(
+          'aria-label',
+          `Show ${hiddenCount} more selections`
+        );
         expandButton.setAttribute('aria-expanded', 'false');
         expandButton.addEventListener('click', () => {
           dropdownState.chipsExpanded = true;
@@ -526,7 +576,8 @@ function createMultiSelectDropdown(state, config) {
   };
 
   const measureWidth = textValue => {
-    const safeValue = typeof textValue === 'string' ? textValue : String(textValue ?? '');
+    const safeValue =
+      typeof textValue === 'string' ? textValue : String(textValue ?? '');
     if (!measureContext) {
       return safeValue.length * 8;
     }
@@ -542,8 +593,13 @@ function createMultiSelectDropdown(state, config) {
     }
     let width = baseWidth;
     if (dropdownState.options.length) {
-      const optionWidths = dropdownState.options.map(option => measureWidth(getDisplayParts(option).label));
-      const longest = Math.max(...optionWidths, measureWidth(summary?.textContent || ''));
+      const optionWidths = dropdownState.options.map(option =>
+        measureWidth(getDisplayParts(option).label)
+      );
+      const longest = Math.max(
+        ...optionWidths,
+        measureWidth(summary?.textContent || ''),
+      );
       width = Math.min(Math.max(Math.ceil(longest + 120), baseWidth), maxWidth);
     }
     menu.style.minWidth = `${width}px`;
@@ -563,7 +619,9 @@ function createMultiSelectDropdown(state, config) {
 
   const commitSelection = (selection, { silent = false } = {}) => {
     const wasMulti = dropdownState.multi;
-    let normalized = Array.isArray(selection) ? dropdownState.options.filter(option => selection.includes(option)) : [];
+    let normalized = Array.isArray(selection)
+      ? dropdownState.options.filter(option => selection.includes(option))
+      : [];
 
     if (!dropdownState.multi && normalized.length > 1) {
       let chosen = null;
@@ -577,7 +635,9 @@ function createMultiSelectDropdown(state, config) {
         }
       }
       if (chosen !== null && chosen !== undefined) {
-        normalized = dropdownState.options.filter(option => option === chosen);
+        normalized = dropdownState.options.filter(
+          option => option === chosen
+        );
       } else {
         normalized = normalized.slice(-1);
       }
@@ -585,7 +645,9 @@ function createMultiSelectDropdown(state, config) {
 
     const unchanged =
       normalized.length === dropdownState.selected.length &&
-      normalized.every((value, index) => value === dropdownState.selected[index]);
+      normalized.every(
+        (value, index) => value === dropdownState.selected[index]
+      );
 
     if (!unchanged) {
       dropdownState.selected = normalized;
@@ -593,7 +655,12 @@ function createMultiSelectDropdown(state, config) {
         try {
           const result = config.onChange([...dropdownState.selected]);
           if (result && typeof result.catch === 'function') {
-            result.catch(error => logger.error(`Dropdown ${config.key} change handler rejected`, error));
+            result.catch(error =>
+              logger.error(
+                `Dropdown ${config.key} change handler rejected`,
+                error
+              ),
+            );
           }
         } catch (error) {
           logger.error(`Dropdown ${config.key} change handler threw`, error);
@@ -601,7 +668,8 @@ function createMultiSelectDropdown(state, config) {
       }
     }
 
-    dropdownState.multi = dropdownState.selected.length > 1 || (dropdownState.isOpen && wasMulti);
+    dropdownState.multi =
+      dropdownState.selected.length > 1 || (dropdownState.isOpen && wasMulti);
     if (!dropdownState.multi) {
       dropdownState.chipsExpanded = false;
     }
@@ -621,7 +689,8 @@ function createMultiSelectDropdown(state, config) {
     if (includeAllOption) {
       const allButton = document.createElement('button');
       allButton.type = 'button';
-      allButton.className = 'filter-option filter-option--single filter-option--all';
+      allButton.className =
+        'filter-option filter-option--single filter-option--all';
       const isAllActive = dropdownState.selected.length === 0;
       allButton.textContent = allOptionLabel;
       allButton.setAttribute('role', 'option');
@@ -656,7 +725,10 @@ function createMultiSelectDropdown(state, config) {
         const optionLabel = document.createElement('label');
         optionLabel.className = 'filter-option filter-option--multi';
         optionLabel.setAttribute('role', 'option');
-        optionLabel.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+        optionLabel.setAttribute(
+          'aria-selected',
+          isSelected ? 'true' : 'false',
+        );
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
@@ -702,7 +774,10 @@ function createMultiSelectDropdown(state, config) {
         if (isSelected) {
           optionButton.classList.add('is-active');
         }
-        optionButton.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+        optionButton.setAttribute(
+          'aria-selected',
+          isSelected ? 'true' : 'false',
+        );
 
         optionButton.addEventListener('click', () => {
           const nextSelection = [optionValue];
@@ -717,7 +792,10 @@ function createMultiSelectDropdown(state, config) {
     });
   };
 
-  const render = (options = dropdownState.options, selection = dropdownState.selected) => {
+  const render = (
+    options = dropdownState.options,
+    selection = dropdownState.selected
+  ) => {
     dropdownState.options = Array.isArray(options) ? options.slice() : [];
     dropdownState.selected = Array.isArray(selection)
       ? dropdownState.options.filter(option => selection.includes(option))
@@ -760,7 +838,8 @@ function createMultiSelectDropdown(state, config) {
     }
     dropdownState.filterText = '';
     dropdownState.chipsExpanded = false;
-    const shouldUseMulti = typeof multi === 'boolean' ? multi : dropdownState.selected.length > 1;
+    const shouldUseMulti =
+      typeof multi === 'boolean' ? multi : dropdownState.selected.length > 1;
     dropdownState.multi = shouldUseMulti;
     if (search) {
       search.value = '';
@@ -806,7 +885,11 @@ function createMultiSelectDropdown(state, config) {
       return false;
     }
     if (addButton) {
-      return menu.contains(node) || trigger.contains(node) || addButton.contains(node);
+      return (
+        menu.contains(node) ||
+        trigger.contains(node) ||
+        addButton.contains(node)
+      );
     }
     return menu.contains(node) || trigger.contains(node);
   };
@@ -816,7 +899,11 @@ function createMultiSelectDropdown(state, config) {
     if (trigger.disabled) {
       return;
     }
-    if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+    if (
+      event.key === 'ArrowDown' ||
+      event.key === 'Enter' ||
+      event.key === ' '
+    ) {
       event.preventDefault();
       open();
     } else if (
@@ -955,7 +1042,7 @@ function setupDropdownFilters(state) {
       baseWidth: 300,
       maxWidth: 440,
       onChange: selection => state.ui.onSetSelection?.(selection)
-    })
+    }),
   };
 
   state.ui.dropdowns = dropdowns;
@@ -963,7 +1050,9 @@ function setupDropdownFilters(state) {
   const onDocumentPointerDown = event => {
     const target = event.target;
     const dropdownList = Object.values(dropdowns).filter(Boolean);
-    const clickedInsideDropdown = dropdownList.some(dropdown => dropdown.contains(target));
+    const clickedInsideDropdown = dropdownList.some(dropdown =>
+      dropdown.contains(target)
+    );
 
     if (!clickedInsideDropdown) {
       closeAllDropdowns();
@@ -976,7 +1065,11 @@ function setupDropdownFilters(state) {
     }
   };
 
-  state.cleanup.addEventListener(document, 'pointerdown', onDocumentPointerDown);
+  state.cleanup.addEventListener(
+    document,
+    'pointerdown',
+    onDocumentPointerDown
+  );
   state.cleanup.addEventListener(document, 'keydown', onDocumentKeydown);
 
   closeFiltersPanel({ skipDropdownClose: true });
@@ -988,13 +1081,24 @@ function setupDropdownFilters(state) {
     });
   }
 
-  if (dropdowns.tournaments && Array.isArray(state.availableTournaments) && state.availableTournaments.length) {
-    dropdowns.tournaments.render(state.availableTournaments, state.selectedTournaments);
+  if (
+    dropdowns.tournaments &&
+    Array.isArray(state.availableTournaments) &&
+    state.availableTournaments.length
+  ) {
+    dropdowns.tournaments.render(
+      state.availableTournaments,
+      state.selectedTournaments
+    );
   } else if (dropdowns.tournaments) {
     dropdowns.tournaments.render();
   }
 
-  if (dropdowns.sets && Array.isArray(state.availableSets) && state.availableSets.length) {
+  if (
+    dropdowns.sets &&
+    Array.isArray(state.availableSets) &&
+    state.availableSets.length
+  ) {
     dropdowns.sets.render(state.availableSets, state.selectedSets);
   } else if (dropdowns.sets) {
     dropdowns.sets.render();
@@ -1061,7 +1165,9 @@ function toggleFiltersPanel() {
 async function applyCurrentFilters(state) {
   await applyFiltersSort(state.current.items, state.overrides);
   const existingSets =
-    Array.isArray(state.selectedSets) && state.selectedSets.length > 0 ? [...state.selectedSets] : readSelectedSets();
+    Array.isArray(state.selectedSets) && state.selectedSets.length > 0
+      ? [...state.selectedSets]
+      : readSelectedSets();
   state.selectedSets = existingSets;
   state.selectedCardType = readCardType();
 }
@@ -1114,7 +1220,7 @@ async function initializeTournamentSelector(state) {
   const tournaments = await safeAsync(
     () => fetchTournamentsList(),
     'fetching tournaments list',
-    ['2025-08-15, World Championships 2025'] // fallback
+    ['2025-08-15, World Championships 2025'], // fallback
   );
 
   // Check if online meta report exists separately (not in tournaments.json)
@@ -1123,7 +1229,7 @@ async function initializeTournamentSelector(state) {
       const response = await fetch(
         `${CONFIG.API.R2_BASE}/reports/${encodeURIComponent(DEFAULT_ONLINE_META)}/master.json`,
         {
-          method: 'HEAD'
+          method: 'HEAD',
         }
       );
       return response.ok;
@@ -1141,10 +1247,14 @@ async function initializeTournamentSelector(state) {
   const urlSelectionRaw = urlState.tour ? urlState.tour.split(',') : [];
   const normalizedFromUrl = normalizeTournamentSelection(urlSelectionRaw);
 
-  let selection = normalizedFromUrl.filter(value => tournaments.includes(value));
+  let selection = normalizedFromUrl.filter(value =>
+    tournaments.includes(value)
+  );
 
   if (selection.length === 0 && state.selectedTournaments.length > 0) {
-    selection = normalizeTournamentSelection(state.selectedTournaments).filter(value => tournaments.includes(value));
+    selection = normalizeTournamentSelection(state.selectedTournaments).filter(
+      value => tournaments.includes(value)
+    );
   }
 
   if (selection.length === 0 && tournaments.includes(DEFAULT_ONLINE_META)) {
@@ -1174,7 +1284,9 @@ async function initializeTournamentSelector(state) {
     dropdown.render(tournaments, selection);
   }
 
-  logger.info(`Initialized with tournaments: ${selection.join(', ') || 'None'}`);
+  logger.info(
+    `Initialized with tournaments: ${selection.join(', ') || 'None'}`,
+  );
 
   // Kick off a background fetch for online Limitless events (does not block UI init)
   void hydrateOnlineTournaments(state, {
@@ -1200,7 +1312,10 @@ async function hydrateOnlineTournaments(state, options = {}) {
   state.onlineTournaments = tournaments;
 
   if (tournaments.length > 0) {
-    logger.info(`Loaded ${tournaments.length} online tournaments from Limitless`, options);
+    logger.info(
+      `Loaded ${tournaments.length} online tournaments from Limitless`,
+      options
+    );
   } else {
     logger.debug('No Limitless tournaments returned for query', options);
   }
@@ -1213,7 +1328,11 @@ async function hydrateOnlineTournaments(state, options = {}) {
  * @param {boolean} showSkeletonLoading - Whether to show skeleton loading state
  * @returns {Promise<{deckTotal: number, items: any[]}>}
  */
-async function loadTournamentData(tournament, cache, showSkeletonLoading = false) {
+async function loadTournamentData(
+  tournament,
+  cache,
+  showSkeletonLoading = false
+) {
   // Check cache first
   const cached = cache.getCachedMaster(tournament);
   if (cached) {
@@ -1252,7 +1371,12 @@ async function loadTournamentData(tournament, cache, showSkeletonLoading = false
  * @param {AppState} state
  * @param {boolean} skipUrlInit - Skip URL-based initialization (e.g., during tournament change)
  */
-async function setupArchetypeSelector(tournaments, cache, state, skipUrlInit = false) {
+async function setupArchetypeSelector(
+  tournaments,
+  cache,
+  state,
+  skipUrlInit = false
+) {
   const archeSel = document.getElementById('archetype');
   if (!archeSel) {
     return;
@@ -1264,12 +1388,12 @@ async function setupArchetypeSelector(tournaments, cache, state, skipUrlInit = f
   }
 
   const normalizedTournaments = normalizeTournamentSelection(tournaments);
-  
+
   // Filter out online tournaments - they should not contribute to archetypes
   const physicalTournaments = normalizedTournaments.filter(
     tournament => tournament !== DEFAULT_ONLINE_META
   );
-  
+
   const combinedArchetypes = new Set();
 
   for (const tournament of physicalTournaments) {
@@ -1291,11 +1415,16 @@ async function setupArchetypeSelector(tournaments, cache, state, skipUrlInit = f
     if (Array.isArray(archetypesList)) {
       archetypesList.forEach(archetype => combinedArchetypes.add(archetype));
     } else {
-      logger.warn('archetypesList is not an array, using empty array as fallback', { archetypesList, tournament });
+      logger.warn(
+        'archetypesList is not an array, using empty array as fallback',
+        { archetypesList, tournament }
+      );
     }
   }
 
-  const archetypesList = Array.from(combinedArchetypes).sort((left, right) => left.localeCompare(right));
+  const archetypesList = Array.from(combinedArchetypes).sort((left, right) =>
+    left.localeCompare(right)
+  );
 
   archetypesList.forEach(archetype => {
     const option = document.createElement('option');
@@ -1310,11 +1439,17 @@ async function setupArchetypeSelector(tournaments, cache, state, skipUrlInit = f
     if (!selectedValue || selectedValue === '__all__') {
       const selection = state.selectedTournaments.length
         ? state.selectedTournaments
-        : normalizeTournamentSelection(state.currentTournament ? [state.currentTournament] : []);
+        : normalizeTournamentSelection(
+          state.currentTournament ? [state.currentTournament] : []
+          );
       const cache = state.cache || (state.cache = new DataCache());
       const data = await loadSelectionData(selection, cache);
       state.current = data;
-      renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
+      renderSummary(
+        document.getElementById('summary'),
+        data.deckTotal,
+        data.items.length
+      );
       updateSetFilterOptions(data.items);
       await applyCurrentFilters(state);
       setStateInURL({ archetype: '' }, { merge: true });
@@ -1322,16 +1457,20 @@ async function setupArchetypeSelector(tournaments, cache, state, skipUrlInit = f
     }
 
     const currentSelection = normalizeTournamentSelection(
-      state.selectedTournaments.length ? state.selectedTournaments : state.currentTournament
+      state.selectedTournaments.length
+        ? state.selectedTournaments
+        : state.currentTournament
     );
-    
+
     // Filter out online tournaments when fetching archetype data
     const physicalTournamentsForArchetype = currentSelection.filter(
       tournament => tournament !== DEFAULT_ONLINE_META
     );
 
     if (physicalTournamentsForArchetype.length === 0) {
-      logger.warn('No physical tournaments selected while trying to load archetype data');
+      logger.warn(
+        'No physical tournaments selected while trying to load archetype data',
+      );
       return;
     }
 
@@ -1349,9 +1488,14 @@ async function setupArchetypeSelector(tournaments, cache, state, skipUrlInit = f
           archetypeReports.push(parsed);
         } catch (error) {
           if (error instanceof AppError && error.context?.status === 404) {
-            logger.debug(`Archetype ${selectedValue} not available for ${tournament}, skipping`);
+            logger.debug(
+              `Archetype ${selectedValue} not available for ${tournament}, skipping`
+            );
           } else {
-            logger.exception(`Failed fetching archetype ${selectedValue} for ${tournament}`, error);
+            logger.exception(
+              `Failed fetching archetype ${selectedValue} for ${tournament}`,
+              error
+            );
           }
         }
       }
@@ -1372,7 +1516,11 @@ async function setupArchetypeSelector(tournaments, cache, state, skipUrlInit = f
     // eslint-disable-next-line no-param-reassign
     state.current = { items: cached.items, deckTotal: cached.deckTotal };
     updateSetFilterOptions(cached.items);
-    renderSummary(document.getElementById('summary'), cached.deckTotal, cached.items.length);
+    renderSummary(
+      document.getElementById('summary'),
+      cached.deckTotal,
+      cached.items.length
+    );
     await applyCurrentFilters(state);
     setStateInURL({ archetype: selectedValue }, { merge: true });
   };
@@ -1401,9 +1549,9 @@ function setupControlHandlers(state) {
       search: '#search',
       sort: '#sort',
       archetype: '#archetype',
-      cardType: '#card-type'
+      cardType: '#card-type',
     },
-    'controls'
+    'controls',
   );
 
   const handleSearch = debounce(async () => {
@@ -1416,7 +1564,10 @@ function setupControlHandlers(state) {
     setStateInURL({ sort: elements.sort.value }, { merge: true });
   };
 
-  const handleSetSelectionChange = async (selection, { silent = false } = {}) => {
+  const handleSetSelectionChange = async (
+    selection,
+    { silent = false } = {}
+  ) => {
     const normalized = normalizeSetValues(selection);
     state.selectedSets = normalized;
     writeSelectedSets(normalized);
@@ -1442,11 +1593,15 @@ function setupControlHandlers(state) {
   };
 
   const handleTournamentSelectionChange = async newSelection => {
-    const previousSelection = Array.isArray(state.selectedTournaments) ? [...state.selectedTournaments] : [];
+    const previousSelection = Array.isArray(state.selectedTournaments)
+      ? [...state.selectedTournaments]
+      : [];
     let selection = normalizeTournamentSelection(newSelection);
 
     if (selection.length === 0) {
-      const fallbackSource = previousSelection.length ? previousSelection : state.availableTournaments;
+      const fallbackSource = previousSelection.length
+        ? previousSelection
+        : state.availableTournaments;
       if (fallbackSource.length === 0) {
         logger.warn('Tournament selection is empty; skipping refresh');
         return;
@@ -1471,30 +1626,44 @@ function setupControlHandlers(state) {
 
     const cache = state.cache || (state.cache = new DataCache());
 
-    const data = await loadSelectionData(selection, cache, { showSkeleton: true });
+    const data = await loadSelectionData(selection, cache, {
+      showSkeleton: true
+    });
     state.current = data;
     updateSetFilterOptions(data.items);
     await applyCurrentFilters(state);
 
     await setupArchetypeSelector(selection, cache, state, true);
 
-    const archetypeElement = /** @type {HTMLSelectElement} */ (elements.archetype);
-    const availableValues = Array.from(archetypeElement.options).map(option => option.value);
-    const canPreserveArchetype = previousArchetype !== '__all__' && availableValues.includes(previousArchetype);
-    const targetArchetype = canPreserveArchetype ? previousArchetype : '__all__';
+    const archetypeElement = /** @type {HTMLSelectElement} */ (
+      elements.archetype
+    );
+    const availableValues = Array.from(archetypeElement.options).map(
+      option => option.value
+    );
+    const canPreserveArchetype =
+      previousArchetype !== '__all__' &&
+      availableValues.includes(previousArchetype);
+    const targetArchetype = canPreserveArchetype
+      ? previousArchetype
+      : '__all__';
 
     archetypeElement.value = targetArchetype;
 
     if (canPreserveArchetype) {
       archetypeElement.dispatchEvent(new Event('change'));
     } else {
-      renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
+      renderSummary(
+        document.getElementById('summary'),
+        data.deckTotal,
+        data.items.length
+      );
     }
 
     setStateInURL(
       {
         tour: selection.join(','),
-        archetype: canPreserveArchetype ? previousArchetype : ''
+        archetype: canPreserveArchetype ? previousArchetype : '',
       },
       { merge: true }
     );
@@ -1507,14 +1676,22 @@ function setupControlHandlers(state) {
 
   state.cleanup.addEventListener(elements.search, 'input', handleSearch);
   state.cleanup.addEventListener(elements.sort, 'change', handleSort);
-  state.cleanup.addEventListener(elements.cardType, 'change', handleCardTypeChange);
+  state.cleanup.addEventListener(
+    elements.cardType,
+    'change',
+    handleCardTypeChange
+  );
 
   state.ui.onTournamentSelection = selection => {
-    handleTournamentSelectionChange(selection).catch(error => logger.error('Failed to update tournaments', error));
+    handleTournamentSelectionChange(selection).catch(error =>
+      logger.error('Failed to update tournaments', error)
+    );
   };
 
   state.ui.onSetSelection = (selection, options = {}) => {
-    handleSetSelectionChange(selection, options).catch(error => logger.error('Failed to update sets', error));
+    handleSetSelectionChange(selection, options).catch(error =>
+      logger.error('Failed to update sets', error)
+    );
   };
 
   // Restore initial state from URL
@@ -1541,7 +1718,9 @@ async function handlePopState(state) {
 }
 
 window.addEventListener('popstate', () => {
-  handlePopState(appState).catch(error => logger.error('Failed to handle popstate', error));
+  handlePopState(appState).catch(error =>
+    logger.error('Failed to handle popstate', error)
+  );
 });
 
 /**
@@ -1586,9 +1765,9 @@ async function applyInitialState(state) {
       search: '#search',
       sort: '#sort',
       archetype: '#archetype',
-      cardType: '#card-type'
+      cardType: '#card-type',
     },
-    'applying initial state'
+    'applying initial state',
   );
 
   // Apply URL state to controls and trigger filtering
@@ -1600,7 +1779,9 @@ async function applyInitialState(state) {
   }
 
   if (elements.cardType instanceof HTMLSelectElement && urlState.cardType) {
-    const hasCardTypeOption = Array.from(elements.cardType.options).some(option => option.value === urlState.cardType);
+    const hasCardTypeOption = Array.from(elements.cardType.options).some(
+      option => option.value === urlState.cardType
+    );
     if (hasCardTypeOption) {
       elements.cardType.value = urlState.cardType;
       state.selectedCardType = urlState.cardType;
@@ -1660,7 +1841,11 @@ async function initializeApp() {
     const cache = appState.cache;
 
     // Load configuration data
-    appState.overrides = await safeAsync(() => fetchOverrides(), 'loading thumbnail overrides', {});
+    appState.overrides = await safeAsync(
+      () => fetchOverrides(),
+      'loading thumbnail overrides',
+      {}
+    );
 
     // Setup control handlers and dropdown UI
     setupControlHandlers(appState);
@@ -1672,7 +1857,9 @@ async function initializeApp() {
     const initialSelection =
       appState.selectedTournaments.length > 0
         ? appState.selectedTournaments
-        : normalizeTournamentSelection(appState.currentTournament ? [appState.currentTournament] : []);
+        : normalizeTournamentSelection(
+          appState.currentTournament ? [appState.currentTournament] : []
+          );
 
     const initialData = await loadSelectionData(initialSelection, cache);
     // eslint-disable-next-line no-param-reassign
@@ -1688,7 +1875,11 @@ async function initializeApp() {
     hideGridSkeleton();
 
     // Initial render
-    renderSummary(document.getElementById('summary'), initialData.deckTotal, initialData.items.length);
+    renderSummary(
+      document.getElementById('summary'),
+      initialData.deckTotal,
+      initialData.items.length
+    );
 
     // Apply initial state from URL
     await applyInitialState(appState);

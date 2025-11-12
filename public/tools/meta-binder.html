@@ -55,6 +55,17 @@
           <button type="button" id="binder-generate" class="binder-generate__button">Generate Binder</button>
           <p id="binder-pending" class="binder-pending">Select events, then click "Generate Binder".</p>
         </div>
+
+        <div class="binder-control-group">
+          <div class="binder-control-header">
+            <h3>Export / Import</h3>
+            <div class="binder-control-actions">
+              <button type="button" id="binder-export">Export Layout</button>
+              <button type="button" id="binder-import">Import Layout</button>
+              <input type="file" id="binder-import-file" accept=".json" hidden />
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="binder-status" aria-live="polite">

@@ -26,17 +26,28 @@ import { logger } from './utils/logger.js';
  * @returns {LayoutMetrics}
  */
 export function computeLayout(containerWidth) {
-  const { GAP, BASE_CARD_WIDTH, MIN_BASE_CARD_WIDTH, MIN_SCALE } = CONFIG.LAYOUT;
+  const { GAP, BASE_CARD_WIDTH, MIN_BASE_CARD_WIDTH, MIN_SCALE } =
+    CONFIG.LAYOUT;
 
   const MIN_HORIZONTAL_PADDING = 20;
   const gap = GAP;
   const effectiveWidth = Math.max(0, containerWidth - MIN_HORIZONTAL_PADDING);
-  const prefersCompact = typeof window !== 'undefined' && window.innerWidth <= 880;
+  const prefersCompact =
+    typeof window !== 'undefined' && window.innerWidth <= 880;
 
   if (prefersCompact) {
-    const columns = Math.max(1, Math.floor((effectiveWidth + gap) / (MIN_BASE_CARD_WIDTH + gap)));
-    const computedBase = columns > 0 ? Math.floor((effectiveWidth + gap) / columns - gap) : MIN_BASE_CARD_WIDTH;
-    const base = Math.max(MIN_BASE_CARD_WIDTH, Math.min(BASE_CARD_WIDTH, computedBase || MIN_BASE_CARD_WIDTH));
+    const columns = Math.max(
+      1,
+      Math.floor((effectiveWidth + gap) / (MIN_BASE_CARD_WIDTH + gap))
+    );
+    const computedBase =
+      columns > 0
+        ? Math.floor((effectiveWidth + gap) / columns - gap)
+        : MIN_BASE_CARD_WIDTH;
+    const base = Math.max(
+      MIN_BASE_CARD_WIDTH,
+      Math.min(BASE_CARD_WIDTH, computedBase || MIN_BASE_CARD_WIDTH)
+    );
     const contentWidth = columns * base + Math.max(0, columns - 1) * gap;
 
     const compactMetrics = {
@@ -52,7 +63,10 @@ export function computeLayout(containerWidth) {
       mediumRows: 0
     };
 
-    logger.debug('Computed layout metrics (compact)', { containerWidth, ...compactMetrics });
+    logger.debug('Computed layout metrics (compact)', {
+      containerWidth,
+      ...compactMetrics
+    });
     return compactMetrics;
   }
 
@@ -69,7 +83,10 @@ export function computeLayout(containerWidth) {
       bigRows: 0,
       mediumRows: 0
     };
-    logger.debug('Computed layout metrics (fallback)', { containerWidth, ...fallbackMetrics });
+    logger.debug('Computed layout metrics (fallback)', {
+      containerWidth,
+      ...fallbackMetrics
+    });
     return fallbackMetrics;
   }
 
@@ -82,10 +99,12 @@ export function computeLayout(containerWidth) {
 
   const cardOuter = base + gap;
   const perRowBig = Math.max(1, Math.floor((effectiveWidth + gap) / cardOuter));
-  const bigRowContentWidth = perRowBig * base + Math.max(0, perRowBig - 1) * gap;
+  const bigRowContentWidth =
+    perRowBig * base + Math.max(0, perRowBig - 1) * gap;
 
   let targetMedium = Math.max(1, perRowBig + 1);
-  const rawMediumScale = ((bigRowContentWidth + gap) / targetMedium - gap) / base;
+  const rawMediumScale =
+    ((bigRowContentWidth + gap) / targetMedium - gap) / base;
   let mediumScale;
 
   if (rawMediumScale < MIN_SCALE) {
@@ -119,7 +138,10 @@ export function computeLayout(containerWidth) {
     mediumRows: 1
   };
 
-  logger.debug('Computed layout metrics (standard)', { containerWidth, ...metrics });
+  logger.debug('Computed layout metrics (standard)', {
+    containerWidth,
+    ...metrics
+  });
 
   return metrics;
 }
@@ -130,7 +152,9 @@ export function computeLayout(containerWidth) {
  */
 export function syncControlsWidth(width) {
   // Prefer toolbar controls if present (toolbar was added to separate header from filters)
-  const controls = document.querySelector('.toolbar .controls') || document.querySelector('.controls');
+  const controls =
+    document.querySelector('.toolbar .controls') ||
+    document.querySelector('.controls');
   if (!controls) {
     return;
   }

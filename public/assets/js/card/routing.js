@@ -140,9 +140,13 @@ function matchesSetAndNumber(item, setCode, number) {
 
 function matchesSanitizedName(item, targetName) {
   const sanitizedTarget = sanitizeName(targetName);
-  const byUid = item.uid ? sanitizeName(getDisplayName(item.uid) || item.uid) : null;
+  const byUid = item.uid
+    ? sanitizeName(getDisplayName(item.uid) || item.uid)
+    : null;
   const byName = sanitizeName(item.name || '');
-  return sanitizedTarget && (sanitizedTarget === byUid || sanitizedTarget === byName);
+  return (
+    sanitizedTarget && (sanitizedTarget === byUid || sanitizedTarget === byName)
+  );
 }
 
 async function resolveBySetAndNumber(setCode, number, options = {}) {
@@ -160,9 +164,12 @@ async function resolveBySetAndNumber(setCode, number, options = {}) {
     if (!parsed) {
       continue;
     }
-    const match = parsed.items.find(item => matchesSetAndNumber(item, setCode, number));
+    const match = parsed.items.find(item =>
+      matchesSetAndNumber(item, setCode, number)
+    );
     if (match) {
-      const identifier = match.uid || buildIdentifierFromParts(match.name, setCode, number);
+      const identifier =
+        match.uid || buildIdentifierFromParts(match.name, setCode, number);
       if (identifier) {
         const canonical = await getCanonicalCard(identifier);
         cache[normalizedKey] = canonical;
@@ -182,7 +189,9 @@ async function resolveBySetAndNumber(setCode, number, options = {}) {
 
       // Search for any UID that has this set:number combination
       // Check both synonyms (variants) and their canonical values
-      for (const [uid, canonicalUid] of Object.entries(synonymData.synonyms || {})) {
+      for (const [uid, canonicalUid] of Object.entries(
+        synonymData.synonyms || {}
+      )) {
         if (uid.includes('::')) {
           const parts = uid.split('::');
           if (
@@ -240,7 +249,9 @@ async function resolveByName(slugName, options = {}) {
     if (!parsed) {
       continue;
     }
-    const match = parsed.items.find(item => matchesSanitizedName(item, slugName));
+    const match = parsed.items.find(item =>
+      matchesSanitizedName(item, slugName)
+    );
     if (match) {
       const identifier =
         match.uid ||
@@ -269,7 +280,10 @@ export function makeCardSlug(identifier) {
   if (!identifier) {
     return null;
   }
-  const normalizedIdentifier = String(identifier).replace(PATH_SEPARATOR_PATTERN, ':');
+  const normalizedIdentifier = String(identifier).replace(
+    PATH_SEPARATOR_PATTERN,
+    ':',
+  );
   if (normalizedIdentifier.includes('::')) {
     const parts = normalizedIdentifier.split('::');
     if (parts.length >= 3 && parts[1] && parts[2]) {
@@ -280,7 +294,9 @@ export function makeCardSlug(identifier) {
       }
     }
   }
-  const setSlugMatch = normalizedIdentifier.match(/^([A-Za-z0-9]{2,5})[:-]([0-9]{1,4}[A-Za-z]?)$/);
+  const setSlugMatch = normalizedIdentifier.match(
+    /^([A-Za-z0-9]{2,5})[:-]([0-9]{1,4}[A-Za-z]?)$/
+  );
   if (setSlugMatch) {
     const setCode = setSlugMatch[1].toUpperCase();
     const number = normalizeCardNumber(setSlugMatch[2]);
@@ -302,7 +318,9 @@ export function buildCardPath(identifier) {
   if (!slug) {
     return '/card';
   }
-  const pathSlug = slug.includes(':') ? slug.replace(COLON_PATTERN, PATH_SAFE_SLUG_SEPARATOR) : slug;
+  const pathSlug = slug.includes(':')
+    ? slug.replace(COLON_PATTERN, PATH_SAFE_SLUG_SEPARATOR)
+    : slug;
   return `/card/${encodeURIComponent(pathSlug)}`;
 }
 
@@ -319,15 +337,25 @@ export function parseCardRoute(loc = window.location) {
 
   const hashMatch = (loc.hash || '').match(/^#card\/(.+)$/);
   if (hashMatch) {
-    return { source: 'hash', identifier: decodeURIComponent(hashMatch[1]), slug: null };
+    return {
+      source: 'hash',
+      identifier: decodeURIComponent(hashMatch[1]),
+      slug: null
+    };
   }
 
   const path = loc.pathname || '';
   const match = path.match(/\/card(?:\.html)?(?:\/([^/?#]+))?\/?$/i);
   if (match) {
     const rawSlug = match[1] ? decodeURIComponent(match[1]) : null;
-    const normalizedSlug = rawSlug ? rawSlug.replace(PATH_SEPARATOR_PATTERN, ':') : null;
-    return { source: normalizedSlug ? 'slug' : 'landing', identifier: null, slug: normalizedSlug };
+    const normalizedSlug = rawSlug
+      ? rawSlug.replace(PATH_SEPARATOR_PATTERN, ':')
+      : null;
+    return {
+      source: normalizedSlug ? 'slug' : 'landing',
+      identifier: null,
+      slug: normalizedSlug
+    };
   }
 
   return { source: 'other', identifier: null, slug: null };

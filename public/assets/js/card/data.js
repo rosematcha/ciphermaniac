@@ -22,22 +22,32 @@ export function findCard(items, cardIdentifier) {
 
     // const lower = validatedIdentifier.toLowerCase(); // Unused variable removed
 
-    logger.debug('findCard called', { cardIdentifier: validatedIdentifier, itemsCount: items.length });
+    logger.debug('findCard called', {
+      cardIdentifier: validatedIdentifier,
+      itemsCount: items.length
+    });
   } catch (error) {
-    logger.debug('findCard validation failed', { cardIdentifier, error: error.message });
+    logger.debug('findCard validation failed', {
+      cardIdentifier,
+      error: error.message
+    });
     return null;
   }
 
   const lower = cardIdentifier.toLowerCase();
 
   // First try direct UID match
-  const directUidMatch = items.find(item => item.uid && item.uid.toLowerCase() === lower);
+  const directUidMatch = items.find(
+    item => item.uid && item.uid.toLowerCase() === lower
+  );
   if (directUidMatch) {
     return directUidMatch;
   }
 
   // Try exact name match (for trainers without UIDs)
-  const exactNameMatch = items.find(item => item.name && item.name.toLowerCase() === lower);
+  const exactNameMatch = items.find(
+    item => item.name && item.name.toLowerCase() === lower
+  );
   if (exactNameMatch) {
     return exactNameMatch;
   }
@@ -92,13 +102,21 @@ export async function collectCardVariants(cardIdentifier) {
     searchBaseName = getBaseName(validatedIdentifier);
 
     if (!searchBaseName) {
-      logger.debug('collectCardVariants: no base name found', { cardIdentifier: validatedIdentifier });
+      logger.debug('collectCardVariants: no base name found', {
+        cardIdentifier: validatedIdentifier
+      });
       return [];
     }
 
-    logger.debug('collectCardVariants started', { cardIdentifier: validatedIdentifier, baseName: searchBaseName });
+    logger.debug('collectCardVariants started', {
+      cardIdentifier: validatedIdentifier,
+      baseName: searchBaseName
+    });
   } catch (error) {
-    logger.warn('collectCardVariants validation failed', { cardIdentifier, error: error.message });
+    logger.warn('collectCardVariants validation failed', {
+      cardIdentifier,
+      error: error.message
+    });
     return [];
   }
 
@@ -108,7 +126,9 @@ export async function collectCardVariants(cardIdentifier) {
 
   let variantsCache;
   try {
-    variantsCache = JSON.parse(localStorage.getItem(VARIANTS_CACHE_KEY) || '{}');
+    variantsCache = JSON.parse(
+      localStorage.getItem(VARIANTS_CACHE_KEY) || '{}',
+    );
   } catch {
     variantsCache = {};
   }
@@ -150,7 +170,10 @@ export async function collectCardVariants(cardIdentifier) {
         const canonicalId = getCanonicalId(item);
         const itemBaseName = getBaseName(canonicalId);
 
-        if (itemBaseName && itemBaseName.toLowerCase() === searchBaseName.toLowerCase()) {
+        if (
+          itemBaseName &&
+          itemBaseName.toLowerCase() === searchBaseName.toLowerCase()
+        ) {
           // Add canonical display name
           tournamentVariants.add(getDisplayName(canonicalId));
         }
@@ -202,17 +225,23 @@ export async function renderCardPrice(cardIdentifier) {
 
   try {
     const validatedIdentifier = validators.cardIdentifier(cardIdentifier);
-    logger.debug('renderCardPrice started', { cardIdentifier: validatedIdentifier });
+    logger.debug('renderCardPrice started', {
+      cardIdentifier: validatedIdentifier
+    });
 
     const errorBoundary = new ErrorBoundary(priceContainer, {
       showRetryButton: false,
       showErrorDetails: false
     });
 
-    await errorBoundary.execute(() => loadAndDisplayPrice(validatedIdentifier, priceContainer), null, {
-      loadingMessage: 'Loading price...',
-      retryAttempts: 1
-    });
+    await errorBoundary.execute(
+      () => loadAndDisplayPrice(validatedIdentifier, priceContainer),
+      null,
+      {
+        loadingMessage: 'Loading price...',
+        retryAttempts: 1
+      },
+    );
   } catch (error) {
     logger.exception('renderCardPrice failed', error, { cardIdentifier });
     showPriceError(priceContainer, 'Unable to load price data');
@@ -239,7 +268,10 @@ async function loadAndDisplayPrice(cardIdentifier, container) {
 
     try {
       const variants = await collectCardVariants(cardIdentifier);
-      logger.debug('Found variants', { cardIdentifier, variantCount: variants.length });
+      logger.debug('Found variants', {
+        cardIdentifier,
+        variantCount: variants.length
+      });
 
       // Try to get price from the first available variant
       for (const variant of variants) {
@@ -254,7 +286,9 @@ async function loadAndDisplayPrice(cardIdentifier, container) {
         }
       }
     } catch (variantError) {
-      logger.warn('Failed to get card variants', { error: variantError.message });
+      logger.warn('Failed to get card variants', {
+        error: variantError.message
+      });
       // Continue with null price instead of failing completely
     }
   }
@@ -324,7 +358,9 @@ export async function renderCardSets(cardIdentifier) {
 
   try {
     const validatedIdentifier = validators.cardIdentifier(cardIdentifier);
-    logger.debug('renderCardSets started', { cardIdentifier: validatedIdentifier });
+    logger.debug('renderCardSets started', {
+      cardIdentifier: validatedIdentifier
+    });
 
     const errorBoundary = new ErrorBoundary(setsContainer, {
       showRetryButton: false,
@@ -339,12 +375,17 @@ export async function renderCardSets(cardIdentifier) {
 
         if (variants.length === 0) {
           setsContainer.textContent = '';
-          logger.debug('No variants found', { cardIdentifier: validatedIdentifier });
+          logger.debug('No variants found', {
+            cardIdentifier: validatedIdentifier
+          });
           return;
         }
 
         setsContainer.textContent = variants.join(', ');
-        logger.debug('Variants displayed', { cardIdentifier: validatedIdentifier, variantCount: variants.length });
+        logger.debug('Variants displayed', {
+          cardIdentifier: validatedIdentifier,
+          variantCount: variants.length
+        });
       },
       null,
       { loadingMessage: 'Loading variants...', retryAttempts: 1 }
@@ -354,7 +395,7 @@ export async function renderCardSets(cardIdentifier) {
     // Set error state atomically
     Object.assign(setsContainer, {
       className: 'error',
-      textContent: ''
+      textContent: '',
     });
   }
 }

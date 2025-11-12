@@ -253,7 +253,7 @@ export function createEventsTableSkeleton() {
                         </td>
                     </tr>
                 `
-    )
+                  )
     .join('')}
             </tbody>
         </table>

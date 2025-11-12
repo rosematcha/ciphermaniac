@@ -35,8 +35,16 @@ function buildFallbackLabel(name) {
 // Data fetch
 async function fetchSuggestions() {
   try {
-    const data = await fetchReportResource('suggestions.json', 'suggestions', 'object', 'suggestions', { cache: false });
-    return { categories: Array.isArray(data.categories) ? data.categories : [] };
+    const data = await fetchReportResource(
+      'suggestions.json',
+      'suggestions',
+      'object',
+      'suggestions',
+      { cache: false }
+    );
+    return {
+      categories: Array.isArray(data.categories) ? data.categories : []
+    };
   } catch {
     return { categories: [] };
   }
@@ -85,9 +93,14 @@ function makeCardItem(name, opts) {
     }
   };
 
-  const variantInfo = opts?.set && opts?.number ? { set: opts.set, number: opts.number } : null;
-  addCandidates(buildThumbCandidates(name, /* useSm */ false, {}, variantInfo || undefined));
-  addCandidates(buildThumbCandidates(name, /* useSm */ true, {}, variantInfo || undefined));
+  const variantInfo =
+    opts?.set && opts?.number ? { set: opts.set, number: opts.number } : null;
+  addCandidates(
+    buildThumbCandidates(name, /* useSm */ false, {}, variantInfo || undefined)
+  );
+  addCandidates(
+    buildThumbCandidates(name, /* useSm */ true, {}, variantInfo || undefined)
+  );
   // Add name-based fallbacks as a safety net
   addCandidates(buildThumbCandidates(name, /* useSm */ false, {}, undefined));
   addCandidates(buildThumbCandidates(name, /* useSm */ true, {}, undefined));
@@ -145,7 +158,10 @@ function makeCardItem(name, opts) {
           }
         })
         .catch(error => {
-          logger.debug('Failed to load synonym thumbnail candidates', { identifier, error: error?.message || error });
+          logger.debug('Failed to load synonym thumbnail candidates', {
+            identifier,
+            error: error?.message || error
+          });
         })
         .finally(() => {
           variantFetchPromise = null;
@@ -262,7 +278,8 @@ function renderCarousel(container, items) {
   // sizing
   const measureBase = () => {
     const rect = containerElement.getBoundingClientRect();
-    const cw = rect?.width || document.documentElement.clientWidth || window.innerWidth;
+    const cw =
+      rect?.width || document.documentElement.clientWidth || window.innerWidth;
     const { base, smallScale } = computeLayout(cw);
     return Math.max(120, Math.round(base * smallScale));
   };
@@ -270,7 +287,14 @@ function renderCarousel(container, items) {
   const build = () => {
     track.innerHTML = '';
     for (const it of items) {
-      track.appendChild(makeCardItem(it.name, { base: cardBase, set: it.set, number: it.number, uid: it.uid }));
+      track.appendChild(
+        makeCardItem(it.name, {
+          base: cardBase,
+          set: it.set,
+          number: it.number,
+          uid: it.uid
+        }),
+      );
     }
   };
   build();
@@ -317,7 +341,9 @@ async function init() {
   }
   root.innerHTML = '';
 
-  const cats = (data.categories || []).filter(category => Array.isArray(category.items) && category.items.length);
+  const cats = (data.categories || []).filter(
+    category => Array.isArray(category.items) && category.items.length
+  );
   if (cats.length === 0) {
     const msg = document.createElement('div');
     msg.className = 'note';
