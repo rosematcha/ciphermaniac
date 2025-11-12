@@ -9,10 +9,12 @@ import { buildThumbCandidates } from '../thumbs.js';
 import { debounce } from '../utils/performance.js';
 import { storage } from '../utils/storage.js';
 import { logger } from '../utils/logger.js';
+import { CONFIG } from '../config.js';
 
 const DEFAULT_RECENT_EVENTS = 6;
 const CARDS_PER_PAGE = 12;
 const STORAGE_KEY = 'binderSelections';
+const DEFAULT_ONLINE_META = 'Online - Last 14 Days';
 
 const state = {
   tournaments: [],
@@ -445,9 +447,14 @@ function renderBinderSections() {
   const staticSections = [
     { key: 'aceSpecs', title: 'Ace Specs', cards: sections.aceSpecs },
     {
-      key: 'staplePokemon',
-      title: 'High-Usage Pokemon Across Archetypes',
-      cards: sections.staplePokemon
+      key: 'frequentItems',
+      title: 'Frequent Items',
+      cards: sections.frequentItems
+    },
+    {
+      key: 'nicheItems',
+      title: 'Niche / Tech Items',
+      cards: sections.nicheItems
     },
     {
       key: 'frequentSupporters',
@@ -459,24 +466,18 @@ function renderBinderSections() {
       title: 'Niche / Archetype Supporters',
       cards: sections.nicheSupporters
     },
-    { key: 'stadiums', title: 'Stadiums', cards: sections.stadiums },
     { key: 'tools', title: 'Tools', cards: sections.tools },
-    {
-      key: 'frequentItems',
-      title: 'Frequent Items',
-      cards: sections.frequentItems
-    },
-    {
-      key: 'nicheItems',
-      title: 'Niche / Tech Items',
-      cards: sections.nicheItems
-    },
+    { key: 'stadiums', title: 'Stadiums', cards: sections.stadiums },
     {
       key: 'specialEnergy',
       title: 'Special Energy',
       cards: sections.specialEnergy
     },
-    { key: 'basicEnergy', title: 'Basic Energy', cards: sections.basicEnergy }
+    {
+      key: 'staplePokemon',
+      title: 'High-Usage Pokemon Across Archetypes',
+      cards: sections.staplePokemon
+    }
   ];
 
   for (const info of staticSections) {
@@ -1101,6 +1102,21 @@ function bindControlEvents() {
   });
 }
 
+async function checkOnlineMetaAvailability() {
+  try {
+    const response = await fetch(
+      `${CONFIG.API.R2_BASE}/reports/${encodeURIComponent(DEFAULT_ONLINE_META)}/master.json`,
+      {
+        method: 'HEAD'
+      }
+    );
+    return response.ok;
+  } catch (error) {
+    logger.debug('Online meta availability check failed', error);
+    return false;
+  }
+}
+
 async function initialize() {
   try {
     bindControlEvents();
@@ -1108,13 +1124,19 @@ async function initialize() {
     hideError();
     setPendingMessage('Select events, then click "Generate Binder" to begin.');
 
-    const [tournaments, overrides] = await Promise.all([
+    const [tournaments, overrides, hasOnlineMeta] = await Promise.all([
       fetchTournamentsList(),
-      fetchOverrides().catch(() => ({}))
+      fetchOverrides().catch(() => ({})),
+      checkOnlineMetaAvailability()
     ]);
 
     state.tournaments = tournaments;
     state.overrides = overrides || {};
+
+    // Add online meta at the top if it exists
+    if (hasOnlineMeta && !state.tournaments.includes(DEFAULT_ONLINE_META)) {
+      state.tournaments.unshift(DEFAULT_ONLINE_META);
+    }
 
     if (!state.tournaments.length) {
       showError(

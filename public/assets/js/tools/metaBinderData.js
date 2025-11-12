@@ -55,6 +55,8 @@ const ACE_SPEC_KEYWORDS = [
   'chaotic amplifier',
   'precious trolley',
   'poke vital a',
+  'unfair stamp',
+  'brilliant blender',
 ].map(keyword => keyword.toLowerCase());
 
 /**
@@ -580,14 +582,20 @@ export function buildBinderDataset(analysis, includedArchetypes) {
         continue;
       }
 
-      const primaryUsage = usageByArchetype[0];
-      if (primaryUsage && primaryUsage.ratio >= ARCHETYPE_CORE_RATIO) {
-        const list = ensureMapEntry(
-          archetypePokemonMap,
-          primaryUsage.archetype,
-          () => []
-        );
-        list.push(card);
+      // Include in any archetype where it appears in at least 50% of decks
+      let addedToArchetype = false;
+      for (const usage of usageByArchetype) {
+        if (usage.ratio >= ARCHETYPE_CORE_RATIO) {
+          const list = ensureMapEntry(
+            archetypePokemonMap,
+            usage.archetype,
+            () => []
+          );
+          list.push(card);
+          addedToArchetype = true;
+        }
+      }
+      if (addedToArchetype) {
         placedIds.add(card.id);
       }
       continue;
