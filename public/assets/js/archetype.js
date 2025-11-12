@@ -38,24 +38,6 @@ const elements = {
   excludeCard: /** @type {HTMLSelectElement|null} */ (
     document.getElementById('archetype-exclude-card')
   ),
-  includeMin: /** @type {HTMLInputElement|null} */ (
-    document.getElementById('archetype-include-min')
-  ),
-  includeMax: /** @type {HTMLInputElement|null} */ (
-    document.getElementById('archetype-include-max')
-  ),
-  excludeMin: /** @type {HTMLInputElement|null} */ (
-    document.getElementById('archetype-exclude-min')
-  ),
-  excludeMax: /** @type {HTMLInputElement|null} */ (
-    document.getElementById('archetype-exclude-max')
-  ),
-  includeCountFilter: /** @type {HTMLElement|null} */ (
-    document.getElementById('include-count-filter')
-  ),
-  excludeCountFilter: /** @type {HTMLElement|null} */ (
-    document.getElementById('exclude-count-filter')
-  ),
   filtersContainer: /** @type {HTMLElement|null} */ (
     document.querySelector('.archetype-controls')
   ),
@@ -93,11 +75,7 @@ const state = {
   filterCache: new Map(),
   currentFilters: {
     include: null,
-    exclude: null,
-    includeMin: 1,
-    includeMax: 4,
-    excludeMin: 0,
-    excludeMax: 4
+    exclude: null
   },
   skeleton: {
     totalCards: 0,
@@ -470,15 +448,8 @@ function describeFilters(includeId, excludeId) {
   return parts.join(' and ');
 }
 
-function getFilterKey(
-  includeId,
-  excludeId,
-  includeMin = 1,
-  includeMax = 4,
-  excludeMin = 0,
-  excludeMax = 4
-) {
-  return `${includeId || 'null'}::${excludeId || 'null'}::${includeMin}::${includeMax}::${excludeMin}::${excludeMax}`;
+function getFilterKey(includeId, excludeId) {
+  return `${includeId || 'null'}::${excludeId || 'null'}`;
 }
 
 function normalizeThreshold(value, min, max) {
@@ -1257,22 +1228,8 @@ function renderCards() {
   });
 }
 
-function loadFilterCombination(
-  includeId,
-  excludeId,
-  includeMin = 1,
-  includeMax = 4,
-  excludeMin = 0,
-  excludeMax = 4
-) {
-  const key = getFilterKey(
-    includeId,
-    excludeId,
-    includeMin,
-    includeMax,
-    excludeMin,
-    excludeMax
-  );
+function loadFilterCombination(includeId, excludeId) {
+  const key = getFilterKey(includeId, excludeId);
   if (state.filterCache.has(key)) {
     return state.filterCache.get(key);
   }
@@ -1283,11 +1240,7 @@ function loadFilterCombination(
         state.tournament,
         state.archetypeBase,
         includeId,
-        excludeId,
-        includeMin,
-        includeMax,
-        excludeMin,
-        excludeMax
+        excludeId
       );
       const parsed = parseReport(raw);
       return {
@@ -1310,11 +1263,7 @@ function resetToDefaultData() {
   state.archetypeDeckTotal = state.defaultDeckTotal;
   state.currentFilters = {
     include: null,
-    exclude: null,
-    includeMin: 1,
-    includeMax: 4,
-    excludeMin: 0,
-    excludeMax: 4
+    exclude: null
   };
   updateFilterMessage('');
   renderCards();
@@ -1369,32 +1318,6 @@ async function applyFilters() {
   let includeId = originalIncludeValue;
   const excludeId = elements.excludeCard.value || null;
 
-  // Get count range values
-  const includeMin =
-    includeId && elements.includeMin
-      ? parseInt(elements.includeMin.value, 10) || 1
-      : 1;
-  const includeMax =
-    includeId && elements.includeMax
-      ? parseInt(elements.includeMax.value, 10) || 4
-      : 4;
-  const excludeMin =
-    excludeId && elements.excludeMin
-      ? parseInt(elements.excludeMin.value, 10) || 0
-      : 0;
-  const excludeMax =
-    excludeId && elements.excludeMax
-      ? parseInt(elements.excludeMax.value, 10) || 4
-      : 4;
-
-  // Show/hide count filters based on card selection
-  if (elements.includeCountFilter) {
-    elements.includeCountFilter.hidden = !includeId;
-  }
-  if (elements.excludeCountFilter) {
-    elements.excludeCountFilter.hidden = !excludeId;
-  }
-
   includeId = applyAlwaysIncludedGuard(includeId);
   if (!includeId && originalIncludeValue) {
     elements.includeCard.value = '';
@@ -1414,11 +1337,7 @@ async function applyFilters() {
     state.archetypeDeckTotal = 0;
     state.currentFilters = {
       include: includeId,
-      exclude: excludeId,
-      includeMin: 1,
-      includeMax: 4,
-      excludeMin: 0,
-      excludeMax: 4
+      exclude: excludeId
     };
     renderCards();
     return;
@@ -1434,24 +1353,10 @@ async function applyFilters() {
     'info',
   );
 
-  const requestKey = getFilterKey(
-    includeId,
-    excludeId,
-    includeMin,
-    includeMax,
-    excludeMin,
-    excludeMax
-  );
+  const requestKey = getFilterKey(includeId, excludeId);
 
   try {
-    const result = await loadFilterCombination(
-      includeId,
-      excludeId,
-      includeMin,
-      includeMax,
-      excludeMin,
-      excludeMax
-    );
+    const result = await loadFilterCombination(includeId, excludeId);
 
     const currentInclude = applyAlwaysIncludedGuard(
       elements.includeCard ? elements.includeCard.value || null : null
@@ -1459,30 +1364,7 @@ async function applyFilters() {
     const currentExclude = elements.excludeCard
       ? elements.excludeCard.value || null
       : null;
-    const currentIncludeMin =
-      currentInclude && elements.includeMin
-        ? parseInt(elements.includeMin.value, 10) || 1
-        : 1;
-    const currentIncludeMax =
-      currentInclude && elements.includeMax
-        ? parseInt(elements.includeMax.value, 10) || 4
-        : 4;
-    const currentExcludeMin =
-      currentExclude && elements.excludeMin
-        ? parseInt(elements.excludeMin.value, 10) || 0
-        : 0;
-    const currentExcludeMax =
-      currentExclude && elements.excludeMax
-        ? parseInt(elements.excludeMax.value, 10) || 4
-        : 4;
-    const activeKey = getFilterKey(
-      currentInclude,
-      currentExclude,
-      currentIncludeMin,
-      currentIncludeMax,
-      currentExcludeMin,
-      currentExcludeMax
-    );
+    const activeKey = getFilterKey(currentInclude, currentExclude);
     if (activeKey !== requestKey) {
       return;
     }
@@ -1493,11 +1375,7 @@ async function applyFilters() {
       archetypeDeckTotal: result.deckTotal,
       currentFilters: {
         include: includeId,
-        exclude: excludeId,
-        includeMin,
-        includeMax,
-        excludeMin,
-        excludeMax
+        exclude: excludeId
       },
     });
 
@@ -1526,11 +1404,7 @@ async function applyFilters() {
         archetypeDeckTotal: 0,
         currentFilters: {
           include: includeId,
-          exclude: excludeId,
-          includeMin,
-          includeMax,
-          excludeMin,
-          excludeMax
+          exclude: excludeId
         },
       });
       renderCards();
@@ -1564,48 +1438,6 @@ function setupFilterListeners() {
 
     // Add hover listeners for aggressive pre-caching
     setupFilterHoverHandler(elements.excludeCard, 'exclude');
-  }
-
-  // Add event listeners for count range inputs
-  if (elements.includeMin) {
-    elements.includeMin.addEventListener('change', () => {
-      applyFilters().catch(error => {
-        logger.debug(
-          'Include min filter change failed',
-          error?.message || error
-        );
-      });
-    });
-  }
-  if (elements.includeMax) {
-    elements.includeMax.addEventListener('change', () => {
-      applyFilters().catch(error => {
-        logger.debug(
-          'Include max filter change failed',
-          error?.message || error
-        );
-      });
-    });
-  }
-  if (elements.excludeMin) {
-    elements.excludeMin.addEventListener('change', () => {
-      applyFilters().catch(error => {
-        logger.debug(
-          'Exclude min filter change failed',
-          error?.message || error
-        );
-      });
-    });
-  }
-  if (elements.excludeMax) {
-    elements.excludeMax.addEventListener('change', () => {
-      applyFilters().catch(error => {
-        logger.debug(
-          'Exclude max filter change failed',
-          error?.message || error
-        );
-      });
-    });
   }
 }
 

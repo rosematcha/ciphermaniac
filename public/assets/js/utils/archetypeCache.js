@@ -84,6 +84,11 @@ class ArchetypeCacheManager {
   /**
    * Build filter key for looking up subset IDs in the index
    * MUST match the backend format in onlineMetaIncludeExclude.js buildFilterKey()
+   * 
+   * NOTE: The current backend implementation (as of the first automated run) only generates
+   * simple presence/exclusion filters without count ranges. Count-based filtering will be
+   * added in a future backend update.
+   * 
    * @param {string|null} includeId
    * @param {string|null} excludeId
    * @param {number} includeMin
@@ -107,6 +112,8 @@ class ArchetypeCacheManager {
       const hasCountRange = (includeMin !== 1 || includeMax !== 4);
       if (hasCountRange) {
         // Format: cardId:operator+count (e.g., "BLK~079:=2" or "BLK~079:>=2")
+        // NOTE: Count-based filters are not yet available in the backend index.
+        // This code is prepared for future backend support.
         if (includeMin === includeMax) {
           // Exact count
           includeKeys.push(`${includeId}:=${includeMin}`);
@@ -333,21 +340,13 @@ class ArchetypeCacheManager {
    * @param {string} archetypeBase
    * @param {string|null} includeId
    * @param {string|null} excludeId
-   * @param {number} includeMin
-   * @param {number} includeMax
-   * @param {number} excludeMin
-   * @param {number} excludeMax
    * @returns {Promise<SubsetData>}
    */
   async getFilteredData(
     tournament,
     archetypeBase,
     includeId,
-    excludeId,
-    includeMin = 1,
-    includeMax = 4,
-    excludeMin = 0,
-    excludeMax = 4
+    excludeId
   ) {
     // First, fetch the index to get the filterMap
     const index = await this.fetchIndex(tournament, archetypeBase);
@@ -355,11 +354,7 @@ class ArchetypeCacheManager {
     // Build the filter key
     const filterKey = ArchetypeCacheManager.buildFilterKey(
       includeId,
-      excludeId,
-      includeMin,
-      includeMax,
-      excludeMin,
-      excludeMax
+      excludeId
     );
 
     // Look up the subset ID
@@ -368,11 +363,7 @@ class ArchetypeCacheManager {
       logger.warn(`No subset found for filter combination`, {
         archetype: archetypeBase,
         include: includeId,
-        includeMin,
-        includeMax,
         exclude: excludeId,
-        excludeMin,
-        excludeMax,
         filterKey
       });
       throw new AppError(
