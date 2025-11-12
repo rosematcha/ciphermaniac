@@ -1767,30 +1767,14 @@ async function initialize() {
     setPageState('loading');
     toggleLoading(true);
 
-    const tournaments = await safeAsync(
-      () => fetchTournamentsList(),
-      'fetching tournaments list',
-      []
-    );
-    if (!Array.isArray(tournaments) || tournaments.length === 0) {
-      throw new Error('No tournaments available for archetype analysis.');
-    }
-    // Always prefer "Online - Last 14 Days" as the default for archetype analysis
-    // since include-exclude filtering is only available for the online meta aggregation
+    // Archetype analysis always uses "Online - Last 14 Days" for include-exclude support
+    // We don't need tournaments.json since we're only working with online meta
     const onlineMeta = 'Online - Last 14 Days';
-    const latestTournament = tournaments[0];
-    state.tournament = resolveTournamentPreference(onlineMeta, [
-      onlineMeta,
-      ...tournaments
-    ]);
+    state.tournament = onlineMeta;
 
     const [overrides, tournamentReport, archetypeRaw] = await Promise.all([
       safeAsync(() => fetchOverrides(), 'fetching thumbnail overrides', {}),
-      safeAsync(
-        () => fetchReport(state.tournament),
-        `fetching ${state.tournament} report`,
-        null
-      ),
+      fetchReport(state.tournament),
       fetchArchetypeReport(state.tournament, state.archetypeBase)
     ]);
 

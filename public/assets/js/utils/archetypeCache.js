@@ -83,6 +83,7 @@ class ArchetypeCacheManager {
 
   /**
    * Build filter key for looking up subset IDs in the index
+   * MUST match the backend format in onlineMetaIncludeExclude.js buildFilterKey()
    * @param {string|null} includeId
    * @param {string|null} excludeId
    * @param {number} includeMin
@@ -99,13 +100,33 @@ class ArchetypeCacheManager {
     excludeMin = 0,
     excludeMax = 4
   ) {
-    const incKey = includeId ? includeId : '';
-    const excKey = excludeId ? excludeId : '';
-    const incMin = includeId ? includeMin : 1;
-    const incMax = includeId ? includeMax : 4;
-    const excMin = excludeId ? excludeMin : 0;
-    const excMax = excludeId ? excludeMax : 4;
-    return `inc:${incKey}:${incMin}:${incMax}|exc:${excKey}:${excMin}:${excMax}`;
+    // Build include key with count range if specified
+    const includeKeys = [];
+    if (includeId) {
+      // Check if we have non-default count ranges
+      const hasCountRange = (includeMin !== 1 || includeMax !== 4);
+      if (hasCountRange) {
+        // Format: cardId:operator+count (e.g., "BLK~079:=2" or "BLK~079:>=2")
+        if (includeMin === includeMax) {
+          // Exact count
+          includeKeys.push(`${includeId}:=${includeMin}`);
+        } else {
+          // Range - use >= operator for min
+          includeKeys.push(`${includeId}:>=${includeMin}`);
+        }
+      } else {
+        // Simple presence-based filter (no count)
+        includeKeys.push(includeId);
+      }
+    }
+    
+    const incKey = includeKeys.join('+');
+    
+    // Build exclude key (excludes don't have count ranges)
+    const excludeKeys = excludeId ? [excludeId] : [];
+    const excKey = excludeKeys.join('+');
+    
+    return `inc:${incKey}|exc:${excKey}`;
   } /**
      * Build cache key for index files
      * @param {string} tournament
