@@ -1085,18 +1085,35 @@ async function loadSelectionData(selection, cache, options = {}) {
   }
 
   try {
-    const reports = [];
-    for (const tournament of tournaments) {
-      // eslint-disable-next-line no-await-in-loop
-      const report = await loadTournamentData(tournament, cache);
-      reports.push(report);
+    const reports = new Array(tournaments.length);
+    const pendingFetches = [];
+
+    tournaments.forEach((tournament, index) => {
+      const cached = cache.getCachedMaster(tournament);
+
+      if (cached) {
+        reports[index] = { deckTotal: cached.deckTotal, items: cached.items };
+        return;
+      }
+
+      const loader = loadTournamentData(tournament, cache).then(report => {
+        reports[index] = report;
+      });
+
+      pendingFetches.push(loader);
+    });
+
+    if (pendingFetches.length > 0) {
+      await Promise.all(pendingFetches);
     }
 
-    if (reports.length === 1) {
-      return reports[0];
+    const resolvedReports = reports.filter(Boolean);
+
+    if (resolvedReports.length === 1) {
+      return resolvedReports[0];
     }
 
-    return aggregateReports(reports);
+    return aggregateReports(resolvedReports);
   } finally {
     if (showSkeleton) {
       hideGridSkeleton();
