@@ -265,40 +265,53 @@ class ArchetypeCacheManager {
    * @param {string} archetypeBase
    * @param {string|null} includeId
    * @param {string|null} excludeId
+   * @param {string|null} includeOperator - Quantity operator (=, <, <=, >, >=)
+   * @param {number|null} includeCount - Quantity threshold
    * @returns {Promise<SubsetData>}
    */
-  async getFilteredData(tournament, archetypeBase, includeId, excludeId) {
-    // First, try to fetch the pre-generated index
-    try {
-      const index = await this.fetchIndex(tournament, archetypeBase);
+  async getFilteredData(tournament, archetypeBase, includeId, excludeId, includeOperator = null, includeCount = null) {
+    // If quantity filtering is requested, always use client-side generation
+    const useQuantityFilter = includeOperator && includeCount !== null && includeCount !== undefined;
 
-      // Build the filter key
-      const filterKey = ArchetypeCacheManager.buildFilterKey(includeId, excludeId);
+    if (!useQuantityFilter) {
+      // First, try to fetch the pre-generated index
+      try {
+        const index = await this.fetchIndex(tournament, archetypeBase);
 
-      // Look up the subset ID
-      const subsetId = index.filterMap[filterKey];
+        // Build the filter key
+        const filterKey = ArchetypeCacheManager.buildFilterKey(includeId, excludeId);
 
-      if (subsetId) {
-        logger.debug('Resolved filter combination to pre-generated subset', {
+        // Look up the subset ID
+        const subsetId = index.filterMap[filterKey];
+
+        if (subsetId) {
+          logger.debug('Resolved filter combination to pre-generated subset', {
+            filterKey,
+            subsetId,
+            includeId,
+            excludeId
+          });
+
+          // Fetch the pre-generated subset
+          return await this.fetchSubset(tournament, archetypeBase, subsetId);
+        }
+
+        // Filter not found in pre-generated data
+        logger.info('Filter combination not pre-generated, attempting client-side generation', {
           filterKey,
-          subsetId,
           includeId,
           excludeId
         });
-
-        // Fetch the pre-generated subset
-        return await this.fetchSubset(tournament, archetypeBase, subsetId);
+      } catch (error) {
+        logger.warn('Could not fetch filter index, falling back to client-side generation', {
+          error: error.message
+        });
       }
-
-      // Filter not found in pre-generated data
-      logger.info('Filter combination not pre-generated, attempting client-side generation', {
-        filterKey,
+    } else {
+      logger.info('Quantity filter requested, using client-side generation', {
         includeId,
-        excludeId
-      });
-    } catch (error) {
-      logger.warn('Could not fetch filter index, falling back to client-side generation', {
-        error: error.message
+        includeOperator,
+        includeCount
       });
     }
 
@@ -308,6 +321,8 @@ class ArchetypeCacheManager {
         archetypeBase,
         includeId,
         excludeId,
+        includeOperator,
+        includeCount,
         tournament
       });
 
@@ -321,12 +336,14 @@ class ArchetypeCacheManager {
         totalDecks: decks.length
       });
 
-      const report = generateFilteredReport(decks, archetypeBase, includeId, excludeId);
+      const report = generateFilteredReport(decks, archetypeBase, includeId, excludeId, includeOperator, includeCount);
 
       logger.info('Successfully generated client-side filtered report', {
         archetypeBase,
         includeId,
         excludeId,
+        includeOperator,
+        includeCount,
         deckTotal: report.deckTotal,
         itemCount: report.items?.length
       });
@@ -338,6 +355,8 @@ class ArchetypeCacheManager {
         stack: clientError.stack,
         includeId,
         excludeId,
+        includeOperator,
+        includeCount,
         archetypeBase,
         tournament
       });

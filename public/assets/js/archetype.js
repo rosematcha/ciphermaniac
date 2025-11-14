@@ -1,14 +1,9 @@
 import './utils/buildVersion.js';
-import {
-  fetchArchetypeFiltersReport,
-  fetchArchetypeReport,
-  fetchReport,
-  fetchTournamentsList as _fetchTournamentsList // Reserved for future use
-} from './api.js';
+import { fetchArchetypeFiltersReport, fetchArchetypeReport, fetchReport } from './api.js';
 import { parseReport } from './parse.js';
 import { render, updateLayout } from './render.js';
 import { normalizeCardNumber } from './card/routing.js';
-import { AppError, ErrorTypes, safeAsync } from './utils/errorHandler.js';
+import { AppError, ErrorTypes } from './utils/errorHandler.js';
 import { logger } from './utils/logger.js';
 
 const GRANULARITY_MIN_PERCENT = 0;
@@ -25,8 +20,8 @@ const elements = {
   title: document.getElementById('archetype-title'),
   granularityRange: /** @type {HTMLInputElement|null} */ (document.getElementById('archetype-granularity-range')),
   granularityOutput: /** @type {HTMLOutputElement|null} */ (document.getElementById('archetype-granularity-output')),
-  includeCard: /** @type {HTMLSelectElement|null} */ (document.getElementById('archetype-include-card')),
-  excludeCard: /** @type {HTMLSelectElement|null} */ (document.getElementById('archetype-exclude-card')),
+  filterRowsContainer: /** @type {HTMLElement|null} */ (document.getElementById('archetype-filter-rows')),
+  addFilterButton: /** @type {HTMLButtonElement|null} */ (document.getElementById('archetype-add-filter')),
   filtersContainer: /** @type {HTMLElement|null} */ (document.querySelector('.archetype-controls')),
   filterMessage: /** @type {HTMLElement|null} */ (null),
   skeletonSummary: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-summary')),
@@ -35,6 +30,13 @@ const elements = {
   skeletonExportButton: /** @type {HTMLButtonElement|null} */ (document.getElementById('skeleton-export-live')),
   skeletonExportStatus: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-export-status'))
 };
+
+/**
+ * @typedef {object} FilterDescriptor
+ * @property {string} cardId
+ * @property {('<' | '>' | '=' | '<=' | '>=' | null)} [operator]
+ * @property {number|null} [count]
+ */
 
 const state = {
   archetypeBase: '',
@@ -50,11 +52,8 @@ const state = {
   defaultDeckTotal: 0,
   cardLookup: new Map(),
   filterCache: new Map(),
-  filterIndex: null, // Store the include-exclude index for dynamic dropdown updates
-  currentFilters: {
-    include: null,
-    exclude: null
-  },
+  filterRows: [], // Array of filter objects: { id, cardId, operator, count }
+  nextFilterId: 1,
   skeleton: {
     totalCards: 0,
     exportEntries: /**
@@ -406,24 +405,62 @@ function updateFilterMessage(text, tone = 'info') {
   message.dataset.tone = tone; // eslint-disable-line no-param-reassign
 }
 
-function describeFilters(includeId, excludeId) {
-  const parts = [];
-  if (includeId) {
-    const info = state.cardLookup.get(includeId);
-    parts.push(`including ${info?.name ?? includeId}`);
-  }
-  if (excludeId) {
-    const info = state.cardLookup.get(excludeId);
-    parts.push(`excluding ${info?.name ?? excludeId}`);
-  }
-  if (parts.length === 0) {
+function describeFilters(filters) {
+  if (!filters || filters.length === 0) {
     return 'the baseline list';
   }
-  return parts.join(' and ');
+
+  const descriptions = filters.map(filter => {
+    const info = state.cardLookup.get(filter.cardId);
+    let desc = `${info?.name ?? filter.cardId}`;
+
+    // Handle special operators
+    if (filter.operator === 'any') {
+      desc += ' (any count)';
+    } else if (!filter.operator || filter.operator === '') {
+      desc += ' (none)';
+    } else if (filter.count !== null && filter.count !== undefined) {
+      // Add quantity description for numeric operators
+      const operatorText =
+        {
+          '=': 'exactly',
+          '<': 'less than',
+          '>': 'more than',
+          '<=': 'at most',
+          '>=': 'at least'
+        }[filter.operator] || filter.operator;
+
+      desc += ` (${operatorText} ${filter.count})`;
+    }
+
+    return desc;
+  });
+
+  if (descriptions.length === 1) {
+    return `including ${descriptions[0]}`;
+  }
+
+  return `including ${descriptions.slice(0, -1).join(', ')} and ${descriptions[descriptions.length - 1]}`;
 }
 
-function getFilterKey(includeId, excludeId) {
-  return `${includeId || 'null'}::${excludeId || 'null'}`;
+function getFilterKey(filters) {
+  if (!filters || filters.length === 0) {
+    return 'null';
+  }
+
+  return filters
+    .map(f => {
+      let part = f.cardId || 'null';
+      if (f.operator === 'any') {
+        part += '::any';
+      } else if (f.operator === '') {
+        part += '::none';
+      } else if (f.operator && f.count !== null && f.count !== undefined) {
+        part += `::${f.operator}${f.count}`;
+      }
+      return part;
+    })
+    .join('||');
 }
 
 function normalizeThreshold(value, min, max) {
@@ -601,7 +638,10 @@ function getCategorySortWeight(category) {
   if (!category) {
     return CARD_CATEGORY_SORT_PRIORITY.get('trainer') ?? 6;
   }
-  return CARD_CATEGORY_SORT_PRIORITY.get(category) ?? (category.startsWith('trainer') ? 6 : (category.startsWith('energy') ? 7 : 0));
+  return (
+    CARD_CATEGORY_SORT_PRIORITY.get(category) ??
+    (category.startsWith('trainer') ? 6 : category.startsWith('energy') ? 7 : 0)
+  );
 }
 
 function sortItemsForDisplay(items) {
@@ -701,93 +741,142 @@ function configureGranularity(items) {
   syncGranularityOutput(normalized);
 }
 
-async function populateCardDropdowns() {
-  if (!elements.includeCard || !elements.excludeCard) {
-    return;
-  }
+/**
+ * Create a new filter row with card selector, operator, and count
+ */
+function createFilterRow() {
+  const filterId = state.nextFilterId++;
+  const filterRow = document.createElement('div');
+  filterRow.className = 'archetype-filter-group';
+  filterRow.dataset.filterId = String(filterId);
 
-  // Fetch the index to see what filter combinations are available
-  let filterIndex = null;
+  // Card selector
+  const cardSelect = document.createElement('select');
+  cardSelect.className = 'filter-card-select';
+  cardSelect.title = 'Select card to filter by';
+  cardSelect.innerHTML = '<option value="">Choose card...</option>';
 
-  try {
-    const { archetypeCache } = await import('./utils/archetypeCache.js');
-    filterIndex = await archetypeCache.fetchIndex(state.tournament, state.archetypeBase);
-  } catch (error) {
-    logger.warn('Could not fetch filter index, showing all cards', error);
-  }
+  // Operator selector (user-friendly labels, populated dynamically)
+  const operatorSelect = document.createElement('select');
+  operatorSelect.className = 'filter-operator-select';
+  operatorSelect.title = 'Quantity condition';
+  operatorSelect.hidden = true;
 
-  // Store the filter index in state for dynamic updates
-  state.filterIndex = filterIndex;
+  // Count input
+  const countInput = document.createElement('input');
+  countInput.type = 'number';
+  countInput.className = 'filter-count-input';
+  countInput.title = 'Number of copies';
+  countInput.min = '1';
+  countInput.max = '4';
+  countInput.step = '1';
+  countInput.value = '1';
+  countInput.placeholder = '#';
+  countInput.hidden = true;
 
-  updateCardDropdowns();
+  // Remove button (only show if there are multiple filters)
+  const removeButton = document.createElement('button');
+  removeButton.type = 'button';
+  removeButton.className = 'remove-filter-btn';
+  removeButton.title = 'Remove this filter';
+  removeButton.textContent = '×';
+  removeButton.hidden = state.filterRows.length === 0; // Hide for first filter
+
+  filterRow.appendChild(cardSelect);
+  filterRow.appendChild(operatorSelect);
+  filterRow.appendChild(countInput);
+  filterRow.appendChild(removeButton);
+
+  // Add event listeners
+  cardSelect.addEventListener('change', () => handleFilterChange(filterId));
+  operatorSelect.addEventListener('change', () => handleFilterChange(filterId));
+  countInput.addEventListener('change', () => handleFilterChange(filterId));
+  countInput.addEventListener('input', () => handleFilterChange(filterId));
+  removeButton.addEventListener('click', () => removeFilterRow(filterId));
+
+  // Add to state
+  state.filterRows.push({
+    id: filterId,
+    cardId: null,
+    operator: null,
+    count: null,
+    elements: { cardSelect, operatorSelect, countInput, removeButton, container: filterRow }
+  });
+
+  // Populate card options (excluding already-selected cards)
+  populateFilterRowCards(filterId);
+
+  return filterRow;
 }
 
 /**
- * Update card dropdowns based on current filter selections
- * Called on initial load and whenever a filter changes
+ * Remove a filter row
+ * @param filterId
  */
-function updateCardDropdowns() {
-  if (!elements.includeCard || !elements.excludeCard) {
+function removeFilterRow(filterId) {
+  const index = state.filterRows.findIndex(row => row.id === filterId);
+  if (index === -1) {
     return;
   }
 
-  const currentInclude = elements.includeCard.value || null;
-  const currentExclude = elements.excludeCard.value || null;
+  const row = state.filterRows[index];
+  row.elements.container.remove();
+  state.filterRows.splice(index, 1);
 
-  // Build sets of available card IDs based on current selections
-  const availableForInclude = new Set();
-  const availableForExclude = new Set();
-
-  if (state.filterIndex?.filterMap) {
-    Object.keys(state.filterIndex.filterMap).forEach(filterKey => {
-      // Match simple presence filters: inc:CARDID|exc:CARDID or inc:|exc:CARDID or inc:CARDID|exc:
-      const match = filterKey.match(/^inc:([^:|]+)?\|exc:([^:|]+)?$/);
-      if (match) {
-        const [, includeId, excludeId] = match;
-
-        // If we have an exclude selected, only show includes that work with it
-        if (currentExclude) {
-          if (excludeId === currentExclude && includeId) {
-            availableForInclude.add(includeId);
-          }
-        } else {
-          // No exclude selected, show all available includes
-          if (includeId) {
-            availableForInclude.add(includeId);
-          }
-        }
-
-        // If we have an include selected, only show excludes that work with it
-        if (currentInclude) {
-          if (includeId === currentInclude && excludeId) {
-            availableForExclude.add(excludeId);
-          }
-        } else {
-          // No include selected, show all available excludes
-          if (excludeId) {
-            availableForExclude.add(excludeId);
-          }
-        }
-      }
-    });
+  // Update remove button visibility - hide on first row if only one remains
+  if (state.filterRows.length === 1) {
+    state.filterRows[0].elements.removeButton.hidden = true;
   }
 
-  // If no pre-generated filters found, show all cards (client-side generation will handle it)
-  const showAllCards = availableForInclude.size === 0 && availableForExclude.size === 0;
+  // Update all dropdowns to reflect removed filter
+  state.filterRows.forEach(r => populateFilterRowCards(r.id));
 
-  // Sort cards alphabetically by name
-  const sortedCards = [...state.allCards].sort((left, right) => (left.name || '').localeCompare(right.name || ''));
+  // Update add button visibility
+  updateAddFilterButtonVisibility();
 
-  // Store current selection to restore after repopulating
-  const previousInclude = currentInclude;
-  const previousExclude = currentExclude;
+  // Apply filters
+  applyFilters().catch(error => {
+    logger.debug('Filter removal failed', error?.message || error);
+  });
+}
 
-  // Clear existing options (except the first "Select a card" option)
-  elements.includeCard.length = 1;
-  elements.excludeCard.length = 1;
+/**
+ * Populate card options for a specific filter row, excluding already-selected cards
+ * @param filterId
+ */
+function populateFilterRowCards(filterId) {
+  const row = state.filterRows.find(r => r.id === filterId);
+  if (!row) {
+    return;
+  }
 
-  state.cardLookup = new Map();
+  const { cardSelect } = row.elements;
+  const currentValue = cardSelect.value;
+
+  // Get all selected card IDs (excluding this row's current selection)
+  const selectedCards = new Set(state.filterRows.filter(r => r.id !== filterId && r.cardId).map(r => r.cardId));
+
+  // Calculate deck total for sorting
   const deckTotal = state.defaultDeckTotal || state.archetypeDeckTotal || 0;
+
+  // Sort cards by usage
+  const sortedCards = [...state.allCards].sort((left, right) => {
+    const leftFound = Number(left.found ?? 0);
+    const leftTotal = Number(left.total ?? deckTotal);
+    const leftPct = leftTotal > 0 ? (leftFound / leftTotal) * 100 : 0;
+
+    const rightFound = Number(right.found ?? 0);
+    const rightTotal = Number(right.total ?? deckTotal);
+    const rightPct = rightTotal > 0 ? (rightFound / rightTotal) * 100 : 0;
+
+    if (rightPct !== leftPct) {
+      return rightPct - leftPct;
+    }
+    return (left.name || '').localeCompare(right.name || '');
+  });
+
+  // Clear and repopulate
+  cardSelect.length = 1; // Keep the first "Choose card..." option
 
   const duplicateCounts = new Map();
   state.allCards.forEach(card => {
@@ -799,58 +888,189 @@ function updateCardDropdowns() {
     duplicateCounts.set(baseName, (duplicateCounts.get(baseName) || 0) + 1);
   });
 
-  // Populate both dropdowns with cards that have available filters
   sortedCards.forEach(card => {
     const cardId = buildCardId(card);
+    if (!cardId || selectedCards.has(cardId)) {
+      return;
+    }
+
+    const option = document.createElement('option');
+    option.value = cardId;
+    option.textContent = formatCardOptionLabel(card, duplicateCounts);
+    option.dataset.cardName = card.name || cardId;
+    cardSelect.appendChild(option);
+  });
+
+  // Restore previous selection if still available
+  if (currentValue) {
+    cardSelect.value = currentValue;
+  }
+}
+
+/**
+ * Handle filter row changes
+ * @param filterId
+ */
+function handleFilterChange(filterId) {
+  const row = state.filterRows.find(r => r.id === filterId);
+  if (!row) {
+    return;
+  }
+
+  const { cardSelect, operatorSelect, countInput } = row.elements;
+  const cardId = cardSelect.value || null;
+  const operator = operatorSelect.value || null;
+  const count = countInput.value ? parseInt(countInput.value, 10) : null;
+
+  // Update state
+  row.cardId = cardId;
+  row.operator = operator;
+  row.count = count;
+
+  // Show/hide operator and count based on card selection
+  const hasCard = cardId !== null && cardId !== '';
+
+  if (hasCard) {
+    // Populate operator options based on card characteristics
+    const options = getOperatorOptionsForCard(cardId);
+    const currentOperator = operatorSelect.value;
+    operatorSelect.innerHTML = '';
+    options.forEach(opt => {
+      const option = document.createElement('option');
+      option.value = opt.value;
+      option.textContent = opt.label;
+      operatorSelect.appendChild(option);
+    });
+
+    // Try to preserve current selection if still valid
+    if (currentOperator && options.some(opt => opt.value === currentOperator)) {
+      operatorSelect.value = currentOperator;
+    } else {
+      // Default to first option
+      operatorSelect.value = options[0].value;
+      row.operator = options[0].value;
+    }
+
+    operatorSelect.hidden = false;
+  } else {
+    operatorSelect.hidden = true;
+  }
+
+  // Count input: hide if no operator selected, OR if operator is 'any' or ''
+  const needsCount = hasCard && operator && operator !== 'any' && operator !== '';
+  countInput.hidden = !needsCount;
+
+  // If this is the last row and has a card selected, show add button
+  updateAddFilterButtonVisibility();
+
+  // Update all other filter rows to exclude this card
+  if (hasCard) {
+    state.filterRows.forEach(r => {
+      if (r.id !== filterId) {
+        populateFilterRowCards(r.id);
+      }
+    });
+  }
+
+  // Show remove button on all rows if there are multiple filters
+  if (state.filterRows.length > 1) {
+    state.filterRows.forEach(r => (r.elements.removeButton.hidden = false));
+  }
+
+  // Apply filters
+  applyFilters().catch(error => {
+    logger.debug('Filter change failed', error?.message || error);
+  });
+}
+
+/**
+ * Update add filter button visibility
+ */
+function updateAddFilterButtonVisibility() {
+  if (!elements.addFilterButton) {
+    return;
+  }
+
+  // Show button if:
+  // 1. There are filter rows
+  // 2. The last row has a card selected
+  // 3. There are more cards available to select
+  const lastRow = state.filterRows[state.filterRows.length - 1];
+  const hasCardInLastRow = lastRow && lastRow.cardId;
+  const totalCards = state.allCards.length;
+  const selectedCount = state.filterRows.filter(r => r.cardId).length;
+  const hasMoreCards = selectedCount < totalCards;
+
+  elements.addFilterButton.hidden = !(hasCardInLastRow && hasMoreCards);
+}
+
+/**
+ * Initialize filter rows (create the first one)
+ */
+function initializeFilterRows() {
+  if (!elements.filterRowsContainer || !elements.addFilterButton) {
+    return;
+  }
+
+  // Clear existing rows
+  elements.filterRowsContainer.innerHTML = '';
+  state.filterRows = [];
+  state.nextFilterId = 1;
+
+  // Create first row
+  const firstRow = createFilterRow();
+  elements.filterRowsContainer.appendChild(firstRow);
+
+  // Add button click handler
+  elements.addFilterButton.addEventListener('click', () => {
+    const newRow = createFilterRow();
+    elements.filterRowsContainer.appendChild(newRow);
+    updateAddFilterButtonVisibility();
+  });
+
+  updateAddFilterButtonVisibility();
+}
+
+function populateCardDropdowns() {
+  buildCardLookup();
+  initializeFilterRows();
+}
+
+/**
+ * Update card dropdowns based on current filter selections
+ * Called on initial load and whenever a filter changes
+ */
+/**
+ * Build the card lookup map from allCards
+ */
+function buildCardLookup() {
+  state.cardLookup = new Map();
+
+  const deckTotal = state.defaultDeckTotal || state.archetypeDeckTotal || 0;
+
+  state.allCards.forEach(card => {
+    const cardId = buildCardId(card);
+    if (!cardId) {
+      return;
+    }
+
     const found = Number(card.found ?? 0);
     const total = Number(card.total ?? deckTotal);
     const pct = total > 0 ? (found / total) * 100 : 0;
     const alwaysIncluded = total > 0 && found === total;
     const normalizedNumber = normalizeCardNumber(card.number);
 
-    if (cardId) {
-      state.cardLookup.set(cardId, {
-        id: cardId,
-        name: card.name || cardId,
-        set: card.set || null,
-        number: normalizedNumber || null,
-        found,
-        total,
-        pct: Math.round(pct * 100) / 100,
-        alwaysIncluded
-      });
-    }
-
-    if (!cardId || alwaysIncluded) {
-      return;
-    }
-
-    // Only add to Include dropdown if this card has an include filter OR if we're showing all cards
-    if (showAllCards || availableForInclude.size === 0 || availableForInclude.has(cardId)) {
-      const optionInclude = document.createElement('option');
-      optionInclude.value = cardId;
-      optionInclude.textContent = formatCardOptionLabel(card, duplicateCounts);
-      optionInclude.dataset.cardName = card.name || cardId;
-      elements.includeCard.appendChild(optionInclude);
-    }
-
-    // Only add to Exclude dropdown if this card has an exclude filter OR if we're showing all cards
-    if (showAllCards || availableForExclude.size === 0 || availableForExclude.has(cardId)) {
-      const optionExclude = document.createElement('option');
-      optionExclude.value = cardId;
-      optionExclude.textContent = formatCardOptionLabel(card, duplicateCounts);
-      optionExclude.dataset.cardName = card.name || cardId;
-      elements.excludeCard.appendChild(optionExclude);
-    }
+    state.cardLookup.set(cardId, {
+      id: cardId,
+      name: card.name || cardId,
+      set: card.set || null,
+      number: normalizedNumber || null,
+      found,
+      total,
+      pct: Math.round(pct * 100) / 100,
+      alwaysIncluded
+    });
   });
-
-  // Restore previous selections if they're still available
-  if (previousInclude) {
-    elements.includeCard.value = previousInclude;
-  }
-  if (previousExclude) {
-    elements.excludeCard.value = previousExclude;
-  }
 }
 
 function resolveCardPrintInfo(card) {
@@ -1113,8 +1333,12 @@ function setupSkeletonExport() {
   syncSkeletonExportState();
 }
 
+/**
+ * Check if a card name indicates it's an Ace Spec card.
+ * @param {string} cardName
+ * @returns {boolean}
+ */
 function isAceSpec(cardName) {
-  // Common Ace Spec card names - you can expand this list
   const aceSpecKeywords = [
     'ace spec',
     'computer search',
@@ -1126,10 +1350,62 @@ function isAceSpec(cardName) {
     'reboot pod',
     'secret box'
   ];
-  const lowerName = cardName.toLowerCase();
+  const lowerName = (cardName || '').toLowerCase();
   return aceSpecKeywords.some(keyword => lowerName.includes(keyword));
 }
 
+/**
+ * Build operator options based on card characteristics.
+ * @param {string} cardId
+ * @returns {Array<{value: string, label: string}>}
+ */
+function getOperatorOptionsForCard(cardId) {
+  const cardInfo = state.cardLookup.get(cardId);
+  if (!cardInfo) {
+    return [
+      { value: '', label: 'None' },
+      { value: 'any', label: 'Any' },
+      { value: '<', label: 'Less than' },
+      { value: '>', label: 'More than' },
+      { value: '=', label: 'Exactly' }
+    ];
+  }
+
+  const isAlwaysIncluded = cardInfo.alwaysIncluded;
+  const isAce = isAceSpec(cardInfo.name);
+
+  // Ace Spec cards: only "None" or "Any"
+  if (isAce) {
+    return [
+      { value: '', label: 'None' },
+      { value: 'any', label: 'Any' }
+    ];
+  }
+
+  // Cards in 100% of decks: no "None" option, but keep "Any" for flexibility
+  if (isAlwaysIncluded) {
+    return [
+      { value: 'any', label: 'Any' },
+      { value: '<', label: 'Less than' },
+      { value: '>', label: 'More than' },
+      { value: '=', label: 'Exactly' }
+    ];
+  }
+
+  // Cards not in 100% of decks: full set including "Any"
+  return [
+    { value: '', label: 'None' },
+    { value: 'any', label: 'Any' },
+    { value: '<', label: 'Less than' },
+    { value: '>', label: 'More than' },
+    { value: '=', label: 'Exactly' }
+  ];
+}
+
+/**
+ * Update deck skeleton summary counts, warnings, and export readiness state.
+ * @param {any[]} items
+ */
 function updateSkeletonSummary(items) {
   if (!elements.skeletonSummary || !elements.skeletonCountValue || !elements.skeletonWarnings) {
     return;
@@ -1201,7 +1477,7 @@ function renderCards() {
 
   const grid = document.getElementById('grid');
   if (grid) {
-    grid._visibleRows = 24;
+    /** @type {any} */ (grid)._visibleRows = 24;
   }
   render(sortedVisibleItems, state.overrides, RENDER_COMPACT_OPTIONS);
   syncGranularityOutput(threshold);
@@ -1211,22 +1487,76 @@ function renderCards() {
   });
 }
 
-function loadFilterCombination(includeId, excludeId) {
-  const key = getFilterKey(includeId, excludeId);
+/**
+ * Load filtered card data using server-side subsets when available or a client-side fallback.
+ * @param {FilterDescriptor[]} filters
+ * @returns {Promise<{deckTotal: number, items: any[], raw?: any}>}
+ */
+function loadFilterCombination(filters) {
+  const key = getFilterKey(filters);
+  logger.info('loadFilterCombination called', {
+    filterCount: filters?.length,
+    filters,
+    key,
+    hasCached: state.filterCache.has(key)
+  });
+
   if (state.filterCache.has(key)) {
+    logger.debug('Using cached filter result', { key });
     return state.filterCache.get(key);
   }
 
   const promise = (async () => {
     try {
-      const raw = await fetchArchetypeFiltersReport(state.tournament, state.archetypeBase, includeId, excludeId);
+      // If we have multiple filters, rely on client-side generation to avoid server RTTs.
+      if (filters && filters.length > 1) {
+        logger.info('Multiple filters detected, using client-side generation', {
+          filterCount: filters.length
+        });
+
+        const { fetchAllDecks, generateReportForFilters } = await import('./utils/clientSideFiltering.js');
+        const allDecks = await fetchAllDecks(state.tournament);
+        const report = generateReportForFilters(allDecks, state.archetypeBase, filters);
+
+        logger.info('Built multi-filter report', {
+          itemsCount: report.items?.length || 0,
+          deckTotal: report.deckTotal
+        });
+
+        return {
+          deckTotal: report.deckTotal,
+          items: report.items,
+          raw: report.raw || { generatedClientSide: true }
+        };
+      }
+
+      // Single filter - use server-side if available
+      const firstFilter = filters && filters.length > 0 ? filters[0] : null;
+      const includeId = firstFilter?.cardId || null;
+      const includeOperator = firstFilter?.operator || null;
+      const includeCount = firstFilter?.count || null;
+
+      logger.debug('Single filter, fetching from server', { includeId, includeOperator, includeCount });
+
+      const raw = await fetchArchetypeFiltersReport(
+        state.tournament,
+        state.archetypeBase,
+        includeId,
+        null,
+        includeOperator,
+        includeCount
+      );
       const parsed = parseReport(raw);
+
+      logger.debug('Parsed single filter report', { itemsCount: parsed.items.length, deckTotal: parsed.deckTotal });
+
       return {
         deckTotal: parsed.deckTotal,
         items: parsed.items,
         raw
       };
     } catch (error) {
+      logger.error('Filter combination loading failed', error);
       state.filterCache.delete(key);
       throw error;
     }
@@ -1236,136 +1566,141 @@ function loadFilterCombination(includeId, excludeId) {
   return promise;
 }
 
+/**
+ * Count unique decks from filtered items
+ * @param {Array} instances - Instance array
+ * @param {Array} found - Found array
+ * @returns {Array} Histogram distribution
+ */
+function _buildDistributionFromInstances(instances, found) {
+  if (!Array.isArray(instances) || instances.length === 0) {
+    return [];
+  }
+  const histogram = new Map();
+  instances.forEach(entry => {
+    const copies = Number(entry?.count) || 0;
+    histogram.set(copies, (histogram.get(copies) || 0) + 1);
+  });
+  return Array.from(histogram.entries())
+    .map(([copies, players]) => ({
+      copies,
+      players,
+      percent: found ? Math.round(((players / found) * 100 + Number.EPSILON) * 100) / 100 : 0
+    }))
+    .sort((itemA, itemB) => {
+      if (itemB.percent !== itemA.percent) {
+        return itemB.percent - itemA.percent;
+      }
+      return itemB.copies - itemA.copies;
+    });
+}
+
+/**
+ * Apply additional filters client-side
+ */
 function resetToDefaultData() {
   state.items = state.defaultItems;
   state.archetypeDeckTotal = state.defaultDeckTotal;
-  state.currentFilters = {
-    include: null,
-    exclude: null
-  };
+  state.filterRows.forEach(row => {
+    row.cardId = null;
+    row.operator = null;
+    row.count = null;
+    row.elements.cardSelect.value = '';
+    row.elements.operatorSelect.value = '';
+    row.elements.operatorSelect.hidden = true;
+    row.elements.countInput.value = '';
+    row.elements.countInput.hidden = true;
+  });
   updateFilterMessage('');
   renderCards();
 }
 
-function applyAlwaysIncludedGuard(includeId) {
-  if (!includeId) {
-    return null;
-  }
-  const info = state.cardLookup.get(includeId);
-  if (info?.alwaysIncluded) {
-    return null;
-  }
-  return includeId;
-}
-
-function handleImpossibleExclusion(excludeId) {
-  if (!excludeId) {
-    return false;
-  }
-  const info = state.cardLookup.get(excludeId);
-  if (!info?.alwaysIncluded) {
-    return false;
-  }
-  updateFilterMessage(`${state.archetypeLabel} decks always play ${info.name}. Try a different exclusion.`, 'warning');
-  state.items = [];
-  state.archetypeDeckTotal = 0;
-  state.currentFilters = {
-    include: null,
-    exclude: excludeId,
-    includeMin: 1,
-    includeMax: 4,
-    excludeMin: 0,
-    excludeMax: 4
-  };
-  renderCards();
-  return true;
-}
-
+/**
+ * Sync state with the currently selected filters and refresh the rendered card list.
+ */
 async function applyFilters() {
-  if (!elements.includeCard || !elements.excludeCard) {
-    return;
-  }
   if (!state.tournament || !state.archetypeBase) {
     return;
   }
 
-  const originalIncludeValue = elements.includeCard.value || null;
-  let includeId = originalIncludeValue;
-  const excludeId = elements.excludeCard.value || null;
+  // Get all active filters (rows with a card selected)
+  const activeFilters = state.filterRows
+    .filter(row => row.cardId)
+    .map(row => ({
+      cardId: row.cardId,
+      operator: row.operator || null,
+      count: row.count || null
+    }));
 
-  includeId = applyAlwaysIncludedGuard(includeId);
-  if (!includeId && originalIncludeValue) {
-    elements.includeCard.value = '';
-  }
+  logger.debug('Applying filters', { activeFilters, filterRowsCount: state.filterRows.length });
 
-  if (!includeId && !excludeId) {
+  // If no filters, reset to default
+  if (activeFilters.length === 0) {
     resetToDefaultData();
     return;
   }
 
-  if (includeId && excludeId && includeId === excludeId) {
-    updateFilterMessage('Choose different cards to include and exclude.', 'warning');
-    state.items = [];
-    state.archetypeDeckTotal = 0;
-    state.currentFilters = {
-      include: includeId,
-      exclude: excludeId
-    };
-    renderCards();
-    return;
+  // Check for always-included cards with invalid operator combinations
+  for (const filter of activeFilters) {
+    const info = state.cardLookup.get(filter.cardId);
+    // Always-included cards can't use empty operator (none) - they're in all decks
+    if (info?.alwaysIncluded && (!filter.operator || filter.operator === '')) {
+      updateFilterMessage(
+        `${info.name} is in 100% of decks. Select "Any" or a quantity operator to filter by copy count.`,
+        'info'
+      );
+      return;
+    }
   }
 
-  if (handleImpossibleExclusion(excludeId)) {
-    return;
-  }
-
-  const comboLabel = describeFilters(includeId, excludeId);
+  const comboLabel = describeFilters(activeFilters);
   updateFilterMessage(`Crunching the numbers for decks ${comboLabel}...`, 'info');
 
-  const requestKey = getFilterKey(includeId, excludeId);
+  const requestKey = getFilterKey(activeFilters);
 
   try {
-    const result = await loadFilterCombination(includeId, excludeId);
+    const result = await loadFilterCombination(activeFilters);
 
-    const currentInclude = applyAlwaysIncludedGuard(elements.includeCard ? elements.includeCard.value || null : null);
-    const currentExclude = elements.excludeCard ? elements.excludeCard.value || null : null;
-    const activeKey = getFilterKey(currentInclude, currentExclude);
+    logger.debug('Filter result', { deckTotal: result.deckTotal, itemsCount: result.items.length });
+
+    // Check if the request is still current
+    const currentActiveFilters = state.filterRows
+      .filter(row => row.cardId)
+      .map(row => ({
+        cardId: row.cardId,
+        operator: row.operator || null,
+        count: row.count || null
+      }));
+    const activeKey = getFilterKey(currentActiveFilters);
     if (activeKey !== requestKey) {
+      logger.debug('Filter request outdated, ignoring');
       return;
     }
 
     // eslint-disable-next-line require-atomic-updates -- Guarded by requestKey check
     Object.assign(state, {
       items: result.items,
-      archetypeDeckTotal: result.deckTotal,
-      currentFilters: {
-        include: includeId,
-        exclude: excludeId
-      }
+      archetypeDeckTotal: result.deckTotal
     });
 
     if (!result.deckTotal || result.items.length === 0) {
-      updateFilterMessage(`No decks match the combination ${comboLabel}.`, 'warning');
+      updateFilterMessage(`No decks match ${comboLabel}.`, 'warning');
     } else {
       const deckLabel = result.deckTotal === 1 ? 'deck' : 'decks';
-      const clientSideNote = result.generatedClientSide ? ' (generated on-demand)' : '';
-      updateFilterMessage(
-        `${result.deckTotal} ${deckLabel} match the combination ${comboLabel}${clientSideNote}.`,
-        'info'
-      );
+      const clientSideNote =
+        result.raw?.generatedClientSide || activeFilters.length > 1 ? ' (generated on-demand)' : '';
+      updateFilterMessage(`${result.deckTotal} ${deckLabel} match ${comboLabel}${clientSideNote}.`, 'info');
     }
     renderCards();
   } catch (error) {
+    logger.error('Filter application failed', error);
+
     if (error instanceof AppError && error.context?.status === 404) {
-      updateFilterMessage(`No decks match the combination ${comboLabel}.`, 'warning');
+      updateFilterMessage(`No decks match ${comboLabel}.`, 'warning');
       // eslint-disable-next-line require-atomic-updates -- Selection validated above
       Object.assign(state, {
         items: [],
-        archetypeDeckTotal: 0,
-        currentFilters: {
-          include: includeId,
-          exclude: excludeId
-        }
+        archetypeDeckTotal: 0
       });
       renderCards();
       return;
@@ -1377,120 +1712,41 @@ async function applyFilters() {
       error.type === ErrorTypes.PARSE &&
       error.message.includes('Filter combination not found')
     ) {
-      const _card = includeId || excludeId; // Unused but kept for potential debugging
-      const action = includeId ? 'include' : 'exclude';
       updateFilterMessage(
-        `This card appears in too few decks to filter by ${action}. Try ${includeId ? 'excluding' : 'including'} it instead, or choose a more common card.`,
+        `This card appears in too few decks to filter by. Try choosing a more common card.`,
         'warning'
       );
       // eslint-disable-next-line require-atomic-updates -- Selection validated above
       Object.assign(state, {
         items: [],
-        archetypeDeckTotal: 0,
-        currentFilters: {
-          include: includeId,
-          exclude: excludeId
-        }
+        archetypeDeckTotal: 0
       });
       renderCards();
       return;
     }
 
-    logger.exception('Failed to apply include/exclude filters', error);
-    updateFilterMessage('We ran into an issue loading that combination. Please try again.', 'warning');
-  }
-}
-
-function setupFilterListeners() {
-  if (elements.includeCard) {
-    elements.includeCard.addEventListener('change', () => {
-      // Update the exclude dropdown based on the new include selection
-      updateCardDropdowns();
-
-      applyFilters().catch(error => {
-        logger.debug('Include filter change failed', error?.message || error);
+    // Check if this is a client-side filtering failure
+    if (error instanceof AppError && error.context?.clientSideFailed) {
+      const errorDetail = error.message.includes('timed out') ? 'Request timed out.' : 'Please try again.';
+      updateFilterMessage(`Unable to load deck data for filtering. ${errorDetail}`, 'warning');
+      // eslint-disable-next-line require-atomic-updates -- Selection validated above
+      Object.assign(state, {
+        items: [],
+        archetypeDeckTotal: 0
       });
-    });
-
-    // Add hover listeners for aggressive pre-caching
-    setupFilterHoverHandler(elements.includeCard, 'include');
-  }
-  if (elements.excludeCard) {
-    elements.excludeCard.addEventListener('change', () => {
-      // Update the include dropdown based on the new exclude selection
-      updateCardDropdowns();
-
-      applyFilters().catch(error => {
-        logger.debug('Exclude filter change failed', error?.message || error);
-      });
-    });
-
-    // Add hover listeners for aggressive pre-caching
-    setupFilterHoverHandler(elements.excludeCard, 'exclude');
-  }
-}
-
-/**
- * Setup hover event handlers for filter dropdowns
- * Pre-resolves filter combinations when user hovers over options
- * @param {HTMLSelectElement} selectElement
- * @param {string} filterType - 'include' or 'exclude'
- */
-function setupFilterHoverHandler(selectElement, filterType) {
-  /** @type {Promise<any>|null} */
-  let cacheInstancePromise = null;
-
-  const loadCacheInstance = () => {
-    if (!cacheInstancePromise) {
-      cacheInstancePromise = import('./utils/archetypeCache.js')
-        .then(module => module.archetypeCache)
-        .catch(error => {
-          cacheInstancePromise = null;
-          throw error;
-        });
-    }
-    return cacheInstancePromise;
-  };
-
-  // Track when dropdown is focused/opened
-  selectElement.addEventListener('focus', async () => {
-    try {
-      const cache = await loadCacheInstance();
-
-      // Pre-cache the index when dropdown opens
-      if (state.tournament && state.archetypeBase) {
-        await cache.preCacheIndex(state.tournament, state.archetypeBase);
-      }
-    } catch (error) {
-      logger.debug('Failed to pre-cache index on dropdown focus', error.message);
-    }
-  });
-
-  // Track hover over individual options (if supported by browser)
-  selectElement.addEventListener('mousemove', async event => {
-    if (!state.tournament || !state.archetypeBase) {
+      renderCards();
       return;
     }
 
-    const { target } = event;
-    if (target instanceof HTMLOptionElement && target.value) {
-      try {
-        const cache = await loadCacheInstance();
-        const hoveredCardId = target.value;
-
-        // Get the current value from the other dropdown
-        const includeId =
-          filterType === 'include' ? hoveredCardId : elements.includeCard ? elements.includeCard.value || null : null;
-        const excludeId =
-          filterType === 'exclude' ? hoveredCardId : elements.excludeCard ? elements.excludeCard.value || null : null;
-
-        // Start timer to pre-resolve this filter combination
-        cache.startFilterHoverTimer(state.tournament, state.archetypeBase, includeId, excludeId);
-      } catch (error) {
-        logger.debug('Failed to pre-cache combination on hover', error.message);
-      }
-    }
-  });
+    logger.exception('Failed to apply filter', error);
+    updateFilterMessage('We ran into an issue loading that combination. Please try again.', 'warning');
+    // Clear the loading state
+    Object.assign(state, {
+      items: [],
+      archetypeDeckTotal: 0
+    });
+    renderCards();
+  }
 }
 
 function handleGranularityInput(event) {
@@ -1524,22 +1780,6 @@ function setupGranularityListeners() {
   if (range) {
     range.addEventListener('input', handleGranularityInput);
   }
-}
-
-function _resolveTournamentPreference(defaultTournament, tournamentsList) {
-  const params = new URLSearchParams(window.location.search);
-  const preferredTournament = params.get('tour');
-
-  if (!preferredTournament) {
-    return defaultTournament;
-  }
-
-  const tournaments = Array.isArray(tournamentsList) ? tournamentsList : [];
-  if (tournaments.includes(preferredTournament)) {
-    return preferredTournament;
-  }
-  logger.warn(`Preferred tournament ${preferredTournament} not found, falling back to ${defaultTournament}`);
-  return defaultTournament;
 }
 
 async function initialize() {
@@ -1584,14 +1824,13 @@ async function initialize() {
       allCards: parsedArchetype.items,
       defaultItems: parsedArchetype.items,
       defaultDeckTotal: parsedArchetype.deckTotal,
-      filterCache: new Map(),
-      currentFilters: { include: null, exclude: null }
+      filterCache: new Map()
     });
 
     updateHero();
     ensureFilterMessageElement();
     updateFilterMessage('');
-    await populateCardDropdowns();
+    populateCardDropdowns();
     renderCards();
 
     if (elements.loading) {
@@ -1629,7 +1868,6 @@ window.addEventListener('resize', () => {
 });
 
 setupGranularityListeners();
-setupFilterListeners();
 setupSkeletonExport();
 
 initialize();

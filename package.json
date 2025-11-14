@@ -13,7 +13,7 @@
     "complexity": "plato -r -d complexity-report public/assets/js",
     "dev": "node dev/test-server.js",
     "test": "npm run test:routing",
-    "test:routing": "node --test --loader ./dev/tests/esm-test-loader.mjs dev/tests/card-routing.test.mjs",
+    "test:routing": "node --test --loader ./dev/tests/esm-test-loader.mjs dev/tests/card-routing.test.mjs dev/tests/online-meta.test.mjs dev/tests/client-side-filtering.test.mjs",
     "validate": "npm run lint && npm run typecheck",
     "validate:fix": "npm run lint:fix && npm run typecheck",
     "clean": "echo 'No build artifacts to clean'",
