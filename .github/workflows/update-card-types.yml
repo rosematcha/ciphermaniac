@@ -1,0 +1,97 @@
+name: Update Card Types Database
+
+on:
+  # Run daily at 3 AM UTC (after online meta cron should have run)
+  schedule:
+    - cron: '0 3 * * *'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  update-card-types:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: npm ci
+        if: hashFiles('package-lock.json') != ''
+      
+      - name: Download reports from Cloudflare R2
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
+        run: |
+          # Install Cloudflare Wrangler if needed for R2 access
+          # Alternatively, use AWS CLI with R2 S3-compatible endpoint
+          
+          echo "Downloading reports from R2..."
+          mkdir -p public/reports
+          
+          # Use wrangler to download reports
+          npx wrangler r2 object get "${R2_BUCKET_NAME}/reports" --file=reports.tar.gz
+          tar -xzf reports.tar.gz -C public/
+          
+          echo "Reports downloaded successfully"
+      
+      - name: Build card types database
+        run: |
+          echo "Building card types database..."
+          node tools/build-card-types.mjs
+      
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet public/assets/data/card-types.json; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected in card types database"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in card types database"
+          fi
+      
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          git add public/assets/data/card-types.json
+          git commit -m "chore: update card types database [skip ci]"
+          git push
+      
+      - name: Upload card types database as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: card-types-database
+          path: public/assets/data/card-types.json
+          retention-days: 30
+      
+      - name: Summary
+        run: |
+          echo "## Card Types Database Update" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.check_changes.outputs.has_changes }}" == "true" ]; then
+            echo "✅ Database updated with new card types" >> $GITHUB_STEP_SUMMARY
+            
+            # Count cards in database
+            CARD_COUNT=$(jq 'length' public/assets/data/card-types.json)
+            echo "- Total cards in database: **${CARD_COUNT}**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No new cards to add - database is up to date" >> $GITHUB_STEP_SUMMARY
+          fi

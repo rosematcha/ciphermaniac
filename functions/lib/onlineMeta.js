@@ -10,6 +10,8 @@ import {
   generateIncludeExcludeReports,
   writeIncludeExcludeReports
 } from './onlineMetaIncludeExclude.js';
+import { loadCardTypesDatabase, enrichCardWithType } from './cardTypesDatabase.js';
+import { enrichDecksWithOnTheFlyFetch } from './cardTypeFetcher.js';
 
 const WINDOW_DAYS = 14;
 const MIN_USAGE_PERCENT = 0.5;
@@ -21,6 +23,141 @@ const SUPPORTED_FORMATS = new Set(['STANDARD']);
 
 function daysAgo(count) {
   return new Date(Date.now() - count * 24 * 60 * 60 * 1000);
+}
+
+// Lightweight heuristics to enrich trainer/energy subtypes without extra API calls
+// These mirror client-side logic where possible to keep categories consistent.
+const ACE_SPEC_KEYWORDS = [
+  'ace spec',
+  'prime catcher',
+  'reboot pod',
+  'legacy energy',
+  'enriching energy',
+  'neo upper energy',
+  'master ball',
+  'secret box',
+  'sparkling crystal',
+  "hero's cape",
+  'scramble switch',
+  'dowsing machine',
+  'computer search',
+  'life dew',
+  'scoop up cyclone',
+  'gold potion',
+  'victory piece',
+  'g booster',
+  'g scope',
+  'g spirit',
+  'crystal edge',
+  'crystal wall',
+  'rock guard',
+  'surprise megaphone',
+  'chaotic amplifier',
+  'precious trolley',
+  'poke vital a',
+  'unfair stamp',
+  'brilliant blender'
+].map(k => k.toLowerCase());
+
+function isAceSpecName(name) {
+  const normalized = String(name || '').toLowerCase();
+  return ACE_SPEC_KEYWORDS.some(k => normalized.includes(k));
+}
+
+function inferEnergyType(name, setCode) {
+  // Basic Energy cards (SVE set)
+  if ((setCode || '').toUpperCase() === 'SVE') {
+    return 'basic';
+  }
+  // Special Energy cards - "Energy" is always the last word
+  if ((name || '').endsWith(' Energy') && (setCode || '').toUpperCase() !== 'SVE') {
+    return 'special';
+  }
+  return null;
+}
+
+function inferTrainerType(name) {
+  const n = String(name || '');
+  const lower = n.toLowerCase();
+  // Stadiums often include these tokens explicitly
+  if (n.includes('Stadium') || n.includes('Tower') || n.includes('Artazon') || n.includes('Mesagoza') || n.includes('Levincia')) {
+    return 'stadium';
+  }
+  // Tools typically have equipment-like words or TM
+  const toolHints = [
+    'tool',
+    'belt',
+    'helmet',
+    'cape',
+    'charm',
+    'vest',
+    'band',
+    'mask',
+    'glasses',
+    'rescue board',
+    'seal stone',
+    'technical machine',
+    'tm:'
+  ];
+  if (toolHints.some(h => lower.includes(h))) {
+    return 'tool';
+  }
+  // Ace Specs override other trainer subtypes
+  if (isAceSpecName(n)) {
+    return 'ace-spec';
+  }
+  // Common supporter indicators
+  const supporterHints = [
+    'professor',
+    "boss's orders",
+    'orders',
+    'research',
+    'judge',
+    'scenario',
+    'vitality',
+    'grant',
+    'roxanne',
+    'miriam',
+    'iono',
+    'arven',
+    'jacq',
+    'penny',
+    'briar',
+    'carmine',
+    'kieran',
+    'geeta',
+    'grusha',
+    'ryme',
+    'clavell',
+    'giacomo'
+  ];
+  if (supporterHints.some(h => lower.includes(h))) {
+    return 'supporter';
+  }
+  // Item catch-alls (keep broad; many trainers are items)
+  const itemHints = [
+    'ball',
+    'rod',
+    'catcher',
+    'switch',
+    'machine',
+    'basket',
+    'retrieval',
+    'hammer',
+    'potion',
+    'stretcher',
+    'vessel',
+    'candy',
+    'poffin',
+    'powerglass',
+    'energy search',
+    'ultra ball'
+  ];
+  if (itemHints.some(h => lower.includes(h))) {
+    return 'item';
+  }
+  // Default to item for unknown trainers
+  return 'item';
 }
 
 async function fetchRecentOnlineTournaments(env, since, options = {}) {
@@ -107,7 +244,7 @@ const diagnostics = options.diagnostics;
   return detailed.sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
 }
 
-function toCardEntries(decklist) {
+function toCardEntries(decklist, cardTypesDb = null) {
   if (!decklist || typeof decklist !== 'object') {
     return [];
   }
@@ -132,14 +269,49 @@ function toCardEntries(decklist) {
         category = 'energy';
       }
 
-      cards.push({
+      const name = card?.name || 'Unknown Card';
+      const set = card?.set || null;
+      const number = card?.number || null;
+      
+      // Build base entry
+      let entry = {
         count,
-        name: card?.name || 'Unknown Card',
-        set: card?.set || null,
-        number: card?.number || null,
-        category,
-        displayCategory: composeDisplayCategory(category)
-      });
+        name,
+        set,
+        number,
+        category
+      };
+      
+      // Try to enrich from database first
+      if (cardTypesDb && set && number) {
+        entry = enrichCardWithType(entry, cardTypesDb);
+      }
+      
+      // Fall back to heuristics if database didn't provide the info
+      if (!entry.trainerType && !entry.energyType) {
+        if (category === 'trainer') {
+          const trainerType = inferTrainerType(name);
+          if (trainerType) {
+            entry.trainerType = trainerType;
+          }
+        } else if (category === 'energy') {
+          const energyType = inferEnergyType(name, set);
+          if (energyType) {
+            entry.energyType = energyType;
+          }
+        }
+      }
+      
+      // Ensure displayCategory is set
+      if (!entry.displayCategory) {
+        entry.displayCategory = composeDisplayCategory(
+          entry.category,
+          entry.trainerType,
+          entry.energyType
+        );
+      }
+
+      cards.push(entry);
     }
   }
 
@@ -161,7 +333,7 @@ async function hashDeck(cards, playerId = '') {
   return bytes.map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-async function gatherDecks(env, tournaments, diagnostics) {
+async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null) {
   const decks = [];
 
   for (const tournament of tournaments) {
@@ -213,7 +385,7 @@ async function gatherDecks(env, tournaments, diagnostics) {
         });
       }
 
-      const cards = toCardEntries(entry?.decklist);
+      const cards = toCardEntries(entry?.decklist, cardTypesDb);
       if (!cards.length) {
         diagnostics?.entriesWithoutDecklists.push({
           tournamentId: tournament.id,
@@ -361,6 +533,12 @@ export async function runOnlineMetaJob(env, options = {}) {
     tournamentsBelowMinimum: []
   };
 
+  // Load card types database for enrichment
+  console.info('[OnlineMeta] Loading card types database...');
+  const cardTypesDb = await loadCardTypesDatabase(env);
+  const dbCardCount = Object.keys(cardTypesDb).length;
+  console.info(`[OnlineMeta] Loaded ${dbCardCount} cards from types database`);
+
   const tournaments = await fetchRecentOnlineTournaments(env, since, {
     diagnostics
   });
@@ -373,7 +551,7 @@ export async function runOnlineMetaJob(env, options = {}) {
     };
   }
 
-  const decks = await gatherDecks(env, tournaments, diagnostics);
+  const decks = await gatherDecks(env, tournaments, diagnostics, cardTypesDb);
   if (!decks.length) {
     console.error('[OnlineMeta] No decklists aggregated', diagnostics);
     return {
@@ -383,6 +561,11 @@ export async function runOnlineMetaJob(env, options = {}) {
       diagnostics
     };
   }
+
+  // Fetch missing card types on-the-fly and update database
+  console.info('[OnlineMeta] Checking for missing card types...');
+  await enrichDecksWithOnTheFlyFetch(decks, cardTypesDb, env);
+  console.info('[OnlineMeta] Card type enrichment complete');
 
   const deckTotal = decks.length;
   const masterReport = generateReportFromDecks(decks, deckTotal, decks);

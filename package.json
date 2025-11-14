@@ -17,7 +17,9 @@
     "validate": "npm run lint && npm run typecheck",
     "validate:fix": "npm run lint:fix && npm run typecheck",
     "clean": "echo 'No build artifacts to clean'",
-    "pre-commit": "npm run validate:fix"
+    "pre-commit": "npm run validate:fix",
+    "build:card-types": "node tools/build-card-types.mjs",
+    "check:card-types": "node tools/check-card-types.mjs"
   },
   "devDependencies": {
     "eslint": "^8.57.1",

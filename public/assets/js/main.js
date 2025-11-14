@@ -67,7 +67,6 @@ import {
   fetchArchetypeReport,
   fetchArchetypesList,
   fetchLimitlessTournaments,
-  fetchOverrides,
   fetchReport,
   fetchTournamentsList
 } from './api.js';
@@ -1660,7 +1659,7 @@ async function initializeApp() {
     const cache = appState.cache;
 
     // Load configuration data
-    appState.overrides = await safeAsync(() => fetchOverrides(), 'loading thumbnail overrides', {});
+    appState.overrides = {};
 
     // Setup control handlers and dropdown UI
     setupControlHandlers(appState);

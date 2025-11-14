@@ -2,7 +2,6 @@ import './utils/buildVersion.js';
 import {
   fetchArchetypeFiltersReport,
   fetchArchetypeReport,
-  fetchOverrides,
   fetchReport,
   fetchTournamentsList as _fetchTournamentsList // Reserved for future use
 } from './api.js';
@@ -76,13 +75,14 @@ const CARD_CATEGORY_SORT_PRIORITY = new Map([
   ['pokemon', 0],
   ['trainer-supporter', 1],
   ['trainer-item', 2],
-  ['trainer-tool', 3],
-  ['trainer-stadium', 4],
-  ['trainer-other', 5],
-  ['trainer', 5],
-  ['energy-basic', 6],
-  ['energy-special', 7],
-  ['energy', 6]
+  ['trainer-ace-spec', 3],
+  ['trainer-tool', 4],
+  ['trainer-stadium', 5],
+  ['trainer-other', 6],
+  ['trainer', 6],
+  ['energy-basic', 7],
+  ['energy-special', 8],
+  ['energy', 7]
 ]);
 
 const WARNING_ICON = '\u26A0\uFE0F';
@@ -535,7 +535,7 @@ function inferTrainerSubtype(card) {
   }
 
   if (name.includes('ace spec') || uid.includes('ace_spec')) {
-    return 'trainer-item';
+    return 'trainer-ace-spec';
   }
 
   if (
@@ -586,7 +586,7 @@ function deriveDisplayCategory(card) {
   const primary = inferPrimaryCategory(card);
   if (primary === 'trainer') {
     const inferred = inferTrainerSubtype(card);
-    if (inferred && inferred !== 'trainer') {
+    if (inferred) {
       return inferred;
     }
     return 'trainer-other';
@@ -599,9 +599,9 @@ function deriveDisplayCategory(card) {
 
 function getCategorySortWeight(category) {
   if (!category) {
-    return CARD_CATEGORY_SORT_PRIORITY.get('trainer') ?? 5;
+    return CARD_CATEGORY_SORT_PRIORITY.get('trainer') ?? 6;
   }
-  return CARD_CATEGORY_SORT_PRIORITY.get(category) ?? (category.startsWith('trainer') ? 5 : 6);
+  return CARD_CATEGORY_SORT_PRIORITY.get(category) ?? (category.startsWith('trainer') ? 6 : (category.startsWith('energy') ? 7 : 0));
 }
 
 function sortItemsForDisplay(items) {
@@ -1566,7 +1566,7 @@ async function initialize() {
     state.tournament = onlineMeta;
 
     const [overrides, tournamentReport, archetypeRaw] = await Promise.all([
-      safeAsync(() => fetchOverrides(), 'fetching thumbnail overrides', {}),
+      Promise.resolve({}),
       fetchReport(state.tournament),
       fetchArchetypeReport(state.tournament, state.archetypeBase)
     ]);

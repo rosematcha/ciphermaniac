@@ -1,4 +1,4 @@
-﻿import { fetchDecks, fetchOverrides, fetchTournamentsList, getCardPrice } from '../api.js';
+﻿import { fetchDecks, fetchTournamentsList, getCardPrice } from '../api.js';
 import { analyzeEvents, buildBinderDataset } from './metaBinderData.js';
 import { buildThumbCandidates } from '../thumbs.js';
 import { debounce } from '../utils/performance.js';
@@ -1162,7 +1162,7 @@ async function initialize() {
 
     const [tournaments, overrides, hasOnlineMeta] = await Promise.all([
       fetchTournamentsList(),
-      fetchOverrides().catch(() => ({})),
+      Promise.resolve({}),
       checkOnlineMetaAvailability()
     ]);
 
