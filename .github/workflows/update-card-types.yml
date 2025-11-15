@@ -32,19 +32,26 @@ jobs:
       
       - name: Download reports from Cloudflare R2
         env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
         run: |
-          # Install Cloudflare Wrangler if needed for R2 access
-          # Alternatively, use AWS CLI with R2 S3-compatible endpoint
+          # Install AWS CLI for S3-compatible R2 access
+          sudo apt-get update
+          sudo apt-get install -y awscli
           
           echo "Downloading reports from R2..."
           mkdir -p public/reports
           
-          # Use wrangler to download reports
-          npx wrangler r2 object get "${R2_BUCKET_NAME}/reports" --file=reports.tar.gz --remote
-          tar -xzf reports.tar.gz -C public/
+          # Configure AWS CLI for R2
+          aws configure set aws_access_key_id "${R2_ACCESS_KEY_ID}"
+          aws configure set aws_secret_access_key "${R2_SECRET_ACCESS_KEY}"
+          aws configure set region auto
+          
+          # Download all files from the reports folder
+          aws s3 sync "s3://${R2_BUCKET_NAME}/reports/" public/reports/ \
+            --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
           
           echo "Reports downloaded successfully"
       
