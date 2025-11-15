@@ -43,7 +43,7 @@ jobs:
           mkdir -p public/reports
           
           # Use wrangler to download reports
-          npx wrangler r2 object get "${R2_BUCKET_NAME}/reports" --file=reports.tar.gz
+          npx wrangler r2 object get "${R2_BUCKET_NAME}/reports" --file=reports.tar.gz --remote
           tar -xzf reports.tar.gz -C public/
           
           echo "Reports downloaded successfully"
