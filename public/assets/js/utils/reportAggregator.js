@@ -42,7 +42,7 @@ function createAccumulator(item) {
     category: item.category || null,
     trainerType: item.trainerType || null,
     energyType: item.energyType || null,
-    displayCategory: item.displayCategory || null,
+    aceSpec: item.aceSpec ? true : null,
     rank: item.rank ?? null,
     found: 0,
     distBuckets: new Map()
@@ -126,7 +126,7 @@ function finalizeAggregates(map, totalDecks) {
       ...(aggregate.category ? { category: aggregate.category } : {}),
       ...(aggregate.trainerType ? { trainerType: aggregate.trainerType } : {}),
       ...(aggregate.energyType ? { energyType: aggregate.energyType } : {}),
-      ...(aggregate.displayCategory ? { displayCategory: aggregate.displayCategory } : {}),
+      ...(aggregate.aceSpec ? { aceSpec: true } : {}),
       ...(aggregate.rank !== null ? { rank: aggregate.rank } : {}),
       ...(dist.length ? { dist } : {})
     };
@@ -194,8 +194,8 @@ export function aggregateReports(reports) {
       if (!aggregate.energyType && item.energyType) {
         aggregate.energyType = item.energyType;
       }
-      if (!aggregate.displayCategory && item.displayCategory) {
-        aggregate.displayCategory = item.displayCategory;
+      if (!aggregate.aceSpec && item.aceSpec) {
+        aggregate.aceSpec = true;
       }
     }
   }

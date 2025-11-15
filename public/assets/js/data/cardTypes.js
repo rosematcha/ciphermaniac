@@ -146,5 +146,9 @@ export async function enrichCardWithType(card) {
     enriched.energyType = typeInfo.subType;
   }
 
+  if (typeInfo.cardType === 'trainer' && typeInfo.aceSpec) {
+    enriched.aceSpec = true;
+  }
+
   return enriched;
 }

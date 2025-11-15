@@ -13,10 +13,9 @@ import { AppError, ErrorTypes, validateType } from './utils/errorHandler.js';
  * @property {string} [uid] - Optional per-variant unique id (e.g., "Name::SET::NNN")
  * @property {string} [set] - Optional set code for Pokémon variants
  * @property {string|number} [number] - Optional card number for Pokémon variants
- * @property {string} [category] - Card classification: 'pokemon', 'trainer', or 'energy'
+ * @property {string} [category] - Card classification slug (e.g., 'pokemon', 'trainer/supporter')
  * @property {string} [trainerType] - Trainer subtype when category is trainer (e.g., 'supporter')
  * @property {string} [energyType] - Energy subtype when category is energy (e.g., 'basic')
- * @property {string} [displayCategory] - Combined category label for UI sorting (e.g., 'trainer-supporter')
  * @property {number} found - Number of decks containing this card
  * @property {number} total - Total number of decks
  * @property {number} pct - Usage percentage
@@ -108,8 +107,8 @@ function validateAndCleanItem(item, index) {
   if (typeof item.number === 'string' || typeof item.number === 'number') {
     cleanItem.number = item.number;
   }
-  if (typeof category === 'string' && ['pokemon', 'trainer', 'energy'].includes(category.toLowerCase())) {
-    cleanItem.category = category.toLowerCase();
+  if (typeof category === 'string' && category.trim()) {
+    cleanItem.category = category.trim().toLowerCase();
   }
   const trainerType = typeof item.trainerType === 'string' ? item.trainerType.trim().toLowerCase() : '';
   if (trainerType) {
@@ -118,10 +117,6 @@ function validateAndCleanItem(item, index) {
   const energyType = typeof item.energyType === 'string' ? item.energyType.trim().toLowerCase() : '';
   if (energyType) {
     cleanItem.energyType = energyType;
-  }
-  const displayCategory = typeof item.displayCategory === 'string' ? item.displayCategory.trim().toLowerCase() : '';
-  if (displayCategory) {
-    cleanItem.displayCategory = displayCategory;
   }
 
   // Optional fields

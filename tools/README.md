@@ -125,7 +125,7 @@ const cardTypesDb = await loadCardTypesDatabase(env);
 // Enrich a card
 const card = { name: 'Super Rod', set: 'PAL', number: '188', count: 2 };
 const enrichedCard = enrichCardWithType(card, cardTypesDb);
-// enrichedCard now has: category, trainerType, displayCategory, etc.
+// enrichedCard now has: category (slug), trainerType, etc.
 ```
 
 The database is:
@@ -147,7 +147,7 @@ const typeInfo = await getCardType('PAL', '188');
 // Enrich a card object
 const card = { name: 'Super Rod', set: 'PAL', number: '188' };
 const enriched = await enrichCardWithType(card);
-// enriched now has: category, trainerType, displayCategory, etc.
+// enriched now has: category (slug), trainerType, etc.
 ```
 
 The database is:

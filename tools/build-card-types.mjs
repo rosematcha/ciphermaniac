@@ -17,6 +17,7 @@ const REPORTS_BASE_PATH = join(__dirname, '..', 'public', 'reports');
 const RATE_LIMIT_MS = 250; // 4 requests per second to be respectful
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
+const MASTER_FILE_NAME = 'master.json';
 
 /**
  * Sleep for a given number of milliseconds
@@ -59,7 +60,7 @@ async function fetchCardTypeFromLimitless(setCode, number) {
       // "Energy - Basic"
       // "Pokémon - Stage 2 - Evolves from Kirlia"
       // "Pokémon - Basic"
-      const match = html.match(/<div[^>]*class="card-text-type"[^>]*>([^<]+)<\/div>/i);
+      const match = html.match(/<(?:div|p)[^>]*class="card-text-type"[^>]*>([^<]+)<\/(?:div|p)>/i);
       
       if (!match) {
         console.log(`  ⚠️  Could not find card type for ${setCode}/${number}`);
@@ -68,32 +69,55 @@ async function fetchCardTypeFromLimitless(setCode, number) {
       
       const fullType = match[1].trim();
       const parts = fullType.split(' - ').map(p => p.trim());
-      
+      const normalize = value =>
+        value
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase();
+
       // Parse the type information
-      const cardType = parts[0].toLowerCase(); // "pokemon", "trainer", "energy"
+      const cardType = normalize(parts[0]); // "pokemon", "trainer", "energy"
       let subType = null;
       let evolutionInfo = null;
+      let aceSpec = false;
       
       if (cardType === 'trainer' && parts.length > 1) {
-        subType = parts[1].toLowerCase(); // "item", "supporter", "stadium", "tool"
+        const subtypeText = normalize(parts[1]);
+        if (subtypeText.includes('tool')) {
+          subType = 'tool';
+        } else if (subtypeText.includes('supporter')) {
+          subType = 'supporter';
+        } else if (subtypeText.includes('stadium')) {
+          subType = 'stadium';
+        } else if (subtypeText.includes('item')) {
+          subType = 'item';
+        } else {
+          subType = subtypeText;
+        }
+        aceSpec = parts.some(part => normalize(part).includes('ace spec'));
+        if (aceSpec && subType !== 'tool') {
+          subType = 'tool';
+        }
       } else if (cardType === 'energy' && parts.length > 1) {
         // "Special Energy" or just "Basic"
-        if (parts[1].toLowerCase().includes('special')) {
+        const subtypeText = normalize(parts[1]);
+        if (subtypeText.includes('special')) {
           subType = 'special';
         } else {
           subType = 'basic';
         }
-      } else if (cardType === 'pokémon' || cardType === 'pokemon') {
+      } else if (cardType === 'pokemon') {
         if (parts.length > 1) {
           evolutionInfo = parts.slice(1).join(' - '); // "Stage 2 - Evolves from Kirlia"
         }
       }
-      
+
       return {
-        cardType: cardType === 'pokémon' ? 'pokemon' : cardType,
+        cardType,
         subType,
         evolutionInfo,
-        fullType
+        fullType,
+        ...(aceSpec ? { aceSpec: true } : {})
       };
       
     } catch (error) {
@@ -183,7 +207,7 @@ async function extractCardsFromReport(filePath) {
  * @param {string} dir
  * @returns {Promise<string[]>}
  */
-async function findJsonFiles(dir) {
+async function findMasterReports(dir) {
   const files = [];
   
   try {
@@ -193,9 +217,9 @@ async function findJsonFiles(dir) {
       const fullPath = join(dir, entry.name);
       
       if (entry.isDirectory()) {
-        const subFiles = await findJsonFiles(fullPath);
+        const subFiles = await findMasterReports(fullPath);
         files.push(...subFiles);
-      } else if (entry.isFile() && entry.name.endsWith('.json')) {
+      } else if (entry.isFile() && entry.name === MASTER_FILE_NAME) {
         files.push(fullPath);
       }
     }
@@ -216,9 +240,9 @@ async function collectAllCards() {
   console.log('📦 Collecting cards from all reports...');
   
   const allCards = new Set();
-  const jsonFiles = await findJsonFiles(REPORTS_BASE_PATH);
+  const jsonFiles = await findMasterReports(REPORTS_BASE_PATH);
   
-  console.log(`   Found ${jsonFiles.length} JSON files to scan`);
+  console.log(`   Found ${jsonFiles.length} master.json files to scan`);
   
   for (const file of jsonFiles) {
     const cards = await extractCardsFromReport(file);

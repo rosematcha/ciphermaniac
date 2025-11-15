@@ -35,6 +35,11 @@ async function fetchCardTypeFromLimitless(setCode, number) {
 
     const fullType = typeMatch[1].trim();
     const parts = fullType.split(' - ').map(p => p.trim());
+    const normalize = value =>
+      value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
 
     const result = {
       fullType,
@@ -42,8 +47,8 @@ async function fetchCardTypeFromLimitless(setCode, number) {
     };
 
     // Parse card type
-    const mainType = parts[0].toLowerCase();
-    if (mainType === 'pokémon' || mainType === 'pokemon') {
+    const mainType = normalize(parts[0]);
+    if (mainType === 'pokemon') {
       result.cardType = 'pokemon';
       // Extract evolution info if present
       if (parts.length > 1) {
@@ -51,13 +56,27 @@ async function fetchCardTypeFromLimitless(setCode, number) {
       }
     } else if (mainType === 'trainer') {
       result.cardType = 'trainer';
-      if (parts[1]) {
-        result.subType = parts[1].toLowerCase().replace(/\s+/g, '-');
+      const subtypeText = parts[1] ? normalize(parts[1]) : '';
+      if (subtypeText.includes('tool')) {
+        result.subType = 'tool';
+      } else if (subtypeText.includes('supporter')) {
+        result.subType = 'supporter';
+      } else if (subtypeText.includes('stadium')) {
+        result.subType = 'stadium';
+      } else if (subtypeText) {
+        result.subType = subtypeText.replace(/\s+/g, '-');
+      }
+      const hasAceSpec = parts.some(part => normalize(part).includes('ace spec'));
+      if (hasAceSpec) {
+        result.aceSpec = true;
+        if (result.subType !== 'tool') {
+          result.subType = 'tool';
+        }
       }
     } else if (mainType === 'energy') {
       result.cardType = 'energy';
       if (parts[1]) {
-        const energyType = parts[1].toLowerCase();
+        const energyType = normalize(parts[1]);
         if (energyType.includes('basic')) {
           result.subType = 'basic';
         } else if (energyType.includes('special')) {
@@ -184,6 +203,10 @@ export async function fetchAndCacheCardType(card, database, env) {
   
   if (typeInfo.fullType) {
     enriched.fullType = typeInfo.fullType;
+  }
+
+  if (typeInfo.cardType === 'trainer' && typeInfo.aceSpec) {
+    enriched.aceSpec = true;
   }
 
   return enriched;

@@ -1,6 +1,5 @@
 import { fetchLimitlessJson } from './limitless.js';
 import {
-  composeDisplayCategory,
   generateReportFromDecks,
   normalizeArchetypeName,
   sanitizeForFilename,
@@ -131,7 +130,7 @@ function inferTrainerType(name) {
   }
   // Ace Specs override other trainer subtypes
   if (isAceSpecName(n)) {
-    return 'ace-spec';
+    return 'tool';
   }
   // Common supporter indicators
   const supporterHints = [
@@ -336,13 +335,8 @@ function toCardEntries(decklist, cardTypesDb = null) {
         }
       }
       
-      // Ensure displayCategory is set
-      if (!entry.displayCategory) {
-        entry.displayCategory = composeDisplayCategory(
-          entry.category,
-          entry.trainerType,
-          entry.energyType
-        );
+      if (category === 'trainer' && !entry.aceSpec && isAceSpecName(name)) {
+        entry.aceSpec = true;
       }
 
       cards.push(entry);

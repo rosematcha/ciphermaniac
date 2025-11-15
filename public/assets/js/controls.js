@@ -160,7 +160,11 @@ function matchesCardType(item, cardType) {
     return true;
   }
 
-  const category = (item.category || '').toLowerCase();
+  const getBaseCategory = value => {
+    const slug = typeof value === 'string' ? value.toLowerCase() : '';
+    return slug.split('/')[0] || '';
+  };
+  const category = getBaseCategory(item.category);
   const trainerType = (item.trainerType || '').toLowerCase();
   const energyType = (item.energyType || '').toLowerCase();
 

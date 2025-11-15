@@ -72,15 +72,15 @@ const state = {
 
 const CARD_CATEGORY_SORT_PRIORITY = new Map([
   ['pokemon', 0],
-  ['trainer-supporter', 1],
-  ['trainer-item', 2],
-  ['trainer-ace-spec', 3],
-  ['trainer-tool', 4],
-  ['trainer-stadium', 5],
-  ['trainer-other', 6],
+  ['trainer/supporter', 1],
+  ['trainer/item', 2],
+  ['trainer/tool/acespec', 3],
+  ['trainer/tool', 4],
+  ['trainer/stadium', 5],
+  ['trainer/other', 6],
   ['trainer', 6],
-  ['energy-basic', 7],
-  ['energy-special', 8],
+  ['energy/basic', 7],
+  ['energy/special', 8],
   ['energy', 7]
 ]);
 
@@ -521,14 +521,38 @@ function toLower(value) {
 }
 
 function inferPrimaryCategory(card) {
-  const directDisplay = toLower(card?.displayCategory);
-  if (directDisplay.startsWith('trainer')) {
-    return 'trainer';
-  }
-  if (directDisplay.startsWith('energy')) {
-    return 'energy';
-  }
-  if (directDisplay === 'pokemon') {
+    const categoryValue = toLower(card?.category);
+    if (categoryValue.includes('/')) {
+      return categoryValue.split('/')[0];
+    }
+    if (categoryValue === 'pokemon' || categoryValue === 'trainer' || categoryValue === 'energy') {
+      return categoryValue;
+    }
+    if (categoryValue.startsWith('trainer-')) {
+      return 'trainer';
+    }
+    if (categoryValue.startsWith('energy-')) {
+      return 'energy';
+    }
+
+    const name = toLower(card?.name);
+    const uid = toLower(card?.uid);
+
+    if (name && TRAINER_HINT_KEYWORDS.some(keyword => name.includes(keyword))) {
+      return 'trainer';
+    }
+    if (uid && TRAINER_HINT_KEYWORDS.some(keyword => uid.includes(keyword))) {
+      return 'trainer';
+    }
+
+    const endsWithEnergy = name && name.endsWith(' energy');
+    if (endsWithEnergy) {
+      return 'energy';
+    }
+    if (!endsWithEnergy && uid && (uid.endsWith(' energy') || uid.includes(' energy::'))) {
+      return 'energy';
+    }
+
     return 'pokemon';
   }
   const rawCategory = toLower(card?.category);
@@ -606,10 +630,56 @@ function inferTrainerSubtype(card) {
   return 'trainer-other';
 }
 
-function deriveDisplayCategory(card) {
-  const direct = toLower(card?.displayCategory);
-  if (direct) {
-    return direct;
+function deriveCategorySlug(card) {
+    const direct = toLower(card?.category);
+    if (direct) {
+      if (direct.includes('/')) {
+        return direct;
+      }
+      if (direct === 'trainer-ace-spec') {
+        return 'trainer/tool/acespec';
+      }
+      if (direct.startsWith('trainer-') || direct.startsWith('energy-')) {
+        const [base, ...rest] = direct.split('-');
+        if (base === 'trainer' && rest.join('-') === 'ace-spec') {
+          return 'trainer/tool/acespec';
+        }
+        return `${base}/${rest.join('/')}`;
+      }
+      if (!['trainer', 'energy', 'pokemon'].includes(direct)) {
+        return direct;
+      }
+    }
+
+    const baseCategory = ['trainer', 'energy', 'pokemon'].includes(direct) && direct
+      ? direct
+      : inferPrimaryCategory(card);
+    if (!baseCategory) {
+      return '';
+    }
+
+    if (baseCategory === 'trainer') {
+      const trainerType = toLower(card?.trainerType);
+      const parts = ['trainer'];
+      const normalizedTrainerType = trainerType === 'ace-spec' ? 'tool' : trainerType;
+      if (normalizedTrainerType) {
+        parts.push(normalizedTrainerType);
+      }
+      if (card?.aceSpec || trainerType === 'ace-spec') {
+        if (!parts.includes('tool')) {
+          parts.push('tool');
+        }
+        parts.push('acespec');
+      }
+      return parts.join('/');
+    }
+
+    if (baseCategory === 'energy') {
+      const energyType = toLower(card?.energyType);
+      return energyType ? `energy/${energyType}` : 'energy';
+    }
+
+    return baseCategory;
   }
   const baseCategory = toLower(card?.category);
   const trainerType = toLower(card?.trainerType);
@@ -634,35 +704,42 @@ function deriveDisplayCategory(card) {
   return primary || 'pokemon';
 }
 
-function getCategorySortWeight(category) {
-  if (!category) {
-    return CARD_CATEGORY_SORT_PRIORITY.get('trainer') ?? 6;
+  function getCategorySortWeight(category) {
+    if (!category) {
+      return CARD_CATEGORY_SORT_PRIORITY.get('trainer') ?? 6;
+    }
+    const normalizedKey = category.replace(/-/g, '/');
+    if (CARD_CATEGORY_SORT_PRIORITY.has(normalizedKey)) {
+      return CARD_CATEGORY_SORT_PRIORITY.get(normalizedKey);
+    }
+    if (normalizedKey.startsWith('trainer')) {
+      return 6;
+    }
+    if (normalizedKey.startsWith('energy')) {
+      return 7;
+    }
+    return CARD_CATEGORY_SORT_PRIORITY.get('pokemon') ?? 0;
   }
-  return (
-    CARD_CATEGORY_SORT_PRIORITY.get(category) ??
-    (category.startsWith('trainer') ? 6 : category.startsWith('energy') ? 7 : 0)
-  );
-}
 
 function sortItemsForDisplay(items) {
   if (!Array.isArray(items)) {
     return [];
   }
 
-  const decorated = items.map((card, index) => {
-    const displayCategory = deriveDisplayCategory(card);
-    const weight = getCategorySortWeight(displayCategory);
+    const decorated = items.map((card, index) => {
+      const categorySlug = deriveCategorySlug(card);
+      const weight = getCategorySortWeight(categorySlug);
     const rank = Number.isFinite(card?.rank) ? Number(card.rank) : index;
     const usage = getUsagePercent(card);
-    return {
-      card,
-      displayCategory,
-      weight,
-      rank,
-      usage,
-      index
-    };
-  });
+      return {
+        card,
+        categorySlug,
+        weight,
+        rank,
+        usage,
+        index
+      };
+    });
 
   decorated.sort((left, right) => {
     if (left.weight !== right.weight) {
@@ -682,15 +759,15 @@ function sortItemsForDisplay(items) {
     return left.index - right.index;
   });
 
-  return decorated.map(entry => {
-    if (!entry.card) {
-      return entry.card;
-    }
-    if (entry.card.displayCategory === entry.displayCategory) {
-      return entry.card;
-    }
-    return { ...entry.card, displayCategory: entry.displayCategory };
-  });
+    return decorated.map(entry => {
+      if (!entry.card) {
+        return entry.card;
+      }
+      if (entry.card.category === entry.categorySlug) {
+        return entry.card;
+      }
+      return { ...entry.card, category: entry.categorySlug };
+    });
 }
 
 function syncGranularityOutput(threshold) {

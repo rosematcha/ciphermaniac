@@ -187,8 +187,7 @@ function toCardEntries(decklist) {
         name: card?.name || 'Unknown Card',
         set: card?.set || null,
         number: card?.number || null,
-        category,
-        displayCategory: composeDisplayCategory(category)
+        category
       });
     }
   }
@@ -257,18 +256,26 @@ async function gatherDecks(tournaments) {
   return decks;
 }
 
-function composeDisplayCategory(category, trainerType, energyType) {
+function composeCategorySlug(category, trainerType, energyType, options = {}) {
   const base = (category || '').toLowerCase();
   if (!base) {
     return '';
   }
-  if (base === 'trainer' && trainerType) {
-    return `trainer-${trainerType.toLowerCase()}`;
+  const parts = [base];
+  if (base === 'trainer') {
+    if (trainerType) {
+      parts.push(trainerType.toLowerCase());
+    }
+    if (options.aceSpec) {
+      if (!parts.includes('tool') && (!trainerType || trainerType.toLowerCase() !== 'tool')) {
+        parts.push('tool');
+      }
+      parts.push('acespec');
+    }
+  } else if (base === 'energy' && energyType) {
+    parts.push(energyType.toLowerCase());
   }
-  if (base === 'energy' && energyType) {
-    return `energy-${energyType.toLowerCase()}`;
-  }
-  return base;
+  return parts.join('/');
 }
 
 function sanitizeForFilename(text) {
@@ -316,26 +323,26 @@ function generateReportFromDecks(deckList, deckTotal) {
       const uid = setCode && number ? `${card.name}::${setCode}::${number}` : card.name;
 
       perDeckCounts.set(uid, (perDeckCounts.get(uid) || 0) + count);
-      perDeckMeta.set(uid, {
-        set: setCode || undefined,
-        number: number || undefined,
-        category: card.category || undefined,
-        trainerType: card.trainerType || undefined,
-        energyType: card.energyType || undefined,
-        displayCategory: card.displayCategory || undefined
-      });
+        perDeckMeta.set(uid, {
+          set: setCode || undefined,
+          number: number || undefined,
+          category: card.category || undefined,
+          trainerType: card.trainerType || undefined,
+          energyType: card.energyType || undefined,
+          aceSpec: card.aceSpec || undefined
+        });
 
       if (!nameCasing.has(uid)) {
         nameCasing.set(uid, card.name);
       }
-      if ((card.category || card.trainerType || card.energyType || card.displayCategory) && !uidCategory.has(uid)) {
-        uidCategory.set(uid, {
-          category: card.category || undefined,
-          trainerType: card.trainerType || undefined,
-          energyType: card.energyType || undefined,
-          displayCategory: card.displayCategory || undefined
-        });
-      }
+        if ((card.category || card.trainerType || card.energyType || card.aceSpec) && !uidCategory.has(uid)) {
+          uidCategory.set(uid, {
+            category: card.category || undefined,
+            trainerType: card.trainerType || undefined,
+            energyType: card.energyType || undefined,
+            aceSpec: card.aceSpec || undefined
+          });
+        }
     }
 
     perDeckCounts.forEach((total, uid) => {
@@ -391,20 +398,25 @@ function generateReportFromDecks(deckList, deckTotal) {
 
     const categoryInfo = uidCategory.get(uid) || uidMeta.get(uid);
     if (categoryInfo) {
-      if (categoryInfo.category) {
-        entry.category = categoryInfo.category;
-      }
       if (categoryInfo.trainerType) {
         entry.trainerType = categoryInfo.trainerType;
       }
       if (categoryInfo.energyType) {
         entry.energyType = categoryInfo.energyType;
       }
-      const displayCategory =
-        categoryInfo.displayCategory ||
-        composeDisplayCategory(categoryInfo.category, categoryInfo.trainerType, categoryInfo.energyType);
-      if (displayCategory) {
-        entry.displayCategory = displayCategory;
+      if (categoryInfo.aceSpec) {
+        entry.aceSpec = true;
+      }
+      const slug = composeCategorySlug(
+        categoryInfo.category,
+        categoryInfo.trainerType,
+        categoryInfo.energyType,
+        { aceSpec: Boolean(categoryInfo.aceSpec) }
+      );
+      if (slug) {
+        entry.category = slug;
+      } else if (categoryInfo.category) {
+        entry.category = categoryInfo.category;
       }
     }
 
