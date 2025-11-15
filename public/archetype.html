@@ -29,42 +29,40 @@
             <h1 id="archetype-title" class="archetype-title">Loading archetype…</h1>
           </div>
 
-          <div class="archetype-controls">
-            <div class="archetype-control-row">
-              <label for="archetype-granularity-range">
-                Show cards played in ≥ <output id="archetype-granularity-output" for="archetype-granularity-range">60%</output> of decks
-              </label>
-              <input type="range" id="archetype-granularity-range" min="0" max="100" value="60" step="5" />
-            </div>
-
-            <div class="archetype-filters">
-              <div class="archetype-filter-group">
-                <select id="archetype-include-card" title="Include Card">
-                  <option value="">Include Card</option>
-                </select>
+          <div class="archetype-controls-wrapper">
+            <div class="archetype-granularity-section">
+              <div class="archetype-control-row">
+                <label for="archetype-granularity-range">
+                  Show cards played in ≥ <output id="archetype-granularity-output" for="archetype-granularity-range">60%</output> of decks
+                </label>
+                <input type="range" id="archetype-granularity-range" min="0" max="100" value="60" step="5" />
               </div>
 
-              <div class="archetype-filter-group">
-                <select id="archetype-exclude-card" title="Exclude Card">
-                  <option value="">Exclude Card</option>
-                </select>
+              <div id="skeleton-summary" class="skeleton-summary" hidden>
+                <div class="skeleton-summary-content">
+                  <span class="skeleton-count">Skeleton: <strong id="skeleton-count-value">0</strong> cards</span>
+                  <span id="skeleton-warnings" class="skeleton-warnings"></span>
+                </div>
+                <button id="skeleton-export-live" class="skeleton-export-button" type="button">
+                  Copy TCG Live Export
+                </button>
+                <span
+                  id="skeleton-export-status"
+                  class="skeleton-export-status"
+                  aria-live="polite"
+                  hidden
+                ></span>
               </div>
             </div>
-          </div>
 
-          <div id="skeleton-summary" class="skeleton-summary" hidden>
-            <span class="skeleton-count">Skeleton: <strong id="skeleton-count-value">0</strong> cards</span>
-            <span id="skeleton-warnings" class="skeleton-warnings"></span>
-            <div class="skeleton-export">
-              <button id="skeleton-export-live" class="skeleton-export-button" type="button">
-                Copy TCG Live Export
-              </button>
-              <span
-                id="skeleton-export-status"
-                class="skeleton-export-status"
-                aria-live="polite"
-                hidden
-              ></span>
+            <div class="archetype-filters-section">
+              <div class="archetype-filters">
+                <div class="archetype-filters-label">Card Filters</div>
+                <div class="archetype-filter-pills">
+                  <div id="archetype-filter-rows"></div>
+                  <button type="button" id="archetype-add-filter" class="add-filter-btn" hidden>Add Filter</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -1076,10 +1076,10 @@ function setupCardAttributes(card, cardData) {
   } else {
     delete card.dataset.name;
   }
-  const displayCategory = cardData.displayCategory || cardData.category;
-  if (displayCategory) {
+  const categorySlug = typeof cardData.category === 'string' ? cardData.category : '';
+  if (categorySlug) {
     // eslint-disable-next-line no-param-reassign
-    card.dataset.category = displayCategory;
+    card.dataset.category = categorySlug;
   } else {
     delete card.dataset.category;
   }
@@ -1095,9 +1095,10 @@ function setupCardAttributes(card, cardData) {
   } else {
     delete card.dataset.energyType;
   }
-  if (cardData.displayCategory && cardData.category && cardData.displayCategory !== cardData.category) {
+  const baseCategory = categorySlug.split('/')[0] || '';
+  if (baseCategory) {
     // eslint-disable-next-line no-param-reassign
-    card.dataset.categoryPrimary = cardData.category;
+    card.dataset.categoryPrimary = baseCategory;
   } else {
     delete card.dataset.categoryPrimary;
   }

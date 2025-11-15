@@ -68,7 +68,6 @@ const ACE_SPEC_KEYWORDS = [
  * @property {string|null} [category]
  * @property {string|null} [trainerType]
  * @property {string|null} [energyType]
- * @property {string|null} [displayCategory]
  */
 
 /**
@@ -523,7 +522,7 @@ export function buildBinderDataset(analysis, includedArchetypes) {
       continue;
     }
 
-    if (card.category === 'pokemon') {
+    if (getBaseCategory(card.category) === 'pokemon') {
       if (isCrossArchetypeStaple(card, deckShare)) {
         placeCard(card, staplePokemon);
         continue;
@@ -548,7 +547,7 @@ export function buildBinderDataset(analysis, includedArchetypes) {
       continue;
     }
 
-    if (card.category === 'trainer') {
+    if (getBaseCategory(card.category) === 'trainer') {
       if (card.trainerType === 'supporter') {
         if (deckShare >= SUPPORTER_FREQUENT_GLOBAL_RATE || card.highUsageArchetypes >= SUPPORTER_HIGH_USAGE_ARCH_MIN) {
           placeCard(card, frequentSupporters);
@@ -578,7 +577,7 @@ export function buildBinderDataset(analysis, includedArchetypes) {
       }
     }
 
-    if (card.category === 'energy') {
+    if (getBaseCategory(card.category) === 'energy') {
       if (card.energyType === 'special') {
         placeCard(card, specialEnergy);
       } else {
@@ -664,3 +663,7 @@ export const thresholds = {
   STAPLE_POKEMON_MIN_ARCHETYPES,
   ARCHETYPE_CORE_RATIO
 };
+function getBaseCategory(category) {
+  const slug = typeof category === 'string' ? category.toLowerCase() : '';
+  return slug.split('/')[0] || '';
+}

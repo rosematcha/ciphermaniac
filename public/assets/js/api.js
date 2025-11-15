@@ -441,14 +441,23 @@ export function fetchArchetypeReport(tournament, archetypeBase) {
 
 /**
  * Fetch include/exclude filtered archetype report data
- * Uses the new deduplicated structure with index.json + unique_subsets/
+ * Performs all filtering client-side using deck data
  * @param {string} tournament
  * @param {string} archetypeBase
  * @param {string|null} includeId
  * @param {string|null} excludeId
+ * @param {string|null} includeOperator - Quantity operator (=, <, <=, >, >=)
+ * @param {number|null} includeCount - Quantity threshold
  * @returns {Promise<object>}
  */
-export async function fetchArchetypeFiltersReport(tournament, archetypeBase, includeId, excludeId) {
+export async function fetchArchetypeFiltersReport(
+  tournament,
+  archetypeBase,
+  includeId,
+  excludeId,
+  includeOperator = null,
+  includeCount = null
+) {
   // If both include and exclude are null, fetch the base archetype report
   const isBaseReport = !includeId && !excludeId;
 
@@ -479,37 +488,48 @@ export async function fetchArchetypeFiltersReport(tournament, archetypeBase, inc
       });
   }
 
-  // Use the new deduplicated structure via archetypeCache
-  const { archetypeCache } = await import('./utils/archetypeCache.js');
+  // Use client-side filtering for all filtered reports
+  const { fetchAllDecks, generateFilteredReport } = await import('./utils/clientSideFiltering.js');
 
-  logger.debug('Fetching filtered archetype report via cache', {
+  logger.debug('Generating filtered archetype report client-side', {
     tournament,
     archetypeBase,
     include: includeId,
+    includeOperator,
+    includeCount,
     exclude: excludeId
   });
 
   try {
-    const data = await archetypeCache.getFilteredData(tournament, archetypeBase, includeId, excludeId);
-    validateType(data, 'object', 'archetype include/exclude report');
-    logger.info(`Loaded filtered archetype report ${archetypeBase}`, {
-      include: includeId,
-      exclude: excludeId,
-      deckTotal: data.deckTotal
-    });
-    return data;
-  } catch (error) {
-    if (error instanceof AppError && error.context?.status === 404) {
-      logger.debug('Filtered archetype report not found', {
-        tournament,
-        archetypeBase,
-        include: includeId,
-        exclude: excludeId
-      });
-      throw error;
-    }
+    const allDecks = await fetchAllDecks(tournament);
+    const report = generateFilteredReport(
+      allDecks,
+      archetypeBase,
+      includeId,
+      excludeId,
+      includeOperator,
+      includeCount
+    );
 
-    // Retry logic is already built into archetypeCache
+    logger.info(`Generated filtered archetype report ${archetypeBase}`, {
+      include: includeId,
+      includeOperator,
+      includeCount,
+      exclude: excludeId,
+      deckTotal: report.deckTotal
+    });
+
+    return report;
+  } catch (error) {
+    logger.error('Client-side filtering failed', {
+      tournament,
+      archetypeBase,
+      include: includeId,
+      includeOperator,
+      includeCount,
+      exclude: excludeId,
+      message: error?.message || error
+    });
     throw error;
   }
 }
