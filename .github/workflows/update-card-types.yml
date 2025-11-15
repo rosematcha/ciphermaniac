@@ -60,6 +60,23 @@ jobs:
             --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
           
           echo "Reports downloaded successfully"
+
+      - name: Download existing card types database
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
+        run: |
+          set -euo pipefail
+          mkdir -p public/assets/data
+          if aws s3 ls "s3://${R2_BUCKET_NAME}/assets/data/card-types.json" --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" > /dev/null 2>&1; then
+            aws s3 cp "s3://${R2_BUCKET_NAME}/assets/data/card-types.json" public/assets/data/card-types.json \
+              --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+            echo "Existing card types database downloaded"
+          else
+            echo "No existing card types database found in R2; starting fresh"
+          fi
       
       - name: Build card types database
         run: |

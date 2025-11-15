@@ -74,13 +74,14 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
     const html = await response.text();
 
     // Parse the card-text-type div
-    const typeMatch = html.match(/<div class="card-text-type"[^>]*>(.*?)<\/div>/i);
+    const typeMatch = html.match(/<div class="card-text-type"[^>]*>([\s\S]*?)<\/div>/i);
     if (!typeMatch) {
       console.warn(`[CardTypeFetcher] Could not find type div for ${setCode}::${numberVariant}`);
       return null;
     }
 
-    const fullType = typeMatch[1].replace(/\s+/g, ' ').replace(/\s*–\s*/g, ' - ').trim();
+    const rawType = typeMatch[1].replace(/<[^>]+>/g, ' ');
+    const fullType = rawType.replace(/\s+/g, ' ').replace(/\s*–\s*/g, ' - ').trim();
     const parts = fullType
       .split(/\s*-\s*/)
       .map(p => p.trim())
