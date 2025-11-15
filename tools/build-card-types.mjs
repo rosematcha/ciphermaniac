@@ -17,6 +17,35 @@ const REPORTS_BASE_PATH = join(__dirname, '..', 'public', 'reports');
 const RATE_LIMIT_MS = 250; // 4 requests per second to be respectful
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
+
+/**
+ * Produce number variants to accommodate Limitless URLs without leading zeros.
+ * @param {string|number} value
+ * @returns {string[]}
+ */
+function buildNumberVariants(value) {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  const raw = String(value).trim();
+  if (!raw) {
+    return [];
+  }
+  const normalized = raw.toUpperCase();
+  const match = normalized.match(/^0*(\d+)([A-Z]*)$/);
+  if (!match) {
+    return [normalized];
+  }
+  const [, digits, suffix = ''] = match;
+  const trimmedDigits = digits.replace(/^0+/, '') || '0';
+  const withoutLeadingZeros = `${trimmedDigits}${suffix}`;
+  const variants = [];
+  variants.push(withoutLeadingZeros);
+  if (withoutLeadingZeros !== normalized) {
+    variants.push(normalized);
+  }
+  return variants;
+}
 const MASTER_FILE_NAME = 'master.json';
 
 /**
@@ -35,38 +64,47 @@ function sleep(ms) {
  * @returns {Promise<{cardType: string, subType: string|null, evolutionInfo: string|null} | null>}
  */
 async function fetchCardTypeFromLimitless(setCode, number) {
-  const url = `https://limitlesstcg.com/cards/${setCode}/${number}`;
-  
+  const numberVariants = buildNumberVariants(number);
+  if (numberVariants.length === 0) {
+    return null;
+  }
+
+  for (const variant of numberVariants) {
+    const result = await fetchCardTypeVariant(setCode, variant);
+    if (result) {
+      return result;
+    }
+  }
+
+  return null;
+}
+
+async function fetchCardTypeVariant(setCode, numberVariant) {
+  const url = `https://limitlesstcg.com/cards/${setCode}/${numberVariant}`;
+
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       const response = await fetch(url);
-      
+
       if (response.status === 404) {
-        console.log(`  ⚠️  Card not found: ${setCode}/${number}`);
-        return null;
+        console.log(`  ⚠️  Card not found: ${setCode}/${numberVariant}`);
+        break;
       }
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
-      
+
       const html = await response.text();
-      
-      // Extract card-text-type div content
-      // Example formats:
-      // "Trainer - Item"
-      // "Trainer - Stadium"
-      // "Energy - Special Energy"
-      // "Energy - Basic"
-      // "Pokémon - Stage 2 - Evolves from Kirlia"
-      // "Pokémon - Basic"
+
+      // Extract card-text-type content (<p> on the new site, <div> historically)
       const match = html.match(/<(?:div|p)[^>]*class="card-text-type"[^>]*>([^<]+)<\/(?:div|p)>/i);
-      
+
       if (!match) {
-        console.log(`  ⚠️  Could not find card type for ${setCode}/${number}`);
+        console.log(`  ⚠️  Could not find card type for ${setCode}/${numberVariant}`);
         return null;
       }
-      
+
       const fullType = match[1].trim();
       const parts = fullType.split(' - ').map(p => p.trim());
       const normalize = value =>
@@ -80,7 +118,7 @@ async function fetchCardTypeFromLimitless(setCode, number) {
       let subType = null;
       let evolutionInfo = null;
       let aceSpec = false;
-      
+
       if (cardType === 'trainer' && parts.length > 1) {
         const subtypeText = normalize(parts[1]);
         if (subtypeText.includes('tool')) {
@@ -119,18 +157,16 @@ async function fetchCardTypeFromLimitless(setCode, number) {
         fullType,
         ...(aceSpec ? { aceSpec: true } : {})
       };
-      
     } catch (error) {
       if (attempt < MAX_RETRIES - 1) {
-        console.log(`  ⚠️  Retry ${attempt + 1}/${MAX_RETRIES} for ${setCode}/${number}: ${error.message}`);
+        console.log(`  ⚠️  Retry ${attempt + 1}/${MAX_RETRIES} for ${setCode}/${numberVariant}: ${error.message}`);
         await sleep(RETRY_DELAY_MS);
       } else {
-        console.error(`  ❌ Failed to fetch ${setCode}/${number} after ${MAX_RETRIES} attempts:`, error.message);
-        return null;
+        console.error(`  ❌ Failed to fetch ${setCode}/${numberVariant} after ${MAX_RETRIES} attempts:`, error.message);
       }
     }
   }
-  
+
   return null;
 }
 
@@ -293,6 +329,9 @@ async function main() {
     const typeInfo = await fetchCardTypeFromLimitless(setCode, number);
     
     if (typeInfo) {
+      console.log(
+        `  ✅ Success: ${cardKey} → ${typeInfo.cardType}${typeInfo.subType ? `/${typeInfo.subType}` : ''}`
+      );
       database[cardKey] = {
         cardType: typeInfo.cardType,
         ...(typeInfo.subType ? { subType: typeInfo.subType } : {}),
@@ -302,6 +341,7 @@ async function main() {
       };
       fetched++;
     } else {
+      console.log(`  ❌ Failed to fetch ${cardKey}`);
       errors++;
     }
     

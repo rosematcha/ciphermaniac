@@ -37,6 +37,27 @@ def normalize_archetype_name(name):
     return ' '.join(name.split())
 
 
+def build_number_variants(number):
+    """Return card number variants (no leading zeros first, then original)."""
+    if number is None:
+        return []
+    raw = str(number).strip()
+    if not raw:
+        return []
+    normalized = raw.upper()
+    match = re.match(r'^0*(\d+)([A-Z]*)$', normalized)
+    if not match:
+        return [normalized]
+    digits, suffix = match.groups()
+    trimmed_digits = digits.lstrip('0') or '0'
+    primary = f"{trimmed_digits}{suffix}"
+    variants = [primary]
+    padded = f"{digits}{suffix}"
+    if primary != padded:
+        variants.append(padded)
+    return variants
+
+
 def request_with_retries(session, method, url, retries=3, backoff_factor=0.5, **kwargs):
     """Simple retry wrapper around requests.Session methods."""
     import time
@@ -378,24 +399,34 @@ def scrape_card_print_variations(session, set_code, number):
     Returns list of dicts: [{'set': 'SFA', 'number': '038', 'price_usd': 19.67}, ...]
     Only includes international prints, not Japanese.
     """
-    number_clean = str(number).lstrip('0')
-    url = f"https://limitlesstcg.com/cards/{set_code}/{number_clean}"
-
     print(f"  Checking print variations for {set_code}/{number}...")
 
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    resp = request_with_retries(session, 'GET', url, headers=headers, timeout=20, retries=2)
-    if not resp:
-        print(f"    Warning: Could not fetch print variations from {url}")
+    number_variants = build_number_variants(number)
+    if not number_variants:
         return []
 
-    soup = BeautifulSoup(resp.text, 'html.parser')
-    variations = []
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    soup = None
+    for variant in number_variants:
+        url = f"https://limitlesstcg.com/cards/{set_code}/{variant}"
+        resp = request_with_retries(session, 'GET', url, headers=headers, timeout=20, retries=2)
+        if not resp:
+            print(f"    Warning: Could not fetch print variations from {url}")
+            continue
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        table = soup.find('table', class_='card-prints-versions')
+        if table:
+            break
+        soup = None  # reset and try next variant
 
-    # Find the card-prints-versions table
+    if soup is None:
+        return []
+
     table = soup.find('table', class_='card-prints-versions')
     if not table:
         return []
+
+    variations = []
 
     # Track whether we're in the international or Japanese section
     in_jp_section = False

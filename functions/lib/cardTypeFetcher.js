@@ -4,6 +4,30 @@
  * @module lib/cardTypeFetcher
  */
 
+function buildNumberVariants(value) {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  const raw = String(value).trim();
+  if (!raw) {
+    return [];
+  }
+  const normalized = raw.toUpperCase();
+  const match = normalized.match(/^0*(\d+)([A-Z]*)$/);
+  if (!match) {
+    return [normalized];
+  }
+  const [, digits, suffix = ''] = match;
+  const trimmedDigits = digits.replace(/^0+/, '') || '0';
+  const withoutLeadingZeros = `${trimmedDigits}${suffix}`;
+  const variants = [];
+  variants.push(withoutLeadingZeros);
+  if (withoutLeadingZeros !== normalized) {
+    variants.push(normalized);
+  }
+  return variants;
+}
+
 /**
  * Fetch card type from Limitless TCG website
  * @param {string} setCode - Card set code
@@ -11,16 +35,39 @@
  * @returns {Promise<Object|null>}
  */
 async function fetchCardTypeFromLimitless(setCode, number) {
+  const numberVariants = buildNumberVariants(number);
+  if (numberVariants.length === 0) {
+    return null;
+  }
+
+  for (const variant of numberVariants) {
+    const result = await fetchCardTypeVariant(setCode, variant);
+    if (result) {
+      return result;
+    }
+  }
+
+  return null;
+}
+
+async function fetchCardTypeVariant(setCode, numberVariant) {
   try {
-    const url = `https://limitlesstcg.com/cards/${setCode}/${number}`;
+    const url = `https://limitlesstcg.com/cards/${setCode}/${numberVariant}`;
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Ciphermaniac/1.0 (Card Type Enrichment)',
       },
     });
 
+    if (response.status === 404) {
+      console.warn(`[CardTypeFetcher] ${setCode}::${numberVariant} not found on Limitless`);
+      return null;
+    }
+
     if (!response.ok) {
-      console.warn(`[CardTypeFetcher] Failed to fetch ${setCode}::${number} from Limitless: ${response.status}`);
+      console.warn(
+        `[CardTypeFetcher] Failed to fetch ${setCode}::${numberVariant} from Limitless: ${response.status}`
+      );
       return null;
     }
 
@@ -29,7 +76,7 @@ async function fetchCardTypeFromLimitless(setCode, number) {
     // Parse the card-text-type div
     const typeMatch = html.match(/<div class="card-text-type"[^>]*>(.*?)<\/div>/i);
     if (!typeMatch) {
-      console.warn(`[CardTypeFetcher] Could not find type div for ${setCode}::${number}`);
+      console.warn(`[CardTypeFetcher] Could not find type div for ${setCode}::${numberVariant}`);
       return null;
     }
 
@@ -87,7 +134,7 @@ async function fetchCardTypeFromLimitless(setCode, number) {
 
     return result;
   } catch (error) {
-    console.error(`[CardTypeFetcher] Error fetching ${setCode}::${number}:`, error.message);
+    console.error(`[CardTypeFetcher] Error fetching ${setCode}::${numberVariant}:`, error.message);
     return null;
   }
 }
