@@ -441,7 +441,7 @@ export function fetchArchetypeReport(tournament, archetypeBase) {
 
 /**
  * Fetch include/exclude filtered archetype report data
- * Uses the new deduplicated structure with index.json + unique_subsets/
+ * Performs all filtering client-side using deck data
  * @param {string} tournament
  * @param {string} archetypeBase
  * @param {string|null} includeId
@@ -488,47 +488,48 @@ export async function fetchArchetypeFiltersReport(
       });
   }
 
-  // Use the new deduplicated structure via archetypeCache
-  const { archetypeCache } = await import('./utils/archetypeCache.js');
+  // Use client-side filtering for all filtered reports
+  const { fetchAllDecks, generateFilteredReport } = await import('./utils/clientSideFiltering.js');
 
-  logger.debug('Fetching filtered archetype report via cache', {
+  logger.debug('Generating filtered archetype report client-side', {
     tournament,
     archetypeBase,
     include: includeId,
     includeOperator,
-    includeCount
+    includeCount,
+    exclude: excludeId
   });
 
   try {
-    const data = await archetypeCache.getFilteredData(
-      tournament,
+    const allDecks = await fetchAllDecks(tournament);
+    const report = generateFilteredReport(
+      allDecks,
       archetypeBase,
       includeId,
-      null,
+      excludeId,
       includeOperator,
       includeCount
     );
-    validateType(data, 'object', 'archetype include report');
-    logger.info(`Loaded filtered archetype report ${archetypeBase}`, {
+
+    logger.info(`Generated filtered archetype report ${archetypeBase}`, {
       include: includeId,
       includeOperator,
       includeCount,
-      deckTotal: data.deckTotal
+      exclude: excludeId,
+      deckTotal: report.deckTotal
     });
-    return data;
-  } catch (error) {
-    if (error instanceof AppError && error.context?.status === 404) {
-      logger.debug('Filtered archetype report not found', {
-        tournament,
-        archetypeBase,
-        include: includeId,
-        includeOperator,
-        includeCount
-      });
-      throw error;
-    }
 
-    // Retry logic is already built into archetypeCache
+    return report;
+  } catch (error) {
+    logger.error('Client-side filtering failed', {
+      tournament,
+      archetypeBase,
+      include: includeId,
+      includeOperator,
+      includeCount,
+      exclude: excludeId,
+      message: error?.message || error
+    });
     throw error;
   }
 }

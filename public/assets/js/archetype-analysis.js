@@ -589,35 +589,21 @@ function renderList() {
  * @param {string} archetypeName
  */
 function setupArchetypeHoverHandlers(element, archetypeName) {
-  let cacheInstance = null;
-  let cacheInstancePromise = null;
-
-  const resolveCacheInstance = async () => {
-    if (cacheInstance) {
-      return cacheInstance;
-    }
-
-    if (!cacheInstancePromise) {
-      cacheInstancePromise = import('./utils/archetypeCache.js').then(module => module.archetypeCache);
-    }
-
-    const resolved = await cacheInstancePromise;
-    if (!cacheInstance) {
-      cacheInstance = resolved;
-    }
-    return cacheInstance;
-  };
+  let hoverTimerId = null;
+  const HOVER_DELAY_MS = 200;
 
   element.addEventListener('mouseenter', async () => {
     if (!state.tournament) {
       return;
     }
 
-    const localCache = await resolveCacheInstance();
+    // Clear any existing timer
+    if (hoverTimerId) {
+      clearTimeout(hoverTimerId);
+    }
 
-    // Start hover timer - will pre-cache index.json after 200ms
-    localCache.startHoverTimer(state.tournament, archetypeName, async () => {
-      // Also pre-fetch the archetype report from the most recent regional
+    // Start hover timer - will pre-fetch archetype report after 200ms
+    hoverTimerId = setTimeout(async () => {
       try {
         if (!state.cache.has(archetypeName)) {
           logger.debug(`Pre-fetching archetype report for ${archetypeName}`);
@@ -626,16 +612,15 @@ function setupArchetypeHoverHandlers(element, archetypeName) {
       } catch (error) {
         logger.debug(`Pre-fetch failed for ${archetypeName}`, error.message);
       }
-    });
+    }, HOVER_DELAY_MS);
   });
 
   element.addEventListener('mouseleave', () => {
-    if (!state.tournament || !cacheInstance) {
-      return;
-    }
-
     // Clear hover timer if user moves away before delay expires
-    cacheInstance.clearHoverTimer(state.tournament, archetypeName);
+    if (hoverTimerId) {
+      clearTimeout(hoverTimerId);
+      hoverTimerId = null;
+    }
   });
 }
 

@@ -1565,7 +1565,7 @@ function renderCards() {
 }
 
 /**
- * Load filtered card data using server-side subsets when available or a client-side fallback.
+ * Load filtered card data using client-side filtering.
  * @param {FilterDescriptor[]} filters
  * @returns {Promise<{deckTotal: number, items: any[], raw?: any}>}
  */
@@ -1585,52 +1585,28 @@ function loadFilterCombination(filters) {
 
   const promise = (async () => {
     try {
-      // If we have multiple filters, rely on client-side generation to avoid server RTTs.
-      if (filters && filters.length > 1) {
-        logger.info('Multiple filters detected, using client-side generation', {
-          filterCount: filters.length
-        });
+      // All filtering is performed client-side
+      const { fetchAllDecks, generateReportForFilters } = await import('./utils/clientSideFiltering.js');
+      
+      logger.info('Loading decks for client-side filtering', {
+        filterCount: filters.length,
+        tournament: state.tournament,
+        archetypeBase: state.archetypeBase
+      });
 
-        const { fetchAllDecks, generateReportForFilters } = await import('./utils/clientSideFiltering.js');
-        const allDecks = await fetchAllDecks(state.tournament);
-        const report = generateReportForFilters(allDecks, state.archetypeBase, filters);
+      const allDecks = await fetchAllDecks(state.tournament);
+      const report = generateReportForFilters(allDecks, state.archetypeBase, filters);
 
-        logger.info('Built multi-filter report', {
-          itemsCount: report.items?.length || 0,
-          deckTotal: report.deckTotal
-        });
-
-        return {
-          deckTotal: report.deckTotal,
-          items: report.items,
-          raw: report.raw || { generatedClientSide: true }
-        };
-      }
-
-      // Single filter - use server-side if available
-      const firstFilter = filters && filters.length > 0 ? filters[0] : null;
-      const includeId = firstFilter?.cardId || null;
-      const includeOperator = firstFilter?.operator || null;
-      const includeCount = firstFilter?.count || null;
-
-      logger.debug('Single filter, fetching from server', { includeId, includeOperator, includeCount });
-
-      const raw = await fetchArchetypeFiltersReport(
-        state.tournament,
-        state.archetypeBase,
-        includeId,
-        null,
-        includeOperator,
-        includeCount
-      );
-      const parsed = parseReport(raw);
-
-      logger.debug('Parsed single filter report', { itemsCount: parsed.items.length, deckTotal: parsed.deckTotal });
+      logger.info('Built filtered report', {
+        itemsCount: report.items?.length || 0,
+        deckTotal: report.deckTotal,
+        filterCount: filters.length
+      });
 
       return {
-        deckTotal: parsed.deckTotal,
-        items: parsed.items,
-        raw
+        deckTotal: report.deckTotal,
+        items: report.items,
+        raw: report.raw || { generatedClientSide: true }
       };
     } catch (error) {
       logger.error('Filter combination loading failed', error);
@@ -1764,9 +1740,7 @@ async function applyFilters() {
       updateFilterMessage(`No decks match ${comboLabel}.`, 'warning');
     } else {
       const deckLabel = result.deckTotal === 1 ? 'deck' : 'decks';
-      const clientSideNote =
-        result.raw?.generatedClientSide || activeFilters.length > 1 ? ' (generated on-demand)' : '';
-      updateFilterMessage(`${result.deckTotal} ${deckLabel} match ${comboLabel}${clientSideNote}.`, 'info');
+      updateFilterMessage(`${result.deckTotal} ${deckLabel} match ${comboLabel}.`, 'info');
     }
     renderCards();
   } catch (error) {
@@ -1783,29 +1757,9 @@ async function applyFilters() {
       return;
     }
 
-    // Check if this is a filter not found error - likely a low-usage card
-    if (
-      error instanceof AppError &&
-      error.type === ErrorTypes.PARSE &&
-      error.message.includes('Filter combination not found')
-    ) {
-      updateFilterMessage(
-        `This card appears in too few decks to filter by. Try choosing a more common card.`,
-        'warning'
-      );
-      // eslint-disable-next-line require-atomic-updates -- Selection validated above
-      Object.assign(state, {
-        items: [],
-        archetypeDeckTotal: 0
-      });
-      renderCards();
-      return;
-    }
-
     // Check if this is a client-side filtering failure
-    if (error instanceof AppError && error.context?.clientSideFailed) {
-      const errorDetail = error.message.includes('timed out') ? 'Request timed out.' : 'Please try again.';
-      updateFilterMessage(`Unable to load deck data for filtering. ${errorDetail}`, 'warning');
+    if (error.message && error.message.includes('timed out')) {
+      updateFilterMessage(`Unable to load deck data for filtering. Request timed out.`, 'warning');
       // eslint-disable-next-line require-atomic-updates -- Selection validated above
       Object.assign(state, {
         items: [],

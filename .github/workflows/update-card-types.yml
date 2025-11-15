@@ -53,8 +53,10 @@ jobs:
           aws configure set aws_secret_access_key "${R2_SECRET_ACCESS_KEY}"
           aws configure set region auto
           
-          # Download all files from the reports folder
+          # Download only master.json files (skip archetype folders and other large assets)
           aws s3 sync "s3://${R2_BUCKET_NAME}/reports/" public/reports/ \
+            --exclude "*" \
+            --include "*/master.json" \
             --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
           
           echo "Reports downloaded successfully"

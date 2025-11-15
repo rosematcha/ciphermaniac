@@ -105,8 +105,11 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
         return null;
       }
 
-      const fullType = match[1].trim();
-      const parts = fullType.split(' - ').map(p => p.trim());
+      const fullType = match[1].replace(/\s+/g, ' ').replace(/\s*–\s*/g, ' - ').trim();
+      const parts = fullType
+        .split(/\s*-\s*/)
+        .map(p => p.trim())
+        .filter(Boolean);
       const normalize = value =>
         value
           .normalize('NFD')
