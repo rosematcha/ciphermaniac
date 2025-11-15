@@ -4,7 +4,6 @@ import {
   fetchArchetypeReport,
   fetchArchetypesList,
   fetchCardIndex,
-  fetchOverrides,
   fetchReport,
   fetchTop8ArchetypesList,
   fetchTournamentsList
@@ -1181,7 +1180,7 @@ function setupImmediateUI() {
 function startParallelDataLoading() {
   // Start all data fetching in parallel immediately
   const tournamentsPromise = fetchTournamentsList().catch(() => ['2025-08-15, World Championships 2025']);
-  const overridesPromise = fetchOverrides();
+  const overridesPromise = Promise.resolve({});
 
   // Secondary data that doesn't block initial content
   const cardSetsPromise = renderCardSets(cardName).catch(() => null);

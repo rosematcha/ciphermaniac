@@ -5,225 +5,355 @@
  * can generate the filtered report client-side using the raw deck data.
  */
 
+import { normalizeCardNumber } from '../card/routing.js';
 import { logger } from './logger.js';
+
+const DECK_FETCH_TIMEOUT_MS = 30000;
+const OPERATOR_COMPARATORS = {
+  '=': (count, expected) => count === expected,
+  '<': (count, expected) => count < expected,
+  '<=': (count, expected) => count <= expected,
+  '>': (count, expected) => count > expected,
+  '>=': (count, expected) => count >= expected
+};
 
 /**
  * Builds a card identifier from set and number
+ * Matches the server-side normalization in onlineMetaIncludeExclude.js
  * @param {string} set
  * @param {string|number} number
  * @returns {string}
  */
 function buildCardId(set, number) {
-  const normalized = String(number).padStart(3, '0');
-  return `${set}~${normalized}`;
+  if (number === undefined || number === null) {
+    return `${set}~`;
+  }
+
+  const raw = String(number).trim();
+  if (!raw) {
+    return `${set}~`;
+  }
+
+  // Extract digits and optional suffix (e.g., "118" or "118A")
+  const match = /^(\d+)([A-Za-z]*)$/.exec(raw);
+  if (!match) {
+    // Non-standard format, use as-is but uppercase
+    return `${set}~${raw.toUpperCase()}`;
+  }
+
+  const [, digits, suffix = ''] = match;
+  const normalized = digits.padStart(3, '0');
+  const fullNumber = suffix ? `${normalized}${suffix.toUpperCase()}` : normalized;
+  return `${set}~${fullNumber}`;
 }
 
-/**
- * Check if a deck matches the archetype
- * @param {object} deck - Deck object
- * @param {string} archetypeBase - Base archetype name to match
- * @returns {boolean}
- */
+function normalizeArchetypeName(value) {
+  return (value || '').toLowerCase().replace(/_/g, ' ').trim();
+}
+
 function deckMatchesArchetype(deck, archetypeBase) {
-  const deckArchetype = deck.archetype || '';
-
-  // Normalize both for comparison: lowercase, replace underscores with spaces, trim
-  const normalizedDeck = deckArchetype.toLowerCase().replace(/_/g, ' ').trim();
-  const normalizedArchetype = archetypeBase.toLowerCase().replace(/_/g, ' ').trim();
-
-  return normalizedDeck === normalizedArchetype;
+  return normalizeArchetypeName(deck?.archetype) === normalizeArchetypeName(archetypeBase);
 }
 
-/**
- * Check if a deck matches the include/exclude filter
- * @param {object} deck - Deck object with cards array
- * @param {string|null} includeId - Card that must be present
- * @param {string|null} excludeId - Card that must be absent
- * @returns {boolean}
- */
-function deckMatchesFilter(deck, includeId, excludeId) {
-  const cards = deck.cards || [];
-  const cardIds = new Set();
-
-  for (const card of cards) {
-    const cardId = buildCardId(card.set, card.number);
-    cardIds.add(cardId);
+function getDeckCards(deck) {
+  if (Array.isArray(deck?.cards)) {
+    return deck.cards;
   }
-
-  // Check include requirement
-  if (includeId && !cardIds.has(includeId)) {
-    return false;
+  if (Array.isArray(deck?.deck)) {
+    return deck.deck;
   }
-
-  // Check exclude requirement
-  if (excludeId && cardIds.has(excludeId)) {
-    return false;
-  }
-
-  return true;
+  return [];
 }
 
-/**
- * Generate a filtered report from raw deck data
- * @param {Array<object>} decks - Array of deck objects
- * @param {string} archetypeBase - Base archetype name to filter by
- * @param {string|null} includeId - Card to include
- * @param {string|null} excludeId - Card to exclude
- * @returns {object} Report data with items array and deckTotal
- */
-export function generateFilteredReport(decks, archetypeBase, includeId, excludeId) {
-  logger.info('Generating client-side filtered report', {
-    totalDecks: decks.length,
-    archetypeBase,
-    includeId,
-    excludeId,
-    sampleDeck: decks[0]
-      ? {
-          archetype: decks[0].archetype,
-          cardCount: decks[0].cards?.length
-        }
-      : null
-  });
+function deriveDeckId(deck, fallbackIndex) {
+  return (
+    deck?.id ||
+    deck?.deckId ||
+    deck?.deckHash ||
+    (typeof deck?.slug === 'string' && deck.slug) ||
+    `client-deck-${fallbackIndex}`
+  );
+}
 
-  // First filter: only decks matching the archetype
-  const archetypeDecks = decks.filter(deck => deckMatchesArchetype(deck, archetypeBase));
-
-  // Get unique archetype names for debugging
-  const uniqueArchetypes = [...new Set(decks.slice(0, 20).map(deck => deck.archetype))];
-
-  logger.info(`Archetype filtering: ${archetypeDecks.length} of ${decks.length} decks match archetype`, {
-    archetypeBase,
-    normalizedArchetype: archetypeBase.toLowerCase().replace(/_/g, ' ').trim(),
-    sampleArchetypes: uniqueArchetypes.slice(0, 10)
-  });
-
-  // Second filter: only decks matching include/exclude criteria
-  const filteredDecks = archetypeDecks.filter(deck => deckMatchesFilter(deck, includeId, excludeId));
-
-  logger.info(`Client-side filtering: ${filteredDecks.length} of ${archetypeDecks.length} archetype decks match`, {
-    archetypeBase,
-    includeId,
-    excludeId
-  });
-
-  if (filteredDecks.length === 0) {
-    return {
-      items: [],
-      deckTotal: 0
-    };
+function buildCardKeyFromCard(card) {
+  const setCode = typeof card?.set === 'string' ? card.set.trim().toUpperCase() : '';
+  if (!setCode) {
+    return null;
   }
+  const normalizedNumber = normalizeCardNumber(card?.number);
+  if (!normalizedNumber) {
+    return null;
+  }
+  return buildCardId(setCode, normalizedNumber);
+}
 
-  // Aggregate card statistics
-  const cardStats = new Map(); // cardId -> { found, counts: Map<count, occurrences> }
-
-  for (const deck of filteredDecks) {
-    const seenInDeck = new Map(); // cardId -> total count in this deck
-
-    for (const card of deck.cards || []) {
-      const cardId = buildCardId(card.set, card.number);
-      const count = Number(card.count) || 0;
-      seenInDeck.set(cardId, (seenInDeck.get(cardId) || 0) + count);
+function buildDeckCardCounts(deck) {
+  const counts = new Map();
+  getDeckCards(deck).forEach(card => {
+    const key = buildCardKeyFromCard(card);
+    if (!key) {
+      return;
     }
+    const count = Number(card?.count ?? card?.copies ?? 0);
+    counts.set(key, (counts.get(key) || 0) + count);
+  });
+  return counts;
+}
 
-    // Update global card stats
-    for (const [cardId, totalCount] of seenInDeck.entries()) {
-      if (!cardStats.has(cardId)) {
-        cardStats.set(cardId, {
+function normalizeFilters(filters) {
+  return (Array.isArray(filters) ? filters : [])
+    .filter(filter => filter && typeof filter.cardId === 'string' && filter.cardId)
+    .map(filter => {
+      const numericCount = Number(filter.count);
+      const hasCount = filter.count !== null && filter.count !== undefined && Number.isFinite(numericCount);
+      return {
+        cardId: filter.cardId,
+        operator: filter.operator || null,
+        count: hasCount ? numericCount : null
+      };
+    });
+}
+
+function matchesQuantity(count, operator, expected) {
+  // Special case: 'any' means any count > 0
+  if (operator === 'any') {
+    return count > 0;
+  }
+
+  // Special case: '' (None) means count must be 0
+  if (!operator || operator === '') {
+    return count === 0;
+  }
+
+  // For quantity operators, we need an expected value
+  if (expected === null || expected === undefined) {
+    return count > 0;
+  }
+
+  const comparator = OPERATOR_COMPARATORS[operator];
+  if (!comparator) {
+    return count > 0;
+  }
+  return comparator(count, expected);
+}
+
+function deckMatchesFilters(deck, filters) {
+  if (!filters.length) {
+    return true;
+  }
+  const counts = buildDeckCardCounts(deck);
+  return filters.every(filter => {
+    const count = counts.get(filter.cardId) || 0;
+    return matchesQuantity(count, filter.operator, filter.count);
+  });
+}
+
+function aggregateDecks(decks) {
+  const cardUsage = new Map();
+
+  decks.forEach((deck, deckIndex) => {
+    const cards = getDeckCards(deck);
+    if (!cards.length) {
+      return;
+    }
+    const deckId = deriveDeckId(deck, deckIndex);
+
+    cards.forEach(card => {
+      const cardId = buildCardKeyFromCard(card);
+      if (!cardId) {
+        return;
+      }
+
+      if (!cardUsage.has(cardId)) {
+        const normalizedNumber = normalizeCardNumber(card?.number);
+        cardUsage.set(cardId, {
           cardId,
+          name: card?.name || 'Unknown Card',
+          set: card?.set,
+          number: card?.number || normalizedNumber,
+          normalizedNumber,
+          category: card?.category,
+          trainerType: card?.trainerType,
+          energyType: card?.energyType,
+          displayCategory: card?.displayCategory,
+          supertype: card?.supertype,
+          uid:
+            card?.uid ||
+            (card?.name && card?.set && normalizedNumber
+              ? `${card.name}::${card.set}::${normalizedNumber}`
+              : undefined),
           found: 0,
-          counts: new Map(),
-          // Store first instance info
-          name: null,
-          set: null,
-          number: null,
-          supertype: null
+          deckInstances: [],
+          histogram: new Map()
         });
       }
 
-      const stats = cardStats.get(cardId);
-      stats.found += 1;
-      stats.counts.set(totalCount, (stats.counts.get(totalCount) || 0) + 1);
-
-      // Capture card details from first deck
-      if (!stats.name) {
-        for (const card of deck.cards || []) {
-          const cid = buildCardId(card.set, card.number);
-          if (cid === cardId) {
-            stats.name = card.name;
-            stats.set = card.set;
-            stats.number = card.number;
-            stats.supertype = card.supertype;
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  // Build items array
-  const items = [];
-  const deckTotal = filteredDecks.length;
-
-  for (const stats of cardStats.values()) {
-    const pct = (stats.found / deckTotal) * 100;
-
-    // Build distribution array
-    const dist = [];
-    for (const [copies, players] of stats.counts.entries()) {
-      const percent = (players / stats.found) * 100;
-      dist.push({
-        copies,
-        players,
-        percent: Math.round(percent * 100) / 100
+      const usage = cardUsage.get(cardId);
+      const cardCount = Number(card?.count ?? card?.copies ?? 0);
+      usage.found += 1;
+      usage.deckInstances.push({
+        deckId,
+        count: cardCount,
+        archetype: deck?.archetype
       });
-    }
-    // Sort by copies descending
-    dist.sort((itemA, itemB) => itemB.copies - itemA.copies);
-
-    items.push({
-      uid: stats.cardId,
-      name: stats.name || stats.cardId,
-      set: stats.set,
-      number: stats.number,
-      supertype: stats.supertype,
-      found: stats.found,
-      total: deckTotal,
-      pct: Math.round(pct * 100) / 100,
-      alwaysIncluded: stats.found === deckTotal,
-      dist
+      usage.histogram.set(cardCount, (usage.histogram.get(cardCount) || 0) + 1);
     });
-  }
-
-  // Sort items by percentage descending, then by name
-  items.sort((itemA, itemB) => {
-    if (itemB.pct !== itemA.pct) {
-      return itemB.pct - itemA.pct;
-    }
-    return (itemA.name || '').localeCompare(itemB.name || '');
   });
 
+  const deckTotal = decks.length;
+  const items = Array.from(cardUsage.values())
+    .map(usage => {
+      const dist = Array.from(usage.histogram.entries())
+        .map(([copies, players]) => ({
+          copies,
+          players,
+          percent: usage.found ? Math.round(((players / usage.found) * 100 + Number.EPSILON) * 100) / 100 : 0
+        }))
+        .sort((left, right) => {
+          if (right.percent !== left.percent) {
+            return right.percent - left.percent;
+          }
+          return right.copies - left.copies;
+        });
+
+      const pct = deckTotal ? Math.round(((usage.found / deckTotal) * 100 + Number.EPSILON) * 100) / 100 : 0;
+
+      return {
+        name: usage.name,
+        set: usage.set,
+        number: usage.number,
+        category: usage.category,
+        trainerType: usage.trainerType,
+        energyType: usage.energyType,
+        displayCategory: usage.displayCategory,
+        supertype: usage.supertype,
+        uid: usage.uid,
+        cardId: usage.cardId,
+        found: usage.found,
+        total: deckTotal,
+        pct,
+        dist,
+        deckInstances: usage.deckInstances.slice(),
+        rank: 0
+      };
+    })
+    .sort((left, right) => {
+      if (right.pct !== left.pct) {
+        return right.pct - left.pct;
+      }
+      if (right.found !== left.found) {
+        return right.found - left.found;
+      }
+      return (left.name || '').localeCompare(right.name || '');
+    });
+
+  items.forEach((item, index) => {
+    item.rank = index + 1;
+  });
+
+  return { deckTotal, items };
+}
+
+function summarizeFilters(filters) {
+  if (!filters.length) {
+    return 'no filters';
+  }
+  return filters
+    .map(filter =>
+      filter.operator && filter.count !== null && filter.count !== undefined
+        ? `${filter.cardId} ${filter.operator} ${filter.count}`
+        : filter.cardId
+    )
+    .join(', ');
+}
+
+/**
+ * Generate filtered report for multiple filters.
+ * @param {Array} decks - Array of deck objects to filter
+ * @param {string} archetypeBase - Base archetype name
+ * @param {Array} filters - Array of filter objects with cardId, operator, expectedCount
+ * @returns {object} Filtered report with cards array
+ */
+export function generateReportForFilters(decks, archetypeBase, filters) {
+  const normalizedFilters = normalizeFilters(filters);
+  const archetypeDecks = decks.filter(deck => deckMatchesArchetype(deck, archetypeBase));
+  const matchingDecks = normalizedFilters.length
+    ? archetypeDecks.filter(deck => deckMatchesFilters(deck, normalizedFilters))
+    : archetypeDecks;
+
+  logger.info('Generated client-side report for filters', {
+    archetypeBase,
+    totalDecks: decks.length,
+    archetypeDeckCount: archetypeDecks.length,
+    matchingDeckCount: matchingDecks.length,
+    filters: summarizeFilters(normalizedFilters)
+  });
+
+  const report = aggregateDecks(matchingDecks);
   return {
-    items,
-    deckTotal,
+    ...report,
+    raw: {
+      generatedClientSide: true,
+      filterCount: normalizedFilters.length
+    }
+  };
+}
+
+/**
+ * Backward-compatible single-filter interface.
+ * @param {Array} decks - Array of deck objects
+ * @param {string} archetypeBase - Base archetype name
+ * @param {string} includeId - Card ID to include
+ * @param {string} excludeId - Card ID to exclude
+ * @param {string} includeOperator - Operator for include filter
+ * @param {number} includeCount - Expected count for include filter
+ * @returns {object} Filtered report
+ */
+export function generateFilteredReport(
+  decks,
+  archetypeBase,
+  includeId,
+  excludeId,
+  includeOperator = null,
+  includeCount = null
+) {
+  const filters = [];
+  if (includeId) {
+    filters.push({
+      cardId: includeId,
+      operator: includeOperator,
+      count: includeCount
+    });
+  }
+  if (excludeId) {
+    filters.push({ cardId: excludeId, operator: '=', count: 0 });
+  }
+
+  const report = generateReportForFilters(decks, archetypeBase, filters);
+  return {
+    ...report,
     generatedClientSide: true
   };
 }
 
 /**
- * Fetch all decks for the tournament
- * @param {string} tournament
- * @returns {Promise<Array<object>>}
+ * Fetch all decks for a tournament.
+ * @param {string} tournament - Tournament identifier
+ * @returns {Promise<Array>} Array of deck objects
  */
 export async function fetchAllDecks(tournament) {
   const tournamentEncoded = encodeURIComponent(tournament);
-
-  // Fetch the centralized decks.json file
   const url = `https://r2.ciphermaniac.com/reports/${tournamentEncoded}/decks.json`;
 
   logger.debug('Fetching all decks data', { url });
 
   try {
-    const response = await fetch(url);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DECK_FETCH_TIMEOUT_MS);
+
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -236,6 +366,14 @@ export async function fetchAllDecks(tournament) {
 
     return data || [];
   } catch (error) {
+    if (error.name === 'AbortError') {
+      logger.error('Fetch timeout: Could not fetch decks for client-side filtering', {
+        url,
+        error: `Request timed out after ${DECK_FETCH_TIMEOUT_MS}ms`
+      });
+      throw new Error('Request timed out while fetching deck data');
+    }
+
     logger.warn('Could not fetch decks for client-side filtering', {
       url,
       error: error.message

@@ -10,6 +10,8 @@
  */
 
 import { generateReportFromDecks, sanitizeForFilename } from './reportBuilder.js';
+import { loadCardTypesDatabase } from './cardTypesDatabase.js';
+import { enrichDecksWithOnTheFlyFetch } from './cardTypeFetcher.js';
 
 const MIN_DECKS_FOR_ANALYSIS = 4;
 const ALWAYS_INCLUDED_THRESHOLD = 1.0; // 100% of decks must have the card
@@ -458,6 +460,12 @@ export async function generateIncludeExcludeReports(archetypeName, archetypeDeck
   }
 
   console.log(`[IncludeExclude] Generating reports for ${archetypeName} (${deckTotal} decks)...`);
+
+  // Load card types database and enrich decks with missing types
+  console.log(`[IncludeExclude] Loading card types database for ${archetypeName}...`);
+  const cardTypesDb = await loadCardTypesDatabase(env);
+  await enrichDecksWithOnTheFlyFetch(archetypeDecks, cardTypesDb, env);
+  console.log(`[IncludeExclude] Card type enrichment complete for ${archetypeName}`);
 
   // Extract cards from archetype report
   const { alwaysIncluded, optional, cardLookup } = extractCardsFromReport(archetypeReport, deckTotal);

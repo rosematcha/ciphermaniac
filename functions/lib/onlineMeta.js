@@ -10,6 +10,8 @@ import {
   generateIncludeExcludeReports,
   writeIncludeExcludeReports
 } from './onlineMetaIncludeExclude.js';
+import { loadCardTypesDatabase, enrichCardWithType } from './cardTypesDatabase.js';
+import { enrichDecksWithOnTheFlyFetch } from './cardTypeFetcher.js';
 
 const WINDOW_DAYS = 14;
 const MIN_USAGE_PERCENT = 0.5;
@@ -18,20 +20,185 @@ const REPORT_BASE_KEY = `reports/${TARGET_FOLDER}`;
 const PAGE_SIZE = 100;
 const MAX_TOURNAMENT_PAGES = 10;
 const SUPPORTED_FORMATS = new Set(['STANDARD']);
+const DEFAULT_DETAILS_CONCURRENCY = 5;
+const DEFAULT_STANDINGS_CONCURRENCY = 4;
+
+async function runWithConcurrency(items, limit, handler) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return [];
+  }
+
+  const maxConcurrency = Math.max(1, Math.min(Number(limit) || 1, items.length));
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (true) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      if (currentIndex >= items.length) {
+        break;
+      }
+      // eslint-disable-next-line no-await-in-loop
+      results[currentIndex] = await handler(items[currentIndex], currentIndex);
+    }
+  }
+
+  await Promise.all(Array.from({ length: maxConcurrency }, () => worker()));
+  return results;
+}
 
 function daysAgo(count) {
   return new Date(Date.now() - count * 24 * 60 * 60 * 1000);
+}
+
+// Lightweight heuristics to enrich trainer/energy subtypes without extra API calls
+// These mirror client-side logic where possible to keep categories consistent.
+const ACE_SPEC_KEYWORDS = [
+  'ace spec',
+  'prime catcher',
+  'reboot pod',
+  'legacy energy',
+  'enriching energy',
+  'neo upper energy',
+  'master ball',
+  'secret box',
+  'sparkling crystal',
+  "hero's cape",
+  'scramble switch',
+  'dowsing machine',
+  'computer search',
+  'life dew',
+  'scoop up cyclone',
+  'gold potion',
+  'victory piece',
+  'g booster',
+  'g scope',
+  'g spirit',
+  'crystal edge',
+  'crystal wall',
+  'rock guard',
+  'surprise megaphone',
+  'chaotic amplifier',
+  'precious trolley',
+  'poke vital a',
+  'unfair stamp',
+  'brilliant blender'
+].map(k => k.toLowerCase());
+
+function isAceSpecName(name) {
+  const normalized = String(name || '').toLowerCase();
+  return ACE_SPEC_KEYWORDS.some(k => normalized.includes(k));
+}
+
+function inferEnergyType(name, setCode) {
+  // Basic Energy cards (SVE set)
+  if ((setCode || '').toUpperCase() === 'SVE') {
+    return 'basic';
+  }
+  // Special Energy cards - "Energy" is always the last word
+  if ((name || '').endsWith(' Energy') && (setCode || '').toUpperCase() !== 'SVE') {
+    return 'special';
+  }
+  return null;
+}
+
+function inferTrainerType(name) {
+  const n = String(name || '');
+  const lower = n.toLowerCase();
+  // Stadiums often include these tokens explicitly
+  if (n.includes('Stadium') || n.includes('Tower') || n.includes('Artazon') || n.includes('Mesagoza') || n.includes('Levincia')) {
+    return 'stadium';
+  }
+  // Tools typically have equipment-like words or TM
+  const toolHints = [
+    'tool',
+    'belt',
+    'helmet',
+    'cape',
+    'charm',
+    'vest',
+    'band',
+    'mask',
+    'glasses',
+    'rescue board',
+    'seal stone',
+    'technical machine',
+    'tm:'
+  ];
+  if (toolHints.some(h => lower.includes(h))) {
+    return 'tool';
+  }
+  // Ace Specs override other trainer subtypes
+  if (isAceSpecName(n)) {
+    return 'ace-spec';
+  }
+  // Common supporter indicators
+  const supporterHints = [
+    'professor',
+    "boss's orders",
+    'orders',
+    'research',
+    'judge',
+    'scenario',
+    'vitality',
+    'grant',
+    'roxanne',
+    'miriam',
+    'iono',
+    'arven',
+    'jacq',
+    'penny',
+    'briar',
+    'carmine',
+    'kieran',
+    'geeta',
+    'grusha',
+    'ryme',
+    'clavell',
+    'giacomo'
+  ];
+  if (supporterHints.some(h => lower.includes(h))) {
+    return 'supporter';
+  }
+  // Item catch-alls (keep broad; many trainers are items)
+  const itemHints = [
+    'ball',
+    'rod',
+    'catcher',
+    'switch',
+    'machine',
+    'basket',
+    'retrieval',
+    'hammer',
+    'potion',
+    'stretcher',
+    'vessel',
+    'candy',
+    'poffin',
+    'powerglass',
+    'energy search',
+    'ultra ball'
+  ];
+  if (itemHints.some(h => lower.includes(h))) {
+    return 'item';
+  }
+  // Default to item for unknown trainers
+  return 'item';
 }
 
 async function fetchRecentOnlineTournaments(env, since, options = {}) {
   const sinceMs = since.getTime();
   const pageSize = options.pageSize || PAGE_SIZE;
   const maxPages = options.maxPages || MAX_TOURNAMENT_PAGES;
-const diagnostics = options.diagnostics;
+  const diagnostics = options.diagnostics;
+  const fetchJson = options.fetchJson || fetchLimitlessJson;
+  const detailsConcurrency = options.detailsConcurrency || DEFAULT_DETAILS_CONCURRENCY;
   const unique = new Map();
 
   for (let page = 1; page <= maxPages; page += 1) {
-    const list = await fetchLimitlessJson('/tournaments', {
+    // eslint-disable-next-line no-await-in-loop
+    const list = await fetchJson('/tournaments', {
       env,
       searchParams: {
         game: 'PTCG',
@@ -60,54 +227,58 @@ const diagnostics = options.diagnostics;
   }
 
   const summaries = Array.from(unique.values());
-  const detailed = [];
-  for (const summary of summaries) {
-    try {
-      const details = await fetchLimitlessJson(`/tournaments/${summary.id}/details`, { env });
-      if (details.decklists === false) {
-        diagnostics?.detailsWithoutDecklists.push({
-          tournamentId: summary.id,
-          name: summary.name
-        });
-        continue;
-      }
-      if (details.isOnline === false) {
-        diagnostics?.detailsOffline.push({
-          tournamentId: summary.id,
-          name: summary.name
-        });
-        continue;
-      }
+  const detailed = await runWithConcurrency(
+    summaries,
+    detailsConcurrency,
+    async summary => {
+      try {
+        const details = await fetchJson(`/tournaments/${summary.id}/details`, { env });
+        if (details.decklists === false) {
+          diagnostics?.detailsWithoutDecklists.push({
+            tournamentId: summary.id,
+            name: summary.name
+          });
+          return null;
+        }
+        if (details.isOnline === false) {
+          diagnostics?.detailsOffline.push({
+            tournamentId: summary.id,
+            name: summary.name
+          });
+          return null;
+        }
 
-      const formatId = (details.format || summary.format || '').toUpperCase();
-      if (formatId && !SUPPORTED_FORMATS.has(formatId)) {
-        diagnostics?.detailsUnsupportedFormat.push({
-          tournamentId: summary.id,
+        const formatId = (details.format || summary.format || '').toUpperCase();
+        if (formatId && !SUPPORTED_FORMATS.has(formatId)) {
+          diagnostics?.detailsUnsupportedFormat.push({
+            tournamentId: summary.id,
+            name: summary.name,
+            format: formatId
+          });
+          return null;
+        }
+        return {
+          id: summary.id,
           name: summary.name,
-          format: formatId
-        });
-        continue;
+          date: summary.date,
+          format: details.format || summary.format || null,
+          platform: details.platform || null,
+          game: summary.game,
+          players: summary.players,
+          organizer: details.organizer?.name || null,
+          organizerId: details.organizer?.id || null
+        };
+      } catch (error) {
+        console.warn('Failed to fetch tournament details', summary?.id, error?.message || error);
+        return null;
       }
-      detailed.push({
-        id: summary.id,
-        name: summary.name,
-        date: summary.date,
-        format: summary.format,
-        platform: details.platform || null,
-        game: summary.game,
-        players: summary.players,
-        organizer: details.organizer?.name || null,
-        organizerId: details.organizer?.id || null
-      });
-    } catch (error) {
-      console.warn('Failed to fetch tournament details', summary?.id, error?.message || error);
     }
-  }
+  );
 
-  return detailed.sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+  return detailed.filter(Boolean).sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
 }
 
-function toCardEntries(decklist) {
+function toCardEntries(decklist, cardTypesDb = null) {
   if (!decklist || typeof decklist !== 'object') {
     return [];
   }
@@ -132,14 +303,49 @@ function toCardEntries(decklist) {
         category = 'energy';
       }
 
-      cards.push({
+      const name = card?.name || 'Unknown Card';
+      const set = card?.set || null;
+      const number = card?.number || null;
+      
+      // Build base entry
+      let entry = {
         count,
-        name: card?.name || 'Unknown Card',
-        set: card?.set || null,
-        number: card?.number || null,
-        category,
-        displayCategory: composeDisplayCategory(category)
-      });
+        name,
+        set,
+        number,
+        category
+      };
+      
+      // Try to enrich from database first
+      if (cardTypesDb && set && number) {
+        entry = enrichCardWithType(entry, cardTypesDb);
+      }
+      
+      // Fall back to heuristics if database didn't provide the info
+      if (!entry.trainerType && !entry.energyType) {
+        if (category === 'trainer') {
+          const trainerType = inferTrainerType(name);
+          if (trainerType) {
+            entry.trainerType = trainerType;
+          }
+        } else if (category === 'energy') {
+          const energyType = inferEnergyType(name, set);
+          if (energyType) {
+            entry.energyType = energyType;
+          }
+        }
+      }
+      
+      // Ensure displayCategory is set
+      if (!entry.displayCategory) {
+        entry.displayCategory = composeDisplayCategory(
+          entry.category,
+          entry.trainerType,
+          entry.energyType
+        );
+      }
+
+      cards.push(entry);
     }
   }
 
@@ -161,89 +367,103 @@ async function hashDeck(cards, playerId = '') {
   return bytes.map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-async function gatherDecks(env, tournaments, diagnostics) {
-  const decks = [];
-
-  for (const tournament of tournaments) {
-    const limit = determinePlacementLimit(tournament?.players);
-    if (limit === 0) {
-      diagnostics?.tournamentsBelowMinimum.push({
-        tournamentId: tournament.id,
-        name: tournament.name,
-        players: tournament.players
-      });
-      continue;
-    }
-
-    let standings;
-    try {
-      standings = await fetchLimitlessJson(`/tournaments/${tournament.id}/standings`, { env });
-    } catch (error) {
-      console.warn('Failed to fetch standings', tournament.id, error?.message || error);
-      diagnostics?.standingsFetchFailures.push({
-        tournamentId: tournament.id,
-        name: tournament.name,
-        message: error?.message || 'Unknown standings fetch error'
-      });
-      continue;
-    }
-
-    if (!Array.isArray(standings)) {
-      diagnostics?.invalidStandingsPayload.push({
-        tournamentId: tournament.id,
-        name: tournament.name
-      });
-      continue;
-    }
-
-    const sortedStandings = [...standings].sort((a, b) => {
-      const placingA = Number.isFinite(a?.placing) ? a.placing : Number.POSITIVE_INFINITY;
-      const placingB = Number.isFinite(b?.placing) ? b.placing : Number.POSITIVE_INFINITY;
-      return placingA - placingB;
-    });
-
-    const cappedStandings = sortedStandings.slice(0, limit);
-
-    for (const entry of cappedStandings) {
-      if (!Number.isFinite(entry?.placing)) {
-        diagnostics?.entriesWithoutPlacing.push({
-          tournamentId: tournament.id,
-          name: tournament.name,
-          player: entry?.name || entry?.player || 'Unknown Player'
-        });
-      }
-
-      const cards = toCardEntries(entry?.decklist);
-      if (!cards.length) {
-        diagnostics?.entriesWithoutDecklists.push({
-          tournamentId: tournament.id,
-          player: entry?.name || entry?.player || 'Unknown Player'
-        });
-        continue;
-      }
-
-      const archetypeName = entry?.deck?.name || 'Unknown';
-      decks.push({
-        id: await hashDeck(cards, entry?.player),
-        player: entry?.name || entry?.player || 'Unknown Player',
-        playerId: entry?.player || null,
-        country: entry?.country || null,
-        placement: entry?.placing ?? null,
-        archetype: archetypeName,
-        archetypeId: entry?.deck?.id || null,
-        cards,
-        tournamentId: tournament.id,
-        tournamentName: tournament.name,
-        tournamentDate: tournament.date,
-        tournamentFormat: tournament.format,
-        tournamentPlatform: tournament.platform,
-        tournamentOrganizer: tournament.organizer,
-        deckSource: 'limitless-online'
-      });
-    }
+async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, options = {}) {
+  if (!Array.isArray(tournaments) || tournaments.length === 0) {
+    return [];
   }
 
-  return decks;
+  const fetchJson = options.fetchJson || fetchLimitlessJson;
+  const standingsConcurrency = options.standingsConcurrency || DEFAULT_STANDINGS_CONCURRENCY;
+
+  const perTournamentDecks = await runWithConcurrency(
+    tournaments,
+    standingsConcurrency,
+    async tournament => {
+      const limit = determinePlacementLimit(tournament?.players);
+      if (limit === 0) {
+        diagnostics?.tournamentsBelowMinimum.push({
+          tournamentId: tournament.id,
+          name: tournament.name,
+          players: tournament.players
+        });
+        return [];
+      }
+
+      let standings;
+      try {
+        standings = await fetchJson(`/tournaments/${tournament.id}/standings`, { env });
+      } catch (error) {
+        console.warn('Failed to fetch standings', tournament.id, error?.message || error);
+        diagnostics?.standingsFetchFailures.push({
+          tournamentId: tournament.id,
+          name: tournament.name,
+          message: error?.message || 'Unknown standings fetch error'
+        });
+        return [];
+      }
+
+      if (!Array.isArray(standings)) {
+        diagnostics?.invalidStandingsPayload.push({
+          tournamentId: tournament.id,
+          name: tournament.name
+        });
+        return [];
+      }
+
+      const sortedStandings = [...standings].sort((a, b) => {
+        const placingA = Number.isFinite(a?.placing) ? a.placing : Number.POSITIVE_INFINITY;
+        const placingB = Number.isFinite(b?.placing) ? b.placing : Number.POSITIVE_INFINITY;
+        return placingA - placingB;
+      });
+
+      const cappedStandings = sortedStandings.slice(0, limit);
+      const decks = [];
+
+      for (const entry of cappedStandings) {
+        if (!Number.isFinite(entry?.placing)) {
+          diagnostics?.entriesWithoutPlacing.push({
+            tournamentId: tournament.id,
+            name: tournament.name,
+            player: entry?.name || entry?.player || 'Unknown Player'
+          });
+        }
+
+        const cards = toCardEntries(entry?.decklist, cardTypesDb);
+        if (!cards.length) {
+          diagnostics?.entriesWithoutDecklists.push({
+            tournamentId: tournament.id,
+            player: entry?.name || entry?.player || 'Unknown Player'
+          });
+          continue;
+        }
+
+        const archetypeName = entry?.deck?.name || 'Unknown';
+        // eslint-disable-next-line no-await-in-loop
+        const id = await hashDeck(cards, entry?.player);
+        decks.push({
+          id,
+          player: entry?.name || entry?.player || 'Unknown Player',
+          playerId: entry?.player || null,
+          country: entry?.country || null,
+          placement: entry?.placing ?? null,
+          archetype: archetypeName,
+          archetypeId: entry?.deck?.id || null,
+          cards,
+          tournamentId: tournament.id,
+          tournamentName: tournament.name,
+          tournamentDate: tournament.date,
+          tournamentFormat: tournament.format,
+          tournamentPlatform: tournament.platform,
+          tournamentOrganizer: tournament.organizer,
+          deckSource: 'limitless-online'
+        });
+      }
+
+      return decks;
+    }
+  );
+
+  return perTournamentDecks.flat();
 }
 
 function buildArchetypeReports(decks, minPercent) {
@@ -266,6 +486,7 @@ function buildArchetypeReports(decks, minPercent) {
   const deckTotal = decks.length || 0;
   const minDecks = Math.max(1, Math.ceil(deckTotal * (minPercent / 100)));
   const archetypeFiles = [];
+  const deckMap = new Map();
 
   groups.forEach(group => {
     if (group.decks.length < minDecks) {
@@ -279,6 +500,7 @@ function buildArchetypeReports(decks, minPercent) {
       data,
       deckCount: group.decks.length
     });
+    deckMap.set(group.filenameBase, group.decks);
   });
 
   archetypeFiles.sort((a, b) => b.deckCount - a.deckCount);
@@ -286,7 +508,8 @@ function buildArchetypeReports(decks, minPercent) {
   return {
     archetypeFiles,
     archetypeIndex: archetypeFiles.map(file => file.base).sort((a, b) => a.localeCompare(b)),
-    minDecks
+    minDecks,
+    deckMap
   };
 }
 
@@ -361,8 +584,18 @@ export async function runOnlineMetaJob(env, options = {}) {
     tournamentsBelowMinimum: []
   };
 
+  // Load card types database for enrichment
+  console.info('[OnlineMeta] Loading card types database...');
+  const cardTypesDb = await loadCardTypesDatabase(env);
+  const dbCardCount = Object.keys(cardTypesDb).length;
+  console.info(`[OnlineMeta] Loaded ${dbCardCount} cards from types database`);
+
   const tournaments = await fetchRecentOnlineTournaments(env, since, {
-    diagnostics
+    diagnostics,
+    fetchJson: options.fetchJson,
+    pageSize: options.pageSize,
+    maxPages: options.maxPages,
+    detailsConcurrency: options.detailsConcurrency
   });
   if (!tournaments.length) {
     return {
@@ -373,7 +606,10 @@ export async function runOnlineMetaJob(env, options = {}) {
     };
   }
 
-  const decks = await gatherDecks(env, tournaments, diagnostics);
+  const decks = await gatherDecks(env, tournaments, diagnostics, cardTypesDb, {
+    fetchJson: options.fetchJson,
+    standingsConcurrency: options.standingsConcurrency
+  });
   if (!decks.length) {
     console.error('[OnlineMeta] No decklists aggregated', diagnostics);
     return {
@@ -384,9 +620,14 @@ export async function runOnlineMetaJob(env, options = {}) {
     };
   }
 
+  // Fetch missing card types on-the-fly and update database
+  console.info('[OnlineMeta] Checking for missing card types...');
+  await enrichDecksWithOnTheFlyFetch(decks, cardTypesDb, env);
+  console.info('[OnlineMeta] Card type enrichment complete');
+
   const deckTotal = decks.length;
   const masterReport = generateReportFromDecks(decks, deckTotal, decks);
-  const { archetypeFiles, archetypeIndex, minDecks } = buildArchetypeReports(
+  const { archetypeFiles, archetypeIndex, minDecks, deckMap } = buildArchetypeReports(
     decks,
     MIN_USAGE_PERCENT
   );
@@ -428,10 +669,7 @@ export async function runOnlineMetaJob(env, options = {}) {
   
   for (const file of archetypeFiles) {
     const archetypeName = file.base.replace(/_/g, ' ');
-    const archetypeDecks = decks.filter(d => {
-      const normalized = normalizeArchetypeName(d.archetype || 'Unknown');
-      return sanitizeForFilename(normalized.replace(/ /g, '_')) === file.base;
-    });
+    const archetypeDecks = deckMap.get(file.base) || [];
 
     try {
       const reports = await generateIncludeExcludeReports(
@@ -480,3 +718,5 @@ export async function runOnlineMetaJob(env, options = {}) {
     diagnostics
   };
 }
+
+export { fetchRecentOnlineTournaments, gatherDecks, buildArchetypeReports };

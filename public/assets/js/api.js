@@ -446,9 +446,18 @@ export function fetchArchetypeReport(tournament, archetypeBase) {
  * @param {string} archetypeBase
  * @param {string|null} includeId
  * @param {string|null} excludeId
+ * @param {string|null} includeOperator - Quantity operator (=, <, <=, >, >=)
+ * @param {number|null} includeCount - Quantity threshold
  * @returns {Promise<object>}
  */
-export async function fetchArchetypeFiltersReport(tournament, archetypeBase, includeId, excludeId) {
+export async function fetchArchetypeFiltersReport(
+  tournament,
+  archetypeBase,
+  includeId,
+  excludeId,
+  includeOperator = null,
+  includeCount = null
+) {
   // If both include and exclude are null, fetch the base archetype report
   const isBaseReport = !includeId && !excludeId;
 
@@ -486,15 +495,24 @@ export async function fetchArchetypeFiltersReport(tournament, archetypeBase, inc
     tournament,
     archetypeBase,
     include: includeId,
-    exclude: excludeId
+    includeOperator,
+    includeCount
   });
 
   try {
-    const data = await archetypeCache.getFilteredData(tournament, archetypeBase, includeId, excludeId);
-    validateType(data, 'object', 'archetype include/exclude report');
+    const data = await archetypeCache.getFilteredData(
+      tournament,
+      archetypeBase,
+      includeId,
+      null,
+      includeOperator,
+      includeCount
+    );
+    validateType(data, 'object', 'archetype include report');
     logger.info(`Loaded filtered archetype report ${archetypeBase}`, {
       include: includeId,
-      exclude: excludeId,
+      includeOperator,
+      includeCount,
       deckTotal: data.deckTotal
     });
     return data;
@@ -504,7 +522,8 @@ export async function fetchArchetypeFiltersReport(tournament, archetypeBase, inc
         tournament,
         archetypeBase,
         include: includeId,
-        exclude: excludeId
+        includeOperator,
+        includeCount
       });
       throw error;
     }
