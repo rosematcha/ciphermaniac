@@ -7,9 +7,11 @@ and re-downloads the tournament using the existing download script.
 
 import json
 import os
+import shutil
 import subprocess
 import sys
-from typing import List, Dict, Optional
+import tempfile
+from typing import List, Dict, Optional, Tuple
 from urllib.parse import quote
 
 import boto3
@@ -65,12 +67,27 @@ def purge_folder(remote: str, bucket: str, folder: str) -> None:
   run_command(['rclone', 'purge', target])
 
 
-def redownload_tournament(limitless_url: str) -> None:
+def upload_folder(remote: str, bucket: str, folder: str, source_path: str) -> None:
+  target = f'{remote}:{bucket}/reports/{folder}'
+  log(f'  Uploading staged data to {target}')
+  run_command(['rclone', 'copy', '--transfers', '16', '--check-first', source_path, target])
+
+
+def stage_tournament(source_url: str, folder: str) -> Tuple[str, str]:
+  tmp_dir = tempfile.mkdtemp(prefix='tournament-refresh-')
   env = os.environ.copy()
-  env['LIMITLESS_URL'] = limitless_url
+  env['LIMITLESS_URL'] = source_url
+  env['LOCAL_EXPORT_DIR'] = tmp_dir
   env.setdefault('ANONYMIZE', 'false')
-  log(f'  Re-downloading from {limitless_url}')
-  run_command([sys.executable, DOWNLOAD_SCRIPT], env=env)
+  try:
+    run_command([sys.executable, DOWNLOAD_SCRIPT], env=env)
+    staged_path = os.path.join(tmp_dir, 'reports', folder)
+    if not os.path.isdir(staged_path):
+      raise RuntimeError(f'Staged data missing for {folder}')
+    return tmp_dir, staged_path
+  except Exception:
+    shutil.rmtree(tmp_dir, ignore_errors=True)
+    raise
 
 
 def main() -> None:
@@ -95,25 +112,42 @@ def main() -> None:
   skipped = 0
 
   for entry in tournaments:
-    folder = entry.get('folder') or entry.get('name') or entry.get('path')
+    if isinstance(entry, str):
+      folder = entry
+      source_hint = None
+    else:
+      folder = entry.get('folder') or entry.get('name') or entry.get('path')
+      source_hint = entry.get('sourceUrl') or entry.get('sourceURL')
     if not folder:
       continue
     if folder == ONLINE_FOLDER:
       skipped += 1
       continue
     log(f'Refreshing "{folder}"')
-    source_url = fetch_source_url(folder)
+    source_url = source_hint.rstrip('/') if isinstance(source_hint, str) and source_hint else None
+    if source_url and source_url.endswith('/decklists'):
+      source_url = source_url[: -len('/decklists')]
+    if not source_url:
+      source_url = fetch_source_url(folder)
     if not source_url:
       log('  Skipping due to missing source url')
       skipped += 1
       continue
+    tmp_dir = None
     try:
+      tmp_dir, staged_path = stage_tournament(source_url, folder)
       purge_folder(remote, bucket, folder)
-      redownload_tournament(source_url)
+      upload_folder(remote, bucket, folder, staged_path)
       refreshed += 1
     except subprocess.CalledProcessError as exc:
       log(f'  Error refreshing {folder}: {exc}')
       skipped += 1
+    except Exception as exc:
+      log(f'  Unexpected error refreshing {folder}: {exc}')
+      skipped += 1
+    finally:
+      if tmp_dir:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
   log(f'Completed. Refreshed: {refreshed}, Skipped: {skipped}')
 

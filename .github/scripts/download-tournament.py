@@ -15,9 +15,11 @@ from urllib.parse import urlparse, parse_qs
 from bs4 import BeautifulSoup
 from collections import Counter, defaultdict
 import boto3
+from pathlib import Path
 
 
 LIMITLESS_LABS_BASE_URL = "https://labs.limitlesstcg.com"
+LOCAL_EXPORT_DIR = os.environ.get('LOCAL_EXPORT_DIR')
 
 
 def sanitize_for_path(text):
@@ -637,7 +639,16 @@ def generate_card_synonyms(all_decks, session):
 
 
 def upload_to_r2(r2_client, bucket_name, key, data):
-    """Upload JSON data to R2."""
+    """Upload JSON data to R2 or local export directory."""
+    if LOCAL_EXPORT_DIR:
+        local_path = Path(LOCAL_EXPORT_DIR) / key
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        with local_path.open('w', encoding='utf-8') as handle:
+            json.dump(data, handle, indent=2)
+            handle.write('\n')
+        print(f"  Saved {local_path}")
+        return
+
     print(f"  Uploading {key}...")
     r2_client.put_object(
         Bucket=bucket_name,
@@ -649,6 +660,9 @@ def upload_to_r2(r2_client, bucket_name, key, data):
 
 def update_tournaments_json(r2_client, bucket_name, tournament_name):
     """Update tournaments.json to include the new tournament at the top."""
+    if LOCAL_EXPORT_DIR:
+        print("Skipping tournaments.json update (local export mode)")
+        return
     tournaments_key = "reports/tournaments.json"
     
     try:
@@ -696,18 +710,22 @@ def main():
         print("Error: LIMITLESS_URL environment variable not set")
         sys.exit(1)
 
-    if not all([r2_account_id, r2_access_key_id, r2_secret_access_key]):
-        print("Error: R2 credentials not set")
-        sys.exit(1)
+    if LOCAL_EXPORT_DIR:
+        print(f"Local export mode enabled (output -> {LOCAL_EXPORT_DIR})")
+        r2_client = None
+    else:
+        if not all([r2_account_id, r2_access_key_id, r2_secret_access_key]):
+            print("Error: R2 credentials not set")
+            sys.exit(1)
 
-    # Initialize R2 client
-    r2_client = boto3.client(
-        's3',
-        endpoint_url=f'https://{r2_account_id}.r2.cloudflarestorage.com',
-        aws_access_key_id=r2_access_key_id,
-        aws_secret_access_key=r2_secret_access_key,
-        region_name='auto'
-    )
+        # Initialize R2 client
+        r2_client = boto3.client(
+            's3',
+            endpoint_url=f'https://{r2_account_id}.r2.cloudflarestorage.com',
+            aws_access_key_id=r2_access_key_id,
+            aws_secret_access_key=r2_secret_access_key,
+            region_name='auto'
+        )
 
     # Create session and download page
     session = requests.Session()
