@@ -24,10 +24,25 @@ const state = {
   tournament: /** @type {string|null} */ (null),
   tournamentDeckTotal: 0,
   archetypes: /** @type {Array<{name:string, deckTotal:number, percent:number}>} */ ([]),
-  cache: new Map()
+  cache: new Map(),
+  thumbnailConfig: /** @type {Record<string, string[]>|null} */ (null)
 };
 
-const deckThumbnailConfig = {
+// Load archetype thumbnail configuration
+async function loadThumbnailConfig() {
+  try {
+    const response = await fetch('/assets/data/archetype-thumbnails.json');
+    if (!response.ok) {
+      throw new Error(`Failed to load thumbnail config: ${response.status}`);
+    }
+    state.thumbnailConfig = await response.json();
+  } catch (error) {
+    logger.warn('Failed to load archetype thumbnail config', error);
+    state.thumbnailConfig = {};
+  }
+}
+
+const deckThumbnailConfig_DEPRECATED = {
   'Raging Bolt Ogerpon': {
     cardSlug: 'Raging_Bolt_ex',
     set: 'TEF',
@@ -282,55 +297,71 @@ const deckThumbnailConfig = {
   }
 };
 
-/** @type {Map<string, {cardSlug:string,set?:string,number?:string,alt?:string}>} */
-const deckThumbnailIndex = Object.entries(deckThumbnailConfig).reduce(
-  (map, [label, config]) => map.set(normalizeDeckName(label), config),
-  new Map()
-);
-
 function normalizeDeckName(label) {
   return label
-    .replace(/[’']/g, '')
+    .replace(/['']/g, '')
     .replace(/[^a-zA-Z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
     .toLowerCase();
 }
 
 function getDeckThumbnail(name) {
+  if (!state.thumbnailConfig) {
+    return null;
+  }
+  
+  // Try exact match first
+  if (state.thumbnailConfig[name]) {
+    return state.thumbnailConfig[name];
+  }
+  
+  // Try normalized match
   const normalized = normalizeDeckName(name);
-  return deckThumbnailIndex.get(normalized) ?? null;
+  for (const [key, value] of Object.entries(state.thumbnailConfig)) {
+    if (normalizeDeckName(key) === normalized) {
+      return value;
+    }
+  }
+  
+  return null;
 }
 
-function buildThumbnailSources(config) {
-  if (!config) {
+function buildThumbnailSources(cardIds) {
+  if (!Array.isArray(cardIds) || cardIds.length === 0) {
     return [];
   }
 
-  if (Array.isArray(config.cards) && config.cards.length > 0) {
-    return config.cards.map(card => buildThumbnailSourceFromCard(card)).filter(Boolean);
-  }
-
-  const single = buildThumbnailSourceFromCard(config);
-  return single ? [single] : [];
+  return cardIds.map(cardId => {
+    const [set, number] = cardId.split('/');
+    return buildThumbnailSourceFromCard({ set, number });
+  }).filter(Boolean);
 }
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 function buildThumbnailSourceFromCard(card) {
-  if (!card || !card.cardSlug || !card.set || !card.number) {
+  if (!card || !card.set || !card.number) {
     return null;
   }
-  const safeSlug = card.cardSlug.replace(/[^a-zA-Z0-9'-]/g, '_');
-  return `/thumbnails/sm/${safeSlug}_${card.set}_${card.number}.png`;
+  
+  // Try Limitless CDN (always available)
+  const normalizedSet = String(card.set).toUpperCase().trim();
+  // Remove leading zeroes from card number (Limitless format)
+  const normalizedNumber = String(card.number).trim().replace(/^0+/, '') || '0';
+  
+  if (normalizedSet && normalizedNumber) {
+    return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${normalizedSet}/${normalizedSet}_${normalizedNumber}_R_EN_SM.png`;
+  }
+  
+  return null;
 }
 
-function isSplitThumbnailConfig(config) {
-  return Array.isArray(config?.cards) && config.cards.length >= 2;
+function isSplitThumbnailConfig(cardIds) {
+  return Array.isArray(cardIds) && cardIds.length >= 2;
 }
 
-function applySplitThumbnail(thumbnailEl, baseImgEl, fallbackEl, config, sources, usePlaceholder, deckName) {
-  const cards = Array.isArray(config?.cards) ? config.cards.slice(0, 2) : [];
-  if (cards.length < 2 || sources.length < 2) {
+function applySplitThumbnail(thumbnailEl, baseImgEl, fallbackEl, sources, usePlaceholder, deckName) {
+  if (sources.length < 2) {
     usePlaceholder();
     return;
   }
@@ -357,8 +388,7 @@ function applySplitThumbnail(thumbnailEl, baseImgEl, fallbackEl, config, sources
   };
 
   splitWrapper.replaceChildren();
-  for (let index = 0; index < cards.length; index += 1) {
-    const card = cards[index];
+  for (let index = 0; index < Math.min(sources.length, 2); index += 1) {
     const src = sources[index];
     if (!src) {
       continue;
@@ -372,10 +402,12 @@ function applySplitThumbnail(thumbnailEl, baseImgEl, fallbackEl, config, sources
     splitImg.className = 'analysis-list-item__thumbnail-image analysis-list-item__thumbnail-image--split';
     splitImg.loading = 'lazy';
     splitImg.decoding = 'async';
-    splitImg.alt = card.alt ?? config.alt ?? deckName.replace(/_/g, ' ');
+    splitImg.alt = deckName.replace(/_/g, ' ');
     splitImg.onerror = handleError;
 
-    applySplitCropStyles(splitImg, card.crop, orientation);
+    // Auto-apply standard crop for split thumbnails
+    const crop = index === 0 ? { x: 0, width: 0.5 } : { x: 0.5, width: 0.5 };
+    applySplitCropStyles(splitImg, crop, orientation);
 
     splitImg.src = src;
     slice.appendChild(splitImg);
@@ -433,8 +465,8 @@ function applyDeckThumbnail(thumbnailEl, imgEl, fallbackEl, deckName) {
   const thumbnailElement = thumbnailEl;
   const imageElement = imgEl;
   const fallbackElement = fallbackEl;
-  const config = getDeckThumbnail(deckName);
-  const sources = buildThumbnailSources(config);
+  const cardIds = getDeckThumbnail(deckName);
+  const sources = buildThumbnailSources(cardIds);
   const fallbackText = getDeckFallbackText(deckName);
 
   fallbackElement.textContent = fallbackText;
@@ -462,8 +494,8 @@ function applyDeckThumbnail(thumbnailEl, imgEl, fallbackEl, deckName) {
     return;
   }
 
-  if (isSplitThumbnailConfig(config)) {
-    applySplitThumbnail(thumbnailElement, imageElement, fallbackElement, config, sources, usePlaceholder, deckName);
+  if (isSplitThumbnailConfig(cardIds)) {
+    applySplitThumbnail(thumbnailElement, imageElement, fallbackElement, sources, usePlaceholder, deckName);
     return;
   }
 
@@ -471,10 +503,11 @@ function applyDeckThumbnail(thumbnailEl, imgEl, fallbackEl, deckName) {
   thumbnailElement.classList.remove('is-placeholder');
   imageElement.style.display = 'block';
   imageElement.dataset.cropped = '';
-  imageElement.alt = config?.alt ?? deckName.replace(/_/g, ' ');
+  imageElement.alt = deckName.replace(/_/g, ' ');
   imageElement.onerror = usePlaceholder;
 
   imageElement.onload = () => {
+    // Image loaded successfully, ensure placeholder stays hidden
     thumbnailElement.classList.remove('is-placeholder');
   };
 
@@ -666,6 +699,9 @@ async function initialize() {
   try {
     updateContainerState('loading');
     toggleLoading(true);
+
+    // Load thumbnail configuration
+    await loadThumbnailConfig();
 
     // Always use "Online - Last 14 Days" data
     const tournament = 'Online - Last 14 Days';
