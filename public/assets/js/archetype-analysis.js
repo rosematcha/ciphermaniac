@@ -344,13 +344,13 @@ function buildThumbnailSourceFromCard(card) {
     return null;
   }
   
-  // Try Limitless CDN (always available)
+  // Use local proxy for Limitless CDN images (avoids CORS issues)
   const normalizedSet = String(card.set).toUpperCase().trim();
   // Remove leading zeroes from card number (Limitless format)
   const normalizedNumber = String(card.number).trim().replace(/^0+/, '') || '0';
   
   if (normalizedSet && normalizedNumber) {
-    return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${normalizedSet}/${normalizedSet}_${normalizedNumber}_R_EN_SM.png`;
+    return `/thumbnails/sm/${normalizedSet}/${normalizedNumber}`;
   }
   
   return null;
