@@ -2,6 +2,7 @@
 
 import crypto from 'node:crypto';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { enrichCardWithType } from '../../functions/lib/cardTypesDatabase.js';
 
 const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api';
 const WINDOW_DAYS = 14;
@@ -159,7 +160,7 @@ function determinePlacementLimit(players) {
   return 32;
 }
 
-function toCardEntries(decklist) {
+function toCardEntries(decklist, cardTypesDb) {
   if (!decklist || typeof decklist !== 'object') {
     return [];
   }
@@ -182,19 +183,25 @@ function toCardEntries(decklist) {
       } else if (sectionLower === 'energy') {
         category = 'energy';
       }
-      cards.push({
+      let entry = {
         count,
         name: card?.name || 'Unknown Card',
         set: card?.set || null,
         number: card?.number || null,
         category
-      });
+      };
+
+      if (cardTypesDb && entry.set && entry.number) {
+        entry = enrichCardWithType(entry, cardTypesDb);
+      }
+
+      cards.push(entry);
     }
   }
   return cards;
 }
 
-async function gatherDecks(tournaments) {
+async function gatherDecks(tournaments, cardTypesDb) {
   const decks = [];
 
   for (const tournament of tournaments) {
@@ -219,7 +226,7 @@ async function gatherDecks(tournaments) {
 
     const topEntries = sorted.slice(0, limit);
     for (const entry of topEntries) {
-      const cards = toCardEntries(entry?.decklist);
+      const cards = toCardEntries(entry?.decklist, cardTypesDb);
       if (!cards.length) {
         continue;
       }
@@ -499,6 +506,19 @@ async function readJson(key) {
     }
     throw error;
   }
+}
+
+async function loadCardTypesDatabase() {
+  const key = 'assets/data/card-types.json';
+  const data = await readJson(key);
+  if (data) {
+    console.log(
+      `[online-meta] Loaded card types database (${Object.keys(data).length} entries) from ${key}`
+    );
+    return data;
+  }
+  console.warn('[online-meta] Card types database not found; continuing without enrichment');
+  return null;
 }
 
 // Note: updateTournamentsList() has been removed because online tournaments
@@ -997,7 +1017,8 @@ async function main() {
   const tournaments = await fetchRecentOnlineTournaments(windowStart);
   console.log(`[online-meta] Found ${tournaments.length} eligible tournaments`);
 
-  const decks = await gatherDecks(tournaments);
+  const cardTypesDb = await loadCardTypesDatabase();
+  const decks = await gatherDecks(tournaments, cardTypesDb);
   if (!decks.length) {
     throw new Error('No decklists gathered from online tournaments');
   }
