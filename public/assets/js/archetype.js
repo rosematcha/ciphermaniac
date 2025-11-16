@@ -520,44 +520,27 @@ function toLower(value) {
   return typeof value === 'string' ? value.toLowerCase() : '';
 }
 
-function inferPrimaryCategory(card) {
-    const categoryValue = toLower(card?.category);
-    if (categoryValue.includes('/')) {
-      return categoryValue.split('/')[0];
-    }
-    if (categoryValue === 'pokemon' || categoryValue === 'trainer' || categoryValue === 'energy') {
-      return categoryValue;
-    }
-    if (categoryValue.startsWith('trainer-')) {
-      return 'trainer';
-    }
-    if (categoryValue.startsWith('energy-')) {
-      return 'energy';
-    }
-
-    const name = toLower(card?.name);
-    const uid = toLower(card?.uid);
-
-    if (name && TRAINER_HINT_KEYWORDS.some(keyword => name.includes(keyword))) {
-      return 'trainer';
-    }
-    if (uid && TRAINER_HINT_KEYWORDS.some(keyword => uid.includes(keyword))) {
-      return 'trainer';
-    }
-
-    const endsWithEnergy = name && name.endsWith(' energy');
-    if (endsWithEnergy) {
-      return 'energy';
-    }
-    if (!endsWithEnergy && uid && (uid.endsWith(' energy') || uid.includes(' energy::'))) {
-      return 'energy';
-    }
-
-    return 'pokemon';
+function normalizeCategoryValue(value) {
+  if (typeof value !== 'string' || !value.trim()) {
+    return '';
   }
-  const rawCategory = toLower(card?.category);
-  if (rawCategory === 'pokemon' || rawCategory === 'trainer' || rawCategory === 'energy') {
-    return rawCategory;
+  return value.trim().toLowerCase().replace(/\\/g, '/');
+}
+
+function inferPrimaryCategory(card) {
+  const direct = normalizeCategoryValue(card?.category);
+  if (direct) {
+    const [base] = direct.split(/[/-]/);
+    if (base === 'pokemon' || base === 'trainer' || base === 'energy') {
+      return base;
+    }
+  }
+
+  if (card?.trainerType) {
+    return 'trainer';
+  }
+  if (card?.energyType) {
+    return 'energy';
   }
 
   const name = toLower(card?.name);
@@ -580,166 +563,147 @@ function inferPrimaryCategory(card) {
   if (name && name.includes(' energy ') && !TRAINER_HINT_KEYWORDS.some(keyword => name.includes(keyword))) {
     return 'energy';
   }
+
   return 'pokemon';
 }
 
 function inferTrainerSubtype(card) {
+  const trainerType = toLower(card?.trainerType);
+  if (trainerType) {
+    return trainerType;
+  }
+
   const name = toLower(card?.name);
   const uid = toLower(card?.uid);
 
   if (TRAINER_SUPPORTER_OVERRIDES.has(name) || TRAINER_SUPPORTER_OVERRIDES.has(uid)) {
-    return 'trainer-supporter';
+    return 'supporter';
   }
-
   if (name.startsWith('technical machine') || uid.includes('technical_machine')) {
-    return 'trainer-item';
+    return 'item';
   }
-
   if (name.includes('ace spec') || uid.includes('ace_spec')) {
-    return 'trainer-ace-spec';
+    return 'ace-spec';
   }
-
   if (
     TRAINER_STADIUM_KEYWORDS.some(keyword => name.includes(keyword)) ||
     TRAINER_STADIUM_KEYWORDS.some(keyword => uid.includes(keyword))
   ) {
-    return 'trainer-stadium';
+    return 'stadium';
   }
-
   if (
     TRAINER_TOOL_KEYWORDS.some(keyword => name.includes(keyword)) ||
     TRAINER_TOOL_KEYWORDS.some(keyword => uid.includes(keyword))
   ) {
-    return 'trainer-tool';
+    return 'tool';
   }
-
   if (
     TRAINER_SUPPORTER_KEYWORDS.some(keyword => name.includes(keyword)) ||
     TRAINER_SUPPORTER_KEYWORDS.some(keyword => uid.includes(keyword))
   ) {
-    return 'trainer-supporter';
+    return 'supporter';
   }
-
   if (
     TRAINER_ITEM_KEYWORDS.some(keyword => name.includes(keyword)) ||
     TRAINER_ITEM_KEYWORDS.some(keyword => uid.includes(keyword))
   ) {
-    return 'trainer-item';
+    return 'item';
   }
 
-  return 'trainer-other';
+  return '';
+}
+
+function buildTrainerCategorySlug(card, baseCategory) {
+  if (baseCategory !== 'trainer') {
+    return '';
+  }
+
+  const parts = ['trainer'];
+  const trainerType = inferTrainerSubtype(card);
+  const normalizedTrainerType = trainerType === 'ace-spec' ? 'tool' : trainerType;
+
+  if (normalizedTrainerType) {
+    parts.push(normalizedTrainerType);
+  }
+
+  const hasAceSpec = Boolean(card?.aceSpec) || trainerType === 'ace-spec';
+  if (hasAceSpec) {
+    if (!parts.includes('tool')) {
+      parts.push('tool');
+    }
+    parts.push('acespec');
+  }
+
+  return parts.join('/');
+}
+
+function buildEnergyCategorySlug(card, baseCategory) {
+  if (baseCategory !== 'energy') {
+    return '';
+  }
+  const energyType = toLower(card?.energyType);
+  return energyType ? `energy/${energyType}` : 'energy';
 }
 
 function deriveCategorySlug(card) {
-    const direct = toLower(card?.category);
-    if (direct) {
-      if (direct.includes('/')) {
-        return direct;
-      }
-      if (direct === 'trainer-ace-spec') {
-        return 'trainer/tool/acespec';
-      }
-      if (direct.startsWith('trainer-') || direct.startsWith('energy-')) {
-        const [base, ...rest] = direct.split('-');
-        if (base === 'trainer' && rest.join('-') === 'ace-spec') {
-          return 'trainer/tool/acespec';
-        }
-        return `${base}/${rest.join('/')}`;
-      }
-      if (!['trainer', 'energy', 'pokemon'].includes(direct)) {
-        return direct;
-      }
+  const direct = normalizeCategoryValue(card?.category);
+  if (direct) {
+    if (direct.startsWith('trainer') && !direct.includes('/')) {
+      return buildTrainerCategorySlug(card, 'trainer') || direct;
     }
+    if (direct.startsWith('energy') && !direct.includes('/')) {
+      return buildEnergyCategorySlug(card, 'energy') || direct;
+    }
+    return direct;
+  }
 
-    const baseCategory = ['trainer', 'energy', 'pokemon'].includes(direct) && direct
-      ? direct
-      : inferPrimaryCategory(card);
-    if (!baseCategory) {
-      return '';
-    }
+  const baseCategory = inferPrimaryCategory(card);
+  if (baseCategory === 'trainer') {
+    return buildTrainerCategorySlug(card, baseCategory) || 'trainer';
+  }
+  if (baseCategory === 'energy') {
+    return buildEnergyCategorySlug(card, baseCategory) || 'energy';
+  }
 
-    if (baseCategory === 'trainer') {
-      const trainerType = toLower(card?.trainerType);
-      const parts = ['trainer'];
-      const normalizedTrainerType = trainerType === 'ace-spec' ? 'tool' : trainerType;
-      if (normalizedTrainerType) {
-        parts.push(normalizedTrainerType);
-      }
-      if (card?.aceSpec || trainerType === 'ace-spec') {
-        if (!parts.includes('tool')) {
-          parts.push('tool');
-        }
-        parts.push('acespec');
-      }
-      return parts.join('/');
-    }
-
-    if (baseCategory === 'energy') {
-      const energyType = toLower(card?.energyType);
-      return energyType ? `energy/${energyType}` : 'energy';
-    }
-
-    return baseCategory;
-  }
-  const baseCategory = toLower(card?.category);
-  const trainerType = toLower(card?.trainerType);
-  if (baseCategory === 'trainer' && trainerType) {
-    return `trainer-${trainerType}`;
-  }
-  const energyType = toLower(card?.energyType);
-  if (baseCategory === 'energy' && energyType) {
-    return `energy-${energyType}`;
-  }
-  const primary = inferPrimaryCategory(card);
-  if (primary === 'trainer') {
-    const inferred = inferTrainerSubtype(card);
-    if (inferred) {
-      return inferred;
-    }
-    return 'trainer-other';
-  }
-  if (primary === 'energy') {
-    return energyType ? `energy-${energyType}` : 'energy';
-  }
-  return primary || 'pokemon';
+  return baseCategory || 'pokemon';
 }
 
-  function getCategorySortWeight(category) {
-    if (!category) {
-      return CARD_CATEGORY_SORT_PRIORITY.get('trainer') ?? 6;
-    }
-    const normalizedKey = category.replace(/-/g, '/');
-    if (CARD_CATEGORY_SORT_PRIORITY.has(normalizedKey)) {
-      return CARD_CATEGORY_SORT_PRIORITY.get(normalizedKey);
-    }
-    if (normalizedKey.startsWith('trainer')) {
-      return 6;
-    }
-    if (normalizedKey.startsWith('energy')) {
-      return 7;
-    }
-    return CARD_CATEGORY_SORT_PRIORITY.get('pokemon') ?? 0;
+function getCategorySortWeight(category) {
+  if (!category) {
+    return CARD_CATEGORY_SORT_PRIORITY.get('trainer') ?? 6;
   }
+  const normalizedKey = category.replace(/-/g, '/');
+  if (CARD_CATEGORY_SORT_PRIORITY.has(normalizedKey)) {
+    return CARD_CATEGORY_SORT_PRIORITY.get(normalizedKey);
+  }
+  if (normalizedKey.startsWith('trainer')) {
+    return 6;
+  }
+  if (normalizedKey.startsWith('energy')) {
+    return 7;
+  }
+  return CARD_CATEGORY_SORT_PRIORITY.get('pokemon') ?? 0;
+}
 
 function sortItemsForDisplay(items) {
   if (!Array.isArray(items)) {
     return [];
   }
 
-    const decorated = items.map((card, index) => {
-      const categorySlug = deriveCategorySlug(card);
-      const weight = getCategorySortWeight(categorySlug);
+  const decorated = items.map((card, index) => {
+    const categorySlug = deriveCategorySlug(card);
+    const weight = getCategorySortWeight(categorySlug);
     const rank = Number.isFinite(card?.rank) ? Number(card.rank) : index;
     const usage = getUsagePercent(card);
-      return {
-        card,
-        categorySlug,
-        weight,
-        rank,
-        usage,
-        index
-      };
-    });
+    return {
+      card,
+      categorySlug,
+      weight,
+      rank,
+      usage,
+      index
+    };
+  });
 
   decorated.sort((left, right) => {
     if (left.weight !== right.weight) {
@@ -759,15 +723,15 @@ function sortItemsForDisplay(items) {
     return left.index - right.index;
   });
 
-    return decorated.map(entry => {
-      if (!entry.card) {
-        return entry.card;
-      }
-      if (entry.card.category === entry.categorySlug) {
-        return entry.card;
-      }
-      return { ...entry.card, category: entry.categorySlug };
-    });
+  return decorated.map(entry => {
+    if (!entry.card) {
+      return entry.card;
+    }
+    if (entry.card.category === entry.categorySlug) {
+      return entry.card;
+    }
+    return { ...entry.card, category: entry.categorySlug };
+  });
 }
 
 function syncGranularityOutput(threshold) {
