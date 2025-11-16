@@ -19,6 +19,36 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 
 /**
+ * Produce number variants to accommodate Limitless URLs without leading zeros.
+ * @param {string|number} value
+ * @returns {string[]}
+ */
+function buildNumberVariants(value) {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  const raw = String(value).trim();
+  if (!raw) {
+    return [];
+  }
+  const normalized = raw.toUpperCase();
+  const match = normalized.match(/^0*(\d+)([A-Z]*)$/);
+  if (!match) {
+    return [normalized];
+  }
+  const [, digits, suffix = ''] = match;
+  const trimmedDigits = digits.replace(/^0+/, '') || '0';
+  const withoutLeadingZeros = `${trimmedDigits}${suffix}`;
+  const variants = [];
+  variants.push(withoutLeadingZeros);
+  if (withoutLeadingZeros !== normalized) {
+    variants.push(normalized);
+  }
+  return variants;
+}
+const MASTER_FILE_NAME = 'master.json';
+
+/**
  * Sleep for a given number of milliseconds
  * @param {number} ms
  * @returns {Promise<void>}
@@ -34,79 +64,113 @@ function sleep(ms) {
  * @returns {Promise<{cardType: string, subType: string|null, evolutionInfo: string|null} | null>}
  */
 async function fetchCardTypeFromLimitless(setCode, number) {
-  const url = `https://limitlesstcg.com/cards/${setCode}/${number}`;
-  
+  const numberVariants = buildNumberVariants(number);
+  if (numberVariants.length === 0) {
+    return null;
+  }
+
+  for (const variant of numberVariants) {
+    const result = await fetchCardTypeVariant(setCode, variant);
+    if (result) {
+      return result;
+    }
+  }
+
+  return null;
+}
+
+async function fetchCardTypeVariant(setCode, numberVariant) {
+  const url = `https://limitlesstcg.com/cards/${setCode}/${numberVariant}`;
+
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       const response = await fetch(url);
-      
+
       if (response.status === 404) {
-        console.log(`  ⚠️  Card not found: ${setCode}/${number}`);
-        return null;
+        console.log(`  ⚠️  Card not found: ${setCode}/${numberVariant}`);
+        break;
       }
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
-      
+
       const html = await response.text();
-      
-      // Extract card-text-type div content
-      // Example formats:
-      // "Trainer - Item"
-      // "Trainer - Stadium"
-      // "Energy - Special Energy"
-      // "Energy - Basic"
-      // "Pokémon - Stage 2 - Evolves from Kirlia"
-      // "Pokémon - Basic"
-      const match = html.match(/<div[^>]*class="card-text-type"[^>]*>([^<]+)<\/div>/i);
-      
+
+      // Extract card-text-type content (<p> on the new site, <div> historically)
+      const match = html.match(/<(?:div|p)[^>]*class="card-text-type"[^>]*>([\s\S]*?)<\/(?:div|p)>/i);
+
       if (!match) {
-        console.log(`  ⚠️  Could not find card type for ${setCode}/${number}`);
+        console.log(`  ⚠️  Could not find card type for ${setCode}/${numberVariant}`);
         return null;
       }
-      
-      const fullType = match[1].trim();
-      const parts = fullType.split(' - ').map(p => p.trim());
-      
+
+      const rawType = match[1].replace(/<[^>]+>/g, ' ');
+      const fullType = rawType.replace(/\s+/g, ' ').replace(/\s*–\s*/g, ' - ').trim();
+      const parts = fullType
+        .split(/\s*-\s*/)
+        .map(p => p.trim())
+        .filter(Boolean);
+      const normalize = value =>
+        value
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase();
+
       // Parse the type information
-      const cardType = parts[0].toLowerCase(); // "pokemon", "trainer", "energy"
+      const cardType = normalize(parts[0]); // "pokemon", "trainer", "energy"
       let subType = null;
       let evolutionInfo = null;
-      
+      let aceSpec = false;
+
       if (cardType === 'trainer' && parts.length > 1) {
-        subType = parts[1].toLowerCase(); // "item", "supporter", "stadium", "tool"
+        const subtypeText = normalize(parts[1]);
+        if (subtypeText.includes('tool')) {
+          subType = 'tool';
+        } else if (subtypeText.includes('supporter')) {
+          subType = 'supporter';
+        } else if (subtypeText.includes('stadium')) {
+          subType = 'stadium';
+        } else if (subtypeText.includes('item')) {
+          subType = 'item';
+        } else {
+          subType = subtypeText;
+        }
+        aceSpec = parts.some(part => normalize(part).includes('ace spec'));
+        if (aceSpec && subType !== 'tool') {
+          subType = 'tool';
+        }
       } else if (cardType === 'energy' && parts.length > 1) {
         // "Special Energy" or just "Basic"
-        if (parts[1].toLowerCase().includes('special')) {
+        const subtypeText = normalize(parts[1]);
+        if (subtypeText.includes('special')) {
           subType = 'special';
         } else {
           subType = 'basic';
         }
-      } else if (cardType === 'pokémon' || cardType === 'pokemon') {
+      } else if (cardType === 'pokemon') {
         if (parts.length > 1) {
           evolutionInfo = parts.slice(1).join(' - '); // "Stage 2 - Evolves from Kirlia"
         }
       }
-      
+
       return {
-        cardType: cardType === 'pokémon' ? 'pokemon' : cardType,
+        cardType,
         subType,
         evolutionInfo,
-        fullType
+        fullType,
+        ...(aceSpec ? { aceSpec: true } : {})
       };
-      
     } catch (error) {
       if (attempt < MAX_RETRIES - 1) {
-        console.log(`  ⚠️  Retry ${attempt + 1}/${MAX_RETRIES} for ${setCode}/${number}: ${error.message}`);
+        console.log(`  ⚠️  Retry ${attempt + 1}/${MAX_RETRIES} for ${setCode}/${numberVariant}: ${error.message}`);
         await sleep(RETRY_DELAY_MS);
       } else {
-        console.error(`  ❌ Failed to fetch ${setCode}/${number} after ${MAX_RETRIES} attempts:`, error.message);
-        return null;
+        console.error(`  ❌ Failed to fetch ${setCode}/${numberVariant} after ${MAX_RETRIES} attempts:`, error.message);
       }
     }
   }
-  
+
   return null;
 }
 
@@ -183,7 +247,7 @@ async function extractCardsFromReport(filePath) {
  * @param {string} dir
  * @returns {Promise<string[]>}
  */
-async function findJsonFiles(dir) {
+async function findMasterReports(dir) {
   const files = [];
   
   try {
@@ -193,9 +257,9 @@ async function findJsonFiles(dir) {
       const fullPath = join(dir, entry.name);
       
       if (entry.isDirectory()) {
-        const subFiles = await findJsonFiles(fullPath);
+        const subFiles = await findMasterReports(fullPath);
         files.push(...subFiles);
-      } else if (entry.isFile() && entry.name.endsWith('.json')) {
+      } else if (entry.isFile() && entry.name === MASTER_FILE_NAME) {
         files.push(fullPath);
       }
     }
@@ -216,9 +280,9 @@ async function collectAllCards() {
   console.log('📦 Collecting cards from all reports...');
   
   const allCards = new Set();
-  const jsonFiles = await findJsonFiles(REPORTS_BASE_PATH);
+  const jsonFiles = await findMasterReports(REPORTS_BASE_PATH);
   
-  console.log(`   Found ${jsonFiles.length} JSON files to scan`);
+  console.log(`   Found ${jsonFiles.length} master.json files to scan`);
   
   for (const file of jsonFiles) {
     const cards = await extractCardsFromReport(file);
@@ -269,6 +333,9 @@ async function main() {
     const typeInfo = await fetchCardTypeFromLimitless(setCode, number);
     
     if (typeInfo) {
+      console.log(
+        `  ✅ Success: ${cardKey} → ${typeInfo.cardType}${typeInfo.subType ? `/${typeInfo.subType}` : ''}`
+      );
       database[cardKey] = {
         cardType: typeInfo.cardType,
         ...(typeInfo.subType ? { subType: typeInfo.subType } : {}),
@@ -278,6 +345,7 @@ async function main() {
       };
       fetched++;
     } else {
+      console.log(`  ❌ Failed to fetch ${cardKey}`);
       errors++;
     }
     

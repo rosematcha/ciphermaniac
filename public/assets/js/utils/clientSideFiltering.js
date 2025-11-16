@@ -175,7 +175,7 @@ function aggregateDecks(decks) {
           category: card?.category,
           trainerType: card?.trainerType,
           energyType: card?.energyType,
-          displayCategory: card?.displayCategory,
+          aceSpec: Boolean(card?.aceSpec),
           supertype: card?.supertype,
           uid:
             card?.uid ||
@@ -225,7 +225,7 @@ function aggregateDecks(decks) {
         category: usage.category,
         trainerType: usage.trainerType,
         energyType: usage.energyType,
-        displayCategory: usage.displayCategory,
+        aceSpec: Boolean(usage.aceSpec),
         supertype: usage.supertype,
         uid: usage.uid,
         cardId: usage.cardId,

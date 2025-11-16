@@ -1,17 +1,27 @@
 const INVALID_PATH_CHARS = /[<>:"/\\|?*]/g;
 
-function composeDisplayCategory(category, trainerType, energyType) {
+function composeCategoryPath(category, trainerType, energyType, options = {}) {
   const base = (category || '').toLowerCase();
   if (!base) {
     return '';
   }
-  if (base === 'trainer' && trainerType) {
-    return `trainer-${trainerType.toLowerCase()}`;
+
+  const parts = [base];
+  if (base === 'trainer') {
+    if (trainerType) {
+      parts.push(trainerType.toLowerCase());
+    }
+    if (options.aceSpec) {
+      if (!parts.includes('tool') && (!trainerType || trainerType.toLowerCase() !== 'tool')) {
+        parts.push('tool');
+      }
+      parts.push('acespec');
+    }
+  } else if (base === 'energy' && energyType) {
+    parts.push(energyType.toLowerCase());
   }
-  if (base === 'energy' && energyType) {
-    return `energy-${energyType.toLowerCase()}`;
-  }
-  return base;
+
+  return parts.join('/');
 }
 
 function sanitizeForPath(text) {
@@ -98,10 +108,7 @@ function generateReportFromDecks(deckList, deckTotal) {
       const category = card?.category || null;
       const trainerType = card?.trainerType || null;
       const energyType = card?.energyType || null;
-      const displayCategory =
-        card?.displayCategory ||
-        composeDisplayCategory(category, trainerType, energyType) ||
-        undefined;
+      const aceSpec = Boolean(card?.aceSpec);
 
       const [canonSet, canonNumber] = canonicalizeVariant(card?.set, card?.number);
       const uid = canonSet && canonNumber ? `${name}::${canonSet}::${canonNumber}` : name;
@@ -113,18 +120,18 @@ function generateReportFromDecks(deckList, deckTotal) {
         category: category || undefined,
         trainerType: trainerType || undefined,
         energyType: energyType || undefined,
-        displayCategory
+        aceSpec: aceSpec || undefined
       });
 
       if (!nameCasing.has(uid)) {
         nameCasing.set(uid, name);
       }
-      if ((category || trainerType || energyType || displayCategory) && !uidCategory.has(uid)) {
+      if ((category || trainerType || energyType || aceSpec) && !uidCategory.has(uid)) {
         uidCategory.set(uid, {
           category: category || undefined,
           trainerType: trainerType || undefined,
           energyType: energyType || undefined,
-          displayCategory
+          aceSpec: aceSpec || undefined
         });
       }
     }
@@ -172,24 +179,25 @@ function generateReportFromDecks(deckList, deckTotal) {
 
     const categoryInfo = uidCategory.get(uid) || uidMeta.get(uid);
     if (categoryInfo) {
-      if (categoryInfo.category) {
-        item.category = categoryInfo.category;
-      }
       if (categoryInfo.trainerType) {
         item.trainerType = categoryInfo.trainerType;
       }
       if (categoryInfo.energyType) {
         item.energyType = categoryInfo.energyType;
       }
-      const displayCategory =
-        categoryInfo.displayCategory ||
-        composeDisplayCategory(
-          categoryInfo.category,
-          categoryInfo.trainerType,
-          categoryInfo.energyType
-        );
-      if (displayCategory) {
-        item.displayCategory = displayCategory;
+      if (categoryInfo.aceSpec) {
+        item.aceSpec = true;
+      }
+      const categorySlug = composeCategoryPath(
+        categoryInfo.category,
+        categoryInfo.trainerType,
+        categoryInfo.energyType,
+        { aceSpec: Boolean(categoryInfo.aceSpec) }
+      );
+      if (categorySlug) {
+        item.category = categorySlug;
+      } else if (categoryInfo.category) {
+        item.category = categoryInfo.category;
       }
     }
 
@@ -203,7 +211,7 @@ function generateReportFromDecks(deckList, deckTotal) {
 }
 
 export {
-  composeDisplayCategory,
+  composeCategoryPath,
   sanitizeForFilename,
   sanitizeForPath,
   normalizeArchetypeName,

@@ -2,6 +2,7 @@
 
 import crypto from 'node:crypto';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { enrichCardWithType } from '../../functions/lib/cardTypesDatabase.js';
 
 const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api';
 const WINDOW_DAYS = 14;
@@ -159,7 +160,7 @@ function determinePlacementLimit(players) {
   return 32;
 }
 
-function toCardEntries(decklist) {
+function toCardEntries(decklist, cardTypesDb) {
   if (!decklist || typeof decklist !== 'object') {
     return [];
   }
@@ -182,20 +183,25 @@ function toCardEntries(decklist) {
       } else if (sectionLower === 'energy') {
         category = 'energy';
       }
-      cards.push({
+      let entry = {
         count,
         name: card?.name || 'Unknown Card',
         set: card?.set || null,
         number: card?.number || null,
-        category,
-        displayCategory: composeDisplayCategory(category)
-      });
+        category
+      };
+
+      if (cardTypesDb && entry.set && entry.number) {
+        entry = enrichCardWithType(entry, cardTypesDb);
+      }
+
+      cards.push(entry);
     }
   }
   return cards;
 }
 
-async function gatherDecks(tournaments) {
+async function gatherDecks(tournaments, cardTypesDb) {
   const decks = [];
 
   for (const tournament of tournaments) {
@@ -220,7 +226,7 @@ async function gatherDecks(tournaments) {
 
     const topEntries = sorted.slice(0, limit);
     for (const entry of topEntries) {
-      const cards = toCardEntries(entry?.decklist);
+      const cards = toCardEntries(entry?.decklist, cardTypesDb);
       if (!cards.length) {
         continue;
       }
@@ -257,18 +263,26 @@ async function gatherDecks(tournaments) {
   return decks;
 }
 
-function composeDisplayCategory(category, trainerType, energyType) {
+function composeCategorySlug(category, trainerType, energyType, options = {}) {
   const base = (category || '').toLowerCase();
   if (!base) {
     return '';
   }
-  if (base === 'trainer' && trainerType) {
-    return `trainer-${trainerType.toLowerCase()}`;
+  const parts = [base];
+  if (base === 'trainer') {
+    if (trainerType) {
+      parts.push(trainerType.toLowerCase());
+    }
+    if (options.aceSpec) {
+      if (!parts.includes('tool') && (!trainerType || trainerType.toLowerCase() !== 'tool')) {
+        parts.push('tool');
+      }
+      parts.push('acespec');
+    }
+  } else if (base === 'energy' && energyType) {
+    parts.push(energyType.toLowerCase());
   }
-  if (base === 'energy' && energyType) {
-    return `energy-${energyType.toLowerCase()}`;
-  }
-  return base;
+  return parts.join('/');
 }
 
 function sanitizeForFilename(text) {
@@ -316,26 +330,26 @@ function generateReportFromDecks(deckList, deckTotal) {
       const uid = setCode && number ? `${card.name}::${setCode}::${number}` : card.name;
 
       perDeckCounts.set(uid, (perDeckCounts.get(uid) || 0) + count);
-      perDeckMeta.set(uid, {
-        set: setCode || undefined,
-        number: number || undefined,
-        category: card.category || undefined,
-        trainerType: card.trainerType || undefined,
-        energyType: card.energyType || undefined,
-        displayCategory: card.displayCategory || undefined
-      });
+        perDeckMeta.set(uid, {
+          set: setCode || undefined,
+          number: number || undefined,
+          category: card.category || undefined,
+          trainerType: card.trainerType || undefined,
+          energyType: card.energyType || undefined,
+          aceSpec: card.aceSpec || undefined
+        });
 
       if (!nameCasing.has(uid)) {
         nameCasing.set(uid, card.name);
       }
-      if ((card.category || card.trainerType || card.energyType || card.displayCategory) && !uidCategory.has(uid)) {
-        uidCategory.set(uid, {
-          category: card.category || undefined,
-          trainerType: card.trainerType || undefined,
-          energyType: card.energyType || undefined,
-          displayCategory: card.displayCategory || undefined
-        });
-      }
+        if ((card.category || card.trainerType || card.energyType || card.aceSpec) && !uidCategory.has(uid)) {
+          uidCategory.set(uid, {
+            category: card.category || undefined,
+            trainerType: card.trainerType || undefined,
+            energyType: card.energyType || undefined,
+            aceSpec: card.aceSpec || undefined
+          });
+        }
     }
 
     perDeckCounts.forEach((total, uid) => {
@@ -391,20 +405,25 @@ function generateReportFromDecks(deckList, deckTotal) {
 
     const categoryInfo = uidCategory.get(uid) || uidMeta.get(uid);
     if (categoryInfo) {
-      if (categoryInfo.category) {
-        entry.category = categoryInfo.category;
-      }
       if (categoryInfo.trainerType) {
         entry.trainerType = categoryInfo.trainerType;
       }
       if (categoryInfo.energyType) {
         entry.energyType = categoryInfo.energyType;
       }
-      const displayCategory =
-        categoryInfo.displayCategory ||
-        composeDisplayCategory(categoryInfo.category, categoryInfo.trainerType, categoryInfo.energyType);
-      if (displayCategory) {
-        entry.displayCategory = displayCategory;
+      if (categoryInfo.aceSpec) {
+        entry.aceSpec = true;
+      }
+      const slug = composeCategorySlug(
+        categoryInfo.category,
+        categoryInfo.trainerType,
+        categoryInfo.energyType,
+        { aceSpec: Boolean(categoryInfo.aceSpec) }
+      );
+      if (slug) {
+        entry.category = slug;
+      } else if (categoryInfo.category) {
+        entry.category = categoryInfo.category;
       }
     }
 
@@ -487,6 +506,19 @@ async function readJson(key) {
     }
     throw error;
   }
+}
+
+async function loadCardTypesDatabase() {
+  const key = 'assets/data/card-types.json';
+  const data = await readJson(key);
+  if (data) {
+    console.log(
+      `[online-meta] Loaded card types database (${Object.keys(data).length} entries) from ${key}`
+    );
+    return data;
+  }
+  console.warn('[online-meta] Card types database not found; continuing without enrichment');
+  return null;
 }
 
 // Note: updateTournamentsList() has been removed because online tournaments
@@ -985,7 +1017,8 @@ async function main() {
   const tournaments = await fetchRecentOnlineTournaments(windowStart);
   console.log(`[online-meta] Found ${tournaments.length} eligible tournaments`);
 
-  const decks = await gatherDecks(tournaments);
+  const cardTypesDb = await loadCardTypesDatabase();
+  const decks = await gatherDecks(tournaments, cardTypesDb);
   if (!decks.length) {
     throw new Error('No decklists gathered from online tournaments');
   }
@@ -1049,43 +1082,48 @@ async function main() {
   let includeExcludeCount = 0;
   const includeExcludeErrors = [];
 
-  if (GENERATE_INCLUDE_EXCLUDE) {
-    console.log('[online-meta] Generating include-exclude reports...');
-    
-    for (const file of archetypeFiles) {
-      const archetypeName = file.base.replace(/_/g, ' ');
-      const archetypeDecks = decks.filter(d => {
-        const normalized = normalizeArchetypeName(d.archetype || 'Unknown');
-        return sanitizeForFilename(normalized.replace(/ /g, '_')) === file.base;
-      });
-
-      try {
-        const reports = await generateIncludeExcludeReports(
-          archetypeName,
-          archetypeDecks,
-          file.data
-        );
-
-        if (reports) {
-          await writeIncludeExcludeReports(archetypeName, reports, TARGET_FOLDER);
-          includeExcludeCount++;
-        }
-      } catch (error) {
-        console.error(`[online-meta] Failed to generate include-exclude for ${archetypeName}:`, error);
-        includeExcludeErrors.push({
-          archetype: archetypeName,
-          error: error.message || String(error)
-        });
-      }
-    }
-
-    console.log('[online-meta] Include-exclude generation complete', {
-      archetypesWithReports: includeExcludeCount,
-      errors: includeExcludeErrors.length
-    });
-  } else {
-    console.log('[online-meta] Skipping include-exclude reports (GENERATE_INCLUDE_EXCLUDE=false)');
-  }
+  /*
+   * Include-exclude reports are temporarily disabled to keep this workflow
+   * focused solely on the primary online meta outputs. Re-enable by
+   * uncommenting the block below.
+   */
+  // if (GENERATE_INCLUDE_EXCLUDE) {
+  //   console.log('[online-meta] Generating include-exclude reports...');
+  //
+  //   for (const file of archetypeFiles) {
+  //     const archetypeName = file.base.replace(/_/g, ' ');
+  //     const archetypeDecks = decks.filter(d => {
+  //       const normalized = normalizeArchetypeName(d.archetype || 'Unknown');
+  //       return sanitizeForFilename(normalized.replace(/ /g, '_')) === file.base;
+  //     });
+  //
+  //     try {
+  //       const reports = await generateIncludeExcludeReports(
+  //         archetypeName,
+  //         archetypeDecks,
+  //         file.data
+  //       );
+  //
+  //       if (reports) {
+  //         await writeIncludeExcludeReports(archetypeName, reports, TARGET_FOLDER);
+  //         includeExcludeCount++;
+  //       }
+  //     } catch (error) {
+  //       console.error(`[online-meta] Failed to generate include-exclude for ${archetypeName}:`, error);
+  //       includeExcludeErrors.push({
+  //         archetype: archetypeName,
+  //         error: error.message || String(error)
+  //       });
+  //     }
+  //   }
+  //
+  //   console.log('[online-meta] Include-exclude generation complete', {
+  //     archetypesWithReports: includeExcludeCount,
+  //     errors: includeExcludeErrors.length
+  //   });
+  // } else {
+  //   console.log('[online-meta] Skipping include-exclude reports (GENERATE_INCLUDE_EXCLUDE=false)');
+  // }
 
   // Note: Online tournaments are NOT added to tournaments.json
   // They are treated as a special case in the UI
@@ -1093,7 +1131,7 @@ async function main() {
   const uploadedComponents = [];
   if (GENERATE_MASTER) uploadedComponents.push('master');
   if (GENERATE_ARCHETYPES) uploadedComponents.push(`${archetypeFiles.length} archetypes`);
-  if (GENERATE_INCLUDE_EXCLUDE) uploadedComponents.push(`${includeExcludeCount} include-exclude reports`);
+  // if (GENERATE_INCLUDE_EXCLUDE) uploadedComponents.push(`${includeExcludeCount} include-exclude reports`);
   if (GENERATE_DECKS) uploadedComponents.push('decks');
 
   console.log(

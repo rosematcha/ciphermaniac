@@ -72,15 +72,15 @@ const state = {
 
 const CARD_CATEGORY_SORT_PRIORITY = new Map([
   ['pokemon', 0],
-  ['trainer-supporter', 1],
-  ['trainer-item', 2],
-  ['trainer-ace-spec', 3],
-  ['trainer-tool', 4],
-  ['trainer-stadium', 5],
-  ['trainer-other', 6],
+  ['trainer/supporter', 1],
+  ['trainer/item', 2],
+  ['trainer/tool/acespec', 3],
+  ['trainer/tool', 4],
+  ['trainer/stadium', 5],
+  ['trainer/other', 6],
   ['trainer', 6],
-  ['energy-basic', 7],
-  ['energy-special', 8],
+  ['energy/basic', 7],
+  ['energy/special', 8],
   ['energy', 7]
 ]);
 
@@ -520,20 +520,27 @@ function toLower(value) {
   return typeof value === 'string' ? value.toLowerCase() : '';
 }
 
+function normalizeCategoryValue(value) {
+  if (typeof value !== 'string' || !value.trim()) {
+    return '';
+  }
+  return value.trim().toLowerCase().replace(/\\/g, '/');
+}
+
 function inferPrimaryCategory(card) {
-  const directDisplay = toLower(card?.displayCategory);
-  if (directDisplay.startsWith('trainer')) {
+  const direct = normalizeCategoryValue(card?.category);
+  if (direct) {
+    const [base] = direct.split(/[/-]/);
+    if (base === 'pokemon' || base === 'trainer' || base === 'energy') {
+      return base;
+    }
+  }
+
+  if (card?.trainerType) {
     return 'trainer';
   }
-  if (directDisplay.startsWith('energy')) {
+  if (card?.energyType) {
     return 'energy';
-  }
-  if (directDisplay === 'pokemon') {
-    return 'pokemon';
-  }
-  const rawCategory = toLower(card?.category);
-  if (rawCategory === 'pokemon' || rawCategory === 'trainer' || rawCategory === 'energy') {
-    return rawCategory;
   }
 
   const name = toLower(card?.name);
@@ -556,92 +563,126 @@ function inferPrimaryCategory(card) {
   if (name && name.includes(' energy ') && !TRAINER_HINT_KEYWORDS.some(keyword => name.includes(keyword))) {
     return 'energy';
   }
+
   return 'pokemon';
 }
 
 function inferTrainerSubtype(card) {
+  const trainerType = toLower(card?.trainerType);
+  if (trainerType) {
+    return trainerType;
+  }
+
   const name = toLower(card?.name);
   const uid = toLower(card?.uid);
 
   if (TRAINER_SUPPORTER_OVERRIDES.has(name) || TRAINER_SUPPORTER_OVERRIDES.has(uid)) {
-    return 'trainer-supporter';
+    return 'supporter';
   }
-
   if (name.startsWith('technical machine') || uid.includes('technical_machine')) {
-    return 'trainer-item';
+    return 'item';
   }
-
   if (name.includes('ace spec') || uid.includes('ace_spec')) {
-    return 'trainer-ace-spec';
+    return 'ace-spec';
   }
-
   if (
     TRAINER_STADIUM_KEYWORDS.some(keyword => name.includes(keyword)) ||
     TRAINER_STADIUM_KEYWORDS.some(keyword => uid.includes(keyword))
   ) {
-    return 'trainer-stadium';
+    return 'stadium';
   }
-
   if (
     TRAINER_TOOL_KEYWORDS.some(keyword => name.includes(keyword)) ||
     TRAINER_TOOL_KEYWORDS.some(keyword => uid.includes(keyword))
   ) {
-    return 'trainer-tool';
+    return 'tool';
   }
-
   if (
     TRAINER_SUPPORTER_KEYWORDS.some(keyword => name.includes(keyword)) ||
     TRAINER_SUPPORTER_KEYWORDS.some(keyword => uid.includes(keyword))
   ) {
-    return 'trainer-supporter';
+    return 'supporter';
   }
-
   if (
     TRAINER_ITEM_KEYWORDS.some(keyword => name.includes(keyword)) ||
     TRAINER_ITEM_KEYWORDS.some(keyword => uid.includes(keyword))
   ) {
-    return 'trainer-item';
+    return 'item';
   }
 
-  return 'trainer-other';
+  return '';
 }
 
-function deriveDisplayCategory(card) {
-  const direct = toLower(card?.displayCategory);
-  if (direct) {
-    return direct;
+function buildTrainerCategorySlug(card, baseCategory) {
+  if (baseCategory !== 'trainer') {
+    return '';
   }
-  const baseCategory = toLower(card?.category);
-  const trainerType = toLower(card?.trainerType);
-  if (baseCategory === 'trainer' && trainerType) {
-    return `trainer-${trainerType}`;
+
+  const parts = ['trainer'];
+  const trainerType = inferTrainerSubtype(card);
+  const normalizedTrainerType = trainerType === 'ace-spec' ? 'tool' : trainerType;
+
+  if (normalizedTrainerType) {
+    parts.push(normalizedTrainerType);
+  }
+
+  const hasAceSpec = Boolean(card?.aceSpec) || trainerType === 'ace-spec';
+  if (hasAceSpec) {
+    if (!parts.includes('tool')) {
+      parts.push('tool');
+    }
+    parts.push('acespec');
+  }
+
+  return parts.join('/');
+}
+
+function buildEnergyCategorySlug(card, baseCategory) {
+  if (baseCategory !== 'energy') {
+    return '';
   }
   const energyType = toLower(card?.energyType);
-  if (baseCategory === 'energy' && energyType) {
-    return `energy-${energyType}`;
-  }
-  const primary = inferPrimaryCategory(card);
-  if (primary === 'trainer') {
-    const inferred = inferTrainerSubtype(card);
-    if (inferred) {
-      return inferred;
+  return energyType ? `energy/${energyType}` : 'energy';
+}
+
+function deriveCategorySlug(card) {
+  const direct = normalizeCategoryValue(card?.category);
+  if (direct) {
+    if (direct.startsWith('trainer') && !direct.includes('/')) {
+      return buildTrainerCategorySlug(card, 'trainer') || direct;
     }
-    return 'trainer-other';
+    if (direct.startsWith('energy') && !direct.includes('/')) {
+      return buildEnergyCategorySlug(card, 'energy') || direct;
+    }
+    return direct;
   }
-  if (primary === 'energy') {
-    return energyType ? `energy-${energyType}` : 'energy';
+
+  const baseCategory = inferPrimaryCategory(card);
+  if (baseCategory === 'trainer') {
+    return buildTrainerCategorySlug(card, baseCategory) || 'trainer';
   }
-  return primary || 'pokemon';
+  if (baseCategory === 'energy') {
+    return buildEnergyCategorySlug(card, baseCategory) || 'energy';
+  }
+
+  return baseCategory || 'pokemon';
 }
 
 function getCategorySortWeight(category) {
   if (!category) {
     return CARD_CATEGORY_SORT_PRIORITY.get('trainer') ?? 6;
   }
-  return (
-    CARD_CATEGORY_SORT_PRIORITY.get(category) ??
-    (category.startsWith('trainer') ? 6 : category.startsWith('energy') ? 7 : 0)
-  );
+  const normalizedKey = category.replace(/-/g, '/');
+  if (CARD_CATEGORY_SORT_PRIORITY.has(normalizedKey)) {
+    return CARD_CATEGORY_SORT_PRIORITY.get(normalizedKey);
+  }
+  if (normalizedKey.startsWith('trainer')) {
+    return 6;
+  }
+  if (normalizedKey.startsWith('energy')) {
+    return 7;
+  }
+  return CARD_CATEGORY_SORT_PRIORITY.get('pokemon') ?? 0;
 }
 
 function sortItemsForDisplay(items) {
@@ -650,13 +691,13 @@ function sortItemsForDisplay(items) {
   }
 
   const decorated = items.map((card, index) => {
-    const displayCategory = deriveDisplayCategory(card);
-    const weight = getCategorySortWeight(displayCategory);
+    const categorySlug = deriveCategorySlug(card);
+    const weight = getCategorySortWeight(categorySlug);
     const rank = Number.isFinite(card?.rank) ? Number(card.rank) : index;
     const usage = getUsagePercent(card);
     return {
       card,
-      displayCategory,
+      categorySlug,
       weight,
       rank,
       usage,
@@ -686,10 +727,10 @@ function sortItemsForDisplay(items) {
     if (!entry.card) {
       return entry.card;
     }
-    if (entry.card.displayCategory === entry.displayCategory) {
+    if (entry.card.category === entry.categorySlug) {
       return entry.card;
     }
-    return { ...entry.card, displayCategory: entry.displayCategory };
+    return { ...entry.card, category: entry.categorySlug };
   });
 }
 
@@ -1488,7 +1529,7 @@ function renderCards() {
 }
 
 /**
- * Load filtered card data using server-side subsets when available or a client-side fallback.
+ * Load filtered card data using client-side filtering.
  * @param {FilterDescriptor[]} filters
  * @returns {Promise<{deckTotal: number, items: any[], raw?: any}>}
  */
@@ -1508,52 +1549,28 @@ function loadFilterCombination(filters) {
 
   const promise = (async () => {
     try {
-      // If we have multiple filters, rely on client-side generation to avoid server RTTs.
-      if (filters && filters.length > 1) {
-        logger.info('Multiple filters detected, using client-side generation', {
-          filterCount: filters.length
-        });
+      // All filtering is performed client-side
+      const { fetchAllDecks, generateReportForFilters } = await import('./utils/clientSideFiltering.js');
+      
+      logger.info('Loading decks for client-side filtering', {
+        filterCount: filters.length,
+        tournament: state.tournament,
+        archetypeBase: state.archetypeBase
+      });
 
-        const { fetchAllDecks, generateReportForFilters } = await import('./utils/clientSideFiltering.js');
-        const allDecks = await fetchAllDecks(state.tournament);
-        const report = generateReportForFilters(allDecks, state.archetypeBase, filters);
+      const allDecks = await fetchAllDecks(state.tournament);
+      const report = generateReportForFilters(allDecks, state.archetypeBase, filters);
 
-        logger.info('Built multi-filter report', {
-          itemsCount: report.items?.length || 0,
-          deckTotal: report.deckTotal
-        });
-
-        return {
-          deckTotal: report.deckTotal,
-          items: report.items,
-          raw: report.raw || { generatedClientSide: true }
-        };
-      }
-
-      // Single filter - use server-side if available
-      const firstFilter = filters && filters.length > 0 ? filters[0] : null;
-      const includeId = firstFilter?.cardId || null;
-      const includeOperator = firstFilter?.operator || null;
-      const includeCount = firstFilter?.count || null;
-
-      logger.debug('Single filter, fetching from server', { includeId, includeOperator, includeCount });
-
-      const raw = await fetchArchetypeFiltersReport(
-        state.tournament,
-        state.archetypeBase,
-        includeId,
-        null,
-        includeOperator,
-        includeCount
-      );
-      const parsed = parseReport(raw);
-
-      logger.debug('Parsed single filter report', { itemsCount: parsed.items.length, deckTotal: parsed.deckTotal });
+      logger.info('Built filtered report', {
+        itemsCount: report.items?.length || 0,
+        deckTotal: report.deckTotal,
+        filterCount: filters.length
+      });
 
       return {
-        deckTotal: parsed.deckTotal,
-        items: parsed.items,
-        raw
+        deckTotal: report.deckTotal,
+        items: report.items,
+        raw: report.raw || { generatedClientSide: true }
       };
     } catch (error) {
       logger.error('Filter combination loading failed', error);
@@ -1687,9 +1704,7 @@ async function applyFilters() {
       updateFilterMessage(`No decks match ${comboLabel}.`, 'warning');
     } else {
       const deckLabel = result.deckTotal === 1 ? 'deck' : 'decks';
-      const clientSideNote =
-        result.raw?.generatedClientSide || activeFilters.length > 1 ? ' (generated on-demand)' : '';
-      updateFilterMessage(`${result.deckTotal} ${deckLabel} match ${comboLabel}${clientSideNote}.`, 'info');
+      updateFilterMessage(`${result.deckTotal} ${deckLabel} match ${comboLabel}.`, 'info');
     }
     renderCards();
   } catch (error) {
@@ -1706,29 +1721,9 @@ async function applyFilters() {
       return;
     }
 
-    // Check if this is a filter not found error - likely a low-usage card
-    if (
-      error instanceof AppError &&
-      error.type === ErrorTypes.PARSE &&
-      error.message.includes('Filter combination not found')
-    ) {
-      updateFilterMessage(
-        `This card appears in too few decks to filter by. Try choosing a more common card.`,
-        'warning'
-      );
-      // eslint-disable-next-line require-atomic-updates -- Selection validated above
-      Object.assign(state, {
-        items: [],
-        archetypeDeckTotal: 0
-      });
-      renderCards();
-      return;
-    }
-
     // Check if this is a client-side filtering failure
-    if (error instanceof AppError && error.context?.clientSideFailed) {
-      const errorDetail = error.message.includes('timed out') ? 'Request timed out.' : 'Please try again.';
-      updateFilterMessage(`Unable to load deck data for filtering. ${errorDetail}`, 'warning');
+    if (error.message && error.message.includes('timed out')) {
+      updateFilterMessage(`Unable to load deck data for filtering. Request timed out.`, 'warning');
       // eslint-disable-next-line require-atomic-updates -- Selection validated above
       Object.assign(state, {
         items: [],

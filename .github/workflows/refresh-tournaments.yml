@@ -1,0 +1,62 @@
+name: One-Time Tournament Refresh
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type REFRESH to confirm full tournament rebuild (one-time use)'
+        required: true
+        type: string
+
+jobs:
+  refresh:
+    if: github.event.inputs.confirm == 'REFRESH'
+    runs-on: ubuntu-latest
+
+    env:
+      R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install boto3 requests
+
+      - name: Install rclone
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rclone
+
+      - name: Configure rclone remote
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          mkdir -p ~/.config/rclone
+          cat <<EOF > ~/.config/rclone/rclone.conf
+          [r2]
+          type = s3
+          provider = Cloudflare
+          access_key_id = ${R2_ACCESS_KEY_ID}
+          secret_access_key = ${R2_SECRET_ACCESS_KEY}
+          endpoint = https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com
+          EOF
+
+      - name: Refresh tournaments (one-time)
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          RCLONE_REMOTE_NAME: r2
+          PUBLIC_R2_BASE_URL: https://r2.ciphermaniac.com
+        run: |
+          python .github/scripts/refresh-tournaments.py

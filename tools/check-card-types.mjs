@@ -13,6 +13,7 @@ const __dirname = dirname(__filename);
 
 const CARD_TYPES_DB_PATH = join(__dirname, '..', 'public', 'assets', 'data', 'card-types.json');
 const REPORTS_BASE_PATH = join(__dirname, '..', 'public', 'reports');
+const MASTER_FILE_NAME = 'master.json';
 
 /**
  * Load existing card types database
@@ -62,7 +63,7 @@ async function extractCardsFromReport(filePath) {
  * @param {string} dir
  * @returns {Promise<string[]>}
  */
-async function findJsonFiles(dir) {
+async function findMasterReports(dir) {
   const files = [];
   
   try {
@@ -72,9 +73,9 @@ async function findJsonFiles(dir) {
       const fullPath = join(dir, entry.name);
       
       if (entry.isDirectory()) {
-        const subFiles = await findJsonFiles(fullPath);
+        const subFiles = await findMasterReports(fullPath);
         files.push(...subFiles);
-      } else if (entry.isFile() && entry.name.endsWith('.json')) {
+      } else if (entry.isFile() && entry.name === MASTER_FILE_NAME) {
         files.push(fullPath);
       }
     }
@@ -93,7 +94,7 @@ async function findJsonFiles(dir) {
  */
 async function collectAllCards() {
   const allCards = new Set();
-  const jsonFiles = await findJsonFiles(REPORTS_BASE_PATH);
+  const jsonFiles = await findMasterReports(REPORTS_BASE_PATH);
   
   for (const file of jsonFiles) {
     const cards = await extractCardsFromReport(file);

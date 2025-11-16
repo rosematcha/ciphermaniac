@@ -4,6 +4,30 @@
  * @module lib/cardTypeFetcher
  */
 
+function buildNumberVariants(value) {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  const raw = String(value).trim();
+  if (!raw) {
+    return [];
+  }
+  const normalized = raw.toUpperCase();
+  const match = normalized.match(/^0*(\d+)([A-Z]*)$/);
+  if (!match) {
+    return [normalized];
+  }
+  const [, digits, suffix = ''] = match;
+  const trimmedDigits = digits.replace(/^0+/, '') || '0';
+  const withoutLeadingZeros = `${trimmedDigits}${suffix}`;
+  const variants = [];
+  variants.push(withoutLeadingZeros);
+  if (withoutLeadingZeros !== normalized) {
+    variants.push(normalized);
+  }
+  return variants;
+}
+
 /**
  * Fetch card type from Limitless TCG website
  * @param {string} setCode - Card set code
@@ -11,30 +35,62 @@
  * @returns {Promise<Object|null>}
  */
 async function fetchCardTypeFromLimitless(setCode, number) {
+  const numberVariants = buildNumberVariants(number);
+  if (numberVariants.length === 0) {
+    return null;
+  }
+
+  for (const variant of numberVariants) {
+    const result = await fetchCardTypeVariant(setCode, variant);
+    if (result) {
+      return result;
+    }
+  }
+
+  return null;
+}
+
+async function fetchCardTypeVariant(setCode, numberVariant) {
   try {
-    const url = `https://limitlesstcg.com/cards/${setCode}/${number}`;
+    const url = `https://limitlesstcg.com/cards/${setCode}/${numberVariant}`;
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Ciphermaniac/1.0 (Card Type Enrichment)',
       },
     });
 
+    if (response.status === 404) {
+      console.warn(`[CardTypeFetcher] ${setCode}::${numberVariant} not found on Limitless`);
+      return null;
+    }
+
     if (!response.ok) {
-      console.warn(`[CardTypeFetcher] Failed to fetch ${setCode}::${number} from Limitless: ${response.status}`);
+      console.warn(
+        `[CardTypeFetcher] Failed to fetch ${setCode}::${numberVariant} from Limitless: ${response.status}`
+      );
       return null;
     }
 
     const html = await response.text();
 
     // Parse the card-text-type div
-    const typeMatch = html.match(/<div class="card-text-type"[^>]*>(.*?)<\/div>/i);
+    const typeMatch = html.match(/<div class="card-text-type"[^>]*>([\s\S]*?)<\/div>/i);
     if (!typeMatch) {
-      console.warn(`[CardTypeFetcher] Could not find type div for ${setCode}::${number}`);
+      console.warn(`[CardTypeFetcher] Could not find type div for ${setCode}::${numberVariant}`);
       return null;
     }
 
-    const fullType = typeMatch[1].trim();
-    const parts = fullType.split(' - ').map(p => p.trim());
+    const rawType = typeMatch[1].replace(/<[^>]+>/g, ' ');
+    const fullType = rawType.replace(/\s+/g, ' ').replace(/\s*–\s*/g, ' - ').trim();
+    const parts = fullType
+      .split(/\s*-\s*/)
+      .map(p => p.trim())
+      .filter(Boolean);
+    const normalize = value =>
+      value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
 
     const result = {
       fullType,
@@ -42,8 +98,8 @@ async function fetchCardTypeFromLimitless(setCode, number) {
     };
 
     // Parse card type
-    const mainType = parts[0].toLowerCase();
-    if (mainType === 'pokémon' || mainType === 'pokemon') {
+    const mainType = normalize(parts[0]);
+    if (mainType === 'pokemon') {
       result.cardType = 'pokemon';
       // Extract evolution info if present
       if (parts.length > 1) {
@@ -51,13 +107,27 @@ async function fetchCardTypeFromLimitless(setCode, number) {
       }
     } else if (mainType === 'trainer') {
       result.cardType = 'trainer';
-      if (parts[1]) {
-        result.subType = parts[1].toLowerCase().replace(/\s+/g, '-');
+      const subtypeText = parts[1] ? normalize(parts[1]) : '';
+      if (subtypeText.includes('tool')) {
+        result.subType = 'tool';
+      } else if (subtypeText.includes('supporter')) {
+        result.subType = 'supporter';
+      } else if (subtypeText.includes('stadium')) {
+        result.subType = 'stadium';
+      } else if (subtypeText) {
+        result.subType = subtypeText.replace(/\s+/g, '-');
+      }
+      const hasAceSpec = parts.some(part => normalize(part).includes('ace spec'));
+      if (hasAceSpec) {
+        result.aceSpec = true;
+        if (result.subType !== 'tool') {
+          result.subType = 'tool';
+        }
       }
     } else if (mainType === 'energy') {
       result.cardType = 'energy';
       if (parts[1]) {
-        const energyType = parts[1].toLowerCase();
+        const energyType = normalize(parts[1]);
         if (energyType.includes('basic')) {
           result.subType = 'basic';
         } else if (energyType.includes('special')) {
@@ -68,7 +138,7 @@ async function fetchCardTypeFromLimitless(setCode, number) {
 
     return result;
   } catch (error) {
-    console.error(`[CardTypeFetcher] Error fetching ${setCode}::${number}:`, error.message);
+    console.error(`[CardTypeFetcher] Error fetching ${setCode}::${numberVariant}:`, error.message);
     return null;
   }
 }
@@ -184,6 +254,10 @@ export async function fetchAndCacheCardType(card, database, env) {
   
   if (typeInfo.fullType) {
     enriched.fullType = typeInfo.fullType;
+  }
+
+  if (typeInfo.cardType === 'trainer' && typeInfo.aceSpec) {
+    enriched.aceSpec = true;
   }
 
   return enriched;

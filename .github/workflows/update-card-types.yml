@@ -53,16 +53,60 @@ jobs:
           aws configure set aws_secret_access_key "${R2_SECRET_ACCESS_KEY}"
           aws configure set region auto
           
-          # Download all files from the reports folder
+          # Download only master.json files (skip archetype folders and other large assets)
           aws s3 sync "s3://${R2_BUCKET_NAME}/reports/" public/reports/ \
+            --exclude "*" \
+            --include "*/master.json" \
             --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
           
           echo "Reports downloaded successfully"
+
+      - name: Download existing card types database
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
+        run: |
+          set -euo pipefail
+          mkdir -p public/assets/data
+          if aws s3 ls "s3://${R2_BUCKET_NAME}/assets/data/card-types.json" --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" > /dev/null 2>&1; then
+            aws s3 cp "s3://${R2_BUCKET_NAME}/assets/data/card-types.json" public/assets/data/card-types.json \
+              --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+            echo "Existing card types database downloaded"
+          else
+            echo "No existing card types database found in R2; starting fresh"
+          fi
       
       - name: Build card types database
         run: |
           echo "Building card types database..."
           node tools/build-card-types.mjs
+      
+      - name: Upload card types database to R2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
+        run: |
+          set -euo pipefail
+          if [ ! -f public/assets/data/card-types.json ]; then
+            echo "Card types database missing"
+            exit 1
+          fi
+          
+          aws configure set aws_access_key_id "${R2_ACCESS_KEY_ID}"
+          aws configure set aws_secret_access_key "${R2_SECRET_ACCESS_KEY}"
+          aws configure set region auto
+          
+          aws s3 cp \
+            public/assets/data/card-types.json \
+            "s3://${R2_BUCKET_NAME}/assets/data/card-types.json" \
+            --content-type "application/json" \
+            --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          
+          echo "Uploaded card types database to R2"
       
       - name: Check for changes
         id: check_changes

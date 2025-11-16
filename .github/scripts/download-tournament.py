@@ -15,9 +15,83 @@ from urllib.parse import urlparse, parse_qs
 from bs4 import BeautifulSoup
 from collections import Counter, defaultdict
 import boto3
+from botocore.exceptions import ClientError
+from pathlib import Path
 
 
 LIMITLESS_LABS_BASE_URL = "https://labs.limitlesstcg.com"
+LOCAL_EXPORT_DIR = os.environ.get('LOCAL_EXPORT_DIR')
+CARD_TYPES_KEY = 'assets/data/card-types.json'
+LOCAL_CARD_TYPES_PATH = Path('public') / 'assets' / 'data' / 'card-types.json'
+
+
+def compose_category_path(category, trainer_type=None, energy_type=None, ace_spec=False):
+    base = (category or '').lower()
+    if not base:
+        return ''
+    parts = [base]
+    if base == 'trainer':
+        if trainer_type:
+            parts.append(trainer_type.lower())
+        if ace_spec:
+            if 'tool' not in parts and (not trainer_type or trainer_type.lower() != 'tool'):
+                parts.append('tool')
+            parts.append('acespec')
+    elif base == 'energy' and energy_type:
+        parts.append(energy_type.lower())
+    return '/'.join(parts)
+
+
+def load_card_types_database(r2_client, bucket_name):
+    if LOCAL_CARD_TYPES_PATH.is_file():
+        try:
+            data = json.loads(LOCAL_CARD_TYPES_PATH.read_text(encoding='utf-8'))
+            print(f"Loaded card types database from {LOCAL_CARD_TYPES_PATH}")
+            return data
+        except json.JSONDecodeError:
+            print(f"Warning: Failed to parse {LOCAL_CARD_TYPES_PATH}")
+    if not r2_client:
+        print("Card types database unavailable (no R2 client)")
+        return {}
+    try:
+        obj = r2_client.get_object(Bucket=bucket_name, Key=CARD_TYPES_KEY)
+        payload = obj['Body'].read().decode('utf-8')
+        data = json.loads(payload)
+        print(f"Loaded card types database from R2 ({len(data)} entries)")
+        return data
+    except ClientError as exc:
+        if exc.response.get('Error', {}).get('Code') == 'NoSuchKey':
+            print("Card types database not found in R2; continuing without enrichment")
+            return {}
+        raise
+    except Exception as exc:
+        print(f"Warning: Failed to load card types database: {exc}")
+        return {}
+
+
+def enrich_card_entry(card, card_types_db):
+    enriched = dict(card)
+    set_code = enriched.get('set')
+    number = enriched.get('number')
+    key = f"{set_code}::{number}" if set_code and number else None
+    info = card_types_db.get(key) if key else None
+
+    if info:
+        card_type = info.get('cardType')
+        if card_type:
+            enriched['category'] = card_type
+        if card_type == 'trainer' and info.get('subType'):
+            enriched['trainerType'] = info['subType']
+        if card_type == 'energy' and info.get('subType'):
+            enriched['energyType'] = info['subType']
+        if card_type == 'pokemon' and info.get('evolutionInfo'):
+            enriched['evolutionInfo'] = info['evolutionInfo']
+        if info.get('fullType'):
+            enriched['fullType'] = info['fullType']
+        if card_type == 'trainer' and info.get('aceSpec'):
+            enriched['aceSpec'] = True
+
+    return enriched
 
 
 def sanitize_for_path(text):
@@ -35,6 +109,27 @@ def normalize_archetype_name(name):
     """Normalizes whitespace in an archetype name."""
     name = name.replace('_', ' ')
     return ' '.join(name.split())
+
+
+def build_number_variants(number):
+    """Return card number variants (no leading zeros first, then original)."""
+    if number is None:
+        return []
+    raw = str(number).strip()
+    if not raw:
+        return []
+    normalized = raw.upper()
+    match = re.match(r'^0*(\d+)([A-Z]*)$', normalized)
+    if not match:
+        return [normalized]
+    digits, suffix = match.groups()
+    trimmed_digits = digits.lstrip('0') or '0'
+    primary = f"{trimmed_digits}{suffix}"
+    variants = [primary]
+    padded = f"{digits}{suffix}"
+    if primary != padded:
+        variants.append(padded)
+    return variants
 
 
 def request_with_retries(session, method, url, retries=3, backoff_factor=0.5, **kwargs):
@@ -167,7 +262,7 @@ def extract_metadata(soup, url, headers):
     }
 
 
-def extract_all_decklists(soup, anonymize=False):
+def extract_all_decklists(soup, card_types_db, anonymize=False):
     """Extracts all decklists into a list of dictionaries."""
     print("Extracting decklists from HTML...")
     all_decks = []
@@ -204,6 +299,7 @@ def extract_all_decklists(soup, anonymize=False):
                 "number": number,
                 "category": category
             }
+            card_entry = enrich_card_entry(card_entry, card_types_db)
             cards.append(card_entry)
 
         canonical_card_list = sorted([f"{c['count']}x{c['name']}{c['set']}{c['number']}" for c in cards])
@@ -243,43 +339,42 @@ def generate_report_json(deck_list, deck_total, all_decks_for_variants):
         
         for card in deck["cards"]:
             name = card.get("name", "")
-            cat = (card.get("category") or "").lower() or None
             set_code = card.get("set", "")
             number = card.get("number", "")
             sc, num = canonicalize_variant(set_code, number)
-            
-            if sc and num:
-                uid = f"{name}::{sc}::{num}"
-                display = name
-                per_deck_counts[uid] += int(card.get('count', 0))
-                per_deck_seen_meta[uid] = {
-                    "set": sc,
-                    "number": num,
-                    "category": cat
-                }
-                if cat:
-                    uid_category[uid] = {"category": cat}
-            else:
-                uid = name
-                display = name
-                per_deck_counts[uid] += int(card.get('count', 0))
-                if cat:
-                    uid_category[uid] = {"category": cat}
-                per_deck_seen_meta[uid] = {
-                    "set": sc,
-                    "number": num,
-                    "category": cat
-                }
+            count = int(card.get('count', 0))
+            if count <= 0:
+                continue
+
+            uid = f"{name}::{sc}::{num}" if sc and num else name
+            per_deck_counts[uid] += count
+
+            meta_payload = {
+                "set": sc or None,
+                "number": num or None,
+                "category": (card.get("category") or "").lower() or None,
+                "trainerType": card.get("trainerType"),
+                "energyType": card.get("energyType"),
+                "aceSpec": card.get("aceSpec")
+            }
+            per_deck_seen_meta[uid] = meta_payload
+
+            info = uid_category.setdefault(uid, {})
+            for field in ("category", "trainerType", "energyType", "aceSpec"):
+                value = meta_payload.get(field)
+                if value and field not in info:
+                    info[field] = value
+
+            if uid not in name_casing:
+                name_casing[uid] = uid.split('::', 1)[0] if '::' in uid else uid
         
         for uid, tot in per_deck_counts.items():
             card_data[uid].append(tot)
-            if uid not in name_casing:
-                name_casing[uid] = uid.split('::',1)[0] if '::' in uid else uid
-            meta_payload = per_deck_seen_meta.get(uid, uid_meta.get(uid, {}))
+            meta_payload = per_deck_seen_meta.get(uid, uid_meta.get(uid, {})) or {}
             if '::' in uid:
-                uid_meta[uid] = meta_payload or {}
-            elif meta_payload:
-                uid_meta.setdefault(uid, meta_payload)
+                uid_meta[uid] = meta_payload
+            elif meta_payload and uid not in uid_meta:
+                uid_meta[uid] = meta_payload
 
     sorted_card_keys = sorted(card_data.keys(), key=lambda k: len(card_data[k]), reverse=True)
     
@@ -311,16 +406,36 @@ def generate_report_json(deck_list, deck_total, all_decks_for_variants):
             card_obj["uid"] = uid
         
         category_info = uid_category.get(uid)
+        base_category = None
+        trainer_type = None
+        energy_type = None
+        ace_spec = False
+
         if isinstance(category_info, dict):
             base_category = category_info.get("category") or meta.get("category")
-            if base_category:
-                card_obj["category"] = base_category
+            trainer_type = category_info.get("trainerType") or meta.get("trainerType")
+            energy_type = category_info.get("energyType") or meta.get("energyType")
+            ace_spec = category_info.get("aceSpec") or meta.get("aceSpec") or False
         elif category_info:
-            card_obj["category"] = category_info
+            base_category = category_info
         else:
             base_category = meta.get("category")
-            if base_category:
-                card_obj["category"] = base_category
+            trainer_type = meta.get("trainerType")
+            energy_type = meta.get("energyType")
+            ace_spec = meta.get("aceSpec") or False
+
+        if trainer_type:
+            card_obj["trainerType"] = trainer_type
+        if energy_type:
+            card_obj["energyType"] = energy_type
+        if ace_spec:
+            card_obj["aceSpec"] = True
+
+        slug = compose_category_path(base_category, trainer_type, energy_type, ace_spec)
+        if slug:
+            card_obj["category"] = slug
+        elif base_category:
+            card_obj["category"] = base_category
                 
         report_items.append(card_obj)
         
@@ -378,24 +493,34 @@ def scrape_card_print_variations(session, set_code, number):
     Returns list of dicts: [{'set': 'SFA', 'number': '038', 'price_usd': 19.67}, ...]
     Only includes international prints, not Japanese.
     """
-    number_clean = str(number).lstrip('0')
-    url = f"https://limitlesstcg.com/cards/{set_code}/{number_clean}"
-
     print(f"  Checking print variations for {set_code}/{number}...")
 
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    resp = request_with_retries(session, 'GET', url, headers=headers, timeout=20, retries=2)
-    if not resp:
-        print(f"    Warning: Could not fetch print variations from {url}")
+    number_variants = build_number_variants(number)
+    if not number_variants:
         return []
 
-    soup = BeautifulSoup(resp.text, 'html.parser')
-    variations = []
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    soup = None
+    for variant in number_variants:
+        url = f"https://limitlesstcg.com/cards/{set_code}/{variant}"
+        resp = request_with_retries(session, 'GET', url, headers=headers, timeout=20, retries=2)
+        if not resp:
+            print(f"    Warning: Could not fetch print variations from {url}")
+            continue
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        table = soup.find('table', class_='card-prints-versions')
+        if table:
+            break
+        soup = None  # reset and try next variant
 
-    # Find the card-prints-versions table
+    if soup is None:
+        return []
+
     table = soup.find('table', class_='card-prints-versions')
     if not table:
         return []
+
+    variations = []
 
     # Track whether we're in the international or Japanese section
     in_jp_section = False
@@ -606,7 +731,16 @@ def generate_card_synonyms(all_decks, session):
 
 
 def upload_to_r2(r2_client, bucket_name, key, data):
-    """Upload JSON data to R2."""
+    """Upload JSON data to R2 or local export directory."""
+    if LOCAL_EXPORT_DIR:
+        local_path = Path(LOCAL_EXPORT_DIR) / key
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        with local_path.open('w', encoding='utf-8') as handle:
+            json.dump(data, handle, indent=2)
+            handle.write('\n')
+        print(f"  Saved {local_path}")
+        return
+
     print(f"  Uploading {key}...")
     r2_client.put_object(
         Bucket=bucket_name,
@@ -618,6 +752,9 @@ def upload_to_r2(r2_client, bucket_name, key, data):
 
 def update_tournaments_json(r2_client, bucket_name, tournament_name):
     """Update tournaments.json to include the new tournament at the top."""
+    if LOCAL_EXPORT_DIR:
+        print("Skipping tournaments.json update (local export mode)")
+        return
     tournaments_key = "reports/tournaments.json"
     
     try:
@@ -665,18 +802,24 @@ def main():
         print("Error: LIMITLESS_URL environment variable not set")
         sys.exit(1)
 
-    if not all([r2_account_id, r2_access_key_id, r2_secret_access_key]):
-        print("Error: R2 credentials not set")
-        sys.exit(1)
+    if LOCAL_EXPORT_DIR:
+        print(f"Local export mode enabled (output -> {LOCAL_EXPORT_DIR})")
+        r2_client = None
+    else:
+        if not all([r2_account_id, r2_access_key_id, r2_secret_access_key]):
+            print("Error: R2 credentials not set")
+            sys.exit(1)
 
-    # Initialize R2 client
-    r2_client = boto3.client(
-        's3',
-        endpoint_url=f'https://{r2_account_id}.r2.cloudflarestorage.com',
-        aws_access_key_id=r2_access_key_id,
-        aws_secret_access_key=r2_secret_access_key,
-        region_name='auto'
-    )
+        # Initialize R2 client
+        r2_client = boto3.client(
+            's3',
+            endpoint_url=f'https://{r2_account_id}.r2.cloudflarestorage.com',
+            aws_access_key_id=r2_access_key_id,
+            aws_secret_access_key=r2_secret_access_key,
+            region_name='auto'
+        )
+
+    card_types_db = load_card_types_database(r2_client, r2_bucket_name)
 
     # Create session and download page
     session = requests.Session()
@@ -687,7 +830,7 @@ def main():
 
     # Extract metadata and decks
     metadata = extract_metadata(soup, limitless_url, headers)
-    all_decks = extract_all_decklists(soup, anonymize=anonymize)
+    all_decks = extract_all_decklists(soup, card_types_db, anonymize=anonymize)
 
     if not all_decks:
         print("Error: No decklists found")
