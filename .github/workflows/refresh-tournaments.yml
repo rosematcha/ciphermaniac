@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install boto3 requests
+          pip install boto3 requests beautifulsoup4
 
       - name: Install rclone
         run: |

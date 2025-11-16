@@ -91,6 +91,9 @@ class ParallelImageLoader {
   _loadSingleImage(url) {
     return new Promise((resolve, reject) => {
       const img = new Image();
+      
+      // Set crossOrigin to avoid cookie warnings from external CDNs
+      img.crossOrigin = 'anonymous';
 
       img.onload = () => {
         resolve(url); // Return the successful URL
