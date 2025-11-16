@@ -65,7 +65,8 @@ def fetch_source_url(folder: str) -> Optional[str]:
 def purge_folder(remote: str, bucket: str, folder: str) -> None:
   target = f'{remote}:{bucket}/reports/{folder}'
   log(f'  Clearing R2 path {target}')
-  run_command(['rclone', 'purge', target])
+  # Use delete with --rmdirs instead of purge to avoid versioning permission issues
+  run_command(['rclone', 'delete', '--rmdirs', target])
 
 
 def upload_folder(remote: str, bucket: str, folder: str, source_path: str) -> None:
