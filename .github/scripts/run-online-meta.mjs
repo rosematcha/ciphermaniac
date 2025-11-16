@@ -1082,43 +1082,48 @@ async function main() {
   let includeExcludeCount = 0;
   const includeExcludeErrors = [];
 
-  if (GENERATE_INCLUDE_EXCLUDE) {
-    console.log('[online-meta] Generating include-exclude reports...');
-    
-    for (const file of archetypeFiles) {
-      const archetypeName = file.base.replace(/_/g, ' ');
-      const archetypeDecks = decks.filter(d => {
-        const normalized = normalizeArchetypeName(d.archetype || 'Unknown');
-        return sanitizeForFilename(normalized.replace(/ /g, '_')) === file.base;
-      });
-
-      try {
-        const reports = await generateIncludeExcludeReports(
-          archetypeName,
-          archetypeDecks,
-          file.data
-        );
-
-        if (reports) {
-          await writeIncludeExcludeReports(archetypeName, reports, TARGET_FOLDER);
-          includeExcludeCount++;
-        }
-      } catch (error) {
-        console.error(`[online-meta] Failed to generate include-exclude for ${archetypeName}:`, error);
-        includeExcludeErrors.push({
-          archetype: archetypeName,
-          error: error.message || String(error)
-        });
-      }
-    }
-
-    console.log('[online-meta] Include-exclude generation complete', {
-      archetypesWithReports: includeExcludeCount,
-      errors: includeExcludeErrors.length
-    });
-  } else {
-    console.log('[online-meta] Skipping include-exclude reports (GENERATE_INCLUDE_EXCLUDE=false)');
-  }
+  /*
+   * Include-exclude reports are temporarily disabled to keep this workflow
+   * focused solely on the primary online meta outputs. Re-enable by
+   * uncommenting the block below.
+   */
+  // if (GENERATE_INCLUDE_EXCLUDE) {
+  //   console.log('[online-meta] Generating include-exclude reports...');
+  //
+  //   for (const file of archetypeFiles) {
+  //     const archetypeName = file.base.replace(/_/g, ' ');
+  //     const archetypeDecks = decks.filter(d => {
+  //       const normalized = normalizeArchetypeName(d.archetype || 'Unknown');
+  //       return sanitizeForFilename(normalized.replace(/ /g, '_')) === file.base;
+  //     });
+  //
+  //     try {
+  //       const reports = await generateIncludeExcludeReports(
+  //         archetypeName,
+  //         archetypeDecks,
+  //         file.data
+  //       );
+  //
+  //       if (reports) {
+  //         await writeIncludeExcludeReports(archetypeName, reports, TARGET_FOLDER);
+  //         includeExcludeCount++;
+  //       }
+  //     } catch (error) {
+  //       console.error(`[online-meta] Failed to generate include-exclude for ${archetypeName}:`, error);
+  //       includeExcludeErrors.push({
+  //         archetype: archetypeName,
+  //         error: error.message || String(error)
+  //       });
+  //     }
+  //   }
+  //
+  //   console.log('[online-meta] Include-exclude generation complete', {
+  //     archetypesWithReports: includeExcludeCount,
+  //     errors: includeExcludeErrors.length
+  //   });
+  // } else {
+  //   console.log('[online-meta] Skipping include-exclude reports (GENERATE_INCLUDE_EXCLUDE=false)');
+  // }
 
   // Note: Online tournaments are NOT added to tournaments.json
   // They are treated as a special case in the UI
@@ -1126,7 +1131,7 @@ async function main() {
   const uploadedComponents = [];
   if (GENERATE_MASTER) uploadedComponents.push('master');
   if (GENERATE_ARCHETYPES) uploadedComponents.push(`${archetypeFiles.length} archetypes`);
-  if (GENERATE_INCLUDE_EXCLUDE) uploadedComponents.push(`${includeExcludeCount} include-exclude reports`);
+  // if (GENERATE_INCLUDE_EXCLUDE) uploadedComponents.push(`${includeExcludeCount} include-exclude reports`);
   if (GENERATE_DECKS) uploadedComponents.push('decks');
 
   console.log(
