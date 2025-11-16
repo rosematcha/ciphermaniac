@@ -8,19 +8,23 @@ const LIMITLESS_CDN_BASE = 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com
 const CACHE_TTL = 86400; // 24 hours
 
 export async function onRequest(context) {
-  const { request, env } = context;
+  const { request } = context;
   const url = new URL(request.url);
-  const pathParts = context.params.path;
-
-  // Parse path: expecting ["sm" or "xs", set, number]
-  if (!Array.isArray(pathParts) || pathParts.length < 3) {
-    return new Response('Invalid path format. Expected: /thumbnails/{size}/{set}/{number}', {
+  
+  // Parse URL path: /thumbnails/sm/TEF/123
+  const pathParts = url.pathname.split('/').filter(Boolean);
+  
+  // Remove 'thumbnails' prefix, expect [size, set, number]
+  const relevantParts = pathParts.slice(1);
+  
+  if (relevantParts.length !== 3) {
+    return new Response(`Invalid path format. Expected: /thumbnails/{size}/{set}/{number}, got: ${url.pathname}`, {
       status: 400,
       headers: { 'Content-Type': 'text/plain' }
     });
   }
 
-  const [size, set, number] = pathParts;
+  const [size, set, number] = relevantParts;
 
   // Validate size
   const sizeUpper = size.toUpperCase();
