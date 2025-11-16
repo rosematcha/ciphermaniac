@@ -24,7 +24,7 @@
   "Crustle": ["DRI/12"],
   "Ethan's Typhlosion": ["DRI/34"],
   "N's Zoroark": ["JTG/98"],
-  "Zoroark Lucario": ["JTG/98"],
+  "Zoroark Lucario": ["JTG/98", "MEG/77"],
   "Pidgeot Control": ["OBF/164"],
   "Cynthia's Garchomp": ["DRI/104"],
   "Ho-Oh Armarouge": ["DRI/39"],
@@ -36,5 +36,6 @@
   "Festival Lead": ["TWM/18"],
   "Kangaskhan Bouffalant": ["MEG/104"],
   "Chien-Pao Baxcalibur": ["PAL/061"],
-  "Greninja": ["TWM/106"]
+  "Greninja": ["TWM/106"],
+  "Hydreigon": ["SSP/119"]
 }

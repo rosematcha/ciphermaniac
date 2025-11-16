@@ -4,8 +4,7 @@
     "/api/*",
     "/_cron/*",
     "/card/*",
-    "/archetype/*",
-    "/thumbnails/*"
+    "/archetype/*"
   ],
   "exclude": [
     "/assets/*"
