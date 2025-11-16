@@ -23,6 +23,8 @@ LIMITLESS_LABS_BASE_URL = "https://labs.limitlesstcg.com"
 LOCAL_EXPORT_DIR = os.environ.get('LOCAL_EXPORT_DIR')
 CARD_TYPES_KEY = 'assets/data/card-types.json'
 LOCAL_CARD_TYPES_PATH = Path('public') / 'assets' / 'data' / 'card-types.json'
+CARD_SYNONYMS_KEY = 'assets/card-synonyms.json'
+LOCAL_CARD_SYNONYMS_PATH = Path('public') / 'assets' / 'card-synonyms.json'
 
 
 def compose_category_path(category, trainer_type=None, energy_type=None, ace_spec=False):
@@ -67,6 +69,36 @@ def load_card_types_database(r2_client, bucket_name):
     except Exception as exc:
         print(f"Warning: Failed to load card types database: {exc}")
         return {}
+
+
+def load_existing_canonicals(r2_client, bucket_name):
+    """Load existing canonical card mappings from the card-synonyms.json file."""
+    if LOCAL_CARD_SYNONYMS_PATH.is_file():
+        try:
+            data = json.loads(LOCAL_CARD_SYNONYMS_PATH.read_text(encoding='utf-8'))
+            print(f"Loaded existing canonicals from {LOCAL_CARD_SYNONYMS_PATH}")
+            return data.get('synonyms', {}), data.get('canonicals', {})
+        except json.JSONDecodeError:
+            print(f"Warning: Failed to parse {LOCAL_CARD_SYNONYMS_PATH}")
+    if not r2_client:
+        print("Existing canonicals unavailable (no R2 client)")
+        return {}, {}
+    try:
+        obj = r2_client.get_object(Bucket=bucket_name, Key=CARD_SYNONYMS_KEY)
+        payload = obj['Body'].read().decode('utf-8')
+        data = json.loads(payload)
+        synonyms = data.get('synonyms', {})
+        canonicals = data.get('canonicals', {})
+        print(f"Loaded existing canonicals from R2 ({len(synonyms)} synonyms, {len(canonicals)} canonicals)")
+        return synonyms, canonicals
+    except ClientError as exc:
+        if exc.response.get('Error', {}).get('Code') == 'NoSuchKey':
+            print("Existing canonicals not found; will generate new ones")
+            return {}, {}
+        raise
+    except Exception as exc:
+        print(f"Warning: Failed to load existing canonicals: {exc}")
+        return {}, {}
 
 
 def enrich_card_entry(card, card_types_db):
@@ -640,12 +672,22 @@ def choose_canonical_print(variations, card_name):
     return canonical
 
 
-def generate_card_synonyms(all_decks, session):
+def generate_card_synonyms(all_decks, session, existing_synonyms=None, existing_canonicals=None):
     """
     Generates synonym mappings for cards based on their print variations.
+    Preserves existing canonical mappings when provided.
     Returns a dict with synonyms and canonicals for handling card reprints.
     """
     print("\nGenerating card synonyms from print variations...")
+    
+    # Start with existing mappings
+    synonyms_dict = dict(existing_synonyms) if existing_synonyms else {}
+    canonicals_dict = dict(existing_canonicals) if existing_canonicals else {}
+    
+    if existing_synonyms:
+        print(f"  Loaded {len(existing_synonyms)} existing synonyms")
+    if existing_canonicals:
+        print(f"  Loaded {len(existing_canonicals)} existing canonicals")
 
     # Collect all unique cards by name
     unique_cards_by_name = {}
@@ -673,10 +715,6 @@ def generate_card_synonyms(all_decks, session):
                         'set': set_code,
                         'number': number
                     }
-
-    # Build output structure
-    synonyms_dict = {}
-    canonicals_dict = {}
 
     total_cards = len(unique_cards_by_name)
     current = 0
@@ -820,6 +858,7 @@ def main():
         )
 
     card_types_db = load_card_types_database(r2_client, r2_bucket_name)
+    existing_synonyms, existing_canonicals = load_existing_canonicals(r2_client, r2_bucket_name)
 
     # Create session and download page
     session = requests.Session()
@@ -858,7 +897,7 @@ def main():
     card_index = generate_card_index(all_decks)
 
     print("Generating card synonyms...")
-    synonyms_data = generate_card_synonyms(all_decks, session)
+    synonyms_data = generate_card_synonyms(all_decks, session, existing_synonyms, existing_canonicals)
 
     print("Generating archetype reports...")
     archetype_groups = defaultdict(list)

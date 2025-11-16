@@ -56,15 +56,17 @@ def fetch_source_url(folder: str) -> Optional[str]:
     log('    Warning: meta does not include sourceUrl')
     return None
   source = source.rstrip('/')
-  if source.endswith('/decklists'):
-    source = source[: -len('/decklists')]
+  # Ensure the URL points to the decklists page
+  if not source.endswith('/decklists'):
+    source = f'{source}/decklists'
   return source
 
 
 def purge_folder(remote: str, bucket: str, folder: str) -> None:
   target = f'{remote}:{bucket}/reports/{folder}'
   log(f'  Clearing R2 path {target}')
-  run_command(['rclone', 'purge', target])
+  # Use delete with --rmdirs instead of purge to avoid versioning permission issues
+  run_command(['rclone', 'delete', '--rmdirs', target])
 
 
 def upload_folder(remote: str, bucket: str, folder: str, source_path: str) -> None:
@@ -125,8 +127,9 @@ def main() -> None:
       continue
     log(f'Refreshing "{folder}"')
     source_url = source_hint.rstrip('/') if isinstance(source_hint, str) and source_hint else None
-    if source_url and source_url.endswith('/decklists'):
-      source_url = source_url[: -len('/decklists')]
+    # Ensure the URL points to the decklists page
+    if source_url and not source_url.endswith('/decklists'):
+      source_url = f'{source_url}/decklists'
     if not source_url:
       source_url = fetch_source_url(folder)
     if not source_url:
