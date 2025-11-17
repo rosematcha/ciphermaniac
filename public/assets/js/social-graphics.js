@@ -470,74 +470,40 @@ class SocialGraphicsGenerator {
   }
 
   getCardImagePath(card) {
-    const imageName = `${card.name.replace(/[^a-zA-Z0-9]/g, '_')}_${card.set}_${card.number}.png`;
-    return `thumbnails/sm/${imageName}`;
+    return this.buildLimitlessUrl(card.set, card.number);
   }
 
   async loadImageWithFallback(card, _cardSize = 'normal') {
-    const baseName = card.name.replace(/[^a-zA-Z0-9]/g, '_');
-
-    // Special case transformations for known patterns
-    let specialName = card.name;
-
-    // Handle "Buddy-Buddy" pattern (preserve hyphen in Buddy-Buddy, convert space to underscore)
-    if (card.name.includes('Buddy-Buddy')) {
-      specialName = card.name.replace(/\s+/g, '_'); // Convert spaces to underscores first
-      specialName = specialName.replace(/[^a-zA-Z0-9\-_]/g, '_'); // Keep hyphens and underscores
-    }
-    // Handle "Technical Machine: X" pattern (colon becomes single underscore)
-    else if (card.name.startsWith('Technical Machine:')) {
-      specialName = card.name.replace('Technical Machine:', 'Technical_Machine');
-      specialName = specialName.replace(/[^a-zA-Z0-9]/g, '_');
-    }
-    // Handle cards with special characters that should be preserved (periods, accents, decimals)
-    else if (
-      card.name.includes('Pokégear 3.0') ||
-      card.name.includes('Exp. Share') ||
-      card.name.match(/\d+\.\d+/) || // Decimal numbers like 3.0
-      card.name.match(/\w+\.\s+\w+/)
-    ) {
-      // Abbreviations like "Exp. Share"
-      specialName = card.name.replace(/\s+/g, '_'); // Only convert spaces to underscores
-    }
-
-    // Build Limitless CDN URL
+    // Use Limitless CDN directly as the primary source
     const limitlessUrl = this.buildLimitlessUrl(card.set, card.number);
-
-    const possiblePaths = [
-      `/thumbnails/sm/${baseName}_${card.set}_${card.number}.png`,
-      `/thumbnails/sm/${card.name.replace(/[^a-zA-Z0-9']/g, '_')}_${card.set}_${card.number}.png`,
-      `/thumbnails/sm/${card.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '_')}_${card.set}_${card.number}.png`,
-      `/thumbnails/sm/${specialName.replace(/[^a-zA-Z0-9-]/g, '_')}_${card.set}_${card.number}.png`,
-      limitlessUrl // Add Limitless CDN as fallback
-    ].filter(Boolean); // Remove null values
-
-    for (const path of possiblePaths) {
-      try {
-        const img = new Image();
-        // Enable CORS for external images
-        img.crossOrigin = 'anonymous';
-        const loadPromise = new Promise((resolve, reject) => {
-          img.onload = () => resolve(path);
-          img.onerror = reject;
-          img.src = path;
-        });
-
-        const result = await Promise.race([
-          loadPromise,
-          new Promise((_resolve, reject) => {
-            // eslint-disable-next-line no-promise-executor-return, prefer-promise-reject-errors
-            return setTimeout(() => reject(new Error('timeout')), 1000);
-          })
-        ]);
-
-        return result;
-      } catch (error) {
-        continue;
-      }
+    
+    if (!limitlessUrl) {
+      return null;
     }
 
-    return null;
+    try {
+      const img = new Image();
+      // Enable CORS for external images
+      img.crossOrigin = 'anonymous';
+      const loadPromise = new Promise((resolve, reject) => {
+        img.onload = () => resolve(limitlessUrl);
+        img.onerror = reject;
+        img.src = limitlessUrl;
+      });
+
+      const result = await Promise.race([
+        loadPromise,
+        new Promise((_resolve, reject) => {
+          // eslint-disable-next-line no-promise-executor-return, prefer-promise-reject-errors
+          return setTimeout(() => reject(new Error('timeout')), 3000);
+        })
+      ]);
+
+      return result;
+    } catch (error) {
+      console.warn(`Failed to load image from Limitless CDN for ${card.name} (${card.set} ${card.number})`);
+      return null;
+    }
   }
 
   buildLimitlessUrl(setCode, number) {
@@ -552,8 +518,14 @@ class SocialGraphicsGenerator {
       return null;
     }
 
-    // Pad number with leading zeroes to at least 3 digits
-    const paddedNumber = normalizedNumber.padStart(3, '0');
+    // Handle card numbers with suffixes (e.g., "123a")
+    const numberMatch = normalizedNumber.match(/^(\d+)([A-Za-z]*)$/);
+    if (!numberMatch) {
+      return null;
+    }
+
+    const [, digits, suffix = ''] = numberMatch;
+    const paddedNumber = digits.padStart(3, '0') + suffix;
 
     // Use SM size for social graphics (small thumbnails)
     return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${normalizedSet}/${normalizedSet}_${paddedNumber}_R_EN_SM.png`;
