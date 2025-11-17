@@ -518,17 +518,9 @@ class SocialGraphicsGenerator {
       return null;
     }
 
-    // Handle card numbers with suffixes (e.g., "123a")
-    const numberMatch = normalizedNumber.match(/^(\d+)([A-Za-z]*)$/);
-    if (!numberMatch) {
-      return null;
-    }
-
-    const [, digits, suffix = ''] = numberMatch;
-    const paddedNumber = digits.padStart(3, '0') + suffix;
-
-    // Use SM size for social graphics (small thumbnails)
-    return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${normalizedSet}/${normalizedSet}_${paddedNumber}_R_EN_SM.png`;
+    // Use the proxy endpoint which adds CORS headers
+    // Format: /thumbnails/sm/SET/NUMBER
+    return `/thumbnails/sm/${normalizedSet}/${normalizedNumber}`;
   }
 
   applyCropping(img, card, _cardSize = 'normal') {
