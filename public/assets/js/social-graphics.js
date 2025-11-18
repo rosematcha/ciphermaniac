@@ -496,7 +496,23 @@ class SocialGraphicsGenerator {
       number: card.number
     };
 
-    const candidates = buildThumbCandidates(card.name, true, undefined, variant) || [];
+    const proxyCandidate = this.buildProxyThumbnailUrl(card.set, card.number);
+    const rawCandidates = buildThumbCandidates(card.name, true, undefined, variant) || [];
+
+    const externalCandidates = rawCandidates.filter(candidate => {
+      return typeof candidate === 'string' && candidate.startsWith('http');
+    });
+
+    const candidates = [];
+    if (proxyCandidate) {
+      candidates.push(proxyCandidate);
+    }
+
+    externalCandidates.forEach(candidate => {
+      if (!candidates.includes(candidate)) {
+        candidates.push(candidate);
+      }
+    });
 
     for (const path of candidates) {
       try {
@@ -511,6 +527,22 @@ class SocialGraphicsGenerator {
 
     console.warn(`Failed to load thumbnail for ${card.name} (${card.set} ${card.number}). Tried ${candidates.length} candidates.`);
     return null;
+  }
+
+  buildProxyThumbnailUrl(setCode, number, useSm = true) {
+    if (!setCode || !number) {
+      return null;
+    }
+
+    const normalizedSet = String(setCode).toUpperCase().trim();
+    const normalizedNumber = String(number).trim();
+
+    if (!normalizedSet || !normalizedNumber) {
+      return null;
+    }
+
+    const size = useSm ? 'sm' : 'xs';
+    return `/thumbnails/${size}/${normalizedSet}/${normalizedNumber}`;
   }
 
   async fetchImageAsBlob(url) {
