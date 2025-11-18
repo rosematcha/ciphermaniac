@@ -415,13 +415,18 @@ class SocialGraphicsGenerator {
 
     const img = document.createElement('img');
     img.className = 'card-image';
-    // Enable CORS for external images (Limitless CDN)
-    img.crossOrigin = 'anonymous';
 
     const imagePath = await this.loadImageWithFallback(card, cardSize);
     if (imagePath) {
-      img.src = imagePath;
       img.alt = card.name;
+      
+      // Wait for the blob URL to actually load before cropping
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = imagePath;
+      });
+      
       await this.applyCropping(img, card, cardSize);
     } else {
       img.style.backgroundColor = '#ddd';
