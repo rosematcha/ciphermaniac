@@ -493,9 +493,19 @@ class SocialGraphicsGenerator {
         return;
       }
 
-      // Skip direct CDN URLs that fail CORS; rely on proxy instead
+      // Transform direct CDN URLs into their proxied equivalents so we retain CORS-safe fetching
       if (candidate.startsWith('https://limitlesstcg')) {
-        if (proxyCandidate && !candidates.includes(proxyCandidate)) {
+        const match = candidate.match(/\/tpci\/(\w+)\/(\w+)_([\w]+)_R_EN_(SM|XS)\.png/i);
+        if (match) {
+          const [, setCode, setPrefix, numberPart, sizePart] = match;
+          const normalizedSet = (setCode || setPrefix || '').toUpperCase();
+          const normalizedNumber = numberPart || '';
+          const proxySize = sizePart?.toLowerCase() === 'xs' ? 'xs' : 'sm';
+          const proxied = normalizedSet && normalizedNumber ? `/thumbnails/${proxySize}/${normalizedSet}/${normalizedNumber}` : null;
+          if (proxied && !candidates.includes(proxied)) {
+            candidates.push(proxied);
+          }
+        } else if (proxyCandidate && !candidates.includes(proxyCandidate)) {
           candidates.push(proxyCandidate);
         }
         return;
