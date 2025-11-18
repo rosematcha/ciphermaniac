@@ -524,20 +524,22 @@ class SocialGraphicsGenerator {
 
     try {
       console.log(`Fetching image blob from: ${url}`);
+      
+      // Determine if this is an external URL
+      const isExternal = url.startsWith('http://') || url.startsWith('https://');
+      
       const response = await fetch(url, {
-        mode: 'cors',
+        mode: isExternal ? 'no-cors' : 'cors',
         credentials: 'omit'
       });
 
-      if (!response.ok) {
-        console.warn(`Fetch failed for ${url}: ${response.status}`);
-        throw new Error(`Failed to fetch image: ${response.status}`);
-      }
-
+      // For no-cors mode, we can't check response.ok or get blob type
+      // Just try to create the blob
       const blob = await response.blob();
-      console.log(`Blob created for ${url}:`, blob.type, blob.size, 'bytes');
+      console.log(`Blob created for ${url}:`, blob.type || 'opaque', blob.size, 'bytes');
       
-      if (!blob.type.startsWith('image/')) {
+      // Skip type validation for opaque responses (no-cors)
+      if (!isExternal && blob.type && !blob.type.startsWith('image/')) {
         console.warn(`Invalid blob type for ${url}: ${blob.type}`);
         return null;
       }
