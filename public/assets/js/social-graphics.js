@@ -1,4 +1,5 @@
 import { fetchReportResource, fetchTournamentsList } from './api.js';
+import { buildThumbCandidates } from './thumbs.js';
 
 class SocialGraphicsGenerator {
   constructor() {
@@ -7,6 +8,7 @@ class SocialGraphicsGenerator {
     this.previousTournamentData = null;
     this.comparisonTournamentData = null;
     this.consistentLeaders = new Set();
+    this.imageBlobCache = new Map();
 
     this.init();
   }
@@ -413,14 +415,33 @@ class SocialGraphicsGenerator {
 
     const img = document.createElement('img');
     img.className = 'card-image';
-    // Enable CORS for external images (Limitless CDN)
-    img.crossOrigin = 'anonymous';
 
     const imagePath = await this.loadImageWithFallback(card, cardSize);
     if (imagePath) {
-      img.src = imagePath;
       img.alt = card.name;
-      await this.applyCropping(img, card, cardSize);
+      
+      // Wait for the blob URL to actually load before cropping
+      try {
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = (error) => {
+            console.error(`Failed to load blob image for ${card.name}:`, error);
+            reject(error);
+          };
+          img.src = imagePath;
+        });
+        
+        await this.applyCropping(img, card, cardSize);
+      } catch (error) {
+        console.error(`Image load failed for ${card.name}:`, error);
+        // Fall through to show placeholder
+        img.style.backgroundColor = '#ddd';
+        img.style.display = 'flex';
+        img.style.alignItems = 'center';
+        img.style.justifyContent = 'center';
+        img.style.color = '#666';
+        img.innerHTML = 'Load Error';
+      }
     } else {
       img.style.backgroundColor = '#ddd';
       img.style.display = 'flex';
@@ -469,78 +490,46 @@ class SocialGraphicsGenerator {
     return cardDiv;
   }
 
-  getCardImagePath(card) {
-    const imageName = `${card.name.replace(/[^a-zA-Z0-9]/g, '_')}_${card.set}_${card.number}.png`;
-    return `thumbnails/sm/${imageName}`;
-  }
-
   async loadImageWithFallback(card, _cardSize = 'normal') {
-    const baseName = card.name.replace(/[^a-zA-Z0-9]/g, '_');
+    const variant = {
+      set: card.set,
+      number: card.number
+    };
 
-    // Special case transformations for known patterns
-    let specialName = card.name;
+    const proxyCandidate = this.buildProxyThumbnailUrl(card.set, card.number);
+    const rawCandidates = buildThumbCandidates(card.name, true, undefined, variant) || [];
 
-    // Handle "Buddy-Buddy" pattern (preserve hyphen in Buddy-Buddy, convert space to underscore)
-    if (card.name.includes('Buddy-Buddy')) {
-      specialName = card.name.replace(/\s+/g, '_'); // Convert spaces to underscores first
-      specialName = specialName.replace(/[^a-zA-Z0-9\-_]/g, '_'); // Keep hyphens and underscores
-    }
-    // Handle "Technical Machine: X" pattern (colon becomes single underscore)
-    else if (card.name.startsWith('Technical Machine:')) {
-      specialName = card.name.replace('Technical Machine:', 'Technical_Machine');
-      specialName = specialName.replace(/[^a-zA-Z0-9]/g, '_');
-    }
-    // Handle cards with special characters that should be preserved (periods, accents, decimals)
-    else if (
-      card.name.includes('Pokégear 3.0') ||
-      card.name.includes('Exp. Share') ||
-      card.name.match(/\d+\.\d+/) || // Decimal numbers like 3.0
-      card.name.match(/\w+\.\s+\w+/)
-    ) {
-      // Abbreviations like "Exp. Share"
-      specialName = card.name.replace(/\s+/g, '_'); // Only convert spaces to underscores
+    const externalCandidates = rawCandidates.filter(candidate => {
+      return typeof candidate === 'string' && candidate.startsWith('http');
+    });
+
+    const candidates = [];
+    if (proxyCandidate) {
+      candidates.push(proxyCandidate);
     }
 
-    // Build Limitless CDN URL
-    const limitlessUrl = this.buildLimitlessUrl(card.set, card.number);
+    externalCandidates.forEach(candidate => {
+      if (!candidates.includes(candidate)) {
+        candidates.push(candidate);
+      }
+    });
 
-    const possiblePaths = [
-      `/thumbnails/sm/${baseName}_${card.set}_${card.number}.png`,
-      `/thumbnails/sm/${card.name.replace(/[^a-zA-Z0-9']/g, '_')}_${card.set}_${card.number}.png`,
-      `/thumbnails/sm/${card.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '_')}_${card.set}_${card.number}.png`,
-      `/thumbnails/sm/${specialName.replace(/[^a-zA-Z0-9-]/g, '_')}_${card.set}_${card.number}.png`,
-      limitlessUrl // Add Limitless CDN as fallback
-    ].filter(Boolean); // Remove null values
-
-    for (const path of possiblePaths) {
+    for (const path of candidates) {
       try {
-        const img = new Image();
-        // Enable CORS for external images
-        img.crossOrigin = 'anonymous';
-        const loadPromise = new Promise((resolve, reject) => {
-          img.onload = () => resolve(path);
-          img.onerror = reject;
-          img.src = path;
-        });
-
-        const result = await Promise.race([
-          loadPromise,
-          new Promise((_resolve, reject) => {
-            // eslint-disable-next-line no-promise-executor-return, prefer-promise-reject-errors
-            return setTimeout(() => reject(new Error('timeout')), 1000);
-          })
-        ]);
-
-        return result;
-      } catch (error) {
+        const blobUrl = await this.fetchImageAsBlob(path);
+        if (blobUrl) {
+          return blobUrl;
+        }
+      } catch (_error) {
         continue;
       }
     }
 
+    console.warn(`Failed to load thumbnail for ${card.name} (${card.set} ${card.number}). Tried ${candidates.length} candidates.`);
     return null;
   }
 
-  buildLimitlessUrl(setCode, number) {
+  buildProxyThumbnailUrl(setCode, number, useSm = true) {
     if (!setCode || !number) {
       return null;
     }
@@ -552,11 +541,49 @@ class SocialGraphicsGenerator {
       return null;
     }
 
-    // Pad number with leading zeroes to at least 3 digits
-    const paddedNumber = normalizedNumber.padStart(3, '0');
+    const size = useSm ? 'sm' : 'xs';
+    return `/thumbnails/${size}/${normalizedSet}/${normalizedNumber}`;
+  }
 
-    // Use SM size for social graphics (small thumbnails)
-    return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${normalizedSet}/${normalizedSet}_${paddedNumber}_R_EN_SM.png`;
+  async fetchImageAsBlob(url) {
+    if (!url) {
+      return null;
+    }
+
+    if (this.imageBlobCache.has(url)) {
+      return this.imageBlobCache.get(url);
+    }
+
+    try {
+      console.log(`Fetching image blob from: ${url}`);
+      
+      // Determine if this is an external URL
+      const isExternal = url.startsWith('http://') || url.startsWith('https://');
+      
+      const response = await fetch(url, {
+        mode: isExternal ? 'no-cors' : 'cors',
+        credentials: 'omit'
+      });
+
+      // For no-cors mode, we can't check response.ok or get blob type
+      // Just try to create the blob
+      const blob = await response.blob();
+      console.log(`Blob created for ${url}:`, blob.type || 'opaque', blob.size, 'bytes');
+      
+      // Skip type validation for opaque responses (no-cors)
+      if (!isExternal && blob.type && !blob.type.startsWith('image/')) {
+        console.warn(`Invalid blob type for ${url}: ${blob.type}`);
+        return null;
+      }
+      
+      const objectUrl = URL.createObjectURL(blob);
+      console.log(`Object URL created: ${objectUrl}`);
+      this.imageBlobCache.set(url, objectUrl);
+      return objectUrl;
+    } catch (error) {
+      console.warn(`Failed to download image blob from ${url}:`, error);
+      return null;
+    }
   }
 
   applyCropping(img, card, _cardSize = 'normal') {
@@ -839,6 +866,8 @@ class SocialGraphicsGenerator {
     } catch (error) {
       console.error('Export failed:', error);
       this.showError('Export failed. Please try again.');
+    } finally {
+      this.cleanupImageBlobs();
     }
   }
 }
@@ -869,3 +898,19 @@ const html2canvas = (() => {
     });
   };
 })();
+
+SocialGraphicsGenerator.prototype.cleanupImageBlobs = function cleanupImageBlobs() {
+  if (!this.imageBlobCache || this.imageBlobCache.size === 0) {
+    return;
+  }
+
+  this.imageBlobCache.forEach(objectUrl => {
+    try {
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      console.warn('Failed to revoke object URL:', error);
+    }
+  });
+
+  this.imageBlobCache.clear();
+};

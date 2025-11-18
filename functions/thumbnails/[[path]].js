@@ -7,16 +7,56 @@
 const LIMITLESS_CDN_BASE = 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci';
 const CACHE_TTL = 86400; // 24 hours
 
+function normalizeCardNumber(raw) {
+  const trimmed = String(raw ?? '').trim();
+  if (!trimmed) {
+    return { trimmed: null, padded: null };
+  }
+
+  const withoutLeadingZeros = trimmed.replace(/^0+/, '') || '0';
+  const parts = withoutLeadingZeros.match(/^(\d+)([A-Za-z]*)$/);
+  if (!parts) {
+    return { trimmed: withoutLeadingZeros, padded: withoutLeadingZeros };
+  }
+
+  const [, digits, suffix = '' ] = parts;
+  const paddedDigits = digits.padStart(3, '0');
+  return {
+    trimmed: withoutLeadingZeros,
+    padded: `${paddedDigits}${suffix}`
+  };
+}
+
+async function fetchWithFallback(urls) {
+  let lastStatus = 404;
+  for (const url of urls) {
+    const response = await fetch(url, {
+      cf: { cacheTtl: CACHE_TTL, cacheEverything: true }
+    });
+
+    if (response.ok) {
+      return response;
+    }
+
+    lastStatus = response.status;
+  }
+
+  throw new Response('Image not found', {
+    status: lastStatus,
+    headers: { 'Content-Type': 'text/plain' }
+  });
+}
+
 export async function onRequest(context) {
   const { request } = context;
   const url = new URL(request.url);
-  
+
   // Parse URL path: /thumbnails/sm/TEF/123
   const pathParts = url.pathname.split('/').filter(Boolean);
-  
+
   // Remove 'thumbnails' prefix, expect [size, set, number]
   const relevantParts = pathParts.slice(1);
-  
+
   if (relevantParts.length !== 3) {
     return new Response(`Invalid path format. Expected: /thumbnails/{size}/{set}/{number}, got: ${url.pathname}`, {
       status: 400,
@@ -35,35 +75,21 @@ export async function onRequest(context) {
     });
   }
 
-  // Validate set and number
   const setCode = set.toUpperCase().trim();
-  const cardNumber = String(number).trim().replace(/^0+/, '') || '0';
+  const { trimmed, padded } = normalizeCardNumber(number);
 
-  if (!setCode || !cardNumber) {
+  if (!setCode || !trimmed) {
     return new Response('Invalid set or number', {
       status: 400,
       headers: { 'Content-Type': 'text/plain' }
     });
   }
 
-  // Build Limitless CDN URL
-  const limitlessUrl = `${LIMITLESS_CDN_BASE}/${setCode}/${setCode}_${cardNumber}_R_EN_${sizeUpper}.png`;
+  const candidateNumbers = Array.from(new Set([trimmed, padded].filter(Boolean)));
+  const candidateUrls = candidateNumbers.map(cardNumber => `${LIMITLESS_CDN_BASE}/${setCode}/${setCode}_${cardNumber}_R_EN_${sizeUpper}.png`);
 
   try {
-    // Fetch from Limitless CDN
-    const response = await fetch(limitlessUrl, {
-      cf: {
-        cacheTtl: CACHE_TTL,
-        cacheEverything: true
-      }
-    });
-
-    if (!response.ok) {
-      return new Response(`Image not found: ${limitlessUrl}`, {
-        status: 404,
-        headers: { 'Content-Type': 'text/plain' }
-      });
-    }
+    const response = await fetchWithFallback(candidateUrls);
 
     // Clone the response to add CORS headers
     const headers = new Headers(response.headers);
@@ -77,6 +103,10 @@ export async function onRequest(context) {
       headers
     });
   } catch (error) {
+    if (error instanceof Response) {
+      return error;
+    }
+
     return new Response(`Failed to fetch image: ${error.message}`, {
       status: 500,
       headers: { 'Content-Type': 'text/plain' }

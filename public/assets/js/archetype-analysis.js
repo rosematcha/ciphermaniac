@@ -42,260 +42,47 @@ async function loadThumbnailConfig() {
   }
 }
 
-const deckThumbnailConfig_DEPRECATED = {
-  'Raging Bolt Ogerpon': {
-    cardSlug: 'Raging_Bolt_ex',
-    set: 'TEF',
-    number: '123',
-    alt: 'Raging Bolt ex'
-  },
-  Gardevoir: {
-    cardSlug: 'Gardevoir_ex',
-    set: 'SVI',
-    number: '086',
-    alt: 'Gardevoir ex'
-  },
-  'Dragapult Dusknoir': {
-    cards: [
-      {
-        cardSlug: 'Dusknoir',
-        set: 'PRE',
-        number: '037',
-        alt: 'Dusknoir',
-        crop: { x: 0, width: 0.5 }
-      },
-      {
-        cardSlug: 'Dragapult_ex',
-        set: 'TWM',
-        number: '130',
-        alt: 'Dragapult ex',
-        crop: { x: 0.5, width: 0.5 }
-      }
-    ],
-    alt: 'Dragapult ex & Dusknoir'
-  },
-  Dragapult: {
-    cardSlug: 'Dragapult_ex',
-    set: 'TWM',
-    number: '130',
-    alt: 'Dragapult ex'
-  },
-  'Dragapult Charizard': {
-    cards: [
-      {
-        cardSlug: 'Dragapult_ex',
-        set: 'TWM',
-        number: '130',
-        alt: 'Dragapult ex',
-        crop: { x: 0, width: 0.5 }
-      },
-      {
-        cardSlug: 'Charizard_ex',
-        set: 'OBF',
-        number: '125',
-        alt: 'Charizard ex',
-        crop: { x: 0.5, width: 0.5 }
-      }
-    ],
-    alt: 'Dragapult ex & Charizard ex'
-  },
-  Gholdengo: {
-    cardSlug: 'Gholdengo_ex',
-    set: 'PAR',
-    number: '139',
-    alt: 'Gholdengo ex'
-  },
-  'Gholdengo Joltik Box': {
-    cards: [
-      {
-        cardSlug: 'Gholdengo_ex',
-        set: 'PAR',
-        number: '139',
-        alt: 'Gholdengo ex',
-        crop: { x: 0, y: 0, width: 0.5 }
-      },
-      {
-        cardSlug: 'Joltik',
-        set: 'SCR',
-        number: '050',
-        alt: 'Joltik',
-        crop: { x: 0.5, y: 0, width: 0.5 }
-      }
-    ],
-    alt: 'Gholdengo ex & Joltik'
-  },
-  'Gholdengo Lunatone': {
-    cards: [
-      {
-        cardSlug: 'Gholdengo_ex',
-        set: 'PAR',
-        number: '139',
-        alt: 'Gholdengo ex',
-        crop: { x: 0, width: 0.5 }
-      },
-      {
-        cardSlug: 'Lunatone',
-        set: 'MEG',
-        number: '074',
-        alt: 'Lunatone',
-        crop: { x: 0.5, width: 0.5 }
-      }
-    ],
-    alt: 'Gholdengo ex & Lunatone'
-  },
-  'Gardevoir Jellicent': {
-    cards: [
-      {
-        cardSlug: 'Gardevoir_ex',
-        set: 'SVI',
-        number: '086',
-        alt: 'Gardevoir ex',
-        crop: { x: 0, width: 0.5 }
-      },
-      {
-        cardSlug: 'Jellicent_ex',
-        set: 'WHT',
-        number: '045',
-        alt: 'Jellicent ex',
-        crop: { x: 0.5, width: 0.5 }
-      }
-    ],
-    alt: 'Gardevoir ex & Jellicent ex'
-  },
-  'Tera Box': {
-    cardSlug: 'Terapagos_ex',
-    set: 'SCR',
-    number: '128',
-    alt: 'Terapagos ex'
-  },
-  'Joltik Box': {
-    cardSlug: 'Joltik',
-    set: 'SCR',
-    number: '050',
-    alt: 'Joltik'
-  },
-  'Charizard Pidgeot': {
-    cardSlug: 'Charizard_ex',
-    set: 'OBF',
-    number: '125',
-    alt: 'Charizard ex'
-  },
-  'Grimmsnarl Froslass': {
-    cardSlug: "Marnie's_Grimmsnarl_ex",
-    set: 'DRI',
-    number: '136',
-    alt: "Marnie's Grimmsnarl ex"
-  },
-  'Flareon Noctowl': {
-    cardSlug: 'Flareon_ex',
-    set: 'PRE',
-    number: '014',
-    alt: 'Flareon ex'
-  },
-  Ceruledge: {
-    cardSlug: 'Ceruledge_ex',
-    set: 'SSP',
-    number: '036',
-    alt: 'Ceruledge ex'
-  },
-  'Mega Venusaur': {
-    cardSlug: 'Mega_Venusaur_ex',
-    set: 'MEG',
-    number: '003',
-    alt: 'Mega Venusaur ex'
-  },
-  Alakazam: {
-    cardSlug: 'Alakazam_ex',
-    set: 'MEG',
-    number: '056',
-    alt: 'Alakazam ex'
-  },
-  'Alakazam Dudunsparce': {
-    cardSlug: 'Alakazam_ex',
-    set: 'MEG',
-    number: '056',
-    alt: 'Alakazam ex'
-  },
-  Lucario: {
-    cardSlug: 'Lucario_ex',
-    set: 'MEG',
-    number: '077',
-    alt: 'Lucario ex'
-  },
-  'Lucario Hariyama': {
-    cardSlug: 'Mega_Lucario_ex',
-    set: 'MEG',
-    number: '077',
-    alt: 'Mega Lucario ex'
-  },
-  Slowking: {
-    cardSlug: 'Slowking',
-    set: 'SCR',
-    number: '058',
-    alt: 'Slowking'
-  },
-  Conkeldurr: {
-    cardSlug: 'Conkeldurr',
-    set: 'TWM',
-    number: '105',
-    alt: 'Conkeldurr'
-  },
-  Crustle: { cardSlug: 'Crustle', set: 'DRI', number: '012', alt: 'Crustle' },
-  "Ethan's Typhlosion": {
-    cardSlug: "Ethan's_Typhlosion",
-    set: 'DRI',
-    number: '034',
-    alt: "Ethan's Typhlosion"
-  },
-  "N's Zoroark": {
-    cardSlug: "N's_Zoroark_ex",
-    set: 'JTG',
-    number: '098',
-    alt: "N's Zoroark ex"
-  },
-  'Zoroark Lucario': {
-    cardSlug: "N's_Zoroark_ex",
-    set: 'JTG',
-    number: '098',
-    alt: "N's Zoroark ex"
-  },
-  'Pidgeot Control': {
-    cardSlug: 'Pidgeot_ex',
-    set: 'OBF',
-    number: '164',
-    alt: 'Pidgeot ex'
-  },
-  "Cynthia's Garchomp": {
-    cardSlug: "Cynthia's_Garchomp_ex",
-    set: 'DRI',
-    number: '104',
-    alt: "Cynthia's Garchomp ex"
-  },
-  'Ho-Oh Armarouge': {
-    cardSlug: "Ethan's_Ho-Oh_ex",
-    set: 'DRI',
-    number: '039',
-    alt: 'Ho-Oh ex'
-  },
-  'Froslass Munkidori': {
-    cardSlug: 'Froslass',
-    set: 'TWM',
-    number: '053',
-    alt: 'Froslass'
-  },
-  'Mega Absol Box': {
-    cardSlug: 'Mega_Absol_ex',
-    set: 'MEG',
-    number: '086',
-    alt: 'Mega Absol ex'
-  },
-  'Milotic Farigiraf': {
-    cardSlug: 'Milotic_ex',
-    set: 'SSP',
-    number: '042',
-    alt: 'Milotic ex'
+function sanitizeCardNumber(rawNumber) {
+  if (rawNumber == null) {
+    return null;
   }
-};
+
+  const trimmed = String(rawNumber).trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const parts = trimmed.match(/^0*(\d+)([A-Za-z]*)$/);
+  if (parts) {
+    const [, digits, suffix = ''] = parts;
+    const normalizedDigits = digits.replace(/^0+/, '') || '0';
+    return `${normalizedDigits}${suffix}`;
+  }
+
+  return trimmed.replace(/^0+/, '') || '0';
+}
+
+function formatCardNumberForCdn(rawNumber) {
+  const sanitized = sanitizeCardNumber(rawNumber);
+  if (!sanitized) {
+    return null;
+  }
+
+  const parts = sanitized.match(/^(\d+)([A-Za-z]*)$/);
+  if (!parts) {
+    return sanitized;
+  }
+
+  const [, digits, suffix = ''] = parts;
+  const paddedDigits = digits.padStart(3, '0');
+  return `${paddedDigits}${suffix}`;
+}
+
+function buildLimitlessCdnUrl(setCode, cardNumber, size = 'SM') {
+  return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${setCode}/${setCode}_${cardNumber}_R_EN_${size}.png`;
+}
+
+// Legacy hard-coded thumbnail configuration removed in favor of external JSON map
 
 function normalizeDeckName(label) {
   return label
@@ -344,16 +131,12 @@ function buildThumbnailSourceFromCard(card) {
     return null;
   }
   
-  // Use local proxy for Limitless CDN images (avoids CORS issues)
   const normalizedSet = String(card.set).toUpperCase().trim();
-  // Remove leading zeroes from card number (Limitless format)
-  const normalizedNumber = String(card.number).trim().replace(/^0+/, '') || '0';
-  
-  if (normalizedSet && normalizedNumber) {
-    return `/thumbnails/sm/${normalizedSet}/${normalizedNumber}`;
+  const cdnNumber = formatCardNumberForCdn(card.number);
+  if (!normalizedSet || !cdnNumber) {
+    return null;
   }
-  
-  return null;
+  return buildLimitlessCdnUrl(normalizedSet, cdnNumber, 'SM');
 }
 
 function isSplitThumbnailConfig(cardIds) {
@@ -402,7 +185,7 @@ function applySplitThumbnail(thumbnailEl, baseImgEl, fallbackEl, sources, usePla
     splitImg.className = 'analysis-list-item__thumbnail-image analysis-list-item__thumbnail-image--split';
     splitImg.loading = 'lazy';
     splitImg.decoding = 'async';
-    splitImg.alt = deckName.replace(/_/g, ' ');
+    splitImg.alt = '';
     splitImg.onerror = handleError;
 
     // Auto-apply standard crop for split thumbnails
@@ -503,7 +286,7 @@ function applyDeckThumbnail(thumbnailEl, imgEl, fallbackEl, deckName) {
   thumbnailElement.classList.remove('is-placeholder');
   imageElement.style.display = 'block';
   imageElement.dataset.cropped = '';
-  imageElement.alt = deckName.replace(/_/g, ' ');
+  imageElement.alt = '';
   imageElement.onerror = usePlaceholder;
 
   imageElement.onload = () => {
