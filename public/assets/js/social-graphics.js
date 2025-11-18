@@ -421,13 +421,27 @@ class SocialGraphicsGenerator {
       img.alt = card.name;
       
       // Wait for the blob URL to actually load before cropping
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-        img.src = imagePath;
-      });
-      
-      await this.applyCropping(img, card, cardSize);
+      try {
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = (error) => {
+            console.error(`Failed to load blob image for ${card.name}:`, error);
+            reject(error);
+          };
+          img.src = imagePath;
+        });
+        
+        await this.applyCropping(img, card, cardSize);
+      } catch (error) {
+        console.error(`Image load failed for ${card.name}:`, error);
+        // Fall through to show placeholder
+        img.style.backgroundColor = '#ddd';
+        img.style.display = 'flex';
+        img.style.alignItems = 'center';
+        img.style.justifyContent = 'center';
+        img.style.color = '#666';
+        img.innerHTML = 'Load Error';
+      }
     } else {
       img.style.backgroundColor = '#ddd';
       img.style.display = 'flex';
