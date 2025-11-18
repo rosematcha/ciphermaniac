@@ -523,17 +523,27 @@ class SocialGraphicsGenerator {
     }
 
     try {
+      console.log(`Fetching image blob from: ${url}`);
       const response = await fetch(url, {
         mode: 'cors',
         credentials: 'omit'
       });
 
       if (!response.ok) {
+        console.warn(`Fetch failed for ${url}: ${response.status}`);
         throw new Error(`Failed to fetch image: ${response.status}`);
       }
 
       const blob = await response.blob();
+      console.log(`Blob created for ${url}:`, blob.type, blob.size, 'bytes');
+      
+      if (!blob.type.startsWith('image/')) {
+        console.warn(`Invalid blob type for ${url}: ${blob.type}`);
+        return null;
+      }
+      
       const objectUrl = URL.createObjectURL(blob);
+      console.log(`Object URL created: ${objectUrl}`);
       this.imageBlobCache.set(url, objectUrl);
       return objectUrl;
     } catch (error) {
