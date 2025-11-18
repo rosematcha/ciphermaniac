@@ -8,6 +8,7 @@ class SocialGraphicsGenerator {
     this.previousTournamentData = null;
     this.comparisonTournamentData = null;
     this.consistentLeaders = new Set();
+    this.imageBlobCache = new Map();
 
     this.init();
   }
@@ -480,24 +481,10 @@ class SocialGraphicsGenerator {
 
     for (const path of candidates) {
       try {
-        const img = new Image();
-        if (this.isSameOriginUrl(path)) {
-          img.crossOrigin = 'anonymous';
+        const blobUrl = await this.fetchImageAsBlob(path);
+        if (blobUrl) {
+          return blobUrl;
         }
-        const loadPromise = new Promise((resolve, reject) => {
-          img.onload = () => resolve(path);
-          img.onerror = reject;
-          img.src = path;
-        });
-
-        const result = await Promise.race([
-          loadPromise,
-          new Promise((_resolve, reject) => {
-            return setTimeout(() => reject(new Error('timeout')), 3000);
-          })
-        ]);
-
-        return result;
       } catch (_error) {
         continue;
       }
@@ -507,19 +494,32 @@ class SocialGraphicsGenerator {
     return null;
   }
 
-  isSameOriginUrl(url) {
-    const hasScheme = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(url);
-    const isProtocolRelative = url.startsWith('//');
+  async fetchImageAsBlob(url) {
+    if (!url) {
+      return null;
+    }
 
-    if (!hasScheme && !isProtocolRelative) {
-      return true;
+    if (this.imageBlobCache.has(url)) {
+      return this.imageBlobCache.get(url);
     }
 
     try {
-      const parsed = new URL(url, window.location.origin);
-      return parsed.origin === window.location.origin;
-    } catch (_error) {
-      return false;
+      const response = await fetch(url, {
+        mode: 'cors',
+        credentials: 'omit'
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      this.imageBlobCache.set(url, objectUrl);
+      return objectUrl;
+    } catch (error) {
+      console.warn(`Failed to download image blob from ${url}:`, error);
+      return null;
     }
   }
 
@@ -803,6 +803,8 @@ class SocialGraphicsGenerator {
     } catch (error) {
       console.error('Export failed:', error);
       this.showError('Export failed. Please try again.');
+    } finally {
+      this.cleanupImageBlobs();
     }
   }
 }
@@ -833,3 +835,19 @@ const html2canvas = (() => {
     });
   };
 })();
+
+SocialGraphicsGenerator.prototype.cleanupImageBlobs = function cleanupImageBlobs() {
+  if (!this.imageBlobCache || this.imageBlobCache.size === 0) {
+    return;
+  }
+
+  this.imageBlobCache.forEach(objectUrl => {
+    try {
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      console.warn('Failed to revoke object URL:', error);
+    }
+  });
+
+  this.imageBlobCache.clear();
+};
