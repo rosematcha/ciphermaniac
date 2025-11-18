@@ -476,7 +476,35 @@ class SocialGraphicsGenerator {
       number: card.number
     };
 
-    const candidates = buildThumbCandidates(card.name, true, undefined, variant);
+    const normalizedSet = card.set ? String(card.set).toUpperCase().trim() : '';
+    const normalizedNumber = card.number ? String(card.number).trim() : '';
+
+    const proxyCandidate = normalizedSet && normalizedNumber ? `/thumbnails/sm/${normalizedSet}/${normalizedNumber}` : null;
+
+    const rawCandidates = buildThumbCandidates(card.name, true, undefined, variant) || [];
+    const candidates = [];
+
+    if (proxyCandidate) {
+      candidates.push(proxyCandidate);
+    }
+
+    rawCandidates.forEach(candidate => {
+      if (!candidate) {
+        return;
+      }
+
+      // Skip direct CDN URLs that fail CORS; rely on proxy instead
+      if (candidate.startsWith('https://limitlesstcg')) {
+        if (proxyCandidate && !candidates.includes(proxyCandidate)) {
+          candidates.push(proxyCandidate);
+        }
+        return;
+      }
+
+      if (!candidates.includes(candidate)) {
+        candidates.push(candidate);
+      }
+    });
 
     for (const path of candidates) {
       try {
