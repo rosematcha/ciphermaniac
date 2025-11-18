@@ -476,50 +476,14 @@ class SocialGraphicsGenerator {
       number: card.number
     };
 
-    const normalizedSet = card.set ? String(card.set).toUpperCase().trim() : '';
-    const normalizedNumber = card.number ? String(card.number).trim() : '';
-
-    const proxyCandidate = normalizedSet && normalizedNumber ? `/thumbnails/sm/${normalizedSet}/${normalizedNumber}` : null;
-
-    const rawCandidates = buildThumbCandidates(card.name, true, undefined, variant) || [];
-    const candidates = [];
-
-    if (proxyCandidate) {
-      candidates.push(proxyCandidate);
-    }
-
-    rawCandidates.forEach(candidate => {
-      if (!candidate) {
-        return;
-      }
-
-      // Transform direct CDN URLs into their proxied equivalents so we retain CORS-safe fetching
-      if (candidate.startsWith('https://limitlesstcg')) {
-        const match = candidate.match(/\/tpci\/(\w+)\/(\w+)_([\w]+)_R_EN_(SM|XS)\.png/i);
-        if (match) {
-          const [, setCode, setPrefix, numberPart, sizePart] = match;
-          const normalizedSet = (setCode || setPrefix || '').toUpperCase();
-          const normalizedNumber = numberPart || '';
-          const proxySize = sizePart?.toLowerCase() === 'xs' ? 'xs' : 'sm';
-          const proxied = normalizedSet && normalizedNumber ? `/thumbnails/${proxySize}/${normalizedSet}/${normalizedNumber}` : null;
-          if (proxied && !candidates.includes(proxied)) {
-            candidates.push(proxied);
-          }
-        } else if (proxyCandidate && !candidates.includes(proxyCandidate)) {
-          candidates.push(proxyCandidate);
-        }
-        return;
-      }
-
-      if (!candidates.includes(candidate)) {
-        candidates.push(candidate);
-      }
-    });
+    const candidates = buildThumbCandidates(card.name, true, undefined, variant) || [];
 
     for (const path of candidates) {
       try {
         const img = new Image();
-        img.crossOrigin = 'anonymous';
+        if (this.isSameOriginUrl(path)) {
+          img.crossOrigin = 'anonymous';
+        }
         const loadPromise = new Promise((resolve, reject) => {
           img.onload = () => resolve(path);
           img.onerror = reject;
@@ -541,6 +505,22 @@ class SocialGraphicsGenerator {
 
     console.warn(`Failed to load thumbnail for ${card.name} (${card.set} ${card.number}). Tried ${candidates.length} candidates.`);
     return null;
+  }
+
+  isSameOriginUrl(url) {
+    const hasScheme = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(url);
+    const isProtocolRelative = url.startsWith('//');
+
+    if (!hasScheme && !isProtocolRelative) {
+      return true;
+    }
+
+    try {
+      const parsed = new URL(url, window.location.origin);
+      return parsed.origin === window.location.origin;
+    } catch (_error) {
+      return false;
+    }
   }
 
   applyCropping(img, card, _cardSize = 'normal') {
