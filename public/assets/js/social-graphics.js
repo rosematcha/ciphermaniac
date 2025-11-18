@@ -1,4 +1,5 @@
 import { fetchReportResource, fetchTournamentsList } from './api.js';
+import { buildThumbCandidates } from './thumbs.js';
 
 class SocialGraphicsGenerator {
   constructor() {
@@ -469,58 +470,39 @@ class SocialGraphicsGenerator {
     return cardDiv;
   }
 
-  getCardImagePath(card) {
-    return this.buildLimitlessUrl(card.set, card.number);
-  }
-
   async loadImageWithFallback(card, _cardSize = 'normal') {
-    // Use Limitless CDN directly as the primary source
-    const limitlessUrl = this.buildLimitlessUrl(card.set, card.number);
-    
-    if (!limitlessUrl) {
-      return null;
+    const variant = {
+      set: card.set,
+      number: card.number
+    };
+
+    const candidates = buildThumbCandidates(card.name, true, undefined, variant);
+
+    for (const path of candidates) {
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        const loadPromise = new Promise((resolve, reject) => {
+          img.onload = () => resolve(path);
+          img.onerror = reject;
+          img.src = path;
+        });
+
+        const result = await Promise.race([
+          loadPromise,
+          new Promise((_resolve, reject) => {
+            return setTimeout(() => reject(new Error('timeout')), 3000);
+          })
+        ]);
+
+        return result;
+      } catch (_error) {
+        continue;
+      }
     }
 
-    try {
-      const img = new Image();
-      // Enable CORS for external images
-      img.crossOrigin = 'anonymous';
-      const loadPromise = new Promise((resolve, reject) => {
-        img.onload = () => resolve(limitlessUrl);
-        img.onerror = reject;
-        img.src = limitlessUrl;
-      });
-
-      const result = await Promise.race([
-        loadPromise,
-        new Promise((_resolve, reject) => {
-          // eslint-disable-next-line no-promise-executor-return, prefer-promise-reject-errors
-          return setTimeout(() => reject(new Error('timeout')), 3000);
-        })
-      ]);
-
-      return result;
-    } catch (error) {
-      console.warn(`Failed to load image from Limitless CDN for ${card.name} (${card.set} ${card.number})`);
-      return null;
-    }
-  }
-
-  buildLimitlessUrl(setCode, number) {
-    if (!setCode || !number) {
-      return null;
-    }
-
-    const normalizedSet = String(setCode).toUpperCase().trim();
-    const normalizedNumber = String(number).trim();
-
-    if (!normalizedSet || !normalizedNumber) {
-      return null;
-    }
-
-    // Use the proxy endpoint which adds CORS headers
-    // Format: /thumbnails/sm/SET/NUMBER
-    return `/thumbnails/sm/${normalizedSet}/${normalizedNumber}`;
+    console.warn(`Failed to load thumbnail for ${card.name} (${card.set} ${card.number}). Tried ${candidates.length} candidates.`);
+    return null;
   }
 
   applyCropping(img, card, _cardSize = 'normal') {
