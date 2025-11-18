@@ -7,6 +7,13 @@ import { logger } from './utils/logger.js';
 import { AppError, ErrorTypes, validateType } from './utils/errorHandler.js';
 
 /**
+ * @typedef {object} CardDistributionEntry
+ * @property {number} [copies]
+ * @property {number} [players]
+ * @property {number} [percent]
+ */
+
+/**
  * @typedef {object} CardItem
  * @property {number} [rank] - Card rank in usage
  * @property {string} name - Card name
@@ -16,10 +23,11 @@ import { AppError, ErrorTypes, validateType } from './utils/errorHandler.js';
  * @property {string} [category] - Card classification slug (e.g., 'pokemon', 'trainer/supporter')
  * @property {string} [trainerType] - Trainer subtype when category is trainer (e.g., 'supporter')
  * @property {string} [energyType] - Energy subtype when category is energy (e.g., 'basic')
+ * @property {boolean} [aceSpec] - Whether the card is an ACE SPEC
  * @property {number} found - Number of decks containing this card
  * @property {number} total - Total number of decks
  * @property {number} pct - Usage percentage
- * @property {number[]} [dist] - Distribution array
+ * @property {CardDistributionEntry[]} [dist] - Distribution data across deck counts
  */
 
 /**
@@ -122,6 +130,10 @@ function validateAndCleanItem(item, index) {
   // Optional fields
   if (typeof rank === 'number') {
     cleanItem.rank = rank;
+  }
+
+  if (item.aceSpec === true) {
+    cleanItem.aceSpec = true;
   }
 
   if (Array.isArray(dist)) {

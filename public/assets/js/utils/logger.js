@@ -71,7 +71,8 @@ export class Logger {
   debug(message, ...args) {
     if (this._shouldLog('debug')) {
       // Use console.log for broader support where console.debug may be filtered
-      const parts = this.constructor.format('debug', message, args);
+      const ctor = /** @type {typeof Logger} */ (this.constructor);
+      const parts = ctor.format('debug', message, args);
       (console.debug || console.log).apply(console, parts);
     }
   }
@@ -82,7 +83,8 @@ export class Logger {
    * @param {...any} args
    */
   info(message, ...args) {
-    console.log(...this.constructor.format('info', message, args));
+    const ctor = /** @type {typeof Logger} */ (this.constructor);
+    console.log(...ctor.format('info', message, args));
   }
 
   /**
@@ -91,7 +93,8 @@ export class Logger {
    * @param {...any} args
    */
   warn(message, ...args) {
-    console.warn(...this.constructor.format('warn', message, args));
+    const ctor = /** @type {typeof Logger} */ (this.constructor);
+    console.warn(...ctor.format('warn', message, args));
   }
 
   /**
@@ -100,7 +103,8 @@ export class Logger {
    * @param {...any} args
    */
   error(message, ...args) {
-    console.error(...this.constructor.format('error', message, args));
+    const ctor = /** @type {typeof Logger} */ (this.constructor);
+    console.error(...ctor.format('error', message, args));
   }
 
   /**

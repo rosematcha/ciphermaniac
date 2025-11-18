@@ -18,7 +18,8 @@
   },
   "include": [
     "../public/assets/js/**/*.js",
-    "../types/**/*.d.ts"
+    "../types/**/*.d.ts",
+    "../global.d.ts"
   ],
   "exclude": [
     "../node_modules",

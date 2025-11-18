@@ -1551,7 +1551,7 @@ function loadFilterCombination(filters) {
     try {
       // All filtering is performed client-side
       const { fetchAllDecks, generateReportForFilters } = await import('./utils/clientSideFiltering.js');
-      
+
       logger.info('Loading decks for client-side filtering', {
         filterCount: filters.length,
         tournament: state.tournament,
@@ -1598,11 +1598,12 @@ function _buildDistributionFromInstances(instances, found) {
     const copies = Number(entry?.count) || 0;
     histogram.set(copies, (histogram.get(copies) || 0) + 1);
   });
+  const totalFound = Array.isArray(found) ? found.length : Number(found) || 0;
   return Array.from(histogram.entries())
     .map(([copies, players]) => ({
       copies,
       players,
-      percent: found ? Math.round(((players / found) * 100 + Number.EPSILON) * 100) / 100 : 0
+      percent: totalFound > 0 ? Math.round(((players / totalFound) * 100 + Number.EPSILON) * 100) / 100 : 0
     }))
     .sort((itemA, itemB) => {
       if (itemB.percent !== itemA.percent) {

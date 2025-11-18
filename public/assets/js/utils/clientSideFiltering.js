@@ -19,7 +19,7 @@ const OPERATOR_COMPARATORS = {
 
 /**
  * Builds a card identifier from set and number
- * Matches the server-side normalization in onlineMetaIncludeExclude.js
+ * Matches the offline include/exclude generator in .github/scripts/run-online-meta.mjs
  * @param {string} set
  * @param {string|number} number
  * @returns {string}

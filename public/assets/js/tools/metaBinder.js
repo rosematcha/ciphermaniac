@@ -210,9 +210,9 @@ function createCardElement(card, options = {}) {
   const template = ensureCardTemplate();
   const clone = /** @type {HTMLElement} */ (template.content.firstElementChild.cloneNode(true));
   const img = /** @type {HTMLImageElement|null} */ (clone.querySelector('img'));
-  const copies = clone.querySelector('.binder-card__copies');
-  const nameEl = clone.querySelector('.binder-card__name');
-  const metaEl = clone.querySelector('.binder-card__meta');
+  const copies = /** @type {HTMLElement|null} */ (clone.querySelector('.binder-card__copies'));
+  const nameEl = /** @type {HTMLElement|null} */ (clone.querySelector('.binder-card__name'));
+  const metaEl = /** @type {HTMLElement|null} */ (clone.querySelector('.binder-card__meta'));
 
   if (copies) {
     const totalCopies = Math.max(1, Number(card.copyTotal) || Number(card.maxCopies) || 1);

@@ -5,10 +5,6 @@ import {
   sanitizeForFilename,
   sanitizeForPath
 } from './reportBuilder.js';
-import {
-  generateIncludeExcludeReports,
-  writeIncludeExcludeReports
-} from './onlineMetaIncludeExclude.js';
 import { loadCardTypesDatabase, enrichCardWithType } from './cardTypesDatabase.js';
 import { enrichDecksWithOnTheFlyFetch } from './cardTypeFetcher.js';
 
@@ -21,6 +17,7 @@ const MAX_TOURNAMENT_PAGES = 10;
 const SUPPORTED_FORMATS = new Set(['STANDARD']);
 const DEFAULT_DETAILS_CONCURRENCY = 5;
 const DEFAULT_STANDINGS_CONCURRENCY = 4;
+const DEFAULT_R2_CONCURRENCY = 6;
 
 async function runWithConcurrency(items, limit, handler) {
   if (!Array.isArray(items) || items.length === 0) {
@@ -480,7 +477,6 @@ function buildArchetypeReports(decks, minPercent) {
   const deckTotal = decks.length || 0;
   const minDecks = Math.max(1, Math.ceil(deckTotal * (minPercent / 100)));
   const archetypeFiles = [];
-  const deckMap = new Map();
 
   groups.forEach(group => {
     if (group.decks.length < minDecks) {
@@ -494,7 +490,6 @@ function buildArchetypeReports(decks, minPercent) {
       data,
       deckCount: group.decks.length
     });
-    deckMap.set(group.filenameBase, group.decks);
   });
 
   archetypeFiles.sort((a, b) => b.deckCount - a.deckCount);
@@ -502,8 +497,7 @@ function buildArchetypeReports(decks, minPercent) {
   return {
     archetypeFiles,
     archetypeIndex: archetypeFiles.map(file => file.base).sort((a, b) => a.localeCompare(b)),
-    minDecks,
-    deckMap
+    minDecks
   };
 }
 
@@ -517,6 +511,23 @@ async function putJson(env, key, data) {
       contentType: 'application/json'
     }
   });
+}
+
+async function batchPutJson(env, entries, concurrency = DEFAULT_R2_CONCURRENCY) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return;
+  }
+
+  const normalized = entries
+    .filter(entry => entry && entry.key && entry.data !== undefined)
+    .map(entry => ({ key: entry.key, data: entry.data }));
+
+  if (!normalized.length) {
+    return;
+  }
+
+  const limit = Math.max(1, Number(concurrency) || DEFAULT_R2_CONCURRENCY);
+  await runWithConcurrency(normalized, limit, async entry => putJson(env, entry.key, entry.data));
 }
 
 async function readJson(env, key) {
@@ -621,7 +632,7 @@ export async function runOnlineMetaJob(env, options = {}) {
 
   const deckTotal = decks.length;
   const masterReport = generateReportFromDecks(decks, deckTotal, decks);
-  const { archetypeFiles, archetypeIndex, minDecks, deckMap } = buildArchetypeReports(
+  const { archetypeFiles, archetypeIndex, minDecks } = buildArchetypeReports(
     decks,
     MIN_USAGE_PERCENT
   );
@@ -647,49 +658,18 @@ export async function runOnlineMetaJob(env, options = {}) {
     }))
   };
 
-  await putJson(env, `${REPORT_BASE_KEY}/master.json`, masterReport);
-  await putJson(env, `${REPORT_BASE_KEY}/meta.json`, meta);
-  await putJson(env, `${REPORT_BASE_KEY}/decks.json`, decks);
-  await putJson(env, `${REPORT_BASE_KEY}/archetypes/index.json`, archetypeIndex);
-
-  for (const file of archetypeFiles) {
-    await putJson(env, `${REPORT_BASE_KEY}/archetypes/${file.filename}`, file.data);
-  }
-
-  // Generate include-exclude reports for eligible archetypes
-  console.info('[OnlineMeta] Generating include-exclude reports...');
-  let includeExcludeCount = 0;
-  const includeExcludeErrors = [];
-  
-  for (const file of archetypeFiles) {
-    const archetypeName = file.base.replace(/_/g, ' ');
-    const archetypeDecks = deckMap.get(file.base) || [];
-
-    try {
-      const reports = await generateIncludeExcludeReports(
-        archetypeName,
-        archetypeDecks,
-        file.data,
-        env
-      );
-
-      if (reports) {
-        await writeIncludeExcludeReports(archetypeName, reports, env, TARGET_FOLDER);
-        includeExcludeCount++;
-      }
-    } catch (error) {
-      console.error(`[OnlineMeta] Failed to generate include-exclude for ${archetypeName}:`, error);
-      includeExcludeErrors.push({
-        archetype: archetypeName,
-        error: error.message || String(error)
-      });
-    }
-  }
-
-  console.info('[OnlineMeta] Include-exclude generation complete', {
-    archetypesWithReports: includeExcludeCount,
-    errors: includeExcludeErrors.length
-  });
+  const r2Concurrency = Math.max(1, options.r2Concurrency || DEFAULT_R2_CONCURRENCY);
+  const baseWrites = [
+    { key: `${REPORT_BASE_KEY}/master.json`, data: masterReport },
+    { key: `${REPORT_BASE_KEY}/meta.json`, data: meta },
+    { key: `${REPORT_BASE_KEY}/decks.json`, data: decks },
+    { key: `${REPORT_BASE_KEY}/archetypes/index.json`, data: archetypeIndex }
+  ];
+  const archetypeWrites = archetypeFiles.map(file => ({
+    key: `${REPORT_BASE_KEY}/archetypes/${file.filename}`,
+    data: file.data
+  }));
+  await batchPutJson(env, [...baseWrites, ...archetypeWrites], r2Concurrency);
 
   // Note: Online tournaments are NOT added to tournaments.json
   // They are treated as a special case in the UI
@@ -697,8 +677,7 @@ export async function runOnlineMetaJob(env, options = {}) {
   console.info('[OnlineMeta] Aggregated online tournaments', {
     deckTotal,
     tournamentCount: tournaments.length,
-    archetypes: archetypeFiles.length,
-    includeExcludeReports: includeExcludeCount
+    archetypes: archetypeFiles.length
   });
 
   return {
@@ -706,8 +685,6 @@ export async function runOnlineMetaJob(env, options = {}) {
     decks: deckTotal,
     tournaments: tournaments.length,
     archetypes: archetypeFiles.length,
-    includeExcludeReports: includeExcludeCount,
-    includeExcludeErrors,
     folder: TARGET_FOLDER,
     diagnostics
   };

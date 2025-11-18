@@ -4,6 +4,32 @@
  * @module lib/cardTypeFetcher
  */
 
+const RATE_LIMIT_DELAY_MS = 250;
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function persistCardTypesDatabase(env, database) {
+  if (!env?.REPORTS?.put || !database) {
+    return;
+  }
+
+  await env.REPORTS.put(
+    'assets/data/card-types.json',
+    JSON.stringify(database, null, 2),
+    {
+      httpMetadata: {
+        contentType: 'application/json'
+      }
+    }
+  );
+
+  if (env.CARD_TYPES_KV) {
+    await env.CARD_TYPES_KV.delete('card-types-database');
+  }
+}
+
 function buildNumberVariants(value) {
   if (value === undefined || value === null) {
     return [];
@@ -172,11 +198,12 @@ function needsTypeEnrichment(card) {
  * @param {Object} env - Cloudflare Workers environment
  * @returns {Promise<Object>} - Enriched card with type info
  */
-export async function fetchAndCacheCardType(card, database, env) {
+export async function fetchAndCacheCardType(card, database, env, options = {}) {
   if (!card || !card.set || !card.number) {
     return card;
   }
 
+  const { persist = true, recordUpdates } = options;
   const key = `${card.set}::${card.number}`;
   
   // Check if already in database
@@ -194,43 +221,14 @@ export async function fetchAndCacheCardType(card, database, env) {
     return card;
   }
 
-  // Update database in memory
   database[key] = typeInfo;
+  if (recordUpdates) {
+    recordUpdates[key] = typeInfo;
+  }
 
-  // Update persistent storage (R2)
-  try {
-    if (env.REPORTS) {
-      // Read current database from R2
-      let currentDb = {};
-      const existingObject = await env.REPORTS.get('assets/data/card-types.json');
-      if (existingObject) {
-        const text = await existingObject.text();
-        currentDb = JSON.parse(text);
-      }
-
-      // Add new entry
-      currentDb[key] = typeInfo;
-
-      // Write back to R2
-      await env.REPORTS.put(
-        'assets/data/card-types.json',
-        JSON.stringify(currentDb, null, 2),
-        {
-          httpMetadata: {
-            contentType: 'application/json',
-          },
-        }
-      );
-
-      console.log(`[CardTypeFetcher] Updated database with ${key}`);
-
-      // Invalidate KV cache if available
-      if (env.CARD_TYPES_KV) {
-        await env.CARD_TYPES_KV.delete('card-types-database');
-      }
-    }
-  } catch (error) {
-    console.error(`[CardTypeFetcher] Failed to update database:`, error.message);
+  if (persist) {
+    await persistCardTypesDatabase(env, database);
+    console.log(`[CardTypeFetcher] Updated database with ${key}`);
   }
 
   // Enrich the card object
@@ -288,19 +286,26 @@ export async function batchFetchAndCacheCardTypes(cards, database, env) {
 
   console.log(`[CardTypeFetcher] Batch fetching ${cardsNeedingFetch.length} missing card types...`);
 
-  // Fetch with rate limiting (250ms between requests = 4 req/sec)
-  const enrichedCards = [];
-  for (const card of cardsNeedingFetch) {
-    const enriched = await fetchAndCacheCardType(card, database, env);
-    enrichedCards.push(enriched);
-    
-    // Rate limit: wait 250ms between requests
-    if (cardsNeedingFetch.indexOf(card) < cardsNeedingFetch.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 250));
+  const pendingUpdates = {};
+  for (let index = 0; index < cardsNeedingFetch.length; index += 1) {
+    const card = cardsNeedingFetch[index];
+    await fetchAndCacheCardType(card, database, env, {
+      persist: false,
+      recordUpdates: pendingUpdates
+    });
+
+    if (index < cardsNeedingFetch.length - 1) {
+      await delay(RATE_LIMIT_DELAY_MS);
     }
   }
 
-  console.log(`[CardTypeFetcher] Batch fetch complete. Fetched ${enrichedCards.length} card types.`);
+  const fetchedCount = Object.keys(pendingUpdates).length;
+  if (fetchedCount > 0) {
+    await persistCardTypesDatabase(env, database);
+    console.log(`[CardTypeFetcher] Batch fetch complete. Persisted ${fetchedCount} card types.`);
+  } else {
+    console.log('[CardTypeFetcher] Batch fetch complete. No new card types required.');
+  }
 
   return cards;
 }

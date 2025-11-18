@@ -275,17 +275,24 @@ function closeAllDropdowns(exceptKey) {
 }
 
 function createMultiSelectDropdown(state, config) {
-  const trigger = document.getElementById(config.triggerId);
-  const menu = document.getElementById(config.menuId);
-  const list = document.getElementById(config.listId);
-  const summary = document.getElementById(config.summaryId);
-  const search = config.searchId ? document.getElementById(config.searchId) : null;
-  const chipsContainer = config.chipsId ? document.getElementById(config.chipsId) : null;
-  const addButton = config.addButtonId ? document.getElementById(config.addButtonId) : null;
+  const trigger = /** @type {HTMLButtonElement|null} */ (document.getElementById(config.triggerId));
+  const menu = /** @type {HTMLElement|null} */ (document.getElementById(config.menuId));
+  const list = /** @type {HTMLElement|null} */ (document.getElementById(config.listId));
+  const summary = /** @type {HTMLElement|null} */ (document.getElementById(config.summaryId));
+  const search = config.searchId
+    ? /** @type {HTMLInputElement|null} */ (document.getElementById(config.searchId))
+    : null;
+  const chipsContainer = config.chipsId
+    ? /** @type {HTMLElement|null} */ (document.getElementById(config.chipsId))
+    : null;
+  const addButton = config.addButtonId
+    ? /** @type {HTMLButtonElement|null} */ (document.getElementById(config.addButtonId))
+    : null;
   const labelElement = config.labelId ? document.getElementById(config.labelId) : null;
   const comboRoot = trigger ? trigger.closest('.filter-combobox') : null;
   const root = trigger ? trigger.closest('.filter-dropdown') : null;
-  const actionsFooter = menu.querySelector('[data-multi-only]') || null;
+  /** @type {HTMLElement|null} */
+  const actionsFooter = menu ? menu.querySelector('[data-multi-only]') : null;
 
   if (!(trigger && menu && list && summary && chipsContainer && addButton)) {
     return null;
@@ -747,7 +754,12 @@ function createMultiSelectDropdown(state, config) {
     updateWidth();
   };
 
-  const open = ({ multi } = {}) => {
+  /**
+   * Open the dropdown, optionally forcing multi-select behavior.
+   * @param {{ multi?: boolean }} [options]
+   */
+  const open = (options = {}) => {
+    const { multi } = options;
     if (dropdownState.disabled || dropdownState.isOpen) {
       return;
     }
@@ -1124,7 +1136,7 @@ async function loadSelectionData(selection, cache, options = {}) {
 /**
  * Initialize tournament selector with data from API
  * @param {AppState} state
- * @returns {Promise<HTMLSelectElement>}
+ * @returns {Promise<void>}
  */
 async function initializeTournamentSelector(state) {
   // Fetch tournaments list (excludes online tournaments)
@@ -1271,7 +1283,7 @@ async function loadTournamentData(tournament, cache, showSkeletonLoading = false
  * @param {boolean} skipUrlInit - Skip URL-based initialization (e.g., during tournament change)
  */
 async function setupArchetypeSelector(tournaments, cache, state, skipUrlInit = false) {
-  const archeSel = document.getElementById('archetype');
+  const archeSel = /** @type {HTMLSelectElement|null} */ (document.getElementById('archetype'));
   if (!archeSel) {
     return;
   }
@@ -1712,7 +1724,7 @@ async function initializeApp() {
 
     const redirectState = consumeFiltersRedirectFlag();
     if (redirectState) {
-      const searchInput = document.getElementById('search');
+      const searchInput = /** @type {HTMLInputElement|null} */ (document.getElementById('search'));
       if (redirectState.query && searchInput && !searchInput.value) {
         searchInput.value = redirectState.query;
       }

@@ -502,14 +502,7 @@ export async function fetchArchetypeFiltersReport(
 
   try {
     const allDecks = await fetchAllDecks(tournament);
-    const report = generateFilteredReport(
-      allDecks,
-      archetypeBase,
-      includeId,
-      excludeId,
-      includeOperator,
-      includeCount
-    );
+    const report = generateFilteredReport(allDecks, archetypeBase, includeId, excludeId, includeOperator, includeCount);
 
     logger.info(`Generated filtered archetype report ${archetypeBase}`, {
       include: includeId,

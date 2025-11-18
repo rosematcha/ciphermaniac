@@ -449,8 +449,19 @@ function buildFilterKey(filters) {
 
 /**
  * Main function to generate include-exclude reports for an archetype
+ * @param {string} archetypeName
+ * @param {Array<object>} archetypeDecks
+ * @param {object} archetypeReport
+ * @param {object} env
+ * @param {{cardTypesDb?: object, skipCardTypeEnrichment?: boolean}} [options]
  */
-export async function generateIncludeExcludeReports(archetypeName, archetypeDecks, archetypeReport, env) {
+export async function generateIncludeExcludeReports(
+  archetypeName,
+  archetypeDecks,
+  archetypeReport,
+  env,
+  options = {}
+) {
   const deckTotal = archetypeDecks.length;
 
   // Skip if not enough decks
@@ -461,11 +472,20 @@ export async function generateIncludeExcludeReports(archetypeName, archetypeDeck
 
   console.log(`[IncludeExclude] Generating reports for ${archetypeName} (${deckTotal} decks)...`);
 
-  // Load card types database and enrich decks with missing types
-  console.log(`[IncludeExclude] Loading card types database for ${archetypeName}...`);
-  const cardTypesDb = await loadCardTypesDatabase(env);
-  await enrichDecksWithOnTheFlyFetch(archetypeDecks, cardTypesDb, env);
-  console.log(`[IncludeExclude] Card type enrichment complete for ${archetypeName}`);
+  const { cardTypesDb: providedDb = null, skipCardTypeEnrichment = false } = options;
+  let cardTypesDb = providedDb;
+
+  if (!cardTypesDb) {
+    console.log(`[IncludeExclude] Loading card types database for ${archetypeName}...`);
+    cardTypesDb = await loadCardTypesDatabase(env);
+  } else {
+    console.log(`[IncludeExclude] Reusing card types database for ${archetypeName}`);
+  }
+
+  if (!skipCardTypeEnrichment) {
+    await enrichDecksWithOnTheFlyFetch(archetypeDecks, cardTypesDb, env);
+    console.log(`[IncludeExclude] Card type enrichment complete for ${archetypeName}`);
+  }
 
   // Extract cards from archetype report
   const { alwaysIncluded, optional, cardLookup } = extractCardsFromReport(archetypeReport, deckTotal);
@@ -599,7 +619,13 @@ export async function generateIncludeExcludeReports(archetypeName, archetypeDeck
  * 
  * This places include-exclude at the root level and allows for multiple tournaments
  */
-export async function writeIncludeExcludeReports(archetypeName, reports, env, tournamentFolder) {
+export async function writeIncludeExcludeReports(
+  archetypeName,
+  reports,
+  env,
+  tournamentFolder,
+  options = {}
+) {
   if (!reports || !reports.index || !reports.subsets) {
     return;
   }
@@ -614,11 +640,18 @@ export async function writeIncludeExcludeReports(archetypeName, reports, env, to
   });
 
   // Write unique subset files
-  for (const [contentHash, subset] of reports.subsets.entries()) {
-    const subsetKey = `${includeExcludePath}/unique_subsets/${subset.id}.json`;
-    await env.REPORTS.put(subsetKey, JSON.stringify(subset.data, null, 2), {
-      httpMetadata: { contentType: 'application/json' }
-    });
+  const subsetConcurrency = Math.max(1, options.subsetConcurrency || 4);
+  const subsetList = Array.from(reports.subsets.values());
+  for (let index = 0; index < subsetList.length; index += subsetConcurrency) {
+    const batch = subsetList.slice(index, index + subsetConcurrency);
+    await Promise.all(
+      batch.map(subset => {
+        const subsetKey = `${includeExcludePath}/unique_subsets/${subset.id}.json`;
+        return env.REPORTS.put(subsetKey, JSON.stringify(subset.data, null, 2), {
+          httpMetadata: { contentType: 'application/json' }
+        });
+      })
+    );
   }
 
   console.log(`[IncludeExclude] Wrote ${reports.subsets.size} subsets for ${archetypeName} to ${includeExcludePath}`);
