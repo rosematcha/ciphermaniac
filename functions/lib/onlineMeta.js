@@ -604,26 +604,28 @@ async function readJson(env, key) {
 
 function determinePlacementLimit(players) {
   const count = Number(players) || 0;
-  if (count > 0 && count <= 4) {
+  // Drop ultra-tiny events
+  if (count > 0 && count <= 3) {
     return 0;
   }
-  if (count <= 8) {
-    return 8;
+  // Known small events: capture full field
+  if (count > 0 && count <= 8) {
+    return count;
   }
-  if (count <= 16) {
-    return 12;
+  if (count > 0 && count <= 16) {
+    return 16;
   }
-  if (count <= 32) {
-    return 20;
+  if (count > 0 && count <= 32) {
+    return 24;
   }
-  if (count <= 64) {
-    return 32;
-  }
-  if (count >= 65) {
+  if (count > 0 && count <= 64) {
     return 48;
   }
-  // Unknown player counts default to the maximum capture to keep data rich.
-  return 48;
+  if (count >= 65) {
+    return 64;
+  }
+  // Unknown player counts: grab a richer slice to avoid under-sampling
+  return 32;
 }
 
 export async function runOnlineMetaJob(env, options = {}) {
