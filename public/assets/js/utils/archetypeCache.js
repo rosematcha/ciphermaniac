@@ -82,8 +82,8 @@ class ArchetypeCacheManager {
   }
 
   /**
-   * Build filter key for looking up subset IDs in the index
-   * MUST match the backend format in onlineMetaIncludeExclude.js buildFilterKey()
+  * Build filter key for looking up subset IDs in the index
+  * MUST match the generator logic in .github/scripts/run-online-meta.mjs buildFilterKey()
    *
    * Simple presence/exclusion only - no count ranges
    * @param {string|null} includeId

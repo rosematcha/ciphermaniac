@@ -6,6 +6,7 @@
 import { logger } from './logger.js';
 
 /**
+ * @typedef {import('../parse.js').CardDistributionEntry} CardDistributionEntry
  * @typedef {import('../parse.js').CardItem} CardItem
  * @typedef {{ deckTotal: number, items: CardItem[] }} ParsedReport
  */
@@ -52,7 +53,7 @@ function createAccumulator(item) {
 /**
  * Merge distribution information from a card item into the accumulator.
  * @param {Map<number, { copies: number, players: number }>} buckets
- * @param {CardItem['dist']} dist
+ * @param {CardDistributionEntry[]|undefined} dist
  * @param {number} deckTotal
  */
 function mergeDistribution(buckets, dist, deckTotal) {

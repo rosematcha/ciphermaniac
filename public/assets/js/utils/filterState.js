@@ -51,8 +51,8 @@ function readSelectedSetsFromHidden(hiddenInput) {
  * @returns {string[]}
  */
 export function readSelectedSets({ selectId = DEFAULT_SET_SELECT_ID, hiddenId = DEFAULT_SET_HIDDEN_ID } = {}) {
-  const selectEl = document.getElementById(selectId);
-  const hiddenInput = document.getElementById(hiddenId);
+  const selectEl = /** @type {HTMLSelectElement|null} */ (document.getElementById(selectId));
+  const hiddenInput = /** @type {HTMLInputElement|null} */ (document.getElementById(hiddenId));
 
   const fromSelect = readSelectedSetsFromSelect(selectEl);
   if (fromSelect.length > 0) {
@@ -68,7 +68,7 @@ export function readSelectedSets({ selectId = DEFAULT_SET_SELECT_ID, hiddenId = 
  * @returns {string}
  */
 export function readCardType({ selectId = DEFAULT_CARD_TYPE_SELECT_ID } = {}) {
-  const selectEl = document.getElementById(selectId);
+  const selectEl = /** @type {HTMLSelectElement|null} */ (document.getElementById(selectId));
   if (!(selectEl instanceof HTMLSelectElement)) {
     return ALL_CARD_TYPES;
   }
@@ -107,7 +107,7 @@ export function parseSetList(value) {
  * @returns {void}
  */
 export function writeSelectedSets(selected, { hiddenId = DEFAULT_SET_HIDDEN_ID } = {}) {
-  const hiddenInput = document.getElementById(hiddenId);
+  const hiddenInput = /** @type {HTMLInputElement|null} */ (document.getElementById(hiddenId));
   if (!hiddenInput) {
     return;
   }

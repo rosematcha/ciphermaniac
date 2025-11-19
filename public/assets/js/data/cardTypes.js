@@ -6,7 +6,7 @@
 
 import { logger } from '../utils/logger.js';
 
-/** @type {Object<string, {cardType: string, subType?: string, evolutionInfo?: string, fullType: string, lastUpdated: string}>|null} */
+/** @type {Object<string, {cardType: string, subType?: string, evolutionInfo?: string, fullType: string, lastUpdated: string, aceSpec?: boolean}>|null} */
 let cardTypesDatabase = null;
 
 /** @type {Promise<object> | null} */
@@ -50,7 +50,7 @@ async function loadCardTypesDatabase() {
  * Get card type information for a specific card
  * @param {string} setCode - Card set code (e.g., "PAL")
  * @param {string|number} number - Card number (e.g., "188")
- * @returns {Promise<{cardType: string, subType?: string, evolutionInfo?: string, fullType: string}|null>}
+ * @returns {Promise<{cardType: string, subType?: string, evolutionInfo?: string, fullType: string, aceSpec?: boolean}|null>}
  */
 export async function getCardType(setCode, number) {
   if (!setCode || !number) {

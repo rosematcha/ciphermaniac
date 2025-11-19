@@ -419,18 +419,18 @@ class SocialGraphicsGenerator {
     const imagePath = await this.loadImageWithFallback(card, cardSize);
     if (imagePath) {
       img.alt = card.name;
-      
+
       // Wait for the blob URL to actually load before cropping
       try {
         await new Promise((resolve, reject) => {
           img.onload = resolve;
-          img.onerror = (error) => {
+          img.onerror = error => {
             console.error(`Failed to load blob image for ${card.name}:`, error);
             reject(error);
           };
           img.src = imagePath;
         });
-        
+
         await this.applyCropping(img, card, cardSize);
       } catch (error) {
         console.error(`Image load failed for ${card.name}:`, error);
@@ -525,7 +525,9 @@ class SocialGraphicsGenerator {
       }
     }
 
-    console.warn(`Failed to load thumbnail for ${card.name} (${card.set} ${card.number}). Tried ${candidates.length} candidates.`);
+    console.warn(
+      `Failed to load thumbnail for ${card.name} (${card.set} ${card.number}). Tried ${candidates.length} candidates.`
+    );
     return null;
   }
 
@@ -556,10 +558,10 @@ class SocialGraphicsGenerator {
 
     try {
       console.log(`Fetching image blob from: ${url}`);
-      
+
       // Determine if this is an external URL
       const isExternal = url.startsWith('http://') || url.startsWith('https://');
-      
+
       const response = await fetch(url, {
         mode: isExternal ? 'no-cors' : 'cors',
         credentials: 'omit'
@@ -569,13 +571,13 @@ class SocialGraphicsGenerator {
       // Just try to create the blob
       const blob = await response.blob();
       console.log(`Blob created for ${url}:`, blob.type || 'opaque', blob.size, 'bytes');
-      
+
       // Skip type validation for opaque responses (no-cors)
       if (!isExternal && blob.type && !blob.type.startsWith('image/')) {
         console.warn(`Invalid blob type for ${url}: ${blob.type}`);
         return null;
       }
-      
+
       const objectUrl = URL.createObjectURL(blob);
       console.log(`Object URL created: ${objectUrl}`);
       this.imageBlobCache.set(url, objectUrl);

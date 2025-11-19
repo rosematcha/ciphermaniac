@@ -36,8 +36,7 @@ const INCIDENT_OVERRIDES = {
 
 /**
  * Initialize the incidents page
- * @param {object} [options]
- * @param {string} [options.listSelector]
+ * @param {{listSelector?: string, paginationSelector?: string}} [options]
  * @returns {Promise<void>}
  */
 export async function initIncidentsPage(options = {}) {

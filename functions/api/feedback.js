@@ -6,7 +6,7 @@
 export async function onRequestPost({ request, env }) {
   try {
     const feedbackData = await request.json();
-    
+
     // Validate required fields
     if (!feedbackData.feedbackType || !feedbackData.feedbackText) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
@@ -15,15 +15,15 @@ export async function onRequestPost({ request, env }) {
       });
     }
 
-    // Send all feedback to main email
-    const recipient = 'reese@ciphermaniac.com';
+    // Send all feedback to configured email
+    const recipient = env.FEEDBACK_RECIPIENT || 'reese@ciphermaniac.com';
 
     // Build email content
     const emailContent = buildEmailContent(feedbackData);
-    
+
     // Send email via Resend
     const resendResponse = await sendEmail(env, recipient, emailContent, feedbackData);
-    
+
     if (!resendResponse.ok) {
       const errorText = await resendResponse.text();
       console.error('Resend API Error Response:', errorText);
@@ -32,7 +32,7 @@ export async function onRequestPost({ request, env }) {
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
       }
@@ -40,13 +40,13 @@ export async function onRequestPost({ request, env }) {
 
   } catch (error) {
     console.error('Feedback submission error:', error);
-    
-    return new Response(JSON.stringify({ 
+
+    return new Response(JSON.stringify({
       error: 'Internal server error',
-      message: error.message 
+      message: error.message
     }), {
       status: 500,
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
       }
@@ -78,7 +78,7 @@ function buildEmailContent(data) {
     lines.push('Technical Details:');
     if (data.platform) {
       lines.push(`Platform: ${data.platform}`);
-      
+
       if (data.platform === 'desktop') {
         if (data.desktopOS) lines.push(`OS: ${data.desktopOS}`);
         if (data.desktopBrowser) lines.push(`Browser: ${data.desktopBrowser}`);
@@ -110,13 +110,13 @@ function buildEmailContent(data) {
 
 async function sendEmail(env, recipient, content, feedbackData) {
   const resendApiKey = env.RESEND_API_KEY;
-  
+
   if (!resendApiKey) {
     throw new Error('RESEND_API_KEY environment variable not set');
   }
 
   const subject = `[Ciphermaniac] ${feedbackData.feedbackType === 'bug' ? 'Bug Report' : 'Feature Request'}`;
-  
+
   const emailPayload = {
     from: 'Ciphermaniac Feedback <onboarding@resend.dev>',
     to: recipient,

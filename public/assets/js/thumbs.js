@@ -93,10 +93,10 @@ function buildLimitlessUrl(setCode, number, useSm) {
  * @param {string} name
  * @param {boolean} useSm
  * @param {Record<string, string>|undefined} overrides
- * @param {{set?: string, number?: string|number}|undefined} variant
+ * @param {{set?: string, number?: string|number}|undefined} [variant]
  * @returns {string[]}
  */
-export function buildThumbCandidates(name, useSm, overrides, variant) {
+export function buildThumbCandidates(name, useSm, overrides, variant = undefined) {
   const base = useSm ? '/thumbnails/sm/' : '/thumbnails/xs/';
   const candidates = [];
 
