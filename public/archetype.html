@@ -30,34 +30,54 @@
           </div>
 
           <div class="archetype-controls-wrapper">
-            <div class="archetype-granularity-section">
+            <!-- Slider Section -->
+            <div class="archetype-slider-section">
               <div class="archetype-control-row">
                 <label for="archetype-granularity-range">
                   Show cards played in ≥ <output id="archetype-granularity-output" for="archetype-granularity-range">60%</output> of decks
                 </label>
                 <input type="range" id="archetype-granularity-range" min="0" max="100" value="60" step="5" />
               </div>
-
-              <div id="skeleton-summary" class="skeleton-summary" hidden>
-                <div class="skeleton-summary-content">
-                  <span class="skeleton-count">Skeleton: <strong id="skeleton-count-value">0</strong> cards</span>
-                  <span id="skeleton-warnings" class="skeleton-warnings"></span>
-                </div>
-                <button id="skeleton-export-live" class="skeleton-export-button" type="button">
-                  Copy TCG Live Export
-                </button>
-                <span
-                  id="skeleton-export-status"
-                  class="skeleton-export-status"
-                  aria-live="polite"
-                  hidden
-                ></span>
+              <div class="archetype-control-row">
+                <label for="archetype-success-filter">Finish</label>
+                <select id="archetype-success-filter">
+                  <option value="all">All decks</option>
+                  <option value="winner">Winners</option>
+                  <option value="top2">Top 2</option>
+                  <option value="top4">Top 4</option>
+                  <option value="top8">Top 8</option>
+                  <option value="top16">Top 16</option>
+                  <option value="top10">Top 10%</option>
+                  <option value="top25">Top 25%</option>
+                  <option value="top50">Top 50%</option>
+                </select>
               </div>
             </div>
 
+            <!-- Skeleton Export Section -->
+            <div id="skeleton-summary" class="archetype-export-section" hidden>
+              <div class="skeleton-summary-content">
+                <span class="skeleton-count">Skeleton: <strong id="skeleton-count-value">0</strong> cards</span>
+                <span id="skeleton-warnings" class="skeleton-warnings"></span>
+              </div>
+              <button id="skeleton-export-live" class="skeleton-export-button" type="button">
+                Copy TCG Live Export
+              </button>
+              <span
+                id="skeleton-export-status"
+                class="skeleton-export-status"
+                aria-live="polite"
+                hidden
+              ></span>
+            </div>
+
+            <!-- Filters Section -->
             <div class="archetype-filters-section">
-              <div class="archetype-filters">
-                <div class="archetype-filters-label">Card Filters</div>
+              <div class="archetype-filters collapsed">
+                <button type="button" class="archetype-filters-label" aria-expanded="false">
+                  <span>Card Filters</span>
+                  <span class="collapse-indicator">▼</span>
+                </button>
                 <div class="archetype-filter-pills">
                   <div id="archetype-filter-rows"></div>
                   <button type="button" id="archetype-add-filter" class="add-filter-btn" hidden>Add Filter</button>

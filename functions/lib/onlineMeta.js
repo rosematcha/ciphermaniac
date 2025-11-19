@@ -19,6 +19,22 @@ const DEFAULT_DETAILS_CONCURRENCY = 5;
 const DEFAULT_STANDINGS_CONCURRENCY = 4;
 const DEFAULT_R2_CONCURRENCY = 6;
 
+// Placement tagging thresholds (absolute finishing positions)
+const PLACEMENT_TAG_RULES = [
+  { tag: 'winner', maxPlacing: 1, minPlayers: 2 },
+  { tag: 'top2', maxPlacing: 2, minPlayers: 4 },
+  { tag: 'top4', maxPlacing: 4, minPlayers: 8 },
+  { tag: 'top8', maxPlacing: 8, minPlayers: 16 },
+  { tag: 'top16', maxPlacing: 16, minPlayers: 32 }
+];
+
+// Percentile-based placement tagging thresholds
+const PERCENT_TAG_RULES = [
+  { tag: 'top10', fraction: 0.1, minPlayers: 20 },
+  { tag: 'top25', fraction: 0.25, minPlayers: 12 },
+  { tag: 'top50', fraction: 0.5, minPlayers: 8 }
+];
+
 async function runWithConcurrency(items, limit, handler) {
   if (!Array.isArray(items) || items.length === 0) {
     return [];
@@ -358,6 +374,34 @@ async function hashDeck(cards, playerId = '') {
   return bytes.map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
+function determinePlacementTags(placing, players) {
+  const place = Number.isFinite(placing) ? placing : null;
+  const fieldSize = Number.isFinite(players) ? players : null;
+  if (!place || !fieldSize || place <= 0 || fieldSize <= 1) {
+    return [];
+  }
+
+  const tags = [];
+
+  for (const rule of PLACEMENT_TAG_RULES) {
+    if (fieldSize >= rule.minPlayers && place <= rule.maxPlacing) {
+      tags.push(rule.tag);
+    }
+  }
+
+  for (const rule of PERCENT_TAG_RULES) {
+    if (fieldSize < rule.minPlayers) {
+      continue;
+    }
+    const cutoff = Math.max(1, Math.ceil(fieldSize * rule.fraction));
+    if (place <= cutoff) {
+      tags.push(rule.tag);
+    }
+  }
+
+  return tags;
+}
+
 async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, options = {}) {
   if (!Array.isArray(tournaments) || tournaments.length === 0) {
     return [];
@@ -443,10 +487,12 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
           tournamentId: tournament.id,
           tournamentName: tournament.name,
           tournamentDate: tournament.date,
+          tournamentPlayers: tournament.players,
           tournamentFormat: tournament.format,
           tournamentPlatform: tournament.platform,
           tournamentOrganizer: tournament.organizer,
-          deckSource: 'limitless-online'
+          deckSource: 'limitless-online',
+          successTags: determinePlacementTags(entry?.placing, tournament?.players)
         });
       }
 
@@ -556,22 +602,22 @@ function determinePlacementLimit(players) {
     return 0;
   }
   if (count <= 8) {
-    return 4;
-  }
-  if (count <= 16) {
     return 8;
   }
+  if (count <= 16) {
+    return 12;
+  }
   if (count <= 32) {
-    return 16;
+    return 20;
   }
   if (count <= 64) {
-    return 24;
-  }
-  if (count >= 65) {
     return 32;
   }
+  if (count >= 65) {
+    return 48;
+  }
   // Unknown player counts default to the maximum capture to keep data rich.
-  return 32;
+  return 48;
 }
 
 export async function runOnlineMetaJob(env, options = {}) {

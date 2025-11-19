@@ -9,6 +9,19 @@ import { normalizeCardNumber } from '../card/routing.js';
 import { logger } from './logger.js';
 
 const DECK_FETCH_TIMEOUT_MS = 30000;
+const SUCCESS_TAG_HIERARCHY = ['winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'];
+const PLACEMENT_TAG_RULES = [
+  { tag: 'winner', maxPlacing: 1, minPlayers: 2 },
+  { tag: 'top2', maxPlacing: 2, minPlayers: 4 },
+  { tag: 'top4', maxPlacing: 4, minPlayers: 8 },
+  { tag: 'top8', maxPlacing: 8, minPlayers: 16 },
+  { tag: 'top16', maxPlacing: 16, minPlayers: 32 }
+];
+const PERCENT_TAG_RULES = [
+  { tag: 'top10', fraction: 0.1, minPlayers: 20 },
+  { tag: 'top25', fraction: 0.25, minPlayers: 12 },
+  { tag: 'top50', fraction: 0.5, minPlayers: 8 }
+];
 const OPERATOR_COMPARATORS = {
   '=': (count, expected) => count === expected,
   '<': (count, expected) => count < expected,
@@ -254,6 +267,66 @@ function aggregateDecks(decks) {
   return { deckTotal, items };
 }
 
+function deriveSuccessTags(deck) {
+  const explicit = Array.isArray(deck?.successTags)
+    ? deck.successTags.map(value => String(value).toLowerCase()).filter(Boolean)
+    : [];
+  if (explicit.length > 0) {
+    return explicit;
+  }
+
+  const placing = Number.isFinite(deck?.placement) ? Number(deck.placement) : Number(deck?.placing);
+  const players =
+    Number.isFinite(deck?.tournamentPlayers) && deck.tournamentPlayers !== null
+      ? Number(deck.tournamentPlayers)
+      : Number(deck?.players);
+
+  if (!Number.isFinite(placing) || placing <= 0 || !Number.isFinite(players) || players <= 1) {
+    return [];
+  }
+
+  const tags = [];
+  PLACEMENT_TAG_RULES.forEach(rule => {
+    if (players >= rule.minPlayers && placing <= rule.maxPlacing) {
+      tags.push(rule.tag);
+    }
+  });
+
+  PERCENT_TAG_RULES.forEach(rule => {
+    if (players < rule.minPlayers) {
+      return;
+    }
+    const cutoff = Math.max(1, Math.ceil(players * rule.fraction));
+    if (placing <= cutoff) {
+      tags.push(rule.tag);
+    }
+  });
+
+  return tags;
+}
+
+/**
+ * Filter decks down to a success bucket (winner/top2/top4/top8/top16/top10/top25/top50).
+ * Uses the tags emitted by the ingest job; higher finishes already carry broader tags,
+ * so a direct inclusion check is enough.
+ * @param {Array} decks
+ * @param {string} tag
+ * @returns {Array}
+ */
+export function filterDecksBySuccess(decks, tag) {
+  if (!tag || tag === 'all') {
+    return decks;
+  }
+  const normalized = String(tag).toLowerCase();
+  if (!SUCCESS_TAG_HIERARCHY.includes(normalized)) {
+    return decks;
+  }
+  return (Array.isArray(decks) ? decks : []).filter(deck => {
+    const tags = deriveSuccessTags(deck);
+    return tags.includes(normalized);
+  });
+}
+
 function summarizeFilters(filters) {
   if (!filters.length) {
     return 'no filters';
@@ -266,6 +339,8 @@ function summarizeFilters(filters) {
     )
     .join(', ');
 }
+
+export { aggregateDecks };
 
 /**
  * Generate filtered report for multiple filters.

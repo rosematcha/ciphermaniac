@@ -45,6 +45,21 @@
             </select>
           </div>
 
+          <div class="filter-field filter-field--success">
+            <span class="filter-label">Finish</span>
+            <select id="success-filter" aria-label="Filter by placement">
+              <option value="all">All decks</option>
+              <option value="winner">Winners</option>
+              <option value="top2">Top 2</option>
+              <option value="top4">Top 4</option>
+              <option value="top8">Top 8</option>
+              <option value="top16">Top 16</option>
+              <option value="top10">Top 10%</option>
+              <option value="top25">Top 25%</option>
+              <option value="top50">Top 50%</option>
+            </select>
+          </div>
+
           <div class="filter-field filter-dropdown filter-field--tournaments" data-filter="tournaments">
             <span class="filter-label" id="tournament-label" data-label-singular="Tournament" data-label-plural="Tournaments">Tournament</span>
             <div class="filter-combobox" role="group" aria-labelledby="tournament-label">
@@ -139,5 +154,4 @@
   <script src="/assets/js/ui.js" type="module"></script>
 </body>
 </html>
-
 

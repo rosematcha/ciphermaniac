@@ -20,6 +20,7 @@ const elements = {
   title: document.getElementById('archetype-title'),
   granularityRange: /** @type {HTMLInputElement|null} */ (document.getElementById('archetype-granularity-range')),
   granularityOutput: /** @type {HTMLOutputElement|null} */ (document.getElementById('archetype-granularity-output')),
+  successFilter: /** @type {HTMLSelectElement|null} */ (document.getElementById('archetype-success-filter')),
   filterRowsContainer: /** @type {HTMLElement|null} */ (document.getElementById('archetype-filter-rows')),
   addFilterButton: /** @type {HTMLButtonElement|null} */ (document.getElementById('archetype-add-filter')),
   filtersContainer: /** @type {HTMLElement|null} */ (document.querySelector('.archetype-controls')),
@@ -48,6 +49,7 @@ const state = {
   items: [],
   allCards: [],
   thresholdPercent: null,
+  successFilter: 'all',
   defaultItems: [],
   defaultDeckTotal: 0,
   cardLookup: new Map(),
@@ -91,6 +93,18 @@ const TCG_LIVE_SECTION_ORDER = [
   { key: 'trainer', label: 'Trainer' },
   { key: 'energy', label: 'Energy' }
 ];
+
+const SUCCESS_FILTER_LABELS = {
+  all: 'all finishes',
+  winner: 'winners',
+  top2: 'top 2',
+  top4: 'top 4',
+  top8: 'top 8',
+  top16: 'top 16',
+  top10: 'top 10%',
+  top25: 'top 25%',
+  top50: 'top 50%'
+};
 
 const TRAINER_SUPPORTER_OVERRIDES = new Set([
   'iono',
@@ -443,24 +457,36 @@ function describeFilters(filters) {
   return `including ${descriptions.slice(0, -1).join(', ')} and ${descriptions[descriptions.length - 1]}`;
 }
 
-function getFilterKey(filters) {
+function describeSuccessFilter(tag) {
+  if (!tag || tag === 'all') {
+    return '';
+  }
+  return SUCCESS_FILTER_LABELS[tag] || tag;
+}
+
+function getFilterKey(filters, successFilter = 'all') {
+  const base = successFilter || 'all';
   if (!filters || filters.length === 0) {
-    return 'null';
+    return `${base}::null`;
   }
 
-  return filters
-    .map(f => {
-      let part = f.cardId || 'null';
-      if (f.operator === 'any') {
-        part += '::any';
-      } else if (f.operator === '') {
-        part += '::none';
-      } else if (f.operator && f.count !== null && f.count !== undefined) {
-        part += `::${f.operator}${f.count}`;
-      }
-      return part;
-    })
-    .join('||');
+  return (
+    base +
+    '::' +
+    filters
+      .map(f => {
+        let part = f.cardId || 'null';
+        if (f.operator === 'any') {
+          part += '::any';
+        } else if (f.operator === '') {
+          part += '::none';
+        } else if (f.operator && f.count !== null && f.count !== undefined) {
+          part += `::${f.operator}${f.count}`;
+        }
+        return part;
+      })
+      .join('||')
+  );
 }
 
 function normalizeThreshold(value, min, max) {
@@ -1200,7 +1226,7 @@ function buildSkeletonExportEntries(items) {
       primaryCategory: normalizedCategory
     });
     return entries;
-  }, /** @type {Array<{name:string,copies:number,set:string,number:string,primaryCategory:string}>} */ ([]));
+  }, /** @type {Array<{name:string,copies:number,set:string,number:string,primaryCategory:string}>} */([]));
 }
 
 function buildTcgliveExportString(entries) {
@@ -1534,7 +1560,7 @@ function renderCards() {
  * @returns {Promise<{deckTotal: number, items: any[], raw?: any}>}
  */
 function loadFilterCombination(filters) {
-  const key = getFilterKey(filters);
+  const key = getFilterKey(filters, state.successFilter);
   logger.info('loadFilterCombination called', {
     filterCount: filters?.length,
     filters,
@@ -1550,21 +1576,27 @@ function loadFilterCombination(filters) {
   const promise = (async () => {
     try {
       // All filtering is performed client-side
-      const { fetchAllDecks, generateReportForFilters } = await import('./utils/clientSideFiltering.js');
+      const { fetchAllDecks, generateReportForFilters, filterDecksBySuccess } = await import(
+        './utils/clientSideFiltering.js'
+      );
 
       logger.info('Loading decks for client-side filtering', {
         filterCount: filters.length,
         tournament: state.tournament,
-        archetypeBase: state.archetypeBase
+        archetypeBase: state.archetypeBase,
+        successFilter: state.successFilter
       });
 
       const allDecks = await fetchAllDecks(state.tournament);
-      const report = generateReportForFilters(allDecks, state.archetypeBase, filters);
+      const eligibleDecks = filterDecksBySuccess(allDecks, state.successFilter);
+      const report = generateReportForFilters(eligibleDecks, state.archetypeBase, filters);
 
       logger.info('Built filtered report', {
         itemsCount: report.items?.length || 0,
         deckTotal: report.deckTotal,
-        filterCount: filters.length
+        filterCount: filters.length,
+        successFilter: state.successFilter,
+        eligibleDecks: eligibleDecks.length
       });
 
       return {
@@ -1616,9 +1648,8 @@ function _buildDistributionFromInstances(instances, found) {
 /**
  * Apply additional filters client-side
  */
-function resetToDefaultData() {
-  state.items = state.defaultItems;
-  state.archetypeDeckTotal = state.defaultDeckTotal;
+async function resetToDefaultData() {
+  await applySuccessFilter();
   state.filterRows.forEach(row => {
     row.cardId = null;
     row.operator = null;
@@ -1630,7 +1661,6 @@ function resetToDefaultData() {
     row.elements.countInput.hidden = true;
   });
   updateFilterMessage('');
-  renderCards();
 }
 
 /**
@@ -1654,7 +1684,7 @@ async function applyFilters() {
 
   // If no filters, reset to default
   if (activeFilters.length === 0) {
-    resetToDefaultData();
+    await resetToDefaultData();
     return;
   }
 
@@ -1671,10 +1701,11 @@ async function applyFilters() {
     }
   }
 
-  const comboLabel = describeFilters(activeFilters);
+  const successLabel = describeSuccessFilter(state.successFilter);
+  const comboLabel = successLabel ? `${describeFilters(activeFilters)} (${successLabel})` : describeFilters(activeFilters);
   updateFilterMessage(`Crunching the numbers for decks ${comboLabel}...`, 'info');
 
-  const requestKey = getFilterKey(activeFilters);
+  const requestKey = getFilterKey(activeFilters, state.successFilter);
 
   try {
     const result = await loadFilterCombination(activeFilters);
@@ -1689,7 +1720,7 @@ async function applyFilters() {
         operator: row.operator || null,
         count: row.count || null
       }));
-    const activeKey = getFilterKey(currentActiveFilters);
+    const activeKey = getFilterKey(currentActiveFilters, state.successFilter);
     if (activeKey !== requestKey) {
       logger.debug('Filter request outdated, ignoring');
       return;
@@ -1745,6 +1776,46 @@ async function applyFilters() {
   }
 }
 
+/**
+ * Build the baseline dataset for the current success filter (no card-level filters).
+ * Falls back to the server-provided default data when showing all finishes.
+ */
+async function loadSuccessBaseline() {
+  if (state.successFilter === 'all') {
+    return {
+      deckTotal: state.defaultDeckTotal,
+      items: state.defaultItems
+    };
+  }
+
+  const { fetchAllDecks, filterDecksBySuccess, generateReportForFilters } = await import(
+    './utils/clientSideFiltering.js'
+  );
+  const allDecks = await fetchAllDecks(state.tournament);
+  const eligible = filterDecksBySuccess(allDecks, state.successFilter);
+  const report = generateReportForFilters(eligible, state.archetypeBase, []);
+
+  return {
+    deckTotal: report.deckTotal,
+    items: report.items
+  };
+}
+
+async function applySuccessFilter() {
+  const baseline = await loadSuccessBaseline();
+  Object.assign(state, {
+    items: baseline.items,
+    archetypeDeckTotal: baseline.deckTotal
+  });
+  const label = SUCCESS_FILTER_LABELS[state.successFilter] || 'selected finish';
+  if (!baseline.deckTotal) {
+    updateFilterMessage(`No decks found for ${label}.`, 'warning');
+  } else {
+    updateFilterMessage('');
+  }
+  renderCards();
+}
+
 function handleGranularityInput(event) {
   const target = /** @type {HTMLInputElement|null} */ (event.currentTarget || event.target);
   if (!target || !Array.isArray(state.items) || state.items.length === 0) {
@@ -1776,6 +1847,34 @@ function setupGranularityListeners() {
   if (range) {
     range.addEventListener('input', handleGranularityInput);
   }
+}
+
+function setupSuccessFilter() {
+  const select = elements.successFilter;
+  if (!select) {
+    return;
+  }
+  select.value = state.successFilter;
+  select.addEventListener('change', async event => {
+    const next = String(event.target?.value || 'all');
+    if (next === state.successFilter) {
+      return;
+    }
+    state.successFilter = next;
+    state.filterCache.clear();
+    updateFilterMessage(`Loading ${SUCCESS_FILTER_LABELS[next] || 'selected finish'} decks...`, 'info');
+    try {
+      await applyFilters();
+    } catch (error) {
+      logger.exception('Failed to apply success filter', error);
+      updateFilterMessage('Unable to apply placement filter. Showing all decks instead.', 'warning');
+      state.successFilter = 'all';
+      if (elements.successFilter) {
+        elements.successFilter.value = 'all';
+      }
+      await applyFilters();
+    }
+  });
 }
 
 async function initialize() {
@@ -1826,6 +1925,7 @@ async function initialize() {
     updateHero();
     ensureFilterMessageElement();
     updateFilterMessage('');
+    setupSuccessFilter();
     populateCardDropdowns();
     renderCards();
 
@@ -1863,7 +1963,22 @@ window.addEventListener('resize', () => {
   });
 });
 
+// Collapsible filters functionality
+function setupFilterCollapse() {
+  const filtersLabel = document.querySelector('.archetype-filters-label');
+  const filtersContainer = document.querySelector('.archetype-filters');
+
+  if (!filtersLabel || !filtersContainer) {
+    return;
+  }
+
+  filtersLabel.addEventListener('click', () => {
+    filtersContainer.classList.toggle('collapsed');
+  });
+}
+
 setupGranularityListeners();
 setupSkeletonExport();
+setupFilterCollapse();
 
 initialize();

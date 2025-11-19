@@ -695,7 +695,7 @@ export async function fetchPricingData() {
 
   try {
     logger.debug('Fetching pricing data...');
-    const url = 'https://r2.ciphermaniac.com/reports/prices.json';
+    const url = `${CONFIG.API.R2_BASE}/reports/prices.json`;
     const response = await fetchWithTimeout(url);
     const data = await safeJsonParse(response, url);
 
