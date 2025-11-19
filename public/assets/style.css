@@ -3762,3 +3762,791 @@ h2{margin:8px 0 6px}
     grid-template-columns: repeat(2, minmax(120px, 1fr));
   }
 }
+/* ==============================================
+   ARCHETYPE PAGE CONTROLS - Restructured
+   ============================================== */
+
+/* Page Layout */
+.archetype-simple {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 18px;
+}
+
+.archetype-header-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
+}
+
+.archetype-breadcrumb {
+    flex-shrink: 0;
+}
+
+.archetype-breadcrumb__link {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.2s;
+}
+
+.archetype-breadcrumb__link:hover {
+    color: var(--accent-2);
+}
+
+.archetype-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+}
+
+/* Controls Wrapper - Flexible Grid */
+.archetype-controls-wrapper {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+/* All Control Sections - Shared Styling */
+.archetype-slider-section,
+.archetype-export-section,
+.archetype-filters-section {
+    background: rgba(20, 24, 38, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 14px;
+}
+
+/* Slider Section - Compact */
+.archetype-slider-section {
+    min-height: auto;
+}
+
+.archetype-control-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.archetype-control-row label {
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.archetype-control-row output {
+    font-weight: 700;
+    color: var(--accent-2);
+    font-size: 15px;
+}
+
+.archetype-control-row input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(106, 163, 255, 0.25);
+    outline: none;
+    cursor: pointer;
+}
+
+.archetype-control-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent-2);
+    border: 2px solid #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: transform 0.12s;
+}
+
+.archetype-control-row input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+}
+
+.archetype-control-row input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent-2);
+    border: 2px solid #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: transform 0.12s;
+}
+
+.archetype-control-row input[type="range"]::-moz-range-thumb:hover {
+    transform: scale(1.1);
+}
+
+/* Export Section - Compact */
+.archetype-export-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: auto;
+}
+
+.skeleton-summary-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.skeleton-count {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.skeleton-count strong {
+    color: var(--accent-2);
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.skeleton-warnings {
+    color: #ffb74d;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.skeleton-export-button {
+    width: 100%;
+    background: var(--accent-2);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.skeleton-export-button:hover:not(:disabled) {
+    background: #6a9cff;
+    transform: translateY(-1px);
+}
+
+.skeleton-export-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.skeleton-export-status {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+}
+
+.skeleton-export-status[data-tone="success"] {
+    color: #81c784;
+}
+
+.skeleton-export-status[data-tone="error"] {
+    color: #e57373;
+}
+
+/* Filters Section */
+.archetype-filters-section {
+    grid-column: span 1;
+}
+
+.archetype-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.archetype-filters-label {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+#archetype-filter-rows {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.archetype-filter-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(30, 35, 48, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 6px 9px;
+    font-size: 13px;
+    transition: all 0.12s;
+}
+
+.archetype-filter-group:hover {
+    background: rgba(35, 40, 56, 0.85);
+    border-color: rgba(106, 163, 255, 0.25);
+}
+
+.archetype-filter-group .filter-card-select {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    padding: 0 14px 0 0;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    -moz-appearance: none;
+    -webkit-appearance: none;
+    appearance: none;
+    color-scheme: dark;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path fill="%23999" d="M0 0l5 6 5-6z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right center;
+    min-width: 105px;
+}
+
+.archetype-filter-group .filter-card-select option {
+    background: var(--panel);
+    color: var(--text);
+}
+
+.archetype-filter-group .filter-operator-select {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-size: 12px;
+    color: var(--text);
+    min-width: 80px;
+    cursor: pointer;
+}
+
+.archetype-filter-group .filter-operator-select:focus,
+.archetype-filter-group .filter-count-input:focus {
+    outline: none;
+    border-color: rgba(106, 163, 255, 0.4);
+}
+
+.archetype-filter-group .filter-count-input {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    width: 36px;
+    height: 24px;
+    text-align: center;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.archetype-filter-group .remove-filter-btn {
+    background: rgba(255, 100, 100, 0.15);
+    border: none;
+    border-radius: 4px;
+    color: #ff7070;
+    cursor: pointer;
+    font-size: 13px;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin-left: 2px;
+    transition: all 0.12s;
+}
+
+.archetype-filter-group .remove-filter-btn:hover {
+    background: rgba(255, 100, 100, 0.3);
+}
+
+.add-filter-btn {
+    background: rgba(30, 35, 48, 0.6);
+    border: 1px dashed rgba(106, 163, 255, 0.3);
+    border-radius: 6px;
+    color: var(--accent-2);
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.12s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.add-filter-btn:hover {
+    border-color: var(--accent-2);
+    border-style: solid;
+    background: rgba(35, 40, 56, 0.7);
+}
+
+.add-filter-btn::before {
+    content: '+';
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* Responsive - Allow filters to span full width on wider screens */
+@media (min-width: 900px) {
+    .archetype-filters-section {
+        grid-column: span 2;
+    }
+}
+
+/* Mobile - Stack everything */
+@media (max-width: 600px) {
+    .archetype-simple {
+        padding: 14px;
+    }
+
+    .archetype-controls-wrapper {
+        grid-template-columns: 1fr;
+    }
+
+    .archetype-filter-group .filter-card-select {
+        min-width: 95px;
+    }
+}
+/* LAYOUT FIX - Override auto-fit with explicit layout */
+.archetype-controls-wrapper {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    grid-template-rows: auto auto !important;
+    gap: 12px !important;
+}
+
+.archetype-slider-section {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+}
+
+.archetype-export-section {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+}
+
+.archetype-filters-section {
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+}
+
+@media (max-width: 768px) {
+    .archetype-controls-wrapper {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .archetype-slider-section,
+    .archetype-export-section,
+    .archetype-filters-section {
+        grid-column: 1 !important;
+    }
+    
+    .arche type-export-section {
+        grid-row: 2 !important;
+    }
+    
+    .archetype-filters-section {
+        grid-row: 3 !important;
+    }
+}
+/* USE HORIZONTAL SPACE - Fix cramped layout */
+.archetype-simple {
+    max-width: 100% !important;
+    padding: 16px 24px !important;
+}
+
+.archetype-controls-wrapper {
+    max-width: 100% !important;
+}
+
+/* Make slider and export sections taller to reduce vertical waste */
+.archetype-slider-section,
+.archetype-export-section {
+    min-height: 90px !important;
+}
+/* FORCE FULL WIDTH - Final override */
+.archetype-page,
+.archetype-main,
+.archetype-content,
+.archetype-simple {
+    max-width: none !important;
+    width: 100% !important;
+}
+
+.archetype-simple {
+    padding: 16px 32px !important;
+}
+/* FINAL LAYOUT - Specific widths as requested */
+
+/* Export section: 400px with horizontal layout */
+.archetype-export-section {
+    max-width: 400px !important;
+    width: 400px !important;
+}
+
+.archetype-export-section .skeleton-summary-content {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 8px !important;
+}
+
+.archetype-export-section .skeleton-warnings {
+    display: none !important;
+}
+
+/* Filters section: 430px target */
+.archetype-filters-section {
+    width: 430px !important;
+    min-width: 430px !important;
+    max-width: 430px !important;
+}
+
+/* Let grid auto-place instead of forcing positions */
+.archetype-controls-wrapper {
+    grid-template-columns: auto auto auto !important;
+    grid-auto-flow: row !important;
+    justify-content: start !important;
+}
+
+.archetype-slider-section,
+.archetype-export-section,
+.archetype-filters-section {
+    grid-column: auto !important;
+    grid-row: auto !important;
+}
+
+/* Mobile: stack and allow full width */
+@media (max-width: 900px) {
+    .archetype-export-section,
+    .archetype-filters-section {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+    }
+}
+/* MOBILE: Vertical stacking - Override */
+@media (max-width: 900px) {
+    .archetype-controls-wrapper {
+        grid-template-columns: 1fr !important;
+        grid-auto-flow: row !important;
+    }
+    
+    .archetype-slider-section,
+    .archetype-export-section,
+    .archetype-filters-section {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+    }
+    
+    /* Restore vertical layout for export on mobile */
+    .archetype-export-section .skeleton-summary-content {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+}
+/* REFINEMENTS - Fix heights, button layout, alignment */
+
+/* 1. Equal heights for all sections */
+.archetype-slider-section,
+.archetype-export-section,
+.archetype-filters-section {
+    min-height: 95px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+}
+
+/* 2. Slider section: 350px width */
+.archetype-slider-section {
+    width: 350px !important;
+    min-width: 350px !important;
+}
+
+/* 3. Export button on same row as skeleton count, smaller */
+.archetype-export-section {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+.archetype-export-section .skeleton-summary-content {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    margin-bottom: 0 !important;
+    flex: 0 0 auto !important;
+}
+
+.archetype-export-section .skeleton-export-button {
+    width: auto !important;
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+    flex-shrink: 0 !important;
+}
+
+/* 4. Right-align X button in filter pills */
+.archetype-filter-group {
+    justify-content: space-between !important;
+}
+
+.archetype-filter-group .remove-filter-btn {
+    margin-left: auto !important;
+}
+
+/* Mobile adjustments */
+@media (max-width: 900px) {
+    .archetype-slider-section {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+    
+    .archetype-export-section {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    
+    .archetype-export-section .skeleton-export-button {
+        width: 100% !important;
+    }
+}
+/* CENTER the controls and make filters collapsible */
+
+/* Center the controls wrapper */
+.archetype-controls-wrapper {
+    justify-content: center !important;
+    margin: 0 auto !important;
+}
+
+/* Make filters label clickable for collapse */
+.archetype-filters-label {
+    cursor: pointer !important;
+    user-select: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.archetype-filters-label::after {
+    content: '' !important;
+    font-size: 10px !important;
+    transition: transform 0.2s !important;
+    margin-left: 8px !important;
+}
+
+.archetype-filters.collapsed .archetype-filters-label::after {
+    transform: rotate(-90deg) !important;
+}
+
+.archetype-filters.collapsed .archetype-filter-pills {
+    display: none !important;
+}
+
+.archetype-filters.collapsed {
+    margin-bottom: 0 !important;
+}
+/* CENTER and COLLAPSE FILTERS - Clean version */
+.archetype-controls-wrapper {
+    justify-content: center !important;
+}
+
+.archetype-filters-label {
+    cursor: pointer !important;
+    user-select: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.archetype-filters-label::after {
+    content: "" !important;
+    font-size: 10px !important;
+    transition: transform 0.2s !important;
+    margin-left: 8px !important;
+}
+
+.archetype-filters.collapsed .archetype-filters-label::after {
+    transform: rotate(-90deg) !important;
+}
+
+.archetype-filters.collapsed .archetype-filter-pills {
+    display: none !important;
+}
+/* Collapsible filters - Clean CSS */
+.archetype-filters-label {
+    width: 100% !important;
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    text-align: left !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.collapse-indicator {
+    font-size: 10px !important;
+    transition: transform 0.2s !important;
+}
+
+.archetype-filters.collapsed .collapse-indicator {
+    transform: rotate(-90deg) !important;
+}
+
+.archetype-filters.collapsed .archetype-filter-pills {
+    display: none !important;
+}
+/* BETTER LAYOUT - More breathing room, less claustrophobia */
+
+/* Make filters wider and better proportioned */
+.archetype-filters-section {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    grid-column: 1 / -1 !important;
+}
+
+/* Give filters more padding and space */
+.archetype-filters-section {
+    padding: 18px 20px !important;
+}
+
+/* Spread controls across the top row nicely */
+@media (min-width: 768px) {
+    .archetype-controls-wrapper {
+        grid-template-columns: 350px 400px 1fr !important;
+        grid-template-rows: auto !important;
+    }
+    
+    .archetype-slider-section {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+    }
+    
+    .archetype-export-section {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+    }
+    
+    .archetype-filters-section {
+        grid-column: 3 !important;
+        grid-row: 1 !important;
+        width: auto !important;
+        min-width: 450px !important;
+        max-width: none !important;
+    }
+}
+
+/* More spacious filter pills */
+#archetype-filter-rows {
+    gap: 10px !important;
+}
+
+.archetype-filter-group {
+    padding: 8px 12px !important;
+}
+
+/* Better button spacing */
+.add-filter-btn {
+    margin-top: 8px !important;
+}
+/* TARGETED SPACING IMPROVEMENTS - Keep layout, improve breathing room */
+
+/* More breathing room in all sections */
+.archetype-slider-section,
+.archetype-export-section,
+.archetype-filters-section {
+    padding: 16px 18px !important;
+}
+
+/* More spacious filter interior */
+.archetype-filters {
+    gap: 12px !important;
+}
+
+#archetype-filter-rows {
+    gap: 10px !important;
+}
+
+.archetype-filter-group {
+    padding: 9px 12px !important;
+}
+
+/* Better spacing for filter label */
+.archetype-filters-label {
+    padding-bottom: 8px !important;
+    margin-bottom: 4px !important;
+}
+
+/* More breathing room for Add Filter button */
+.add-filter-btn {
+    margin-top: 10px !important;
+}
+
+/* Slightly taller sections for less cramped feel */
+.archetype-slider-section,
+.archetype-export-section,
+.archetype-filters-section {
+    min-height: 100px !important;
+}
+/* Re-add max-width for card filters */
+.archetype-filters-section {
+    width: 430px !important;
+    min-width: 430px !important;
+    max-width: 430px !important;
+}
+
+/* Mobile override */
+@media (max-width: 768px) {
+    .archetype-filters-section {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+}
+/* FINAL POLISH - Arrow right, smaller height, centered */
+
+/* Arrow on the right side */
+.archetype-filters-label {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+/* Smaller uniform height - less empty feeling */
+.archetype-slider-section,
+.archetype-export-section,
+.archetype-filters-section {
+    min-height: 85px !important;
+}
+
+/* Center the controls horizontally */
+.archetype-controls-wrapper {
+    margin: 0 auto !important;
+    width: fit-content !important;
+}
+/* Fix arrow position - right after "Filters" text */
+.archetype-filters-label {
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 6px !important;
+}

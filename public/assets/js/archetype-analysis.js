@@ -96,12 +96,12 @@ function getDeckThumbnail(name) {
   if (!state.thumbnailConfig) {
     return null;
   }
-  
+
   // Try exact match first
   if (state.thumbnailConfig[name]) {
     return state.thumbnailConfig[name];
   }
-  
+
   // Try normalized match
   const normalized = normalizeDeckName(name);
   for (const [key, value] of Object.entries(state.thumbnailConfig)) {
@@ -109,7 +109,7 @@ function getDeckThumbnail(name) {
       return value;
     }
   }
-  
+
   return null;
 }
 
@@ -118,10 +118,12 @@ function buildThumbnailSources(cardIds) {
     return [];
   }
 
-  return cardIds.map(cardId => {
-    const [set, number] = cardId.split('/');
-    return buildThumbnailSourceFromCard({ set, number });
-  }).filter(Boolean);
+  return cardIds
+    .map(cardId => {
+      const [set, number] = cardId.split('/');
+      return buildThumbnailSourceFromCard({ set, number });
+    })
+    .filter(Boolean);
 }
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -130,7 +132,7 @@ function buildThumbnailSourceFromCard(card) {
   if (!card || !card.set || !card.number) {
     return null;
   }
-  
+
   const normalizedSet = String(card.set).toUpperCase().trim();
   const cdnNumber = formatCardNumberForCdn(card.number);
   if (!normalizedSet || !cdnNumber) {

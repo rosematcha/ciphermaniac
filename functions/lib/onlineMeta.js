@@ -5,10 +5,6 @@ import {
   sanitizeForFilename,
   sanitizeForPath
 } from './reportBuilder.js';
-import {
-  generateIncludeExcludeReports,
-  writeIncludeExcludeReports
-} from './onlineMetaIncludeExclude.js';
 import { loadCardTypesDatabase, enrichCardWithType } from './cardTypesDatabase.js';
 import { enrichDecksWithOnTheFlyFetch } from './cardTypeFetcher.js';
 
@@ -21,6 +17,23 @@ const MAX_TOURNAMENT_PAGES = 10;
 const SUPPORTED_FORMATS = new Set(['STANDARD']);
 const DEFAULT_DETAILS_CONCURRENCY = 5;
 const DEFAULT_STANDINGS_CONCURRENCY = 4;
+const DEFAULT_R2_CONCURRENCY = 6;
+
+// Placement tagging thresholds (absolute finishing positions)
+const PLACEMENT_TAG_RULES = [
+  { tag: 'winner', maxPlacing: 1, minPlayers: 2 },
+  { tag: 'top2', maxPlacing: 2, minPlayers: 4 },
+  { tag: 'top4', maxPlacing: 4, minPlayers: 8 },
+  { tag: 'top8', maxPlacing: 8, minPlayers: 16 },
+  { tag: 'top16', maxPlacing: 16, minPlayers: 32 }
+];
+
+// Percentile-based placement tagging thresholds
+const PERCENT_TAG_RULES = [
+  { tag: 'top10', fraction: 0.1, minPlayers: 20 },
+  { tag: 'top25', fraction: 0.25, minPlayers: 12 },
+  { tag: 'top50', fraction: 0.5, minPlayers: 8 }
+];
 
 async function runWithConcurrency(items, limit, handler) {
   if (!Array.isArray(items) || items.length === 0) {
@@ -361,6 +374,34 @@ async function hashDeck(cards, playerId = '') {
   return bytes.map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
+function determinePlacementTags(placing, players) {
+  const place = Number.isFinite(placing) ? placing : null;
+  const fieldSize = Number.isFinite(players) ? players : null;
+  if (!place || !fieldSize || place <= 0 || fieldSize <= 1) {
+    return [];
+  }
+
+  const tags = [];
+
+  for (const rule of PLACEMENT_TAG_RULES) {
+    if (fieldSize >= rule.minPlayers && place <= rule.maxPlacing) {
+      tags.push(rule.tag);
+    }
+  }
+
+  for (const rule of PERCENT_TAG_RULES) {
+    if (fieldSize < rule.minPlayers) {
+      continue;
+    }
+    const cutoff = Math.max(1, Math.ceil(fieldSize * rule.fraction));
+    if (place <= cutoff) {
+      tags.push(rule.tag);
+    }
+  }
+
+  return tags;
+}
+
 async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, options = {}) {
   if (!Array.isArray(tournaments) || tournaments.length === 0) {
     return [];
@@ -410,6 +451,12 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
         return placingA - placingB;
       });
 
+      // Derive tournament size when Limitless doesn't provide it (common for online)
+      const maxReportedPlacing = Number.isFinite(sortedStandings.at(-1)?.placing)
+        ? Number(sortedStandings.at(-1).placing)
+        : 0;
+      const derivedPlayers = Number(tournament?.players) || Math.max(sortedStandings.length, maxReportedPlacing);
+
       const cappedStandings = sortedStandings.slice(0, limit);
       const decks = [];
 
@@ -446,10 +493,12 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
           tournamentId: tournament.id,
           tournamentName: tournament.name,
           tournamentDate: tournament.date,
+          tournamentPlayers: derivedPlayers || tournament.players || null,
           tournamentFormat: tournament.format,
           tournamentPlatform: tournament.platform,
           tournamentOrganizer: tournament.organizer,
-          deckSource: 'limitless-online'
+          deckSource: 'limitless-online',
+          successTags: determinePlacementTags(entry?.placing, derivedPlayers || tournament?.players)
         });
       }
 
@@ -480,7 +529,6 @@ function buildArchetypeReports(decks, minPercent) {
   const deckTotal = decks.length || 0;
   const minDecks = Math.max(1, Math.ceil(deckTotal * (minPercent / 100)));
   const archetypeFiles = [];
-  const deckMap = new Map();
 
   groups.forEach(group => {
     if (group.decks.length < minDecks) {
@@ -494,7 +542,6 @@ function buildArchetypeReports(decks, minPercent) {
       data,
       deckCount: group.decks.length
     });
-    deckMap.set(group.filenameBase, group.decks);
   });
 
   archetypeFiles.sort((a, b) => b.deckCount - a.deckCount);
@@ -502,8 +549,7 @@ function buildArchetypeReports(decks, minPercent) {
   return {
     archetypeFiles,
     archetypeIndex: archetypeFiles.map(file => file.base).sort((a, b) => a.localeCompare(b)),
-    minDecks,
-    deckMap
+    minDecks
   };
 }
 
@@ -517,6 +563,23 @@ async function putJson(env, key, data) {
       contentType: 'application/json'
     }
   });
+}
+
+async function batchPutJson(env, entries, concurrency = DEFAULT_R2_CONCURRENCY) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return;
+  }
+
+  const normalized = entries
+    .filter(entry => entry && entry.key && entry.data !== undefined)
+    .map(entry => ({ key: entry.key, data: entry.data }));
+
+  if (!normalized.length) {
+    return;
+  }
+
+  const limit = Math.max(1, Number(concurrency) || DEFAULT_R2_CONCURRENCY);
+  await runWithConcurrency(normalized, limit, async entry => putJson(env, entry.key, entry.data));
 }
 
 async function readJson(env, key) {
@@ -541,25 +604,27 @@ async function readJson(env, key) {
 
 function determinePlacementLimit(players) {
   const count = Number(players) || 0;
-  if (count > 0 && count <= 4) {
+  // Drop ultra-tiny events
+  if (count > 0 && count <= 3) {
     return 0;
   }
-  if (count <= 8) {
-    return 4;
+  // Known small events: capture full field
+  if (count > 0 && count <= 8) {
+    return count;
   }
-  if (count <= 16) {
-    return 8;
-  }
-  if (count <= 32) {
+  if (count > 0 && count <= 16) {
     return 16;
   }
-  if (count <= 64) {
+  if (count > 0 && count <= 32) {
     return 24;
   }
-  if (count >= 65) {
-    return 32;
+  if (count > 0 && count <= 64) {
+    return 48;
   }
-  // Unknown player counts default to the maximum capture to keep data rich.
+  if (count >= 65) {
+    return 64;
+  }
+  // Unknown player counts: grab a richer slice to avoid under-sampling
   return 32;
 }
 
@@ -621,7 +686,7 @@ export async function runOnlineMetaJob(env, options = {}) {
 
   const deckTotal = decks.length;
   const masterReport = generateReportFromDecks(decks, deckTotal, decks);
-  const { archetypeFiles, archetypeIndex, minDecks, deckMap } = buildArchetypeReports(
+  const { archetypeFiles, archetypeIndex, minDecks } = buildArchetypeReports(
     decks,
     MIN_USAGE_PERCENT
   );
@@ -647,49 +712,18 @@ export async function runOnlineMetaJob(env, options = {}) {
     }))
   };
 
-  await putJson(env, `${REPORT_BASE_KEY}/master.json`, masterReport);
-  await putJson(env, `${REPORT_BASE_KEY}/meta.json`, meta);
-  await putJson(env, `${REPORT_BASE_KEY}/decks.json`, decks);
-  await putJson(env, `${REPORT_BASE_KEY}/archetypes/index.json`, archetypeIndex);
-
-  for (const file of archetypeFiles) {
-    await putJson(env, `${REPORT_BASE_KEY}/archetypes/${file.filename}`, file.data);
-  }
-
-  // Generate include-exclude reports for eligible archetypes
-  console.info('[OnlineMeta] Generating include-exclude reports...');
-  let includeExcludeCount = 0;
-  const includeExcludeErrors = [];
-  
-  for (const file of archetypeFiles) {
-    const archetypeName = file.base.replace(/_/g, ' ');
-    const archetypeDecks = deckMap.get(file.base) || [];
-
-    try {
-      const reports = await generateIncludeExcludeReports(
-        archetypeName,
-        archetypeDecks,
-        file.data,
-        env
-      );
-
-      if (reports) {
-        await writeIncludeExcludeReports(archetypeName, reports, env, TARGET_FOLDER);
-        includeExcludeCount++;
-      }
-    } catch (error) {
-      console.error(`[OnlineMeta] Failed to generate include-exclude for ${archetypeName}:`, error);
-      includeExcludeErrors.push({
-        archetype: archetypeName,
-        error: error.message || String(error)
-      });
-    }
-  }
-
-  console.info('[OnlineMeta] Include-exclude generation complete', {
-    archetypesWithReports: includeExcludeCount,
-    errors: includeExcludeErrors.length
-  });
+  const r2Concurrency = Math.max(1, options.r2Concurrency || DEFAULT_R2_CONCURRENCY);
+  const baseWrites = [
+    { key: `${REPORT_BASE_KEY}/master.json`, data: masterReport },
+    { key: `${REPORT_BASE_KEY}/meta.json`, data: meta },
+    { key: `${REPORT_BASE_KEY}/decks.json`, data: decks },
+    { key: `${REPORT_BASE_KEY}/archetypes/index.json`, data: archetypeIndex }
+  ];
+  const archetypeWrites = archetypeFiles.map(file => ({
+    key: `${REPORT_BASE_KEY}/archetypes/${file.filename}`,
+    data: file.data
+  }));
+  await batchPutJson(env, [...baseWrites, ...archetypeWrites], r2Concurrency);
 
   // Note: Online tournaments are NOT added to tournaments.json
   // They are treated as a special case in the UI
@@ -697,8 +731,7 @@ export async function runOnlineMetaJob(env, options = {}) {
   console.info('[OnlineMeta] Aggregated online tournaments', {
     deckTotal,
     tournamentCount: tournaments.length,
-    archetypes: archetypeFiles.length,
-    includeExcludeReports: includeExcludeCount
+    archetypes: archetypeFiles.length
   });
 
   return {
@@ -706,8 +739,6 @@ export async function runOnlineMetaJob(env, options = {}) {
     decks: deckTotal,
     tournaments: tournaments.length,
     archetypes: archetypeFiles.length,
-    includeExcludeReports: includeExcludeCount,
-    includeExcludeErrors,
     folder: TARGET_FOLDER,
     diagnostics
   };

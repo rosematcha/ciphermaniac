@@ -1,0 +1,26 @@
+# Enforce consistent LF endings for text files
+* text=auto eol=lf
+
+# Explicitly mark assets that should retain CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary formats
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.svg binary
+*.webp binary
+*.ico binary
+*.mp4 binary
+*.mp3 binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.zip binary
+*.tgz binary
+*.gz binary
+*.bz2 binary
