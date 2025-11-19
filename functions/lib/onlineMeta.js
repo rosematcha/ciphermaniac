@@ -451,6 +451,12 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
         return placingA - placingB;
       });
 
+      // Derive tournament size when Limitless doesn't provide it (common for online)
+      const maxReportedPlacing = Number.isFinite(sortedStandings.at(-1)?.placing)
+        ? Number(sortedStandings.at(-1).placing)
+        : 0;
+      const derivedPlayers = Number(tournament?.players) || Math.max(sortedStandings.length, maxReportedPlacing);
+
       const cappedStandings = sortedStandings.slice(0, limit);
       const decks = [];
 
@@ -487,12 +493,12 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
           tournamentId: tournament.id,
           tournamentName: tournament.name,
           tournamentDate: tournament.date,
-          tournamentPlayers: tournament.players,
+          tournamentPlayers: derivedPlayers || tournament.players || null,
           tournamentFormat: tournament.format,
           tournamentPlatform: tournament.platform,
           tournamentOrganizer: tournament.organizer,
           deckSource: 'limitless-online',
-          successTags: determinePlacementTags(entry?.placing, tournament?.players)
+          successTags: determinePlacementTags(entry?.placing, derivedPlayers || tournament?.players)
         });
       }
 

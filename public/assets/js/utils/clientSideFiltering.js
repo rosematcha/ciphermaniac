@@ -267,7 +267,7 @@ function aggregateDecks(decks) {
   return { deckTotal, items };
 }
 
-function deriveSuccessTags(deck) {
+function deriveSuccessTags(deck, sizes = null, counts = null) {
   const explicit = Array.isArray(deck?.successTags)
     ? deck.successTags.map(value => String(value).toLowerCase()).filter(Boolean)
     : [];
@@ -276,10 +276,23 @@ function deriveSuccessTags(deck) {
   }
 
   const placing = Number.isFinite(deck?.placement) ? Number(deck.placement) : Number(deck?.placing);
-  const players =
+  let players =
     Number.isFinite(deck?.tournamentPlayers) && deck.tournamentPlayers !== null
       ? Number(deck.tournamentPlayers)
       : Number(deck?.players);
+
+  if ((!Number.isFinite(players) || players <= 1) && sizes && deck?.tournamentId) {
+    const fallback = sizes.get(deck.tournamentId);
+    if (Number.isFinite(fallback)) {
+      players = fallback;
+    }
+  }
+  if ((!Number.isFinite(players) || players <= 1) && counts && deck?.tournamentId) {
+    const countGuess = counts.get(deck.tournamentId);
+    if (Number.isFinite(countGuess)) {
+      players = countGuess;
+    }
+  }
 
   if (!Number.isFinite(placing) || placing <= 0 || !Number.isFinite(players) || players <= 1) {
     return [];
@@ -321,8 +334,35 @@ export function filterDecksBySuccess(decks, tag) {
   if (!SUCCESS_TAG_HIERARCHY.includes(normalized)) {
     return decks;
   }
+
+  // Build tournament size fallbacks so success tags can be derived even if the ingest didn't persist players.
+  const sizeByTournament = new Map();
+  const countByTournament = new Map();
+  (Array.isArray(decks) ? decks : []).forEach(deck => {
+    if (!deck) {
+      return;
+    }
+    const tid = deck.tournamentId || deck.tournamentName || null;
+    if (!tid) {
+      return;
+    }
+    const players =
+      Number.isFinite(deck.tournamentPlayers) && deck.tournamentPlayers !== null
+        ? Number(deck.tournamentPlayers)
+        : Number(deck.players);
+    if (Number.isFinite(players) && players > 1) {
+      sizeByTournament.set(tid, Math.max(sizeByTournament.get(tid) || 0, players));
+    }
+    const placing = Number.isFinite(deck?.placement) ? Number(deck.placement) : Number(deck?.placing);
+    if (Number.isFinite(placing) && placing > 0) {
+      const current = sizeByTournament.get(tid) || 0;
+      sizeByTournament.set(tid, Math.max(current, placing));
+    }
+    countByTournament.set(tid, (countByTournament.get(tid) || 0) + 1);
+  });
+
   return (Array.isArray(decks) ? decks : []).filter(deck => {
-    const tags = deriveSuccessTags(deck);
+    const tags = deriveSuccessTags(deck, sizeByTournament, countByTournament);
     return tags.includes(normalized);
   });
 }
