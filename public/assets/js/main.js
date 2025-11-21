@@ -132,7 +132,7 @@ const DEFAULT_ONLINE_META = 'Online - Last 14 Days';
 const SUCCESS_FILTER_LABELS = {
   all: 'all decks',
   winner: 'winners',
-  top2: 'top 2',
+  top2: 'finals',
   top4: 'top 4',
   top8: 'top 8',
   top16: 'top 16',

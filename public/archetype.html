@@ -38,20 +38,6 @@
                 </label>
                 <input type="range" id="archetype-granularity-range" min="0" max="100" value="60" step="5" />
               </div>
-              <div class="archetype-control-row">
-                <label for="archetype-success-filter">Finish</label>
-                <select id="archetype-success-filter">
-                  <option value="all">All decks</option>
-                  <option value="winner">Winners</option>
-                  <option value="top2">Top 2</option>
-                  <option value="top4">Top 4</option>
-                  <option value="top8">Top 8</option>
-                  <option value="top16">Top 16</option>
-                  <option value="top10">Top 10%</option>
-                  <option value="top25">Top 25%</option>
-                  <option value="top50">Top 50%</option>
-                </select>
-              </div>
             </div>
 
             <!-- Skeleton Export Section -->
@@ -74,10 +60,26 @@
             <!-- Filters Section -->
             <div class="archetype-filters-section">
               <div class="archetype-filters collapsed">
-                <button type="button" class="archetype-filters-label" aria-expanded="false">
-                  <span>Card Filters</span>
-                  <span class="collapse-indicator">▼</span>
-                </button>
+                <div class="archetype-filters-top">
+                  <div class="archetype-finish-filter">
+                    <label for="archetype-success-filter">Finish</label>
+                    <select id="archetype-success-filter" class="archetype-select">
+                      <option value="all">All decks</option>
+                      <option value="winner">Winners</option>
+                      <option value="top2">Finals</option>
+                      <option value="top4">Top 4</option>
+                      <option value="top8">Top 8</option>
+                      <option value="top16">Top 16</option>
+                      <option value="top10">Top 10%</option>
+                      <option value="top25">Top 25%</option>
+                      <option value="top50">Top 50%</option>
+                    </select>
+                  </div>
+                  <button type="button" class="archetype-filters-label" aria-expanded="false">
+                    <span>Card Filters</span>
+                    <span class="collapse-indicator">▼</span>
+                  </button>
+                </div>
                 <div class="archetype-filter-pills">
                   <div id="archetype-filter-rows"></div>
                   <button type="button" id="archetype-add-filter" class="add-filter-btn" hidden>Add Filter</button>
