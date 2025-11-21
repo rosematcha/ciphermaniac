@@ -453,8 +453,8 @@ function renderMetaChart() {
     return;
   }
 
-  const width = 720;
-  const height = 260;
+  const width = 900;
+  const height = 340;
   const padX = 36;
   const padY = 28;
   const contentWidth = width - padX * 2;
@@ -465,7 +465,7 @@ function renderMetaChart() {
   const maxObserved = Math.max(
     ...meta.lines.flatMap(line => line.points.map(p => Math.max(0, Number(p) || 0)))
   );
-  const buffer = Math.max(1, maxObserved * 0.1);
+  const buffer = Math.max(1, maxObserved * 0.05);
   const yMax = Math.min(100, Math.max(5, Math.ceil((maxObserved + buffer) / 5) * 5));
 
   const xForIndex = idx => (count === 1 ? contentWidth / 2 : (idx / (count - 1)) * contentWidth) + padX;
@@ -512,6 +512,8 @@ function renderMetaChart() {
     polyline.setAttribute('stroke-width', '2.5');
     polyline.setAttribute('points', points);
     polyline.setAttribute('stroke-linecap', 'round');
+    polyline.dataset.name = line.name;
+    polyline.classList.add('meta-line');
     svg.appendChild(polyline);
   });
 
@@ -534,6 +536,48 @@ function renderMetaChart() {
   }
   renderLegend(meta.lines);
   renderMovers(meta.lines);
+
+  // Hover highlight wiring
+  const lines = elements.metaChart.querySelectorAll('.meta-line');
+  const legendItems = elements.legend ? elements.legend.querySelectorAll('.legend-item') : [];
+
+  const setActive = name => {
+    lines.forEach(line => {
+      const active = line.dataset.name === name;
+      line.style.opacity = active ? '1' : '0.25';
+      line.style.strokeWidth = active ? '3.5' : '2';
+    });
+    legendItems.forEach(item => {
+      const label = item.querySelector('span:nth-child(2)');
+      const active = label && label.textContent === name;
+      item.style.opacity = active ? '1' : '0.5';
+      item.style.borderColor = active ? item.querySelector('.legend-swatch')?.style.backgroundColor || '#6aa3ff' : '#2c335a';
+    });
+  };
+
+  const clearActive = () => {
+    lines.forEach(line => {
+      line.style.opacity = '1';
+      line.style.strokeWidth = '2.5';
+    });
+    legendItems.forEach(item => {
+      item.style.opacity = '1';
+      item.style.borderColor = '#2c335a';
+    });
+  };
+
+  lines.forEach(line => {
+    line.addEventListener('mouseenter', () => setActive(line.dataset.name));
+    line.addEventListener('mouseleave', clearActive);
+  });
+
+  legendItems.forEach(item => {
+    const label = item.querySelector('span:nth-child(2)');
+    const name = label?.textContent;
+    if (!name) return;
+    item.addEventListener('mouseenter', () => setActive(name));
+    item.addEventListener('mouseleave', clearActive);
+  });
 }
 
 function renderList() {
