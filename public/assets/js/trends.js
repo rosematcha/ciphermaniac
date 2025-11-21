@@ -5,6 +5,7 @@ import { buildCardTrendDataset, buildTrendDataset } from './utils/trendAggregato
 import { logger } from './utils/logger.js';
 
 const palette = ['#6aa3ff', '#ff6b6b', '#3ad27a', '#f1c40f', '#9b59b6', '#ff9f43'];
+const TRENDS_SOURCE = 'Trends - Last 30 Days';
 
 const elements = {
   list: document.getElementById('trends-list'),
@@ -19,6 +20,7 @@ const elements = {
   metaPanel: document.getElementById('trend-meta'),
   archetypePanel: document.getElementById('trend-archetypes'),
   legend: document.getElementById('trend-legend'),
+  metaRange: document.getElementById('trend-meta-range'),
   movers: document.getElementById('trend-movers'),
   cardMovers: document.getElementById('trend-card-movers'),
   modeMeta: document.getElementById('trend-mode-meta'),
@@ -27,6 +29,8 @@ const elements = {
 
 const state = {
   trendData: /** @type {null|{ series: any[], tournaments: any[], generatedAt?: string, minAppearances?: number, windowStart?: string|null, windowEnd?: string|null }} */ (null),
+  cardTrends: null,
+  suggestions: null,
   isLoading: false,
   isHydrating: false,
   minAppearances: 3,
@@ -72,51 +76,77 @@ function formatPercent(value) {
   return `${pct.toFixed(pct % 1 === 0 ? 0 : 1)}%`;
 }
 
+function smoothSeries(series, window = 3) {
+  if (!Array.isArray(series) || series.length === 0) return series;
+  const w = Math.max(1, window);
+  const result = [];
+  for (let i = 0; i < series.length; i += 1) {
+    const slice = series.slice(Math.max(0, i - Math.floor(w / 2)), Math.min(series.length, i + Math.ceil(w / 2) + 1));
+    const avg = slice.reduce((sum, point) => sum + (point.share || 0), 0) / slice.length;
+    result.push({ ...series[i], share: avg });
+  }
+  return result;
+}
+
+function binDaily(timeline) {
+  const byDay = new Map();
+  (timeline || []).forEach(point => {
+    if (!point?.date) return;
+    const day = point.date.split('T')[0];
+    const total = Number(point.totalDecks || point.total || 0);
+    const share = Number(point.share) || 0;
+    if (!byDay.has(day)) {
+      byDay.set(day, { weighted: 0, decks: 0 });
+    }
+    const entry = byDay.get(day);
+    entry.weighted += share * (total || 1);
+    entry.decks += total || 1;
+  });
+  return Array.from(byDay.entries())
+    .map(([date, val]) => ({
+      date,
+      share: val.decks ? val.weighted / val.decks : 0
+    }))
+    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+}
+
 function buildMetaLines(trendData, topN = 5) {
   if (!trendData || !Array.isArray(trendData.series) || !Array.isArray(trendData.tournaments)) {
     return null;
   }
-  const tournaments = [...trendData.tournaments].sort(
-    (a, b) => Date.parse(a.date || 0) - Date.parse(b.date || 0)
-  );
-  if (!tournaments.length) {
+
+  const seriesWithBins = trendData.series.slice(0, topN).map((entry, index) => {
+    const daily = binDaily(entry.timeline || []);
+    const smoothed = smoothSeries(daily, 3);
+    return { ...entry, daily: smoothed, color: palette[index % palette.length] };
+  });
+
+  if (!seriesWithBins.length) {
     return null;
   }
-  const topSeries = trendData.series.slice(0, topN);
-  const ids = tournaments.map(t => t.id);
 
-  const lines = topSeries.map((entry, index) => {
-    const points = ids.map(tid => {
-      const found = entry.timeline.find(item => item.tournamentId === tid);
-      return found ? (Number(found.share) || 0) : 0;
+  const timelineDates = Array.from(
+    new Set(seriesWithBins.flatMap(s => s.daily.map(pt => pt.date)))
+  ).sort((a, b) => Date.parse(a) - Date.parse(b));
+
+  const lines = seriesWithBins.map(entry => {
+    const points = timelineDates.map(d => {
+      const found = entry.daily.find(pt => pt.date === d);
+      return found ? found.share : 0;
     });
-    const first = points[0] || 0;
-    const last = points[points.length - 1] || 0;
+    const startAvg = points.slice(0, Math.max(1, Math.ceil(points.length * 0.3))).reduce((a, b) => a + b, 0) / Math.max(1, Math.ceil(points.length * 0.3));
+    const recentAvg = points.slice(-Math.max(1, Math.ceil(points.length * 0.3))).reduce((a, b) => a + b, 0) / Math.max(1, Math.ceil(points.length * 0.3));
+    const delta = Math.round((recentAvg - startAvg) * 10) / 10;
     return {
       name: entry.displayName || entry.base,
-      color: palette[index % palette.length],
+      color: entry.color,
       points,
-      latest: last,
-      delta: Math.round((last - first) * 10) / 10
+      latest: points.at(-1) || 0,
+      delta
     };
   });
 
-  // Aggregate "Other" if there are more archetypes
-  if (trendData.series.length > topN) {
-    const otherPoints = ids.map((tid, idx) => {
-      const topTotal = lines.reduce((sum, line) => sum + (line.points[idx] || 0), 0);
-      return Math.max(0, Math.round((100 - topTotal) * 10) / 10);
-    });
-    lines.push({
-      name: 'Other',
-      color: '#7c86a8',
-      points: otherPoints,
-      latest: otherPoints[otherPoints.length - 1] || 0,
-      delta: Math.round((otherPoints[otherPoints.length - 1] - otherPoints[0]) * 10) / 10
-    });
-  }
-
-  return { tournaments, lines };
+  return { dates: timelineDates, lines };
 }
 
 function findMovers(lines) {
@@ -201,18 +231,47 @@ function renderMovers(lines) {
   elements.movers.appendChild(buildGroup('Cooling', falling, 'down'));
 }
 
-function renderCardMovers(cardTrends) {
+function renderCardMovers(suggestions, cardTrends) {
   if (!elements.cardMovers) {
     return;
   }
   elements.cardMovers.innerHTML = '';
-  if (!cardTrends || (!cardTrends.rising?.length && !cardTrends.falling?.length)) {
+  const risingList =
+    (suggestions?.onTheRise && suggestions.onTheRise.length && suggestions.onTheRise) ||
+    (cardTrends?.rising || []);
+  const fallingList =
+    (suggestions?.choppedAndWashed && suggestions.choppedAndWashed.length && suggestions.choppedAndWashed) ||
+    (cardTrends?.falling || []);
+
+  if (!risingList.length && !fallingList.length) {
     const empty = document.createElement('p');
     empty.className = 'muted';
     empty.textContent = 'Card movement will appear once enough tournaments are available.';
     elements.cardMovers.appendChild(empty);
     return;
   }
+  const normalizeCard = item => {
+    const latest =
+      item.recentAvg ??
+      item.latest ??
+      item.currentShare ??
+      item.endShare ??
+      item.startShare ??
+      item.avgShare ??
+      0;
+    // Clamp delta so it doesn't exceed plausible usage bounds
+    const rawDelta = item.deltaAbs ?? item.delta ?? 0;
+    const delta = Math.max(Math.min(rawDelta, latest), -100);
+    return {
+      name: item.name,
+      set: item.set || null,
+      number: item.number || null,
+      archetype: item.archetype || null,
+      latest,
+      delta
+    };
+  };
+
   const buildGroup = (title, list, direction) => {
     const group = document.createElement('div');
     group.className = 'movers-group';
@@ -229,7 +288,8 @@ function renderCardMovers(cardTrends) {
     }
     const ul = document.createElement('ul');
     ul.className = 'movers-list';
-    items.forEach(item => {
+    items.forEach(raw => {
+      const item = normalizeCard(raw);
       const li = document.createElement('li');
       const deltaSign = item.delta > 0 ? '+' : '';
       const idLabel =
@@ -237,7 +297,7 @@ function renderCardMovers(cardTrends) {
       li.innerHTML = `
         <span class="dot"></span>
         <span class="name">${item.name}${idLabel}</span>
-        <span class="perc">${formatPercent(item.endShare || item.currentShare || 0)}</span>
+        <span class="perc">${formatPercent(item.latest || 0)}</span>
         <span class="delta ${direction}">${deltaSign}${item.delta?.toFixed(Math.abs(item.delta) % 1 === 0 ? 0 : 1)}%</span>
       `;
       ul.appendChild(li);
@@ -246,8 +306,8 @@ function renderCardMovers(cardTrends) {
     return group;
   };
 
-  elements.cardMovers.appendChild(buildGroup('Cards rising', cardTrends.rising, 'up'));
-  elements.cardMovers.appendChild(buildGroup('Cards cooling', cardTrends.falling, 'down'));
+  elements.cardMovers.appendChild(buildGroup('Cards rising', risingList, 'up'));
+  elements.cardMovers.appendChild(buildGroup('Cards cooling', fallingList, 'down'));
 }
 function deriveTournamentsFromDecks(decks) {
   const map = new Map();
@@ -292,13 +352,13 @@ function updateMinSliderBounds() {
     return;
   }
   const tournamentCount = state.trendData?.tournaments?.length || Number(elements.minSlider.max) || 8;
-  const max = Math.max(1, tournamentCount);
+  const requiredMin = Math.max(1, Math.floor(tournamentCount / 2));
+  const max = Math.max(requiredMin, tournamentCount);
+  state.minAppearances = requiredMin;
   elements.minSlider.max = String(max);
-  if (state.minAppearances > max) {
-    state.minAppearances = max;
-  }
-  elements.minSlider.value = String(state.minAppearances);
-  elements.minValue.textContent = `${state.minAppearances}+`;
+  elements.minSlider.value = String(requiredMin);
+  elements.minSlider.disabled = true;
+  elements.minValue.textContent = `${requiredMin}+ (auto)`;
 }
 
 function buildSparkline(timeline) {
@@ -384,8 +444,9 @@ function renderMetaChart() {
     return;
   }
   elements.metaChart.innerHTML = '';
-  const meta = buildMetaLines(state.trendData, 5);
-  if (!meta || !meta.lines?.length) {
+  const metaChart = buildMetaLines(state.trendData, 8);
+  const metaMovers = buildMetaLines(state.trendData, 16) || metaChart;
+  if (!metaChart || !metaChart.lines?.length) {
     const empty = document.createElement('div');
     empty.className = 'muted';
     empty.textContent = 'Not enough data to show meta trends yet.';
@@ -393,17 +454,23 @@ function renderMetaChart() {
     return;
   }
 
-  const width = 720;
-  const height = 260;
+  const width = 900;
+  const height = 340;
   const padX = 36;
   const padY = 28;
   const contentWidth = width - padX * 2;
   const contentHeight = height - padY * 2;
-  const maxShare = 100;
-  const count = meta.tournaments.length;
+  const count = metaChart.dates.length;
+
+  // Dynamic Y domain based on visible data (add headroom)
+  const maxObserved = Math.max(
+    ...metaChart.lines.flatMap(line => line.points.map(p => Math.max(0, Number(p) || 0)))
+  );
+  const buffer = Math.max(1, maxObserved * 0.05);
+  const yMax = Math.min(100, Math.max(5, Math.ceil((maxObserved + buffer) / 5) * 5));
 
   const xForIndex = idx => (count === 1 ? contentWidth / 2 : (idx / (count - 1)) * contentWidth) + padX;
-  const yForShare = share => height - padY - (Math.min(share, maxShare) / maxShare) * contentHeight;
+  const yForShare = share => height - padY - (Math.min(share, yMax) / yMax) * contentHeight;
 
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
@@ -412,8 +479,12 @@ function renderMetaChart() {
   svg.setAttribute('role', 'img');
   svg.classList.add('meta-svg');
 
-  // grid lines
-  [25, 50, 75, 100].forEach(level => {
+  // grid lines based on yMax
+  const gridLevels = [];
+  for (let lvl = 0; lvl <= yMax; lvl += Math.max(5, Math.ceil(yMax / 5))) {
+    gridLevels.push(lvl);
+  }
+  gridLevels.forEach(level => {
     const y = yForShare(level);
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', `${padX}`);
@@ -434,7 +505,7 @@ function renderMetaChart() {
     svg.appendChild(label);
   });
 
-  meta.lines.forEach(line => {
+  metaChart.lines.forEach(line => {
     const points = line.points.map((share, idx) => `${xForIndex(idx)},${yForShare(share)}`).join(' ');
     const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
     polyline.setAttribute('fill', 'none');
@@ -442,11 +513,25 @@ function renderMetaChart() {
     polyline.setAttribute('stroke-width', '2.5');
     polyline.setAttribute('points', points);
     polyline.setAttribute('stroke-linecap', 'round');
+    polyline.dataset.name = line.name;
+    polyline.classList.add('meta-line');
+
+    // Add a wider invisible hover stroke to make it easier to hit
+    const hitline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    hitline.setAttribute('fill', 'none');
+    hitline.setAttribute('stroke', line.color);
+    hitline.setAttribute('stroke-width', '12');
+    hitline.setAttribute('stroke-opacity', '0');
+    hitline.setAttribute('points', points);
+    hitline.dataset.name = line.name;
+    hitline.classList.add('meta-line-hit');
+
     svg.appendChild(polyline);
+    svg.appendChild(hitline);
   });
 
-  // x-axis labels
-  meta.tournaments.forEach((t, idx) => {
+  // x-axis labels (dates)
+  metaChart.dates.forEach((d, idx) => {
     const x = xForIndex(idx);
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.setAttribute('x', `${x}`);
@@ -454,13 +539,59 @@ function renderMetaChart() {
     label.setAttribute('fill', '#7c86a8');
     label.setAttribute('font-size', '11');
     label.setAttribute('text-anchor', 'middle');
-    label.textContent = formatDate(t.date);
+    label.textContent = formatDate(d);
     svg.appendChild(label);
   });
 
   elements.metaChart.appendChild(svg);
-  renderLegend(meta.lines);
-  renderMovers(meta.lines);
+  if (elements.metaRange) {
+    elements.metaRange.textContent = `Y-axis scaled to ${yMax}%`;
+  }
+  renderLegend(metaChart.lines);
+  renderMovers(metaMovers?.lines || metaChart.lines);
+
+  // Hover highlight wiring
+  const lines = elements.metaChart.querySelectorAll('.meta-line');
+  const hitlines = elements.metaChart.querySelectorAll('.meta-line-hit');
+  const legendItems = elements.legend ? elements.legend.querySelectorAll('.legend-item') : [];
+
+  const setActive = name => {
+    lines.forEach(line => {
+      const active = line.dataset.name === name;
+      line.style.opacity = active ? '1' : '0.25';
+      line.style.strokeWidth = active ? '3.5' : '2';
+    });
+    legendItems.forEach(item => {
+      const label = item.querySelector('span:nth-child(2)');
+      const active = label && label.textContent === name;
+      item.style.opacity = active ? '1' : '0.5';
+      item.style.borderColor = active ? item.querySelector('.legend-swatch')?.style.backgroundColor || '#6aa3ff' : '#2c335a';
+    });
+  };
+
+  const clearActive = () => {
+    lines.forEach(line => {
+      line.style.opacity = '1';
+      line.style.strokeWidth = '2.5';
+    });
+    legendItems.forEach(item => {
+      item.style.opacity = '1';
+      item.style.borderColor = '#2c335a';
+    });
+  };
+
+  [...lines, ...hitlines].forEach(line => {
+    line.addEventListener('mouseenter', () => setActive(line.dataset.name));
+    line.addEventListener('mouseleave', clearActive);
+  });
+
+  legendItems.forEach(item => {
+    const label = item.querySelector('span:nth-child(2)');
+    const name = label?.textContent;
+    if (!name) return;
+    item.addEventListener('mouseenter', () => setActive(name));
+    item.addEventListener('mouseleave', clearActive);
+  });
 }
 
 function renderList() {
@@ -512,7 +643,7 @@ async function hydrateFromDecks() {
   try {
     state.isHydrating = true;
     setStatus('Recomputing from decks...');
-    const decks = await fetchAllDecks(ONLINE_META_NAME);
+    const decks = await fetchAllDecks(TRENDS_SOURCE);
     const tournaments =
       state.trendData.tournaments && state.trendData.tournaments.length
         ? state.trendData.tournaments
@@ -523,12 +654,13 @@ async function hydrateFromDecks() {
       windowEnd: state.trendData.windowEnd
     });
     const cardTrends = buildCardTrendDataset(decks, tournaments, { minAppearances: 2 });
-    state.trendData = { ...recomputed, cardTrends };
+    state.trendData = { ...recomputed };
+    state.cardTrends = cardTrends;
     updateMinSliderBounds();
     setStatus('Recomputed from latest decks');
     renderSummary();
     renderMetaChart();
-    renderCardMovers(state.trendData.cardTrends || null);
+    renderCardMovers(state.suggestions || { onTheRise: [], choppedAndWashed: [] }, state.cardTrends);
     renderList();
   } catch (error) {
     logger.error('Failed to recompute trends from decks', { message: error?.message || error });
@@ -540,17 +672,7 @@ async function hydrateFromDecks() {
 
 function bindControls() {
   if (elements.minSlider && elements.minValue) {
-    const setMinValue = value => {
-      elements.minValue.textContent = `${value}+`;
-    };
-    setMinValue(state.minAppearances);
-    elements.minSlider.value = String(state.minAppearances);
-    elements.minSlider.addEventListener('input', event => {
-      const value = Number((event.target && event.target.value) || state.minAppearances);
-      state.minAppearances = Math.max(1, value);
-      setMinValue(state.minAppearances);
-      renderList();
-    });
+    elements.minSlider.disabled = true;
   }
 
   if (elements.refresh) {
@@ -580,29 +702,33 @@ async function init() {
   }
   setLoading(true);
   try {
-    const payload = await fetchTrendReport(ONLINE_META_NAME);
-    state.trendData = payload;
+    const payload = await fetchTrendReport(TRENDS_SOURCE);
+    state.trendData = payload?.trendReport || payload || null;
+    state.cardTrends = payload?.cardTrends || null;
+    state.suggestions = payload?.suggestions || null;
     updateMinSliderBounds();
     renderSummary();
     renderMetaChart();
-    renderCardMovers(state.trendData.cardTrends || null);
+    renderCardMovers(state.suggestions || { onTheRise: [], choppedAndWashed: [] }, state.cardTrends);
     renderList();
-    setStatus(`Showing pre-generated trends for ${ONLINE_META_NAME}`);
+    setStatus(`Showing pre-generated trends for ${TRENDS_SOURCE}`);
   } catch (error) {
     logger.warn('Failed to load pre-generated trends, falling back to decks', {
       message: error?.message || error
     });
     setStatus('Falling back to deck data...');
     try {
-      const decks = await fetchAllDecks(ONLINE_META_NAME);
+      const decks = await fetchAllDecks(TRENDS_SOURCE);
       const fallbackTournaments = deriveTournamentsFromDecks(decks);
       const archetypeTrends = buildTrendDataset(decks, fallbackTournaments, { minAppearances: 1 });
       const cardTrends = buildCardTrendDataset(decks, fallbackTournaments, { minAppearances: 2 });
-      state.trendData = { ...archetypeTrends, cardTrends };
+      state.trendData = archetypeTrends;
+      state.cardTrends = cardTrends;
+      state.suggestions = null;
       updateMinSliderBounds();
       renderSummary();
       renderMetaChart();
-      renderCardMovers(state.trendData.cardTrends || null);
+      renderCardMovers({ onTheRise: [], choppedAndWashed: [] }, state.cardTrends);
       renderList();
       setStatus('Using live deck data');
     } catch (fallbackError) {

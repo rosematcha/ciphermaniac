@@ -35,15 +35,16 @@ const RECENT_WEIGHT_HALF_LIFE_DAYS = 30;
 const MIN_LEADER_APPEARANCE_PCT = 0.6;
 const MIN_LEADER_AVG_PCT = 4.0;
 const LEADER_RECENCY_WEIGHT = 0.1;
-const MIN_RISE_CURRENT_PCT = 2.0;
-const MIN_RISE_DELTA_ABS = 1.5;
-const MIN_RISE_DELTA_REL = 1.25;
+const MIN_RISE_CURRENT_PCT = 1.0;
+const MIN_RISE_DELTA_ABS = 1.0;
+const MIN_RISE_DELTA_REL = 1.15;
 const MIN_RISE_TOURNAMENTS = 3;
 const MIN_CHOPPED_PEAK_PCT = 6.0;
 const MIN_CHOPPED_DROP_ABS = 5.0;
 const MIN_CHOPPED_DROP_REL = 0.6;
 const MIN_SUSTAINED_PEAK_TOURNAMENTS = 2;
 const MAX_CHOPPED_RECENT_PCT = 2.0;
+const MIN_CHOPPED_RECENT_FLOOR = 0.2;
 const MAX_DAY2D_TOTAL_APPEARANCES = 2;
 const MAX_DAY2D_PEAK_USAGE = 1.5;
 const MAX_DAY2D_TOTAL_USAGE_SUM = 3.0;
@@ -317,6 +318,7 @@ function buildSuggestions(cardTimelines, now) {
       peakShare >= MIN_CHOPPED_PEAK_PCT &&
       sustained >= MIN_SUSTAINED_PEAK_TOURNAMENTS &&
       latest <= MAX_CHOPPED_RECENT_PCT &&
+      latest >= MIN_CHOPPED_RECENT_FLOOR &&
       absDrop >= MIN_CHOPPED_DROP_ABS &&
       relDrop >= MIN_CHOPPED_DROP_REL
     ) {
@@ -373,13 +375,14 @@ function buildSuggestions(cardTimelines, now) {
 
   return {
     leaders: selectWithArchetypeCap(sortDesc(leaders), pickArch).map(item =>
-      toPlain(item, { latest: item.latest, avgShare: item.avgShare, score: item.score })
+      toPlain(item, { latest: item.latest, avgShare: item.avgShare, recentAvg: item.recentAvg, score: item.score })
     ),
-    onTheRise: selectWithArchetypeCap(sortDesc(rising), pickArch).map(item =>
+    onTheRise: selectWithArchetypeCap(sortDesc(rising), pickArch, MAX_PER_ARCHETYPE + 1, MAX_SUGGESTIONS + 4).map(item =>
       toPlain(item, {
         latest: item.latest,
         deltaAbs: item.deltaAbs,
         deltaRel: item.deltaRel,
+        slope: item.slope,
         score: item.score
       })
     ),
