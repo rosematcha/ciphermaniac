@@ -193,6 +193,36 @@ function buildSuggestions(cardTimelines, now) {
   const chopped = [];
   const day2d = [];
 
+  const computeWindowAverages = series => {
+    const n = series.length;
+    if (n === 0) {
+      return { startAvg: 0, recentAvg: 0, overallAvg: 0 };
+    }
+    const windowSize = Math.max(2, Math.ceil(n * 0.4));
+    const startWindow = series.slice(0, windowSize);
+    const recentWindow = series.slice(-windowSize);
+
+    const avg = arr => (arr.length ? arr.reduce((sum, s) => sum + (s.share || 0), 0) / arr.length : 0);
+    const weightedAvg = arr => {
+      let num = 0;
+      let den = 0;
+      for (const s of arr) {
+        const date = s.date ? new Date(s.date) : null;
+        const daysDiff = date ? (now - date) / (1000 * 60 * 60 * 24) : 0;
+        const w = recencyWeight(daysDiff);
+        num += (s.share || 0) * w;
+        den += w;
+      }
+      return den ? num / den : 0;
+    };
+
+    return {
+      startAvg: avg(startWindow),
+      recentAvg: weightedAvg(recentWindow),
+      overallAvg: avg(series)
+    };
+  };
+
   const entries = Array.from(cardTimelines.entries());
   for (const [key, data] of entries) {
     if (BASIC_ENERGY.has(data.name)) {
@@ -204,34 +234,32 @@ function buildSuggestions(cardTimelines, now) {
     const secondLatest = series.length > 1 ? series[series.length - 2].share || 0 : 0;
     const appearances = series.filter(s => s.present > 0).length;
     const totalTournaments = series.length;
-    const avgShare = series.reduce((sum, s) => sum + (s.share || 0), 0) / (series.length || 1);
+    const { startAvg, recentAvg, overallAvg } = computeWindowAverages(series);
 
     // Leaders
     if (
       totalTournaments > 0 &&
       appearances / totalTournaments >= MIN_LEADER_APPEARANCE_PCT &&
-      avgShare >= MIN_LEADER_AVG_PCT &&
-      latest >= MIN_LEADER_AVG_PCT
+      overallAvg >= MIN_LEADER_AVG_PCT &&
+      recentAvg >= MIN_LEADER_AVG_PCT
     ) {
       const latestDate = series[series.length - 1].date ? new Date(series[series.length - 1].date) : null;
       const daysDiff = latestDate ? (now - latestDate) / (1000 * 60 * 60 * 24) : 0;
-      const score = avgShare + (latest * LEADER_RECENCY_WEIGHT) + recencyWeight(daysDiff);
-      leaders.push({ key, ...data, latest, avgShare, score });
+      const score = overallAvg + recentAvg + (latest * LEADER_RECENCY_WEIGHT) + recencyWeight(daysDiff);
+      leaders.push({ key, ...data, latest, avgShare: overallAvg, recentAvg, score });
     }
 
     // Rising
     if (series.length >= MIN_RISE_TOURNAMENTS) {
-      const startCount = Math.max(1, Math.ceil(series.length / 3));
-      const startAvg = series.slice(0, startCount).reduce((sum, s) => sum + (s.share || 0), 0) / startCount;
-      const deltaAbs = latest - startAvg;
-      const deltaRel = startAvg > 0 ? latest / startAvg : latest > 0 ? Infinity : 0;
+      const deltaAbs = recentAvg - startAvg;
+      const deltaRel = startAvg > 0 ? recentAvg / startAvg : recentAvg > 0 ? Infinity : 0;
       if (
-        latest >= MIN_RISE_CURRENT_PCT &&
+        recentAvg >= MIN_RISE_CURRENT_PCT &&
         deltaAbs >= MIN_RISE_DELTA_ABS &&
         deltaRel >= MIN_RISE_DELTA_REL
       ) {
-        const score = deltaAbs * 2 + latest + (deltaRel >= MIN_RISE_DELTA_REL ? deltaRel : 0);
-        rising.push({ key, ...data, latest, deltaAbs, deltaRel, score });
+        const score = deltaAbs * 2 + recentAvg + (deltaRel >= MIN_RISE_DELTA_REL ? deltaRel : 0);
+        rising.push({ key, ...data, latest, recentAvg, startAvg, deltaAbs, deltaRel, score });
       }
     }
 
