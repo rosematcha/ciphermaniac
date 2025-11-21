@@ -8,7 +8,7 @@ import {
 import { loadCardTypesDatabase, enrichCardWithType } from './cardTypesDatabase.js';
 import { enrichDecksWithOnTheFlyFetch } from './cardTypeFetcher.js';
 
-const WINDOW_DAYS = 14;
+const WINDOW_DAYS = 30;
 const MIN_USAGE_PERCENT = 0.5;
 const TARGET_FOLDER = 'Online - Last 14 Days';
 const REPORT_BASE_KEY = `reports/${TARGET_FOLDER}`;
@@ -18,6 +18,7 @@ const SUPPORTED_FORMATS = new Set(['STANDARD']);
 const DEFAULT_DETAILS_CONCURRENCY = 5;
 const DEFAULT_STANDINGS_CONCURRENCY = 4;
 const DEFAULT_R2_CONCURRENCY = 6;
+const DEFAULT_MIN_TREND_APPEARANCES = 3;
 
 // Placement tagging thresholds (absolute finishing positions)
 const PLACEMENT_TAG_RULES = [
@@ -34,6 +35,15 @@ const PERCENT_TAG_RULES = [
   { tag: 'top25', fraction: 0.25, minPlayers: 12 },
   { tag: 'top50', fraction: 0.5, minPlayers: 8 }
 ];
+
+const SUCCESS_TAGS = Array.from(
+  new Set([
+    ...PLACEMENT_TAG_RULES.map(rule => rule.tag),
+    ...PERCENT_TAG_RULES.map(rule => rule.tag)
+  ])
+);
+const DEFAULT_CARD_TREND_MIN_APPEARANCES = 2;
+const DEFAULT_CARD_TREND_TOP = 12;
 
 async function runWithConcurrency(items, limit, handler) {
   if (!Array.isArray(items) || items.length === 0) {
@@ -407,6 +417,16 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
     return [];
   }
 
+  const diag = diagnostics || {};
+  diag.detailsWithoutDecklists = diag.detailsWithoutDecklists || [];
+  diag.detailsOffline = diag.detailsOffline || [];
+  diag.detailsUnsupportedFormat = diag.detailsUnsupportedFormat || [];
+  diag.standingsFetchFailures = diag.standingsFetchFailures || [];
+  diag.invalidStandingsPayload = diag.invalidStandingsPayload || [];
+  diag.entriesWithoutDecklists = diag.entriesWithoutDecklists || [];
+  diag.entriesWithoutPlacing = diag.entriesWithoutPlacing || [];
+  diag.tournamentsBelowMinimum = diag.tournamentsBelowMinimum || [];
+
   const fetchJson = options.fetchJson || fetchLimitlessJson;
   const standingsConcurrency = options.standingsConcurrency || DEFAULT_STANDINGS_CONCURRENCY;
 
@@ -416,7 +436,7 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
     async tournament => {
       const limit = determinePlacementLimit(tournament?.players);
       if (limit === 0) {
-        diagnostics?.tournamentsBelowMinimum.push({
+        diag.tournamentsBelowMinimum.push({
           tournamentId: tournament.id,
           name: tournament.name,
           players: tournament.players
@@ -429,7 +449,7 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
         standings = await fetchJson(`/tournaments/${tournament.id}/standings`, { env });
       } catch (error) {
         console.warn('Failed to fetch standings', tournament.id, error?.message || error);
-        diagnostics?.standingsFetchFailures.push({
+        diag.standingsFetchFailures.push({
           tournamentId: tournament.id,
           name: tournament.name,
           message: error?.message || 'Unknown standings fetch error'
@@ -438,7 +458,7 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
       }
 
       if (!Array.isArray(standings)) {
-        diagnostics?.invalidStandingsPayload.push({
+        diag.invalidStandingsPayload.push({
           tournamentId: tournament.id,
           name: tournament.name
         });
@@ -462,7 +482,7 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
 
       for (const entry of cappedStandings) {
         if (!Number.isFinite(entry?.placing)) {
-          diagnostics?.entriesWithoutPlacing.push({
+          diag.entriesWithoutPlacing.push({
             tournamentId: tournament.id,
             name: tournament.name,
             player: entry?.name || entry?.player || 'Unknown Player'
@@ -471,7 +491,7 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
 
         const cards = toCardEntries(entry?.decklist, cardTypesDb);
         if (!cards.length) {
-          diagnostics?.entriesWithoutDecklists.push({
+          diag.entriesWithoutDecklists.push({
             tournamentId: tournament.id,
             player: entry?.name || entry?.player || 'Unknown Player'
           });
@@ -529,6 +549,7 @@ function buildArchetypeReports(decks, minPercent) {
   const deckTotal = decks.length || 0;
   const minDecks = Math.max(1, Math.ceil(deckTotal * (minPercent / 100)));
   const archetypeFiles = [];
+  const deckMap = new Map();
 
   groups.forEach(group => {
     if (group.decks.length < minDecks) {
@@ -542,6 +563,7 @@ function buildArchetypeReports(decks, minPercent) {
       data,
       deckCount: group.decks.length
     });
+    deckMap.set(group.filenameBase, group.decks);
   });
 
   archetypeFiles.sort((a, b) => b.deckCount - a.deckCount);
@@ -549,7 +571,254 @@ function buildArchetypeReports(decks, minPercent) {
   return {
     archetypeFiles,
     archetypeIndex: archetypeFiles.map(file => file.base).sort((a, b) => a.localeCompare(b)),
-    minDecks
+    minDecks,
+    deckMap
+  };
+}
+
+function buildTrendReport(decks, tournaments, options = {}) {
+  const now = options.now ? new Date(options.now) : new Date();
+  const windowStart = options.windowStart ? new Date(options.windowStart) : null;
+  const windowEnd = options.windowEnd ? new Date(options.windowEnd) : now;
+  const minAppearances = Math.max(
+    1,
+    Number.isFinite(options.minAppearances) ? Number(options.minAppearances) : DEFAULT_MIN_TREND_APPEARANCES
+  );
+
+  const tournamentIndex = new Map();
+  const sortedTournaments = (Array.isArray(tournaments) ? tournaments : [])
+    .filter(t => t && t.id)
+    .map(t => ({
+      ...t,
+      date: t.date || null
+    }))
+    .sort((a, b) => Date.parse(a.date || 0) - Date.parse(b.date || 0));
+
+  sortedTournaments.forEach(t => {
+    tournamentIndex.set(t.id, {
+      ...t,
+      deckTotal: 0
+    });
+  });
+
+  const archetypes = new Map();
+  const successTagSet = new Set(SUCCESS_TAGS);
+  const deckList = Array.isArray(decks) ? decks : [];
+
+  for (const deck of deckList) {
+    const tournamentId = deck?.tournamentId;
+    if (!tournamentId || !tournamentIndex.has(tournamentId)) {
+      continue;
+    }
+    const normalizedName = normalizeArchetypeName(deck?.archetype || 'Unknown');
+    const base = sanitizeForFilename(normalizedName.replace(/ /g, '_')) || 'unknown';
+    const displayName = deck?.archetype || 'Unknown';
+
+    const archetype = archetypes.get(base) || {
+      base,
+      displayName,
+      totalDecks: 0,
+      timeline: new Map()
+    };
+
+    const tournamentMeta = tournamentIndex.get(tournamentId);
+    tournamentMeta.deckTotal += 1;
+
+    const timelineEntry =
+      archetype.timeline.get(tournamentId) || {
+        tournamentId,
+        tournamentName: deck?.tournamentName || tournamentMeta?.name || 'Unknown Tournament',
+        date: deck?.tournamentDate || tournamentMeta?.date || null,
+        decks: 0,
+        success: {}
+      };
+
+    timelineEntry.decks += 1;
+    for (const tag of Array.isArray(deck?.successTags) ? deck.successTags : []) {
+      if (!successTagSet.has(tag)) {
+        continue;
+      }
+      timelineEntry.success[tag] = (timelineEntry.success[tag] || 0) + 1;
+    }
+
+    archetype.timeline.set(tournamentId, timelineEntry);
+    archetype.totalDecks += 1;
+    archetype.displayName = archetype.displayName || displayName;
+
+    archetypes.set(base, archetype);
+  }
+
+  const series = [];
+  archetypes.forEach(archetype => {
+    const timeline = Array.from(archetype.timeline.values())
+      .map(entry => {
+        const tournamentMeta = tournamentIndex.get(entry.tournamentId);
+        const totalDecks = tournamentMeta?.deckTotal || 0;
+        const share = totalDecks ? Math.round((entry.decks / totalDecks) * 1000) / 10 : 0;
+        return {
+          ...entry,
+          totalDecks,
+          share
+        };
+      })
+      .sort((a, b) => Date.parse(a.date || 0) - Date.parse(b.date || 0));
+
+    const appearances = timeline.length;
+    if (appearances < minAppearances) {
+      return;
+    }
+
+    const aggregateSuccess = {};
+    for (const entry of timeline) {
+      Object.entries(entry.success || {}).forEach(([tag, count]) => {
+        aggregateSuccess[tag] = (aggregateSuccess[tag] || 0) + (Number(count) || 0);
+      });
+    }
+
+    const shares = timeline.map(entry => entry.share || 0);
+    const avgShare = shares.length ? Math.round((shares.reduce((sum, value) => sum + value, 0) / shares.length) * 10) / 10 : 0;
+    const maxShare = shares.length ? Math.max(...shares) : 0;
+    const minShare = shares.length ? Math.min(...shares) : 0;
+
+    series.push({
+      base: archetype.base,
+      displayName: archetype.displayName,
+      totalDecks: archetype.totalDecks,
+      appearances,
+      avgShare,
+      maxShare,
+      minShare,
+      successTotals: aggregateSuccess,
+      timeline
+    });
+  });
+
+  series.sort((a, b) => b.totalDecks - a.totalDecks || b.avgShare - a.avgShare);
+
+  const tournamentsWithTotals = sortedTournaments.map(t => ({
+    ...t,
+    deckTotal: tournamentIndex.get(t.id)?.deckTotal || 0
+  }));
+
+  return {
+    generatedAt: now.toISOString(),
+    windowStart: windowStart ? windowStart.toISOString() : null,
+    windowEnd: windowEnd ? windowEnd.toISOString() : null,
+    deckTotal: deckList.length,
+    tournamentCount: tournamentsWithTotals.length,
+    minAppearances,
+    archetypeCount: series.length,
+    tournaments: tournamentsWithTotals,
+    series
+  };
+}
+
+function buildCardTrendReport(decks, tournaments, options = {}) {
+  const now = options.now ? new Date(options.now) : new Date();
+  const windowStart = options.windowStart ? new Date(options.windowStart) : null;
+  const windowEnd = options.windowEnd ? new Date(options.windowEnd) : now;
+  const minAppearances = Math.max(
+    1,
+    Number.isFinite(options.minAppearances) ? Number(options.minAppearances) : DEFAULT_CARD_TREND_MIN_APPEARANCES
+  );
+  const topCount = Math.max(1, Number.isFinite(options.topCount) ? Number(options.topCount) : DEFAULT_CARD_TREND_TOP);
+
+  const tournamentsMap = new Map();
+  (Array.isArray(tournaments) ? tournaments : []).forEach(t => {
+    if (t && t.id) {
+      tournamentsMap.set(t.id, {
+        id: t.id,
+        date: t.date || null,
+        deckTotal: Number(t.deckTotal) || 0
+      });
+    }
+  });
+
+  const cardPresence = new Map(); // key -> Map<tournamentId, presentCount>
+  const cardMeta = new Map();
+
+  const deckList = Array.isArray(decks) ? decks : [];
+  for (const deck of deckList) {
+    const tournamentId = deck?.tournamentId;
+    if (!tournamentId || !tournamentsMap.has(tournamentId)) {
+      continue;
+    }
+    const uniqueCards = new Set();
+    for (const card of Array.isArray(deck?.cards) ? deck.cards : []) {
+      const name = card?.name || 'Unknown Card';
+      const set = (card?.set || '').toString().toUpperCase();
+      const number = card?.number || '';
+      const key = set && number ? `${name}::${set}::${number}` : name;
+      uniqueCards.add(key);
+      if (!cardMeta.has(key)) {
+        cardMeta.set(key, { name, set: set || null, number: number || null });
+      }
+    }
+    uniqueCards.forEach(key => {
+      if (!cardPresence.has(key)) {
+        cardPresence.set(key, new Map());
+      }
+      const counts = cardPresence.get(key);
+      counts.set(tournamentId, (counts.get(tournamentId) || 0) + 1);
+    });
+  }
+
+  const series = [];
+  cardPresence.forEach((presenceMap, key) => {
+    const timeline = Array.from(tournamentsMap.values())
+      .sort((a, b) => Date.parse(a.date || 0) - Date.parse(b.date || 0))
+      .map(meta => {
+        const present = presenceMap.get(meta.id) || 0;
+        const share = meta.deckTotal ? Math.round((present / meta.deckTotal) * 1000) / 10 : 0;
+        return {
+          tournamentId: meta.id,
+          date: meta.date || null,
+          present,
+          total: meta.deckTotal,
+          share
+        };
+      });
+
+    const presentEvents = timeline.filter(entry => entry.present > 0).length;
+    if (presentEvents < minAppearances) {
+      return;
+    }
+
+    const chunk = Math.max(1, Math.ceil(timeline.length / 3));
+    const startAvg =
+      Math.round(
+        (timeline.slice(0, chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10
+      ) / 10;
+    const endAvg =
+      Math.round(
+        (timeline.slice(-chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10
+      ) / 10;
+    const delta = Math.round((endAvg - startAvg) * 10) / 10;
+    const latestShare = timeline.at(-1)?.share || 0;
+
+    series.push({
+      key,
+      ...cardMeta.get(key),
+      appearances: timeline.length,
+      startShare: startAvg,
+      endShare: endAvg,
+      delta,
+      currentShare: latestShare
+    });
+  });
+
+  const rising = [...series].sort((a, b) => b.delta - a.delta).slice(0, topCount);
+  const falling = [...series].sort((a, b) => a.delta - b.delta).slice(0, topCount);
+
+  return {
+    generatedAt: now.toISOString(),
+    windowStart: windowStart ? windowStart.toISOString() : null,
+    windowEnd: windowEnd ? windowEnd.toISOString() : null,
+    cardsAnalyzed: series.length,
+    minAppearances,
+    topCount,
+    rising,
+    falling
   };
 }
 
@@ -690,6 +959,17 @@ export async function runOnlineMetaJob(env, options = {}) {
     decks,
     MIN_USAGE_PERCENT
   );
+  const trendReport = buildTrendReport(decks, tournaments, {
+    windowStart: since,
+    windowEnd: now,
+    now,
+    minAppearances: options.minTrendAppearances
+  });
+  const cardTrends = buildCardTrendReport(decks, trendReport.tournaments, {
+    windowStart: since,
+    windowEnd: now
+  });
+  trendReport.cardTrends = cardTrends;
 
   const meta = {
     name: TARGET_FOLDER,
@@ -717,6 +997,7 @@ export async function runOnlineMetaJob(env, options = {}) {
     { key: `${REPORT_BASE_KEY}/master.json`, data: masterReport },
     { key: `${REPORT_BASE_KEY}/meta.json`, data: meta },
     { key: `${REPORT_BASE_KEY}/decks.json`, data: decks },
+    { key: `${REPORT_BASE_KEY}/trends.json`, data: trendReport },
     { key: `${REPORT_BASE_KEY}/archetypes/index.json`, data: archetypeIndex }
   ];
   const archetypeWrites = archetypeFiles.map(file => ({
@@ -731,7 +1012,8 @@ export async function runOnlineMetaJob(env, options = {}) {
   console.info('[OnlineMeta] Aggregated online tournaments', {
     deckTotal,
     tournamentCount: tournaments.length,
-    archetypes: archetypeFiles.length
+    archetypes: archetypeFiles.length,
+    trendArchetypes: trendReport.archetypeCount
   });
 
   return {
@@ -739,9 +1021,16 @@ export async function runOnlineMetaJob(env, options = {}) {
     decks: deckTotal,
     tournaments: tournaments.length,
     archetypes: archetypeFiles.length,
+    trendArchetypes: trendReport.archetypeCount,
     folder: TARGET_FOLDER,
     diagnostics
   };
 }
 
-export { fetchRecentOnlineTournaments, gatherDecks, buildArchetypeReports };
+export {
+  fetchRecentOnlineTournaments,
+  gatherDecks,
+  buildArchetypeReports,
+  buildTrendReport,
+  buildCardTrendReport
+};

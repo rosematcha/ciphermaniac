@@ -97,7 +97,7 @@ const TCG_LIVE_SECTION_ORDER = [
 const SUCCESS_FILTER_LABELS = {
   all: 'all finishes',
   winner: 'winners',
-  top2: 'top 2',
+  top2: 'finals',
   top4: 'top 4',
   top8: 'top 8',
   top16: 'top 16',
