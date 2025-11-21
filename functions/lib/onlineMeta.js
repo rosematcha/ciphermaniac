@@ -417,6 +417,16 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
     return [];
   }
 
+  const diag = diagnostics || {};
+  diag.detailsWithoutDecklists = diag.detailsWithoutDecklists || [];
+  diag.detailsOffline = diag.detailsOffline || [];
+  diag.detailsUnsupportedFormat = diag.detailsUnsupportedFormat || [];
+  diag.standingsFetchFailures = diag.standingsFetchFailures || [];
+  diag.invalidStandingsPayload = diag.invalidStandingsPayload || [];
+  diag.entriesWithoutDecklists = diag.entriesWithoutDecklists || [];
+  diag.entriesWithoutPlacing = diag.entriesWithoutPlacing || [];
+  diag.tournamentsBelowMinimum = diag.tournamentsBelowMinimum || [];
+
   const fetchJson = options.fetchJson || fetchLimitlessJson;
   const standingsConcurrency = options.standingsConcurrency || DEFAULT_STANDINGS_CONCURRENCY;
 
@@ -426,7 +436,7 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
     async tournament => {
       const limit = determinePlacementLimit(tournament?.players);
       if (limit === 0) {
-        diagnostics?.tournamentsBelowMinimum.push({
+        diag.tournamentsBelowMinimum.push({
           tournamentId: tournament.id,
           name: tournament.name,
           players: tournament.players
@@ -439,7 +449,7 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
         standings = await fetchJson(`/tournaments/${tournament.id}/standings`, { env });
       } catch (error) {
         console.warn('Failed to fetch standings', tournament.id, error?.message || error);
-        diagnostics?.standingsFetchFailures.push({
+        diag.standingsFetchFailures.push({
           tournamentId: tournament.id,
           name: tournament.name,
           message: error?.message || 'Unknown standings fetch error'
@@ -448,7 +458,7 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
       }
 
       if (!Array.isArray(standings)) {
-        diagnostics?.invalidStandingsPayload.push({
+        diag.invalidStandingsPayload.push({
           tournamentId: tournament.id,
           name: tournament.name
         });
@@ -472,7 +482,7 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
 
       for (const entry of cappedStandings) {
         if (!Number.isFinite(entry?.placing)) {
-          diagnostics?.entriesWithoutPlacing.push({
+          diag.entriesWithoutPlacing.push({
             tournamentId: tournament.id,
             name: tournament.name,
             player: entry?.name || entry?.player || 'Unknown Player'
@@ -481,7 +491,7 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
 
         const cards = toCardEntries(entry?.decklist, cardTypesDb);
         if (!cards.length) {
-          diagnostics?.entriesWithoutDecklists.push({
+          diag.entriesWithoutDecklists.push({
             tournamentId: tournament.id,
             player: entry?.name || entry?.player || 'Unknown Player'
           });
