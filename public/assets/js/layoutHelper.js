@@ -6,6 +6,9 @@
 import { CONFIG } from './config.js';
 import { logger } from './utils/logger.js';
 
+// Match the header CSS breakpoint where the hamburger menu appears
+const HAMBURGER_BREAKPOINT = 720;
+
 /**
  * @typedef {object} LayoutMetrics
  * @property {number} gap - Gap between cards
@@ -32,12 +35,27 @@ export function computeLayout(containerWidth) {
   const gap = GAP;
   const effectiveWidth = Math.max(0, containerWidth - MIN_HORIZONTAL_PADDING);
   const prefersCompact = typeof window !== 'undefined' && window.innerWidth <= 880;
+  const isHamburgerWidth = typeof window !== 'undefined' && window.innerWidth <= HAMBURGER_BREAKPOINT;
 
   if (prefersCompact) {
     const columns = Math.max(1, Math.floor((effectiveWidth + gap) / (MIN_BASE_CARD_WIDTH + gap)));
     const computedBase = columns > 0 ? Math.floor((effectiveWidth + gap) / columns - gap) : MIN_BASE_CARD_WIDTH;
+    // On hamburger-sized screens, stick to the normal computed base width (not the absolute minimum) for a "medium" feel
     const base = Math.max(MIN_BASE_CARD_WIDTH, Math.min(BASE_CARD_WIDTH, computedBase || MIN_BASE_CARD_WIDTH));
     const contentWidth = columns * base + Math.max(0, columns - 1) * gap;
+
+    // Allow a modest downscale on hamburger breakpoint to fit an extra card without overflowing the row.
+    const MIN_HAMBURGER_SCALE = 0.8;
+    let targetSmall = isHamburgerWidth ? Math.max(columns, columns + 1) : Math.max(1, columns);
+    let rawSmallScale = ((contentWidth + gap) / targetSmall - gap) / base;
+
+    // If adding the extra card would force the scale below our minimum, drop back to the default columns to avoid clipping.
+    if (isHamburgerWidth && rawSmallScale < MIN_HAMBURGER_SCALE) {
+      targetSmall = columns;
+      rawSmallScale = ((contentWidth + gap) / targetSmall - gap) / base;
+    }
+
+    const smallScale = isHamburgerWidth ? Math.min(1, rawSmallScale) : 1;
 
     const compactMetrics = {
       gap,
@@ -45,9 +63,9 @@ export function computeLayout(containerWidth) {
       perRowBig: Math.max(1, columns),
       bigRowContentWidth: contentWidth || base,
       targetMedium: Math.max(1, columns),
-      mediumScale: 1,
-      targetSmall: Math.max(1, columns),
-      smallScale: 1,
+      mediumScale: smallScale,
+      targetSmall,
+      smallScale,
       bigRows: 0,
       mediumRows: 0
     };

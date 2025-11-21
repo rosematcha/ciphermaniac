@@ -9,7 +9,7 @@ import { AppError, ErrorTypes, safeFetch, validateType, withRetry } from './util
 
 let pricingData = null;
 const jsonCache = new Map();
-const ONLINE_META_NAME = 'Online - Last 14 Days';
+export const ONLINE_META_NAME = 'Online - Last 14 Days';
 const _ONLINE_META_SEGMENT = `/${encodeURIComponent(ONLINE_META_NAME)}`; // Reserved for future use
 
 function hasCachedData(entry) {
@@ -334,6 +334,22 @@ export function fetchReport(tournament) {
     `report for ${tournament}`,
     'object',
     'tournament report',
+    { cache: true }
+  );
+}
+
+/**
+ * Fetch archetype trend data for a tournament group
+ * @param {string} tournament
+ * @returns {Promise<object>}
+ */
+export function fetchTrendReport(tournament) {
+  const encodedTournament = encodeURIComponent(tournament);
+  return fetchReportResource(
+    `${encodedTournament}/trends.json`,
+    `trends for ${tournament}`,
+    'object',
+    'trend report',
     { cache: true }
   );
 }
