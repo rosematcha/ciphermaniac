@@ -207,7 +207,12 @@ function buildSuggestions(cardTimelines, now) {
     const avgShare = series.reduce((sum, s) => sum + (s.share || 0), 0) / (series.length || 1);
 
     // Leaders
-    if (totalTournaments > 0 && appearances / totalTournaments >= MIN_LEADER_APPEARANCE_PCT && avgShare >= MIN_LEADER_AVG_PCT) {
+    if (
+      totalTournaments > 0 &&
+      appearances / totalTournaments >= MIN_LEADER_APPEARANCE_PCT &&
+      avgShare >= MIN_LEADER_AVG_PCT &&
+      latest >= MIN_LEADER_AVG_PCT
+    ) {
       const latestDate = series[series.length - 1].date ? new Date(series[series.length - 1].date) : null;
       const daysDiff = latestDate ? (now - latestDate) / (1000 * 60 * 60 * 24) : 0;
       const score = avgShare + (latest * LEADER_RECENCY_WEIGHT) + recencyWeight(daysDiff);
@@ -222,7 +227,8 @@ function buildSuggestions(cardTimelines, now) {
       const deltaRel = startAvg > 0 ? latest / startAvg : latest > 0 ? Infinity : 0;
       if (
         latest >= MIN_RISE_CURRENT_PCT &&
-        (deltaAbs >= MIN_RISE_DELTA_ABS || deltaRel >= MIN_RISE_DELTA_REL)
+        deltaAbs >= MIN_RISE_DELTA_ABS &&
+        deltaRel >= MIN_RISE_DELTA_REL
       ) {
         const score = deltaAbs * 2 + latest + (deltaRel >= MIN_RISE_DELTA_REL ? deltaRel : 0);
         rising.push({ key, ...data, latest, deltaAbs, deltaRel, score });
@@ -232,7 +238,17 @@ function buildSuggestions(cardTimelines, now) {
     // Chopped and washed
     const peakShare = Math.max(...series.map(s => s.share || 0));
     const peakIdx = series.findIndex(s => (s.share || 0) === peakShare);
-    const sustained = series.filter(s => (s.share || 0) >= MIN_CHOPPED_PEAK_PCT * 0.7 && (s.share || 0) >= MIN_CHOPPED_PEAK_PCT).length;
+    let sustained = 0;
+    if (peakIdx >= 0) {
+      for (let idx = peakIdx; idx < series.length; idx += 1) {
+        const share = series[idx].share || 0;
+        if (share >= MIN_CHOPPED_PEAK_PCT * 0.7 && share >= MIN_CHOPPED_PEAK_PCT) {
+          sustained += 1;
+        } else {
+          break;
+        }
+      }
+    }
     const absDrop = peakShare - latest;
     const relDrop = peakShare > 0 ? absDrop / peakShare : 0;
     if (
@@ -374,7 +390,7 @@ async function main() {
     tournamentCount: tournaments.length
   };
 
-  const baseKey = `${R2_REPORTS_PREFIX}/${TRENDS_FOLDER}`;
+  const baseKey = `${TRENDS_FOLDER}`;
   console.log('[trends] Uploading meta and trends...');
   await env.REPORTS.put(`${baseKey}/meta.json`, meta);
   await env.REPORTS.put(`${baseKey}/trends.json`, { trendReport, cardTrends, suggestions });
