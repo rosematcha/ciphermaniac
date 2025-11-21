@@ -9,37 +9,7 @@
 </head>
 <body>
   <main>
-    <section class="trends-hero">
-      <div class="landing-inner">
-        <p class="eyebrow">Meta watch</p>
-        <h1>Archetype trends</h1>
-        <p class="lede">
-          Track archetypes that consistently show up across recent online tournaments and see their rise or fall over time.
-        </p>
-        <div id="trend-summary" class="trend-summary"></div>
-      </div>
-    </section>
-
     <section class="trends-shell">
-      <div class="trends-controls" aria-label="Trend filters">
-        <div class="pill-toggle" role="group" aria-label="Trend view">
-          <button type="button" class="pill is-active" id="trend-mode-meta">Meta overview</button>
-          <button type="button" class="pill" id="trend-mode-archetypes">Per archetype</button>
-        </div>
-        <div class="range-control">
-          <div class="range-label">
-            <label for="trend-min-tournaments" class="control-label">Min tournaments per archetype</label>
-            <span class="inline-value" id="trend-min-value">3+</span>
-          </div>
-          <input type="range" id="trend-min-tournaments" min="1" max="8" value="3" step="1" aria-describedby="trend-min-help" />
-          <p id="trend-min-help" class="helper">Only show archetypes that appear in at least this many tournaments.</p>
-        </div>
-        <div class="controls-row actions">
-          <button id="trend-refresh" type="button" class="btn">Recompute from decks</button>
-          <span id="trend-status" class="status"></span>
-        </div>
-      </div>
-
       <section id="trend-meta" class="trend-panel" aria-live="polite">
         <header class="trend-panel__header">
           <div>

@@ -444,8 +444,9 @@ function renderMetaChart() {
     return;
   }
   elements.metaChart.innerHTML = '';
-  const meta = buildMetaLines(state.trendData, 5);
-  if (!meta || !meta.lines?.length) {
+  const metaChart = buildMetaLines(state.trendData, 8);
+  const metaMovers = buildMetaLines(state.trendData, 16) || metaChart;
+  if (!metaChart || !metaChart.lines?.length) {
     const empty = document.createElement('div');
     empty.className = 'muted';
     empty.textContent = 'Not enough data to show meta trends yet.';
@@ -459,11 +460,11 @@ function renderMetaChart() {
   const padY = 28;
   const contentWidth = width - padX * 2;
   const contentHeight = height - padY * 2;
-  const count = meta.dates.length;
+  const count = metaChart.dates.length;
 
   // Dynamic Y domain based on visible data (add headroom)
   const maxObserved = Math.max(
-    ...meta.lines.flatMap(line => line.points.map(p => Math.max(0, Number(p) || 0)))
+    ...metaChart.lines.flatMap(line => line.points.map(p => Math.max(0, Number(p) || 0)))
   );
   const buffer = Math.max(1, maxObserved * 0.05);
   const yMax = Math.min(100, Math.max(5, Math.ceil((maxObserved + buffer) / 5) * 5));
@@ -504,7 +505,7 @@ function renderMetaChart() {
     svg.appendChild(label);
   });
 
-  meta.lines.forEach(line => {
+  metaChart.lines.forEach(line => {
     const points = line.points.map((share, idx) => `${xForIndex(idx)},${yForShare(share)}`).join(' ');
     const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
     polyline.setAttribute('fill', 'none');
@@ -514,11 +515,23 @@ function renderMetaChart() {
     polyline.setAttribute('stroke-linecap', 'round');
     polyline.dataset.name = line.name;
     polyline.classList.add('meta-line');
+
+    // Add a wider invisible hover stroke to make it easier to hit
+    const hitline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    hitline.setAttribute('fill', 'none');
+    hitline.setAttribute('stroke', line.color);
+    hitline.setAttribute('stroke-width', '12');
+    hitline.setAttribute('stroke-opacity', '0');
+    hitline.setAttribute('points', points);
+    hitline.dataset.name = line.name;
+    hitline.classList.add('meta-line-hit');
+
     svg.appendChild(polyline);
+    svg.appendChild(hitline);
   });
 
   // x-axis labels (dates)
-  meta.dates.forEach((d, idx) => {
+  metaChart.dates.forEach((d, idx) => {
     const x = xForIndex(idx);
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.setAttribute('x', `${x}`);
@@ -534,11 +547,12 @@ function renderMetaChart() {
   if (elements.metaRange) {
     elements.metaRange.textContent = `Y-axis scaled to ${yMax}%`;
   }
-  renderLegend(meta.lines);
-  renderMovers(meta.lines);
+  renderLegend(metaChart.lines);
+  renderMovers(metaMovers?.lines || metaChart.lines);
 
   // Hover highlight wiring
   const lines = elements.metaChart.querySelectorAll('.meta-line');
+  const hitlines = elements.metaChart.querySelectorAll('.meta-line-hit');
   const legendItems = elements.legend ? elements.legend.querySelectorAll('.legend-item') : [];
 
   const setActive = name => {
@@ -566,7 +580,7 @@ function renderMetaChart() {
     });
   };
 
-  lines.forEach(line => {
+  [...lines, ...hitlines].forEach(line => {
     line.addEventListener('mouseenter', () => setActive(line.dataset.name));
     line.addEventListener('mouseleave', clearActive);
   });

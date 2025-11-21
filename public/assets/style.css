@@ -4623,6 +4623,7 @@ h2{margin:8px 0 6px}
 .legend-swatch{ width:10px; height:10px; border-radius:50%; display:inline-block; }
 .legend-value{ color:var(--text); font-weight:700; }
 .meta-ymax{ color:var(--muted); font-size:12px; margin-top:-6px; text-align:right; padding-right:8px; }
+.meta-ymax{ color:var(--muted); font-size:12px; margin-top:-6px; text-align:right; padding-right:8px; }
 .movers{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px; }
 .movers-group{ background:rgba(255,255,255,0.02); border:1px solid #2c335a; border-radius:12px; padding:10px; }
 .movers-group h3{ margin:0 0 6px; font-size:14px; }
