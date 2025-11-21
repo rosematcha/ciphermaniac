@@ -1,7 +1,7 @@
 import './utils/buildVersion.js';
 import { fetchTrendReport, ONLINE_META_NAME } from './api.js';
 import { fetchAllDecks } from './utils/clientSideFiltering.js';
-import { buildTrendDataset } from './utils/trendAggregator.js';
+import { buildCardTrendDataset, buildTrendDataset } from './utils/trendAggregator.js';
 import { logger } from './utils/logger.js';
 
 const palette = ['#6aa3ff', '#ff6b6b', '#3ad27a', '#f1c40f', '#9b59b6', '#ff9f43'];
@@ -20,6 +20,7 @@ const elements = {
   archetypePanel: document.getElementById('trend-archetypes'),
   legend: document.getElementById('trend-legend'),
   movers: document.getElementById('trend-movers'),
+  cardMovers: document.getElementById('trend-card-movers'),
   modeMeta: document.getElementById('trend-mode-meta'),
   modeArchetypes: document.getElementById('trend-mode-archetypes')
 };
@@ -198,6 +199,55 @@ function renderMovers(lines) {
 
   elements.movers.appendChild(buildGroup('Rising', rising, 'up'));
   elements.movers.appendChild(buildGroup('Cooling', falling, 'down'));
+}
+
+function renderCardMovers(cardTrends) {
+  if (!elements.cardMovers) {
+    return;
+  }
+  elements.cardMovers.innerHTML = '';
+  if (!cardTrends || (!cardTrends.rising?.length && !cardTrends.falling?.length)) {
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = 'Card movement will appear once enough tournaments are available.';
+    elements.cardMovers.appendChild(empty);
+    return;
+  }
+  const buildGroup = (title, list, direction) => {
+    const group = document.createElement('div');
+    group.className = 'movers-group';
+    const heading = document.createElement('h3');
+    heading.textContent = title;
+    group.appendChild(heading);
+    const items = Array.isArray(list) ? list.slice(0, 6) : [];
+    if (!items.length) {
+      const empty = document.createElement('p');
+      empty.className = 'muted small';
+      empty.textContent = 'No data yet.';
+      group.appendChild(empty);
+      return group;
+    }
+    const ul = document.createElement('ul');
+    ul.className = 'movers-list';
+    items.forEach(item => {
+      const li = document.createElement('li');
+      const deltaSign = item.delta > 0 ? '+' : '';
+      const idLabel =
+        item.set && item.number ? ` (${item.set} ${item.number})` : '';
+      li.innerHTML = `
+        <span class="dot"></span>
+        <span class="name">${item.name}${idLabel}</span>
+        <span class="perc">${formatPercent(item.endShare || item.currentShare || 0)}</span>
+        <span class="delta ${direction}">${deltaSign}${item.delta?.toFixed(Math.abs(item.delta) % 1 === 0 ? 0 : 1)}%</span>
+      `;
+      ul.appendChild(li);
+    });
+    group.appendChild(ul);
+    return group;
+  };
+
+  elements.cardMovers.appendChild(buildGroup('Cards rising', cardTrends.rising, 'up'));
+  elements.cardMovers.appendChild(buildGroup('Cards cooling', cardTrends.falling, 'down'));
 }
 function deriveTournamentsFromDecks(decks) {
   const map = new Map();
@@ -472,11 +522,13 @@ async function hydrateFromDecks() {
       windowStart: state.trendData.windowStart,
       windowEnd: state.trendData.windowEnd
     });
-    state.trendData = recomputed;
+    const cardTrends = buildCardTrendDataset(decks, tournaments, { minAppearances: 2 });
+    state.trendData = { ...recomputed, cardTrends };
     updateMinSliderBounds();
     setStatus('Recomputed from latest decks');
     renderSummary();
     renderMetaChart();
+    renderCardMovers(state.trendData.cardTrends || null);
     renderList();
   } catch (error) {
     logger.error('Failed to recompute trends from decks', { message: error?.message || error });
@@ -533,6 +585,7 @@ async function init() {
     updateMinSliderBounds();
     renderSummary();
     renderMetaChart();
+    renderCardMovers(state.trendData.cardTrends || null);
     renderList();
     setStatus(`Showing pre-generated trends for ${ONLINE_META_NAME}`);
   } catch (error) {
@@ -543,10 +596,13 @@ async function init() {
     try {
       const decks = await fetchAllDecks(ONLINE_META_NAME);
       const fallbackTournaments = deriveTournamentsFromDecks(decks);
-      state.trendData = buildTrendDataset(decks, fallbackTournaments, { minAppearances: 1 });
+      const archetypeTrends = buildTrendDataset(decks, fallbackTournaments, { minAppearances: 1 });
+      const cardTrends = buildCardTrendDataset(decks, fallbackTournaments, { minAppearances: 2 });
+      state.trendData = { ...archetypeTrends, cardTrends };
       updateMinSliderBounds();
       renderSummary();
       renderMetaChart();
+      renderCardMovers(state.trendData.cardTrends || null);
       renderList();
       setStatus('Using live deck data');
     } catch (fallbackError) {

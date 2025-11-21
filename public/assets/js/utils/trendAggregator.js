@@ -149,3 +149,113 @@ export function buildTrendDataset(decks, tournaments, options = {}) {
     series
   };
 }
+
+export function buildCardTrendDataset(decks, tournaments, options = {}) {
+  const now = options.now ? new Date(options.now) : new Date();
+  const minAppearances = Math.max(1, Number.isFinite(options.minAppearances) ? options.minAppearances : 2);
+  const topCount = Math.max(1, Number.isFinite(options.topCount) ? options.topCount : 12);
+
+  const tournamentsMap = new Map();
+  (Array.isArray(tournaments) ? tournaments : []).forEach(t => {
+    if (t && t.id) {
+      tournamentsMap.set(t.id, {
+        id: t.id,
+        date: t.date || null,
+        deckTotal: Number(t.deckTotal) || 0
+      });
+    }
+  });
+
+  const cardPresence = new Map();
+  const cardMeta = new Map();
+  const deckList = Array.isArray(decks) ? decks : [];
+
+  for (const deck of deckList) {
+    const tournamentId = deck?.tournamentId;
+    if (!tournamentId || !tournamentsMap.has(tournamentId)) {
+      continue;
+    }
+    const unique = new Set();
+    for (const card of Array.isArray(deck?.cards) ? deck.cards : []) {
+      const name = card?.name || 'Unknown Card';
+      const set = (card?.set || '').toString().toUpperCase();
+      const number = card?.number || '';
+      const key = set && number ? `${name}::${set}::${number}` : name;
+      unique.add(key);
+      if (!cardMeta.has(key)) {
+        cardMeta.set(key, { name, set: set || null, number: number || null });
+      }
+    }
+    unique.forEach(key => {
+      if (!cardPresence.has(key)) {
+        cardPresence.set(key, new Map());
+      }
+      const counts = cardPresence.get(key);
+      counts.set(tournamentId, (counts.get(tournamentId) || 0) + 1);
+    });
+  }
+
+  const series = [];
+  cardPresence.forEach((presenceMap, key) => {
+    const timeline = Array.from(tournamentsMap.values())
+      .sort((a, b) => Date.parse(a.date || 0) - Date.parse(b.date || 0))
+      .map(meta => {
+        const present = presenceMap.get(meta.id) || 0;
+        const share = meta.deckTotal ? Math.round((present / meta.deckTotal) * 1000) / 10 : 0;
+        return {
+          tournamentId: meta.id,
+          date: meta.date || null,
+          present,
+          total: meta.deckTotal,
+          share
+        };
+      });
+
+    const presentEvents = timeline.filter(entry => entry.present > 0).length;
+    if (presentEvents < minAppearances) {
+      return;
+    }
+
+    const chunk = Math.max(1, Math.ceil(timeline.length / 3));
+    const startAvg =
+      Math.round(
+        (timeline.slice(0, chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10
+      ) / 10;
+    const endAvg =
+      Math.round(
+        (timeline.slice(-chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10
+      ) / 10;
+    const delta = Math.round((endAvg - startAvg) * 10) / 10;
+    const latestShare = timeline.at(-1)?.share || 0;
+
+    series.push({
+      key,
+      ...cardMeta.get(key),
+      appearances: timeline.length,
+      startShare: startAvg,
+      endShare: endAvg,
+      delta,
+      currentShare: latestShare
+    });
+  });
+
+  const rising = [...series].sort((a, b) => b.delta - a.delta).slice(0, topCount);
+  const falling = [...series].sort((a, b) => a.delta - b.delta).slice(0, topCount);
+
+  logger.debug('Built card trend dataset', {
+    cards: series.length,
+    rising: rising.length,
+    falling: falling.length
+  });
+
+  return {
+    generatedAt: now.toISOString(),
+    windowStart: options.windowStart || null,
+    windowEnd: options.windowEnd || null,
+    cardsAnalyzed: series.length,
+    minAppearances,
+    topCount,
+    rising,
+    falling
+  };
+}

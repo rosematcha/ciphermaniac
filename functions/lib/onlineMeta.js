@@ -8,7 +8,7 @@ import {
 import { loadCardTypesDatabase, enrichCardWithType } from './cardTypesDatabase.js';
 import { enrichDecksWithOnTheFlyFetch } from './cardTypeFetcher.js';
 
-const WINDOW_DAYS = 14;
+const WINDOW_DAYS = 30;
 const MIN_USAGE_PERCENT = 0.5;
 const TARGET_FOLDER = 'Online - Last 14 Days';
 const REPORT_BASE_KEY = `reports/${TARGET_FOLDER}`;
@@ -42,6 +42,8 @@ const SUCCESS_TAGS = Array.from(
     ...PERCENT_TAG_RULES.map(rule => rule.tag)
   ])
 );
+const DEFAULT_CARD_TREND_MIN_APPEARANCES = 2;
+const DEFAULT_CARD_TREND_TOP = 12;
 
 async function runWithConcurrency(items, limit, handler) {
   if (!Array.isArray(items) || items.length === 0) {
@@ -701,6 +703,115 @@ function buildTrendReport(decks, tournaments, options = {}) {
   };
 }
 
+function buildCardTrendReport(decks, tournaments, options = {}) {
+  const now = options.now ? new Date(options.now) : new Date();
+  const windowStart = options.windowStart ? new Date(options.windowStart) : null;
+  const windowEnd = options.windowEnd ? new Date(options.windowEnd) : now;
+  const minAppearances = Math.max(
+    1,
+    Number.isFinite(options.minAppearances) ? Number(options.minAppearances) : DEFAULT_CARD_TREND_MIN_APPEARANCES
+  );
+  const topCount = Math.max(1, Number.isFinite(options.topCount) ? Number(options.topCount) : DEFAULT_CARD_TREND_TOP);
+
+  const tournamentsMap = new Map();
+  (Array.isArray(tournaments) ? tournaments : []).forEach(t => {
+    if (t && t.id) {
+      tournamentsMap.set(t.id, {
+        id: t.id,
+        date: t.date || null,
+        deckTotal: Number(t.deckTotal) || 0
+      });
+    }
+  });
+
+  const cardPresence = new Map(); // key -> Map<tournamentId, presentCount>
+  const cardMeta = new Map();
+
+  const deckList = Array.isArray(decks) ? decks : [];
+  for (const deck of deckList) {
+    const tournamentId = deck?.tournamentId;
+    if (!tournamentId || !tournamentsMap.has(tournamentId)) {
+      continue;
+    }
+    const uniqueCards = new Set();
+    for (const card of Array.isArray(deck?.cards) ? deck.cards : []) {
+      const name = card?.name || 'Unknown Card';
+      const set = (card?.set || '').toString().toUpperCase();
+      const number = card?.number || '';
+      const key = set && number ? `${name}::${set}::${number}` : name;
+      uniqueCards.add(key);
+      if (!cardMeta.has(key)) {
+        cardMeta.set(key, { name, set: set || null, number: number || null });
+      }
+    }
+    uniqueCards.forEach(key => {
+      if (!cardPresence.has(key)) {
+        cardPresence.set(key, new Map());
+      }
+      const counts = cardPresence.get(key);
+      counts.set(tournamentId, (counts.get(tournamentId) || 0) + 1);
+    });
+  }
+
+  const series = [];
+  cardPresence.forEach((presenceMap, key) => {
+    const timeline = Array.from(tournamentsMap.values())
+      .sort((a, b) => Date.parse(a.date || 0) - Date.parse(b.date || 0))
+      .map(meta => {
+        const present = presenceMap.get(meta.id) || 0;
+        const share = meta.deckTotal ? Math.round((present / meta.deckTotal) * 1000) / 10 : 0;
+        return {
+          tournamentId: meta.id,
+          date: meta.date || null,
+          present,
+          total: meta.deckTotal,
+          share
+        };
+      });
+
+    const presentEvents = timeline.filter(entry => entry.present > 0).length;
+    if (presentEvents < minAppearances) {
+      return;
+    }
+
+    const chunk = Math.max(1, Math.ceil(timeline.length / 3));
+    const startAvg =
+      Math.round(
+        (timeline.slice(0, chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10
+      ) / 10;
+    const endAvg =
+      Math.round(
+        (timeline.slice(-chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10
+      ) / 10;
+    const delta = Math.round((endAvg - startAvg) * 10) / 10;
+    const latestShare = timeline.at(-1)?.share || 0;
+
+    series.push({
+      key,
+      ...cardMeta.get(key),
+      appearances: timeline.length,
+      startShare: startAvg,
+      endShare: endAvg,
+      delta,
+      currentShare: latestShare
+    });
+  });
+
+  const rising = [...series].sort((a, b) => b.delta - a.delta).slice(0, topCount);
+  const falling = [...series].sort((a, b) => a.delta - b.delta).slice(0, topCount);
+
+  return {
+    generatedAt: now.toISOString(),
+    windowStart: windowStart ? windowStart.toISOString() : null,
+    windowEnd: windowEnd ? windowEnd.toISOString() : null,
+    cardsAnalyzed: series.length,
+    minAppearances,
+    topCount,
+    rising,
+    falling
+  };
+}
+
 async function putJson(env, key, data) {
   if (!env?.REPORTS?.put) {
     throw new Error('REPORTS bucket not configured');
@@ -844,6 +955,11 @@ export async function runOnlineMetaJob(env, options = {}) {
     now,
     minAppearances: options.minTrendAppearances
   });
+  const cardTrends = buildCardTrendReport(decks, trendReport.tournaments, {
+    windowStart: since,
+    windowEnd: now
+  });
+  trendReport.cardTrends = cardTrends;
 
   const meta = {
     name: TARGET_FOLDER,
@@ -901,4 +1017,10 @@ export async function runOnlineMetaJob(env, options = {}) {
   };
 }
 
-export { fetchRecentOnlineTournaments, gatherDecks, buildArchetypeReports, buildTrendReport };
+export {
+  fetchRecentOnlineTournaments,
+  gatherDecks,
+  buildArchetypeReports,
+  buildTrendReport,
+  buildCardTrendReport
+};
