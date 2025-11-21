@@ -20,6 +20,7 @@ const elements = {
   metaPanel: document.getElementById('trend-meta'),
   archetypePanel: document.getElementById('trend-archetypes'),
   legend: document.getElementById('trend-legend'),
+  metaRange: document.getElementById('trend-meta-range'),
   movers: document.getElementById('trend-movers'),
   cardMovers: document.getElementById('trend-card-movers'),
   modeMeta: document.getElementById('trend-mode-meta'),
@@ -455,11 +456,16 @@ function renderMetaChart() {
   const padY = 28;
   const contentWidth = width - padX * 2;
   const contentHeight = height - padY * 2;
-  const maxShare = 100;
   const count = meta.dates.length;
 
+  // Dynamic Y domain based on visible data (add headroom)
+  const maxObserved = Math.max(
+    ...meta.lines.flatMap(line => line.points.map(p => Math.max(0, Number(p) || 0)))
+  );
+  const yMax = Math.min(100, Math.max(5, Math.ceil(maxObserved / 5) * 5) + 5);
+
   const xForIndex = idx => (count === 1 ? contentWidth / 2 : (idx / (count - 1)) * contentWidth) + padX;
-  const yForShare = share => height - padY - (Math.min(share, maxShare) / maxShare) * contentHeight;
+  const yForShare = share => height - padY - (Math.min(share, yMax) / yMax) * contentHeight;
 
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
@@ -468,8 +474,12 @@ function renderMetaChart() {
   svg.setAttribute('role', 'img');
   svg.classList.add('meta-svg');
 
-  // grid lines
-  [25, 50, 75, 100].forEach(level => {
+  // grid lines based on yMax
+  const gridLevels = [];
+  for (let lvl = 0; lvl <= yMax; lvl += Math.max(5, Math.ceil(yMax / 5))) {
+    gridLevels.push(lvl);
+  }
+  gridLevels.forEach(level => {
     const y = yForShare(level);
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', `${padX}`);
@@ -515,6 +525,9 @@ function renderMetaChart() {
   });
 
   elements.metaChart.appendChild(svg);
+  if (elements.metaRange) {
+    elements.metaRange.textContent = `Y-axis scaled to ${yMax}%`;
+  }
   renderLegend(meta.lines);
   renderMovers(meta.lines);
 }
