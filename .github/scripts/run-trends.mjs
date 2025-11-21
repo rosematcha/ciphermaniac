@@ -216,10 +216,25 @@ function buildSuggestions(cardTimelines, now) {
       return den ? num / den : 0;
     };
 
+    // Simple linear regression slope over index (trend direction across full window)
+    const xs = series.map((_, idx) => idx);
+    const ys = series.map(s => s.share || 0);
+    const xMean = xs.reduce((a, b) => a + b, 0) / xs.length;
+    const yMean = ys.reduce((a, b) => a + b, 0) / ys.length || 0;
+    let num = 0;
+    let den = 0;
+    for (let i = 0; i < xs.length; i += 1) {
+      const dx = xs[i] - xMean;
+      num += dx * (ys[i] - yMean);
+      den += dx * dx;
+    }
+    const slope = den > 0 ? num / den : 0;
+
     return {
       startAvg: avg(startWindow),
       recentAvg: weightedAvg(recentWindow),
-      overallAvg: avg(series)
+      overallAvg: avg(series),
+      slope
     };
   };
 
@@ -228,13 +243,30 @@ function buildSuggestions(cardTimelines, now) {
     if (BASIC_ENERGY.has(data.name)) {
       continue;
     }
-    const series = data.timeline || [];
+    const seriesRaw = data.timeline || [];
+    if (!seriesRaw.length) continue;
+
+    // Smooth shares with a simple tri-weighted average to reduce single-day noise.
+    const series = seriesRaw.map((point, idx) => {
+      const neighbors = [seriesRaw[idx - 1], seriesRaw[idx], seriesRaw[idx + 1]].filter(Boolean);
+      const avgShare =
+        neighbors.reduce((sum, p) => sum + (p.share || 0), 0) / (neighbors.length || 1);
+      return { ...point, share: avgShare };
+    });
+
+    const windowSpanDays = LOOKBACK_DAYS;
+    const firstSeenIdx = series.findIndex(s => (s.present || 0) > 0);
+    const firstSeenDate = firstSeenIdx >= 0 ? (series[firstSeenIdx].date ? new Date(series[firstSeenIdx].date) : null) : null;
+    const fractionThroughWindow = firstSeenIdx >= 0 ? firstSeenIdx / Math.max(1, series.length - 1) : 1;
+    // Exclude cards that only appear after the mid-point (e.g., new set like PFL mid-window).
+    if (firstSeenIdx >= 0 && fractionThroughWindow > 0.55) {
+      continue;
+    }
     if (!series.length) continue;
     const latest = series[series.length - 1].share || 0;
-    const secondLatest = series.length > 1 ? series[series.length - 2].share || 0 : 0;
     const appearances = series.filter(s => s.present > 0).length;
     const totalTournaments = series.length;
-    const { startAvg, recentAvg, overallAvg } = computeWindowAverages(series);
+    const { startAvg, recentAvg, overallAvg, slope } = computeWindowAverages(series);
 
     // Leaders
     if (
@@ -256,10 +288,11 @@ function buildSuggestions(cardTimelines, now) {
       if (
         recentAvg >= MIN_RISE_CURRENT_PCT &&
         deltaAbs >= MIN_RISE_DELTA_ABS &&
-        deltaRel >= MIN_RISE_DELTA_REL
+        deltaRel >= MIN_RISE_DELTA_REL &&
+        slope > 0
       ) {
-        const score = deltaAbs * 2 + recentAvg + (deltaRel >= MIN_RISE_DELTA_REL ? deltaRel : 0);
-        rising.push({ key, ...data, latest, recentAvg, startAvg, deltaAbs, deltaRel, score });
+        const score = deltaAbs * 2 + recentAvg + slope + (deltaRel >= MIN_RISE_DELTA_REL ? deltaRel : 0);
+        rising.push({ key, ...data, latest, recentAvg, startAvg, deltaAbs, deltaRel, slope, score });
       }
     }
 
@@ -279,6 +312,7 @@ function buildSuggestions(cardTimelines, now) {
     }
     const absDrop = peakShare - latest;
     const relDrop = peakShare > 0 ? absDrop / peakShare : 0;
+    const slopeNegative = slope < 0 ? Math.abs(slope) : 0;
     if (
       peakShare >= MIN_CHOPPED_PEAK_PCT &&
       sustained >= MIN_SUSTAINED_PEAK_TOURNAMENTS &&
@@ -289,7 +323,7 @@ function buildSuggestions(cardTimelines, now) {
       const peakDate = peakIdx >= 0 && series[peakIdx].date ? new Date(series[peakIdx].date) : null;
       const daysSincePeak = peakDate ? (now - peakDate) / (1000 * 60 * 60 * 24) : (series.length - peakIdx) * 7;
       const steepness = absDrop / Math.max(1, series.length - peakIdx);
-      let score = absDrop * 2 + relDrop * peakShare + steepness * 3 + sustained * 2 + recencyWeight(daysSincePeak) * 5;
+      let score = absDrop * 2 + relDrop * peakShare + steepness * 3 + sustained * 2 + recencyWeight(daysSincePeak) * 5 + slopeNegative;
       if (latest <= 0) {
         score *= 1.5;
       }
@@ -369,8 +403,11 @@ function buildSuggestions(cardTimelines, now) {
 }
 
 async function main() {
-  const since = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
-  const now = new Date();
+  const today = new Date();
+  // Use yesterday as the anchor so we analyze the preceding 30 full days.
+  const windowEnd = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - 1));
+  const since = new Date(windowEnd.getTime() - (LOOKBACK_DAYS - 1) * 24 * 60 * 60 * 1000);
+  const now = windowEnd;
 
   const env = {
     REPORTS: new R2Binding(R2_REPORTS_PREFIX),
