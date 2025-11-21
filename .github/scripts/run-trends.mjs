@@ -44,6 +44,7 @@ const MIN_CHOPPED_DROP_ABS = 5.0;
 const MIN_CHOPPED_DROP_REL = 0.6;
 const MIN_SUSTAINED_PEAK_TOURNAMENTS = 2;
 const MAX_CHOPPED_RECENT_PCT = 2.0;
+const MIN_CHOPPED_RECENT_FLOOR = 0.2;
 const MAX_DAY2D_TOTAL_APPEARANCES = 2;
 const MAX_DAY2D_PEAK_USAGE = 1.5;
 const MAX_DAY2D_TOTAL_USAGE_SUM = 3.0;
@@ -317,6 +318,7 @@ function buildSuggestions(cardTimelines, now) {
       peakShare >= MIN_CHOPPED_PEAK_PCT &&
       sustained >= MIN_SUSTAINED_PEAK_TOURNAMENTS &&
       latest <= MAX_CHOPPED_RECENT_PCT &&
+      latest >= MIN_CHOPPED_RECENT_FLOOR &&
       absDrop >= MIN_CHOPPED_DROP_ABS &&
       relDrop >= MIN_CHOPPED_DROP_REL
     ) {

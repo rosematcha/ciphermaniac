@@ -259,13 +259,16 @@ function renderCardMovers(suggestions, cardTrends) {
       item.startShare ??
       item.avgShare ??
       0;
+    // Clamp delta so it doesn't exceed plausible usage bounds
+    const rawDelta = item.deltaAbs ?? item.delta ?? 0;
+    const delta = Math.max(Math.min(rawDelta, latest), -100);
     return {
       name: item.name,
       set: item.set || null,
       number: item.number || null,
       archetype: item.archetype || null,
       latest,
-      delta: item.deltaAbs ?? item.delta ?? 0
+      delta
     };
   };
 
@@ -349,13 +352,13 @@ function updateMinSliderBounds() {
     return;
   }
   const tournamentCount = state.trendData?.tournaments?.length || Number(elements.minSlider.max) || 8;
-  const max = Math.max(1, tournamentCount);
+  const requiredMin = Math.max(1, Math.floor(tournamentCount / 2));
+  const max = Math.max(requiredMin, tournamentCount);
+  state.minAppearances = requiredMin;
   elements.minSlider.max = String(max);
-  if (state.minAppearances > max) {
-    state.minAppearances = max;
-  }
-  elements.minSlider.value = String(state.minAppearances);
-  elements.minValue.textContent = `${state.minAppearances}+`;
+  elements.minSlider.value = String(requiredMin);
+  elements.minSlider.disabled = true;
+  elements.minValue.textContent = `${requiredMin}+ (auto)`;
 }
 
 function buildSparkline(timeline) {
@@ -462,7 +465,8 @@ function renderMetaChart() {
   const maxObserved = Math.max(
     ...meta.lines.flatMap(line => line.points.map(p => Math.max(0, Number(p) || 0)))
   );
-  const yMax = Math.min(100, Math.max(5, Math.ceil(maxObserved / 5) * 5) + 5);
+  const buffer = Math.max(1, maxObserved * 0.1);
+  const yMax = Math.min(100, Math.max(5, Math.ceil((maxObserved + buffer) / 5) * 5));
 
   const xForIndex = idx => (count === 1 ? contentWidth / 2 : (idx / (count - 1)) * contentWidth) + padX;
   const yForShare = share => height - padY - (Math.min(share, yMax) / yMax) * contentHeight;
@@ -610,17 +614,7 @@ async function hydrateFromDecks() {
 
 function bindControls() {
   if (elements.minSlider && elements.minValue) {
-    const setMinValue = value => {
-      elements.minValue.textContent = `${value}+`;
-    };
-    setMinValue(state.minAppearances);
-    elements.minSlider.value = String(state.minAppearances);
-    elements.minSlider.addEventListener('input', event => {
-      const value = Number((event.target && event.target.value) || state.minAppearances);
-      state.minAppearances = Math.max(1, value);
-      setMinValue(state.minAppearances);
-      renderList();
-    });
+    elements.minSlider.disabled = true;
   }
 
   if (elements.refresh) {
