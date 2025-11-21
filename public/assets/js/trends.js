@@ -75,51 +75,77 @@ function formatPercent(value) {
   return `${pct.toFixed(pct % 1 === 0 ? 0 : 1)}%`;
 }
 
+function smoothSeries(series, window = 3) {
+  if (!Array.isArray(series) || series.length === 0) return series;
+  const w = Math.max(1, window);
+  const result = [];
+  for (let i = 0; i < series.length; i += 1) {
+    const slice = series.slice(Math.max(0, i - Math.floor(w / 2)), Math.min(series.length, i + Math.ceil(w / 2) + 1));
+    const avg = slice.reduce((sum, point) => sum + (point.share || 0), 0) / slice.length;
+    result.push({ ...series[i], share: avg });
+  }
+  return result;
+}
+
+function binDaily(timeline) {
+  const byDay = new Map();
+  (timeline || []).forEach(point => {
+    if (!point?.date) return;
+    const day = point.date.split('T')[0];
+    const total = Number(point.totalDecks || point.total || 0);
+    const share = Number(point.share) || 0;
+    if (!byDay.has(day)) {
+      byDay.set(day, { weighted: 0, decks: 0 });
+    }
+    const entry = byDay.get(day);
+    entry.weighted += share * (total || 1);
+    entry.decks += total || 1;
+  });
+  return Array.from(byDay.entries())
+    .map(([date, val]) => ({
+      date,
+      share: val.decks ? val.weighted / val.decks : 0
+    }))
+    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+}
+
 function buildMetaLines(trendData, topN = 5) {
   if (!trendData || !Array.isArray(trendData.series) || !Array.isArray(trendData.tournaments)) {
     return null;
   }
-  const tournaments = [...trendData.tournaments].sort(
-    (a, b) => Date.parse(a.date || 0) - Date.parse(b.date || 0)
-  );
-  if (!tournaments.length) {
+
+  const seriesWithBins = trendData.series.slice(0, topN).map((entry, index) => {
+    const daily = binDaily(entry.timeline || []);
+    const smoothed = smoothSeries(daily, 3);
+    return { ...entry, daily: smoothed, color: palette[index % palette.length] };
+  });
+
+  if (!seriesWithBins.length) {
     return null;
   }
-  const topSeries = trendData.series.slice(0, topN);
-  const ids = tournaments.map(t => t.id);
 
-  const lines = topSeries.map((entry, index) => {
-    const points = ids.map(tid => {
-      const found = entry.timeline.find(item => item.tournamentId === tid);
-      return found ? (Number(found.share) || 0) : 0;
+  const timelineDates = Array.from(
+    new Set(seriesWithBins.flatMap(s => s.daily.map(pt => pt.date)))
+  ).sort((a, b) => Date.parse(a) - Date.parse(b));
+
+  const lines = seriesWithBins.map(entry => {
+    const points = timelineDates.map(d => {
+      const found = entry.daily.find(pt => pt.date === d);
+      return found ? found.share : 0;
     });
-    const first = points[0] || 0;
-    const last = points[points.length - 1] || 0;
+    const startAvg = points.slice(0, Math.max(1, Math.ceil(points.length * 0.3))).reduce((a, b) => a + b, 0) / Math.max(1, Math.ceil(points.length * 0.3));
+    const recentAvg = points.slice(-Math.max(1, Math.ceil(points.length * 0.3))).reduce((a, b) => a + b, 0) / Math.max(1, Math.ceil(points.length * 0.3));
+    const delta = Math.round((recentAvg - startAvg) * 10) / 10;
     return {
       name: entry.displayName || entry.base,
-      color: palette[index % palette.length],
+      color: entry.color,
       points,
-      latest: last,
-      delta: Math.round((last - first) * 10) / 10
+      latest: points.at(-1) || 0,
+      delta
     };
   });
 
-  // Aggregate "Other" if there are more archetypes
-  if (trendData.series.length > topN) {
-    const otherPoints = ids.map((tid, idx) => {
-      const topTotal = lines.reduce((sum, line) => sum + (line.points[idx] || 0), 0);
-      return Math.max(0, Math.round((100 - topTotal) * 10) / 10);
-    });
-    lines.push({
-      name: 'Other',
-      color: '#7c86a8',
-      points: otherPoints,
-      latest: otherPoints[otherPoints.length - 1] || 0,
-      delta: Math.round((otherPoints[otherPoints.length - 1] - otherPoints[0]) * 10) / 10
-    });
-  }
-
-  return { tournaments, lines };
+  return { dates: timelineDates, lines };
 }
 
 function findMovers(lines) {
@@ -223,6 +249,25 @@ function renderCardMovers(suggestions, cardTrends) {
     elements.cardMovers.appendChild(empty);
     return;
   }
+  const normalizeCard = item => {
+    const latest =
+      item.recentAvg ??
+      item.latest ??
+      item.currentShare ??
+      item.endShare ??
+      item.startShare ??
+      item.avgShare ??
+      0;
+    return {
+      name: item.name,
+      set: item.set || null,
+      number: item.number || null,
+      archetype: item.archetype || null,
+      latest,
+      delta: item.deltaAbs ?? item.delta ?? 0
+    };
+  };
+
   const buildGroup = (title, list, direction) => {
     const group = document.createElement('div');
     group.className = 'movers-group';
@@ -239,7 +284,8 @@ function renderCardMovers(suggestions, cardTrends) {
     }
     const ul = document.createElement('ul');
     ul.className = 'movers-list';
-    items.forEach(item => {
+    items.forEach(raw => {
+      const item = normalizeCard(raw);
       const li = document.createElement('li');
       const deltaSign = item.delta > 0 ? '+' : '';
       const idLabel =
@@ -247,7 +293,7 @@ function renderCardMovers(suggestions, cardTrends) {
       li.innerHTML = `
         <span class="dot"></span>
         <span class="name">${item.name}${idLabel}</span>
-        <span class="perc">${formatPercent(item.endShare || item.currentShare || 0)}</span>
+        <span class="perc">${formatPercent(item.latest || 0)}</span>
         <span class="delta ${direction}">${deltaSign}${item.delta?.toFixed(Math.abs(item.delta) % 1 === 0 ? 0 : 1)}%</span>
       `;
       ul.appendChild(li);
@@ -410,7 +456,7 @@ function renderMetaChart() {
   const contentWidth = width - padX * 2;
   const contentHeight = height - padY * 2;
   const maxShare = 100;
-  const count = meta.tournaments.length;
+  const count = meta.dates.length;
 
   const xForIndex = idx => (count === 1 ? contentWidth / 2 : (idx / (count - 1)) * contentWidth) + padX;
   const yForShare = share => height - padY - (Math.min(share, maxShare) / maxShare) * contentHeight;
@@ -455,8 +501,8 @@ function renderMetaChart() {
     svg.appendChild(polyline);
   });
 
-  // x-axis labels
-  meta.tournaments.forEach((t, idx) => {
+  // x-axis labels (dates)
+  meta.dates.forEach((d, idx) => {
     const x = xForIndex(idx);
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.setAttribute('x', `${x}`);
@@ -464,7 +510,7 @@ function renderMetaChart() {
     label.setAttribute('fill', '#7c86a8');
     label.setAttribute('font-size', '11');
     label.setAttribute('text-anchor', 'middle');
-    label.textContent = formatDate(t.date);
+    label.textContent = formatDate(d);
     svg.appendChild(label);
   });
 
