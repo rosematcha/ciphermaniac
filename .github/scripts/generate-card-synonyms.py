@@ -20,6 +20,7 @@ from bs4 import BeautifulSoup
 
 PUBLIC_R2_BASE = os.environ.get('PUBLIC_R2_BASE_URL', 'https://r2.ciphermaniac.com')
 OUTPUT_PATH = Path('public') / 'assets' / 'card-synonyms.json'
+ONLINE_FOLDER = 'Online - Last 14 Days'
 
 
 def log(message: str) -> None:
@@ -74,6 +75,31 @@ def load_tournament_decks(client, bucket: str, folder: str) -> list:
         return []
 
 
+def normalize_card_number(number: Optional[str]) -> Optional[str]:
+    """Normalize card number to zero-padded 3-digit form with optional suffix."""
+    raw = str(number or '').strip()
+    if not raw:
+        return None
+    match = re.match(r'^(\d+)([A-Za-z]*)$', raw)
+    if not match:
+        return raw.upper()
+    digits, suffix = match.groups()
+    padded = digits.zfill(3)
+    return f"{padded}{suffix.upper()}" if suffix else padded
+
+
+def merge_decks_into_card_map(cards_by_name: Dict[str, Set[Tuple[str, str]]], decks: list) -> None:
+    """Add cards from a set of decks into the shared map."""
+    for deck in decks:
+        for card in deck.get('cards', []):
+            card_name = card.get('name', '').strip()
+            set_code = (card.get('set', '') or '').upper().strip()
+            number = normalize_card_number(card.get('number'))
+
+            if card_name and set_code and number:
+                cards_by_name[card_name].add((set_code, number))
+
+
 def collect_all_cards(client, bucket: str, tournaments: list) -> Dict[str, Set[Tuple[str, str]]]:
     """
     Collect all unique cards from all tournaments.
@@ -83,32 +109,39 @@ def collect_all_cards(client, bucket: str, tournaments: list) -> Dict[str, Set[T
     cards_by_name = defaultdict(set)
     processed = 0
     skipped = 0
+    processed_folders = set()
 
     for folder in tournaments:
         if isinstance(folder, dict):
             folder = folder.get('folder') or folder.get('name') or folder.get('path')
-        if not folder or folder == 'Online - Last 14 Days':
+        if not folder:
             continue
 
+        processed_folders.add(folder)
         decks = load_tournament_decks(client, bucket, folder)
         if not decks:
             skipped += 1
             continue
 
-        for deck in decks:
-            for card in deck.get('cards', []):
-                card_name = card.get('name', '').strip()
-                set_code = (card.get('set', '') or '').upper().strip()
-                number = (card.get('number', '') or '').lstrip('0').zfill(3)
-
-                if card_name and set_code and number:
-                    cards_by_name[card_name].add((set_code, number))
+        merge_decks_into_card_map(cards_by_name, decks)
 
         processed += 1
         if processed % 5 == 0:
             log(f"  Processed {processed}/{len(tournaments)} tournaments...")
 
-    log(f"  Processed {processed} tournaments, skipped {skipped}")
+    online_included = ONLINE_FOLDER in processed_folders
+    if not online_included:
+        online_decks = load_tournament_decks(client, bucket, ONLINE_FOLDER)
+        if online_decks:
+            merge_decks_into_card_map(cards_by_name, online_decks)
+            processed += 1
+            online_included = True
+            log(f"  Included decks from {ONLINE_FOLDER} ({len(online_decks)} decks)")
+        else:
+            log(f"  Warning: No decks found for {ONLINE_FOLDER}; online meta cards will be missing")
+
+    suffix = " (online meta included)" if online_included else ""
+    log(f"  Processed {processed} tournaments{suffix}, skipped {skipped}")
     log(f"  Found {len(cards_by_name)} unique card names")
     return cards_by_name
 
@@ -274,6 +307,109 @@ def choose_canonical_print(variations, card_name):
     return sorted_variations[0]
 
 
+class UnionFind:
+    def __init__(self):
+        self.parent = {}
+
+    def find(self, x):
+        if x not in self.parent:
+            self.parent[x] = x
+            return x
+        if self.parent[x] == x:
+            return x
+        self.parent[x] = self.find(self.parent[x])
+        return self.parent[x]
+
+    def union(self, a, b):
+        ra = self.find(a)
+        rb = self.find(b)
+        if ra == rb:
+            return
+        self.parent[ra] = rb
+
+    def components(self):
+        groups = defaultdict(list)
+        for key in list(self.parent.keys()):
+            root = self.find(key)
+            groups[root].append(key)
+        return list(groups.values())
+
+
+def build_clusters_from_limitless(session, print_set):
+    uf = UnionFind()
+    meta = {}  # uid -> {set, number, price_usd}
+
+    for sample_set, sample_num in print_set:
+        if not sample_set or not sample_num:
+            continue
+        variations = scrape_card_print_variations(session, sample_set, sample_num)
+        filtered = []
+        for v in variations or []:
+            set_code = v.get('set')
+            number = v.get('number')
+            if not set_code or not number:
+                continue
+            norm_num = normalize_card_number(number)
+            if not norm_num:
+                continue
+            filtered.append({
+                'set': set_code.upper(),
+                'number': norm_num,
+                'price_usd': v.get('price_usd')
+            })
+
+        if len(filtered) < 2:
+            continue
+
+        ids = [f"{v['set']}::{v['number']}" for v in filtered]
+        for v, id_ in zip(filtered, ids):
+            uf.find(id_)
+            if id_ not in meta:
+                meta[id_] = v
+        anchor = ids[0]
+        for other in ids[1:]:
+            uf.union(anchor, other)
+
+    clusters = []
+    for group in uf.components():
+        if len(group) < 2:
+            continue
+        cluster = []
+        for gid in group:
+            set_code, number = gid.split('::')
+            info = meta.get(gid, {})
+            cluster.append({
+                'set': info.get('set', set_code),
+                'number': info.get('number', number),
+                'price_usd': info.get('price_usd')
+            })
+        clusters.append(cluster)
+    return clusters
+
+
+MEE_BASIC_ENERGY = [
+    ("Darkness Energy", "MEE", "007", "Darkness Energy::SVE::007"),
+    ("Psychic Energy", "MEE", "005", "Psychic Energy::SVE::005"),
+    ("Fighting Energy", "MEE", "006", "Fighting Energy::SVE::014"),
+    ("Fire Energy", "MEE", "002", "Fire Energy::SVE::002"),
+    ("Metal Energy", "MEE", "008", "Metal Energy::SVE::016"),
+    ("Grass Energy", "MEE", "001", "Grass Energy::SVE::017"),
+    ("Water Energy", "MEE", "003", "Water Energy::SVE::003"),
+    ("Lightning Energy", "MEE", "004", "Lightning Energy::SVE::004"),
+]
+
+
+def ensure_mee_basic_energy_synonyms(synonyms_dict, canonicals_dict):
+    """Ensure MEE basic energies are mapped even if upstream print tables are missing."""
+    for name, set_code, number, fallback in MEE_BASIC_ENERGY:
+        canonical = canonicals_dict.get(name, fallback)
+        if not canonical:
+            continue
+        normalized_number = normalize_card_number(number) or number
+        uid = f"{name}::{set_code}::{normalized_number}"
+        synonyms_dict.setdefault(uid, canonical)
+
+
 def generate_synonyms(cards_by_name: Dict[str, Set[Tuple[str, str]]]) -> dict:
     """
     Generate synonym mappings for all cards.
@@ -297,35 +433,32 @@ def generate_synonyms(cards_by_name: Dict[str, Set[Tuple[str, str]]]) -> dict:
         if len(print_set) < 2:
             continue
 
-        # Pick any print to scrape variations
-        sample_set, sample_num = next(iter(print_set))
-
-        # Scrape all print variations from Limitless
-        variations = scrape_card_print_variations(session, sample_set, sample_num)
-
-        if not variations or len(variations) < 2:
+        # Build synonym clusters strictly from Limitless print tables (avoid observed fallback to prevent false merges)
+        clusters = build_clusters_from_limitless(session, print_set)
+        if not clusters:
             continue
 
-        # Choose the canonical print
-        canonical_var = choose_canonical_print(variations, card_name)
-        if not canonical_var:
-            continue
+        for cluster in clusters:
+            canonical_var = choose_canonical_print(cluster, card_name)
+            if not canonical_var:
+                continue
 
-        canonical_uid = f"{card_name}::{canonical_var['set']}::{canonical_var['number']}"
+            canonical_uid = f"{card_name}::{canonical_var['set']}::{canonical_var['number']}"
 
-        # Build synonyms for all variations
-        for var in variations:
-            variant_uid = f"{card_name}::{var['set']}::{var['number']}"
-            if variant_uid != canonical_uid:
-                synonyms_dict[variant_uid] = canonical_uid
+            for var in cluster:
+                variant_uid = f"{card_name}::{var['set']}::{var['number']}"
+                if variant_uid != canonical_uid:
+                    synonyms_dict[variant_uid] = canonical_uid
 
-        # Add canonical mapping
-        canonicals_dict[card_name] = canonical_uid
-        processed_count += 1
+            if card_name not in canonicals_dict:
+                canonicals_dict[card_name] = canonical_uid
+            processed_count += 1
 
     log(f"  Completed: {processed_count} cards with multiple prints")
     log(f"  Generated {len(synonyms_dict)} synonym mappings")
     log(f"  Generated {len(canonicals_dict)} canonical mappings")
+
+    ensure_mee_basic_energy_synonyms(synonyms_dict, canonicals_dict)
 
     return {
         "synonyms": synonyms_dict,

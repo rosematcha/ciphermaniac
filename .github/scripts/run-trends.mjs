@@ -8,7 +8,7 @@
  */
 
 import process from 'node:process';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import {
   fetchRecentOnlineTournaments,
   gatherDecks,
@@ -96,6 +96,31 @@ class R2Binding {
       })
     );
   }
+
+  async get(key) {
+    try {
+      const response = await s3Client.send(
+        new GetObjectCommand({
+          Bucket: R2_BUCKET_NAME,
+          Key: this.withPrefix(key)
+        })
+      );
+      return {
+        async text() {
+          const chunks = [];
+          for await (const chunk of response.Body) {
+            chunks.push(chunk);
+          }
+          return Buffer.concat(chunks).toString('utf-8');
+        }
+      };
+    } catch (error) {
+      if (error?.$metadata?.httpStatusCode === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
 }
 
 function recencyWeight(daysDiff) {
@@ -173,7 +198,7 @@ function buildCardTimelines(decks, tournaments) {
     const timeline = sortedTournaments.map(t => {
       const present = tMap.get(t.id) || 0;
       const total = deckTotals.get(t.id) || 0;
-      const share = total ? Math.round((present / total) * 1000) / 10 : 0;
+      const share = total ? Math.round((present / total) * 10000) / 100 : 0;
       return {
         tournamentId: t.id,
         date: t.date || null,
@@ -265,7 +290,7 @@ function buildSuggestions(cardTimelines, now) {
     }
     if (!series.length) continue;
     const latest = series[series.length - 1].share || 0;
-    const appearances = series.filter(s => s.present > 0).length;
+    const appearances = series.filter(s => (s.present || 0) > 0).length;
     const totalTournaments = series.length;
     const { startAvg, recentAvg, overallAvg, slope } = computeWindowAverages(series);
 
@@ -283,7 +308,7 @@ function buildSuggestions(cardTimelines, now) {
     }
 
     // Rising
-    if (series.length >= MIN_RISE_TOURNAMENTS) {
+    if (appearances >= MIN_RISE_TOURNAMENTS) {
       const deltaAbs = recentAvg - startAvg;
       const deltaRel = startAvg > 0 ? recentAvg / startAvg : recentAvg > 0 ? Infinity : 0;
       if (
@@ -406,9 +431,7 @@ function buildSuggestions(cardTimelines, now) {
 }
 
 async function main() {
-  const today = new Date();
-  // Use yesterday as the anchor so we analyze the preceding 30 full days.
-  const windowEnd = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - 1));
+  const windowEnd = new Date();
   const since = new Date(windowEnd.getTime() - (LOOKBACK_DAYS - 1) * 24 * 60 * 60 * 1000);
   const now = windowEnd;
 
@@ -422,7 +445,7 @@ async function main() {
   console.log(`[trends] Card DB entries: ${Object.keys(cardTypesDb || {}).length}`);
 
   console.log(`[trends] Fetching tournaments since ${since.toISOString()}`);
-  const tournaments = await fetchRecentOnlineTournaments(env, since, { maxPages: 20 });
+  const tournaments = await fetchRecentOnlineTournaments(env, since, { maxPages: 20, windowEnd });
   console.log(`[trends] Tournaments: ${tournaments.length}`);
   if (!tournaments.length) {
     throw new Error('No tournaments found for trends window');
@@ -435,7 +458,22 @@ async function main() {
     throw new Error('No decks gathered for trends');
   }
 
-  const trendReport = buildTrendReport(decks, tournaments, {
+  // Drop tournaments that produced no decks to avoid zero-denominator timelines.
+  const deckCountByTournament = new Map();
+  for (const deck of decks) {
+    const tid = deck?.tournamentId;
+    if (!tid) continue;
+    deckCountByTournament.set(tid, (deckCountByTournament.get(tid) || 0) + 1);
+  }
+  const tournamentsWithDecks = tournaments.filter(t => (deckCountByTournament.get(t.id) || 0) > 0);
+  if (!tournamentsWithDecks.length) {
+    throw new Error('All tournaments were empty after deck filtering');
+  }
+  if (tournamentsWithDecks.length !== tournaments.length) {
+    console.log(`[trends] Dropped ${tournaments.length - tournamentsWithDecks.length} tournaments with no deck data`);
+  }
+
+  const trendReport = buildTrendReport(decks, tournamentsWithDecks, {
     windowStart: since,
     windowEnd: now,
     now,
@@ -455,7 +493,7 @@ async function main() {
     windowStart: since.toISOString(),
     windowEnd: now.toISOString(),
     deckTotal: decks.length,
-    tournamentCount: tournaments.length
+    tournamentCount: tournamentsWithDecks.length
   };
 
   const baseKey = `${TRENDS_FOLDER}`;
@@ -464,7 +502,7 @@ async function main() {
   await env.REPORTS.put(`${baseKey}/trends.json`, { trendReport, cardTrends, suggestions });
 
   console.log('[trends] Done', {
-    tournaments: tournaments.length,
+    tournaments: tournamentsWithDecks.length,
     decks: decks.length,
     archetypeSeries: trendReport.series?.length || 0,
     cardRising: cardTrends.rising?.length || 0,

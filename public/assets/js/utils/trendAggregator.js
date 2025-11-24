@@ -84,7 +84,7 @@ export function buildTrendDataset(decks, tournaments, options = {}) {
       .map(entry => {
         const tournamentMeta = tournamentIndex.get(entry.tournamentId);
         const totalDecks = tournamentMeta?.deckTotal || 0;
-        const share = totalDecks ? Math.round((entry.decks / totalDecks) * 1000) / 10 : 0;
+        const share = totalDecks ? Math.round((entry.decks / totalDecks) * 10000) / 100 : 0;
         return {
           ...entry,
           totalDecks,
@@ -201,7 +201,7 @@ export function buildCardTrendDataset(decks, tournaments, options = {}) {
       .sort((a, b) => Date.parse(a.date || 0) - Date.parse(b.date || 0))
       .map(meta => {
         const present = presenceMap.get(meta.id) || 0;
-        const share = meta.deckTotal ? Math.round((present / meta.deckTotal) * 1000) / 10 : 0;
+        const share = meta.deckTotal ? Math.round((present / meta.deckTotal) * 10000) / 100 : 0;
         return {
           tournamentId: meta.id,
           date: meta.date || null,

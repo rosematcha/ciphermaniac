@@ -15,6 +15,19 @@ const CARD_TYPES_DB_PATH = join(__dirname, '..', 'public', 'assets', 'data', 'ca
 const REPORTS_BASE_PATH = join(__dirname, '..', 'public', 'reports');
 const MASTER_FILE_NAME = 'master.json';
 
+const VALID_TRAINER_SUBTYPES = new Set(['supporter', 'item', 'stadium', 'tool']);
+const VALID_ENERGY_SUBTYPES = new Set(['basic', 'special']);
+const BASIC_ENERGY_NAMES = new Set([
+  'grass energy',
+  'fire energy',
+  'water energy',
+  'lightning energy',
+  'psychic energy',
+  'fighting energy',
+  'darkness energy',
+  'metal energy'
+]);
+
 /**
  * Load existing card types database
  * @returns {Promise<Object>}
@@ -37,7 +50,7 @@ async function loadDatabase() {
  * @returns {Promise<Set<string>>}
  */
 async function extractCardsFromReport(filePath) {
-  const cards = new Set();
+  const cards = new Map();
   
   try {
     const content = await fs.readFile(filePath, 'utf-8');
@@ -47,7 +60,19 @@ async function extractCardsFromReport(filePath) {
       for (const item of report.items) {
         if (item.set && item.number) {
           const key = `${item.set}::${item.number}`;
-          cards.add(key);
+          if (!cards.has(key)) {
+            cards.set(key, {
+              names: new Set(),
+              sampleCategory: null
+            });
+          }
+          const entry = cards.get(key);
+          if (typeof item.name === 'string' && item.name.trim()) {
+            entry.names.add(item.name.trim());
+          }
+          if (!entry.sampleCategory && typeof item.category === 'string' && item.category.trim()) {
+            entry.sampleCategory = item.category.trim().toLowerCase();
+          }
         }
       }
     }
@@ -93,15 +118,118 @@ async function findMasterReports(dir) {
  * @returns {Promise<Set<string>>}
  */
 async function collectAllCards() {
-  const allCards = new Set();
+  const allCards = new Map();
   const jsonFiles = await findMasterReports(REPORTS_BASE_PATH);
   
   for (const file of jsonFiles) {
     const cards = await extractCardsFromReport(file);
-    cards.forEach(card => allCards.add(card));
+    cards.forEach((meta, key) => {
+      if (!allCards.has(key)) {
+        allCards.set(key, {
+          names: new Set(meta.names),
+          sampleCategory: meta.sampleCategory || null
+        });
+        return;
+      }
+      const aggregate = allCards.get(key);
+      meta.names.forEach(name => aggregate.names.add(name));
+      if (!aggregate.sampleCategory && meta.sampleCategory) {
+        aggregate.sampleCategory = meta.sampleCategory;
+      }
+    });
   }
   
   return allCards;
+}
+
+function determineExpectedEnergySubtype(meta = {}) {
+  const names = meta.names instanceof Set ? meta.names : new Set();
+  if (names.size === 0) {
+    return null;
+  }
+  for (const rawName of names) {
+    const normalized = String(rawName || '').trim().toLowerCase();
+    if (BASIC_ENERGY_NAMES.has(normalized)) {
+      return 'basic';
+    }
+  }
+  return 'special';
+}
+
+function evaluateClassification(entry, meta) {
+  const cardType = typeof entry?.cardType === 'string' ? entry.cardType.trim().toLowerCase() : '';
+  const subType = typeof entry?.subType === 'string' ? entry.subType.trim().toLowerCase() : '';
+  if (!cardType) {
+    return {
+      complete: false,
+      reason: 'missing base card type',
+      actual: 'unknown'
+    };
+  }
+  if (cardType === 'pokemon') {
+    return { complete: true, slug: 'pokemon' };
+  }
+  if (cardType === 'trainer') {
+    if (!subType) {
+      return {
+        complete: false,
+        reason: 'missing trainer subtype',
+        actual: 'trainer'
+      };
+    }
+    if (!VALID_TRAINER_SUBTYPES.has(subType)) {
+      return {
+        complete: false,
+        reason: `invalid trainer subtype '${subType}'`,
+        actual: `trainer/${subType}`,
+        expected: 'trainer/supporter|item|stadium|tool'
+      };
+    }
+    const parts = ['trainer', subType];
+    if (entry?.aceSpec) {
+      parts.push('acespec');
+    }
+    return {
+      complete: true,
+      slug: parts.join('/')
+    };
+  }
+  if (cardType === 'energy') {
+    const expectedSubType = determineExpectedEnergySubtype(meta);
+    if (!subType) {
+      return {
+        complete: false,
+        reason: 'missing energy subtype',
+        actual: 'energy',
+        expected: expectedSubType ? `energy/${expectedSubType}` : 'energy/basic or energy/special'
+      };
+    }
+    if (!VALID_ENERGY_SUBTYPES.has(subType)) {
+      return {
+        complete: false,
+        reason: `invalid energy subtype '${subType}'`,
+        actual: `energy/${subType}`,
+        expected: 'energy/basic or energy/special'
+      };
+    }
+    if (expectedSubType && subType !== expectedSubType) {
+      return {
+        complete: false,
+        reason: 'energy subtype mismatch',
+        actual: `energy/${subType}`,
+        expected: `energy/${expectedSubType}`
+      };
+    }
+    return {
+      complete: true,
+      slug: `energy/${subType}`
+    };
+  }
+  return {
+    complete: false,
+    reason: `unknown card type '${cardType}'`,
+    actual: cardType
+  };
 }
 
 /**
@@ -120,44 +248,77 @@ async function main() {
   const allCards = await collectAllCards();
   console.log(`   Found ${allCards.size} unique cards in reports\n`);
   
-  // Find missing cards
   const missingCards = [];
-  for (const cardKey of allCards) {
-    if (!database[cardKey]) {
+  const incompleteCards = [];
+  for (const [cardKey, meta] of allCards.entries()) {
+    const entry = database[cardKey];
+    if (!entry) {
       missingCards.push(cardKey);
+      continue;
+    }
+    const status = evaluateClassification(entry, meta);
+    if (!status.complete) {
+      incompleteCards.push({
+        key: cardKey,
+        reason: status.reason,
+        expected: status.expected || null,
+        actual: status.actual || status.slug || null,
+        names: meta.names ? Array.from(meta.names) : []
+      });
     }
   }
   
-  if (missingCards.length === 0) {
-    console.log('✅ All cards are in the database!');
+  if (missingCards.length === 0 && incompleteCards.length === 0) {
+    console.log('[OK] All cards are in the database and fully classified.');
     process.exit(0);
   }
   
-  console.log(`⚠️  Found ${missingCards.length} cards missing from database:\n`);
-  
-  // Group by set for better readability
-  const bySet = {};
-  for (const card of missingCards) {
-    const [set, number] = card.split('::');
-    if (!bySet[set]) {
-      bySet[set] = [];
+  if (missingCards.length > 0) {
+    console.log(`[WARN] ${missingCards.length} cards missing from database:\n`);
+    const bySet = {};
+    for (const card of missingCards) {
+      const [set, number] = card.split('::');
+      if (!bySet[set]) {
+        bySet[set] = [];
+      }
+      bySet[set].push(number);
     }
-    bySet[set].push(number);
+    const sets = Object.keys(bySet).sort();
+    for (const set of sets) {
+      const numbers = bySet[set].sort((a, b) => {
+        const numA = parseInt(a, 10) || 0;
+        const numB = parseInt(b, 10) || 0;
+        return numA - numB;
+      });
+      console.log(`  ${set}: ${numbers.join(', ')}`);
+    }
   }
   
-  const sets = Object.keys(bySet).sort();
-  for (const set of sets) {
-    const numbers = bySet[set].sort((a, b) => {
-      const numA = parseInt(a) || 0;
-      const numB = parseInt(b) || 0;
-      return numA - numB;
+  if (incompleteCards.length > 0) {
+    console.log(`\n[WARN] ${incompleteCards.length} cards with incomplete classification:\n`);
+    const grouped = incompleteCards.reduce((acc, card) => {
+      const reason = card.reason || 'unknown issue';
+      if (!acc[reason]) {
+        acc[reason] = [];
+      }
+      acc[reason].push(card);
+      return acc;
+    }, {});
+    Object.keys(grouped).forEach(reason => {
+      const entries = grouped[reason];
+      console.log(`  ${reason} (${entries.length} cards):`);
+      entries.forEach(entry => {
+        const [set, number] = entry.key.split('::');
+        const name = entry.names?.[0] || 'Unknown name';
+        const expected = entry.expected ? ` -> expected ${entry.expected}` : '';
+        const actual = entry.actual ? ` (current ${entry.actual})` : '';
+        console.log(`    - ${name} (${set} ${number})${expected}${actual}`);
+      });
     });
-    console.log(`  ${set}: ${numbers.join(', ')}`);
   }
   
-  console.log(`\n💡 Run 'npm run build:card-types' to fetch missing cards`);
+  console.log("\n[INFO] Run 'npm run build:card-types' to fetch missing cards or refresh incomplete entries");
   
-  // Exit with error code if cards are missing
   process.exit(1);
 }
 
