@@ -1,6 +1,7 @@
 export const SET_CATALOG = [
   { code: 'PFL', name: 'Phantasmal Flames' },
   { code: 'MEG', name: 'Mega Evolution' },
+  { code: 'MEE', name: 'Mega Evolution Energy' },
   { code: 'MEP', name: 'Mega Promos' },
   { code: 'BLK', name: 'Black Bolt' },
   { code: 'WHT', name: 'White Flare' },

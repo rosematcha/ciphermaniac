@@ -355,12 +355,18 @@ async function generateSynonyms(cardsByName) {
         // Skip if only one print exists in our data
         if (printSet.size < 2) continue;
 
-        // Pick any print to scrape variations
-        const [samplePrint] = printSet;
-        const [sampleSet, sampleNum] = samplePrint.split('::');
-
-        // Scrape all print variations from Limitless
-        const variations = await scrapeCardPrintVariations(sampleSet, sampleNum);
+        // Try each known print until we find a Limitless page with multiple variations
+        let variations = null;
+        for (const samplePrint of printSet) {
+            const [sampleSet, sampleNum] = samplePrint.split('::');
+            // Scrape all print variations from Limitless
+            // eslint-disable-next-line no-await-in-loop
+            const candidate = await scrapeCardPrintVariations(sampleSet, sampleNum);
+            if (candidate && candidate.length >= 2) {
+                variations = candidate;
+                break;
+            }
+        }
 
         if (!variations || variations.length < 2) continue;
 

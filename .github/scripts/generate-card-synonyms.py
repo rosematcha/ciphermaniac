@@ -330,11 +330,13 @@ def generate_synonyms(cards_by_name: Dict[str, Set[Tuple[str, str]]]) -> dict:
         if len(print_set) < 2:
             continue
 
-        # Pick any print to scrape variations
-        sample_set, sample_num = next(iter(print_set))
-
-        # Scrape all print variations from Limitless
-        variations = scrape_card_print_variations(session, sample_set, sample_num)
+        # Try each known print until we find a Limitless page with multiple variations
+        variations = None
+        for sample_set, sample_num in print_set:
+            candidate = scrape_card_print_variations(session, sample_set, sample_num)
+            if candidate and len(candidate) >= 2:
+                variations = candidate
+                break
 
         if not variations or len(variations) < 2:
             continue
