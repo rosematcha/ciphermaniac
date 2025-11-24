@@ -3,6 +3,7 @@ import { parseReport } from '../parse.js';
 import { getDisplayName } from './identifiers.js';
 import { getCanonicalCard } from '../utils/cardSynonyms.js';
 import { logger } from '../utils/logger.js';
+import { CONFIG } from '../config.js';
 
 const SLUG_CACHE_KEY = 'cardSlugCacheV2';
 const DEFAULT_SCAN_LIMIT = 12;
@@ -175,7 +176,7 @@ async function resolveBySetAndNumber(setCode, number, options = {}) {
   // Fallback: Try synonym resolution if exact match wasn't found in tournaments
   // This handles cases where canonical cards (like MEG 131) aren't in recent tournaments
   try {
-    const response = await fetch('/assets/card-synonyms.json');
+    const response = await fetch(CONFIG.API.SYNONYMS_URL);
     if (response.ok) {
       const synonymData = await response.json();
       const normalizedNumber = normalizeCardNumber(number);

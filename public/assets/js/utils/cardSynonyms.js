@@ -3,24 +3,10 @@
  * @module utils/cardSynonyms
  */
 
+import { CONFIG } from '../config.js';
+
 // Lazy-loaded synonym data
 let synonymData = null;
-
-/**
- * Basic energy canonical overrides
- * Basic energies should always resolve to the most recent cheap common version
- * rather than expensive special printings
- */
-const BASIC_ENERGY_CANONICALS = {
-  'Grass Energy': 'Grass Energy::SVE::017',
-  'Psychic Energy': 'Psychic Energy::SVE::021',
-  'Lightning Energy': 'Lightning Energy::SVE::019',
-  'Fire Energy': 'Fire Energy::SVE::018',
-  'Darkness Energy': 'Darkness Energy::SVE::015',
-  'Metal Energy': 'Metal Energy::SVE::020',
-  'Fighting Energy': 'Fighting Energy::SVE::016',
-  'Water Energy': 'Water Energy::SVE::022'
-};
 
 /**
  * Load synonym data from JSON file
@@ -32,7 +18,7 @@ async function loadSynonymData() {
   }
 
   try {
-    const response = await fetch('/assets/card-synonyms.json');
+    const response = await fetch(CONFIG.API.SYNONYMS_URL);
     if (!response.ok) {
       console.warn('Card synonyms data not found, synonym resolution disabled');
       return { synonyms: {}, canonicals: {} };
@@ -54,17 +40,6 @@ async function loadSynonymData() {
 export async function getCanonicalCard(cardIdentifier) {
   if (!cardIdentifier) {
     return cardIdentifier;
-  }
-
-  // Check for basic energy override first (before loading synonym data)
-  // This ensures basic energies always use the cheap common versions
-  if (cardIdentifier.includes('::')) {
-    const baseName = String(cardIdentifier).split('::')[0];
-    if (BASIC_ENERGY_CANONICALS[baseName]) {
-      return BASIC_ENERGY_CANONICALS[baseName];
-    }
-  } else if (BASIC_ENERGY_CANONICALS[cardIdentifier]) {
-    return BASIC_ENERGY_CANONICALS[cardIdentifier];
   }
 
   const data = await loadSynonymData();
@@ -130,31 +105,11 @@ export async function getCardVariants(cardIdentifier) {
   const data = await loadSynonymData();
   const canonical = await getCanonicalCard(cardIdentifier);
 
-  // For basic energies, we need to find variants that map to the JSON canonical
-  // (not our overridden cheap canonical), but still return our override as the primary
-  let jsonCanonical = canonical;
-
-  // Check if this is a basic energy
-  const baseName = cardIdentifier.includes('::') ? String(cardIdentifier).split('::')[0] : cardIdentifier;
-
-  if (BASIC_ENERGY_CANONICALS[baseName]) {
-    // Get the "real" canonical from the JSON data (expensive version)
-    if (cardIdentifier.includes('::')) {
-      const baseNameFromId = String(cardIdentifier).split('::')[0];
-      if (data.canonicals && data.canonicals[baseNameFromId]) {
-        jsonCanonical = data.canonicals[baseNameFromId];
-      }
-    } else if (data.canonicals && data.canonicals[cardIdentifier]) {
-      jsonCanonical = data.canonicals[cardIdentifier];
-    }
-  }
-
-  // Find all UIDs that map to the JSON canonical
-  const variants = [canonical]; // Start with our overridden canonical
+  // Find all UIDs that map to this canonical
+  const variants = [canonical];
 
   for (const [uid, canonicalUID] of Object.entries(data.synonyms)) {
-    // Match against JSON canonical to find all variants
-    if (canonicalUID === jsonCanonical && uid !== canonical) {
+    if (canonicalUID === canonical && uid !== canonical) {
       variants.push(uid);
     }
   }
@@ -175,16 +130,6 @@ export const sync = {
   getCanonicalCard(cardIdentifier) {
     if (!cardIdentifier) {
       return cardIdentifier;
-    }
-
-    // Check for basic energy override first
-    if (String(cardIdentifier).includes('::')) {
-      const baseName = String(cardIdentifier).split('::')[0];
-      if (BASIC_ENERGY_CANONICALS[baseName]) {
-        return BASIC_ENERGY_CANONICALS[baseName];
-      }
-    } else if (BASIC_ENERGY_CANONICALS[cardIdentifier]) {
-      return BASIC_ENERGY_CANONICALS[cardIdentifier];
     }
 
     if (!synonymData) {

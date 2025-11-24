@@ -25,6 +25,7 @@ export const CONFIG = Object.freeze({
     LIMITLESS_DEFAULT_GAME: 'PTCG',
     LIMITLESS_DEFAULT_LIMIT: 50,
     R2_BASE: 'https://r2.ciphermaniac.com',
+    SYNONYMS_URL: 'https://r2.ciphermaniac.com/assets/card-synonyms.json',
     TIMEOUT_MS: 10000,
     RETRY_ATTEMPTS: 3,
     RETRY_DELAY_MS: 1000,
