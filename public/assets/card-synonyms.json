@@ -266,9 +266,12 @@
     "Judge::FST::235": "Judge::SVI::176",
     "Judge::PAF::228": "Judge::SVI::176",
     "Judge::DRI::222": "Judge::SVI::176",
+    "Armarouge::PAF::015": "Armarouge::SVI::203",
+    "Armarouge::PAF::115": "Armarouge::SVI::203",
     "Alakazam::MEP::003": "Alakazam::MEP::009",
     "Dipplin::PRE::010": "Dipplin::TWM::170",
-    "Tapu Koko ex::PAR::247": "Tapu Koko ex::PAR::222"
+    "Tapu Koko ex::PAR::247": "Tapu Koko ex::PAR::222",
+    "Archaludon::PRE::070": "Archaludon::SCR::155"
   },
   "canonicals": {
     "Ultra Ball": "Ultra Ball::SVI::196",
@@ -288,15 +291,17 @@
     "Charizard ex": "Charizard ex::OBF::215",
     "Switch": "Switch::SVI::194",
     "Judge": "Judge::SVI::176",
+    "Armarouge": "Armarouge::SVI::203",
     "Alakazam": "Alakazam::MEP::009",
     "Dipplin": "Dipplin::TWM::170",
-    "Tapu Koko ex": "Tapu Koko ex::PAR::222"
+    "Tapu Koko ex": "Tapu Koko ex::PAR::222",
+    "Archaludon": "Archaludon::SCR::155"
   },
   "metadata": {
-    "generated": "2025-11-24T22:00:45.584Z",
-    "totalSynonyms": 269,
-    "totalCanonicals": 20,
-    "totalCardsAnalyzed": 514,
+    "generated": "2025-11-24T22:17:59.985Z",
+    "totalSynonyms": 272,
+    "totalCanonicals": 22,
+    "totalCardsAnalyzed": 723,
     "description": "Canonical card mappings for handling reprints and alternate versions"
   }
 }
