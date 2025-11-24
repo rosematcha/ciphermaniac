@@ -1,44 +1,147 @@
 {
-  "Raging Bolt Ogerpon": ["TEF/123"],
-  "Gardevoir": ["SVI/86"],
-  "Dragapult Dusknoir": ["PRE/37", "TWM/130"],
-  "Dragapult": ["TWM/130"],
-  "Dragapult Charizard": ["TWM/130", "OBF/125"],
-  "Gholdengo": ["PAR/139"],
-  "Gholdengo Joltik Box": ["PAR/139", "SCR/50"],
-  "Gholdengo Lunatone": ["PAR/139", "MEG/74"],
-  "Gardevoir Jellicent": ["SVI/86", "WHT/45"],
-  "Tera Box": ["SCR/128"],
-  "Joltik Box": ["SCR/50"],
-  "Charizard Pidgeot": ["OBF/125"],
-  "Grimmsnarl Froslass": ["DRI/136"],
-  "Flareon Noctowl": ["PRE/14"],
-  "Ceruledge": ["SSP/36"],
-  "Mega Venusaur": ["MEG/3"],
-  "Alakazam": ["MEG/56"],
-  "Alakazam Dudunsparce": ["MEG/56"],
-  "Lucario": ["MEG/77"],
-  "Lucario Hariyama": ["MEG/77"],
-  "Slowking": ["SCR/58"],
-  "Conkeldurr": ["TWM/105"],
-  "Crustle": ["DRI/12"],
-  "Ethan's Typhlosion": ["DRI/34"],
-  "N's Zoroark": ["JTG/98"],
-  "Zoroark Lucario": ["JTG/98", "MEG/77"],
-  "Pidgeot Control": ["OBF/164"],
-  "Cynthia's Garchomp": ["DRI/104"],
-  "Ho-Oh Armarouge": ["DRI/39"],
-  "Froslass Munkidori": ["TWM/53"],
-  "Mega Absol Box": ["MEG/86"],
-  "Milotic Farigiraf": ["SSP/42"],
-  "Roaring Moon": ["PAR/124"],
-  "Archaludon": ["SSP/130"],
-  "Festival Lead": ["TWM/18"],
-  "Kangaskhan Bouffalant": ["MEG/104"],
-  "Chien-Pao Baxcalibur": ["PAL/061"],
-  "Greninja": ["TWM/106"],
-  "Hydreigon": ["SSP/119"],
-  "Zoroark Crustle": ["JTG/98", "DRI/12"],
-  "Ursaluna Lunatone": ["PRE/54", "MEG/74"],
-  "Other": ["PHF/102"]
+  "Raging Bolt Ogerpon": [
+    "TEF/123"
+  ],
+  "Gardevoir": [
+    "SVI/86"
+  ],
+  "Dragapult Dusknoir": [
+    "PRE/37",
+    "TWM/130"
+  ],
+  "Dragapult": [
+    "TWM/130"
+  ],
+  "Dragapult Charizard": [
+    "TWM/130",
+    "OBF/125"
+  ],
+  "Gholdengo": [
+    "PAR/139"
+  ],
+  "Gholdengo Joltik Box": [
+    "PAR/139",
+    "SCR/50"
+  ],
+  "Gholdengo Lunatone": [
+    "PAR/139",
+    "MEG/74"
+  ],
+  "Gardevoir Jellicent": [
+    "SVI/86",
+    "WHT/45"
+  ],
+  "Tera Box": [
+    "SCR/128"
+  ],
+  "Joltik Box": [
+    "SCR/50"
+  ],
+  "Charizard Pidgeot": [
+    "OBF/125"
+  ],
+  "Grimmsnarl Froslass": [
+    "DRI/136"
+  ],
+  "Flareon Noctowl": [
+    "PRE/14"
+  ],
+  "Ceruledge": [
+    "SSP/36"
+  ],
+  "Mega Venusaur": [
+    "MEG/3"
+  ],
+  "Alakazam": [
+    "MEG/56"
+  ],
+  "Alakazam Dudunsparce": [
+    "MEG/56"
+  ],
+  "Lucario": [
+    "MEG/77"
+  ],
+  "Lucario Hariyama": [
+    "MEG/77"
+  ],
+  "Slowking": [
+    "SCR/58"
+  ],
+  "Conkeldurr": [
+    "TWM/105"
+  ],
+  "Crustle": [
+    "DRI/12"
+  ],
+  "Ethan's Typhlosion": [
+    "DRI/34"
+  ],
+  "N's Zoroark": [
+    "JTG/98"
+  ],
+  "Zoroark Lucario": [
+    "JTG/98",
+    "MEG/77"
+  ],
+  "Pidgeot Control": [
+    "OBF/164"
+  ],
+  "Cynthia's Garchomp": [
+    "DRI/104"
+  ],
+  "Ho-Oh Armarouge": [
+    "DRI/39"
+  ],
+  "Froslass Munkidori": [
+    "TWM/53"
+  ],
+  "Mega Absol Box": [
+    "MEG/86"
+  ],
+  "Milotic Farigiraf": [
+    "SSP/42"
+  ],
+  "Roaring Moon": [
+    "PAR/124"
+  ],
+  "Archaludon": [
+    "SSP/130"
+  ],
+  "Festival Lead": [
+    "TWM/18"
+  ],
+  "Kangaskhan Bouffalant": [
+    "MEG/104"
+  ],
+  "Chien-Pao Baxcalibur": [
+    "PAL/061"
+  ],
+  "Greninja": [
+    "TWM/106"
+  ],
+  "Hydreigon": [
+    "SSP/119"
+  ],
+  "Zoroark Crustle": [
+    "JTG/98",
+    "DRI/12"
+  ],
+  "Ursaluna Lunatone": [
+    "PRE/54",
+    "MEG/74"
+  ],
+  "Other": [
+    "PHF/102"
+  ],
+  "Mega Charizard X": [
+    "PFL/13"
+  ],
+  "Lopunny Dusknoir": [
+    "PRE/37",
+    "PFL/84"
+  ],
+  "Sharpedo Toxtricity": [
+    "PFL/61",
+    "PFL/68"
+  ]
 }

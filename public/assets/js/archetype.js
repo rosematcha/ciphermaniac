@@ -388,19 +388,21 @@ function formatCardOptionLabel(card, duplicateCounts) {
 }
 
 function ensureFilterMessageElement() {
-  if (elements.filterMessage instanceof HTMLElement) {
-    return elements.filterMessage;
-  }
-  const container = elements.filtersContainer;
-  if (!container) {
-    return null;
-  }
-  const message = document.createElement('p');
-  message.className = 'archetype-filter-message';
-  message.hidden = true;
-  container.appendChild(message);
-  elements.filterMessage = message;
-  return message;
+  // Legacy function - disabled as we now use dedicated warning containers
+  return null;
+  // if (elements.filterMessage instanceof HTMLElement) {
+  //   return elements.filterMessage;
+  // }
+  // const container = elements.filtersContainer;
+  // if (!container) {
+  //   return null;
+  // }
+  // const message = document.createElement('p');
+  // message.className = 'archetype-filter-message';
+  // message.hidden = true;
+  // container.appendChild(message);
+  // elements.filterMessage = message;
+  // return message;
 }
 
 function updateFilterMessage(text, tone = 'info') {
@@ -847,7 +849,8 @@ function createFilterRow() {
   removeButton.className = 'remove-filter-btn';
   removeButton.title = 'Remove this filter';
   removeButton.textContent = '×';
-  removeButton.hidden = state.filterRows.length === 0; // Hide for first filter
+  removeButton.textContent = '×';
+  // removeButton.hidden = state.filterRows.length === 0; // Always show remove button
 
   filterRow.appendChild(cardSelect);
   filterRow.appendChild(operatorSelect);
@@ -891,9 +894,9 @@ function removeFilterRow(filterId) {
   state.filterRows.splice(index, 1);
 
   // Update remove button visibility - hide on first row if only one remains
-  if (state.filterRows.length === 1) {
-    state.filterRows[0].elements.removeButton.hidden = true;
-  }
+  // if (state.filterRows.length === 1) {
+  //   state.filterRows[0].elements.removeButton.hidden = true;
+  // }
 
   // Update all dropdowns to reflect removed filter
   state.filterRows.forEach(r => populateFilterRowCards(r.id));
@@ -1058,17 +1061,12 @@ function updateAddFilterButtonVisibility() {
     return;
   }
 
-  // Show button if:
-  // 1. There are filter rows
-  // 2. The last row has a card selected
-  // 3. There are more cards available to select
-  const lastRow = state.filterRows[state.filterRows.length - 1];
-  const hasCardInLastRow = lastRow && lastRow.cardId;
+  // Always show the button unless all cards have been selected
   const totalCards = state.allCards.length;
   const selectedCount = state.filterRows.filter(r => r.cardId).length;
   const hasMoreCards = selectedCount < totalCards;
 
-  elements.addFilterButton.hidden = !(hasCardInLastRow && hasMoreCards);
+  elements.addFilterButton.hidden = !hasMoreCards;
 }
 
 /**
@@ -1298,12 +1296,13 @@ function updateSkeletonExportStatus(message, tone) {
 }
 
 function syncSkeletonExportState() {
-  if (!elements.skeletonExportButton) {
+  const exportButton = document.getElementById('skeleton-export-live');
+  if (!exportButton) {
     return;
   }
 
   const hasCards = state.skeleton.exportEntries.length > 0;
-  elements.skeletonExportButton.disabled = !hasCards;
+  exportButton.disabled = !hasCards;
   if (!hasCards) {
     updateSkeletonExportStatus('');
   }
@@ -1393,10 +1392,11 @@ async function handleSkeletonExport(event) {
 }
 
 function setupSkeletonExport() {
-  if (!elements.skeletonExportButton) {
+  const exportButton = document.getElementById('skeleton-export-live');
+  if (!exportButton) {
     return;
   }
-  elements.skeletonExportButton.addEventListener('click', handleSkeletonExport);
+  exportButton.addEventListener('click', handleSkeletonExport);
   syncSkeletonExportState();
 }
 
@@ -1473,8 +1473,12 @@ function getOperatorOptionsForCard(cardId) {
  * Update deck skeleton summary counts, warnings, and export readiness state.
  * @param {any[]} items
  */
+/**
+ * Update deck skeleton summary counts, warnings, and export readiness state.
+ * @param {any[]} items
+ */
 function updateSkeletonSummary(items) {
-  if (!elements.skeletonSummary || !elements.skeletonCountValue || !elements.skeletonWarnings) {
+  if (!elements.skeletonSummary || !elements.skeletonWarnings) {
     return;
   }
 
@@ -1496,21 +1500,15 @@ function updateSkeletonSummary(items) {
     }
   });
 
-  // Update the count display
-  elements.skeletonCountValue.textContent = String(totalCount);
-
   // Generate warnings
-  const plainWarnings = [];
   const displayWarnings = [];
   if (aceSpecCount > 1) {
     const warningText = `Multiple Ace Spec cards detected: ${aceSpecCards.join(', ')}`;
-    plainWarnings.push(warningText);
-    displayWarnings.push(`${WARNING_ICON} ${warningText}`);
+    displayWarnings.push(warningText);
   }
   if (totalCount > 60) {
     const warningText = `Deck exceeds 60 cards (${totalCount} cards)`;
-    plainWarnings.push(warningText);
-    displayWarnings.push(`${WARNING_ICON} ${warningText}`);
+    displayWarnings.push(warningText);
   }
 
   // Update warnings display
@@ -1522,11 +1520,64 @@ function updateSkeletonSummary(items) {
     elements.skeletonWarnings.hidden = true;
   }
 
+  // Construct detailed summary message
+  // Format: "(X) decks and (Y) cards from (all/selected tournament finish type) (archetype name) decks (and optionally listing the filters)."
+  const deckCount = state.archetypeDeckTotal || 0;
+  const deckLabel = deckCount === 1 ? 'deck' : 'decks';
+  const cardLabel = totalCount === 1 ? 'card' : 'cards';
+
+  let finishLabel = SUCCESS_FILTER_LABELS[state.successFilter] || state.successFilter;
+  if (finishLabel === 'all finishes') finishLabel = 'all'; // "from all Gholdengo decks" reads better than "from all finishes Gholdengo decks"
+
+  // Capitalize first letter of finish label if it's not 'all' or 'topX' which might be handled differently
+  if (finishLabel !== 'all' && !finishLabel.startsWith('top')) {
+    finishLabel = finishLabel.charAt(0).toUpperCase() + finishLabel.slice(1);
+  } else if (finishLabel.startsWith('top')) {
+    finishLabel = finishLabel.charAt(0).toUpperCase() + finishLabel.slice(1); // Ensure Top is capitalized
+  }
+
+  const archetypeName = state.archetypeLabel || 'Unknown';
+
+  let message = `${deckCount} ${deckLabel} and ${totalCount} ${cardLabel} from ${finishLabel} ${archetypeName} decks`;
+
+  // Append active filters description
+  const activeFilters = state.filterRows.filter(r => r.cardId);
+  if (activeFilters.length > 0) {
+    const filterDescriptions = activeFilters.map(filter => {
+      const cardName = state.cardLookup.get(filter.cardId)?.name || 'Unknown Card';
+      const operator = filter.operator;
+      const count = filter.count;
+
+      if (!operator || operator === 'any') {
+        return `any ${cardName}`;
+      }
+      if (operator === '=') {
+        return `${count} ${cardName}`;
+      }
+      if (operator === '>') {
+        return `more than ${count} ${cardName}`;
+      }
+      if (operator === '<') {
+        return `less than ${count} ${cardName}`;
+      }
+      return `${operator} ${count} ${cardName}`;
+    });
+
+    if (filterDescriptions.length === 1) {
+      message += ` including ${filterDescriptions[0]}`;
+    } else {
+      const last = filterDescriptions.pop();
+      message += ` including ${filterDescriptions.join(', ')} and ${last}`;
+    }
+  }
+
+  message += '.';
+
+  elements.skeletonSummary.textContent = message;
   elements.skeletonSummary.hidden = false;
 
   state.skeleton.totalCards = totalCount;
   state.skeleton.exportEntries = exportEntries;
-  state.skeleton.plainWarnings = plainWarnings;
   state.skeleton.displayWarnings = displayWarnings;
 
   syncSkeletonExportState();
@@ -1977,8 +2028,22 @@ function setupFilterCollapse() {
   });
 }
 
+function setupControlsToggle() {
+  const toggleBtn = document.getElementById('controls-toggle');
+  const body = document.getElementById('controls-body');
+
+  if (!toggleBtn || !body) return;
+
+  toggleBtn.addEventListener('click', () => {
+    const isExpanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+    toggleBtn.setAttribute('aria-expanded', String(!isExpanded));
+    body.hidden = isExpanded;
+  });
+}
+
 setupGranularityListeners();
 setupSkeletonExport();
 setupFilterCollapse();
+setupControlsToggle();
 
 initialize();
