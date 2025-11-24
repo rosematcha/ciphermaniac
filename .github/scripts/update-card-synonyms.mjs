@@ -109,7 +109,7 @@ async function collectAllCards(tournaments) {
             ? (tournament.folder || tournament.name || tournament.path)
             : tournament;
 
-        if (!folder || folder === 'Online - Last 14 Days') {
+        if (!folder) {
             continue;
         }
 
