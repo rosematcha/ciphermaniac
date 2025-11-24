@@ -7,6 +7,7 @@ import {
 } from './reportBuilder.js';
 import { loadCardTypesDatabase, enrichCardWithType } from './cardTypesDatabase.js';
 import { enrichDecksWithOnTheFlyFetch } from './cardTypeFetcher.js';
+import { loadCardSynonyms } from './cardSynonyms.js';
 
 const WINDOW_DAYS = 30;
 const MIN_USAGE_PERCENT = 0.5;
@@ -328,7 +329,7 @@ function toCardEntries(decklist, cardTypesDb = null) {
       const name = card?.name || 'Unknown Card';
       const set = card?.set || null;
       const number = card?.number || null;
-      
+
       // Build base entry
       let entry = {
         count,
@@ -337,12 +338,12 @@ function toCardEntries(decklist, cardTypesDb = null) {
         number,
         category
       };
-      
+
       // Try to enrich from database first
       if (cardTypesDb && set && number) {
         entry = enrichCardWithType(entry, cardTypesDb);
       }
-      
+
       // Fall back to heuristics if database didn't provide the info
       if (!entry.trainerType && !entry.energyType) {
         if (category === 'trainer') {
@@ -357,7 +358,7 @@ function toCardEntries(decklist, cardTypesDb = null) {
           }
         }
       }
-      
+
       if (category === 'trainer' && !entry.aceSpec && isAceSpecName(name)) {
         entry.aceSpec = true;
       }
@@ -529,7 +530,7 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
   return perTournamentDecks.flat();
 }
 
-function buildArchetypeReports(decks, minPercent) {
+function buildArchetypeReports(decks, minPercent, synonymDb) {
   const groups = new Map();
 
   for (const deck of decks) {
@@ -556,7 +557,7 @@ function buildArchetypeReports(decks, minPercent) {
       return;
     }
     const filename = `${group.filenameBase}.json`;
-    const data = generateReportFromDecks(group.decks, group.decks.length, decks);
+    const data = generateReportFromDecks(group.decks, group.decks.length, decks, synonymDb);
     archetypeFiles.push({
       filename,
       base: group.filenameBase,
@@ -918,6 +919,12 @@ export async function runOnlineMetaJob(env, options = {}) {
   const dbCardCount = Object.keys(cardTypesDb).length;
   console.info(`[OnlineMeta] Loaded ${dbCardCount} cards from types database`);
 
+  // Load card synonyms for canonicalization
+  console.info('[OnlineMeta] Loading card synonyms...');
+  const synonymDb = await loadCardSynonyms(env);
+  const synonymCount = Object.keys(synonymDb.synonyms || {}).length;
+  console.info(`[OnlineMeta] Loaded ${synonymCount} synonyms`);
+
   const tournaments = await fetchRecentOnlineTournaments(env, since, {
     diagnostics,
     fetchJson: options.fetchJson,
@@ -954,10 +961,11 @@ export async function runOnlineMetaJob(env, options = {}) {
   console.info('[OnlineMeta] Card type enrichment complete');
 
   const deckTotal = decks.length;
-  const masterReport = generateReportFromDecks(decks, deckTotal, decks);
+  const masterReport = generateReportFromDecks(decks, deckTotal, decks, synonymDb);
   const { archetypeFiles, archetypeIndex, minDecks } = buildArchetypeReports(
     decks,
-    MIN_USAGE_PERCENT
+    MIN_USAGE_PERCENT,
+    synonymDb
   );
   const trendReport = buildTrendReport(decks, tournaments, {
     windowStart: since,

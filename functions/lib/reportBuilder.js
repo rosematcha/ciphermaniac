@@ -1,3 +1,5 @@
+import { getCanonicalCard } from './cardSynonyms.js';
+
 const INVALID_PATH_CHARS = /[<>:"/\\|?*]/g;
 
 function composeCategoryPath(category, trainerType, energyType, options = {}) {
@@ -86,7 +88,7 @@ function createDistribution(counts, found) {
     }));
 }
 
-function generateReportFromDecks(deckList, deckTotal) {
+function generateReportFromDecks(deckList, deckTotal, _unused, synonymDb) {
   const cardData = new Map();
   const nameCasing = new Map();
   const uidMeta = new Map();
@@ -111,7 +113,12 @@ function generateReportFromDecks(deckList, deckTotal) {
       const aceSpec = Boolean(card?.aceSpec);
 
       const [canonSet, canonNumber] = canonicalizeVariant(card?.set, card?.number);
-      const uid = canonSet && canonNumber ? `${name}::${canonSet}::${canonNumber}` : name;
+      let uid = canonSet && canonNumber ? `${name}::${canonSet}::${canonNumber}` : name;
+
+      // Resolve to canonical synonym if database is available
+      if (synonymDb) {
+        uid = getCanonicalCard(synonymDb, uid);
+      }
 
       perDeckCounts.set(uid, (perDeckCounts.get(uid) || 0) + count);
       perDeckMeta.set(uid, {
