@@ -21,57 +21,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
+          node-version: 20
 
       - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install boto3 requests beautifulsoup4
+        run: npm ci
 
-      - name: Install rclone
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y rclone
-
-      - name: Configure rclone remote
-        env:
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: |
-          mkdir -p ~/.config/rclone
-          cat <<EOF > ~/.config/rclone/rclone.conf
-          [r2]
-          type = s3
-          provider = Cloudflare
-          access_key_id = ${R2_ACCESS_KEY_ID}
-          secret_access_key = ${R2_SECRET_ACCESS_KEY}
-          endpoint = https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com
-          EOF
-
-      - name: Generate card synonyms
+      - name: Generate and upload card synonyms
+        run: node .github/scripts/update-card-synonyms.mjs
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
-          RCLONE_REMOTE_NAME: r2
           PUBLIC_R2_BASE_URL: https://r2.ciphermaniac.com
-        run: |
-          python .github/scripts/generate-card-synonyms.py
-
-      - name: Upload to R2
-        env:
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
-          RCLONE_REMOTE_NAME: r2
-        run: |
-          rclone copy public/assets/card-synonyms.json r2:${{ secrets.R2_BUCKET_NAME }}/assets/
 
       - name: Commit changes
         if: inputs.commit_to_repo == true || github.event_name == 'schedule'

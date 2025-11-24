@@ -199,7 +199,7 @@ async function loadExistingDatabase() {
 async function saveDatabase(database) {
   // Ensure directory exists
   await fs.mkdir(dirname(CARD_TYPES_DB_PATH), { recursive: true });
-  
+
   // Sort by key for consistent output
   const sorted = Object.keys(database)
     .sort()
@@ -207,7 +207,7 @@ async function saveDatabase(database) {
       acc[key] = database[key];
       return acc;
     }, {});
-  
+
   await fs.writeFile(
     CARD_TYPES_DB_PATH,
     JSON.stringify(sorted, null, 2) + '\n',
@@ -222,11 +222,11 @@ async function saveDatabase(database) {
  */
 async function extractCardsFromReport(filePath) {
   const cards = new Set();
-  
+
   try {
     const content = await fs.readFile(filePath, 'utf-8');
     const report = JSON.parse(content);
-    
+
     if (report.items && Array.isArray(report.items)) {
       for (const item of report.items) {
         if (item.set && item.number) {
@@ -238,7 +238,7 @@ async function extractCardsFromReport(filePath) {
   } catch (error) {
     console.error(`Error reading ${filePath}:`, error.message);
   }
-  
+
   return cards;
 }
 
@@ -249,13 +249,13 @@ async function extractCardsFromReport(filePath) {
  */
 async function findMasterReports(dir) {
   const files = [];
-  
+
   try {
     const entries = await fs.readdir(dir, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       const fullPath = join(dir, entry.name);
-      
+
       if (entry.isDirectory()) {
         const subFiles = await findMasterReports(fullPath);
         files.push(...subFiles);
@@ -268,7 +268,7 @@ async function findMasterReports(dir) {
       console.error(`Error reading directory ${dir}:`, error.message);
     }
   }
-  
+
   return files;
 }
 
@@ -278,17 +278,17 @@ async function findMasterReports(dir) {
  */
 async function collectAllCards() {
   console.log('📦 Collecting cards from all reports...');
-  
+
   const allCards = new Set();
   const jsonFiles = await findMasterReports(REPORTS_BASE_PATH);
-  
+
   console.log(`   Found ${jsonFiles.length} master.json files to scan`);
-  
+
   for (const file of jsonFiles) {
     const cards = await extractCardsFromReport(file);
     cards.forEach(card => allCards.add(card));
   }
-  
+
   console.log(`   Found ${allCards.size} unique cards`);
   return allCards;
 }
@@ -298,15 +298,15 @@ async function collectAllCards() {
  */
 async function main() {
   console.log('🎴 Card Type Database Builder\n');
-  
+
   // Load existing database
   const database = await loadExistingDatabase();
   const existingCount = Object.keys(database).length;
   console.log(`📚 Loaded existing database with ${existingCount} cards\n`);
-  
+
   // Collect all cards
   const allCards = await collectAllCards();
-  
+
   // Find cards that need to be fetched
   const cardsToFetch = [];
   for (const cardKey of allCards) {
@@ -314,24 +314,24 @@ async function main() {
       cardsToFetch.push(cardKey);
     }
   }
-  
+
   console.log(`\n🔍 Found ${cardsToFetch.length} cards to fetch\n`);
-  
+
   if (cardsToFetch.length === 0) {
     console.log('✅ All cards are already in the database!');
     return;
   }
-  
+
   // Fetch card types
   let fetched = 0;
   let errors = 0;
-  
+
   for (const cardKey of cardsToFetch) {
     const [setCode, number] = cardKey.split('::');
     console.log(`Fetching ${cardKey} (${fetched + 1}/${cardsToFetch.length})...`);
-    
+
     const typeInfo = await fetchCardTypeFromLimitless(setCode, number);
-    
+
     if (typeInfo) {
       console.log(
         `  ✅ Success: ${cardKey} → ${typeInfo.cardType}${typeInfo.subType ? `/${typeInfo.subType}` : ''}`
@@ -340,6 +340,7 @@ async function main() {
         cardType: typeInfo.cardType,
         ...(typeInfo.subType ? { subType: typeInfo.subType } : {}),
         ...(typeInfo.evolutionInfo ? { evolutionInfo: typeInfo.evolutionInfo } : {}),
+        ...(typeInfo.aceSpec ? { aceSpec: true } : {}),
         fullType: typeInfo.fullType,
         lastUpdated: new Date().toISOString()
       };
@@ -348,20 +349,20 @@ async function main() {
       console.log(`  ❌ Failed to fetch ${cardKey}`);
       errors++;
     }
-    
+
     // Rate limiting
     await sleep(RATE_LIMIT_MS);
-    
+
     // Save progress every 10 cards
     if (fetched % 10 === 0) {
       await saveDatabase(database);
       console.log(`   💾 Progress saved (${fetched} cards fetched)`);
     }
   }
-  
+
   // Final save
   await saveDatabase(database);
-  
+
   console.log(`\n✅ Complete!`);
   console.log(`   Cards in database: ${Object.keys(database).length}`);
   console.log(`   Newly fetched: ${fetched}`);
