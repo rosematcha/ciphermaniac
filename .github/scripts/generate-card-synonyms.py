@@ -20,6 +20,7 @@ from bs4 import BeautifulSoup
 
 PUBLIC_R2_BASE = os.environ.get('PUBLIC_R2_BASE_URL', 'https://r2.ciphermaniac.com')
 OUTPUT_PATH = Path('public') / 'assets' / 'card-synonyms.json'
+ONLINE_FOLDER = 'Online - Last 14 Days'
 
 
 def log(message: str) -> None:
@@ -74,6 +75,31 @@ def load_tournament_decks(client, bucket: str, folder: str) -> list:
         return []
 
 
+def normalize_card_number(number: Optional[str]) -> Optional[str]:
+    """Normalize card number to zero-padded 3-digit form with optional suffix."""
+    raw = str(number or '').strip()
+    if not raw:
+        return None
+    match = re.match(r'^(\d+)([A-Za-z]*)$', raw)
+    if not match:
+        return raw.upper()
+    digits, suffix = match.groups()
+    padded = digits.zfill(3)
+    return f"{padded}{suffix.upper()}" if suffix else padded
+
+
+def merge_decks_into_card_map(cards_by_name: Dict[str, Set[Tuple[str, str]]], decks: list) -> None:
+    """Add cards from a set of decks into the shared map."""
+    for deck in decks:
+        for card in deck.get('cards', []):
+            card_name = card.get('name', '').strip()
+            set_code = (card.get('set', '') or '').upper().strip()
+            number = normalize_card_number(card.get('number'))
+
+            if card_name and set_code and number:
+                cards_by_name[card_name].add((set_code, number))
+
+
 def collect_all_cards(client, bucket: str, tournaments: list) -> Dict[str, Set[Tuple[str, str]]]:
     """
     Collect all unique cards from all tournaments.
@@ -83,32 +109,39 @@ def collect_all_cards(client, bucket: str, tournaments: list) -> Dict[str, Set[T
     cards_by_name = defaultdict(set)
     processed = 0
     skipped = 0
+    processed_folders = set()
 
     for folder in tournaments:
         if isinstance(folder, dict):
             folder = folder.get('folder') or folder.get('name') or folder.get('path')
-        if not folder or folder == 'Online - Last 14 Days':
+        if not folder:
             continue
 
+        processed_folders.add(folder)
         decks = load_tournament_decks(client, bucket, folder)
         if not decks:
             skipped += 1
             continue
 
-        for deck in decks:
-            for card in deck.get('cards', []):
-                card_name = card.get('name', '').strip()
-                set_code = (card.get('set', '') or '').upper().strip()
-                number = (card.get('number', '') or '').lstrip('0').zfill(3)
-
-                if card_name and set_code and number:
-                    cards_by_name[card_name].add((set_code, number))
+        merge_decks_into_card_map(cards_by_name, decks)
 
         processed += 1
         if processed % 5 == 0:
             log(f"  Processed {processed}/{len(tournaments)} tournaments...")
 
-    log(f"  Processed {processed} tournaments, skipped {skipped}")
+    online_included = ONLINE_FOLDER in processed_folders
+    if not online_included:
+        online_decks = load_tournament_decks(client, bucket, ONLINE_FOLDER)
+        if online_decks:
+            merge_decks_into_card_map(cards_by_name, online_decks)
+            processed += 1
+            online_included = True
+            log(f"  Included decks from {ONLINE_FOLDER} ({len(online_decks)} decks)")
+        else:
+            log(f"  Warning: No decks found for {ONLINE_FOLDER}; online meta cards will be missing")
+
+    suffix = " (online meta included)" if online_included else ""
+    log(f"  Processed {processed} tournaments{suffix}, skipped {skipped}")
     log(f"  Found {len(cards_by_name)} unique card names")
     return cards_by_name
 

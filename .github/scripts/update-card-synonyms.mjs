@@ -16,6 +16,7 @@ const __dirname = dirname(__filename);
 
 const PUBLIC_R2_BASE = process.env.PUBLIC_R2_BASE_URL || 'https://r2.ciphermaniac.com';
 const OUTPUT_PATH = join(__dirname, '../../public/assets/card-synonyms.json');
+const ONLINE_META_FOLDER = 'Online - Last 14 Days';
 
 // Standard-legal sets (Scarlet & Violet era onwards, including Mega Evolution)
 const STANDARD_LEGAL_SETS = new Set([
@@ -98,11 +99,43 @@ async function loadTournamentDecks(folder) {
     }
 }
 
+function normalizeCardNumber(number) {
+    const raw = String(number ?? '').trim();
+    if (!raw) {
+        return null;
+    }
+    const match = /^(\d+)([A-Za-z]*)$/.exec(raw);
+    if (!match) {
+        return raw.toUpperCase();
+    }
+    const [, digits, suffix = ''] = match;
+    const padded = digits.padStart(3, '0');
+    return suffix ? `${padded}${suffix.toUpperCase()}` : padded;
+}
+
+function addDecksToCardMap(cardsByName, decks) {
+    for (const deck of decks) {
+        for (const card of deck.cards || []) {
+            const cardName = (card.name || '').trim();
+            const setCode = ((card.set || '').toUpperCase() || '').trim();
+            const number = normalizeCardNumber(card.number);
+
+            if (cardName && setCode && number) {
+                if (!cardsByName.has(cardName)) {
+                    cardsByName.set(cardName, new Set());
+                }
+                cardsByName.get(cardName).add(`${setCode}::${number}`);
+            }
+        }
+    }
+}
+
 async function collectAllCards(tournaments) {
     log('\nCollecting cards from all tournaments...');
     const cardsByName = new Map();
     let processed = 0;
     let skipped = 0;
+    const processedFolders = new Set();
 
     for (const tournament of tournaments) {
         const folder = typeof tournament === 'object'
@@ -113,26 +146,14 @@ async function collectAllCards(tournaments) {
             continue;
         }
 
+        processedFolders.add(folder);
         const decks = await loadTournamentDecks(folder);
         if (!decks.length) {
             skipped++;
             continue;
         }
 
-        for (const deck of decks) {
-            for (const card of deck.cards || []) {
-                const cardName = (card.name || '').trim();
-                const setCode = ((card.set || '').toUpperCase() || '').trim();
-                const number = (card.number || '').replace(/^0+/, '').padStart(3, '0');
-
-                if (cardName && setCode && number) {
-                    if (!cardsByName.has(cardName)) {
-                        cardsByName.set(cardName, new Set());
-                    }
-                    cardsByName.get(cardName).add(`${setCode}::${number}`);
-                }
-            }
-        }
+        addDecksToCardMap(cardsByName, decks);
 
         processed++;
         if (processed % 5 === 0) {
@@ -140,7 +161,21 @@ async function collectAllCards(tournaments) {
         }
     }
 
-    log(`  Processed ${processed} tournaments, skipped ${skipped}`);
+    let onlineIncluded = processedFolders.has(ONLINE_META_FOLDER);
+    if (!onlineIncluded) {
+        const onlineDecks = await loadTournamentDecks(ONLINE_META_FOLDER);
+        if (onlineDecks.length) {
+            addDecksToCardMap(cardsByName, onlineDecks);
+            processed++;
+            onlineIncluded = true;
+            log(`  Included decks from ${ONLINE_META_FOLDER} (${onlineDecks.length} entries)`);
+        } else {
+            log(`  Warning: No decks found for ${ONLINE_META_FOLDER}; online meta cards will be missing`);
+        }
+    }
+
+    const onlineNote = onlineIncluded ? ' (online meta included)' : '';
+    log(`  Processed ${processed} tournaments${onlineNote}, skipped ${skipped}`);
     log(`  Found ${cardsByName.size} unique card names`);
     return cardsByName;
 }
