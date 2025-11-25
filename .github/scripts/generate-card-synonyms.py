@@ -307,6 +307,86 @@ def choose_canonical_print(variations, card_name):
     return sorted_variations[0]
 
 
+class UnionFind:
+    def __init__(self):
+        self.parent = {}
+
+    def find(self, x):
+        if x not in self.parent:
+            self.parent[x] = x
+            return x
+        if self.parent[x] == x:
+            return x
+        self.parent[x] = self.find(self.parent[x])
+        return self.parent[x]
+
+    def union(self, a, b):
+        ra = self.find(a)
+        rb = self.find(b)
+        if ra == rb:
+            return
+        self.parent[ra] = rb
+
+    def components(self):
+        groups = defaultdict(list)
+        for key in list(self.parent.keys()):
+            root = self.find(key)
+            groups[root].append(key)
+        return list(groups.values())
+
+
+def build_clusters_from_limitless(session, print_set):
+    uf = UnionFind()
+    meta = {}  # uid -> {set, number, price_usd}
+
+    for sample_set, sample_num in print_set:
+        if not sample_set or not sample_num:
+            continue
+        variations = scrape_card_print_variations(session, sample_set, sample_num)
+        filtered = []
+        for v in variations or []:
+            set_code = v.get('set')
+            number = v.get('number')
+            if not set_code or not number:
+                continue
+            norm_num = normalize_card_number(number)
+            if not norm_num:
+                continue
+            filtered.append({
+                'set': set_code.upper(),
+                'number': norm_num,
+                'price_usd': v.get('price_usd')
+            })
+
+        if len(filtered) < 2:
+            continue
+
+        ids = [f"{v['set']}::{v['number']}" for v in filtered]
+        for v, id_ in zip(filtered, ids):
+            uf.find(id_)
+            if id_ not in meta:
+                meta[id_] = v
+        anchor = ids[0]
+        for other in ids[1:]:
+            uf.union(anchor, other)
+
+    clusters = []
+    for group in uf.components():
+        if len(group) < 2:
+            continue
+        cluster = []
+        for gid in group:
+            set_code, number = gid.split('::')
+            info = meta.get(gid, {})
+            cluster.append({
+                'set': info.get('set', set_code),
+                'number': info.get('number', number),
+                'price_usd': info.get('price_usd')
+            })
+        clusters.append(cluster)
+    return clusters
+
+
 MEE_BASIC_ENERGY = [
     ("Darkness Energy", "MEE", "007", "Darkness Energy::SVE::007"),
     ("Psychic Energy", "MEE", "005", "Psychic Energy::SVE::005"),
@@ -317,24 +397,6 @@ MEE_BASIC_ENERGY = [
     ("Water Energy", "MEE", "003", "Water Energy::SVE::003"),
     ("Lightning Energy", "MEE", "004", "Lightning Energy::SVE::004"),
 ]
-
-
-def build_fallback_variations(print_set):
-    """Build variations from observed prints when Limitless doesn't list multiple versions."""
-    seen = set()
-    variations = []
-    for set_code, number in print_set:
-        normalized_number = normalize_card_number(number) or number
-        key = (set_code, normalized_number)
-        if key in seen:
-            continue
-        seen.add(key)
-        variations.append({
-            'set': set_code,
-            'number': normalized_number,
-            'price_usd': None
-        })
-    return variations
 
 
 def ensure_mee_basic_energy_synonyms(synonyms_dict, canonicals_dict):
@@ -371,39 +433,26 @@ def generate_synonyms(cards_by_name: Dict[str, Set[Tuple[str, str]]]) -> dict:
         if len(print_set) < 2:
             continue
 
-        # Try each known print until we find a Limitless page with multiple variations
-        variations = None
-        for sample_set, sample_num in print_set:
-            candidate = scrape_card_print_variations(session, sample_set, sample_num)
-            if candidate and len(candidate) >= 2:
-                variations = candidate
-                break
-
-        # Fallback: if Limitless doesn't list multiple prints yet, use the prints we've observed
-        if not variations or len(variations) < 2:
-            fallback = build_fallback_variations(print_set)
-            if len(fallback) >= 2:
-                variations = fallback
-
-        if not variations or len(variations) < 2:
+        # Build synonym clusters strictly from Limitless print tables (avoid observed fallback to prevent false merges)
+        clusters = build_clusters_from_limitless(session, print_set)
+        if not clusters:
             continue
 
-        # Choose the canonical print
-        canonical_var = choose_canonical_print(variations, card_name)
-        if not canonical_var:
-            continue
+        for cluster in clusters:
+            canonical_var = choose_canonical_print(cluster, card_name)
+            if not canonical_var:
+                continue
 
-        canonical_uid = f"{card_name}::{canonical_var['set']}::{canonical_var['number']}"
+            canonical_uid = f"{card_name}::{canonical_var['set']}::{canonical_var['number']}"
 
-        # Build synonyms for all variations
-        for var in variations:
-            variant_uid = f"{card_name}::{var['set']}::{var['number']}"
-            if variant_uid != canonical_uid:
-                synonyms_dict[variant_uid] = canonical_uid
+            for var in cluster:
+                variant_uid = f"{card_name}::{var['set']}::{var['number']}"
+                if variant_uid != canonical_uid:
+                    synonyms_dict[variant_uid] = canonical_uid
 
-        # Add canonical mapping
-        canonicals_dict[card_name] = canonical_uid
-        processed_count += 1
+            if card_name not in canonicals_dict:
+                canonicals_dict[card_name] = canonical_uid
+            processed_count += 1
 
     log(f"  Completed: {processed_count} cards with multiple prints")
     log(f"  Generated {len(synonyms_dict)} synonym mappings")
