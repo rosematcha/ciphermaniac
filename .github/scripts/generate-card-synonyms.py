@@ -307,6 +307,47 @@ def choose_canonical_print(variations, card_name):
     return sorted_variations[0]
 
 
+MEE_BASIC_ENERGY = [
+    ("Darkness Energy", "MEE", "007", "Darkness Energy::SVE::007"),
+    ("Psychic Energy", "MEE", "005", "Psychic Energy::SVE::005"),
+    ("Fighting Energy", "MEE", "006", "Fighting Energy::SVE::014"),
+    ("Fire Energy", "MEE", "002", "Fire Energy::SVE::002"),
+    ("Metal Energy", "MEE", "008", "Metal Energy::SVE::016"),
+    ("Grass Energy", "MEE", "001", "Grass Energy::SVE::017"),
+    ("Water Energy", "MEE", "003", "Water Energy::SVE::003"),
+    ("Lightning Energy", "MEE", "004", "Lightning Energy::SVE::004"),
+]
+
+
+def build_fallback_variations(print_set):
+    """Build variations from observed prints when Limitless doesn't list multiple versions."""
+    seen = set()
+    variations = []
+    for set_code, number in print_set:
+        normalized_number = normalize_card_number(number) or number
+        key = (set_code, normalized_number)
+        if key in seen:
+            continue
+        seen.add(key)
+        variations.append({
+            'set': set_code,
+            'number': normalized_number,
+            'price_usd': None
+        })
+    return variations
+
+
+def ensure_mee_basic_energy_synonyms(synonyms_dict, canonicals_dict):
+    """Ensure MEE basic energies are mapped even if upstream print tables are missing."""
+    for name, set_code, number, fallback in MEE_BASIC_ENERGY:
+        canonical = canonicals_dict.get(name, fallback)
+        if not canonical:
+            continue
+        normalized_number = normalize_card_number(number) or number
+        uid = f"{name}::{set_code}::{normalized_number}"
+        synonyms_dict.setdefault(uid, canonical)
+
+
 def generate_synonyms(cards_by_name: Dict[str, Set[Tuple[str, str]]]) -> dict:
     """
     Generate synonym mappings for all cards.
@@ -338,6 +379,12 @@ def generate_synonyms(cards_by_name: Dict[str, Set[Tuple[str, str]]]) -> dict:
                 variations = candidate
                 break
 
+        # Fallback: if Limitless doesn't list multiple prints yet, use the prints we've observed
+        if not variations or len(variations) < 2:
+            fallback = build_fallback_variations(print_set)
+            if len(fallback) >= 2:
+                variations = fallback
+
         if not variations or len(variations) < 2:
             continue
 
@@ -361,6 +408,8 @@ def generate_synonyms(cards_by_name: Dict[str, Set[Tuple[str, str]]]) -> dict:
     log(f"  Completed: {processed_count} cards with multiple prints")
     log(f"  Generated {len(synonyms_dict)} synonym mappings")
     log(f"  Generated {len(canonicals_dict)} canonical mappings")
+
+    ensure_mee_basic_energy_synonyms(synonyms_dict, canonicals_dict)
 
     return {
         "synonyms": synonyms_dict,

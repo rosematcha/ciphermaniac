@@ -337,6 +337,52 @@ function chooseCanonicalPrint(variations) {
     return sorted[0];
 }
 
+function buildFallbackVariations(printSet) {
+    const seen = new Set();
+    const variations = [];
+
+    for (const entry of printSet || []) {
+        if (!entry || typeof entry !== 'string') continue;
+        const [set, number] = entry.split('::');
+        if (!set || !number) continue;
+        const normalizedNumber = normalizeCardNumber(number) || number;
+        const key = `${set}::${normalizedNumber}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        variations.push({
+            set,
+            number: normalizedNumber,
+            price_usd: null
+        });
+    }
+
+    return variations;
+}
+
+const MEE_BASIC_ENERGY = [
+    { name: 'Darkness Energy', set: 'MEE', number: '007', fallback: 'Darkness Energy::SVE::007' },
+    { name: 'Psychic Energy', set: 'MEE', number: '005', fallback: 'Psychic Energy::SVE::005' },
+    { name: 'Fighting Energy', set: 'MEE', number: '006', fallback: 'Fighting Energy::SVE::014' },
+    { name: 'Fire Energy', set: 'MEE', number: '002', fallback: 'Fire Energy::SVE::002' },
+    { name: 'Metal Energy', set: 'MEE', number: '008', fallback: 'Metal Energy::SVE::016' },
+    { name: 'Grass Energy', set: 'MEE', number: '001', fallback: 'Grass Energy::SVE::017' },
+    { name: 'Water Energy', set: 'MEE', number: '003', fallback: 'Water Energy::SVE::003' },
+    { name: 'Lightning Energy', set: 'MEE', number: '004', fallback: 'Lightning Energy::SVE::004' }
+];
+
+function ensureMeeBasicEnergySynonyms(synonymsDict, canonicalsDict) {
+    const canonicalByName = { ...canonicalsDict };
+    for (const energy of MEE_BASIC_ENERGY) {
+        const canonical = canonicalByName[energy.name] || energy.fallback;
+        if (!canonical) continue;
+        const number = normalizeCardNumber(energy.number) || energy.number;
+        const uid = `${energy.name}::${energy.set}::${number}`;
+        if (!synonymsDict[uid]) {
+            synonymsDict[uid] = canonical;
+        }
+    }
+}
+
 async function generateSynonyms(cardsByName) {
     log('\nGenerating canonical mappings...');
     const synonymsDict = {};
@@ -368,6 +414,14 @@ async function generateSynonyms(cardsByName) {
             }
         }
 
+        // Fallback: if Limitless doesn't list multiple prints yet, use the prints we've seen in tournaments
+        if (!variations || variations.length < 2) {
+            const fallback = buildFallbackVariations(printSet);
+            if (fallback.length >= 2) {
+                variations = fallback;
+            }
+        }
+
         if (!variations || variations.length < 2) continue;
 
         // Choose the canonical print
@@ -392,6 +446,9 @@ async function generateSynonyms(cardsByName) {
     log(`  Completed: ${processedCount} cards with multiple prints`);
     log(`  Generated ${Object.keys(synonymsDict).length} synonym mappings`);
     log(`  Generated ${Object.keys(canonicalsDict).length} canonical mappings`);
+
+    // Ensure basic energies from MEE are present even if upstream data lacks print tables
+    ensureMeeBasicEnergySynonyms(synonymsDict, canonicalsDict);
 
     return {
         synonyms: synonymsDict,
