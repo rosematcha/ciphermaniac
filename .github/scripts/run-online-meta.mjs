@@ -3,6 +3,7 @@
 import crypto from 'node:crypto';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { enrichCardWithType } from '../../functions/lib/cardTypesDatabase.js';
+import { getCanonicalCard } from '../../functions/lib/cardSynonyms.js';
 
 const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api';
 const WINDOW_DAYS = 14;
@@ -311,7 +312,7 @@ function canonicalizeVariant(setCode, number) {
   return [sc, suffix ? `${normalized}${suffix.toUpperCase()}` : normalized];
 }
 
-function generateReportFromDecks(deckList, deckTotal) {
+function generateReportFromDecks(deckList, deckTotal, synonymDb) {
   const cardData = new Map();
   const nameCasing = new Map();
   const uidMeta = new Map();
@@ -327,7 +328,11 @@ function generateReportFromDecks(deckList, deckTotal) {
         continue;
       }
       const [setCode, number] = canonicalizeVariant(card.set, card.number);
-      const uid = setCode && number ? `${card.name}::${setCode}::${number}` : card.name;
+      let uid = setCode && number ? `${card.name}::${setCode}::${number}` : card.name;
+
+      if (synonymDb) {
+        uid = getCanonicalCard(synonymDb, uid);
+      }
 
       perDeckCounts.set(uid, (perDeckCounts.get(uid) || 0) + count);
         perDeckMeta.set(uid, {
@@ -436,7 +441,7 @@ function generateReportFromDecks(deckList, deckTotal) {
   };
 }
 
-function buildArchetypeReports(decks) {
+function buildArchetypeReports(decks, synonymDb) {
   const groups = new Map();
   const deckTotal = decks.length || 0;
   const minDecks = Math.max(1, Math.ceil(deckTotal * 0.005));
@@ -463,7 +468,7 @@ function buildArchetypeReports(decks) {
       filename: `${base}.json`,
       base,
       deckCount: archetypeDecks.length,
-      data: generateReportFromDecks(archetypeDecks, archetypeDecks.length)
+      data: generateReportFromDecks(archetypeDecks, archetypeDecks.length, synonymDb)
     });
   }
 
@@ -519,6 +524,18 @@ async function loadCardTypesDatabase() {
   }
   console.warn('[online-meta] Card types database not found; continuing without enrichment');
   return null;
+}
+
+async function loadCardSynonyms() {
+  const key = 'assets/card-synonyms.json';
+  const data = await readJson(key);
+  if (data) {
+    const count = Object.keys(data.synonyms || {}).length;
+    console.log(`[online-meta] Loaded card synonyms (${count} entries) from ${key}`);
+    return data;
+  }
+  console.warn('[online-meta] Card synonyms not found; continuing without canonicalization');
+  return { synonyms: {}, canonicals: {} };
 }
 
 // Note: updateTournamentsList() has been removed because online tournaments
@@ -1018,14 +1035,18 @@ async function main() {
   console.log(`[online-meta] Found ${tournaments.length} eligible tournaments`);
 
   const cardTypesDb = await loadCardTypesDatabase();
+  const synonymDb = await loadCardSynonyms();
   const decks = await gatherDecks(tournaments, cardTypesDb);
   if (!decks.length) {
     throw new Error('No decklists gathered from online tournaments');
   }
 
   console.log(`[online-meta] Aggregating ${decks.length} decks`);
-  const masterReport = generateReportFromDecks(decks, decks.length);
-  const { files: archetypeFiles, index: archetypeIndex, minDecks } = buildArchetypeReports(decks);
+  const masterReport = generateReportFromDecks(decks, decks.length, synonymDb);
+  const { files: archetypeFiles, index: archetypeIndex, minDecks } = buildArchetypeReports(
+    decks,
+    synonymDb
+  );
 
   const meta = {
     name: TARGET_FOLDER,
