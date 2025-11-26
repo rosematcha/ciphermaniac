@@ -1,8 +1,20 @@
 import { fetchLimitlessJson } from '../../lib/limitless.js';
 
-const ALLOWED_QUERY_PARAMS = ['game', 'format', 'organizerId', 'limit', 'page'];
+type AllowedQueryParam = 'game' | 'format' | 'organizerId' | 'limit' | 'page';
 
-function buildProxySearchParams(url) {
+const ALLOWED_QUERY_PARAMS: AllowedQueryParam[] = ['game', 'format', 'organizerId', 'limit', 'page'];
+
+interface Env {
+  LIMITLESS_API_KEY?: string;
+  [key: string]: unknown;
+}
+
+interface RequestContext {
+  request: Request;
+  env: Env;
+}
+
+function buildProxySearchParams(url: URL): URLSearchParams {
   const scoped = new URLSearchParams();
   ALLOWED_QUERY_PARAMS.forEach(param => {
     const value = url.searchParams.get(param);
@@ -13,7 +25,7 @@ function buildProxySearchParams(url) {
   return scoped;
 }
 
-function jsonResponse(body, status = 200, extraHeaders = {}) {
+function jsonResponse(body: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
@@ -25,7 +37,7 @@ function jsonResponse(body, status = 200, extraHeaders = {}) {
   });
 }
 
-export async function onRequestGet({ request, env }) {
+export async function onRequestGet({ request, env }: RequestContext): Promise<Response> {
   try {
     const url = new URL(request.url);
     const query = buildProxySearchParams(url);
@@ -44,17 +56,19 @@ export async function onRequestGet({ request, env }) {
     });
   } catch (error) {
     console.error('Limitless tournaments proxy failed', {
-      message: error?.message,
-      status: error?.status,
-      body: error?.body
+      message: (error as Error)?.message,
+      status: (error as { status?: number })?.status,
+      body: (error as { body?: unknown })?.body
     });
 
-    const status = Number.isInteger(error?.status) ? error.status : 502;
+    const status = Number.isInteger((error as { status?: number })?.status)
+      ? (error as { status: number }).status
+      : 502;
     return jsonResponse(
       {
         success: false,
         error: 'Failed to fetch Limitless tournaments',
-        message: error?.message || 'Unknown error'
+        message: (error as Error)?.message || 'Unknown error'
       },
       status,
       { 'Cache-Control': 'no-store' }
@@ -62,7 +76,7 @@ export async function onRequestGet({ request, env }) {
   }
 }
 
-export function onRequestOptions() {
+export function onRequestOptions(): Response {
   return new Response(null, {
     status: 204,
     headers: {

@@ -27,12 +27,16 @@ function normalizeCardNumber(raw) {
   };
 }
 
+/** @typedef {RequestInit & { cf?: unknown }} CfRequestInit */
+
 async function fetchWithFallback(urls) {
   let lastStatus = 404;
   for (const url of urls) {
-    const response = await fetch(url, {
+    /** @type {CfRequestInit} */
+    const requestInit = {
       cf: { cacheTtl: CACHE_TTL, cacheEverything: true }
-    });
+    };
+    const response = await fetch(url, requestInit);
 
     if (response.ok) {
       return response;

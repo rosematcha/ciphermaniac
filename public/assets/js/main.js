@@ -654,7 +654,12 @@ async function setupArchetypeSelector(tournaments, cache, state, skipUrlInit = f
     }
 
     if (Array.isArray(archetypesList)) {
-      archetypesList.forEach(archetype => combinedArchetypes.add(archetype));
+      archetypesList.forEach(archetype => {
+        const slug = typeof archetype === 'string' ? archetype : archetype?.name;
+        if (slug) {
+          combinedArchetypes.add(slug);
+        }
+      });
     } else {
       logger.warn('archetypesList is not an array, using empty array as fallback', { archetypesList, tournament });
     }

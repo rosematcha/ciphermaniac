@@ -7,7 +7,7 @@
   "scripts": {
     "lint": "eslint public/assets/js --ext .js",
     "lint:fix": "eslint public/assets/js --ext .js --fix",
-    "typecheck": "npx tsc --noEmit --project config/jsconfig.json",
+    "typecheck": "npx tsc --noEmit --project tsconfig.json",
     "jsdoc": "jsdoc -c config/jsdoc.config.js",
     "jsdoc:validate": "eslint public/assets/js --ext .js --rule 'valid-jsdoc: error'",
     "complexity": "plato -r -d complexity-report public/assets/js",

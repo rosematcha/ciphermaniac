@@ -23,24 +23,11 @@ const templates = {
 const state = {
   tournament: /** @type {string|null} */ (null),
   tournamentDeckTotal: 0,
-  archetypes: /** @type {Array<{name:string, deckTotal:number, percent:number}>} */ ([]),
-  cache: new Map(),
-  thumbnailConfig: /** @type {Record<string, string[]>|null} */ (null)
+  archetypes: /**
+   * @type {Array<{name:string,label?:string,deckCount:number|null,percent:number|null,thumbnails?:string[]}>}
+   */ ([]),
+  cache: new Map()
 };
-
-// Load archetype thumbnail configuration
-async function loadThumbnailConfig() {
-  try {
-    const response = await fetch('/assets/data/archetype-thumbnails.json');
-    if (!response.ok) {
-      throw new Error(`Failed to load thumbnail config: ${response.status}`);
-    }
-    state.thumbnailConfig = await response.json();
-  } catch (error) {
-    logger.warn('Failed to load archetype thumbnail config', error);
-    state.thumbnailConfig = {};
-  }
-}
 
 function sanitizeCardNumber(rawNumber) {
   if (rawNumber == null) {
@@ -80,37 +67,6 @@ function formatCardNumberForCdn(rawNumber) {
 
 function buildLimitlessCdnUrl(setCode, cardNumber, size = 'SM') {
   return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${setCode}/${setCode}_${cardNumber}_R_EN_${size}.png`;
-}
-
-// Legacy hard-coded thumbnail configuration removed in favor of external JSON map
-
-function normalizeDeckName(label) {
-  return label
-    .replace(/['']/g, '')
-    .replace(/[^a-zA-Z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .toLowerCase();
-}
-
-function getDeckThumbnail(name) {
-  if (!state.thumbnailConfig) {
-    return null;
-  }
-
-  // Try exact match first
-  if (state.thumbnailConfig[name]) {
-    return state.thumbnailConfig[name];
-  }
-
-  // Try normalized match
-  const normalized = normalizeDeckName(name);
-  for (const [key, value] of Object.entries(state.thumbnailConfig)) {
-    if (normalizeDeckName(key) === normalized) {
-      return value;
-    }
-  }
-
-  return null;
 }
 
 function buildThumbnailSources(cardIds) {
@@ -246,11 +202,11 @@ function getDeckFallbackText(rawName) {
     .toUpperCase();
 }
 
-function applyDeckThumbnail(thumbnailEl, imgEl, fallbackEl, deckName) {
+function applyDeckThumbnail(thumbnailEl, imgEl, fallbackEl, deckName, explicitCardIds = null) {
   const thumbnailElement = thumbnailEl;
   const imageElement = imgEl;
   const fallbackElement = fallbackEl;
-  const cardIds = getDeckThumbnail(deckName);
+  const cardIds = Array.isArray(explicitCardIds) ? explicitCardIds : [];
   const sources = buildThumbnailSources(cardIds);
   const fallbackText = getDeckFallbackText(deckName);
 
@@ -352,7 +308,10 @@ function renderList() {
 
   const fragment = document.createDocumentFragment();
 
-  state.archetypes.forEach(({ name, deckTotal, percent }) => {
+  state.archetypes.forEach(entry => {
+    if (!entry || !entry.name) {
+      return;
+    }
     const node = templates.listItem.content.firstElementChild.cloneNode(true);
     const itemEl = /** @type {HTMLElement} */ (node);
     const anchor = assertElement(itemEl.querySelector('.analysis-list-item__button'), 'Missing archetype link');
@@ -364,11 +323,13 @@ function renderList() {
     const pctEl = anchor.querySelector('.analysis-list-item__percent');
     const countEl = anchor.querySelector('.analysis-list-item__count');
 
-    anchor.href = buildDetailUrl(name);
-    anchor.dataset.archetype = name;
+    const deckName = entry.label || entry.name.replace(/_/g, ' ');
+
+    anchor.href = buildDetailUrl(entry.name);
+    anchor.dataset.archetype = entry.name;
 
     // Add hover event listeners for aggressive pre-caching
-    setupArchetypeHoverHandlers(anchor, name);
+    setupArchetypeHoverHandlers(anchor, entry.name);
 
     if (
       previewEl &&
@@ -376,19 +337,24 @@ function renderList() {
       thumbnailImage instanceof HTMLImageElement &&
       thumbnailFallback instanceof HTMLElement
     ) {
-      applyDeckThumbnail(thumbnailContainer, thumbnailImage, thumbnailFallback, name);
+      applyDeckThumbnail(thumbnailContainer, thumbnailImage, thumbnailFallback, deckName, entry.thumbnails || []);
     } else if (previewEl instanceof HTMLElement) {
       previewEl.classList.add('analysis-list-item__preview--no-thumb');
     }
 
     if (nameEl) {
-      nameEl.textContent = name.replace(/_/g, ' ');
+      nameEl.textContent = deckName;
     }
     if (pctEl) {
-      pctEl.textContent = formatPercent(percent);
+      pctEl.textContent = Number.isFinite(entry.percent) ? formatPercent(entry.percent || 0) : '—';
     }
     if (countEl) {
-      countEl.textContent = `${deckTotal} decks`;
+      if (Number.isFinite(entry.deckCount)) {
+        const decks = Number(entry.deckCount);
+        countEl.textContent = `${decks} deck${decks === 1 ? '' : 's'}`;
+      } else {
+        countEl.textContent = 'Deck count unavailable';
+      }
     }
 
     fragment.appendChild(itemEl);
@@ -459,34 +425,10 @@ async function loadArchetype(name) {
   return record;
 }
 
-async function loadArchetypeSummaries(archetypeNames) {
-  const results = await Promise.all(
-    archetypeNames.map(async name => {
-      try {
-        const summary = await loadArchetype(name);
-        return { name, deckTotal: summary.deckTotal, percent: summary.percent };
-      } catch (error) {
-        logger.warn(`Failed to load archetype ${name}`, error);
-        return null;
-      }
-    })
-  );
-
-  // Only include archetypes with 4 or more decks
-  const filtered = /** @type {Array<{name:string, deckTotal:number, percent:number}>} */ (
-    results.filter(entry => entry && entry.deckTotal >= 4)
-  );
-  filtered.sort((left, right) => right.deckTotal - left.deckTotal);
-  state.archetypes = filtered;
-}
-
 async function initialize() {
   try {
     updateContainerState('loading');
     toggleLoading(true);
-
-    // Load thumbnail configuration
-    await loadThumbnailConfig();
 
     // Always use "Online - Last 14 Days" data
     const tournament = 'Online - Last 14 Days';
@@ -507,11 +449,19 @@ async function initialize() {
       `fetching archetypes for ${tournament}`,
       []
     );
-    if (!Array.isArray(archetypes) || archetypes.length === 0) {
+    const normalizedList = Array.isArray(archetypes) ? archetypes.filter(entry => entry && entry.name) : [];
+    if (normalizedList.length === 0) {
       throw new Error(`No archetypes found for ${tournament}.`);
     }
 
-    await loadArchetypeSummaries(archetypes);
+    state.archetypes = normalizedList.slice().sort((left, right) => {
+      const leftDecks = Number.isFinite(left.deckCount) ? Number(left.deckCount) : 0;
+      const rightDecks = Number.isFinite(right.deckCount) ? Number(right.deckCount) : 0;
+      if (rightDecks !== leftDecks) {
+        return rightDecks - leftDecks;
+      }
+      return left.name.localeCompare(right.name);
+    });
     renderList();
 
     updateContainerState('ready');

@@ -1419,12 +1419,17 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
     }
     try {
       const list = await fetchArchetypesList(tournament);
+      const archetypeBases = Array.isArray(list)
+        ? list
+            .map(entry => (typeof entry === 'string' ? entry : entry?.name))
+            .filter(Boolean)
+        : [];
       const top8 = await fetchTop8ArchetypesList(tournament);
       const candidates = [];
       const canonical = await getCanonicalCard(cardIdentifier);
       const variants = await getCardVariants(canonical);
 
-      for (const base of list) {
+      for (const base of archetypeBases) {
         try {
           const arc = await fetchArchetypeReport(tournament, base);
           const parsedReport = parseReport(arc);
@@ -1789,6 +1794,11 @@ async function renderAnalysisTable(tournament) {
 
     // Per-archetype distributions using enhanced parallel loading
     const list = await fetchArchetypesList(tournament);
+    const archetypeBases = Array.isArray(list)
+      ? list
+          .map(entry => (typeof entry === 'string' ? entry : entry?.name))
+          .filter(Boolean)
+      : [];
 
     progress.updateStep(0, 'loading');
 
@@ -1798,7 +1808,7 @@ async function renderAnalysisTable(tournament) {
 
     // Use parallel processing utility for better performance
     const archetypeResults = await processInParallel(
-      list,
+      archetypeBases,
       async base => {
         try {
           const archetypeReport = await fetchArchetypeReport(tournament, base);

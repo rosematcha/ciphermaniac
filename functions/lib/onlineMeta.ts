@@ -8,6 +8,7 @@ import {
 import { loadCardTypesDatabase, enrichCardWithType } from './cardTypesDatabase.js';
 import { enrichDecksWithOnTheFlyFetch } from './cardTypeFetcher.js';
 import { loadCardSynonyms } from './cardSynonyms.js';
+import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json';
 
 const WINDOW_DAYS = 30;
 const MIN_USAGE_PERCENT = 0.5;
@@ -45,6 +46,9 @@ const SUCCESS_TAGS = Array.from(
 );
 const DEFAULT_CARD_TREND_MIN_APPEARANCES = 2;
 const DEFAULT_CARD_TREND_TOP = 12;
+type AnyOptions = Record<string, any>;
+type ThumbnailConfig = Record<string, string[]>;
+const ARCHETYPE_THUMBNAILS: ThumbnailConfig = (archetypeThumbnails as ThumbnailConfig) || {};
 
 async function runWithConcurrency(items, limit, handler) {
   if (!Array.isArray(items) || items.length === 0) {
@@ -210,7 +214,7 @@ function inferTrainerType(name) {
   return 'item';
 }
 
-async function fetchRecentOnlineTournaments(env, since, options = {}) {
+async function fetchRecentOnlineTournaments(env, since, options: AnyOptions = {}) {
   const sinceMs = since.getTime();
   const windowEndMs = options.windowEnd ? new Date(options.windowEnd).getTime() : null;
   const pageSize = options.pageSize || PAGE_SIZE;
@@ -338,7 +342,7 @@ function toCardEntries(decklist, cardTypesDb = null) {
       const number = card?.number || null;
 
       // Build base entry
-      let entry = {
+      let entry: any = {
         count,
         name,
         set,
@@ -420,7 +424,7 @@ function determinePlacementTags(placing, players) {
   return tags;
 }
 
-async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, options = {}) {
+async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, options: AnyOptions = {}) {
   if (!Array.isArray(tournaments) || tournaments.length === 0) {
     return [];
   }
@@ -537,8 +541,42 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
   return perTournamentDecks.flat();
 }
 
-function buildArchetypeReports(decks, minPercent, synonymDb) {
+function normalizeDeckLabel(label: string) {
+  return String(label || '')
+    .replace(/['']/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toLowerCase();
+}
+
+function resolveArchetypeThumbnails(
+  baseName: string,
+  displayName: string,
+  config: ThumbnailConfig
+): string[] {
+  const attempts = [displayName, displayName?.replace(/_/g, ' '), baseName];
+  for (const candidate of attempts) {
+    if (candidate && Array.isArray(config[candidate])) {
+      return config[candidate];
+    }
+  }
+
+  const normalizedTarget = normalizeDeckLabel(displayName || baseName || '');
+  if (!normalizedTarget) {
+    return [];
+  }
+
+  for (const [key, ids] of Object.entries(config)) {
+    if (normalizeDeckLabel(key) === normalizedTarget) {
+      return ids;
+    }
+  }
+  return [];
+}
+
+function buildArchetypeReports(decks, minPercent, synonymDb, options: AnyOptions = {}) {
   const groups = new Map();
+  const thumbnailConfig: ThumbnailConfig = options.thumbnailConfig || {};
 
   for (const deck of decks) {
     const displayName = deck?.archetype || 'Unknown';
@@ -568,6 +606,7 @@ function buildArchetypeReports(decks, minPercent, synonymDb) {
     archetypeFiles.push({
       filename,
       base: group.filenameBase,
+      displayName: group.displayName,
       data,
       deckCount: group.decks.length
     });
@@ -576,15 +615,23 @@ function buildArchetypeReports(decks, minPercent, synonymDb) {
 
   archetypeFiles.sort((a, b) => b.deckCount - a.deckCount);
 
+  const archetypeIndex = archetypeFiles.map(file => ({
+    name: file.base,
+    label: file.displayName || file.base.replace(/_/g, ' '),
+    deckCount: file.deckCount,
+    percent: deckTotal ? file.deckCount / deckTotal : 0,
+    thumbnails: resolveArchetypeThumbnails(file.base, file.displayName, thumbnailConfig)
+  }));
+
   return {
     archetypeFiles,
-    archetypeIndex: archetypeFiles.map(file => file.base).sort((a, b) => a.localeCompare(b)),
+    archetypeIndex,
     minDecks,
     deckMap
   };
 }
 
-function buildTrendReport(decks, tournaments, options = {}) {
+function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
   const now = options.now ? new Date(options.now) : new Date();
   const windowStart = options.windowStart ? new Date(options.windowStart) : null;
   const windowEnd = options.windowEnd ? new Date(options.windowEnd) : now;
@@ -659,7 +706,7 @@ function buildTrendReport(decks, tournaments, options = {}) {
   const series = [];
   archetypes.forEach(archetype => {
     const timeline = Array.from(archetype.timeline.values())
-      .map(entry => {
+      .map((entry: any) => {
         const tournamentMeta = tournamentIndex.get(entry.tournamentId);
         const totalDecks = tournamentMeta?.deckTotal || 0;
         const share = totalDecks ? Math.round((entry.decks / totalDecks) * 10000) / 100 : 0;
@@ -721,7 +768,7 @@ function buildTrendReport(decks, tournaments, options = {}) {
   };
 }
 
-function buildCardTrendReport(decks, tournaments, options = {}) {
+function buildCardTrendReport(decks, tournaments, options: AnyOptions = {}) {
   const now = options.now ? new Date(options.now) : new Date();
   const windowStart = options.windowStart ? new Date(options.windowStart) : null;
   const windowEnd = options.windowEnd ? new Date(options.windowEnd) : now;
@@ -905,7 +952,7 @@ function determinePlacementLimit(players) {
   return 32;
 }
 
-export async function runOnlineMetaJob(env, options = {}) {
+export async function runOnlineMetaJob(env, options: AnyOptions = {}) {
   const now = options.now ? new Date(options.now) : new Date();
   const since = options.since ? new Date(options.since) : daysAgo(WINDOW_DAYS);
 
@@ -972,9 +1019,10 @@ export async function runOnlineMetaJob(env, options = {}) {
   const { archetypeFiles, archetypeIndex, minDecks } = buildArchetypeReports(
     decks,
     MIN_USAGE_PERCENT,
-    synonymDb
+    synonymDb,
+    { thumbnailConfig: ARCHETYPE_THUMBNAILS }
   );
-  const trendReport = buildTrendReport(decks, tournaments, {
+  const trendReport: AnyOptions = buildTrendReport(decks, tournaments, {
     windowStart: since,
     windowEnd: now,
     now,
