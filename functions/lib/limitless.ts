@@ -1,20 +1,33 @@
-const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api';
+export const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api';
 
-function resolveLimitlessApiKey(env) {
-  const direct = typeof env === 'object' && env ? env.LIMITLESS_API_KEY : undefined;
-  if (direct && typeof direct === 'string' && direct.trim()) {
+export interface LimitlessEnv {
+  LIMITLESS_API_KEY?: string;
+  [key: string]: unknown;
+}
+
+export interface LimitlessOptions {
+  env?: LimitlessEnv;
+  searchParams?: URLSearchParams | Record<string, string | number | undefined | null>;
+  fetchOptions?: RequestInit;
+}
+
+export type LimitlessError = Error & { status?: number; body?: string };
+
+function resolveLimitlessApiKey(env?: LimitlessEnv | null): string | null {
+  const direct = env?.LIMITLESS_API_KEY;
+  if (typeof direct === 'string' && direct.trim()) {
     return direct.trim();
   }
 
-  if (typeof process !== 'undefined' && process.env && process.env.LIMITLESS_API_KEY) {
+  if (typeof process !== 'undefined' && process.env?.LIMITLESS_API_KEY) {
     const fromProcess = process.env.LIMITLESS_API_KEY.trim();
     if (fromProcess) {
       return fromProcess;
     }
   }
 
-  if (typeof globalThis !== 'undefined' && globalThis.__LIMITLESS_API_KEY__) {
-    const fromGlobal = String(globalThis.__LIMITLESS_API_KEY__).trim();
+  if (typeof globalThis !== 'undefined' && (globalThis as Record<string, unknown>).__LIMITLESS_API_KEY__) {
+    const fromGlobal = String((globalThis as Record<string, unknown>).__LIMITLESS_API_KEY__).trim();
     if (fromGlobal) {
       return fromGlobal;
     }
@@ -23,7 +36,10 @@ function resolveLimitlessApiKey(env) {
   return null;
 }
 
-function buildLimitlessUrl(pathname = '/', searchParams = null) {
+function buildLimitlessUrl(
+  pathname: string = '/',
+  searchParams?: URLSearchParams | Record<string, string | number | undefined | null>
+): URL {
   const base = LIMITLESS_API_BASE.endsWith('/') ? LIMITLESS_API_BASE : `${LIMITLESS_API_BASE}/`;
   const normalizedPath = pathname.replace(/^\/+/, '');
   const url = new URL(normalizedPath, base);
@@ -45,7 +61,8 @@ function buildLimitlessUrl(pathname = '/', searchParams = null) {
   return url;
 }
 
-async function fetchLimitlessJson(pathname, { env, searchParams, fetchOptions } = {}) {
+export async function fetchLimitlessJson(pathname: string, options: LimitlessOptions = {}): Promise<unknown> {
+  const { env, searchParams, fetchOptions } = options;
   const apiKey = resolveLimitlessApiKey(env);
   if (!apiKey) {
     throw new Error('Limitless API key not configured. Set LIMITLESS_API_KEY in .env and Cloudflare environment.');
@@ -58,7 +75,7 @@ async function fetchLimitlessJson(pathname, { env, searchParams, fetchOptions } 
   }
 
   // Temporary debug logging to verify authentication plumbing during development.
-  if (typeof console !== 'undefined' && console.debug) {
+  if (typeof console !== 'undefined' && typeof console.debug === 'function') {
     console.debug('[Limitless] Proxying request', {
       path: url.pathname,
       hasKeyQuery: url.searchParams.has('key'),
@@ -84,7 +101,7 @@ async function fetchLimitlessJson(pathname, { env, searchParams, fetchOptions } 
   const isJson = contentType.includes('application/json') || contentType.includes('text/json');
 
   if (!response.ok) {
-    if (typeof console !== 'undefined' && console.warn) {
+    if (typeof console !== 'undefined' && typeof console.warn === 'function') {
       console.warn('[Limitless] Non-ok response', {
         status: response.status,
         url: response.url,
@@ -92,14 +109,14 @@ async function fetchLimitlessJson(pathname, { env, searchParams, fetchOptions } 
       });
     }
     const bodyPreview = await response.text();
-    const error = new Error(`Limitless API request failed with ${response.status}`);
+    const error: LimitlessError = new Error(`Limitless API request failed with ${response.status}`);
     error.status = response.status;
     error.body = bodyPreview.slice(0, 400);
     throw error;
   }
 
   if (!isJson) {
-    if (typeof console !== 'undefined' && console.warn) {
+    if (typeof console !== 'undefined' && typeof console.warn === 'function') {
       console.warn('[Limitless] Unexpected content type response', {
         status: response.status,
         url: response.url,
@@ -107,7 +124,7 @@ async function fetchLimitlessJson(pathname, { env, searchParams, fetchOptions } 
       });
     }
     const textPreview = await response.text();
-    const error = new Error(`Limitless API returned unexpected content-type: ${contentType}`);
+    const error: LimitlessError = new Error(`Limitless API returned unexpected content-type: ${contentType}`);
     error.status = 500;
     error.body = textPreview.slice(0, 400);
     throw error;
@@ -116,9 +133,4 @@ async function fetchLimitlessJson(pathname, { env, searchParams, fetchOptions } 
   return response.json();
 }
 
-export {
-  LIMITLESS_API_BASE,
-  buildLimitlessUrl,
-  fetchLimitlessJson,
-  resolveLimitlessApiKey
-};
+export { buildLimitlessUrl, resolveLimitlessApiKey };

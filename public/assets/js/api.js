@@ -345,13 +345,9 @@ export function fetchReport(tournament) {
  */
 export function fetchTrendReport(tournament) {
   const encodedTournament = encodeURIComponent(tournament);
-  return fetchReportResource(
-    `${encodedTournament}/trends.json`,
-    `trends for ${tournament}`,
-    'object',
-    'trend report',
-    { cache: true }
-  );
+  return fetchReportResource(`${encodedTournament}/trends.json`, `trends for ${tournament}`, 'object', 'trend report', {
+    cache: true
+  });
 }
 
 /**
@@ -374,18 +370,62 @@ export async function fetchOverrides() {
 }
 
 /**
- * Fetch archetype list for a tournament
- * @param {string} tournament
- * @returns {Promise<string[]>}
+ * Normalize a single archetype index entry into a consistent object.
+ * @param {string|object} entry
+ * @returns {object|null}
  */
-export function fetchArchetypesList(tournament) {
-  return fetchReportResource(
+function normalizeArchetypeIndexEntry(entry) {
+  if (!entry) {
+    return null;
+  }
+  if (typeof entry === 'string') {
+    return {
+      name: entry,
+      label: entry.replace(/_/g, ' '),
+      deckCount: null,
+      percent: null,
+      thumbnails: []
+    };
+  }
+  if (typeof entry === 'object') {
+    const name = String(entry.name || entry.base || entry.id || '').trim();
+    if (!name) {
+      return null;
+    }
+    const label = entry.label || entry.display || name.replace(/_/g, ' ');
+    const deckCount = Number.isFinite(entry.deckCount) ? Number(entry.deckCount) : null;
+    const percentValue = Number(entry.percent);
+    const percent = Number.isFinite(percentValue) ? percentValue : null;
+    const thumbnails = Array.isArray(entry.thumbnails) ? entry.thumbnails.filter(Boolean) : [];
+    return {
+      name,
+      label,
+      deckCount,
+      percent,
+      thumbnails
+    };
+  }
+  return null;
+}
+
+/**
+ *
+ * @param tournament
+ */
+export async function fetchArchetypesList(tournament) {
+  const result = await fetchReportResource(
     `${encodeURIComponent(tournament)}/archetypes/index.json`,
     `archetypes for ${tournament}`,
     'array',
     'archetypes list',
     { cache: true }
   );
+
+  if (!Array.isArray(result)) {
+    return [];
+  }
+
+  return result.map(normalizeArchetypeIndexEntry).filter(Boolean);
 }
 
 /**

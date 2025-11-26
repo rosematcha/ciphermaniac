@@ -161,6 +161,10 @@ function deckMatchesFilters(deck, filters) {
   });
 }
 
+/**
+ *
+ * @param decks
+ */
 function aggregateDecks(decks) {
   const cardUsage = new Map();
 
@@ -260,11 +264,12 @@ function aggregateDecks(decks) {
       return (left.name || '').localeCompare(right.name || '');
     });
 
-  items.forEach((item, index) => {
-    item.rank = index + 1;
-  });
+  const rankedItems = items.map((item, index) => ({
+    ...item,
+    rank: index + 1
+  }));
 
-  return { deckTotal, items };
+  return { deckTotal, items: rankedItems };
 }
 
 function deriveSuccessTags(deck, sizes = null, counts = null) {
@@ -372,11 +377,12 @@ function summarizeFilters(filters) {
     return 'no filters';
   }
   return filters
-    .map(filter =>
-      filter.operator && filter.count !== null && filter.count !== undefined
-        ? `${filter.cardId} ${filter.operator} ${filter.count}`
-        : filter.cardId
-    )
+    .map(filter => {
+      if (filter.operator && filter.count !== null && filter.count !== undefined) {
+        return `${filter.cardId} ${filter.operator} ${filter.count}`;
+      }
+      return filter.cardId;
+    })
     .join(', ');
 }
 

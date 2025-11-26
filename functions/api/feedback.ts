@@ -1,29 +1,59 @@
 /**
- * CloudFlare Pages function for handling feedback form submissions
+ * Cloudflare Pages function for handling feedback form submissions
  * Processes feedback and sends emails via Resend
  */
 
-export async function onRequestPost({ request, env }) {
-  try {
-    const feedbackData = await request.json();
+interface FeedbackData {
+  feedbackType: string;
+  feedbackText: string;
+  platform?: 'desktop' | 'mobile' | string;
+  desktopOS?: string;
+  desktopBrowser?: string;
+  mobileOS?: string;
+  mobileBrowser?: string;
+  followUp?: 'yes' | 'no';
+  contactMethod?: string;
+  contactInfo?: string;
+}
 
-    // Validate required fields
-    if (!feedbackData.feedbackType || !feedbackData.feedbackText) {
+interface Env {
+  FEEDBACK_RECIPIENT?: string;
+  RESEND_API_KEY?: string;
+}
+
+interface RequestContext {
+  request: Request;
+  env: Env;
+}
+
+const JSON_HEADERS = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*'
+} as const;
+
+function isValidFeedbackData(data: unknown): data is FeedbackData {
+  if (!data || typeof data !== 'object') {
+    return false;
+  }
+  const candidate = data as Record<string, unknown>;
+  return typeof candidate.feedbackType === 'string' && typeof candidate.feedbackText === 'string';
+}
+
+export async function onRequestPost({ request, env }: RequestContext): Promise<Response> {
+  try {
+    const parsedBody = await request.json().catch(() => null);
+    if (!isValidFeedbackData(parsedBody)) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' }
+        headers: JSON_HEADERS
       });
     }
+    const feedbackData = parsedBody;
 
-    // Send all feedback to configured email
     const recipient = env.FEEDBACK_RECIPIENT || 'reese@ciphermaniac.com';
-
-    // Build email content
     const emailContent = buildEmailContent(feedbackData);
 
-    // Send email via Resend
     const resendResponse = await sendEmail(env, recipient, emailContent, feedbackData);
-
     if (!resendResponse.ok) {
       const errorText = await resendResponse.text();
       console.error('Resend API Error Response:', errorText);
@@ -32,30 +62,21 @@ export async function onRequestPost({ request, env }) {
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
+      headers: JSON_HEADERS
     });
-
   } catch (error) {
     console.error('Feedback submission error:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
 
-    return new Response(JSON.stringify({
-      error: 'Internal server error',
-      message: error.message
-    }), {
+    return new Response(JSON.stringify({ error: 'Internal server error', message }), {
       status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
+      headers: JSON_HEADERS
     });
   }
 }
 
 // Handle preflight requests
-export async function onRequestOptions() {
+export function onRequestOptions(): Response {
   return new Response(null, {
     status: 200,
     headers: {
@@ -66,7 +87,7 @@ export async function onRequestOptions() {
   });
 }
 
-function buildEmailContent(data) {
+function buildEmailContent(data: FeedbackData): string {
   const lines = [
     `New ${data.feedbackType} submission from Ciphermaniac`,
     '',
@@ -108,26 +129,32 @@ function buildEmailContent(data) {
   return lines.join('\n');
 }
 
-async function sendEmail(env, recipient, content, feedbackData) {
+async function sendEmail(
+  env: Env,
+  recipient: string,
+  content: string,
+  feedbackData: FeedbackData
+): Promise<Response> {
   const resendApiKey = env.RESEND_API_KEY;
 
   if (!resendApiKey) {
     throw new Error('RESEND_API_KEY environment variable not set');
   }
 
-  const subject = `[Ciphermaniac] ${feedbackData.feedbackType === 'bug' ? 'Bug Report' : 'Feature Request'}`;
+  const subject =
+    `[Ciphermaniac] ${feedbackData.feedbackType === 'bug' ? 'Bug Report' : 'Feature Request'}`;
 
   const emailPayload = {
     from: 'Ciphermaniac Feedback <onboarding@resend.dev>',
     to: recipient,
-    subject: subject,
+    subject,
     text: content
   };
 
   return fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${resendApiKey}`,
+      Authorization: `Bearer ${resendApiKey}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(emailPayload)

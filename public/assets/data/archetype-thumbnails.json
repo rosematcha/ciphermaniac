@@ -113,6 +113,9 @@
   "Kangaskhan Bouffalant": [
     "MEG/104"
   ],
+  "Mega Kangaskhan": [
+    "MEG/104"
+  ],
   "Chien-Pao Baxcalibur": [
     "PAL/061"
   ],
@@ -121,6 +124,9 @@
   ],
   "Hydreigon": [
     "SSP/119"
+  ],
+  "Hydrapple Ogerpon": [
+    "SCR/14"
   ],
   "Zoroark Crustle": [
     "JTG/98",
@@ -146,5 +152,14 @@
   ],
   "Paldean Tauros": [
     "PFL/48"
+  ],
+  "Rocket's Mewtwo": [
+    "DRI/81"
+  ],
+  "Hop's Zacian": [
+    "JTG/111"
+  ],
+  "Seaking Festival Lead": [
+    "PRE/21"
   ]
 }
