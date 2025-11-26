@@ -10,6 +10,8 @@ const GRANULARITY_MIN_PERCENT = 0;
 const GRANULARITY_DEFAULT_PERCENT = 60; // Default granularity percent
 const GRANULARITY_STEP_PERCENT = 5;
 const RENDER_COMPACT_OPTIONS = { layoutMode: 'compact' };
+const CARD_COUNT_DEFAULT_MAX = 4;
+const CARD_COUNT_BASIC_ENERGY_MAX = 59;
 
 const elements = {
   page: document.querySelector('.archetype-page'),
@@ -837,7 +839,7 @@ function createFilterRow() {
   countInput.className = 'filter-count-input';
   countInput.title = 'Number of copies';
   countInput.min = '1';
-  countInput.max = '4';
+  countInput.max = String(CARD_COUNT_DEFAULT_MAX);
   countInput.step = '1';
   countInput.value = '1';
   countInput.placeholder = '#';
@@ -990,7 +992,7 @@ function handleFilterChange(filterId) {
   const { cardSelect, operatorSelect, countInput } = row.elements;
   const cardId = cardSelect.value || null;
   const operator = operatorSelect.value || null;
-  const count = countInput.value ? parseInt(countInput.value, 10) : null;
+  let count = countInput.value ? parseInt(countInput.value, 10) : null;
 
   // Update state
   row.cardId = cardId;
@@ -1024,6 +1026,14 @@ function handleFilterChange(filterId) {
     operatorSelect.hidden = false;
   } else {
     operatorSelect.hidden = true;
+  }
+
+  const maxCopies = hasCard ? getMaxCopiesForCard(cardId) : CARD_COUNT_DEFAULT_MAX;
+  countInput.max = String(maxCopies);
+  if (count !== null && count > maxCopies) {
+    count = maxCopies;
+    countInput.value = String(count);
+    row.count = count;
   }
 
   // Count input: hide if no operator selected, OR if operator is 'any' or ''
@@ -1124,6 +1134,8 @@ function buildCardLookup() {
     const pct = total > 0 ? (found / total) * 100 : 0;
     const alwaysIncluded = total > 0 && found === total;
     const normalizedNumber = normalizeCardNumber(card.number);
+    const normalizedCategory = typeof card.category === 'string' ? card.category.toLowerCase() : null;
+    const normalizedEnergyType = typeof card.energyType === 'string' ? card.energyType.toLowerCase() : null;
 
     state.cardLookup.set(cardId, {
       id: cardId,
@@ -1133,9 +1145,32 @@ function buildCardLookup() {
       found,
       total,
       pct: Math.round(pct * 100) / 100,
-      alwaysIncluded
+      alwaysIncluded,
+      category: normalizedCategory,
+      energyType: normalizedEnergyType
     });
   });
+}
+
+function isBasicEnergyCard(cardInfo) {
+  if (!cardInfo) {
+    return false;
+  }
+  const energyType = typeof cardInfo.energyType === 'string' ? cardInfo.energyType : '';
+  if (energyType === 'basic') {
+    return true;
+  }
+  const category = typeof cardInfo.category === 'string' ? cardInfo.category : '';
+  if (category.startsWith('energy/basic')) {
+    return true;
+  }
+  const isSVEnergy = typeof cardInfo.set === 'string' && cardInfo.set.toUpperCase() === 'SVE';
+  return category === 'energy' && isSVEnergy;
+}
+
+function getMaxCopiesForCard(cardId) {
+  const info = state.cardLookup.get(cardId);
+  return isBasicEnergyCard(info) ? CARD_COUNT_BASIC_ENERGY_MAX : CARD_COUNT_DEFAULT_MAX;
 }
 
 function resolveCardPrintInfo(card) {

@@ -40,7 +40,7 @@ function normalizeArchetypeName(name) {
   if (!cleaned) {
     return 'unknown';
   }
-  return cleaned.replace(/\s+/g, ' ');
+  return cleaned.replace(/\s+/g, ' ').toLowerCase();
 }
 
 function normalizeCardNumber(value) {

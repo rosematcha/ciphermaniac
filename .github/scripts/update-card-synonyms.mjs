@@ -337,6 +337,118 @@ function chooseCanonicalPrint(variations) {
     return sorted[0];
 }
 
+class UnionFind {
+    constructor() {
+        this.parent = new Map();
+    }
+
+    find(x) {
+        if (!this.parent.has(x)) {
+            this.parent.set(x, x);
+            return x;
+        }
+        const p = this.parent.get(x);
+        if (p === x) return x;
+        const root = this.find(p);
+        this.parent.set(x, root);
+        return root;
+    }
+
+    union(a, b) {
+        const ra = this.find(a);
+        const rb = this.find(b);
+        if (ra === rb) return;
+        this.parent.set(ra, rb);
+    }
+
+    components() {
+        const groups = new Map();
+        for (const key of this.parent.keys()) {
+            const root = this.find(key);
+            if (!groups.has(root)) groups.set(root, []);
+            groups.get(root).push(key);
+        }
+        return Array.from(groups.values());
+    }
+}
+
+async function buildClustersFromLimitless(printSet) {
+    const uf = new UnionFind();
+    const meta = new Map(); // uid -> { set, number, price_usd }
+
+    for (const entry of printSet) {
+        if (!entry || typeof entry !== 'string') continue;
+        const [sampleSet, sampleNum] = entry.split('::');
+        if (!sampleSet || !sampleNum) continue;
+
+        // eslint-disable-next-line no-await-in-loop
+        const variations = await scrapeCardPrintVariations(sampleSet, sampleNum);
+        const filtered = (variations || [])
+            .filter(v => v?.set && v?.number)
+            .map(v => ({
+                set: v.set.toUpperCase(),
+                number: normalizeCardNumber(v.number),
+                price_usd: v.price_usd ?? null
+            }))
+            .filter(v => v.number);
+
+        if (filtered.length < 2) {
+            continue;
+        }
+
+        const ids = filtered.map(v => `${v.set}::${v.number}`);
+        ids.forEach(id => {
+            uf.find(id);
+            if (!meta.has(id)) {
+                const v = filtered.find(x => `${x.set}::${x.number}` === id);
+                meta.set(id, v);
+            }
+        });
+        const anchor = ids[0];
+        for (let i = 1; i < ids.length; i++) {
+            uf.union(anchor, ids[i]);
+        }
+    }
+
+    const clusters = [];
+    for (const group of uf.components()) {
+        if (group.length < 2) continue;
+        clusters.push(
+            group.map(id => ({
+                set: meta.get(id)?.set || id.split('::')[0],
+                number: meta.get(id)?.number || id.split('::')[1],
+                price_usd: meta.get(id)?.price_usd ?? null
+            }))
+        );
+    }
+
+    return clusters;
+}
+
+const MEE_BASIC_ENERGY = [
+    { name: 'Darkness Energy', set: 'MEE', number: '007', fallback: 'Darkness Energy::SVE::007' },
+    { name: 'Psychic Energy', set: 'MEE', number: '005', fallback: 'Psychic Energy::SVE::005' },
+    { name: 'Fighting Energy', set: 'MEE', number: '006', fallback: 'Fighting Energy::SVE::014' },
+    { name: 'Fire Energy', set: 'MEE', number: '002', fallback: 'Fire Energy::SVE::002' },
+    { name: 'Metal Energy', set: 'MEE', number: '008', fallback: 'Metal Energy::SVE::016' },
+    { name: 'Grass Energy', set: 'MEE', number: '001', fallback: 'Grass Energy::SVE::017' },
+    { name: 'Water Energy', set: 'MEE', number: '003', fallback: 'Water Energy::SVE::003' },
+    { name: 'Lightning Energy', set: 'MEE', number: '004', fallback: 'Lightning Energy::SVE::004' }
+];
+
+function ensureMeeBasicEnergySynonyms(synonymsDict, canonicalsDict) {
+    const canonicalByName = { ...canonicalsDict };
+    for (const energy of MEE_BASIC_ENERGY) {
+        const canonical = canonicalByName[energy.name] || energy.fallback;
+        if (!canonical) continue;
+        const number = normalizeCardNumber(energy.number) || energy.number;
+        const uid = `${energy.name}::${energy.set}::${number}`;
+        if (!synonymsDict[uid]) {
+            synonymsDict[uid] = canonical;
+        }
+    }
+}
+
 async function generateSynonyms(cardsByName) {
     log('\nGenerating canonical mappings...');
     const synonymsDict = {};
@@ -355,43 +467,38 @@ async function generateSynonyms(cardsByName) {
         // Skip if only one print exists in our data
         if (printSet.size < 2) continue;
 
-        // Try each known print until we find a Limitless page with multiple variations
-        let variations = null;
-        for (const samplePrint of printSet) {
-            const [sampleSet, sampleNum] = samplePrint.split('::');
-            // Scrape all print variations from Limitless
-            // eslint-disable-next-line no-await-in-loop
-            const candidate = await scrapeCardPrintVariations(sampleSet, sampleNum);
-            if (candidate && candidate.length >= 2) {
-                variations = candidate;
-                break;
-            }
+        // Build synonym clusters strictly from Limitless print tables (avoid fallback to prevent false merges)
+        const clusters = await buildClustersFromLimitless(printSet);
+        if (!clusters.length) {
+            continue;
         }
 
-        if (!variations || variations.length < 2) continue;
+        for (const cluster of clusters) {
+            const canonicalVar = chooseCanonicalPrint(cluster);
+            if (!canonicalVar) continue;
 
-        // Choose the canonical print
-        const canonicalVar = chooseCanonicalPrint(variations);
-        if (!canonicalVar) continue;
+            const canonicalUid = `${cardName}::${canonicalVar.set}::${canonicalVar.number}`;
 
-        const canonicalUid = `${cardName}::${canonicalVar.set}::${canonicalVar.number}`;
-
-        // Build synonyms for all variations
-        for (const var_ of variations) {
-            const variantUid = `${cardName}::${var_.set}::${var_.number}`;
-            if (variantUid !== canonicalUid) {
-                synonymsDict[variantUid] = canonicalUid;
+            for (const var_ of cluster) {
+                const variantUid = `${cardName}::${var_.set}::${var_.number}`;
+                if (variantUid !== canonicalUid) {
+                    synonymsDict[variantUid] = canonicalUid;
+                }
             }
-        }
 
-        // Add canonical mapping
-        canonicalsDict[cardName] = canonicalUid;
-        processedCount++;
+            if (!canonicalsDict[cardName]) {
+                canonicalsDict[cardName] = canonicalUid;
+            }
+            processedCount++;
+        }
     }
 
     log(`  Completed: ${processedCount} cards with multiple prints`);
     log(`  Generated ${Object.keys(synonymsDict).length} synonym mappings`);
     log(`  Generated ${Object.keys(canonicalsDict).length} canonical mappings`);
+
+    // Ensure basic energies from MEE are present even if upstream data lacks print tables
+    ensureMeeBasicEnergySynonyms(synonymsDict, canonicalsDict);
 
     return {
         synonyms: synonymsDict,
