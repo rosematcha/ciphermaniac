@@ -1,9 +1,27 @@
 /* eslint-env browser */
-/* eslint-disable no-param-reassign */
 import './utils/buildVersion.js';
 import { fetchArchetypeReport, fetchArchetypesList, fetchReport } from './api.js';
 import { parseReport } from './parse.js';
 import { logger } from './utils/logger.js';
+
+type ArchetypeSummary = {
+  name: string;
+  label: string;
+  deckCount: number | null;
+  percent: number | null;
+  thumbnails?: string[];
+};
+
+type CachedSummaries = {
+  timestamp: number;
+  data: ArchetypeSummary[];
+};
+
+type HoverTimer = {
+  target: string;
+  id: number;
+};
+
 const CACHE_KEY = 'analysis/archetypes-index';
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const PREFETCH_BATCH = 5;
@@ -11,11 +29,15 @@ const INITIAL_VISIBLE = 14;
 const VISIBLE_STEP = 12;
 const PREFETCH_DELAY_MS = 150;
 const PRIORITY_THUMBNAIL_COUNT = 10;
+
 const ONLINE_META_TOURNAMENT = 'Online - Last 14 Days';
+
 const { document } = globalThis;
+
 const templates = {
-  listItem: document.getElementById('analysis-list-item')
+  listItem: document.getElementById('analysis-list-item') as HTMLTemplateElement | null
 };
+
 const elements = {
   container: document.querySelector('.analysis-page'),
   eventName: document.getElementById('analysis-event-name'),
@@ -24,7 +46,19 @@ const elements = {
   listEmpty: document.getElementById('analysis-list-empty'),
   loadMore: document.createElement('div')
 };
-const state = {
+
+const state: {
+  archetypes: ArchetypeSummary[];
+  tournamentDeckTotal: number;
+  tournament: string;
+  visibleCount: number;
+  hoverTimer: HoverTimer | null;
+  prefetched: Set<string>;
+  prefetchQueue: string[];
+  prefetchHandle: number | null;
+  observer?: IntersectionObserver;
+  thumbnailObserver?: IntersectionObserver;
+} = {
   archetypes: [],
   tournamentDeckTotal: 0,
   tournament: ONLINE_META_TOURNAMENT,
@@ -34,10 +68,12 @@ const state = {
   prefetchQueue: [],
   prefetchHandle: null
 };
-function setPageState(status) {
+
+function setPageState(status: 'loading' | 'ready' | 'error') {
   elements.container?.setAttribute('data-state', status);
 }
-function toggleLoading(isLoading) {
+
+function toggleLoading(isLoading: boolean) {
   if (elements.listLoading) {
     elements.listLoading.hidden = !isLoading;
   }
@@ -48,6 +84,7 @@ function toggleLoading(isLoading) {
     elements.listEmpty.hidden = true;
   }
 }
+
 function ensureLoadMoreSentinel() {
   elements.loadMore.id = 'analysis-load-more';
   elements.loadMore.className = 'analysis-list__load-more';
@@ -57,13 +94,14 @@ function ensureLoadMoreSentinel() {
     elements.archetypeList.parentElement.appendChild(elements.loadMore);
   }
 }
-function readCache() {
+
+function readCache(): ArchetypeSummary[] | null {
   try {
     const raw = globalThis.localStorage?.getItem(CACHE_KEY);
     if (!raw) {
       return null;
     }
-    const payload = JSON.parse(raw);
+    const payload = JSON.parse(raw) as CachedSummaries;
     if (!payload?.timestamp || Date.now() - payload.timestamp > CACHE_TTL_MS) {
       return null;
     }
@@ -76,9 +114,10 @@ function readCache() {
     return null;
   }
 }
-function writeCache(data) {
+
+function writeCache(data: ArchetypeSummary[]) {
   try {
-    const payload = {
+    const payload: CachedSummaries = {
       timestamp: Date.now(),
       data
     };
@@ -87,7 +126,8 @@ function writeCache(data) {
     logger.debug('Unable to persist archetype cache', error);
   }
 }
-function normalizeSummary(entry) {
+
+function normalizeSummary(entry: ArchetypeSummary): ArchetypeSummary {
   const label = entry.label || entry.name.replace(/_/g, ' ');
   const deckCount = Number.isFinite(entry.deckCount) ? Number(entry.deckCount) : null;
   const percent = Number.isFinite(entry.percent) ? Number(entry.percent) : null;
@@ -100,7 +140,8 @@ function normalizeSummary(entry) {
     thumbnails
   };
 }
-async function fetchSummaries() {
+
+async function fetchSummaries(): Promise<ArchetypeSummary[]> {
   const list = await fetchArchetypesList(ONLINE_META_TOURNAMENT);
   const normalized = Array.isArray(list) ? list.filter(item => item && item.name) : [];
   const summaries = normalized.map(normalizeSummary);
@@ -114,39 +155,46 @@ async function fetchSummaries() {
   });
   return summaries;
 }
+
 function updateListEmptyState() {
   if (!elements.listEmpty) {
     return;
   }
   elements.listEmpty.hidden = state.archetypes.length !== 0;
 }
-function createListItem(summary, index) {
+
+function createListItem(summary: ArchetypeSummary, index: number): HTMLElement | null {
   if (!templates.listItem?.content) {
     return null;
   }
-  const node = templates.listItem.content.firstElementChild?.cloneNode(true);
+  const node = templates.listItem.content.firstElementChild?.cloneNode(true) as HTMLElement | null;
   if (!node) {
     return null;
   }
-  const anchor = node.querySelector('.analysis-list-item__button');
-  const preview = node.querySelector('.analysis-list-item__preview');
-  const thumbnailContainer = node.querySelector('.analysis-list-item__thumbnail');
-  const thumbnailImage = node.querySelector('.analysis-list-item__thumbnail-image');
-  const thumbnailFallback = node.querySelector('.analysis-list-item__thumbnail-fallback');
+
+  const anchor = node.querySelector('.analysis-list-item__button') as HTMLElement | null;
+  const preview = node.querySelector('.analysis-list-item__preview') as HTMLElement | null;
+  const thumbnailContainer = node.querySelector('.analysis-list-item__thumbnail') as HTMLElement | null;
+  const thumbnailImage = node.querySelector('.analysis-list-item__thumbnail-image') as HTMLImageElement | null;
+  const thumbnailFallback = node.querySelector('.analysis-list-item__thumbnail-fallback') as HTMLElement | null;
   const nameEl = node.querySelector('.analysis-list-item__name');
   const pctEl = node.querySelector('.analysis-list-item__percent');
   const deckEl = node.querySelector('.analysis-list-item__count');
+
   if (anchor) {
     anchor.setAttribute('href', `/archetype/${encodeURIComponent(summary.name)}`);
     anchor.dataset.index = String(index);
     anchor.dataset.archetype = summary.name;
   }
+
   if (nameEl) {
     nameEl.textContent = summary.label;
   }
   if (pctEl) {
     pctEl.textContent =
-      summary.percent === null || Number.isNaN(summary.percent) ? '—' : `${(summary.percent * 100).toFixed(1)}%`;
+      summary.percent === null || Number.isNaN(summary.percent)
+        ? '—'
+        : `${(summary.percent * 100).toFixed(1)}%`;
   }
   if (deckEl) {
     if (summary.deckCount === null) {
@@ -155,7 +203,9 @@ function createListItem(summary, index) {
       deckEl.textContent = `${summary.deckCount} deck${summary.deckCount === 1 ? '' : 's'}`;
     }
   }
+
   const shouldPrioritize = index < PRIORITY_THUMBNAIL_COUNT;
+
   if (
     preview &&
     thumbnailContainer instanceof HTMLElement &&
@@ -167,31 +217,48 @@ function createListItem(summary, index) {
     thumbnailImage.loading = 'lazy';
     thumbnailImage.dataset.thumbnails = (summary.thumbnails || []).join(',');
     thumbnailFallback.textContent = buildFallback(summary.label);
-    setupThumbnailObserver(thumbnailImage, thumbnailContainer, thumbnailFallback, summary.label, shouldPrioritize);
+    setupThumbnailObserver(
+      thumbnailImage,
+      thumbnailContainer,
+      thumbnailFallback,
+      summary.label,
+      shouldPrioritize
+    );
   } else if (preview) {
     preview.classList.add('analysis-list-item__preview--no-thumb');
   }
+
   return node;
 }
-function buildFallback(name) {
-  const parts = name.replace(/_/g, ' ').split(/\s+/u).filter(Boolean).slice(0, 3);
+
+function buildFallback(name: string) {
+  const parts = name
+    .replace(/_/g, ' ')
+    .split(/\s+/u)
+    .filter(Boolean)
+    .slice(0, 3);
   if (!parts.length) {
     return '??';
   }
   return parts.map(word => word[0].toUpperCase()).join('');
 }
+
 function renderList(reset = false) {
   const listEl = elements.archetypeList;
   if (!listEl) {
     return;
   }
+
   if (reset) {
     listEl.innerHTML = '';
   }
+
   ensureLoadMoreSentinel();
+
   const existing = listEl.children.length;
   const target = Math.min(state.visibleCount, state.archetypes.length);
   const fragment = document.createDocumentFragment();
+
   for (let index = existing; index < target; index += 1) {
     const summary = state.archetypes[index];
     const item = createListItem(summary, index);
@@ -199,12 +266,15 @@ function renderList(reset = false) {
       fragment.appendChild(item);
     }
   }
+
   if (fragment.childNodes.length) {
     listEl.appendChild(fragment);
   }
+
   elements.loadMore.hidden = state.visibleCount >= state.archetypes.length;
   updateListEmptyState();
 }
+
 function expandVisibleCount() {
   if (state.visibleCount >= state.archetypes.length) {
     return;
@@ -212,6 +282,7 @@ function expandVisibleCount() {
   state.visibleCount = Math.min(state.visibleCount + VISIBLE_STEP, state.archetypes.length);
   renderList();
 }
+
 function installListObserver() {
   if (!('IntersectionObserver' in globalThis) || !elements.loadMore) {
     return;
@@ -228,6 +299,7 @@ function installListObserver() {
   });
   state.observer.observe(elements.loadMore);
 }
+
 function schedulePrefetchHotset() {
   if (!state.archetypes.length) {
     return;
@@ -240,6 +312,7 @@ function schedulePrefetchHotset() {
   }
   drainPrefetchQueue();
 }
+
 function drainPrefetchQueue() {
   if (!state.prefetchQueue.length || state.prefetchHandle !== null) {
     return;
@@ -254,7 +327,8 @@ function drainPrefetchQueue() {
     drainPrefetchQueue();
   }, PREFETCH_DELAY_MS);
 }
-async function prefetchArchetype(name) {
+
+async function prefetchArchetype(name: string) {
   if (state.prefetched.has(name)) {
     return;
   }
@@ -263,15 +337,18 @@ async function prefetchArchetype(name) {
     parseReport(raw);
     state.prefetched.add(name);
   } catch (error) {
-    logger.debug('Archetype prefetch failed', { name, message: error?.message });
+    logger.debug('Archetype prefetch failed', { name, message: (error as Error)?.message });
   }
 }
-function handlePointerEnter(event) {
-  const target = event.target?.closest('.analysis-list-item__button');
+
+function handlePointerEnter(event: PointerEvent) {
+  const target = (event.target as HTMLElement | null)?.closest(
+    '.analysis-list-item__button'
+  ) as HTMLElement | null;
   if (!target || !target.dataset.archetype) {
     return;
   }
-  const { archetype } = target.dataset;
+  const archetype = target.dataset.archetype;
   cancelHoverTimer();
   const timer = window.setTimeout(() => {
     prefetchArchetype(archetype);
@@ -279,14 +356,18 @@ function handlePointerEnter(event) {
   }, PREFETCH_DELAY_MS);
   state.hoverTimer = { target: archetype, id: timer };
 }
+
 function cancelHoverTimer() {
   if (state.hoverTimer) {
     window.clearTimeout(state.hoverTimer.id);
     state.hoverTimer = null;
   }
 }
-function handlePointerLeave(event) {
-  const target = event.target?.closest('.analysis-list-item__button');
+
+function handlePointerLeave(event: PointerEvent) {
+  const target = (event.target as HTMLElement | null)?.closest(
+    '.analysis-list-item__button'
+  ) as HTMLElement | null;
   if (!target?.dataset?.archetype) {
     return;
   }
@@ -294,6 +375,7 @@ function handlePointerLeave(event) {
     cancelHoverTimer();
   }
 }
+
 function setupPrefetchHandlers() {
   const listEl = elements.archetypeList;
   if (!listEl) {
@@ -302,7 +384,8 @@ function setupPrefetchHandlers() {
   listEl.addEventListener('pointerenter', handlePointerEnter, true);
   listEl.addEventListener('pointerleave', handlePointerLeave, true);
 }
-function formatCardNumber(rawNumber) {
+
+function formatCardNumber(rawNumber: string | number | null | undefined) {
   if (rawNumber === undefined || rawNumber === null) {
     return null;
   }
@@ -317,10 +400,9 @@ function formatCardNumber(rawNumber) {
   const [, digits, suffix = ''] = parts;
   return `${digits.padStart(3, '0')}${suffix.toUpperCase()}`;
 }
-function buildThumbnailUrl(setCode, number, size = 'SM') {
-  const set = String(setCode || '')
-    .toUpperCase()
-    .trim();
+
+function buildThumbnailUrl(setCode: string, number: string, size: 'SM' | 'XS' = 'SM') {
+  const set = String(setCode || '').toUpperCase().trim();
   if (!set) {
     return null;
   }
@@ -330,7 +412,8 @@ function buildThumbnailUrl(setCode, number, size = 'SM') {
   }
   return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${set}/${set}_${normalizedNumber}_R_EN_${size}.png`;
 }
-function buildThumbnailSources(thumbnails) {
+
+function buildThumbnailSources(thumbnails?: string[]) {
   if (!Array.isArray(thumbnails) || !thumbnails.length) {
     return [];
   }
@@ -339,42 +422,52 @@ function buildThumbnailSources(thumbnails) {
       const [set, number] = entry.split('/');
       return buildThumbnailUrl(set, number);
     })
-    .filter(Boolean);
+    .filter(Boolean) as string[];
 }
-function setupThumbnailObserver(img, container, fallback, name, prioritized = false) {
+
+function setupThumbnailObserver(
+  img: HTMLImageElement,
+  container: HTMLElement,
+  fallback: HTMLElement,
+  name: string,
+  prioritized = false
+) {
   if (!state.thumbnailObserver && 'IntersectionObserver' in globalThis) {
-    state.thumbnailObserver = new IntersectionObserver(
-      entries => {
-        entries.forEach(entry => {
-          if (!entry.isIntersecting) {
-            return;
-          }
-          const targetImg = entry.target;
-          state.thumbnailObserver?.unobserve(targetImg);
-          loadThumbnail(targetImg, name);
-        });
-      },
-      {
-        rootMargin: '200px'
-      }
-    );
+    state.thumbnailObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) {
+          return;
+        }
+        const targetImg = entry.target as HTMLImageElement;
+        state.thumbnailObserver?.unobserve(targetImg);
+        loadThumbnail(targetImg, name);
+      });
+    }, {
+      rootMargin: '200px'
+    });
   }
+
   img.dataset.fallback = buildFallback(name);
   img.dataset.containerId = container.dataset.index || '';
   img.dataset.fallbackId = fallback.dataset.index || '';
+
   if (prioritized) {
     loadThumbnail(img, name);
     return;
   }
+
   if (state.thumbnailObserver) {
     state.thumbnailObserver.observe(img);
   } else {
     loadThumbnail(img, name);
   }
 }
-function loadThumbnail(img, deckName) {
-  const container = img.closest('.analysis-list-item__thumbnail');
-  const fallback = container?.querySelector('.analysis-list-item__thumbnail-fallback');
+
+function loadThumbnail(img: HTMLImageElement, deckName: string) {
+  const container = img.closest('.analysis-list-item__thumbnail') as HTMLElement | null;
+  const fallback = container?.querySelector('.analysis-list-item__thumbnail-fallback') as
+    | HTMLElement
+    | null;
   const thumbnailIds = img.dataset.thumbnails?.split(',').filter(Boolean) ?? [];
   const fallbackText = img.dataset.fallback || buildFallback(deckName);
   if (fallback) {
@@ -382,25 +475,37 @@ function loadThumbnail(img, deckName) {
   }
   applyDeckThumbnail(container, img, fallback, deckName, thumbnailIds);
 }
-function applyDeckThumbnail(thumbnailEl, imgEl, fallbackEl, deckName, thumbIds) {
+
+function applyDeckThumbnail(
+  thumbnailEl: HTMLElement | null,
+  imgEl: HTMLImageElement | null,
+  fallbackEl: HTMLElement | null,
+  deckName: string,
+  thumbIds: string[]
+) {
   if (!thumbnailEl || !imgEl || !fallbackEl) {
     return;
   }
+
   const sources = buildThumbnailSources(thumbIds);
   const usePlaceholder = () => {
     thumbnailEl.classList.add('is-placeholder');
     imgEl.style.display = '';
     imgEl.removeAttribute('src');
   };
+
   fallbackEl.textContent = buildFallback(deckName);
+
   if (!sources.length) {
     usePlaceholder();
     return;
   }
+
   if (sources.length >= 2) {
-    applySplitThumbnail(thumbnailEl, imgEl, fallbackEl, sources, usePlaceholder);
+    applySplitThumbnail(thumbnailEl, imgEl, fallbackEl, sources, usePlaceholder, deckName);
     return;
   }
+
   thumbnailEl.classList.remove('is-placeholder');
   imgEl.style.display = 'block';
   imgEl.alt = '';
@@ -415,24 +520,43 @@ function applyDeckThumbnail(thumbnailEl, imgEl, fallbackEl, deckName, thumbIds) 
   };
   imgEl.src = sources[0];
 }
-function applySplitThumbnail(thumbnailEl, baseImg, fallbackEl, sources, usePlaceholder) {
+
+type SplitOptions = {
+  x?: number;
+  width?: number;
+  y?: number;
+  height?: number;
+};
+
+function applySplitThumbnail(
+  thumbnailEl: HTMLElement,
+  baseImg: HTMLImageElement,
+  fallbackEl: HTMLElement,
+  sources: string[],
+  usePlaceholder: () => void,
+  deckName: string
+) {
   const clearBase = () => {
     baseImg.style.display = 'none';
     baseImg.removeAttribute('src');
   };
+
   clearBase();
   thumbnailEl.classList.remove('is-placeholder');
   thumbnailEl.classList.add('analysis-list-item__thumbnail--split');
-  let splitWrapper = thumbnailEl.querySelector('.analysis-list-item__split');
+
+  let splitWrapper = thumbnailEl.querySelector('.analysis-list-item__split') as HTMLElement | null;
   if (!splitWrapper) {
     splitWrapper = document.createElement('div');
     splitWrapper.className = 'analysis-list-item__split';
     thumbnailEl.insertBefore(splitWrapper, fallbackEl);
   }
   splitWrapper.replaceChildren();
+
   const handleError = () => {
     usePlaceholder();
   };
+
   sources.slice(0, 2).forEach((src, index) => {
     const slice = document.createElement('div');
     const orientation = index === 0 ? 'left' : 'right';
@@ -453,19 +577,23 @@ function applySplitThumbnail(thumbnailEl, baseImg, fallbackEl, sources, usePlace
     slice.appendChild(img);
     splitWrapper?.appendChild(slice);
   });
+
   if (!splitWrapper.hasChildNodes()) {
     usePlaceholder();
   }
 }
-function applySplitCrop(img, crop) {
+
+function applySplitCrop(img: HTMLImageElement, crop: SplitOptions) {
   const x = clamp(typeof crop.x === 'number' ? crop.x : 0, 0, 1);
   const width = clamp(typeof crop.width === 'number' ? crop.width : 0.5, 0.05, 1 - x);
   const y = clamp(typeof crop.y === 'number' ? crop.y : 0, 0, 1);
   const height = clamp(typeof crop.height === 'number' ? crop.height : 1, 0.05, 1 - y);
+
   const top = clamp(y * 100, 0, 100);
   const left = clamp(x * 100, 0, 100);
   const bottom = clamp((1 - (y + height)) * 100, 0, 100);
   const right = clamp((1 - (x + width)) * 100, 0, 100);
+
   img.style.position = 'absolute';
   img.style.top = '0';
   img.style.left = '0';
@@ -474,15 +602,18 @@ function applySplitCrop(img, crop) {
   img.style.objectFit = 'cover';
   img.style.clipPath = `inset(${top}% ${right}% ${bottom}% ${left}%)`;
 }
-function clamp(value, min, max) {
+
+function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
-function applyCachedData(data) {
+
+function applyCachedData(data: ArchetypeSummary[]) {
   state.archetypes = data;
   state.visibleCount = Math.min(INITIAL_VISIBLE, state.archetypes.length);
   renderList(true);
   schedulePrefetchHotset();
 }
+
 async function refreshFromNetwork() {
   try {
     const summaries = await fetchSummaries();
@@ -506,10 +637,12 @@ async function refreshFromNetwork() {
     }
   }
 }
+
 async function initialize() {
   try {
     setPageState('loading');
     toggleLoading(true);
+
     const tournamentReport = await fetchReport(ONLINE_META_TOURNAMENT);
     if (!tournamentReport || typeof tournamentReport.deckTotal !== 'number') {
       throw new Error(`Missing deck totals for ${ONLINE_META_TOURNAMENT}`);
@@ -518,16 +651,20 @@ async function initialize() {
     if (elements.eventName) {
       elements.eventName.textContent = ONLINE_META_TOURNAMENT;
     }
+
     ensureLoadMoreSentinel();
     installListObserver();
     setupPrefetchHandlers();
+
     const cached = readCache();
     if (cached?.length) {
       applyCachedData(cached);
       toggleLoading(false);
       setPageState('ready');
     }
+
     await refreshFromNetwork();
+
     toggleLoading(false);
     setPageState('ready');
   } catch (error) {
@@ -540,4 +677,5 @@ async function initialize() {
     }
   }
 }
+
 initialize();

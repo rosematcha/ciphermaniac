@@ -80,7 +80,6 @@ import { initCacheDev } from './dev/cacheDev.js';
 import { getStateFromURL, normalizeRouteOnLoad, parseHash, setStateInURL } from './router.js';
 import { buildCardPath } from './card/routing.js';
 import { logger } from './utils/logger.js';
-import { storage } from './utils/storage.js';
 import { CleanupManager, debounce, validateElements } from './utils/performance.js';
 import { CONFIG } from './config.js';
 import { prettyTournamentName } from './utils/format.js';
@@ -171,12 +170,12 @@ async function buildDeckReport(tournaments, successFilter = 'all', archetypeBase
   const scopedDecks =
     archetypeBase === null
       ? successDecks
-      : successDecks.filter(deck => normalizeArchetypeValue(deck?.archetype) === normalizeArchetypeValue(archetypeBase));
+      : successDecks.filter(
+          deck => normalizeArchetypeValue(deck?.archetype) === normalizeArchetypeValue(archetypeBase)
+        );
 
   return aggregateDecks(scopedDecks);
 }
-
-
 
 /**
  * Deduplicate and normalize a selection of tournaments.
@@ -246,8 +245,6 @@ function updateSetFilterOptions(items) {
     dropdown.render(orderedCodes, appState.selectedSets);
   }
 }
-
-
 
 function setupDropdownFilters(state) {
   const dropdowns = {
@@ -851,9 +848,8 @@ function setupControlHandlers(state) {
     const data = await loadSelectionData(selection, cache, {
       showSkeleton: true,
       successFilter: state.successFilter,
-      archetypeBase: elements.archetype?.value && elements.archetype.value !== '__all__'
-        ? elements.archetype.value
-        : null
+      archetypeBase:
+        elements.archetype?.value && elements.archetype.value !== '__all__' ? elements.archetype.value : null
     });
     state.current = data;
     updateSetFilterOptions(data.items);

@@ -1420,9 +1420,7 @@ async function loadAndRenderMainContent(tournaments, cacheObject, saveCache) {
     try {
       const list = await fetchArchetypesList(tournament);
       const archetypeBases = Array.isArray(list)
-        ? list
-            .map(entry => (typeof entry === 'string' ? entry : entry?.name))
-            .filter(Boolean)
+        ? list.map(entry => (typeof entry === 'string' ? entry : entry?.name)).filter(Boolean)
         : [];
       const top8 = await fetchTop8ArchetypesList(tournament);
       const candidates = [];
@@ -1795,9 +1793,7 @@ async function renderAnalysisTable(tournament) {
     // Per-archetype distributions using enhanced parallel loading
     const list = await fetchArchetypesList(tournament);
     const archetypeBases = Array.isArray(list)
-      ? list
-          .map(entry => (typeof entry === 'string' ? entry : entry?.name))
-          .filter(Boolean)
+      ? list.map(entry => (typeof entry === 'string' ? entry : entry?.name)).filter(Boolean)
       : [];
 
     progress.updateStep(0, 'loading');

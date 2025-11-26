@@ -111,7 +111,7 @@ export async function hasCardType(setCode, number) {
  * @returns {Promise<object>}
  */
 export async function getAllCardTypes() {
-  return await loadCardTypesDatabase();
+  return loadCardTypesDatabase();
 }
 
 /**

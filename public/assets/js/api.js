@@ -345,13 +345,9 @@ export function fetchReport(tournament) {
  */
 export function fetchTrendReport(tournament) {
   const encodedTournament = encodeURIComponent(tournament);
-  return fetchReportResource(
-    `${encodedTournament}/trends.json`,
-    `trends for ${tournament}`,
-    'object',
-    'trend report',
-    { cache: true }
-  );
+  return fetchReportResource(`${encodedTournament}/trends.json`, `trends for ${tournament}`, 'object', 'trend report', {
+    cache: true
+  });
 }
 
 /**
@@ -374,9 +370,9 @@ export async function fetchOverrides() {
 }
 
 /**
- * Fetch archetype list for a tournament
- * @param {string} tournament
- * @returns {Promise<string[]>}
+ * Normalize a single archetype index entry into a consistent object.
+ * @param {string|object} entry
+ * @returns {object|null}
  */
 function normalizeArchetypeIndexEntry(entry) {
   if (!entry) {
@@ -412,6 +408,10 @@ function normalizeArchetypeIndexEntry(entry) {
   return null;
 }
 
+/**
+ *
+ * @param tournament
+ */
 export async function fetchArchetypesList(tournament) {
   const result = await fetchReportResource(
     `${encodeURIComponent(tournament)}/archetypes/index.json`,

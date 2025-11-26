@@ -1,3 +1,4 @@
+/* eslint-disable id-length, no-param-reassign, no-unused-vars */
 import './utils/buildVersion.js';
 import { fetchTrendReport, ONLINE_META_NAME } from './api.js';
 import { fetchAllDecks } from './utils/clientSideFiltering.js';
@@ -28,7 +29,10 @@ const elements = {
 };
 
 const state = {
-  trendData: /** @type {null|{ series: any[], tournaments: any[], generatedAt?: string, minAppearances?: number, windowStart?: string|null, windowEnd?: string|null }} */ (null),
+  trendData:
+    /** @type {null|{ series: any[], tournaments: any[], generatedAt?: string, minAppearances?: number, windowStart?: string|null, windowEnd?: string|null }} */ (
+      null
+    ),
   cardTrends: null,
   suggestions: null,
   isLoading: false,
@@ -77,7 +81,9 @@ function formatPercent(value) {
 }
 
 function smoothSeries(series, window = 3) {
-  if (!Array.isArray(series) || series.length === 0) return series;
+  if (!Array.isArray(series) || series.length === 0) {
+    return series;
+  }
   const w = Math.max(1, window);
   const result = [];
   for (let i = 0; i < series.length; i += 1) {
@@ -91,7 +97,9 @@ function smoothSeries(series, window = 3) {
 function binDaily(timeline) {
   const byDay = new Map();
   (timeline || []).forEach(point => {
-    if (!point?.date) return;
+    if (!point?.date) {
+      return;
+    }
     const day = point.date.split('T')[0];
     const total = Number(point.totalDecks || point.total || 0);
     const share = Number(point.share) || 0;
@@ -125,17 +133,21 @@ function buildMetaLines(trendData, topN = 5) {
     return null;
   }
 
-  const timelineDates = Array.from(
-    new Set(seriesWithBins.flatMap(s => s.daily.map(pt => pt.date)))
-  ).sort((a, b) => Date.parse(a) - Date.parse(b));
+  const timelineDates = Array.from(new Set(seriesWithBins.flatMap(s => s.daily.map(pt => pt.date)))).sort(
+    (a, b) => Date.parse(a) - Date.parse(b)
+  );
 
   const lines = seriesWithBins.map(entry => {
     const points = timelineDates.map(d => {
       const found = entry.daily.find(pt => pt.date === d);
       return found ? found.share : 0;
     });
-    const startAvg = points.slice(0, Math.max(1, Math.ceil(points.length * 0.3))).reduce((a, b) => a + b, 0) / Math.max(1, Math.ceil(points.length * 0.3));
-    const recentAvg = points.slice(-Math.max(1, Math.ceil(points.length * 0.3))).reduce((a, b) => a + b, 0) / Math.max(1, Math.ceil(points.length * 0.3));
+    const startAvg =
+      points.slice(0, Math.max(1, Math.ceil(points.length * 0.3))).reduce((a, b) => a + b, 0) /
+      Math.max(1, Math.ceil(points.length * 0.3));
+    const recentAvg =
+      points.slice(-Math.max(1, Math.ceil(points.length * 0.3))).reduce((a, b) => a + b, 0) /
+      Math.max(1, Math.ceil(points.length * 0.3));
     const delta = Math.round((recentAvg - startAvg) * 10) / 10;
     return {
       name: entry.displayName || entry.base,
@@ -237,11 +249,11 @@ function renderCardMovers(suggestions, cardTrends) {
   }
   elements.cardMovers.innerHTML = '';
   const risingList =
-    (suggestions?.onTheRise && suggestions.onTheRise.length && suggestions.onTheRise) ||
-    (cardTrends?.rising || []);
+    (suggestions?.onTheRise && suggestions.onTheRise.length && suggestions.onTheRise) || cardTrends?.rising || [];
   const fallingList =
     (suggestions?.choppedAndWashed && suggestions.choppedAndWashed.length && suggestions.choppedAndWashed) ||
-    (cardTrends?.falling || []);
+    cardTrends?.falling ||
+    [];
 
   if (!risingList.length && !fallingList.length) {
     const empty = document.createElement('p');
@@ -252,13 +264,7 @@ function renderCardMovers(suggestions, cardTrends) {
   }
   const normalizeCard = item => {
     const latest =
-      item.recentAvg ??
-      item.latest ??
-      item.currentShare ??
-      item.endShare ??
-      item.startShare ??
-      item.avgShare ??
-      0;
+      item.recentAvg ?? item.latest ?? item.currentShare ?? item.endShare ?? item.startShare ?? item.avgShare ?? 0;
     // Clamp delta so it doesn't exceed plausible usage bounds
     const rawDelta = item.deltaAbs ?? item.delta ?? 0;
     const delta = Math.max(Math.min(rawDelta, latest), -100);
@@ -292,8 +298,7 @@ function renderCardMovers(suggestions, cardTrends) {
       const item = normalizeCard(raw);
       const li = document.createElement('li');
       const deltaSign = item.delta > 0 ? '+' : '';
-      const idLabel =
-        item.set && item.number ? ` (${item.set} ${item.number})` : '';
+      const idLabel = item.set && item.number ? ` (${item.set} ${item.number})` : '';
       li.innerHTML = `
         <span class="dot"></span>
         <span class="name">${item.name}${idLabel}</span>
@@ -337,9 +342,7 @@ function renderSummary() {
   }
   const archetypes = state.trendData.series?.length || 0;
   const tournaments = state.trendData.tournaments?.length || 0;
-  const lastUpdated = state.trendData.generatedAt
-    ? new Date(state.trendData.generatedAt).toLocaleString()
-    : 'n/a';
+  const lastUpdated = state.trendData.generatedAt ? new Date(state.trendData.generatedAt).toLocaleString() : 'n/a';
   const firstDate = state.trendData.windowStart || state.trendData.tournaments?.[0]?.date;
   const lastDate = state.trendData.windowEnd || state.trendData.tournaments?.at(-1)?.date;
   const windowLabel = firstDate && lastDate ? `${formatDate(firstDate)} - ${formatDate(lastDate)}` : 'recent events';
@@ -463,9 +466,7 @@ function renderMetaChart() {
   const count = metaChart.dates.length;
 
   // Dynamic Y domain based on visible data (add headroom)
-  const maxObserved = Math.max(
-    ...metaChart.lines.flatMap(line => line.points.map(p => Math.max(0, Number(p) || 0)))
-  );
+  const maxObserved = Math.max(...metaChart.lines.flatMap(line => line.points.map(p => Math.max(0, Number(p) || 0))));
   const buffer = Math.max(1, maxObserved * 0.05);
   const yMax = Math.min(100, Math.max(5, Math.ceil((maxObserved + buffer) / 5) * 5));
 
@@ -565,7 +566,9 @@ function renderMetaChart() {
       const label = item.querySelector('span:nth-child(2)');
       const active = label && label.textContent === name;
       item.style.opacity = active ? '1' : '0.5';
-      item.style.borderColor = active ? item.querySelector('.legend-swatch')?.style.backgroundColor || '#6aa3ff' : '#2c335a';
+      item.style.borderColor = active
+        ? item.querySelector('.legend-swatch')?.style.backgroundColor || '#6aa3ff'
+        : '#2c335a';
     });
   };
 
@@ -588,7 +591,9 @@ function renderMetaChart() {
   legendItems.forEach(item => {
     const label = item.querySelector('span:nth-child(2)');
     const name = label?.textContent;
-    if (!name) return;
+    if (!name) {
+      return;
+    }
     item.addEventListener('mouseenter', () => setActive(name));
     item.addEventListener('mouseleave', clearActive);
   });
@@ -604,9 +609,7 @@ function renderList() {
     return;
   }
 
-  const filtered = (state.trendData.series || []).filter(
-    item => item.appearances >= state.minAppearances
-  );
+  const filtered = (state.trendData.series || []).filter(item => item.appearances >= state.minAppearances);
 
   if (!filtered.length) {
     const empty = document.createElement('div');
