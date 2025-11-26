@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { enrichCardWithType } from '../../functions/lib/cardTypesDatabase.js';
 import { getCanonicalCard } from '../../functions/lib/cardSynonyms.js';
+import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json' assert { type: 'json' };
 
 const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api';
 const WINDOW_DAYS = 14;
@@ -11,6 +12,7 @@ const TARGET_FOLDER = 'Online - Last 14 Days';
 const PAGE_SIZE = 100;
 const MAX_PAGES = 15;
 const SUPPORTED_FORMATS = new Set(['STANDARD']);
+const ARCHETYPE_THUMBNAILS = archetypeThumbnails || {};
 
 function env(name) {
   const value = process.env[name];
@@ -298,6 +300,36 @@ function normalizeArchetypeName(name) {
   return cleaned.replace(/\s+/g, ' ');
 }
 
+function normalizeDeckLabel(label) {
+  return String(label || '')
+    .replace(/['']/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toLowerCase();
+}
+
+function resolveArchetypeThumbnails(baseName, displayName) {
+  const attempts = [displayName, displayName?.replace(/_/g, ' '), baseName];
+  for (const key of attempts) {
+    if (key && Array.isArray(ARCHETYPE_THUMBNAILS[key])) {
+      return ARCHETYPE_THUMBNAILS[key];
+    }
+  }
+
+  const target = normalizeDeckLabel(displayName || baseName || '');
+  if (!target) {
+    return [];
+  }
+
+  for (const [candidate, ids] of Object.entries(ARCHETYPE_THUMBNAILS)) {
+    if (normalizeDeckLabel(candidate) === target) {
+      return ids;
+    }
+  }
+
+  return [];
+}
+
 function canonicalizeVariant(setCode, number) {
   const sc = (setCode || '').toUpperCase().trim();
   if (!sc) {
@@ -453,6 +485,7 @@ function buildArchetypeReports(decks, synonymDb) {
     if (!groups.has(normalized)) {
       groups.set(normalized, {
         base,
+        displayName,
         decks: []
       });
     }
@@ -460,23 +493,32 @@ function buildArchetypeReports(decks, synonymDb) {
   }
 
   const files = [];
-  for (const { base, decks: archetypeDecks } of groups.values()) {
+  for (const { base, displayName, decks: archetypeDecks } of groups.values()) {
     if (archetypeDecks.length < minDecks) {
       continue;
     }
     files.push({
       filename: `${base}.json`,
       base,
+      displayName,
       deckCount: archetypeDecks.length,
       data: generateReportFromDecks(archetypeDecks, archetypeDecks.length, synonymDb)
     });
   }
 
   files.sort((a, b) => b.deckCount - a.deckCount);
+  const index = files.map(file => ({
+    name: file.base,
+    label: file.displayName || file.base.replace(/_/g, ' '),
+    deckCount: file.deckCount,
+    percent: deckTotal ? file.deckCount / deckTotal : 0,
+    thumbnails: resolveArchetypeThumbnails(file.base, file.displayName)
+  }));
+
   return {
     minDecks,
     files,
-    index: files.map(file => file.base)
+    index
   };
 }
 

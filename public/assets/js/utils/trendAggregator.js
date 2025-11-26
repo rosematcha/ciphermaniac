@@ -1,3 +1,4 @@
+/* eslint-disable id-length */
 import { logger } from './logger.js';
 
 const SUCCESS_TAGS = ['winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'];
@@ -15,6 +16,12 @@ function buildBaseName(normalized) {
   return (normalized || 'unknown').replace(/ /g, '_').replace(/[^a-z0-9_]/g, '') || 'unknown';
 }
 
+/**
+ *
+ * @param decks
+ * @param tournaments
+ * @param options
+ */
 export function buildTrendDataset(decks, tournaments, options = {}) {
   const now = options.now ? new Date(options.now) : new Date();
   const minAppearances = Math.max(
@@ -55,14 +62,13 @@ export function buildTrendDataset(decks, tournaments, options = {}) {
     const tournamentMeta = tournamentIndex.get(tournamentId);
     tournamentMeta.deckTotal += 1;
 
-    const entry =
-      archetype.timeline.get(tournamentId) || {
-        tournamentId,
-        tournamentName: deck?.tournamentName || tournamentMeta?.name || 'Unknown Tournament',
-        date: deck?.tournamentDate || tournamentMeta?.date || null,
-        decks: 0,
-        success: {}
-      };
+    const entry = archetype.timeline.get(tournamentId) || {
+      tournamentId,
+      tournamentName: deck?.tournamentName || tournamentMeta?.name || 'Unknown Tournament',
+      date: deck?.tournamentDate || tournamentMeta?.date || null,
+      decks: 0,
+      success: {}
+    };
 
     entry.decks += 1;
     for (const tag of Array.isArray(deck?.successTags) ? deck.successTags : []) {
@@ -150,6 +156,12 @@ export function buildTrendDataset(decks, tournaments, options = {}) {
   };
 }
 
+/**
+ *
+ * @param decks
+ * @param tournaments
+ * @param options
+ */
 export function buildCardTrendDataset(decks, tournaments, options = {}) {
   const now = options.now ? new Date(options.now) : new Date();
   const minAppearances = Math.max(1, Number.isFinite(options.minAppearances) ? options.minAppearances : 2);
@@ -218,13 +230,9 @@ export function buildCardTrendDataset(decks, tournaments, options = {}) {
 
     const chunk = Math.max(1, Math.ceil(timeline.length / 3));
     const startAvg =
-      Math.round(
-        (timeline.slice(0, chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10
-      ) / 10;
+      Math.round((timeline.slice(0, chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10) / 10;
     const endAvg =
-      Math.round(
-        (timeline.slice(-chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10
-      ) / 10;
+      Math.round((timeline.slice(-chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10) / 10;
     const delta = Math.round((endAvg - startAvg) * 10) / 10;
     const latestShare = timeline.at(-1)?.share || 0;
 

@@ -7,7 +7,7 @@
   "scripts": {
     "lint": "eslint public/assets/js --ext .js",
     "lint:fix": "eslint public/assets/js --ext .js --fix",
-    "typecheck": "npx tsc --noEmit --project config/jsconfig.json",
+    "typecheck": "npx tsc --noEmit --project tsconfig.json",
     "jsdoc": "jsdoc -c config/jsdoc.config.js",
     "jsdoc:validate": "eslint public/assets/js --ext .js --rule 'valid-jsdoc: error'",
     "complexity": "plato -r -d complexity-report public/assets/js",
@@ -19,6 +19,7 @@
     "clean": "echo 'No build artifacts to clean'",
     "pre-commit": "npm run validate:fix",
     "build:card-types": "node tools/build-card-types.mjs",
+    "build:frontend": "tsc --project tsconfig.frontend.json",
     "check:card-types": "node tools/check-card-types.mjs"
   },
   "devDependencies": {

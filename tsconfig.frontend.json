@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": ".",
+    "rootDir": ".",
+    "allowJs": false,
+    "checkJs": false
+  },
+  "include": ["public/assets/js/archetype-analysis.ts"]
+}

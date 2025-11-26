@@ -1,3 +1,4 @@
+/* eslint-disable id-length, no-param-reassign, no-unused-vars */
 import './utils/buildVersion.js';
 import { fetchArchetypeFiltersReport, fetchArchetypeReport, fetchReport } from './api.js';
 import { parseReport } from './parse.js';
@@ -474,23 +475,19 @@ function getFilterKey(filters, successFilter = 'all') {
     return `${base}::null`;
   }
 
-  return (
-    base +
-    '::' +
-    filters
-      .map(f => {
-        let part = f.cardId || 'null';
-        if (f.operator === 'any') {
-          part += '::any';
-        } else if (f.operator === '') {
-          part += '::none';
-        } else if (f.operator && f.count !== null && f.count !== undefined) {
-          part += `::${f.operator}${f.count}`;
-        }
-        return part;
-      })
-      .join('||')
-  );
+  return `${base}::${filters
+    .map(f => {
+      let part = f.cardId || 'null';
+      if (f.operator === 'any') {
+        part += '::any';
+      } else if (f.operator === '') {
+        part += '::none';
+      } else if (f.operator && f.count !== null && f.count !== undefined) {
+        part += `::${f.operator}${f.count}`;
+      }
+      return part;
+    })
+    .join('||')}`;
 }
 
 function normalizeThreshold(value, min, max) {
@@ -1259,7 +1256,7 @@ function buildSkeletonExportEntries(items) {
       primaryCategory: normalizedCategory
     });
     return entries;
-  }, /** @type {Array<{name:string,copies:number,set:string,number:string,primaryCategory:string}>} */([]));
+  }, /** @type {Array<{name:string,copies:number,set:string,number:string,primaryCategory:string}>} */ ([]));
 }
 
 function buildTcgliveExportString(entries) {
@@ -1562,7 +1559,9 @@ function updateSkeletonSummary(items) {
   const cardLabel = totalCount === 1 ? 'card' : 'cards';
 
   let finishLabel = SUCCESS_FILTER_LABELS[state.successFilter] || state.successFilter;
-  if (finishLabel === 'all finishes') finishLabel = 'all'; // "from all Gholdengo decks" reads better than "from all finishes Gholdengo decks"
+  if (finishLabel === 'all finishes') {
+    finishLabel = 'all';
+  } // "from all Gholdengo decks" reads better than "from all finishes Gholdengo decks"
 
   // Capitalize first letter of finish label if it's not 'all' or 'topX' which might be handled differently
   if (finishLabel !== 'all' && !finishLabel.startsWith('top')) {
@@ -1580,8 +1579,8 @@ function updateSkeletonSummary(items) {
   if (activeFilters.length > 0) {
     const filterDescriptions = activeFilters.map(filter => {
       const cardName = state.cardLookup.get(filter.cardId)?.name || 'Unknown Card';
-      const operator = filter.operator;
-      const count = filter.count;
+      const { operator } = filter;
+      const { count } = filter;
 
       if (!operator || operator === 'any') {
         return `any ${cardName}`;
@@ -1788,7 +1787,9 @@ async function applyFilters() {
   }
 
   const successLabel = describeSuccessFilter(state.successFilter);
-  const comboLabel = successLabel ? `${describeFilters(activeFilters)} (${successLabel})` : describeFilters(activeFilters);
+  const comboLabel = successLabel
+    ? `${describeFilters(activeFilters)} (${successLabel})`
+    : describeFilters(activeFilters);
   updateFilterMessage(`Crunching the numbers for decks ${comboLabel}...`, 'info');
 
   const requestKey = getFilterKey(activeFilters, state.successFilter);
@@ -2067,7 +2068,9 @@ function setupControlsToggle() {
   const toggleBtn = document.getElementById('controls-toggle');
   const body = document.getElementById('controls-body');
 
-  if (!toggleBtn || !body) return;
+  if (!toggleBtn || !body) {
+    return;
+  }
 
   toggleBtn.addEventListener('click', () => {
     const isExpanded = toggleBtn.getAttribute('aria-expanded') === 'true';
