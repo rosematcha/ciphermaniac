@@ -1,18 +1,16 @@
 /**
  * Reusable header component
  */
-
 import '../utils/buildVersion.js';
-
 /**
- *
- * @param options
+ * Creates the header element
+ * @param options - Configuration options
+ * @returns The header element
  */
 export function createHeader(options = {}) {
-  const { currentPage = '' } = options;
-
-  const header = document.createElement('header');
-  header.innerHTML = `
+    const { currentPage = '' } = options;
+    const header = document.createElement('header');
+    header.innerHTML = `
     <div class="header-inner">
       <a class="logo" href="/" aria-label="Ciphermaniac home">
         <div class="site-title">ciphermaniac</div>
@@ -28,72 +26,65 @@ export function createHeader(options = {}) {
       </nav>
     </div>
   `;
-
-  const nav = /** @type {HTMLElement | null} */ (header.querySelector('.main-nav'));
-  const toggle = /** @type {HTMLButtonElement | null} */ (header.querySelector('.nav-toggle'));
-
-  if (nav && toggle) {
-    nav.id = 'mainNav';
-
-    const openNav = () => {
-      nav.classList.add('is-open');
-      toggle.classList.add('is-active');
-      toggle.setAttribute('aria-expanded', 'true');
-    };
-
-    const closeNav = () => {
-      nav.classList.remove('is-open');
-      toggle.classList.remove('is-active');
-      toggle.setAttribute('aria-expanded', 'false');
-    };
-
-    toggle.addEventListener('click', () => {
-      const expanded = toggle.getAttribute('aria-expanded') === 'true';
-      if (expanded) {
-        closeNav();
-      } else {
-        openNav();
-      }
-    });
-
-    nav.addEventListener('click', event => {
-      const { target } = event;
-      if (target instanceof Element && target.closest('.nav-link')) {
-        closeNav();
-      }
-    });
-
-    nav.addEventListener('keydown', event => {
-      if (event.key === 'Escape') {
-        closeNav();
-        toggle.focus();
-      }
-    });
-
-    const { matchMedia } = window;
-    const mq = matchMedia('(min-width: 721px)');
-    const handleChange = event => {
-      if (event.matches) {
-        closeNav();
-      }
-    };
-    if (typeof mq.addEventListener === 'function') {
-      mq.addEventListener('change', handleChange);
-    } else if (typeof mq.addListener === 'function') {
-      mq.addListener(handleChange);
+    const nav = header.querySelector('.main-nav');
+    const toggle = header.querySelector('.nav-toggle');
+    if (nav && toggle) {
+        nav.id = 'mainNav';
+        const openNav = () => {
+            nav.classList.add('is-open');
+            toggle.classList.add('is-active');
+            toggle.setAttribute('aria-expanded', 'true');
+        };
+        const closeNav = () => {
+            nav.classList.remove('is-open');
+            toggle.classList.remove('is-active');
+            toggle.setAttribute('aria-expanded', 'false');
+        };
+        toggle.addEventListener('click', () => {
+            const expanded = toggle.getAttribute('aria-expanded') === 'true';
+            if (expanded) {
+                closeNav();
+            }
+            else {
+                openNav();
+            }
+        });
+        nav.addEventListener('click', event => {
+            const { target } = event;
+            if (target instanceof Element && target.closest('.nav-link')) {
+                closeNav();
+            }
+        });
+        nav.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                closeNav();
+                toggle.focus();
+            }
+        });
+        const { matchMedia } = window;
+        const mq = matchMedia('(min-width: 721px)');
+        const handleChange = (event) => {
+            if (event.matches) {
+                closeNav();
+            }
+        };
+        if (typeof mq.addEventListener === 'function') {
+            mq.addEventListener('change', handleChange);
+        }
+        else if (typeof mq.addListener === 'function') {
+            mq.addListener(handleChange);
+        }
     }
-  }
-
-  return header;
+    return header;
 }
-
 /**
- *
- * @param container
- * @param options
+ * Inserts the header into a container
+ * @param container - The container element
+ * @param options - Configuration options
+ * @returns The inserted header element
  */
 export function insertHeader(container, options = {}) {
-  const header = createHeader(options);
-  container.appendChild(header);
-  return header;
+    const header = createHeader(options);
+    container.appendChild(header);
+    return header;
 }

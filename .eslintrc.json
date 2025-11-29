@@ -6,10 +6,12 @@
   },
   "extends": [
     "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
     "plugin:jsdoc/recommended",
     "plugin:prettier/recommended"
   ],
-  "plugins": ["jsdoc", "prettier"],
+  "plugins": ["@typescript-eslint", "jsdoc", "prettier"],
+  "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "ecmaVersion": 2022,
     "sourceType": "module"
@@ -23,8 +25,9 @@
         "message": "Private class fields are disallowed for compatibility with older mobile browsers. Use underscored properties or closures instead."
       }
     ],
-    "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
-    "no-undef": "error",
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "no-undef": "off",
     "prefer-const": "error",
     "no-var": "error",
     "eqeqeq": ["error", "always", { "null": "ignore" }],
@@ -250,25 +253,17 @@
     "jsdoc/no-bad-blocks": "error",
     "jsdoc/no-defaults": "error",
     "jsdoc/no-types": "off",
-  // Temporarily disable this check to reduce noisy warnings around DOM/Fetch types
-  // We'll add stricter typedefs incrementally where it provides value.
-  "jsdoc/no-undefined-types": "off",
+    // Temporarily disable this check to reduce noisy warnings around DOM/Fetch types
+    // We'll add stricter typedefs incrementally where it provides value.
+    "jsdoc/no-undefined-types": "off",
+    "@typescript-eslint/ban-ts-comment": "off",
+    "@typescript-eslint/no-explicit-any": "off",
     "jsdoc/require-description": "off",
     "jsdoc/require-description-complete-sentence": "off",
     "jsdoc/require-example": "off",
     "jsdoc/require-file-overview": "off",
     "jsdoc/require-hyphen-before-param-description": "off",
-    "jsdoc/require-jsdoc": ["warn", {
-      "require": {
-        "FunctionDeclaration": true,
-        "MethodDefinition": true,
-        "ClassDeclaration": true,
-        "ArrowFunctionExpression": false,
-        "FunctionExpression": false
-      },
-      "exemptEmptyFunctions": true,
-      "publicOnly": true
-    }],
+    "jsdoc/require-jsdoc": "off",
     "jsdoc/require-param": "off",
     "jsdoc/require-param-description": "off",
     "jsdoc/require-param-name": "error",

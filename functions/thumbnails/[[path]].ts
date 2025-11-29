@@ -7,7 +7,13 @@
 const LIMITLESS_CDN_BASE = 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci';
 const CACHE_TTL = 86400; // 24 hours
 
-function normalizeCardNumber(raw) {
+interface Context {
+  request: Request;
+}
+
+type CfRequestInit = RequestInit & { cf?: unknown };
+
+function normalizeCardNumber(raw: unknown): { trimmed: string | null; padded: string | null } {
   const trimmed = String(raw ?? '').trim();
   if (!trimmed) {
     return { trimmed: null, padded: null };
@@ -19,7 +25,7 @@ function normalizeCardNumber(raw) {
     return { trimmed: withoutLeadingZeros, padded: withoutLeadingZeros };
   }
 
-  const [, digits, suffix = '' ] = parts;
+  const [, digits, suffix = ''] = parts;
   const paddedDigits = digits.padStart(3, '0');
   return {
     trimmed: withoutLeadingZeros,
@@ -27,13 +33,10 @@ function normalizeCardNumber(raw) {
   };
 }
 
-/** @typedef {RequestInit & { cf?: unknown }} CfRequestInit */
-
-async function fetchWithFallback(urls) {
+async function fetchWithFallback(urls: string[]): Promise<Response> {
   let lastStatus = 404;
   for (const url of urls) {
-    /** @type {CfRequestInit} */
-    const requestInit = {
+    const requestInit: CfRequestInit = {
       cf: { cacheTtl: CACHE_TTL, cacheEverything: true }
     };
     const response = await fetch(url, requestInit);
@@ -51,7 +54,7 @@ async function fetchWithFallback(urls) {
   });
 }
 
-export async function onRequest(context) {
+export async function onRequest(context: Context): Promise<Response> {
   const { request } = context;
   const url = new URL(request.url);
 
@@ -62,10 +65,13 @@ export async function onRequest(context) {
   const relevantParts = pathParts.slice(1);
 
   if (relevantParts.length !== 3) {
-    return new Response(`Invalid path format. Expected: /thumbnails/{size}/{set}/{number}, got: ${url.pathname}`, {
-      status: 400,
-      headers: { 'Content-Type': 'text/plain' }
-    });
+    return new Response(
+      `Invalid path format. Expected: /thumbnails/{size}/{set}/{number}, got: ${url.pathname}`,
+      {
+        status: 400,
+        headers: { 'Content-Type': 'text/plain' }
+      }
+    );
   }
 
   const [size, set, number] = relevantParts;
@@ -89,8 +95,10 @@ export async function onRequest(context) {
     });
   }
 
-  const candidateNumbers = Array.from(new Set([trimmed, padded].filter(Boolean)));
-  const candidateUrls = candidateNumbers.map(cardNumber => `${LIMITLESS_CDN_BASE}/${setCode}/${setCode}_${cardNumber}_R_EN_${sizeUpper}.png`);
+  const candidateNumbers = Array.from(new Set([trimmed, padded].filter(Boolean) as string[]));
+  const candidateUrls = candidateNumbers.map(
+    cardNumber => `${LIMITLESS_CDN_BASE}/${setCode}/${setCode}_${cardNumber}_R_EN_${sizeUpper}.png`
+  );
 
   try {
     const response = await fetchWithFallback(candidateUrls);
@@ -111,7 +119,8 @@ export async function onRequest(context) {
       return error;
     }
 
-    return new Response(`Failed to fetch image: ${error.message}`, {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(`Failed to fetch image: ${message}`, {
       status: 500,
       headers: { 'Content-Type': 'text/plain' }
     });
@@ -119,7 +128,7 @@ export async function onRequest(context) {
 }
 
 // Handle OPTIONS for CORS preflight
-export async function onRequestOptions() {
+export async function onRequestOptions(): Promise<Response> {
   return new Response(null, {
     status: 204,
     headers: {
