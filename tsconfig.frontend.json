@@ -2,10 +2,11 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
-    "outDir": ".",
-    "rootDir": ".",
+    "outDir": "public/assets/js",
+    "rootDir": "src",
     "allowJs": false,
     "checkJs": false
   },
-  "include": ["public/assets/js/archetype-analysis.ts"]
+  "include": ["src/**/*.ts", "types/**/*.d.ts", "global.d.ts"],
+  "exclude": ["node_modules", "backend", "config"]
 }

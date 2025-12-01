@@ -13,6 +13,8 @@ import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.j
 const WINDOW_DAYS = 30;
 const MIN_USAGE_PERCENT = 0.5;
 const TARGET_FOLDER = 'Online - Last 14 Days';
+
+
 const REPORT_BASE_KEY = `reports/${TARGET_FOLDER}`;
 const PAGE_SIZE = 100;
 const MAX_TOURNAMENT_PAGES = 10;
@@ -21,6 +23,7 @@ const DEFAULT_DETAILS_CONCURRENCY = 5;
 const DEFAULT_STANDINGS_CONCURRENCY = 4;
 const DEFAULT_R2_CONCURRENCY = 6;
 const DEFAULT_MIN_TREND_APPEARANCES = 3;
+const MIN_TREND_PLAYERS = 16;
 
 // Placement tagging thresholds (absolute finishing positions)
 const PLACEMENT_TAG_RULES = [
@@ -642,7 +645,7 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
 
   const tournamentIndex = new Map();
   const sortedTournaments = (Array.isArray(tournaments) ? tournaments : [])
-    .filter(t => t && t.id)
+    .filter(t => t && t.id && (Number(t.players) || 0) >= MIN_TREND_PLAYERS)
     .map(t => ({
       ...t,
       date: t.date || null
@@ -705,18 +708,30 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
 
   const series = [];
   archetypes.forEach(archetype => {
-    const timeline = Array.from(archetype.timeline.values())
-      .map((entry: any) => {
-        const tournamentMeta = tournamentIndex.get(entry.tournamentId);
-        const totalDecks = tournamentMeta?.deckTotal || 0;
+    const timeline = sortedTournaments.map(tournamentMeta => {
+      const entry = archetype.timeline.get(tournamentMeta.id);
+      const totalDecks = tournamentMeta.deckTotal || 0;
+
+      if (entry) {
         const share = totalDecks ? Math.round((entry.decks / totalDecks) * 10000) / 100 : 0;
         return {
           ...entry,
           totalDecks,
           share
         };
-      })
-      .sort((a, b) => Date.parse(a.date || 0) - Date.parse(b.date || 0));
+      }
+
+      // Backfill missing tournament
+      return {
+        tournamentId: tournamentMeta.id,
+        tournamentName: tournamentMeta.name,
+        date: tournamentMeta.date,
+        decks: 0,
+        totalDecks,
+        share: 0,
+        success: {}
+      };
+    });
 
     const appearances = timeline.length;
     if (appearances < minAppearances) {
@@ -733,6 +748,7 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
     const shares = timeline.map(entry => entry.share || 0);
     const avgShare = shares.length ? Math.round((shares.reduce((sum, value) => sum + value, 0) / shares.length) * 10) / 10 : 0;
     const maxShare = shares.length ? Math.max(...shares) : 0;
+    const peakShare = maxShare; // Alias for clarity
     const minShare = shares.length ? Math.min(...shares) : 0;
 
     series.push({
@@ -742,6 +758,7 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
       appearances,
       avgShare,
       maxShare,
+      peakShare,
       minShare,
       successTotals: aggregateSuccess,
       timeline
@@ -779,15 +796,15 @@ function buildCardTrendReport(decks, tournaments, options: AnyOptions = {}) {
   const topCount = Math.max(1, Number.isFinite(options.topCount) ? Number(options.topCount) : DEFAULT_CARD_TREND_TOP);
 
   const tournamentsMap = new Map();
-  (Array.isArray(tournaments) ? tournaments : []).forEach(t => {
-    if (t && t.id) {
+  (Array.isArray(tournaments) ? tournaments : [])
+    .filter(t => t && t.id && (Number(t.players) || 0) >= MIN_TREND_PLAYERS)
+    .forEach(t => {
       tournamentsMap.set(t.id, {
         id: t.id,
         date: t.date || null,
         deckTotal: Number(t.deckTotal) || 0
       });
-    }
-  });
+    });
 
   const cardPresence = new Map(); // key -> Map<tournamentId, presentCount>
   const cardMeta = new Map();
@@ -862,7 +879,10 @@ function buildCardTrendReport(decks, tournaments, options: AnyOptions = {}) {
     });
   });
 
-  const rising = [...series].sort((a, b) => b.delta - a.delta).slice(0, topCount);
+  const rising = [...series]
+    .filter(item => item.currentShare > 0)
+    .sort((a, b) => b.delta - a.delta)
+    .slice(0, topCount);
   const falling = [...series].sort((a, b) => a.delta - b.delta).slice(0, topCount);
 
   return {
