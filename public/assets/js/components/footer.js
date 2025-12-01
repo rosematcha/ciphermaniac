@@ -1,18 +1,16 @@
 /**
  * Reusable footer component
  */
-
 /**
- *
- * @param options
+ * Creates a standard footer element
+ * @param options - Configuration options
+ * @returns The footer element
  */
 export function createFooter(options = {}) {
-  const { footerClass = 'site-footer' } = options;
-
-  const footer = document.createElement('footer');
-  footer.className = footerClass;
-
-  footer.innerHTML = `
+    const { footerClass = 'site-footer' } = options;
+    const footer = document.createElement('footer');
+    footer.className = footerClass;
+    footer.innerHTML = `
     <div class="footer-inner">
       <div class="footer-left">
         <div class="credits"><a href="/about.html">About & Credits</a></div>
@@ -22,31 +20,29 @@ export function createFooter(options = {}) {
       </div>
     </div>
   `;
-
-  return footer;
+    return footer;
 }
-
 /**
- *
+ * Creates a simple footer element
+ * @returns The footer element
  */
 export function createSimpleFooter() {
-  const footer = document.createElement('footer');
-  footer.innerHTML = `
+    const footer = document.createElement('footer');
+    footer.innerHTML = `
     <div class="footer-content">
       <p>&copy; 2025 Ciphermaniac. Pokemon TCG tournament analysis and deck building tools.</p>
     </div>
   `;
-
-  return footer;
+    return footer;
 }
-
 /**
- *
- * @param container
- * @param options
+ * Inserts a footer into a container
+ * @param container - The container element
+ * @param options - Configuration options
+ * @returns The inserted footer element
  */
 export function insertFooter(container, options = {}) {
-  const footer = createFooter(options);
-  container.appendChild(footer);
-  return footer;
+    const footer = createFooter(options);
+    container.appendChild(footer);
+    return footer;
 }

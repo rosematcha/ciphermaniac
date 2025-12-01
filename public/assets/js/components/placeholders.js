@@ -2,19 +2,16 @@
  * Placeholder components to reduce Cumulative Layout Shift (CLS)
  * @module Placeholders
  */
-
 import { computeLayout } from '../layoutHelper.js';
-
 /**
  * Create a skeleton card placeholder
  * @param isLarge
  */
 export function createCardSkeleton(isLarge = false) {
-  const card = document.createElement('article');
-  card.className = `card skeleton-card ${isLarge ? 'large' : 'small'}`;
-  card.setAttribute('aria-hidden', 'true');
-
-  card.innerHTML = `
+    const card = document.createElement('article');
+    card.className = `card skeleton-card ${isLarge ? 'large' : 'small'}`;
+    card.setAttribute('aria-hidden', 'true');
+    card.innerHTML = `
         <div class="thumb">
             <div class="skeleton-img"></div>
             <div class="overlay">
@@ -35,81 +32,66 @@ export function createCardSkeleton(isLarge = false) {
             <div class="skeleton-text counts"></div>
         </div>
     `;
-
-  return card;
+    return card;
 }
-
 /**
  * Create a grid of skeleton cards using proper layout computation
  * @param containerWidth
  * @param rowCount
  */
 export function createGridSkeleton(containerWidth = 1200, rowCount = 6) {
-  const layout = computeLayout(containerWidth);
-  const frag = document.createDocumentFragment();
-
-  // First 2 rows are large cards (matches NUM_LARGE_ROWS from render.js)
-  const NUM_LARGE_ROWS = 2;
-
-  // Create a wrapper div to match the grid structure and add proper centering
-  const gridWrapper = document.createElement('div');
-  gridWrapper.className = 'skeleton-grid-wrapper';
-  gridWrapper.style.cssText = `
+    const layout = computeLayout(containerWidth);
+    const frag = document.createDocumentFragment();
+    // First 2 rows are large cards (matches NUM_LARGE_ROWS from render.js)
+    const NUM_LARGE_ROWS = 2;
+    // Create a wrapper div to match the grid structure and add proper centering
+    const gridWrapper = document.createElement('div');
+    gridWrapper.className = 'skeleton-grid-wrapper';
+    gridWrapper.style.cssText = `
         max-width: ${layout.bigRowContentWidth}px;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
         gap: var(--gap, 12px);
     `;
-
-  for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
-    const row = document.createElement('div');
-    row.className = 'row skeleton-row';
-    row.dataset.rowIndex = String(rowIndex);
-
-    const isLarge = rowIndex < NUM_LARGE_ROWS;
-    const cardsPerRow = isLarge ? layout.perRowBig : layout.targetSmall;
-    const scale = isLarge ? 1 : layout.smallScale;
-
-    row.style.setProperty('--scale', String(scale));
-    row.style.setProperty('--card-base', `${layout.base}px`);
-
-    for (let cardIndex = 0; cardIndex < cardsPerRow; cardIndex++) {
-      const skeletonCard = createCardSkeleton(isLarge);
-      row.appendChild(skeletonCard);
+    for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+        const row = document.createElement('div');
+        row.className = 'row skeleton-row';
+        row.dataset.rowIndex = String(rowIndex);
+        const isLarge = rowIndex < NUM_LARGE_ROWS;
+        const cardsPerRow = isLarge ? layout.perRowBig : layout.targetSmall;
+        const scale = isLarge ? 1 : layout.smallScale;
+        row.style.setProperty('--scale', String(scale));
+        row.style.setProperty('--card-base', `${layout.base}px`);
+        for (let cardIndex = 0; cardIndex < cardsPerRow; cardIndex++) {
+            const skeletonCard = createCardSkeleton(isLarge);
+            row.appendChild(skeletonCard);
+        }
+        gridWrapper.appendChild(row);
     }
-
-    gridWrapper.appendChild(row);
-  }
-
-  frag.appendChild(gridWrapper);
-  return frag;
+    frag.appendChild(gridWrapper);
+    return frag;
 }
-
 /**
  * Create skeleton for dropdown/select elements
  * @param width
  */
 export function createSelectSkeleton(width = '200px') {
-  const skeleton = document.createElement('div');
-  skeleton.className = 'skeleton-select';
-  skeleton.style.width = width;
-  skeleton.setAttribute('aria-hidden', 'true');
-
-  skeleton.innerHTML = `<div class="skeleton-text select-text"></div>`;
-
-  return skeleton;
+    const skeleton = document.createElement('div');
+    skeleton.className = 'skeleton-select';
+    skeleton.style.width = width;
+    skeleton.setAttribute('aria-hidden', 'true');
+    skeleton.innerHTML = `<div class="skeleton-text select-text"></div>`;
+    return skeleton;
 }
-
 /**
  * Create skeleton for network visualization
  */
 export function createNetworkSkeleton() {
-  const skeleton = document.createElement('div');
-  skeleton.className = 'skeleton-network';
-  skeleton.setAttribute('aria-hidden', 'true');
-
-  skeleton.innerHTML = `
+    const skeleton = document.createElement('div');
+    skeleton.className = 'skeleton-network';
+    skeleton.setAttribute('aria-hidden', 'true');
+    skeleton.innerHTML = `
         <div class="skeleton-nodes">
             <div class="skeleton-node large"></div>
             <div class="skeleton-node medium"></div>
@@ -124,21 +106,18 @@ export function createNetworkSkeleton() {
             <div class="skeleton-edge"></div>
         </div>
     `;
-
-  return skeleton;
+    return skeleton;
 }
-
 /**
  * Create skeleton for charts/graphs
  * @param height
  */
 export function createChartSkeleton(height = '300px') {
-  const skeleton = document.createElement('div');
-  skeleton.className = 'skeleton-chart';
-  skeleton.style.height = height;
-  skeleton.setAttribute('aria-hidden', 'true');
-
-  skeleton.innerHTML = `
+    const skeleton = document.createElement('div');
+    skeleton.className = 'skeleton-chart';
+    skeleton.style.height = height;
+    skeleton.setAttribute('aria-hidden', 'true');
+    skeleton.innerHTML = `
         <div class="skeleton-axes">
             <div class="skeleton-y-axis"></div>
             <div class="skeleton-x-axis"></div>
@@ -157,19 +136,16 @@ export function createChartSkeleton(height = '300px') {
             </div>
         </div>
     `;
-
-  return skeleton;
+    return skeleton;
 }
-
 /**
  * Create skeleton for card details section
  */
 export function createCardDetailsSkeleton() {
-  const skeleton = document.createElement('div');
-  skeleton.className = 'skeleton-card-details';
-  skeleton.setAttribute('aria-hidden', 'true');
-
-  skeleton.innerHTML = `
+    const skeleton = document.createElement('div');
+    skeleton.className = 'skeleton-card-details';
+    skeleton.setAttribute('aria-hidden', 'true');
+    skeleton.innerHTML = `
         <div class="skeleton-text title large"></div>
         <div class="skeleton-text sets"></div>
         <div class="skeleton-hero"></div>
@@ -182,19 +158,16 @@ export function createCardDetailsSkeleton() {
             </div>
         </div>
     `;
-
-  return skeleton;
+    return skeleton;
 }
-
 /**
  * Create skeleton for histogram/copies chart
  */
 export function createHistogramSkeleton() {
-  const skeleton = document.createElement('div');
-  skeleton.className = 'skeleton-histogram';
-  skeleton.setAttribute('aria-hidden', 'true');
-
-  skeleton.innerHTML = `
+    const skeleton = document.createElement('div');
+    skeleton.className = 'skeleton-histogram';
+    skeleton.setAttribute('aria-hidden', 'true');
+    skeleton.innerHTML = `
         <div class="skeleton-text summary small"></div>
         <div class="hist skeleton-hist">
             <div class="col skeleton-col">
@@ -215,19 +188,16 @@ export function createHistogramSkeleton() {
             </div>
         </div>
     `;
-
-  return skeleton;
+    return skeleton;
 }
-
 /**
  * Create skeleton for events table
  */
 export function createEventsTableSkeleton() {
-  const skeleton = document.createElement('div');
-  skeleton.className = 'skeleton-events-table';
-  skeleton.setAttribute('aria-hidden', 'true');
-
-  skeleton.innerHTML = `
+    const skeleton = document.createElement('div');
+    skeleton.className = 'skeleton-events-table';
+    skeleton.setAttribute('aria-hidden', 'true');
+    skeleton.innerHTML = `
         <table style="width: 80%; margin: 8px auto; border-collapse: collapse; background: var(--panel); border: 1px solid #242a4a; border-radius: 8px;">
             <thead>
                 <tr>
@@ -241,9 +211,8 @@ export function createEventsTableSkeleton() {
             </thead>
             <tbody>
                 ${Array(6)
-                  .fill(0)
-                  .map(
-                    () => `
+        .fill(0)
+        .map(() => `
                     <tr>
                         <td style="padding: 10px 12px;">
                             <div class="skeleton-text medium"></div>
@@ -252,118 +221,99 @@ export function createEventsTableSkeleton() {
                             <div class="skeleton-text small"></div>
                         </td>
                     </tr>
-                `
-                  )
-                  .join('')}
+                `)
+        .join('')}
             </tbody>
         </table>
     `;
-
-  return skeleton;
+    return skeleton;
 }
-
 /**
  * Show skeleton placeholder in target element
  * @param target
  * @param skeletonElement
  */
 export function showSkeleton(target, skeletonElement) {
-  if (!target || !skeletonElement) {
-    return;
-  }
-
-  // Store original content
-  if (!target._originalContent) {
-    // eslint-disable-next-line no-param-reassign
-    target._originalContent = target.innerHTML;
-  }
-
-  // eslint-disable-next-line no-param-reassign
-  target.innerHTML = '';
-  target.appendChild(skeletonElement);
-  target.classList.add('showing-skeleton');
+    if (!target || !skeletonElement) {
+        return;
+    }
+    // Store original content
+    if (!target._originalContent) {
+        target._originalContent = target.innerHTML;
+    }
+    target.innerHTML = '';
+    target.appendChild(skeletonElement);
+    target.classList.add('showing-skeleton');
 }
-
 /**
  * Hide skeleton and restore original content or show new content
  * @param target
  * @param newContent
  */
 export function hideSkeleton(target, newContent = null) {
-  if (!target) {
-    return;
-  }
-
-  target.classList.remove('showing-skeleton');
-
-  if (newContent !== null) {
-    // eslint-disable-next-line no-param-reassign
-    target.innerHTML = '';
-    if (typeof newContent === 'string') {
-      // eslint-disable-next-line no-param-reassign
-      target.innerHTML = newContent;
-    } else if (newContent instanceof Node) {
-      target.appendChild(newContent);
+    if (!target) {
+        return;
     }
-  } else if (target._originalContent) {
-    // eslint-disable-next-line no-param-reassign
-    target.innerHTML = target._originalContent;
-    // eslint-disable-next-line no-param-reassign
-    delete target._originalContent;
-  }
+    target.classList.remove('showing-skeleton');
+    if (newContent !== null) {
+        target.innerHTML = '';
+        if (typeof newContent === 'string') {
+            target.innerHTML = newContent;
+        }
+        else if (newContent instanceof Node) {
+            target.appendChild(newContent);
+        }
+    }
+    else if (target._originalContent) {
+        target.innerHTML = target._originalContent;
+        delete target._originalContent;
+    }
 }
-
 /**
  * Utility to show grid skeleton
  */
 export function showGridSkeleton() {
-  const grid = document.getElementById('grid');
-  if (!grid) {
-    return;
-  }
-
-  // Get the actual available width for the grid content
-  // This should match how the real render calculates container width
-  let containerWidth = grid.clientWidth || grid.getBoundingClientRect().width;
-
-  // If we can't get the width, use the main element or window width as fallback
-  if (!containerWidth || containerWidth === 0) {
-    const main = document.querySelector('main');
-    if (main) {
-      containerWidth = main.clientWidth;
-    } else {
-      // Account for typical padding on main (12px each side)
-      containerWidth = (window.innerWidth || 1200) - 24;
+    const grid = document.getElementById('grid');
+    if (!grid) {
+        return;
     }
-  }
-
-  // Create skeleton with computed layout
-  const gridSkeleton = createGridSkeleton(containerWidth, 6);
-  showSkeleton(grid, gridSkeleton);
+    // Get the actual available width for the grid content
+    // This should match how the real render calculates container width
+    let containerWidth = grid.clientWidth || grid.getBoundingClientRect().width;
+    // If we can't get the width, use the main element or window width as fallback
+    if (!containerWidth || containerWidth === 0) {
+        const main = document.querySelector('main');
+        if (main) {
+            containerWidth = main.clientWidth;
+        }
+        else {
+            // Account for typical padding on main (12px each side)
+            containerWidth = (window.innerWidth || 1200) - 24;
+        }
+    }
+    // Create skeleton with computed layout
+    const gridSkeleton = createGridSkeleton(containerWidth, 6);
+    showSkeleton(grid, gridSkeleton);
 }
-
 /**
  * Utility to hide grid skeleton
  * @param newContent
  */
 export function hideGridSkeleton(newContent = null) {
-  const grid = document.getElementById('grid');
-  if (!grid) {
-    return;
-  }
-
-  hideSkeleton(grid, newContent);
+    const grid = document.getElementById('grid');
+    if (!grid) {
+        return;
+    }
+    hideSkeleton(grid, newContent);
 }
-
 /**
  * Update skeleton layout when window resizes (if skeleton is currently shown)
  */
 export function updateSkeletonLayout() {
-  const grid = document.getElementById('grid');
-  if (!grid || !grid.classList.contains('showing-skeleton')) {
-    return;
-  }
-
-  // Re-create skeleton with new dimensions
-  showGridSkeleton();
+    const grid = document.getElementById('grid');
+    if (!grid || !grid.classList.contains('showing-skeleton')) {
+        return;
+    }
+    // Re-create skeleton with new dimensions
+    showGridSkeleton();
 }

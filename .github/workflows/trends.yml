@@ -1,6 +1,10 @@
 name: Trends Report
 
 on:
+  workflow_run:
+    workflows: ["Online Meta Report"]
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       reports_prefix:
@@ -26,6 +30,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Wait 5 minutes (allows online-meta data to settle)
+        if: github.event_name == 'workflow_run'
+        run: sleep 300
 
       - name: Generate trends report
         run: node .github/scripts/run-trends.mjs
