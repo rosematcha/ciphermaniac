@@ -1,4 +1,3 @@
-// @ts-nocheck
 /* eslint-disable id-length, no-param-reassign, no-unused-vars */
 import './utils/buildVersion.js';
 import { fetchArchetypeReport, fetchReport } from './api.js';
@@ -20,7 +19,7 @@ const elements = {
     simple: /** @type {HTMLElement|null} */ (document.querySelector('.archetype-simple')),
     grid: /** @type {HTMLElement|null} */ (document.getElementById('grid')),
     title: document.getElementById('archetype-title'),
-    granularityRange: /** @type {HTMLInputElement|null} */ (document.getElementById('archetype-granularity-range')),
+    granularityRange: document.getElementById('archetype-granularity-range'),
     granularityOutput: /** @type {HTMLOutputElement|null} */ (document.getElementById('archetype-granularity-output')),
     successFilter: /** @type {HTMLSelectElement|null} */ (document.getElementById('archetype-success-filter')),
     filterRowsContainer: /** @type {HTMLElement|null} */ (document.getElementById('archetype-filter-rows')),
@@ -763,9 +762,7 @@ function createFilterRow() {
     removeButton.type = 'button';
     removeButton.className = 'remove-filter-btn';
     removeButton.title = 'Remove this filter';
-    removeButton.textContent = '×';
-    removeButton.textContent = '×';
-    // removeButton.hidden = state.filterRows.length === 0; // Always show remove button
+    removeButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
     filterRow.appendChild(cardSelect);
     filterRow.appendChild(operatorSelect);
     filterRow.appendChild(countInput);
@@ -1151,7 +1148,7 @@ function buildTcgliveExportString(entries) {
     }
     return lines.join('\n');
 }
-function updateSkeletonExportStatus(message, tone) {
+function updateSkeletonExportStatus(message, tone = 'info') {
     if (!elements.skeletonExportStatus) {
         return;
     }
@@ -1713,7 +1710,8 @@ function setupSuccessFilter() {
     }
     select.value = state.successFilter;
     select.addEventListener('change', async (event) => {
-        const next = String(event.target?.value || 'all');
+        const target = event.target;
+        const next = String(target?.value || 'all');
         if (next === state.successFilter) {
             return;
         }
@@ -1784,11 +1782,13 @@ async function initialize() {
         if (elements.error) {
             elements.error.hidden = true;
         }
-        if (elements.simple) {
-            elements.simple.hidden = false;
+        const simple = elements.simple;
+        const grid = elements.grid;
+        if (simple) {
+            simple.hidden = false;
         }
-        if (elements.grid) {
-            elements.grid.hidden = false;
+        if (grid) {
+            grid.hidden = false;
         }
         setPageState('ready');
     }
@@ -1834,8 +1834,10 @@ function setupControlsToggle() {
         body.hidden = isExpanded;
     });
 }
-setupGranularityListeners();
-setupSkeletonExport();
-setupFilterCollapse();
-setupControlsToggle();
-initialize();
+if (typeof document !== 'undefined') {
+    setupGranularityListeners();
+    setupSkeletonExport();
+    setupFilterCollapse();
+    setupControlsToggle();
+    initialize();
+}

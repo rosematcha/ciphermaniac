@@ -415,6 +415,10 @@ function renderSeriesCard(series) {
   avg.className = 'trend-card__stat';
   avg.textContent = `Avg share ${formatPercent(series.avgShare)}`;
 
+  const peak = document.createElement('div');
+  peak.className = 'trend-card__stat';
+  peak.textContent = `Peak share ${formatPercent(series.peakShare || series.maxShare)}`;
+
   const delta = document.createElement('div');
   delta.className = 'trend-card__stat';
   const firstShare = series.timeline[0]?.share || 0;
@@ -425,6 +429,7 @@ function renderSeriesCard(series) {
 
   stats.appendChild(appearances);
   stats.appendChild(avg);
+  stats.appendChild(peak);
   stats.appendChild(delta);
 
   const chart = document.createElement('div');

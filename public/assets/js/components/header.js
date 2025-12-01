@@ -13,17 +13,19 @@ export function createHeader(options = {}) {
     header.innerHTML = `
     <div class="header-inner">
       <a class="logo" href="/" aria-label="Ciphermaniac home">
-        <div class="site-title">ciphermaniac</div>
+        <img src="/assets/images/logo.svg" alt="" class="site-logo" />
+        <div class="site-title">Ciphermaniac</div>
       </a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mainNav">
         <span class="nav-toggle__icon" aria-hidden="true"></span>
         <span class="nav-toggle__text">Menu</span>
       </button>
     <nav class="main-nav" aria-label="Main navigation">
-  <a class="nav-link${currentPage === 'trends' ? ' active' : ''}" href="/trends">View Trends</a>
-  <a class="nav-link${currentPage === 'analysis' || currentPage === 'archetypes' ? ' active' : ''}" href="/archetypes">Archetypes</a>
-  <a class="nav-link${currentPage === 'feedback' ? ' active' : ''}" href="/feedback.html">Feedback</a>
-      </nav>
+      <a class="nav-link${currentPage === 'cards' ? ' active' : ''}" href="/cards">Cards</a>
+      <a class="nav-link${currentPage === 'trends' ? ' active' : ''}" href="/trends">Trends</a>
+      <a class="nav-link${currentPage === 'analysis' || currentPage === 'archetypes' ? ' active' : ''}" href="/archetypes">Archetypes</a>
+      <a class="nav-link${currentPage === 'feedback' ? ' active' : ''}" href="/feedback.html">Feedback</a>
+    </nav>
     </div>
   `;
     const nav = header.querySelector('.main-nav');

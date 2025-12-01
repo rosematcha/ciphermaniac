@@ -1,7 +1,12 @@
-// @ts-nocheck
 import { fetchReportResource, fetchTournamentsList } from './api.js';
 import { buildThumbCandidates } from './thumbs.js';
 class SocialGraphicsGenerator {
+    tournaments;
+    currentTournamentData;
+    previousTournamentData;
+    comparisonTournamentData;
+    consistentLeaders;
+    imageBlobCache;
     constructor() {
         this.tournaments = [];
         this.currentTournamentData = null;
@@ -22,7 +27,6 @@ class SocialGraphicsGenerator {
             return '';
         }
         /** @type {HTMLInputElement|HTMLSelectElement} */
-        // @ts-ignore - JSDoc cast for JS file
         const typed = el;
         return typed.value ?? '';
     }
@@ -488,7 +492,7 @@ class SocialGraphicsGenerator {
         return new Promise(resolve => {
             // Prevent recursive cropping by checking if already processed
             if (img.dataset.cropped === 'true') {
-                resolve();
+                resolve(undefined);
                 return;
             }
             const originalOnload = () => {
@@ -557,14 +561,14 @@ class SocialGraphicsGenerator {
                 catch (error) {
                     console.warn(`Failed to crop image for ${card.name}:`, error);
                 }
-                resolve();
+                resolve(undefined);
             };
             // eslint-disable-next-line no-param-reassign
             img.onload = originalOnload;
             // eslint-disable-next-line no-param-reassign
             img.onerror = () => {
                 console.warn(`Failed to load image for ${card.name}`);
-                resolve();
+                resolve(undefined);
             };
             if (img.complete && img.naturalWidth > 0) {
                 originalOnload();
@@ -695,6 +699,10 @@ class SocialGraphicsGenerator {
             return;
         }
         const output = document.getElementById('graphics-output');
+        if (!output) {
+            this.showError('Could not find output container.');
+            return;
+        }
         try {
             const canvas = await html2canvas(output, {
                 backgroundColor: '#ffffff',
@@ -722,26 +730,33 @@ class SocialGraphicsGenerator {
             this.cleanupImageBlobs();
         }
     }
+    cleanupImageBlobs() {
+        if (!this.imageBlobCache || this.imageBlobCache.size === 0) {
+            return;
+        }
+        this.imageBlobCache.forEach(objectUrl => {
+            try {
+                URL.revokeObjectURL(objectUrl);
+            }
+            catch (error) {
+                console.warn('Failed to revoke object URL:', error);
+            }
+        });
+        this.imageBlobCache.clear();
+    }
 }
-document.addEventListener('DOMContentLoaded', () => {
-    // eslint-disable-next-line no-new
-    new SocialGraphicsGenerator();
-});
 const html2canvas = (() => {
     return function (element, options) {
         return new Promise((resolve, reject) => {
-            /** @type {any} */
-            // @ts-ignore - accessing global from CDN
             const globalWindow = window;
             if (typeof globalWindow.html2canvas !== 'undefined') {
-                globalWindow.html2canvas(element, options).then(resolve).catch(reject);
+                globalWindow.html2canvas(element, options).then((canvas) => resolve(canvas)).catch(reject);
             }
             else {
                 const script = document.createElement('script');
                 script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
                 script.onload = () => {
-                    // @ts-ignore
-                    globalWindow.html2canvas(element, options).then(resolve).catch(reject);
+                    globalWindow.html2canvas(element, options).then((canvas) => resolve(canvas)).catch(reject);
                 };
                 script.onerror = reject;
                 document.head.appendChild(script);
@@ -749,17 +764,6 @@ const html2canvas = (() => {
         });
     };
 })();
-SocialGraphicsGenerator.prototype.cleanupImageBlobs = function cleanupImageBlobs() {
-    if (!this.imageBlobCache || this.imageBlobCache.size === 0) {
-        return;
-    }
-    this.imageBlobCache.forEach(objectUrl => {
-        try {
-            URL.revokeObjectURL(objectUrl);
-        }
-        catch (error) {
-            console.warn('Failed to revoke object URL:', error);
-        }
-    });
-    this.imageBlobCache.clear();
-};
+if (typeof document !== 'undefined') {
+    new SocialGraphicsGenerator();
+}

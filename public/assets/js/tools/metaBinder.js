@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { fetchDecks, fetchTournamentsList, getCardPrice } from '../api.js';
 import { analyzeEvents, buildBinderDataset } from './metaBinderData.js';
 import { buildThumbCandidates } from '../thumbs.js';
@@ -34,7 +33,7 @@ const elements = {
     archetypesList: document.getElementById('binder-archetypes'),
     archetypesAll: document.getElementById('binder-archetypes-all'),
     archetypesClear: document.getElementById('binder-archetypes-clear'),
-    archetypeSearch: /** @type {HTMLInputElement|null} */ (document.getElementById('binder-archetype-search')),
+    archetypeSearch: document.getElementById('binder-archetype-search'),
     stats: document.getElementById('binder-stats'),
     loading: document.getElementById('binder-loading'),
     error: document.getElementById('binder-error'),
@@ -43,11 +42,11 @@ const elements = {
     app: document.querySelector('.binder-app'),
     generate: document.getElementById('binder-generate'),
     pendingMessage: document.getElementById('binder-pending'),
-    cardTemplate: /** @type {HTMLTemplateElement|null} */ (document.getElementById('binder-card-template')),
-    placeholderTemplate: /** @type {HTMLTemplateElement|null} */ (document.getElementById('binder-card-placeholder')),
+    cardTemplate: document.getElementById('binder-card-template'),
+    placeholderTemplate: document.getElementById('binder-card-placeholder'),
     exportButton: document.getElementById('binder-export'),
     importButton: document.getElementById('binder-import'),
-    importFile: /** @type {HTMLInputElement|null} */ (document.getElementById('binder-import-file'))
+    importFile: document.getElementById('binder-import-file')
 };
 function setLoading(isLoading) {
     state.isLoading = isLoading;
@@ -188,11 +187,15 @@ function inflateCards(cards) {
 }
 function createCardElement(card, options = {}) {
     const template = ensureCardTemplate();
-    const clone = /** @type {HTMLElement} */ (template.content.firstElementChild.cloneNode(true));
-    const img = /** @type {HTMLImageElement|null} */ (clone.querySelector('img'));
-    const copies = /** @type {HTMLElement|null} */ (clone.querySelector('.binder-card__copies'));
-    const nameEl = /** @type {HTMLElement|null} */ (clone.querySelector('.binder-card__name'));
-    const metaEl = /** @type {HTMLElement|null} */ (clone.querySelector('.binder-card__meta'));
+    const root = template.content.firstElementChild;
+    if (!root) {
+        throw new Error('Card template missing content');
+    }
+    const clone = root.cloneNode(true);
+    const img = clone.querySelector('img');
+    const copies = clone.querySelector('.binder-card__copies');
+    const nameEl = clone.querySelector('.binder-card__name');
+    const metaEl = clone.querySelector('.binder-card__meta');
     if (copies) {
         const totalCopies = Math.max(1, Number(card.copyTotal) || Number(card.maxCopies) || 1);
         const copyIndex = Math.max(1, Number(card.copyIndex) || 1);
@@ -790,7 +793,7 @@ async function recomputeFromSelection() {
             decks: state.decksCache.get(tournament) || []
         }));
         const analysis = analyzeEvents(events);
-        const availableArchetypes = new Set(analysis.archetypeStats.keys());
+        const availableArchetypes = new Set(Array.from(analysis.archetypeStats.keys()));
         let nextSelectedArchetypes;
         if (pendingArchetypeSelection) {
             nextSelectedArchetypes = new Set(Array.from(pendingArchetypeSelection).filter(archetype => availableArchetypes.has(archetype)));
@@ -1042,4 +1045,6 @@ async function initialize() {
         showError('Something went wrong while loading the meta binder.');
     }
 }
-initialize();
+if (typeof document !== 'undefined') {
+    initialize();
+}

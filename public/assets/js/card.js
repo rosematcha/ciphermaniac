@@ -1,6 +1,6 @@
 // Entry for per-card page: loads meta-share over tournaments and common decks
 import './utils/buildVersion.js';
-import { fetchArchetypeReport, fetchArchetypesList, fetchCardIndex, fetchReport, fetchTop8ArchetypesList, fetchTournamentsList } from './api.js';
+import { ONLINE_META_NAME, fetchArchetypeReport, fetchArchetypesList, fetchCardIndex, fetchReport, fetchTop8ArchetypesList, fetchTournamentsList, fetchTrendReport } from './api.js';
 import { parseReport } from './parse.js';
 import { buildThumbCandidates } from './thumbs.js';
 import { baseToLabel, pickArchetype } from './selectArchetype.js';
@@ -9,7 +9,7 @@ import { createChartSkeleton, createEventsTableSkeleton, createHistogramSkeleton
 import { cleanupOrphanedProgressDisplay, createProgressIndicator, processInParallel } from './utils/parallelLoader.js';
 import { logger, setupGlobalErrorHandler } from './utils/errorHandler.js';
 // Import card-specific modules
-import { getBaseName, getCanonicalId, getDisplayName, parseDisplayName } from './card/identifiers.js';
+import { getBaseName, getDisplayName, parseDisplayName } from './card/identifiers.js';
 import { findCard, renderCardPrice, renderCardSets } from './card/data.js';
 import { renderChart, renderCopiesHistogram, renderEvents } from './card/charts.js';
 import { getCanonicalCard, getCardVariants, getVariantImageCandidates } from './utils/cardSynonyms.js';
@@ -220,421 +220,20 @@ async function initializeCardPage() {
 }
 initializeCardPage().catch(error => logger.error('Failed to initialize card page', error));
 // No tabs: all content on one page
+import { initCardSearch as initSearchComponent } from './components/cardSearch.js';
 // Global variables for search functionality
-let currentMatches = [];
-let selectedIndex = -1;
-// Helper functions for card search
-function getCachedNames() {
-    const SKEY = 'cardNamesUnionV5';
-    try {
-        return JSON.parse(localStorage.getItem(SKEY) || '{"names":[]}');
-    }
-    catch (error) {
-        return { names: [] };
-    }
-}
-function saveCachedNames(names) {
-    const SKEY = 'cardNamesUnionV5';
-    try {
-        localStorage.setItem(SKEY, JSON.stringify({ names }));
-    }
-    catch (error) {
-        // Ignore storage errors
-    }
-}
-function createCardOption(item) {
-    const opt = document.createElement('option');
-    opt.value = item.display;
-    opt.setAttribute('data-uid', item.uid);
-    return opt;
-}
-function updateCardDatalist(byExactName, cardNamesList) {
-    const allCards = Array.from(byExactName.values()).sort((cardA, cardB) => cardA.display.localeCompare(cardB.display));
-    // Clear existing options without parameter reassignment
-    const listElement = cardNamesList;
-    while (listElement.firstChild) {
-        listElement.removeChild(listElement.firstChild);
-    }
-    allCards.forEach(item => {
-        listElement.appendChild(createCardOption(item));
-    });
-    // Update cache
-    const namesToCache = allCards.map(cardItem => cardItem.display);
-    saveCachedNames(namesToCache);
-}
-function enrichSuggestions(tournaments, byExactName, updateDatalist, processedTournaments) {
-    // Process tournaments in parallel with limited concurrency for better performance
-    const MAX_PARALLEL = 3; // Process max 3 tournaments simultaneously
-    const tournamentsToProcess = tournaments.filter(tournament => !processedTournaments.has(tournament));
-    if (tournamentsToProcess.length === 0) {
-        return;
-    }
-    // Don't await anything - run everything in background to avoid blocking
-    // Process first tournament immediately for quickest feedback
-    const [firstTournament, ...rest] = tournamentsToProcess;
-    processTournament(firstTournament, byExactName, processedTournaments)
-        .then(added => {
-        if (added) {
-            updateDatalist();
-        }
-    })
-        .catch(() => {
-        // Silently continue
-    });
-    // Process remaining tournaments in parallel batches (background)
-    if (rest.length > 0) {
-        processTournamentBatch(rest, byExactName, updateDatalist, MAX_PARALLEL, processedTournaments);
-    }
-}
-async function processTournamentBatch(tournaments, byExactName, updateDatalist, maxParallel, processedTournaments) {
-    // Process tournaments in parallel batches
-    for (let i = 0; i < tournaments.length; i += maxParallel) {
-        const batch = tournaments.slice(i, i + maxParallel);
-        // Process batch in parallel
-        const promises = batch.map(tournament => processTournament(tournament, byExactName, processedTournaments));
-        const results = await Promise.allSettled(promises);
-        // Check if any new cards were added
-        const hasNewCards = results.some(result => result.status === 'fulfilled' && result.value);
-        if (hasNewCards) {
-            updateDatalist();
-        }
-    }
-}
-async function processTournament(tournament, byExactName, processedTournaments) {
-    if (processedTournaments.has(tournament)) {
-        return false;
-    }
-    try {
-        const master = await fetchReport(tournament);
-        const parsed = parseReport(master);
-        let added = false;
-        for (const item of parsed.items) {
-            const canonicalId = getCanonicalId(item);
-            // Create consistent display name: "Card Name SET NUMBER" when available, otherwise just name
-            let displayName;
-            if (item.set && item.number) {
-                displayName = `${item.name} ${item.set} ${item.number}`;
-            }
-            else {
-                displayName = item.name;
-            }
-            // Store all cards: Pokemon with full identifiers, Trainers/Energies with base names
-            if (displayName && !byExactName.has(displayName)) {
-                byExactName.set(displayName, {
-                    display: displayName,
-                    uid: canonicalId || displayName
-                });
-                added = true;
-            }
-        }
-        processedTournaments.add(tournament);
-        return added;
-    }
-    catch (error) {
-        // Skip missing tournaments
-        return false;
-    }
-}
+// (Removed as they are now handled in the component)
 // Initialize search suggestions regardless of whether a card is selected
 function initCardSearch() {
-    try {
-        // Get DOM elements when function is called to ensure DOM is ready
-        cardSearchInput = document.getElementById('card-search');
-        cardNamesList = document.getElementById('card-names');
-        suggestionsBox = document.getElementById('card-suggestions');
-        if (!(cardSearchInput && cardNamesList)) {
-            return;
-        }
-        // Use fallback immediately to avoid blocking, fetch in background
-        let tournaments = ['2025-08-15, World Championships 2025'];
-        const processedTournaments = new Set();
-        const byExactName = new Map(); // exact display name -> {display, uid}
-        const updateDatalist = () => {
-            if (cardNamesList) {
-                updateCardDatalist(byExactName, cardNamesList);
-            }
-        };
-        // Fetch tournaments list in background and update later
-        fetchTournamentsList()
-            .then(fetchedTournaments => {
-            if (Array.isArray(fetchedTournaments) && fetchedTournaments.length > 0) {
-                tournaments = fetchedTournaments;
-                enrichSuggestions(tournaments, byExactName, updateDatalist, processedTournaments);
-            }
-        })
-            .catch(() => {
-            // Silently continue with fallback
-        });
-        // Union cache across tournaments for robust suggestions
-        const cached = getCachedNames();
-        // Seed from cache for instant suggestions
-        if (Array.isArray(cached.names) && cached.names.length > 0) {
-            cached.names.forEach(cardNameFromCache => {
-                if (cardNameFromCache) {
-                    byExactName.set(cardNameFromCache, {
-                        display: cardNameFromCache,
-                        uid: cardNameFromCache
-                    });
-                }
-            });
-        }
-        else {
-            // Fallback: Add common cards for immediate suggestions when no cache exists
-            const commonCards = [
-                "Boss's Orders PAL 172",
-                'Ultra Ball SVI 196',
-                "Professor's Research JTG 155",
-                'Iono PAL 185',
-                'Rare Candy SVI 191',
-                'Night Stretcher SFA 061',
-                'Nest Ball SVI 181',
-                'Counter Catcher PAR 160'
-            ];
-            commonCards.forEach(cardName => {
-                byExactName.set(cardName, { display: cardName, uid: cardName });
-            });
-        }
-        updateDatalist();
-        // Incrementally enrich suggestions by scanning tournaments sequentially
-        enrichSuggestions(tournaments, byExactName, updateDatalist, processedTournaments);
-        setupSearchHandlers();
-        syncSearchInputValue();
-    }
-    catch (error) {
-        // Ignore initialization errors
-    }
-}
-// Search helper functions
-function getAllNames() {
-    return Array.from(cardNamesList?.options || []).map(option => String(option.value || ''));
-}
-function getUidForName(displayName) {
-    const option = Array.from(cardNamesList?.options || []).find(opt => opt.value === displayName);
-    return option?.getAttribute('data-uid') || displayName;
-}
-function computeMatches(query) {
-    const searchQuery = query.trim().toLowerCase();
-    if (!searchQuery) {
-        return getAllNames().slice(0, 8);
-    }
-    const allNames = getAllNames();
-    const startMatches = [];
-    const containsMatches = [];
-    for (const cardNameInList of allNames) {
-        const lowerName = cardNameInList.toLowerCase();
-        if (lowerName.startsWith(searchQuery)) {
-            startMatches.push(cardNameInList);
-        }
-        else if (lowerName.includes(searchQuery)) {
-            containsMatches.push(cardNameInList);
-        }
-        if (startMatches.length + containsMatches.length >= 8) {
-            break;
-        }
-    }
-    return [...startMatches, ...containsMatches].slice(0, 8);
-}
-function setupSearchHandlers() {
-    function renderSuggestions() {
-        if (!(suggestionsBox && cardSearchInput)) {
-            return;
-        }
-        const matches = computeMatches(cardSearchInput.value);
-        // Wire keyboard state
-        currentMatches = matches;
-        // Reset selection when suggestions refresh
-        selectedIndex = -1;
-        suggestionsBox.innerHTML = '';
-        if (matches.length === 0 || document.activeElement !== cardSearchInput) {
-            suggestionsBox.classList.remove('is-open');
-            return;
-        }
-        matches.forEach((match, matchIndex) => {
-            const item = createSuggestionItem(match, matchIndex, matches);
-            suggestionsBox.appendChild(item);
-        });
-        suggestionsBox.classList.add('is-open');
-    }
-    function createSuggestionItem(match, matchIndex, matches) {
-        const item = document.createElement('div');
-        item.className = 'item';
-        item.setAttribute('role', 'option');
-        if (matchIndex === selectedIndex) {
-            item.setAttribute('aria-selected', 'true');
-        }
-        const left = document.createElement('span');
-        left.className = 'suggestion-name';
-        const { name, setId } = parseDisplayName(match);
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = name;
-        left.appendChild(nameSpan);
-        if (setId) {
-            const setSpan = document.createElement('span');
-            setSpan.className = 'suggestion-set';
-            setSpan.textContent = setId;
-            left.appendChild(setSpan);
-        }
-        item.appendChild(left);
-        const right = document.createElement('span');
-        // Show Tab badge on the first item by default (or on selectedIndex when set)
-        const tabTarget = selectedIndex >= 0 ? selectedIndex : 0;
-        if (matchIndex === tabTarget) {
-            right.className = 'tab-indicator';
-            right.textContent = 'Tab';
-        }
-        item.appendChild(right);
-        // Event handlers
-        item.addEventListener('mousedown', handleMouseDown);
-        item.addEventListener('click', handleClick);
-        item.addEventListener('dblclick', handleDoubleClick);
-        // Store index for event handlers
-        item.dataset.index = String(matchIndex);
-        return item;
-        function handleMouseDown(event) {
-            event.preventDefault();
-            if (cardSearchInput) {
-                cardSearchInput.value = matches[matchIndex];
-                selectedIndex = matchIndex;
-                updateSelection(matchIndex);
-                cardSearchInput.focus();
-            }
-        }
-        function handleClick(event) {
-            event.preventDefault();
-            selectedIndex = matchIndex;
-            goTo(matches[matchIndex]);
-        }
-        function handleDoubleClick(event) {
-            event.preventDefault();
-            selectedIndex = matchIndex;
-            goTo(matches[matchIndex]);
-        }
-    }
-    if (cardSearchInput) {
-        cardSearchInput.addEventListener('focus', renderSuggestions);
-        cardSearchInput.addEventListener('input', renderSuggestions);
-        cardSearchInput.addEventListener('keydown', handleKeyDown);
-        cardSearchInput.addEventListener('change', handleInputChange);
-    }
-    document.addEventListener('click', handleDocumentClick);
-    function handleDocumentClick(event) {
-        if (!suggestionsBox) {
-            return;
-        }
-        if (!suggestionsBox.contains(event.target) && event.target !== cardSearchInput) {
-            suggestionsBox.classList.remove('is-open');
-        }
-    }
-    function goTo(identifier) {
-        if (!identifier) {
-            return;
-        }
-        // Try to get the UID for this display name
-        const targetId = getUidForName(identifier) || identifier;
-        location.assign(buildCardPath(targetId));
-    }
-    function updateSelection(idx) {
-        if (!suggestionsBox) {
-            return;
-        }
-        const items = Array.from(suggestionsBox.children);
-        items.forEach((item, itemIndex) => {
-            if (itemIndex === idx) {
-                item.setAttribute('aria-selected', 'true');
-            }
-            else {
-                item.removeAttribute('aria-selected');
-            }
-            // Move tab-indicator to the selected item (update right span)
-            const right = item.children && item.children[1];
-            if (right) {
-                if (itemIndex === idx) {
-                    right.className = 'tab-indicator';
-                    right.textContent = 'Tab';
-                }
-                else {
-                    right.className = '';
-                    right.textContent = '';
-                }
-            }
-        });
-        selectedIndex = idx >= 0 && idx < currentMatches.length ? idx : -1;
-        if (selectedIndex >= 0 && cardSearchInput) {
-            // Preview selection into the input so user sees the chosen suggestion
-            cardSearchInput.value = currentMatches[selectedIndex];
-        }
-    }
-    function handleKeyDown(event) {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            // If user navigated suggestions, pick highlighted; otherwise use input value
-            const pick = selectedIndex >= 0 && currentMatches[selectedIndex]
-                ? currentMatches[selectedIndex]
-                : cardSearchInput?.value.trim();
-            if (pick) {
-                goTo(pick);
-            }
-            return;
-        }
-        if (event.key === 'Tab') {
-            if (!currentMatches || currentMatches.length === 0) {
-                return;
-            }
-            event.preventDefault();
-            // Tab completes the current highlight (or top/last when none)
-            if (selectedIndex >= 0) {
-                handleTabCompletion(currentMatches[selectedIndex]);
-            }
-            else {
-                // No selection yet: choose top (or last if shift)
-                const idx = event.shiftKey ? currentMatches.length - 1 : 0;
-                updateSelection(idx);
-                handleTabCompletion(currentMatches[idx]);
-            }
-            return;
-        }
-        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            event.preventDefault();
-            if (!currentMatches || currentMatches.length === 0) {
-                return;
-            }
-            if (event.key === 'ArrowDown') {
-                const next = selectedIndex < currentMatches.length - 1 ? selectedIndex + 1 : 0;
-                updateSelection(next);
-            }
-            else {
-                const prev = selectedIndex > 0 ? selectedIndex - 1 : currentMatches.length - 1;
-                updateSelection(prev);
-            }
-            return;
-        }
-        if (event.key === 'Escape') {
-            if (suggestionsBox) {
-                suggestionsBox.classList.remove('is-open');
-            }
-            selectedIndex = -1;
-            currentMatches = [];
-        }
-    }
-    function handleTabCompletion(pick) {
-        if (pick && cardSearchInput && pick !== cardSearchInput.value) {
-            cardSearchInput.value = pick;
-            try {
-                const end = pick.length;
-                cardSearchInput.setSelectionRange(end, end);
-            }
-            catch (error) {
-                // Ignore selection range errors
-            }
-            renderSuggestions();
-        }
-    }
-    function handleInputChange() {
-        const inputValue = cardSearchInput?.value.trim();
-        if (inputValue) {
-            goTo(inputValue);
-        }
-    }
+    // Initialize the reusable component
+    initSearchComponent({
+        searchInputId: 'card-search',
+        datalistId: 'card-names',
+        suggestionsId: 'card-suggestions'
+    });
+    // Local reference for syncSearchInputValue
+    cardSearchInput = document.getElementById('card-search');
+    syncSearchInputValue();
 }
 // Ensure DOM is ready before initializing search
 if (document.readyState === 'loading') {
@@ -642,6 +241,58 @@ if (document.readyState === 'loading') {
 }
 else {
     initCardSearch();
+}
+function buildIdentifierLookup(cardIdentifier) {
+    const searchKeys = new Set();
+    const addIdentifier = (value) => {
+        if (value) {
+            searchKeys.add(String(value).trim().toLowerCase());
+        }
+    };
+    addIdentifier(cardIdentifier);
+    addIdentifier(cardIdentifier?.toLowerCase());
+    const baseName = getBaseName(cardIdentifier);
+    if (baseName) {
+        addIdentifier(baseName);
+    }
+    // Add a space-delimited version of UID (e.g., "DRI:175" -> "DRI 175")
+    if (cardIdentifier && cardIdentifier.includes(':')) {
+        addIdentifier(cardIdentifier.replace(':', ' '));
+    }
+    // Add colon-delimited version if we were passed a space-delimited UID
+    if (cardIdentifier && cardIdentifier.includes(' ')) {
+        const parts = cardIdentifier.split(/\s+/);
+        if (parts.length === 2 && parts[0].length >= 2 && /^\d/.test(parts[1]) === false) {
+            addIdentifier(`${parts[0]}:${parts[1]}`);
+        }
+    }
+    // Handle slug separators like "~" (from /card/SET~###)
+    if (cardIdentifier && cardIdentifier.includes('~')) {
+        const tildeColon = cardIdentifier.replace(/~/g, ':');
+        addIdentifier(tildeColon);
+        addIdentifier(tildeColon.replace(':', ' '));
+    }
+    const slugVariant = cardIdentifier?.replace(/[-_]/g, ' ');
+    addIdentifier(slugVariant);
+    return { searchKeys, baseName };
+}
+function extractSetAndNumber(identifier) {
+    if (!identifier) {
+        return { set: null, number: null };
+    }
+    // UID form Name::SET::NUMBER
+    if (identifier.includes('::')) {
+        const parts = identifier.split('::');
+        if (parts.length >= 3 && parts[1] && parts[2]) {
+            return { set: parts[1], number: parts[2] };
+        }
+    }
+    const setNumberPattern = /^([A-Z]{2,})[:~\s]+(\d+[A-Za-z]?)$/;
+    const match = identifier.toUpperCase().match(setNumberPattern);
+    if (match) {
+        return { set: match[1], number: match[2] };
+    }
+    return { set: null, number: null };
 }
 /**
  * Check if a card exists in the Ciphermaniac database
@@ -668,34 +319,15 @@ async function checkCardExistsInDatabase(cardIdentifier) {
                 error: canonicalError?.message || canonicalError
             });
         }
-        const searchKeys = new Set();
-        const lowerIdentifier = cardIdentifier.toLowerCase();
-        const canonicalLower = canonicalIdentifier ? canonicalIdentifier.toLowerCase() : null;
-        const baseName = getBaseName(cardIdentifier)?.toLowerCase();
-        const addIdentifier = (value) => {
-            if (value) {
-                searchKeys.add(String(value).toLowerCase());
-            }
-        };
-        addIdentifier(cardIdentifier);
+        const { searchKeys } = buildIdentifierLookup(cardIdentifier);
         if (canonicalIdentifier && canonicalIdentifier !== cardIdentifier) {
-            addIdentifier(canonicalIdentifier);
+            searchKeys.add(canonicalIdentifier.toLowerCase());
         }
-        addIdentifier(lowerIdentifier);
-        if (canonicalLower) {
-            addIdentifier(canonicalLower);
-        }
-        if (baseName) {
-            addIdentifier(baseName);
-        }
-        // Add variant fallbacks (e.g., PAL, SVI) so that if the preferred canonical (MEG/MEE)
-        // isn't present in tournament indices, we can fall back to older reprints.
         try {
             const variants = await getCardVariants(cardIdentifier);
             if (Array.isArray(variants) && variants.length > 0) {
-                // Ensure canonical is first, then add older variants
                 for (const variantIdentifier of variants) {
-                    addIdentifier(variantIdentifier);
+                    searchKeys.add(variantIdentifier.trim().toLowerCase());
                 }
             }
         }
@@ -739,128 +371,700 @@ async function checkCardExistsInDatabase(cardIdentifier) {
     }
 }
 /**
+ * Suggested cards to surface when a requested card is missing
+ */
+const MISSING_CARD_TRENDS_SOURCE = 'Trends - Last 30 Days';
+async function resolveMissingCardDisplayName(cardIdentifier) {
+    const initial = getDisplayName(cardIdentifier);
+    if (initial && initial !== cardIdentifier) {
+        return initial;
+    }
+    const { searchKeys } = buildIdentifierLookup(cardIdentifier);
+    const { set: idSet, number: idNumber } = extractSetAndNumber(cardIdentifier);
+    if (idSet && idNumber) {
+        searchKeys.add(`${idSet}::${idNumber}`.toLowerCase());
+        searchKeys.add(`${idSet} ${idNumber}`.toLowerCase());
+    }
+    const matchFromIndex = (cards, keys) => {
+        if (!cards || typeof cards !== 'object') {
+            return null;
+        }
+        for (const [name, details] of Object.entries(cards)) {
+            const normalized = name.toLowerCase();
+            if (keys.has(normalized)) {
+                return name;
+            }
+            const uid = details?.uid;
+            if (typeof uid === 'string') {
+                const display = getDisplayName(uid);
+                if (display && keys.has(display.toLowerCase())) {
+                    return name;
+                }
+            }
+        }
+        return null;
+    };
+    const matchFromReportItems = (items, keys) => {
+        if (!Array.isArray(items) || items.length === 0) {
+            return null;
+        }
+        for (const item of items) {
+            const name = item?.name;
+            if (typeof name === 'string' && keys.has(name.toLowerCase())) {
+                const uidDisplay = item?.uid ? getDisplayName(item.uid) : null;
+                if (uidDisplay) {
+                    return `${name} ${uidDisplay}`;
+                }
+                if (item?.set && item?.number) {
+                    return `${name} ${item.set} ${item.number}`;
+                }
+                return name;
+            }
+            if (item?.set && item?.number) {
+                const key = `${item.set}::${item.number}`.toLowerCase();
+                if (keys.has(key)) {
+                    return `${item.name || ''} ${item.set} ${item.number}`.trim();
+                }
+            }
+            const uid = item?.uid;
+            if (typeof uid === 'string') {
+                const display = getDisplayName(uid);
+                if (display && keys.has(display.toLowerCase())) {
+                    return `${name || ''} ${display}`.trim();
+                }
+            }
+        }
+        return null;
+    };
+    // 1) Prefer online meta index first
+    try {
+        const onlineReport = await fetchReport(ONLINE_META_NAME).catch(() => null);
+        if (onlineReport) {
+            const parsed = parseReport(onlineReport);
+            const match = matchFromReportItems(parsed?.items, searchKeys);
+            if (match) {
+                return match;
+            }
+        }
+    }
+    catch {
+        // ignore
+    }
+    // 2) Fall back to tournaments list indices
+    let tournaments = [];
+    try {
+        tournaments = await fetchTournamentsList();
+    }
+    catch {
+        tournaments = [];
+    }
+    const subset = tournaments.slice(0, 12);
+    for (const tournament of subset) {
+        try {
+            const index = await fetchCardIndex(tournament);
+            const match = matchFromIndex(index?.cards, searchKeys);
+            if (match) {
+                return match;
+            }
+        }
+        catch {
+            continue;
+        }
+    }
+    return null;
+}
+function formatUsagePercent(value) {
+    if (!Number.isFinite(value)) {
+        return '0%';
+    }
+    const normalized = Math.max(0, value);
+    const precision = normalized >= 10 ? 0 : normalized >= 1 ? 1 : 2;
+    return `${normalized.toFixed(precision)}%`;
+}
+function formatDeltaPercent(value) {
+    if (!Number.isFinite(value) || value === 0) {
+        return '+0%';
+    }
+    const clamped = Math.max(Math.min(value, 100), -100);
+    const abs = Math.abs(clamped);
+    const precision = abs >= 10 ? 0 : abs >= 1 ? 1 : 2;
+    const sign = clamped > 0 ? '+' : '-';
+    return `${sign}${abs.toFixed(precision)}%`;
+}
+function titleCase(value) {
+    return value
+        .toLowerCase()
+        .split(' ')
+        .filter(Boolean)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+function prettifyIdentifier(identifier) {
+    if (!identifier) {
+        return '';
+    }
+    const display = getDisplayName(identifier);
+    if (display && display !== identifier) {
+        return display;
+    }
+    const slugGuess = describeSlug(identifier);
+    if (slugGuess) {
+        return titleCase(slugGuess.replace(/[:]/g, ' '));
+    }
+    if (identifier.includes('-')) {
+        return titleCase(identifier.replace(/-/g, ' '));
+    }
+    return identifier;
+}
+function normalizeTrendingCard(entry) {
+    if (!entry || !entry.name) {
+        return null;
+    }
+    const shareKeys = ['recentAvg', 'latest', 'currentShare', 'endShare', 'startShare', 'avgShare', 'share'];
+    let latest = 0;
+    for (const key of shareKeys) {
+        const val = Number(entry[key]);
+        if (Number.isFinite(val)) {
+            latest = val;
+            break;
+        }
+    }
+    const deltaKeys = ['deltaAbs', 'delta'];
+    let delta = 0;
+    for (const key of deltaKeys) {
+        const val = Number(entry[key]);
+        if (Number.isFinite(val)) {
+            delta = val;
+            break;
+        }
+    }
+    delta = Math.max(Math.min(delta, 100), -100);
+    const set = typeof entry.set === 'string' ? entry.set : null;
+    const numberValue = entry.number;
+    const number = typeof numberValue === 'string' || typeof numberValue === 'number' ? String(numberValue).trim() : null;
+    const identifier = set && number ? `${entry.name} :: ${set} ${number}` : entry.name;
+    return {
+        name: entry.name,
+        set,
+        number,
+        latest,
+        delta,
+        identifier
+    };
+}
+function describeTournamentLabel(label) {
+    if (!label) {
+        return 'latest event';
+    }
+    const parts = label.split(',');
+    if (parts.length >= 2) {
+        return parts.slice(1).join(',').trim() || label.trim();
+    }
+    return label.trim();
+}
+async function pickUnderdogCard(tournamentLabel, existingNames) {
+    try {
+        const reportData = await fetchReport(tournamentLabel);
+        const parsed = parseReport(reportData);
+        const candidates = (parsed?.items || []).filter(item => item &&
+            typeof item.pct === 'number' &&
+            item.pct > 0 &&
+            item.pct < 15 &&
+            typeof item.name === 'string' &&
+            item.name.trim().length > 0);
+        if (!candidates.length) {
+            return null;
+        }
+        const filtered = candidates.filter(item => !existingNames.has(item.name.toLowerCase()));
+        const pool = filtered.length ? filtered : candidates;
+        const selection = pool[Math.floor(Math.random() * pool.length)];
+        if (!selection) {
+            return null;
+        }
+        existingNames.add(selection.name.toLowerCase());
+        const identifier = selection.uid ||
+            (selection.set && selection.number ? `${selection.name} :: ${selection.set} ${selection.number}` : selection.name);
+        return {
+            name: selection.name,
+            identifier,
+            set: selection.set,
+            number: selection.number,
+            label: 'Underdog pick',
+            meta: `${formatUsagePercent(selection.pct || 0)} in ${describeTournamentLabel(tournamentLabel)}`
+        };
+    }
+    catch (error) {
+        logger.warn('Failed to load underdog card preview', {
+            tournament: tournamentLabel,
+            error: error?.message || error
+        });
+        return null;
+    }
+}
+function pickRandom(items) {
+    if (!Array.isArray(items) || items.length === 0) {
+        return null;
+    }
+    const idx = Math.floor(Math.random() * items.length);
+    return items[idx] ?? null;
+}
+async function buildMissingCardPreviewData(cardIdentifier) {
+    const previews = [];
+    const seenNames = new Set();
+    try {
+        const [trendPayload, tournaments] = await Promise.all([
+            fetchTrendReport(MISSING_CARD_TRENDS_SOURCE).catch(() => null),
+            fetchTournamentsList().catch(() => [])
+        ]);
+        if (trendPayload) {
+            const risingList = (trendPayload?.suggestions?.onTheRise &&
+                trendPayload.suggestions.onTheRise.length &&
+                trendPayload.suggestions.onTheRise) ||
+                trendPayload?.cardTrends?.rising ||
+                [];
+            const coolingList = (trendPayload?.suggestions?.choppedAndWashed &&
+                trendPayload.suggestions.choppedAndWashed.length &&
+                trendPayload.suggestions.choppedAndWashed) ||
+                trendPayload?.cardTrends?.falling ||
+                [];
+            const risingPool = (Array.isArray(risingList) ? risingList : []).map(normalizeTrendingCard).filter(Boolean).slice(0, 6);
+            const coolingPool = (Array.isArray(coolingList) ? coolingList : []).map(normalizeTrendingCard).filter(Boolean).slice(0, 6);
+            const rising = pickRandom(risingPool.filter(item => !seenNames.has(item.name.toLowerCase())));
+            if (rising) {
+                seenNames.add(rising.name.toLowerCase());
+                previews.push({
+                    name: rising.name,
+                    identifier: rising.identifier,
+                    set: rising.set,
+                    number: rising.number,
+                    label: 'Meta riser',
+                    meta: `${formatUsagePercent(rising.latest)} &middot; ${formatDeltaPercent(rising.delta)}`
+                });
+            }
+            const cooling = pickRandom(coolingPool.filter(item => item && !seenNames.has(item.name.toLowerCase())));
+            if (cooling) {
+                seenNames.add(cooling.name.toLowerCase());
+                previews.push({
+                    name: cooling.name,
+                    identifier: cooling.identifier,
+                    set: cooling.set,
+                    number: cooling.number,
+                    label: 'Cooling off',
+                    meta: `${formatUsagePercent(cooling.latest)} &middot; ${formatDeltaPercent(cooling.delta)}`
+                });
+            }
+        }
+        if (Array.isArray(tournaments) && tournaments.length > 0) {
+            const underdog = await pickUnderdogCard(tournaments[0], seenNames);
+            if (underdog) {
+                previews.push({
+                    ...underdog,
+                    label: 'Sleeper pick'
+                });
+            }
+        }
+    }
+    catch (error) {
+        logger.warn('Failed to assemble missing-card previews', {
+            cardIdentifier,
+            error: error?.message || error
+        });
+    }
+    return previews;
+}
+function loadPreviewThumbnail(target, preview) {
+    const variant = preview.set && preview.number ? { set: preview.set, number: preview.number } : undefined;
+    const candidates = [];
+    const appendCandidates = (list) => {
+        if (!Array.isArray(list)) {
+            return;
+        }
+        for (const url of list) {
+            if (url && !candidates.includes(url)) {
+                candidates.push(url);
+            }
+        }
+    };
+    if (preview.identifier) {
+        let uidSet = null;
+        let uidNumber = null;
+        if (preview.identifier.includes('::')) {
+            const parts = preview.identifier.split('::');
+            uidSet = parts[1] || null;
+            uidNumber = parts[2] || null;
+        }
+        else {
+            const match = preview.identifier.match(/^([A-Z]{2,})[:\s]+(\d+[A-Za-z]?)$/);
+            if (match) {
+                uidSet = match[1];
+                uidNumber = match[2];
+            }
+        }
+        if (uidSet && uidNumber) {
+            appendCandidates(buildThumbCandidates(preview.name, false, {}, { set: uidSet, number: uidNumber }));
+        }
+    }
+    appendCandidates(buildThumbCandidates(preview.name, false, {}, variant));
+    if (candidates.length === 0) {
+        return;
+    }
+    const img = document.createElement('img');
+    img.decoding = 'async';
+    img.loading = 'lazy';
+    img.alt = preview.name;
+    img.width = 48;
+    img.height = 68;
+    target.appendChild(img);
+    let idx = 0;
+    let fallbackAttempted = false;
+    const tryNext = async () => {
+        if (idx >= candidates.length && !fallbackAttempted) {
+            fallbackAttempted = true;
+            try {
+                const fallback = await getVariantImageCandidates(preview.identifier, false, {});
+                if (fallback.length) {
+                    candidates.push(...fallback);
+                }
+            }
+            catch {
+                // ignore fallback failure
+            }
+        }
+        if (idx >= candidates.length) {
+            target.classList.add('card-missing-trend-thumb--empty');
+            img.remove();
+            return;
+        }
+        img.src = candidates[idx++];
+    };
+    img.onerror = () => {
+        tryNext();
+    };
+    tryNext();
+}
+async function renderMissingCardTrendingCards(container, cardIdentifier) {
+    if (!container) {
+        return;
+    }
+    container.innerHTML = '<p class="card-missing-empty">Loading trending cards...</p>';
+    try {
+        const previews = await buildMissingCardPreviewData(cardIdentifier);
+        if (!previews.length) {
+            container.innerHTML =
+                '<p class="card-missing-empty">Trending cards will appear once new events are processed.</p>';
+            return;
+        }
+        container.innerHTML = '';
+        previews.forEach(preview => {
+            const href = buildCardPath(preview.identifier);
+            const link = document.createElement('a');
+            link.className = 'card-missing-trend';
+            link.href = href;
+            link.innerHTML = `
+        <div class="card-missing-trend-thumb" aria-hidden="true"></div>
+        <div class="card-missing-trend-copy">
+          <span class="card-missing-trend-label">${preview.label}</span>
+          <span class="card-missing-trend-name">${preview.name}</span>
+          ${preview.set && preview.number ? `<span class="card-missing-trend-set">${preview.set} ${preview.number}</span>` : ''}
+          <span class="card-missing-trend-meta">${preview.meta}</span>
+        </div>
+      `;
+            container.appendChild(link);
+            const thumb = link.querySelector('.card-missing-trend-thumb');
+            if (thumb) {
+                loadPreviewThumbnail(thumb, preview);
+            }
+        });
+    }
+    catch (error) {
+        logger.warn('Failed to load trending cards preview for missing card', {
+            cardIdentifier,
+            error: error?.message || error
+        });
+        container.innerHTML = '<p class="card-missing-empty">Trending cards unavailable right now.</p>';
+    }
+}
+/**
  * Render a user-friendly error page for missing cards
  * @param cardIdentifier - The card that was requested
  */
-function renderMissingCardPage(cardIdentifier) {
+async function renderMissingCardPage(cardIdentifier) {
     try {
-        const displayName = getDisplayName(cardIdentifier) || cardIdentifier;
+        let canonicalIdentifier = cardIdentifier;
+        try {
+            canonicalIdentifier = (await getCanonicalCard(cardIdentifier)) || cardIdentifier;
+        }
+        catch (error) {
+            logger.debug('Unable to resolve canonical identifier for missing card', {
+                cardIdentifier,
+                error: error?.message || error
+            });
+        }
+        const resolvedFromReports = (await resolveMissingCardDisplayName(canonicalIdentifier)) || null;
+        const displaySource = resolvedFromReports || canonicalIdentifier || cardIdentifier;
+        const displayName = prettifyIdentifier(displaySource) || displaySource || cardIdentifier;
+        const fallbackVariant = extractSetAndNumber(displaySource);
         if (typeof history !== 'undefined') {
             document.title = `Card Not Found - ${displayName} | Ciphermaniac`;
         }
         const main = document.querySelector('main');
         if (main) {
-            const baseName = getBaseName(cardIdentifier) || cardIdentifier;
-            const encodedSearch = encodeURIComponent(baseName);
+            const baseName = getBaseName(displaySource) || getBaseName(canonicalIdentifier) || getBaseName(cardIdentifier) || cardIdentifier;
+            const encodedSearch = encodeURIComponent(displayName);
+            const heroVariant = fallbackVariant ?? extractSetAndNumber(cardIdentifier);
             main.innerHTML = `
-        <section class="card-404-section">
-          <div class="card-404-content">
-            <div class="card-404-header">
-              <h1>Card Page Not Available</h1>
-              <div class="card-404-subtitle">${displayName}</div>
-            </div>
-
-            <div class="card-404-image" aria-hidden="true"></div>
-
-            <div class="card-404-explanation">
-              <p>We don't have tournament usage data for this card yet, so there's no dedicated page.</p>
-              <p>Once the card shows up in processed tournament results, its page will be created automatically.</p>
-            </div>
-
-            <div class="card-404-actions">
-              <div class="card-404-suggestions">
-                <h3>What you can do:</h3>
-                <ul>
-                  <li><a href="/index.html" class="card-404-link">Browse all cards with data</a></li>
-                  <li><a href="/index.html?q=${encodedSearch}" class="card-404-link">Search for similar cards</a></li>
-                  <li><a href="/feedback.html" class="card-404-link">Request this card be prioritized</a></li>
-                </ul>
+        <section class="card-missing">
+          <div class="card-missing-card">
+            <div class="card-missing-thumb" aria-hidden="true"></div>
+            <div class="card-missing-info">
+              <p class="card-missing-eyebrow">No tournament entries yet</p>
+              <h1>${displayName}</h1>
+              <p class="card-missing-meta">This card has no Day 2 finishes, so no data can be shown.<br><span>Maybe you can get it its page?</span></p>
+              <div class="card-missing-actions">
+                <a href="/index.html?q=${encodedSearch}" class="card-missing-button primary">Search for ${displayName}</a>
+                <a href="/trends.html" class="card-missing-button">View meta trends</a>
               </div>
             </div>
           </div>
+          <div class="card-missing-trending">
+            <div class="card-missing-trending-header">
+              <h2>Check these out!</h2>
+              <a class="card-missing-link" href="/trends.html">See full report</a>
+            </div>
+            <div class="card-missing-trending-grid" id="card-missing-trending"></div>
+          </div>
         </section>
       `;
-            if (!document.getElementById('card-404-style')) {
+            if (!document.getElementById('card-missing-style')) {
                 const style = document.createElement('style');
-                style.id = 'card-404-style';
+                style.id = 'card-missing-style';
                 style.textContent = `
-        .card-404-section {
-          max-width: 600px;
-          margin: 2rem auto;
-          padding: 2rem;
-          text-align: center;
+        .card-missing {
+          max-width: 880px;
+          margin: 1.5rem auto 3rem;
+          padding: 0 1rem;
+          color: var(--text, #eef1f7);
         }
 
-        .card-404-content {
-          background: var(--panel, #1a1f3a);
+        .card-missing-card {
+          display: flex;
+          gap: 1.25rem;
+          align-items: center;
+          padding: 1.5rem;
           border-radius: 12px;
-          padding: 2rem;
           border: 1px solid var(--border, #2a3150);
+          background: var(--panel, #17181d);
         }
 
-        .card-404-header h1 {
-          color: var(--text, #ffffff);
-          margin: 0 0 0.5rem 0;
-          font-size: 1.5rem;
+        .card-missing-thumb {
+          width: min(220px, 40vw);
+          aspect-ratio: 3 / 4;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.04);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
         }
 
-        .card-404-subtitle {
-          color: var(--muted, #a3add8);
-          font-size: 1rem;
+        .card-missing-info h1 {
+          margin: 0 0 0.35rem 0;
+          font-size: 1.6rem;
         }
 
-        .card-404-image {
-          margin: 1.5rem 0;
+        .card-missing-info {
+          flex: 1;
         }
 
-        .card-404-explanation {
-          color: var(--text, #dbe2ff);
-          line-height: 1.6;
-          margin-bottom: 2rem;
+        .card-missing-eyebrow {
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          font-size: 0.78rem;
+          color: var(--muted, #a3a8b7);
+          margin: 0 0 0.35rem 0;
         }
 
-        .card-404-actions {
-          text-align: left;
+        .card-missing-meta {
+          margin: 0 0 1rem 0;
+          color: var(--muted, #a3a8b7);
+          line-height: 1.4;
         }
 
-        .card-404-suggestions ul {
-          margin: 0;
-          padding-left: 1.5rem;
-        }
-
-        .card-404-link {
-          color: var(--accent, #4f8cf4);
-          text-decoration: none;
-          padding: 0.5rem 0;
+        .card-missing-meta span {
           display: inline-block;
-          transition: color 0.2s ease;
+          font-size: 0.85rem;
+          opacity: 0.85;
         }
 
-        .card-404-link:hover {
-          color: var(--accent-hover, #6ba0f6);
-          text-decoration: underline;
+        .card-missing-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.75rem;
         }
 
-        @media (max-width: 640px) {
-          .card-404-section {
-            margin: 1rem;
-            padding: 1rem;
+        .card-missing-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.6rem 1.1rem;
+          border-radius: 8px;
+          border: 1px solid var(--border, #2a3150);
+          color: var(--text, #eef1f7);
+          text-decoration: none;
+          font-weight: 600;
+          transition: border-color 0.15s ease, background 0.15s ease;
+        }
+
+        .card-missing-button.primary {
+          background: var(--accent-2, #6aa3ff);
+          border-color: transparent;
+          color: #0c1223;
+        }
+
+        .card-missing-button:hover {
+          border-color: var(--accent-2, #6aa3ff);
+          background: rgba(106, 163, 255, 0.08);
+        }
+
+        .card-missing-trending {
+          margin-top: 1.25rem;
+          border-radius: 12px;
+          border: 1px solid var(--border, #2a3150);
+          padding: 1.25rem;
+          background: rgba(0, 0, 0, 0.2);
+        }
+
+        .card-missing-trending-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.75rem;
+        }
+
+        .card-missing-trending-header h2 {
+          margin: 0;
+          font-size: 1.1rem;
+        }
+
+        .card-missing-link {
+          color: var(--muted, #a3a8b7);
+          text-decoration: none;
+          font-size: 0.9rem;
+        }
+
+        .card-missing-trending-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 0.75rem;
+        }
+
+        .card-missing-trend {
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          padding: 0.65rem 0.9rem;
+          text-decoration: none;
+          color: var(--text, #eef1f7);
+          background: rgba(255, 255, 255, 0.02);
+          display: flex;
+          gap: 0.75rem;
+          align-items: center;
+          transition: border-color 0.15s ease, background 0.15s ease;
+        }
+
+        .card-missing-trend:hover {
+          border-color: var(--accent-2, #6aa3ff);
+          background: rgba(106, 163, 255, 0.08);
+        }
+
+        .card-missing-trend-thumb {
+          width: 48px;
+          height: 68px;
+          border-radius: 6px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.04);
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+
+        .card-missing-trend-thumb img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        .card-missing-trend-thumb--empty {
+          background: rgba(255, 255, 255, 0.08);
+        }
+
+        .card-missing-trend-copy {
+          display: flex;
+          flex-direction: column;
+          gap: 0.2rem;
+        }
+
+        .card-missing-trend-label {
+          text-transform: uppercase;
+          font-size: 0.75rem;
+          letter-spacing: 0.08em;
+          color: var(--muted, #a3a8b7);
+        }
+
+        .card-missing-trend-name {
+          font-weight: 600;
+          display: block;
+        }
+
+        .card-missing-trend-set {
+          color: var(--muted, #a3a8b7);
+          font-size: 0.9rem;
+          display: block;
+        }
+
+        .card-missing-trend-meta {
+          color: var(--muted, #a3a8b7);
+          font-size: 0.9rem;
+        }
+
+        .card-missing-empty {
+          color: var(--muted, #a3a8b7);
+          font-size: 0.95rem;
+          margin: 0;
+        }
+
+        @media (max-width: 720px) {
+          .card-missing-card {
+            flex-direction: column;
+            padding: 1.25rem;
+            align-items: flex-start;
           }
 
-          .card-404-content {
-            padding: 1.5rem;
+          .card-missing-thumb {
+            width: 100%;
+            max-width: 340px;
           }
 
-          .card-404-header h1 {
-            font-size: 1.3rem;
+          .card-missing-actions {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .card-missing-button {
+            width: 100%;
+            justify-content: center;
+            text-align: center;
           }
         }
         `;
                 document.head.appendChild(style);
             }
-            const imageContainer = main.querySelector('.card-404-image');
+            const trendingContainer = document.getElementById('card-missing-trending');
+            renderMissingCardTrendingCards(trendingContainer, canonicalIdentifier);
+            const imageContainer = main.querySelector('.card-missing-thumb');
             if (imageContainer) {
-                const parsed = parseDisplayName(displayName);
+                const parsed = parseDisplayName(displaySource);
                 const variant = {};
                 if (parsed?.setId) {
                     const match = parsed.setId.match(/^([A-Z]+)\s+(\d+[A-Za-z]?)$/);
@@ -869,8 +1073,14 @@ function renderMissingCardPage(cardIdentifier) {
                         variant.number = match[2];
                     }
                 }
+                if (!variant.set && fallbackVariant.set) {
+                    variant.set = fallbackVariant.set;
+                }
+                if (!variant.number && fallbackVariant.number) {
+                    variant.number = fallbackVariant.number;
+                }
                 const candidateName = parsed?.name || baseName || displayName;
-                const candidates = buildThumbCandidates(candidateName, false, {}, variant);
+                const candidates = buildThumbCandidates(candidateName, true, {}, variant);
                 if (candidates.length === 0) {
                     imageContainer.remove();
                 }
@@ -879,9 +1089,10 @@ function renderMissingCardPage(cardIdentifier) {
                     img.decoding = 'async';
                     img.loading = 'lazy';
                     img.alt = displayName;
-                    img.style.maxWidth = '300px';
-                    img.style.borderRadius = '8px';
-                    img.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+                    img.style.width = '100%';
+                    img.style.height = '100%';
+                    img.style.objectFit = 'cover';
+                    img.style.borderRadius = 'inherit';
                     let idx = 0;
                     let fallbackAttempted = false;
                     const tryNext = async () => {
@@ -889,7 +1100,7 @@ function renderMissingCardPage(cardIdentifier) {
                         if (idx >= candidates.length && !fallbackAttempted) {
                             fallbackAttempted = true;
                             try {
-                                const fallbackCandidates = await getVariantImageCandidates(cardIdentifier, false, {});
+                                const fallbackCandidates = await getVariantImageCandidates(canonicalIdentifier, false, {});
                                 if (fallbackCandidates.length > 0) {
                                     candidates.push(...fallbackCandidates);
                                     if (idx < candidates.length) {
@@ -945,7 +1156,7 @@ async function load() {
     // Check if card exists in Ciphermaniac database before proceeding
     const cardExistsInDatabase = await checkCardExistsInDatabase(cardIdentifier);
     if (!cardExistsInDatabase) {
-        renderMissingCardPage(cardIdentifier);
+        await renderMissingCardPage(cardIdentifier);
         return;
     }
     // Phase 1: Immediate UI Setup (synchronous, runs before any network)
