@@ -14,7 +14,7 @@ import {
   gatherDecks,
   buildTrendReport,
   buildCardTrendReport
-} from '../../functions/lib/onlineMeta.js';
+} from '../../functions/lib/onlineMeta.ts';
 import { loadCardTypesDatabase } from '../../functions/lib/cardTypesDatabase.js';
 
 const TRENDS_FOLDER = 'Trends - Last 30 Days';
