@@ -27,6 +27,7 @@ const elements = {
   filterRowsContainer: /** @type {HTMLElement|null} */ (document.getElementById('archetype-filter-rows')),
   addFilterButton: /** @type {HTMLButtonElement|null} */ (document.getElementById('archetype-add-filter')),
   filtersContainer: /** @type {HTMLElement|null} */ (document.querySelector('.archetype-controls')),
+  filterEmptyState: /** @type {HTMLElement|null} */ (document.getElementById('archetype-filter-empty-state')),
   filterMessage: /** @type {HTMLElement|null} */ (null),
   skeletonSummary: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-summary')),
   skeletonCountValue: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-count-value')),
@@ -422,6 +423,15 @@ function updateFilterMessage(text, tone = 'info') {
   message.hidden = false;
   message.textContent = text;
   message.dataset.tone = tone; // eslint-disable-line no-param-reassign
+}
+
+function updateFilterEmptyState() {
+  const message = elements.filterEmptyState;
+  if (!message) {
+    return;
+  }
+  const hasFilters = state.filterRows.length > 0;
+  message.hidden = hasFilters;
 }
 
 function describeFilters(filters) {
@@ -870,6 +880,8 @@ function createFilterRow() {
     elements: { cardSelect, operatorSelect, countInput, removeButton, container: filterRow }
   });
 
+  updateFilterEmptyState();
+
   // Populate card options (excluding already-selected cards)
   populateFilterRowCards(filterId);
 
@@ -889,6 +901,7 @@ function removeFilterRow(filterId) {
   const row = state.filterRows[index];
   row.elements.container.remove();
   state.filterRows.splice(index, 1);
+  updateFilterEmptyState();
 
   // Update remove button visibility - hide on first row if only one remains
   // if (state.filterRows.length === 1) {
@@ -1326,7 +1339,7 @@ function updateSkeletonExportStatus(message: string, tone: string = 'info') {
 }
 
 function syncSkeletonExportState() {
-  const exportButton = document.getElementById('skeleton-export-live');
+  const exportButton = document.getElementById('skeleton-export-live') as HTMLButtonElement | null;
   if (!exportButton) {
     return;
   }
@@ -1438,14 +1451,45 @@ function setupSkeletonExport() {
 function isAceSpec(cardName) {
   const aceSpecKeywords = [
     'ace spec',
+    'amulet of hope',
+    'awakening drum',
+    'brilliant blender',
     'computer search',
+    'crystal edge',
+    'crystal wall',
+    'dangerous laser',
+    'deluxe bomb',
     'dowsing machine',
-    'scramble switch',
-    'master ball',
+    'energy search pro',
+    'enriching energy',
+    'g booster',
+    'g scope',
+    'gold potion',
+    'grand tree',
+    "hero's cape",
+    'hyper aroma',
     'legacy energy',
+    'life dew',
+    'master ball',
+    'max rod',
+    'maximum belt',
+    'megaton blower',
+    'miracle headset',
+    'neo upper energy',
+    'neutralization zone',
+    'poke vital a',
+    'precious trolley',
     'prime catcher',
     'reboot pod',
-    'secret box'
+    'rock guard',
+    'scoop up cyclone',
+    'scramble switch',
+    'secret box',
+    'sparkling crystal',
+    'survival brace',
+    'treasure tracker',
+    'unfair stamp',
+    'victory piece'
   ];
   const lowerName = (cardName || '').toLowerCase();
   return aceSpecKeywords.some(keyword => lowerName.includes(keyword));
@@ -1615,6 +1659,51 @@ function updateSkeletonSummary(items) {
   syncSkeletonExportState();
 }
 
+// Track the last rendered threshold to avoid unnecessary re-renders
+let lastRenderedThreshold: number | null = null;
+let thresholdRenderPending = false;
+
+/**
+ * Render cards with threshold filtering.
+ * Uses requestAnimationFrame to batch rapid threshold changes.
+ */
+function renderCardsWithThreshold(threshold: number) {
+  // Skip if threshold hasn't actually changed from last render
+  if (lastRenderedThreshold === threshold) {
+    return;
+  }
+  
+  if (thresholdRenderPending) {
+    return; // Already have a pending render
+  }
+  
+  thresholdRenderPending = true;
+  
+  // Use rAF to batch rapid slider movements into single renders
+  requestAnimationFrame(() => {
+    thresholdRenderPending = false;
+    
+    const currentThreshold = state.thresholdPercent;
+    if (lastRenderedThreshold === currentThreshold) {
+      return; // Threshold hasn't changed
+    }
+    
+    const visibleItems = filterItemsByThreshold(state.items, currentThreshold);
+    const sortedVisibleItems = sortItemsForDisplay(visibleItems);
+    
+    const grid = document.getElementById('grid');
+    if (grid) {
+      /** @type {any} */ (grid)._visibleRows = 24;
+    }
+    
+    render(sortedVisibleItems, state.overrides, RENDER_COMPACT_OPTIONS as any);
+    lastRenderedThreshold = currentThreshold;
+    
+    syncGranularityOutput(currentThreshold);
+    updateSkeletonSummary(sortedVisibleItems);
+  });
+}
+
 function renderCards() {
   if (!Array.isArray(state.items)) {
     return;
@@ -1630,11 +1719,10 @@ function renderCards() {
     /** @type {any} */ (grid)._visibleRows = 24;
   }
   render(sortedVisibleItems, state.overrides, RENDER_COMPACT_OPTIONS as any);
+  lastRenderedThreshold = threshold;
   syncGranularityOutput(threshold);
   updateSkeletonSummary(sortedVisibleItems);
-  requestAnimationFrame(() => {
-    updateLayout();
-  });
+  // Note: updateLayout() call removed - render() already handles layout correctly
 }
 
 /**
@@ -1921,7 +2009,8 @@ function handleGranularityInput(event) {
 
   if (state.thresholdPercent !== normalized) {
     state.thresholdPercent = normalized;
-    renderCards();
+    // Use batched render to avoid multiple rapid re-renders
+    renderCardsWithThreshold(normalized);
   } else {
     syncGranularityOutput(normalized);
   }

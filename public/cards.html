@@ -4,9 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ciphermaniac</title>
+  <!-- Preload critical font to reduce layout shift -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/style.css" />
-  <link rel="icon" href="data:," />
+  <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
 </head>
   <body>
 
@@ -16,11 +19,27 @@
   <input id="search" type="search" placeholder="Search cards…" aria-label="Search cards" autocomplete="off" />
         <button id="filtersToggle" class="filters-toggle" type="button" aria-expanded="false" aria-controls="filters" data-cm-filters-owner="main">Filters</button>
         <div id="filters" class="filters" aria-hidden="true" data-cm-filters-owner="main">
-          <div class="filter-field filter-field--archetype">
-            <span class="filter-label">Archetype</span>
-            <select id="archetype" title="Choose archetype" aria-label="Choose archetype">
-              <option value="__all__">All archetypes</option>
-            </select>
+          <div class="filter-field filter-dropdown filter-field--archetype" data-filter="archetypes">
+            <span class="filter-label" id="archetype-label" data-label-singular="Archetype" data-label-plural="Archetypes">Archetype</span>
+            <div class="filter-combobox" role="group" aria-labelledby="archetype-label">
+              <button id="archetype-trigger" class="filter-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="archetype-menu">
+                <span class="filter-value" id="archetype-summary">All archetypes</span>
+              </button>
+              <div id="archetype-chips" class="filter-chip-list" role="list" aria-live="polite" aria-relevant="additions removals" hidden></div>
+              <button id="archetype-add" class="filter-add-btn" type="button" aria-label="Add another archetype" hidden>Add another</button>
+            </div>
+            <div id="archetype-menu" class="filter-menu" role="dialog" aria-label="Select archetypes" hidden>
+              <div class="filter-menu-header">
+                <input id="archetype-search" type="search" placeholder="Search archetypes" aria-label="Search archetypes" />
+              </div>
+              <div id="archetype-options" class="filter-menu-list" role="listbox" aria-multiselectable="true" aria-labelledby="archetype-label">
+                <!-- populated dynamically -->
+              </div>
+              <div class="filter-menu-actions" data-multi-only>
+                <button type="button" class="filter-action" data-action="clear">Clear</button>
+                <button type="button" class="filter-action filter-action-primary" data-action="close">Done</button>
+              </div>
+            </div>
           </div>
 
           <div class="filter-field filter-field--card-type">

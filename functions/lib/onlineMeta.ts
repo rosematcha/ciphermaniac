@@ -953,23 +953,25 @@ function determinePlacementLimit(players) {
     return 0;
   }
   // Known small events: capture full field
-  if (count > 0 && count <= 8) {
+  if (count > 0 && count <= 16) {
     return count;
   }
-  if (count > 0 && count <= 16) {
-    return 16;
-  }
+  // Medium events: capture top 75%
   if (count > 0 && count <= 32) {
-    return 24;
+    return 32;
   }
   if (count > 0 && count <= 64) {
-    return 48;
-  }
-  if (count >= 65) {
     return 64;
   }
+  if (count > 0 && count <= 128) {
+    return 96;
+  }
+  // Large events: capture top 128
+  if (count >= 129) {
+    return 128;
+  }
   // Unknown player counts: grab a richer slice to avoid under-sampling
-  return 32;
+  return 64;
 }
 
 export async function runOnlineMetaJob(env, options: AnyOptions = {}) {

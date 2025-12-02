@@ -410,12 +410,9 @@ function applyDeckThumbnail(thumbnailEl, imgEl, fallbackEl, deckName, thumbIds) 
     imgEl.alt = '';
     imgEl.loading = 'lazy';
     imgEl.decoding = 'async';
-    imgEl.style.opacity = '0';
-    imgEl.style.transition = imgEl.style.transition || 'opacity 250ms ease';
     imgEl.onerror = usePlaceholder;
     imgEl.onload = () => {
         thumbnailEl.classList.remove('is-placeholder');
-        imgEl.style.opacity = '1';
     };
     imgEl.src = sources[0];
 }
@@ -446,12 +443,8 @@ function applySplitThumbnail(thumbnailEl, baseImg, fallbackEl, sources, usePlace
         img.loading = 'lazy';
         img.decoding = 'async';
         img.alt = '';
-        img.style.opacity = '0';
-        img.style.transition = img.style.transition || 'opacity 250ms ease';
         img.onerror = handleError;
-        img.onload = () => {
-            img.style.opacity = '1';
-        };
+        img.onload = () => { };
         applySplitCrop(img, orientation === 'left' ? { x: 0, width: 0.5 } : { x: 0.5, width: 0.5 });
         img.src = src;
         slice.appendChild(img);
