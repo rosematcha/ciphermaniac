@@ -6,6 +6,7 @@ import { render, updateLayout } from './render.js';
 import { normalizeCardNumber } from './card/routing.js';
 import { AppError, ErrorTypes } from './utils/errorHandler.js';
 import { logger } from './utils/logger.js';
+import type { GridElement } from './render.js';
 
 const GRANULARITY_MIN_PERCENT = 0;
 const GRANULARITY_DEFAULT_PERCENT = 60; // Default granularity percent
@@ -19,11 +20,11 @@ const elements = {
   loading: document.getElementById('archetype-loading'),
   error: document.getElementById('archetype-error'),
   simple: /** @type {HTMLElement|null} */ (document.querySelector('.archetype-simple')),
-  grid: /** @type {HTMLElement|null} */ (document.getElementById('grid')),
+  grid: document.getElementById('grid') as GridElement | null,
   title: document.getElementById('archetype-title'),
   granularityRange: document.getElementById('archetype-granularity-range') as HTMLInputElement | null,
   granularityOutput: /** @type {HTMLOutputElement|null} */ (document.getElementById('archetype-granularity-output')),
-  successFilter: /** @type {HTMLSelectElement|null} */ (document.getElementById('archetype-success-filter')),
+  successFilter: document.getElementById('archetype-success-filter') as HTMLSelectElement | null,
   filterRowsContainer: /** @type {HTMLElement|null} */ (document.getElementById('archetype-filter-rows')),
   addFilterButton: /** @type {HTMLButtonElement|null} */ (document.getElementById('archetype-add-filter')),
   filtersContainer: /** @type {HTMLElement|null} */ (document.querySelector('.archetype-controls')),
@@ -1691,9 +1692,9 @@ function renderCardsWithThreshold(threshold: number) {
     const visibleItems = filterItemsByThreshold(state.items, currentThreshold);
     const sortedVisibleItems = sortItemsForDisplay(visibleItems);
     
-    const grid = document.getElementById('grid');
+    const grid = document.getElementById('grid') as GridElement | null;
     if (grid) {
-      /** @type {any} */ (grid)._visibleRows = 24;
+      grid._visibleRows = 24;
     }
     
     render(sortedVisibleItems, state.overrides, RENDER_COMPACT_OPTIONS as any);
@@ -1714,9 +1715,9 @@ function renderCards() {
   const visibleItems = filterItemsByThreshold(state.items, threshold);
   const sortedVisibleItems = sortItemsForDisplay(visibleItems);
 
-  const grid = document.getElementById('grid');
+  const grid = document.getElementById('grid') as GridElement | null;
   if (grid) {
-    /** @type {any} */ (grid)._visibleRows = 24;
+    grid._visibleRows = 24;
   }
   render(sortedVisibleItems, state.overrides, RENDER_COMPACT_OPTIONS as any);
   lastRenderedThreshold = threshold;

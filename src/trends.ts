@@ -582,9 +582,8 @@ function renderMetaChart() {
       const label = item.querySelector('span:nth-child(2)');
       const active = label && label.textContent === name;
       item.style.opacity = active ? '1' : '0.5';
-      item.style.borderColor = active
-        ? item.querySelector('.legend-swatch')?.style.backgroundColor || '#6aa3ff'
-        : '#2c335a';
+      const swatch = item.querySelector<HTMLElement>('.legend-swatch');
+      item.style.borderColor = active ? swatch?.style.backgroundColor || '#6aa3ff' : '#2c335a';
     });
   };
 
