@@ -642,6 +642,9 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
     1,
     Number.isFinite(options.minAppearances) ? Number(options.minAppearances) : DEFAULT_MIN_TREND_APPEARANCES
   );
+  const seriesLimit = Number.isFinite(options.seriesLimit)
+    ? Math.max(1, Number(options.seriesLimit))
+    : null;
 
   const tournamentIndex = new Map();
   const sortedTournaments = (Array.isArray(tournaments) ? tournaments : [])
@@ -787,22 +790,28 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
     });
   });
 
-  // Sort and limit to top 32 archetypes
   series.sort((a, b) => b.totalDecks - a.totalDecks || b.avgShare - a.avgShare);
-  const top32Series = series.slice(0, 32);
+  const limitedSeries = seriesLimit ? series.slice(0, seriesLimit) : series;
 
   const tournamentCount = sortedTournaments.length;
 
-  return {
+  const result: AnyOptions = {
     generatedAt: now.toISOString(),
     windowStart: windowStart ? windowStart.toISOString() : null,
     windowEnd: windowEnd ? windowEnd.toISOString() : null,
     deckTotal: deckList.length,
     tournamentCount,
     minAppearances,
-    archetypeCount: top32Series.length,
-    series: top32Series
+    archetypeCount: limitedSeries.length,
+    series: limitedSeries,
+    tournaments: sortedTournaments
   };
+
+  if (seriesLimit && limitedSeries.length !== series.length) {
+    result.totalArchetypes = series.length;
+  }
+
+  return result;
 }
 
 function buildCardTrendReport(decks, tournaments, options: AnyOptions = {}) {
@@ -1080,11 +1089,13 @@ export async function runOnlineMetaJob(env, options: AnyOptions = {}) {
     synonymDb,
     { thumbnailConfig: ARCHETYPE_THUMBNAILS }
   );
+  const trendSeriesLimit = Number.isFinite(options.seriesLimit) ? Number(options.seriesLimit) : 32;
   const trendReport: AnyOptions = buildTrendReport(decks, tournaments, {
     windowStart: since,
     windowEnd: now,
     now,
-    minAppearances: options.minTrendAppearances
+    minAppearances: options.minTrendAppearances,
+    seriesLimit: trendSeriesLimit
   });
   const trendTournaments =
     Array.isArray(trendReport?.tournaments) && trendReport.tournaments.length

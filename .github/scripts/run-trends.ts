@@ -146,50 +146,13 @@ function selectWithArchetypeCap(items, getArchetype, maxPer = MAX_PER_ARCHETYPE,
   return result;
 }
 
-function aggregateTimelineByDay(timeline = []) {
-  if (!Array.isArray(timeline) || !timeline.length) {
-    return [];
-  }
-
-  const dayMap = new Map();
-  for (const entry of timeline) {
-    if (!entry) continue;
-    const dateKey =
-      typeof entry.date === 'string' && entry.date.length
-        ? entry.date.split('T')[0]
-        : 'unknown';
-    const target = dayMap.get(dateKey) || { date: dateKey, decks: 0, totalDecks: 0 };
-    target.decks += Number(entry.decks) || 0;
-    target.totalDecks += Number(entry.totalDecks) || 0;
-    dayMap.set(dateKey, target);
-  }
-
-  return Array.from(dayMap.values())
-    .map(point => ({
-      date: point.date,
-      decks: point.decks,
-      totalDecks: point.totalDecks,
-      share: point.totalDecks ? Math.round((point.decks / point.totalDecks) * 10000) / 100 : 0
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-}
-
 function trimTrendSeries(series = [], limit = MAX_ARCHETYPES_IN_SERIES) {
-  if (!Array.isArray(series) || !series.length) {
+  const max = Math.max(0, Number(limit) || 0);
+  if (!Array.isArray(series) || !series.length || max === 0) {
     return [];
   }
 
-  return [...series]
-    .sort(
-      (a, b) =>
-        (Number(b.totalDecks) || 0) - (Number(a.totalDecks) || 0) ||
-        (Number(b.avgShare) || 0) - (Number(a.avgShare) || 0)
-    )
-    .slice(0, limit)
-    .map(entry => ({
-      ...entry,
-      timeline: aggregateTimelineByDay(entry.timeline)
-    }));
+  return series.slice(0, max);
 }
 
 function buildCardTimelines(decks, tournaments) {
