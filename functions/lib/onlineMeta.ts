@@ -752,6 +752,27 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
     const peakShare = maxShare; // Alias for clarity
     const minShare = shares.length ? Math.min(...shares) : 0;
 
+    // Aggregate timeline by day (date) instead of by tournament
+    const dailyData = new Map();
+    for (const entry of timeline) {
+      const dateKey = entry.date ? entry.date.split('T')[0] : 'unknown';
+      if (!dailyData.has(dateKey)) {
+        dailyData.set(dateKey, { decks: 0, totalDecks: 0 });
+      }
+      const day = dailyData.get(dateKey);
+      day.decks += entry.decks || 0;
+      day.totalDecks += entry.totalDecks || 0;
+    }
+
+    const dailyTimeline = Array.from(dailyData.entries())
+      .map(([date, data]) => ({
+        date,
+        decks: data.decks,
+        totalDecks: data.totalDecks,
+        share: data.totalDecks ? Math.round((data.decks / data.totalDecks) * 10000) / 100 : 0
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
     series.push({
       base: archetype.base,
       displayName: archetype.displayName,
@@ -762,27 +783,25 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
       peakShare,
       minShare,
       successTotals: aggregateSuccess,
-      timeline
+      timeline: dailyTimeline
     });
   });
 
+  // Sort and limit to top 32 archetypes
   series.sort((a, b) => b.totalDecks - a.totalDecks || b.avgShare - a.avgShare);
+  const top32Series = series.slice(0, 32);
 
-  const tournamentsWithTotals = sortedTournaments.map(t => ({
-    ...t,
-    deckTotal: tournamentIndex.get(t.id)?.deckTotal || 0
-  }));
+  const tournamentCount = sortedTournaments.length;
 
   return {
     generatedAt: now.toISOString(),
     windowStart: windowStart ? windowStart.toISOString() : null,
     windowEnd: windowEnd ? windowEnd.toISOString() : null,
     deckTotal: deckList.length,
-    tournamentCount: tournamentsWithTotals.length,
+    tournamentCount,
     minAppearances,
-    archetypeCount: series.length,
-    tournaments: tournamentsWithTotals,
-    series
+    archetypeCount: top32Series.length,
+    series: top32Series
   };
 }
 

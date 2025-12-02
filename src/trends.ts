@@ -30,7 +30,7 @@ const elements = {
 
 const state = {
   trendData:
-    /** @type {null|{ series: any[], tournaments: any[], generatedAt?: string, minAppearances?: number, windowStart?: string|null, windowEnd?: string|null }} */ (
+    /** @type {null|{ series: any[], tournamentCount?: number, generatedAt?: string, minAppearances?: number, windowStart?: string|null, windowEnd?: string|null }} */ (
       null
     ),
   cardTrends: null,
@@ -119,7 +119,7 @@ function binDaily(timeline) {
 }
 
 function buildMetaLines(trendData, topN = 5) {
-  if (!trendData || !Array.isArray(trendData.series) || !Array.isArray(trendData.tournaments)) {
+  if (!trendData || !Array.isArray(trendData.series)) {
     return null;
   }
 
@@ -267,9 +267,16 @@ function renderCardMovers(suggestions, cardTrends) {
   const normalizeCard = item => {
     const latest =
       item.recentAvg ?? item.latest ?? item.currentShare ?? item.endShare ?? item.startShare ?? item.avgShare ?? 0;
-    // Clamp delta so it doesn't exceed plausible usage bounds
-    const rawDelta = item.deltaAbs ?? item.delta ?? 0;
-    const delta = Math.max(Math.min(rawDelta, latest), -100);
+    // For cooling cards, use absDrop (positive value for decline) but negate it for display
+    // For rising cards, use deltaAbs or delta
+    let delta = 0;
+    if (item.absDrop !== undefined && item.absDrop !== null) {
+      // Cooling card - absDrop is positive, but we want to show it as negative
+      delta = -Math.abs(item.absDrop);
+    } else {
+      // Rising card
+      delta = item.deltaAbs ?? item.delta ?? 0;
+    }
     return {
       name: item.name,
       set: item.set || null,
@@ -343,10 +350,10 @@ function renderSummary() {
     return;
   }
   const archetypes = state.trendData.series?.length || 0;
-  const tournaments = state.trendData.tournaments?.length || 0;
+  const tournaments = state.trendData.tournamentCount || 0;
   const lastUpdated = state.trendData.generatedAt ? new Date(state.trendData.generatedAt).toLocaleString() : 'n/a';
-  const firstDate = state.trendData.windowStart || state.trendData.tournaments?.[0]?.date;
-  const lastDate = state.trendData.windowEnd || state.trendData.tournaments?.at(-1)?.date;
+  const firstDate = state.trendData.windowStart;
+  const lastDate = state.trendData.windowEnd;
   const windowLabel = firstDate && lastDate ? `${formatDate(firstDate)} - ${formatDate(lastDate)}` : 'recent events';
 
   elements.summary.textContent = `Tracking ${archetypes} archetypes across ${tournaments} tournaments (${windowLabel}). Last updated ${lastUpdated}.`;
@@ -359,7 +366,7 @@ function updateMinSliderBounds() {
   if (!minSlider || !minValue) {
     return;
   }
-  const tournamentCount = state.trendData?.tournaments?.length || Number(minSlider.max) || 8;
+  const tournamentCount = state.trendData?.tournamentCount || Number(minSlider.max) || 8;
   const requiredMin = Math.max(1, Math.floor(tournamentCount / 2));
   const max = Math.max(requiredMin, tournamentCount);
   state.minAppearances = requiredMin;
@@ -662,10 +669,7 @@ async function hydrateFromDecks() {
     state.isHydrating = true;
     setStatus('Recomputing from decks...');
     const decks = await fetchAllDecks(TRENDS_SOURCE);
-    const tournaments =
-      state.trendData.tournaments && state.trendData.tournaments.length
-        ? state.trendData.tournaments
-        : deriveTournamentsFromDecks(decks);
+    const tournaments = deriveTournamentsFromDecks(decks);
     const recomputed = buildTrendDataset(decks, tournaments, {
       minAppearances: 1,
       windowStart: state.trendData.windowStart,
