@@ -52,6 +52,7 @@ const MIN_DAY2D_MIN_APPEARANCE = 0.3;
 const MAX_DAY2D_RECENT_PCT = 0.1;
 const MAX_PER_ARCHETYPE = 2;
 const MAX_SUGGESTIONS = 18;
+const MAX_ARCHETYPES_IN_SERIES = 32;
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -143,6 +144,52 @@ function selectWithArchetypeCap(items, getArchetype, maxPer = MAX_PER_ARCHETYPE,
     result.push(item);
   }
   return result;
+}
+
+function aggregateTimelineByDay(timeline = []) {
+  if (!Array.isArray(timeline) || !timeline.length) {
+    return [];
+  }
+
+  const dayMap = new Map();
+  for (const entry of timeline) {
+    if (!entry) continue;
+    const dateKey =
+      typeof entry.date === 'string' && entry.date.length
+        ? entry.date.split('T')[0]
+        : 'unknown';
+    const target = dayMap.get(dateKey) || { date: dateKey, decks: 0, totalDecks: 0 };
+    target.decks += Number(entry.decks) || 0;
+    target.totalDecks += Number(entry.totalDecks) || 0;
+    dayMap.set(dateKey, target);
+  }
+
+  return Array.from(dayMap.values())
+    .map(point => ({
+      date: point.date,
+      decks: point.decks,
+      totalDecks: point.totalDecks,
+      share: point.totalDecks ? Math.round((point.decks / point.totalDecks) * 10000) / 100 : 0
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function trimTrendSeries(series = [], limit = MAX_ARCHETYPES_IN_SERIES) {
+  if (!Array.isArray(series) || !series.length) {
+    return [];
+  }
+
+  return [...series]
+    .sort(
+      (a, b) =>
+        (Number(b.totalDecks) || 0) - (Number(a.totalDecks) || 0) ||
+        (Number(b.avgShare) || 0) - (Number(a.avgShare) || 0)
+    )
+    .slice(0, limit)
+    .map(entry => ({
+      ...entry,
+      timeline: aggregateTimelineByDay(entry.timeline)
+    }));
 }
 
 function buildCardTimelines(decks, tournaments) {
@@ -473,18 +520,29 @@ async function main() {
     console.log(`[trends] Dropped ${tournaments.length - tournamentsWithDecks.length} tournaments with no deck data`);
   }
 
-  const trendReport = buildTrendReport(decks, tournamentsWithDecks, {
+  const rawTrendReport = buildTrendReport(decks, tournamentsWithDecks, {
     windowStart: since,
     windowEnd: now,
     now,
     minAppearances: 2
   });
-  const cardTrends = buildCardTrendReport(decks, trendReport.tournaments, {
+  const {
+    tournaments: trendTournaments = tournamentsWithDecks,
+    series: rawSeries = [],
+    ...trendReportMeta
+  } = rawTrendReport || {};
+  const trimmedSeries = trimTrendSeries(rawSeries, MAX_ARCHETYPES_IN_SERIES);
+  const trendReport = {
+    ...trendReportMeta,
+    series: trimmedSeries,
+    archetypeCount: trimmedSeries.length
+  };
+  const cardTrends = buildCardTrendReport(decks, trendTournaments, {
     windowStart: since,
     windowEnd: now,
     minAppearances: 2
   });
-  const { timelines: cardTimelines } = buildCardTimelines(decks, trendReport.tournaments);
+  const { timelines: cardTimelines } = buildCardTimelines(decks, trendTournaments);
   const suggestions = buildSuggestions(cardTimelines, now);
 
   const meta = {

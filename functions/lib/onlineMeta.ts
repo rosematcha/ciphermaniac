@@ -1086,7 +1086,11 @@ export async function runOnlineMetaJob(env, options: AnyOptions = {}) {
     now,
     minAppearances: options.minTrendAppearances
   });
-  const cardTrends = buildCardTrendReport(decks, trendReport.tournaments, {
+  const trendTournaments =
+    Array.isArray(trendReport?.tournaments) && trendReport.tournaments.length
+      ? trendReport.tournaments
+      : tournaments;
+  const cardTrends = buildCardTrendReport(decks, trendTournaments, {
     windowStart: since,
     windowEnd: now
   });
