@@ -23,7 +23,7 @@ const DEFAULT_DETAILS_CONCURRENCY = 5;
 const DEFAULT_STANDINGS_CONCURRENCY = 4;
 const DEFAULT_R2_CONCURRENCY = 6;
 const DEFAULT_MIN_TREND_APPEARANCES = 3;
-const MIN_TREND_PLAYERS = 16;
+const MIN_TREND_PLAYERS = 0;
 
 // Placement tagging thresholds (absolute finishing positions)
 const PLACEMENT_TAG_RULES = [
