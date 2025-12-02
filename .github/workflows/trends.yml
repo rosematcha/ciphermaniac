@@ -36,7 +36,7 @@ jobs:
         run: sleep 300
 
       - name: Generate trends report
-        run: node .github/scripts/run-trends.mjs
+        run: npx tsx .github/scripts/run-trends.ts
         env:
           LIMITLESS_API_KEY: ${{ secrets.LIMITLESS_API_KEY }}
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
