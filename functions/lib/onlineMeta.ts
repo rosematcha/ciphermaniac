@@ -708,9 +708,10 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
 
   const series = [];
   archetypes.forEach(archetype => {
-    const timeline = sortedTournaments.map(tournamentMeta => {
-      const entry = archetype.timeline.get(tournamentMeta.id);
-      const totalDecks = tournamentMeta.deckTotal || 0;
+    const timeline = sortedTournaments.map(t => {
+      const entry = archetype.timeline.get(t.id);
+      const tournamentMeta = tournamentIndex.get(t.id);
+      const totalDecks = tournamentMeta?.deckTotal || 0;
 
       if (entry) {
         const share = totalDecks ? Math.round((entry.decks / totalDecks) * 10000) / 100 : 0;
@@ -723,9 +724,9 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
 
       // Backfill missing tournament
       return {
-        tournamentId: tournamentMeta.id,
-        tournamentName: tournamentMeta.name,
-        date: tournamentMeta.date,
+        tournamentId: t.id,
+        tournamentName: t.name,
+        date: t.date,
         decks: 0,
         totalDecks,
         share: 0,
@@ -879,11 +880,27 @@ function buildCardTrendReport(decks, tournaments, options: AnyOptions = {}) {
     });
   });
 
+  // Basic energy cards to exclude from trend reports (variant changes aren't meaningful)
+  const BASIC_ENERGY_NAMES = new Set([
+    'Psychic Energy',
+    'Fire Energy',
+    'Lightning Energy',
+    'Grass Energy',
+    'Darkness Energy',
+    'Metal Energy',
+    'Fighting Energy',
+    'Water Energy'
+  ]);
+
   const rising = [...series]
     .filter(item => item.currentShare > 0)
+    .filter(item => !BASIC_ENERGY_NAMES.has(item.name))
     .sort((a, b) => b.delta - a.delta)
     .slice(0, topCount);
-  const falling = [...series].sort((a, b) => a.delta - b.delta).slice(0, topCount);
+  const falling = [...series]
+    .filter(item => !BASIC_ENERGY_NAMES.has(item.name))
+    .sort((a, b) => a.delta - b.delta)
+    .slice(0, topCount);
 
   return {
     generatedAt: now.toISOString(),
