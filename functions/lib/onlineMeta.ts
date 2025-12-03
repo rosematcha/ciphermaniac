@@ -23,7 +23,7 @@ const DEFAULT_DETAILS_CONCURRENCY = 5;
 const DEFAULT_STANDINGS_CONCURRENCY = 4;
 const DEFAULT_R2_CONCURRENCY = 6;
 const DEFAULT_MIN_TREND_APPEARANCES = 3;
-const MIN_TREND_PLAYERS = 16;
+const MIN_TREND_PLAYERS = 0;
 
 // Placement tagging thresholds (absolute finishing positions)
 const PLACEMENT_TAG_RULES = [
@@ -642,6 +642,9 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
     1,
     Number.isFinite(options.minAppearances) ? Number(options.minAppearances) : DEFAULT_MIN_TREND_APPEARANCES
   );
+  const seriesLimit = Number.isFinite(options.seriesLimit)
+    ? Math.max(1, Number(options.seriesLimit))
+    : null;
 
   const tournamentIndex = new Map();
   const sortedTournaments = (Array.isArray(tournaments) ? tournaments : [])
@@ -708,9 +711,10 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
 
   const series = [];
   archetypes.forEach(archetype => {
-    const timeline = sortedTournaments.map(tournamentMeta => {
-      const entry = archetype.timeline.get(tournamentMeta.id);
-      const totalDecks = tournamentMeta.deckTotal || 0;
+    const timeline = sortedTournaments.map(t => {
+      const entry = archetype.timeline.get(t.id);
+      const tournamentMeta = tournamentIndex.get(t.id);
+      const totalDecks = tournamentMeta?.deckTotal || 0;
 
       if (entry) {
         const share = totalDecks ? Math.round((entry.decks / totalDecks) * 10000) / 100 : 0;
@@ -723,9 +727,9 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
 
       // Backfill missing tournament
       return {
-        tournamentId: tournamentMeta.id,
-        tournamentName: tournamentMeta.name,
-        date: tournamentMeta.date,
+        tournamentId: t.id,
+        tournamentName: t.name,
+        date: t.date,
         decks: 0,
         totalDecks,
         share: 0,
@@ -751,6 +755,27 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
     const peakShare = maxShare; // Alias for clarity
     const minShare = shares.length ? Math.min(...shares) : 0;
 
+    // Aggregate timeline by day (date) instead of by tournament
+    const dailyData = new Map();
+    for (const entry of timeline) {
+      const dateKey = entry.date ? entry.date.split('T')[0] : 'unknown';
+      if (!dailyData.has(dateKey)) {
+        dailyData.set(dateKey, { decks: 0, totalDecks: 0 });
+      }
+      const day = dailyData.get(dateKey);
+      day.decks += entry.decks || 0;
+      day.totalDecks += entry.totalDecks || 0;
+    }
+
+    const dailyTimeline = Array.from(dailyData.entries())
+      .map(([date, data]) => ({
+        date,
+        decks: data.decks,
+        totalDecks: data.totalDecks,
+        share: data.totalDecks ? Math.round((data.decks / data.totalDecks) * 10000) / 100 : 0
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
     series.push({
       base: archetype.base,
       displayName: archetype.displayName,
@@ -761,28 +786,40 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
       peakShare,
       minShare,
       successTotals: aggregateSuccess,
-      timeline
+      timeline: dailyTimeline
     });
   });
 
   series.sort((a, b) => b.totalDecks - a.totalDecks || b.avgShare - a.avgShare);
+  const limitedSeries = seriesLimit ? series.slice(0, seriesLimit) : series;
 
-  const tournamentsWithTotals = sortedTournaments.map(t => ({
-    ...t,
-    deckTotal: tournamentIndex.get(t.id)?.deckTotal || 0
-  }));
+  const tournamentCount = sortedTournaments.length;
 
-  return {
+  const tournamentsWithDeckCounts = sortedTournaments.map(t => {
+    const meta = tournamentIndex.get(t.id);
+    return {
+      ...t,
+      deckTotal: meta?.deckTotal ?? t.deckTotal ?? 0
+    };
+  });
+
+  const result: AnyOptions = {
     generatedAt: now.toISOString(),
     windowStart: windowStart ? windowStart.toISOString() : null,
     windowEnd: windowEnd ? windowEnd.toISOString() : null,
     deckTotal: deckList.length,
-    tournamentCount: tournamentsWithTotals.length,
+    tournamentCount,
     minAppearances,
-    archetypeCount: series.length,
-    tournaments: tournamentsWithTotals,
-    series
+    archetypeCount: limitedSeries.length,
+    series: limitedSeries,
+    tournaments: tournamentsWithDeckCounts
   };
+
+  if (seriesLimit && limitedSeries.length !== series.length) {
+    result.totalArchetypes = series.length;
+  }
+
+  return result;
 }
 
 function buildCardTrendReport(decks, tournaments, options: AnyOptions = {}) {
@@ -879,11 +916,27 @@ function buildCardTrendReport(decks, tournaments, options: AnyOptions = {}) {
     });
   });
 
+  // Basic energy cards to exclude from trend reports (variant changes aren't meaningful)
+  const BASIC_ENERGY_NAMES = new Set([
+    'Psychic Energy',
+    'Fire Energy',
+    'Lightning Energy',
+    'Grass Energy',
+    'Darkness Energy',
+    'Metal Energy',
+    'Fighting Energy',
+    'Water Energy'
+  ]);
+
   const rising = [...series]
     .filter(item => item.currentShare > 0)
+    .filter(item => !BASIC_ENERGY_NAMES.has(item.name))
     .sort((a, b) => b.delta - a.delta)
     .slice(0, topCount);
-  const falling = [...series].sort((a, b) => a.delta - b.delta).slice(0, topCount);
+  const falling = [...series]
+    .filter(item => !BASIC_ENERGY_NAMES.has(item.name))
+    .sort((a, b) => a.delta - b.delta)
+    .slice(0, topCount);
 
   return {
     generatedAt: now.toISOString(),
@@ -953,23 +1006,25 @@ function determinePlacementLimit(players) {
     return 0;
   }
   // Known small events: capture full field
-  if (count > 0 && count <= 8) {
+  if (count > 0 && count <= 16) {
     return count;
   }
-  if (count > 0 && count <= 16) {
-    return 16;
-  }
+  // Medium events: capture top 75%
   if (count > 0 && count <= 32) {
-    return 24;
+    return 32;
   }
   if (count > 0 && count <= 64) {
-    return 48;
-  }
-  if (count >= 65) {
     return 64;
   }
+  if (count > 0 && count <= 128) {
+    return 96;
+  }
+  // Large events: capture top 128
+  if (count >= 129) {
+    return 128;
+  }
   // Unknown player counts: grab a richer slice to avoid under-sampling
-  return 32;
+  return 64;
 }
 
 export async function runOnlineMetaJob(env, options: AnyOptions = {}) {
@@ -1042,13 +1097,19 @@ export async function runOnlineMetaJob(env, options: AnyOptions = {}) {
     synonymDb,
     { thumbnailConfig: ARCHETYPE_THUMBNAILS }
   );
+  const trendSeriesLimit = Number.isFinite(options.seriesLimit) ? Number(options.seriesLimit) : 32;
   const trendReport: AnyOptions = buildTrendReport(decks, tournaments, {
     windowStart: since,
     windowEnd: now,
     now,
-    minAppearances: options.minTrendAppearances
+    minAppearances: options.minTrendAppearances,
+    seriesLimit: trendSeriesLimit
   });
-  const cardTrends = buildCardTrendReport(decks, trendReport.tournaments, {
+  const trendTournaments =
+    Array.isArray(trendReport?.tournaments) && trendReport.tournaments.length
+      ? trendReport.tournaments
+      : tournaments;
+  const cardTrends = buildCardTrendReport(decks, trendTournaments, {
     windowStart: since,
     windowEnd: now
   });

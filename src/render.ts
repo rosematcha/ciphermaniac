@@ -205,14 +205,12 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
     grid._renderOptions = settings;
     grid._autoCompact = prefersCompact;
 
-    grid.innerHTML = '';
-
-    // Empty state for no results
+    // Empty state for no results - use replaceChildren for atomic update
     if (!items || items.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'empty-state';
         empty.innerHTML = `<h2>Dead draw.</h2><p>No results for this search, try another!</p>`;
-        grid.appendChild(empty);
+        grid.replaceChildren(empty);
         return;
     }
 
@@ -227,16 +225,56 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
     const largeRowsLimit = forceCompact ? 0 : NUM_LARGE_ROWS;
     const mediumRowsLimit = forceCompact ? 0 : NUM_MEDIUM_ROWS;
 
+    // Capture existing cards to reuse DOM elements (prevents image flashing)
+    const existingCardsMap = new Map<string, HTMLElement>();
+    grid.querySelectorAll('.card').forEach(el => {
+        const cardEl = el as HTMLElement;
+        const uid = cardEl.dataset.uid;
+        const cardId = cardEl.dataset.cardId;
+        const name = cardEl.dataset.name;
+        const key = uid || cardId || name;
+        if (key) existingCardsMap.set(key, cardEl);
+    });
+
     // Use the shared card creation function
     const makeCard = (it: any, useSm: boolean) => {
-        const cardEl = makeCardElement(it, useSm, overrides, { showPrice }, previousCardIds);
-        // Wrap in document fragment to match expected return type
-        const frag = document.createDocumentFragment();
-        frag.appendChild(cardEl);
-        return frag;
+        // Try to reuse existing element
+        const uid = it.uid;
+        const setCode = it.set ? String(it.set).toUpperCase() : '';
+        const number = it.number ? normalizeCardNumber(it.number) : '';
+        const cardId = setCode && number ? `${setCode}~${number}` : null;
+        const name = it.name ? it.name.toLowerCase() : null;
+        const key = uid || cardId || name;
+
+        let cardEl: HTMLElement;
+        if (key && existingCardsMap.has(key)) {
+            cardEl = existingCardsMap.get(key)!;
+            // Update dynamic content
+            setupCardCounts(cardEl, it);
+            createCardHistogram(cardEl, it);
+            // Ensure attributes are up to date
+            setupCardAttributes(cardEl, it);
+            // Remove entering class if present
+            cardEl.classList.remove('card-entering');
+            // Mark as reused so we know not to re-parent it unnecessarily
+            (cardEl as any)._reused = true;
+        } else {
+            cardEl = makeCardElement(it, useSm, overrides, { showPrice }, previousCardIds);
+            (cardEl as any)._reused = false;
+        }
+
+        return cardEl;
     };
 
-    const frag = document.createDocumentFragment();
+    // ===== IN-PLACE DOM UPDATE STRATEGY =====
+    // Instead of replaceChildren (which causes flash), we update the DOM in place:
+    // 1. Reuse existing rows, update their cards
+    // 2. Add new rows only if needed
+    // 3. Remove excess rows at the end
+    
+    const existingRows = Array.from(grid.querySelectorAll('.row')) as HTMLElement[];
+    const existingMoreWrap = grid.querySelector('.more-rows') as HTMLElement | null;
+    
     let i = 0;
     let rowIndex = 0;
     // visible rows limit (rows, not cards). Default to initial value from config; clicking More loads incremental rows
@@ -244,9 +282,23 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
         grid._visibleRows = CONFIG.UI.INITIAL_VISIBLE_ROWS;
     }
     const visibleRowsLimit = grid._visibleRows || CONFIG.UI.INITIAL_VISIBLE_ROWS;
+    
+    // Track cards that will be in the new layout
+    const newLayoutCards = new Set<HTMLElement>();
+    
+    // Build rows - reuse existing or create new
+    const rowsToKeep: HTMLElement[] = [];
+    
     while (i < items.length && rowIndex < visibleRowsLimit) {
-        const row = document.createElement('div');
-        row.className = 'row';
+        // Reuse existing row if available, otherwise create new
+        let row: HTMLElement;
+        const isExistingRow = rowIndex < existingRows.length;
+        if (isExistingRow) {
+            row = existingRows[rowIndex];
+        } else {
+            row = document.createElement('div');
+            row.className = 'row';
+        }
         row.dataset.rowIndex = String(rowIndex);
 
         // Determine row type: large (0), medium (1), or small (2+)
@@ -279,22 +331,56 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
         row.style.width = `${bigRowContentWidth}px`;
         row.style.margin = '0 auto';
 
+        // Get current cards in this row
+        const existingRowCards = isExistingRow ? Array.from(row.querySelectorAll('.card')) as HTMLElement[] : [];
+        
         const count = Math.min(maxCount, items.length - i);
-        for (let j = 0; j < count && i < items.length; j++, i++) {
-            // Use sm thumbs for large/medium rows, xs for small rows
+        
+        // First pass: collect all cards we need for this row
+        const cardsForRow: HTMLElement[] = [];
+        const tempI = i; // Save i for card collection
+        for (let j = 0; j < count && (tempI + j) < items.length; j++) {
             const useSm = isLarge || isMedium || !isSmall;
-            const elFrag = makeCard(items[i], useSm);
-            const cardEl = elFrag.querySelector('.card') as HTMLElement;
-            if (cardEl) {
-                cardEl.dataset.row = String(rowIndex);
-                cardEl.dataset.col = String(j);
-            }
-            row.appendChild(elFrag);
+            const cardEl = makeCard(items[tempI + j], useSm);
+            cardEl.dataset.row = String(rowIndex);
+            cardEl.dataset.col = String(j);
+            newLayoutCards.add(cardEl);
+            cardsForRow.push(cardEl);
         }
-        frag.appendChild(row);
+        
+        // Update row: clear and repopulate if cards changed, otherwise update in place
+        // Check if we can do a simple in-place update (same cards in same order)
+        const canUpdateInPlace = cardsForRow.length === existingRowCards.length &&
+            cardsForRow.every((card, idx) => existingRowCards[idx] === card);
+        
+        if (!canUpdateInPlace) {
+            // Cards changed - rebuild row content
+            // Use replaceChildren for atomic update of this row only
+            row.replaceChildren(...cardsForRow);
+        }
+        // If canUpdateInPlace, cards are already correct, no DOM changes needed
+        
+        // Advance i by the number of cards we processed
+        i += count;
+        
+        // Add row to grid if it's new
+        if (!isExistingRow) {
+            // Insert before the "more" button if it exists, otherwise append
+            if (existingMoreWrap && existingMoreWrap.parentNode === grid) {
+                grid.insertBefore(row, existingMoreWrap);
+            } else {
+                grid.appendChild(row);
+            }
+        }
+        
+        rowsToKeep.push(row);
         rowIndex++;
     }
-    grid.appendChild(frag);
+    
+    // Remove excess rows (those beyond what we need)
+    for (let r = rowIndex; r < existingRows.length; r++) {
+        existingRows[r].remove();
+    }
 
     // Set up image preloading for better performance
     // setupImagePreloading(items, overrides); // Disabled - using parallelImageLoader instead
@@ -395,10 +481,24 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
             });
         });
         moreWrap.appendChild(moreBtn);
-        grid.appendChild(moreWrap);
+        
+        // Add or update the more button in-place
+        if (existingMoreWrap) {
+            existingMoreWrap.replaceWith(moreWrap);
+        } else {
+            grid.appendChild(moreWrap);
+        }
         // Keep a reference so updateLayout can re-attach after rebuilds
         grid._moreWrapRef = moreWrap;
+    } else {
+        // No more button needed, remove it if it exists
+        if (existingMoreWrap) {
+            existingMoreWrap.remove();
+        }
+        grid._moreWrapRef = null;
     }
+
+    // Note: No replaceChildren needed - DOM was updated in-place above
 
     // Keyboard navigation: arrow keys move focus across cards by row/column
     if (!grid._kbNavAttached) {
@@ -717,7 +817,7 @@ function setupCardImage(img: HTMLImageElement | null, cardName: string, useSm: b
     // Use parallel image loader for better performance
     parallelImageLoader.setupImageElement(img, candidates, {
         alt: cardName,
-        fadeIn: true,
+        fadeIn: false, // Disabled to prevent flashing on re-render
         maxParallel: 3, // Try first 3 candidates in parallel
         onFailure: () => {
             // Track missing images for debugging
@@ -1111,8 +1211,26 @@ function setupCardAttributes(card: HTMLElement, cardData: any) {
     } else {
         delete card.dataset.cardId;
     }
+    // Store usage percent for CSS-based visibility filtering (avoids DOM rebuild on threshold change)
+    const pct = getCardUsagePercent(cardData);
+    if (Number.isFinite(pct)) {
+        card.dataset.pct = String(pct);
+    } else {
+        delete card.dataset.pct;
+    }
     card.setAttribute('role', 'link');
     card.setAttribute('aria-label', `${cardData.name} – open details`);
+}
+
+// Helper to extract usage percent from card data
+function getCardUsagePercent(card: any): number {
+    if (Number.isFinite(card.pct)) {
+        return Number(card.pct);
+    }
+    if (Number.isFinite(card.found) && Number.isFinite(card.total) && card.total > 0) {
+        return (card.found / card.total) * 100;
+    }
+    return 0;
 }
 
 // Extract counts setup
@@ -1310,14 +1428,15 @@ export function updateLayout() {
         rowIndex++;
     }
 
-    // Replace rows; event listeners on cards remain intact
-    grid.innerHTML = '';
-    grid.appendChild(frag);
     // Restore More... button if there are additional rows beyond the visible ones
     if (savedMore && rowIndex < newTotalRows) {
-        grid.appendChild(savedMore);
+        frag.appendChild(savedMore);
         grid._moreWrapRef = savedMore;
     }
+
+    // Atomically replace grid content to prevent flashing
+    grid.replaceChildren(frag);
+
     // Cache last layout metrics for fast-path updates on minor resizes
     grid._layoutMetrics = {
         base,

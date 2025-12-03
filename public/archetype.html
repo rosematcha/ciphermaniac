@@ -5,11 +5,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Archetype • Ciphermaniac</title>
+  <!-- Preload critical font to reduce layout shift -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/style.css" />
-  <link rel="icon" href="data:," />
+  <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
 </head>
 <body>
+  <div class="archetype-page" data-state="loading">
   <div class="archetype-page" data-state="loading">
     <main class="archetype-main">
       <section class="archetype-content">
@@ -94,6 +98,7 @@
                     <button type="button" id="archetype-add-filter" class="btn-text btn-sm">+ Add Condition</button>
                   </div>
                   <div id="archetype-filter-rows" class="filter-rows-container"></div>
+                  <p id="archetype-filter-empty-state" class="archetype-filter-message filters-empty-message" hidden>All good! Click "Add Condition" if you change your mind.</p>
                 </div>
               </div>
 
@@ -132,7 +137,7 @@
     import { createHeader } from '/assets/js/components/header.js';
     import { createFooter } from '/assets/js/components/footer.js';
 
-  const header = createHeader({ currentPage: 'archetypes' });
+    const header = createHeader({ currentPage: 'archetypes' });
     const footer = createFooter();
 
     document.body.insertAdjacentElement('afterbegin', header);

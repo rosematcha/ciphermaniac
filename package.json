@@ -5,6 +5,8 @@
   "description": "Pokemon TCG tournament data visualization tool",
   "main": "public/assets/js/main.js",
   "scripts": {
+    "build": "npm run build:frontend",
+    "postinstall": "npm run build:frontend",
     "lint": "eslint src/data/cardTypes.ts src/feedback.ts src/pricing.ts src/incidents.ts src/dev/layoutTests.ts src/tools/metaBinderData.ts src/types/dom.ts dev/tests --ext .ts",
     "lint:fix": "eslint src/data/cardTypes.ts src/feedback.ts src/pricing.ts src/incidents.ts src/dev/layoutTests.ts src/tools/metaBinderData.ts src/types/dom.ts dev/tests --ext .ts --fix",
     "typecheck": "npx tsc --noEmit --project tsconfig.frontend.json",

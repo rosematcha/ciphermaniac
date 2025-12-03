@@ -244,9 +244,11 @@ export function showSkeleton(target, skeletonElement) {
     target.innerHTML = '';
     target.appendChild(skeletonElement);
     target.classList.add('showing-skeleton');
+    target.classList.remove('skeleton-loading');
 }
 /**
  * Hide skeleton and restore original content or show new content
+ * Synchronously removes skeleton so caller can immediately populate content
  * @param target
  * @param newContent
  */
@@ -254,7 +256,10 @@ export function hideSkeleton(target, newContent = null) {
     if (!target) {
         return;
     }
+    // Synchronously remove skeleton classes
     target.classList.remove('showing-skeleton');
+    target.classList.remove('skeleton-loading');
+    // If new content is provided, swap it in
     if (newContent !== null) {
         target.innerHTML = '';
         if (typeof newContent === 'string') {
@@ -265,8 +270,13 @@ export function hideSkeleton(target, newContent = null) {
         }
     }
     else if (target._originalContent) {
+        // Restore original content if stored
         target.innerHTML = target._originalContent;
         delete target._originalContent;
+    }
+    else {
+        // Just clear skeleton content so caller can populate
+        target.innerHTML = '';
     }
 }
 /**

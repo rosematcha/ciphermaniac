@@ -29,6 +29,10 @@
   --border-radius-lg: 12px;
   --container-max-width: 1200px;
 
+  /* Header/Footer heights for CLS prevention */
+  --header-height: 53px;
+  --footer-height: 45px;
+
   /* Typography */
   --font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Inter, Arial, sans-serif;
   --font-size-sm: 12px;
@@ -42,6 +46,66 @@
   --spacing-md: 12px;
   --spacing-lg: 16px;
   --spacing-xl: 24px;
+}
+
+/* ==========================================================================
+   Layout Shift Prevention
+   Reserve space for JS-inserted header/footer before they load
+   ========================================================================== */
+body::before {
+  content: '';
+  display: block;
+  height: var(--header-height);
+  background: var(--panel);
+  border-bottom: 1px solid #20243a;
+  flex-shrink: 0;
+}
+
+/* Hide the placeholder once header is inserted */
+body:has(> header)::before {
+  display: none;
+}
+
+/* Fallback for browsers without :has() - use a class added by JS */
+body.has-header::before {
+  display: none;
+}
+
+/* Pages that don't have a header (e.g., home page) */
+body.no-header::before {
+  display: none;
+}
+
+/* Reserve footer space at bottom */
+body::after {
+  content: '';
+  display: block;
+  height: var(--footer-height);
+  margin-top: auto;
+  background: transparent;
+  border-top: 1px solid #20243a;
+  flex-shrink: 0;
+}
+
+body:has(> footer)::after {
+  display: none;
+}
+
+body.has-footer::after {
+  display: none;
+}
+
+/* ==========================================================================
+   Font Display Optimization
+   Use font-display: swap with size-adjust to reduce layout shift
+   ========================================================================== */
+@font-face {
+  font-family: 'Fraunces Fallback';
+  src: local('Georgia');
+  size-adjust: 105%;
+  ascent-override: 95%;
+  descent-override: 22%;
+  line-gap-override: 0%;
 }
 
 /* ==========================================================================
@@ -70,15 +134,28 @@ body {
   color: var(--text);
 }
 
-header {
+/* Ensure header always has correct styles with high specificity */
+body:not(.no-header)>.site-header,
+body:not(.no-header)>header {
   padding: 12px 0;
   background: var(--panel);
   border-bottom: 1px solid #20243a;
+  display: block;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 100;
+  /* Ensure header paints independently and border is always visible */
+  isolation: isolate;
+  contain: layout style paint;
+  will-change: auto;
 }
 
 /* Site title */
 .site-title {
-  font-family: "Fraunces", serif;
+  font-family: "Fraunces", 'Fraunces Fallback', Georgia, serif;
   font-optical-sizing: auto;
   font-weight: 900;
   font-style: normal;
@@ -292,7 +369,9 @@ header {
 .toolbar {
   background: transparent;
   border-bottom: 1px solid #171824;
-  padding: 24px 0 10px
+  padding: 24px 0 10px;
+  /* Fixed min-height prevents CLS when filters toggle or fonts load */
+  min-height: 83px;
 }
 
 .toolbar-inner {
@@ -1296,6 +1375,18 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: var(--gap);
+  /* Prevent layout thrashing and flashing during updates */
+  contain: layout style paint;
+}
+
+/* Prevent any flash during grid updates */
+.grid.updating {
+  pointer-events: none;
+}
+
+/* Ensure card images show immediately without flash */
+.thumb img {
+  opacity: 1 !important;
 }
 
 .empty-state {
@@ -1323,21 +1414,9 @@ h2 {
   --scale: 1;
 }
 
-/* Smooth fade-in for newly added cards to prevent flash */
+/* Card entering class - no animation to prevent flashing */
 .card.card-entering {
-  animation: fadeInCard 0.2s ease-out;
-}
-
-@keyframes fadeInCard {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  /* Animation removed to prevent flashing on load */
 }
 
 .more-rows {
@@ -1837,12 +1916,191 @@ h2 {
   object-fit: contain
 }
 
+.card-hero .thumb.card-hero__trigger {
+  cursor: zoom-in;
+  border-radius: 14px;
+  outline: none;
+  transition: box-shadow .18s ease, transform .18s ease;
+  position: relative;
+}
+
+.card-hero .thumb.card-hero__trigger::before {
+  content: 'Tap or click to enlarge';
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+  background: rgba(8, 10, 24, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--muted);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .2s ease, transform .2s ease;
+  pointer-events: none;
+}
+
+.card-hero .thumb.card-hero__trigger:hover::before,
+.card-hero .thumb.card-hero__trigger:focus-visible::before {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.card-hero .thumb.card-hero__trigger:focus-visible {
+  box-shadow: 0 0 0 3px rgba(111, 140, 255, 0.65);
+}
+
+.card-hero .thumb.card-hero__trigger img {
+  pointer-events: none;
+}
+
 /* Card pricing styles */
 .card-price {
   margin: 0;
   display: flex;
   justify-content: flex-end;
 }
+
+body.card-image-modal-open {
+  overflow: hidden;
+}
+
+.card-image-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease-in-out;
+  z-index: 400;
+}
+
+.card-image-modal.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.card-image-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 7, 18, 0.82);
+  backdrop-filter: blur(2px);
+}
+
+.card-image-modal__dialog {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(14, 16, 30, 0.95), rgba(9, 10, 20, 0.92));
+  border-radius: 14px;
+  border: 1px solid rgba(93, 110, 173, 0.4);
+  width: min(560px, 92vw);
+  max-height: calc(100vh - 60px);
+  padding: 32px 28px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.65);
+}
+
+.card-image-modal__image-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-height: calc(100vh - 220px);
+}
+
+.card-image-modal__image-wrap img {
+  max-width: 100%;
+  max-height: calc(100vh - 240px);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+.card-image-modal__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(15, 17, 34, 0.85);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform .15s ease, border-color .15s ease;
+}
+
+.card-image-modal__close:hover {
+  transform: scale(1.05);
+  border-color: var(--accent-2);
+}
+
+.card-image-modal__close:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+.card-image-modal__caption {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.card-image-modal.is-loading .card-image-modal__image-wrap::after {
+  content: '';
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-top-color: var(--accent-2);
+  animation: spin 1s linear infinite;
+}
+
+.card-image-modal.is-loading img {
+  opacity: 0;
+}
+
+.card-image-modal.has-error .card-image-modal__image-wrap::after {
+  content: 'Unable to load card image';
+  position: absolute;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(15, 17, 34, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.card-image-modal.has-error img {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .card-image-modal {
+    padding: 16px;
+  }
+
+  .card-image-modal__dialog {
+    width: 100%;
+    padding: 24px 18px 18px;
+  }
+}
+
 
 .price-info {
   display: flex;
@@ -2300,9 +2558,122 @@ h2 {
   }
 }
 
+/* Skeleton loading container - prevents flash during content swap */
+.skeleton-loading {
+  position: relative;
+}
+
+/* Show skeleton children with animation */
+.skeleton-loading>.skeleton-text,
+.skeleton-loading>.skeleton-image,
+.skeleton-loading>.skeleton-chart,
+.skeleton-loading>.skeleton-histogram {
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+/* Container for smooth content transitions */
+.showing-skeleton {
+  position: relative;
+}
+
+/* Smooth fade-in for content replacing skeletons */
+.showing-skeleton>* {
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+/* When skeleton is removed, fade in the new content */
+.card-sect>*:not(.skeleton-loading):not(.skeleton-chart):not(.skeleton-histogram):not([aria-hidden="true"]) {
+  animation: fadeInContent 0.2s ease-out forwards;
+}
+
+@keyframes fadeInContent {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Prevent flashing on containers that have just been populated */
+#card-chart,
+#card-copies,
+#card-events,
+#card-price,
+#card-sets {
+  transition: opacity 0.15s ease-out;
+}
+
+#card-chart:empty,
+#card-copies:empty,
+#card-events:empty {
+  min-height: 100px;
+  background: transparent;
+}
+
+/* Ensure chart container has minimum dimensions to prevent CLS */
+#card-chart {
+  min-height: 180px;
+}
+
+#card-copies {
+  min-height: 100px;
+}
+
+/* Smooth hero image reveal */
+.card-hero .thumb {
+  background: #0c1024;
+  min-height: 280px;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-hero .thumb img {
+  transition: opacity 0.18s ease-out;
+}
+
+/* Skeleton image within hero */
+.card-hero .thumb .skeleton-image {
+  position: absolute;
+  inset: 0;
+  background: var(--bar-bg);
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+/* Prevent flash when content updates - apply base transition */
+.card-sect {
+  transition: opacity 0.1s ease-out;
+}
+
+/* Ensure SVG charts fade in smoothly */
+#card-chart svg {
+  animation: fadeInContent 0.2s ease-out forwards;
+}
+
+/* Histogram bars should animate in */
+#card-copies .hist {
+  animation: fadeInContent 0.2s ease-out forwards;
+}
+
+/* Events table should animate in */
+#card-events table {
+  animation: fadeInContent 0.2s ease-out forwards;
+}
+
 .skeleton-card {
   pointer-events: none;
   animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+/* Transition wrapper for smooth content replacement */
+.skeleton-transition-wrapper {
+  transition: opacity 0.15s ease-out;
+}
+
+/* Prevent any FOUC on initial page load */
+.card-sect[aria-hidden="true"] {
+  visibility: hidden;
 }
 
 /* Skeleton text elements */
@@ -2876,14 +3247,6 @@ h2 {
 
 .analysis-list-item__thumbnail--split>.analysis-list-item__thumbnail-image {
   display: none;
-}
-
-.analysis-list-item__thumbnail::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, rgba(10, 15, 30, 0) 0%, rgba(10, 15, 30, 0) 80%, rgba(10, 15, 30, 0.92) 100%);
-  pointer-events: none;
 }
 
 .analysis-list-item__thumbnail-image {
@@ -5214,6 +5577,10 @@ h2 {
   margin-top: 12px;
 }
 
+.archetype-filter-message[hidden] {
+  display: none !important;
+}
+
 .skeleton-count {
   color: var(--text);
   font-weight: 500;
@@ -5775,7 +6142,7 @@ tr:hover td {
 }
 
 .hero-title {
-  font-family: "Fraunces", serif;
+  font-family: "Fraunces", 'Fraunces Fallback', Georgia, serif;
   font-size: clamp(48px, 8vw, 80px);
   font-weight: 900;
   font-variation-settings: "SOFT" 100, "WONK" 1;
@@ -5937,7 +6304,7 @@ tr:hover td {
 }
 
 .page-title {
-  font-family: "Fraunces", serif;
+  font-family: "Fraunces", 'Fraunces Fallback', Georgia, serif;
   font-size: clamp(32px, 5vw, 48px);
   font-weight: 900;
   margin: 0 0 8px;
@@ -5950,4 +6317,64 @@ tr:hover td {
   font-size: 16px;
   max-width: 600px;
   margin: 0 auto;
+}
+
+/* ==========================================================================
+   Additional CLS Prevention
+   ========================================================================== */
+
+/* Ensure site-logo has fixed dimensions */
+.site-logo {
+  width: 28px;
+  height: 28px;
+  /* Explicit dimensions prevent reflow */
+}
+
+/* Hero logo with explicit aspect ratio */
+.hero-logo {
+  aspect-ratio: 1 / 1;
+}
+
+/* Card grid minimum height to prevent collapse */
+.grid:empty {
+  min-height: 400px;
+}
+
+/* Footer fixed height */
+.site-footer {
+  min-height: var(--footer-height);
+}
+
+/* Prevent image layout shift with aspect-ratio containment */
+.thumb img {
+  /* Already has aspect-ratio on parent, ensure img fills it */
+  width: 100%;
+  height: 100%;
+}
+
+/* Smooth content appearance instead of jarring pop-in */
+@media (prefers-reduced-motion: no-preference) {
+
+  .card,
+  .feature-card,
+  .analysis-list-item__button {
+    animation: fadeIn 0.15s ease-out;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Contain layout for sections that load content dynamically */
+.card-sect,
+.trend-panel,
+.analysis-main {
+  contain: layout style;
 }

@@ -56,26 +56,35 @@ import { createMultiSelectDropdown } from './components/MultiSelectDropdown.js';
 /**
  * Application state - simple object
  */
+interface ArchetypeOptionMeta {
+    label: string;
+    deckCount: number;
+}
+
 export interface AppState {
     currentTournament: string | null;
     selectedTournaments: string[];
     selectedSets: string[];
+    selectedArchetypes: string[];
     selectedCardType: string;
     successFilter: string;
     availableTournaments: string[];
     onlineTournaments: any[];
     availableSets: string[];
+    archetypeOptions: Map<string, ArchetypeOptionMeta>;
     current: { items: any[]; deckTotal: number };
     overrides: Record<string, string>;
     masterCache: Map<string, any>;
     archeCache: Map<string, any>;
     cleanup: CleanupManager;
     cache: DataCache | null;
+    applyArchetypeSelection: ((selection: string[], options?: { force?: boolean }) => Promise<void>) | null;
     ui: {
         dropdowns: Record<string, any>;
         openDropdown: any;
         onTournamentSelection: ((selection: string[]) => void) | null;
         onSetSelection: ((selection: string[], options?: any) => void) | null;
+        onArchetypeSelection: ((selection: string[]) => void | Promise<void>) | null;
     };
 }
 
@@ -83,22 +92,26 @@ const appState: AppState = {
     currentTournament: null,
     selectedTournaments: [],
     selectedSets: [],
+    selectedArchetypes: [],
     selectedCardType: '__all__',
     successFilter: 'all',
     availableTournaments: [],
     onlineTournaments: [],
     availableSets: [],
+    archetypeOptions: new Map(),
     current: { items: [], deckTotal: 0 },
     overrides: {},
     masterCache: new Map(),
     archeCache: new Map(),
     cleanup: new CleanupManager(),
     cache: null,
+    applyArchetypeSelection: null,
     ui: {
         dropdowns: {},
         openDropdown: null,
         onTournamentSelection: null,
-        onSetSelection: null
+        onSetSelection: null,
+        onArchetypeSelection: null
     }
 };
 
@@ -133,19 +146,26 @@ async function fetchTournamentDecks(tournament: string): Promise<any[]> {
     return loader;
 }
 
-async function buildDeckReport(tournaments: string | string[], successFilter: string = 'all', archetypeBase: string | null = null) {
+async function buildDeckReport(
+    tournaments: string | string[],
+    successFilter: string = 'all',
+    archetypeBase: string | string[] | null = null
+) {
     const { aggregateDecks, filterDecksBySuccess } = await import('./utils/clientSideFiltering.js');
     const selection = Array.isArray(tournaments) ? tournaments : [tournaments];
     const deckLists = await Promise.all(selection.map(tournament => fetchTournamentDecks(tournament)));
     const allDecks = deckLists.flat();
     const successDecks = filterDecksBySuccess(allDecks, successFilter);
+    const normalizedTargets = Array.isArray(archetypeBase)
+        ? archetypeBase.map(normalizeArchetypeValue).filter(Boolean)
+        : archetypeBase
+            ? [normalizeArchetypeValue(archetypeBase)]
+            : [];
+    const archetypeFilter = normalizedTargets.length ? new Set(normalizedTargets) : null;
 
-    const scopedDecks =
-        archetypeBase === null
-            ? successDecks
-            : successDecks.filter(
-                (deck: any) => normalizeArchetypeValue(deck?.archetype) === normalizeArchetypeValue(archetypeBase)
-            );
+    const scopedDecks = archetypeFilter
+        ? successDecks.filter((deck: any) => archetypeFilter.has(normalizeArchetypeValue(deck?.archetype)))
+        : successDecks;
 
     return aggregateDecks(scopedDecks);
 }
@@ -174,6 +194,29 @@ function normalizeTournamentSelection(selection: string | string[] | null | unde
         normalized.push(trimmed);
     }
     return normalized;
+}
+
+/**
+ * Determine which tournaments should supply archetype data.
+ * Prefers physical events when available, but falls back to the online meta if that's the only selection.
+ */
+function getArchetypeSourceTournaments(selection: string | string[] | null | undefined): string[] {
+    const normalized = normalizeTournamentSelection(selection);
+    const physical = normalized.filter(tournament => tournament !== DEFAULT_ONLINE_META);
+    if (physical.length > 0) {
+        return physical;
+    }
+    return normalized.includes(DEFAULT_ONLINE_META) ? [DEFAULT_ONLINE_META] : [];
+}
+
+function parseArchetypeQueryParam(value: string | null | undefined): string[] {
+    if (!value) {
+        return [];
+    }
+    return value
+        .split(',')
+        .map(part => part.trim())
+        .filter(Boolean);
 }
 
 /**
@@ -270,6 +313,41 @@ function setupDropdownFilters(state: AppState) {
             baseWidth: 300,
             maxWidth: 440,
             onChange: (selection: string[]) => state.ui.onSetSelection?.(selection)
+        }),
+        archetypes: createMultiSelectDropdown(state, {
+            key: 'archetypes',
+            triggerId: 'archetype-trigger',
+            summaryId: 'archetype-summary',
+            menuId: 'archetype-menu',
+            listId: 'archetype-options',
+            chipsId: 'archetype-chips',
+            addButtonId: 'archetype-add',
+            labelId: 'archetype-label',
+            searchId: 'archetype-search',
+            placeholder: 'All archetypes',
+            placeholderAriaLabel: 'Select archetypes',
+            emptyMessage: 'No archetypes found',
+            singularLabel: 'Archetype',
+            pluralLabel: 'Archetypes',
+            addButtonLabel: 'Add another',
+            addAriaLabel: 'Add another selection',
+            allSelectedLabel: 'All archetypes selected',
+            includeAllOption: true,
+            allOptionLabel: 'All Archetypes',
+            maxVisibleChips: 3,
+            baseWidth: 320,
+            maxWidth: 480,
+            formatOption: (slug: string) => {
+                const option = state.archetypeOptions.get(slug);
+                if (!option) {
+                    const fallback = slug.replace(/_/g, ' ');
+                    return { label: fallback, fullName: fallback };
+                }
+                const label = option.label || slug.replace(/_/g, ' ');
+                const display = option.deckCount > 0 ? `${label} (${option.deckCount})` : label;
+                return { label: display, fullName: label };
+            },
+            onChange: (selection: string[]) => state.ui.onArchetypeSelection?.(selection)
         })
     };
 
@@ -314,6 +392,10 @@ function setupDropdownFilters(state: AppState) {
         dropdowns.sets.render(state.availableSets, state.selectedSets);
     } else if (dropdowns.sets) {
         dropdowns.sets.render();
+    }
+
+    if (dropdowns.archetypes) {
+        dropdowns.archetypes.render();
     }
 }
 
@@ -595,69 +677,122 @@ async function loadTournamentData(tournament: string, cache: DataCache, showSkel
  * @param {boolean} skipUrlInit - Skip URL-based initialization (e.g., during tournament change)
  */
 async function setupArchetypeSelector(tournaments: string | string[], cache: DataCache, state: AppState, skipUrlInit = false) {
-    const archeSel = document.getElementById('archetype') as HTMLSelectElement | null;
-    if (!archeSel) {
+    const dropdown = state.ui?.dropdowns?.archetypes;
+    if (!dropdown) {
         return;
     }
 
-    // Clear existing options except "All archetypes"
-    while (archeSel.children.length > 1) {
-        archeSel.removeChild(archeSel.lastChild!);
-    }
+    const activeCache = cache || state.cache || (state.cache = new DataCache());
 
     const normalizedTournaments = normalizeTournamentSelection(tournaments);
+    const archetypeSourceTournaments = getArchetypeSourceTournaments(normalizedTournaments);
 
-    // Filter out online tournaments - they should not contribute to archetypes
-    const physicalTournaments = normalizedTournaments.filter(tournament => tournament !== DEFAULT_ONLINE_META);
+    const archetypeAggregates = new Map<string, ArchetypeOptionMeta>();
 
-    const combinedArchetypes = new Set<string>();
+    if (archetypeSourceTournaments.length === 0) {
+        logger.warn('No tournaments available for archetype dropdown', { selection: normalizedTournaments });
+    }
 
-    for (const tournament of physicalTournaments) {
-        let archetypesList = cache.getCachedArcheIndex(tournament);
+    for (const tournament of archetypeSourceTournaments) {
+        let archetypesList = activeCache.getCachedArcheIndex(tournament);
 
         if (!archetypesList) {
             // eslint-disable-next-line no-await-in-loop
             archetypesList = await safeAsync(
                 () => fetchArchetypesList(tournament),
                 `fetching archetypes for ${tournament}`,
-                [] // fallback
+                []
             );
 
             if (Array.isArray(archetypesList) && archetypesList.length > 0) {
-                cache.setCachedArcheIndex(tournament, archetypesList);
+                activeCache.setCachedArcheIndex(tournament, archetypesList);
             }
         }
 
         if (Array.isArray(archetypesList)) {
             archetypesList.forEach(archetype => {
                 const slug = typeof archetype === 'string' ? archetype : archetype?.name;
-                if (slug) {
-                    combinedArchetypes.add(slug);
+                if (!slug) {
+                    return;
                 }
+                const label =
+                    typeof archetype === 'object' && archetype?.label
+                        ? archetype.label
+                        : slug.replace(/_/g, ' ');
+                const deckCount =
+                    typeof archetype === 'object' && Number.isFinite(archetype.deckCount)
+                        ? Number(archetype.deckCount)
+                        : 0;
+                const existing = archetypeAggregates.get(slug) || { label, deckCount: 0 };
+                if (!existing.label && label) {
+                    existing.label = label;
+                }
+                existing.deckCount += deckCount;
+                archetypeAggregates.set(slug, existing);
             });
         } else {
             logger.warn('archetypesList is not an array, using empty array as fallback', { archetypesList, tournament });
         }
     }
 
-    const archetypesList = Array.from(combinedArchetypes).sort((left, right) => left.localeCompare(right));
+    const sortedArchetypes = Array.from(archetypeAggregates.entries())
+        .map(([slug, data]) => ({
+            slug,
+            label: data.label || slug.replace(/_/g, ' '),
+            deckCount: Number.isFinite(data.deckCount) ? data.deckCount : 0
+        }))
+        .sort((left, right) => {
+            const deckDiff = (right.deckCount ?? 0) - (left.deckCount ?? 0);
+            if (deckDiff !== 0) {
+                return deckDiff;
+            }
+            return left.slug.localeCompare(right.slug);
+        });
 
-    archetypesList.forEach(archetype => {
-        const option = document.createElement('option');
-        option.value = archetype;
-        option.textContent = archetype.replace(/_/g, ' ');
-        archeSel.appendChild(option);
-    });
+    state.archetypeOptions = new Map(sortedArchetypes.map(entry => [entry.slug, { label: entry.label, deckCount: entry.deckCount }]));
+    const optionValues = sortedArchetypes.map(entry => entry.slug);
+    const availableSet = new Set(optionValues);
+    dropdown.setDisabled(optionValues.length === 0);
 
-    const handleArchetypeChange = async () => {
-        const selectedValue = archeSel.value;
+    const sanitizeSelection = (values: string[]): string[] => {
+        if (!Array.isArray(values)) {
+            return [];
+        }
+        const seen = new Set<string>();
+        const sanitized: string[] = [];
+        for (const value of values) {
+            const trimmed = typeof value === 'string' ? value.trim() : '';
+            if (!trimmed || seen.has(trimmed)) {
+                continue;
+            }
+            if (availableSet.size > 0 && !availableSet.has(trimmed)) {
+                continue;
+            }
+            seen.add(trimmed);
+            sanitized.push(trimmed);
+        }
+        return sanitized;
+    };
 
-        if (!selectedValue || selectedValue === '__all__') {
+    const applyArchetypeSelection = async (rawSelection: string[] = [], options: { force?: boolean } = {}) => {
+        const normalizedSelection = sanitizeSelection(rawSelection);
+        const previousSelection = state.selectedArchetypes || [];
+        const changed =
+            normalizedSelection.length !== previousSelection.length ||
+            normalizedSelection.some((value, index) => value !== previousSelection[index]);
+        if (!changed && !options.force) {
+            return;
+        }
+
+        state.selectedArchetypes = normalizedSelection;
+        dropdown.setSelection(normalizedSelection, { silent: true });
+        dropdown.refresh();
+
+        if (normalizedSelection.length === 0) {
             const selection = state.selectedTournaments.length
                 ? state.selectedTournaments
                 : normalizeTournamentSelection(state.currentTournament ? [state.currentTournament] : []);
-            const cache = state.cache || (state.cache = new DataCache());
-            const data = await loadSelectionData(selection, cache, {
+            const data = await loadSelectionData(selection, activeCache, {
                 successFilter: state.successFilter,
                 archetypeBase: null
             });
@@ -673,34 +808,36 @@ async function setupArchetypeSelector(tournaments: string | string[], cache: Dat
             state.selectedTournaments.length ? state.selectedTournaments : state.currentTournament
         );
 
-        // Filter out online tournaments when fetching archetype data
-        const physicalTournamentsForArchetype = currentSelection.filter(tournament => tournament !== DEFAULT_ONLINE_META);
+        const archetypeTournaments = getArchetypeSourceTournaments(currentSelection);
 
-        if (physicalTournamentsForArchetype.length === 0) {
-            logger.warn('No physical tournaments selected while trying to load archetype data');
+        if (archetypeTournaments.length === 0) {
+            logger.warn('No tournaments available while trying to load archetype data', { currentSelection });
             return;
         }
 
-        const archetypeCacheKey = `${selectedValue}::${physicalTournamentsForArchetype.join('|')}::${state.successFilter}`;
+        const selectionKey = normalizedSelection.slice().sort().join('|');
+        const archetypeCacheKey = `${selectionKey}::${archetypeTournaments.join('|')}::${state.successFilter}`;
 
         let cached = state.archeCache.get(archetypeCacheKey);
         if (!cached) {
             if (state.successFilter !== 'all') {
-                cached = await buildDeckReport(physicalTournamentsForArchetype, state.successFilter, selectedValue);
+                cached = await buildDeckReport(archetypeTournaments, state.successFilter, normalizedSelection);
             } else {
                 const archetypeReports = [];
 
-                for (const tournament of physicalTournamentsForArchetype) {
-                    try {
-                        // eslint-disable-next-line no-await-in-loop
-                        const data = await fetchArchetypeReport(tournament, selectedValue);
-                        const parsed = parseReport(data);
-                        archetypeReports.push(parsed);
-                    } catch (error: any) {
-                        if (error instanceof AppError && error.context?.status === 404) {
-                            logger.debug(`Archetype ${selectedValue} not available for ${tournament}, skipping`);
-                        } else {
-                            logger.exception(`Failed fetching archetype ${selectedValue} for ${tournament}`, error);
+                for (const tournament of archetypeTournaments) {
+                    for (const archetypeBase of normalizedSelection) {
+                        try {
+                            // eslint-disable-next-line no-await-in-loop
+                            const data = await fetchArchetypeReport(tournament, archetypeBase);
+                            const parsed = parseReport(data);
+                            archetypeReports.push(parsed);
+                        } catch (error: any) {
+                            if (error instanceof AppError && error.context?.status === 404) {
+                                logger.debug(`Archetype ${archetypeBase} not available for ${tournament}, skipping`);
+                            } else {
+                                logger.exception(`Failed fetching archetype ${archetypeBase} for ${tournament}`, error);
+                            }
                         }
                     }
                 }
@@ -720,25 +857,28 @@ async function setupArchetypeSelector(tournaments: string | string[], cache: Dat
             state.archeCache.set(archetypeCacheKey, cached);
         }
 
-        // eslint-disable-next-line no-param-reassign
         state.current = { items: cached.items, deckTotal: cached.deckTotal };
         updateSetFilterOptions(cached.items);
         renderSummary(document.getElementById('summary'), cached.deckTotal, cached.items.length);
         await applyCurrentFilters(state);
-        setStateInURL({ archetype: selectedValue }, { merge: true });
+        setStateInURL({ archetype: normalizedSelection.join(',') }, { merge: true });
     };
 
-    state.cleanup.addEventListener(archeSel, 'change', handleArchetypeChange);
+    state.applyArchetypeSelection = applyArchetypeSelection;
+    state.ui.onArchetypeSelection = (selection: string[]) => state.applyArchetypeSelection?.(selection);
 
-    if (!skipUrlInit) {
-        const urlState = getStateFromURL();
-        if (urlState.archetype && urlState.archetype !== '__all__') {
-            const hasArchetype = archetypesList.includes(urlState.archetype);
-            archeSel.value = hasArchetype ? urlState.archetype : '__all__';
-            if (hasArchetype) {
-                handleArchetypeChange();
-            }
-        }
+    const previousSelection = state.selectedArchetypes || [];
+    const urlArchetypes = skipUrlInit ? [] : parseArchetypeQueryParam(getStateFromURL().archetype);
+    const initialSelection = skipUrlInit ? sanitizeSelection(previousSelection) : sanitizeSelection(urlArchetypes);
+
+    dropdown.render(optionValues, initialSelection);
+
+    const shouldForce = (!skipUrlInit && urlArchetypes.length > 0) || previousSelection.length > 0;
+
+    if (shouldForce) {
+        await applyArchetypeSelection(initialSelection, { force: true });
+    } else {
+        state.selectedArchetypes = initialSelection;
     }
 }
 
@@ -751,7 +891,6 @@ function setupControlHandlers(state: AppState) {
         {
             search: '#search',
             sort: '#sort',
-            archetype: '#archetype',
             cardType: '#card-type',
             success: '#success-filter'
         },
@@ -848,15 +987,10 @@ function setupControlHandlers(state: AppState) {
             ? state.selectedTournaments
             : normalizeTournamentSelection(state.currentTournament ? [state.currentTournament] : []);
 
-        // If an archetype is selected, we need to reload data with the new success filter
-        const archeSel = document.getElementById('archetype') as HTMLSelectElement | null;
-        const selectedArchetype = archeSel?.value;
-
         const cache = state.cache || (state.cache = new DataCache());
 
-        if (selectedArchetype && selectedArchetype !== '__all__') {
-            // Re-trigger archetype change to load filtered data
-            archeSel?.dispatchEvent(new Event('change'));
+        if (state.selectedArchetypes.length > 0) {
+            await state.applyArchetypeSelection?.([...state.selectedArchetypes], { force: true });
         } else {
             // Just reload the main selection with the new filter
             const data = await loadSelectionData(selection, cache, {

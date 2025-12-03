@@ -10,52 +10,12 @@ interface Overrides {
     [key: string]: string;
 }
 
-function sanitizePrimary(name: string): string {
-    // Normalize and keep Unicode letters/numbers, apostrophes, dashes, underscores; spaces -> underscores
-    const sanitized = String(name)
-        .normalize('NFC')
-        .replace(/\u2019/g, "'") // curly to straight apostrophe
-        .replace(/[:!,]/g, '')
-        .replace(/\s+/g, '_')
-        .replace(/[^\p{L}\p{N}_\-'.]/gu, '_')
-        .replace(/_+/g, '_');
-    return sanitized;
-}
-
-function sanitizeNoApostrophes(name: string): string {
-    return sanitizePrimary(name).replace(/'/g, '');
-}
-
-function sanitizeStripPossessive(name: string): string {
-    // Turn "X's_Y" into "Xs_Y" (remove apostrophe before s)
-    return sanitizePrimary(name).replace(/'s_/gi, 's_').replace(/'s\./gi, 's.').replace(/'/g, '');
-}
-
-function asciiFold(name: string): string {
-    // Remove diacritics
-    return name
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .normalize('NFC');
-}
-
-function teamRocketVariants(name: string): string[] {
-    const variants: string[] = [];
-    if (/Team Rocket's/i.test(name)) {
-        variants.push(name.replace(/Team Rocket's/gi, "Team Rocket's")); // normalized
-        variants.push(name.replace(/Team Rocket's/gi, 'Team Rockets'));
-    }
-    return variants;
-}
-
-function appendCandidate(list: string[], base: string, relative: string): void {
-    if (!relative) {
+function appendCandidate(list: string[], url: string | null | undefined): void {
+    if (!url) {
         return;
     }
-    const trimmed = relative.startsWith('/') ? relative.slice(1) : relative;
-    const fullPath = `${base}${trimmed}`;
-    if (!list.includes(fullPath)) {
-        list.push(fullPath);
+    if (!list.includes(url)) {
+        list.push(url);
     }
 }
 
@@ -96,6 +56,40 @@ function buildLimitlessUrl(setCode: string, number: string | number, useSm: bool
     return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${normalizedSet}/${normalizedSet}_${paddedNumber}_R_EN_${size}.png`;
 }
 
+function resolveOverrideCandidate(raw: string | null | undefined, useSm: boolean): string | null {
+    if (!raw) {
+        return null;
+    }
+    const trimmed = String(raw).trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    if (/^(https?:)?\/\//i.test(trimmed) || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+        return trimmed;
+    }
+
+    const setNumberMatch = trimmed.match(/^([A-Za-z]{2,})[\/:\s]+(\d+[A-Za-z]?)$/);
+    if (setNumberMatch) {
+        const [, setCode, number] = setNumberMatch;
+        return buildLimitlessUrl(setCode, number, useSm);
+    }
+
+    if (trimmed.startsWith('/thumbnails/')) {
+        return null;
+    }
+
+    if (trimmed.startsWith('/assets/')) {
+        return trimmed;
+    }
+
+    if (trimmed.startsWith('assets/')) {
+        return `/${trimmed}`;
+    }
+
+    return null;
+}
+
 /**
  * Build the ordered list of thumbnail candidate URLs for a given card.
  * Variant-specific thumbnails are prioritized when set/number data is available.
@@ -106,52 +100,33 @@ function buildLimitlessUrl(setCode: string, number: string | number, useSm: bool
  * @returns
  */
 export function buildThumbCandidates(name: string, useSm: boolean, overrides?: Overrides, variant: Variant | undefined = undefined): string[] {
-    const base = useSm ? '/thumbnails/sm/' : '/thumbnails/xs/';
     const candidates: string[] = [];
+    const addOverride = (value: string | null | undefined) => {
+        const resolved = resolveOverrideCandidate(value, useSm);
+        appendCandidate(candidates, resolved);
+    };
 
     const hasVariant = variant && variant.set && variant.number;
     if (hasVariant) {
         const setCode = normalizeSetCode(variant!.set);
         const number = normalizeCardNumber(variant!.number);
         if (setCode && number) {
-            const variantFilename = `${sanitizePrimary(`${name}_${setCode}_${number}`)}.png`;
-            appendCandidate(candidates, base, variantFilename);
-
             const variantOverride = getVariantOverride(overrides, name, setCode, number);
             if (variantOverride) {
-                appendCandidate(candidates, base, variantOverride);
+                addOverride(variantOverride);
             } else if (overrides && overrides[name]) {
-                appendCandidate(candidates, base, overrides[name]);
+                addOverride(overrides[name]);
             }
 
             // Add Limitless CDN fallback URL for both SM and XS thumbnails
-            const limitlessUrl = buildLimitlessUrl(setCode, number, useSm);
-            if (limitlessUrl && !candidates.includes(limitlessUrl)) {
-                candidates.push(limitlessUrl);
-            }
+            appendCandidate(candidates, buildLimitlessUrl(setCode, number, useSm));
 
             return candidates;
         }
     }
 
     if (overrides && overrides[name]) {
-        appendCandidate(candidates, base, overrides[name]);
-    }
-
-    const primary = `${sanitizePrimary(name)}.png`;
-    appendCandidate(candidates, base, primary);
-
-    appendCandidate(candidates, base, `${sanitizeStripPossessive(name)}.png`);
-    appendCandidate(candidates, base, `${sanitizeNoApostrophes(name)}.png`);
-
-    const ascii = asciiFold(name);
-    appendCandidate(candidates, base, `${sanitizePrimary(ascii)}.png`);
-    appendCandidate(candidates, base, `${sanitizeStripPossessive(ascii)}.png`);
-    appendCandidate(candidates, base, `${sanitizeNoApostrophes(ascii)}.png`);
-
-    for (const rocketVariant of teamRocketVariants(name)) {
-        appendCandidate(candidates, base, `${sanitizePrimary(rocketVariant)}.png`);
-        appendCandidate(candidates, base, `${sanitizeNoApostrophes(rocketVariant)}.png`);
+        addOverride(overrides[name]);
     }
 
     return candidates;

@@ -63,8 +63,6 @@ function makeCardItem(name, opts) {
   img.alt = name;
   img.loading = 'lazy';
   img.decoding = 'async';
-  img.style.opacity = '0';
-  img.style.transition = 'opacity .18s ease-out';
   const fallback = document.createElement('div');
   fallback.className = 'thumb-fallback';
   fallback.textContent = buildFallbackLabel(name);
@@ -173,7 +171,6 @@ function makeCardItem(name, opts) {
   img.onerror = handleError;
   img.onload = () => {
     hideFallback();
-    img.style.opacity = '1';
   };
   loadNext();
   thumb.appendChild(img);

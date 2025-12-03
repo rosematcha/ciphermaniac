@@ -28,7 +28,15 @@ import { getBaseName, getCanonicalId, getDisplayName, parseDisplayName } from '.
 import { findCard, renderCardPrice, renderCardSets } from './card/data.js';
 import { renderChart, renderCopiesHistogram, renderEvents } from './card/charts.js';
 import { getCanonicalCard, getCardVariants, getVariantImageCandidates } from './utils/cardSynonyms.js';
-import { buildCardPath, describeSlug, makeCardSlug, parseCardRoute, resolveCardSlug } from './card/routing.js';
+import {
+    buildCardPath,
+    describeSlug,
+    makeCardSlug,
+    normalizeCardNumber,
+    parseCardRoute,
+    resolveCardSlug
+} from './card/routing.js';
+import { normalizeSetCode } from './utils/filterState.js';
 
 // Set up global error handling
 setupGlobalErrorHandler();
@@ -37,25 +45,25 @@ const CARD_META_TEMPLATE = `
   <div class="header-title">
     <div class="title-row">
       <h1 id="card-title">Card Details</h1>
-      <div id="card-price" class="card-price skeleton-loading">
-        <div class="skeleton-text small"></div>
+      <div id="card-price" class="card-price">
+        <!-- Price loads asynchronously -->
       </div>
     </div>
-    <div id="card-sets" class="card-sets skeleton-loading">
-      <div class="skeleton-text medium"></div>
+    <div id="card-sets" class="card-sets">
+      <!-- Sets load asynchronously -->
     </div>
   </div>
   <div id="card-hero" class="card-hero">
-    <div class="thumb skeleton-loading">
-      <div class="skeleton-image"></div>
+    <div class="thumb" aria-hidden="true">
+      <div class="skeleton-image" style="width: 100%; height: 100%; background: var(--bar-bg); animation: skeleton-loading 1.5s ease-in-out infinite;"></div>
     </div>
   </div>
   <div id="card-center">
-    <div id="card-chart" class="skeleton-loading">
-      <div class="skeleton-chart"></div>
+    <div id="card-chart">
+      <!-- Chart loads asynchronously with smooth transition -->
     </div>
-    <div id="card-copies" class="skeleton-loading">
-      <div class="skeleton-histogram"></div>
+    <div id="card-copies">
+      <!-- Histogram loads asynchronously with smooth transition -->
     </div>
   </div>
   <div id="card-events"></div>
@@ -66,6 +74,22 @@ let metaSection: HTMLElement | null = null;
 let decksSection: HTMLElement | null = null;
 let eventsSection: HTMLElement | null = null;
 let copiesSection: HTMLElement | null = null;
+type VariantInfo = { set?: string; number?: string | number };
+interface CardImageModalOpenOptions {
+    src: string | null;
+    fallback?: string | null;
+    alt?: string | null;
+    caption?: string | null;
+    trigger?: HTMLElement | null;
+}
+interface CardImageModalController {
+    open(options: CardImageModalOpenOptions): void;
+    close(): void;
+}
+const FOCUSABLE_SELECTOR =
+    'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1")]';
+const LIMITLESS_SIZE_PATTERN = /(https:\/\/limitlesstcg\.nyc3\.cdn\.digitaloceanspaces\.com\/tpci\/[^/]+\/[^_]+_\d{3}[A-Z0-9]*_R_[A-Z]{2})_(XS|SM)\.png$/i;
+let cardImageModalController: CardImageModalController | null = null;
 
 function refreshDomRefs() {
     cardTitleEl = document.getElementById('card-title');
@@ -95,6 +119,188 @@ function ensureCardMetaStructure(): boolean {
     meta.innerHTML = CARD_META_TEMPLATE;
     refreshDomRefs();
     return true;
+}
+
+function deriveLgUrlFromCandidate(url: string | null | undefined): string | null {
+    if (!url) {
+        return null;
+    }
+    const trimmed = String(url).trim();
+    if (!trimmed) {
+        return null;
+    }
+    const match = trimmed.match(LIMITLESS_SIZE_PATTERN);
+    if (match) {
+        return `${match[1]}_LG.png`;
+    }
+    return null;
+}
+
+function buildLgUrlFromVariant(variant: VariantInfo | undefined): string | null {
+    if (!variant || !variant.set || !variant.number) {
+        return null;
+    }
+    const setCode = normalizeSetCode(variant.set);
+    const normalizedNumber = normalizeCardNumber(variant.number);
+    if (!setCode || !normalizedNumber) {
+        return null;
+    }
+    const padded = normalizedNumber.padStart(3, '0');
+    return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${setCode}/${setCode}_${padded}_R_EN_LG.png`;
+}
+
+function ensureCardImageModal(): CardImageModalController | null {
+    if (cardImageModalController) {
+        return cardImageModalController;
+    }
+
+    const container = document.getElementById('card-image-modal');
+    const dialog = container?.querySelector('.card-image-modal__dialog') as HTMLElement | null;
+    const image = container?.querySelector('[data-card-modal-image]') as HTMLImageElement | null;
+    const caption = container?.querySelector('[data-card-modal-caption]') as HTMLElement | null;
+    const closeElements = container
+        ? (Array.from(container.querySelectorAll('[data-card-modal-close]')) as HTMLElement[])
+        : [];
+
+    if (!container || !dialog || !image) {
+        return null;
+    }
+
+    let previouslyFocused: HTMLElement | null = null;
+    let pendingFallback: string | null = null;
+    let focusableElements: HTMLElement[] = [];
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            api.close();
+            return;
+        }
+
+        if (event.key === 'Tab' && focusableElements.length > 0) {
+            const first = focusableElements[0];
+            const last = focusableElements[focusableElements.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        }
+    };
+
+    const handleImageLoad = () => {
+        container.classList.remove('is-loading');
+        container.classList.remove('has-error');
+    };
+
+    const handleImageError = () => {
+        if (pendingFallback) {
+            const fallbackUrl = pendingFallback;
+            pendingFallback = null;
+            image.src = fallbackUrl;
+            return;
+        }
+        container.classList.add('has-error');
+        container.classList.remove('is-loading');
+    };
+
+    image.addEventListener('load', handleImageLoad);
+    image.addEventListener('error', handleImageError);
+
+    const api: CardImageModalController = {
+        open(options: CardImageModalOpenOptions) {
+            if (!options || !options.src) {
+                return;
+            }
+
+            pendingFallback = options.fallback && options.fallback !== options.src ? options.fallback : null;
+            previouslyFocused = options.trigger || (document.activeElement as HTMLElement | null);
+            container.classList.add('is-visible', 'is-loading');
+            container.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('card-image-modal-open');
+            image.alt = options.alt || 'Full-size card image';
+            if (caption) {
+                caption.textContent = options.caption || image.alt;
+            }
+            image.src = options.src;
+            focusableElements = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(el => {
+                return !el.hasAttribute('disabled') && el.getAttribute('tabindex') !== '-1';
+            });
+            const focusTarget = focusableElements[0] || dialog;
+            requestAnimationFrame(() => {
+                focusTarget?.focus();
+            });
+            document.addEventListener('keydown', handleKeyDown);
+        },
+        close() {
+            container.classList.remove('is-visible', 'is-loading', 'has-error');
+            container.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('card-image-modal-open');
+            pendingFallback = null;
+            focusableElements = [];
+            image.removeAttribute('src');
+            document.removeEventListener('keydown', handleKeyDown);
+            if (previouslyFocused) {
+                previouslyFocused.focus();
+                previouslyFocused = null;
+            }
+        }
+    };
+
+    closeElements.forEach(el => {
+        el.addEventListener('click', () => api.close());
+    });
+
+    container.addEventListener('click', event => {
+        const target = event.target as HTMLElement | null;
+        if (!target) {
+            return;
+        }
+        if (target.dataset.cardModalClose === 'true' || target === container) {
+            api.close();
+        }
+    });
+
+    return (cardImageModalController = api);
+}
+
+function enableHeroImageModal(trigger: HTMLElement, image: HTMLImageElement, variantLgUrl: string | null) {
+    if (!trigger || !image) {
+        return;
+    }
+
+    trigger.classList.add('card-hero__trigger');
+    trigger.tabIndex = 0;
+    trigger.setAttribute('role', 'button');
+    trigger.setAttribute('aria-label', 'Open high-resolution card image');
+
+    const handleActivate = () => {
+        const controller = ensureCardImageModal();
+        if (!controller) {
+            return;
+        }
+
+        const fallback = image.currentSrc || image.src;
+        const altText = image.alt || cardName || 'Card image';
+        const hiRes = (image as any)._fullResUrl || variantLgUrl || fallback;
+        controller.open({
+            src: hiRes,
+            fallback,
+            alt: altText,
+            caption: cardName ? `${cardName} — Full-size view` : altText,
+            trigger
+        });
+    };
+
+    trigger.addEventListener('click', handleActivate);
+    trigger.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            handleActivate();
+        }
+    });
 }
 
 refreshDomRefs();
@@ -161,9 +367,9 @@ function updateSearchLink() {
         return;
     }
     if (cardName) {
-        searchInGrid.href = `/index.html?q=${encodeURIComponent(cardName)}`;
+        searchInGrid.href = `/cards?q=${encodeURIComponent(cardName)}`;
     } else {
-        searchInGrid.href = '/index.html';
+        searchInGrid.href = '/cards';
     }
 }
 
@@ -909,8 +1115,8 @@ async function renderMissingCardPage(cardIdentifier: string) {
               <p class="card-missing-eyebrow">No tournament entries yet</p>
               <h1>${displayName}</h1>
               <p class="card-missing-meta">This card has no Day 2 finishes, so no data can be shown.<br><span>Maybe you can get it its page?</span></p>
-              <div class="card-missing-actions">
-                <a href="/index.html?q=${encodedSearch}" class="card-missing-button primary">Search for ${displayName}</a>
+            <div class="card-missing-actions">
+                <a href="/cards?q=${encodedSearch}" class="card-missing-button primary">Search for ${displayName}</a>
                 <a href="/trends.html" class="card-missing-button">View meta trends</a>
               </div>
             </div>
@@ -1286,9 +1492,10 @@ function setupImmediateUI() {
     // Start hero image loading immediately, replacing skeleton
     const hero = document.getElementById('card-hero');
     if (hero && cardName) {
-        // Clear any existing skeleton placeholder
-        hero.innerHTML = '';
-
+        // Get existing skeleton thumb if present
+        const existingThumb = hero.querySelector('.thumb');
+        const skeletonImage = existingThumb?.querySelector('.skeleton-image');
+        
         // Create image element and wrapper
         const img = document.createElement('img');
         img.alt = cardName;
@@ -1299,9 +1506,26 @@ function setupImmediateUI() {
 
         const wrap = document.createElement('div');
         wrap.className = 'thumb';
+        wrap.style.position = 'relative';
         wrap.appendChild(img);
-        hero.appendChild(wrap);
-        hero.removeAttribute('aria-hidden');
+
+        // If there's a skeleton, fade it out smoothly
+        if (skeletonImage instanceof HTMLElement) {
+            skeletonImage.style.transition = 'opacity 0.15s ease-out';
+            skeletonImage.style.opacity = '0';
+            
+            // Replace after skeleton fades
+            setTimeout(() => {
+                hero.innerHTML = '';
+                hero.appendChild(wrap);
+                hero.removeAttribute('aria-hidden');
+            }, 150);
+        } else {
+            // No skeleton, just replace immediately
+            hero.innerHTML = '';
+            hero.appendChild(wrap);
+            hero.removeAttribute('aria-hidden');
+        }
 
         // Store image loading state on the element
         (img as any)._loadingState = {
@@ -1349,19 +1573,35 @@ function setupImmediateUI() {
             tryNextImage();
         };
 
+        const assignHiResCandidate = () => {
+            const currentSrc = img.currentSrc || img.src;
+            const derived = deriveLgUrlFromCandidate(currentSrc);
+            if (derived) {
+                (img as any)._fullResUrl = derived;
+            } else if (!(img as any)._fullResUrl) {
+                (img as any)._fullResUrl = currentSrc;
+            }
+        };
+
         img.onload = () => {
             img.style.opacity = '1';
+            assignHiResCandidate();
         };
 
         // Parse variant information from card name
         const { name, setId } = parseDisplayName(cardName);
-        let variant: any = {};
+        let variant: VariantInfo = {};
         if (setId) {
             const setMatch = setId.match(/^([A-Z]+)\s+(\d+[A-Za-z]?)$/);
             if (setMatch) {
                 variant = { set: setMatch[1], number: setMatch[2] };
             }
         }
+
+        const variantLgUrl = buildLgUrlFromVariant(variant);
+        (img as any)._fullResUrl = variantLgUrl || null;
+
+        enableHeroImageModal(wrap, img, variantLgUrl);
 
         // Start with variant-aware candidates
         const defaultCandidates = buildThumbCandidates(name, true, {}, variant);
@@ -1835,19 +2075,27 @@ async function loadAndRenderMainContent(tournaments: string[], cacheObject: any,
 
     // Re-render chart on resize (throttled)
     let resizeTimer: any = null;
+    let lastWidth = window.innerWidth;
     window.addEventListener('resize', () => {
+        // Skip if resize is too small (less than 50px change) to avoid unnecessary re-renders
+        const currentWidth = window.innerWidth;
+        if (Math.abs(currentWidth - lastWidth) < 50) {
+            return;
+        }
+        
         if (resizeTimer) {
             return;
         }
 
         resizeTimer = setTimeout(() => {
             resizeTimer = null;
+            lastWidth = window.innerWidth;
             const elementToRender = document.getElementById('card-chart') || metaSection;
             const pointsToRender = showAll ? [...timePoints].reverse() : [...timePoints].reverse().slice(-LIMIT);
             if (elementToRender) {
                 renderChart(elementToRender, pointsToRender);
             }
-        }, 120);
+        }, 200);  // Increased throttle to reduce flash frequency
     });
 
     // No min-decks selector in UI; default minTotal used in picker
@@ -2106,6 +2354,13 @@ async function renderAnalysisTable(tournament: string) {
             return archA.archetype.localeCompare(archB.archetype);
         });
 
+        // Fade out existing content before replacing
+        analysisTable.style.transition = 'opacity 0.1s ease-out';
+        analysisTable.style.opacity = '0';
+
+        // Wait for fade out, then rebuild
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // eslint-disable-next-line require-atomic-updates
         analysisTable.innerHTML = '';
 
@@ -2117,6 +2372,11 @@ async function renderAnalysisTable(tournament: string) {
             analysisTable.appendChild(note);
             progress.updateStep(1, 'complete');
             progress.setComplete(500); // Show for half a second then fade
+            
+            // Fade in the empty state
+            requestAnimationFrame(() => {
+                analysisTable.style.opacity = '1';
+            });
             return;
         }
         const tbl = document.createElement('table');
@@ -2197,6 +2457,11 @@ async function renderAnalysisTable(tournament: string) {
         }
         tbl.appendChild(tbody);
         analysisTable.appendChild(tbl);
+
+        // Fade in the new table content
+        requestAnimationFrame(() => {
+            analysisTable.style.opacity = '1';
+        });
 
         // Make table header sticky via a floating cloned header as a fallback when CSS sticky doesn't work
         // This ensures the header row stays visible even if ancestor overflow/transform prevents CSS sticky.
