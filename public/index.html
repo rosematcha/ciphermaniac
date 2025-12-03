@@ -4,24 +4,27 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ciphermaniac - Pokémon TCG Data</title>
+  <!-- Preload critical font to reduce layout shift -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/style.css" />
   <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
 </head>
-<body>
+<body class="no-header">
 
   <main class="home-page">
     <section class="hero">
       <div class="hero-content">
         <h1 class="hero-title">
-          <img src="/assets/images/logo.svg" alt="Ciphermaniac Logo" class="hero-logo" />
+          <img src="/assets/images/logo.svg" alt="Ciphermaniac Logo" class="hero-logo" width="110" height="110" />
           Ciphermaniac
         </h1>
         
         <div class="hero-search">
           <div class="search-wrap">
             <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input id="hero-search-input" type="search" placeholder="Search for a card (e.g. 'Charizard')..." aria-label="Search cards" autocomplete="off">
+            <input id="hero-search-input" type="search" placeholder="Search for a card..." aria-label="Search cards" autocomplete="off">
             <datalist id="hero-card-names"></datalist>
             <div id="hero-card-suggestions" class="suggestions" role="listbox" aria-label="Card suggestions"></div>
           </div>
@@ -66,7 +69,52 @@
     const footer = createFooter();
     document.body.insertAdjacentElement('beforeend', footer);
 
-    // Initialize search
+    // Set random placeholder using the same cache as the search bar
+    function setRandomPlaceholder() {
+      const searchInput = document.getElementById('hero-search-input');
+      if (!searchInput) return;
+
+      try {
+        // Use the same localStorage cache key as cardSearch.ts
+        const cached = JSON.parse(localStorage.getItem('cardNamesUnionV5') || '{"names":[]}');
+        let cardNames = [];
+
+        if (Array.isArray(cached.names) && cached.names.length > 0) {
+          // Use cached card names from search bar's data
+          cardNames = cached.names;
+        } else {
+          // Fallback: Use same common cards as search bar when no cache exists
+          cardNames = [
+            "Boss's Orders",
+            'Ultra Ball',
+            "Professor's Research",
+            'Iono',
+            'Rare Candy',
+            'Night Stretcher',
+            'Nest Ball',
+            'Counter Catcher'
+          ];
+        }
+
+        if (cardNames.length > 0) {
+          // Pick a random card
+          const randomCard = cardNames[Math.floor(Math.random() * cardNames.length)];
+          
+          // Extract just the card name (remove set/number if present)
+          const cardName = randomCard.split(' ').slice(0, -2).join(' ') || randomCard;
+          
+          searchInput.placeholder = `Search for a card (e.g. '${cardName}')...`;
+        }
+      } catch (error) {
+        // Silently fail - keep default placeholder
+        console.debug('Could not set random placeholder:', error);
+      }
+    }
+
+    // Set placeholder immediately (synchronous, instant)
+    setRandomPlaceholder();
+
+    // Initialize search (this will populate the cache for next time)
     initCardSearch({
         searchInputId: 'hero-search-input',
         datalistId: 'hero-card-names',

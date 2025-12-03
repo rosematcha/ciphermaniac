@@ -4,8 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Card Details &mdash; Ciphermaniac</title>
+  <!-- Preload critical font to reduce layout shift -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/style.css" />
+  <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
 </head>
 <body>
 
@@ -32,27 +36,27 @@
   <div class="header-title">
     <div class="title-row">
       <h1 id="card-title">Card Details</h1>
-      <div id="card-price" class="card-price skeleton-loading">
-        <div class="skeleton-text small"></div>
+      <div id="card-price" class="card-price">
+        <!-- Price loads asynchronously -->
       </div>
     </div>
-    <div id="card-sets" class="card-sets skeleton-loading">
-      <div class="skeleton-text medium"></div>
+    <div id="card-sets" class="card-sets">
+      <!-- Sets load asynchronously -->
     </div>
   </div>
   <div id="card-hero" class="card-hero">
-    <!-- Show placeholder immediately, no aria-hidden -->
-    <div class="thumb skeleton-loading">
-      <div class="skeleton-image"></div>
+    <!-- Hero image container - populated by JS with smooth fade-in -->
+    <div class="thumb" aria-hidden="true">
+      <div class="skeleton-image" style="width: 100%; height: 100%; background: var(--bar-bg); animation: skeleton-loading 1.5s ease-in-out infinite;"></div>
     </div>
   </div>
   <div id="card-center">
   <!-- window-select removed; card page always shows the most recent 6 tournaments -->
-        <div id="card-chart" class="skeleton-loading">
-          <div class="skeleton-chart"></div>
+        <div id="card-chart">
+          <!-- Chart loads asynchronously with smooth transition -->
         </div>
-        <div id="card-copies" class="skeleton-loading">
-          <div class="skeleton-histogram"></div>
+        <div id="card-copies">
+          <!-- Histogram loads asynchronously with smooth transition -->
         </div>
   </div>
   <div id="card-events"></div>
@@ -71,6 +75,18 @@
       <div id="analysis-table" style="margin-top:8px"></div>
     </section>
   </main>
+  <div id="card-image-modal" class="card-image-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="card-image-modal-caption">
+    <div class="card-image-modal__backdrop" data-card-modal-close="true"></div>
+    <div class="card-image-modal__dialog" role="document">
+      <button type="button" class="card-image-modal__close" aria-label="Close full-size image" data-card-modal-close="true">
+        &times;
+      </button>
+      <div class="card-image-modal__image-wrap">
+        <img id="card-image-modal-img" data-card-modal-image alt="" decoding="async" />
+      </div>
+      <p id="card-image-modal-caption" class="card-image-modal__caption" data-card-modal-caption>Full-size card image</p>
+    </div>
+  </div>
 
   <script type="module">
     import { createHeader } from '/assets/js/components/header.js';
@@ -127,7 +143,7 @@
     }
 
     // Insert header and footer
-  const header = createHeader({ currentPage: 'trends' });
+    const header = createHeader({ currentPage: 'cards' });
     const footer = createFooter();
     
     document.body.insertAdjacentElement('afterbegin', header);

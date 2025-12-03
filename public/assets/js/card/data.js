@@ -267,29 +267,41 @@ async function loadAndDisplayPrice(cardIdentifier, container) {
     }
 }
 /**
- * Show price information in container
+ * Show price information in container with smooth fade-in
  * @param container - Container element
  * @param price - Price to display
  */
 function showPrice(container, price) {
     const priceElement = document.createElement('div');
     priceElement.className = 'price-info';
+    priceElement.style.opacity = '0';
+    priceElement.style.transition = 'opacity 0.15s ease-out';
     priceElement.innerHTML = `
     <div class="price-label">Market Price:</div>
     <div class="price-value">$${price.toFixed(2)}</div>
   `;
     container.appendChild(priceElement);
+    // Trigger fade-in on next frame
+    requestAnimationFrame(() => {
+        priceElement.style.opacity = '1';
+    });
 }
 /**
- * Show price unavailable message
+ * Show price unavailable message with smooth fade-in
  * @param container - Container element
  * @param message - Message to display
  */
 function showPriceUnavailable(container, message) {
     const noPriceElement = document.createElement('div');
     noPriceElement.className = 'price-info no-price';
+    noPriceElement.style.opacity = '0';
+    noPriceElement.style.transition = 'opacity 0.15s ease-out';
     noPriceElement.textContent = message;
     container.appendChild(noPriceElement);
+    // Trigger fade-in on next frame
+    requestAnimationFrame(() => {
+        noPriceElement.style.opacity = '1';
+    });
 }
 /**
  * Show price error message
@@ -323,18 +335,26 @@ export async function renderCardSets(cardIdentifier) {
         });
         await errorBoundary.execute(async () => {
             const variants = await collectCardVariants(validatedIdentifier);
-            setsContainer.className = '';
+            // Remove skeleton class and prepare for fade-in
+            setsContainer.classList.remove('skeleton-loading');
+            setsContainer.style.opacity = '0';
+            setsContainer.style.transition = 'opacity 0.15s ease-out';
             if (variants.length === 0) {
                 setsContainer.textContent = '';
                 logger.debug('No variants found', {
                     cardIdentifier: validatedIdentifier
                 });
-                return;
             }
-            setsContainer.textContent = variants.join(', ');
-            logger.debug('Variants displayed', {
-                cardIdentifier: validatedIdentifier,
-                variantCount: variants.length
+            else {
+                setsContainer.textContent = variants.join(', ');
+                logger.debug('Variants displayed', {
+                    cardIdentifier: validatedIdentifier,
+                    variantCount: variants.length
+                });
+            }
+            // Trigger fade-in
+            requestAnimationFrame(() => {
+                setsContainer.style.opacity = '1';
             });
         }, null, { loadingMessage: 'Loading variants...', retryAttempts: 1 });
     }

@@ -20,6 +20,8 @@ export function createFooter(options = {}) {
       </div>
     </div>
   `;
+    // Add class for browsers without :has() support (CLS prevention fallback)
+    document.body.classList.add('has-footer');
     return footer;
 }
 /**

@@ -29,22 +29,56 @@ interface TournamentRow {
 }
 
 /**
+ * Smoothly replace container content with fade transition
+ * @param container - Target container element
+ * @param newContent - New content to display
+ */
+function smoothReplaceContent(container: HTMLElement, newContent: Node | DocumentFragment): void {
+    // If container has skeleton, use hideSkeleton for smooth transition
+    if (container.classList.contains('showing-skeleton')) {
+        hideSkeleton(container, newContent);
+        return;
+    }
+
+    // Otherwise, replace content directly (no async fade to avoid race conditions)
+    container.innerHTML = '';
+    container.appendChild(newContent);
+}
+
+interface ChartPoint {
+    tournament: string;
+    pct: number | null;
+}
+
+interface DistributionItem {
+    copies: number;
+    players?: number;
+    percent?: number;
+}
+
+interface OverallDistribution {
+    dist: DistributionItem[];
+    total: number;
+}
+
+interface TournamentRow {
+    tournament: string;
+    pct: number | null;
+}
+
+/**
  * Render main usage chart showing meta-share over tournaments
  * @param container - Container element for the chart
  * @param points - Array of data points with tournament and percentage info
  */
 export function renderChart(container: HTMLElement, points: ChartPoint[]): void {
     if (!points.length) {
-        const noDataContent = document.createTextNode('No data.');
+        const noDataWrapper = document.createElement('span');
+        noDataWrapper.textContent = 'No data.';
         if (container.classList.contains('showing-skeleton')) {
-            hideSkeleton(container, noDataContent);
+            hideSkeleton(container, noDataWrapper);
         } else {
-            // Clear container without parameter reassignment
-            const containerElement = container;
-            while (containerElement.firstChild) {
-                containerElement.removeChild(containerElement.firstChild);
-            }
-            containerElement.appendChild(noDataContent);
+            smoothReplaceContent(container, noDataWrapper);
         }
         return;
     }
@@ -229,8 +263,8 @@ export function renderChart(container: HTMLElement, points: ChartPoint[]): void 
     if (container.classList.contains('showing-skeleton')) {
         hideSkeleton(container, chartContent);
     } else {
-        container.innerHTML = '';
-        container.appendChild(chartContent);
+        // Use smooth transition for re-renders (e.g., on resize)
+        smoothReplaceContent(container, chartContent);
     }
 }
 
@@ -305,8 +339,8 @@ export function renderCopiesHistogram(container: HTMLElement, overall: OverallDi
     if (container.classList.contains('showing-skeleton')) {
         hideSkeleton(container, histogramContent);
     } else {
-        container.innerHTML = '';
-        container.appendChild(histogramContent);
+        // Use smooth transition for re-renders
+        smoothReplaceContent(container, histogramContent);
     }
 }
 
@@ -317,12 +351,12 @@ export function renderCopiesHistogram(container: HTMLElement, overall: OverallDi
  */
 export function renderEvents(container: HTMLElement, rows: TournamentRow[]): void {
     if (!rows.length) {
-        const emptyContent = document.createTextNode('No recent events data.');
+        const emptyWrapper = document.createElement('span');
+        emptyWrapper.textContent = 'No recent events data.';
         if (container.classList.contains('showing-skeleton')) {
-            hideSkeleton(container, emptyContent);
+            hideSkeleton(container, emptyWrapper);
         } else {
-            container.innerHTML = '';
-            container.appendChild(emptyContent);
+            smoothReplaceContent(container, emptyWrapper);
         }
         return;
     }
@@ -357,7 +391,7 @@ export function renderEvents(container: HTMLElement, rows: TournamentRow[]): voi
         const tableRow = document.createElement('tr');
 
         const tournamentLink = document.createElement('a');
-        tournamentLink.href = `/index.html?tour=${encodeURIComponent(rowData.tournament)}`;
+        tournamentLink.href = `/cards?tour=${encodeURIComponent(rowData.tournament)}`;
         tournamentLink.textContent = prettyTournamentName(rowData.tournament);
 
         const cellValues = [tournamentLink, rowData.pct !== null ? `${rowData.pct.toFixed(1)}%` : '—'];
@@ -384,7 +418,7 @@ export function renderEvents(container: HTMLElement, rows: TournamentRow[]): voi
     if (container.classList.contains('showing-skeleton')) {
         hideSkeleton(container, table);
     } else {
-        container.innerHTML = '';
-        container.appendChild(table);
+        // Use smooth transition for re-renders
+        smoothReplaceContent(container, table);
     }
 }

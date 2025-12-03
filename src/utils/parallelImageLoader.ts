@@ -168,11 +168,7 @@ class ParallelImageLoader {
         img.decoding = 'async';
         img.loading = img.loading || 'lazy';
 
-        // Setup fade-in effect
-        if (fadeIn) {
-            img.style.opacity = '0';
-            img.style.transition = 'opacity 0.18s ease-out';
-        }
+        // Fade-in effect disabled to prevent flashing
 
         try {
             // Load image in parallel
@@ -182,22 +178,11 @@ class ParallelImageLoader {
                 // Set the successful URL
                 img.src = successfulUrl;
 
-                // Handle load event for fade-in
-                if (fadeIn) {
-                    img.onload = () => {
-                        img.style.opacity = '1';
-                        if (onSuccess) {
-                            onSuccess(successfulUrl);
-                        }
-                    };
-                } else if (onSuccess) {
+                // Handle load event
+                if (onSuccess) {
                     img.onload = () => onSuccess(successfulUrl);
-                }
-
-                // If image is already cached and loaded, trigger fade-in immediately
-                if (img.complete && img.naturalHeight !== 0) {
-                    img.style.opacity = '1';
-                    if (onSuccess) {
+                    // If image is already cached and loaded, trigger immediately
+                    if (img.complete && img.naturalHeight !== 0) {
                         onSuccess(successfulUrl);
                     }
                 }

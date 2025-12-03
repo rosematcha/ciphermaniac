@@ -6,23 +6,34 @@ import { escapeHtml, hideGraphTooltip, showGraphTooltip } from './ui.js';
 import { prettyTournamentName } from '../utils/format.js';
 import { hideSkeleton } from '../components/placeholders.js';
 /**
+ * Smoothly replace container content with fade transition
+ * @param container - Target container element
+ * @param newContent - New content to display
+ */
+function smoothReplaceContent(container, newContent) {
+    // If container has skeleton, use hideSkeleton for smooth transition
+    if (container.classList.contains('showing-skeleton')) {
+        hideSkeleton(container, newContent);
+        return;
+    }
+    // Otherwise, replace content directly (no async fade to avoid race conditions)
+    container.innerHTML = '';
+    container.appendChild(newContent);
+}
+/**
  * Render main usage chart showing meta-share over tournaments
  * @param container - Container element for the chart
  * @param points - Array of data points with tournament and percentage info
  */
 export function renderChart(container, points) {
     if (!points.length) {
-        const noDataContent = document.createTextNode('No data.');
+        const noDataWrapper = document.createElement('span');
+        noDataWrapper.textContent = 'No data.';
         if (container.classList.contains('showing-skeleton')) {
-            hideSkeleton(container, noDataContent);
+            hideSkeleton(container, noDataWrapper);
         }
         else {
-            // Clear container without parameter reassignment
-            const containerElement = container;
-            while (containerElement.firstChild) {
-                containerElement.removeChild(containerElement.firstChild);
-            }
-            containerElement.appendChild(noDataContent);
+            smoothReplaceContent(container, noDataWrapper);
         }
         return;
     }
@@ -173,8 +184,8 @@ export function renderChart(container, points) {
         hideSkeleton(container, chartContent);
     }
     else {
-        container.innerHTML = '';
-        container.appendChild(chartContent);
+        // Use smooth transition for re-renders (e.g., on resize)
+        smoothReplaceContent(container, chartContent);
     }
 }
 /**
@@ -229,8 +240,8 @@ export function renderCopiesHistogram(container, overall) {
         hideSkeleton(container, histogramContent);
     }
     else {
-        container.innerHTML = '';
-        container.appendChild(histogramContent);
+        // Use smooth transition for re-renders
+        smoothReplaceContent(container, histogramContent);
     }
 }
 /**
@@ -240,13 +251,13 @@ export function renderCopiesHistogram(container, overall) {
  */
 export function renderEvents(container, rows) {
     if (!rows.length) {
-        const emptyContent = document.createTextNode('No recent events data.');
+        const emptyWrapper = document.createElement('span');
+        emptyWrapper.textContent = 'No recent events data.';
         if (container.classList.contains('showing-skeleton')) {
-            hideSkeleton(container, emptyContent);
+            hideSkeleton(container, emptyWrapper);
         }
         else {
-            container.innerHTML = '';
-            container.appendChild(emptyContent);
+            smoothReplaceContent(container, emptyWrapper);
         }
         return;
     }
@@ -275,7 +286,7 @@ export function renderEvents(container, rows) {
     rows.forEach(rowData => {
         const tableRow = document.createElement('tr');
         const tournamentLink = document.createElement('a');
-        tournamentLink.href = `/index.html?tour=${encodeURIComponent(rowData.tournament)}`;
+        tournamentLink.href = `/cards?tour=${encodeURIComponent(rowData.tournament)}`;
         tournamentLink.textContent = prettyTournamentName(rowData.tournament);
         const cellValues = [tournamentLink, rowData.pct !== null ? `${rowData.pct.toFixed(1)}%` : '—'];
         cellValues.forEach((value, index) => {
@@ -299,7 +310,7 @@ export function renderEvents(container, rows) {
         hideSkeleton(container, table);
     }
     else {
-        container.innerHTML = '';
-        container.appendChild(table);
+        // Use smooth transition for re-renders
+        smoothReplaceContent(container, table);
     }
 }

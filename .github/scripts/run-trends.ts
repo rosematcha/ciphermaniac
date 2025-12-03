@@ -14,7 +14,7 @@ import {
   gatherDecks,
   buildTrendReport,
   buildCardTrendReport
-} from '../../functions/lib/onlineMeta.js';
+} from '../../functions/lib/onlineMeta.ts';
 import { loadCardTypesDatabase } from '../../functions/lib/cardTypesDatabase.js';
 
 const TRENDS_FOLDER = 'Trends - Last 30 Days';
@@ -52,6 +52,7 @@ const MIN_DAY2D_MIN_APPEARANCE = 0.3;
 const MAX_DAY2D_RECENT_PCT = 0.1;
 const MAX_PER_ARCHETYPE = 2;
 const MAX_SUGGESTIONS = 18;
+const MAX_ARCHETYPES_IN_SERIES = 32;
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -143,6 +144,15 @@ function selectWithArchetypeCap(items, getArchetype, maxPer = MAX_PER_ARCHETYPE,
     result.push(item);
   }
   return result;
+}
+
+function trimTrendSeries(series = [], limit = MAX_ARCHETYPES_IN_SERIES) {
+  const max = Math.max(0, Number(limit) || 0);
+  if (!Array.isArray(series) || !series.length || max === 0) {
+    return [];
+  }
+
+  return series.slice(0, max);
 }
 
 function buildCardTimelines(decks, tournaments) {
@@ -473,18 +483,29 @@ async function main() {
     console.log(`[trends] Dropped ${tournaments.length - tournamentsWithDecks.length} tournaments with no deck data`);
   }
 
-  const trendReport = buildTrendReport(decks, tournamentsWithDecks, {
+  const rawTrendReport = buildTrendReport(decks, tournamentsWithDecks, {
     windowStart: since,
     windowEnd: now,
     now,
     minAppearances: 2
   });
-  const cardTrends = buildCardTrendReport(decks, trendReport.tournaments, {
+  const {
+    tournaments: trendTournaments = tournamentsWithDecks,
+    series: rawSeries = [],
+    ...trendReportMeta
+  } = rawTrendReport || {};
+  const trimmedSeries = trimTrendSeries(rawSeries, MAX_ARCHETYPES_IN_SERIES);
+  const trendReport = {
+    ...trendReportMeta,
+    series: trimmedSeries,
+    archetypeCount: trimmedSeries.length
+  };
+  const cardTrends = buildCardTrendReport(decks, trendTournaments, {
     windowStart: since,
     windowEnd: now,
     minAppearances: 2
   });
-  const { timelines: cardTimelines } = buildCardTimelines(decks, trendReport.tournaments);
+  const { timelines: cardTimelines } = buildCardTimelines(decks, trendTournaments);
   const suggestions = buildSuggestions(cardTimelines, now);
 
   const meta = {

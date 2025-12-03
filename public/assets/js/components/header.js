@@ -10,10 +10,11 @@ import '../utils/buildVersion.js';
 export function createHeader(options = {}) {
     const { currentPage = '' } = options;
     const header = document.createElement('header');
+    header.className = 'site-header';
     header.innerHTML = `
     <div class="header-inner">
       <a class="logo" href="/" aria-label="Ciphermaniac home">
-        <img src="/assets/images/logo.svg" alt="" class="site-logo" />
+        <img src="/assets/images/logo.svg" alt="" class="site-logo" width="28" height="28" />
         <div class="site-title">Ciphermaniac</div>
       </a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mainNav">
@@ -28,6 +29,8 @@ export function createHeader(options = {}) {
     </nav>
     </div>
   `;
+    // Add class for browsers without :has() support (CLS prevention fallback)
+    document.body.classList.add('has-header');
     const nav = header.querySelector('.main-nav');
     const toggle = header.querySelector('.nav-toggle');
     if (nav && toggle) {
