@@ -795,6 +795,14 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
 
   const tournamentCount = sortedTournaments.length;
 
+  const tournamentsWithDeckCounts = sortedTournaments.map(t => {
+    const meta = tournamentIndex.get(t.id);
+    return {
+      ...t,
+      deckTotal: meta?.deckTotal ?? t.deckTotal ?? 0
+    };
+  });
+
   const result: AnyOptions = {
     generatedAt: now.toISOString(),
     windowStart: windowStart ? windowStart.toISOString() : null,
@@ -804,7 +812,7 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
     minAppearances,
     archetypeCount: limitedSeries.length,
     series: limitedSeries,
-    tournaments: sortedTournaments
+    tournaments: tournamentsWithDeckCounts
   };
 
   if (seriesLimit && limitedSeries.length !== series.length) {
