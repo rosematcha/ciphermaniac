@@ -1,4 +1,14 @@
 /* eslint-env browser */
+/**
+ * Archetypes List Page - Re-optimized for performance
+ * 
+ * Design principles:
+ * 1. Performance first - no flashing, dimming, or visual bugs
+ * 2. Single render pass - render once with stable DOM structure
+ * 3. Native lazy loading - use browser's built-in loading="lazy"
+ * 4. Simple state management - minimal class toggling
+ * 5. Fallback always visible - image covers it when loaded
+ */
 import './utils/buildVersion.js';
 import { fetchArchetypeReport, fetchArchetypesList, fetchReport } from './api.js';
 import { parseReport } from './parse.js';
@@ -17,295 +27,348 @@ type CachedSummaries = {
   data: ArchetypeSummary[];
 };
 
-type HoverTimer = {
-  target: string;
-  id: number;
-};
-
+// Configuration
 const CACHE_KEY = 'analysis/archetypes-index';
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const PREFETCH_BATCH = 5;
-const INITIAL_VISIBLE = 14;
-const VISIBLE_STEP = 12;
 const PREFETCH_DELAY_MS = 150;
-const PRIORITY_THUMBNAIL_COUNT = 10;
-
 const ONLINE_META_TOURNAMENT = 'Online - Last 14 Days';
 
 const { document } = globalThis;
+
+// DOM references
+const elements = {
+  container: document.querySelector('.analysis-page'),
+  archetypeList: document.getElementById('analysis-archetype-list') as HTMLUListElement | null,
+  listLoading: document.getElementById('analysis-list-loading'),
+  listEmpty: document.getElementById('analysis-list-empty')
+};
 
 const templates = {
   listItem: document.getElementById('analysis-list-item') as HTMLTemplateElement | null
 };
 
-const elements = {
-  container: document.querySelector('.analysis-page'),
-  eventName: document.getElementById('analysis-event-name'),
-  archetypeList: document.getElementById('analysis-archetype-list'),
-  listLoading: document.getElementById('analysis-list-loading'),
-  listEmpty: document.getElementById('analysis-list-empty'),
-  loadMore: document.createElement('div')
+// Simple state
+const state = {
+  archetypes: [] as ArchetypeSummary[],
+  prefetched: new Set<string>(),
+  prefetchQueue: [] as string[],
+  prefetchHandle: null as number | null,
+  hoverTimer: null as { target: string; id: number } | null,
+  rendered: false
 };
 
-const state: {
-  archetypes: ArchetypeSummary[];
-  tournamentDeckTotal: number;
-  tournament: string;
-  visibleCount: number;
-  hoverTimer: HoverTimer | null;
-  prefetched: Set<string>;
-  prefetchQueue: string[];
-  prefetchHandle: number | null;
-  observer?: IntersectionObserver;
-  thumbnailObserver?: IntersectionObserver;
-} = {
-  archetypes: [],
-  tournamentDeckTotal: 0,
-  tournament: ONLINE_META_TOURNAMENT,
-  visibleCount: INITIAL_VISIBLE,
-  hoverTimer: null,
-  prefetched: new Set(),
-  prefetchQueue: [],
-  prefetchHandle: null
-};
-
-function setPageState(status: 'loading' | 'ready' | 'error') {
-  elements.container?.setAttribute('data-state', status);
-}
-
-function toggleLoading(isLoading: boolean) {
-  if (elements.listLoading) {
-    elements.listLoading.hidden = !isLoading;
-  }
-  if (elements.archetypeList) {
-    elements.archetypeList.hidden = isLoading;
-  }
-  if (isLoading && elements.listEmpty) {
-    elements.listEmpty.hidden = true;
-  }
-}
-
-function ensureLoadMoreSentinel() {
-  elements.loadMore.id = 'analysis-load-more';
-  elements.loadMore.className = 'analysis-list__load-more';
-  elements.loadMore.textContent = 'Loading more archetypes…';
-  elements.loadMore.hidden = true;
-  if (!elements.loadMore.parentElement && elements.archetypeList?.parentElement) {
-    elements.archetypeList.parentElement.appendChild(elements.loadMore);
-  }
-}
+// ============================================================================
+// Cache Management
+// ============================================================================
 
 function readCache(): ArchetypeSummary[] | null {
   try {
     const raw = globalThis.localStorage?.getItem(CACHE_KEY);
-    if (!raw) {
-      return null;
-    }
+    if (!raw) return null;
     const payload = JSON.parse(raw) as CachedSummaries;
-    if (!payload?.timestamp || Date.now() - payload.timestamp > CACHE_TTL_MS) {
-      return null;
-    }
-    if (!Array.isArray(payload.data)) {
-      return null;
-    }
+    if (!payload?.timestamp || Date.now() - payload.timestamp > CACHE_TTL_MS) return null;
+    if (!Array.isArray(payload.data)) return null;
     return payload.data;
-  } catch (error) {
-    logger.warn('Failed to read archetype cache', error);
+  } catch {
     return null;
   }
 }
 
 function writeCache(data: ArchetypeSummary[]) {
   try {
-    const payload: CachedSummaries = {
-      timestamp: Date.now(),
-      data
-    };
+    const payload: CachedSummaries = { timestamp: Date.now(), data };
     globalThis.localStorage?.setItem(CACHE_KEY, JSON.stringify(payload));
-  } catch (error) {
-    logger.debug('Unable to persist archetype cache', error);
+  } catch {
+    // Silently fail - cache is optional
   }
 }
 
+// ============================================================================
+// Data Fetching
+// ============================================================================
+
 function normalizeSummary(entry: ArchetypeSummary): ArchetypeSummary {
-  const label = entry.label || entry.name.replace(/_/g, ' ');
-  const deckCount = Number.isFinite(entry.deckCount) ? Number(entry.deckCount) : null;
-  const percent = Number.isFinite(entry.percent) ? Number(entry.percent) : null;
-  const thumbnails = Array.isArray(entry.thumbnails) ? entry.thumbnails.filter(Boolean) : [];
   return {
     name: entry.name,
-    label,
-    deckCount,
-    percent,
-    thumbnails
+    label: entry.label || entry.name.replace(/_/g, ' '),
+    deckCount: Number.isFinite(entry.deckCount) ? Number(entry.deckCount) : null,
+    percent: Number.isFinite(entry.percent) ? Number(entry.percent) : null,
+    thumbnails: Array.isArray(entry.thumbnails) ? entry.thumbnails.filter(Boolean) : []
   };
 }
 
 async function fetchSummaries(): Promise<ArchetypeSummary[]> {
   const list = await fetchArchetypesList(ONLINE_META_TOURNAMENT);
-  const normalized = Array.isArray(list) ? list.filter(item => item && item.name) : [];
+  const normalized = Array.isArray(list) ? list.filter(item => item?.name) : [];
   const summaries = normalized.map(normalizeSummary);
-  summaries.sort((left, right) => {
-    const leftDecks = left.deckCount ?? 0;
-    const rightDecks = right.deckCount ?? 0;
-    if (rightDecks !== leftDecks) {
-      return rightDecks - leftDecks;
-    }
-    return left.label.localeCompare(right.label);
+  
+  // Sort by deck count (descending), then alphabetically
+  summaries.sort((a, b) => {
+    const aDeck = a.deckCount ?? 0;
+    const bDeck = b.deckCount ?? 0;
+    if (bDeck !== aDeck) return bDeck - aDeck;
+    return a.label.localeCompare(b.label);
   });
+  
   return summaries;
 }
 
-function updateListEmptyState() {
-  if (!elements.listEmpty) {
-    return;
-  }
-  elements.listEmpty.hidden = state.archetypes.length !== 0;
+// ============================================================================
+// Thumbnail URL Building
+// ============================================================================
+
+function formatCardNumber(raw: string | number | null | undefined): string | null {
+  if (raw === undefined || raw === null) return null;
+  const str = String(raw).trim();
+  if (!str) return null;
+  const match = str.match(/^(\d+)([A-Za-z]*)$/);
+  if (!match) return str.toUpperCase();
+  const [, digits, suffix = ''] = match;
+  return `${digits.padStart(3, '0')}${suffix.toUpperCase()}`;
 }
 
+function buildThumbnailUrl(setCode: string, number: string): string | null {
+  const set = String(setCode || '').toUpperCase().trim();
+  if (!set) return null;
+  const num = formatCardNumber(number);
+  if (!num) return null;
+  return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${set}/${set}_${num}_R_EN_SM.png`;
+}
+
+function getThumbnailUrls(thumbnails?: string[]): string[] {
+  if (!Array.isArray(thumbnails) || !thumbnails.length) return [];
+  return thumbnails
+    .slice(0, 2) // Max 2 thumbnails for split view
+    .map(entry => {
+      const [set, number] = entry.split('/');
+      return buildThumbnailUrl(set, number);
+    })
+    .filter((url): url is string => url !== null);
+}
+
+function buildFallbackText(name: string): string {
+  const parts = name.replace(/_/g, ' ').split(/\s+/u).filter(Boolean).slice(0, 3);
+  if (!parts.length) return '??';
+  return parts.map(word => word[0].toUpperCase()).join('');
+}
+
+// ============================================================================
+// List Item Creation - Simple, stable DOM structure
+// ============================================================================
+
 function createListItem(summary: ArchetypeSummary, index: number): HTMLElement | null {
-  if (!templates.listItem?.content) {
-    return null;
-  }
+  if (!templates.listItem?.content) return null;
+  
   const node = templates.listItem.content.firstElementChild?.cloneNode(true) as HTMLElement | null;
-  if (!node) {
-    return null;
+  if (!node) return null;
+
+  // Set link and data attributes
+  const anchor = node.querySelector('.analysis-list-item__button') as HTMLAnchorElement | null;
+  if (anchor) {
+    anchor.href = `/archetype/${encodeURIComponent(summary.name)}`;
+    anchor.dataset.archetype = summary.name;
   }
 
-  const anchor = node.querySelector('.analysis-list-item__button') as HTMLElement | null;
-  const preview = node.querySelector('.analysis-list-item__preview') as HTMLElement | null;
-  const thumbnailContainer = node.querySelector('.analysis-list-item__thumbnail') as HTMLElement | null;
-  const thumbnailImage = node.querySelector('.analysis-list-item__thumbnail-image') as HTMLImageElement | null;
-  const thumbnailFallback = node.querySelector('.analysis-list-item__thumbnail-fallback') as HTMLElement | null;
+  // Set text content
   const nameEl = node.querySelector('.analysis-list-item__name');
   const pctEl = node.querySelector('.analysis-list-item__percent');
   const deckEl = node.querySelector('.analysis-list-item__count');
 
-  if (anchor) {
-    anchor.setAttribute('href', `/archetype/${encodeURIComponent(summary.name)}`);
-    anchor.dataset.index = String(index);
-    anchor.dataset.archetype = summary.name;
-  }
-
-  if (nameEl) {
-    nameEl.textContent = summary.label;
-  }
+  if (nameEl) nameEl.textContent = summary.label;
   if (pctEl) {
-    pctEl.textContent =
-      summary.percent === null || Number.isNaN(summary.percent)
-        ? '—'
-        : `${(summary.percent * 100).toFixed(1)}%`;
+    pctEl.textContent = summary.percent === null || Number.isNaN(summary.percent)
+      ? '—'
+      : `${(summary.percent * 100).toFixed(1)}%`;
   }
   if (deckEl) {
-    if (summary.deckCount === null) {
-      deckEl.textContent = 'Deck count unavailable';
-    } else {
-      deckEl.textContent = `${summary.deckCount} deck${summary.deckCount === 1 ? '' : 's'}`;
-    }
+    deckEl.textContent = summary.deckCount === null
+      ? 'Deck count unavailable'
+      : `${summary.deckCount} deck${summary.deckCount === 1 ? '' : 's'}`;
   }
 
-  const shouldPrioritize = index < PRIORITY_THUMBNAIL_COUNT;
+  // Setup thumbnail - simple approach
+  const thumbnailContainer = node.querySelector('.analysis-list-item__thumbnail') as HTMLElement | null;
+  const thumbnailImage = node.querySelector('.analysis-list-item__thumbnail-image') as HTMLImageElement | null;
+  const thumbnailFallback = node.querySelector('.analysis-list-item__thumbnail-fallback') as HTMLElement | null;
 
-  if (
-    preview &&
-    thumbnailContainer instanceof HTMLElement &&
-    thumbnailImage instanceof HTMLImageElement &&
-    thumbnailFallback instanceof HTMLElement
-  ) {
-    thumbnailContainer.dataset.index = String(index);
-    thumbnailImage.dataset.index = String(index);
-    thumbnailImage.loading = 'lazy';
-    thumbnailImage.dataset.thumbnails = (summary.thumbnails || []).join(',');
-    thumbnailFallback.textContent = buildFallback(summary.label);
-    setupThumbnailObserver(
-      thumbnailImage,
-      thumbnailContainer,
-      thumbnailFallback,
-      summary.label,
-      shouldPrioritize
-    );
-  } else if (preview) {
-    preview.classList.add('analysis-list-item__preview--no-thumb');
+  if (thumbnailContainer && thumbnailFallback) {
+    const fallbackText = buildFallbackText(summary.label);
+    thumbnailFallback.textContent = fallbackText;
+    
+    const urls = getThumbnailUrls(summary.thumbnails);
+    
+    if (urls.length === 0) {
+      // No thumbnails - show fallback immediately
+      thumbnailContainer.classList.add('is-placeholder');
+    } else if (urls.length === 1 && thumbnailImage) {
+      // Single thumbnail
+      setupSingleThumbnail(thumbnailImage, thumbnailContainer, urls[0], index < 10);
+    } else if (urls.length >= 2) {
+      // Split thumbnail - create structure upfront
+      setupSplitThumbnail(thumbnailContainer, thumbnailImage, thumbnailFallback, urls, index < 10);
+    }
   }
 
   return node;
 }
 
-function buildFallback(name: string) {
-  const parts = name
-    .replace(/_/g, ' ')
-    .split(/\s+/u)
-    .filter(Boolean)
-    .slice(0, 3);
-  if (!parts.length) {
-    return '??';
-  }
-  return parts.map(word => word[0].toUpperCase()).join('');
+function setupSingleThumbnail(
+  img: HTMLImageElement,
+  container: HTMLElement,
+  url: string,
+  eager: boolean
+): void {
+  img.loading = eager ? 'eager' : 'lazy';
+  img.decoding = 'async';
+  img.alt = '';
+  
+  // Simple error handling - just show fallback on error
+  img.onerror = () => {
+    container.classList.add('is-placeholder');
+    img.style.display = 'none';
+  };
+  
+  img.src = url;
 }
 
-function renderList(reset = false) {
-  const listEl = elements.archetypeList;
-  if (!listEl) {
-    return;
-  }
-
-  if (reset) {
-    listEl.innerHTML = '';
-  }
-
-  ensureLoadMoreSentinel();
-
-  const existing = listEl.children.length;
-  const target = Math.min(state.visibleCount, state.archetypes.length);
-  const fragment = document.createDocumentFragment();
-
-  for (let index = existing; index < target; index += 1) {
-    const summary = state.archetypes[index];
-    const item = createListItem(summary, index);
-    if (item) {
-      fragment.appendChild(item);
+function setupSplitThumbnail(
+  container: HTMLElement,
+  baseImg: HTMLImageElement | null,
+  fallback: HTMLElement,
+  urls: string[],
+  eager: boolean
+): void {
+  // Hide the base image for split view
+  if (baseImg) baseImg.style.display = 'none';
+  
+  container.classList.add('analysis-list-item__thumbnail--split');
+  
+  // Create split wrapper
+  const splitWrapper = document.createElement('div');
+  splitWrapper.className = 'analysis-list-item__split';
+  
+  let loadedCount = 0;
+  let errorCount = 0;
+  
+  const checkComplete = () => {
+    if (errorCount === urls.length) {
+      // All images failed - show fallback
+      container.classList.remove('analysis-list-item__thumbnail--split');
+      container.classList.add('is-placeholder');
+      splitWrapper.remove();
     }
-  }
-
-  if (fragment.childNodes.length) {
-    listEl.appendChild(fragment);
-  }
-
-  elements.loadMore.hidden = state.visibleCount >= state.archetypes.length;
-  updateListEmptyState();
-}
-
-function expandVisibleCount() {
-  if (state.visibleCount >= state.archetypes.length) {
-    return;
-  }
-  state.visibleCount = Math.min(state.visibleCount + VISIBLE_STEP, state.archetypes.length);
-  renderList();
-}
-
-function installListObserver() {
-  if (!('IntersectionObserver' in globalThis) || !elements.loadMore) {
-    return;
-  }
-  if (state.observer) {
-    state.observer.disconnect();
-  }
-  state.observer = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        expandVisibleCount();
-      }
-    });
+  };
+  
+  urls.slice(0, 2).forEach((url, i) => {
+    const slice = document.createElement('div');
+    slice.className = `analysis-list-item__slice analysis-list-item__slice--${i === 0 ? 'left' : 'right'}`;
+    
+    const img = document.createElement('img');
+    img.className = 'analysis-list-item__thumbnail-image analysis-list-item__thumbnail-image--split';
+    img.loading = eager ? 'eager' : 'lazy';
+    img.decoding = 'async';
+    img.alt = '';
+    
+    // Apply clip-path for split effect
+    const clipLeft = i === 0 ? '0%' : '50%';
+    const clipRight = i === 0 ? '50%' : '0%';
+    img.style.cssText = `
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      clip-path: inset(0% ${clipRight} 0% ${clipLeft});
+    `;
+    
+    img.onload = () => {
+      loadedCount++;
+    };
+    img.onerror = () => {
+      errorCount++;
+      slice.style.display = 'none';
+      checkComplete();
+    };
+    
+    img.src = url;
+    slice.appendChild(img);
+    splitWrapper.appendChild(slice);
   });
-  state.observer.observe(elements.loadMore);
+  
+  container.insertBefore(splitWrapper, fallback);
 }
 
-function schedulePrefetchHotset() {
-  if (!state.archetypes.length) {
+// ============================================================================
+// Rendering - Single pass, no re-renders
+// ============================================================================
+
+function renderList(archetypes: ArchetypeSummary[]): void {
+  const listEl = elements.archetypeList;
+  if (!listEl || state.rendered) return;
+  
+  // Clear any existing content
+  listEl.innerHTML = '';
+  
+  if (archetypes.length === 0) {
+    if (elements.listEmpty) elements.listEmpty.hidden = false;
     return;
   }
-  const hotset = state.archetypes.slice(0, PREFETCH_BATCH);
-  for (const item of hotset) {
+  
+  // Build all items in a single fragment
+  const fragment = document.createDocumentFragment();
+  archetypes.forEach((summary, index) => {
+    const item = createListItem(summary, index);
+    if (item) fragment.appendChild(item);
+  });
+  
+  listEl.appendChild(fragment);
+  state.rendered = true;
+  
+  // Hide empty state
+  if (elements.listEmpty) elements.listEmpty.hidden = true;
+}
+
+function showLoading(show: boolean): void {
+  if (elements.listLoading) {
+    elements.listLoading.hidden = !show;
+  }
+  if (elements.archetypeList) {
+    elements.archetypeList.hidden = show;
+  }
+}
+
+function showError(message: string): void {
+  if (elements.listLoading) {
+    elements.listLoading.textContent = message;
+    elements.listLoading.hidden = false;
+  }
+  if (elements.archetypeList) {
+    elements.archetypeList.hidden = true;
+  }
+}
+
+// ============================================================================
+// Prefetching - Hover to prefetch archetype data
+// ============================================================================
+
+async function prefetchArchetype(name: string): Promise<void> {
+  if (state.prefetched.has(name)) return;
+  try {
+    const raw = await fetchArchetypeReport(ONLINE_META_TOURNAMENT, name);
+    parseReport(raw);
+    state.prefetched.add(name);
+  } catch (err) {
+    logger.debug('Archetype prefetch failed', { name, message: (err as Error)?.message });
+  }
+}
+
+function schedulePrefetchBatch(): void {
+  if (!state.archetypes.length) return;
+  
+  // Prefetch top archetypes
+  const batch = state.archetypes.slice(0, PREFETCH_BATCH);
+  for (const item of batch) {
     if (!state.prefetched.has(item.name)) {
       state.prefetchQueue.push(item.name);
     }
@@ -313,14 +376,12 @@ function schedulePrefetchHotset() {
   drainPrefetchQueue();
 }
 
-function drainPrefetchQueue() {
-  if (!state.prefetchQueue.length || state.prefetchHandle !== null) {
-    return;
-  }
+function drainPrefetchQueue(): void {
+  if (!state.prefetchQueue.length || state.prefetchHandle !== null) return;
+  
   const next = state.prefetchQueue.shift();
-  if (!next) {
-    return;
-  }
+  if (!next) return;
+  
   state.prefetchHandle = window.setTimeout(async () => {
     state.prefetchHandle = null;
     await prefetchArchetype(next);
@@ -328,347 +389,113 @@ function drainPrefetchQueue() {
   }, PREFETCH_DELAY_MS);
 }
 
-async function prefetchArchetype(name: string) {
-  if (state.prefetched.has(name)) {
-    return;
-  }
-  try {
-    const raw = await fetchArchetypeReport(state.tournament, name);
-    parseReport(raw);
-    state.prefetched.add(name);
-  } catch (error) {
-    logger.debug('Archetype prefetch failed', { name, message: (error as Error)?.message });
-  }
-}
-
-function handlePointerEnter(event: PointerEvent) {
-  const target = (event.target as HTMLElement | null)?.closest(
-    '.analysis-list-item__button'
-  ) as HTMLElement | null;
-  if (!target || !target.dataset.archetype) {
-    return;
-  }
-  const archetype = target.dataset.archetype;
-  cancelHoverTimer();
-  const timer = window.setTimeout(() => {
-    prefetchArchetype(archetype);
-    state.hoverTimer = null;
-  }, PREFETCH_DELAY_MS);
-  state.hoverTimer = { target: archetype, id: timer };
-}
-
-function cancelHoverTimer() {
-  if (state.hoverTimer) {
-    window.clearTimeout(state.hoverTimer.id);
-    state.hoverTimer = null;
-  }
-}
-
-function handlePointerLeave(event: PointerEvent) {
-  const target = (event.target as HTMLElement | null)?.closest(
-    '.analysis-list-item__button'
-  ) as HTMLElement | null;
-  if (!target?.dataset?.archetype) {
-    return;
-  }
-  if (state.hoverTimer?.target === target.dataset.archetype) {
-    cancelHoverTimer();
-  }
-}
-
-function setupPrefetchHandlers() {
+function setupHoverPrefetch(): void {
   const listEl = elements.archetypeList;
-  if (!listEl) {
-    return;
-  }
-  listEl.addEventListener('pointerenter', handlePointerEnter, true);
-  listEl.addEventListener('pointerleave', handlePointerLeave, true);
+  if (!listEl) return;
+
+  listEl.addEventListener('pointerenter', (e) => {
+    const target = (e.target as HTMLElement)?.closest('.analysis-list-item__button') as HTMLElement | null;
+    if (!target?.dataset.archetype) return;
+    
+    const archetype = target.dataset.archetype;
+    
+    // Cancel any existing timer
+    if (state.hoverTimer) {
+      clearTimeout(state.hoverTimer.id);
+      state.hoverTimer = null;
+    }
+    
+    // Start new timer
+    const id = window.setTimeout(() => {
+      prefetchArchetype(archetype);
+      state.hoverTimer = null;
+    }, PREFETCH_DELAY_MS);
+    
+    state.hoverTimer = { target: archetype, id };
+  }, true);
+
+  listEl.addEventListener('pointerleave', (e) => {
+    const target = (e.target as HTMLElement)?.closest('.analysis-list-item__button') as HTMLElement | null;
+    if (!target?.dataset.archetype) return;
+    
+    if (state.hoverTimer?.target === target.dataset.archetype) {
+      clearTimeout(state.hoverTimer.id);
+      state.hoverTimer = null;
+    }
+  }, true);
 }
 
-function formatCardNumber(rawNumber: string | number | null | undefined) {
-  if (rawNumber === undefined || rawNumber === null) {
-    return null;
-  }
-  const sanitized = String(rawNumber).trim();
-  if (!sanitized) {
-    return null;
-  }
-  const parts = sanitized.match(/^(\d+)([A-Za-z]*)$/);
-  if (!parts) {
-    return sanitized.toUpperCase();
-  }
-  const [, digits, suffix = ''] = parts;
-  return `${digits.padStart(3, '0')}${suffix.toUpperCase()}`;
-}
+// ============================================================================
+// Initialization
+// ============================================================================
 
-function buildThumbnailUrl(setCode: string, number: string, size: 'SM' | 'XS' = 'SM') {
-  const set = String(setCode || '').toUpperCase().trim();
-  if (!set) {
-    return null;
-  }
-  const normalizedNumber = formatCardNumber(number);
-  if (!normalizedNumber) {
-    return null;
-  }
-  return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${set}/${set}_${normalizedNumber}_R_EN_${size}.png`;
-}
-
-function buildThumbnailSources(thumbnails?: string[]) {
-  if (!Array.isArray(thumbnails) || !thumbnails.length) {
-    return [];
-  }
-  return thumbnails
-    .map(entry => {
-      const [set, number] = entry.split('/');
-      return buildThumbnailUrl(set, number);
-    })
-    .filter(Boolean) as string[];
-}
-
-function setupThumbnailObserver(
-  img: HTMLImageElement,
-  container: HTMLElement,
-  fallback: HTMLElement,
-  name: string,
-  prioritized = false
-) {
-  if (!state.thumbnailObserver && 'IntersectionObserver' in globalThis) {
-    state.thumbnailObserver = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (!entry.isIntersecting) {
-          return;
-        }
-        const targetImg = entry.target as HTMLImageElement;
-        state.thumbnailObserver?.unobserve(targetImg);
-        loadThumbnail(targetImg, name);
-      });
-    }, {
-      rootMargin: '200px'
-    });
-  }
-
-  img.dataset.fallback = buildFallback(name);
-  img.dataset.containerId = container.dataset.index || '';
-  img.dataset.fallbackId = fallback.dataset.index || '';
-
-  if (prioritized) {
-    loadThumbnail(img, name);
-    return;
-  }
-
-  if (state.thumbnailObserver) {
-    state.thumbnailObserver.observe(img);
-  } else {
-    loadThumbnail(img, name);
-  }
-}
-
-function loadThumbnail(img: HTMLImageElement, deckName: string) {
-  const container = img.closest('.analysis-list-item__thumbnail') as HTMLElement | null;
-  const fallback = container?.querySelector('.analysis-list-item__thumbnail-fallback') as
-    | HTMLElement
-    | null;
-  const thumbnailIds = img.dataset.thumbnails?.split(',').filter(Boolean) ?? [];
-  const fallbackText = img.dataset.fallback || buildFallback(deckName);
-  if (fallback) {
-    fallback.textContent = fallbackText;
-  }
-  applyDeckThumbnail(container, img, fallback, deckName, thumbnailIds);
-}
-
-function applyDeckThumbnail(
-  thumbnailEl: HTMLElement | null,
-  imgEl: HTMLImageElement | null,
-  fallbackEl: HTMLElement | null,
-  deckName: string,
-  thumbIds: string[]
-) {
-  if (!thumbnailEl || !imgEl || !fallbackEl) {
-    return;
-  }
-
-  const sources = buildThumbnailSources(thumbIds);
-  const usePlaceholder = () => {
-    thumbnailEl.classList.add('is-placeholder');
-    imgEl.style.display = '';
-    imgEl.removeAttribute('src');
-  };
-
-  fallbackEl.textContent = buildFallback(deckName);
-
-  if (!sources.length) {
-    usePlaceholder();
-    return;
-  }
-
-  if (sources.length >= 2) {
-    applySplitThumbnail(thumbnailEl, imgEl, fallbackEl, sources, usePlaceholder, deckName);
-    return;
-  }
-
-  thumbnailEl.classList.remove('is-placeholder');
-  imgEl.style.display = 'block';
-  imgEl.alt = '';
-  imgEl.loading = 'lazy';
-  imgEl.decoding = 'async';
-  imgEl.onerror = usePlaceholder;
-  imgEl.onload = () => {
-    thumbnailEl.classList.remove('is-placeholder');
-  };
-  imgEl.src = sources[0];
-}
-
-type SplitOptions = {
-  x?: number;
-  width?: number;
-  y?: number;
-  height?: number;
-};
-
-function applySplitThumbnail(
-  thumbnailEl: HTMLElement,
-  baseImg: HTMLImageElement,
-  fallbackEl: HTMLElement,
-  sources: string[],
-  usePlaceholder: () => void,
-  deckName: string
-) {
-  const clearBase = () => {
-    baseImg.style.display = 'none';
-    baseImg.removeAttribute('src');
-  };
-
-  clearBase();
-  thumbnailEl.classList.remove('is-placeholder');
-  thumbnailEl.classList.add('analysis-list-item__thumbnail--split');
-
-  let splitWrapper = thumbnailEl.querySelector('.analysis-list-item__split') as HTMLElement | null;
-  if (!splitWrapper) {
-    splitWrapper = document.createElement('div');
-    splitWrapper.className = 'analysis-list-item__split';
-    thumbnailEl.insertBefore(splitWrapper, fallbackEl);
-  }
-  splitWrapper.replaceChildren();
-
-  const handleError = () => {
-    usePlaceholder();
-  };
-
-  sources.slice(0, 2).forEach((src, index) => {
-    const slice = document.createElement('div');
-    const orientation = index === 0 ? 'left' : 'right';
-    slice.className = `analysis-list-item__slice analysis-list-item__slice--${orientation}`;
-    const img = document.createElement('img');
-    img.className = 'analysis-list-item__thumbnail-image analysis-list-item__thumbnail-image--split';
-    img.loading = 'lazy';
-    img.decoding = 'async';
-    img.alt = '';
-    img.onerror = handleError;
-    img.onload = () => {};
-    applySplitCrop(img, orientation === 'left' ? { x: 0, width: 0.5 } : { x: 0.5, width: 0.5 });
-    img.src = src;
-    slice.appendChild(img);
-    splitWrapper?.appendChild(slice);
-  });
-
-  if (!splitWrapper.hasChildNodes()) {
-    usePlaceholder();
-  }
-}
-
-function applySplitCrop(img: HTMLImageElement, crop: SplitOptions) {
-  const x = clamp(typeof crop.x === 'number' ? crop.x : 0, 0, 1);
-  const width = clamp(typeof crop.width === 'number' ? crop.width : 0.5, 0.05, 1 - x);
-  const y = clamp(typeof crop.y === 'number' ? crop.y : 0, 0, 1);
-  const height = clamp(typeof crop.height === 'number' ? crop.height : 1, 0.05, 1 - y);
-
-  const top = clamp(y * 100, 0, 100);
-  const left = clamp(x * 100, 0, 100);
-  const bottom = clamp((1 - (y + height)) * 100, 0, 100);
-  const right = clamp((1 - (x + width)) * 100, 0, 100);
-
-  img.style.position = 'absolute';
-  img.style.top = '0';
-  img.style.left = '0';
-  img.style.width = '100%';
-  img.style.height = '100%';
-  img.style.objectFit = 'cover';
-  img.style.clipPath = `inset(${top}% ${right}% ${bottom}% ${left}%)`;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
-function applyCachedData(data: ArchetypeSummary[]) {
-  state.archetypes = data;
-  state.visibleCount = Math.min(INITIAL_VISIBLE, state.archetypes.length);
-  renderList(true);
-  schedulePrefetchHotset();
-}
-
-async function refreshFromNetwork() {
+async function initialize(): Promise<void> {
+  showLoading(true);
+  
   try {
-    const summaries = await fetchSummaries();
-    if (!summaries.length) {
-      if (!state.archetypes.length) {
-        updateListEmptyState();
-      }
-      return;
-    }
-    writeCache(summaries);
-    applyCachedData(summaries);
-  } catch (error) {
-    logger.exception('Failed to refresh archetype summaries', error);
-    if (!state.archetypes.length) {
-      setPageState('error');
-      toggleLoading(false);
-      if (elements.listLoading) {
-        elements.listLoading.textContent = 'Unable to load archetypes right now.';
-        elements.listLoading.hidden = false;
-      }
-    }
-  }
-}
-
-async function initialize() {
-  try {
-    setPageState('loading');
-    toggleLoading(true);
-
-    const tournamentReport = await fetchReport(ONLINE_META_TOURNAMENT);
-    if (!tournamentReport || typeof tournamentReport.deckTotal !== 'number') {
-      throw new Error(`Missing deck totals for ${ONLINE_META_TOURNAMENT}`);
-    }
-    state.tournamentDeckTotal = tournamentReport.deckTotal;
-    if (elements.eventName) {
-      elements.eventName.textContent = ONLINE_META_TOURNAMENT;
-    }
-
-    ensureLoadMoreSentinel();
-    installListObserver();
-    setupPrefetchHandlers();
-
+    // First, try to show cached data immediately
     const cached = readCache();
     if (cached?.length) {
-      applyCachedData(cached);
-      toggleLoading(false);
-      setPageState('ready');
+      state.archetypes = cached;
+      renderList(cached);
+      showLoading(false);
     }
-
-    await refreshFromNetwork();
-
-    toggleLoading(false);
-    setPageState('ready');
-  } catch (error) {
-    logger.exception('Failed to initialize archetype analysis', error);
-    setPageState('error');
-    toggleLoading(false);
-    if (elements.listLoading) {
-      elements.listLoading.textContent = 'Something went wrong while loading archetypes.';
-      elements.listLoading.hidden = false;
+    
+    // Verify tournament is available (required for the page)
+    const tournamentReport = await fetchReport(ONLINE_META_TOURNAMENT);
+    if (!tournamentReport || typeof tournamentReport.deckTotal !== 'number') {
+      throw new Error(`Tournament data unavailable`);
+    }
+    
+    // Fetch fresh data
+    const freshData = await fetchSummaries();
+    
+    if (freshData.length) {
+      writeCache(freshData);
+      
+      // Only re-render if we haven't rendered yet (no cache) or data changed
+      if (!state.rendered) {
+        state.archetypes = freshData;
+        renderList(freshData);
+      } else if (hasDataChanged(state.archetypes, freshData)) {
+        // Data changed - update quietly without flashing
+        state.archetypes = freshData;
+        state.rendered = false;
+        renderList(freshData);
+      }
+    } else if (!state.rendered) {
+      // No data at all
+      if (elements.listEmpty) elements.listEmpty.hidden = false;
+    }
+    
+    showLoading(false);
+    
+    // Setup prefetching
+    setupHoverPrefetch();
+    schedulePrefetchBatch();
+    
+  } catch (err) {
+    logger.exception('Failed to initialize archetypes page', err);
+    
+    // If we have cached data, keep showing it
+    if (state.rendered) {
+      showLoading(false);
+    } else {
+      showError('Unable to load archetypes. Please try again later.');
     }
   }
+}
+
+function hasDataChanged(oldData: ArchetypeSummary[], newData: ArchetypeSummary[]): boolean {
+  if (oldData.length !== newData.length) return true;
+  
+  for (let i = 0; i < oldData.length; i++) {
+    if (oldData[i].name !== newData[i].name) return true;
+    if (oldData[i].deckCount !== newData[i].deckCount) return true;
+    if (oldData[i].percent !== newData[i].percent) return true;
+  }
+  
+  return false;
 }
 
 initialize();

@@ -107,15 +107,13 @@ export function initFiltersToggle({ owner = 'ui', focusFirstControlOnOpen = true
         return;
     }
     const isSmallScreen = typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 899px)').matches;
-    if (!panel.hasAttribute('aria-hidden') && isSmallScreen) {
+    if (isSmallScreen) {
+        // On mobile: start with filters collapsed (toggle to show)
         applyPanelState({ panel, toggle }, false);
     }
-    else if (!isSmallScreen) {
-        panel.setAttribute('aria-hidden', 'false');
-        panel.classList?.add('is-open');
-        toggle.setAttribute('aria-expanded', 'false');
-        toggle.classList?.remove('is-active');
-        document.body?.classList?.remove('filters-panel-open');
+    else {
+        // On desktop: start with filters expanded (visible by default)
+        applyPanelState({ panel, toggle }, true);
     }
     toggle.addEventListener('click', () => {
         toggleFiltersPanel({

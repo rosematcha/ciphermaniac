@@ -1,6 +1,6 @@
 /* eslint-disable id-length */
 import { logger } from './logger.js';
-const SUCCESS_TAGS = ['winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'];
+import { SUCCESS_TAGS } from '../data/performanceTiers.js';
 const DEFAULT_MIN_APPEARANCES = 3;
 function normalizeArchetypeName(name) {
     const cleaned = (name || '').replace(/_/g, ' ').trim();
@@ -21,6 +21,7 @@ function buildBaseName(normalized) {
 export function buildTrendDataset(decks, tournaments, options = {}) {
     const now = options.now ? new Date(options.now) : new Date();
     const minAppearances = Math.max(1, Number.isFinite(options.minAppearances) ? Number(options.minAppearances) : DEFAULT_MIN_APPEARANCES);
+    const successFilter = options.successFilter || 'all';
     const sortedTournaments = (Array.isArray(tournaments) ? tournaments : [])
         .filter(t => t && t.id)
         .map(t => ({ ...t }))
@@ -32,9 +33,21 @@ export function buildTrendDataset(decks, tournaments, options = {}) {
     const archetypes = new Map();
     const deckList = Array.isArray(decks) ? decks : [];
     const successTagSet = new Set(SUCCESS_TAGS);
+    // Helper to check if deck matches the performance filter
+    const matchesFilter = (deckSuccessTags) => {
+        if (successFilter === 'all')
+            return true;
+        if (!Array.isArray(deckSuccessTags) || deckSuccessTags.length === 0)
+            return false;
+        return deckSuccessTags.includes(successFilter);
+    };
     for (const deck of deckList) {
         const tournamentId = deck?.tournamentId;
         if (!tournamentId || !tournamentIndex.has(tournamentId)) {
+            continue;
+        }
+        // Skip decks that don't match the performance filter
+        if (!matchesFilter(deck?.successTags)) {
             continue;
         }
         const normalized = normalizeArchetypeName(deck?.archetype || 'Unknown');
@@ -115,21 +128,25 @@ export function buildTrendDataset(decks, tournaments, options = {}) {
         date: t.date,
         deckTotal: tournamentIndex.get(t.id)?.deckTotal || 0
     }));
+    // Count filtered decks (decks that matched the filter)
+    const filteredDeckCount = Array.from(archetypes.values()).reduce((sum, a) => sum + a.totalDecks, 0);
     logger.debug('Built trend dataset', {
-        deckTotal: deckList.length,
+        deckTotal: filteredDeckCount,
         archetypes: series.length,
-        tournaments: tournamentsWithTotals.length
+        tournaments: tournamentsWithTotals.length,
+        successFilter
     });
     return {
         generatedAt: now.toISOString(),
         windowStart: options.windowStart || null,
         windowEnd: options.windowEnd || null,
         minAppearances,
-        deckTotal: deckList.length,
+        deckTotal: filteredDeckCount,
         tournamentCount: tournamentsWithTotals.length,
         archetypeCount: series.length,
         tournaments: tournamentsWithTotals,
-        series
+        series,
+        successFilter
     };
 }
 /**

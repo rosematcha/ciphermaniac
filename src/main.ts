@@ -373,6 +373,7 @@ function setupDropdownFilters(state: AppState) {
     state.cleanup.addEventListener(document, 'pointerdown', onDocumentPointerDown);
     state.cleanup.addEventListener(document, 'keydown', onDocumentKeydown);
 
+    // Set initial filters panel state (collapsed for both desktop and mobile)
     closeFiltersPanel({ skipDropdownClose: true });
 
     const filtersToggle = document.getElementById('filtersToggle');

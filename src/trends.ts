@@ -4,8 +4,27 @@ import { fetchTrendReport, ONLINE_META_NAME } from './api.js';
 import { fetchAllDecks } from './utils/clientSideFiltering.js';
 import { buildCardTrendDataset, buildTrendDataset } from './utils/trendAggregator.js';
 import { logger } from './utils/logger.js';
+import { PERFORMANCE_FILTER_OPTIONS, getPerformanceLabel, matchesPerformanceFilter } from './data/performanceTiers.js';
 
-const palette = ['#6aa3ff', '#ff6b6b', '#3ad27a', '#f1c40f', '#9b59b6', '#ff9f43'];
+// High-contrast palette with distinct hues - designed for dark backgrounds
+const palette = [
+  '#3b82f6', // bright blue
+  '#ef4444', // red
+  '#22c55e', // green
+  '#f59e0b', // amber/orange
+  '#a855f7', // purple
+  '#06b6d4', // cyan
+  '#ec4899', // pink
+  '#eab308', // yellow
+  '#14b8a6', // teal
+  '#f97316', // orange
+  '#8b5cf6', // violet
+  '#10b981', // emerald
+  '#f43f5e', // rose
+  '#0ea5e9', // sky blue
+  '#d946ef', // fuchsia
+  '#84cc16'  // lime
+];
 const TRENDS_SOURCE = 'Trends - Last 30 Days';
 
 const elements = {
@@ -25,7 +44,10 @@ const elements = {
   movers: document.getElementById('trend-movers'),
   cardMovers: document.getElementById('trend-card-movers'),
   modeMeta: document.getElementById('trend-mode-meta'),
-  modeArchetypes: document.getElementById('trend-mode-archetypes')
+  modeArchetypes: document.getElementById('trend-mode-archetypes'),
+  performanceFilter: document.getElementById('trend-performance-filter') as HTMLSelectElement | null,
+  densityFilter: document.getElementById('trend-density-filter') as HTMLSelectElement | null,
+  timeFilter: document.getElementById('trend-time-filter') as HTMLSelectElement | null
 };
 
 const state = {
@@ -35,10 +57,15 @@ const state = {
     ),
   cardTrends: null,
   suggestions: null,
+  rawDecks: null as any[] | null,
+  rawTournaments: null as any[] | null,
   isLoading: false,
   isHydrating: false,
   minAppearances: 3,
-  mode: 'meta'
+  mode: 'meta',
+  performanceFilter: 'all',
+  chartDensity: 8,
+  timeRangeDays: 14
 };
 
 function setStatus(message) {
@@ -118,39 +145,100 @@ function binDaily(timeline) {
     .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
 }
 
-function buildMetaLines(trendData, topN = 5) {
+function buildMetaLines(trendData, topN = 8, timeRangeDays = 30) {
   if (!trendData || !Array.isArray(trendData.series)) {
     return null;
   }
 
-  const seriesWithBins = trendData.series.slice(0, topN).map((entry, index) => {
-    const daily = binDaily(entry.timeline || []);
-    const smoothed = smoothSeries(daily, 3);
-    return { ...entry, daily: smoothed, color: palette[index % palette.length] };
-  });
+  // Calculate cutoff date for time filtering
+  const now = new Date();
+  const cutoffDate = new Date(now.getTime() - timeRangeDays * 24 * 60 * 60 * 1000);
+  const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
 
-  if (!seriesWithBins.length) {
+  // First, compute daily bins for ALL series so we can rank by start/end
+  const allSeriesWithBins = trendData.series.map(entry => {
+    const daily = binDaily(entry.timeline || []);
+    // Filter by time range
+    const filteredDaily = daily.filter(pt => pt.date >= cutoffDateStr);
+    const smoothed = smoothSeries(filteredDaily, 3);
+    return { ...entry, daily: smoothed };
+  }).filter(entry => entry.daily.length > 0); // Remove series with no data in range
+
+  // Get all unique dates across all series
+  const allDates = Array.from(
+    new Set<string>(allSeriesWithBins.flatMap(entry => entry.daily.map(pt => String(pt.date || ''))))
+  ).filter(Boolean).sort((a, b) => Date.parse(a) - Date.parse(b));
+
+  if (!allDates.length) {
     return null;
   }
 
+  // Calculate start and end averages for ranking
+  const windowSize = Math.max(1, Math.ceil(allDates.length * 0.3));
+  const startDates = new Set(allDates.slice(0, windowSize));
+  const endDates = new Set(allDates.slice(-windowSize));
+
+  const seriesWithRankingData = allSeriesWithBins.map(entry => {
+    const startPoints = entry.daily.filter(pt => startDates.has(pt.date)).map(pt => pt.share || 0);
+    const endPoints = entry.daily.filter(pt => endDates.has(pt.date)).map(pt => pt.share || 0);
+    const startAvg = startPoints.length ? startPoints.reduce((a, b) => a + b, 0) / startPoints.length : 0;
+    const endAvg = endPoints.length ? endPoints.reduce((a, b) => a + b, 0) / endPoints.length : 0;
+    return { ...entry, startAvg, endAvg };
+  });
+
+  // Get top N by start average (beginning of period)
+  const topByStart = [...seriesWithRankingData]
+    .sort((a, b) => b.startAvg - a.startAvg)
+    .slice(0, topN);
+
+  // Get top N by end average (end of period)
+  const topByEnd = [...seriesWithRankingData]
+    .sort((a, b) => b.endAvg - a.endAvg)
+    .slice(0, topN);
+
+  // Combine both sets (union), preserving order: start decks first, then new end decks
+  const selectedNames = new Set<string>();
+  const selectedSeries: typeof seriesWithRankingData = [];
+
+  // Add top-at-start decks first
+  for (const entry of topByStart) {
+    const name = entry.displayName || entry.base;
+    if (!selectedNames.has(name)) {
+      selectedNames.add(name);
+      selectedSeries.push(entry);
+    }
+  }
+
+  // Add top-at-end decks that aren't already included
+  for (const entry of topByEnd) {
+    const name = entry.displayName || entry.base;
+    if (!selectedNames.has(name)) {
+      selectedNames.add(name);
+      selectedSeries.push(entry);
+    }
+  }
+
+  // Assign colors
+  const seriesWithColors = selectedSeries.map((entry, index) => ({
+    ...entry,
+    color: palette[index % palette.length]
+  }));
+
+  if (!seriesWithColors.length) {
+    return null;
+  }
+
+  // Build timeline using only dates from selected series
   const timelineDates = Array.from(
-    new Set<string>(seriesWithBins.flatMap(entry => entry.daily.map(pt => String(pt.date || ''))))
-  ).filter(Boolean);
+    new Set<string>(seriesWithColors.flatMap(entry => entry.daily.map(pt => String(pt.date || ''))))
+  ).filter(Boolean).sort((a, b) => Date.parse(a) - Date.parse(b));
 
-  timelineDates.sort((a, b) => Date.parse(a) - Date.parse(b));
-
-  const lines = seriesWithBins.map(entry => {
+  const lines = seriesWithColors.map(entry => {
     const points = timelineDates.map(d => {
       const found = entry.daily.find(pt => pt.date === d);
       return found ? found.share : 0;
     });
-    const startAvg =
-      points.slice(0, Math.max(1, Math.ceil(points.length * 0.3))).reduce((a, b) => a + b, 0) /
-      Math.max(1, Math.ceil(points.length * 0.3));
-    const recentAvg =
-      points.slice(-Math.max(1, Math.ceil(points.length * 0.3))).reduce((a, b) => a + b, 0) /
-      Math.max(1, Math.ceil(points.length * 0.3));
-    const delta = Math.round((recentAvg - startAvg) * 10) / 10;
+    const delta = Math.round((entry.endAvg - entry.startAvg) * 10) / 10;
     return {
       name: entry.displayName || entry.base,
       color: entry.color,
@@ -190,11 +278,13 @@ function renderLegend(lines) {
     swatch.className = 'legend-swatch';
     swatch.style.backgroundColor = line.color;
     const label = document.createElement('span');
+    label.className = 'legend-name';
     label.textContent = line.name;
     const value = document.createElement('span');
     value.className = 'legend-value';
     const sign = line.delta > 0 ? '+' : '';
-    value.textContent = `${formatPercent(line.latest)} (${sign}${line.delta.toFixed(Math.abs(line.delta) % 1 === 0 ? 0 : 1)}%)`;
+    const deltaClass = line.delta > 0 ? 'up' : line.delta < 0 ? 'down' : '';
+    value.innerHTML = `${formatPercent(line.latest)} <span class="legend-delta ${deltaClass}">(${sign}${line.delta.toFixed(Math.abs(line.delta) % 1 === 0 ? 0 : 1)}%)</span>`;
     item.appendChild(swatch);
     item.appendChild(label);
     item.appendChild(value);
@@ -229,11 +319,14 @@ function renderMovers(lines) {
     items.forEach(item => {
       const li = document.createElement('li');
       const sign = item.delta > 0 ? '+' : '';
+      const url = `/archetype/${item.name.replace(/ /g, '_')}`;
       li.innerHTML = `
-        <span class="dot" style="background:${item.color}"></span>
-        <span class="name">${item.name}</span>
-        <span class="perc">${formatPercent(item.latest)}</span>
-        <span class="delta ${direction}">${sign}${item.delta.toFixed(Math.abs(item.delta) % 1 === 0 ? 0 : 1)}%</span>
+        <a href="${url}">
+          <span class="dot" style="background:${item.color}"></span>
+          <span class="name">${item.name}</span>
+          <span class="perc">${formatPercent(item.latest)}</span>
+          <span class="delta ${direction}">${sign}${item.delta.toFixed(Math.abs(item.delta) % 1 === 0 ? 0 : 1)}%</span>
+        </a>
       `;
       list.appendChild(li);
     });
@@ -308,11 +401,17 @@ function renderCardMovers(suggestions, cardTrends) {
       const li = document.createElement('li');
       const deltaSign = item.delta > 0 ? '+' : '';
       const idLabel = item.set && item.number ? ` (${item.set} ${item.number})` : '';
+      let url = `/cards?card=${encodeURIComponent(item.name)}`;
+      if (item.set && item.number) {
+        url = `/card/${item.set}~${item.number}`;
+      }
       li.innerHTML = `
-        <span class="dot"></span>
-        <span class="name">${item.name}${idLabel}</span>
-        <span class="perc">${formatPercent(item.latest || 0)}</span>
-        <span class="delta ${direction}">${deltaSign}${item.delta?.toFixed(Math.abs(item.delta) % 1 === 0 ? 0 : 1)}%</span>
+        <a href="${url}">
+          <span class="dot"></span>
+          <span class="name">${item.name}${idLabel}</span>
+          <span class="perc">${formatPercent(item.latest || 0)}</span>
+          <span class="delta ${direction}">${deltaSign}${item.delta?.toFixed(Math.abs(item.delta) % 1 === 0 ? 0 : 1)}%</span>
+        </a>
       `;
       ul.appendChild(li);
     });
@@ -409,7 +508,10 @@ function renderSeriesCard(series) {
   header.className = 'trend-card__header';
 
   const title = document.createElement('h3');
-  title.textContent = series.displayName || series.base;
+  const link = document.createElement('a');
+  link.href = `/archetype/${(series.displayName || series.base).replace(/ /g, '_')}`;
+  link.textContent = series.displayName || series.base;
+  title.appendChild(link);
   header.appendChild(title);
 
   const stats = document.createElement('div');
@@ -464,8 +566,8 @@ function renderMetaChart() {
     return;
   }
   elements.metaChart.innerHTML = '';
-  const metaChart = buildMetaLines(state.trendData, 8);
-  const metaMovers = buildMetaLines(state.trendData, 16) || metaChart;
+  const metaChart = buildMetaLines(state.trendData, state.chartDensity, state.timeRangeDays);
+  const metaMovers = buildMetaLines(state.trendData, Math.max(16, state.chartDensity * 2), state.timeRangeDays) || metaChart;
   if (!metaChart || !metaChart.lines?.length) {
     const empty = document.createElement('div');
     empty.className = 'muted';
@@ -475,17 +577,16 @@ function renderMetaChart() {
   }
 
   const width = 900;
-  const height = 340;
+  const height = 420;
   const padX = 36;
-  const padY = 28;
+  const padY = 32;
   const contentWidth = width - padX * 2;
   const contentHeight = height - padY * 2;
   const count = metaChart.dates.length;
 
-  // Dynamic Y domain based on visible data (add headroom)
+  // Dynamic Y domain based on visible data - round up to nearest 0.5%
   const maxObserved = Math.max(...metaChart.lines.flatMap(line => line.points.map(p => Math.max(0, Number(p) || 0))));
-  const buffer = Math.max(1, maxObserved * 0.05);
-  const yMax = Math.min(100, Math.max(5, Math.ceil((maxObserved + buffer) / 5) * 5));
+  const yMax = Math.max(1, Math.ceil(maxObserved * 2) / 2); // Round up to nearest 0.5
 
   const xForIndex = idx => (count === 1 ? contentWidth / 2 : (idx / (count - 1)) * contentWidth) + padX;
   const yForShare = share => height - padY - (Math.min(share, yMax) / yMax) * contentHeight;
@@ -493,15 +594,26 @@ function renderMetaChart() {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
   svg.setAttribute('width', '100%');
-  svg.setAttribute('height', '260');
+  svg.setAttribute('height', '340');
   svg.setAttribute('role', 'img');
   svg.classList.add('meta-svg');
 
-  // grid lines based on yMax
-  const gridLevels = [];
-  for (let lvl = 0; lvl <= yMax; lvl += Math.max(5, Math.ceil(yMax / 5))) {
+  // grid lines based on yMax - choose appropriate interval
+  const gridLevels: number[] = [];
+  // Choose grid interval based on yMax: aim for 3-6 grid lines
+  let gridInterval = 1;
+  if (yMax > 20) gridInterval = 5;
+  else if (yMax > 10) gridInterval = 2.5;
+  else if (yMax > 5) gridInterval = 2;
+  
+  for (let lvl = 0; lvl <= yMax; lvl += gridInterval) {
     gridLevels.push(lvl);
   }
+  // Always include yMax if not already there
+  if (gridLevels[gridLevels.length - 1] !== yMax) {
+    gridLevels.push(yMax);
+  }
+  
   gridLevels.forEach(level => {
     const y = yForShare(level);
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -518,7 +630,9 @@ function renderMetaChart() {
     label.setAttribute('y', `${y + 4}`);
     label.setAttribute('fill', '#7c86a8');
     label.setAttribute('font-size', '11');
-    label.textContent = `${level}%`;
+    // Format label: show decimal only if needed
+    const labelText = level % 1 === 0 ? `${level}%` : `${level.toFixed(1)}%`;
+    label.textContent = labelText;
     label.setAttribute('text-anchor', 'end');
     svg.appendChild(label);
   });
@@ -533,19 +647,7 @@ function renderMetaChart() {
     polyline.setAttribute('stroke-linecap', 'round');
     polyline.dataset.name = line.name;
     polyline.classList.add('meta-line');
-
-    // Add a wider invisible hover stroke to make it easier to hit
-    const hitline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-    hitline.setAttribute('fill', 'none');
-    hitline.setAttribute('stroke', line.color);
-    hitline.setAttribute('stroke-width', '12');
-    hitline.setAttribute('stroke-opacity', '0');
-    hitline.setAttribute('points', points);
-    hitline.dataset.name = line.name;
-    hitline.classList.add('meta-line-hit');
-
     svg.appendChild(polyline);
-    svg.appendChild(hitline);
   });
 
   // x-axis labels (dates)
@@ -561,20 +663,49 @@ function renderMetaChart() {
     svg.appendChild(label);
   });
 
+  // Interactive Elements
+  const guideLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  guideLine.setAttribute('y1', '0');
+  guideLine.setAttribute('y2', String(height - padY));
+  guideLine.setAttribute('stroke', '#7c86a8');
+  guideLine.setAttribute('stroke-width', '1');
+  guideLine.setAttribute('stroke-dasharray', '4 4');
+  guideLine.style.opacity = '0';
+  guideLine.style.pointerEvents = 'none';
+  svg.appendChild(guideLine);
+
+  // Highlight dot
+  const highlightDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  highlightDot.setAttribute('r', '5');
+  highlightDot.setAttribute('fill', 'var(--bg)');
+  highlightDot.setAttribute('stroke', 'var(--text)');
+  highlightDot.setAttribute('stroke-width', '2');
+  highlightDot.style.opacity = '0';
+  highlightDot.style.pointerEvents = 'none';
+  svg.appendChild(highlightDot);
+
+  const overlay = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  overlay.setAttribute('width', String(width));
+  overlay.setAttribute('height', String(height));
+  overlay.setAttribute('fill', 'transparent');
+  overlay.style.cursor = 'crosshair';
+  svg.appendChild(overlay);
+
+  elements.metaChart.style.position = 'relative';
   elements.metaChart.appendChild(svg);
+
+  const tooltip = document.createElement('div');
+  tooltip.className = 'chart-tooltip';
+  elements.metaChart.appendChild(tooltip);
+
   if (elements.metaRange) {
     elements.metaRange.textContent = `Y-axis scaled to ${yMax}%`;
   }
   renderLegend(metaChart.lines);
   renderMovers(metaMovers?.lines || metaChart.lines);
 
-  // Hover highlight wiring
-  if (!elements.metaChart) {
-    return;
-  }
-
+  // Interaction Logic
   const lines = Array.from(elements.metaChart.querySelectorAll<HTMLElement>('.meta-line'));
-  const hitlines = Array.from(elements.metaChart.querySelectorAll<HTMLElement>('.meta-line-hit'));
   const legendItems = elements.legend
     ? Array.from(elements.legend.querySelectorAll<HTMLElement>('.legend-item'))
     : [];
@@ -603,13 +734,157 @@ function renderMetaChart() {
       item.style.opacity = '1';
       item.style.borderColor = '#2c335a';
     });
+    highlightDot.style.opacity = '0';
   };
 
-  [...lines, ...hitlines].forEach(line => {
-    line.addEventListener('mouseenter', () => setActive(line.dataset.name));
-    line.addEventListener('mouseleave', clearActive);
+  // Helper to convert screen coordinates to SVG coordinates
+  // This properly handles SVG scaling, aspect ratio, and any transforms
+  const screenToSVG = (screenX: number, screenY: number): { x: number; y: number } => {
+    const ctm = svg.getScreenCTM();
+    if (!ctm) {
+      // Fallback: simple bounding box calculation
+      const rect = svg.getBoundingClientRect();
+      const scaleX = width / rect.width;
+      const scaleY = height / rect.height;
+      return {
+        x: (screenX - rect.left) * scaleX,
+        y: (screenY - rect.top) * scaleY
+      };
+    }
+    const pt = svg.createSVGPoint();
+    pt.x = screenX;
+    pt.y = screenY;
+    const svgPt = pt.matrixTransform(ctm.inverse());
+    return { x: svgPt.x, y: svgPt.y };
+  };
+
+  // Helper to convert SVG coordinates to screen coordinates (for tooltip positioning)
+  const svgToScreen = (svgX: number, svgY: number): { x: number; y: number } => {
+    const ctm = svg.getScreenCTM();
+    if (!ctm) {
+      const rect = svg.getBoundingClientRect();
+      const scaleX = rect.width / width;
+      const scaleY = rect.height / height;
+      return {
+        x: rect.left + svgX * scaleX,
+        y: rect.top + svgY * scaleY
+      };
+    }
+    const pt = svg.createSVGPoint();
+    pt.x = svgX;
+    pt.y = svgY;
+    const screenPt = pt.matrixTransform(ctm);
+    return { x: screenPt.x, y: screenPt.y };
+  };
+
+  let activeArchetype = null;
+
+  overlay.addEventListener('mousemove', (e) => {
+    // Convert screen coordinates to SVG coordinates using proper transform matrix
+    const svgCoords = screenToSVG(e.clientX, e.clientY);
+    const svgX = svgCoords.x;
+    const svgY = svgCoords.y;
+
+    // Calculate index from SVG X coordinate
+    let idx = Math.round(((svgX - padX) / contentWidth) * (count - 1));
+    idx = Math.max(0, Math.min(count - 1, idx));
+
+    const targetX = xForIndex(idx);
+    guideLine.setAttribute('x1', String(targetX));
+    guideLine.setAttribute('x2', String(targetX));
+    guideLine.style.opacity = '0.5';
+
+    const date = metaChart.dates[idx];
+    const values = metaChart.lines
+      .map(line => ({ ...line, val: line.points[idx] }))
+      .sort((a, b) => b.val - a.val);
+
+    // Find closest line using SVG Y coordinate
+    let closest = null;
+    let minDiff = Infinity;
+
+    values.forEach(v => {
+      const lineY = yForShare(v.val);
+      const diff = Math.abs(lineY - svgY);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = v;
+      }
+    });
+
+    // Highlight closest if within range (50 SVG units)
+    activeArchetype = null;
+    if (closest && minDiff < 50) {
+      setActive(closest.name);
+      activeArchetype = closest.name;
+
+      // Move dot
+      const dotY = yForShare(closest.val);
+      highlightDot.setAttribute('cx', String(targetX));
+      highlightDot.setAttribute('cy', String(dotY));
+      highlightDot.setAttribute('stroke', closest.color);
+      highlightDot.style.opacity = '1';
+      overlay.style.cursor = 'pointer';
+    } else {
+      clearActive();
+      // Keep guide line but hide dot
+      highlightDot.style.opacity = '0';
+      overlay.style.cursor = 'crosshair';
+    }
+
+    tooltip.innerHTML = `
+        <div class="chart-tooltip-date">${formatDate(date)}</div>
+        ${values.map(v => `
+            <div class="chart-tooltip-item" style="${v.name === activeArchetype ? 'font-weight:700;background:rgba(255,255,255,0.05);border-radius:4px;margin:0 -4px;padding:2px 4px;' : ''}">
+                <span class="chart-tooltip-swatch" style="background: ${v.color}"></span>
+                <span class="chart-tooltip-name">${v.name}</span>
+                <span class="chart-tooltip-value">${formatPercent(v.val)}</span>
+            </div>
+        `).join('')}
+    `;
+
+    // Position tooltip using proper SVG-to-screen conversion
+    const containerRect = elements.metaChart.getBoundingClientRect();
+    const screenPoint = svgToScreen(targetX, 0);
+    const screenTargetX = screenPoint.x - containerRect.left;
+
+    const tipRect = tooltip.getBoundingClientRect();
+    const mouseY = e.clientY - containerRect.top;
+
+    let left = screenTargetX + 20;
+    let transform = 'translate(0, -50%)';
+
+    if (left + tipRect.width > containerRect.width) {
+      left = screenTargetX - 20;
+      transform = 'translate(-100%, -50%)';
+    }
+
+    // Clamp Y
+    let top = mouseY;
+    if (top < tipRect.height / 2) top = tipRect.height / 2;
+    if (top > containerRect.height - tipRect.height / 2) top = containerRect.height - tipRect.height / 2;
+
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+    tooltip.style.transform = transform;
+    tooltip.classList.add('is-visible');
   });
 
+  overlay.addEventListener('click', () => {
+    if (activeArchetype) {
+      const url = `/archetype/${activeArchetype.replace(/ /g, '_')}`;
+      window.location.href = url;
+    }
+  });
+
+  overlay.addEventListener('mouseleave', () => {
+    guideLine.style.opacity = '0';
+    highlightDot.style.opacity = '0';
+    tooltip.classList.remove('is-visible');
+    clearActive();
+    activeArchetype = null;
+  });
+  // Legend hover is still useful
   legendItems.forEach(item => {
     const label = item.querySelector('span:nth-child(2)');
     const name = label?.textContent;
@@ -670,10 +945,16 @@ async function hydrateFromDecks() {
     setStatus('Recomputing from decks...');
     const decks = await fetchAllDecks(TRENDS_SOURCE);
     const tournaments = deriveTournamentsFromDecks(decks);
+    
+    // Store raw data for future filtering
+    state.rawDecks = decks;
+    state.rawTournaments = tournaments;
+    
     const recomputed = buildTrendDataset(decks, tournaments, {
       minAppearances: 1,
       windowStart: state.trendData.windowStart,
-      windowEnd: state.trendData.windowEnd
+      windowEnd: state.trendData.windowEnd,
+      successFilter: state.performanceFilter
     });
     const cardTrends = buildCardTrendDataset(decks, tournaments, { minAppearances: 2 });
     state.trendData = { ...recomputed };
@@ -690,6 +971,30 @@ async function hydrateFromDecks() {
   } finally {
     state.isHydrating = false;
   }
+}
+
+function rebuildWithFilter() {
+  if (!state.rawDecks || !state.rawTournaments) {
+    // No raw data available, need to fetch first
+    hydrateFromDecks();
+    return;
+  }
+  
+  const recomputed = buildTrendDataset(state.rawDecks, state.rawTournaments, {
+    minAppearances: 1,
+    windowStart: state.trendData?.windowStart,
+    windowEnd: state.trendData?.windowEnd,
+    successFilter: state.performanceFilter
+  });
+  
+  state.trendData = { ...recomputed };
+  updateMinSliderBounds();
+  renderSummary();
+  renderMetaChart();
+  renderList();
+  
+  const filterLabel = getPerformanceLabel(state.performanceFilter);
+  setStatus(`Showing ${filterLabel.toLowerCase()} trends`);
 }
 
 function bindControls() {
@@ -714,6 +1019,51 @@ function bindControls() {
   if (elements.modeArchetypes) {
     elements.modeArchetypes.addEventListener('click', () => {
       setMode('archetypes');
+    });
+  }
+  
+  // Performance filter dropdown
+  if (elements.performanceFilter) {
+    elements.performanceFilter.addEventListener('change', () => {
+      const newFilter = elements.performanceFilter!.value;
+      if (newFilter === state.performanceFilter) {
+        return;
+      }
+      state.performanceFilter = newFilter;
+      
+      // If we don't have raw data yet, we need to fetch it first
+      if (!state.rawDecks || !state.rawTournaments) {
+        setStatus('Loading deck data for filtering...');
+        hydrateFromDecks();
+      } else {
+        rebuildWithFilter();
+      }
+    });
+  }
+  
+  // Density filter dropdown
+  if (elements.densityFilter) {
+    elements.densityFilter.addEventListener('change', () => {
+      const newDensity = parseInt(elements.densityFilter!.value, 10);
+      if (newDensity === state.chartDensity || isNaN(newDensity)) {
+        return;
+      }
+      state.chartDensity = newDensity;
+      // Just re-render the chart with new density - no need to refetch data
+      renderMetaChart();
+    });
+  }
+  
+  // Time range filter dropdown
+  if (elements.timeFilter) {
+    elements.timeFilter.addEventListener('change', () => {
+      const newTimeRange = parseInt(elements.timeFilter!.value, 10);
+      if (newTimeRange === state.timeRangeDays || isNaN(newTimeRange)) {
+        return;
+      }
+      state.timeRangeDays = newTimeRange;
+      // Just re-render the chart with new time range - no need to refetch data
+      renderMetaChart();
     });
   }
 }
@@ -742,7 +1092,15 @@ async function init() {
     try {
       const decks = await fetchAllDecks(TRENDS_SOURCE);
       const fallbackTournaments = deriveTournamentsFromDecks(decks);
-      const archetypeTrends = buildTrendDataset(decks, fallbackTournaments, { minAppearances: 1 });
+      
+      // Store raw data for future filtering
+      state.rawDecks = decks;
+      state.rawTournaments = fallbackTournaments;
+      
+      const archetypeTrends = buildTrendDataset(decks, fallbackTournaments, { 
+        minAppearances: 1,
+        successFilter: state.performanceFilter
+      });
       const cardTrends = buildCardTrendDataset(decks, fallbackTournaments, { minAppearances: 2 });
       state.trendData = archetypeTrends;
       state.cardTrends = cardTrends;
