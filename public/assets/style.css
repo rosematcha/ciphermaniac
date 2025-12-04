@@ -4734,27 +4734,6 @@ body.card-image-modal-open {
 /* ==========================================================================
    Feedback Form Styles
    ========================================================================== */
-.feedback-page {
-  flex: 1;
-  padding: var(--spacing-xl);
-}
-
-.feedback-page .container {
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.feedback-page h1 {
-  font-size: var(--font-size-xl);
-  margin-bottom: var(--spacing-md);
-  color: var(--text);
-}
-
-.feedback-page p {
-  margin-bottom: var(--spacing-xl);
-  color: var(--muted);
-}
-
 .feedback-form {
   background: var(--panel);
   border-radius: var(--border-radius-lg);
@@ -5904,36 +5883,197 @@ body.card-image-modal-open {
 
 
 /* Trends page */
-.trends-hero {
-  padding: 32px 16px 8px;
-  max-width: 1200px;
+.trends-page {
+  max-width: var(--container-max-width);
   margin: 0 auto;
+  width: 100%;
 }
 
-.trends-hero .lede {
-  color: var(--muted);
-  max-width: 720px;
-  margin: 8px 0 0;
-}
+
 
 .trends-shell {
-  max-width: 1200px;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 14px;
   padding: 0 12px 28px;
 }
 
-.trends-controls {
-  background: var(--panel);
-  border: 1px solid #242a4a;
-  border-radius: 14px;
-  padding: 16px;
-  display: grid;
-  gap: 12px;
+/* Chart footer containing minimal controls and y-axis info */
+.meta-chart-footer {
+  display: flex;
+  justify-content: center;
   align-items: center;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  margin-top: 8px;
+}
+
+/* Wrapper to group chart and chin as one visual unit */
+.meta-chart-wrapper {
+  background: var(--bar-bg);
+  border: 1px solid #1f2640;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.meta-chart-wrapper .meta-chart {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+}
+
+/* Chart chin - visually attached footer bar */
+.meta-chart-chin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 10px 16px;
+}
+
+.chin-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chin-filter[hidden] {
+  display: none !important;
+}
+
+.chin-filter span {
+  white-space: nowrap;
+  opacity: 0.7;
+}
+
+.chin-select {
+  background: var(--panel);
+  border: 1px solid rgba(124, 134, 168, 0.3);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  min-width: auto;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.chin-select:hover {
+  border-color: rgba(124, 134, 168, 0.5);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.chin-select:focus {
+  outline: none;
+  border-color: rgba(106, 163, 255, 0.6);
+  box-shadow: 0 0 0 2px rgba(106, 163, 255, 0.18);
+}
+
+/* Fix dropdown option background for dark theme */
+.chin-select option {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.chin-yaxis {
+  color: var(--muted);
+  font-size: 11px;
+  opacity: 0.6;
+  margin-left: 4px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.trend-controls--minimal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  max-width: none;
+  margin: 0;
+}
+
+.trend-controls--minimal .trend-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.trend-controls--minimal .trend-filter-label:hover {
+  opacity: 1;
+}
+
+.trend-controls--minimal .trend-filter-label span {
+  white-space: nowrap;
+}
+
+.trend-controls--minimal .trend-select {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--muted);
+  padding: 4px 2px;
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 600;
+  min-width: auto;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.trend-controls--minimal .trend-select:hover,
+.trend-controls--minimal .trend-select:focus {
+  color: var(--text);
+  outline: none;
+  box-shadow: none;
+}
+
+.trend-controls--minimal .meta-ymax {
+  color: var(--muted);
+  font-size: 10px;
+  opacity: 0.6;
+  margin: 0;
+  padding-left: 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.trend-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 6px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  box-shadow: none;
+  max-width: 680px;
+  margin: 0 auto;
 }
 
 .pill-toggle {
@@ -6046,42 +6186,65 @@ body.card-image-modal-open {
 }
 
 .trend-filter-label {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 11px;
   color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 6px 10px;
+}
+
+.trend-filter-label[hidden] {
+  display: none !important;
+}
+
+.trend-filter-label span {
+  white-space: nowrap;
 }
 
 .trend-select {
-  background: var(--panel);
-  border: 1px solid #2c335a;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
   color: var(--text);
-  padding: 8px 12px;
-  font-size: 14px;
+  padding: 6px 9px;
+  font-size: 13px;
   font-family: inherit;
+  font-weight: 700;
+  min-width: 134px;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .trend-select:hover {
-  border-color: #4c5590;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .trend-select:focus {
   outline: none;
-  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(111, 127, 255, 0.22);
 }
 
 .meta-chart {
   background: var(--bar-bg);
-  border: 1px solid #242a4a;
-  border-radius: 12px;
-  padding: 16px 12px 12px;
-  min-height: 320px;
+  border: 1px solid #1f2640;
+  border-radius: 16px;
+  padding: 10px;
+  min-height: 460px;
   overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.meta-svg {
+  display: block;
+  width: 100%;
+  height: 430px;
 }
 
 .meta-svg text {
@@ -6198,10 +6361,13 @@ body.card-image-modal-open {
 
 .meta-ymax {
   color: var(--muted);
-  font-size: 11px;
-  text-align: center;
-  opacity: 0.5;
-  margin-top: 8px;
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+/* Hide standalone y-axis info - it's now in the controls */
+.trend-panel > .meta-ymax {
+  display: none;
 }
 
 .card-movers {
@@ -6372,17 +6538,76 @@ body.card-image-modal-open {
 }
 
 @media (max-width: 640px) {
-  .trends-controls {
-    grid-template-columns: 1fr;
+  .trends-page {
+    max-width: 100%;
+    padding: 0;
+  }
+
+  .trends-shell {
+    padding: 0 4px 16px;
+  }
+
+  .page-header {
+    padding: 12px 12px 0;
+    margin-bottom: 12px;
+  }
+
+  .meta-chart-wrapper {
+    border-radius: 8px;
+    margin: 0 4px;
+  }
+
+  .meta-chart {
+    padding: 4px;
+    min-height: auto;
+  }
+
+  /* Make the SVG fill more vertical space on mobile */
+  .meta-svg {
+    height: 65vh;
+    max-height: 500px;
+    min-height: 300px;
+  }
+
+  .meta-chart-chin {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .chin-filter {
+    font-size: 10px;
+  }
+
+  .chin-select {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .chin-yaxis {
+    width: 100%;
+    text-align: center;
+    border-left: none;
+    padding-left: 0;
+    margin-left: 0;
+    margin-top: 4px;
+    font-size: 10px;
+  }
+
+  .trend-controls--minimal {
+    gap: 8px;
+  }
+
+  .trend-controls--minimal .meta-ymax {
+    width: 100%;
+    text-align: center;
+    border-left: none;
+    padding-left: 0;
+    margin-top: 4px;
   }
 
   .trend-panel__header {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .meta-chart {
-    padding: 6px;
   }
 }
 
@@ -6623,7 +6848,7 @@ tr:hover td {
    ========================================================================== */
 .page-header {
   text-align: center;
-  padding: 32px 20px 16px;
+  padding: 20px 20px 0;
   margin-bottom: 24px;
 }
 

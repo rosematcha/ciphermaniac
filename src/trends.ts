@@ -577,43 +577,68 @@ function renderMetaChart() {
   }
 
   const width = 900;
-  const height = 420;
+  const height = 500;
   const padX = 36;
   const padY = 32;
   const contentWidth = width - padX * 2;
   const contentHeight = height - padY * 2;
   const count = metaChart.dates.length;
 
-  // Dynamic Y domain based on visible data - round up to nearest 0.5%
-  const maxObserved = Math.max(...metaChart.lines.flatMap(line => line.points.map(p => Math.max(0, Number(p) || 0))));
+  // Dynamic Y domain based on visible data - round bounds to nearest 0.5%
+  const allShares = metaChart.lines.flatMap(line =>
+    line.points.map(point => {
+      const value = Number(point);
+      return Number.isFinite(value) ? Math.max(0, value) : 0;
+    })
+  );
+  const maxObserved = allShares.length ? Math.max(...allShares) : 0;
+  const minObserved = allShares.length ? Math.min(...allShares) : 0;
   const yMax = Math.max(1, Math.ceil(maxObserved * 2) / 2); // Round up to nearest 0.5
+  let yMin = Math.floor(minObserved * 2) / 2; // Round down to nearest 0.5
+  if (!Number.isFinite(yMin) || yMin < 0) {
+    yMin = 0;
+  }
+  if (yMin >= yMax) {
+    yMin = Math.max(0, yMax - 1);
+  }
+  const yRange = yMax - yMin || 1;
 
   const xForIndex = idx => (count === 1 ? contentWidth / 2 : (idx / (count - 1)) * contentWidth) + padX;
-  const yForShare = share => height - padY - (Math.min(share, yMax) / yMax) * contentHeight;
+  const yForShare = share => {
+    const value = Number.isFinite(Number(share)) ? Number(share) : 0;
+    const clamped = Math.min(yMax, Math.max(yMin, value));
+    const normalized = (clamped - yMin) / yRange;
+    return height - padY - normalized * contentHeight;
+  };
 
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
   svg.setAttribute('width', '100%');
-  svg.setAttribute('height', '340');
+  svg.setAttribute('preserveAspectRatio', 'none');
   svg.setAttribute('role', 'img');
   svg.classList.add('meta-svg');
 
   // grid lines based on yMax - choose appropriate interval
   const gridLevels: number[] = [];
-  // Choose grid interval based on yMax: aim for 3-6 grid lines
-  let gridInterval = 1;
-  if (yMax > 20) gridInterval = 5;
-  else if (yMax > 10) gridInterval = 2.5;
-  else if (yMax > 5) gridInterval = 2;
-  
-  for (let lvl = 0; lvl <= yMax; lvl += gridInterval) {
-    gridLevels.push(lvl);
+  // Choose grid interval based on span: aim for 3-6 grid lines
+  const span = yMax - yMin;
+  let gridInterval = 0.5;
+  if (span > 20) gridInterval = 5;
+  else if (span > 10) gridInterval = 2.5;
+  else if (span > 5) gridInterval = 2;
+  else if (span > 2) gridInterval = 1;
+
+  for (let lvl = yMin; lvl <= yMax + 1e-6; lvl += gridInterval) {
+    gridLevels.push(Number(lvl.toFixed(2)));
   }
-  // Always include yMax if not already there
-  if (gridLevels[gridLevels.length - 1] !== yMax) {
-    gridLevels.push(yMax);
+  if (!gridLevels.includes(Number(yMax.toFixed(2)))) {
+    gridLevels.push(Number(yMax.toFixed(2)));
   }
-  
+  if (!gridLevels.includes(Number(yMin.toFixed(2)))) {
+    gridLevels.push(Number(yMin.toFixed(2)));
+  }
+  gridLevels.sort((a, b) => a - b);
+
   gridLevels.forEach(level => {
     const y = yForShare(level);
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -650,18 +675,32 @@ function renderMetaChart() {
     svg.appendChild(polyline);
   });
 
-  // x-axis labels (dates)
-  metaChart.dates.forEach((d, idx) => {
-    const x = xForIndex(idx);
-    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    label.setAttribute('x', `${x}`);
-    label.setAttribute('y', `${height - 6}`);
-    label.setAttribute('fill', '#7c86a8');
-    label.setAttribute('font-size', '11');
-    label.setAttribute('text-anchor', 'middle');
-    label.textContent = formatDate(d);
-    svg.appendChild(label);
-  });
+  // x-axis labels (dates) — always show the first/last day plus two evenly spaced midpoints
+  const labelIndices = new Set<number>();
+  if (count <= 4) {
+    for (let i = 0; i < count; i += 1) {
+      labelIndices.add(i);
+    }
+  } else {
+    labelIndices.add(0);
+    labelIndices.add(count - 1);
+    const segment = (count - 1) / 3;
+    labelIndices.add(Math.max(1, Math.round(segment)));
+    labelIndices.add(Math.min(count - 2, Math.round(segment * 2)));
+  }
+  Array.from(labelIndices)
+    .sort((a, b) => a - b)
+    .forEach(idx => {
+      const x = xForIndex(idx);
+      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      label.setAttribute('x', `${x}`);
+      label.setAttribute('y', `${height - 6}`);
+      label.setAttribute('fill', '#7c86a8');
+      label.setAttribute('font-size', '11');
+      label.setAttribute('text-anchor', 'middle');
+      label.textContent = formatDate(metaChart.dates[idx]);
+      svg.appendChild(label);
+    });
 
   // Interactive Elements
   const guideLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -699,7 +738,8 @@ function renderMetaChart() {
   elements.metaChart.appendChild(tooltip);
 
   if (elements.metaRange) {
-    elements.metaRange.textContent = `Y-axis scaled to ${yMax}%`;
+    const formatAxisValue = (value: number) => (value % 1 === 0 ? `${value}%` : `${value.toFixed(1)}%`);
+    elements.metaRange.textContent = `Y-axis ${formatAxisValue(yMin)} – ${formatAxisValue(yMax)}`;
   }
   renderLegend(metaChart.lines);
   renderMovers(metaMovers?.lines || metaChart.lines);

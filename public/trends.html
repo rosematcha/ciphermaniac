@@ -12,50 +12,52 @@
   <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
 </head>
 <body>
-  <main>
+  <main class="trends-page">
     <div class="page-header">
       <h1 class="page-title">Meta Trends</h1>
       <p class="page-subtitle">Track the rise and fall of decks over time.</p>
     </div>
     <section class="trends-shell">
       <section id="trend-meta" class="trend-panel" aria-live="polite">
-        <div class="trend-controls">
-          <label class="trend-filter-label">
-            <span>Time:</span>
-            <select id="trend-time-filter" class="trend-select">
-              <option value="7">This Week</option>
-              <option value="14" selected>Last 2 Weeks</option>
-              <option value="30">Last Month</option>
-            </select>
-          </label>
-          <label class="trend-filter-label">
-            <span>Show:</span>
-            <select id="trend-performance-filter" class="trend-select">
-              <option value="all" selected>All Decks</option>
-              <option value="top50">Top 50%</option>
-              <option value="top25">Top 25%</option>
-              <option value="top16">Top 16</option>
-              <option value="top8">Top 8</option>
-              <option value="top4">Top 4</option>
-              <option value="top2">Finals</option>
-              <option value="winner">Winners Only</option>
-            </select>
-          </label>
-          <label class="trend-filter-label">
-            <span>Density:</span>
-            <select id="trend-density-filter" class="trend-select">
-              <option value="4">Low (4 decks)</option>
-              <option value="6">Medium (6 decks)</option>
-              <option value="8" selected>Standard (8 decks)</option>
-              <option value="10">High (10 decks)</option>
-            </select>
-          </label>
-        </div>
-        <div id="trend-meta-chart" class="meta-chart">
-          <div class="loading" id="trends-loading">Loading trend data...</div>
+        <div class="meta-chart-wrapper">
+          <div id="trend-meta-chart" class="meta-chart">
+            <div class="loading" id="trends-loading">Loading trend data...</div>
+          </div>
+          <div class="meta-chart-chin" role="group" aria-label="Trend filters">
+            <label class="chin-filter">
+              <span>Time</span>
+              <select id="trend-time-filter" class="chin-select">
+                <option value="7">This Week</option>
+                <option value="14" selected>Last 2 Weeks</option>
+                <option value="30">Last Month</option>
+              </select>
+            </label>
+            <label class="chin-filter" hidden>
+              <span>Show</span>
+              <select id="trend-performance-filter" class="chin-select">
+                <option value="all" selected>All Decks</option>
+                <option value="top50">Top 50%</option>
+                <option value="top25">Top 25%</option>
+                <option value="top16">Top 16</option>
+                <option value="top8">Top 8</option>
+                <option value="top4">Top 4</option>
+                <option value="top2">Finals</option>
+                <option value="winner">Winners Only</option>
+              </select>
+            </label>
+            <label class="chin-filter">
+              <span>Density</span>
+              <select id="trend-density-filter" class="chin-select">
+                <option value="4">Low</option>
+                <option value="6">Medium</option>
+                <option value="8" selected>Standard</option>
+                <option value="10">High</option>
+              </select>
+            </label>
+            <span class="chin-yaxis" id="trend-meta-range"></span>
+          </div>
         </div>
         <div class="meta-legend" id="trend-legend"></div>
-        <div class="meta-ymax" id="trend-meta-range"></div>
         <div class="movers" id="trend-movers"></div>
         <div class="card-movers">
           <h3>Card movers (past month)</h3>
