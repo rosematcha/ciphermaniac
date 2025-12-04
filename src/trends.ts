@@ -64,7 +64,7 @@ const state = {
   minAppearances: 3,
   mode: 'meta',
   performanceFilter: 'all',
-  chartDensity: 8,
+  chartDensity: 6,
   timeRangeDays: 14
 };
 
