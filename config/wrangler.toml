@@ -2,13 +2,13 @@
 name = "ciphermaniac"
 compatibility_date = "2023-10-30"
 
+# Pages build output directory (required by Wrangler/Pages)
+pages_build_output_dir = "public"
+
 # Run the frontend TypeScript build before deploying Pages so JS ends up in public/
 [build]
 command = "npm run build"
 cwd = "."
-
-# Pages build output directory (required by Wrangler/Pages)
-pages_build_output_dir = "public"
 
 # KV namespace binding for price data storage
 [[kv_namespaces]]
