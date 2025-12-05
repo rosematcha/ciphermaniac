@@ -10,6 +10,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import * as cheerio from 'cheerio';
+import { SET_CATALOG } from '../../public/assets/js/data/setCatalog.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,6 +18,7 @@ const __dirname = dirname(__filename);
 const PUBLIC_R2_BASE = process.env.PUBLIC_R2_BASE_URL || 'https://r2.ciphermaniac.com';
 const OUTPUT_PATH = join(__dirname, '../../public/assets/card-synonyms.json');
 const ONLINE_META_FOLDER = 'Online - Last 14 Days';
+const SET_RELEASE_INDEX = new Map(SET_CATALOG.map((entry, index) => [entry.code, index]));
 
 // Standard-legal sets (Scarlet & Violet era onwards, including Mega Evolution)
 const STANDARD_LEGAL_SETS = new Set([
@@ -27,6 +29,12 @@ const STANDARD_LEGAL_SETS = new Set([
 
 // Promo sets (should be deprioritized)
 const PROMO_SETS = new Set(['SVP', 'MEP', 'PRE', 'M23', 'PAF']);
+
+function getReleaseIndex(setCode) {
+    if (!setCode) return Number.MAX_SAFE_INTEGER;
+    const upper = setCode.toUpperCase();
+    return SET_RELEASE_INDEX.has(upper) ? SET_RELEASE_INDEX.get(upper) : Number.MAX_SAFE_INTEGER;
+}
 
 function log(message) {
     console.log(message);
@@ -309,6 +317,25 @@ async function scrapeCardPrintVariations(setCode, number) {
 function chooseCanonicalPrint(variations) {
     if (!variations.length) return null;
 
+    const normalizePrice = value => {
+        return typeof value === 'number' && Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
+    };
+
+    const priced = variations
+        .map(v => normalizePrice(v.price_usd))
+        .filter(price => Number.isFinite(price) && price !== Number.POSITIVE_INFINITY);
+
+    const cheapestPrice = priced.length ? Math.min(...priced) : null;
+    const priceBandLimit =
+        cheapestPrice !== null ? cheapestPrice + Math.max(0.1, cheapestPrice * 0.25) : null;
+
+    // Focus on the cheapest options; if prices are missing, fall back to the full list
+    const candidates =
+        priceBandLimit !== null
+            ? variations.filter(v => normalizePrice(v.price_usd) <= priceBandLimit)
+            : variations;
+    const pool = candidates.length ? candidates : variations;
+
     function getSetPriority(setCode) {
         return STANDARD_LEGAL_SETS.has(setCode) ? 0 : 1;
     }
@@ -319,13 +346,14 @@ function chooseCanonicalPrint(variations) {
 
     function sortKey(var_) {
         const setPriority = getSetPriority(var_.set);
+        const releaseIndex = getReleaseIndex(var_.set);
         const promoPriority = isPromo(var_.set) ? 1 : 0;
-        const price = var_.price_usd || 999999;
-        const cardNum = /^\d+$/.test(var_.number) ? parseInt(var_.number) : 999999;
-        return [setPriority, promoPriority, price, cardNum];
+        const price = normalizePrice(var_.price_usd);
+        const cardNum = /^\d+$/.test(var_.number) ? parseInt(var_.number, 10) : 999999;
+        return [setPriority, releaseIndex, promoPriority, price, cardNum];
     }
 
-    const sorted = [...variations].sort((a, b) => {
+    const sorted = [...pool].sort((a, b) => {
         const aKey = sortKey(a);
         const bKey = sortKey(b);
         for (let i = 0; i < aKey.length; i++) {

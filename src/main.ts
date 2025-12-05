@@ -4,16 +4,6 @@
  * @module Main
  */
 
-// Clear any existing scroll listeners that might be left over from imagePreloader
-// eslint-disable-next-line wrap-iife
-(function clearExistingScrollListeners() {
-    const oldListeners = (window as any).__imagePreloaderListeners || [];
-    oldListeners.forEach((listener: EventListener) => {
-        window.removeEventListener('scroll', listener);
-    });
-    (window as any).__imagePreloaderListeners = [];
-})();
-
 import './utils/buildVersion.js';
 import {
     fetchArchetypeReport,
@@ -26,9 +16,6 @@ import { AppError, safeAsync } from './utils/errorHandler.js';
 import { parseReport } from './parse.js';
 import { renderSummary, updateLayout } from './render.js';
 import { applyFiltersSort } from './controls.js';
-import { initMissingThumbsDev as _initMissingThumbsDev } from './dev/missingThumbs.js';
-import { initCacheDev } from './dev/cacheDev.js';
-// import { imagePreloader } from './utils/imagePreloader.js'; // Disabled - using parallelImageLoader instead
 import { getStateFromURL, normalizeRouteOnLoad, parseHash, setStateInURL } from './router.js';
 import { buildCardPath } from './card/routing.js';
 import { logger } from './utils/logger.js';
