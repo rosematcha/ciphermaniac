@@ -6,6 +6,7 @@ import { render, updateLayout } from './render.js';
 import { normalizeCardNumber } from './card/routing.js';
 import { AppError, ErrorTypes } from './utils/errorHandler.js';
 import { logger } from './utils/logger.js';
+import { PERFORMANCE_TIER_LABELS, getPerformanceLabel } from './data/performanceTiers.js';
 import type { GridElement } from './render.js';
 
 const GRANULARITY_MIN_PERCENT = 0;
@@ -99,17 +100,8 @@ const TCG_LIVE_SECTION_ORDER = [
   { key: 'energy', label: 'Energy' }
 ];
 
-const SUCCESS_FILTER_LABELS = {
-  all: 'all finishes',
-  winner: 'winners',
-  top2: 'finals',
-  top4: 'top 4',
-  top8: 'top 8',
-  top16: 'top 16',
-  top10: 'top 10%',
-  top25: 'top 25%',
-  top50: 'top 50%'
-};
+// Use shared performance tier labels (aliased for backwards compatibility)
+const SUCCESS_FILTER_LABELS = PERFORMANCE_TIER_LABELS;
 
 const TRAINER_SUPPORTER_OVERRIDES = new Set([
   'iono',

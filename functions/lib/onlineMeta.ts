@@ -52,6 +52,16 @@ const DEFAULT_CARD_TREND_TOP = 12;
 type AnyOptions = Record<string, any>;
 type ThumbnailConfig = Record<string, string[]>;
 const ARCHETYPE_THUMBNAILS: ThumbnailConfig = (archetypeThumbnails as ThumbnailConfig) || {};
+const AUTO_THUMB_MAX = 2;
+const AUTO_THUMB_REQUIRED_PCT = 99.9;
+const ARCHETYPE_DESCRIPTOR_TOKENS = new Set([
+  'box',
+  'control',
+  'festival',
+  'lead',
+  'toolbox',
+  'turbo'
+]);
 
 async function runWithConcurrency(items, limit, handler) {
   if (!Array.isArray(items) || items.length === 0) {
@@ -552,29 +562,145 @@ function normalizeDeckLabel(label: string) {
     .toLowerCase();
 }
 
+function tokenizeForMatching(text: string): string[] {
+  const normalized = String(text || '')
+    .replace(/['’]s\b/gi, 's')
+    .replace(/_/g, ' ')
+    .toLowerCase();
+
+  return normalized
+    .split(/[^a-z0-9]+/gi)
+    .map(token => token.trim())
+    .filter(Boolean);
+}
+
+function extractArchetypeKeywords(name: string): string[] {
+  return tokenizeForMatching(name).filter(token => !ARCHETYPE_DESCRIPTOR_TOKENS.has(token));
+}
+
+function formatCardNumber(raw: any): string | null {
+  if (raw === undefined || raw === null) {
+    return null;
+  }
+  const str = String(raw).trim();
+  if (!str) {
+    return null;
+  }
+  const match = str.match(/^(\d+)([A-Za-z]*)$/);
+  if (!match) {
+    return str.toUpperCase();
+  }
+  const [, digits, suffix = ''] = match;
+  return `${digits.padStart(3, '0')}${suffix.toUpperCase()}`;
+}
+
+function buildThumbnailId(setCode: any, number: any): string | null {
+  const formattedNumber = formatCardNumber(number);
+  const set = String(setCode || '').toUpperCase().trim();
+  if (!formattedNumber || !set) {
+    return null;
+  }
+  return `${set}/${formattedNumber}`;
+}
+
+function inferArchetypeThumbnails(
+  displayName: string,
+  reportData: { items?: any[] } | undefined | null
+): string[] {
+  const keywords = extractArchetypeKeywords(displayName);
+  if (!keywords.length || !reportData || !Array.isArray(reportData.items)) {
+    return [];
+  }
+  const keywordSet = new Set(keywords);
+  const candidates = [];
+
+  reportData.items.forEach((item, index) => {
+    const pct = Number(item?.pct);
+    if (!Number.isFinite(pct) || pct < AUTO_THUMB_REQUIRED_PCT) {
+      return;
+    }
+    const category = String(item?.category || '').toLowerCase();
+    if (category && !category.includes('pokemon')) {
+      return;
+    }
+    const thumbnailId = buildThumbnailId(item?.set, item?.number);
+    if (!thumbnailId) {
+      return;
+    }
+    const cardTokens = extractArchetypeKeywords(item?.name || '');
+    const matchCount = cardTokens.filter(token => keywordSet.has(token)).length;
+    if (matchCount === 0) {
+      return;
+    }
+    candidates.push({
+      id: thumbnailId,
+      matchCount,
+      pct,
+      index,
+      tokens: cardTokens
+    });
+  });
+
+  if (!candidates.length) {
+    return [];
+  }
+
+  candidates.sort(
+    (a, b) =>
+      b.matchCount - a.matchCount ||
+      b.pct - a.pct ||
+      a.index - b.index
+  );
+
+  const selected: string[] = [];
+  const covered = new Set<string>();
+  for (const candidate of candidates) {
+    const coversNewToken = candidate.tokens.some(token => keywordSet.has(token) && !covered.has(token));
+    if (!coversNewToken && selected.length > 0) {
+      continue;
+    }
+    if (selected.includes(candidate.id)) {
+      continue;
+    }
+    selected.push(candidate.id);
+    candidate.tokens.forEach(token => {
+      if (keywordSet.has(token)) {
+        covered.add(token);
+      }
+    });
+    if (selected.length >= AUTO_THUMB_MAX || covered.size >= keywordSet.size) {
+      break;
+    }
+  }
+
+  return selected;
+}
+
 function resolveArchetypeThumbnails(
   baseName: string,
   displayName: string,
-  config: ThumbnailConfig
+  config: ThumbnailConfig,
+  reportData?: { items?: any[] }
 ): string[] {
   const attempts = [displayName, displayName?.replace(/_/g, ' '), baseName];
   for (const candidate of attempts) {
-    if (candidate && Array.isArray(config[candidate])) {
+    if (candidate && Array.isArray(config[candidate]) && config[candidate].length) {
       return config[candidate];
     }
   }
 
   const normalizedTarget = normalizeDeckLabel(displayName || baseName || '');
   if (!normalizedTarget) {
-    return [];
+    return inferArchetypeThumbnails(displayName || baseName || '', reportData);
   }
 
   for (const [key, ids] of Object.entries(config)) {
-    if (normalizeDeckLabel(key) === normalizedTarget) {
+    if (normalizeDeckLabel(key) === normalizedTarget && ids.length) {
       return ids;
     }
   }
-  return [];
+
+  return inferArchetypeThumbnails(displayName || baseName || '', reportData);
 }
 
 function buildArchetypeReports(decks, minPercent, synonymDb, options: AnyOptions = {}) {
@@ -623,7 +749,7 @@ function buildArchetypeReports(decks, minPercent, synonymDb, options: AnyOptions
     label: file.displayName || file.base.replace(/_/g, ' '),
     deckCount: file.deckCount,
     percent: deckTotal ? file.deckCount / deckTotal : 0,
-    thumbnails: resolveArchetypeThumbnails(file.base, file.displayName, thumbnailConfig)
+    thumbnails: resolveArchetypeThumbnails(file.base, file.displayName, thumbnailConfig, file.data)
   }));
 
   return {

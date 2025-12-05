@@ -153,36 +153,16 @@ export function computeLayout(containerWidth: number): LayoutMetrics {
  * Synchronize controls width to match big row content width (desktop only)
  * @param width - Target width for controls
  */
-export function syncControlsWidth(width: number): void {
-    // Prefer toolbar controls if present (toolbar was added to separate header from filters)
+export function syncControlsWidth(_width: number): void {
     const controls = (document.querySelector('.toolbar .controls') || document.querySelector('.controls')) as HTMLElement | null;
     if (!controls) {
         return;
     }
 
-    // On small screens, let CSS handle width (mobile override)
-    if (window.innerWidth <= 520) {
-        if (controls.style.width) {
-            controls.style.width = '';
-        }
-        if (controls.style.margin) {
-            controls.style.margin = '';
-        }
-        return;
+    if (controls.style.width) {
+        controls.style.width = '';
     }
-
-    // If there's a header-inner with a max width, cap controls width to that to avoid excessively wide controls
-    const headerInner = document.querySelector('.header-inner');
-    const cap = headerInner ? headerInner.clientWidth : width;
-    const finalWidth = Math.min(width, cap || width);
-
-    const targetWidth = `${finalWidth}px`;
-    if (controls.style.width !== targetWidth) {
-        controls.style.width = targetWidth;
+    if (controls.style.margin) {
+        controls.style.margin = '';
     }
-    if (controls.style.margin !== '0 auto') {
-        controls.style.margin = '0 auto';
-    }
-
-    logger.debug(`Synced controls width to ${finalWidth}px`);
 }

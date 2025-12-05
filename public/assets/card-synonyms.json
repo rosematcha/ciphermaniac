@@ -243,8 +243,9 @@
     "Water Energy::SVE::019": "Water Energy::SVE::003",
     "Water Energy::PAL::279": "Water Energy::SVE::003",
     "Water Energy::MEE::003": "Water Energy::SVE::003",
-    "Charmander::MEW::168": "Charmander::MEW::004",
-    "Charmander::PAF::109": "Charmander::MEW::004",
+    "Charmander::MEW::004": "Charmander::PAF::007",
+    "Charmander::MEW::168": "Charmander::PAF::007",
+    "Charmander::PAF::109": "Charmander::PAF::007",
     "Charizard ex::SVP::056": "Charizard ex::OBF::215",
     "Charizard ex::SVP::074": "Charizard ex::OBF::215",
     "Charizard ex::SVP::196": "Charizard ex::OBF::215",
@@ -328,7 +329,7 @@
     "Grass Energy": "Grass Energy::SVE::001",
     "Eevee": "Eevee::PRE::074",
     "Water Energy": "Water Energy::SVE::003",
-    "Charmander": "Charmander::MEW::004",
+    "Charmander": "Charmander::PAF::007",
     "Charizard ex": "Charizard ex::OBF::215",
     "Switch": "Switch::MEG::130",
     "Judge": "Judge::SVI::176",
@@ -345,8 +346,8 @@
     "Pineco": "Pineco::PAF::001"
   },
   "metadata": {
-    "generated": "2025-11-30T06:30:40.167Z",
-    "totalSynonyms": 309,
+    "generated": "2025-12-05T01:40:44.002Z",
+    "totalSynonyms": 310,
     "totalCanonicals": 32,
     "totalCardsAnalyzed": 727,
     "description": "Canonical card mappings for handling reprints and alternate versions"
