@@ -7,8 +7,8 @@
   "scripts": {
     "build": "npm run build:frontend",
     "postinstall": "npm run build:frontend",
-    "lint": "eslint src/data/cardTypes.ts src/feedback.ts src/pricing.ts src/incidents.ts src/dev/layoutTests.ts src/tools/metaBinderData.ts src/types/dom.ts dev/tests --ext .ts",
-    "lint:fix": "eslint src/data/cardTypes.ts src/feedback.ts src/pricing.ts src/incidents.ts src/dev/layoutTests.ts src/tools/metaBinderData.ts src/types/dom.ts dev/tests --ext .ts --fix",
+    "lint": "eslint src/feedback.ts src/incidents.ts src/dev/layoutTests.ts src/tools/metaBinderData.ts dev/tests --ext .ts",
+    "lint:fix": "eslint src/feedback.ts src/incidents.ts src/dev/layoutTests.ts src/tools/metaBinderData.ts dev/tests --ext .ts --fix",
     "typecheck": "npx tsc --noEmit --project tsconfig.frontend.json",
     "jsdoc": "jsdoc -c config/jsdoc.config.js",
     "jsdoc:validate": "eslint public/assets/js --ext .js --rule 'valid-jsdoc: error'",

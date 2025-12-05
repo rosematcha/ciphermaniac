@@ -518,13 +518,35 @@ async function main() {
   };
 
   const baseKey = `${TRENDS_FOLDER}`;
-  console.log('[trends] Uploading meta and trends...');
+  console.log('[trends] Uploading meta, trends, decks, and tournaments...');
   await env.REPORTS.put(`${baseKey}/meta.json`, meta);
   await env.REPORTS.put(`${baseKey}/trends.json`, { trendReport, cardTrends, suggestions });
+  
+  // Save raw decks for client-side performance filtering
+  // Include only necessary fields to reduce payload size
+  const decksForFiltering = decks.map(deck => ({
+    tournamentId: deck.tournamentId,
+    tournamentName: deck.tournamentName,
+    tournamentDate: deck.tournamentDate,
+    archetype: deck.archetype,
+    successTags: deck.successTags || [],
+    cards: deck.cards || []
+  }));
+  await env.REPORTS.put(`${baseKey}/decks.json`, decksForFiltering);
+  
+  // Save tournaments for client-side filtering
+  const tournamentsForFiltering = tournamentsWithDecks.map(t => ({
+    id: t.id,
+    name: t.name,
+    date: t.date,
+    deckTotal: t.deckTotal || 0
+  }));
+  await env.REPORTS.put(`${baseKey}/tournaments.json`, tournamentsForFiltering);
 
   console.log('[trends] Done', {
     tournaments: tournamentsWithDecks.length,
     decks: decks.length,
+    decksForFiltering: decksForFiltering.length,
     archetypeSeries: trendReport.series?.length || 0,
     cardRising: cardTrends.rising?.length || 0,
     cardFalling: cardTrends.falling?.length || 0
