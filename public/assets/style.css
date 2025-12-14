@@ -4727,13 +4727,20 @@ body.card-image-modal-open {
 
   .incidents-pagination {
     justify-content: space-between;
-    width: 100%;
+   width: 100%;
   }
 }
 
 /* ==========================================================================
    Feedback Form Styles
    ========================================================================== */
+.feedback-page .container {
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--spacing-lg);
+}
+
 .feedback-form {
   background: var(--panel);
   border-radius: var(--border-radius-lg);
@@ -4827,6 +4834,10 @@ body.card-image-modal-open {
 @media (max-width: 720px) {
   .feedback-page {
     padding: var(--spacing-lg);
+  }
+
+  .feedback-page .container {
+    padding: 0;
   }
 
   .feedback-form {
