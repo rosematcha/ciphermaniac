@@ -308,7 +308,130 @@ function normalizeDeckLabel(label) {
     .toLowerCase();
 }
 
-function resolveArchetypeThumbnails(baseName, displayName) {
+// --- Thumbnail inference logic (auto-infer from report data) ---
+const AUTO_THUMB_MAX = 2;
+const AUTO_THUMB_REQUIRED_PCT = 99.9;
+const ARCHETYPE_DESCRIPTOR_TOKENS = new Set([
+  'box',
+  'control',
+  'festival',
+  'lead',
+  'toolbox',
+  'turbo'
+]);
+
+function tokenizeForMatching(text) {
+  const normalized = String(text || '')
+    .replace(/['']s\b/gi, 's')
+    .replace(/_/g, ' ')
+    .toLowerCase();
+
+  return normalized
+    .split(/[^a-z0-9]+/gi)
+    .map(token => token.trim())
+    .filter(Boolean);
+}
+
+function extractArchetypeKeywords(name) {
+  return tokenizeForMatching(name).filter(token => !ARCHETYPE_DESCRIPTOR_TOKENS.has(token));
+}
+
+function formatCardNumber(raw) {
+  if (raw === undefined || raw === null) {
+    return null;
+  }
+  const str = String(raw).trim();
+  if (!str) {
+    return null;
+  }
+  const match = str.match(/^(\d+)([A-Za-z]*)$/);
+  if (!match) {
+    return str.toUpperCase();
+  }
+  const [, digits, suffix = ''] = match;
+  return `${digits.padStart(3, '0')}${suffix.toUpperCase()}`;
+}
+
+function buildThumbnailId(setCode, number) {
+  const formattedNumber = formatCardNumber(number);
+  const set = String(setCode || '').toUpperCase().trim();
+  if (!formattedNumber || !set) {
+    return null;
+  }
+  return `${set}/${formattedNumber}`;
+}
+
+function inferArchetypeThumbnails(displayName, reportData) {
+  const keywords = extractArchetypeKeywords(displayName);
+  if (!keywords.length || !reportData || !Array.isArray(reportData.items)) {
+    return [];
+  }
+  const keywordSet = new Set(keywords);
+  const candidates = [];
+
+  reportData.items.forEach((item, index) => {
+    const pct = Number(item?.pct);
+    if (!Number.isFinite(pct) || pct < AUTO_THUMB_REQUIRED_PCT) {
+      return;
+    }
+    const category = String(item?.category || '').toLowerCase();
+    if (category && !category.includes('pokemon')) {
+      return;
+    }
+    const thumbnailId = buildThumbnailId(item?.set, item?.number);
+    if (!thumbnailId) {
+      return;
+    }
+    const cardTokens = extractArchetypeKeywords(item?.name || '');
+    const matchCount = cardTokens.filter(token => keywordSet.has(token)).length;
+    if (matchCount === 0) {
+      return;
+    }
+    candidates.push({
+      id: thumbnailId,
+      matchCount,
+      pct,
+      index,
+      tokens: cardTokens
+    });
+  });
+
+  if (!candidates.length) {
+    return [];
+  }
+
+  candidates.sort(
+    (a, b) =>
+      b.matchCount - a.matchCount ||
+      b.pct - a.pct ||
+      a.index - b.index
+  );
+
+  const selected = [];
+  const covered = new Set();
+  for (const candidate of candidates) {
+    const coversNewToken = candidate.tokens.some(token => keywordSet.has(token) && !covered.has(token));
+    if (!coversNewToken && selected.length > 0) {
+      continue;
+    }
+    if (selected.includes(candidate.id)) {
+      continue;
+    }
+    selected.push(candidate.id);
+    candidate.tokens.forEach(token => {
+      if (keywordSet.has(token)) {
+        covered.add(token);
+      }
+    });
+    if (selected.length >= AUTO_THUMB_MAX || covered.size >= keywordSet.size) {
+      break;
+    }
+  }
+
+  return selected;
+}
+
+function resolveArchetypeThumbnails(baseName, displayName, reportData) {
   const attempts = [displayName, displayName?.replace(/_/g, ' '), baseName];
   for (const key of attempts) {
     if (key && Array.isArray(ARCHETYPE_THUMBNAILS[key])) {
@@ -318,7 +441,7 @@ function resolveArchetypeThumbnails(baseName, displayName) {
 
   const target = normalizeDeckLabel(displayName || baseName || '');
   if (!target) {
-    return [];
+    return inferArchetypeThumbnails(displayName || baseName || '', reportData);
   }
 
   for (const [candidate, ids] of Object.entries(ARCHETYPE_THUMBNAILS)) {
@@ -327,7 +450,7 @@ function resolveArchetypeThumbnails(baseName, displayName) {
     }
   }
 
-  return [];
+  return inferArchetypeThumbnails(displayName || baseName || '', reportData);
 }
 
 function canonicalizeVariant(setCode, number) {
@@ -512,7 +635,7 @@ function buildArchetypeReports(decks, synonymDb) {
     label: file.displayName || file.base.replace(/_/g, ' '),
     deckCount: file.deckCount,
     percent: deckTotal ? file.deckCount / deckTotal : 0,
-    thumbnails: resolveArchetypeThumbnails(file.base, file.displayName)
+    thumbnails: resolveArchetypeThumbnails(file.base, file.displayName, file.data)
   }));
 
   return {

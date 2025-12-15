@@ -1,10 +1,26 @@
+# =============================================================================
+# Download Tournament Report
+# =============================================================================
+# Downloads and processes individual tournament data from Limitless Labs.
+# Use for adding specific tournaments to the dataset on-demand.
+#
+# Triggers:
+#   - Manual dispatch only (requires tournament URL)
+#
+# Options:
+#   - Anonymize player names for privacy
+# =============================================================================
+
 name: Download Tournament Report
+
+run-name: >-
+  Download Tournament${{ inputs.anonymize == true && ' (anonymized)' || '' }}
 
 on:
   workflow_dispatch:
     inputs:
       limitless_url:
-        description: 'Limitless Labs tournament URL'
+        description: 'Limitless Labs tournament URL (e.g., https://limitlesstcg.com/tournaments/...)'
         required: true
         type: string
       anonymize:
@@ -13,13 +29,28 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: download-tournament-${{ github.ref }}
+  cancel-in-progress: false  # Don't cancel - each tournament download is unique
+
 permissions:
   contents: read
 
 jobs:
   download-tournament:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
     steps:
+      - name: Validate URL
+        run: |
+          URL="${{ inputs.limitless_url }}"
+          if [[ ! "$URL" =~ ^https://limitlesstcg\.com/tournaments/ ]]; then
+            echo "Invalid URL format. Expected: https://limitlesstcg.com/tournaments/..."
+            exit 1
+          fi
+          echo "URL validated: $URL"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -27,10 +58,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
-        run: |
-          pip install requests beautifulsoup4 boto3
+        run: pip install requests beautifulsoup4 boto3
 
       - name: Download and process tournament
         env:
@@ -40,5 +71,11 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ciphermaniac-reports
+        run: python .github/scripts/download-tournament.py
+
+      - name: Summary
         run: |
-          python .github/scripts/download-tournament.py
+          echo "## Tournament Download" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: \`${{ inputs.limitless_url }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Anonymized**: ${{ inputs.anonymize == true && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY

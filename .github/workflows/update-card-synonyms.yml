@@ -1,8 +1,23 @@
+# =============================================================================
+# Update Card Synonyms
+# =============================================================================
+# Generates card synonyms database for fuzzy search and card name matching.
+# Maps alternate names, abbreviations, and common misspellings to canonical names.
+#
+# Triggers:
+#   - Weekly on Sunday at 6:00 AM UTC (weekly refresh)
+#   - Manual dispatch with optional commit toggle
+# =============================================================================
+
 name: Update Card Synonyms
+
+run-name: >-
+  ${{ github.event_name == 'schedule' && 'Weekly Synonyms Update' ||
+      format('Synonyms Update (commit={0})', inputs.commit_to_repo) }}
 
 on:
   schedule:
-    - cron: '0 6 * * 0'  # Weekly on Sunday at 6 AM UTC
+    - cron: '0 6 * * 0'  # Weekly on Sunday at 6:00 AM UTC
   workflow_dispatch:
     inputs:
       commit_to_repo:
@@ -11,12 +26,18 @@ on:
         type: boolean
         default: true
 
+concurrency:
+  group: synonyms-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
 jobs:
   update-synonyms:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,6 +46,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
@@ -38,15 +60,30 @@ jobs:
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           PUBLIC_R2_BASE_URL: https://r2.ciphermaniac.com
 
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet public/assets/card-synonyms.json 2>/dev/null; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Commit changes
-        if: inputs.commit_to_repo == true || github.event_name == 'schedule'
+        if: (inputs.commit_to_repo == true || github.event_name == 'schedule') && steps.check_changes.outputs.has_changes == 'true'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add public/assets/card-synonyms.json
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
+          git commit -m "chore: update card synonyms [skip ci]"
+          git push
+
+      - name: Summary
+        run: |
+          echo "## Card Synonyms Update" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check_changes.outputs.has_changes }}" == "true" ]; then
+            echo "Synonyms database updated" >> $GITHUB_STEP_SUMMARY
           else
-            git commit -m "Update card synonyms [automated]"
-            git push
+            echo "No changes - synonyms are up to date" >> $GITHUB_STEP_SUMMARY
           fi

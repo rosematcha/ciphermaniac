@@ -6247,7 +6247,7 @@ body.card-image-modal-open {
   border: 1px solid #1f2640;
   border-radius: 16px;
   padding: 10px;
-  min-height: 460px;
+  min-height: 320px;
   overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 }
@@ -6255,7 +6255,7 @@ body.card-image-modal-open {
 .meta-svg {
   display: block;
   width: 100%;
-  height: 430px;
+  height: clamp(240px, 45vw, 520px);
 }
 
 .meta-svg text {
