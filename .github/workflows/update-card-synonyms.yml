@@ -13,7 +13,7 @@ name: Update Card Synonyms
 
 run-name: >-
   ${{ github.event_name == 'schedule' && 'Weekly Synonyms Update' ||
-      format('Synonyms Update (commit={0})', inputs.commit_to_repo) }}
+      format('Synonyms Update (commit={0}, full_rewrite={1})', inputs.commit_to_repo, inputs.full_rewrite) }}
 
 on:
   schedule:
@@ -25,6 +25,11 @@ on:
         required: false
         type: boolean
         default: true
+      full_rewrite:
+        description: 'Full rewrite (ignore existing synonyms cache)'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: synonyms-${{ github.ref }}
@@ -59,6 +64,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           PUBLIC_R2_BASE_URL: https://r2.ciphermaniac.com
+          FULL_REWRITE: ${{ inputs.full_rewrite || 'false' }}
 
       - name: Check for changes
         id: check_changes

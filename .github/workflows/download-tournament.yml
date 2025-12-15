@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       limitless_url:
-        description: 'Limitless Labs tournament URL (e.g., https://limitlesstcg.com/tournaments/...)'
+        description: 'Limitless tournament URL or ID (e.g., https://limitlesstcg.com/tournaments/546, 546)'
         required: true
         type: string
       anonymize:
@@ -42,14 +42,27 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Validate URL
+      - name: Validate and normalize URL
+        id: normalize
         run: |
-          URL="${{ inputs.limitless_url }}"
-          if [[ ! "$URL" =~ ^https://limitlesstcg\.com/tournaments/ ]]; then
-            echo "Invalid URL format. Expected: https://limitlesstcg.com/tournaments/..."
+          INPUT="${{ inputs.limitless_url }}"
+          
+          # Extract tournament ID from various formats
+          if [[ "$INPUT" =~ ^[0-9]+$ ]]; then
+            # Just a number
+            TOURNAMENT_ID="$INPUT"
+          elif [[ "$INPUT" =~ limitlesstcg\.com/tournaments/([0-9]+) ]]; then
+            # Full URL format
+            TOURNAMENT_ID="${BASH_REMATCH[1]}"
+          else
+            echo "Invalid format. Provide tournament ID (e.g., 546) or URL (e.g., https://limitlesstcg.com/tournaments/546)"
             exit 1
           fi
-          echo "URL validated: $URL"
+          
+          # Normalize to decklists endpoint
+          NORMALIZED_URL="https://limitlesstcg.com/tournaments/${TOURNAMENT_ID}/decklists"
+          echo "url=${NORMALIZED_URL}" >> $GITHUB_OUTPUT
+          echo "Normalized URL: $NORMALIZED_URL"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -65,7 +78,7 @@ jobs:
 
       - name: Download and process tournament
         env:
-          LIMITLESS_URL: ${{ inputs.limitless_url }}
+          LIMITLESS_URL: ${{ steps.normalize.outputs.url }}
           ANONYMIZE: ${{ inputs.anonymize }}
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -77,5 +90,6 @@ jobs:
         run: |
           echo "## Tournament Download" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **URL**: \`${{ inputs.limitless_url }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Input**: \`${{ inputs.limitless_url }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Normalized URL**: \`${{ steps.normalize.outputs.url }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Anonymized**: ${{ inputs.anonymize == true && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY

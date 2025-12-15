@@ -559,6 +559,11 @@ async function main() {
     log('Card Synonyms Generator');
     log('='.repeat(60));
 
+    const fullRewrite = process.env.FULL_REWRITE === 'true';
+    if (fullRewrite) {
+        log('FULL REWRITE MODE: Ignoring existing synonyms cache');
+    }
+
     // Load all tournaments
     const tournaments = await loadTournamentsList();
     if (!tournaments.length) {
@@ -581,10 +586,11 @@ async function main() {
     log('\n' + '='.repeat(60));
     log('Summary');
     log('='.repeat(60));
+    log(`  Full rewrite mode: ${fullRewrite}`);
     log(`  Total unique card names: ${cardsByName.size}`);
     log(`  Cards with multiple prints: ${synonymsData.metadata.totalCanonicals}`);
     log(`  Total synonym mappings: ${synonymsData.metadata.totalSynonyms}`);
-    log('\n✓ Card synonyms generation complete!');
+    log('\nCard synonyms generation complete!');
 }
 
 main().catch(error => {
