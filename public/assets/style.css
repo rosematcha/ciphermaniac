@@ -224,8 +224,10 @@ body:not(.no-header) > header {
   border-radius: 8px;
 }
 
-.main-nav .nav-link:hover {
-  background: rgba(255, 255, 255, 0.02);
+@media (hover: hover) and (pointer: fine) {
+  .main-nav .nav-link:hover {
+    background: rgba(255, 255, 255, 0.02);
+  }
 }
 
 .nav-toggle {
@@ -306,8 +308,8 @@ body:not(.no-header) > header {
   padding: 12px 16px;
   color: var(--muted);
   font-size: 13px;
-  /* Safe area for mobile devices */
-  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  /* Safe area for mobile devices with extra padding */
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
 }
 
 .footer-inner {
@@ -359,7 +361,7 @@ body:not(.no-header) > header {
     border-radius: 12px;
     padding: 12px;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
-    z-index: 1000;
+    z-index: 2000; /* Higher than search suggestions and filters */
     max-height: calc(100vh - 120px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -383,10 +385,17 @@ body:not(.no-header) > header {
     margin-left: 0;
   }
 
+  /* Keep footer in single row on mobile with smaller text */
   .footer-inner {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    font-size: 11px; /* Smaller to fit in one line */
+    flex-wrap: nowrap;
+  }
+
+  .site-footer {
+    padding-bottom: max(24px, env(safe-area-inset-bottom)); /* More bottom padding on mobile */
   }
 }
 
@@ -414,20 +423,24 @@ body:not(.no-header) > header {
   overflow-anchor: none;
 }
 
+.toolbar .controls input[type='search'] {
+  grid-column: 1;
+  grid-row: 1;
+  width: 100%;
+}
+
+#filtersToggle {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: flex-start;
+  align-self: start;
+}
+
 .toolbar .controls #filters {
   grid-column: 1 / -1;
   grid-row: 2;
   /* Prevent this element from being used as scroll anchor */
   overflow-anchor: none;
-}
-
-.toolbar .controls input[type='search'] {
-  width: 100%;
-}
-
-#filtersToggle {
-  justify-self: flex-start;
-  align-self: start;
 }
 
 @media (max-width: 800px) {
@@ -440,12 +453,26 @@ body:not(.no-header) > header {
 
 @media (max-width: 700px) {
   .toolbar .controls {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto; /* Keep search and button on same row */
+    gap: 8px;
+  }
+
+  .toolbar .controls input[type='search'] {
+    grid-column: 1;
+    grid-row: 1;
   }
 
   #filtersToggle {
-    justify-self: stretch;
-    width: 100%;
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: flex-end;
+    white-space: nowrap; /* Prevent button text wrapping */
+    padding: 12px 14px; /* Slightly tighter padding */
+  }
+
+  .toolbar .controls #filters {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 
   /* Reduce toolbar padding on mobile for more content space */
@@ -766,8 +793,10 @@ body.filters-panel-open #filters {
   -webkit-tap-highlight-color: rgba(255, 107, 107, 0.15);
 }
 
-.filter-chip-remove:hover {
-  color: #fff;
+@media (hover: hover) and (pointer: fine) {
+  .filter-chip-remove:hover {
+    color: #fff;
+  }
 }
 
 .filter-chip-remove:focus-visible {
@@ -790,9 +819,11 @@ body.filters-panel-open #filters {
   background: transparent;
 }
 
-.filter-chip--more:hover,
-.filter-chip--collapse:hover {
-  background: rgba(106, 163, 255, 0.08);
+@media (hover: hover) and (pointer: fine) {
+  .filter-chip--more:hover,
+  .filter-chip--collapse:hover {
+    background: rgba(106, 163, 255, 0.08);
+  }
 }
 
 .filter-chip--collapse {
@@ -821,8 +852,10 @@ body.filters-panel-open #filters {
   display: flex;
 }
 
-.filter-add-btn:hover {
-  color: var(--accent-2);
+@media (hover: hover) and (pointer: fine) {
+  .filter-add-btn:hover {
+    color: var(--accent-2);
+  }
 }
 
 .filter-add-btn:focus-visible {
@@ -996,9 +1029,11 @@ body.filters-panel-open #filters {
   text-align: left;
 }
 
-.filter-option:hover {
-  border-color: rgba(124, 134, 168, 0.4);
-  background: rgba(124, 134, 168, 0.08);
+@media (hover: hover) and (pointer: fine) {
+  .filter-option:hover {
+    border-color: rgba(124, 134, 168, 0.4);
+    background: rgba(124, 134, 168, 0.08);
+  }
 }
 
 .filter-option input[type='checkbox'] {
@@ -1098,8 +1133,14 @@ body.filters-panel-open #filters {
     border-color 0.15s ease;
 }
 
-.filter-action:hover {
-  background: rgba(124, 134, 168, 0.25);
+@media (hover: hover) and (pointer: fine) {
+  .filter-action:hover {
+    background: rgba(124, 134, 168, 0.25);
+  }
+
+  .filter-action-primary:hover {
+    background: #82b9ff;
+  }
 }
 
 .filter-action-primary {
@@ -1335,13 +1376,18 @@ body.filters-panel-open #filters {
   margin-left: 0.5em;
 }
 
-.card-search .suggestions .item:hover,
 .card-search .suggestions .item[aria-selected='true'],
-.toolbar .suggestions .item:hover,
 .toolbar .suggestions .item[aria-selected='true'],
-.hero-search .suggestions .item:hover,
 .hero-search .suggestions .item[aria-selected='true'] {
   background: rgba(255, 255, 255, 0.06);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card-search .suggestions .item:hover,
+  .toolbar .suggestions .item:hover,
+  .hero-search .suggestions .item:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
 }
 
 .card-search .suggestions .tab-indicator,
@@ -1786,8 +1832,10 @@ h2 {
   -webkit-tap-highlight-color: rgba(255, 208, 90, 0.2);
 }
 
-.star-btn:hover {
-  filter: drop-shadow(0 0 2px rgba(255, 208, 90, 0.6));
+@media (hover: hover) and (pointer: fine) {
+  .star-btn:hover {
+    filter: drop-shadow(0 0 2px rgba(255, 208, 90, 0.6));
+  }
 }
 
 .star-btn:active {
@@ -3332,12 +3380,19 @@ body.card-image-modal-open {
     transform 0.15s ease;
 }
 
-.analysis-list-item__button:hover,
-.analysis-list-item__button:focus-visible {
-  border-color: rgba(112, 128, 255, 0.4);
-  background: rgba(112, 128, 255, 0.08);
-  box-shadow: 0 4px 16px rgba(18, 24, 56, 0.3);
-  transform: translateY(-2px);
+@media (hover: hover) and (pointer: fine) {
+  .analysis-list-item__button:hover,
+  .analysis-list-item__button:focus-visible {
+    border-color: rgba(112, 128, 255, 0.4);
+    background: rgba(112, 128, 255, 0.08);
+    box-shadow: 0 4px 16px rgba(18, 24, 56, 0.3);
+    transform: translateY(-2px);
+  }
+
+  .analysis-list-item__button:hover .analysis-list-item__chevron {
+    transform: translateX(4px);
+    color: var(--accent-2);
+  }
 }
 
 .analysis-list-item__button.is-active {
@@ -3521,45 +3576,60 @@ body.card-image-modal-open {
   }
 
   .analysis-list-item__button {
-    flex-direction: column;
-    align-items: stretch;
+    /* Keep horizontal layout on mobile */
+    flex-direction: row;
+    align-items: center;
     gap: 12px;
-    padding: 12px;
+    padding: 10px 12px 10px 0;
   }
 
   .analysis-list-item__preview {
-    gap: 12px;
+    gap: 10px;
     align-items: center;
+    flex: 1;
+    min-width: 0;
   }
 
   .analysis-list-item__thumbnail {
-    width: 110px;
-    height: 72px;
-    border-radius: 10px;
+    width: 80px; /* Smaller thumbnail on mobile */
+    height: 54px;
+    border-radius: 8px;
+  }
+
+  .analysis-list-item__main {
+    gap: 4px;
+  }
+
+  .analysis-list-item__name {
+    font-size: 14px; /* Smaller name text */
+  }
+
+  .analysis-list-item__count {
+    font-size: 12px; /* Smaller count text */
   }
 
   .analysis-list-item__stats {
-    width: 100%;
-    justify-content: space-between;
+    flex-direction: row; /* Keep stats horizontal */
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
     margin-left: 0;
-    padding-top: 6px;
-    border-top: 1px solid rgba(124, 134, 168, 0.18);
+    padding-top: 0;
+    border-top: none; /* Remove border */
   }
 
   .analysis-list-item__percent {
-    font-size: var(--font-size-xl);
-    font-weight: 600;
-    text-align: left;
+    font-size: 16px; /* Slightly smaller percentage */
+    font-weight: 700;
+    text-align: right; /* Keep right-aligned */
+    min-width: auto;
   }
 
   .analysis-list-item__chevron {
-    display: none;
+    display: inline-block; /* Show chevron */
+    font-size: 18px;
   }
-}
-
-.analysis-list-item__button:hover .analysis-list-item__chevron {
-  transform: translateX(4px);
-  color: var(--accent-2);
 }
 
 @media (max-width: 720px) {
