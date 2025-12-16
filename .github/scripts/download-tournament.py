@@ -909,17 +909,20 @@ def main():
         if norm_name not in archetype_casing:
             archetype_casing[norm_name] = deck["archetype"]
 
+    # Build archetype data with both cards report and deck list
+    archetype_data_map = {}  # base_name -> {'cards': report, 'decks': deck_list}
     archetype_index_list = []
-    archetype_files = {}
     
     for norm_name, deck_list in archetype_groups.items():
         proper_name = archetype_casing[norm_name]
         print(f"  - {proper_name} ({len(deck_list)} decks)")
         archetype_data = generate_report_json(deck_list, len(deck_list), all_decks)
         json_filename_base = sanitize_for_filename(proper_name)
-        archetype_filename = f"{json_filename_base}.json"
         archetype_index_list.append(json_filename_base)
-        archetype_files[archetype_filename] = archetype_data
+        archetype_data_map[json_filename_base] = {
+            'cards': archetype_data,
+            'decks': deck_list
+        }
 
     # Upload to R2
     print(f"\nUploading to R2 bucket: {r2_bucket_name}")
@@ -932,8 +935,15 @@ def main():
     upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/synonyms.json", synonyms_data)
     upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/archetypes/index.json", sorted(archetype_index_list))
 
-    for filename, data in archetype_files.items():
-        upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/archetypes/{filename}", data)
+    # Upload archetype files in new folder structure
+    print("\nUploading archetype reports (new folder structure)...")
+    for base_name, data in archetype_data_map.items():
+        # New structure: archetypes/{name}/cards.json
+        upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/archetypes/{base_name}/cards.json", data['cards'])
+        # New structure: archetypes/{name}/decks.json
+        upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/archetypes/{base_name}/decks.json", data['decks'])
+        # Legacy structure for backward compatibility: archetypes/{name}.json
+        upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/archetypes/{base_name}.json", data['cards'])
 
     # Update tournaments.json
     print("\nUpdating tournaments.json...")
@@ -942,7 +952,7 @@ def main():
     print("\n✓ Process complete!")
     print(f"  Tournament: {folder_name}")
     print(f"  Decks: {len(all_decks)}")
-    print(f"  Archetypes: {len(archetype_files)}")
+    print(f"  Archetypes: {len(archetype_data_map)}")
     print(f"  Synonyms: {len(synonyms_data.get('synonyms', {}))} variants, {len(synonyms_data.get('canonicals', {}))} canonicals")
 
 

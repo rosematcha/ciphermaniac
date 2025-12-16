@@ -65,7 +65,8 @@ const state = {
   mode: 'meta',
   performanceFilter: 'all',
   chartDensity: 6,
-  timeRangeDays: 14
+  timeRangeDays: 14,
+  resizeTimer: null as number | null
 };
 
 function setStatus(message) {
@@ -576,8 +577,15 @@ function renderMetaChart() {
     return;
   }
 
-  const width = 900;
-  const height = 500;
+  const containerRect = elements.metaChart.getBoundingClientRect();
+  const width = Math.max(320, Math.round(containerRect.width || 900));
+  // favor a wide, shorter chart; allow shrinking height while still filling width
+  const height = Math.round(
+    Math.min(
+      520,
+      Math.max(260, containerRect.height || 0, width * 0.38)
+    )
+  );
   const padX = 36;
   const padY = 32;
   const contentWidth = width - padX * 2;
@@ -614,6 +622,8 @@ function renderMetaChart() {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
   svg.setAttribute('width', '100%');
+  svg.setAttribute('height', `${height}px`);
+  svg.style.height = `${height}px`;
   svg.setAttribute('preserveAspectRatio', 'none');
   svg.setAttribute('role', 'img');
   svg.classList.add('meta-svg');
@@ -1165,3 +1175,12 @@ async function init() {
 bindControls();
 setMode('meta');
 init();
+
+window.addEventListener('resize', () => {
+  if (state.resizeTimer) {
+    window.clearTimeout(state.resizeTimer);
+  }
+  state.resizeTimer = window.setTimeout(() => {
+    renderMetaChart();
+  }, 150);
+});

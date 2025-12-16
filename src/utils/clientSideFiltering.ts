@@ -566,13 +566,23 @@ export function generateFilteredReport(
 /**
  * Fetch all decks for a tournament.
  * @param tournament - Tournament identifier
+ * @param archetype - Optional archetype name to fetch archetype-specific decks
  * @returns Array of deck objects
  */
-export async function fetchAllDecks(tournament: string): Promise<Deck[]> {
+export async function fetchAllDecks(tournament: string, archetype?: string): Promise<Deck[]> {
     const tournamentEncoded = encodeURIComponent(tournament);
-    const url = `https://r2.ciphermaniac.com/reports/${tournamentEncoded}/decks.json`;
 
-    logger.debug('Fetching all decks data', { url });
+    // Build URL based on whether archetype is specified
+    let url: string;
+    if (archetype) {
+        // New folder structure: /archetypes/Gardevoir/decks.json
+        url = `https://r2.ciphermaniac.com/reports/${tournamentEncoded}/archetypes/${encodeURIComponent(archetype)}/decks.json`;
+    } else {
+        // Full tournament decks: /decks.json
+        url = `https://r2.ciphermaniac.com/reports/${tournamentEncoded}/decks.json`;
+    }
+
+    logger.debug('Fetching decks data', { url, archetype });
 
     try {
         const controller = new AbortController();
@@ -586,7 +596,7 @@ export async function fetchAllDecks(tournament: string): Promise<Deck[]> {
         }
         const data = await response.json();
 
-        logger.info('Fetched all decks', {
+        logger.info(archetype ? `Fetched archetype-specific decks for ${archetype}` : 'Fetched all decks', {
             url,
             deckCount: data?.length || 0
         });
@@ -608,3 +618,23 @@ export async function fetchAllDecks(tournament: string): Promise<Deck[]> {
         throw error;
     }
 }
+
+/**
+ * Fetch archetype-specific decks with fallback to main decks.json.
+ * @param tournament - Tournament identifier
+ * @param archetype - Archetype name
+ * @returns Array of deck objects (may be filtered by archetype or full list)
+ */
+export async function fetchArchetypeDecksLocal(tournament: string, archetype: string): Promise<{ decks: Deck[]; isFiltered: boolean }> {
+    try {
+        // Try archetype-specific decks first
+        const decks = await fetchAllDecks(tournament, archetype);
+        return { decks, isFiltered: false }; // Already contains only this archetype's decks
+    } catch (_error) {
+        // Fall back to main decks.json
+        logger.debug(`Archetype-specific decks not found for ${archetype}, falling back to main decks.json`);
+        const decks = await fetchAllDecks(tournament);
+        return { decks, isFiltered: true }; // Will need to filter by archetype
+    }
+}
+

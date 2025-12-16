@@ -1,4 +1,21 @@
+# =============================================================================
+# Trends Report
+# =============================================================================
+# Generates historical trend analysis from accumulated meta reports.
+# Automatically runs after Online Meta Report completes.
+#
+# Triggers:
+#   - Automatically after Online Meta Report workflow completes
+#   - Manual dispatch with configurable R2 prefix
+#
+# Upstream: Triggered by online-meta.yml
+# =============================================================================
+
 name: Trends Report
+
+run-name: >-
+  ${{ github.event_name == 'workflow_run' && 'Trends (post-meta)' ||
+      format('Trends Report (prefix={0})', inputs.reports_prefix || 'reports') }}
 
 on:
   workflow_run:
@@ -12,6 +29,15 @@ on:
         required: false
         default: 'reports'
         type: string
+      skip_delay:
+        description: 'Skip the 5-minute settling delay'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: trends-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -19,6 +45,13 @@ permissions:
 jobs:
   build-trends:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Only run if triggered manually OR if the upstream workflow succeeded
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,13 +60,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Wait 5 minutes (allows online-meta data to settle)
-        if: github.event_name == 'workflow_run'
-        run: sleep 300
+      - name: Wait for data to settle
+        if: github.event_name == 'workflow_run' && inputs.skip_delay != true
+        run: |
+          echo "Waiting 5 minutes for online-meta data to settle..."
+          sleep 300
 
       - name: Generate trends report
         run: npx tsx .github/scripts/run-trends.ts
@@ -44,3 +80,13 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           R2_REPORTS_PREFIX: ${{ github.event.inputs.reports_prefix || 'reports' }}
+
+      - name: Summary
+        run: |
+          echo "## Trends Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Reports prefix**: \`${{ inputs.reports_prefix || 'reports' }}\`" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event_name }}" == "workflow_run" ]; then
+            echo "- **Upstream run**: [Online Meta Report #${{ github.event.workflow_run.run_number }}](${{ github.event.workflow_run.html_url }})" >> $GITHUB_STEP_SUMMARY
+          fi

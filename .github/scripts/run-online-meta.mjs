@@ -308,7 +308,130 @@ function normalizeDeckLabel(label) {
     .toLowerCase();
 }
 
-function resolveArchetypeThumbnails(baseName, displayName) {
+// --- Thumbnail inference logic (auto-infer from report data) ---
+const AUTO_THUMB_MAX = 2;
+const AUTO_THUMB_REQUIRED_PCT = 99.9;
+const ARCHETYPE_DESCRIPTOR_TOKENS = new Set([
+  'box',
+  'control',
+  'festival',
+  'lead',
+  'toolbox',
+  'turbo'
+]);
+
+function tokenizeForMatching(text) {
+  const normalized = String(text || '')
+    .replace(/['']s\b/gi, 's')
+    .replace(/_/g, ' ')
+    .toLowerCase();
+
+  return normalized
+    .split(/[^a-z0-9]+/gi)
+    .map(token => token.trim())
+    .filter(Boolean);
+}
+
+function extractArchetypeKeywords(name) {
+  return tokenizeForMatching(name).filter(token => !ARCHETYPE_DESCRIPTOR_TOKENS.has(token));
+}
+
+function formatCardNumber(raw) {
+  if (raw === undefined || raw === null) {
+    return null;
+  }
+  const str = String(raw).trim();
+  if (!str) {
+    return null;
+  }
+  const match = str.match(/^(\d+)([A-Za-z]*)$/);
+  if (!match) {
+    return str.toUpperCase();
+  }
+  const [, digits, suffix = ''] = match;
+  return `${digits.padStart(3, '0')}${suffix.toUpperCase()}`;
+}
+
+function buildThumbnailId(setCode, number) {
+  const formattedNumber = formatCardNumber(number);
+  const set = String(setCode || '').toUpperCase().trim();
+  if (!formattedNumber || !set) {
+    return null;
+  }
+  return `${set}/${formattedNumber}`;
+}
+
+function inferArchetypeThumbnails(displayName, reportData) {
+  const keywords = extractArchetypeKeywords(displayName);
+  if (!keywords.length || !reportData || !Array.isArray(reportData.items)) {
+    return [];
+  }
+  const keywordSet = new Set(keywords);
+  const candidates = [];
+
+  reportData.items.forEach((item, index) => {
+    const pct = Number(item?.pct);
+    if (!Number.isFinite(pct) || pct < AUTO_THUMB_REQUIRED_PCT) {
+      return;
+    }
+    const category = String(item?.category || '').toLowerCase();
+    if (category && !category.includes('pokemon')) {
+      return;
+    }
+    const thumbnailId = buildThumbnailId(item?.set, item?.number);
+    if (!thumbnailId) {
+      return;
+    }
+    const cardTokens = extractArchetypeKeywords(item?.name || '');
+    const matchCount = cardTokens.filter(token => keywordSet.has(token)).length;
+    if (matchCount === 0) {
+      return;
+    }
+    candidates.push({
+      id: thumbnailId,
+      matchCount,
+      pct,
+      index,
+      tokens: cardTokens
+    });
+  });
+
+  if (!candidates.length) {
+    return [];
+  }
+
+  candidates.sort(
+    (a, b) =>
+      b.matchCount - a.matchCount ||
+      b.pct - a.pct ||
+      a.index - b.index
+  );
+
+  const selected = [];
+  const covered = new Set();
+  for (const candidate of candidates) {
+    const coversNewToken = candidate.tokens.some(token => keywordSet.has(token) && !covered.has(token));
+    if (!coversNewToken && selected.length > 0) {
+      continue;
+    }
+    if (selected.includes(candidate.id)) {
+      continue;
+    }
+    selected.push(candidate.id);
+    candidate.tokens.forEach(token => {
+      if (keywordSet.has(token)) {
+        covered.add(token);
+      }
+    });
+    if (selected.length >= AUTO_THUMB_MAX || covered.size >= keywordSet.size) {
+      break;
+    }
+  }
+
+  return selected;
+}
+
+function resolveArchetypeThumbnails(baseName, displayName, reportData) {
   const attempts = [displayName, displayName?.replace(/_/g, ' '), baseName];
   for (const key of attempts) {
     if (key && Array.isArray(ARCHETYPE_THUMBNAILS[key])) {
@@ -318,7 +441,7 @@ function resolveArchetypeThumbnails(baseName, displayName) {
 
   const target = normalizeDeckLabel(displayName || baseName || '');
   if (!target) {
-    return [];
+    return inferArchetypeThumbnails(displayName || baseName || '', reportData);
   }
 
   for (const [candidate, ids] of Object.entries(ARCHETYPE_THUMBNAILS)) {
@@ -327,7 +450,7 @@ function resolveArchetypeThumbnails(baseName, displayName) {
     }
   }
 
-  return [];
+  return inferArchetypeThumbnails(displayName || baseName || '', reportData);
 }
 
 function canonicalizeVariant(setCode, number) {
@@ -367,26 +490,26 @@ function generateReportFromDecks(deckList, deckTotal, synonymDb) {
       }
 
       perDeckCounts.set(uid, (perDeckCounts.get(uid) || 0) + count);
-        perDeckMeta.set(uid, {
-          set: setCode || undefined,
-          number: number || undefined,
+      perDeckMeta.set(uid, {
+        set: setCode || undefined,
+        number: number || undefined,
+        category: card.category || undefined,
+        trainerType: card.trainerType || undefined,
+        energyType: card.energyType || undefined,
+        aceSpec: card.aceSpec || undefined
+      });
+
+      if (!nameCasing.has(uid)) {
+        nameCasing.set(uid, card.name);
+      }
+      if ((card.category || card.trainerType || card.energyType || card.aceSpec) && !uidCategory.has(uid)) {
+        uidCategory.set(uid, {
           category: card.category || undefined,
           trainerType: card.trainerType || undefined,
           energyType: card.energyType || undefined,
           aceSpec: card.aceSpec || undefined
         });
-
-      if (!nameCasing.has(uid)) {
-        nameCasing.set(uid, card.name);
       }
-        if ((card.category || card.trainerType || card.energyType || card.aceSpec) && !uidCategory.has(uid)) {
-          uidCategory.set(uid, {
-            category: card.category || undefined,
-            trainerType: card.trainerType || undefined,
-            energyType: card.energyType || undefined,
-            aceSpec: card.aceSpec || undefined
-          });
-        }
     }
 
     perDeckCounts.forEach((total, uid) => {
@@ -493,17 +616,22 @@ function buildArchetypeReports(decks, synonymDb) {
   }
 
   const files = [];
+  // Store the decks per archetype for generating per-archetype decks.json
+  const decksByArchetype = new Map();
+
   for (const { base, displayName, decks: archetypeDecks } of groups.values()) {
     if (archetypeDecks.length < minDecks) {
       continue;
     }
     files.push({
-      filename: `${base}.json`,
+      filename: `${base}/cards.json`, // New folder structure: Gardevoir/cards.json
       base,
       displayName,
       deckCount: archetypeDecks.length,
       data: generateReportFromDecks(archetypeDecks, archetypeDecks.length, synonymDb)
     });
+    // Store raw decks for this archetype
+    decksByArchetype.set(base, archetypeDecks);
   }
 
   files.sort((a, b) => b.deckCount - a.deckCount);
@@ -512,13 +640,14 @@ function buildArchetypeReports(decks, synonymDb) {
     label: file.displayName || file.base.replace(/_/g, ' '),
     deckCount: file.deckCount,
     percent: deckTotal ? file.deckCount / deckTotal : 0,
-    thumbnails: resolveArchetypeThumbnails(file.base, file.displayName)
+    thumbnails: resolveArchetypeThumbnails(file.base, file.displayName, file.data)
   }));
 
   return {
     minDecks,
     files,
-    index
+    index,
+    decksByArchetype
   };
 }
 
@@ -628,12 +757,12 @@ function extractCardsFromReport(reportData, deckTotal) {
   const optional = [];
 
   const items = reportData?.items || [];
-  
+
   for (const item of items) {
     const setCode = item.set;
     const number = item.number;
     const cardId = buildCardIdentifier(setCode, number);
-    
+
     if (!cardId) {
       continue;
     }
@@ -642,7 +771,7 @@ function extractCardsFromReport(reportData, deckTotal) {
     const total = Number(item.total) || deckTotal;
     const pct = total ? Math.round(((found / total) * 100 + Number.EPSILON) * 100) / 100 : 0;
     const isAlwaysIncluded = found === total;
-    
+
     const dist = item.dist || [];
     const hasVaryingCounts = dist.length > 1;
 
@@ -681,7 +810,7 @@ function indexDeckCardPresence(decks) {
     deckById.set(deckId, deck);
 
     const seenCards = new Map();
-    
+
     for (const card of deck.cards || []) {
       const cardId = buildCardIdentifier(card.set, card.number);
       if (!cardId) {
@@ -755,14 +884,14 @@ function applyFilters(filters, cardPresence, cardCounts, allDeckIds) {
   for (const filter of filters.include || []) {
     const cardId = filter.cardId;
     const decksWithCard = cardPresence.get(cardId) || new Set();
-    
+
     if (filter.count !== undefined) {
       const matchingDecks = new Set();
       const cardCountMap = cardCounts.get(cardId) || new Map();
-      
+
       for (const deckId of decksWithCard) {
         const deckCount = cardCountMap.get(deckId) || 0;
-        
+
         if (filter.operator === '=') {
           if (deckCount === filter.count) {
             matchingDecks.add(deckId);
@@ -773,7 +902,7 @@ function applyFilters(filters, cardPresence, cardCounts, allDeckIds) {
           }
         }
       }
-      
+
       eligible = new Set([...eligible].filter(id => matchingDecks.has(id)));
     } else {
       eligible = new Set([...eligible].filter(id => decksWithCard.has(id)));
@@ -841,14 +970,14 @@ function generateFilterCombinations(optionalCards) {
   const combinations = [];
 
   const meaningfulCards = optionalCards.filter(card => card.pct >= MIN_CARD_USAGE_PERCENT);
-  
+
   console.log(`[IncludeExclude] Filtering ${optionalCards.length} cards to ${meaningfulCards.length} with ${MIN_CARD_USAGE_PERCENT}%+ usage`);
 
   const sortedCards = [...meaningfulCards].sort((a, b) => b.pct - a.pct);
 
   for (const card of sortedCards) {
     const countFilters = generateCountFilters(card);
-    
+
     combinations.push({
       include: [{ cardId: card.id }],
       exclude: []
@@ -875,7 +1004,7 @@ function generateFilterCombinations(optionalCards) {
   }
 
   const topCardsForCross = sortedCards.slice(0, MAX_CROSS_FILTERS);
-  
+
   console.log(`[IncludeExclude] Generating cross-filters for top ${topCardsForCross.length} cards`);
 
   for (const includeCard of topCardsForCross) {
@@ -1085,7 +1214,7 @@ async function main() {
 
   console.log(`[online-meta] Aggregating ${decks.length} decks`);
   const masterReport = generateReportFromDecks(decks, decks.length, synonymDb);
-  const { files: archetypeFiles, index: archetypeIndex, minDecks } = buildArchetypeReports(
+  const { files: archetypeFiles, index: archetypeIndex, minDecks, decksByArchetype } = buildArchetypeReports(
     decks,
     synonymDb
   );
@@ -1112,7 +1241,7 @@ async function main() {
   };
 
   const basePath = `${R2_REPORTS_PREFIX}/${TARGET_FOLDER}`;
-  
+
   // Always upload meta.json (required for the UI)
   await putJson(`${basePath}/meta.json`, meta);
 
@@ -1132,10 +1261,25 @@ async function main() {
   }
 
   if (GENERATE_ARCHETYPES) {
-    console.log('[online-meta] Uploading archetype reports...');
+    console.log('[online-meta] Uploading archetype reports (new folder structure)...');
     await putJson(`${basePath}/archetypes/index.json`, archetypeIndex);
+
     for (const file of archetypeFiles) {
-      await putJson(`${basePath}/archetypes/${file.filename}`, file.data);
+      // Upload cards.json for each archetype (e.g., archetypes/Gardevoir/cards.json)
+      await putJson(`${basePath}/archetypes/${file.base}/cards.json`, file.data);
+
+      // Upload decks.json for each archetype (e.g., archetypes/Gardevoir/decks.json)
+      const archetypeDecks = decksByArchetype.get(file.base);
+      if (archetypeDecks) {
+        await putJson(`${basePath}/archetypes/${file.base}/decks.json`, archetypeDecks);
+      }
+    }
+
+    // Also upload legacy flat files for backward compatibility during migration
+    // These can be removed in the future after all consumers are updated
+    console.log('[online-meta] Uploading legacy archetype files for backward compatibility...');
+    for (const file of archetypeFiles) {
+      await putJson(`${basePath}/archetypes/${file.base}.json`, file.data);
     }
   } else {
     console.log('[online-meta] Skipping archetype reports (GENERATE_ARCHETYPES=false)');

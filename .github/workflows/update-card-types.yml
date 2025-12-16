@@ -1,35 +1,54 @@
+# =============================================================================
+# Update Card Types Database
+# =============================================================================
+# Builds and maintains the card-types.json database by scanning meta reports.
+# Identifies card supertypes (Pokémon, Trainer, Energy) for filtering features.
+#
+# Triggers:
+#   - Daily at 3:00 AM UTC (after online-meta should have completed)
+#   - Manual dispatch
+#
+# Note: Runs after online-meta to capture any new cards from recent reports
+# =============================================================================
+
 name: Update Card Types Database
 
+run-name: >-
+  ${{ github.event_name == 'schedule' && 'Daily Card Types Update' || 'Card Types Update (manual)' }}
+
 on:
-  # Run daily at 3 AM UTC (after online meta cron should have run)
   schedule:
-    - cron: '0 3 * * *'
-  
-  # Allow manual trigger
+    - cron: '0 3 * * *'  # Daily at 3:00 AM UTC (after online-meta)
   workflow_dispatch:
+
+concurrency:
+  group: card-types-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   update-card-types:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 20
+
     permissions:
       contents: write
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
+          cache: 'npm'
+
       - name: Install dependencies
         run: npm ci
         if: hashFiles('package-lock.json') != ''
-      
+
       - name: Download reports from Cloudflare R2
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
@@ -142,11 +161,11 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           
           if [ "${{ steps.check_changes.outputs.has_changes }}" == "true" ]; then
-            echo "✅ Database updated with new card types" >> $GITHUB_STEP_SUMMARY
-            
+            echo "Database updated with new card types" >> $GITHUB_STEP_SUMMARY
+
             # Count cards in database
             CARD_COUNT=$(jq 'length' public/assets/data/card-types.json)
             echo "- Total cards in database: **${CARD_COUNT}**" >> $GITHUB_STEP_SUMMARY
           else
-            echo "✅ No new cards to add - database is up to date" >> $GITHUB_STEP_SUMMARY
+            echo "No new cards to add - database is up to date" >> $GITHUB_STEP_SUMMARY
           fi

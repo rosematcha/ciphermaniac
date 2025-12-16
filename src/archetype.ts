@@ -1665,33 +1665,33 @@ function renderCardsWithThreshold(threshold: number) {
   if (lastRenderedThreshold === threshold) {
     return;
   }
-  
+
   if (thresholdRenderPending) {
     return; // Already have a pending render
   }
-  
+
   thresholdRenderPending = true;
-  
+
   // Use rAF to batch rapid slider movements into single renders
   requestAnimationFrame(() => {
     thresholdRenderPending = false;
-    
+
     const currentThreshold = state.thresholdPercent;
     if (lastRenderedThreshold === currentThreshold) {
       return; // Threshold hasn't changed
     }
-    
+
     const visibleItems = filterItemsByThreshold(state.items, currentThreshold);
     const sortedVisibleItems = sortItemsForDisplay(visibleItems);
-    
+
     const grid = document.getElementById('grid') as GridElement | null;
     if (grid) {
       grid._visibleRows = 24;
     }
-    
+
     render(sortedVisibleItems, state.overrides, RENDER_COMPACT_OPTIONS as any);
     lastRenderedThreshold = currentThreshold;
-    
+
     syncGranularityOutput(currentThreshold);
     updateSkeletonSummary(sortedVisibleItems);
   });
@@ -1751,8 +1751,25 @@ function loadFilterCombination(filters) {
         successFilter: state.successFilter
       });
 
-      const allDecks = await fetchAllDecks(state.tournament);
-      const eligibleDecks = filterDecksBySuccess(allDecks, state.successFilter);
+      // Try to use archetype-specific decks for better performance
+      let decks;
+      try {
+        decks = await fetchAllDecks(state.tournament, state.archetypeBase);
+        logger.debug('Using archetype-specific decks for filtering', {
+          archetype: state.archetypeBase,
+          deckCount: decks.length
+        });
+      } catch (_error) {
+        // Fall back to main decks.json (will need to filter by archetype)
+        decks = await fetchAllDecks(state.tournament);
+        logger.debug('Falling back to main decks.json for filtering', {
+          archetype: state.archetypeBase,
+          deckCount: decks.length
+        });
+      }
+
+      const eligibleDecks = filterDecksBySuccess(decks, state.successFilter);
+      // Note: generateReportForFilters always filters by archetype, so this works for both cases
       const report = generateReportForFilters(eligibleDecks, state.archetypeBase, filters);
 
       logger.info('Built filtered report', {
@@ -1957,8 +1974,29 @@ async function loadSuccessBaseline() {
   const { fetchAllDecks, filterDecksBySuccess, generateReportForFilters } = await import(
     './utils/clientSideFiltering.js'
   );
-  const allDecks = await fetchAllDecks(state.tournament);
-  const eligible = filterDecksBySuccess(allDecks, state.successFilter);
+
+  // Try to use archetype-specific decks for better performance
+  let decks;
+  let needsArchetypeFilter = false;
+
+  try {
+    decks = await fetchAllDecks(state.tournament, state.archetypeBase);
+    logger.debug('Using archetype-specific decks for baseline', {
+      archetype: state.archetypeBase,
+      deckCount: decks.length
+    });
+  } catch (_error) {
+    // Fall back to main decks.json (will need to filter by archetype)
+    decks = await fetchAllDecks(state.tournament);
+    needsArchetypeFilter = true;
+    logger.debug('Falling back to main decks.json for baseline', {
+      archetype: state.archetypeBase,
+      deckCount: decks.length
+    });
+  }
+
+  const eligible = filterDecksBySuccess(decks, state.successFilter);
+  // Note: generateReportForFilters always filters by archetype, so this works for both cases
   const report = generateReportForFilters(eligible, state.archetypeBase, []);
 
   return {
