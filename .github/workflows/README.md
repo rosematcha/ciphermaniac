@@ -232,6 +232,65 @@ Downloads and processes an individual tournament report from Limitless Labs (man
 
 ---
 
+## 5. Regenerate Tournament Reports
+
+**File**: `.github/workflows/regenerate-tournaments.yml`
+
+### Purpose
+Regenerates tournament reports for tournaments that need to be updated with the new folder structure (per-archetype `decks.json` files).
+
+### What It Does
+1. For each tournament in the backlog:
+   - Fetches `meta.json` to get the original `sourceUrl`
+   - Deletes all existing R2 data for that tournament
+   - Re-downloads from the source URL to regenerate with new structure
+2. Generates the new archetype folder structure:
+   - `archetypes/{name}/cards.json` - Card statistics (new path)
+   - `archetypes/{name}/decks.json` - Deck data for this archetype only
+   - `archetypes/{name}.json` - Legacy backward compatibility
+3. Preserves all tournament metadata and deck data
+
+### When It Runs
+**Manual Only**: Must be triggered via "Run workflow" button in GitHub Actions
+
+### Trigger Type
+- `workflow_dispatch`: Manual trigger only
+
+### Inputs
+- `mode` (required) - Which tournaments to regenerate:
+  - `all-backlog` - Process all tournaments in the predefined backlog list
+  - `single` - Process a single specified tournament
+- `single_tournament` (optional) - Tournament name for single mode
+  - Example: `2025-04-12, Regional Atlanta, GA`
+- `dry_run` (optional, default: false) - Show what would be done without making changes
+
+### Required Secrets
+- `R2_ACCOUNT_ID` - Cloudflare R2 account ID
+- `R2_ACCESS_KEY_ID` - R2 access key
+- `R2_SECRET_ACCESS_KEY` - R2 secret key
+
+### Script
+`.github/scripts/regenerate-tournaments.py` (Python)
+
+### Dependencies
+- Python 3.11
+- `requests` - HTTP client
+- `beautifulsoup4` - HTML parser
+- `boto3` - AWS S3/R2 client
+
+### Output
+- Updates: `reports/{tournament_name}/archetypes/` with new folder structure
+- Processing time: 5-10 minutes per tournament
+- Full backlog: ~2 hours for all tournaments
+
+### Notes
+- The backlog list is hardcoded in `regenerate-tournaments.py`
+- Use `dry_run: true` to preview changes before executing
+- Maintains backward compatibility with legacy `{archetype}.json` files
+- Preserves synonym data and tournament metadata
+
+---
+
 ## Workflow Execution Order
 
 On a typical day:
@@ -245,8 +304,11 @@ On a typical day:
    └─ Prices all cards from online meta
    
 Manual (as needed)
-└─ Download Tournament Report
-   └─ Adds individual regional/special tournaments
+├─ Download Tournament Report
+│  └─ Adds individual regional/special tournaments
+│
+└─ Regenerate Tournament Reports
+   └─ Updates existing tournaments with new structure
 ```
 
 The online meta and pricing workflows run concurrently and independently. They don't depend on each other.

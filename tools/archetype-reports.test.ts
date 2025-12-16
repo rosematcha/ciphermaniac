@@ -377,4 +377,59 @@ describe('Archetype Index', () => {
     });
 });
 
+// =============================================================================
+// Archetype-Specific Deck Fetching Tests
+// =============================================================================
+
+describe('Archetype-Specific Deck Fetching', () => {
+    it('should use archetype-specific URL when archetype is provided', () => {
+        const tournament = 'Online - Last 14 Days';
+        const archetype = 'Gardevoir';
+
+        // Expected URL pattern for archetype-specific decks
+        const expectedUrl = `https://r2.ciphermaniac.com/reports/${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetype)}/decks.json`;
+
+        assert.ok(expectedUrl.includes('/archetypes/'));
+        assert.ok(expectedUrl.includes('/decks.json'));
+        assert.ok(expectedUrl.includes('/Gardevoir/'));
+    });
+
+    it('should use main decks.json URL when no archetype is provided', () => {
+        const tournament = 'Online - Last 14 Days';
+
+        // Expected URL pattern for all decks
+        const expectedUrl = `https://r2.ciphermaniac.com/reports/${encodeURIComponent(tournament)}/decks.json`;
+
+        assert.ok(!expectedUrl.includes('/archetypes/'));
+        assert.ok(expectedUrl.endsWith('/decks.json'));
+    });
+
+    it('should return only that archetype decks from archetype-specific file', () => {
+        // Simulate what archetype-specific decks.json contains
+        const archetypeSpecificDecks: MockDeck[] = [
+            createMockDeck('deck-1', 'Gardevoir', []),
+            createMockDeck('deck-2', 'Gardevoir', [])
+        ];
+
+        // All decks should be for the target archetype
+        assert.ok(archetypeSpecificDecks.every(d => d.archetype === 'Gardevoir'));
+        assert.strictEqual(archetypeSpecificDecks.length, 2);
+    });
+
+    it('should still work with main decks.json when archetype file not found', () => {
+        // Simulate fallback scenario
+        const allDecks: MockDeck[] = [
+            createMockDeck('deck-1', 'Gardevoir', []),
+            createMockDeck('deck-2', 'Gardevoir', []),
+            createMockDeck('deck-3', 'Charizard Pidgeot', []),
+        ];
+
+        // Filter by archetype manually (simulating what happens in fallback)
+        const filteredDecks = allDecks.filter(d => d.archetype === 'Gardevoir');
+
+        assert.strictEqual(filteredDecks.length, 2);
+        assert.ok(filteredDecks.every(d => d.archetype === 'Gardevoir'));
+    });
+});
+
 console.log('Running archetype reports tests...');

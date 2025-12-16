@@ -1,0 +1,85 @@
+# =============================================================================
+# Regenerate Tournament Reports
+# =============================================================================
+# Regenerates tournament reports for tournaments that need to be updated
+# with the new folder structure (per-archetype decks.json files).
+#
+# This workflow:
+#   1. Fetches meta.json for each tournament to get the sourceUrl
+#   2. Deletes the existing R2 data for that tournament
+#   3. Re-downloads from the source URL to regenerate with new structure
+#
+# Triggers:
+#   - Manual dispatch only
+# =============================================================================
+
+name: Regenerate Tournament Reports
+
+run-name: Regenerate Tournaments (${{ inputs.mode }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Which tournaments to regenerate'
+        required: true
+        type: choice
+        options:
+          - 'all-backlog'
+          - 'single'
+        default: 'all-backlog'
+      single_tournament:
+        description: 'Tournament name (for single mode, e.g., "2025-04-12, Regional Atlanta, GA")'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run (show what would be done without deleting/uploading)'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: regenerate-tournaments-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate-tournaments:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120  # Allow up to 2 hours for all tournaments
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 boto3
+
+      - name: Regenerate tournaments
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ciphermaniac-reports
+          MODE: ${{ inputs.mode }}
+          SINGLE_TOURNAMENT: ${{ inputs.single_tournament }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: python .github/scripts/regenerate-tournaments.py
+
+      - name: Summary
+        run: |
+          echo "## Tournament Regeneration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Mode**: ${{ inputs.mode }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.mode }}" = "single" ]; then
+            echo "- **Tournament**: \`${{ inputs.single_tournament }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "- **Dry Run**: ${{ inputs.dry_run == true && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
