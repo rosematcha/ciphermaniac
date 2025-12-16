@@ -490,26 +490,26 @@ function generateReportFromDecks(deckList, deckTotal, synonymDb) {
       }
 
       perDeckCounts.set(uid, (perDeckCounts.get(uid) || 0) + count);
-        perDeckMeta.set(uid, {
-          set: setCode || undefined,
-          number: number || undefined,
+      perDeckMeta.set(uid, {
+        set: setCode || undefined,
+        number: number || undefined,
+        category: card.category || undefined,
+        trainerType: card.trainerType || undefined,
+        energyType: card.energyType || undefined,
+        aceSpec: card.aceSpec || undefined
+      });
+
+      if (!nameCasing.has(uid)) {
+        nameCasing.set(uid, card.name);
+      }
+      if ((card.category || card.trainerType || card.energyType || card.aceSpec) && !uidCategory.has(uid)) {
+        uidCategory.set(uid, {
           category: card.category || undefined,
           trainerType: card.trainerType || undefined,
           energyType: card.energyType || undefined,
           aceSpec: card.aceSpec || undefined
         });
-
-      if (!nameCasing.has(uid)) {
-        nameCasing.set(uid, card.name);
       }
-        if ((card.category || card.trainerType || card.energyType || card.aceSpec) && !uidCategory.has(uid)) {
-          uidCategory.set(uid, {
-            category: card.category || undefined,
-            trainerType: card.trainerType || undefined,
-            energyType: card.energyType || undefined,
-            aceSpec: card.aceSpec || undefined
-          });
-        }
     }
 
     perDeckCounts.forEach((total, uid) => {
@@ -616,17 +616,22 @@ function buildArchetypeReports(decks, synonymDb) {
   }
 
   const files = [];
+  // Store the decks per archetype for generating per-archetype decks.json
+  const decksByArchetype = new Map();
+
   for (const { base, displayName, decks: archetypeDecks } of groups.values()) {
     if (archetypeDecks.length < minDecks) {
       continue;
     }
     files.push({
-      filename: `${base}.json`,
+      filename: `${base}/cards.json`, // New folder structure: Gardevoir/cards.json
       base,
       displayName,
       deckCount: archetypeDecks.length,
       data: generateReportFromDecks(archetypeDecks, archetypeDecks.length, synonymDb)
     });
+    // Store raw decks for this archetype
+    decksByArchetype.set(base, archetypeDecks);
   }
 
   files.sort((a, b) => b.deckCount - a.deckCount);
@@ -641,7 +646,8 @@ function buildArchetypeReports(decks, synonymDb) {
   return {
     minDecks,
     files,
-    index
+    index,
+    decksByArchetype
   };
 }
 
@@ -751,12 +757,12 @@ function extractCardsFromReport(reportData, deckTotal) {
   const optional = [];
 
   const items = reportData?.items || [];
-  
+
   for (const item of items) {
     const setCode = item.set;
     const number = item.number;
     const cardId = buildCardIdentifier(setCode, number);
-    
+
     if (!cardId) {
       continue;
     }
@@ -765,7 +771,7 @@ function extractCardsFromReport(reportData, deckTotal) {
     const total = Number(item.total) || deckTotal;
     const pct = total ? Math.round(((found / total) * 100 + Number.EPSILON) * 100) / 100 : 0;
     const isAlwaysIncluded = found === total;
-    
+
     const dist = item.dist || [];
     const hasVaryingCounts = dist.length > 1;
 
@@ -804,7 +810,7 @@ function indexDeckCardPresence(decks) {
     deckById.set(deckId, deck);
 
     const seenCards = new Map();
-    
+
     for (const card of deck.cards || []) {
       const cardId = buildCardIdentifier(card.set, card.number);
       if (!cardId) {
@@ -878,14 +884,14 @@ function applyFilters(filters, cardPresence, cardCounts, allDeckIds) {
   for (const filter of filters.include || []) {
     const cardId = filter.cardId;
     const decksWithCard = cardPresence.get(cardId) || new Set();
-    
+
     if (filter.count !== undefined) {
       const matchingDecks = new Set();
       const cardCountMap = cardCounts.get(cardId) || new Map();
-      
+
       for (const deckId of decksWithCard) {
         const deckCount = cardCountMap.get(deckId) || 0;
-        
+
         if (filter.operator === '=') {
           if (deckCount === filter.count) {
             matchingDecks.add(deckId);
@@ -896,7 +902,7 @@ function applyFilters(filters, cardPresence, cardCounts, allDeckIds) {
           }
         }
       }
-      
+
       eligible = new Set([...eligible].filter(id => matchingDecks.has(id)));
     } else {
       eligible = new Set([...eligible].filter(id => decksWithCard.has(id)));
@@ -964,14 +970,14 @@ function generateFilterCombinations(optionalCards) {
   const combinations = [];
 
   const meaningfulCards = optionalCards.filter(card => card.pct >= MIN_CARD_USAGE_PERCENT);
-  
+
   console.log(`[IncludeExclude] Filtering ${optionalCards.length} cards to ${meaningfulCards.length} with ${MIN_CARD_USAGE_PERCENT}%+ usage`);
 
   const sortedCards = [...meaningfulCards].sort((a, b) => b.pct - a.pct);
 
   for (const card of sortedCards) {
     const countFilters = generateCountFilters(card);
-    
+
     combinations.push({
       include: [{ cardId: card.id }],
       exclude: []
@@ -998,7 +1004,7 @@ function generateFilterCombinations(optionalCards) {
   }
 
   const topCardsForCross = sortedCards.slice(0, MAX_CROSS_FILTERS);
-  
+
   console.log(`[IncludeExclude] Generating cross-filters for top ${topCardsForCross.length} cards`);
 
   for (const includeCard of topCardsForCross) {
@@ -1208,7 +1214,7 @@ async function main() {
 
   console.log(`[online-meta] Aggregating ${decks.length} decks`);
   const masterReport = generateReportFromDecks(decks, decks.length, synonymDb);
-  const { files: archetypeFiles, index: archetypeIndex, minDecks } = buildArchetypeReports(
+  const { files: archetypeFiles, index: archetypeIndex, minDecks, decksByArchetype } = buildArchetypeReports(
     decks,
     synonymDb
   );
@@ -1235,7 +1241,7 @@ async function main() {
   };
 
   const basePath = `${R2_REPORTS_PREFIX}/${TARGET_FOLDER}`;
-  
+
   // Always upload meta.json (required for the UI)
   await putJson(`${basePath}/meta.json`, meta);
 
@@ -1255,10 +1261,25 @@ async function main() {
   }
 
   if (GENERATE_ARCHETYPES) {
-    console.log('[online-meta] Uploading archetype reports...');
+    console.log('[online-meta] Uploading archetype reports (new folder structure)...');
     await putJson(`${basePath}/archetypes/index.json`, archetypeIndex);
+
     for (const file of archetypeFiles) {
-      await putJson(`${basePath}/archetypes/${file.filename}`, file.data);
+      // Upload cards.json for each archetype (e.g., archetypes/Gardevoir/cards.json)
+      await putJson(`${basePath}/archetypes/${file.base}/cards.json`, file.data);
+
+      // Upload decks.json for each archetype (e.g., archetypes/Gardevoir/decks.json)
+      const archetypeDecks = decksByArchetype.get(file.base);
+      if (archetypeDecks) {
+        await putJson(`${basePath}/archetypes/${file.base}/decks.json`, archetypeDecks);
+      }
+    }
+
+    // Also upload legacy flat files for backward compatibility during migration
+    // These can be removed in the future after all consumers are updated
+    console.log('[online-meta] Uploading legacy archetype files for backward compatibility...');
+    for (const file of archetypeFiles) {
+      await putJson(`${basePath}/archetypes/${file.base}.json`, file.data);
     }
   } else {
     console.log('[online-meta] Skipping archetype reports (GENERATE_ARCHETYPES=false)');

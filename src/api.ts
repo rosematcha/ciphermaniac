@@ -472,40 +472,95 @@ export async function fetchArchetypesList(tournament: string): Promise<Archetype
 }
 
 /**
- * Fetch specific archetype report data
+ * Fetch specific archetype report data (cards.json)
+ * Uses new folder structure: /archetypes/{archetype}/cards.json
+ * Falls back to legacy path: /archetypes/{archetype}.json
  * @param tournament
  * @param archetypeBase
  * @returns
  * @throws AppError
  */
-export function fetchArchetypeReport(tournament: string, archetypeBase: string): Promise<any> {
+export async function fetchArchetypeReport(tournament: string, archetypeBase: string): Promise<any> {
     logger.debug(`Fetching archetype report: ${tournament}/${archetypeBase}`);
-    const relativePath = `${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
 
-    return fetchReportResource(
-        relativePath,
-        `archetype report ${archetypeBase} for ${tournament}`,
-        'object',
-        'archetype report',
-        { cache: true }
-    )
-        .then(data => {
-            logger.info(`Loaded archetype report ${archetypeBase} for ${tournament}`, { itemCount: data.items?.length });
+    // Try new folder structure first: /archetypes/Gardevoir/cards.json
+    const newPath = `${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}/cards.json`;
+    // Legacy flat file path: /archetypes/Gardevoir.json
+    const legacyPath = `${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
+
+    try {
+        return await fetchReportResource(
+            newPath,
+            `archetype report ${archetypeBase} for ${tournament}`,
+            'object',
+            'archetype report',
+            { cache: true }
+        ).then(data => {
+            logger.info(`Loaded archetype report ${archetypeBase} for ${tournament} (new path)`, { itemCount: data.items?.length });
             return data;
-        })
-        .catch(error => {
-            if (error instanceof AppError && error.context?.status === 404) {
-                logger.debug(`Archetype ${archetypeBase} not found for ${tournament}`, {
-                    relativePath
-                });
-            }
-            throw error;
         });
+    } catch (newPathError: any) {
+        // Fall back to legacy path if new path fails
+        if (newPathError instanceof AppError && newPathError.context?.status === 404) {
+            logger.debug(`New path not found, trying legacy path: ${legacyPath}`);
+            try {
+                return await fetchReportResource(
+                    legacyPath,
+                    `archetype report ${archetypeBase} for ${tournament}`,
+                    'object',
+                    'archetype report',
+                    { cache: true }
+                ).then(data => {
+                    logger.info(`Loaded archetype report ${archetypeBase} for ${tournament} (legacy path)`, { itemCount: data.items?.length });
+                    return data;
+                });
+            } catch (_error) {
+                // If legacy also fails, throw the original error
+            }
+        }
+        throw newPathError;
+    }
+}
+
+/**
+ * Fetch archetype-specific deck data (decks.json)
+ * Uses new folder structure: /archetypes/{archetype}/decks.json
+ * Falls back to main decks.json with filtering if the archetype-specific file doesn't exist
+ * @param tournament
+ * @param archetypeBase
+ * @returns
+ * @throws AppError
+ */
+export async function fetchArchetypeDecks(tournament: string, archetypeBase: string): Promise<any[] | null> {
+    logger.debug(`Fetching archetype decks: ${tournament}/${archetypeBase}`);
+
+    // Try new folder structure: /archetypes/Gardevoir/decks.json
+    const archetypeDecksPath = `${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}/decks.json`;
+
+    try {
+        const data = await fetchReportResource<any[]>(
+            archetypeDecksPath,
+            `archetype decks ${archetypeBase} for ${tournament}`,
+            'array',
+            'archetype decks',
+            { cache: true }
+        );
+        logger.info(`Loaded archetype-specific decks for ${archetypeBase}`, { deckCount: data?.length || 0 });
+        return data;
+    } catch (error: any) {
+        if (error instanceof AppError && error.context?.status === 404) {
+            logger.debug(`Archetype-specific decks not found for ${archetypeBase}, falling back to main decks.json`);
+            // Fall back to main decks.json - caller will need to filter
+            return null;
+        }
+        throw error;
+    }
 }
 
 /**
  * Fetch include/exclude filtered archetype report data
  * Performs all filtering client-side using deck data
+ * Uses archetype-specific decks.json when available for better performance
  * @param tournament
  * @param archetypeBase
  * @param includeId
@@ -526,29 +581,18 @@ export async function fetchArchetypeFiltersReport(
     const isBaseReport = !includeId && !excludeId;
 
     if (isBaseReport) {
-        const relativePath = `${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
+        // Use fetchArchetypeReport which handles both new and legacy paths
         logger.debug('Fetching base archetype report', {
             tournament,
             archetypeBase
         });
 
-        return fetchReportResource(relativePath, `base archetype report ${archetypeBase}`, 'object', 'archetype report', {
-            cache: true
-        })
+        return fetchArchetypeReport(tournament, archetypeBase)
             .then(data => {
                 logger.info(`Loaded base archetype report ${archetypeBase}`, {
                     deckTotal: data.deckTotal
                 });
                 return data;
-            })
-            .catch(error => {
-                if (error instanceof AppError && error.context?.status === 404) {
-                    logger.debug('Base archetype report not found', {
-                        tournament,
-                        archetypeBase
-                    });
-                }
-                throw error;
             });
     }
 
@@ -565,10 +609,30 @@ export async function fetchArchetypeFiltersReport(
     });
 
     try {
+        // Try to use archetype-specific decks.json for better performance
+        let archetypeDecks = await fetchArchetypeDecks(tournament, archetypeBase);
+
+        // If archetype-specific decks available, use them directly (already filtered by archetype)
+        if (archetypeDecks) {
+            logger.debug(`Using archetype-specific decks for ${archetypeBase}`, {
+                deckCount: archetypeDecks.length
+            });
+            const report = generateFilteredReport(archetypeDecks, archetypeBase, includeId, excludeId, includeOperator, includeCount);
+            logger.info(`Generated filtered archetype report ${archetypeBase} from archetype-specific decks`, {
+                include: includeId,
+                includeOperator,
+                includeCount,
+                exclude: excludeId,
+                deckTotal: report.deckTotal
+            });
+            return report;
+        }
+
+        // Fall back to main decks.json and filter by archetype
         const allDecks = await fetchAllDecks(tournament);
         const report = generateFilteredReport(allDecks, archetypeBase, includeId, excludeId, includeOperator, includeCount);
 
-        logger.info(`Generated filtered archetype report ${archetypeBase}`, {
+        logger.info(`Generated filtered archetype report ${archetypeBase} from full decks.json`, {
             include: includeId,
             includeOperator,
             includeCount,

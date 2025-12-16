@@ -22,6 +22,7 @@
     "test:meta-binder-data": "node --test --import tsx dev/tests/metaBinderData.test.ts",
     "test:card-types": "node --test --import tsx dev/tests/card-types.test.ts",
     "test:routing": "node --test --loader ./dev/tests/esm-test-loader.mjs dev/tests/card-routing.test.mjs dev/tests/online-meta.test.mjs dev/tests/client-side-filtering.test.mjs",
+    "test:archetype-reports": "node --test --import tsx tools/archetype-reports.test.ts",
     "validate": "npm run lint && npm run typecheck",
     "validate:fix": "npm run lint:fix && npm run typecheck",
     "clean": "echo 'No build artifacts to clean'",
