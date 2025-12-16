@@ -1,10 +1,27 @@
+# =============================================================================
+# Daily Price Check
+# =============================================================================
+# Updates card pricing data from external pricing APIs.
+# Stores price history in Cloudflare R2 for trend analysis.
+#
+# Triggers:
+#   - Daily at 12:00 UTC (same time as online-meta for fresh data)
+#   - Manual dispatch
+# =============================================================================
+
 name: Daily Price Check
+
+run-name: >-
+  ${{ github.event_name == 'schedule' && 'Daily Price Update' || 'Price Update (manual)' }}
 
 on:
   schedule:
-    # Run daily at 12:00 UTC
-    - cron: '0 12 * * *'
+    - cron: '0 12 * * *'  # Daily at 12:00 UTC
   workflow_dispatch:
+
+concurrency:
+  group: pricing-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -12,6 +29,8 @@ permissions:
 jobs:
   update-prices:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,10 +39,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
-        run: |
-          pip install requests boto3
+        run: pip install requests boto3
 
       - name: Update card prices
         env:
@@ -31,5 +50,10 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ciphermaniac-reports
+        run: python .github/scripts/update-prices.py
+
+      - name: Summary
         run: |
-          python .github/scripts/update-prices.py
+          echo "## Daily Price Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Price data updated successfully" >> $GITHUB_STEP_SUMMARY

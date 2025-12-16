@@ -48,21 +48,18 @@ export async function getCanonicalCard(cardIdentifier: string): Promise<string> 
 
     const data = await loadSynonymData();
 
-    // If this looks like a UID (Name::SET::NUMBER), prefer the name-based canonical
-    // when available (this keeps older canonicals prioritized), otherwise fall back
-    // to the explicit synonym mapping for the UID.
+    // If this looks like a UID (Name::SET::NUMBER), check explicit synonym mapping first.
+    // Cards with the same name but different abilities (e.g., Ralts PAF 027 vs Ralts MEG 058)
+    // must not be merged - only cards explicitly listed in synonyms should be canonicalized.
     if (cardIdentifier.includes('::')) {
-        const baseName = String(cardIdentifier).split('::')[0];
-        if (data.canonicals && data.canonicals[baseName]) {
-            return data.canonicals[baseName];
-        }
         if (data.synonyms && data.synonyms[cardIdentifier]) {
             return data.synonyms[cardIdentifier];
         }
+        // UID not in synonyms means it's its own canonical - return as-is
         return cardIdentifier;
     }
 
-    // For name inputs, return configured canonical if present
+    // For name-only inputs, return configured canonical if present
     if (data.canonicals && data.canonicals[cardIdentifier]) {
         return data.canonicals[cardIdentifier];
     }
@@ -140,17 +137,17 @@ export const sync = {
             return cardIdentifier;
         }
 
+        // If this looks like a UID, check explicit synonym mapping first.
+        // Cards with the same name but different abilities must not be merged.
         if (String(cardIdentifier).includes('::')) {
-            const baseName = String(cardIdentifier).split('::')[0];
-            if (synonymData.canonicals && synonymData.canonicals[baseName]) {
-                return synonymData.canonicals[baseName];
-            }
             if (synonymData.synonyms && synonymData.synonyms[cardIdentifier]) {
                 return synonymData.synonyms[cardIdentifier];
             }
+            // UID not in synonyms means it's its own canonical - return as-is
             return cardIdentifier;
         }
 
+        // For name-only inputs, use canonicals then synonyms lookup
         return synonymData.canonicals[cardIdentifier] || synonymData.synonyms[cardIdentifier] || cardIdentifier;
     },
 

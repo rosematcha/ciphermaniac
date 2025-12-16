@@ -1,8 +1,26 @@
+# =============================================================================
+# Online Meta Report
+# =============================================================================
+# Generates aggregated meta reports from Limitless tournament data.
+# Uploads master.json, archetype reports, and deck data to Cloudflare R2.
+#
+# Triggers:
+#   - Daily at 12:00 UTC (scheduled)
+#   - Manual dispatch with configurable options
+#
+# Downstream: Triggers trends.yml workflow on completion
+# =============================================================================
+
 name: Online Meta Report
+
+run-name: >-
+  ${{ github.event_name == 'schedule' && 'Daily Meta Report' ||
+      format('Meta Report (master={0}, archetypes={1})',
+        inputs.generate_master, inputs.generate_archetypes) }}
 
 on:
   schedule:
-    - cron: '0 12 * * *'
+    - cron: '0 12 * * *'  # Daily at 12:00 UTC
   workflow_dispatch:
     inputs:
       generate_master:
@@ -26,12 +44,18 @@ on:
         type: boolean
         default: true
 
+concurrency:
+  group: online-meta-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   build-online-meta:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,6 +64,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
@@ -57,4 +82,15 @@ jobs:
           GENERATE_ARCHETYPES: ${{ inputs.generate_archetypes == '' && 'true' || inputs.generate_archetypes }}
           GENERATE_INCLUDE_EXCLUDE: ${{ inputs.generate_include_exclude == '' && 'true' || inputs.generate_include_exclude }}
           GENERATE_DECKS: ${{ inputs.generate_decks == '' && 'true' || inputs.generate_decks }}
+
+      - name: Summary
+        run: |
+          echo "## Online Meta Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Master JSON | ${{ inputs.generate_master != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Archetypes | ${{ inputs.generate_archetypes != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Include/Exclude | ${{ inputs.generate_include_exclude != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Decks | ${{ inputs.generate_decks != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
 

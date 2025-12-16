@@ -1,10 +1,26 @@
+# =============================================================================
+# Download Tournament Report
+# =============================================================================
+# Downloads and processes individual tournament data from Limitless Labs.
+# Use for adding specific tournaments to the dataset on-demand.
+#
+# Triggers:
+#   - Manual dispatch only (requires tournament URL)
+#
+# Options:
+#   - Anonymize player names for privacy
+# =============================================================================
+
 name: Download Tournament Report
+
+run-name: >-
+  Download Tournament${{ inputs.anonymize == true && ' (anonymized)' || '' }}
 
 on:
   workflow_dispatch:
     inputs:
       limitless_url:
-        description: 'Limitless Labs tournament URL'
+        description: 'Limitless tournament URL or ID (e.g., https://limitlesstcg.com/tournaments/546, 546)'
         required: true
         type: string
       anonymize:
@@ -13,13 +29,41 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: download-tournament-${{ github.ref }}
+  cancel-in-progress: false  # Don't cancel - each tournament download is unique
+
 permissions:
   contents: read
 
 jobs:
   download-tournament:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
     steps:
+      - name: Validate and normalize URL
+        id: normalize
+        run: |
+          INPUT="${{ inputs.limitless_url }}"
+          
+          # Extract tournament ID from various formats
+          if [[ "$INPUT" =~ ^[0-9]+$ ]]; then
+            # Just a number
+            TOURNAMENT_ID="$INPUT"
+          elif [[ "$INPUT" =~ limitlesstcg\.com/tournaments/([0-9]+) ]]; then
+            # Full URL format
+            TOURNAMENT_ID="${BASH_REMATCH[1]}"
+          else
+            echo "Invalid format. Provide tournament ID (e.g., 546) or URL (e.g., https://limitlesstcg.com/tournaments/546)"
+            exit 1
+          fi
+          
+          # Normalize to decklists endpoint
+          NORMALIZED_URL="https://limitlesstcg.com/tournaments/${TOURNAMENT_ID}/decklists"
+          echo "url=${NORMALIZED_URL}" >> $GITHUB_OUTPUT
+          echo "Normalized URL: $NORMALIZED_URL"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -27,18 +71,25 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
-        run: |
-          pip install requests beautifulsoup4 boto3
+        run: pip install requests beautifulsoup4 boto3
 
       - name: Download and process tournament
         env:
-          LIMITLESS_URL: ${{ inputs.limitless_url }}
+          LIMITLESS_URL: ${{ steps.normalize.outputs.url }}
           ANONYMIZE: ${{ inputs.anonymize }}
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ciphermaniac-reports
+        run: python .github/scripts/download-tournament.py
+
+      - name: Summary
         run: |
-          python .github/scripts/download-tournament.py
+          echo "## Tournament Download" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Input**: \`${{ inputs.limitless_url }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Normalized URL**: \`${{ steps.normalize.outputs.url }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Anonymized**: ${{ inputs.anonymize == true && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
