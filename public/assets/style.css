@@ -325,7 +325,7 @@ body:not(.no-header) > header {
   text-decoration: none;
 }
 
-/* Mobile responsive styles - Updated 2025-12-03 - z-index fix for hamburger menu */
+/* Mobile responsive styles - Updated 2025-12-16 - optimized for 3 cards per row */
 @media (max-width: 720px) {
   .site-title {
     margin-bottom: 0;
@@ -334,7 +334,7 @@ body:not(.no-header) > header {
 
   .header-inner {
     gap: 12px;
-    padding: 10px 16px;
+    padding: 10px 12px;
   }
 
   .logo {
@@ -352,8 +352,8 @@ body:not(.no-header) > header {
     gap: 8px;
     position: absolute;
     top: calc(100% + 8px);
-    right: 16px;
-    left: 16px;
+    right: 12px;
+    left: 12px;
     background: var(--panel);
     border: 1px solid #2c335a;
     border-radius: 12px;
@@ -394,13 +394,13 @@ body:not(.no-header) > header {
 .toolbar {
   background: transparent;
   border-bottom: 1px solid #171824;
-  padding: 24px 0 10px;
+  padding: 20px 0 10px;
 }
 
 .toolbar-inner {
   width: min(1380px, 100%);
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 12px; /* Reduced from 20px for mobile optimization */
 }
 
 .toolbar .controls {
@@ -446,6 +446,15 @@ body:not(.no-header) > header {
   #filtersToggle {
     justify-self: stretch;
     width: 100%;
+  }
+
+  /* Reduce toolbar padding on mobile for more content space */
+  .toolbar {
+    padding: 16px 0 8px;
+  }
+
+  .toolbar-inner {
+    padding: 0 6px; /* Even tighter on very small screens */
   }
 }
 
@@ -570,12 +579,12 @@ body.filters-panel-open #filters {
   border-radius: 14px;
 }
 
-/* Mobile: adjust spacing for filters panel */
+/* Mobile: adjust spacing for filters panel - more compact for better mobile UX */
 @media (max-width: 899px) {
   body.filters-panel-open #filters {
-    margin-top: 12px;
-    margin-bottom: 12px;
-    padding: 18px 16px 20px;
+    margin-top: 8px; /* Reduced from 12px */
+    margin-bottom: 8px; /* Reduced from 12px */
+    padding: 14px 10px 16px; /* More compact padding */
   }
 
   body.filters-panel-open .toolbar {
@@ -1133,6 +1142,7 @@ body.filters-panel-open #filters {
       'sort sort sort sort'
       'tournaments tournaments tournaments tournaments'
       'set set set set';
+    row-gap: 16px; /* Reduced from 22px for more compact mobile layout */
   }
 }
 
@@ -1145,6 +1155,7 @@ body.filters-panel-open #filters {
       'sort'
       'tournaments'
       'set';
+    row-gap: 14px; /* Even more compact on very small screens */
   }
 }
 
@@ -1373,13 +1384,13 @@ body.filters-panel-open #filters {
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Better mobile spacing */
+  /* Better mobile spacing - optimized for 3 cards per row */
   main {
-    padding: 0 12px 16px;
+    padding: 0 6px 16px; /* Reduced from 12px to 6px for tighter spacing */
   }
 
   .grid {
-    gap: 10px;
+    gap: 8px; /* Reduced from 10px to match MOBILE_GAP */
   }
 
   /* Prevent iOS zoom on inputs */
@@ -1388,10 +1399,25 @@ body.filters-panel-open #filters {
     font-size: 16px !important;
   }
 
-  /* Improve card touch interaction */
+  /* Improve card touch interaction - reduced padding for denser layout */
   .card {
-    padding: 12px;
-    margin-bottom: 6px;
+    padding: 6px; /* Reduced from 12px to 6px */
+    margin-bottom: 0; /* Remove extra margin */
+    margin-left: 0; /* Remove side margins for more space */
+    margin-right: 0;
+  }
+
+  /* Optimize card text sizes for mobile readability */
+  .name {
+    font-size: 13px; /* Slightly smaller for mobile */
+  }
+
+  .titleRow {
+    gap: 3px; /* Tighter spacing */
+  }
+
+  .counts {
+    font-size: 11px; /* Smaller count text */
   }
 
   /* Better mobile typography */
@@ -1553,9 +1579,7 @@ h2 {
 
 @media (max-width: 720px) {
   .card {
-    /* Ensure cards don't get clipped at edges on mobile */
-    margin-left: 2px;
-    margin-right: 2px;
+    /* Cards get smaller padding and no extra margins on mobile for optimal 3-card layout */
   }
 }
 
