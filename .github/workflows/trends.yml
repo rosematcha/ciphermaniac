@@ -11,7 +11,7 @@
 # Upstream: Triggered by online-meta.yml
 # =============================================================================
 
-name: Trends Report
+name: (Daily Chore) Trends Report
 
 run-name: >-
   ${{ github.event_name == 'workflow_run' && 'Trends (post-meta)' ||
@@ -19,7 +19,7 @@ run-name: >-
 
 on:
   workflow_run:
-    workflows: ["Online Meta Report"]
+    workflows: ['Online Meta Report']
     types:
       - completed
   workflow_dispatch:

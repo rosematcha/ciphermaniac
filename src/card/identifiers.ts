@@ -73,7 +73,7 @@ export function parseDisplayName(displayName: string | null): { name: string; se
 
 /**
  * Get base name from card identifier
- * @param cardId - Card identifier
+ * @param cardId - Card identifier (UID format "Name::SET::NUMBER" or display format "Name SET NUMBER")
  * @returns Base name or null
  */
 export function getBaseName(cardId: string | null): string | null {
@@ -81,9 +81,19 @@ export function getBaseName(cardId: string | null): string | null {
         return null;
     }
 
+    // UID format: "Name::SET::NUMBER" -> extract "Name"
     if (cardId.includes('::')) {
         return cardId.split('::')[0];
     }
 
+    // Display format: "Name SET NUMBER" -> extract "Name"
+    // Use parseDisplayName to handle this pattern
+    const parsed = parseDisplayName(cardId);
+    if (parsed.setId) {
+        // parseDisplayName found a set ID, so parsed.name is the base name
+        return parsed.name;
+    }
+
+    // No set ID pattern found, return the entire string as the base name
     return cardId;
 }

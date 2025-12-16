@@ -11,7 +11,7 @@
 #   - Anonymize player names for privacy
 # =============================================================================
 
-name: Download Tournament Report
+name: Download Tournament
 
 run-name: >-
   Download Tournament${{ inputs.anonymize == true && ' (anonymized)' || '' }}
@@ -31,7 +31,7 @@ on:
 
 concurrency:
   group: download-tournament-${{ github.ref }}
-  cancel-in-progress: false  # Don't cancel - each tournament download is unique
+  cancel-in-progress: false # Don't cancel - each tournament download is unique
 
 permissions:
   contents: read
@@ -46,7 +46,7 @@ jobs:
         id: normalize
         run: |
           INPUT="${{ inputs.limitless_url }}"
-          
+
           # Extract tournament ID from various formats
           if [[ "$INPUT" =~ ^[0-9]+$ ]]; then
             # Just a number
@@ -58,7 +58,7 @@ jobs:
             echo "Invalid format. Provide tournament ID (e.g., 546) or URL (e.g., https://limitlesstcg.com/tournaments/546)"
             exit 1
           fi
-          
+
           # Normalize to decklists endpoint
           NORMALIZED_URL="https://limitlesstcg.com/tournaments/${TOURNAMENT_ID}/decklists"
           echo "url=${NORMALIZED_URL}" >> $GITHUB_OUTPUT

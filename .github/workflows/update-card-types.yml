@@ -11,14 +11,14 @@
 # Note: Runs after online-meta to capture any new cards from recent reports
 # =============================================================================
 
-name: Update Card Types Database
+name: (Card Metadata) Types
 
 run-name: >-
   ${{ github.event_name == 'schedule' && 'Daily Card Types Update' || 'Card Types Update (manual)' }}
 
 on:
   schedule:
-    - cron: '0 3 * * *'  # Daily at 3:00 AM UTC (after online-meta)
+    - cron: '0 3 * * *' # Daily at 3:00 AM UTC (after online-meta)
   workflow_dispatch:
 
 concurrency:
@@ -57,27 +57,27 @@ jobs:
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
         run: |
           set -euo pipefail
-          
+
           echo "Installing AWS CLI v2..."
           curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip -q awscliv2.zip
           sudo ./aws/install --update
           rm -rf aws awscliv2.zip
-          
+
           echo "Downloading reports from R2..."
           mkdir -p public/reports
-          
+
           # Configure AWS CLI for R2
           aws configure set aws_access_key_id "${R2_ACCESS_KEY_ID}"
           aws configure set aws_secret_access_key "${R2_SECRET_ACCESS_KEY}"
           aws configure set region auto
-          
+
           # Download only master.json files (skip archetype folders and other large assets)
           aws s3 sync "s3://${R2_BUCKET_NAME}/reports/" public/reports/ \
             --exclude "*" \
             --include "*/master.json" \
             --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
-          
+
           echo "Reports downloaded successfully"
 
       - name: Download existing card types database
@@ -96,12 +96,12 @@ jobs:
           else
             echo "No existing card types database found in R2; starting fresh"
           fi
-      
+
       - name: Build card types database
         run: |
           echo "Building card types database..."
           node tools/build-card-types.mjs
-      
+
       - name: Upload card types database to R2
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
@@ -114,19 +114,19 @@ jobs:
             echo "Card types database missing"
             exit 1
           fi
-          
+
           aws configure set aws_access_key_id "${R2_ACCESS_KEY_ID}"
           aws configure set aws_secret_access_key "${R2_SECRET_ACCESS_KEY}"
           aws configure set region auto
-          
+
           aws s3 cp \
             public/assets/data/card-types.json \
             "s3://${R2_BUCKET_NAME}/assets/data/card-types.json" \
             --content-type "application/json" \
             --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
-          
+
           echo "Uploaded card types database to R2"
-      
+
       - name: Check for changes
         id: check_changes
         run: |
@@ -137,29 +137,29 @@ jobs:
             echo "has_changes=true" >> $GITHUB_OUTPUT
             echo "Changes detected in card types database"
           fi
-      
+
       - name: Commit and push changes
         if: steps.check_changes.outputs.has_changes == 'true'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          
+
           git add public/assets/data/card-types.json
           git commit -m "chore: update card types database [skip ci]"
           git push
-      
+
       - name: Upload card types database as artifact
         uses: actions/upload-artifact@v4
         with:
           name: card-types-database
           path: public/assets/data/card-types.json
           retention-days: 30
-      
+
       - name: Summary
         run: |
           echo "## Card Types Database Update" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ steps.check_changes.outputs.has_changes }}" == "true" ]; then
             echo "Database updated with new card types" >> $GITHUB_STEP_SUMMARY
 

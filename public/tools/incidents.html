@@ -1,39 +1,44 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Incidents • Ciphermaniac</title>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/style.css" />
-  <link rel="icon" href="data:," />
-</head>
-<body>
-  <main class="incidents-page">
-    <h1 class="incidents-title">Incidents</h1>
-    <section class="incidents-content">
-      <ul class="incidents-list" id="incidentsList" aria-live="polite" aria-busy="true">
-        <li class="incidents-placeholder">Loading tournaments...</li>
-      </ul>
-      <div class="incidents-footer"><p class="incidents-note">
-      Are we missing one? Send it through the
-      <a href="https://ciphermaniac.com/feedback" target="_blank" rel="noopener noreferrer">feedback form</a>
-      or
-      <a href="https://x.com/ciphermaniac" target="_blank" rel="noopener noreferrer">our Twitter!</a>
-    </p><nav class="incidents-pagination is-hidden" id="incidentsPagination" aria-label="Incidents pagination"></nav></div></section></main>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Incidents • Ciphermaniac</title>
+    <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/assets/style.css" />
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <main class="incidents-page">
+      <h1 class="incidents-title">Incidents</h1>
+      <section class="incidents-content">
+        <ul class="incidents-list" id="incidentsList" aria-live="polite" aria-busy="true">
+          <li class="incidents-placeholder">Loading tournaments...</li>
+        </ul>
+        <div class="incidents-footer">
+          <p class="incidents-note">
+            Are we missing one? Send it through the
+            <a href="https://ciphermaniac.com/feedback" target="_blank" rel="noopener noreferrer">feedback form</a>
+            or
+            <a href="https://x.com/ciphermaniac" target="_blank" rel="noopener noreferrer">our Twitter!</a>
+          </p>
+          <nav class="incidents-pagination is-hidden" id="incidentsPagination" aria-label="Incidents pagination"></nav>
+        </div>
+      </section>
+    </main>
 
-  <script type="module">
-    import { createHeader } from '/assets/js/components/header.js';
-    import { createFooter } from '/assets/js/components/footer.js';
-    import { initIncidentsPage } from '/assets/js/incidents.js';
+    <script type="module">
+      import { createHeader } from '/assets/js/components/header.js';
+      import { createFooter } from '/assets/js/components/footer.js';
+      import { initIncidentsPage } from '/assets/js/incidents.js';
 
-    const header = createHeader();
-    const footer = createFooter();
+      const header = createHeader();
+      const footer = createFooter();
 
-    document.body.insertAdjacentElement('afterbegin', header);
-    document.body.insertAdjacentElement('beforeend', footer);
+      document.body.insertAdjacentElement('afterbegin', header);
+      document.body.insertAdjacentElement('beforeend', footer);
 
-    initIncidentsPage();
-  </script>
-</body>
+      initIncidentsPage();
+    </script>
+  </body>
 </html>
