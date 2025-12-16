@@ -1,60 +1,78 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>About • Ciphermaniac</title>
-  <!-- Preload critical font to reduce layout shift -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/style.css" />
-  <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
-</head>
-<body>
-  <main class="about-page">
-    <div class="about-content">
-      <h1>About</h1>
-      
-      <p>Howdy! I'm Reese, the developer of Ciphermaniac. Ciphermaniac is a Pokémon TCG analysis tool focused on per-card meta analysis. I made Ciphermaniac out of a desire to track specific cards, a feature which I didn't see on the other popular tools.</p>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>About • Ciphermaniac</title>
+    <!-- Preload critical font to reduce layout shift -->
+    <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/assets/style.css" />
+    <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
+  </head>
+  <body>
+    <main class="about-page">
+      <div class="about-content">
+        <h1>About</h1>
 
-      <p>The work on this site is largely built on the incredible work of other members of the community, including:</p>
-      
-      <ul class="credits-list">
-        <li>
-          <strong><a href="https://limitlesstcg.com/" target="_blank" rel="noopener noreferrer">LimitlessTCG</a></strong> - 
-          for being the source of the tournament data that powers our analysis
-        </li>
-        <li>
-          <strong><a href="https://www.trainerhill.com/" target="_blank" rel="noopener noreferrer">TrainerHill</a></strong> - 
-          for inspiration on the user interface design and layout
-        </li>
-        <li>
-          <strong><a href="https://tcgcsv.com/" target="_blank" rel="noopener noreferrer">TCGCSV</a></strong> - 
-          for providing pricing data integration
-        </li>
-      </ul>
-      
-      <p>Without these amazing resources, this project would not exist.</p>
+        <p>
+          Howdy! I'm Reese, the developer of Ciphermaniac. Ciphermaniac is a Pokémon TCG analysis tool focused on
+          per-card meta analysis. I made Ciphermaniac out of a desire to track specific cards, a feature which I didn't
+          see on the other popular tools.
+        </p>
 
-      <p>If you have additional features you'd like to see on this site, <a href="https://ciphermaniac.com/feedback">please shoot me a message on the feedback form</a> and I'll try and get back to you soon as I can! Please note that I am working on this in my spare time, and software development is not my forté, so be nice.</p>
+        <p>
+          The work on this site is largely built on the incredible work of other members of the community, including:
+        </p>
 
-      <p>This site and its code is licensed under the MIT license. The assets and intellectual property about the Pokémon Trading Card Game and Pokémon franchise are copyright The Pokémon Company International, and I claim no ownership, support, endorsement, or affiliation with The Pokémon Company International, Nintendo, Game Freak, or Creatures, Inc.</p>
+        <ul class="credits-list">
+          <li>
+            <strong
+              ><a href="https://limitlesstcg.com/" target="_blank" rel="noopener noreferrer">LimitlessTCG</a></strong
+            >
+            - for being the source of the tournament data that powers our analysis
+          </li>
+          <li>
+            <strong
+              ><a href="https://www.trainerhill.com/" target="_blank" rel="noopener noreferrer">TrainerHill</a></strong
+            >
+            - for inspiration on the user interface design and layout
+          </li>
+          <li>
+            <strong><a href="https://tcgcsv.com/" target="_blank" rel="noopener noreferrer">TCGCSV</a></strong> - for
+            providing pricing data integration
+          </li>
+        </ul>
 
-      <p>Thanks for checking out my silly little site, and I hope it's useful to you! ♥</p>
-    </div>
-  </main>
+        <p>Without these amazing resources, this project would not exist.</p>
 
-  <script type="module">
-    import { createHeader } from '/assets/js/components/header.js';
-    import { createFooter } from '/assets/js/components/footer.js';
-    
-    // Insert header and footer
-    const header = createHeader({ currentPage: 'about' });
-    const footer = createFooter();
-    
-    document.body.insertAdjacentElement('afterbegin', header);
-    document.body.insertAdjacentElement('beforeend', footer);
-  </script>
-</body>
+        <p>
+          If you have additional features you'd like to see on this site,
+          <a href="https://ciphermaniac.com/feedback">please shoot me a message on the feedback form</a> and I'll try
+          and get back to you soon as I can! Please note that I am working on this in my spare time, and software
+          development is not my forté, so be nice.
+        </p>
+
+        <p>
+          This site and its code is licensed under the MIT license. The assets and intellectual property about the
+          Pokémon Trading Card Game and Pokémon franchise are copyright The Pokémon Company International, and I claim
+          no ownership, support, endorsement, or affiliation with The Pokémon Company International, Nintendo, Game
+          Freak, or Creatures, Inc.
+        </p>
+
+        <p>Thanks for checking out my silly little site, and I hope it's useful to you! ♥</p>
+      </div>
+    </main>
+
+    <script type="module">
+      import { createHeader } from '/assets/js/components/header.js';
+      import { createFooter } from '/assets/js/components/footer.js';
+
+      // Insert header and footer
+      const header = createHeader({ currentPage: 'about' });
+      const footer = createFooter();
+
+      document.body.insertAdjacentElement('afterbegin', header);
+      document.body.insertAdjacentElement('beforeend', footer);
+    </script>
+  </body>
 </html>
