@@ -18,7 +18,6 @@ import time
 import requests
 import boto3
 from botocore.exceptions import ClientError
-from urllib.parse import quote
 
 # Import the download-tournament functionality
 sys.path.insert(0, os.path.dirname(__file__))
@@ -46,8 +45,6 @@ TOURNAMENT_BACKLOG = [
     "2025-04-12, Regional Atlanta, GA"
 ]
 
-R2_BASE_URL = "https://r2.ciphermaniac.com"
-
 
 def get_r2_client():
     """Create and return R2 client."""
@@ -68,25 +65,25 @@ def get_r2_client():
     )
 
 
-def fetch_tournament_meta(tournament_name):
-    """Fetch meta.json for a tournament to get its sourceUrl."""
-    encoded_name = quote(tournament_name)
-    meta_url = f"{R2_BASE_URL}/reports/{encoded_name}/meta.json"
+def fetch_tournament_meta(r2_client, bucket_name, tournament_name):
+    """Fetch meta.json for a tournament to get its sourceUrl using R2 S3 API."""
+    key = f"reports/{tournament_name}/meta.json"
     
-    print(f"  Fetching meta from: {meta_url}")
-    
-    headers = {'User-Agent': 'Mozilla/5.0 (compatible; CiphermaniacBot/1.0)'}
+    print(f"  Fetching meta from R2: {key}")
     
     try:
-        response = requests.get(meta_url, headers=headers, timeout=30)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.HTTPError as e:
-        # R2 sometimes returns 403 for non-existent files
-        if e.response.status_code in (403, 404):
-            print(f"  Warning: meta.json not found for {tournament_name} (HTTP {e.response.status_code})")
+        response = r2_client.get_object(Bucket=bucket_name, Key=key)
+        body = response['Body'].read().decode('utf-8')
+        return json.loads(body)
+    except r2_client.exceptions.NoSuchKey:
+        print(f"  Warning: meta.json not found for {tournament_name}")
+        return None
+    except ClientError as e:
+        error_code = e.response.get('Error', {}).get('Code', '')
+        if error_code in ('NoSuchKey', '404', 'NotFound'):
+            print(f"  Warning: meta.json not found for {tournament_name}")
             return None
-        print(f"  Error fetching meta: HTTP {e.response.status_code}")
+        print(f"  Error fetching meta: {e}")
         return None
     except Exception as e:
         print(f"  Error fetching meta: {e}")
@@ -221,7 +218,7 @@ def main():
         
         # Step 1: Fetch meta.json to get sourceUrl
         print("\nStep 1: Fetching tournament metadata...")
-        meta = fetch_tournament_meta(tournament_name)
+        meta = fetch_tournament_meta(r2_client, bucket_name, tournament_name)
         
         if not meta:
             print(f"  Skipping: Could not fetch metadata")
