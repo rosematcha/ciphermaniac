@@ -75,15 +75,19 @@ def fetch_tournament_meta(tournament_name):
     
     print(f"  Fetching meta from: {meta_url}")
     
+    headers = {'User-Agent': 'Mozilla/5.0 (compatible; CiphermaniacBot/1.0)'}
+    
     try:
-        response = requests.get(meta_url, timeout=30)
+        response = requests.get(meta_url, headers=headers, timeout=30)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 404:
-            print(f"  Warning: meta.json not found for {tournament_name}")
+        # R2 sometimes returns 403 for non-existent files
+        if e.response.status_code in (403, 404):
+            print(f"  Warning: meta.json not found for {tournament_name} (HTTP {e.response.status_code})")
             return None
-        raise
+        print(f"  Error fetching meta: HTTP {e.response.status_code}")
+        return None
     except Exception as e:
         print(f"  Error fetching meta: {e}")
         return None
