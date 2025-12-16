@@ -1,104 +1,107 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Meta Binder � Ciphermaniac</title>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/style.css" />
-  <link rel="icon" href="data:," />
-</head>
-<body class="binder-body">
-  <div class="binder-app" data-state="loading">
-    <header class="binder-header">
-      <h1 class="binder-title">Meta Binder</h1>
-      <p class="binder-subtitle">
-        Build a personal binder playset based on real event usage. Pick the events and archetypes you care about, then
-        see every card laid out in 4x3 binder pages with the highest count played anywhere in the meta.
-      </p>
-      <p class="binder-note">
-        Cards are only shown if they appeared in at least four decks in a single event. Counts reflect the maximum copies
-        played in any included list.
-      </p>
-    </header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Meta Binder � Ciphermaniac</title>
+    <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/assets/style.css" />
+    <link rel="icon" href="data:," />
+  </head>
+  <body class="binder-body">
+    <div class="binder-app" data-state="loading">
+      <header class="binder-header">
+        <h1 class="binder-title">Meta Binder</h1>
+        <p class="binder-subtitle">
+          Build a personal binder playset based on real event usage. Pick the events and archetypes you care about, then
+          see every card laid out in 4x3 binder pages with the highest count played anywhere in the meta.
+        </p>
+        <p class="binder-note">
+          Cards are only shown if they appeared in at least four decks in a single event. Counts reflect the maximum
+          copies played in any included list.
+        </p>
+      </header>
 
-    <main class="binder-main">
-      <section class="binder-controls" aria-labelledby="binder-controls-heading">
-        <h2 id="binder-controls-heading">Filters</h2>
+      <main class="binder-main">
+        <section class="binder-controls" aria-labelledby="binder-controls-heading">
+          <h2 id="binder-controls-heading">Filters</h2>
 
-        <div class="binder-control-group">
-          <div class="binder-control-header">
-            <h3>Events</h3>
-            <div class="binder-control-actions">
-              <button type="button" id="binder-tournaments-all">Select all</button>
-              <button type="button" id="binder-tournaments-recent">Recent 6</button>
-              <button type="button" id="binder-tournaments-clear">Clear</button>
+          <div class="binder-control-group">
+            <div class="binder-control-header">
+              <h3>Events</h3>
+              <div class="binder-control-actions">
+                <button type="button" id="binder-tournaments-all">Select all</button>
+                <button type="button" id="binder-tournaments-recent">Recent 6</button>
+                <button type="button" id="binder-tournaments-clear">Clear</button>
+              </div>
+            </div>
+            <div id="binder-tournaments" class="binder-checkbox-list" role="group" aria-label="Events to include"></div>
+          </div>
+
+          <div class="binder-control-group">
+            <div class="binder-control-header">
+              <h3>Archetypes</h3>
+              <div class="binder-control-actions">
+                <input type="search" id="binder-archetype-search" placeholder="Search archetypes..." />
+                <button type="button" id="binder-archetypes-all">Select all</button>
+                <button type="button" id="binder-archetypes-clear">Clear</button>
+              </div>
+            </div>
+            <div
+              id="binder-archetypes"
+              class="binder-checkbox-list binder-checkbox-list--archetypes"
+              role="group"
+              aria-label="Archetypes to include"
+            ></div>
+          </div>
+
+          <div id="binder-stats" class="binder-stats" aria-live="polite"></div>
+          <div class="binder-generate">
+            <button type="button" id="binder-generate" class="binder-generate__button">Generate Binder</button>
+            <p id="binder-pending" class="binder-pending">Select events, then click "Generate Binder".</p>
+          </div>
+
+          <div class="binder-control-group">
+            <div class="binder-control-header">
+              <h3>Export / Import</h3>
+              <div class="binder-control-actions">
+                <button type="button" id="binder-export">Export Layout</button>
+                <button type="button" id="binder-import">Import Layout</button>
+                <input type="file" id="binder-import-file" accept=".json" hidden />
+              </div>
             </div>
           </div>
-          <div id="binder-tournaments" class="binder-checkbox-list" role="group" aria-label="Events to include"></div>
-        </div>
+        </section>
 
-        <div class="binder-control-group">
-          <div class="binder-control-header">
-            <h3>Archetypes</h3>
-            <div class="binder-control-actions">
-              <input type="search" id="binder-archetype-search" placeholder="Search archetypes..." />
-              <button type="button" id="binder-archetypes-all">Select all</button>
-              <button type="button" id="binder-archetypes-clear">Clear</button>
-            </div>
+        <section class="binder-status" aria-live="polite">
+          <div id="binder-loading" class="binder-loading">Loading binder data...</div>
+          <div id="binder-error" class="binder-error" hidden>
+            <h2>We could not build the binder.</h2>
+            <p id="binder-error-message">Please try again later.</p>
           </div>
-          <div id="binder-archetypes" class="binder-checkbox-list binder-checkbox-list--archetypes" role="group" aria-label="Archetypes to include"></div>
+        </section>
+
+        <section id="binder-content" class="binder-content" hidden></section>
+      </main>
+    </div>
+
+    <template id="binder-card-template">
+      <article class="binder-card" role="listitem">
+        <div class="binder-card__thumb">
+          <img alt="" loading="lazy" />
+          <span class="binder-card__copies" aria-label="Copy"></span>
         </div>
-
-        <div id="binder-stats" class="binder-stats" aria-live="polite"></div>
-        <div class="binder-generate">
-          <button type="button" id="binder-generate" class="binder-generate__button">Generate Binder</button>
-          <p id="binder-pending" class="binder-pending">Select events, then click "Generate Binder".</p>
+        <div class="binder-card__info">
+          <h4 class="binder-card__name"></h4>
+          <p class="binder-card__meta"></p>
         </div>
+      </article>
+    </template>
 
-        <div class="binder-control-group">
-          <div class="binder-control-header">
-            <h3>Export / Import</h3>
-            <div class="binder-control-actions">
-              <button type="button" id="binder-export">Export Layout</button>
-              <button type="button" id="binder-import">Import Layout</button>
-              <input type="file" id="binder-import-file" accept=".json" hidden />
-            </div>
-          </div>
-        </div>
-      </section>
+    <template id="binder-card-placeholder">
+      <div class="binder-card binder-card--placeholder" aria-hidden="true"></div>
+    </template>
 
-      <section class="binder-status" aria-live="polite">
-        <div id="binder-loading" class="binder-loading">Loading binder data...</div>
-        <div id="binder-error" class="binder-error" hidden>
-          <h2>We could not build the binder.</h2>
-          <p id="binder-error-message">Please try again later.</p>
-        </div>
-      </section>
-
-      <section id="binder-content" class="binder-content" hidden></section>
-    </main>
-  </div>
-
-  <template id="binder-card-template">
-    <article class="binder-card" role="listitem">
-      <div class="binder-card__thumb">
-        <img alt="" loading="lazy" />
-        <span class="binder-card__copies" aria-label="Copy"></span>
-      </div>
-      <div class="binder-card__info">
-        <h4 class="binder-card__name"></h4>
-        <p class="binder-card__meta"></p>
-      </div>
-    </article>
-  </template>
-
-  <template id="binder-card-placeholder">
-    <div class="binder-card binder-card--placeholder" aria-hidden="true"></div>
-  </template>
-
-  <script src="/assets/js/tools/metaBinder.js" type="module"></script>
-</body>
+    <script src="/assets/js/tools/metaBinder.js" type="module"></script>
+  </body>
 </html>
-
-

@@ -9,14 +9,14 @@
 #   - Manual dispatch
 # =============================================================================
 
-name: Daily Price Check
+name: (Daily Chore) Daily Price Check
 
 run-name: >-
   ${{ github.event_name == 'schedule' && 'Daily Price Update' || 'Price Update (manual)' }}
 
 on:
   schedule:
-    - cron: '0 12 * * *'  # Daily at 12:00 UTC
+    - cron: '0 12 * * *' # Daily at 12:00 UTC
   workflow_dispatch:
 
 concurrency:
@@ -39,7 +39,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       - name: Install dependencies
         run: pip install requests boto3

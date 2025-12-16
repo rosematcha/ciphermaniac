@@ -914,6 +914,70 @@ function removeFilterRow(filterId) {
 }
 
 /**
+ * Programmatically add a filter for a card by its name.
+ * Used by the Ace Spec warning quick-filter feature.
+ * @param {string} cardName - The name of the card to filter for
+ */
+function addQuickFilterForCard(cardName: string) {
+  if (!cardName) {
+    return;
+  }
+
+  // Find the card in allCards by name
+  const matchingCard = state.allCards.find(card => card.name === cardName);
+  if (!matchingCard) {
+    logger.warn('Quick filter: card not found', { cardName });
+    return;
+  }
+
+  const cardId = buildCardId(matchingCard);
+  if (!cardId) {
+    logger.warn('Quick filter: could not build card ID', { cardName });
+    return;
+  }
+
+  // Check if this card is already being filtered
+  const existingFilter = state.filterRows.find(row => row.cardId === cardId);
+  if (existingFilter) {
+    logger.debug('Quick filter: card already has a filter', { cardName, cardId });
+    return;
+  }
+
+  // Find an empty filter row, or create a new one
+  let targetRow = state.filterRows.find(row => !row.cardId);
+  if (!targetRow && elements.filterRowsContainer) {
+    const newRowEl = createFilterRow();
+    elements.filterRowsContainer.appendChild(newRowEl);
+    targetRow = state.filterRows[state.filterRows.length - 1];
+  }
+
+  if (!targetRow) {
+    logger.warn('Quick filter: could not find or create filter row');
+    return;
+  }
+
+  // Set the card in the dropdown
+  const { cardSelect, operatorSelect } = targetRow.elements;
+  cardSelect.value = cardId;
+
+  // Trigger the filter change to update state and apply
+  handleFilterChange(targetRow.id);
+
+  // For Ace Spec cards, set operator to 'any' if available
+  if (isAceSpec(cardName)) {
+    const options = getOperatorOptionsForCard(cardId);
+    const anyOption = options.find(opt => opt.value === 'any');
+    if (anyOption) {
+      operatorSelect.value = 'any';
+      targetRow.operator = 'any';
+      handleFilterChange(targetRow.id);
+    }
+  }
+
+  logger.info('Quick filter added', { cardName, cardId });
+}
+
+/**
  * Populate card options for a specific filter row, excluding already-selected cards
  * @param filterId
  */
@@ -1569,7 +1633,10 @@ function updateSkeletonSummary(items) {
 
   // Generate warnings
   const displayWarnings = [];
+  let hasAceSpecWarning = false;
   if (aceSpecCount > 1) {
+    hasAceSpecWarning = true;
+    // Plain text version for state storage
     const warningText = `Multiple Ace Spec cards detected: ${aceSpecCards.join(', ')}`;
     displayWarnings.push(warningText);
   }
@@ -1578,12 +1645,57 @@ function updateSkeletonSummary(items) {
     displayWarnings.push(warningText);
   }
 
-  // Update warnings display
+  // Update warnings display with clickable Ace Spec names
   if (displayWarnings.length > 0) {
-    elements.skeletonWarnings.textContent = displayWarnings.join(' \u2022 ');
+    // Clear existing content
+    elements.skeletonWarnings.innerHTML = '';
+
+    if (hasAceSpecWarning) {
+      // Build the Ace Spec warning with clickable card names
+      const aceSpecPrefixSpan = document.createElement('span');
+      aceSpecPrefixSpan.textContent = 'Multiple Ace Spec cards detected: ';
+      elements.skeletonWarnings.appendChild(aceSpecPrefixSpan);
+
+      aceSpecCards.forEach((cardName, index) => {
+        const link = document.createElement('button');
+        link.type = 'button';
+        link.className = 'ace-spec-quick-filter';
+        link.textContent = cardName;
+        link.title = `Filter decks with ${cardName}`;
+        link.addEventListener('click', (event) => {
+          event.preventDefault();
+          addQuickFilterForCard(cardName);
+        });
+        elements.skeletonWarnings.appendChild(link);
+
+        // Add separator between card names
+        if (index < aceSpecCards.length - 1) {
+          const separator = document.createElement('span');
+          separator.textContent = ', ';
+          elements.skeletonWarnings.appendChild(separator);
+        }
+      });
+
+      // If there are more warnings, add bullet separator
+      if (displayWarnings.length > 1) {
+        const bulletSeparator = document.createElement('span');
+        bulletSeparator.textContent = ' \u2022 ';
+        elements.skeletonWarnings.appendChild(bulletSeparator);
+
+        // Add remaining warnings as plain text
+        const otherWarnings = displayWarnings.slice(1).join(' \u2022 ');
+        const otherWarningsSpan = document.createElement('span');
+        otherWarningsSpan.textContent = otherWarnings;
+        elements.skeletonWarnings.appendChild(otherWarningsSpan);
+      }
+    } else {
+      // No Ace Spec warning, just plain text
+      elements.skeletonWarnings.textContent = displayWarnings.join(' \u2022 ');
+    }
+
     elements.skeletonWarnings.hidden = false;
   } else {
-    elements.skeletonWarnings.textContent = '';
+    elements.skeletonWarnings.innerHTML = '';
     elements.skeletonWarnings.hidden = true;
   }
 

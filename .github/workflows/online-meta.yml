@@ -11,7 +11,7 @@
 # Downstream: Triggers trends.yml workflow on completion
 # =============================================================================
 
-name: Online Meta Report
+name: (Daily Chore) Online Meta Report
 
 run-name: >-
   ${{ github.event_name == 'schedule' && 'Daily Meta Report' ||
@@ -20,7 +20,7 @@ run-name: >-
 
 on:
   schedule:
-    - cron: '0 12 * * *'  # Daily at 12:00 UTC
+    - cron: '0 12 * * *' # Daily at 12:00 UTC
   workflow_dispatch:
     inputs:
       generate_master:
@@ -93,4 +93,3 @@ jobs:
           echo "| Archetypes | ${{ inputs.generate_archetypes != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Include/Exclude | ${{ inputs.generate_include_exclude != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Decks | ${{ inputs.generate_decks != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
-

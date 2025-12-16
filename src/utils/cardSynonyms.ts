@@ -226,6 +226,3 @@ export async function getVariantImageCandidates(cardIdentifier: string, useSm: b
 }
 
 // Pre-load synonym data on module import for better performance
-loadSynonymData().catch(() => {
-    // Silently continue - synonym resolution will be disabled
-});
