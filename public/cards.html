@@ -1,175 +1,289 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ciphermaniac</title>
-  <!-- Preload critical font to reduce layout shift -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/style.css" />
-  <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
-</head>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ciphermaniac</title>
+    <!-- Preload critical font to reduce layout shift -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/style.css" />
+    <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
+    <!-- Preload critical JS modules for faster page load -->
+    <link rel="modulepreload" href="/assets/js/main.js" />
+    <link rel="modulepreload" href="/assets/js/ui.js" />
+  </head>
   <body>
-
-  <div class="toolbar">
-    <div class="toolbar-inner">
-      <div class="controls">
-  <input id="search" type="search" placeholder="Search cards…" aria-label="Search cards" autocomplete="off" />
-        <button id="filtersToggle" class="filters-toggle" type="button" aria-expanded="false" aria-controls="filters" data-cm-filters-owner="main">Filters</button>
-        <div id="filters" class="filters" aria-hidden="true" data-cm-filters-owner="main">
-          <div class="filter-field filter-dropdown filter-field--archetype" data-filter="archetypes">
-            <span class="filter-label" id="archetype-label" data-label-singular="Archetype" data-label-plural="Archetypes">Archetype</span>
-            <div class="filter-combobox" role="group" aria-labelledby="archetype-label">
-              <button id="archetype-trigger" class="filter-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="archetype-menu">
-                <span class="filter-value" id="archetype-summary">All archetypes</span>
-              </button>
-              <div id="archetype-chips" class="filter-chip-list" role="list" aria-live="polite" aria-relevant="additions removals" hidden></div>
-              <button id="archetype-add" class="filter-add-btn" type="button" aria-label="Add another archetype" hidden>Add another</button>
-            </div>
-            <div id="archetype-menu" class="filter-menu" role="dialog" aria-label="Select archetypes" hidden>
-              <div class="filter-menu-header">
-                <input id="archetype-search" type="search" placeholder="Search archetypes" aria-label="Search archetypes" />
+    <div class="toolbar">
+      <div class="toolbar-inner">
+        <div class="controls">
+          <input id="search" type="search" placeholder="Search cards…" aria-label="Search cards" autocomplete="off" />
+          <button
+            id="filtersToggle"
+            class="filters-toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="filters"
+            data-cm-filters-owner="main"
+          >
+            Filters
+          </button>
+          <div id="filters" class="filters" aria-hidden="true" data-cm-filters-owner="main">
+            <div class="filter-field filter-dropdown filter-field--archetype" data-filter="archetypes">
+              <span
+                class="filter-label"
+                id="archetype-label"
+                data-label-singular="Archetype"
+                data-label-plural="Archetypes"
+                >Archetype</span
+              >
+              <div class="filter-combobox" role="group" aria-labelledby="archetype-label">
+                <button
+                  id="archetype-trigger"
+                  class="filter-trigger"
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-controls="archetype-menu"
+                >
+                  <span class="filter-value" id="archetype-summary">All archetypes</span>
+                </button>
+                <div
+                  id="archetype-chips"
+                  class="filter-chip-list"
+                  role="list"
+                  aria-live="polite"
+                  aria-relevant="additions removals"
+                  hidden
+                ></div>
+                <button
+                  id="archetype-add"
+                  class="filter-add-btn"
+                  type="button"
+                  aria-label="Add another archetype"
+                  hidden
+                >
+                  Add another
+                </button>
               </div>
-              <div id="archetype-options" class="filter-menu-list" role="listbox" aria-multiselectable="true" aria-labelledby="archetype-label">
-                <!-- populated dynamically -->
-              </div>
-              <div class="filter-menu-actions" data-multi-only>
-                <button type="button" class="filter-action" data-action="clear">Clear</button>
-                <button type="button" class="filter-action filter-action-primary" data-action="close">Done</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="filter-field filter-field--card-type">
-            <span class="filter-label">Card type</span>
-            <select id="card-type" title="Filter by card type" aria-label="Filter by card type">
-              <option value="__all__">All card types</option>
-              <option value="pokemon">Pokemon</option>
-              <option value="trainer">Trainer</option>
-              <option value="energy">Energy</option>
-            </select>
-          </div>
-
-          <div class="filter-field filter-field--sort">
-            <span class="filter-label">Sort</span>
-            <select id="sort" aria-label="Sort order">
-              <option value="percent-desc">Sort: most used</option>
-              <option value="percent-asc">Sort: least used</option>
-              <option value="alpha-asc">Sort: A-Z</option>
-              <option value="alpha-desc">Sort: Z-A</option>
-              <option value="price-desc">Sort: highest price</option>
-              <option value="price-asc">Sort: lowest price</option>
-            </select>
-          </div>
-
-          <div class="filter-field filter-field--success">
-            <span class="filter-label">Finish</span>
-            <select id="success-filter" aria-label="Filter by placement">
-              <option value="all">All decks</option>
-              <option value="winner">Winners</option>
-              <option value="top2">Finals</option>
-              <option value="top4">Top 4</option>
-              <option value="top8">Top 8</option>
-              <option value="top16">Top 16</option>
-              <option value="top10">Top 10%</option>
-              <option value="top25">Top 25%</option>
-              <option value="top50">Top 50%</option>
-            </select>
-          </div>
-
-          <div class="filter-field filter-dropdown filter-field--tournaments" data-filter="tournaments">
-            <span class="filter-label" id="tournament-label" data-label-singular="Tournament" data-label-plural="Tournaments">Tournament</span>
-            <div class="filter-combobox" role="group" aria-labelledby="tournament-label">
-              <button id="tournament-trigger" class="filter-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="tournament-menu">
-                <span class="filter-value" id="tournament-summary">Latest event</span>
-              </button>
-              <div id="tournament-chips" class="filter-chip-list" role="list" aria-live="polite" aria-relevant="additions removals" hidden></div>
-              <button id="tournament-add" class="filter-add-btn" type="button" aria-label="Add another tournament" hidden>Add another</button>
-            </div>
-            <div id="tournament-menu" class="filter-menu" role="dialog" aria-label="Select tournaments" hidden>
-              <div class="filter-menu-header">
-                <input id="tournament-search" type="search" placeholder="Search tournaments" aria-label="Search tournaments" />
-              </div>
-              <div id="tournament-options" class="filter-menu-list" role="listbox" aria-multiselectable="true" aria-labelledby="tournament-label">
-                <!-- populated dynamically -->
-              </div>
-              <div class="filter-menu-actions" data-multi-only>
-                <button type="button" class="filter-action" data-action="select-all">Select all</button>
-                <button type="button" class="filter-action" data-action="clear">Clear</button>
-                <button type="button" class="filter-action filter-action-primary" data-action="close">Done</button>
+              <div id="archetype-menu" class="filter-menu" role="dialog" aria-label="Select archetypes" hidden>
+                <div class="filter-menu-header">
+                  <input
+                    id="archetype-search"
+                    type="search"
+                    placeholder="Search archetypes"
+                    aria-label="Search archetypes"
+                  />
+                </div>
+                <div
+                  id="archetype-options"
+                  class="filter-menu-list"
+                  role="listbox"
+                  aria-multiselectable="true"
+                  aria-labelledby="archetype-label"
+                >
+                  <!-- populated dynamically -->
+                </div>
+                <div class="filter-menu-actions" data-multi-only>
+                  <button type="button" class="filter-action" data-action="clear">Clear</button>
+                  <button type="button" class="filter-action filter-action-primary" data-action="close">Done</button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="filter-field filter-dropdown filter-field--set" data-filter="sets">
-            <span class="filter-label" id="set-label" data-label-singular="Set" data-label-plural="Sets">Set</span>
-            <div class="filter-combobox" role="group" aria-labelledby="set-label">
-              <button id="set-trigger" class="filter-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="set-menu">
-                <span class="filter-value" id="set-summary">All sets</span>
-              </button>
-              <div id="set-chips" class="filter-chip-list" role="list" aria-live="polite" aria-relevant="additions removals" hidden></div>
-              <button id="set-add" class="filter-add-btn" type="button" aria-label="Add another set" hidden>Add another</button>
+            <div class="filter-field filter-field--card-type">
+              <span class="filter-label">Card type</span>
+              <select id="card-type" title="Filter by card type" aria-label="Filter by card type">
+                <option value="__all__">All card types</option>
+                <option value="pokemon">Pokemon</option>
+                <option value="trainer">Trainer</option>
+                <option value="energy">Energy</option>
+              </select>
             </div>
-            <div id="set-menu" class="filter-menu" role="dialog" aria-label="Filter by set" hidden>
-              <div class="filter-menu-header">
-                <input id="set-search" type="search" placeholder="Search sets" aria-label="Search sets" />
+
+            <div class="filter-field filter-field--sort">
+              <span class="filter-label">Sort</span>
+              <select id="sort" aria-label="Sort order">
+                <option value="percent-desc">Sort: most used</option>
+                <option value="percent-asc">Sort: least used</option>
+                <option value="alpha-asc">Sort: A-Z</option>
+                <option value="alpha-desc">Sort: Z-A</option>
+                <option value="price-desc">Sort: highest price</option>
+                <option value="price-asc">Sort: lowest price</option>
+              </select>
+            </div>
+
+            <div class="filter-field filter-field--success">
+              <span class="filter-label">Finish</span>
+              <select id="success-filter" aria-label="Filter by placement">
+                <option value="all">All decks</option>
+                <option value="winner">Winners</option>
+                <option value="top2">Finals</option>
+                <option value="top4">Top 4</option>
+                <option value="top8">Top 8</option>
+                <option value="top16">Top 16</option>
+                <option value="top10">Top 10%</option>
+                <option value="top25">Top 25%</option>
+                <option value="top50">Top 50%</option>
+              </select>
+            </div>
+
+            <div class="filter-field filter-dropdown filter-field--tournaments" data-filter="tournaments">
+              <span
+                class="filter-label"
+                id="tournament-label"
+                data-label-singular="Tournament"
+                data-label-plural="Tournaments"
+                >Tournament</span
+              >
+              <div class="filter-combobox" role="group" aria-labelledby="tournament-label">
+                <button
+                  id="tournament-trigger"
+                  class="filter-trigger"
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-controls="tournament-menu"
+                >
+                  <span class="filter-value" id="tournament-summary">Latest event</span>
+                </button>
+                <div
+                  id="tournament-chips"
+                  class="filter-chip-list"
+                  role="list"
+                  aria-live="polite"
+                  aria-relevant="additions removals"
+                  hidden
+                ></div>
+                <button
+                  id="tournament-add"
+                  class="filter-add-btn"
+                  type="button"
+                  aria-label="Add another tournament"
+                  hidden
+                >
+                  Add another
+                </button>
               </div>
-              <div id="set-options" class="filter-menu-list" role="listbox" aria-multiselectable="true" aria-labelledby="set-label">
-                <!-- populated dynamically -->
-              </div>
-              <div class="filter-menu-actions" data-multi-only>
-                <button type="button" class="filter-action" data-action="clear">Clear sets</button>
-                <button type="button" class="filter-action filter-action-primary" data-action="close">Done</button>
+              <div id="tournament-menu" class="filter-menu" role="dialog" aria-label="Select tournaments" hidden>
+                <div class="filter-menu-header">
+                  <input
+                    id="tournament-search"
+                    type="search"
+                    placeholder="Search tournaments"
+                    aria-label="Search tournaments"
+                  />
+                </div>
+                <div
+                  id="tournament-options"
+                  class="filter-menu-list"
+                  role="listbox"
+                  aria-multiselectable="true"
+                  aria-labelledby="tournament-label"
+                >
+                  <!-- populated dynamically -->
+                </div>
+                <div class="filter-menu-actions" data-multi-only>
+                  <button type="button" class="filter-action" data-action="select-all">Select all</button>
+                  <button type="button" class="filter-action" data-action="clear">Clear</button>
+                  <button type="button" class="filter-action filter-action-primary" data-action="close">Done</button>
+                </div>
               </div>
             </div>
-            <input id="set-filter-data" type="hidden" value="">
+
+            <div class="filter-field filter-dropdown filter-field--set" data-filter="sets">
+              <span class="filter-label" id="set-label" data-label-singular="Set" data-label-plural="Sets">Set</span>
+              <div class="filter-combobox" role="group" aria-labelledby="set-label">
+                <button
+                  id="set-trigger"
+                  class="filter-trigger"
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-controls="set-menu"
+                >
+                  <span class="filter-value" id="set-summary">All sets</span>
+                </button>
+                <div
+                  id="set-chips"
+                  class="filter-chip-list"
+                  role="list"
+                  aria-live="polite"
+                  aria-relevant="additions removals"
+                  hidden
+                ></div>
+                <button id="set-add" class="filter-add-btn" type="button" aria-label="Add another set" hidden>
+                  Add another
+                </button>
+              </div>
+              <div id="set-menu" class="filter-menu" role="dialog" aria-label="Filter by set" hidden>
+                <div class="filter-menu-header">
+                  <input id="set-search" type="search" placeholder="Search sets" aria-label="Search sets" />
+                </div>
+                <div
+                  id="set-options"
+                  class="filter-menu-list"
+                  role="listbox"
+                  aria-multiselectable="true"
+                  aria-labelledby="set-label"
+                >
+                  <!-- populated dynamically -->
+                </div>
+                <div class="filter-menu-actions" data-multi-only>
+                  <button type="button" class="filter-action" data-action="clear">Clear sets</button>
+                  <button type="button" class="filter-action filter-action-primary" data-action="close">Done</button>
+                </div>
+              </div>
+              <input id="set-filter-data" type="hidden" value="" />
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-      <main>
-        <section id="grid" class="grid" aria-live="polite" role="grid" aria-label="Card usage grid">
-          <!-- Skeleton will be generated by JS with proper responsive dimensions -->
-        </section>
-      </main>
+    <main>
+      <section id="grid" class="grid" aria-live="polite" role="grid" aria-label="Card usage grid">
+        <!-- Skeleton will be generated by JS with proper responsive dimensions -->
+      </section>
+    </main>
 
-  <template id="card-template">
-    <article class="card" tabindex="0">
-      <div class="thumb">
-        <img alt="" />
-        <div class="overlay">
-          <div class="hist" aria-label="Count distribution per copies">
-            <!-- columns inserted by JS -->
-          </div>
-          <div class="usagebar" title="Usage %">
-            <div class="bar"></div>
-            <span class="pct"></span>
+    <template id="card-template">
+      <article class="card" tabindex="0">
+        <div class="thumb">
+          <img alt="" />
+          <div class="overlay">
+            <div class="hist" aria-label="Count distribution per copies">
+              <!-- columns inserted by JS -->
+            </div>
+            <div class="usagebar" title="Usage %">
+              <div class="bar"></div>
+              <span class="pct"></span>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="titleRow">
-        <h3 class="name"></h3>
-        <div class="counts"></div>
-      </div>
-    </article>
-  </template>
+        <div class="titleRow">
+          <h3 class="name"></h3>
+          <div class="counts"></div>
+        </div>
+      </article>
+    </template>
 
-  <script type="module">
-    import { createHeader } from '/assets/js/components/header.js';
-    import { createFooter } from '/assets/js/components/footer.js';
-    
-    // Insert header and footer
-    const header = createHeader({ currentPage: 'cards' });
-    const footer = createFooter();
-    
-    document.body.insertAdjacentElement('afterbegin', header);
-    document.body.insertAdjacentElement('beforeend', footer);
-  </script>
-  <script src="/assets/js/main.js" type="module"></script>
-  <script src="/assets/js/ui.js" type="module"></script>
-</body>
+    <script type="module">
+      import { createHeader } from '/assets/js/components/header.js';
+      import { createFooter } from '/assets/js/components/footer.js';
+
+      // Insert header and footer
+      const header = createHeader({ currentPage: 'cards' });
+      const footer = createFooter();
+
+      document.body.insertAdjacentElement('afterbegin', header);
+      document.body.insertAdjacentElement('beforeend', footer);
+    </script>
+    <script src="/assets/js/main.js" type="module"></script>
+    <script src="/assets/js/ui.js" type="module"></script>
+  </body>
 </html>

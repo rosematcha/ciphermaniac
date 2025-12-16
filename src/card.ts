@@ -1,24 +1,24 @@
 // Entry for per-card page: loads meta-share over tournaments and common decks
 import './utils/buildVersion.js';
 import {
-    ONLINE_META_NAME,
-    fetchArchetypeReport,
-    fetchArchetypesList,
-    fetchCardIndex,
-    fetchReport,
-    fetchTop8ArchetypesList,
-    fetchTournamentsList,
-    fetchTrendReport
+  ONLINE_META_NAME,
+  fetchArchetypeReport,
+  fetchArchetypesList,
+  fetchCardIndex,
+  fetchReport,
+  fetchTop8ArchetypesList,
+  fetchTournamentsList,
+  fetchTrendReport
 } from './api.js';
 import { parseReport } from './parse.js';
 import { buildThumbCandidates } from './thumbs.js';
 import { baseToLabel, pickArchetype } from './selectArchetype.js';
 import { normalizeCardRouteOnLoad } from './router.js';
 import {
-    createChartSkeleton,
-    createEventsTableSkeleton,
-    createHistogramSkeleton,
-    showSkeleton
+  createChartSkeleton,
+  createEventsTableSkeleton,
+  createHistogramSkeleton,
+  showSkeleton
 } from './components/placeholders.js';
 import { cleanupOrphanedProgressDisplay, createProgressIndicator, processInParallel } from './utils/parallelLoader.js';
 import { logger, setupGlobalErrorHandler } from './utils/errorHandler.js';
@@ -29,12 +29,12 @@ import { findCard, renderCardPrice, renderCardSets } from './card/data.js';
 import { renderChart, renderCopiesHistogram, renderEvents } from './card/charts.js';
 import { getCanonicalCard, getCardVariants, getVariantImageCandidates } from './utils/cardSynonyms.js';
 import {
-    buildCardPath,
-    describeSlug,
-    makeCardSlug,
-    normalizeCardNumber,
-    parseCardRoute,
-    resolveCardSlug
+  buildCardPath,
+  describeSlug,
+  makeCardSlug,
+  normalizeCardNumber,
+  parseCardRoute,
+  resolveCardSlug
 } from './card/routing.js';
 import { normalizeSetCode } from './utils/filterState.js';
 
@@ -76,236 +76,257 @@ let eventsSection: HTMLElement | null = null;
 let copiesSection: HTMLElement | null = null;
 type VariantInfo = { set?: string; number?: string | number };
 interface CardImageModalOpenOptions {
-    src: string | null;
-    fallback?: string | null;
-    alt?: string | null;
-    caption?: string | null;
-    trigger?: HTMLElement | null;
+  src: string | null;
+  fallback?: string | null;
+  alt?: string | null;
+  caption?: string | null;
+  trigger?: HTMLElement | null;
 }
 interface CardImageModalController {
-    open(options: CardImageModalOpenOptions): void;
-    close(): void;
+  open(options: CardImageModalOpenOptions): void;
+  close(): void;
 }
 const FOCUSABLE_SELECTOR =
-    'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1")]';
-const LIMITLESS_SIZE_PATTERN = /(https:\/\/limitlesstcg\.nyc3\.cdn\.digitaloceanspaces\.com\/tpci\/[^/]+\/[^_]+_\d{3}[A-Z0-9]*_R_[A-Z]{2})_(XS|SM)\.png$/i;
+  'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1")]';
+const LIMITLESS_SIZE_PATTERN =
+  /(https:\/\/limitlesstcg\.nyc3\.cdn\.digitaloceanspaces\.com\/tpci\/[^/]+\/[^_]+_\d{3}[A-Z0-9]*_R_[A-Z]{2})_(XS|SM)\.png$/i;
 let cardImageModalController: CardImageModalController | null = null;
 
 function refreshDomRefs() {
-    cardTitleEl = document.getElementById('card-title');
-    metaSection = document.getElementById('card-meta');
-    decksSection = document.getElementById('card-decks');
-    eventsSection = document.getElementById('card-events');
-    copiesSection = document.getElementById('card-copies');
+  cardTitleEl = document.getElementById('card-title');
+  metaSection = document.getElementById('card-meta');
+  decksSection = document.getElementById('card-decks');
+  eventsSection = document.getElementById('card-events');
+  copiesSection = document.getElementById('card-copies');
 }
 
 function ensureCardMetaStructure(): boolean {
-    const meta = document.getElementById('card-meta');
-    if (!meta) {
-        return false;
-    }
+  const meta = document.getElementById('card-meta');
+  if (!meta) {
+    return false;
+  }
 
-    const hasHeader = Boolean(meta.querySelector('.header-title'));
-    const hasHero = Boolean(meta.querySelector('#card-hero'));
-    const hasCenter = Boolean(meta.querySelector('#card-center'));
-    const hasChart = Boolean(document.getElementById('card-chart'));
-    const hasCopies = Boolean(document.getElementById('card-copies'));
-    const hasEvents = Boolean(document.getElementById('card-events'));
+  const hasHeader = Boolean(meta.querySelector('.header-title'));
+  const hasHero = Boolean(meta.querySelector('#card-hero'));
+  const hasCenter = Boolean(meta.querySelector('#card-center'));
+  const hasChart = Boolean(document.getElementById('card-chart'));
+  const hasCopies = Boolean(document.getElementById('card-copies'));
+  const hasEvents = Boolean(document.getElementById('card-events'));
 
-    if (hasHeader && hasHero && hasCenter && hasChart && hasCopies && hasEvents) {
-        return false;
-    }
+  if (hasHeader && hasHero && hasCenter && hasChart && hasCopies && hasEvents) {
+    return false;
+  }
 
-    meta.innerHTML = CARD_META_TEMPLATE;
-    refreshDomRefs();
-    return true;
+  meta.innerHTML = CARD_META_TEMPLATE;
+  refreshDomRefs();
+  return true;
 }
 
 function deriveLgUrlFromCandidate(url: string | null | undefined): string | null {
-    if (!url) {
-        return null;
-    }
-    const trimmed = String(url).trim();
-    if (!trimmed) {
-        return null;
-    }
-    const match = trimmed.match(LIMITLESS_SIZE_PATTERN);
-    if (match) {
-        return `${match[1]}_LG.png`;
-    }
+  if (!url) {
     return null;
+  }
+  const trimmed = String(url).trim();
+  if (!trimmed) {
+    return null;
+  }
+  const match = trimmed.match(LIMITLESS_SIZE_PATTERN);
+  if (match) {
+    return `${match[1]}_LG.png`;
+  }
+  return null;
 }
 
 function buildLgUrlFromVariant(variant: VariantInfo | undefined): string | null {
-    if (!variant || !variant.set || !variant.number) {
-        return null;
-    }
-    const setCode = normalizeSetCode(variant.set);
-    const normalizedNumber = normalizeCardNumber(variant.number);
-    if (!setCode || !normalizedNumber) {
-        return null;
-    }
-    const padded = normalizedNumber.padStart(3, '0');
-    return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${setCode}/${setCode}_${padded}_R_EN_LG.png`;
+  if (!variant || !variant.set || !variant.number) {
+    return null;
+  }
+  const setCode = normalizeSetCode(variant.set);
+  const normalizedNumber = normalizeCardNumber(variant.number);
+  if (!setCode || !normalizedNumber) {
+    return null;
+  }
+  const padded = normalizedNumber.padStart(3, '0');
+  return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${setCode}/${setCode}_${padded}_R_EN_LG.png`;
 }
 
 function ensureCardImageModal(): CardImageModalController | null {
-    if (cardImageModalController) {
-        return cardImageModalController;
+  if (cardImageModalController) {
+    return cardImageModalController;
+  }
+
+  // Lazy-create modal HTML on first use to optimize initial page load
+  let container = document.getElementById('card-image-modal');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'card-image-modal';
+    container.className = 'card-image-modal';
+    container.setAttribute('aria-hidden', 'true');
+    container.setAttribute('role', 'dialog');
+    container.setAttribute('aria-modal', 'true');
+    container.setAttribute('aria-labelledby', 'card-image-modal-caption');
+    container.innerHTML = `
+            <div class="card-image-modal__backdrop" data-card-modal-close="true"></div>
+            <div class="card-image-modal__dialog" role="document">
+                <button type="button" class="card-image-modal__close" aria-label="Close full-size image" data-card-modal-close="true">&times;</button>
+                <div class="card-image-modal__image-wrap">
+                    <img id="card-image-modal-img" data-card-modal-image alt="" decoding="async" />
+                </div>
+                <p id="card-image-modal-caption" class="card-image-modal__caption" data-card-modal-caption>Full-size card image</p>
+            </div>
+        `;
+    document.body.appendChild(container);
+  }
+
+  const dialog = container.querySelector('.card-image-modal__dialog') as HTMLElement | null;
+  const image = container.querySelector('[data-card-modal-image]') as HTMLImageElement | null;
+  const caption = container.querySelector('[data-card-modal-caption]') as HTMLElement | null;
+  const closeElements = Array.from(container.querySelectorAll('[data-card-modal-close]')) as HTMLElement[];
+
+  if (!dialog || !image) {
+    return null;
+  }
+
+  let previouslyFocused: HTMLElement | null = null;
+  let pendingFallback: string | null = null;
+  let focusableElements: HTMLElement[] = [];
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      api.close();
+      return;
     }
 
-    const container = document.getElementById('card-image-modal');
-    const dialog = container?.querySelector('.card-image-modal__dialog') as HTMLElement | null;
-    const image = container?.querySelector('[data-card-modal-image]') as HTMLImageElement | null;
-    const caption = container?.querySelector('[data-card-modal-caption]') as HTMLElement | null;
-    const closeElements = container
-        ? (Array.from(container.querySelectorAll('[data-card-modal-close]')) as HTMLElement[])
-        : [];
-
-    if (!container || !dialog || !image) {
-        return null;
+    if (event.key === 'Tab' && focusableElements.length > 0) {
+      const first = focusableElements[0];
+      const last = focusableElements[focusableElements.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     }
+  };
 
-    let previouslyFocused: HTMLElement | null = null;
-    let pendingFallback: string | null = null;
-    let focusableElements: HTMLElement[] = [];
+  const handleImageLoad = () => {
+    container.classList.remove('is-loading');
+    container.classList.remove('has-error');
+  };
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-        if (event.key === 'Escape') {
-            event.preventDefault();
-            api.close();
-            return;
-        }
+  const handleImageError = () => {
+    if (pendingFallback) {
+      const fallbackUrl = pendingFallback;
+      pendingFallback = null;
+      image.src = fallbackUrl;
+      return;
+    }
+    container.classList.add('has-error');
+    container.classList.remove('is-loading');
+  };
 
-        if (event.key === 'Tab' && focusableElements.length > 0) {
-            const first = focusableElements[0];
-            const last = focusableElements[focusableElements.length - 1];
-            if (event.shiftKey && document.activeElement === first) {
-                event.preventDefault();
-                last.focus();
-            } else if (!event.shiftKey && document.activeElement === last) {
-                event.preventDefault();
-                first.focus();
-            }
-        }
-    };
+  image.addEventListener('load', handleImageLoad);
+  image.addEventListener('error', handleImageError);
 
-    const handleImageLoad = () => {
-        container.classList.remove('is-loading');
-        container.classList.remove('has-error');
-    };
+  const api: CardImageModalController = {
+    open(options: CardImageModalOpenOptions) {
+      if (!options || !options.src) {
+        return;
+      }
 
-    const handleImageError = () => {
-        if (pendingFallback) {
-            const fallbackUrl = pendingFallback;
-            pendingFallback = null;
-            image.src = fallbackUrl;
-            return;
-        }
-        container.classList.add('has-error');
-        container.classList.remove('is-loading');
-    };
+      pendingFallback = options.fallback && options.fallback !== options.src ? options.fallback : null;
+      previouslyFocused = options.trigger || (document.activeElement as HTMLElement | null);
+      container.classList.add('is-visible', 'is-loading');
+      container.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('card-image-modal-open');
+      image.alt = options.alt || 'Full-size card image';
+      if (caption) {
+        caption.textContent = options.caption || image.alt;
+      }
+      image.src = options.src;
+      focusableElements = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(el => {
+        return !el.hasAttribute('disabled') && el.getAttribute('tabindex') !== '-1';
+      });
+      const focusTarget = focusableElements[0] || dialog;
+      requestAnimationFrame(() => {
+        focusTarget?.focus();
+      });
+      document.addEventListener('keydown', handleKeyDown);
+    },
+    close() {
+      container.classList.remove('is-visible', 'is-loading', 'has-error');
+      container.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('card-image-modal-open');
+      pendingFallback = null;
+      focusableElements = [];
+      image.removeAttribute('src');
+      document.removeEventListener('keydown', handleKeyDown);
+      if (previouslyFocused) {
+        previouslyFocused.focus();
+        previouslyFocused = null;
+      }
+    }
+  };
 
-    image.addEventListener('load', handleImageLoad);
-    image.addEventListener('error', handleImageError);
+  closeElements.forEach(el => {
+    el.addEventListener('click', () => api.close());
+  });
 
-    const api: CardImageModalController = {
-        open(options: CardImageModalOpenOptions) {
-            if (!options || !options.src) {
-                return;
-            }
+  container.addEventListener('click', event => {
+    const target = event.target as HTMLElement | null;
+    if (!target) {
+      return;
+    }
+    if (target.dataset.cardModalClose === 'true' || target === container) {
+      api.close();
+    }
+  });
 
-            pendingFallback = options.fallback && options.fallback !== options.src ? options.fallback : null;
-            previouslyFocused = options.trigger || (document.activeElement as HTMLElement | null);
-            container.classList.add('is-visible', 'is-loading');
-            container.setAttribute('aria-hidden', 'false');
-            document.body.classList.add('card-image-modal-open');
-            image.alt = options.alt || 'Full-size card image';
-            if (caption) {
-                caption.textContent = options.caption || image.alt;
-            }
-            image.src = options.src;
-            focusableElements = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(el => {
-                return !el.hasAttribute('disabled') && el.getAttribute('tabindex') !== '-1';
-            });
-            const focusTarget = focusableElements[0] || dialog;
-            requestAnimationFrame(() => {
-                focusTarget?.focus();
-            });
-            document.addEventListener('keydown', handleKeyDown);
-        },
-        close() {
-            container.classList.remove('is-visible', 'is-loading', 'has-error');
-            container.setAttribute('aria-hidden', 'true');
-            document.body.classList.remove('card-image-modal-open');
-            pendingFallback = null;
-            focusableElements = [];
-            image.removeAttribute('src');
-            document.removeEventListener('keydown', handleKeyDown);
-            if (previouslyFocused) {
-                previouslyFocused.focus();
-                previouslyFocused = null;
-            }
-        }
-    };
-
-    closeElements.forEach(el => {
-        el.addEventListener('click', () => api.close());
-    });
-
-    container.addEventListener('click', event => {
-        const target = event.target as HTMLElement | null;
-        if (!target) {
-            return;
-        }
-        if (target.dataset.cardModalClose === 'true' || target === container) {
-            api.close();
-        }
-    });
-
-    return (cardImageModalController = api);
+  return (cardImageModalController = api);
 }
 
 function enableHeroImageModal(trigger: HTMLElement, image: HTMLImageElement, variantLgUrl: string | null) {
-    if (!trigger || !image) {
-        return;
+  if (!trigger || !image) {
+    return;
+  }
+
+  trigger.classList.add('card-hero__trigger');
+  trigger.tabIndex = 0;
+  trigger.setAttribute('role', 'button');
+  trigger.setAttribute('aria-label', 'Open high-resolution card image');
+
+  const handleActivate = () => {
+    const controller = ensureCardImageModal();
+    if (!controller) {
+      return;
     }
 
-    trigger.classList.add('card-hero__trigger');
-    trigger.tabIndex = 0;
-    trigger.setAttribute('role', 'button');
-    trigger.setAttribute('aria-label', 'Open high-resolution card image');
-
-    const handleActivate = () => {
-        const controller = ensureCardImageModal();
-        if (!controller) {
-            return;
-        }
-
-        const fallback = image.currentSrc || image.src;
-        const altText = image.alt || cardName || 'Card image';
-        const hiRes = (image as any)._fullResUrl || variantLgUrl || fallback;
-        controller.open({
-            src: hiRes,
-            fallback,
-            alt: altText,
-            caption: cardName ? `${cardName} — Full-size view` : altText,
-            trigger
-        });
-    };
-
-    trigger.addEventListener('click', handleActivate);
-    trigger.addEventListener('keydown', event => {
-        if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            handleActivate();
-        }
+    const fallback = image.currentSrc || image.src;
+    const altText = image.alt || cardName || 'Card image';
+    const hiRes = (image as any)._fullResUrl || variantLgUrl || fallback;
+    controller.open({
+      src: hiRes,
+      fallback,
+      alt: altText,
+      caption: cardName ? `${cardName} — Full-size view` : altText,
+      trigger
     });
+  };
+
+  trigger.addEventListener('click', handleActivate);
+  trigger.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleActivate();
+    }
+  });
 }
 
 refreshDomRefs();
 if (ensureCardMetaStructure()) {
-    refreshDomRefs();
+  refreshDomRefs();
 }
 
 const __ROUTE_REDIRECTING = normalizeCardRouteOnLoad();
@@ -317,7 +338,7 @@ let cardName: string | null = null;
 
 const backLink = document.getElementById('back-link') as HTMLAnchorElement | null;
 if (backLink) {
-    backLink.href = '/';
+  backLink.href = '/';
 }
 const analysisSel = document.getElementById('analysis-event') as HTMLSelectElement | null;
 const analysisTable = document.getElementById('analysis-table') as HTMLElement | null;
@@ -331,141 +352,141 @@ let suggestionsBox: HTMLElement | null = null;
 // Link to grid prefilled with search will be updated after card resolution
 
 function updateCardTitle(displayName: string | null, slugHint?: string) {
-    if (!cardTitleEl) {
-        return;
-    }
+  if (!cardTitleEl) {
+    return;
+  }
 
-    cardTitleEl.innerHTML = '';
+  cardTitleEl.innerHTML = '';
 
-    if (!displayName && !slugHint) {
-        cardTitleEl.textContent = 'Card Details';
-        document.title = 'Card Details – Ciphermaniac';
-        return;
-    }
+  if (!displayName && !slugHint) {
+    cardTitleEl.textContent = 'Card Details';
+    document.title = 'Card Details – Ciphermaniac';
+    return;
+  }
 
-    const label = displayName || slugHint || 'Card Details';
-    const parsed = displayName ? parseDisplayName(displayName) : null;
-    const resolvedName = parsed?.name || label;
-    const setId = parsed?.setId || '';
+  const label = displayName || slugHint || 'Card Details';
+  const parsed = displayName ? parseDisplayName(displayName) : null;
+  const resolvedName = parsed?.name || label;
+  const setId = parsed?.setId || '';
 
-    const nameSpan = document.createElement('span');
-    nameSpan.textContent = resolvedName;
-    cardTitleEl.appendChild(nameSpan);
+  const nameSpan = document.createElement('span');
+  nameSpan.textContent = resolvedName;
+  cardTitleEl.appendChild(nameSpan);
 
-    if (setId) {
-        const setSpan = document.createElement('span');
-        setSpan.className = 'card-title-set';
-        setSpan.textContent = setId;
-        cardTitleEl.appendChild(setSpan);
-    }
+  if (setId) {
+    const setSpan = document.createElement('span');
+    setSpan.className = 'card-title-set';
+    setSpan.textContent = setId;
+    cardTitleEl.appendChild(setSpan);
+  }
 
-    document.title = `${resolvedName}${setId ? ` ${setId}` : ''} – Ciphermaniac`;
+  document.title = `${resolvedName}${setId ? ` ${setId}` : ''} – Ciphermaniac`;
 }
 
 function updateSearchLink() {
-    if (!searchInGrid) {
-        return;
-    }
-    if (cardName) {
-        searchInGrid.href = `/cards?q=${encodeURIComponent(cardName)}`;
-    } else {
-        searchInGrid.href = '/cards';
-    }
+  if (!searchInGrid) {
+    return;
+  }
+  if (cardName) {
+    searchInGrid.href = `/cards?q=${encodeURIComponent(cardName)}`;
+  } else {
+    searchInGrid.href = '/cards';
+  }
 }
 
 function syncSearchInputValue() {
-    if (!cardSearchInput || !cardName) {
-        return;
-    }
-    if (!shouldPrefillSearch) {
-        return;
-    }
-    if (document.activeElement === cardSearchInput) {
-        return;
-    }
+  if (!cardSearchInput || !cardName) {
+    return;
+  }
+  if (!shouldPrefillSearch) {
+    return;
+  }
+  if (document.activeElement === cardSearchInput) {
+    return;
+  }
 
-    cardSearchInput.value = cardName;
+  cardSearchInput.value = cardName;
 }
 
 async function initializeCardPage() {
-    if (__ROUTE_REDIRECTING) {
-        return;
-    }
+  if (__ROUTE_REDIRECTING) {
+    return;
+  }
 
-    if (routeInfo.source === 'hash' && routeInfo.identifier) {
-        const search = location.search || '';
-        const target = `${buildCardPath(routeInfo.identifier)}${search}`;
-        window.location.replace(target);
-        return;
-    }
+  if (routeInfo.source === 'hash' && routeInfo.identifier) {
+    const search = location.search || '';
+    const target = `${buildCardPath(routeInfo.identifier)}${search}`;
+    window.location.replace(target);
+    return;
+  }
 
-    if (routeInfo.source === 'landing') {
-        // Redirect to /trends for the trends landing page
-        window.location.replace('/trends');
-        return;
-    }
+  if (routeInfo.source === 'landing') {
+    // Redirect to /trends for the trends landing page
+    window.location.replace('/trends');
+    return;
+  }
 
-    if (routeInfo.identifier) {
-        cardIdentifier = routeInfo.identifier;
-    } else if (routeInfo.slug) {
-        let resolvedIdentifier: string | null = null;
-        try {
-            resolvedIdentifier = await resolveCardSlug(routeInfo.slug);
-        } catch (error: any) {
-            logger.warn('Failed to resolve card slug', {
-                slug: routeInfo.slug,
-                error: error?.message || error
-            });
-        }
-
-        if (resolvedIdentifier) {
-            cardIdentifier = resolvedIdentifier;
-        } else {
-            cardIdentifier = routeInfo.slug;
-            updateCardTitle(null, describeSlug(routeInfo.slug));
-        }
-    }
-
-    if (!cardIdentifier) {
-        updateCardTitle(null);
-        updateSearchLink();
-        return;
-    }
-
-    const identifierToCanonize = cardIdentifier;
-    let canonicalIdentifier = identifierToCanonize;
+  if (routeInfo.identifier) {
+    cardIdentifier = routeInfo.identifier;
+  } else if (routeInfo.slug) {
+    let resolvedIdentifier: string | null = null;
     try {
-        const resolvedCanonical = await getCanonicalCard(identifierToCanonize);
-        if (resolvedCanonical) {
-            canonicalIdentifier = resolvedCanonical;
-        }
+      resolvedIdentifier = await resolveCardSlug(routeInfo.slug);
     } catch (error: any) {
-        logger.warn('Canonical lookup failed', {
-            cardIdentifier,
-            error: error?.message || error
-        });
-    }
-    if (cardIdentifier === identifierToCanonize) {
-        cardIdentifier = canonicalIdentifier;
+      logger.warn('Failed to resolve card slug', {
+        slug: routeInfo.slug,
+        error: error?.message || error
+      });
     }
 
-    cardName = getDisplayName(cardIdentifier) || cardIdentifier;
-    updateCardTitle(cardName);
+    if (resolvedIdentifier) {
+      cardIdentifier = resolvedIdentifier;
+    } else {
+      cardIdentifier = routeInfo.slug;
+      updateCardTitle(null, describeSlug(routeInfo.slug));
+    }
+  }
+
+  if (!cardIdentifier) {
+    updateCardTitle(null);
     updateSearchLink();
-    syncSearchInputValue();
+    return;
+  }
 
-    const canonicalSlug = makeCardSlug(cardIdentifier);
-    if (canonicalSlug) {
-        const desiredPath = buildCardPath(cardIdentifier);
-        if (location.pathname !== desiredPath || location.hash) {
-            const newUrl = `${desiredPath}${location.search || ''}`;
-            history.replaceState(null, '', newUrl);
-        }
-    } else if (location.hash) {
-        history.replaceState(null, '', `${location.pathname}${location.search || ''}`);
+  const identifierToCanonize = cardIdentifier;
+  let canonicalIdentifier = identifierToCanonize;
+  try {
+    const resolvedCanonical = await getCanonicalCard(identifierToCanonize);
+    if (resolvedCanonical) {
+      canonicalIdentifier = resolvedCanonical;
     }
+  } catch (error: any) {
+    logger.warn('Canonical lookup failed', {
+      cardIdentifier,
+      error: error?.message || error
+    });
+  }
+  if (cardIdentifier === identifierToCanonize) {
+    cardIdentifier = canonicalIdentifier;
+  }
 
-    await load();
+  cardName = getDisplayName(cardIdentifier) || cardIdentifier;
+  updateCardTitle(cardName);
+  updateSearchLink();
+  syncSearchInputValue();
+
+  const canonicalSlug = makeCardSlug(cardIdentifier);
+  if (canonicalSlug) {
+    const desiredPath = buildCardPath(cardIdentifier);
+    if (location.pathname !== desiredPath || location.hash) {
+      const newUrl = `${desiredPath}${location.search || ''}`;
+      history.replaceState(null, '', newUrl);
+    }
+  } else if (location.hash) {
+    history.replaceState(null, '', `${location.pathname}${location.search || ''}`);
+  }
+
+  await load();
 }
 
 initializeCardPage().catch(error => logger.error('Failed to initialize card page', error));
@@ -479,77 +500,77 @@ import { initCardSearch as initSearchComponent } from './components/cardSearch.j
 
 // Initialize search suggestions regardless of whether a card is selected
 function initCardSearch() {
-    // Initialize the reusable component
-    initSearchComponent({
-        searchInputId: 'card-search',
-        datalistId: 'card-names',
-        suggestionsId: 'card-suggestions'
-    });
+  // Initialize the reusable component
+  initSearchComponent({
+    searchInputId: 'card-search',
+    datalistId: 'card-names',
+    suggestionsId: 'card-suggestions'
+  });
 
-    // Local reference for syncSearchInputValue
-    cardSearchInput = document.getElementById('card-search') as HTMLInputElement | null;
-    syncSearchInputValue();
+  // Local reference for syncSearchInputValue
+  cardSearchInput = document.getElementById('card-search') as HTMLInputElement | null;
+  syncSearchInputValue();
 }
 
 // Ensure DOM is ready before initializing search
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initCardSearch);
+  document.addEventListener('DOMContentLoaded', initCardSearch);
 } else {
-    initCardSearch();
+  initCardSearch();
 }
 
 function buildIdentifierLookup(cardIdentifier: string) {
-    const searchKeys = new Set<string>();
-    const addIdentifier = (value: string | null | undefined) => {
-        if (value) {
-            searchKeys.add(String(value).trim().toLowerCase());
-        }
-    };
-    addIdentifier(cardIdentifier);
-    addIdentifier(cardIdentifier?.toLowerCase());
-    const baseName = getBaseName(cardIdentifier);
-    if (baseName) {
-        addIdentifier(baseName);
+  const searchKeys = new Set<string>();
+  const addIdentifier = (value: string | null | undefined) => {
+    if (value) {
+      searchKeys.add(String(value).trim().toLowerCase());
     }
-    // Add a space-delimited version of UID (e.g., "DRI:175" -> "DRI 175")
-    if (cardIdentifier && cardIdentifier.includes(':')) {
-        addIdentifier(cardIdentifier.replace(':', ' '));
+  };
+  addIdentifier(cardIdentifier);
+  addIdentifier(cardIdentifier?.toLowerCase());
+  const baseName = getBaseName(cardIdentifier);
+  if (baseName) {
+    addIdentifier(baseName);
+  }
+  // Add a space-delimited version of UID (e.g., "DRI:175" -> "DRI 175")
+  if (cardIdentifier && cardIdentifier.includes(':')) {
+    addIdentifier(cardIdentifier.replace(':', ' '));
+  }
+  // Add colon-delimited version if we were passed a space-delimited UID
+  if (cardIdentifier && cardIdentifier.includes(' ')) {
+    const parts = cardIdentifier.split(/\s+/);
+    if (parts.length === 2 && parts[0].length >= 2 && /^\d/.test(parts[1]) === false) {
+      addIdentifier(`${parts[0]}:${parts[1]}`);
     }
-    // Add colon-delimited version if we were passed a space-delimited UID
-    if (cardIdentifier && cardIdentifier.includes(' ')) {
-        const parts = cardIdentifier.split(/\s+/);
-        if (parts.length === 2 && parts[0].length >= 2 && /^\d/.test(parts[1]) === false) {
-            addIdentifier(`${parts[0]}:${parts[1]}`);
-        }
-    }
-    // Handle slug separators like "~" (from /card/SET~###)
-    if (cardIdentifier && cardIdentifier.includes('~')) {
-        const tildeColon = cardIdentifier.replace(/~/g, ':');
-        addIdentifier(tildeColon);
-        addIdentifier(tildeColon.replace(':', ' '));
-    }
-    const slugVariant = cardIdentifier?.replace(/[-_]/g, ' ');
-    addIdentifier(slugVariant);
-    return { searchKeys, baseName };
+  }
+  // Handle slug separators like "~" (from /card/SET~###)
+  if (cardIdentifier && cardIdentifier.includes('~')) {
+    const tildeColon = cardIdentifier.replace(/~/g, ':');
+    addIdentifier(tildeColon);
+    addIdentifier(tildeColon.replace(':', ' '));
+  }
+  const slugVariant = cardIdentifier?.replace(/[-_]/g, ' ');
+  addIdentifier(slugVariant);
+  return { searchKeys, baseName };
 }
 
 function extractSetAndNumber(identifier: string | null | undefined): { set: string | null; number: string | null } {
-    if (!identifier) {
-        return { set: null, number: null };
-    }
-    // UID form Name::SET::NUMBER
-    if (identifier.includes('::')) {
-        const parts = identifier.split('::');
-        if (parts.length >= 3 && parts[1] && parts[2]) {
-            return { set: parts[1], number: parts[2] };
-        }
-    }
-    const setNumberPattern = /^([A-Z]{2,})[:~\s]+(\d+[A-Za-z]?)$/;
-    const match = identifier.toUpperCase().match(setNumberPattern);
-    if (match) {
-        return { set: match[1], number: match[2] };
-    }
+  if (!identifier) {
     return { set: null, number: null };
+  }
+  // UID form Name::SET::NUMBER
+  if (identifier.includes('::')) {
+    const parts = identifier.split('::');
+    if (parts.length >= 3 && parts[1] && parts[2]) {
+      return { set: parts[1], number: parts[2] };
+    }
+  }
+  const setNumberPattern = /^([A-Z]{2,})[:~\s]+(\d+[A-Za-z]?)$/;
+  const match = identifier.toUpperCase().match(setNumberPattern);
+  if (match) {
+    return { set: match[1], number: match[2] };
+  }
+  return { set: null, number: null };
 }
 /**
  * Check if a card exists in the Ciphermaniac database
@@ -557,505 +578,508 @@ function extractSetAndNumber(identifier: string | null | undefined): { set: stri
  * @returns Whether the card has a Ciphermaniac page
  */
 async function checkCardExistsInDatabase(cardIdentifier: string): Promise<boolean> {
-    try {
-        const tournaments = await fetchTournamentsList();
-        const tournamentList = Array.isArray(tournaments) ? tournaments : [];
-        if (tournamentList.length === 0) {
-            return true;
-        }
-        let canonicalIdentifier = cardIdentifier;
-        try {
-            const canonical = await getCanonicalCard(cardIdentifier);
-            if (canonical) {
-                canonicalIdentifier = canonical;
-            }
-        } catch (canonicalError: any) {
-            logger.debug('Canonical lookup failed during existence check', {
-                cardIdentifier,
-                error: canonicalError?.message || canonicalError
-            });
-        }
-        const { searchKeys } = buildIdentifierLookup(cardIdentifier);
-        if (canonicalIdentifier && canonicalIdentifier !== cardIdentifier) {
-            searchKeys.add(canonicalIdentifier.toLowerCase());
-        }
-        try {
-            const variants = await getCardVariants(cardIdentifier);
-            if (Array.isArray(variants) && variants.length > 0) {
-                for (const variantIdentifier of variants) {
-                    searchKeys.add(variantIdentifier.trim().toLowerCase());
-                }
-            }
-        } catch (variantError: any) {
-            logger.debug('Failed to load card variants for fallback', {
-                cardIdentifier,
-                error: variantError?.message || variantError
-            });
-        }
-        const tournamentsToCheck = tournamentList.slice(0, 8);
-        for (const tournament of tournamentsToCheck) {
-            try {
-                const index = await fetchCardIndex(tournament);
-                const cards = index?.cards;
-                if (!cards || typeof cards !== 'object') {
-                    continue;
-                }
-                const available = new Set(Object.keys(cards).map(name => name.toLowerCase()));
-                for (const key of searchKeys) {
-                    if (available.has(key)) {
-                        return true;
-                    }
-                }
-            } catch (error: any) {
-                logger.debug('Card index unavailable during existence check', {
-                    cardIdentifier,
-                    tournament,
-                    error: error.message
-                });
-            }
-        }
-        return false;
-    } catch (error: any) {
-        logger.warn('Failed to check card existence via card indices', {
-            cardIdentifier,
-            error: error.message
-        });
-        return true;
+  try {
+    const tournaments = await fetchTournamentsList();
+    const tournamentList = Array.isArray(tournaments) ? tournaments : [];
+    if (tournamentList.length === 0) {
+      return true;
     }
+    let canonicalIdentifier = cardIdentifier;
+    try {
+      const canonical = await getCanonicalCard(cardIdentifier);
+      if (canonical) {
+        canonicalIdentifier = canonical;
+      }
+    } catch (canonicalError: any) {
+      logger.debug('Canonical lookup failed during existence check', {
+        cardIdentifier,
+        error: canonicalError?.message || canonicalError
+      });
+    }
+    const { searchKeys } = buildIdentifierLookup(cardIdentifier);
+    if (canonicalIdentifier && canonicalIdentifier !== cardIdentifier) {
+      searchKeys.add(canonicalIdentifier.toLowerCase());
+    }
+    try {
+      const variants = await getCardVariants(cardIdentifier);
+      if (Array.isArray(variants) && variants.length > 0) {
+        for (const variantIdentifier of variants) {
+          searchKeys.add(variantIdentifier.trim().toLowerCase());
+        }
+      }
+    } catch (variantError: any) {
+      logger.debug('Failed to load card variants for fallback', {
+        cardIdentifier,
+        error: variantError?.message || variantError
+      });
+    }
+    const tournamentsToCheck = tournamentList.slice(0, 8);
+    for (const tournament of tournamentsToCheck) {
+      try {
+        const index = await fetchCardIndex(tournament);
+        const cards = index?.cards;
+        if (!cards || typeof cards !== 'object') {
+          continue;
+        }
+        const available = new Set(Object.keys(cards).map(name => name.toLowerCase()));
+        for (const key of searchKeys) {
+          if (available.has(key)) {
+            return true;
+          }
+        }
+      } catch (error: any) {
+        logger.debug('Card index unavailable during existence check', {
+          cardIdentifier,
+          tournament,
+          error: error.message
+        });
+      }
+    }
+    return false;
+  } catch (error: any) {
+    logger.warn('Failed to check card existence via card indices', {
+      cardIdentifier,
+      error: error.message
+    });
+    return true;
+  }
 }
 
 /**
  * Suggested cards to surface when a requested card is missing
  */
 
-
 const MISSING_CARD_TRENDS_SOURCE = 'Trends - Last 30 Days';
 async function resolveMissingCardDisplayName(cardIdentifier: string): Promise<string | null> {
-    const initial = getDisplayName(cardIdentifier);
-    if (initial && initial !== cardIdentifier) {
-        return initial;
-    }
-    const { searchKeys } = buildIdentifierLookup(cardIdentifier);
-    const { set: idSet, number: idNumber } = extractSetAndNumber(cardIdentifier);
-    if (idSet && idNumber) {
-        searchKeys.add(`${idSet}::${idNumber}`.toLowerCase());
-        searchKeys.add(`${idSet} ${idNumber}`.toLowerCase());
-    }
+  const initial = getDisplayName(cardIdentifier);
+  if (initial && initial !== cardIdentifier) {
+    return initial;
+  }
+  const { searchKeys } = buildIdentifierLookup(cardIdentifier);
+  const { set: idSet, number: idNumber } = extractSetAndNumber(cardIdentifier);
+  if (idSet && idNumber) {
+    searchKeys.add(`${idSet}::${idNumber}`.toLowerCase());
+    searchKeys.add(`${idSet} ${idNumber}`.toLowerCase());
+  }
 
-    const matchFromIndex = (cards: Record<string, any> | undefined, keys: Set<string>) => {
-        if (!cards || typeof cards !== 'object') {
-            return null;
-        }
-        for (const [name, details] of Object.entries(cards)) {
-            const normalized = name.toLowerCase();
-            if (keys.has(normalized)) {
-                return name;
-            }
-            const uid = (details as any)?.uid;
-            if (typeof uid === 'string') {
-                const display = getDisplayName(uid);
-                if (display && keys.has(display.toLowerCase())) {
-                    return name;
-                }
-            }
-        }
-        return null;
-    };
-
-    const matchFromReportItems = (items: any[] | undefined, keys: Set<string>) => {
-        if (!Array.isArray(items) || items.length === 0) {
-            return null;
-        }
-        for (const item of items) {
-            const name = item?.name;
-            if (typeof name === 'string' && keys.has(name.toLowerCase())) {
-                const uidDisplay = item?.uid ? getDisplayName(item.uid) : null;
-                if (uidDisplay) {
-                    return `${name} ${uidDisplay}`;
-                }
-                if (item?.set && item?.number) {
-                    return `${name} ${item.set} ${item.number}`;
-                }
-                return name;
-            }
-            if (item?.set && item?.number) {
-                const key = `${item.set}::${item.number}`.toLowerCase();
-                if (keys.has(key)) {
-                    return `${item.name || ''} ${item.set} ${item.number}`.trim();
-                }
-            }
-            const uid = item?.uid;
-            if (typeof uid === 'string') {
-                const display = getDisplayName(uid);
-                if (display && keys.has(display.toLowerCase())) {
-                    return `${name || ''} ${display}`.trim();
-                }
-            }
-        }
-        return null;
-    };
-
-    // 1) Prefer online meta index first
-    try {
-        const onlineReport = await fetchReport(ONLINE_META_NAME).catch(() => null);
-        if (onlineReport) {
-            const parsed = parseReport(onlineReport);
-            const match = matchFromReportItems(parsed?.items, searchKeys);
-            if (match) {
-                return match;
-            }
-        }
+  const matchFromIndex = (cards: Record<string, any> | undefined, keys: Set<string>) => {
+    if (!cards || typeof cards !== 'object') {
+      return null;
     }
-    catch {
-        // ignore
-    }
-
-    // 2) Fall back to tournaments list indices
-    let tournaments: string[] = [];
-    try {
-        tournaments = await fetchTournamentsList();
-    }
-    catch {
-        tournaments = [];
-    }
-    const subset = tournaments.slice(0, 12);
-    for (const tournament of subset) {
-        try {
-            const index = await fetchCardIndex(tournament);
-            const match = matchFromIndex(index?.cards, searchKeys);
-            if (match) {
-                return match;
-            }
+    for (const [name, details] of Object.entries(cards)) {
+      const normalized = name.toLowerCase();
+      if (keys.has(normalized)) {
+        return name;
+      }
+      const uid = (details as any)?.uid;
+      if (typeof uid === 'string') {
+        const display = getDisplayName(uid);
+        if (display && keys.has(display.toLowerCase())) {
+          return name;
         }
-        catch {
-            continue;
-        }
+      }
     }
     return null;
+  };
+
+  const matchFromReportItems = (items: any[] | undefined, keys: Set<string>) => {
+    if (!Array.isArray(items) || items.length === 0) {
+      return null;
+    }
+    for (const item of items) {
+      const name = item?.name;
+      if (typeof name === 'string' && keys.has(name.toLowerCase())) {
+        const uidDisplay = item?.uid ? getDisplayName(item.uid) : null;
+        if (uidDisplay) {
+          return `${name} ${uidDisplay}`;
+        }
+        if (item?.set && item?.number) {
+          return `${name} ${item.set} ${item.number}`;
+        }
+        return name;
+      }
+      if (item?.set && item?.number) {
+        const key = `${item.set}::${item.number}`.toLowerCase();
+        if (keys.has(key)) {
+          return `${item.name || ''} ${item.set} ${item.number}`.trim();
+        }
+      }
+      const uid = item?.uid;
+      if (typeof uid === 'string') {
+        const display = getDisplayName(uid);
+        if (display && keys.has(display.toLowerCase())) {
+          return `${name || ''} ${display}`.trim();
+        }
+      }
+    }
+    return null;
+  };
+
+  // 1) Prefer online meta index first
+  try {
+    const onlineReport = await fetchReport(ONLINE_META_NAME).catch(() => null);
+    if (onlineReport) {
+      const parsed = parseReport(onlineReport);
+      const match = matchFromReportItems(parsed?.items, searchKeys);
+      if (match) {
+        return match;
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  // 2) Fall back to tournaments list indices
+  let tournaments: string[] = [];
+  try {
+    tournaments = await fetchTournamentsList();
+  } catch {
+    tournaments = [];
+  }
+  const subset = tournaments.slice(0, 12);
+  for (const tournament of subset) {
+    try {
+      const index = await fetchCardIndex(tournament);
+      const match = matchFromIndex(index?.cards, searchKeys);
+      if (match) {
+        return match;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 interface MissingCardPreview {
-    name: string;
-    identifier: string;
-    label: string;
-    meta: string;
-    set?: string | null;
-    number?: string | number | null;
+  name: string;
+  identifier: string;
+  label: string;
+  meta: string;
+  set?: string | null;
+  number?: string | number | null;
 }
 
 function formatUsagePercent(value: number): string {
-    if (!Number.isFinite(value)) {
-        return '0%';
-    }
-    const normalized = Math.max(0, value);
-    const precision = normalized >= 10 ? 0 : normalized >= 1 ? 1 : 2;
-    return `${normalized.toFixed(precision)}%`;
+  if (!Number.isFinite(value)) {
+    return '0%';
+  }
+  const normalized = Math.max(0, value);
+  const precision = normalized >= 10 ? 0 : normalized >= 1 ? 1 : 2;
+  return `${normalized.toFixed(precision)}%`;
 }
 
 function formatDeltaPercent(value: number): string {
-    if (!Number.isFinite(value) || value === 0) {
-        return '+0%';
-    }
-    const clamped = Math.max(Math.min(value, 100), -100);
-    const abs = Math.abs(clamped);
-    const precision = abs >= 10 ? 0 : abs >= 1 ? 1 : 2;
-    const sign = clamped > 0 ? '+' : '-';
-    return `${sign}${abs.toFixed(precision)}%`;
+  if (!Number.isFinite(value) || value === 0) {
+    return '+0%';
+  }
+  const clamped = Math.max(Math.min(value, 100), -100);
+  const abs = Math.abs(clamped);
+  const precision = abs >= 10 ? 0 : abs >= 1 ? 1 : 2;
+  const sign = clamped > 0 ? '+' : '-';
+  return `${sign}${abs.toFixed(precision)}%`;
 }
 
 function titleCase(value: string): string {
-    return value
-        .toLowerCase()
-        .split(' ')
-        .filter(Boolean)
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
+  return value
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 function prettifyIdentifier(identifier: string): string {
-    if (!identifier) {
-        return '';
-    }
-    const display = getDisplayName(identifier);
-    if (display && display !== identifier) {
-        return display;
-    }
-    const slugGuess = describeSlug(identifier);
-    if (slugGuess) {
-        return titleCase(slugGuess.replace(/[:]/g, ' '));
-    }
-    if (identifier.includes('-')) {
-        return titleCase(identifier.replace(/-/g, ' '));
-    }
-    return identifier;
+  if (!identifier) {
+    return '';
+  }
+  const display = getDisplayName(identifier);
+  if (display && display !== identifier) {
+    return display;
+  }
+  const slugGuess = describeSlug(identifier);
+  if (slugGuess) {
+    return titleCase(slugGuess.replace(/[:]/g, ' '));
+  }
+  if (identifier.includes('-')) {
+    return titleCase(identifier.replace(/-/g, ' '));
+  }
+  return identifier;
 }
 
 function normalizeTrendingCard(entry: any) {
-    if (!entry || !entry.name) {
-        return null;
+  if (!entry || !entry.name) {
+    return null;
+  }
+  const shareKeys = ['recentAvg', 'latest', 'currentShare', 'endShare', 'startShare', 'avgShare', 'share'];
+  let latest = 0;
+  for (const key of shareKeys) {
+    const val = Number(entry[key]);
+    if (Number.isFinite(val)) {
+      latest = val;
+      break;
     }
-    const shareKeys = ['recentAvg', 'latest', 'currentShare', 'endShare', 'startShare', 'avgShare', 'share'];
-    let latest = 0;
-    for (const key of shareKeys) {
-        const val = Number(entry[key]);
-        if (Number.isFinite(val)) {
-            latest = val;
-            break;
-        }
+  }
+  const deltaKeys = ['deltaAbs', 'delta'];
+  let delta = 0;
+  for (const key of deltaKeys) {
+    const val = Number(entry[key]);
+    if (Number.isFinite(val)) {
+      delta = val;
+      break;
     }
-    const deltaKeys = ['deltaAbs', 'delta'];
-    let delta = 0;
-    for (const key of deltaKeys) {
-        const val = Number(entry[key]);
-        if (Number.isFinite(val)) {
-            delta = val;
-            break;
-        }
-    }
-    delta = Math.max(Math.min(delta, 100), -100);
-    const set = typeof entry.set === 'string' ? entry.set : null;
-    const numberValue = entry.number;
-    const number = typeof numberValue === 'string' || typeof numberValue === 'number' ? String(numberValue).trim() : null;
-    const identifier = set && number ? `${entry.name} :: ${set} ${number}` : entry.name;
-    return {
-        name: entry.name,
-        set,
-        number,
-        latest,
-        delta,
-        identifier
-    };
+  }
+  delta = Math.max(Math.min(delta, 100), -100);
+  const set = typeof entry.set === 'string' ? entry.set : null;
+  const numberValue = entry.number;
+  const number = typeof numberValue === 'string' || typeof numberValue === 'number' ? String(numberValue).trim() : null;
+  const identifier = set && number ? `${entry.name} :: ${set} ${number}` : entry.name;
+  return {
+    name: entry.name,
+    set,
+    number,
+    latest,
+    delta,
+    identifier
+  };
 }
 
 function describeTournamentLabel(label: string | null): string {
-    if (!label) {
-        return 'latest event';
-    }
-    const parts = label.split(',');
-    if (parts.length >= 2) {
-        return parts.slice(1).join(',').trim() || label.trim();
-    }
-    return label.trim();
+  if (!label) {
+    return 'latest event';
+  }
+  const parts = label.split(',');
+  if (parts.length >= 2) {
+    return parts.slice(1).join(',').trim() || label.trim();
+  }
+  return label.trim();
 }
 
 async function pickUnderdogCard(
-    tournamentLabel: string,
-    existingNames: Set<string>
+  tournamentLabel: string,
+  existingNames: Set<string>
 ): Promise<MissingCardPreview | null> {
-    try {
-        const reportData = await fetchReport(tournamentLabel);
-        const parsed = parseReport(reportData);
-        const candidates = (parsed?.items || []).filter(
-            item =>
-                item &&
-                typeof item.pct === 'number' &&
-                item.pct > 0 &&
-                item.pct < 15 &&
-                typeof item.name === 'string' &&
-                item.name.trim().length > 0
-        );
-        if (!candidates.length) {
-            return null;
-        }
-        const filtered = candidates.filter(item => !existingNames.has(item.name.toLowerCase()));
-        const pool = filtered.length ? filtered : candidates;
-        const selection = pool[Math.floor(Math.random() * pool.length)];
-        if (!selection) {
-            return null;
-        }
-        existingNames.add(selection.name.toLowerCase());
-        const identifier =
-            selection.uid ||
-            (selection.set && selection.number ? `${selection.name} :: ${selection.set} ${selection.number}` : selection.name);
-        return {
-            name: selection.name,
-            identifier,
-            set: selection.set,
-            number: selection.number,
-            label: 'Underdog pick',
-            meta: `${formatUsagePercent(selection.pct || 0)} in ${describeTournamentLabel(tournamentLabel)}`
-        };
-    } catch (error: any) {
-        logger.warn('Failed to load underdog card preview', {
-            tournament: tournamentLabel,
-            error: error?.message || error
-        });
-        return null;
+  try {
+    const reportData = await fetchReport(tournamentLabel);
+    const parsed = parseReport(reportData);
+    const candidates = (parsed?.items || []).filter(
+      item =>
+        item &&
+        typeof item.pct === 'number' &&
+        item.pct > 0 &&
+        item.pct < 15 &&
+        typeof item.name === 'string' &&
+        item.name.trim().length > 0
+    );
+    if (!candidates.length) {
+      return null;
     }
+    const filtered = candidates.filter(item => !existingNames.has(item.name.toLowerCase()));
+    const pool = filtered.length ? filtered : candidates;
+    const selection = pool[Math.floor(Math.random() * pool.length)];
+    if (!selection) {
+      return null;
+    }
+    existingNames.add(selection.name.toLowerCase());
+    const identifier =
+      selection.uid ||
+      (selection.set && selection.number
+        ? `${selection.name} :: ${selection.set} ${selection.number}`
+        : selection.name);
+    return {
+      name: selection.name,
+      identifier,
+      set: selection.set,
+      number: selection.number,
+      label: 'Underdog pick',
+      meta: `${formatUsagePercent(selection.pct || 0)} in ${describeTournamentLabel(tournamentLabel)}`
+    };
+  } catch (error: any) {
+    logger.warn('Failed to load underdog card preview', {
+      tournament: tournamentLabel,
+      error: error?.message || error
+    });
+    return null;
+  }
 }
 
 function pickRandom<T>(items: T[]): T | null {
-    if (!Array.isArray(items) || items.length === 0) {
-        return null;
-    }
-    const idx = Math.floor(Math.random() * items.length);
-    return items[idx] ?? null;
+  if (!Array.isArray(items) || items.length === 0) {
+    return null;
+  }
+  const idx = Math.floor(Math.random() * items.length);
+  return items[idx] ?? null;
 }
 
 async function buildMissingCardPreviewData(cardIdentifier: string): Promise<MissingCardPreview[]> {
-    const previews: MissingCardPreview[] = [];
-    const seenNames = new Set<string>();
-    try {
-        const [trendPayload, tournaments] = await Promise.all([
-            fetchTrendReport(MISSING_CARD_TRENDS_SOURCE).catch(() => null),
-            fetchTournamentsList().catch(() => [])
-        ]);
+  const previews: MissingCardPreview[] = [];
+  const seenNames = new Set<string>();
+  try {
+    const [trendPayload, tournaments] = await Promise.all([
+      fetchTrendReport(MISSING_CARD_TRENDS_SOURCE).catch(() => null),
+      fetchTournamentsList().catch(() => [])
+    ]);
 
-        if (trendPayload) {
-            const risingList =
-                (trendPayload?.suggestions?.onTheRise &&
-                    trendPayload.suggestions.onTheRise.length &&
-                    trendPayload.suggestions.onTheRise) ||
-                trendPayload?.cardTrends?.rising ||
-                [];
-            const coolingList =
-                (trendPayload?.suggestions?.choppedAndWashed &&
-                    trendPayload.suggestions.choppedAndWashed.length &&
-                    trendPayload.suggestions.choppedAndWashed) ||
-                trendPayload?.cardTrends?.falling ||
-                [];
+    if (trendPayload) {
+      const risingList =
+        (trendPayload?.suggestions?.onTheRise &&
+          trendPayload.suggestions.onTheRise.length &&
+          trendPayload.suggestions.onTheRise) ||
+        trendPayload?.cardTrends?.rising ||
+        [];
+      const coolingList =
+        (trendPayload?.suggestions?.choppedAndWashed &&
+          trendPayload.suggestions.choppedAndWashed.length &&
+          trendPayload.suggestions.choppedAndWashed) ||
+        trendPayload?.cardTrends?.falling ||
+        [];
 
-            const risingPool = (Array.isArray(risingList) ? risingList : []).map(normalizeTrendingCard).filter(Boolean).slice(0, 6);
-            const coolingPool = (Array.isArray(coolingList) ? coolingList : []).map(normalizeTrendingCard).filter(Boolean).slice(0, 6);
+      const risingPool = (Array.isArray(risingList) ? risingList : [])
+        .map(normalizeTrendingCard)
+        .filter(Boolean)
+        .slice(0, 6);
+      const coolingPool = (Array.isArray(coolingList) ? coolingList : [])
+        .map(normalizeTrendingCard)
+        .filter(Boolean)
+        .slice(0, 6);
 
-            const rising = pickRandom(risingPool.filter(item => !seenNames.has(item!.name.toLowerCase())));
-            if (rising) {
-                seenNames.add(rising.name.toLowerCase());
-                previews.push({
-                    name: rising.name,
-                    identifier: rising.identifier,
-                    set: rising.set,
-                    number: rising.number,
-                    label: 'Meta riser',
-                    meta: `${formatUsagePercent(rising.latest)} &middot; ${formatDeltaPercent(rising.delta)}`
-                });
-            }
-
-            const cooling = pickRandom(coolingPool.filter(item => item && !seenNames.has(item.name.toLowerCase())));
-            if (cooling) {
-                seenNames.add(cooling.name.toLowerCase());
-                previews.push({
-                    name: cooling.name,
-                    identifier: cooling.identifier,
-                    set: cooling.set,
-                    number: cooling.number,
-                    label: 'Cooling off',
-                    meta: `${formatUsagePercent(cooling.latest)} &middot; ${formatDeltaPercent(cooling.delta)}`
-                });
-            }
-        }
-
-        if (Array.isArray(tournaments) && tournaments.length > 0) {
-            const underdog = await pickUnderdogCard(tournaments[0], seenNames);
-            if (underdog) {
-                previews.push({
-                    ...underdog,
-                    label: 'Sleeper pick'
-                });
-            }
-        }
-    } catch (error: any) {
-        logger.warn('Failed to assemble missing-card previews', {
-            cardIdentifier,
-            error: error?.message || error
+      const rising = pickRandom(risingPool.filter(item => !seenNames.has(item!.name.toLowerCase())));
+      if (rising) {
+        seenNames.add(rising.name.toLowerCase());
+        previews.push({
+          name: rising.name,
+          identifier: rising.identifier,
+          set: rising.set,
+          number: rising.number,
+          label: 'Meta riser',
+          meta: `${formatUsagePercent(rising.latest)} &middot; ${formatDeltaPercent(rising.delta)}`
         });
+      }
+
+      const cooling = pickRandom(coolingPool.filter(item => item && !seenNames.has(item.name.toLowerCase())));
+      if (cooling) {
+        seenNames.add(cooling.name.toLowerCase());
+        previews.push({
+          name: cooling.name,
+          identifier: cooling.identifier,
+          set: cooling.set,
+          number: cooling.number,
+          label: 'Cooling off',
+          meta: `${formatUsagePercent(cooling.latest)} &middot; ${formatDeltaPercent(cooling.delta)}`
+        });
+      }
     }
 
-    return previews;
+    if (Array.isArray(tournaments) && tournaments.length > 0) {
+      const underdog = await pickUnderdogCard(tournaments[0], seenNames);
+      if (underdog) {
+        previews.push({
+          ...underdog,
+          label: 'Sleeper pick'
+        });
+      }
+    }
+  } catch (error: any) {
+    logger.warn('Failed to assemble missing-card previews', {
+      cardIdentifier,
+      error: error?.message || error
+    });
+  }
+
+  return previews;
 }
 
 function loadPreviewThumbnail(target: HTMLElement, preview: MissingCardPreview) {
-    const variant = preview.set && preview.number ? { set: preview.set, number: preview.number } : undefined;
-    const candidates: string[] = [];
-    const appendCandidates = (list: string[] | undefined) => {
-        if (!Array.isArray(list)) {
-            return;
-        }
-        for (const url of list) {
-            if (url && !candidates.includes(url)) {
-                candidates.push(url);
-            }
-        }
-    };
-    if (preview.identifier) {
-        let uidSet: string | null = null;
-        let uidNumber: string | null = null;
-        if (preview.identifier.includes('::')) {
-            const parts = preview.identifier.split('::');
-            uidSet = parts[1] || null;
-            uidNumber = parts[2] || null;
-        }
-        else {
-            const match = preview.identifier.match(/^([A-Z]{2,})[:\s]+(\d+[A-Za-z]?)$/);
-            if (match) {
-                uidSet = match[1];
-                uidNumber = match[2];
-            }
-        }
-        if (uidSet && uidNumber) {
-            appendCandidates(buildThumbCandidates(preview.name, false, {}, { set: uidSet, number: uidNumber }));
-        }
+  const variant = preview.set && preview.number ? { set: preview.set, number: preview.number } : undefined;
+  const candidates: string[] = [];
+  const appendCandidates = (list: string[] | undefined) => {
+    if (!Array.isArray(list)) {
+      return;
     }
-    appendCandidates(buildThumbCandidates(preview.name, false, {}, variant));
-    if (candidates.length === 0) {
-        return;
+    for (const url of list) {
+      if (url && !candidates.includes(url)) {
+        candidates.push(url);
+      }
     }
-    const img = document.createElement('img');
-    img.decoding = 'async';
-    img.loading = 'lazy';
-    img.alt = preview.name;
-    img.width = 48;
-    img.height = 68;
-    target.appendChild(img);
+  };
+  if (preview.identifier) {
+    let uidSet: string | null = null;
+    let uidNumber: string | null = null;
+    if (preview.identifier.includes('::')) {
+      const parts = preview.identifier.split('::');
+      uidSet = parts[1] || null;
+      uidNumber = parts[2] || null;
+    } else {
+      const match = preview.identifier.match(/^([A-Z]{2,})[:\s]+(\d+[A-Za-z]?)$/);
+      if (match) {
+        uidSet = match[1];
+        uidNumber = match[2];
+      }
+    }
+    if (uidSet && uidNumber) {
+      appendCandidates(buildThumbCandidates(preview.name, false, {}, { set: uidSet, number: uidNumber }));
+    }
+  }
+  appendCandidates(buildThumbCandidates(preview.name, false, {}, variant));
+  if (candidates.length === 0) {
+    return;
+  }
+  const img = document.createElement('img');
+  img.decoding = 'async';
+  img.loading = 'lazy';
+  img.alt = preview.name;
+  img.width = 48;
+  img.height = 68;
+  target.appendChild(img);
 
-    let idx = 0;
-    let fallbackAttempted = false;
+  let idx = 0;
+  let fallbackAttempted = false;
 
-    const tryNext = async () => {
-        if (idx >= candidates.length && !fallbackAttempted) {
-            fallbackAttempted = true;
-            try {
-                const fallback = await getVariantImageCandidates(preview.identifier, false, {});
-                if (fallback.length) {
-                    candidates.push(...fallback);
-                }
-            } catch {
-                // ignore fallback failure
-            }
+  const tryNext = async () => {
+    if (idx >= candidates.length && !fallbackAttempted) {
+      fallbackAttempted = true;
+      try {
+        const fallback = await getVariantImageCandidates(preview.identifier, false, {});
+        if (fallback.length) {
+          candidates.push(...fallback);
         }
-        if (idx >= candidates.length) {
-            target.classList.add('card-missing-trend-thumb--empty');
-            img.remove();
-            return;
-        }
-        img.src = candidates[idx++];
-    };
+      } catch {
+        // ignore fallback failure
+      }
+    }
+    if (idx >= candidates.length) {
+      target.classList.add('card-missing-trend-thumb--empty');
+      img.remove();
+      return;
+    }
+    img.src = candidates[idx++];
+  };
 
-    img.onerror = () => {
-        tryNext();
-    };
+  img.onerror = () => {
     tryNext();
+  };
+  tryNext();
 }
 
 async function renderMissingCardTrendingCards(container: HTMLElement | null, cardIdentifier: string) {
-    if (!container) {
-        return;
+  if (!container) {
+    return;
+  }
+  container.innerHTML = '<p class="card-missing-empty">Loading trending cards...</p>';
+  try {
+    const previews = await buildMissingCardPreviewData(cardIdentifier);
+    if (!previews.length) {
+      container.innerHTML =
+        '<p class="card-missing-empty">Trending cards will appear once new events are processed.</p>';
+      return;
     }
-    container.innerHTML = '<p class="card-missing-empty">Loading trending cards...</p>';
-    try {
-        const previews = await buildMissingCardPreviewData(cardIdentifier);
-        if (!previews.length) {
-            container.innerHTML =
-                '<p class="card-missing-empty">Trending cards will appear once new events are processed.</p>';
-            return;
-        }
-        container.innerHTML = '';
-        previews.forEach(preview => {
-            const href = buildCardPath(preview.identifier);
-            const link = document.createElement('a');
-            link.className = 'card-missing-trend';
-            link.href = href;
-            link.innerHTML = `
+    container.innerHTML = '';
+    previews.forEach(preview => {
+      const href = buildCardPath(preview.identifier);
+      const link = document.createElement('a');
+      link.className = 'card-missing-trend';
+      link.href = href;
+      link.innerHTML = `
         <div class="card-missing-trend-thumb" aria-hidden="true"></div>
         <div class="card-missing-trend-copy">
           <span class="card-missing-trend-label">${preview.label}</span>
@@ -1064,50 +1088,51 @@ async function renderMissingCardTrendingCards(container: HTMLElement | null, car
           <span class="card-missing-trend-meta">${preview.meta}</span>
         </div>
       `;
-            container.appendChild(link);
-            const thumb = link.querySelector('.card-missing-trend-thumb') as HTMLElement | null;
-            if (thumb) {
-                loadPreviewThumbnail(thumb, preview);
-            }
-        });
-    } catch (error: any) {
-        logger.warn('Failed to load trending cards preview for missing card', {
-            cardIdentifier,
-            error: error?.message || error
-        });
-        container.innerHTML = '<p class="card-missing-empty">Trending cards unavailable right now.</p>';
-    }
+      container.appendChild(link);
+      const thumb = link.querySelector('.card-missing-trend-thumb') as HTMLElement | null;
+      if (thumb) {
+        loadPreviewThumbnail(thumb, preview);
+      }
+    });
+  } catch (error: any) {
+    logger.warn('Failed to load trending cards preview for missing card', {
+      cardIdentifier,
+      error: error?.message || error
+    });
+    container.innerHTML = '<p class="card-missing-empty">Trending cards unavailable right now.</p>';
+  }
 }
 /**
  * Render a user-friendly error page for missing cards
  * @param cardIdentifier - The card that was requested
  */
 async function renderMissingCardPage(cardIdentifier: string) {
+  try {
+    let canonicalIdentifier = cardIdentifier;
     try {
-        let canonicalIdentifier = cardIdentifier;
-        try {
-            canonicalIdentifier = (await getCanonicalCard(cardIdentifier)) || cardIdentifier;
-        } catch (error: any) {
-            logger.debug('Unable to resolve canonical identifier for missing card', {
-                cardIdentifier,
-                error: error?.message || error
-            });
-        }
-        const resolvedFromReports = (await resolveMissingCardDisplayName(canonicalIdentifier)) || null;
-        const displaySource = resolvedFromReports || canonicalIdentifier || cardIdentifier;
-        const displayName = prettifyIdentifier(displaySource) || displaySource || cardIdentifier;
-        const fallbackVariant = extractSetAndNumber(displaySource);
+      canonicalIdentifier = (await getCanonicalCard(cardIdentifier)) || cardIdentifier;
+    } catch (error: any) {
+      logger.debug('Unable to resolve canonical identifier for missing card', {
+        cardIdentifier,
+        error: error?.message || error
+      });
+    }
+    const resolvedFromReports = (await resolveMissingCardDisplayName(canonicalIdentifier)) || null;
+    const displaySource = resolvedFromReports || canonicalIdentifier || cardIdentifier;
+    const displayName = prettifyIdentifier(displaySource) || displaySource || cardIdentifier;
+    const fallbackVariant = extractSetAndNumber(displaySource);
 
-        if (typeof history !== 'undefined') {
-            document.title = `Card Not Found - ${displayName} | Ciphermaniac`;
-        }
+    if (typeof history !== 'undefined') {
+      document.title = `Card Not Found - ${displayName} | Ciphermaniac`;
+    }
 
-        const main = document.querySelector('main');
-        if (main) {
-            const baseName = getBaseName(displaySource) || getBaseName(canonicalIdentifier) || getBaseName(cardIdentifier) || cardIdentifier;
-            const encodedSearch = encodeURIComponent(displayName);
-            const heroVariant = fallbackVariant ?? extractSetAndNumber(cardIdentifier);
-            main.innerHTML = `
+    const main = document.querySelector('main');
+    if (main) {
+      const baseName =
+        getBaseName(displaySource) || getBaseName(canonicalIdentifier) || getBaseName(cardIdentifier) || cardIdentifier;
+      const encodedSearch = encodeURIComponent(displayName);
+      const heroVariant = fallbackVariant ?? extractSetAndNumber(cardIdentifier);
+      main.innerHTML = `
         <section class="card-missing">
           <div class="card-missing-card">
             <div class="card-missing-thumb" aria-hidden="true"></div>
@@ -1131,10 +1156,10 @@ async function renderMissingCardPage(cardIdentifier: string) {
         </section>
       `;
 
-            if (!document.getElementById('card-missing-style')) {
-                const style = document.createElement('style');
-                style.id = 'card-missing-style';
-                style.textContent = `
+      if (!document.getElementById('card-missing-style')) {
+        const style = document.createElement('style');
+        style.id = 'card-missing-style';
+        style.textContent = `
         .card-missing {
           max-width: 880px;
           margin: 1.5rem auto 3rem;
@@ -1354,784 +1379,784 @@ async function renderMissingCardPage(cardIdentifier: string) {
           }
         }
         `;
-                document.head.appendChild(style);
-            }
+        document.head.appendChild(style);
+      }
 
-            const trendingContainer = document.getElementById('card-missing-trending') as HTMLElement | null;
-            renderMissingCardTrendingCards(trendingContainer, canonicalIdentifier);
+      const trendingContainer = document.getElementById('card-missing-trending') as HTMLElement | null;
+      renderMissingCardTrendingCards(trendingContainer, canonicalIdentifier);
 
-            const imageContainer = main.querySelector('.card-missing-thumb');
-            if (imageContainer) {
-                const parsed = parseDisplayName(displaySource);
-                const variant: any = {};
-                if (parsed?.setId) {
-                    const match = parsed.setId.match(/^([A-Z]+)\s+(\d+[A-Za-z]?)$/);
-                    if (match) {
-                        variant.set = match[1];
-                        variant.number = match[2];
-                    }
-                }
-                if (!variant.set && fallbackVariant.set) {
-                    variant.set = fallbackVariant.set;
-                }
-                if (!variant.number && fallbackVariant.number) {
-                    variant.number = fallbackVariant.number;
-                }
+      const imageContainer = main.querySelector('.card-missing-thumb');
+      if (imageContainer) {
+        const parsed = parseDisplayName(displaySource);
+        const variant: any = {};
+        if (parsed?.setId) {
+          const match = parsed.setId.match(/^([A-Z]+)\s+(\d+[A-Za-z]?)$/);
+          if (match) {
+            variant.set = match[1];
+            variant.number = match[2];
+          }
+        }
+        if (!variant.set && fallbackVariant.set) {
+          variant.set = fallbackVariant.set;
+        }
+        if (!variant.number && fallbackVariant.number) {
+          variant.number = fallbackVariant.number;
+        }
 
-                const candidateName = parsed?.name || baseName || displayName;
-                const candidates = buildThumbCandidates(candidateName, true, {}, variant);
+        const candidateName = parsed?.name || baseName || displayName;
+        const candidates = buildThumbCandidates(candidateName, true, {}, variant);
 
-                if (candidates.length === 0) {
+        if (candidates.length === 0) {
+          imageContainer.remove();
+        } else {
+          const img = document.createElement('img');
+          img.decoding = 'async';
+          img.loading = 'lazy';
+          img.alt = displayName;
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.objectFit = 'cover';
+          img.style.borderRadius = 'inherit';
+
+          let idx = 0;
+          let fallbackAttempted = false;
+
+          const tryNext = async () => {
+            // If we've exhausted all candidates and haven't tried fallback yet, try synonym variants
+            if (idx >= candidates.length && !fallbackAttempted) {
+              fallbackAttempted = true;
+              try {
+                const fallbackCandidates = await getVariantImageCandidates(canonicalIdentifier, false, {});
+                if (fallbackCandidates.length > 0) {
+                  candidates.push(...fallbackCandidates);
+                  if (idx < candidates.length) {
+                    img.src = candidates[idx++];
+                  } else {
                     imageContainer.remove();
+                  }
                 } else {
-                    const img = document.createElement('img');
-                    img.decoding = 'async';
-                    img.loading = 'lazy';
-                    img.alt = displayName;
-                    img.style.width = '100%';
-                    img.style.height = '100%';
-                    img.style.objectFit = 'cover';
-                    img.style.borderRadius = 'inherit';
-
-                    let idx = 0;
-                    let fallbackAttempted = false;
-
-                    const tryNext = async () => {
-                        // If we've exhausted all candidates and haven't tried fallback yet, try synonym variants
-                        if (idx >= candidates.length && !fallbackAttempted) {
-                            fallbackAttempted = true;
-                            try {
-                                const fallbackCandidates = await getVariantImageCandidates(canonicalIdentifier, false, {});
-                                if (fallbackCandidates.length > 0) {
-                                    candidates.push(...fallbackCandidates);
-                                    if (idx < candidates.length) {
-                                        img.src = candidates[idx++];
-                                    } else {
-                                        imageContainer.remove();
-                                    }
-                                } else {
-                                    imageContainer.remove();
-                                }
-                            } catch (error) {
-                                imageContainer.remove();
-                            }
-                            return;
-                        }
-
-                        if (idx >= candidates.length) {
-                            imageContainer.remove();
-                            return;
-                        }
-                        img.src = candidates[idx++];
-                    };
-
-                    img.onerror = tryNext;
-                    tryNext();
-
-                    imageContainer.appendChild(img);
+                  imageContainer.remove();
                 }
+              } catch (error) {
+                imageContainer.remove();
+              }
+              return;
             }
-        }
 
-        logger.info('Rendered missing card page', { cardIdentifier });
-    } catch (error: any) {
-        logger.error('Failed to render missing card page', {
-            cardIdentifier,
-            error: error.message
-        });
-        if (metaSection) {
-            metaSection.innerHTML =
-                '<div style="text-align: center; padding: 2rem; color: var(--text);">Card page not available. We do not have tournament data for this card yet.</div>';
+            if (idx >= candidates.length) {
+              imageContainer.remove();
+              return;
+            }
+            img.src = candidates[idx++];
+          };
+
+          img.onerror = tryNext;
+          tryNext();
+
+          imageContainer.appendChild(img);
         }
+      }
     }
+
+    logger.info('Rendered missing card page', { cardIdentifier });
+  } catch (error: any) {
+    logger.error('Failed to render missing card page', {
+      cardIdentifier,
+      error: error.message
+    });
+    if (metaSection) {
+      metaSection.innerHTML =
+        '<div style="text-align: center; padding: 2rem; color: var(--text);">Card page not available. We do not have tournament data for this card yet.</div>';
+    }
+  }
 }
 
 async function load() {
-    ensureCardMetaStructure();
-    refreshDomRefs();
+  ensureCardMetaStructure();
+  refreshDomRefs();
 
-    if (!cardIdentifier) {
-        if (metaSection) {
-            metaSection.textContent = 'Missing card identifier.';
-        }
-        return;
+  if (!cardIdentifier) {
+    if (metaSection) {
+      metaSection.textContent = 'Missing card identifier.';
     }
+    return;
+  }
 
-    // Check if card exists in Ciphermaniac database before proceeding
-    const cardExistsInDatabase = await checkCardExistsInDatabase(cardIdentifier);
-    if (!cardExistsInDatabase) {
-        await renderMissingCardPage(cardIdentifier);
-        return;
-    }
+  // Check if card exists in Ciphermaniac database before proceeding
+  const cardExistsInDatabase = await checkCardExistsInDatabase(cardIdentifier);
+  if (!cardExistsInDatabase) {
+    await renderMissingCardPage(cardIdentifier);
+    return;
+  }
 
-    // Phase 1: Immediate UI Setup (synchronous, runs before any network)
-    setupImmediateUI();
+  // Phase 1: Immediate UI Setup (synchronous, runs before any network)
+  setupImmediateUI();
 
-    // Phase 2: Start all async operations in parallel
-    const dataPromises = startParallelDataLoading();
+  // Phase 2: Start all async operations in parallel
+  const dataPromises = startParallelDataLoading();
 
-    // Phase 3: Progressive rendering as data becomes available
-    await renderProgressively(dataPromises);
+  // Phase 3: Progressive rendering as data becomes available
+  await renderProgressively(dataPromises);
 }
 
 function setupImmediateUI() {
-    // Show placeholders for all sections to prevent CLS
-    const chartEl = document.getElementById('card-chart');
-    if (chartEl) {
-        showSkeleton(chartEl, createChartSkeleton('180px'));
+  // Show placeholders for all sections to prevent CLS
+  const chartEl = document.getElementById('card-chart');
+  if (chartEl) {
+    showSkeleton(chartEl, createChartSkeleton('180px'));
+  }
+
+  if (copiesSection) {
+    showSkeleton(copiesSection, createHistogramSkeleton());
+  }
+
+  if (eventsSection) {
+    showSkeleton(eventsSection, createEventsTableSkeleton());
+  }
+
+  // Start hero image loading immediately, replacing skeleton
+  const hero = document.getElementById('card-hero');
+  if (hero && cardName) {
+    // Get existing skeleton thumb if present
+    const existingThumb = hero.querySelector('.thumb');
+    const skeletonImage = existingThumb?.querySelector('.skeleton-image');
+
+    // Create image element and wrapper
+    const img = document.createElement('img');
+    img.alt = cardName;
+    img.decoding = 'async';
+    img.loading = 'eager';
+    img.style.opacity = '0';
+    img.style.transition = 'opacity .18s ease-out';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'thumb';
+    wrap.style.position = 'relative';
+    wrap.appendChild(img);
+
+    // If there's a skeleton, fade it out smoothly
+    if (skeletonImage instanceof HTMLElement) {
+      skeletonImage.style.transition = 'opacity 0.15s ease-out';
+      skeletonImage.style.opacity = '0';
+
+      // Replace after skeleton fades
+      setTimeout(() => {
+        hero.innerHTML = '';
+        hero.appendChild(wrap);
+        hero.removeAttribute('aria-hidden');
+      }, 150);
+    } else {
+      // No skeleton, just replace immediately
+      hero.innerHTML = '';
+      hero.appendChild(wrap);
+      hero.removeAttribute('aria-hidden');
     }
 
-    if (copiesSection) {
-        showSkeleton(copiesSection, createHistogramSkeleton());
-    }
+    // Store image loading state on the element
+    (img as any)._loadingState = {
+      candidates: [],
+      idx: 0,
+      loading: false,
+      fallbackAttempted: false
+    };
 
-    if (eventsSection) {
-        showSkeleton(eventsSection, createEventsTableSkeleton());
-    }
+    const tryNextImage = async () => {
+      const state = (img as any)._loadingState;
+      if (state.loading) {
+        return;
+      }
 
-    // Start hero image loading immediately, replacing skeleton
-    const hero = document.getElementById('card-hero');
-    if (hero && cardName) {
-        // Get existing skeleton thumb if present
-        const existingThumb = hero.querySelector('.thumb');
-        const skeletonImage = existingThumb?.querySelector('.skeleton-image');
-        
-        // Create image element and wrapper
-        const img = document.createElement('img');
-        img.alt = cardName;
-        img.decoding = 'async';
-        img.loading = 'eager';
-        img.style.opacity = '0';
-        img.style.transition = 'opacity .18s ease-out';
-
-        const wrap = document.createElement('div');
-        wrap.className = 'thumb';
-        wrap.style.position = 'relative';
-        wrap.appendChild(img);
-
-        // If there's a skeleton, fade it out smoothly
-        if (skeletonImage instanceof HTMLElement) {
-            skeletonImage.style.transition = 'opacity 0.15s ease-out';
-            skeletonImage.style.opacity = '0';
-            
-            // Replace after skeleton fades
-            setTimeout(() => {
-                hero.innerHTML = '';
-                hero.appendChild(wrap);
-                hero.removeAttribute('aria-hidden');
-            }, 150);
-        } else {
-            // No skeleton, just replace immediately
-            hero.innerHTML = '';
-            hero.appendChild(wrap);
-            hero.removeAttribute('aria-hidden');
+      // If we've exhausted all candidates and haven't tried fallback yet, try synonym variants
+      if (state.idx >= state.candidates.length && !state.fallbackAttempted) {
+        state.fallbackAttempted = true;
+        try {
+          const fallbackCandidates = await getVariantImageCandidates(cardIdentifier!, true, {});
+          if (fallbackCandidates.length > 0) {
+            // Append fallback candidates and continue trying
+            state.candidates.push(...fallbackCandidates);
+            if (state.idx < state.candidates.length) {
+              state.loading = true;
+              img.src = state.candidates[state.idx++];
+            }
+          }
+        } catch (error) {
+          // Silently continue if fallback fails
         }
+        return;
+      }
 
-        // Store image loading state on the element
-        (img as any)._loadingState = {
-            candidates: [],
-            idx: 0,
-            loading: false,
-            fallbackAttempted: false
-        };
+      if (state.idx >= state.candidates.length) {
+        return;
+      }
 
-        const tryNextImage = async () => {
-            const state = (img as any)._loadingState;
-            if (state.loading) {
-                return;
-            }
+      state.loading = true;
+      img.src = state.candidates[state.idx++];
+    };
 
-            // If we've exhausted all candidates and haven't tried fallback yet, try synonym variants
-            if (state.idx >= state.candidates.length && !state.fallbackAttempted) {
-                state.fallbackAttempted = true;
-                try {
-                    const fallbackCandidates = await getVariantImageCandidates(cardIdentifier!, true, {});
-                    if (fallbackCandidates.length > 0) {
-                        // Append fallback candidates and continue trying
-                        state.candidates.push(...fallbackCandidates);
-                        if (state.idx < state.candidates.length) {
-                            state.loading = true;
-                            img.src = state.candidates[state.idx++];
-                        }
-                    }
-                } catch (error) {
-                    // Silently continue if fallback fails
-                }
-                return;
-            }
+    img.onerror = () => {
+      (img as any)._loadingState.loading = false;
+      tryNextImage();
+    };
 
-            if (state.idx >= state.candidates.length) {
-                return;
-            }
+    const assignHiResCandidate = () => {
+      const currentSrc = img.currentSrc || img.src;
+      const derived = deriveLgUrlFromCandidate(currentSrc);
+      if (derived) {
+        (img as any)._fullResUrl = derived;
+      } else if (!(img as any)._fullResUrl) {
+        (img as any)._fullResUrl = currentSrc;
+      }
+    };
 
-            state.loading = true;
-            img.src = state.candidates[state.idx++];
-        };
+    img.onload = () => {
+      img.style.opacity = '1';
+      assignHiResCandidate();
+    };
 
-        img.onerror = () => {
-            (img as any)._loadingState.loading = false;
-            tryNextImage();
-        };
-
-        const assignHiResCandidate = () => {
-            const currentSrc = img.currentSrc || img.src;
-            const derived = deriveLgUrlFromCandidate(currentSrc);
-            if (derived) {
-                (img as any)._fullResUrl = derived;
-            } else if (!(img as any)._fullResUrl) {
-                (img as any)._fullResUrl = currentSrc;
-            }
-        };
-
-        img.onload = () => {
-            img.style.opacity = '1';
-            assignHiResCandidate();
-        };
-
-        // Parse variant information from card name
-        const { name, setId } = parseDisplayName(cardName);
-        let variant: VariantInfo = {};
-        if (setId) {
-            const setMatch = setId.match(/^([A-Z]+)\s+(\d+[A-Za-z]?)$/);
-            if (setMatch) {
-                variant = { set: setMatch[1], number: setMatch[2] };
-            }
-        }
-
-        const variantLgUrl = buildLgUrlFromVariant(variant);
-        (img as any)._fullResUrl = variantLgUrl || null;
-
-        enableHeroImageModal(wrap, img, variantLgUrl);
-
-        // Start with variant-aware candidates
-        const defaultCandidates = buildThumbCandidates(name, true, {}, variant);
-        (img as any)._loadingState.candidates = defaultCandidates;
-        tryNextImage();
+    // Parse variant information from card name
+    const { name, setId } = parseDisplayName(cardName);
+    let variant: VariantInfo = {};
+    if (setId) {
+      const setMatch = setId.match(/^([A-Z]+)\s+(\d+[A-Za-z]?)$/);
+      if (setMatch) {
+        variant = { set: setMatch[1], number: setMatch[2] };
+      }
     }
+
+    const variantLgUrl = buildLgUrlFromVariant(variant);
+    (img as any)._fullResUrl = variantLgUrl || null;
+
+    enableHeroImageModal(wrap, img, variantLgUrl);
+
+    // Start with variant-aware candidates
+    const defaultCandidates = buildThumbCandidates(name, true, {}, variant);
+    (img as any)._loadingState.candidates = defaultCandidates;
+    tryNextImage();
+  }
 }
 
 function startParallelDataLoading() {
-    // Start all data fetching in parallel immediately
-    const tournamentsPromise = fetchTournamentsList().catch(() => ['2025-08-15, World Championships 2025']);
-    const overridesPromise = Promise.resolve({});
+  // Start all data fetching in parallel immediately
+  const tournamentsPromise = fetchTournamentsList().catch(() => ['2025-08-15, World Championships 2025']);
+  const overridesPromise = Promise.resolve({});
 
-    // Secondary data that doesn't block initial content
-    const cardSetsPromise = cardName ? renderCardSets(cardName).catch(() => null) : Promise.resolve(null);
-    const cardPricePromise = cardIdentifier ? renderCardPrice(cardIdentifier).catch(() => null) : Promise.resolve(null);
+  // Secondary data that doesn't block initial content
+  const cardSetsPromise = cardName ? renderCardSets(cardName).catch(() => null) : Promise.resolve(null);
+  const cardPricePromise = cardIdentifier ? renderCardPrice(cardIdentifier).catch(() => null) : Promise.resolve(null);
 
-    return {
-        tournaments: tournamentsPromise,
-        overrides: overridesPromise,
-        cardSets: cardSetsPromise,
-        cardPrice: cardPricePromise
-    };
+  return {
+    tournaments: tournamentsPromise,
+    overrides: overridesPromise,
+    cardSets: cardSetsPromise,
+    cardPrice: cardPricePromise
+  };
 }
 
 async function renderProgressively(dataPromises: any) {
-    // Get tournaments data first (needed for most content)
-    let tournaments: string[] = [];
+  // Get tournaments data first (needed for most content)
+  let tournaments: string[] = [];
+  try {
+    tournaments = await dataPromises.tournaments;
+  } catch {
+    tournaments = ['2025-08-15, World Championships 2025'];
+  }
+  if (!Array.isArray(tournaments) || tournaments.length === 0) {
+    tournaments = ['2025-08-15, World Championships 2025'];
+  }
+
+  // Enhance hero image with overrides when available (non-blocking)
+  dataPromises.overrides
+    .then(async (overrides: any) => {
+      const hero = document.getElementById('card-hero');
+      const img = hero?.querySelector('img');
+      if (hero && img && cardName && img.style.opacity === '0' && (img as any)._loadingState) {
+        // Only enhance if image hasn't loaded yet and we have better candidates
+        const { name, setId } = parseDisplayName(cardName);
+        let variant: any = {};
+        if (setId) {
+          const setMatch = setId.match(/^([A-Z]+)\s+(\d+[A-Za-z]?)$/);
+          if (setMatch) {
+            variant = { set: setMatch[1], number: setMatch[2] };
+          }
+        }
+        const enhancedCandidates = buildThumbCandidates(name, true, overrides, variant);
+        const state = (img as any)._loadingState;
+
+        // If we haven't started loading or failed on default candidates, use enhanced ones
+        if (state.idx === 0 || (state.idx >= state.candidates.length && !state.loading && !state.fallbackAttempted)) {
+          state.candidates = enhancedCandidates;
+          state.idx = 0;
+          state.loading = false;
+          state.fallbackAttempted = false; // Reset fallback flag for new candidates
+
+          // Retry with enhanced candidates
+          if (state.idx < state.candidates.length && !state.loading) {
+            state.loading = true;
+            img.src = state.candidates[state.idx++];
+          }
+        }
+      }
+    })
+    .catch(() => {
+      // Keep default candidates on override failure
+    });
+  // Simple localStorage cache for All-archetypes stats: key by tournament+card
+  const CACHE_KEY = 'metaCacheV1';
+  const cache = (() => {
     try {
-        tournaments = await dataPromises.tournaments;
-    } catch {
-        tournaments = ['2025-08-15, World Championships 2025'];
+      return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    } catch (error) {
+      return {};
     }
-    if (!Array.isArray(tournaments) || tournaments.length === 0) {
-        tournaments = ['2025-08-15, World Championships 2025'];
+  })();
+  const saveCache = () => {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+    } catch (error) {
+      // Ignore initialization errors
     }
+  };
 
-    // Enhance hero image with overrides when available (non-blocking)
-    dataPromises.overrides
-        .then(async (overrides: any) => {
-            const hero = document.getElementById('card-hero');
-            const img = hero?.querySelector('img');
-            if (hero && img && cardName && img.style.opacity === '0' && (img as any)._loadingState) {
-                // Only enhance if image hasn't loaded yet and we have better candidates
-                const { name, setId } = parseDisplayName(cardName);
-                let variant: any = {};
-                if (setId) {
-                    const setMatch = setId.match(/^([A-Z]+)\s+(\d+[A-Za-z]?)$/);
-                    if (setMatch) {
-                        variant = { set: setMatch[1], number: setMatch[2] };
-                    }
-                }
-                const enhancedCandidates = buildThumbCandidates(name, true, overrides, variant);
-                const state = (img as any)._loadingState;
-
-                // If we haven't started loading or failed on default candidates, use enhanced ones
-                if (state.idx === 0 || (state.idx >= state.candidates.length && !state.loading && !state.fallbackAttempted)) {
-                    state.candidates = enhancedCandidates;
-                    state.idx = 0;
-                    state.loading = false;
-                    state.fallbackAttempted = false; // Reset fallback flag for new candidates
-
-                    // Retry with enhanced candidates
-                    if (state.idx < state.candidates.length && !state.loading) {
-                        state.loading = true;
-                        img.src = state.candidates[state.idx++];
-                    }
-                }
-            }
-        })
-        .catch(() => {
-            // Keep default candidates on override failure
-        });
-    // Simple localStorage cache for All-archetypes stats: key by tournament+card
-    const CACHE_KEY = 'metaCacheV1';
-    const cache = (() => {
-        try {
-            return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
-        } catch (error) {
-            return {};
-        }
-    })();
-    const saveCache = () => {
-        try {
-            localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-        } catch (error) {
-            // Ignore initialization errors
-        }
-    };
-
-    // Load main chart data in parallel
-    await loadAndRenderMainContent(tournaments, cache, saveCache);
+  // Load main chart data in parallel
+  await loadAndRenderMainContent(tournaments, cache, saveCache);
 }
 
 async function loadAndRenderMainContent(tournaments: string[], cacheObject: any, saveCache: () => void) {
-    // Fixed window: only process the most recent 6 tournaments to minimize network calls
-    const PROCESS_LIMIT = 6;
-    const recentTournaments = tournaments.slice(0, PROCESS_LIMIT);
+  // Fixed window: only process the most recent 6 tournaments to minimize network calls
+  const PROCESS_LIMIT = 6;
+  const recentTournaments = tournaments.slice(0, PROCESS_LIMIT);
 
-    // Aggregate meta-share per tournament; only load the most recent tournaments
-    const timePoints: any[] = [];
-    const deckRows: any[] = [];
-    const eventsWithCard: string[] = [];
+  // Aggregate meta-share per tournament; only load the most recent tournaments
+  const timePoints: any[] = [];
+  const deckRows: any[] = [];
+  const eventsWithCard: string[] = [];
 
-    // Process tournaments in parallel with Promise.all for faster loading
-    const tournamentPromises = recentTournaments.map(async tournamentName => {
-        try {
-            const ck = `${tournamentName}::${cardIdentifier}`;
-            let globalPct: number | null = null;
-            let globalFound: number | null = null;
-            let globalTotal: number | null = null;
-            if (cacheObject[ck]) {
-                ({ pct: globalPct, found: globalFound, total: globalTotal } = cacheObject[ck]);
-            } else {
-                // Get all variants of this card and combine their usage data
-                let card: any = null;
-                const hasUID = cardIdentifier && cardIdentifier.includes('::'); // Matches "Name SET NUMBER" pattern
+  // Process tournaments in parallel with Promise.all for faster loading
+  const tournamentPromises = recentTournaments.map(async tournamentName => {
+    try {
+      const ck = `${tournamentName}::${cardIdentifier}`;
+      let globalPct: number | null = null;
+      let globalFound: number | null = null;
+      let globalTotal: number | null = null;
+      if (cacheObject[ck]) {
+        ({ pct: globalPct, found: globalFound, total: globalTotal } = cacheObject[ck]);
+      } else {
+        // Get all variants of this card and combine their usage data
+        let card: any = null;
+        const hasUID = cardIdentifier && cardIdentifier.includes('::'); // Matches "Name SET NUMBER" pattern
 
-                if (!hasUID) {
-                    // Try cardIndex for base name lookups (trainers and base Pokemon names)
-                    try {
-                        const idx = await fetchCardIndex(tournamentName);
-                        const baseName = getBaseName(cardIdentifier!) || '';
-                        const matchingKey =
-                            Object.keys(idx.cards || {}).find(k => k.toLowerCase() === baseName.toLowerCase()) || '';
-                        const entry = idx.cards?.[baseName] || idx.cards?.[matchingKey];
-                        if (entry) {
-                            card = {
-                                name: baseName,
-                                found: entry.found,
-                                total: entry.total,
-                                pct: entry.pct,
-                                dist: entry.dist
-                            };
-                        }
-                    } catch (error) {
-                        // Ignore initialization errors
-                    }
-                }
-
-                if (!card) {
-                    // Get canonical card and all its variants for combined usage statistics
-                    const canonical = await getCanonicalCard(cardIdentifier!);
-                    const variants = await getCardVariants(canonical);
-
-                    const master = await fetchReport(tournamentName);
-                    const parsed = parseReport(master);
-
-                    // Find data for all variants and combine
-                    let combinedFound = 0;
-                    let combinedTotal: number | null = null;
-                    let hasAnyData = false;
-
-                    for (const variant of variants) {
-                        const variantCard = findCard(parsed.items, variant);
-                        if (variantCard) {
-                            hasAnyData = true;
-                            if (Number.isFinite(variantCard.found)) {
-                                combinedFound += variantCard.found;
-                            }
-                            // Use the total from any variant (should be the same across all variants in a tournament)
-                            if (combinedTotal === null && Number.isFinite(variantCard.total)) {
-                                combinedTotal = variantCard.total;
-                            }
-                        }
-                    }
-
-                    if (hasAnyData && combinedTotal !== null) {
-                        card = {
-                            name: getDisplayName(canonical),
-                            found: combinedFound,
-                            total: combinedTotal,
-                            pct: combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0
-                        };
-                    }
-                }
-                if (card) {
-                    globalPct = Number.isFinite(card.pct) ? card.pct : card.total ? (100 * card.found) / card.total : 0;
-                    globalFound = Number.isFinite(card.found) ? card.found : null;
-                    globalTotal = Number.isFinite(card.total) ? card.total : null;
-                    const cacheEntry = {
-                        pct: globalPct,
-                        found: globalFound,
-                        total: globalTotal
-                    };
-                    // Store cache entry atomically
-                    Object.assign(cacheObject, { [ck]: cacheEntry });
-                    saveCache();
-                }
+        if (!hasUID) {
+          // Try cardIndex for base name lookups (trainers and base Pokemon names)
+          try {
+            const idx = await fetchCardIndex(tournamentName);
+            const baseName = getBaseName(cardIdentifier!) || '';
+            const matchingKey =
+              Object.keys(idx.cards || {}).find(k => k.toLowerCase() === baseName.toLowerCase()) || '';
+            const entry = idx.cards?.[baseName] || idx.cards?.[matchingKey];
+            if (entry) {
+              card = {
+                name: baseName,
+                found: entry.found,
+                total: entry.total,
+                pct: entry.pct,
+                dist: entry.dist
+              };
             }
-            if (globalPct !== null) {
-                return {
-                    tournament: tournamentName,
-                    pct: globalPct,
-                    found: globalFound,
-                    total: globalTotal
-                };
-            }
-            return null;
-        } catch {
-            return null; // missing tournament master
-        }
-    });
-
-    // Wait for all tournament data in parallel
-    const tournamentResults = await Promise.all(tournamentPromises);
-
-    // Filter and collect results
-    tournamentResults.forEach(result => {
-        if (result) {
-            timePoints.push({ tournament: result.tournament, pct: result.pct });
-            eventsWithCard.push(result.tournament);
-            deckRows.push({
-                tournament: result.tournament,
-                archetype: null,
-                pct: result.pct,
-                found: result.found,
-                total: result.total
-            });
-        }
-    });
-
-    // Fixed window: always show the most recent 6 tournaments
-    const LIMIT = 6;
-    const showAll = false;
-
-    // Cache for chosen archetype label per (tournament, card)
-    const PICK_CACHE_KEY = 'archPickV2';
-    const pickCache = (() => {
-        try {
-            return JSON.parse(localStorage.getItem(PICK_CACHE_KEY) || '{}');
-        } catch (error) {
-            return {};
-        }
-    })();
-    const savePickCache = () => {
-        try {
-            localStorage.setItem(PICK_CACHE_KEY, JSON.stringify(pickCache));
-        } catch (error) {
+          } catch (error) {
             // Ignore initialization errors
+          }
         }
-    };
 
-    async function chooseArchetypeForTournament(tournament: string) {
-        const ck = `${tournament}::${cardIdentifier}`;
-        if (pickCache[ck]) {
-            return pickCache[ck];
+        if (!card) {
+          // Get canonical card and all its variants for combined usage statistics
+          const canonical = await getCanonicalCard(cardIdentifier!);
+          const variants = await getCardVariants(canonical);
+
+          const master = await fetchReport(tournamentName);
+          const parsed = parseReport(master);
+
+          // Find data for all variants and combine
+          let combinedFound = 0;
+          let combinedTotal: number | null = null;
+          let hasAnyData = false;
+
+          for (const variant of variants) {
+            const variantCard = findCard(parsed.items, variant);
+            if (variantCard) {
+              hasAnyData = true;
+              if (Number.isFinite(variantCard.found)) {
+                combinedFound += variantCard.found;
+              }
+              // Use the total from any variant (should be the same across all variants in a tournament)
+              if (combinedTotal === null && Number.isFinite(variantCard.total)) {
+                combinedTotal = variantCard.total;
+              }
+            }
+          }
+
+          if (hasAnyData && combinedTotal !== null) {
+            card = {
+              name: getDisplayName(canonical),
+              found: combinedFound,
+              total: combinedTotal,
+              pct: combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0
+            };
+          }
         }
+        if (card) {
+          globalPct = Number.isFinite(card.pct) ? card.pct : card.total ? (100 * card.found) / card.total : 0;
+          globalFound = Number.isFinite(card.found) ? card.found : null;
+          globalTotal = Number.isFinite(card.total) ? card.total : null;
+          const cacheEntry = {
+            pct: globalPct,
+            found: globalFound,
+            total: globalTotal
+          };
+          // Store cache entry atomically
+          Object.assign(cacheObject, { [ck]: cacheEntry });
+          saveCache();
+        }
+      }
+      if (globalPct !== null) {
+        return {
+          tournament: tournamentName,
+          pct: globalPct,
+          found: globalFound,
+          total: globalTotal
+        };
+      }
+      return null;
+    } catch {
+      return null; // missing tournament master
+    }
+  });
+
+  // Wait for all tournament data in parallel
+  const tournamentResults = await Promise.all(tournamentPromises);
+
+  // Filter and collect results
+  tournamentResults.forEach(result => {
+    if (result) {
+      timePoints.push({ tournament: result.tournament, pct: result.pct });
+      eventsWithCard.push(result.tournament);
+      deckRows.push({
+        tournament: result.tournament,
+        archetype: null,
+        pct: result.pct,
+        found: result.found,
+        total: result.total
+      });
+    }
+  });
+
+  // Fixed window: always show the most recent 6 tournaments
+  const LIMIT = 6;
+  const showAll = false;
+
+  // Cache for chosen archetype label per (tournament, card)
+  const PICK_CACHE_KEY = 'archPickV2';
+  const pickCache = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(PICK_CACHE_KEY) || '{}');
+    } catch (error) {
+      return {};
+    }
+  })();
+  const savePickCache = () => {
+    try {
+      localStorage.setItem(PICK_CACHE_KEY, JSON.stringify(pickCache));
+    } catch (error) {
+      // Ignore initialization errors
+    }
+  };
+
+  async function chooseArchetypeForTournament(tournament: string) {
+    const ck = `${tournament}::${cardIdentifier}`;
+    if (pickCache[ck]) {
+      return pickCache[ck];
+    }
+    try {
+      const list = await fetchArchetypesList(tournament);
+      const archetypeBases = Array.isArray(list)
+        ? list.map(entry => (typeof entry === 'string' ? entry : entry?.name)).filter(Boolean)
+        : [];
+      const top8 = await fetchTop8ArchetypesList(tournament);
+      const candidates: any[] = [];
+      const canonical = await getCanonicalCard(cardIdentifier!);
+      const variants = await getCardVariants(canonical);
+
+      for (const base of archetypeBases) {
         try {
-            const list = await fetchArchetypesList(tournament);
-            const archetypeBases = Array.isArray(list)
-                ? list.map(entry => (typeof entry === 'string' ? entry : entry?.name)).filter(Boolean)
-                : [];
-            const top8 = await fetchTop8ArchetypesList(tournament);
-            const candidates: any[] = [];
+          const arc = await fetchArchetypeReport(tournament, base);
+          const parsedReport = parseReport(arc);
+
+          // Combine data from all variants for this archetype
+          let combinedFound = 0;
+          let combinedTotal: number | null = null;
+          let hasAnyData = false;
+
+          for (const variant of variants) {
+            const variantCardInfo = findCard(parsedReport.items, variant);
+            if (variantCardInfo) {
+              hasAnyData = true;
+              if (Number.isFinite(variantCardInfo.found)) {
+                combinedFound += variantCardInfo.found;
+              }
+              if (combinedTotal === null && Number.isFinite(variantCardInfo.total)) {
+                combinedTotal = variantCardInfo.total;
+              }
+            }
+          }
+
+          if (hasAnyData && combinedTotal !== null) {
+            const pct = combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0;
+            candidates.push({
+              base,
+              pct,
+              found: combinedFound,
+              total: combinedTotal
+            });
+          }
+        } catch {
+          /* missing archetype file */
+        }
+      }
+      // Dynamic minimum based on card usage: if card has high overall usage but low per-archetype,
+      // use a lower threshold to capture distributed usage patterns
+      const overallUsage = cacheObject[`${tournament}::${cardIdentifier}`]?.pct || 0;
+      const minTotal = overallUsage > 20 ? 1 : 3; // Lower threshold for high-usage cards
+      const chosen = pickArchetype(candidates, top8 || undefined, { minTotal });
+      const label = chosen ? baseToLabel(chosen.base) : null;
+      // eslint-disable-next-line require-atomic-updates
+      pickCache[ck] = label;
+      savePickCache();
+      return label;
+    } catch {
+      return null;
+    }
+  }
+
+  const renderToggles = () => {
+    // Removed all toggle notes
+  };
+
+  const refresh = () => {
+    const rebuiltStructure = ensureCardMetaStructure();
+    refreshDomRefs();
+
+    if (rebuiltStructure) {
+      updateCardTitle(cardName);
+      updateSearchLink();
+      syncSearchInputValue();
+      try {
+        setupImmediateUI();
+      } catch (error: any) {
+        logger.debug('Failed to re-run immediate UI after rebuilding structure', error?.message || error);
+      }
+      if (cardIdentifier) {
+        // Re-run derived renderers so new DOM receives content
+        renderCardSets(cardIdentifier).catch(() => {});
+        renderCardPrice(cardIdentifier).catch(() => {});
+      }
+    }
+
+    const ptsAll = [...timePoints].reverse();
+    const rowsAll = [...deckRows].reverse();
+    const pts = showAll ? ptsAll : ptsAll.slice(-LIMIT);
+    const rows = showAll ? rowsAll : rowsAll.slice(-LIMIT);
+
+    let chartContainer = document.getElementById('card-chart');
+    if (!chartContainer) {
+      const cardCenter = document.getElementById('card-center') || metaSection;
+      chartContainer = document.createElement('div');
+      chartContainer.id = 'card-chart';
+      chartContainer.className = 'card-chart skeleton-loading';
+      if (cardCenter) {
+        cardCenter.insertBefore(chartContainer, cardCenter.firstChild || null);
+      } else if (metaSection) {
+        metaSection.appendChild(chartContainer);
+      }
+      refreshDomRefs();
+    }
+    if (chartContainer) {
+      renderChart(chartContainer, pts);
+    }
+
+    const copiesTarget = document.getElementById('card-copies');
+    if (copiesTarget) {
+      const latest = rows[rows.length - 1];
+      if (latest) {
+        (async () => {
+          try {
             const canonical = await getCanonicalCard(cardIdentifier!);
             const variants = await getCardVariants(canonical);
 
-            for (const base of archetypeBases) {
-                try {
-                    const arc = await fetchArchetypeReport(tournament, base);
-                    const parsedReport = parseReport(arc);
+            const master = await fetchReport(latest.tournament);
+            const parsed = parseReport(master);
 
-                    // Combine data from all variants for this archetype
-                    let combinedFound = 0;
-                    let combinedTotal: number | null = null;
-                    let hasAnyData = false;
+            let overall: any = null;
+            let combinedFound = 0;
+            let combinedTotal: number | null = null;
+            const combinedDist: any[] = [];
 
-                    for (const variant of variants) {
-                        const variantCardInfo = findCard(parsedReport.items, variant);
-                        if (variantCardInfo) {
-                            hasAnyData = true;
-                            if (Number.isFinite(variantCardInfo.found)) {
-                                combinedFound += variantCardInfo.found;
-                            }
-                            if (combinedTotal === null && Number.isFinite(variantCardInfo.total)) {
-                                combinedTotal = variantCardInfo.total;
-                            }
-                        }
-                    }
-
-                    if (hasAnyData && combinedTotal !== null) {
-                        const pct = combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0;
-                        candidates.push({
-                            base,
-                            pct,
-                            found: combinedFound,
-                            total: combinedTotal
-                        });
-                    }
-                } catch {
-                    /* missing archetype file */
+            for (const variant of variants) {
+              const variantCard = findCard(parsed.items, variant);
+              if (variantCard) {
+                if (Number.isFinite(variantCard.found)) {
+                  combinedFound += variantCard.found;
                 }
+                if (combinedTotal === null && Number.isFinite(variantCard.total)) {
+                  combinedTotal = variantCard.total;
+                }
+
+                if (variantCard.dist && Array.isArray(variantCard.dist)) {
+                  for (const distEntry of variantCard.dist) {
+                    const existing = combinedDist.find(distItem => distItem.copies === distEntry.copies);
+                    if (existing) {
+                      existing.players += distEntry.players || 0;
+                    } else {
+                      combinedDist.push({
+                        copies: distEntry.copies,
+                        players: distEntry.players || 0
+                      });
+                    }
+                  }
+                }
+              }
             }
-            // Dynamic minimum based on card usage: if card has high overall usage but low per-archetype,
-            // use a lower threshold to capture distributed usage patterns
-            const overallUsage = cacheObject[`${tournament}::${cardIdentifier}`]?.pct || 0;
-            const minTotal = overallUsage > 20 ? 1 : 3; // Lower threshold for high-usage cards
-            const chosen = pickArchetype(candidates, top8 || undefined, { minTotal });
-            const label = chosen ? baseToLabel(chosen.base) : null;
-            // eslint-disable-next-line require-atomic-updates
-            pickCache[ck] = label;
-            savePickCache();
-            return label;
-        } catch {
-            return null;
-        }
+
+            if (combinedFound > 0 && combinedTotal !== null) {
+              overall = {
+                name: getDisplayName(canonical),
+                found: combinedFound,
+                total: combinedTotal,
+                pct: combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0,
+                dist: combinedDist.sort((first, second) => first.copies - second.copies)
+              };
+            }
+
+            if (overall) {
+              renderCopiesHistogram(copiesTarget, overall);
+            } else {
+              copiesTarget.textContent = '';
+            }
+          } catch {
+            copiesTarget.textContent = '';
+          }
+        })();
+      } else {
+        copiesTarget.textContent = '';
+      }
     }
 
-    const renderToggles = () => {
-        // Removed all toggle notes
-    };
+    let eventsTarget = document.getElementById('card-events');
+    if (!eventsTarget && metaSection) {
+      eventsTarget = document.createElement('div');
+      eventsTarget.id = 'card-events';
+      metaSection.appendChild(eventsTarget);
+      refreshDomRefs();
+      eventsTarget = document.getElementById('card-events');
+    }
 
-    const refresh = () => {
-        const rebuiltStructure = ensureCardMetaStructure();
-        refreshDomRefs();
+    renderEvents(eventsTarget || decksSection || metaSection || document.body, rows);
+    renderToggles();
+    renderAnalysisSelector(eventsWithCard);
 
-        if (rebuiltStructure) {
-            updateCardTitle(cardName);
-            updateSearchLink();
-            syncSearchInputValue();
-            try {
-                setupImmediateUI();
-            } catch (error: any) {
-                logger.debug('Failed to re-run immediate UI after rebuilding structure', error?.message || error);
-            }
-            if (cardIdentifier) {
-                // Re-run derived renderers so new DOM receives content
-                renderCardSets(cardIdentifier).catch(() => { });
-                renderCardPrice(cardIdentifier).catch(() => { });
-            }
+    // After initial paint, fill archetype labels for visible rows asynchronously
+    // Attach lazy hover handlers for event rows to prefetch and compute archetype label on demand
+    const tableContainer = eventsSection || decksSection;
+    if (tableContainer && !(tableContainer as any)._hoverPrefetchAttached) {
+      tableContainer.addEventListener('mouseover', async eventTarget => {
+        const targetElement = eventTarget.target instanceof HTMLElement ? eventTarget.target : null;
+        const rowEl = targetElement ? targetElement.closest('.event-row') : null;
+        if (!rowEl) {
+          return;
         }
-
-        const ptsAll = [...timePoints].reverse();
-        const rowsAll = [...deckRows].reverse();
-        const pts = showAll ? ptsAll : ptsAll.slice(-LIMIT);
-        const rows = showAll ? rowsAll : rowsAll.slice(-LIMIT);
-
-        let chartContainer = document.getElementById('card-chart');
-        if (!chartContainer) {
-            const cardCenter = document.getElementById('card-center') || metaSection;
-            chartContainer = document.createElement('div');
-            chartContainer.id = 'card-chart';
-            chartContainer.className = 'card-chart skeleton-loading';
-            if (cardCenter) {
-                cardCenter.insertBefore(chartContainer, cardCenter.firstChild || null);
-            } else if (metaSection) {
-                metaSection.appendChild(chartContainer);
-            }
-            refreshDomRefs();
+        const tournamentFromRow = (rowEl as HTMLElement).dataset.tournament;
+        if (!tournamentFromRow) {
+          return;
         }
-        if (chartContainer) {
-            renderChart(chartContainer, pts);
+        // Prefetch event master if not present
+        // await loadTournament(t); // Function not defined - commented out
+        // Compute archetype label if missing
+        const target = deckRows.find(deckRow => deckRow.tournament === tournamentFromRow);
+        if (target && !target.archetype) {
+          const label = await chooseArchetypeForTournament(tournamentFromRow);
+          if (label) {
+            target.archetype = label;
+            const eventsToRender = showAll ? [...deckRows].reverse() : [...deckRows].reverse().slice(-LIMIT);
+            renderEvents(tableContainer, eventsToRender);
+            renderToggles();
+          }
         }
+      });
+      (tableContainer as any)._hoverPrefetchAttached = true;
+    }
+  };
+  refresh();
 
-        const copiesTarget = document.getElementById('card-copies');
-        if (copiesTarget) {
-            const latest = rows[rows.length - 1];
-            if (latest) {
-                (async () => {
-                    try {
-                        const canonical = await getCanonicalCard(cardIdentifier!);
-                        const variants = await getCardVariants(canonical);
+  // Lazy-load older events as the user hovers suggestions or event rows
+  // no hover prefetch on card page in eager mode
 
-                        const master = await fetchReport(latest.tournament);
-                        const parsed = parseReport(master);
+  // Re-render chart on resize (throttled)
+  let resizeTimer: any = null;
+  let lastWidth = window.innerWidth;
+  window.addEventListener('resize', () => {
+    // Skip if resize is too small (less than 50px change) to avoid unnecessary re-renders
+    const currentWidth = window.innerWidth;
+    if (Math.abs(currentWidth - lastWidth) < 50) {
+      return;
+    }
 
-                        let overall: any = null;
-                        let combinedFound = 0;
-                        let combinedTotal: number | null = null;
-                        const combinedDist: any[] = [];
+    if (resizeTimer) {
+      return;
+    }
 
-                        for (const variant of variants) {
-                            const variantCard = findCard(parsed.items, variant);
-                            if (variantCard) {
-                                if (Number.isFinite(variantCard.found)) {
-                                    combinedFound += variantCard.found;
-                                }
-                                if (combinedTotal === null && Number.isFinite(variantCard.total)) {
-                                    combinedTotal = variantCard.total;
-                                }
+    resizeTimer = setTimeout(() => {
+      resizeTimer = null;
+      lastWidth = window.innerWidth;
+      const elementToRender = document.getElementById('card-chart') || metaSection;
+      const pointsToRender = showAll ? [...timePoints].reverse() : [...timePoints].reverse().slice(-LIMIT);
+      if (elementToRender) {
+        renderChart(elementToRender, pointsToRender);
+      }
+    }, 200); // Increased throttle to reduce flash frequency
+  });
 
-                                if (variantCard.dist && Array.isArray(variantCard.dist)) {
-                                    for (const distEntry of variantCard.dist) {
-                                        const existing = combinedDist.find(distItem => distItem.copies === distEntry.copies);
-                                        if (existing) {
-                                            existing.players += distEntry.players || 0;
-                                        } else {
-                                            combinedDist.push({
-                                                copies: distEntry.copies,
-                                                players: distEntry.players || 0
-                                            });
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        if (combinedFound > 0 && combinedTotal !== null) {
-                            overall = {
-                                name: getDisplayName(canonical),
-                                found: combinedFound,
-                                total: combinedTotal,
-                                pct: combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0,
-                                dist: combinedDist.sort((first, second) => first.copies - second.copies)
-                            };
-                        }
-
-                        if (overall) {
-                            renderCopiesHistogram(copiesTarget, overall);
-                        } else {
-                            copiesTarget.textContent = '';
-                        }
-                    } catch {
-                        copiesTarget.textContent = '';
-                    }
-                })();
-            } else {
-                copiesTarget.textContent = '';
-            }
-        }
-
-        let eventsTarget = document.getElementById('card-events');
-        if (!eventsTarget && metaSection) {
-            eventsTarget = document.createElement('div');
-            eventsTarget.id = 'card-events';
-            metaSection.appendChild(eventsTarget);
-            refreshDomRefs();
-            eventsTarget = document.getElementById('card-events');
-        }
-
-        renderEvents(eventsTarget || decksSection || metaSection || document.body, rows);
-        renderToggles();
-        renderAnalysisSelector(eventsWithCard);
-
-        // After initial paint, fill archetype labels for visible rows asynchronously
-        // Attach lazy hover handlers for event rows to prefetch and compute archetype label on demand
-        const tableContainer = eventsSection || decksSection;
-        if (tableContainer && !(tableContainer as any)._hoverPrefetchAttached) {
-            tableContainer.addEventListener('mouseover', async eventTarget => {
-                const targetElement = eventTarget.target instanceof HTMLElement ? eventTarget.target : null;
-                const rowEl = targetElement ? targetElement.closest('.event-row') : null;
-                if (!rowEl) {
-                    return;
-                }
-                const tournamentFromRow = (rowEl as HTMLElement).dataset.tournament;
-                if (!tournamentFromRow) {
-                    return;
-                }
-                // Prefetch event master if not present
-                // await loadTournament(t); // Function not defined - commented out
-                // Compute archetype label if missing
-                const target = deckRows.find(deckRow => deckRow.tournament === tournamentFromRow);
-                if (target && !target.archetype) {
-                    const label = await chooseArchetypeForTournament(tournamentFromRow);
-                    if (label) {
-                        target.archetype = label;
-                        const eventsToRender = showAll ? [...deckRows].reverse() : [...deckRows].reverse().slice(-LIMIT);
-                        renderEvents(tableContainer, eventsToRender);
-                        renderToggles();
-                    }
-                }
-            });
-            (tableContainer as any)._hoverPrefetchAttached = true;
-        }
-    };
-    refresh();
-
-    // Lazy-load older events as the user hovers suggestions or event rows
-    // no hover prefetch on card page in eager mode
-
-    // Re-render chart on resize (throttled)
-    let resizeTimer: any = null;
-    let lastWidth = window.innerWidth;
-    window.addEventListener('resize', () => {
-        // Skip if resize is too small (less than 50px change) to avoid unnecessary re-renders
-        const currentWidth = window.innerWidth;
-        if (Math.abs(currentWidth - lastWidth) < 50) {
-            return;
-        }
-        
-        if (resizeTimer) {
-            return;
-        }
-
-        resizeTimer = setTimeout(() => {
-            resizeTimer = null;
-            lastWidth = window.innerWidth;
-            const elementToRender = document.getElementById('card-chart') || metaSection;
-            const pointsToRender = showAll ? [...timePoints].reverse() : [...timePoints].reverse().slice(-LIMIT);
-            if (elementToRender) {
-                renderChart(elementToRender, pointsToRender);
-            }
-        }, 200);  // Increased throttle to reduce flash frequency
-    });
-
-    // No min-decks selector in UI; default minTotal used in picker
+  // No min-decks selector in UI; default minTotal used in picker
 }
 
 function renderAnalysisSelector(events: string[]) {
-    if (!(analysisSel && analysisTable)) {
-        return;
-    }
-    analysisSel.innerHTML = '';
-    if (!events || events.length === 0) {
-        analysisTable.textContent = 'Select an event to view per-archetype usage.';
-        return;
-    }
-    for (const tournamentName of events) {
-        const opt = document.createElement('option');
-        opt.value = tournamentName;
-        opt.textContent = tournamentName;
-        analysisSel.appendChild(opt);
-    }
-    analysisSel.addEventListener('change', () => {
-        renderAnalysisTable(analysisSel.value);
-    });
-    renderAnalysisTable(analysisSel.value || events[0]);
+  if (!(analysisSel && analysisTable)) {
+    return;
+  }
+  analysisSel.innerHTML = '';
+  if (!events || events.length === 0) {
+    analysisTable.textContent = 'Select an event to view per-archetype usage.';
+    return;
+  }
+  for (const tournamentName of events) {
+    const opt = document.createElement('option');
+    opt.value = tournamentName;
+    opt.textContent = tournamentName;
+    analysisSel.appendChild(opt);
+  }
+  analysisSel.addEventListener('change', () => {
+    renderAnalysisTable(analysisSel.value);
+  });
+  renderAnalysisTable(analysisSel.value || events[0]);
 }
 
 async function renderAnalysisTable(tournament: string) {
-    if (!analysisTable) {
-        return;
-    }
+  if (!analysisTable) {
+    return;
+  }
 
-    // Show loading state with skeleton
-    const loadingSkeleton = document.createElement('div');
-    loadingSkeleton.className = 'skeleton-analysis-loading';
-    loadingSkeleton.setAttribute('aria-hidden', 'true');
-    loadingSkeleton.innerHTML = `
+  // Show loading state with skeleton
+  const loadingSkeleton = document.createElement('div');
+  loadingSkeleton.className = 'skeleton-analysis-loading';
+  loadingSkeleton.setAttribute('aria-hidden', 'true');
+  loadingSkeleton.innerHTML = `
     <div class="skeleton-text medium" style="margin-bottom: 8px;"></div>
     <div class="skeleton-text large" style="margin-bottom: 16px;"></div>
     <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 8px;">
@@ -2143,9 +2168,9 @@ async function renderAnalysisTable(tournament: string) {
       <div class="skeleton-text small"></div>
     </div>
     ${Array(5)
-            .fill(0)
-            .map(
-                () => `
+      .fill(0)
+      .map(
+        () => `
       <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 4px;">
         <div class="skeleton-text medium"></div>
         <div class="skeleton-text small"></div>
@@ -2155,366 +2180,366 @@ async function renderAnalysisTable(tournament: string) {
         <div class="skeleton-text small"></div>
       </div>
     `
-            )
-            .join('')}
+      )
+      .join('')}
   `;
 
-    analysisTable.innerHTML = '';
+  analysisTable.innerHTML = '';
 
-    // Create enhanced progress indicator positioned within the analysis section
-    const progress = createProgressIndicator(
-        'Loading Archetype Analysis',
-        ['Processing archetype data', 'Building analysis table'],
-        {
-            position: 'relative',
-            container: analysisTable,
-            autoRemove: true,
-            showPercentage: true
+  // Create enhanced progress indicator positioned within the analysis section
+  const progress = createProgressIndicator(
+    'Loading Archetype Analysis',
+    ['Processing archetype data', 'Building analysis table'],
+    {
+      position: 'relative',
+      container: analysisTable,
+      autoRemove: true,
+      showPercentage: true
+    }
+  );
+
+  analysisTable.appendChild(loadingSkeleton);
+
+  try {
+    // Overall (All archetypes) distribution for this event
+    let overall: any = null;
+    try {
+      const master = await fetchReport(tournament);
+      const parsed = parseReport(master);
+
+      // Get canonical card and all its variants for combined usage statistics
+      const canonical = await getCanonicalCard(cardIdentifier!);
+      const variants = await getCardVariants(canonical);
+
+      // Combine data from all variants
+      let combinedFound = 0;
+      let combinedTotal: number | null = null;
+      const combinedDist: any[] = [];
+      let hasAnyData = false;
+
+      for (const variant of variants) {
+        const variantCard = findCard(parsed.items, variant);
+        if (variantCard) {
+          hasAnyData = true;
+          if (Number.isFinite(variantCard.found)) {
+            combinedFound += variantCard.found;
+          }
+          if (combinedTotal === null && Number.isFinite(variantCard.total)) {
+            combinedTotal = variantCard.total;
+          }
+
+          // Combine distribution data
+          if (variantCard.dist && Array.isArray(variantCard.dist)) {
+            for (const distEntry of variantCard.dist) {
+              const existing = combinedDist.find(distItem => distItem.copies === distEntry.copies);
+              if (existing) {
+                existing.players += distEntry.players || 0;
+              } else {
+                combinedDist.push({
+                  copies: distEntry.copies,
+                  players: distEntry.players || 0
+                });
+              }
+            }
+          }
         }
+      }
+
+      if (hasAnyData && combinedTotal !== null) {
+        overall = {
+          name: getDisplayName(canonical),
+          found: combinedFound,
+          total: combinedTotal,
+          pct: combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0,
+          dist: combinedDist.sort((first, second) => first.copies - second.copies)
+        };
+      }
+    } catch {
+      /* ignore */
+    }
+
+    // Per-archetype distributions using enhanced parallel loading
+    const list = await fetchArchetypesList(tournament);
+    const archetypeBases = Array.isArray(list)
+      ? list.map(entry => (typeof entry === 'string' ? entry : entry?.name)).filter(Boolean)
+      : [];
+
+    progress.updateStep(0, 'loading');
+
+    // Get canonical card and all its variants for combined usage statistics
+    const canonical = await getCanonicalCard(cardIdentifier!);
+    const variants = await getCardVariants(canonical);
+
+    // Use parallel processing utility for better performance
+    const archetypeResults = await processInParallel(
+      archetypeBases,
+      async base => {
+        try {
+          const archetypeReport = await fetchArchetypeReport(tournament, base);
+          const parsedReport = parseReport(archetypeReport);
+
+          // Combine data from all variants for this archetype
+          let combinedFound = 0;
+          let combinedTotal: number | null = null;
+          const combinedDist: any[] = [];
+          let hasAnyData = false;
+
+          for (const variant of variants) {
+            const variantCardInfo = findCard(parsedReport.items, variant);
+            if (variantCardInfo) {
+              hasAnyData = true;
+              if (Number.isFinite(variantCardInfo.found)) {
+                combinedFound += variantCardInfo.found;
+              }
+              if (combinedTotal === null && Number.isFinite(variantCardInfo.total)) {
+                combinedTotal = variantCardInfo.total;
+              }
+
+              // Combine distribution data
+              if (variantCardInfo.dist && Array.isArray(variantCardInfo.dist)) {
+                for (const distEntry of variantCardInfo.dist) {
+                  const existing = combinedDist.find(distItem => distItem.copies === distEntry.copies);
+                  if (existing) {
+                    existing.players += distEntry.players || 0;
+                  } else {
+                    combinedDist.push({
+                      copies: distEntry.copies,
+                      players: distEntry.players || 0
+                    });
+                  }
+                }
+              }
+            }
+          }
+
+          if (hasAnyData && combinedTotal !== null) {
+            // For high-usage cards (>20%), include single-deck archetypes to show distribution
+            const overallItem = overall || {};
+            const overallPct = overallItem.total ? (100 * overallItem.found) / overallItem.total : overallItem.pct || 0;
+            const minSample = overallPct > 20 ? 1 : 2; // Lower threshold for high-usage cards
+
+            if (combinedTotal >= minSample) {
+              const percentage = combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0;
+
+              // Precompute percent of all decks in archetype by copies
+              const copiesPct = (numberOfCopies: number) => {
+                if (!Array.isArray(combinedDist) || !(combinedTotal! > 0)) {
+                  return null;
+                }
+                const distribution = combinedDist.find(distItem => distItem.copies === numberOfCopies);
+                if (!distribution) {
+                  return 0;
+                }
+                return (100 * (distribution.players ?? 0)) / combinedTotal!;
+              };
+
+              return {
+                archetype: base.replace(/_/g, ' '),
+                pct: percentage,
+                found: combinedFound,
+                total: combinedTotal,
+                c1: copiesPct(1),
+                c2: copiesPct(2),
+                c3: copiesPct(3),
+                c4: copiesPct(4)
+              };
+            }
+          }
+          return null;
+        } catch {
+          return null; // missing archetype
+        }
+      },
+      {
+        concurrency: 6, // Reasonable limit to avoid overwhelming the server
+        onProgress: (processed, total) => {
+          progress.updateProgress(processed, total, `${processed}/${total} archetypes processed`);
+        }
+      }
     );
 
-    analysisTable.appendChild(loadingSkeleton);
+    // Filter out null results
+    const rows = archetypeResults.filter((result): result is NonNullable<typeof result> => result !== null);
+    progress.updateStep(0, 'complete', `Processed ${rows.length} archetypes with data`);
+    progress.updateStep(1, 'loading');
+    rows.sort((archA, archB) => {
+      // Primary sort: actual deck count (found)
+      const foundDiff = (archB.found ?? 0) - (archA.found ?? 0);
+      if (foundDiff !== 0) {
+        return foundDiff;
+      }
 
-    try {
-        // Overall (All archetypes) distribution for this event
-        let overall: any = null;
-        try {
-            const master = await fetchReport(tournament);
-            const parsed = parseReport(master);
+      // Secondary sort: deck popularity (total) when found counts are equal
+      const totalDiff = (archB.total ?? 0) - (archA.total ?? 0);
+      if (totalDiff !== 0) {
+        return totalDiff;
+      }
 
-            // Get canonical card and all its variants for combined usage statistics
-            const canonical = await getCanonicalCard(cardIdentifier!);
-            const variants = await getCardVariants(canonical);
+      // Tertiary sort: alphabetical by archetype name
+      return archA.archetype.localeCompare(archB.archetype);
+    });
 
-            // Combine data from all variants
-            let combinedFound = 0;
-            let combinedTotal: number | null = null;
-            const combinedDist: any[] = [];
-            let hasAnyData = false;
+    // Fade out existing content before replacing
+    analysisTable.style.transition = 'opacity 0.1s ease-out';
+    analysisTable.style.opacity = '0';
 
-            for (const variant of variants) {
-                const variantCard = findCard(parsed.items, variant);
-                if (variantCard) {
-                    hasAnyData = true;
-                    if (Number.isFinite(variantCard.found)) {
-                        combinedFound += variantCard.found;
-                    }
-                    if (combinedTotal === null && Number.isFinite(variantCard.total)) {
-                        combinedTotal = variantCard.total;
-                    }
+    // Wait for fade out, then rebuild
+    await new Promise(resolve => setTimeout(resolve, 100));
 
-                    // Combine distribution data
-                    if (variantCard.dist && Array.isArray(variantCard.dist)) {
-                        for (const distEntry of variantCard.dist) {
-                            const existing = combinedDist.find(distItem => distItem.copies === distEntry.copies);
-                            if (existing) {
-                                existing.players += distEntry.players || 0;
-                            } else {
-                                combinedDist.push({
-                                    copies: distEntry.copies,
-                                    players: distEntry.players || 0
-                                });
-                            }
-                        }
-                    }
-                }
-            }
+    // eslint-disable-next-line require-atomic-updates
+    analysisTable.innerHTML = '';
 
-            if (hasAnyData && combinedTotal !== null) {
-                overall = {
-                    name: getDisplayName(canonical),
-                    found: combinedFound,
-                    total: combinedTotal,
-                    pct: combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0,
-                    dist: combinedDist.sort((first, second) => first.copies - second.copies)
-                };
-            }
-        } catch {
-            /* ignore */
-        }
+    // Per-archetype table
+    if (rows.length === 0) {
+      const note = document.createElement('div');
+      note.className = 'summary';
+      note.textContent = 'No per-archetype usage found for this event (or all archetypes have only one deck).';
+      analysisTable.appendChild(note);
+      progress.updateStep(1, 'complete');
+      progress.setComplete(500); // Show for half a second then fade
 
-        // Per-archetype distributions using enhanced parallel loading
-        const list = await fetchArchetypesList(tournament);
-        const archetypeBases = Array.isArray(list)
-            ? list.map(entry => (typeof entry === 'string' ? entry : entry?.name)).filter(Boolean)
-            : [];
-
-        progress.updateStep(0, 'loading');
-
-        // Get canonical card and all its variants for combined usage statistics
-        const canonical = await getCanonicalCard(cardIdentifier!);
-        const variants = await getCardVariants(canonical);
-
-        // Use parallel processing utility for better performance
-        const archetypeResults = await processInParallel(
-            archetypeBases,
-            async base => {
-                try {
-                    const archetypeReport = await fetchArchetypeReport(tournament, base);
-                    const parsedReport = parseReport(archetypeReport);
-
-                    // Combine data from all variants for this archetype
-                    let combinedFound = 0;
-                    let combinedTotal: number | null = null;
-                    const combinedDist: any[] = [];
-                    let hasAnyData = false;
-
-                    for (const variant of variants) {
-                        const variantCardInfo = findCard(parsedReport.items, variant);
-                        if (variantCardInfo) {
-                            hasAnyData = true;
-                            if (Number.isFinite(variantCardInfo.found)) {
-                                combinedFound += variantCardInfo.found;
-                            }
-                            if (combinedTotal === null && Number.isFinite(variantCardInfo.total)) {
-                                combinedTotal = variantCardInfo.total;
-                            }
-
-                            // Combine distribution data
-                            if (variantCardInfo.dist && Array.isArray(variantCardInfo.dist)) {
-                                for (const distEntry of variantCardInfo.dist) {
-                                    const existing = combinedDist.find(distItem => distItem.copies === distEntry.copies);
-                                    if (existing) {
-                                        existing.players += distEntry.players || 0;
-                                    } else {
-                                        combinedDist.push({
-                                            copies: distEntry.copies,
-                                            players: distEntry.players || 0
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (hasAnyData && combinedTotal !== null) {
-                        // For high-usage cards (>20%), include single-deck archetypes to show distribution
-                        const overallItem = overall || {};
-                        const overallPct = overallItem.total ? (100 * overallItem.found) / overallItem.total : overallItem.pct || 0;
-                        const minSample = overallPct > 20 ? 1 : 2; // Lower threshold for high-usage cards
-
-                        if (combinedTotal >= minSample) {
-                            const percentage = combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0;
-
-                            // Precompute percent of all decks in archetype by copies
-                            const copiesPct = (numberOfCopies: number) => {
-                                if (!Array.isArray(combinedDist) || !(combinedTotal! > 0)) {
-                                    return null;
-                                }
-                                const distribution = combinedDist.find(distItem => distItem.copies === numberOfCopies);
-                                if (!distribution) {
-                                    return 0;
-                                }
-                                return (100 * (distribution.players ?? 0)) / combinedTotal!;
-                            };
-
-                            return {
-                                archetype: base.replace(/_/g, ' '),
-                                pct: percentage,
-                                found: combinedFound,
-                                total: combinedTotal,
-                                c1: copiesPct(1),
-                                c2: copiesPct(2),
-                                c3: copiesPct(3),
-                                c4: copiesPct(4)
-                            };
-                        }
-                    }
-                    return null;
-                } catch {
-                    return null; // missing archetype
-                }
-            },
-            {
-                concurrency: 6, // Reasonable limit to avoid overwhelming the server
-                onProgress: (processed, total) => {
-                    progress.updateProgress(processed, total, `${processed}/${total} archetypes processed`);
-                }
-            }
-        );
-
-        // Filter out null results
-        const rows = archetypeResults.filter((result): result is NonNullable<typeof result> => result !== null);
-        progress.updateStep(0, 'complete', `Processed ${rows.length} archetypes with data`);
-        progress.updateStep(1, 'loading');
-        rows.sort((archA, archB) => {
-            // Primary sort: actual deck count (found)
-            const foundDiff = (archB.found ?? 0) - (archA.found ?? 0);
-            if (foundDiff !== 0) {
-                return foundDiff;
-            }
-
-            // Secondary sort: deck popularity (total) when found counts are equal
-            const totalDiff = (archB.total ?? 0) - (archA.total ?? 0);
-            if (totalDiff !== 0) {
-                return totalDiff;
-            }
-
-            // Tertiary sort: alphabetical by archetype name
-            return archA.archetype.localeCompare(archB.archetype);
-        });
-
-        // Fade out existing content before replacing
-        analysisTable.style.transition = 'opacity 0.1s ease-out';
-        analysisTable.style.opacity = '0';
-
-        // Wait for fade out, then rebuild
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // eslint-disable-next-line require-atomic-updates
-        analysisTable.innerHTML = '';
-
-        // Per-archetype table
-        if (rows.length === 0) {
-            const note = document.createElement('div');
-            note.className = 'summary';
-            note.textContent = 'No per-archetype usage found for this event (or all archetypes have only one deck).';
-            analysisTable.appendChild(note);
-            progress.updateStep(1, 'complete');
-            progress.setComplete(500); // Show for half a second then fade
-            
-            // Fade in the empty state
-            requestAnimationFrame(() => {
-                analysisTable.style.opacity = '1';
-            });
-            return;
-        }
-        const tbl = document.createElement('table');
-        tbl.style.width = '100%';
-        tbl.style.borderCollapse = 'collapse';
-        tbl.style.background = 'var(--panel)';
-        tbl.style.border = '1px solid #242a4a';
-        tbl.style.borderRadius = '8px';
-        const thead = document.createElement('thead');
-        const trh = document.createElement('tr');
-        ['Archetype', 'Played %', '1x', '2x', '3x', '4x'].forEach((header, i) => {
-            const th = document.createElement('th');
-            th.textContent = header;
-            if (header === 'Played %') {
-                th.title = 'Percent of decks in the archetype that ran the card (any copies).';
-            }
-            if (['1x', '2x', '3x', '4x'].includes(header)) {
-                th.title = `Percent of decks in the archetype that ran exactly ${header}`;
-            }
-            th.style.textAlign = i > 0 && i < 6 ? 'right' : 'left';
-            th.style.padding = '10px 12px';
-            th.style.borderBottom = '1px solid #2c335a';
-            th.style.color = 'var(--muted)';
-            trh.appendChild(th);
-        });
-        thead.appendChild(trh);
-        tbl.appendChild(thead);
-        const tbody = document.createElement('tbody');
-        for (const rowData of rows) {
-            const tableRow = document.createElement('tr');
-            const formatValue = (value: number | null) => (value === null ? '—' : `${Math.round(value)}%`);
-
-            const archetypeDeckCount = rowData.total !== null ? rowData.total : rowData.found !== null ? rowData.found : null;
-            const firstCell = document.createElement('td');
-            const strong = document.createElement('strong');
-            strong.textContent = rowData.archetype;
-            firstCell.appendChild(strong);
-            if (archetypeDeckCount !== null) {
-                firstCell.appendChild(document.createTextNode(` (${archetypeDeckCount})`));
-            }
-            firstCell.style.padding = '10px 12px';
-            firstCell.style.textAlign = 'left';
-            tableRow.appendChild(firstCell);
-
-            const otherValues = [
-                rowData.pct !== null ? `${Math.round(rowData.pct)}%` : '—',
-                formatValue(rowData.c1),
-                formatValue(rowData.c2),
-                formatValue(rowData.c3),
-                formatValue(rowData.c4)
-            ];
-
-            otherValues.forEach((valueText, valueIndex) => {
-                const tableCell = document.createElement('td');
-                tableCell.textContent = valueText;
-
-                if (valueIndex === 0) {
-                    tableCell.title = 'Played % = (decks with the card / total decks in archetype)';
-                }
-                if (valueIndex >= 1 && valueIndex <= 4) {
-                    const numberOfCopies = valueIndex;
-                    tableCell.title = `Percent of decks in archetype that ran exactly ${numberOfCopies}x`;
-                }
-
-                if (typeof valueText === 'string') {
-                    const percentageMatch = valueText.match(/^\s*(\d+)%$/);
-                    if (percentageMatch && Number(percentageMatch[1]) === 0) {
-                        tableCell.classList.add('zero-pct');
-                    }
-                }
-
-                tableCell.style.padding = '10px 12px';
-                tableCell.style.textAlign = 'right';
-                tableRow.appendChild(tableCell);
-            });
-
-            tbody.appendChild(tableRow);
-        }
-        tbl.appendChild(tbody);
-        analysisTable.appendChild(tbl);
-
-        // Fade in the new table content
-        requestAnimationFrame(() => {
-            analysisTable.style.opacity = '1';
-        });
-
-        // Make table header sticky via a floating cloned header as a fallback when CSS sticky doesn't work
-        // This ensures the header row stays visible even if ancestor overflow/transform prevents CSS sticky.
-        try {
-            enableFloatingTableHeader(tbl);
-        } catch (err) {
-            // Non-fatal: if anything goes wrong, don't block rendering
-            logger.debug('enableFloatingTableHeader failed:', err);
-        }
-
-        progress.updateStep(1, 'complete', `Built table with ${rows.length} archetypes`);
-        progress.setComplete(500); // Show for half a second then fade away
-    } catch (error) {
-        logger.error('Analysis table error:', error);
-        // eslint-disable-next-line require-atomic-updates
-        analysisTable.textContent = 'Failed to load analysis for this event.';
-
-        // Clean up progress indicator and any orphans
-        if (progress && progress.fadeAndRemove) {
-            progress.fadeAndRemove();
-        }
-
-        // Failsafe cleanup for any lingering progress indicators
-        setTimeout(() => {
-            cleanupOrphanedProgressDisplay();
-        }, 100);
+      // Fade in the empty state
+      requestAnimationFrame(() => {
+        analysisTable.style.opacity = '1';
+      });
+      return;
     }
+    const tbl = document.createElement('table');
+    tbl.style.width = '100%';
+    tbl.style.borderCollapse = 'collapse';
+    tbl.style.background = 'var(--panel)';
+    tbl.style.border = '1px solid #242a4a';
+    tbl.style.borderRadius = '8px';
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    ['Archetype', 'Played %', '1x', '2x', '3x', '4x'].forEach((header, i) => {
+      const th = document.createElement('th');
+      th.textContent = header;
+      if (header === 'Played %') {
+        th.title = 'Percent of decks in the archetype that ran the card (any copies).';
+      }
+      if (['1x', '2x', '3x', '4x'].includes(header)) {
+        th.title = `Percent of decks in the archetype that ran exactly ${header}`;
+      }
+      th.style.textAlign = i > 0 && i < 6 ? 'right' : 'left';
+      th.style.padding = '10px 12px';
+      th.style.borderBottom = '1px solid #2c335a';
+      th.style.color = 'var(--muted)';
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    tbl.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    for (const rowData of rows) {
+      const tableRow = document.createElement('tr');
+      const formatValue = (value: number | null) => (value === null ? '—' : `${Math.round(value)}%`);
+
+      const archetypeDeckCount = rowData.total !== null ? rowData.total : rowData.found !== null ? rowData.found : null;
+      const firstCell = document.createElement('td');
+      const strong = document.createElement('strong');
+      strong.textContent = rowData.archetype;
+      firstCell.appendChild(strong);
+      if (archetypeDeckCount !== null) {
+        firstCell.appendChild(document.createTextNode(` (${archetypeDeckCount})`));
+      }
+      firstCell.style.padding = '10px 12px';
+      firstCell.style.textAlign = 'left';
+      tableRow.appendChild(firstCell);
+
+      const otherValues = [
+        rowData.pct !== null ? `${Math.round(rowData.pct)}%` : '—',
+        formatValue(rowData.c1),
+        formatValue(rowData.c2),
+        formatValue(rowData.c3),
+        formatValue(rowData.c4)
+      ];
+
+      otherValues.forEach((valueText, valueIndex) => {
+        const tableCell = document.createElement('td');
+        tableCell.textContent = valueText;
+
+        if (valueIndex === 0) {
+          tableCell.title = 'Played % = (decks with the card / total decks in archetype)';
+        }
+        if (valueIndex >= 1 && valueIndex <= 4) {
+          const numberOfCopies = valueIndex;
+          tableCell.title = `Percent of decks in archetype that ran exactly ${numberOfCopies}x`;
+        }
+
+        if (typeof valueText === 'string') {
+          const percentageMatch = valueText.match(/^\s*(\d+)%$/);
+          if (percentageMatch && Number(percentageMatch[1]) === 0) {
+            tableCell.classList.add('zero-pct');
+          }
+        }
+
+        tableCell.style.padding = '10px 12px';
+        tableCell.style.textAlign = 'right';
+        tableRow.appendChild(tableCell);
+      });
+
+      tbody.appendChild(tableRow);
+    }
+    tbl.appendChild(tbody);
+    analysisTable.appendChild(tbl);
+
+    // Fade in the new table content
+    requestAnimationFrame(() => {
+      analysisTable.style.opacity = '1';
+    });
+
+    // Make table header sticky via a floating cloned header as a fallback when CSS sticky doesn't work
+    // This ensures the header row stays visible even if ancestor overflow/transform prevents CSS sticky.
+    try {
+      enableFloatingTableHeader(tbl);
+    } catch (err) {
+      // Non-fatal: if anything goes wrong, don't block rendering
+      logger.debug('enableFloatingTableHeader failed:', err);
+    }
+
+    progress.updateStep(1, 'complete', `Built table with ${rows.length} archetypes`);
+    progress.setComplete(500); // Show for half a second then fade away
+  } catch (error) {
+    logger.error('Analysis table error:', error);
+    // eslint-disable-next-line require-atomic-updates
+    analysisTable.textContent = 'Failed to load analysis for this event.';
+
+    // Clean up progress indicator and any orphans
+    if (progress && progress.fadeAndRemove) {
+      progress.fadeAndRemove();
+    }
+
+    // Failsafe cleanup for any lingering progress indicators
+    setTimeout(() => {
+      cleanupOrphanedProgressDisplay();
+    }, 100);
+  }
 }
 
 if (!__ROUTE_REDIRECTING) {
-    load();
+  load();
 }
 
 // Debug utility - expose cleanup function globally for troubleshooting
 (window as any).cleanupProgress = () => {
-    const elements = document.querySelectorAll('.parallel-loader-progress, [id^="progress-"]');
-    logger.debug(`Found ${elements.length} progress indicator(s) to clean up`);
+  const elements = document.querySelectorAll('.parallel-loader-progress, [id^="progress-"]');
+  logger.debug(`Found ${elements.length} progress indicator(s) to clean up`);
 
-    elements.forEach((element, index) => {
-        logger.debug(`Removing progress indicator ${index + 1}: ${element.id || element.className}`);
-        const el = element as HTMLElement;
-        el.style.transition = 'opacity 0.3s ease-out';
-        el.style.opacity = '0';
+  elements.forEach((element, index) => {
+    logger.debug(`Removing progress indicator ${index + 1}: ${element.id || element.className}`);
+    const el = element as HTMLElement;
+    el.style.transition = 'opacity 0.3s ease-out';
+    el.style.opacity = '0';
 
-        setTimeout(() => {
-            if (el.parentNode) {
-                el.remove();
-                logger.debug(`Successfully removed progress indicator ${index + 1}`);
-            }
-        }, 300);
-    });
+    setTimeout(() => {
+      if (el.parentNode) {
+        el.remove();
+        logger.debug(`Successfully removed progress indicator ${index + 1}`);
+      }
+    }, 300);
+  });
 
-    return elements.length;
+  return elements.length;
 };
 
 /**
@@ -2524,91 +2549,91 @@ if (!__ROUTE_REDIRECTING) {
  * @param table
  */
 function enableFloatingTableHeader(table: HTMLTableElement) {
-    if (!table || !(table instanceof HTMLTableElement)) {
-        return;
+  if (!table || !(table instanceof HTMLTableElement)) {
+    return;
+  }
+  const thead = table.querySelector('thead');
+  if (!thead) {
+    return;
+  }
+
+  // Create floating wrapper
+  const floating = document.createElement('div');
+  floating.className = 'floating-thead';
+  floating.style.position = 'fixed';
+  floating.style.top = '0';
+  const initialRect = table.getBoundingClientRect();
+  floating.style.left = `${initialRect.left}px`;
+  floating.style.width = `${initialRect.width}px`;
+  floating.style.overflow = 'hidden';
+  floating.style.zIndex = '1000';
+  floating.style.pointerEvents = 'none';
+  floating.style.display = 'none';
+
+  // Clone header table structure
+  const cloneTable = document.createElement('table');
+  cloneTable.className = table.className;
+  cloneTable.style.borderCollapse = 'collapse';
+  const cloneThead = thead.cloneNode(true);
+  cloneTable.appendChild(cloneThead);
+  floating.appendChild(cloneTable);
+  document.body.appendChild(floating);
+
+  // Helper to sync column widths
+  function syncWidths() {
+    if (!thead) return;
+    const srcCols = thead.querySelectorAll('th');
+    const dstCols = (cloneThead as HTMLElement).querySelectorAll('th');
+    const srcRect = table.getBoundingClientRect();
+    floating.style.left = `${Math.max(0, srcRect.left)}px`;
+    floating.style.width = `${srcRect.width}px`;
+    for (let i = 0; i < srcCols.length; i++) {
+      const columnWidth = srcCols[i].getBoundingClientRect().width;
+      dstCols[i].style.width = `${columnWidth}px`;
     }
-    const thead = table.querySelector('thead');
-    if (!thead) {
-        return;
+  }
+
+  function onScroll() {
+    if (!thead) return;
+    const rect = table.getBoundingClientRect();
+    const headerRect = thead.getBoundingClientRect();
+    // Show floating header once the real header is scrolled above the viewport top
+    if (headerRect.top < 0 && rect.bottom > 40) {
+      syncWidths();
+      floating.style.display = '';
+    } else {
+      floating.style.display = 'none';
     }
+  }
 
-    // Create floating wrapper
-    const floating = document.createElement('div');
-    floating.className = 'floating-thead';
-    floating.style.position = 'fixed';
-    floating.style.top = '0';
-    const initialRect = table.getBoundingClientRect();
-    floating.style.left = `${initialRect.left}px`;
-    floating.style.width = `${initialRect.width}px`;
-    floating.style.overflow = 'hidden';
-    floating.style.zIndex = '1000';
-    floating.style.pointerEvents = 'none';
-    floating.style.display = 'none';
-
-    // Clone header table structure
-    const cloneTable = document.createElement('table');
-    cloneTable.className = table.className;
-    cloneTable.style.borderCollapse = 'collapse';
-    const cloneThead = thead.cloneNode(true);
-    cloneTable.appendChild(cloneThead);
-    floating.appendChild(cloneTable);
-    document.body.appendChild(floating);
-
-    // Helper to sync column widths
-    function syncWidths() {
-        if (!thead) return;
-        const srcCols = thead.querySelectorAll('th');
-        const dstCols = (cloneThead as HTMLElement).querySelectorAll('th');
-        const srcRect = table.getBoundingClientRect();
-        floating.style.left = `${Math.max(0, srcRect.left)}px`;
-        floating.style.width = `${srcRect.width}px`;
-        for (let i = 0; i < srcCols.length; i++) {
-            const columnWidth = srcCols[i].getBoundingClientRect().width;
-            dstCols[i].style.width = `${columnWidth}px`;
-        }
+  // Throttle resize/scroll handlers lightly
+  let ticking = false;
+  function ticked() {
+    onScroll();
+    ticking = false;
+  }
+  function schedule() {
+    if (!ticking) {
+      requestAnimationFrame(ticked);
+      ticking = true;
     }
+  }
 
-    function onScroll() {
-        if (!thead) return;
-        const rect = table.getBoundingClientRect();
-        const headerRect = thead.getBoundingClientRect();
-        // Show floating header once the real header is scrolled above the viewport top
-        if (headerRect.top < 0 && rect.bottom > 40) {
-            syncWidths();
-            floating.style.display = '';
-        } else {
-            floating.style.display = 'none';
-        }
-    }
+  window.addEventListener('scroll', schedule, { passive: true });
+  window.addEventListener('resize', schedule);
 
-    // Throttle resize/scroll handlers lightly
-    let ticking = false;
-    function ticked() {
-        onScroll();
-        ticking = false;
-    }
-    function schedule() {
-        if (!ticking) {
-            requestAnimationFrame(ticked);
-            ticking = true;
-        }
-    }
+  // Initial sync
+  schedule();
 
-    window.addEventListener('scroll', schedule, { passive: true });
-    window.addEventListener('resize', schedule);
-
-    // Initial sync
-    schedule();
-
-    // Return a cleanup function attached to the table for potential removal
-    Object.defineProperty(table, '_floatingHeaderCleanup', {
-        value: () => {
-            window.removeEventListener('scroll', schedule);
-            window.removeEventListener('resize', schedule);
-            if (floating && floating.parentNode) {
-                floating.parentNode.removeChild(floating);
-            }
-        },
-        configurable: true
-    });
+  // Return a cleanup function attached to the table for potential removal
+  Object.defineProperty(table, '_floatingHeaderCleanup', {
+    value: () => {
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      if (floating && floating.parentNode) {
+        floating.parentNode.removeChild(floating);
+      }
+    },
+    configurable: true
+  });
 }

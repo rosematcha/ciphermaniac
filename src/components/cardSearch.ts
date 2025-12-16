@@ -183,6 +183,7 @@ export function initCardSearch(options: SearchOptions) {
         const processedTournaments = new Set<string>();
 
         const byExactName = new Map<string, CardOptionItem>(); // exact display name -> {display, uid}
+        let hasLoadedData = false;
 
         const updateDatalist = () => {
             if (cardNamesList) {
@@ -190,17 +191,27 @@ export function initCardSearch(options: SearchOptions) {
             }
         };
 
-        // Fetch tournaments list in background and update later
-        fetchTournamentsList()
-            .then(fetchedTournaments => {
-                if (Array.isArray(fetchedTournaments) && fetchedTournaments.length > 0) {
-                    tournaments = fetchedTournaments;
-                    enrichSuggestions(tournaments, byExactName, updateDatalist, processedTournaments);
-                }
-            })
-            .catch(() => {
-                // Silently continue with fallback
-            });
+        const loadData = () => {
+            if (hasLoadedData) {
+                return;
+            }
+            hasLoadedData = true;
+
+            // Fetch tournaments list in background and update later
+            fetchTournamentsList()
+                .then(fetchedTournaments => {
+                    if (Array.isArray(fetchedTournaments) && fetchedTournaments.length > 0) {
+                        tournaments = fetchedTournaments;
+                        enrichSuggestions(tournaments, byExactName, updateDatalist, processedTournaments);
+                    }
+                })
+                .catch(() => {
+                    // Silently continue with fallback
+                });
+
+            // Incrementally enrich suggestions by scanning tournaments sequentially
+            enrichSuggestions(tournaments, byExactName, updateDatalist, processedTournaments);
+        };
 
         // Union cache across tournaments for robust suggestions
         const cached = getCachedNames();
@@ -218,9 +229,9 @@ export function initCardSearch(options: SearchOptions) {
         } else {
             // Fallback: Add common cards for immediate suggestions when no cache exists
             const commonCards = [
-                "Boss's Orders PAL 172",
+                'Boss\'s Orders PAL 172',
                 'Ultra Ball SVI 196',
-                "Professor's Research JTG 155",
+                'Professor\'s Research JTG 155',
                 'Iono PAL 185',
                 'Rare Candy SVI 191',
                 'Night Stretcher SFA 061',
@@ -234,14 +245,16 @@ export function initCardSearch(options: SearchOptions) {
 
         updateDatalist();
 
-        // Incrementally enrich suggestions by scanning tournaments sequentially
-        enrichSuggestions(tournaments, byExactName, updateDatalist, processedTournaments);
+        // Defer data loading until user interaction
+        cardSearchInput.addEventListener('focus', loadData, { once: true });
+        cardSearchInput.addEventListener('input', loadData, { once: true });
 
         setupSearchHandlers(cardSearchInput, cardNamesList, suggestionsBox, options);
     } catch (error) {
         // Ignore initialization errors
     }
 }
+
 
 function setupSearchHandlers(
     cardSearchInput: HTMLInputElement,

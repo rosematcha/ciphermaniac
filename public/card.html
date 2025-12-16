@@ -1,154 +1,180 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Card Details &mdash; Ciphermaniac</title>
-  <!-- Preload critical font to reduce layout shift -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/style.css" />
-  <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
-</head>
-<body>
-
-  <!-- Search toolbar (minimal, card-only) -->
-  <div class="toolbar" role="search" aria-label="Card search">
-    <div class="toolbar-inner">
-      <div class="controls card-search">
-        <div class="search-wrap">
-          <!-- magnifying icon (decorative) -->
-          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M21 21l-4.35-4.35" stroke="#7c86a8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
-            <circle cx="11" cy="11" r="6" stroke="#7c86a8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></circle>
-          </svg>
-          <input id="card-search" type="search" placeholder="Search database&hellip;" autocomplete="off" aria-label="Search database" />
-          <datalist id="card-names"></datalist>
-          <div id="card-suggestions" class="suggestions" role="listbox" aria-label="Card suggestions"></div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Card Details &mdash; Ciphermaniac</title>
+    <!-- DNS prefetch for external resources -->
+    <link rel="dns-prefetch" href="https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com" />
+    <!-- Preload critical font to reduce layout shift -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/style.css" />
+    <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
+    <!-- Preload critical JS modules for faster page load -->
+    <link rel="modulepreload" href="/assets/js/card.js" />
+    <link rel="modulepreload" href="/assets/js/api.js" />
+    <link rel="modulepreload" href="/assets/js/card/charts.js" />
+  </head>
+  <body>
+    <!-- Search toolbar (minimal, card-only) -->
+    <div class="toolbar" role="search" aria-label="Card search">
+      <div class="toolbar-inner">
+        <div class="controls card-search">
+          <div class="search-wrap">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M21 21l-4.35-4.35"
+                stroke="#7c86a8"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></path>
+              <circle
+                cx="11"
+                cy="11"
+                r="6"
+                stroke="#7c86a8"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></circle>
+            </svg>
+            <input
+              id="card-search"
+              type="search"
+              placeholder="Search database&hellip;"
+              autocomplete="off"
+              aria-label="Search database"
+            />
+            <datalist id="card-names"></datalist>
+            <div id="card-suggestions" class="suggestions" role="listbox" aria-label="Card suggestions"></div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <main>
-    <section id="card-meta" class="card-sect">
-  <div class="header-title">
-    <div class="title-row">
-      <h1 id="card-title">Card Details</h1>
-      <div id="card-price" class="card-price">
-        <!-- Price loads asynchronously -->
-      </div>
-    </div>
-    <div id="card-sets" class="card-sets">
-      <!-- Sets load asynchronously -->
-    </div>
-  </div>
-  <div id="card-hero" class="card-hero">
-    <!-- Hero image container - populated by JS with smooth fade-in -->
-    <div class="thumb" aria-hidden="true">
-      <div class="skeleton-image" style="width: 100%; height: 100%; background: var(--bar-bg); animation: skeleton-loading 1.5s ease-in-out infinite;"></div>
-    </div>
-  </div>
-  <div id="card-center">
-  <!-- window-select removed; card page always shows the most recent 6 tournaments -->
-        <div id="card-chart">
-          <!-- Chart loads asynchronously with smooth transition -->
+    <main>
+      <section id="card-meta" class="card-sect">
+        <div class="header-title">
+          <div class="title-row">
+            <h1 id="card-title">Card Details</h1>
+            <div id="card-price" class="card-price">
+              <!-- Price loads asynchronously -->
+            </div>
+          </div>
+          <div id="card-sets" class="card-sets">
+            <!-- Sets load asynchronously -->
+          </div>
         </div>
-        <div id="card-copies">
-          <!-- Histogram loads asynchronously with smooth transition -->
+        <div id="card-hero" class="card-hero">
+          <!-- Hero image container - populated by JS with smooth fade-in -->
+          <div class="thumb" aria-hidden="true">
+            <div
+              class="skeleton-image"
+              style="
+                width: 100%;
+                height: 100%;
+                background: var(--bar-bg);
+                animation: skeleton-loading 1.5s ease-in-out infinite;
+              "
+            ></div>
+          </div>
         </div>
-  </div>
-  <div id="card-events"></div>
-      <!-- Card meta-share and copy count graph will go here -->
-    </section>
-  <section id="card-analysis" class="card-sect">
-      <div class="analysis-header">
-        <h2>In-Depth Analysis</h2>
-        <div class="controls">
-          <label>
-            Event:
-            <select id="analysis-event"></select>
-          </label>
+        <div id="card-center">
+          <!-- window-select removed; card page always shows the most recent 6 tournaments -->
+          <div id="card-chart">
+            <!-- Chart loads asynchronously with smooth transition -->
+          </div>
+          <div id="card-copies">
+            <!-- Histogram loads asynchronously with smooth transition -->
+          </div>
         </div>
-      </div>
-      <div id="analysis-table" style="margin-top:8px"></div>
-    </section>
-  </main>
-  <div id="card-image-modal" class="card-image-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="card-image-modal-caption">
-    <div class="card-image-modal__backdrop" data-card-modal-close="true"></div>
-    <div class="card-image-modal__dialog" role="document">
-      <button type="button" class="card-image-modal__close" aria-label="Close full-size image" data-card-modal-close="true">
-        &times;
-      </button>
-      <div class="card-image-modal__image-wrap">
-        <img id="card-image-modal-img" data-card-modal-image alt="" decoding="async" />
-      </div>
-      <p id="card-image-modal-caption" class="card-image-modal__caption" data-card-modal-caption>Full-size card image</p>
-    </div>
-  </div>
+        <div id="card-events"></div>
+        <!-- Card meta-share and copy count graph will go here -->
+      </section>
+      <section id="card-analysis" class="card-sect">
+        <div class="analysis-header">
+          <h2>In-Depth Analysis</h2>
+          <div class="controls">
+            <label>
+              Event:
+              <select id="analysis-event"></select>
+            </label>
+          </div>
+        </div>
+        <div id="analysis-table" style="margin-top: 8px"></div>
+      </section>
+    </main>
+    <!-- Modal will be injected by JS when needed -->
 
-  <script type="module">
-    import { createHeader } from '/assets/js/components/header.js';
-    import { createFooter } from '/assets/js/components/footer.js';
-    import { describeSlug } from '/assets/js/card/routing.js';
+    <script>
+      // Fast synchronous title update - no module imports, immediate paint
+      (function () {
+        function getInitialCardLabel() {
+          const params = new URLSearchParams(location.search);
+          const q = params.get('name');
+          if (q) return q;
 
-    // Extract and display card name immediately for fast initial paint
-    function getInitialCardLabel(){
-      const params = new URLSearchParams(location.search);
-      const q = params.get('name');
-      if(q) {return q;}
+          const hashMatch = location.hash.match(/^#card\/(.+)$/);
+          if (hashMatch) return decodeURIComponent(hashMatch[1]);
 
-      const hashMatch = location.hash.match(/^#card\/(.+)$/);
-      if(hashMatch) {return decodeURIComponent(hashMatch[1]);}
+          const pathMatch = location.pathname.match(/\/card(?:\.html)?(?:\/([^/?#]+))?$/i);
+          if (pathMatch && pathMatch[1]) {
+            // Minimal inline describeSlug for initial paint
+            const slug = decodeURIComponent(pathMatch[1]);
+            return slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          }
+          return null;
+        }
 
-      const pathMatch = location.pathname.match(/\/card(?:\.html)?(?:\/([^/?#]+))?$/i);
-      if(pathMatch && pathMatch[1]) {
-        return describeSlug(decodeURIComponent(pathMatch[1]));
-      }
+        const initialLabel = getInitialCardLabel();
+        if (initialLabel) {
+          const titleEl = document.getElementById('card-title');
+          if (titleEl) {
+            let primary = initialLabel;
+            let setBadge = '';
 
-      return null;
-    }
+            if (initialLabel.includes('::')) {
+              const parts = initialLabel.split('::');
+              primary = parts[0] || initialLabel;
+              if (parts.length >= 3 && parts[1] && parts[2]) {
+                setBadge = `${parts[1]} ${parts[2]}`;
+              }
+            }
 
-    // Show card name immediately, no waiting for JS modules
-    const initialLabel = getInitialCardLabel();
-    if (initialLabel) {
-      const titleEl = document.getElementById('card-title');
-      if (titleEl) {
-        let primary = initialLabel;
-        let setBadge = '';
+            titleEl.textContent = '';
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = primary;
+            titleEl.appendChild(nameSpan);
 
-        if (initialLabel.includes('::')) {
-          const parts = initialLabel.split('::');
-          primary = parts[0] || initialLabel;
-          if (parts.length >= 3 && parts[1] && parts[2]) {
-            setBadge = `${parts[1]} ${parts[2]}`;
+            if (setBadge) {
+              const setSpan = document.createElement('span');
+              setSpan.className = 'card-title-set';
+              setSpan.textContent = setBadge;
+              titleEl.appendChild(setSpan);
+            }
+
+            document.title = `${primary}${setBadge ? ` ${setBadge}` : ''} – Ciphermaniac`;
           }
         }
+      })();
+    </script>
+    <script type="module">
+      // Defer header/footer until after initial content paint
+      import { createHeader } from '/assets/js/components/header.js';
+      import { createFooter } from '/assets/js/components/footer.js';
 
-        titleEl.textContent = '';
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = primary;
-        titleEl.appendChild(nameSpan);
+      const header = createHeader({ currentPage: 'cards' });
+      const footer = createFooter();
 
-        if (setBadge) {
-          const setSpan = document.createElement('span');
-          setSpan.className = 'card-title-set';
-          setSpan.textContent = setBadge;
-          titleEl.appendChild(setSpan);
-        }
-
-        document.title = `${primary}${setBadge ? ` ${setBadge}` : ''} – Ciphermaniac`;
-      }
-    }
-
-    // Insert header and footer
-    const header = createHeader({ currentPage: 'cards' });
-    const footer = createFooter();
-    
-    document.body.insertAdjacentElement('afterbegin', header);
-    document.body.insertAdjacentElement('beforeend', footer);
-  </script>
-  <script src="/assets/js/card.js" type="module"></script>
-</body>
+      document.body.insertAdjacentElement('afterbegin', header);
+      document.body.insertAdjacentElement('beforeend', footer);
+    </script>
+    <script src="/assets/js/card.js" type="module"></script>
+  </body>
 </html>
