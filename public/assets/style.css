@@ -4330,6 +4330,34 @@ body.card-image-modal-open {
   font-weight: 600;
 }
 
+/* Clickable Ace Spec card names in warning messages */
+.ace-spec-quick-filter {
+  display: inline;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+}
+
+.ace-spec-quick-filter:hover,
+.ace-spec-quick-filter:focus {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  outline: none;
+}
+
+.ace-spec-quick-filter:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
 .skeleton-export {
   display: flex;
   flex-wrap: wrap;
@@ -4727,7 +4755,7 @@ body.card-image-modal-open {
 
   .incidents-pagination {
     justify-content: space-between;
-   width: 100%;
+    width: 100%;
   }
 }
 
@@ -5716,9 +5744,12 @@ body.card-image-modal-open {
 .skeleton-warnings {
   color: #ffb74d;
   font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: block;
+  gap: 0;
+}
+
+.archetype-filter-message[data-tone="warning"] {
+  display: block;
 }
 
 .export-actions {
@@ -6167,7 +6198,7 @@ body.card-image-modal-open {
   flex-wrap: wrap;
 }
 
-.trend-panel__header > div:first-child {
+.trend-panel__header>div:first-child {
   flex-shrink: 0;
 }
 
@@ -6346,7 +6377,7 @@ body.card-image-modal-open {
   .legend-value {
     font-size: 11px;
   }
-  
+
   .legend-name {
     font-size: 12px;
   }
@@ -6377,7 +6408,7 @@ body.card-image-modal-open {
 }
 
 /* Hide standalone y-axis info - it's now in the controls */
-.trend-panel > .meta-ymax {
+.trend-panel>.meta-ymax {
   display: none;
 }
 

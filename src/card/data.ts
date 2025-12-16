@@ -172,7 +172,7 @@ export async function collectCardVariants(cardIdentifier: string): Promise<strin
 
     // Optimize for performance: limit to recent tournaments for variants collection
     // Most card variants appear across multiple recent tournaments
-    const RECENT_LIMIT = 4; // Check only the 4 most recent tournaments for variants
+    const RECENT_LIMIT = 8; // Check the 8 most recent tournaments for variants
     const recentTournaments = tournaments.slice(0, RECENT_LIMIT);
 
     // Parallelize tournament data collection with higher concurrency since we're processing fewer tournaments
@@ -339,7 +339,7 @@ function showPrice(container: HTMLElement, price: number): void {
     <div class="price-value">$${price.toFixed(2)}</div>
   `;
     container.appendChild(priceElement);
-    
+
     // Trigger fade-in on next frame
     requestAnimationFrame(() => {
         priceElement.style.opacity = '1';
@@ -358,7 +358,7 @@ function showPriceUnavailable(container: HTMLElement, message: string): void {
     noPriceElement.style.transition = 'opacity 0.15s ease-out';
     noPriceElement.textContent = message;
     container.appendChild(noPriceElement);
-    
+
     // Trigger fade-in on next frame
     requestAnimationFrame(() => {
         noPriceElement.style.opacity = '1';
@@ -379,6 +379,7 @@ function showPriceError(container: HTMLElement, message: string): void {
 
 /**
  * Render card sets/variants information
+ * Loads silently in the background - no loading message since this is non-critical data
  * @param cardIdentifier - Card identifier
  */
 export async function renderCardSets(cardIdentifier: string): Promise<void> {
@@ -394,47 +395,42 @@ export async function renderCardSets(cardIdentifier: string): Promise<void> {
             cardIdentifier: validatedIdentifier
         });
 
-        const errorBoundary = new ErrorBoundary(setsContainer, {
-            showRetryButton: false,
-            showErrorDetails: false
-        });
+        // Load variants silently in the background (no loading indicator)
+        const variants = await collectCardVariants(validatedIdentifier);
 
-        await errorBoundary.execute(
-            async () => {
-                const variants = await collectCardVariants(validatedIdentifier);
+        // Remove any skeleton styling
+        setsContainer.classList.remove('skeleton-loading');
 
-                // Remove skeleton class and prepare for fade-in
-                setsContainer.classList.remove('skeleton-loading');
-                setsContainer.style.opacity = '0';
-                setsContainer.style.transition = 'opacity 0.15s ease-out';
+        if (variants.length === 0) {
+            // No variants found - keep the container empty
+            setsContainer.textContent = '';
+            logger.debug('No variants found', {
+                cardIdentifier: validatedIdentifier
+            });
+        } else {
+            // Show variants with fade-in
+            setsContainer.style.opacity = '0';
+            setsContainer.style.transition = 'opacity 0.15s ease-out';
+            setsContainer.textContent = variants.join(', ');
 
-                if (variants.length === 0) {
-                    setsContainer.textContent = '';
-                    logger.debug('No variants found', {
-                        cardIdentifier: validatedIdentifier
-                    });
-                } else {
-                    setsContainer.textContent = variants.join(', ');
-                    logger.debug('Variants displayed', {
-                        cardIdentifier: validatedIdentifier,
-                        variantCount: variants.length
-                    });
-                }
-                
-                // Trigger fade-in
-                requestAnimationFrame(() => {
-                    setsContainer.style.opacity = '1';
-                });
-            },
-            null,
-            { loadingMessage: 'Loading variants...', retryAttempts: 1 }
-        );
+            logger.debug('Variants displayed', {
+                cardIdentifier: validatedIdentifier,
+                variantCount: variants.length
+            });
+
+            // Trigger fade-in
+            requestAnimationFrame(() => {
+                setsContainer.style.opacity = '1';
+            });
+        }
     } catch (error) {
-        logger.exception('renderCardSets failed', error, { cardIdentifier });
-        // Set error state atomically
-        Object.assign(setsContainer, {
-            className: 'error',
-            textContent: ''
+        // Silently fail for this non-critical section - just log the error
+        logger.debug('renderCardSets failed silently', {
+            cardIdentifier,
+            error: error instanceof Error ? error.message : String(error)
         });
+        // Clear any loading state and leave container empty
+        setsContainer.classList.remove('skeleton-loading');
+        setsContainer.textContent = '';
     }
 }
