@@ -570,7 +570,6 @@ body:not(.no-header) > header {
 
 .toolbar {
   position: relative;
-  z-index: 100;
   /* Ensure toolbar expands with filters content */
   overflow: visible;
 }
@@ -578,10 +577,11 @@ body:not(.no-header) > header {
 .filters {
   position: relative;
   display: none;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   grid-template-areas:
-    'archetype archetype card card sort sort'
-    'tournaments tournaments tournaments set set set';
+    'tournaments tournaments tournaments tournaments tournaments tournaments tournaments tournaments'
+    'set set set set archetype archetype archetype archetype'
+    'card card card card sort sort success success';
   align-items: start;
   column-gap: 24px;
   row-gap: 22px;
@@ -662,6 +662,10 @@ body.filters-panel-open #filters {
 
 .filter-field--set {
   grid-area: set;
+}
+
+.filter-field--success {
+  grid-area: success;
 }
 
 .filters.compact .filter-field {
@@ -1077,6 +1081,68 @@ body.filters-panel-open #filters {
   font-size: 14px;
 }
 
+/* Hierarchical dropdown styles */
+.filter-option--parent {
+  font-weight: 600;
+  background: rgba(23, 24, 29, 0.8);
+  position: relative;
+}
+
+.filter-option--child {
+  padding-left: 40px;
+  background: rgba(23, 24, 29, 0.4);
+  font-size: 13px;
+}
+
+.filter-option-expand {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition:
+    color 0.15s ease,
+    transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.filter-option-expand:hover {
+  color: var(--text);
+}
+
+.filter-option-text {
+  flex: 1;
+  user-select: none;
+}
+
+.filter-option-count {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: auto;
+  padding-left: 8px;
+}
+
+/* Indeterminate checkbox state */
+input[type='checkbox']:indeterminate {
+  background-color: var(--accent-2);
+  opacity: 0.7;
+}
+
+input[type='checkbox']:indeterminate::before {
+  content: '−';
+  display: block;
+  text-align: center;
+  color: white;
+  font-size: 16px;
+  line-height: 1;
+}
+
 .filter-option-label {
   display: flex;
   flex-direction: row;
@@ -1167,10 +1233,9 @@ body.filters-panel-open #filters {
   .filters {
     grid-template-columns: repeat(8, minmax(0, 1fr));
     grid-template-areas:
-      'archetype archetype archetype archetype card card card card'
-      'sort sort sort sort sort sort sort sort'
       'tournaments tournaments tournaments tournaments tournaments tournaments tournaments tournaments'
-      'set set set set set set set set';
+      'set set set set archetype archetype archetype archetype'
+      'card card card card sort sort success success';
   }
 }
 
@@ -1178,11 +1243,11 @@ body.filters-panel-open #filters {
   .filters {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     grid-template-areas:
+      'tournaments tournaments tournaments tournaments'
+      'set set set set'
       'archetype archetype archetype archetype'
       'card card card card'
-      'sort sort sort sort'
-      'tournaments tournaments tournaments tournaments'
-      'set set set set';
+      'sort sort success success';
     row-gap: 16px; /* Reduced from 22px for more compact mobile layout */
   }
 }
@@ -1191,11 +1256,12 @@ body.filters-panel-open #filters {
   .filters {
     grid-template-columns: 1fr;
     grid-template-areas:
+      'tournaments'
+      'set'
       'archetype'
       'card'
       'sort'
-      'tournaments'
-      'set';
+      'success';
     row-gap: 14px; /* Even more compact on very small screens */
   }
 }
@@ -3958,6 +4024,148 @@ body.card-image-modal-open {
   font-weight: 700;
   color: var(--text);
   margin: 0;
+}
+
+/* Archetype Tab Navigation */
+.archetype-tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+  border-bottom: 1px solid rgba(112, 128, 255, 0.2);
+  padding-bottom: 0;
+}
+
+.archetype-tab {
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.archetype-tab:hover {
+  color: var(--text);
+}
+
+.archetype-tab.is-active {
+  color: var(--accent-2);
+  border-bottom-color: var(--accent-2);
+}
+
+/* Archetype Home Page Styles */
+.archetype-home-content {
+  margin-top: var(--spacing-lg);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.archetype-home-card {
+  padding: var(--spacing-lg);
+  background: rgba(12, 16, 32, 0.7);
+  border-radius: 12px;
+  border: 1px solid rgba(112, 128, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.archetype-home-card:hover {
+  border-color: rgba(112, 128, 255, 0.4);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.archetype-home-card h2 {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.archetype-home-card p {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.archetype-home-card .btn-primary {
+  display: inline-block;
+}
+
+/* Archetype Trends Page Styles */
+.archetype-trends-page .trends-summary {
+  max-width: 1000px;
+  margin: 0 auto var(--spacing-md);
+  padding: 0 var(--spacing-lg);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.archetype-trends-page .trends-chart-container {
+  max-width: 1000px;
+  margin: 0 auto var(--spacing-lg);
+  padding: 0 var(--spacing-lg);
+}
+
+.archetype-trends-page .trends-chart {
+  background: rgba(12, 16, 32, 0.7);
+  border-radius: 12px;
+  border: 1px solid rgba(112, 128, 255, 0.2);
+  padding: var(--spacing-md);
+  min-height: 300px;
+  position: relative;
+}
+
+.archetype-trends-page .trends-svg {
+  display: block;
+  width: 100%;
+}
+
+.archetype-trends-page .trends-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm) var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+
+.archetype-trends-page .trends-movers {
+  max-width: 1000px;
+  margin: 0 auto var(--spacing-lg);
+  padding: 0 var(--spacing-lg);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+}
+
+@media (max-width: 600px) {
+  .archetype-trends-page .trends-movers {
+    grid-template-columns: 1fr;
+  }
+}
+
+.archetype-trends-page .trends-empty {
+  max-width: 1000px;
+  margin: var(--spacing-xl) auto;
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--muted);
+}
+
+.archetype-trends-page .trends-empty p {
+  margin: var(--spacing-sm) 0;
+}
+
+.archetype-trends-page .control-hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
 }
 
 .archetype-controls-wrapper {

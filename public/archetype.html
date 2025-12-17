@@ -1,148 +1,153 @@
-
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Archetype • Ciphermaniac</title>
-  <!-- Preload critical font to reduce layout shift -->
-  <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="stylesheet" href="/assets/style.css" />
-  <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
-  <!-- Preload critical JS module for faster page load -->
-  <link rel="modulepreload" href="/assets/js/archetype.js" />
-</head>
-<body>
-  <div class="archetype-page" data-state="loading">
-  <div class="archetype-page" data-state="loading">
-    <main class="archetype-main">
-      <section class="archetype-content">
-        <div id="archetype-loading" class="archetype-loading" role="status">
-          <p>Loading archetype details…</p>
-        </div>
-
-        <div id="archetype-error" class="archetype-error" role="alert" hidden>
-          <h2>We couldn't load that archetype.</h2>
-          <p>Please refresh the page or choose another event.</p>
-        </div>
-
-        <div class="archetype-simple" hidden>
-          <div class="archetype-header-row">
-            <nav class="archetype-breadcrumb" aria-label="Breadcrumb">
-              <a class="archetype-breadcrumb__link" href="/archetypes">← Back to Archetypes</a>
-            </nav>
-            <h1 id="archetype-title" class="archetype-title">Loading archetype…</h1>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Archetype • Ciphermaniac</title>
+    <!-- Preload critical font to reduce layout shift -->
+    <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/assets/style.css" />
+    <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
+    <!-- Preload critical JS module for faster page load -->
+    <link rel="modulepreload" href="/assets/js/archetype.js" />
+  </head>
+  <body>
+    <div class="archetype-page" data-state="loading">
+      <main class="archetype-main">
+        <section class="archetype-content">
+          <div id="archetype-loading" class="archetype-loading" role="status">
+            <p>Loading archetype details…</p>
           </div>
 
-          <div class="archetype-controls-panel archetype-controls">
-            <div class="panel-header">
-              <div id="skeleton-summary" class="summary-display" hidden>
-                <span class="skeleton-count">Skeleton: <strong id="skeleton-count-value">0</strong> cards</span>
-              </div>
-              
-              <div class="header-actions">
-                <div id="skeleton-export-row" class="header-export-row" hidden>
-                  <span id="skeleton-export-status" class="skeleton-export-status" aria-live="polite" hidden></span>
-                  <button id="skeleton-export-live" class="btn-primary btn-sm" type="button">
-                    Copy Export
+          <div id="archetype-error" class="archetype-error" role="alert" hidden>
+            <h2>We couldn't load that archetype.</h2>
+            <p>Please refresh the page or choose another event.</p>
+          </div>
+
+          <div class="archetype-simple" hidden>
+            <div class="archetype-header-row">
+              <nav class="archetype-breadcrumb" aria-label="Breadcrumb">
+                <a class="archetype-breadcrumb__link" href="/archetypes">← Back to Archetypes</a>
+              </nav>
+              <h1 id="archetype-title" class="archetype-title">Loading archetype…</h1>
+            </div>
+
+            <!-- Tab Navigation -->
+            <nav class="archetype-tabs" aria-label="Archetype views">
+              <a id="tab-home" class="archetype-tab" href="#">Overview</a>
+              <a id="tab-analysis" class="archetype-tab is-active" href="#" aria-current="page">Analysis</a>
+              <a id="tab-trends" class="archetype-tab" href="#">Trends</a>
+            </nav>
+
+            <div class="archetype-controls-panel archetype-controls">
+              <div class="panel-header">
+                <div id="skeleton-summary" class="summary-display" hidden>
+                  <span class="skeleton-count">Skeleton: <strong id="skeleton-count-value">0</strong> cards</span>
+                </div>
+
+                <div class="header-actions">
+                  <div id="skeleton-export-row" class="header-export-row" hidden>
+                    <span id="skeleton-export-status" class="skeleton-export-status" aria-live="polite" hidden></span>
+                    <button id="skeleton-export-live" class="btn-primary btn-sm" type="button">Copy Export</button>
+                  </div>
+
+                  <button id="controls-toggle" class="btn-toggle" aria-expanded="true" aria-label="Toggle controls">
+                    <span class="btn-label">Configure</span>
+                    <span class="icon">▼</span>
                   </button>
                 </div>
-
-                <button id="controls-toggle" class="btn-toggle" aria-expanded="true" aria-label="Toggle controls">
-                  <span class="btn-label">Configure</span>
-                  <span class="icon">▼</span>
-                </button>
               </div>
-            </div>
 
-            <div id="controls-body" class="panel-body">
-              <div class="controls-grid">
-                <div class="control-group main-settings">
-                  <!-- Granularity Slider -->
-                  <div class="control-item granularity-control">
-                    <div class="control-label-row">
-                      <label for="archetype-granularity-range">Inclusion Threshold</label>
-                      <output id="archetype-granularity-output" for="archetype-granularity-range">60%</output>
+              <div id="controls-body" class="panel-body">
+                <div class="controls-grid">
+                  <div class="control-group main-settings">
+                    <!-- Granularity Slider -->
+                    <div class="control-item granularity-control">
+                      <div class="control-label-row">
+                        <label for="archetype-granularity-range">Inclusion Threshold</label>
+                        <output id="archetype-granularity-output" for="archetype-granularity-range">60%</output>
+                      </div>
+                      <input type="range" id="archetype-granularity-range" min="0" max="100" value="60" step="5" />
+                      <div class="range-ticks">
+                        <span>0%</span>
+                        <span>50%</span>
+                        <span>100%</span>
+                      </div>
                     </div>
-                    <input type="range" id="archetype-granularity-range" min="0" max="100" value="60" step="5" />
-                    <div class="range-ticks">
-                      <span>0%</span>
-                      <span>50%</span>
-                      <span>100%</span>
+
+                    <!-- Finish Filter -->
+                    <div class="control-item finish-control">
+                      <label for="archetype-success-filter">Tournament Finish</label>
+                      <div class="select-wrapper">
+                        <select id="archetype-success-filter" class="filter-card-select">
+                          <option value="all">All decks</option>
+                          <option value="winner">Winners</option>
+                          <option value="top2">Finals</option>
+                          <option value="top4">Top 4</option>
+                          <option value="top8">Top 8</option>
+                          <option value="top16">Top 16</option>
+                          <option value="top10">Top 10%</option>
+                          <option value="top25">Top 25%</option>
+                          <option value="top50">Top 50%</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
 
-                  <!-- Finish Filter -->
-                  <div class="control-item finish-control">
-                    <label for="archetype-success-filter">Tournament Finish</label>
-                    <div class="select-wrapper">
-                      <select id="archetype-success-filter" class="filter-card-select">
-                        <option value="all">All decks</option>
-                        <option value="winner">Winners</option>
-                        <option value="top2">Finals</option>
-                        <option value="top4">Top 4</option>
-                        <option value="top8">Top 8</option>
-                        <option value="top16">Top 16</option>
-                        <option value="top10">Top 10%</option>
-                        <option value="top25">Top 25%</option>
-                        <option value="top50">Top 50%</option>
-                      </select>
+                  <!-- Advanced Filters -->
+                  <div class="control-group filters-section controls-advanced-filters">
+                    <div class="filters-header">
+                      <h3>Card Filters</h3>
+                      <button type="button" id="archetype-add-filter" class="btn-text btn-sm">+ Add Condition</button>
                     </div>
+                    <div id="archetype-filter-rows" class="filter-rows-container"></div>
+                    <p id="archetype-filter-empty-state" class="archetype-filter-message filters-empty-message" hidden>
+                      All good! Click "Add Condition" if you change your mind.
+                    </p>
                   </div>
                 </div>
 
-                <!-- Advanced Filters -->
-                <div class="control-group filters-section controls-advanced-filters">
-                  <div class="filters-header">
-                    <h3>Card Filters</h3>
-                    <button type="button" id="archetype-add-filter" class="btn-text btn-sm">+ Add Condition</button>
-                  </div>
-                  <div id="archetype-filter-rows" class="filter-rows-container"></div>
-                  <p id="archetype-filter-empty-state" class="archetype-filter-message filters-empty-message" hidden>All good! Click "Add Condition" if you change your mind.</p>
-                </div>
+                <!-- Skeleton Warnings Message -->
+                <div id="skeleton-warnings" class="archetype-filter-message" data-tone="warning" hidden></div>
               </div>
+            </div>
+          </div>
+        </section>
 
-              <!-- Skeleton Warnings Message -->
-              <div id="skeleton-warnings" class="archetype-filter-message" data-tone="warning" hidden></div>
+        <section id="grid" class="grid" role="grid" aria-label="Archetype card grid" hidden></section>
+      </main>
+    </div>
+
+    <template id="card-template">
+      <article class="card" tabindex="0">
+        <div class="thumb">
+          <img alt="" />
+          <div class="count-badge" aria-label="Most common count"></div>
+          <div class="overlay">
+            <div class="hist" aria-label="Count distribution per copies"></div>
+            <div class="usagebar" title="Usage %">
+              <div class="bar"></div>
+              <span class="pct"></span>
             </div>
           </div>
         </div>
-      </section>
-
-      <section id="grid" class="grid" role="grid" aria-label="Archetype card grid" hidden></section>
-    </main>
-  </div>
-
-  <template id="card-template">
-    <article class="card" tabindex="0">
-      <div class="thumb">
-        <img alt="" />
-        <div class="count-badge" aria-label="Most common count"></div>
-        <div class="overlay">
-          <div class="hist" aria-label="Count distribution per copies"></div>
-          <div class="usagebar" title="Usage %">
-            <div class="bar"></div>
-            <span class="pct"></span>
-          </div>
+        <div class="titleRow">
+          <h3 class="name"></h3>
+          <div class="counts"></div>
         </div>
-      </div>
-      <div class="titleRow">
-        <h3 class="name"></h3>
-        <div class="counts"></div>
-      </div>
-    </article>
-  </template>
+      </article>
+    </template>
 
-  <script type="module">
-    import { createHeader } from '/assets/js/components/header.js';
-    import { createFooter } from '/assets/js/components/footer.js';
+    <script type="module">
+      import { createHeader } from '/assets/js/components/header.js';
+      import { createFooter } from '/assets/js/components/footer.js';
 
-    const header = createHeader({ currentPage: 'archetypes' });
-    const footer = createFooter();
+      const header = createHeader({ currentPage: 'archetypes' });
+      const footer = createFooter();
 
-    document.body.insertAdjacentElement('afterbegin', header);
-    document.body.insertAdjacentElement('beforeend', footer);
-  </script>
-  <script src="/assets/js/archetype.js" type="module"></script>
-</body>
+      document.body.insertAdjacentElement('afterbegin', header);
+      document.body.insertAdjacentElement('beforeend', footer);
+    </script>
+    <script src="/assets/js/archetype.js" type="module"></script>
+  </body>
 </html>

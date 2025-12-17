@@ -20,22 +20,25 @@ const elements = {
   page: document.querySelector('.archetype-page'),
   loading: document.getElementById('archetype-loading'),
   error: document.getElementById('archetype-error'),
-  simple: /** @type {HTMLElement|null} */ (document.querySelector('.archetype-simple')),
+  simple: /** @type {HTMLElement|null} */ document.querySelector('.archetype-simple'),
   grid: document.getElementById('grid') as GridElement | null,
   title: document.getElementById('archetype-title'),
   granularityRange: document.getElementById('archetype-granularity-range') as HTMLInputElement | null,
-  granularityOutput: /** @type {HTMLOutputElement|null} */ (document.getElementById('archetype-granularity-output')),
+  granularityOutput: /** @type {HTMLOutputElement|null} */ document.getElementById('archetype-granularity-output'),
   successFilter: document.getElementById('archetype-success-filter') as HTMLSelectElement | null,
-  filterRowsContainer: /** @type {HTMLElement|null} */ (document.getElementById('archetype-filter-rows')),
-  addFilterButton: /** @type {HTMLButtonElement|null} */ (document.getElementById('archetype-add-filter')),
-  filtersContainer: /** @type {HTMLElement|null} */ (document.querySelector('.archetype-controls')),
-  filterEmptyState: /** @type {HTMLElement|null} */ (document.getElementById('archetype-filter-empty-state')),
-  filterMessage: /** @type {HTMLElement|null} */ (null),
-  skeletonSummary: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-summary')),
-  skeletonCountValue: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-count-value')),
-  skeletonWarnings: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-warnings')),
-  skeletonExportButton: /** @type {HTMLButtonElement|null} */ (document.getElementById('skeleton-export-live')),
-  skeletonExportStatus: /** @type {HTMLElement|null} */ (document.getElementById('skeleton-export-status'))
+  filterRowsContainer: /** @type {HTMLElement|null} */ document.getElementById('archetype-filter-rows'),
+  addFilterButton: /** @type {HTMLButtonElement|null} */ document.getElementById('archetype-add-filter'),
+  filtersContainer: /** @type {HTMLElement|null} */ document.querySelector('.archetype-controls'),
+  filterEmptyState: /** @type {HTMLElement|null} */ document.getElementById('archetype-filter-empty-state'),
+  filterMessage: /** @type {HTMLElement|null} */ null,
+  skeletonSummary: /** @type {HTMLElement|null} */ document.getElementById('skeleton-summary'),
+  skeletonCountValue: /** @type {HTMLElement|null} */ document.getElementById('skeleton-count-value'),
+  skeletonWarnings: /** @type {HTMLElement|null} */ document.getElementById('skeleton-warnings'),
+  skeletonExportButton: /** @type {HTMLButtonElement|null} */ document.getElementById('skeleton-export-live'),
+  skeletonExportStatus: /** @type {HTMLElement|null} */ document.getElementById('skeleton-export-status'),
+  tabHome: document.getElementById('tab-home') as HTMLAnchorElement | null,
+  tabAnalysis: document.getElementById('tab-analysis') as HTMLAnchorElement | null,
+  tabTrends: document.getElementById('tab-trends') as HTMLAnchorElement | null
 };
 
 /**
@@ -71,9 +74,9 @@ const state = {
       set: string,
       number: string,
       primaryCategory: string
-    }>} */ ([]),
-    plainWarnings: /** @type {string[]} */ ([]),
-    displayWarnings: /** @type {string[]} */ ([]),
+    }>} */ [],
+    plainWarnings: /** @type {string[]} */ [],
+    displayWarnings: /** @type {string[]} */ [],
     lastExportText: ''
   }
 };
@@ -285,44 +288,27 @@ function extractArchetypeFromLocation(loc = window.location) {
   }
 
   const pathname = loc.pathname || '';
-  const trimmedPath = pathname.replace(/\/+$/u, '');
-  const candidatePaths = new Set([trimmedPath]);
+  const parts = pathname.split('/').filter(Boolean);
 
-  try {
-    const decoded = decodeURIComponent(trimmedPath);
-    candidatePaths.add(decoded);
-  } catch (error) {
-    logger.debug('Failed to decode pathname when searching for archetype slug', {
-      pathname,
-      message: error?.message
-    });
+  if (parts.length === 0) {
+    return null;
   }
 
-  for (const candidate of candidatePaths) {
-    const segments = candidate.split('/').filter(Boolean);
-    const archetypeIndex = segments.indexOf('archetype');
-    if (archetypeIndex === -1) {
-      continue;
-    }
-
-    const slugSegments = segments.slice(archetypeIndex + 1);
-    if (slugSegments.length === 0) {
-      continue;
-    }
-
-    const rawSlug = slugSegments.join('/');
+  // Handle legacy /archetype/Name
+  if (parts[0] === 'archetype' && parts.length > 1) {
     try {
-      return decodeURIComponent(rawSlug);
-    } catch (error) {
-      logger.warn('Failed to decode archetype slug from path', {
-        rawSlug,
-        error: error?.message
-      });
-      return rawSlug;
+      return decodeURIComponent(parts[1]);
+    } catch {
+      return parts[1];
     }
   }
 
-  return null;
+  // Handle /Name or /Name/analysis
+  try {
+    return decodeURIComponent(parts[0]);
+  } catch {
+    return parts[0];
+  }
 }
 
 function decodeArchetypeLabel(value) {
@@ -1300,31 +1286,36 @@ function buildSkeletonExportEntries(items) {
     return [];
   }
 
-  return items.reduce((entries, item) => {
-    const mostCommon = pickCommonDistEntry(item);
-    const copies = Number(mostCommon?.copies) || 0;
-    if (copies <= 0) {
+  return items.reduce(
+    (entries, item) => {
+      const mostCommon = pickCommonDistEntry(item);
+      const copies = Number(mostCommon?.copies) || 0;
+      if (copies <= 0) {
+        return entries;
+      }
+
+      const name = typeof item?.name === 'string' ? item.name.trim() : '';
+      if (!name) {
+        return entries;
+      }
+
+      const printInfo = resolveCardPrintInfo(item);
+      const primaryCategory = inferPrimaryCategory(item);
+      const normalizedCategory = ['pokemon', 'trainer', 'energy'].includes(primaryCategory)
+        ? primaryCategory
+        : 'pokemon';
+
+      entries.push({
+        name,
+        copies,
+        set: printInfo.set,
+        number: printInfo.number,
+        primaryCategory: normalizedCategory
+      });
       return entries;
-    }
-
-    const name = typeof item?.name === 'string' ? item.name.trim() : '';
-    if (!name) {
-      return entries;
-    }
-
-    const printInfo = resolveCardPrintInfo(item);
-    const primaryCategory = inferPrimaryCategory(item);
-    const normalizedCategory = ['pokemon', 'trainer', 'energy'].includes(primaryCategory) ? primaryCategory : 'pokemon';
-
-    entries.push({
-      name,
-      copies,
-      set: printInfo.set,
-      number: printInfo.number,
-      primaryCategory: normalizedCategory
-    });
-    return entries;
-  }, /** @type {Array<{name:string,copies:number,set:string,number:string,primaryCategory:string}>} */([]));
+    },
+    /** @type {Array<{name:string,copies:number,set:string,number:string,primaryCategory:string}>} */ []
+  );
 }
 
 function buildTcgliveExportString(entries) {
@@ -1333,9 +1324,9 @@ function buildTcgliveExportString(entries) {
   }
 
   const sections = {
-    pokemon: /** @type {typeof entries} */ ([]),
-    trainer: /** @type {typeof entries} */ ([]),
-    energy: /** @type {typeof entries} */ ([])
+    pokemon: /** @type {typeof entries} */ [],
+    trainer: /** @type {typeof entries} */ [],
+    energy: /** @type {typeof entries} */ []
   };
 
   entries.forEach(entry => {
@@ -1662,7 +1653,7 @@ function updateSkeletonSummary(items) {
         link.className = 'ace-spec-quick-filter';
         link.textContent = cardName;
         link.title = `Filter decks with ${cardName}`;
-        link.addEventListener('click', (event) => {
+        link.addEventListener('click', event => {
           event.preventDefault();
           addQuickFilterForCard(cardName);
         });
@@ -2133,7 +2124,7 @@ async function applySuccessFilter() {
 }
 
 function handleGranularityInput(event) {
-  const target = /** @type {HTMLInputElement|null} */ (event.currentTarget || event.target);
+  const target = /** @type {HTMLInputElement|null} */ event.currentTarget || event.target;
   if (!target || !Array.isArray(state.items) || state.items.length === 0) {
     return;
   }
@@ -2312,10 +2303,51 @@ function setupControlsToggle() {
   });
 }
 
+function setupTabNavigation() {
+  const { tabHome, tabTrends } = elements;
+
+  // Build URLs from current archetype
+  const updateLinks = () => {
+    if (state.archetypeBase) {
+      const encodedName = encodeURIComponent(state.archetypeBase.replace(/ /g, '_'));
+
+      if (tabHome) {
+        tabHome.href = `/${encodedName}`;
+      }
+
+      if (tabTrends) {
+        tabTrends.href = `/${encodedName}/trends`;
+      }
+    }
+  };
+
+  // Update on click to ensure latest archetype is used
+  if (tabTrends) {
+    tabTrends.addEventListener('click', e => {
+      e.preventDefault();
+      updateLinks();
+      if (tabTrends.href) {
+        window.location.href = tabTrends.href;
+      }
+    });
+  }
+
+  if (tabHome) {
+    tabHome.addEventListener('click', e => {
+      e.preventDefault();
+      updateLinks();
+      if (tabHome.href) {
+        window.location.href = tabHome.href;
+      }
+    });
+  }
+}
+
 if (typeof document !== 'undefined') {
   setupGranularityListeners();
   setupSkeletonExport();
   setupFilterCollapse();
   setupControlsToggle();
+  setupTabNavigation();
   initialize();
 }

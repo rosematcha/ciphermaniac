@@ -1,7 +1,7 @@
 /* eslint-env browser */
 /**
  * Archetypes List Page - Re-optimized for performance
- * 
+ *
  * Design principles:
  * 1. Performance first - no flashing, dimming, or visual bugs
  * 2. Single render pass - render once with stable DOM structure
@@ -102,7 +102,7 @@ async function fetchSummaries(): Promise<ArchetypeSummary[]> {
   const list = await fetchArchetypesList(ONLINE_META_TOURNAMENT);
   const normalized = Array.isArray(list) ? list.filter(item => item?.name) : [];
   const summaries = normalized.map(normalizeSummary);
-  
+
   // Sort by deck count (descending), then alphabetically
   summaries.sort((a, b) => {
     const aDeck = a.deckCount ?? 0;
@@ -110,7 +110,7 @@ async function fetchSummaries(): Promise<ArchetypeSummary[]> {
     if (bDeck !== aDeck) return bDeck - aDeck;
     return a.label.localeCompare(b.label);
   });
-  
+
   return summaries;
 }
 
@@ -129,7 +129,9 @@ function formatCardNumber(raw: string | number | null | undefined): string | nul
 }
 
 function buildThumbnailUrl(setCode: string, number: string): string | null {
-  const set = String(setCode || '').toUpperCase().trim();
+  const set = String(setCode || '')
+    .toUpperCase()
+    .trim();
   if (!set) return null;
   const num = formatCardNumber(number);
   if (!num) return null;
@@ -159,14 +161,14 @@ function buildFallbackText(name: string): string {
 
 function createListItem(summary: ArchetypeSummary, index: number): HTMLElement | null {
   if (!templates.listItem?.content) return null;
-  
+
   const node = templates.listItem.content.firstElementChild?.cloneNode(true) as HTMLElement | null;
   if (!node) return null;
 
   // Set link and data attributes
   const anchor = node.querySelector('.analysis-list-item__button') as HTMLAnchorElement | null;
   if (anchor) {
-    anchor.href = `/archetype/${encodeURIComponent(summary.name)}`;
+    anchor.href = `/${encodeURIComponent(summary.name)}`;
     anchor.dataset.archetype = summary.name;
   }
 
@@ -177,14 +179,14 @@ function createListItem(summary: ArchetypeSummary, index: number): HTMLElement |
 
   if (nameEl) nameEl.textContent = summary.label;
   if (pctEl) {
-    pctEl.textContent = summary.percent === null || Number.isNaN(summary.percent)
-      ? '—'
-      : `${(summary.percent * 100).toFixed(1)}%`;
+    pctEl.textContent =
+      summary.percent === null || Number.isNaN(summary.percent) ? '—' : `${(summary.percent * 100).toFixed(1)}%`;
   }
   if (deckEl) {
-    deckEl.textContent = summary.deckCount === null
-      ? 'Deck count unavailable'
-      : `${summary.deckCount} deck${summary.deckCount === 1 ? '' : 's'}`;
+    deckEl.textContent =
+      summary.deckCount === null
+        ? 'Deck count unavailable'
+        : `${summary.deckCount} deck${summary.deckCount === 1 ? '' : 's'}`;
   }
 
   // Setup thumbnail - simple approach
@@ -195,9 +197,9 @@ function createListItem(summary: ArchetypeSummary, index: number): HTMLElement |
   if (thumbnailContainer && thumbnailFallback) {
     const fallbackText = buildFallbackText(summary.label);
     thumbnailFallback.textContent = fallbackText;
-    
+
     const urls = getThumbnailUrls(summary.thumbnails);
-    
+
     if (urls.length === 0) {
       // No thumbnails - show fallback immediately
       thumbnailContainer.classList.add('is-placeholder');
@@ -213,22 +215,17 @@ function createListItem(summary: ArchetypeSummary, index: number): HTMLElement |
   return node;
 }
 
-function setupSingleThumbnail(
-  img: HTMLImageElement,
-  container: HTMLElement,
-  url: string,
-  eager: boolean
-): void {
+function setupSingleThumbnail(img: HTMLImageElement, container: HTMLElement, url: string, eager: boolean): void {
   img.loading = eager ? 'eager' : 'lazy';
   img.decoding = 'async';
   img.alt = '';
-  
+
   // Simple error handling - just show fallback on error
   img.onerror = () => {
     container.classList.add('is-placeholder');
     img.style.display = 'none';
   };
-  
+
   img.src = url;
 }
 
@@ -241,16 +238,16 @@ function setupSplitThumbnail(
 ): void {
   // Hide the base image for split view
   if (baseImg) baseImg.style.display = 'none';
-  
+
   container.classList.add('analysis-list-item__thumbnail--split');
-  
+
   // Create split wrapper
   const splitWrapper = document.createElement('div');
   splitWrapper.className = 'analysis-list-item__split';
-  
+
   let loadedCount = 0;
   let errorCount = 0;
-  
+
   const checkComplete = () => {
     if (errorCount === urls.length) {
       // All images failed - show fallback
@@ -259,17 +256,17 @@ function setupSplitThumbnail(
       splitWrapper.remove();
     }
   };
-  
+
   urls.slice(0, 2).forEach((url, i) => {
     const slice = document.createElement('div');
     slice.className = `analysis-list-item__slice analysis-list-item__slice--${i === 0 ? 'left' : 'right'}`;
-    
+
     const img = document.createElement('img');
     img.className = 'analysis-list-item__thumbnail-image analysis-list-item__thumbnail-image--split';
     img.loading = eager ? 'eager' : 'lazy';
     img.decoding = 'async';
     img.alt = '';
-    
+
     // Apply clip-path for split effect
     const clipLeft = i === 0 ? '0%' : '50%';
     const clipRight = i === 0 ? '50%' : '0%';
@@ -281,7 +278,7 @@ function setupSplitThumbnail(
       object-fit: cover;
       clip-path: inset(0% ${clipRight} 0% ${clipLeft});
     `;
-    
+
     img.onload = () => {
       loadedCount++;
     };
@@ -290,12 +287,12 @@ function setupSplitThumbnail(
       slice.style.display = 'none';
       checkComplete();
     };
-    
+
     img.src = url;
     slice.appendChild(img);
     splitWrapper.appendChild(slice);
   });
-  
+
   container.insertBefore(splitWrapper, fallback);
 }
 
@@ -306,25 +303,25 @@ function setupSplitThumbnail(
 function renderList(archetypes: ArchetypeSummary[]): void {
   const listEl = elements.archetypeList;
   if (!listEl || state.rendered) return;
-  
+
   // Clear any existing content
   listEl.innerHTML = '';
-  
+
   if (archetypes.length === 0) {
     if (elements.listEmpty) elements.listEmpty.hidden = false;
     return;
   }
-  
+
   // Build all items in a single fragment
   const fragment = document.createDocumentFragment();
   archetypes.forEach((summary, index) => {
     const item = createListItem(summary, index);
     if (item) fragment.appendChild(item);
   });
-  
+
   listEl.appendChild(fragment);
   state.rendered = true;
-  
+
   // Hide empty state
   if (elements.listEmpty) elements.listEmpty.hidden = true;
 }
@@ -365,7 +362,7 @@ async function prefetchArchetype(name: string): Promise<void> {
 
 function schedulePrefetchBatch(): void {
   if (!state.archetypes.length) return;
-  
+
   // Prefetch top archetypes
   const batch = state.archetypes.slice(0, PREFETCH_BATCH);
   for (const item of batch) {
@@ -378,10 +375,10 @@ function schedulePrefetchBatch(): void {
 
 function drainPrefetchQueue(): void {
   if (!state.prefetchQueue.length || state.prefetchHandle !== null) return;
-  
+
   const next = state.prefetchQueue.shift();
   if (!next) return;
-  
+
   state.prefetchHandle = window.setTimeout(async () => {
     state.prefetchHandle = null;
     await prefetchArchetype(next);
@@ -393,36 +390,44 @@ function setupHoverPrefetch(): void {
   const listEl = elements.archetypeList;
   if (!listEl) return;
 
-  listEl.addEventListener('pointerenter', (e) => {
-    const target = (e.target as HTMLElement)?.closest('.analysis-list-item__button') as HTMLElement | null;
-    if (!target?.dataset.archetype) return;
-    
-    const archetype = target.dataset.archetype;
-    
-    // Cancel any existing timer
-    if (state.hoverTimer) {
-      clearTimeout(state.hoverTimer.id);
-      state.hoverTimer = null;
-    }
-    
-    // Start new timer
-    const id = window.setTimeout(() => {
-      prefetchArchetype(archetype);
-      state.hoverTimer = null;
-    }, PREFETCH_DELAY_MS);
-    
-    state.hoverTimer = { target: archetype, id };
-  }, true);
+  listEl.addEventListener(
+    'pointerenter',
+    e => {
+      const target = (e.target as HTMLElement)?.closest('.analysis-list-item__button') as HTMLElement | null;
+      if (!target?.dataset.archetype) return;
 
-  listEl.addEventListener('pointerleave', (e) => {
-    const target = (e.target as HTMLElement)?.closest('.analysis-list-item__button') as HTMLElement | null;
-    if (!target?.dataset.archetype) return;
-    
-    if (state.hoverTimer?.target === target.dataset.archetype) {
-      clearTimeout(state.hoverTimer.id);
-      state.hoverTimer = null;
-    }
-  }, true);
+      const archetype = target.dataset.archetype;
+
+      // Cancel any existing timer
+      if (state.hoverTimer) {
+        clearTimeout(state.hoverTimer.id);
+        state.hoverTimer = null;
+      }
+
+      // Start new timer
+      const id = window.setTimeout(() => {
+        prefetchArchetype(archetype);
+        state.hoverTimer = null;
+      }, PREFETCH_DELAY_MS);
+
+      state.hoverTimer = { target: archetype, id };
+    },
+    true
+  );
+
+  listEl.addEventListener(
+    'pointerleave',
+    e => {
+      const target = (e.target as HTMLElement)?.closest('.analysis-list-item__button') as HTMLElement | null;
+      if (!target?.dataset.archetype) return;
+
+      if (state.hoverTimer?.target === target.dataset.archetype) {
+        clearTimeout(state.hoverTimer.id);
+        state.hoverTimer = null;
+      }
+    },
+    true
+  );
 }
 
 // ============================================================================
@@ -431,7 +436,7 @@ function setupHoverPrefetch(): void {
 
 async function initialize(): Promise<void> {
   showLoading(true);
-  
+
   try {
     // First, try to show cached data immediately
     const cached = readCache();
@@ -440,19 +445,19 @@ async function initialize(): Promise<void> {
       renderList(cached);
       showLoading(false);
     }
-    
+
     // Verify tournament is available (required for the page)
     const tournamentReport = await fetchReport(ONLINE_META_TOURNAMENT);
     if (!tournamentReport || typeof tournamentReport.deckTotal !== 'number') {
       throw new Error(`Tournament data unavailable`);
     }
-    
+
     // Fetch fresh data
     const freshData = await fetchSummaries();
-    
+
     if (freshData.length) {
       writeCache(freshData);
-      
+
       // Only re-render if we haven't rendered yet (no cache) or data changed
       if (!state.rendered) {
         state.archetypes = freshData;
@@ -467,16 +472,15 @@ async function initialize(): Promise<void> {
       // No data at all
       if (elements.listEmpty) elements.listEmpty.hidden = false;
     }
-    
+
     showLoading(false);
-    
+
     // Setup prefetching
     setupHoverPrefetch();
     schedulePrefetchBatch();
-    
   } catch (err) {
     logger.exception('Failed to initialize archetypes page', err);
-    
+
     // If we have cached data, keep showing it
     if (state.rendered) {
       showLoading(false);
@@ -488,13 +492,13 @@ async function initialize(): Promise<void> {
 
 function hasDataChanged(oldData: ArchetypeSummary[], newData: ArchetypeSummary[]): boolean {
   if (oldData.length !== newData.length) return true;
-  
+
   for (let i = 0; i < oldData.length; i++) {
     if (oldData[i].name !== newData[i].name) return true;
     if (oldData[i].deckCount !== newData[i].deckCount) return true;
     if (oldData[i].percent !== newData[i].percent) return true;
   }
-  
+
   return false;
 }
 

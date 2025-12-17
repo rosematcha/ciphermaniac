@@ -23,7 +23,7 @@ const palette = [
   '#f43f5e', // rose
   '#0ea5e9', // sky blue
   '#d946ef', // fuchsia
-  '#84cc16'  // lime
+  '#84cc16' // lime
 ];
 const TRENDS_SOURCE = 'Trends - Last 30 Days';
 
@@ -52,9 +52,7 @@ const elements = {
 
 const state = {
   trendData:
-    /** @type {null|{ series: any[], tournamentCount?: number, generatedAt?: string, minAppearances?: number, windowStart?: string|null, windowEnd?: string|null }} */ (
-      null
-    ),
+    /** @type {null|{ series: any[], tournamentCount?: number, generatedAt?: string, minAppearances?: number, windowStart?: string|null, windowEnd?: string|null }} */ null,
   cardTrends: null,
   suggestions: null,
   rawDecks: null as any[] | null,
@@ -157,18 +155,22 @@ function buildMetaLines(trendData, topN = 8, timeRangeDays = 30) {
   const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
 
   // First, compute daily bins for ALL series so we can rank by start/end
-  const allSeriesWithBins = trendData.series.map(entry => {
-    const daily = binDaily(entry.timeline || []);
-    // Filter by time range
-    const filteredDaily = daily.filter(pt => pt.date >= cutoffDateStr);
-    const smoothed = smoothSeries(filteredDaily, 3);
-    return { ...entry, daily: smoothed };
-  }).filter(entry => entry.daily.length > 0); // Remove series with no data in range
+  const allSeriesWithBins = trendData.series
+    .map(entry => {
+      const daily = binDaily(entry.timeline || []);
+      // Filter by time range
+      const filteredDaily = daily.filter(pt => pt.date >= cutoffDateStr);
+      const smoothed = smoothSeries(filteredDaily, 3);
+      return { ...entry, daily: smoothed };
+    })
+    .filter(entry => entry.daily.length > 0); // Remove series with no data in range
 
   // Get all unique dates across all series
   const allDates = Array.from(
     new Set<string>(allSeriesWithBins.flatMap(entry => entry.daily.map(pt => String(pt.date || ''))))
-  ).filter(Boolean).sort((a, b) => Date.parse(a) - Date.parse(b));
+  )
+    .filter(Boolean)
+    .sort((a, b) => Date.parse(a) - Date.parse(b));
 
   if (!allDates.length) {
     return null;
@@ -188,14 +190,10 @@ function buildMetaLines(trendData, topN = 8, timeRangeDays = 30) {
   });
 
   // Get top N by start average (beginning of period)
-  const topByStart = [...seriesWithRankingData]
-    .sort((a, b) => b.startAvg - a.startAvg)
-    .slice(0, topN);
+  const topByStart = [...seriesWithRankingData].sort((a, b) => b.startAvg - a.startAvg).slice(0, topN);
 
   // Get top N by end average (end of period)
-  const topByEnd = [...seriesWithRankingData]
-    .sort((a, b) => b.endAvg - a.endAvg)
-    .slice(0, topN);
+  const topByEnd = [...seriesWithRankingData].sort((a, b) => b.endAvg - a.endAvg).slice(0, topN);
 
   // Combine both sets (union), preserving order: start decks first, then new end decks
   const selectedNames = new Set<string>();
@@ -232,7 +230,9 @@ function buildMetaLines(trendData, topN = 8, timeRangeDays = 30) {
   // Build timeline using only dates from selected series
   const timelineDates = Array.from(
     new Set<string>(seriesWithColors.flatMap(entry => entry.daily.map(pt => String(pt.date || ''))))
-  ).filter(Boolean).sort((a, b) => Date.parse(a) - Date.parse(b));
+  )
+    .filter(Boolean)
+    .sort((a, b) => Date.parse(a) - Date.parse(b));
 
   const lines = seriesWithColors.map(entry => {
     const points = timelineDates.map(d => {
@@ -320,7 +320,7 @@ function renderMovers(lines) {
     items.forEach(item => {
       const li = document.createElement('li');
       const sign = item.delta > 0 ? '+' : '';
-      const url = `/archetype/${item.name.replace(/ /g, '_')}`;
+      const url = `/${item.name.replace(/ /g, '_')}`;
       li.innerHTML = `
         <a href="${url}">
           <span class="dot" style="background:${item.color}"></span>
@@ -510,7 +510,7 @@ function renderSeriesCard(series) {
 
   const title = document.createElement('h3');
   const link = document.createElement('a');
-  link.href = `/archetype/${(series.displayName || series.base).replace(/ /g, '_')}`;
+  link.href = `/${(series.displayName || series.base).replace(/ /g, '_')}`;
   link.textContent = series.displayName || series.base;
   title.appendChild(link);
   header.appendChild(title);
@@ -568,7 +568,8 @@ function renderMetaChart() {
   }
   elements.metaChart.innerHTML = '';
   const metaChart = buildMetaLines(state.trendData, state.chartDensity, state.timeRangeDays);
-  const metaMovers = buildMetaLines(state.trendData, Math.max(16, state.chartDensity * 2), state.timeRangeDays) || metaChart;
+  const metaMovers =
+    buildMetaLines(state.trendData, Math.max(16, state.chartDensity * 2), state.timeRangeDays) || metaChart;
   if (!metaChart || !metaChart.lines?.length) {
     const empty = document.createElement('div');
     empty.className = 'muted';
@@ -580,12 +581,7 @@ function renderMetaChart() {
   const containerRect = elements.metaChart.getBoundingClientRect();
   const width = Math.max(320, Math.round(containerRect.width || 900));
   // favor a wide, shorter chart; allow shrinking height while still filling width
-  const height = Math.round(
-    Math.min(
-      520,
-      Math.max(260, containerRect.height || 0, width * 0.38)
-    )
-  );
+  const height = Math.round(Math.min(520, Math.max(260, containerRect.height || 0, width * 0.38)));
   const padX = 36;
   const padY = 32;
   const contentWidth = width - padX * 2;
@@ -756,9 +752,7 @@ function renderMetaChart() {
 
   // Interaction Logic
   const lines = Array.from(elements.metaChart.querySelectorAll<HTMLElement>('.meta-line'));
-  const legendItems = elements.legend
-    ? Array.from(elements.legend.querySelectorAll<HTMLElement>('.legend-item'))
-    : [];
+  const legendItems = elements.legend ? Array.from(elements.legend.querySelectorAll<HTMLElement>('.legend-item')) : [];
 
   const setActive = name => {
     lines.forEach(line => {
@@ -829,7 +823,7 @@ function renderMetaChart() {
 
   let activeArchetype = null;
 
-  overlay.addEventListener('mousemove', (e) => {
+  overlay.addEventListener('mousemove', e => {
     // Convert screen coordinates to SVG coordinates using proper transform matrix
     const svgCoords = screenToSVG(e.clientX, e.clientY);
     const svgX = svgCoords.x;
@@ -845,9 +839,7 @@ function renderMetaChart() {
     guideLine.style.opacity = '0.5';
 
     const date = metaChart.dates[idx];
-    const values = metaChart.lines
-      .map(line => ({ ...line, val: line.points[idx] }))
-      .sort((a, b) => b.val - a.val);
+    const values = metaChart.lines.map(line => ({ ...line, val: line.points[idx] })).sort((a, b) => b.val - a.val);
 
     // Find closest line using SVG Y coordinate
     let closest = null;
@@ -884,13 +876,17 @@ function renderMetaChart() {
 
     tooltip.innerHTML = `
         <div class="chart-tooltip-date">${formatDate(date)}</div>
-        ${values.map(v => `
+        ${values
+          .map(
+            v => `
             <div class="chart-tooltip-item" style="${v.name === activeArchetype ? 'font-weight:700;background:rgba(255,255,255,0.05);border-radius:4px;margin:0 -4px;padding:2px 4px;' : ''}">
                 <span class="chart-tooltip-swatch" style="background: ${v.color}"></span>
                 <span class="chart-tooltip-name">${v.name}</span>
                 <span class="chart-tooltip-value">${formatPercent(v.val)}</span>
             </div>
-        `).join('')}
+        `
+          )
+          .join('')}
     `;
 
     // Position tooltip using proper SVG-to-screen conversion
@@ -922,7 +918,7 @@ function renderMetaChart() {
 
   overlay.addEventListener('click', () => {
     if (activeArchetype) {
-      const url = `/archetype/${activeArchetype.replace(/ /g, '_')}`;
+      const url = `/${activeArchetype.replace(/ /g, '_')}`;
       window.location.href = url;
     }
   });
@@ -995,11 +991,11 @@ async function hydrateFromDecks() {
     setStatus('Recomputing from decks...');
     const decks = await fetchAllDecks(TRENDS_SOURCE);
     const tournaments = deriveTournamentsFromDecks(decks);
-    
+
     // Store raw data for future filtering
     state.rawDecks = decks;
     state.rawTournaments = tournaments;
-    
+
     const recomputed = buildTrendDataset(decks, tournaments, {
       minAppearances: 1,
       windowStart: state.trendData.windowStart,
@@ -1029,20 +1025,20 @@ function rebuildWithFilter() {
     hydrateFromDecks();
     return;
   }
-  
+
   const recomputed = buildTrendDataset(state.rawDecks, state.rawTournaments, {
     minAppearances: 1,
     windowStart: state.trendData?.windowStart,
     windowEnd: state.trendData?.windowEnd,
     successFilter: state.performanceFilter
   });
-  
+
   state.trendData = { ...recomputed };
   updateMinSliderBounds();
   renderSummary();
   renderMetaChart();
   renderList();
-  
+
   const filterLabel = getPerformanceLabel(state.performanceFilter);
   setStatus(`Showing ${filterLabel.toLowerCase()} trends`);
 }
@@ -1071,7 +1067,7 @@ function bindControls() {
       setMode('archetypes');
     });
   }
-  
+
   // Performance filter dropdown
   if (elements.performanceFilter) {
     elements.performanceFilter.addEventListener('change', () => {
@@ -1080,7 +1076,7 @@ function bindControls() {
         return;
       }
       state.performanceFilter = newFilter;
-      
+
       // If we don't have raw data yet, we need to fetch it first
       if (!state.rawDecks || !state.rawTournaments) {
         setStatus('Loading deck data for filtering...');
@@ -1090,7 +1086,7 @@ function bindControls() {
       }
     });
   }
-  
+
   // Density filter dropdown
   if (elements.densityFilter) {
     elements.densityFilter.addEventListener('change', () => {
@@ -1103,7 +1099,7 @@ function bindControls() {
       renderMetaChart();
     });
   }
-  
+
   // Time range filter dropdown
   if (elements.timeFilter) {
     elements.timeFilter.addEventListener('change', () => {
@@ -1142,12 +1138,12 @@ async function init() {
     try {
       const decks = await fetchAllDecks(TRENDS_SOURCE);
       const fallbackTournaments = deriveTournamentsFromDecks(decks);
-      
+
       // Store raw data for future filtering
       state.rawDecks = decks;
       state.rawTournaments = fallbackTournaments;
-      
-      const archetypeTrends = buildTrendDataset(decks, fallbackTournaments, { 
+
+      const archetypeTrends = buildTrendDataset(decks, fallbackTournaments, {
         minAppearances: 1,
         successFilter: state.performanceFilter
       });

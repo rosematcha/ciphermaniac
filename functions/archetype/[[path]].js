@@ -1,36 +1,17 @@
-/* global URL, Response */
-
+/**
+ * Redirects /archetype/* to root /*
+ */
 export async function onRequest(context) {
-  const requestUrl = new URL(context.request.url);
+  const url = new URL(context.request.url);
+  // Replace /archetype/Foo with /Foo, /archetype/Foo/trends with /Foo/trends
+  const newPath = url.pathname.replace(/^\/archetype/, '');
+  // Ensure we don't end up with empty path if it was just /archetype
+  const finalPath = newPath || '/archetypes';
 
-  if (requestUrl.pathname === '/archetype' || requestUrl.pathname === '/archetype/') {
-    return Response.redirect(new URL('/archetypes', requestUrl), 301);
+  // If it was just /archetype or /archetype/, redirect to /archetypes listing
+  if (finalPath === '/' || finalPath === '') {
+    return Response.redirect(new URL('/archetypes', url), 301);
   }
 
-  // Serve the static archetype template for any nested path like /archetype/<name>
-  const candidates = ['/archetype.html', '/archetype', '/archetype/index.html'];
-
-  for (const relativePath of candidates) {
-    const assetUrl = new URL(relativePath, requestUrl);
-    const assetResponse = await context.env.ASSETS.fetch(assetUrl);
-
-    if (assetResponse.status >= 300 && assetResponse.status < 400) {
-      const redirectLocation = assetResponse.headers.get('location');
-      if (!redirectLocation) {
-        continue;
-      }
-
-      const followResponse = await context.env.ASSETS.fetch(new URL(redirectLocation, requestUrl));
-      if (followResponse.ok) {
-        return followResponse;
-      }
-      continue;
-    }
-
-    if (assetResponse.ok) {
-      return assetResponse;
-    }
-  }
-
-  return new Response('Not found', { status: 404 });
+  return Response.redirect(new URL(finalPath, url), 301);
 }

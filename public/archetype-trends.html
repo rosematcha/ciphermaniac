@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Archetype Trends • Ciphermaniac</title>
+    <!-- Preload critical font to reduce layout shift -->
+    <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/assets/style.css" />
+    <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
+    <!-- Preload critical JS module for faster page load -->
+    <link rel="modulepreload" href="/assets/js/archetypeTrends.js" />
+  </head>
+  <body>
+    <div class="archetype-page archetype-trends-page" data-state="loading">
+      <main class="archetype-main">
+        <section class="archetype-content">
+          <div id="archetype-loading" class="archetype-loading" role="status">
+            <p>Loading archetype trends...</p>
+          </div>
+
+          <div id="archetype-error" class="archetype-error" role="alert" hidden>
+            <h2>We couldn't load that archetype.</h2>
+            <p>Please refresh the page or choose another archetype.</p>
+          </div>
+
+          <div class="archetype-simple" hidden>
+            <div class="archetype-header-row">
+              <nav class="archetype-breadcrumb" aria-label="Breadcrumb">
+                <a class="archetype-breadcrumb__link" href="/archetypes">← Back to Archetypes</a>
+              </nav>
+              <h1 id="archetype-title" class="archetype-title">Loading archetype...</h1>
+            </div>
+
+            <!-- Tab Navigation -->
+            <nav class="archetype-tabs" aria-label="Archetype views">
+              <a id="tab-home" class="archetype-tab" href="#">Overview</a>
+              <a id="tab-analysis" class="archetype-tab" href="#">Analysis</a>
+              <a id="tab-trends" class="archetype-tab is-active" href="#" aria-current="page">Trends</a>
+            </nav>
+
+            <!-- Controls Panel -->
+            <div class="archetype-controls-panel archetype-controls">
+              <div class="panel-header">
+                <div class="header-actions">
+                  <button id="controls-toggle" class="btn-toggle" aria-expanded="true" aria-label="Toggle controls">
+                    <span class="btn-label">Configure</span>
+                    <span class="icon">▼</span>
+                  </button>
+                </div>
+              </div>
+
+              <div id="controls-body" class="panel-body">
+                <div class="controls-grid">
+                  <div class="control-group main-settings">
+                    <!-- Performance Filter -->
+                    <div class="control-item finish-control">
+                      <label for="trends-performance-filter">Tournament Finish</label>
+                      <div class="select-wrapper">
+                        <select id="trends-performance-filter" class="filter-card-select">
+                          <option value="all">All finishes</option>
+                          <option value="winner">Winners</option>
+                          <option value="top2">Finals</option>
+                          <option value="top4">Top 4</option>
+                          <option value="top8" selected>Top 8</option>
+                          <option value="top16">Top 16</option>
+                          <option value="top10">Top 10%</option>
+                          <option value="top25">Top 25%</option>
+                          <option value="top50">Top 50%</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <!-- Card Selection -->
+                    <div class="control-item card-select-control">
+                      <label for="trends-card-select">Select Cards</label>
+                      <div class="select-wrapper">
+                        <select id="trends-card-select" class="filter-card-select" multiple size="6">
+                          <!-- Populated dynamically -->
+                        </select>
+                      </div>
+                      <p class="control-hint">Hold Ctrl/Cmd to select multiple cards</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Trend Summary -->
+        <div id="trends-summary" class="trends-summary" hidden>
+          <p id="trends-summary-text"></p>
+        </div>
+
+        <!-- Main Chart Area -->
+        <section id="trends-chart-container" class="trends-chart-container" hidden>
+          <div id="trends-chart" class="trends-chart" role="img" aria-label="Card usage trends over time"></div>
+          <div id="trends-chart-legend" class="trends-chart-legend"></div>
+        </section>
+
+        <!-- Card Movers Section -->
+        <section id="trends-movers" class="trends-movers" hidden>
+          <div class="movers-group">
+            <h3>Rising Cards</h3>
+            <ul id="trends-rising" class="movers-list"></ul>
+          </div>
+          <div class="movers-group">
+            <h3>Cooling Cards</h3>
+            <ul id="trends-falling" class="movers-list"></ul>
+          </div>
+        </section>
+
+        <!-- Empty State -->
+        <div id="trends-empty" class="trends-empty" hidden>
+          <p>Not enough data to show trends for this archetype yet.</p>
+          <p class="muted">Trends require at least 2 tournaments with this archetype present.</p>
+        </div>
+      </main>
+    </div>
+
+    <script type="module">
+      import { createHeader } from '/assets/js/components/header.js';
+      import { createFooter } from '/assets/js/components/footer.js';
+
+      const header = createHeader({ currentPage: 'archetypes' });
+      const footer = createFooter();
+
+      document.body.insertAdjacentElement('afterbegin', header);
+      document.body.insertAdjacentElement('beforeend', footer);
+    </script>
+    <script src="/assets/js/archetypeTrends.js" type="module"></script>
+  </body>
+</html>
