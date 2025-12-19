@@ -42,6 +42,7 @@ interface DropdownConfig {
   placeholderAriaLabel?: string;
   disabledSummary?: string;
   onChange?: (selected: any[]) => Promise<void> | void;
+  onOpen?: () => Promise<void> | void;
 }
 
 interface DropdownState {
@@ -554,10 +555,15 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
    * @param options
    * @param options.multi
    */
-  const open = (options: { multi?: boolean } = {}) => {
+  const open = async (options: { multi?: boolean } = {}) => {
     const { multi } = options;
     if (dropdownState.disabled || dropdownState.isOpen) {
       return;
+    }
+
+    // Call onOpen callback if provided (e.g., for lazy loading data)
+    if (config.onOpen) {
+      await config.onOpen();
     }
 
     // Dispatch open event to close other dropdowns

@@ -5,13 +5,7 @@
  */
 
 import './utils/buildVersion.js';
-import {
-  fetchArchetypeReport,
-  fetchArchetypesList,
-  fetchLimitlessTournaments,
-  fetchReport,
-  fetchTournamentsList
-} from './api.js';
+import { fetchArchetypeReport, fetchArchetypesList, fetchReport, fetchTournamentsList } from './api.js';
 import { AppError, safeAsync } from './utils/errorHandler.js';
 import { parseReport } from './parse.js';
 import { renderSummary, updateLayout } from './render.js';
@@ -49,7 +43,6 @@ export interface AppState {
   selectedCardType: string;
   successFilter: string;
   availableTournaments: string[];
-  onlineTournaments: any[];
   availableSets: string[];
   archetypeOptions: Map<string, ArchetypeOptionMeta>;
   current: { items: any[]; deckTotal: number };
@@ -76,7 +69,6 @@ const appState: AppState = {
   selectedCardType: '__all__',
   successFilter: 'all',
   availableTournaments: [],
-  onlineTournaments: [],
   availableSets: [],
   archetypeOptions: new Map(),
   current: { items: [], deckTotal: 0 },
@@ -266,7 +258,11 @@ function setupDropdownFilters(state: AppState) {
       maxVisibleChips: 2,
       baseWidth: 380,
       maxWidth: 520,
-      onChange: (selection: string[]) => state.ui.onTournamentSelection?.(selection)
+      onChange: (selection: string[]) => state.ui.onTournamentSelection?.(selection),
+      onOpen: async () => {
+        // Lazy load tournament list when dropdown is opened
+        await ensureTournamentListLoaded(state);
+      }
     }),
     sets: createMultiSelectDropdown(state, {
       key: 'sets',
@@ -410,6 +406,11 @@ function refreshFiltersDropdowns() {
 function _openFiltersPanel() {
   const result = openFiltersPanelState({ focusFirstControl: false });
   if (result === 'opened') {
+    // Ensure tournament list is loaded when user opens filters
+    // This is high priority as they're likely to interact with the tournament dropdown
+    ensureTournamentListLoaded(appState).catch(error => {
+      logger.warn('Failed to load tournament list on filters open', error);
+    });
     refreshFiltersDropdowns();
   }
   return result;
@@ -430,6 +431,10 @@ function toggleFiltersPanel() {
     restoreFocusOnClose: false
   });
   if (result === 'opened') {
+    // Ensure tournament list is loaded when user opens filters
+    ensureTournamentListLoaded(appState).catch(error => {
+      logger.warn('Failed to load tournament list on filters open', error);
+    });
     refreshFiltersDropdowns();
   } else if (result === 'closed') {
     document.dispatchEvent(new CustomEvent('dropdown:close-all'));
@@ -510,11 +515,37 @@ async function loadSelectionData(
 }
 
 /**
- * Initialize tournament selector with data from API
+ * Determine initial tournament selection before tournaments.json is loaded.
+ * Prioritizes URL state, then defaults to online meta.
  * @param {AppState} state
+ * @returns {{ selection: string[], needsTournamentList: boolean }}
+ */
+function getInitialTournamentSelection(state: AppState): { selection: string[]; needsTournamentList: boolean } {
+  const urlState = getStateFromURL();
+  const urlSelectionRaw = urlState.tour ? urlState.tour.split(',') : [];
+  const normalizedFromUrl = normalizeTournamentSelection(urlSelectionRaw);
+
+  // If URL specifies tournaments, we need to validate against the list
+  if (normalizedFromUrl.length > 0) {
+    return { selection: normalizedFromUrl, needsTournamentList: true };
+  }
+
+  // If state has previous selection, use that
+  if (state.selectedTournaments.length > 0) {
+    return { selection: state.selectedTournaments, needsTournamentList: false };
+  }
+
+  // Default to online meta - no need for tournament list
+  return { selection: [DEFAULT_ONLINE_META], needsTournamentList: false };
+}
+
+/**
+ * Load tournament list and update state/dropdown.
+ * @param {AppState} state
+ * @param {string[]} currentSelection - The currently selected tournaments
  * @returns {Promise<void>}
  */
-async function initializeTournamentSelector(state: AppState) {
+async function loadTournamentList(state: AppState, currentSelection: string[]) {
   // Fetch tournaments list (excludes online tournaments)
   const tournaments = await safeAsync(
     () => fetchTournamentsList(),
@@ -542,33 +573,39 @@ async function initializeTournamentSelector(state: AppState) {
     tournaments.unshift(DEFAULT_ONLINE_META);
   }
 
-  const urlState = getStateFromURL();
-  const urlSelectionRaw = urlState.tour ? urlState.tour.split(',') : [];
-  const normalizedFromUrl = normalizeTournamentSelection(urlSelectionRaw);
-
-  let selection: string[] = [];
+  // Validate and update selection based on what's actually available
+  let validatedSelection: string[] = [];
   if (tournaments) {
-    selection = normalizedFromUrl.filter(value => tournaments.includes(value));
+    validatedSelection = currentSelection.filter(value => tournaments.includes(value));
   }
 
-  if (selection.length === 0 && state.selectedTournaments.length > 0 && tournaments) {
-    selection = normalizeTournamentSelection(state.selectedTournaments).filter(value => tournaments.includes(value));
+  // Fallback logic if validated selection is empty
+  if (validatedSelection.length === 0 && tournaments) {
+    if (tournaments.includes(DEFAULT_ONLINE_META)) {
+      validatedSelection = [DEFAULT_ONLINE_META];
+    } else if (tournaments.length > 0) {
+      validatedSelection = [tournaments[0]];
+    }
   }
 
-  if (selection.length === 0 && tournaments && tournaments.includes(DEFAULT_ONLINE_META)) {
-    selection = [DEFAULT_ONLINE_META];
-  }
-
-  if (selection.length === 0 && tournaments && tournaments.length > 0) {
-    selection = [tournaments[0]];
-  }
-
+  // Update state
   state.availableTournaments = tournaments || [];
-  state.selectedTournaments = selection;
-  state.currentTournament = selection[0] || null;
 
-  if (urlState.tour && tournaments) {
-    const normalizedParam = selection.join(',');
+  // Only update selection if it changed after validation
+  const selectionChanged =
+    validatedSelection.length !== currentSelection.length ||
+    !validatedSelection.every((val, idx) => val === currentSelection[idx]);
+
+  if (selectionChanged) {
+    state.selectedTournaments = validatedSelection;
+    state.currentTournament = validatedSelection[0] || null;
+  }
+
+  // Update URL if needed
+  const urlState = getStateFromURL();
+  if (urlState.tour && tournaments && selectionChanged) {
+    const normalizedParam = validatedSelection.join(',');
+    const urlSelectionRaw = urlState.tour.split(',');
     const normalizedUrlParam = normalizeTournamentSelection(urlSelectionRaw)
       .filter(value => tournaments.includes(value))
       .join(',');
@@ -577,42 +614,31 @@ async function initializeTournamentSelector(state: AppState) {
     }
   }
 
+  // Update dropdown
   const dropdown = state.ui?.dropdowns?.tournaments;
   if (dropdown && tournaments) {
-    dropdown.render(tournaments, selection);
+    dropdown.render(tournaments, selectionChanged ? validatedSelection : currentSelection);
   }
 
-  logger.info(`Initialized with tournaments: ${selection.join(', ') || 'None'}`);
-
-  // Kick off a background fetch for online Limitless events (does not block UI init)
-  // eslint-disable-next-line no-void
-  void hydrateOnlineTournaments(state, {
-    game: CONFIG.API.LIMITLESS_DEFAULT_GAME,
-    limit: Math.max(CONFIG.API.LIMITLESS_DEFAULT_LIMIT, 100)
-  });
-  // TODO: Merge state.onlineTournaments into the selector once UX for online data is finalized.
+  logger.info(
+    `Tournament list loaded, selection: ${(selectionChanged ? validatedSelection : currentSelection).join(', ') || 'None'}`
+  );
 }
 
 /**
- * Fetch online tournaments from Limitless and stash them for future UI integration.
+ * Ensure tournament list is loaded, fetching if necessary.
+ * This is called on-demand (e.g., when opening the tournament dropdown).
  * @param {AppState} state
- * @param {{game?: string, format?: string, limit?: number, page?: number}} options
  * @returns {Promise<void>}
  */
-async function hydrateOnlineTournaments(state: AppState, options: any = {}) {
-  const tournaments = await safeAsync(
-    () => fetchLimitlessTournaments(options),
-    'fetching Limitless online tournaments',
-    []
-  );
-
-  state.onlineTournaments = tournaments || [];
-
-  if (tournaments && tournaments.length > 0) {
-    logger.info(`Loaded ${tournaments.length} online tournaments from Limitless`, options);
-  } else {
-    logger.debug('No Limitless tournaments returned for query', options);
+async function ensureTournamentListLoaded(state: AppState): Promise<void> {
+  // If already loaded, nothing to do
+  if (state.availableTournaments.length > 0) {
+    return;
   }
+
+  // Load the tournament list
+  await loadTournamentList(state, state.selectedTournaments);
 }
 
 /**
@@ -1058,24 +1084,43 @@ async function init() {
     setupDropdownFilters(appState);
     setupControlHandlers(appState);
 
-    // Load initial data
-    await initializeTournamentSelector(appState);
+    // Determine initial tournament selection (fast, no network calls)
+    const { selection: initialSelection, needsTournamentList } = getInitialTournamentSelection(appState);
+    appState.selectedTournaments = initialSelection;
+    appState.currentTournament = initialSelection[0] || null;
 
-    // Initial data load
-    const selection = appState.selectedTournaments;
+    logger.info(`Starting with initial selection: ${initialSelection.join(', ')}`);
+
     const cache = appState.cache;
+    let finalSelection = initialSelection;
 
-    const data = await loadSelectionData(selection, cache, { showSkeleton: true });
+    // PRIORITY 1 & 2: If URL has ?tour param, validate it first (might change selection)
+    if (needsTournamentList) {
+      logger.info('URL specifies tournament, loading tournament list for validation');
+      await loadTournamentList(appState, initialSelection);
+
+      // Selection might have changed after validation, use the validated selection
+      finalSelection = appState.selectedTournaments.length > 0 ? appState.selectedTournaments : [DEFAULT_ONLINE_META];
+
+      logger.info(`Validated selection: ${finalSelection.join(', ')}`);
+    }
+
+    // Load data for the final (possibly validated) selection
+    const data = await loadSelectionData(finalSelection, cache, { showSkeleton: true });
     appState.current = data;
 
     renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
     updateSetFilterOptions(data.items);
 
-    // Setup archetype selector
-    await setupArchetypeSelector(selection, cache, appState);
+    // Setup archetype selector with final selection
+    await setupArchetypeSelector(finalSelection, cache, appState);
 
     // Apply initial filters
     await applyCurrentFilters(appState);
+
+    // PRIORITY 3: Cards are now rendered in DOM
+    // The render.js/updateLayout handles image loading with intersection observer
+    // Images in viewport will load first automatically via browser's lazy loading
 
     // Handle window resize
     window.addEventListener(
@@ -1095,6 +1140,18 @@ async function init() {
           setsDropdown.setSelection(redirectPayload.sets);
         }
       }
+    }
+
+    // PRIORITY 4: Load tournament list in background (deprioritized, non-critical)
+    // This ensures dropdown has data when user eventually opens it
+    if (!needsTournamentList) {
+      logger.info('Deprioritizing tournament list load (not needed for initial render)');
+      // Use setTimeout to ensure this happens after all critical rendering
+      setTimeout(() => {
+        loadTournamentList(appState, initialSelection).catch(error => {
+          logger.warn('Background tournament list load failed', error);
+        });
+      }, 100);
     }
 
     logger.info('Initialization complete');
