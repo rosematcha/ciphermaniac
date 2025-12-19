@@ -24,14 +24,14 @@ export async function loadCardTypesDatabase(env) {
       if (object) {
         const text = await object.text();
         const data = JSON.parse(text);
-        
+
         // Cache in KV if available
         if (env.CARD_TYPES_KV) {
           await env.CARD_TYPES_KV.put('card-types-database', JSON.stringify(data), {
             expirationTtl: 86400 // Cache for 24 hours
           });
         }
-        
+
         return data;
       }
     }
@@ -55,7 +55,7 @@ export function getCardType(database, setCode, number) {
   if (!database || !setCode || !number) {
     return null;
   }
-  
+
   const key = `${setCode}::${number}`;
   return database[key] || null;
 }
@@ -71,43 +71,43 @@ export function enrichCardWithType(card, database) {
   if (!card || !card.set || !card.number || !database) {
     return card;
   }
-  
+
   const typeInfo = getCardType(database, card.set, card.number);
   if (!typeInfo) {
     return card;
   }
-  
+
   const enriched = { ...card };
-  
+
   // Only set category if not already present
   if (!enriched.category && typeInfo.cardType) {
     enriched.category = typeInfo.cardType;
   }
-  
+
   // Only set trainer subtype if not already present
   if (typeInfo.cardType === 'trainer' && typeInfo.subType && !enriched.trainerType) {
     enriched.trainerType = typeInfo.subType;
   }
-  
+
   // Only set energy subtype if not already present
   if (typeInfo.cardType === 'energy' && typeInfo.subType && !enriched.energyType) {
     enriched.energyType = typeInfo.subType;
   }
-  
+
   // Add evolution info if this is a Pokemon
   if (typeInfo.cardType === 'pokemon' && typeInfo.evolutionInfo && !enriched.evolutionInfo) {
     enriched.evolutionInfo = typeInfo.evolutionInfo;
   }
-  
+
   // Add full type string for reference
   if (typeInfo.fullType && !enriched.fullType) {
     enriched.fullType = typeInfo.fullType;
   }
-  
+
   if (typeInfo.cardType === 'trainer' && typeInfo.aceSpec) {
     enriched.aceSpec = true;
   }
-  
+
   return enriched;
 }
 
@@ -121,7 +121,7 @@ export function enrichDeckCards(deck, database) {
   if (!deck || !Array.isArray(deck.cards) || !database) {
     return deck;
   }
-  
+
   return {
     ...deck,
     cards: deck.cards.map(card => enrichCardWithType(card, database))
@@ -138,6 +138,6 @@ export function enrichAllDecks(decks, database) {
   if (!Array.isArray(decks) || !database) {
     return decks;
   }
-  
+
   return decks.map(deck => enrichDeckCards(deck, database));
 }

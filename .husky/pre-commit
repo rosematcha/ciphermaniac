@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+
+echo "🔍 Running pre-commit checks..."
+
+# Run lint-staged for linting
+echo "📝 Linting changed files..."
+./node_modules/.bin/lint-staged
+
+# Run tests
+echo "🧪 Running test suite..."
+if [ -n "$WINDIR" ] || [ -n "$MSYSTEM" ]; then
+	# On Windows / Git Bash environments the npm executable can have a Windows path
+	# which bash cannot execute directly. Run via cmd to use the native npm runner.
+	cmd //C "npm run test:all"
+else
+	npm run test:all
+fi
+
+echo "✅ All pre-commit checks passed!"

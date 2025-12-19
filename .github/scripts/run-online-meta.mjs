@@ -5,6 +5,7 @@ import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3
 import { enrichCardWithType } from '../../functions/lib/cardTypesDatabase.js';
 import { getCanonicalCard } from '../../functions/lib/cardSynonyms.js';
 import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json' assert { type: 'json' };
+import { generateArchetypeTrends } from '../../functions/lib/archetypeTrends.js';
 
 const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api';
 const WINDOW_DAYS = 14;
@@ -35,6 +36,22 @@ const GENERATE_ARCHETYPES = process.env.GENERATE_ARCHETYPES !== 'false';
 const GENERATE_INCLUDE_EXCLUDE = process.env.GENERATE_INCLUDE_EXCLUDE !== 'false';
 const GENERATE_DECKS = process.env.GENERATE_DECKS !== 'false';
 
+// Placement tagging thresholds (absolute finishing positions)
+const PLACEMENT_TAG_RULES = [
+  { tag: 'winner', maxPlacing: 1, minPlayers: 2 },
+  { tag: 'top2', maxPlacing: 2, minPlayers: 4 },
+  { tag: 'top4', maxPlacing: 4, minPlayers: 8 },
+  { tag: 'top8', maxPlacing: 8, minPlayers: 16 },
+  { tag: 'top16', maxPlacing: 16, minPlayers: 32 }
+];
+
+// Percentile-based placement tagging thresholds
+const PERCENT_TAG_RULES = [
+  { tag: 'top10', fraction: 0.1, minPlayers: 20 },
+  { tag: 'top25', fraction: 0.25, minPlayers: 12 },
+  { tag: 'top50', fraction: 0.5, minPlayers: 8 }
+];
+
 const s3Client = new S3Client({
   region: 'auto',
   endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -46,6 +63,40 @@ const s3Client = new S3Client({
 
 function daysAgo(days) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+}
+
+/**
+ * Determines placement tags (success tiers) for a deck based on its finishing position.
+ * @param {number} placing - The deck's finishing position
+ * @param {number} players - Total players in the tournament
+ * @returns {string[]} Array of applicable success tags
+ */
+function determinePlacementTags(placing, players) {
+  const place = Number.isFinite(placing) ? placing : null;
+  const fieldSize = Number.isFinite(players) ? players : null;
+  if (!place || !fieldSize || place <= 0 || fieldSize <= 1) {
+    return [];
+  }
+
+  const tags = [];
+
+  for (const rule of PLACEMENT_TAG_RULES) {
+    if (fieldSize >= rule.minPlayers && place <= rule.maxPlacing) {
+      tags.push(rule.tag);
+    }
+  }
+
+  for (const rule of PERCENT_TAG_RULES) {
+    if (fieldSize < rule.minPlayers) {
+      continue;
+    }
+    const cutoff = Math.max(1, Math.ceil(fieldSize * rule.fraction));
+    if (place <= cutoff) {
+      tags.push(rule.tag);
+    }
+  }
+
+  return tags;
 }
 
 function buildLimitlessUrl(path, params = {}) {
@@ -227,6 +278,10 @@ async function gatherDecks(tournaments, cardTypesDb) {
       return placingA - placingB;
     });
 
+    // Derive tournament size when Limitless doesn't provide it
+    const maxReportedPlacing = Number.isFinite(sorted.at(-1)?.placing) ? Number(sorted.at(-1).placing) : 0;
+    const derivedPlayers = Number(tournament?.players) || Math.max(sorted.length, maxReportedPlacing);
+
     const topEntries = sorted.slice(0, limit);
     for (const entry of topEntries) {
       const cards = toCardEntries(entry?.decklist, cardTypesDb);
@@ -258,7 +313,9 @@ async function gatherDecks(tournaments, cardTypesDb) {
         tournamentDate: tournament.date,
         tournamentFormat: tournament.format,
         tournamentPlatform: tournament.platform,
-        tournamentOrganizer: tournament.organizer
+        tournamentOrganizer: tournament.organizer,
+        tournamentPlayers: derivedPlayers,
+        successTags: determinePlacementTags(entry?.placing, derivedPlayers)
       });
     }
   }
@@ -311,14 +368,7 @@ function normalizeDeckLabel(label) {
 // --- Thumbnail inference logic (auto-infer from report data) ---
 const AUTO_THUMB_MAX = 2;
 const AUTO_THUMB_REQUIRED_PCT = 99.9;
-const ARCHETYPE_DESCRIPTOR_TOKENS = new Set([
-  'box',
-  'control',
-  'festival',
-  'lead',
-  'toolbox',
-  'turbo'
-]);
+const ARCHETYPE_DESCRIPTOR_TOKENS = new Set(['box', 'control', 'festival', 'lead', 'toolbox', 'turbo']);
 
 function tokenizeForMatching(text) {
   const normalized = String(text || '')
@@ -354,7 +404,9 @@ function formatCardNumber(raw) {
 
 function buildThumbnailId(setCode, number) {
   const formattedNumber = formatCardNumber(number);
-  const set = String(setCode || '').toUpperCase().trim();
+  const set = String(setCode || '')
+    .toUpperCase()
+    .trim();
   if (!formattedNumber || !set) {
     return null;
   }
@@ -400,12 +452,7 @@ function inferArchetypeThumbnails(displayName, reportData) {
     return [];
   }
 
-  candidates.sort(
-    (a, b) =>
-      b.matchCount - a.matchCount ||
-      b.pct - a.pct ||
-      a.index - b.index
-  );
+  candidates.sort((a, b) => b.matchCount - a.matchCount || b.pct - a.pct || a.index - b.index);
 
   const selected = [];
   const covered = new Set();
@@ -460,7 +507,12 @@ function canonicalizeVariant(setCode, number) {
   }
   const match = /^(\d+)([A-Za-z]*)$/.exec(String(number || '').trim());
   if (!match) {
-    return [sc, String(number || '').trim().toUpperCase()];
+    return [
+      sc,
+      String(number || '')
+        .trim()
+        .toUpperCase()
+    ];
   }
   const [, digits, suffix = ''] = match;
   const normalized = digits.padStart(3, '0');
@@ -523,9 +575,7 @@ function generateReportFromDecks(deckList, deckTotal, synonymDb) {
     });
   }
 
-  const sortedKeys = Array.from(cardData.keys()).sort(
-    (a, b) => cardData.get(b).length - cardData.get(a).length
-  );
+  const sortedKeys = Array.from(cardData.keys()).sort((a, b) => cardData.get(b).length - cardData.get(a).length);
 
   const items = sortedKeys.map((uid, index) => {
     const counts = cardData.get(uid) || [];
@@ -574,12 +624,9 @@ function generateReportFromDecks(deckList, deckTotal, synonymDb) {
       if (categoryInfo.aceSpec) {
         entry.aceSpec = true;
       }
-      const slug = composeCategorySlug(
-        categoryInfo.category,
-        categoryInfo.trainerType,
-        categoryInfo.energyType,
-        { aceSpec: Boolean(categoryInfo.aceSpec) }
-      );
+      const slug = composeCategorySlug(categoryInfo.category, categoryInfo.trainerType, categoryInfo.energyType, {
+        aceSpec: Boolean(categoryInfo.aceSpec)
+      });
       if (slug) {
         entry.category = slug;
       } else if (categoryInfo.category) {
@@ -688,9 +735,7 @@ async function loadCardTypesDatabase() {
   const key = 'assets/data/card-types.json';
   const data = await readJson(key);
   if (data) {
-    console.log(
-      `[online-meta] Loaded card types database (${Object.keys(data).length} entries) from ${key}`
-    );
+    console.log(`[online-meta] Loaded card types database (${Object.keys(data).length} entries) from ${key}`);
     return data;
   }
   console.warn('[online-meta] Card types database not found; continuing without enrichment');
@@ -918,7 +963,16 @@ function applyFilters(filters, cardPresence, cardCounts, allDeckIds) {
   return eligible;
 }
 
-function buildSubsetReport(filters, cardPresence, cardCounts, deckById, allDecks, cardLookup, deckTotal, archetypeName) {
+function buildSubsetReport(
+  filters,
+  cardPresence,
+  cardCounts,
+  deckById,
+  allDecks,
+  cardLookup,
+  deckTotal,
+  archetypeName
+) {
   const allDeckIds = new Set(deckById.keys());
   const eligibleDeckIds = applyFilters(filters, cardPresence, cardCounts, allDeckIds);
 
@@ -930,7 +984,9 @@ function buildSubsetReport(filters, cardPresence, cardCounts, deckById, allDecks
     return null;
   }
 
-  const subsetDecks = Array.from(eligibleDeckIds).map(id => deckById.get(id)).filter(Boolean);
+  const subsetDecks = Array.from(eligibleDeckIds)
+    .map(id => deckById.get(id))
+    .filter(Boolean);
   const report = generateReportFromDecks(subsetDecks, subsetDecks.length);
 
   report.filters = {
@@ -971,7 +1027,9 @@ function generateFilterCombinations(optionalCards) {
 
   const meaningfulCards = optionalCards.filter(card => card.pct >= MIN_CARD_USAGE_PERCENT);
 
-  console.log(`[IncludeExclude] Filtering ${optionalCards.length} cards to ${meaningfulCards.length} with ${MIN_CARD_USAGE_PERCENT}%+ usage`);
+  console.log(
+    `[IncludeExclude] Filtering ${optionalCards.length} cards to ${meaningfulCards.length} with ${MIN_CARD_USAGE_PERCENT}%+ usage`
+  );
 
   const sortedCards = [...meaningfulCards].sort((a, b) => b.pct - a.pct);
 
@@ -985,12 +1043,14 @@ function generateFilterCombinations(optionalCards) {
 
     for (const countFilter of countFilters) {
       combinations.push({
-        include: [{
-          cardId: card.id,
-          operator: countFilter.operator,
-          count: countFilter.count,
-          label: countFilter.label
-        }],
+        include: [
+          {
+            cardId: card.id,
+            operator: countFilter.operator,
+            count: countFilter.count,
+            label: countFilter.label
+          }
+        ],
         exclude: []
       });
     }
@@ -1022,12 +1082,14 @@ function generateFilterCombinations(optionalCards) {
       if (countFilters.length > 0) {
         const topFilter = countFilters[0];
         combinations.push({
-          include: [{
-            cardId: includeCard.id,
-            operator: topFilter.operator,
-            count: topFilter.count,
-            label: topFilter.label
-          }],
+          include: [
+            {
+              cardId: includeCard.id,
+              operator: topFilter.operator,
+              count: topFilter.count,
+              label: topFilter.label
+            }
+          ],
           exclude: [{ cardId: excludeCard.id }]
         });
       }
@@ -1038,12 +1100,15 @@ function generateFilterCombinations(optionalCards) {
 }
 
 function buildFilterKey(filters) {
-  const includeKeys = (filters.include || []).map(f => {
-    if (f.count !== undefined) {
-      return `${f.cardId}:${f.operator}${f.count}`;
-    }
-    return f.cardId;
-  }).sort().join('+');
+  const includeKeys = (filters.include || [])
+    .map(f => {
+      if (f.count !== undefined) {
+        return `${f.cardId}:${f.operator}${f.count}`;
+      }
+      return f.cardId;
+    })
+    .sort()
+    .join('+');
 
   const excludeKeys = (filters.exclude || [])
     .map(f => f.cardId)
@@ -1057,7 +1122,9 @@ async function generateIncludeExcludeReports(archetypeName, archetypeDecks, arch
   const deckTotal = archetypeDecks.length;
 
   if (deckTotal < MIN_DECKS_FOR_ANALYSIS) {
-    console.log(`[IncludeExclude] Skipping ${archetypeName}: only ${deckTotal} decks (minimum ${MIN_DECKS_FOR_ANALYSIS})`);
+    console.log(
+      `[IncludeExclude] Skipping ${archetypeName}: only ${deckTotal} decks (minimum ${MIN_DECKS_FOR_ANALYSIS})`
+    );
     return null;
   }
 
@@ -1070,7 +1137,9 @@ async function generateIncludeExcludeReports(archetypeName, archetypeDecks, arch
     return null;
   }
 
-  console.log(`[IncludeExclude] ${archetypeName}: ${optional.length} optional cards, ${alwaysIncluded.length} always included`);
+  console.log(
+    `[IncludeExclude] ${archetypeName}: ${optional.length} optional cards, ${alwaysIncluded.length} always included`
+  );
 
   const { cardPresence, cardCounts, deckById } = indexDeckCardPresence(archetypeDecks);
 
@@ -1124,7 +1193,9 @@ async function generateIncludeExcludeReports(archetypeName, archetypeDecks, arch
     filterMap.set(filterKey, subsetId);
   }
 
-  console.log(`[IncludeExclude] ${archetypeName}: ${uniqueSubsets.size} unique subsets from ${combinations.length} combinations (skipped ${skippedSmallSubsets} small subsets)`);
+  console.log(
+    `[IncludeExclude] ${archetypeName}: ${uniqueSubsets.size} unique subsets from ${combinations.length} combinations (skipped ${skippedSmallSubsets} small subsets)`
+  );
 
   const cardsSummary = {};
   for (const [cardId, info] of cardLookup.entries()) {
@@ -1160,9 +1231,12 @@ async function generateIncludeExcludeReports(archetypeName, archetypeDecks, arch
     deckTotal,
     totalCombinations: combinations.length,
     uniqueSubsets: uniqueSubsets.size,
-    deduplicationRate: combinations.length > 0
-      ? Math.round(((combinations.length - uniqueSubsets.size) / combinations.length * 100 + Number.EPSILON) * 100) / 100
-      : 0,
+    deduplicationRate:
+      combinations.length > 0
+        ? Math.round(
+            (((combinations.length - uniqueSubsets.size) / combinations.length) * 100 + Number.EPSILON) * 100
+          ) / 100
+        : 0,
     cards: cardsSummary,
     filterMap: Object.fromEntries(filterMap),
     subsets: subsetsMetadata,
@@ -1214,10 +1288,12 @@ async function main() {
 
   console.log(`[online-meta] Aggregating ${decks.length} decks`);
   const masterReport = generateReportFromDecks(decks, decks.length, synonymDb);
-  const { files: archetypeFiles, index: archetypeIndex, minDecks, decksByArchetype } = buildArchetypeReports(
-    decks,
-    synonymDb
-  );
+  const {
+    files: archetypeFiles,
+    index: archetypeIndex,
+    minDecks,
+    decksByArchetype
+  } = buildArchetypeReports(decks, synonymDb);
 
   const meta = {
     name: TARGET_FOLDER,
@@ -1272,6 +1348,14 @@ async function main() {
       const archetypeDecks = decksByArchetype.get(file.base);
       if (archetypeDecks) {
         await putJson(`${basePath}/archetypes/${file.base}/decks.json`, archetypeDecks);
+
+        // Generate and upload trends.json for each archetype
+        try {
+          const trends = generateArchetypeTrends(archetypeDecks, tournaments, synonymDb);
+          await putJson(`${basePath}/archetypes/${file.base}/trends.json`, trends);
+        } catch (err) {
+          console.error(`[online-meta] Failed to generate trends for ${file.base}:`, err.message || err);
+        }
       }
     }
 
@@ -1341,9 +1425,7 @@ async function main() {
   // if (GENERATE_INCLUDE_EXCLUDE) uploadedComponents.push(`${includeExcludeCount} include-exclude reports`);
   if (GENERATE_DECKS) uploadedComponents.push('decks');
 
-  console.log(
-    `[online-meta] Uploaded ${uploadedComponents.join(' + ')} to ${R2_BUCKET_NAME}/${basePath}`
-  );
+  console.log(`[online-meta] Uploaded ${uploadedComponents.join(' + ')} to ${R2_BUCKET_NAME}/${basePath}`);
 }
 
 main().catch(error => {

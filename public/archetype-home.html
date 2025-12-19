@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Archetype • Ciphermaniac</title>
+    <!-- Preload critical font to reduce layout shift -->
+    <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/assets/style.css" />
+    <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
+    <!-- Preload critical JS module for faster page load -->
+    <link rel="modulepreload" href="/assets/js/archetypeHome.js" />
+  </head>
+  <body>
+    <div class="archetype-page" data-state="ready">
+      <main class="archetype-main">
+        <section class="archetype-content">
+          <div class="archetype-simple">
+            <div class="archetype-header-row">
+              <nav class="archetype-breadcrumb" aria-label="Breadcrumb">
+                <a class="archetype-breadcrumb__link" href="/archetypes">← Back to Archetypes</a>
+              </nav>
+              <h1 id="archetype-title" class="archetype-title">Loading...</h1>
+            </div>
+
+            <!-- Tab Navigation -->
+            <nav class="archetype-tabs" aria-label="Archetype views">
+              <a id="tab-home" class="archetype-tab is-active" href="#" aria-current="page">Overview</a>
+              <a id="tab-analysis" class="archetype-tab" href="#">Analysis</a>
+              <a id="tab-trends" class="archetype-tab" href="#">Trends</a>
+            </nav>
+
+            <div class="archetype-home-content">
+              <!-- Card showing Analysis options -->
+              <div class="archetype-home-card">
+                <h2>Deck Analysis</h2>
+                <p>Deep dive into card inclusions, win rates, and matchups for this archetype.</p>
+                <a id="link-analysis-card" href="analysis" class="btn-primary">View Analysis</a>
+              </div>
+
+              <!-- Card showing Trends options -->
+              <div class="archetype-home-card">
+                <h2>Metagame Trends</h2>
+                <p>Track performance and popularity over time. See which cards are rising or falling in usage.</p>
+                <a id="link-trends-card" href="trends" class="btn-primary">View Trends</a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module">
+      import { createHeader } from '/assets/js/components/header.js';
+      import { createFooter } from '/assets/js/components/footer.js';
+
+      const header = createHeader({ currentPage: 'archetypes' });
+      const footer = createFooter();
+
+      document.body.insertAdjacentElement('afterbegin', header);
+      document.body.insertAdjacentElement('beforeend', footer);
+    </script>
+    <script type="module" src="/assets/js/archetypeHome.js"></script>
+    <script>
+      // Simple inline script to update the card links based on current URL
+      (function () {
+        const path = window.location.pathname;
+        const analysisLink = document.querySelector('#link-analysis-card');
+        const trendsLink = document.querySelector('#link-trends-card');
+
+        // Ensure trailing slash logic works or relative links work
+        // If we are at /archetype/Charizard, 'analysis' -> /archetype/Charizard/analysis
+        if (analysisLink) analysisLink.href = path.replace(/\/$/, '') + '/analysis';
+        if (trendsLink) trendsLink.href = path.replace(/\/$/, '') + '/trends';
+      })();
+    </script>
+  </body>
+</html>

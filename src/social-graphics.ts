@@ -1,3 +1,4 @@
+/* eslint-disable no-new */
 import { fetchReportResource, fetchTournamentsList } from './api.js';
 import { buildThumbCandidates } from './thumbs.js';
 
@@ -526,7 +527,7 @@ class SocialGraphicsGenerator {
         if (blobUrl) {
           return blobUrl;
         }
-      } catch (_error) {
+      } catch {
         continue;
       }
     }
@@ -843,7 +844,6 @@ class SocialGraphicsGenerator {
     return histogram;
   }
 
-
   async exportGraphics(format) {
     if (!this.currentTournamentData) {
       this.showError('Please generate graphics first.');
@@ -906,12 +906,18 @@ const html2canvas = (() => {
     return new Promise<HTMLCanvasElement>((resolve, reject) => {
       const globalWindow = window as any;
       if (typeof globalWindow.html2canvas !== 'undefined') {
-        globalWindow.html2canvas(element, options).then((canvas: HTMLCanvasElement) => resolve(canvas)).catch(reject);
+        globalWindow
+          .html2canvas(element, options)
+          .then((canvas: HTMLCanvasElement) => resolve(canvas))
+          .catch(reject);
       } else {
         const script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
         script.onload = () => {
-          globalWindow.html2canvas(element, options).then((canvas: HTMLCanvasElement) => resolve(canvas)).catch(reject);
+          globalWindow
+            .html2canvas(element, options)
+            .then((canvas: HTMLCanvasElement) => resolve(canvas))
+            .catch(reject);
         };
         script.onerror = reject;
         document.head.appendChild(script);

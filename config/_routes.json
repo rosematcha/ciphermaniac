@@ -1,13 +1,5 @@
 {
   "version": 1,
-  "include": [
-    "/api/*",
-    "/_cron/*",
-    "/card/*",
-    "/archetype/*",
-    "/thumbnails/*"
-  ],
-  "exclude": [
-    "/assets/*"
-  ]
+  "include": ["/*"],
+  "exclude": ["/assets/*"]
 }

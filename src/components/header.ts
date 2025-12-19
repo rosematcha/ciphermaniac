@@ -5,7 +5,7 @@
 import '../utils/buildVersion.js';
 
 interface HeaderOptions {
-    currentPage?: string;
+  currentPage?: string;
 }
 
 /**
@@ -14,11 +14,11 @@ interface HeaderOptions {
  * @returns The header element
  */
 export function createHeader(options: HeaderOptions = {}): HTMLElement {
-    const { currentPage = '' } = options;
+  const { currentPage = '' } = options;
 
-    const header = document.createElement('header');
-    header.className = 'site-header';
-    header.innerHTML = `
+  const header = document.createElement('header');
+  header.className = 'site-header';
+  header.innerHTML = `
     <div class="header-inner">
       <a class="logo" href="/" aria-label="Ciphermaniac home">
         <img src="/assets/images/logo.svg" alt="" class="site-logo" width="28" height="28" />
@@ -37,65 +37,65 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
     </div>
   `;
 
-    // Add class for browsers without :has() support (CLS prevention fallback)
-    document.body.classList.add('has-header');
+  // Add class for browsers without :has() support (CLS prevention fallback)
+  document.body.classList.add('has-header');
 
-    const nav = header.querySelector('.main-nav') as HTMLElement | null;
-    const toggle = header.querySelector('.nav-toggle') as HTMLButtonElement | null;
+  const nav = header.querySelector('.main-nav') as HTMLElement | null;
+  const toggle = header.querySelector('.nav-toggle') as HTMLButtonElement | null;
 
-    if (nav && toggle) {
-        nav.id = 'mainNav';
+  if (nav && toggle) {
+    nav.id = 'mainNav';
 
-        const openNav = () => {
-            nav.classList.add('is-open');
-            toggle.classList.add('is-active');
-            toggle.setAttribute('aria-expanded', 'true');
-        };
+    const openNav = () => {
+      nav.classList.add('is-open');
+      toggle.classList.add('is-active');
+      toggle.setAttribute('aria-expanded', 'true');
+    };
 
-        const closeNav = () => {
-            nav.classList.remove('is-open');
-            toggle.classList.remove('is-active');
-            toggle.setAttribute('aria-expanded', 'false');
-        };
+    const closeNav = () => {
+      nav.classList.remove('is-open');
+      toggle.classList.remove('is-active');
+      toggle.setAttribute('aria-expanded', 'false');
+    };
 
-        toggle.addEventListener('click', () => {
-            const expanded = toggle.getAttribute('aria-expanded') === 'true';
-            if (expanded) {
-                closeNav();
-            } else {
-                openNav();
-            }
-        });
+    toggle.addEventListener('click', () => {
+      const expanded = toggle.getAttribute('aria-expanded') === 'true';
+      if (expanded) {
+        closeNav();
+      } else {
+        openNav();
+      }
+    });
 
-        nav.addEventListener('click', event => {
-            const { target } = event;
-            if (target instanceof Element && target.closest('.nav-link')) {
-                closeNav();
-            }
-        });
+    nav.addEventListener('click', event => {
+      const { target } = event;
+      if (target instanceof Element && target.closest('.nav-link')) {
+        closeNav();
+      }
+    });
 
-        nav.addEventListener('keydown', event => {
-            if (event.key === 'Escape') {
-                closeNav();
-                toggle.focus();
-            }
-        });
+    nav.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        closeNav();
+        toggle.focus();
+      }
+    });
 
-        const { matchMedia } = window;
-        const mq = matchMedia('(min-width: 721px)');
-        const handleChange = (event: MediaQueryListEvent) => {
-            if (event.matches) {
-                closeNav();
-            }
-        };
-        if (typeof mq.addEventListener === 'function') {
-            mq.addEventListener('change', handleChange);
-        } else if (typeof mq.addListener === 'function') {
-            mq.addListener(handleChange);
-        }
+    const { matchMedia } = window;
+    const mq = matchMedia('(min-width: 721px)');
+    const handleChange = (event: MediaQueryListEvent) => {
+      if (event.matches) {
+        closeNav();
+      }
+    };
+    if (typeof mq.addEventListener === 'function') {
+      mq.addEventListener('change', handleChange);
+    } else if (typeof mq.addListener === 'function') {
+      mq.addListener(handleChange);
     }
+  }
 
-    return header;
+  return header;
 }
 
 /**
@@ -105,7 +105,7 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
  * @returns The inserted header element
  */
 export function insertHeader(container: HTMLElement, options: HeaderOptions = {}): HTMLElement {
-    const header = createHeader(options);
-    container.appendChild(header);
-    return header;
+  const header = createHeader(options);
+  container.appendChild(header);
+  return header;
 }

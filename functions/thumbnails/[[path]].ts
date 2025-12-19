@@ -65,13 +65,10 @@ export async function onRequest(context: Context): Promise<Response> {
   const relevantParts = pathParts.slice(1);
 
   if (relevantParts.length !== 3) {
-    return new Response(
-      `Invalid path format. Expected: /thumbnails/{size}/{set}/{number}, got: ${url.pathname}`,
-      {
-        status: 400,
-        headers: { 'Content-Type': 'text/plain' }
-      }
-    );
+    return new Response(`Invalid path format. Expected: /thumbnails/{size}/{set}/{number}, got: ${url.pathname}`, {
+      status: 400,
+      headers: { 'Content-Type': 'text/plain' }
+    });
   }
 
   const [size, set, number] = relevantParts;

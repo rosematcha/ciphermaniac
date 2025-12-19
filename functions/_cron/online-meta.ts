@@ -18,6 +18,6 @@ export async function onCron({ env }: { env: unknown }): Promise<void> {
   await runOnlineMetaJob(env);
 }
 
-export async function scheduled(controller: unknown, env: unknown, ctx: unknown): Promise<void> {
+export async function scheduled(controller: unknown, env: unknown, _ctx: unknown): Promise<void> {
   await runOnlineMetaJob(env);
 }
