@@ -12,6 +12,7 @@ import { buildCardPath, normalizeCardNumber } from './card/routing.js';
 import { parallelImageLoader } from './utils/parallelImageLoader.js';
 import { setProperties as _setProperties, createElement, setStyles } from './utils/dom.js';
 import { CONFIG } from './config.js';
+import { perf } from './utils/performance.js';
 // Modal removed: navigate to card page instead
 
 const USD_FORMATTER = new Intl.NumberFormat('en-US', {
@@ -182,8 +183,12 @@ export function updateSummaryWithRowCounts(deckTotal: number, cardCount: number)
  * @param options
  */
 export function render(items: any[], overrides: Record<string, string> = {}, options: RenderOptions = {}) {
+  perf.start('render');
+  perf.start('render:setup');
   const grid = getGridElement();
   if (!grid) {
+    perf.end('render:setup');
+    perf.end('render');
     return;
   }
 
@@ -218,12 +223,15 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
   grid._renderOptions = settings;
   grid._autoCompact = prefersCompact;
 
+  perf.end('render:setup');
+
   // Empty state for no results - use replaceChildren for atomic update
   if (!items || items.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
     empty.innerHTML = `<h2>Dead draw.</h2><p>No results for this search, try another!</p>`;
     grid.replaceChildren(empty);
+    perf.end('render');
     return;
   }
 
@@ -233,17 +241,20 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
     prevEmpty.remove();
   }
 
+  perf.start('render:layout');
   // Compute per-row layout and sync controls width using helper
   const containerWidth = grid.clientWidth || grid.getBoundingClientRect().width || 0;
   const layout = computeLayout(containerWidth);
   const { base, perRowBig, bigRowContentWidth, targetMedium, mediumScale, targetSmall, smallScale } = layout;
   syncControlsWidth(bigRowContentWidth);
+  perf.end('render:layout');
 
   const useSmallRows = forceCompact || (perRowBig >= 6 && targetSmall > targetMedium);
 
   const largeRowsLimit = forceCompact ? 0 : NUM_LARGE_ROWS;
   const mediumRowsLimit = forceCompact ? 0 : NUM_MEDIUM_ROWS;
 
+  perf.start('render:dom-reuse');
   // Capture existing cards to reuse DOM elements (prevents image flashing)
   const existingCardsMap = new Map<string, HTMLElement>();
   grid.querySelectorAll('.card').forEach(el => {
@@ -256,6 +267,7 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
       existingCardsMap.set(key, cardEl);
     }
   });
+  perf.end('render:dom-reuse');
 
   // Use the shared card creation function
   const makeCard = (it: any, useSm: boolean) => {
@@ -310,6 +322,7 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
   // Build rows - reuse existing or create new
   const rowsToKeep: HTMLElement[] = [];
 
+  perf.start('render:create-cards');
   while (i < items.length && rowIndex < visibleRowsLimit) {
     // Reuse existing row if available, otherwise create new
     let row: HTMLElement;
@@ -398,12 +411,16 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
     rowsToKeep.push(row);
     rowIndex++;
   }
+  perf.end('render:create-cards');
 
+  perf.start('render:cleanup');
   // Remove excess rows (those beyond what we need)
   for (let r = rowIndex; r < existingRows.length; r++) {
     existingRows[r].remove();
   }
+  perf.end('render:cleanup');
 
+  perf.start('render:preload-images');
   // Set up image preloading for better performance
   // setupImagePreloading(items, overrides); // Disabled - using parallelImageLoader instead
 
@@ -414,6 +431,7 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
       preloadVisibleImagesParallel(items, overrides);
     });
   }
+  perf.end('render:preload-images');
 
   // If there are remaining rows not rendered, show a More control
   // Determine total rows that would be generated for all items
@@ -592,6 +610,7 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
     });
     grid._kbNavAttached = true;
   }
+  perf.end('render');
 }
 
 // Expand grid by adding remaining rows without touching existing cards
@@ -879,7 +898,7 @@ function preloadVisibleImagesParallel(items: any[], overrides: Record<string, st
   visibleCards.forEach((cardEl: Element) => {
     const htmlCard = cardEl as HTMLElement;
     const { uid, cardId } = htmlCard.dataset;
-    let cardData = null;
+    let cardData: any = null;
 
     if (uid) {
       cardData = items.find(item => item.uid === uid) || null;

@@ -6,6 +6,7 @@
 import { CONFIG } from './config.js';
 import { logger } from './utils/logger.js';
 import { AppError, ErrorTypes, safeFetch, validateType, withRetry } from './utils/errorHandler.js';
+import { perf } from './utils/performance.js';
 
 interface CacheEntry<T = any> {
   data?: T;
@@ -393,6 +394,7 @@ export async function fetchLimitlessTournaments(filters: LimitlessFilters = {}):
  * @returns
  */
 export function fetchReport(tournament: string): Promise<any> {
+  perf.start(`fetchReport:${tournament}`);
   const encodedTournament = encodeURIComponent(tournament);
   return fetchReportResource(
     `${encodedTournament}/master.json`,
@@ -400,7 +402,7 @@ export function fetchReport(tournament: string): Promise<any> {
     'object',
     'tournament report',
     { cache: true }
-  );
+  ).finally(() => perf.end(`fetchReport:${tournament}`));
 }
 
 /**

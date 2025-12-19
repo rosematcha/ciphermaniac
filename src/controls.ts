@@ -8,6 +8,7 @@ import { logger } from './utils/logger.js';
 import { CONFIG } from './config.js';
 import { getCardPrice } from './api.js';
 import { normalizeSetCode, readCardType, readSelectedCardTypes, readSelectedSets } from './utils/filterState.js';
+import { perf } from './utils/performance.js';
 
 export interface SortOption {
   key: 'percent-desc' | 'percent-asc' | 'alpha-asc' | 'alpha-desc' | 'price-desc' | 'price-asc';
@@ -264,8 +265,10 @@ function applySorting(items: any[], sortKey: string): any[] {
  * @param {object} [overrides] - Thumbnail overrides
  */
 export async function applyFiltersSort(allItems: any[], overrides: Record<string, string> = {}) {
+  perf.start('applyFiltersSort');
   if (!Array.isArray(allItems)) {
     logger.error('applyFiltersSort called with non-array items', allItems);
+    perf.end('applyFiltersSort');
     return;
   }
 
@@ -275,16 +278,25 @@ export async function applyFiltersSort(allItems: any[], overrides: Record<string
   let filtered = allItems;
 
   // Apply filters in sequence
+  perf.start('applyFiltersSort:search');
   filtered = applySearchFilter(filtered, filters.query);
+  perf.end('applyFiltersSort:search');
+
+  perf.start('applyFiltersSort:advanced');
   filtered = applyAdvancedFilters(filtered, filters);
+  perf.end('applyFiltersSort:advanced');
 
   // Enrich with pricing data if needed for sorting
   if (filters.sort.startsWith('price-')) {
+    perf.start('applyFiltersSort:pricing');
     filtered = await enrichWithPricingData(filtered);
+    perf.end('applyFiltersSort:pricing');
   }
 
   // Apply sorting
+  perf.start('applyFiltersSort:sort');
   const sorted = applySorting(filtered, filters.sort);
+  perf.end('applyFiltersSort:sort');
 
   logger.info(`Filtered and sorted: ${allItems.length} -> ${sorted.length} items`);
 
@@ -292,6 +304,7 @@ export async function applyFiltersSort(allItems: any[], overrides: Record<string
   render(sorted, overrides, {
     showPrice: filters.sort.startsWith('price-')
   });
+  perf.end('applyFiltersSort');
 }
 
 /**

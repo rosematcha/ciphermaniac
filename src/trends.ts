@@ -4,6 +4,7 @@ import { fetchTrendReport } from './api.js';
 import { fetchAllDecks } from './utils/clientSideFiltering.js';
 import { buildCardTrendDataset, buildTrendDataset } from './utils/trendAggregator.js';
 import { logger } from './utils/logger.js';
+import { getPerformanceLabel } from './data/performanceTiers.js';
 
 // High-contrast palette with distinct hues - designed for dark backgrounds
 const palette = [

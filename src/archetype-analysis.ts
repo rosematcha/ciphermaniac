@@ -283,6 +283,7 @@ function setupSplitThumbnail(
   splitWrapper.className = 'analysis-list-item__split';
 
   let errorCount = 0;
+  let _loadedCount = 0;
 
   const checkComplete = () => {
     if (errorCount === urls.length) {
@@ -316,7 +317,7 @@ function setupSplitThumbnail(
     `;
 
     img.onload = () => {
-      loadedCount++;
+      _loadedCount++;
     };
     img.onerror = () => {
       errorCount++;
