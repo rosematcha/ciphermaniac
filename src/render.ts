@@ -59,6 +59,84 @@ export interface GridElement extends HTMLElement {
   _renderOptions?: RenderOptions;
   _autoCompact?: boolean;
   _kbNavAttached?: boolean;
+  _resizeObserver?: ResizeObserver | null;
+  _lastContainerWidth?: number;
+}
+
+// Throttle helper for resize handling - limits execution frequency
+function throttle<T extends (...args: Parameters<T>) => void>(fn: T, wait: number): T {
+  let lastCall = 0;
+  let scheduledCall: ReturnType<typeof setTimeout> | null = null;
+
+  return ((...args: Parameters<T>) => {
+    const now = Date.now();
+    const timeSinceLastCall = now - lastCall;
+
+    if (scheduledCall) {
+      clearTimeout(scheduledCall);
+      scheduledCall = null;
+    }
+
+    if (timeSinceLastCall >= wait) {
+      lastCall = now;
+      fn(...args);
+    } else {
+      // Schedule a trailing call to ensure final state is captured
+      scheduledCall = setTimeout(() => {
+        lastCall = Date.now();
+        fn(...args);
+        scheduledCall = null;
+      }, wait - timeSinceLastCall);
+    }
+  }) as T;
+}
+
+// Cached throttled updateLayout for ResizeObserver
+let throttledUpdateLayout: (() => void) | null = null;
+
+/**
+ * Initialize ResizeObserver for the grid element to handle container-based resizing.
+ * This is more reliable than window resize for detecting actual grid width changes.
+ */
+export function initGridResizeObserver(): void {
+  const grid = getGridElement();
+  if (!grid || grid._resizeObserver) {
+    return;
+  }
+
+  // Create throttled version of updateLayout (50ms throttle for smooth resize)
+  if (!throttledUpdateLayout) {
+    throttledUpdateLayout = throttle(() => {
+      updateLayout();
+    }, 50);
+  }
+
+  const observer = new ResizeObserver(entries => {
+    for (const entry of entries) {
+      const newWidth = entry.contentRect.width;
+      const lastWidth = grid._lastContainerWidth ?? 0;
+
+      // Only update if width changed significantly (> 1px to avoid float precision issues)
+      if (Math.abs(newWidth - lastWidth) > 1) {
+        grid._lastContainerWidth = newWidth;
+        throttledUpdateLayout!();
+      }
+    }
+  });
+
+  observer.observe(grid);
+  grid._resizeObserver = observer;
+}
+
+/**
+ * Cleanup the ResizeObserver when the grid is removed
+ */
+export function cleanupGridResizeObserver(): void {
+  const grid = getGridElement();
+  if (grid?._resizeObserver) {
+    grid._resizeObserver.disconnect();
+    grid._resizeObserver = null;
+  }
 }
 
 /**
@@ -1313,20 +1391,96 @@ function setupCardCounts(element: DocumentFragment | HTMLElement, cardData: any)
   counts.appendChild(countsText);
 }
 
+/**
+ * Helper to compute the expected card count for a given row index based on layout parameters.
+ * This ensures consistent row sizing logic across all functions.
+ */
+function getExpectedCardsForRow(
+  rowIndex: number,
+  forceCompact: boolean,
+  effectiveBigRows: number,
+  effectiveMediumRows: number,
+  useSmallRows: boolean,
+  perRowBig: number,
+  targetMedium: number,
+  targetSmall: number
+): number {
+  if (forceCompact) {
+    return targetSmall;
+  }
+
+  const isLarge = rowIndex < effectiveBigRows;
+  const isMedium = !isLarge && rowIndex < effectiveBigRows + effectiveMediumRows;
+  const isSmall = !isLarge && !isMedium && useSmallRows;
+
+  if (isLarge) {
+    return perRowBig;
+  }
+  if (isMedium) {
+    return targetMedium;
+  }
+  if (isSmall) {
+    return targetSmall;
+  }
+  return targetMedium;
+}
+
+/**
+ * Compute total rows needed for a given card count based on layout parameters.
+ */
+function computeTotalRows(
+  cardCount: number,
+  forceCompact: boolean,
+  effectiveBigRows: number,
+  effectiveMediumRows: number,
+  useSmallRows: boolean,
+  perRowBig: number,
+  targetMedium: number,
+  targetSmall: number
+): number {
+  let cnt = 0;
+  let idx = 0;
+  while (idx < cardCount) {
+    const maxCount = getExpectedCardsForRow(
+      cnt,
+      forceCompact,
+      effectiveBigRows,
+      effectiveMediumRows,
+      useSmallRows,
+      perRowBig,
+      targetMedium,
+      targetSmall
+    );
+    idx += maxCount;
+    cnt++;
+  }
+  return cnt;
+}
+
 // Reflow-only: recompute per-row sizing and move existing cards into new rows without rebuilding cards/images.
 export function updateLayout() {
+  perf.start('updateLayout');
   const grid = getGridElement();
   if (!grid) {
+    perf.end('updateLayout');
     return;
   }
   // Collect existing card elements in current order
   const cards = Array.from(grid.querySelectorAll('.card')) as HTMLElement[];
   if (cards.length === 0) {
+    perf.end('updateLayout');
     return;
   }
 
   // Compute layout based on current container width
   const containerWidth = grid.clientWidth || grid.getBoundingClientRect().width || 0;
+
+  // Skip layout update if container width is invalid (element may be hidden)
+  if (containerWidth <= 0) {
+    perf.end('updateLayout');
+    return;
+  }
+
   const {
     base,
     perRowBig,
@@ -1348,8 +1502,7 @@ export function updateLayout() {
 
   const useSmallRows = forceCompact || (perRowBig >= 6 && targetSmall > targetMedium);
 
-  // Fast path: If row grouping hasn't changed, avoid rebuilding the entire grid.
-  // Only update CSS vars and row widths/scales in-place to minimize DOM churn.
+  // Check if row grouping (cards per row) has changed
   const prev = grid._layoutMetrics;
   const groupingUnchanged =
     prev &&
@@ -1360,7 +1513,40 @@ export function updateLayout() {
     prev.bigRows === effectiveBigRows &&
     prev.mediumRows === effectiveMediumRows &&
     prev.useSmallRows === useSmallRows;
+
+  // Even if grouping seems unchanged, verify that existing rows have correct card counts.
+  // This catches edge cases where the grid state doesn't match expectations.
+  let rowsHaveCorrectCounts = true;
   if (groupingUnchanged) {
+    const existingRows = Array.from(grid.querySelectorAll('.row')) as HTMLElement[];
+    for (let rowIdx = 0; rowIdx < existingRows.length; rowIdx++) {
+      const row = existingRows[rowIdx];
+      const actualCardCount = row.querySelectorAll('.card').length;
+      const expectedCount = getExpectedCardsForRow(
+        rowIdx,
+        forceCompact,
+        effectiveBigRows,
+        effectiveMediumRows,
+        useSmallRows,
+        perRowBig,
+        targetMedium,
+        targetSmall
+      );
+
+      // Allow last row to have fewer cards (partial row)
+      const isLastRow = rowIdx === existingRows.length - 1;
+      const isValidCount = isLastRow ? actualCardCount <= expectedCount : actualCardCount === expectedCount;
+
+      if (!isValidCount) {
+        rowsHaveCorrectCounts = false;
+        break;
+      }
+    }
+  }
+
+  // Fast path: If row grouping hasn't changed AND rows have correct card counts,
+  // only update CSS vars and row widths/scales in-place to minimize DOM churn.
+  if (groupingUnchanged && rowsHaveCorrectCounts) {
     const rows = Array.from(grid.querySelectorAll('.row')) as HTMLElement[];
     for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
       const row = rows[rowIndex];
@@ -1383,14 +1569,8 @@ export function updateLayout() {
 
       row.style.setProperty('--scale', String(scale));
       row.style.setProperty('--card-base', `${base}px`);
-      // Keep consistent width and centering
-      const widthPx = `${bigRowContentWidth}px`;
-      if (row.style.width !== widthPx) {
-        row.style.width = widthPx;
-      }
-      if (row.style.margin !== '0 auto') {
-        row.style.margin = '0 auto';
-      }
+      row.style.width = `${bigRowContentWidth}px`;
+      row.style.margin = '0 auto';
     }
     // Store latest metrics and return
     grid._layoutMetrics = {
@@ -1406,68 +1586,61 @@ export function updateLayout() {
       useSmallRows,
       forceCompact
     };
+    perf.end('updateLayout');
     return;
   }
 
-  // Build rows and re-append existing cards
+  // Full rebuild: redistribute cards across rows based on new layout
   // Preserve existing More... control, if any, to re-attach after rebuild
   const savedMore = (grid.querySelector('.more-rows') as HTMLElement | null) || grid._moreWrapRef || null;
   const frag = document.createDocumentFragment();
   let i = 0;
   let rowIndex = 0;
+
   // Compute the total number of rows for ALL items based on latest layout
   const totalCards = Number.isInteger(grid._totalCards) ? grid._totalCards! : cards.length;
-  const newTotalRows = (() => {
-    let cnt = 0;
-    let idx = 0;
-    while (idx < totalCards) {
-      const rowIdx = cnt;
-      const isLargeLocal = !forceCompact && rowIdx < effectiveBigRows;
-      const isMediumLocal = !forceCompact && !isLargeLocal && rowIdx < effectiveBigRows + effectiveMediumRows;
-      const isSmallLocal = forceCompact || (!isLargeLocal && !isMediumLocal && useSmallRows);
+  const newTotalRows = computeTotalRows(
+    totalCards,
+    forceCompact,
+    effectiveBigRows,
+    effectiveMediumRows,
+    useSmallRows,
+    perRowBig,
+    targetMedium,
+    targetSmall
+  );
 
-      let maxCount;
-      if (isLargeLocal) {
-        maxCount = perRowBig;
-      } else if (isMediumLocal) {
-        maxCount = targetMedium;
-      } else if (isSmallLocal) {
-        maxCount = targetSmall;
-      } else {
-        maxCount = targetMedium;
-      }
-
-      idx += maxCount;
-      cnt++;
-    }
-    return cnt;
-  })();
   while (i < cards.length) {
     const row = document.createElement('div');
     row.className = 'row';
     row.dataset.rowIndex = String(rowIndex);
+
+    const maxCount = getExpectedCardsForRow(
+      rowIndex,
+      forceCompact,
+      effectiveBigRows,
+      effectiveMediumRows,
+      useSmallRows,
+      perRowBig,
+      targetMedium,
+      targetSmall
+    );
 
     const isLarge = !forceCompact && rowIndex < effectiveBigRows;
     const isMedium = !forceCompact && !isLarge && rowIndex < effectiveBigRows + effectiveMediumRows;
     const isSmall = forceCompact || (!isLarge && !isMedium && useSmallRows);
 
     let scale;
-    let maxCount;
     if (forceCompact) {
       scale = smallScale;
-      maxCount = targetSmall;
     } else if (isLarge) {
       scale = 1;
-      maxCount = perRowBig;
     } else if (isMedium) {
       scale = mediumScale;
-      maxCount = targetMedium;
     } else if (isSmall) {
       scale = smallScale;
-      maxCount = targetSmall;
     } else {
       scale = mediumScale;
-      maxCount = targetMedium;
     }
 
     row.style.setProperty('--scale', String(scale));
@@ -1488,10 +1661,16 @@ export function updateLayout() {
     rowIndex++;
   }
 
+  // Update visible rows count to match the actual row count after redistribution
+  grid._visibleRows = rowIndex;
+
   // Restore More... button if there are additional rows beyond the visible ones
   if (savedMore && rowIndex < newTotalRows) {
     frag.appendChild(savedMore);
     grid._moreWrapRef = savedMore;
+  } else if (savedMore && rowIndex >= newTotalRows) {
+    // All rows are now visible, remove the More button reference
+    grid._moreWrapRef = null;
   }
 
   // Atomically replace grid content to prevent flashing
@@ -1512,4 +1691,5 @@ export function updateLayout() {
     forceCompact
   };
   grid._totalRows = newTotalRows;
+  perf.end('updateLayout');
 }

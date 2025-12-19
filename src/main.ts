@@ -8,7 +8,7 @@ import './utils/buildVersion.js';
 import { fetchArchetypeReport, fetchArchetypesList, fetchReport, fetchTournamentsList } from './api.js';
 import { AppError, safeAsync } from './utils/errorHandler.js';
 import { parseReport } from './parse.js';
-import { renderSummary, updateLayout } from './render.js';
+import { initGridResizeObserver, renderSummary, updateLayout } from './render.js';
 import { applyFiltersSort } from './controls.js';
 import { getStateFromURL, normalizeRouteOnLoad, setStateInURL } from './router.js';
 import { logger } from './utils/logger.js';
@@ -1122,7 +1122,11 @@ async function init() {
     // The render.js/updateLayout handles image loading with intersection observer
     // Images in viewport will load first automatically via browser's lazy loading
 
-    // Handle window resize
+    // Initialize ResizeObserver for container-based resize detection (more reliable)
+    initGridResizeObserver();
+
+    // Keep window resize as fallback for browsers with limited ResizeObserver support
+    // and for cases where viewport changes but grid container doesn't
     window.addEventListener(
       'resize',
       debounce(() => {
