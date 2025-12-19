@@ -3,6 +3,41 @@
  * Processes feedback and sends emails via Resend
  */
 
+// Maximum allowed payload size (1MB)
+const MAX_PAYLOAD_SIZE = 1024 * 1024;
+
+/**
+ * Sanitize text to prevent XSS and remove dangerous characters
+ * Escapes HTML entities and removes script tags
+ */
+function sanitizeText(text: string): string {
+  if (typeof text !== 'string') {
+    return '';
+  }
+  // Remove script tags and their contents
+  let sanitized = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '[script removed]');
+  // Escape remaining HTML entities
+  sanitized = sanitized
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+  // Remove newlines from single-line fields to prevent header injection
+  return sanitized;
+}
+
+/**
+ * Sanitize contact info to prevent header injection
+ * Removes newlines and carriage returns
+ */
+function sanitizeContactInfo(text: string): string {
+  if (typeof text !== 'string') {
+    return '';
+  }
+  return text.replace(/[\r\n]/g, ' ').trim();
+}
+
 interface FeedbackData {
   feedbackType: string;
   feedbackText: string;
@@ -41,7 +76,30 @@ function isValidFeedbackData(data: unknown): data is FeedbackData {
 
 export async function onRequestPost({ request, env }: RequestContext): Promise<Response> {
   try {
-    const parsedBody = await request.json().catch(() => null);
+    // Check content length header first to reject oversized payloads early
+    const contentLength = request.headers.get('content-length');
+    if (contentLength && parseInt(contentLength, 10) > MAX_PAYLOAD_SIZE) {
+      return new Response(JSON.stringify({ error: 'Payload too large' }), {
+        status: 413,
+        headers: JSON_HEADERS
+      });
+    }
+
+    // Also check actual body size by reading as text first
+    const bodyText = await request.text().catch(() => '');
+    if (bodyText.length > MAX_PAYLOAD_SIZE) {
+      return new Response(JSON.stringify({ error: 'Payload too large' }), {
+        status: 413,
+        headers: JSON_HEADERS
+      });
+    }
+
+    let parsedBody: unknown = null;
+    try {
+      parsedBody = JSON.parse(bodyText);
+    } catch {
+      parsedBody = null;
+    }
     if (!isValidFeedbackData(parsedBody)) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400,
@@ -66,9 +124,8 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
     });
   } catch (error) {
     console.error('Feedback submission error:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
-
-    return new Response(JSON.stringify({ error: 'Internal server error', message }), {
+    // Never expose internal error messages which might contain API keys or secrets
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: JSON_HEADERS
     });
@@ -88,37 +145,49 @@ export function onRequestOptions(): Response {
 }
 
 function buildEmailContent(data: FeedbackData): string {
-  const lines = [
-    `New ${data.feedbackType} submission from Ciphermaniac`,
-    '',
-    `Feedback Type: ${data.feedbackType}`,
-    ''
-  ];
+  // Sanitize all user-provided fields
+  const sanitizedType = sanitizeText(data.feedbackType);
+  const sanitizedText = sanitizeText(data.feedbackText);
+  const sanitizedPlatform = data.platform ? sanitizeText(data.platform) : '';
+  const sanitizedDesktopOS = data.desktopOS ? sanitizeText(data.desktopOS) : '';
+  const sanitizedDesktopBrowser = data.desktopBrowser ? sanitizeText(data.desktopBrowser) : '';
+  const sanitizedMobileOS = data.mobileOS ? sanitizeText(data.mobileOS) : '';
+  const sanitizedMobileBrowser = data.mobileBrowser ? sanitizeText(data.mobileBrowser) : '';
+
+  const lines = [`New ${sanitizedType} submission from Ciphermaniac`, '', `Feedback Type: ${sanitizedType}`, ''];
 
   if (data.feedbackType === 'bug') {
     lines.push('Technical Details:');
-    if (data.platform) {
-      lines.push(`Platform: ${data.platform}`);
+    if (sanitizedPlatform) {
+      lines.push(`Platform: ${sanitizedPlatform}`);
 
       if (data.platform === 'desktop') {
-        if (data.desktopOS) lines.push(`OS: ${data.desktopOS}`);
-        if (data.desktopBrowser) lines.push(`Browser: ${data.desktopBrowser}`);
+        if (sanitizedDesktopOS) {
+          lines.push(`OS: ${sanitizedDesktopOS}`);
+        }
+        if (sanitizedDesktopBrowser) {
+          lines.push(`Browser: ${sanitizedDesktopBrowser}`);
+        }
       } else if (data.platform === 'mobile') {
-        if (data.mobileOS) lines.push(`Mobile OS: ${data.mobileOS}`);
-        if (data.mobileBrowser) lines.push(`Browser: ${data.mobileBrowser}`);
+        if (sanitizedMobileOS) {
+          lines.push(`Mobile OS: ${sanitizedMobileOS}`);
+        }
+        if (sanitizedMobileBrowser) {
+          lines.push(`Browser: ${sanitizedMobileBrowser}`);
+        }
       }
     }
     lines.push('');
   }
 
   lines.push('Feedback:');
-  lines.push(data.feedbackText);
+  lines.push(sanitizedText);
   lines.push('');
 
   if (data.followUp === 'yes' && data.contactMethod && data.contactInfo) {
     lines.push('Contact Information:');
-    lines.push(`Method: ${data.contactMethod}`);
-    lines.push(`Contact: ${data.contactInfo}`);
+    lines.push(`Method: ${sanitizeText(data.contactMethod)}`);
+    lines.push(`Contact: ${sanitizeContactInfo(data.contactInfo)}`);
   } else {
     lines.push('No follow-up requested');
   }
@@ -129,20 +198,14 @@ function buildEmailContent(data: FeedbackData): string {
   return lines.join('\n');
 }
 
-async function sendEmail(
-  env: Env,
-  recipient: string,
-  content: string,
-  feedbackData: FeedbackData
-): Promise<Response> {
+async function sendEmail(env: Env, recipient: string, content: string, feedbackData: FeedbackData): Promise<Response> {
   const resendApiKey = env.RESEND_API_KEY;
 
   if (!resendApiKey) {
     throw new Error('RESEND_API_KEY environment variable not set');
   }
 
-  const subject =
-    `[Ciphermaniac] ${feedbackData.feedbackType === 'bug' ? 'Bug Report' : 'Feature Request'}`;
+  const subject = `[Ciphermaniac] ${feedbackData.feedbackType === 'bug' ? 'Bug Report' : 'Feature Request'}`;
 
   const emailPayload = {
     from: 'Ciphermaniac Feedback <onboarding@resend.dev>',

@@ -1,10 +1,9 @@
 /* eslint-disable id-length, no-param-reassign, no-unused-vars */
 import './utils/buildVersion.js';
-import { fetchTrendReport, ONLINE_META_NAME } from './api.js';
+import { fetchTrendReport } from './api.js';
 import { fetchAllDecks } from './utils/clientSideFiltering.js';
 import { buildCardTrendDataset, buildTrendDataset } from './utils/trendAggregator.js';
 import { logger } from './utils/logger.js';
-import { PERFORMANCE_FILTER_OPTIONS, getPerformanceLabel, matchesPerformanceFilter } from './data/performanceTiers.js';
 
 // High-contrast palette with distinct hues - designed for dark backgrounds
 const palette = [
@@ -460,8 +459,8 @@ function renderSummary() {
 }
 
 function updateMinSliderBounds() {
-  const minSlider = elements.minSlider;
-  const minValue = elements.minValue;
+  const { minSlider } = elements;
+  const { minValue } = elements;
 
   if (!minSlider || !minValue) {
     return;
@@ -629,10 +628,15 @@ function renderMetaChart() {
   // Choose grid interval based on span: aim for 3-6 grid lines
   const span = yMax - yMin;
   let gridInterval = 0.5;
-  if (span > 20) gridInterval = 5;
-  else if (span > 10) gridInterval = 2.5;
-  else if (span > 5) gridInterval = 2;
-  else if (span > 2) gridInterval = 1;
+  if (span > 20) {
+    gridInterval = 5;
+  } else if (span > 10) {
+    gridInterval = 2.5;
+  } else if (span > 5) {
+    gridInterval = 2;
+  } else if (span > 2) {
+    gridInterval = 1;
+  }
 
   for (let lvl = yMin; lvl <= yMax + 1e-6; lvl += gridInterval) {
     gridLevels.push(Number(lvl.toFixed(2)));
@@ -907,8 +911,12 @@ function renderMetaChart() {
 
     // Clamp Y
     let top = mouseY;
-    if (top < tipRect.height / 2) top = tipRect.height / 2;
-    if (top > containerRect.height - tipRect.height / 2) top = containerRect.height - tipRect.height / 2;
+    if (top < tipRect.height / 2) {
+      top = tipRect.height / 2;
+    }
+    if (top > containerRect.height - tipRect.height / 2) {
+      top = containerRect.height - tipRect.height / 2;
+    }
 
     tooltip.style.left = `${left}px`;
     tooltip.style.top = `${top}px`;

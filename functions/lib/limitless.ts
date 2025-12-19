@@ -37,7 +37,7 @@ function resolveLimitlessApiKey(env?: LimitlessEnv | null): string | null {
 }
 
 function buildLimitlessUrl(
-  pathname: string = '/',
+  pathname: string = '/', // eslint-disable-line default-param-last
   searchParams?: URLSearchParams | Record<string, string | number | undefined | null>
 ): URL {
   const base = LIMITLESS_API_BASE.endsWith('/') ? LIMITLESS_API_BASE : `${LIMITLESS_API_BASE}/`;

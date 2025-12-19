@@ -16,13 +16,12 @@ import { AppError, safeAsync } from './utils/errorHandler.js';
 import { parseReport } from './parse.js';
 import { renderSummary, updateLayout } from './render.js';
 import { applyFiltersSort } from './controls.js';
-import { getStateFromURL, normalizeRouteOnLoad, parseHash, setStateInURL } from './router.js';
-import { buildCardPath } from './card/routing.js';
+import { getStateFromURL, normalizeRouteOnLoad, setStateInURL } from './router.js';
 import { logger } from './utils/logger.js';
 import { CleanupManager, debounce, validateElements } from './utils/performance.js';
 import { CONFIG } from './config.js';
 import { prettyTournamentName } from './utils/format.js';
-import { hideGridSkeleton, showGridSkeleton, updateSkeletonLayout } from './components/placeholders.js';
+import { hideGridSkeleton, showGridSkeleton } from './components/placeholders.js';
 import { aggregateReports } from './utils/reportAggregator.js';
 import { formatSetLabel, sortSetCodesByRelease } from './data/setCatalog.js';
 import {
@@ -30,13 +29,7 @@ import {
   openFiltersPanel as openFiltersPanelState,
   toggleFiltersPanel as toggleFiltersPanelState
 } from './utils/filtersPanel.js';
-import {
-  normalizeSetValues,
-  parseSetList,
-  readCardType,
-  readSelectedSets,
-  writeSelectedSets
-} from './utils/filterState.js';
+import { normalizeSetValues, readCardType, readSelectedSets, writeSelectedSets } from './utils/filterState.js';
 import { DataCache } from './utils/DataCache.js';
 import { createMultiSelectDropdown } from './components/MultiSelectDropdown.js';
 
@@ -103,7 +96,7 @@ const appState: AppState = {
 };
 
 const DEFAULT_ONLINE_META = 'Online - Last 14 Days';
-const SUCCESS_FILTER_LABELS: Record<string, string> = {
+const _SUCCESS_FILTER_LABELS: Record<string, string> = {
   all: 'all decks',
   winner: 'winners',
   top2: 'finals',
@@ -342,7 +335,7 @@ function setupDropdownFilters(state: AppState) {
 
   const onDocumentPointerDown = (event: Event) => {
     const target = event.target as Node;
-    const dropdownList = Object.values(dropdowns).filter((d): d is any => !!d);
+    const dropdownList = Object.values(dropdowns).filter((d): d is any => Boolean(d));
     const clickedInsideDropdown = dropdownList.some(dropdown => dropdown.contains(target));
 
     if (!clickedInsideDropdown) {
@@ -414,7 +407,7 @@ function refreshFiltersDropdowns() {
   });
 }
 
-function openFiltersPanel() {
+function _openFiltersPanel() {
   const result = openFiltersPanelState({ focusFirstControl: false });
   if (result === 'opened') {
     refreshFiltersDropdowns();

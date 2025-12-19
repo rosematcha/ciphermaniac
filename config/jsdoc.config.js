@@ -7,8 +7,8 @@ export default {
   source: {
     include: ['../public/assets/js/'],
     includePattern: '\\.(js)$',
-  exclude: ['../node_modules/'],
-  excludePattern: '(node_modules/)'
+    exclude: ['../node_modules/'],
+    excludePattern: '(node_modules/)'
   },
   opts: {
     destination: '../docs/api/',

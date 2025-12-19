@@ -7,7 +7,9 @@
 const RATE_LIMIT_DELAY_MS = 250;
 
 function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise(resolve => {
+    setTimeout(resolve, ms);
+  });
 }
 
 async function persistCardTypesDatabase(env, database) {
@@ -15,15 +17,11 @@ async function persistCardTypesDatabase(env, database) {
     return;
   }
 
-  await env.REPORTS.put(
-    'assets/data/card-types.json',
-    JSON.stringify(database, null, 2),
-    {
-      httpMetadata: {
-        contentType: 'application/json'
-      }
+  await env.REPORTS.put('assets/data/card-types.json', JSON.stringify(database, null, 2), {
+    httpMetadata: {
+      contentType: 'application/json'
     }
-  );
+  });
 
   if (env.CARD_TYPES_KV) {
     await env.CARD_TYPES_KV.delete('card-types-database');
@@ -81,8 +79,8 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
     const url = `https://limitlesstcg.com/cards/${setCode}/${numberVariant}`;
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Ciphermaniac/1.0 (Card Type Enrichment)',
-      },
+        'User-Agent': 'Ciphermaniac/1.0 (Card Type Enrichment)'
+      }
     });
 
     if (response.status === 404) {
@@ -91,9 +89,7 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
     }
 
     if (!response.ok) {
-      console.warn(
-        `[CardTypeFetcher] Failed to fetch ${setCode}::${numberVariant} from Limitless: ${response.status}`
-      );
+      console.warn(`[CardTypeFetcher] Failed to fetch ${setCode}::${numberVariant} from Limitless: ${response.status}`);
       return null;
     }
 
@@ -107,10 +103,13 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
     }
 
     const rawType = typeMatch[1].replace(/<[^>]+>/g, ' ');
-    const fullType = rawType.replace(/\s+/g, ' ').replace(/\s*–\s*/g, ' - ').trim();
+    const fullType = rawType
+      .replace(/\s+/g, ' ')
+      .replace(/\s*–\s*/g, ' - ')
+      .trim();
     const parts = fullType
       .split(/\s*-\s*/)
-      .map(p => p.trim())
+      .map(part => part.trim())
       .filter(Boolean);
     const normalize = value =>
       value
@@ -120,7 +119,7 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
 
     const result = {
       fullType,
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: new Date().toISOString()
     };
 
     // Parse card type
@@ -179,15 +178,15 @@ function needsTypeEnrichment(card) {
   if (!card.category) {
     return true;
   }
-  
+
   if (card.category === 'trainer' && !card.trainerType) {
     return true;
   }
-  
+
   if (card.category === 'energy' && !card.energyType) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -205,7 +204,7 @@ export async function fetchAndCacheCardType(card, database, env, options = {}) {
 
   const { persist = true, recordUpdates } = options;
   const key = `${card.set}::${card.number}`;
-  
+
   // Check if already in database
   if (database[key] && !needsTypeEnrichment(card)) {
     return card;
@@ -215,12 +214,13 @@ export async function fetchAndCacheCardType(card, database, env, options = {}) {
 
   // Fetch from Limitless
   const typeInfo = await fetchCardTypeFromLimitless(card.set, card.number);
-  
+
   if (!typeInfo) {
     // Failed to fetch, return card as-is
     return card;
   }
 
+  // eslint-disable-next-line no-param-reassign
   database[key] = typeInfo;
   if (recordUpdates) {
     recordUpdates[key] = typeInfo;
@@ -233,23 +233,23 @@ export async function fetchAndCacheCardType(card, database, env, options = {}) {
 
   // Enrich the card object
   const enriched = { ...card };
-  
+
   if (typeInfo.cardType) {
     enriched.category = typeInfo.cardType;
   }
-  
+
   if (typeInfo.cardType === 'trainer' && typeInfo.subType) {
     enriched.trainerType = typeInfo.subType;
   }
-  
+
   if (typeInfo.cardType === 'energy' && typeInfo.subType) {
     enriched.energyType = typeInfo.subType;
   }
-  
+
   if (typeInfo.evolutionInfo) {
     enriched.evolutionInfo = typeInfo.evolutionInfo;
   }
-  
+
   if (typeInfo.fullType) {
     enriched.fullType = typeInfo.fullType;
   }
@@ -317,24 +317,24 @@ export async function batchFetchAndCacheCardTypes(cards, database, env) {
  */
 function extractUniqueCards(decks) {
   const uniqueCardsMap = new Map();
-  
+
   for (const deck of decks) {
     if (!deck.cards || !Array.isArray(deck.cards)) {
       continue;
     }
-    
+
     for (const card of deck.cards) {
       if (!card.set || !card.number) {
         continue;
       }
-      
+
       const key = `${card.set}::${card.number}`;
       if (!uniqueCardsMap.has(key)) {
         uniqueCardsMap.set(key, card);
       }
     }
   }
-  
+
   return Array.from(uniqueCardsMap.values());
 }
 
@@ -353,7 +353,7 @@ export async function enrichDecksWithOnTheFlyFetch(decks, database, env) {
 
   // Extract all unique cards from decks
   const uniqueCards = extractUniqueCards(decks);
-  
+
   // Batch fetch missing types
   await batchFetchAndCacheCardTypes(uniqueCards, database, env);
 

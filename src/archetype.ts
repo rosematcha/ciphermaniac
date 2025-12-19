@@ -1,13 +1,12 @@
 /* eslint-disable id-length, no-param-reassign, no-unused-vars */
 import './utils/buildVersion.js';
-import { fetchArchetypeFiltersReport, fetchArchetypeReport, fetchReport } from './api.js';
+import { fetchArchetypeReport, fetchReport } from './api.js';
 import { parseReport } from './parse.js';
-import { render, updateLayout } from './render.js';
+import { type GridElement, render, updateLayout } from './render.js';
 import { normalizeCardNumber } from './card/routing.js';
-import { AppError, ErrorTypes } from './utils/errorHandler.js';
+import { AppError } from './utils/errorHandler.js';
 import { logger } from './utils/logger.js';
-import { PERFORMANCE_TIER_LABELS, getPerformanceLabel } from './data/performanceTiers.js';
-import type { GridElement } from './render.js';
+import { PERFORMANCE_TIER_LABELS } from './data/performanceTiers.js';
 
 const GRANULARITY_MIN_PERCENT = 0;
 const GRANULARITY_DEFAULT_PERCENT = 60; // Default granularity percent
@@ -95,7 +94,7 @@ const CARD_CATEGORY_SORT_PRIORITY = new Map([
   ['energy', 7]
 ]);
 
-const WARNING_ICON = '\u26A0\uFE0F';
+const _WARNING_ICON = '\u26A0\uFE0F';
 
 const TCG_LIVE_SECTION_ORDER = [
   { key: 'pokemon', label: 'Pok\u00E9mon' },
@@ -1862,7 +1861,7 @@ function loadFilterCombination(filters) {
           archetype: state.archetypeBase,
           deckCount: decks.length
         });
-      } catch (_error) {
+      } catch {
         // Fall back to main decks.json (will need to filter by archetype)
         decks = await fetchAllDecks(state.tournament);
         logger.debug('Falling back to main decks.json for filtering', {
@@ -2080,7 +2079,7 @@ async function loadSuccessBaseline() {
 
   // Try to use archetype-specific decks for better performance
   let decks;
-  let needsArchetypeFilter = false;
+  let _needsArchetypeFilter = false;
 
   try {
     decks = await fetchAllDecks(state.tournament, state.archetypeBase);
@@ -2088,10 +2087,10 @@ async function loadSuccessBaseline() {
       archetype: state.archetypeBase,
       deckCount: decks.length
     });
-  } catch (_error) {
+  } catch {
     // Fall back to main decks.json (will need to filter by archetype)
     decks = await fetchAllDecks(state.tournament);
-    needsArchetypeFilter = true;
+    _needsArchetypeFilter = true;
     logger.debug('Falling back to main decks.json for baseline', {
       archetype: state.archetypeBase,
       deckCount: decks.length

@@ -1,3 +1,4 @@
+/* eslint-disable id-length, no-param-reassign */
 /**
  * Hierarchical card type dropdown component with enhanced UX
  * Features: visual nesting, indeterminate states, collapse/expand, smart parent selection
@@ -77,7 +78,6 @@ export function createHierarchicalCardTypeDropdown(
   };
 
   let isOpen = false;
-  let isMulti = false;
 
   /**
    * Get selection state for a parent category
@@ -85,12 +85,18 @@ export function createHierarchicalCardTypeDropdown(
    */
   function getParentState(parentValue: string): 'none' | 'some' | 'all' {
     const children = getChildrenForParent(parentValue);
-    if (children.length === 0) return 'none';
+    if (children.length === 0) {
+      return 'none';
+    }
 
     const selectedChildren = children.filter(child => hierarchicalState.selected.has(child));
 
-    if (selectedChildren.length === 0) return 'none';
-    if (selectedChildren.length === children.length) return 'all';
+    if (selectedChildren.length === 0) {
+      return 'none';
+    }
+    if (selectedChildren.length === children.length) {
+      return 'all';
+    }
     return 'some';
   }
 
@@ -98,7 +104,9 @@ export function createHierarchicalCardTypeDropdown(
    * Update the summary display
    */
   function updateSummary() {
-    if (!summary || !trigger) return;
+    if (!summary || !trigger) {
+      return;
+    }
 
     const count = hierarchicalState.selected.size;
     const hasSelection = count > 0;
@@ -150,7 +158,9 @@ export function createHierarchicalCardTypeDropdown(
    * Update label text (singular/plural)
    */
   function updateLabelText() {
-    if (!labelElement) return;
+    if (!labelElement) {
+      return;
+    }
     const count = hierarchicalState.selected.size;
     const singular = labelElement.dataset.labelSingular || 'Card type';
     const plural = labelElement.dataset.labelPlural || 'Card types';
@@ -161,14 +171,18 @@ export function createHierarchicalCardTypeDropdown(
    * Render chips for selected items
    */
   function renderChips() {
-    if (!chipsContainer) return;
+    if (!chipsContainer) {
+      return;
+    }
 
     chipsContainer.innerHTML = '';
     const selectedArray = Array.from(hierarchicalState.selected);
     const showChips = selectedArray.length > 1;
     chipsContainer.hidden = !showChips;
 
-    if (!showChips) return;
+    if (!showChips) {
+      return;
+    }
 
     // Group by parent for smarter display
     const grouped = groupSelectionByParent(selectedArray);
@@ -176,10 +190,14 @@ export function createHierarchicalCardTypeDropdown(
     let visibleCount = 0;
 
     for (const [parentValue, children] of grouped) {
-      if (visibleCount >= maxVisible) break;
+      if (visibleCount >= maxVisible) {
+        break;
+      }
 
       const parent = CARD_TYPE_HIERARCHY.find(p => p.value === parentValue);
-      if (!parent) continue;
+      if (!parent) {
+        continue;
+      }
 
       const allChildrenSelected = children.length === parent.children.length;
 
@@ -195,7 +213,9 @@ export function createHierarchicalCardTypeDropdown(
       } else {
         // Show individual child chips
         for (const childValue of children) {
-          if (visibleCount >= maxVisible) break;
+          if (visibleCount >= maxVisible) {
+            break;
+          }
           const child = parent.children.find(c => c.value === childValue);
           if (child) {
             const chip = createChip(`${parent.label} - ${child.label}`, () => {
@@ -294,7 +314,9 @@ export function createHierarchicalCardTypeDropdown(
    * Render the hierarchical options list
    */
   function renderOptions() {
-    if (!list) return;
+    if (!list) {
+      return;
+    }
 
     list.innerHTML = '';
 
@@ -331,7 +353,9 @@ export function createHierarchicalCardTypeDropdown(
           normalizeForSearch(parent.label).includes(hierarchicalState.filterText)
       );
 
-      if (!parentMatches && matchingChildren.length === 0) continue;
+      if (!parentMatches && matchingChildren.length === 0) {
+        continue;
+      }
 
       // Create parent option
       const parentOption = createParentOption(parent, parentState, isCollapsed);
@@ -486,7 +510,9 @@ export function createHierarchicalCardTypeDropdown(
    * Open the dropdown
    */
   function open() {
-    if (isOpen || !menu || !trigger || !search) return;
+    if (isOpen || !menu || !trigger || !search) {
+      return;
+    }
 
     document.dispatchEvent(new CustomEvent('dropdown:open', { detail: { key: config.key } }));
 
@@ -510,7 +536,9 @@ export function createHierarchicalCardTypeDropdown(
    * Close the dropdown
    */
   function close() {
-    if (!isOpen || !menu || !trigger) return;
+    if (!isOpen || !menu || !trigger) {
+      return;
+    }
 
     isOpen = false;
     menu.hidden = true;
@@ -635,7 +663,9 @@ export function createHierarchicalCardTypeDropdown(
     toggle,
     key: config.key,
     contains: (node: Node | null) => {
-      if (!node) return false;
+      if (!node) {
+        return false;
+      }
       return menu.contains(node) || trigger.contains(node) || (addButton?.contains(node) ?? false);
     }
   };

@@ -9,10 +9,10 @@
  * @param content
  */
 export function safeSetHTML(element: Element | null, content: string): void {
-    if (!element || typeof content !== 'string') {
-        return;
-    }
-    element.innerHTML = content;
+  if (!element || typeof content !== 'string') {
+    return;
+  }
+  element.innerHTML = content;
 }
 
 /**
@@ -21,13 +21,13 @@ export function safeSetHTML(element: Element | null, content: string): void {
  * @param elements
  */
 export function batchAppend(container: Element | null, elements: Element[]): void {
-    if (!container || !Array.isArray(elements)) {
-        return;
-    }
+  if (!container || !Array.isArray(elements)) {
+    return;
+  }
 
-    const fragment = document.createDocumentFragment();
-    elements.forEach(el => el && fragment.appendChild(el));
-    container.appendChild(fragment);
+  const fragment = document.createDocumentFragment();
+  elements.forEach(el => el && fragment.appendChild(el));
+  container.appendChild(fragment);
 }
 
 /**
@@ -36,10 +36,10 @@ export function batchAppend(container: Element | null, elements: Element[]): voi
  * @param properties
  */
 export function setProperties(element: Element | null, properties: Record<string, any>): void {
-    if (!element || !properties) {
-        return;
-    }
-    Object.assign(element, properties);
+  if (!element || !properties) {
+    return;
+  }
+  Object.assign(element, properties);
 }
 
 /**
@@ -48,17 +48,17 @@ export function setProperties(element: Element | null, properties: Record<string
  * @param styles
  */
 export function setStyles(element: HTMLElement | null, styles: Partial<CSSStyleDeclaration>): void {
-    if (!element?.style || !styles) {
-        return;
-    }
-    Object.assign(element.style, styles);
+  if (!element?.style || !styles) {
+    return;
+  }
+  Object.assign(element.style, styles);
 }
 
 interface CreateElementOptions {
-    attributes?: Record<string, any>;
-    styles?: Partial<CSSStyleDeclaration>;
-    textContent?: string;
-    className?: string;
+  attributes?: Record<string, any>;
+  styles?: Partial<CSSStyleDeclaration>;
+  textContent?: string;
+  className?: string;
 }
 
 /**
@@ -68,21 +68,21 @@ interface CreateElementOptions {
  * @returns
  */
 export function createElement(tagName: string, options: CreateElementOptions = {}): HTMLElement {
-    const element = document.createElement(tagName);
-    const { attributes, styles, textContent, className } = options;
+  const element = document.createElement(tagName);
+  const { attributes, styles, textContent, className } = options;
 
-    if (className) {
-        element.className = className;
-    }
-    if (textContent) {
-        element.textContent = textContent;
-    }
-    if (attributes) {
-        Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
-    }
-    if (styles) {
-        setStyles(element, styles);
-    }
+  if (className) {
+    element.className = className;
+  }
+  if (textContent) {
+    element.textContent = textContent;
+  }
+  if (attributes) {
+    Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
+  }
+  if (styles) {
+    setStyles(element, styles);
+  }
 
-    return element;
+  return element;
 }

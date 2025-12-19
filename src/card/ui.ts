@@ -11,20 +11,20 @@ let graphTooltipElement: HTMLElement | null = null;
  * @returns Tooltip element
  */
 export function ensureGraphTooltip(): HTMLElement {
-    if (graphTooltipElement) {
-        return graphTooltipElement;
-    }
+  if (graphTooltipElement) {
+    return graphTooltipElement;
+  }
 
-    const tooltip = document.createElement('div');
-    tooltip.className = 'graph-tooltip';
-    tooltip.setAttribute('role', 'status');
-    tooltip.style.position = 'fixed';
-    tooltip.style.pointerEvents = 'none';
-    tooltip.style.zIndex = '9999';
-    tooltip.style.display = 'none';
-    document.body.appendChild(tooltip);
-    graphTooltipElement = tooltip;
-    return tooltip;
+  const tooltip = document.createElement('div');
+  tooltip.className = 'graph-tooltip';
+  tooltip.setAttribute('role', 'status');
+  tooltip.style.position = 'fixed';
+  tooltip.style.pointerEvents = 'none';
+  tooltip.style.zIndex = '9999';
+  tooltip.style.display = 'none';
+  document.body.appendChild(tooltip);
+  graphTooltipElement = tooltip;
+  return tooltip;
 }
 
 /**
@@ -34,41 +34,41 @@ export function ensureGraphTooltip(): HTMLElement {
  * @param y - Y coordinate
  */
 export function showGraphTooltip(html: string, x: number, y: number): void {
-    const tooltip = ensureGraphTooltip();
-    tooltip.innerHTML = html;
-    tooltip.style.display = 'block';
+  const tooltip = ensureGraphTooltip();
+  tooltip.innerHTML = html;
+  tooltip.style.display = 'block';
 
-    // Offset so pointer doesn't overlap
-    const offsetX = 12;
-    const offsetY = 12;
+  // Offset so pointer doesn't overlap
+  const offsetX = 12;
+  const offsetY = 12;
 
-    // Clamp to viewport
-    const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-    const viewportHeight = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-    let left = x + offsetX;
-    let top = y + offsetY;
+  // Clamp to viewport
+  const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+  const viewportHeight = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+  let left = x + offsetX;
+  let top = y + offsetY;
 
-    // If overflowing right, move left
-    const rect = tooltip.getBoundingClientRect();
-    if (left + rect.width > viewportWidth) {
-        left = Math.max(8, x - rect.width - offsetX);
-    }
-    if (top + rect.height > viewportHeight) {
-        top = Math.max(8, y - rect.height - offsetY);
-    }
+  // If overflowing right, move left
+  const rect = tooltip.getBoundingClientRect();
+  if (left + rect.width > viewportWidth) {
+    left = Math.max(8, x - rect.width - offsetX);
+  }
+  if (top + rect.height > viewportHeight) {
+    top = Math.max(8, y - rect.height - offsetY);
+  }
 
-    tooltip.style.left = `${left}px`;
-    tooltip.style.top = `${top}px`;
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
 }
 
 /**
  * Hide graph tooltip
  */
 export function hideGraphTooltip(): void {
-    if (!graphTooltipElement) {
-        return;
-    }
-    graphTooltipElement.style.display = 'none';
+  if (!graphTooltipElement) {
+    return;
+  }
+  graphTooltipElement.style.display = 'none';
 }
 
 /**
@@ -77,17 +77,17 @@ export function hideGraphTooltip(): void {
  * @returns Escaped HTML string
  */
 export function escapeHtml(str: string | null | undefined): string {
-    if (!str) {
-        return '';
-    }
+  if (!str) {
+    return '';
+  }
 
-    return String(str).replace(/[&<>"]/g, character => {
-        const htmlEntities: { [key: string]: string } = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;'
-        };
-        return htmlEntities[character] || character;
-    });
+  return String(str).replace(/[&<>"]/g, character => {
+    const htmlEntities: { [key: string]: string } = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;'
+    };
+    return htmlEntities[character] || character;
+  });
 }

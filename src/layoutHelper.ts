@@ -64,7 +64,7 @@ export function computeLayout(containerWidth: number): LayoutMetrics {
 
     // If we can't fit the target at the minimum scale, reduce card count
     if (rawSmallScale < MIN_MOBILE_SCALE && targetSmall > 1) {
-      targetSmall = targetSmall - 1;
+      targetSmall -= 1;
       rawSmallScale = ((contentWidth + gap) / targetSmall - gap) / base;
     }
 
@@ -170,7 +170,7 @@ export function computeLayout(containerWidth: number): LayoutMetrics {
 
 /**
  * Synchronize controls width to match big row content width (desktop only)
- * @param width - Target width for controls
+ * @param _width - Target width for controls
  */
 export function syncControlsWidth(_width: number): void {
   const controls = (document.querySelector('.toolbar .controls') ||

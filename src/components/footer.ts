@@ -3,7 +3,7 @@
  */
 
 interface FooterOptions {
-    footerClass?: string;
+  footerClass?: string;
 }
 
 /**
@@ -12,12 +12,12 @@ interface FooterOptions {
  * @returns The footer element
  */
 export function createFooter(options: FooterOptions = {}): HTMLElement {
-    const { footerClass = 'site-footer' } = options;
+  const { footerClass = 'site-footer' } = options;
 
-    const footer = document.createElement('footer');
-    footer.className = footerClass;
+  const footer = document.createElement('footer');
+  footer.className = footerClass;
 
-    footer.innerHTML = `
+  footer.innerHTML = `
     <div class="footer-inner">
       <div class="footer-left">
         <div class="credits"><a href="/about.html">About & Credits</a></div>
@@ -28,10 +28,10 @@ export function createFooter(options: FooterOptions = {}): HTMLElement {
     </div>
   `;
 
-    // Add class for browsers without :has() support (CLS prevention fallback)
-    document.body.classList.add('has-footer');
+  // Add class for browsers without :has() support (CLS prevention fallback)
+  document.body.classList.add('has-footer');
 
-    return footer;
+  return footer;
 }
 
 /**
@@ -39,14 +39,14 @@ export function createFooter(options: FooterOptions = {}): HTMLElement {
  * @returns The footer element
  */
 export function createSimpleFooter(): HTMLElement {
-    const footer = document.createElement('footer');
-    footer.innerHTML = `
+  const footer = document.createElement('footer');
+  footer.innerHTML = `
     <div class="footer-content">
       <p>&copy; 2025 Ciphermaniac. Pokemon TCG tournament analysis and deck building tools.</p>
     </div>
   `;
 
-    return footer;
+  return footer;
 }
 
 /**
@@ -56,7 +56,7 @@ export function createSimpleFooter(): HTMLElement {
  * @returns The inserted footer element
  */
 export function insertFooter(container: HTMLElement, options: FooterOptions = {}): HTMLElement {
-    const footer = createFooter(options);
-    container.appendChild(footer);
-    return footer;
+  const footer = createFooter(options);
+  container.appendChild(footer);
+  return footer;
 }

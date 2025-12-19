@@ -54,6 +54,8 @@ interface ReadSelectedSetsOptions {
 /**
  * Resolve currently selected sets from the DOM.
  * @param options
+ * @param options.selectId
+ * @param options.hiddenId
  * @returns
  */
 export function readSelectedSets({
@@ -78,6 +80,7 @@ interface ReadCardTypeOptions {
 /**
  * Resolve the card type filter value.
  * @param options
+ * @param options.selectId
  * @returns
  */
 export function readCardType({ selectId = DEFAULT_CARD_TYPE_SELECT_ID }: ReadCardTypeOptions = {}): string {
@@ -121,6 +124,7 @@ interface WriteSelectedSetsOptions {
  * Persist the selected set codes into the hidden input.
  * @param selected
  * @param options
+ * @param options.hiddenId
  * @returns
  */
 export function writeSelectedSets(
@@ -152,7 +156,7 @@ export function normalizeCardTypeValue(value: unknown): string {
  * @param hiddenInput
  * @returns
  */
-function readSelectedCardTypesFromHidden(hiddenInput: HTMLInputElement | null): string[] {
+function readCardTypesFromHidden(hiddenInput: HTMLInputElement | null): string[] {
   if (!hiddenInput || typeof hiddenInput.value !== 'string' || !hiddenInput.value) {
     return [];
   }
@@ -170,13 +174,14 @@ interface ReadSelectedCardTypesOptions {
 /**
  * Resolve currently selected card types from the DOM (for multi-select).
  * @param options
+ * @param options.hiddenId
  * @returns Array of selected card type filters (e.g., ['pokemon:basic', 'trainer:supporter'])
  */
 export function readSelectedCardTypes({
   hiddenId = DEFAULT_CARD_TYPE_HIDDEN_ID
 }: ReadSelectedCardTypesOptions = {}): string[] {
   const hiddenInput = document.getElementById(hiddenId) as HTMLInputElement | null;
-  return readSelectedCardTypesFromHidden(hiddenInput);
+  return readCardTypesFromHidden(hiddenInput);
 }
 
 /**
@@ -211,6 +216,7 @@ interface WriteSelectedCardTypesOptions {
  * Persist the selected card type filters into the hidden input.
  * @param selected
  * @param options
+ * @param options.hiddenId
  * @returns
  */
 export function writeSelectedCardTypes(

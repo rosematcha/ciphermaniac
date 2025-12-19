@@ -28,7 +28,13 @@ function composeCategoryPath(category, trainerType, energyType, options = {}) {
 
 function sanitizeForPath(text) {
   const value = typeof text === 'string' ? text : String(text || '');
-  return value.replace(INVALID_PATH_CHARS, '').trim();
+  // Remove null bytes first
+  let sanitized = value.replace(/\0/g, '');
+  // Remove path traversal sequences
+  sanitized = sanitized.replace(/\.\./g, '');
+  // Remove invalid path characters including path separators
+  sanitized = sanitized.replace(INVALID_PATH_CHARS, '').trim();
+  return sanitized;
 }
 
 function sanitizeForFilename(text) {
@@ -80,7 +86,7 @@ function createDistribution(counts, found) {
   });
 
   return Array.from(counter.entries())
-    .sort((a, b) => a[0] - b[0])
+    .sort((first, second) => first[0] - second[0])
     .map(([copies, players]) => ({
       copies,
       players,
@@ -156,20 +162,21 @@ function generateReportFromDecks(deckList, deckTotal, _unused, synonymDb) {
   }
 
   const sortedKeys = Array.from(cardData.keys()).sort(
-    (a, b) => cardData.get(b).length - cardData.get(a).length
+    (first, second) => cardData.get(second).length - cardData.get(first).length
   );
 
   const items = sortedKeys.map((uid, index) => {
     const countsList = cardData.get(uid) || [];
     const foundCount = countsList.length;
+    // Sanitize the name to prevent path traversal in reports
+    const rawName = nameCasing.get(uid) || uid;
+    const safeName = sanitizeForPath(rawName);
     const item = {
       rank: index + 1,
-      name: nameCasing.get(uid) || uid,
+      name: safeName,
       found: foundCount,
       total: deckTotal,
-      pct: deckTotal
-        ? Math.round(((foundCount / deckTotal) * 100 + Number.EPSILON) * 100) / 100
-        : 0,
+      pct: deckTotal ? Math.round(((foundCount / deckTotal) * 100 + Number.EPSILON) * 100) / 100 : 0,
       dist: createDistribution(countsList, foundCount)
     };
 
@@ -217,10 +224,4 @@ function generateReportFromDecks(deckList, deckTotal, _unused, synonymDb) {
   };
 }
 
-export {
-  composeCategoryPath,
-  sanitizeForFilename,
-  sanitizeForPath,
-  normalizeArchetypeName,
-  generateReportFromDecks
-};
+export { composeCategoryPath, sanitizeForFilename, sanitizeForPath, normalizeArchetypeName, generateReportFromDecks };

@@ -17,7 +17,7 @@ const elements = {
  * Extract archetype name from URL path
  */
 function extractArchetypeFromUrl(): string | null {
-  const pathname = window.location.pathname;
+  const { pathname } = window.location;
   // Match /:name (and optional subpaths)
   // Assuming the router only serves this page for valid archetypes
   const parts = pathname.split('/').filter(Boolean);
@@ -45,7 +45,9 @@ function formatArchetypeName(name: string): string {
  */
 function buildUrl(subpage: string = ''): string {
   const name = extractArchetypeFromUrl();
-  if (!name) return '/archetypes';
+  if (!name) {
+    return '/archetypes';
+  }
 
   const basePath = `/${name.replace(/ /g, '_')}`;
   return subpage ? `${basePath}/${subpage}` : basePath;
@@ -56,7 +58,9 @@ function buildUrl(subpage: string = ''): string {
  */
 function init() {
   const name = extractArchetypeFromUrl();
-  if (!name) return;
+  if (!name) {
+    return;
+  }
 
   const formattedName = formatArchetypeName(name);
 
@@ -67,9 +71,15 @@ function init() {
   document.title = `${formattedName} \u2013 Ciphermaniac`;
 
   // Update tab links
-  if (elements.tabHome) elements.tabHome.href = buildUrl('');
-  if (elements.tabAnalysis) elements.tabAnalysis.href = buildUrl('analysis');
-  if (elements.tabTrends) elements.tabTrends.href = buildUrl('trends');
+  if (elements.tabHome) {
+    elements.tabHome.href = buildUrl('');
+  }
+  if (elements.tabAnalysis) {
+    elements.tabAnalysis.href = buildUrl('analysis');
+  }
+  if (elements.tabTrends) {
+    elements.tabTrends.href = buildUrl('trends');
+  }
 }
 
 // Initialize

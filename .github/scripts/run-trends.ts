@@ -157,9 +157,9 @@ function trimTrendSeries(series = [], limit = MAX_ARCHETYPES_IN_SERIES) {
 
 function buildCardTimelines(decks, tournaments) {
   const sortedTournaments = [...tournaments].sort(
-    (a, b) => Date.parse(a.date || 0) - Date.parse(b.date || 0)
+    (first, second) => Date.parse(first.date || 0) - Date.parse(second.date || 0)
   );
-  const deckTotals = new Map(sortedTournaments.map(t => [t.id, Number(t.deckTotal) || 0]));
+  const deckTotals = new Map(sortedTournaments.map(tournament => [tournament.id, Number(tournament.deckTotal) || 0]));
   const countsByCard = new Map(); // key -> Map<tournamentId, presentCount>
   const metaByCard = new Map(); // key -> {name,set,number, archetypes:Map}
 
@@ -178,8 +178,8 @@ function buildCardTimelines(decks, tournaments) {
         countsByCard.set(key, new Map());
       }
       const byTournament = countsByCard.get(key);
-      const tid = deck.tournamentId;
-      byTournament.set(tid, (byTournament.get(tid) || 0) + 1);
+      const tournamentId = deck.tournamentId;
+      byTournament.set(tournamentId, (byTournament.get(tournamentId) || 0) + 1);
 
       if (!metaByCard.has(key)) {
         metaByCard.set(key, {
@@ -197,21 +197,21 @@ function buildCardTimelines(decks, tournaments) {
   }
 
   const timelines = new Map();
-  sortedTournaments.forEach(t => {
-    if (!deckTotals.has(t.id)) {
-      deckTotals.set(t.id, 0);
+  sortedTournaments.forEach(tournament => {
+    if (!deckTotals.has(tournament.id)) {
+      deckTotals.set(tournament.id, 0);
     }
   });
 
-  countsByCard.forEach((tMap, key) => {
+  countsByCard.forEach((tournamentMap, key) => {
     const meta = metaByCard.get(key) || {};
-    const timeline = sortedTournaments.map(t => {
-      const present = tMap.get(t.id) || 0;
-      const total = deckTotals.get(t.id) || 0;
+    const timeline = sortedTournaments.map(tournament => {
+      const present = tournamentMap.get(tournament.id) || 0;
+      const total = deckTotals.get(tournament.id) || 0;
       const share = total ? Math.round((present / total) * 10000) / 100 : 0;
       return {
-        tournamentId: t.id,
-        date: t.date || null,
+        tournamentId: tournament.id,
+        date: tournament.date || null,
         present,
         total,
         share

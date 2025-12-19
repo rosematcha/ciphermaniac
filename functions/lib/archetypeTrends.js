@@ -42,7 +42,6 @@ function canonicalizeVariant(setCode, number) {
  * - It has a peak share >= MIN_PEAK_SHARE_PERCENT (5%)
  * - OR it started high (>=10%) and dropped low (<=1%)
  * - OR it rose significantly (delta >= 8%)
- *
  * @param {Object} cardStats - Card statistics including maxShare, startShare, endShare
  * @returns {boolean} Whether the card should be included
  */
@@ -70,7 +69,6 @@ function isInterestingCard(cardStats) {
 
 /**
  * Generates time-series trend data for a specific archetype.
- *
  * @param {Array} decks - List of decks for this archetype (must have successTags)
  * @param {Array} tournaments - List of tournaments in the window
  * @param {Object} synonymDb - Database for resolving card synonyms
@@ -89,18 +87,20 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb) {
     };
   }
 
-  const sortedTournaments = [...tournaments].sort((a, b) => Date.parse(a.date || 0) - Date.parse(b.date || 0));
+  const sortedTournaments = [...tournaments].sort(
+    (first, second) => Date.parse(first.date || 0) - Date.parse(second.date || 0)
+  );
 
   // 1. Map Decks to Tournaments and calculate Archetype Totals per Tier
-  const tournamentStats = new Map(); // tId -> { id, date, name, totals: { all: 0, top8: 0... } }
-  const deckMap = new Map(); // tId -> [decks]
+  const tournamentStats = new Map(); // tournamentId -> { id, date, name, totals: { all: 0, top8: 0... } }
+  const deckMap = new Map(); // tournamentId -> [decks]
 
   // Initialize with all tournaments in window
-  for (const t of sortedTournaments) {
-    tournamentStats.set(t.id, {
-      id: t.id,
-      date: t.date,
-      name: t.name,
+  for (const tournament of sortedTournaments) {
+    tournamentStats.set(tournament.id, {
+      id: tournament.id,
+      date: tournament.date,
+      name: tournament.name,
       totals: {
         all: 0,
         winner: 0,
@@ -113,25 +113,27 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb) {
         top50: 0
       }
     });
-    deckMap.set(t.id, []);
+    deckMap.set(tournament.id, []);
   }
 
   // Populate counts and group decks
   for (const deck of decks) {
-    const tId = deck.tournamentId;
-    if (!tournamentStats.has(tId)) {
+    const { tournamentId } = deck;
+    if (!tournamentStats.has(tournamentId)) {
       // Tournament not in our list - might be from outside the window, skip
       continue;
     }
 
-    const stats = tournamentStats.get(tId);
+    const stats = tournamentStats.get(tournamentId);
     stats.totals.all += 1;
-    deckMap.get(tId).push(deck);
+    deckMap.get(tournamentId).push(deck);
 
     // Check success tags and increment counters
     const tags = new Set(deck.successTags || []);
     for (const tag of SUCCESS_TAGS) {
-      if (tag === 'all') continue;
+      if (tag === 'all') {
+        continue;
+      }
       if (tags.has(tag)) {
         stats.totals[tag] = (stats.totals[tag] || 0) + 1;
       }
@@ -140,8 +142,8 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb) {
 
   // Filter to tournaments where this archetype had at least 1 deck
   const activeTournaments = [];
-  for (const t of sortedTournaments) {
-    const stats = tournamentStats.get(t.id);
+  for (const tournament of sortedTournaments) {
+    const stats = tournamentStats.get(tournament.id);
     if (stats.totals.all > 0) {
       activeTournaments.push(stats);
     }
@@ -177,7 +179,9 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb) {
 
       for (const card of deck.cards || []) {
         const count = Number(card.count) || 0;
-        if (!count) continue;
+        if (!count) {
+          continue;
+        }
 
         const [setCode, number] = canonicalizeVariant(card.set, card.number);
         let uid = setCode && number ? `${card.name}::${setCode}::${number}` : card.name;
@@ -193,7 +197,7 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb) {
             cardData.set(uid, {
               name: card.name,
               set: setCode,
-              number: number,
+              number,
               maxShare: 0,
               firstTournamentShare: null,
               lastTournamentShare: 0,
@@ -207,7 +211,9 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb) {
         // Add count to all applicable tiers
         for (const tag of SUCCESS_TAGS) {
           if (tags.has(tag)) {
-            if (!usageEntry[tag]) usageEntry[tag] = [];
+            if (!usageEntry[tag]) {
+              usageEntry[tag] = [];
+            }
             usageEntry[tag].push(count);
           }
         }
@@ -224,7 +230,7 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb) {
         if (tiers[tag] && tiers[tag].length > 0) {
           const counts = tiers[tag];
           const included = counts.length;
-          const totalCopies = counts.reduce((a, b) => a + b, 0);
+          const totalCopies = counts.reduce((sum, count) => sum + count, 0);
           const avg = Math.round((totalCopies / included) * 100) / 100;
 
           tEntry[tag] = [included, avg];
@@ -281,11 +287,11 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb) {
       tournamentCount: activeTournaments.length,
       cardCount: Object.keys(finalCards).length
     },
-    tournaments: activeTournaments.map(t => ({
-      id: t.id,
-      date: t.date,
-      name: t.name,
-      totals: t.totals
+    tournaments: activeTournaments.map(tournament => ({
+      id: tournament.id,
+      date: tournament.date,
+      name: tournament.name,
+      totals: tournament.totals
     })),
     cards: finalCards
   };

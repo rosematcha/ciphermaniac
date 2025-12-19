@@ -39,75 +39,97 @@
               <a id="tab-trends" class="archetype-tab is-active" href="#" aria-current="page">Trends</a>
             </nav>
 
-            <!-- Controls Panel -->
-            <div class="archetype-controls-panel archetype-controls">
-              <div class="panel-header">
-                <div class="header-actions">
-                  <button id="controls-toggle" class="btn-toggle" aria-expanded="true" aria-label="Toggle controls">
-                    <span class="btn-label">Configure</span>
-                    <span class="icon">▼</span>
-                  </button>
-                </div>
+            <!-- Tier Filter (simpler, inline) -->
+            <div class="trends-tier-bar">
+              <label for="trends-performance-filter">Deck finish:</label>
+              <div class="select-wrapper">
+                <select id="trends-performance-filter" class="filter-card-select">
+                  <option value="all">All finishes</option>
+                  <option value="winner">Winners</option>
+                  <option value="top2">Finals</option>
+                  <option value="top4">Top 4</option>
+                  <option value="top8" selected>Top 8</option>
+                  <option value="top16">Top 16</option>
+                  <option value="top10">Top 10%</option>
+                  <option value="top25">Top 25%</option>
+                  <option value="top50">Top 50%</option>
+                </select>
               </div>
-
-              <div id="controls-body" class="panel-body">
-                <div class="controls-grid">
-                  <div class="control-group main-settings">
-                    <!-- Performance Filter -->
-                    <div class="control-item finish-control">
-                      <label for="trends-performance-filter">Tournament Finish</label>
-                      <div class="select-wrapper">
-                        <select id="trends-performance-filter" class="filter-card-select">
-                          <option value="all">All finishes</option>
-                          <option value="winner">Winners</option>
-                          <option value="top2">Finals</option>
-                          <option value="top4">Top 4</option>
-                          <option value="top8" selected>Top 8</option>
-                          <option value="top16">Top 16</option>
-                          <option value="top10">Top 10%</option>
-                          <option value="top25">Top 25%</option>
-                          <option value="top50">Top 50%</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <!-- Card Selection -->
-                    <div class="control-item card-select-control">
-                      <label for="trends-card-select">Select Cards</label>
-                      <div class="select-wrapper">
-                        <select id="trends-card-select" class="filter-card-select" multiple size="6">
-                          <!-- Populated dynamically -->
-                        </select>
-                      </div>
-                      <p class="control-hint">Hold Ctrl/Cmd to select multiple cards</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <span id="trends-meta-info" class="trends-meta-info"></span>
             </div>
           </div>
         </section>
 
-        <!-- Trend Summary -->
-        <div id="trends-summary" class="trends-summary" hidden>
-          <p id="trends-summary-text"></p>
-        </div>
-
-        <!-- Main Chart Area -->
-        <section id="trends-chart-container" class="trends-chart-container" hidden>
-          <div id="trends-chart" class="trends-chart" role="img" aria-label="Card usage trends over time"></div>
-          <div id="trends-chart-legend" class="trends-chart-legend"></div>
+        <!-- Stats Overview Cards -->
+        <section id="trends-stats" class="trends-stats" hidden>
+          <div class="stat-card">
+            <span class="stat-label">Tournaments</span>
+            <span id="stat-tournaments" class="stat-value">-</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Cards Tracked</span>
+            <span id="stat-cards" class="stat-value">-</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Date Range</span>
+            <span id="stat-range" class="stat-value">-</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Most Played</span>
+            <span id="stat-most-played" class="stat-value">-</span>
+          </div>
         </section>
 
-        <!-- Card Movers Section -->
-        <section id="trends-movers" class="trends-movers" hidden>
-          <div class="movers-group">
-            <h3>Rising Cards</h3>
-            <ul id="trends-rising" class="movers-list"></ul>
+        <!-- Rising/Cooling Movers (condensed horizontal) -->
+        <section id="trends-movers" class="trends-movers-v2" hidden>
+          <div class="movers-group movers-rising">
+            <h3><span class="mover-icon rising-icon">▲</span> Rising</h3>
+            <ul id="trends-rising" class="movers-list-v2"></ul>
           </div>
-          <div class="movers-group">
-            <h3>Cooling Cards</h3>
-            <ul id="trends-falling" class="movers-list"></ul>
+          <div class="movers-group movers-cooling">
+            <h3><span class="mover-icon cooling-icon">▼</span> Cooling</h3>
+            <ul id="trends-falling" class="movers-list-v2"></ul>
+          </div>
+        </section>
+
+        <!-- Main Chart Area -->
+        <section id="trends-chart-container" class="trends-chart-container-v2" hidden>
+          <div class="chart-header">
+            <h2>Playrate Over Time</h2>
+            <p class="chart-subtitle" id="chart-subtitle">Select cards below to chart their playrate</p>
+          </div>
+          <div id="trends-chart" class="trends-chart-v2" role="img" aria-label="Card usage trends over time"></div>
+          <div id="trends-chart-legend" class="trends-chart-legend-v2"></div>
+        </section>
+
+        <!-- Card List with Sparklines -->
+        <section id="trends-card-list" class="trends-card-list" hidden>
+          <div class="card-list-header">
+            <h2>All Cards</h2>
+            <div class="card-list-controls">
+              <label for="card-sort">Sort by:</label>
+              <select id="card-sort" class="filter-card-select">
+                <option value="playrate">Playrate</option>
+                <option value="trending">Trending</option>
+                <option value="name">Name</option>
+                <option value="copies">Avg Copies</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-list-table-wrapper">
+            <table class="card-list-table">
+              <thead>
+                <tr>
+                  <th class="col-chart">Chart</th>
+                  <th class="col-name">Card</th>
+                  <th class="col-sparkline">Trend</th>
+                  <th class="col-playrate">Playrate</th>
+                  <th class="col-copies">Avg Copies</th>
+                  <th class="col-change">Change</th>
+                </tr>
+              </thead>
+              <tbody id="card-list-body"></tbody>
+            </table>
           </div>
         </section>
 

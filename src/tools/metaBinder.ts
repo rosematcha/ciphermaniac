@@ -1,5 +1,5 @@
 import { fetchDecks, fetchTournamentsList, getCardPrice } from '../api.js';
-import { analyzeEvents, buildBinderDataset, type BinderDataset } from './metaBinderData.js';
+import { analyzeEvents, type BinderDataset, buildBinderDataset } from './metaBinderData.js';
 import { buildThumbCandidates } from '../thumbs.js';
 import { debounce } from '../utils/performance.js';
 import { storage } from '../utils/storage.js';
@@ -12,7 +12,7 @@ const STORAGE_KEY = 'binderSelections';
 const DEFAULT_ONLINE_META = 'Online - Last 14 Days';
 
 type AnalysisResult = ReturnType<typeof analyzeEvents>;
-type BinderSelections = { tournaments: string[]; archetypes: string[] };
+type _BinderSelections = { tournaments: string[]; archetypes: string[] };
 
 interface BinderElements {
   tournamentsList: HTMLElement | null;
@@ -290,7 +290,7 @@ function createCardElement(card, options = {}) {
 
 function createPlaceholderElement() {
   const template = ensurePlaceholderTemplate();
-  return /** @type {HTMLElement} */ (template.content.firstElementChild.cloneNode(true));
+  return /** @type {HTMLElement} */ template.content.firstElementChild.cloneNode(true);
 }
 
 function applyCardImage(imageElement, card) {
@@ -1051,7 +1051,7 @@ function bindControlEvents() {
     elements.archetypeSearch.addEventListener(
       'input',
       debounce(event => {
-        const { value } = /** @type {HTMLInputElement} */ (event.target);
+        const { value } = /** @type {HTMLInputElement} */ event.target;
         state.archetypeFilter = value;
         renderArchetypeControls();
       }, 150)
@@ -1127,7 +1127,7 @@ function handleExportLayout() {
 }
 
 async function handleImportLayout(event) {
-  const input = /** @type {HTMLInputElement} */ (event.target);
+  const input = /** @type {HTMLInputElement} */ event.target;
   const file = input.files?.[0];
   if (!file) {
     return;
@@ -1256,4 +1256,3 @@ async function initialize() {
 if (typeof document !== 'undefined') {
   initialize();
 }
-

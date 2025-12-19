@@ -1,3 +1,4 @@
+/* eslint-disable id-length */
 /**
  * Card type hierarchy configuration for hierarchical filtering
  * @module CardTypeHierarchy

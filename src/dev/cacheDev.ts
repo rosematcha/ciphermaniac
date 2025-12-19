@@ -1,3 +1,3 @@
 export function initCacheDev() {
-    // no-op
+  // no-op
 }

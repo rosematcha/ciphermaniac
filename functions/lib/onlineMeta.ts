@@ -1,11 +1,6 @@
 import { fetchLimitlessJson } from './limitless.js';
-import {
-  generateReportFromDecks,
-  normalizeArchetypeName,
-  sanitizeForFilename,
-  sanitizeForPath
-} from './reportBuilder.js';
-import { loadCardTypesDatabase, enrichCardWithType } from './cardTypesDatabase.js';
+import { generateReportFromDecks, normalizeArchetypeName, sanitizeForFilename } from './reportBuilder.js';
+import { enrichCardWithType, loadCardTypesDatabase } from './cardTypesDatabase.js';
 import { enrichDecksWithOnTheFlyFetch } from './cardTypeFetcher.js';
 import { loadCardSynonyms } from './cardSynonyms.js';
 import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json';
@@ -13,7 +8,6 @@ import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.j
 const WINDOW_DAYS = 30;
 const MIN_USAGE_PERCENT = 0.5;
 const TARGET_FOLDER = 'Online - Last 14 Days';
-
 
 const REPORT_BASE_KEY = `reports/${TARGET_FOLDER}`;
 const PAGE_SIZE = 100;
@@ -42,26 +36,16 @@ const PERCENT_TAG_RULES = [
 ];
 
 const SUCCESS_TAGS = Array.from(
-  new Set([
-    ...PLACEMENT_TAG_RULES.map(rule => rule.tag),
-    ...PERCENT_TAG_RULES.map(rule => rule.tag)
-  ])
+  new Set([...PLACEMENT_TAG_RULES.map(rule => rule.tag), ...PERCENT_TAG_RULES.map(rule => rule.tag)])
 );
-const DEFAULT_CARD_TREND_MIN_APPEARANCES = 2;
+const CARD_TREND_MIN_APPEARANCES = 2;
 const DEFAULT_CARD_TREND_TOP = 12;
 type AnyOptions = Record<string, any>;
 type ThumbnailConfig = Record<string, string[]>;
 const ARCHETYPE_THUMBNAILS: ThumbnailConfig = (archetypeThumbnails as ThumbnailConfig) || {};
 const AUTO_THUMB_MAX = 2;
 const AUTO_THUMB_REQUIRED_PCT = 99.9;
-const ARCHETYPE_DESCRIPTOR_TOKENS = new Set([
-  'box',
-  'control',
-  'festival',
-  'lead',
-  'toolbox',
-  'turbo'
-]);
+const ARCHETYPE_DESCRIPTOR_TOKENS = new Set(['box', 'control', 'festival', 'lead', 'toolbox', 'turbo']);
 
 async function runWithConcurrency(items, limit, handler) {
   if (!Array.isArray(items) || items.length === 0) {
@@ -73,7 +57,7 @@ async function runWithConcurrency(items, limit, handler) {
   let nextIndex = 0;
 
   async function worker() {
-    while (true) {
+    while (nextIndex < items.length) {
       const currentIndex = nextIndex;
       nextIndex += 1;
       if (currentIndex >= items.length) {
@@ -136,18 +120,44 @@ function inferEnergyType(name, setCode) {
   if ((setCode || '').toUpperCase() === 'SVE') {
     return 'basic';
   }
-  // Special Energy cards - "Energy" is always the last word
-  if ((name || '').endsWith(' Energy') && (setCode || '').toUpperCase() !== 'SVE') {
+
+  // Check for basic energy type names (Grass, Fire, Water, Lightning, Psychic, Fighting, Darkness, Metal, Fairy, Dragon)
+  const basicEnergyTypes = [
+    'grass energy',
+    'fire energy',
+    'water energy',
+    'lightning energy',
+    'psychic energy',
+    'fighting energy',
+    'darkness energy',
+    'metal energy',
+    'fairy energy',
+    'dragon energy',
+    'basic energy'
+  ];
+  const lowerName = (name || '').toLowerCase().trim();
+  if (basicEnergyTypes.includes(lowerName)) {
+    return 'basic';
+  }
+
+  // Special Energy cards - "Energy" is always the last word but not a basic type
+  if ((name || '').endsWith(' Energy')) {
     return 'special';
   }
   return null;
 }
 
 function inferTrainerType(name) {
-  const n = String(name || '');
-  const lower = n.toLowerCase();
+  const cardName = String(name || '');
+  const lower = cardName.toLowerCase();
   // Stadiums often include these tokens explicitly
-  if (n.includes('Stadium') || n.includes('Tower') || n.includes('Artazon') || n.includes('Mesagoza') || n.includes('Levincia')) {
+  if (
+    cardName.includes('Stadium') ||
+    cardName.includes('Tower') ||
+    cardName.includes('Artazon') ||
+    cardName.includes('Mesagoza') ||
+    cardName.includes('Levincia')
+  ) {
     return 'stadium';
   }
   // Tools typically have equipment-like words or TM
@@ -166,11 +176,11 @@ function inferTrainerType(name) {
     'technical machine',
     'tm:'
   ];
-  if (toolHints.some(h => lower.includes(h))) {
+  if (toolHints.some(hint => lower.includes(hint))) {
     return 'tool';
   }
   // Ace Specs override other trainer subtypes
-  if (isAceSpecName(n)) {
+  if (isAceSpecName(cardName)) {
     return 'tool';
   }
   // Common supporter indicators
@@ -198,7 +208,7 @@ function inferTrainerType(name) {
     'clavell',
     'giacomo'
   ];
-  if (supporterHints.some(h => lower.includes(h))) {
+  if (supporterHints.some(hint => lower.includes(hint))) {
     return 'supporter';
   }
   // Item catch-alls (keep broad; many trainers are items)
@@ -220,7 +230,7 @@ function inferTrainerType(name) {
     'energy search',
     'ultra ball'
   ];
-  if (itemHints.some(h => lower.includes(h))) {
+  if (itemHints.some(hint => lower.includes(hint))) {
     return 'item';
   }
   // Default to item for unknown trainers
@@ -232,7 +242,7 @@ async function fetchRecentOnlineTournaments(env, since, options: AnyOptions = {}
   const windowEndMs = options.windowEnd ? new Date(options.windowEnd).getTime() : null;
   const pageSize = options.pageSize || PAGE_SIZE;
   const maxPages = options.maxPages || MAX_TOURNAMENT_PAGES;
-  const diagnostics = options.diagnostics;
+  const { diagnostics } = options;
   const fetchJson = options.fetchJson || fetchLimitlessJson;
   const detailsConcurrency = options.detailsConcurrency || DEFAULT_DETAILS_CONCURRENCY;
   const unique = new Map();
@@ -274,55 +284,51 @@ async function fetchRecentOnlineTournaments(env, since, options: AnyOptions = {}
   }
 
   const summaries = Array.from(unique.values());
-  const detailed = await runWithConcurrency(
-    summaries,
-    detailsConcurrency,
-    async summary => {
-      try {
-        const details = await fetchJson(`/tournaments/${summary.id}/details`, { env });
-        if (details.decklists === false) {
-          diagnostics?.detailsWithoutDecklists.push({
-            tournamentId: summary.id,
-            name: summary.name
-          });
-          return null;
-        }
-        if (details.isOnline === false) {
-          diagnostics?.detailsOffline.push({
-            tournamentId: summary.id,
-            name: summary.name
-          });
-          return null;
-        }
-
-        const formatId = (details.format || summary.format || '').toUpperCase();
-        if (formatId && !SUPPORTED_FORMATS.has(formatId)) {
-          diagnostics?.detailsUnsupportedFormat.push({
-            tournamentId: summary.id,
-            name: summary.name,
-            format: formatId
-          });
-          return null;
-        }
-        return {
-          id: summary.id,
-          name: summary.name,
-          date: summary.date,
-          format: details.format || summary.format || null,
-          platform: details.platform || null,
-          game: summary.game,
-          players: summary.players,
-          organizer: details.organizer?.name || null,
-          organizerId: details.organizer?.id || null
-        };
-      } catch (error) {
-        console.warn('Failed to fetch tournament details', summary?.id, error?.message || error);
+  const detailed = await runWithConcurrency(summaries, detailsConcurrency, async summary => {
+    try {
+      const details = await fetchJson(`/tournaments/${summary.id}/details`, { env });
+      if (details.decklists === false) {
+        diagnostics?.detailsWithoutDecklists.push({
+          tournamentId: summary.id,
+          name: summary.name
+        });
         return null;
       }
-    }
-  );
+      if (details.isOnline === false) {
+        diagnostics?.detailsOffline.push({
+          tournamentId: summary.id,
+          name: summary.name
+        });
+        return null;
+      }
 
-  return detailed.filter(Boolean).sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+      const formatId = (details.format || summary.format || '').toUpperCase();
+      if (formatId && !SUPPORTED_FORMATS.has(formatId)) {
+        diagnostics?.detailsUnsupportedFormat.push({
+          tournamentId: summary.id,
+          name: summary.name,
+          format: formatId
+        });
+        return null;
+      }
+      return {
+        id: summary.id,
+        name: summary.name,
+        date: summary.date,
+        format: details.format || summary.format || null,
+        platform: details.platform || null,
+        game: summary.game,
+        players: summary.players,
+        organizer: details.organizer?.name || null,
+        organizerId: details.organizer?.id || null
+      };
+    } catch (error) {
+      console.warn('Failed to fetch tournament details', summary?.id, error?.message || error);
+      return null;
+    }
+  });
+
+  return detailed.filter(Boolean).sort((first, second) => Date.parse(second.date) - Date.parse(first.date));
 }
 
 function toCardEntries(decklist, cardTypesDb = null) {
@@ -455,101 +461,97 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
   const fetchJson = options.fetchJson || fetchLimitlessJson;
   const standingsConcurrency = options.standingsConcurrency || DEFAULT_STANDINGS_CONCURRENCY;
 
-  const perTournamentDecks = await runWithConcurrency(
-    tournaments,
-    standingsConcurrency,
-    async tournament => {
-      const limit = determinePlacementLimit(tournament?.players);
-      if (limit === 0) {
-        diag.tournamentsBelowMinimum.push({
-          tournamentId: tournament.id,
-          name: tournament.name,
-          players: tournament.players
-        });
-        return [];
-      }
-
-      let standings;
-      try {
-        standings = await fetchJson(`/tournaments/${tournament.id}/standings`, { env });
-      } catch (error) {
-        console.warn('Failed to fetch standings', tournament.id, error?.message || error);
-        diag.standingsFetchFailures.push({
-          tournamentId: tournament.id,
-          name: tournament.name,
-          message: error?.message || 'Unknown standings fetch error'
-        });
-        return [];
-      }
-
-      if (!Array.isArray(standings)) {
-        diag.invalidStandingsPayload.push({
-          tournamentId: tournament.id,
-          name: tournament.name
-        });
-        return [];
-      }
-
-      const sortedStandings = [...standings].sort((a, b) => {
-        const placingA = Number.isFinite(a?.placing) ? a.placing : Number.POSITIVE_INFINITY;
-        const placingB = Number.isFinite(b?.placing) ? b.placing : Number.POSITIVE_INFINITY;
-        return placingA - placingB;
+  const perTournamentDecks = await runWithConcurrency(tournaments, standingsConcurrency, async tournament => {
+    const limit = determinePlacementLimit(tournament?.players);
+    if (limit === 0) {
+      diag.tournamentsBelowMinimum.push({
+        tournamentId: tournament.id,
+        name: tournament.name,
+        players: tournament.players
       });
+      return [];
+    }
 
-      // Derive tournament size when Limitless doesn't provide it (common for online)
-      const maxReportedPlacing = Number.isFinite(sortedStandings.at(-1)?.placing)
-        ? Number(sortedStandings.at(-1).placing)
-        : 0;
-      const derivedPlayers = Number(tournament?.players) || Math.max(sortedStandings.length, maxReportedPlacing);
+    let standings;
+    try {
+      standings = await fetchJson(`/tournaments/${tournament.id}/standings`, { env });
+    } catch (error) {
+      console.warn('Failed to fetch standings', tournament.id, error?.message || error);
+      diag.standingsFetchFailures.push({
+        tournamentId: tournament.id,
+        name: tournament.name,
+        message: error?.message || 'Unknown standings fetch error'
+      });
+      return [];
+    }
 
-      const cappedStandings = sortedStandings.slice(0, limit);
-      const decks = [];
+    if (!Array.isArray(standings)) {
+      diag.invalidStandingsPayload.push({
+        tournamentId: tournament.id,
+        name: tournament.name
+      });
+      return [];
+    }
 
-      for (const entry of cappedStandings) {
-        if (!Number.isFinite(entry?.placing)) {
-          diag.entriesWithoutPlacing.push({
-            tournamentId: tournament.id,
-            name: tournament.name,
-            player: entry?.name || entry?.player || 'Unknown Player'
-          });
-        }
+    const sortedStandings = [...standings].sort((first, second) => {
+      const placingA = Number.isFinite(first?.placing) ? first.placing : Number.POSITIVE_INFINITY;
+      const placingB = Number.isFinite(second?.placing) ? second.placing : Number.POSITIVE_INFINITY;
+      return placingA - placingB;
+    });
 
-        const cards = toCardEntries(entry?.decklist, cardTypesDb);
-        if (!cards.length) {
-          diag.entriesWithoutDecklists.push({
-            tournamentId: tournament.id,
-            player: entry?.name || entry?.player || 'Unknown Player'
-          });
-          continue;
-        }
+    // Derive tournament size when Limitless doesn't provide it (common for online)
+    const maxReportedPlacing = Number.isFinite(sortedStandings.at(-1)?.placing)
+      ? Number(sortedStandings.at(-1).placing)
+      : 0;
+    const derivedPlayers = Number(tournament?.players) || Math.max(sortedStandings.length, maxReportedPlacing);
 
-        const archetypeName = entry?.deck?.name || 'Unknown';
-        // eslint-disable-next-line no-await-in-loop
-        const id = await hashDeck(cards, entry?.player);
-        decks.push({
-          id,
-          player: entry?.name || entry?.player || 'Unknown Player',
-          playerId: entry?.player || null,
-          country: entry?.country || null,
-          placement: entry?.placing ?? null,
-          archetype: archetypeName,
-          archetypeId: entry?.deck?.id || null,
-          cards,
+    const cappedStandings = sortedStandings.slice(0, limit);
+    const decks = [];
+
+    for (const entry of cappedStandings) {
+      if (!Number.isFinite(entry?.placing)) {
+        diag.entriesWithoutPlacing.push({
           tournamentId: tournament.id,
-          tournamentName: tournament.name,
-          tournamentDate: tournament.date,
-          tournamentPlayers: derivedPlayers || tournament.players || null,
-          tournamentFormat: tournament.format,
-          tournamentPlatform: tournament.platform,
-          tournamentOrganizer: tournament.organizer,
-          deckSource: 'limitless-online',
-          successTags: determinePlacementTags(entry?.placing, derivedPlayers || tournament?.players)
+          name: tournament.name,
+          player: entry?.name || entry?.player || 'Unknown Player'
         });
       }
 
-      return decks;
+      const cards = toCardEntries(entry?.decklist, cardTypesDb);
+      if (!cards.length) {
+        diag.entriesWithoutDecklists.push({
+          tournamentId: tournament.id,
+          player: entry?.name || entry?.player || 'Unknown Player'
+        });
+        continue;
+      }
+
+      const archetypeName = entry?.deck?.name || 'Unknown';
+      // eslint-disable-next-line no-await-in-loop
+      const id = await hashDeck(cards, entry?.player);
+      decks.push({
+        id,
+        player: entry?.name || entry?.player || 'Unknown Player',
+        playerId: entry?.player || null,
+        country: entry?.country || null,
+        placement: entry?.placing ?? null,
+        archetype: archetypeName,
+        archetypeId: entry?.deck?.id || null,
+        cards,
+        tournamentId: tournament.id,
+        tournamentName: tournament.name,
+        tournamentDate: tournament.date,
+        tournamentPlayers: derivedPlayers || tournament.players || null,
+        tournamentFormat: tournament.format,
+        tournamentPlatform: tournament.platform,
+        tournamentOrganizer: tournament.organizer,
+        deckSource: 'limitless-online',
+        successTags: determinePlacementTags(entry?.placing, derivedPlayers || tournament?.players)
+      });
     }
-  );
+
+    return decks;
+  });
 
   return perTournamentDecks.flat();
 }
@@ -596,17 +598,16 @@ function formatCardNumber(raw: any): string | null {
 
 function buildThumbnailId(setCode: any, number: any): string | null {
   const formattedNumber = formatCardNumber(number);
-  const set = String(setCode || '').toUpperCase().trim();
+  const set = String(setCode || '')
+    .toUpperCase()
+    .trim();
   if (!formattedNumber || !set) {
     return null;
   }
   return `${set}/${formattedNumber}`;
 }
 
-function inferArchetypeThumbnails(
-  displayName: string,
-  reportData: { items?: any[] } | undefined | null
-): string[] {
+function inferArchetypeThumbnails(displayName: string, reportData: { items?: any[] } | undefined | null): string[] {
   const keywords = extractArchetypeKeywords(displayName);
   if (!keywords.length || !reportData || !Array.isArray(reportData.items)) {
     return [];
@@ -646,10 +647,7 @@ function inferArchetypeThumbnails(
   }
 
   candidates.sort(
-    (a, b) =>
-      b.matchCount - a.matchCount ||
-      b.pct - a.pct ||
-      a.index - b.index
+    (first, second) => second.matchCount - first.matchCount || second.pct - first.pct || first.index - second.index
   );
 
   const selected: string[] = [];
@@ -742,7 +740,7 @@ function buildArchetypeReports(decks, minPercent, synonymDb, options: AnyOptions
     deckMap.set(group.filenameBase, group.decks);
   });
 
-  archetypeFiles.sort((a, b) => b.deckCount - a.deckCount);
+  archetypeFiles.sort((first, second) => second.deckCount - first.deckCount);
 
   const archetypeIndex = archetypeFiles.map(file => ({
     name: file.base,
@@ -768,22 +766,20 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
     1,
     Number.isFinite(options.minAppearances) ? Number(options.minAppearances) : DEFAULT_MIN_TREND_APPEARANCES
   );
-  const seriesLimit = Number.isFinite(options.seriesLimit)
-    ? Math.max(1, Number(options.seriesLimit))
-    : null;
+  const seriesLimit = Number.isFinite(options.seriesLimit) ? Math.max(1, Number(options.seriesLimit)) : null;
 
   const tournamentIndex = new Map();
   const sortedTournaments = (Array.isArray(tournaments) ? tournaments : [])
-    .filter(t => t && t.id && (Number(t.players) || 0) >= MIN_TREND_PLAYERS)
-    .map(t => ({
-      ...t,
-      date: t.date || null
+    .filter(tournament => tournament && tournament.id && (Number(tournament.players) || 0) >= MIN_TREND_PLAYERS)
+    .map(tournament => ({
+      ...tournament,
+      date: tournament.date || null
     }))
-    .sort((a, b) => Date.parse(a.date || 0) - Date.parse(b.date || 0));
+    .sort((first, second) => Date.parse(first.date || 0) - Date.parse(second.date || 0));
 
-  sortedTournaments.forEach(t => {
-    tournamentIndex.set(t.id, {
-      ...t,
+  sortedTournaments.forEach(tournament => {
+    tournamentIndex.set(tournament.id, {
+      ...tournament,
       deckTotal: 0
     });
   });
@@ -811,14 +807,13 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
     const tournamentMeta = tournamentIndex.get(tournamentId);
     tournamentMeta.deckTotal += 1;
 
-    const timelineEntry =
-      archetype.timeline.get(tournamentId) || {
-        tournamentId,
-        tournamentName: deck?.tournamentName || tournamentMeta?.name || 'Unknown Tournament',
-        date: deck?.tournamentDate || tournamentMeta?.date || null,
-        decks: 0,
-        success: {}
-      };
+    const timelineEntry = archetype.timeline.get(tournamentId) || {
+      tournamentId,
+      tournamentName: deck?.tournamentName || tournamentMeta?.name || 'Unknown Tournament',
+      date: deck?.tournamentDate || tournamentMeta?.date || null,
+      decks: 0,
+      success: {}
+    };
 
     timelineEntry.decks += 1;
     for (const tag of Array.isArray(deck?.successTags) ? deck.successTags : []) {
@@ -837,9 +832,9 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
 
   const series = [];
   archetypes.forEach(archetype => {
-    const timeline = sortedTournaments.map(t => {
-      const entry = archetype.timeline.get(t.id);
-      const tournamentMeta = tournamentIndex.get(t.id);
+    const timeline = sortedTournaments.map(tournament => {
+      const entry = archetype.timeline.get(tournament.id);
+      const tournamentMeta = tournamentIndex.get(tournament.id);
       const totalDecks = tournamentMeta?.deckTotal || 0;
 
       if (entry) {
@@ -853,9 +848,9 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
 
       // Backfill missing tournament
       return {
-        tournamentId: t.id,
-        tournamentName: t.name,
-        date: t.date,
+        tournamentId: tournament.id,
+        tournamentName: tournament.name,
+        date: tournament.date,
         decks: 0,
         totalDecks,
         share: 0,
@@ -863,7 +858,8 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
       };
     });
 
-    const appearances = timeline.length;
+    // Count actual appearances (tournaments where archetype had at least 1 deck)
+    const appearances = timeline.filter(entry => (entry.decks || 0) > 0).length;
     if (appearances < minAppearances) {
       return;
     }
@@ -876,7 +872,9 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
     }
 
     const shares = timeline.map(entry => entry.share || 0);
-    const avgShare = shares.length ? Math.round((shares.reduce((sum, value) => sum + value, 0) / shares.length) * 10) / 10 : 0;
+    const avgShare = shares.length
+      ? Math.round((shares.reduce((sum, value) => sum + value, 0) / shares.length) * 10) / 10
+      : 0;
     const maxShare = shares.length ? Math.max(...shares) : 0;
     const peakShare = maxShare; // Alias for clarity
     const minShare = shares.length ? Math.min(...shares) : 0;
@@ -900,7 +898,7 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
         totalDecks: data.totalDecks,
         share: data.totalDecks ? Math.round((data.decks / data.totalDecks) * 10000) / 100 : 0
       }))
-      .sort((a, b) => a.date.localeCompare(b.date));
+      .sort((first, second) => first.date.localeCompare(second.date));
 
     series.push({
       base: archetype.base,
@@ -916,16 +914,16 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
     });
   });
 
-  series.sort((a, b) => b.totalDecks - a.totalDecks || b.avgShare - a.avgShare);
+  series.sort((first, second) => second.totalDecks - first.totalDecks || second.avgShare - first.avgShare);
   const limitedSeries = seriesLimit ? series.slice(0, seriesLimit) : series;
 
   const tournamentCount = sortedTournaments.length;
 
-  const tournamentsWithDeckCounts = sortedTournaments.map(t => {
-    const meta = tournamentIndex.get(t.id);
+  const tournamentsWithDeckCounts = sortedTournaments.map(tournament => {
+    const meta = tournamentIndex.get(tournament.id);
     return {
-      ...t,
-      deckTotal: meta?.deckTotal ?? t.deckTotal ?? 0
+      ...tournament,
+      deckTotal: meta?.deckTotal ?? tournament.deckTotal ?? 0
     };
   });
 
@@ -954,18 +952,18 @@ function buildCardTrendReport(decks, tournaments, options: AnyOptions = {}) {
   const windowEnd = options.windowEnd ? new Date(options.windowEnd) : now;
   const minAppearances = Math.max(
     1,
-    Number.isFinite(options.minAppearances) ? Number(options.minAppearances) : DEFAULT_CARD_TREND_MIN_APPEARANCES
+    Number.isFinite(options.minAppearances) ? Number(options.minAppearances) : CARD_TREND_MIN_APPEARANCES
   );
   const topCount = Math.max(1, Number.isFinite(options.topCount) ? Number(options.topCount) : DEFAULT_CARD_TREND_TOP);
 
   const tournamentsMap = new Map();
   (Array.isArray(tournaments) ? tournaments : [])
-    .filter(t => t && t.id && (Number(t.players) || 0) >= MIN_TREND_PLAYERS)
-    .forEach(t => {
-      tournamentsMap.set(t.id, {
-        id: t.id,
-        date: t.date || null,
-        deckTotal: Number(t.deckTotal) || 0
+    .filter(tournament => tournament && tournament.id && (Number(tournament.players) || 0) >= MIN_TREND_PLAYERS)
+    .forEach(tournament => {
+      tournamentsMap.set(tournament.id, {
+        id: tournament.id,
+        date: tournament.date || null,
+        deckTotal: Number(tournament.deckTotal) || 0
       });
     });
 
@@ -1001,7 +999,7 @@ function buildCardTrendReport(decks, tournaments, options: AnyOptions = {}) {
   const series = [];
   cardPresence.forEach((presenceMap, key) => {
     const timeline = Array.from(tournamentsMap.values())
-      .sort((a, b) => Date.parse(a.date || 0) - Date.parse(b.date || 0))
+      .sort((first, second) => Date.parse(first.date || 0) - Date.parse(second.date || 0))
       .map(meta => {
         const present = presenceMap.get(meta.id) || 0;
         const share = meta.deckTotal ? Math.round((present / meta.deckTotal) * 10000) / 100 : 0;
@@ -1021,13 +1019,9 @@ function buildCardTrendReport(decks, tournaments, options: AnyOptions = {}) {
 
     const chunk = Math.max(1, Math.ceil(timeline.length / 3));
     const startAvg =
-      Math.round(
-        (timeline.slice(0, chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10
-      ) / 10;
+      Math.round((timeline.slice(0, chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10) / 10;
     const endAvg =
-      Math.round(
-        (timeline.slice(-chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10
-      ) / 10;
+      Math.round((timeline.slice(-chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10) / 10;
     const delta = Math.round((endAvg - startAvg) * 10) / 10;
     const latestShare = timeline.at(-1)?.share || 0;
 
@@ -1057,11 +1051,11 @@ function buildCardTrendReport(decks, tournaments, options: AnyOptions = {}) {
   const rising = [...series]
     .filter(item => item.currentShare > 0)
     .filter(item => !BASIC_ENERGY_NAMES.has(item.name))
-    .sort((a, b) => b.delta - a.delta)
+    .sort((first, second) => second.delta - first.delta)
     .slice(0, topCount);
   const falling = [...series]
     .filter(item => !BASIC_ENERGY_NAMES.has(item.name))
-    .sort((a, b) => a.delta - b.delta)
+    .sort((first, second) => first.delta - second.delta)
     .slice(0, topCount);
 
   return {
@@ -1103,23 +1097,6 @@ async function batchPutJson(env, entries, concurrency = DEFAULT_R2_CONCURRENCY) 
 
   const limit = Math.max(1, Number(concurrency) || DEFAULT_R2_CONCURRENCY);
   await runWithConcurrency(normalized, limit, async entry => putJson(env, entry.key, entry.data));
-}
-
-async function readJson(env, key) {
-  if (!env?.REPORTS?.get) {
-    return null;
-  }
-  const object = await env.REPORTS.get(key);
-  if (!object) {
-    return null;
-  }
-  try {
-    const text = await object.text();
-    return JSON.parse(text);
-  } catch (error) {
-    console.warn('Failed to parse JSON from', key, error?.message || error);
-    return null;
-  }
 }
 
 // Note: updateTournamentsList() has been removed because online tournaments
@@ -1217,12 +1194,9 @@ export async function runOnlineMetaJob(env, options: AnyOptions = {}) {
 
   const deckTotal = decks.length;
   const masterReport = generateReportFromDecks(decks, deckTotal, decks, synonymDb);
-  const { archetypeFiles, archetypeIndex, minDecks } = buildArchetypeReports(
-    decks,
-    MIN_USAGE_PERCENT,
-    synonymDb,
-    { thumbnailConfig: ARCHETYPE_THUMBNAILS }
-  );
+  const { archetypeFiles, archetypeIndex, minDecks } = buildArchetypeReports(decks, MIN_USAGE_PERCENT, synonymDb, {
+    thumbnailConfig: ARCHETYPE_THUMBNAILS
+  });
   const trendSeriesLimit = Number.isFinite(options.seriesLimit) ? Number(options.seriesLimit) : 32;
   const trendReport: AnyOptions = buildTrendReport(decks, tournaments, {
     windowStart: since,
@@ -1232,9 +1206,7 @@ export async function runOnlineMetaJob(env, options: AnyOptions = {}) {
     seriesLimit: trendSeriesLimit
   });
   const trendTournaments =
-    Array.isArray(trendReport?.tournaments) && trendReport.tournaments.length
-      ? trendReport.tournaments
-      : tournaments;
+    Array.isArray(trendReport?.tournaments) && trendReport.tournaments.length ? trendReport.tournaments : tournaments;
   const cardTrends = buildCardTrendReport(decks, trendTournaments, {
     windowStart: since,
     windowEnd: now
@@ -1251,14 +1223,14 @@ export async function runOnlineMetaJob(env, options: AnyOptions = {}) {
     tournamentCount: tournaments.length,
     archetypeMinPercent: MIN_USAGE_PERCENT,
     archetypeMinDecks: minDecks,
-    tournaments: tournaments.map(t => ({
-      id: t.id,
-      name: t.name,
-      date: t.date,
-      format: t.format,
-      platform: t.platform,
-      players: t.players,
-      organizer: t.organizer
+    tournaments: tournaments.map(tournament => ({
+      id: tournament.id,
+      name: tournament.name,
+      date: tournament.date,
+      format: tournament.format,
+      platform: tournament.platform,
+      players: tournament.players,
+      organizer: tournament.organizer
     }))
   };
 
@@ -1297,10 +1269,4 @@ export async function runOnlineMetaJob(env, options: AnyOptions = {}) {
   };
 }
 
-export {
-  fetchRecentOnlineTournaments,
-  gatherDecks,
-  buildArchetypeReports,
-  buildTrendReport,
-  buildCardTrendReport
-};
+export { fetchRecentOnlineTournaments, gatherDecks, buildArchetypeReports, buildTrendReport, buildCardTrendReport };

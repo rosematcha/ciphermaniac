@@ -7,7 +7,7 @@ import { render } from './render.js';
 import { logger } from './utils/logger.js';
 import { CONFIG } from './config.js';
 import { getCardPrice } from './api.js';
-import { normalizeSetCode, readCardType, readSelectedSets, readSelectedCardTypes } from './utils/filterState.js';
+import { normalizeSetCode, readCardType, readSelectedCardTypes, readSelectedSets } from './utils/filterState.js';
 
 export interface SortOption {
   key: 'percent-desc' | 'percent-asc' | 'alpha-asc' | 'alpha-desc' | 'price-desc' | 'price-asc';

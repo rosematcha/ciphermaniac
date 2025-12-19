@@ -1,3 +1,4 @@
+/* eslint-disable id-length, no-param-reassign */
 // Number of rows to render as 'large' rows in grid view. Edit this value to change how many rows are 'large'.
 export const NUM_LARGE_ROWS = 1;
 // Number of rows to render as 'medium' rows (after large rows)
@@ -112,13 +113,9 @@ function escapeHtml(str: string): string {
   if (!str) {
     return '';
   }
-  return String(str).replace(
-    /[&<>"]/g,
-    (ch: string) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch as keyof typeof map] as string
-  );
+  const htmlEscapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+  return String(str).replace(/[&<>"]/g, (ch: string) => htmlEscapeMap[ch as keyof typeof htmlEscapeMap] as string);
 }
-
-const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
 
 /**
  * Render summary information including deck count, card count, and row visibility
@@ -155,6 +152,7 @@ export function renderSummary(
     parts.push(`showing ${visibleRows} of ${totalRows} rows`);
   }
 
+  // eslint-disable-next-line no-param-reassign
   container.textContent = parts.join(' • ');
 }
 
@@ -250,17 +248,19 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
   const existingCardsMap = new Map<string, HTMLElement>();
   grid.querySelectorAll('.card').forEach(el => {
     const cardEl = el as HTMLElement;
-    const uid = cardEl.dataset.uid;
-    const cardId = cardEl.dataset.cardId;
-    const name = cardEl.dataset.name;
+    const { uid } = cardEl.dataset;
+    const { cardId } = cardEl.dataset;
+    const { name } = cardEl.dataset;
     const key = uid || cardId || name;
-    if (key) existingCardsMap.set(key, cardEl);
+    if (key) {
+      existingCardsMap.set(key, cardEl);
+    }
   });
 
   // Use the shared card creation function
   const makeCard = (it: any, useSm: boolean) => {
     // Try to reuse existing element
-    const uid = it.uid;
+    const { uid } = it;
     const setCode = it.set ? String(it.set).toUpperCase() : '';
     const number = it.number ? normalizeCardNumber(it.number) : '';
     const cardId = setCode && number ? `${setCode}~${number}` : null;
@@ -827,7 +827,9 @@ function setupCardImage(
   overrides: Record<string, string>,
   cardData: any
 ) {
-  if (!img) return;
+  if (!img) {
+    return;
+  }
 
   // Remove any skeleton classes and elements from the thumb container
   const thumbContainer = img.closest('.thumb');

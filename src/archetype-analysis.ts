@@ -65,10 +65,16 @@ const state = {
 function readCache(): ArchetypeSummary[] | null {
   try {
     const raw = globalThis.localStorage?.getItem(CACHE_KEY);
-    if (!raw) return null;
+    if (!raw) {
+      return null;
+    }
     const payload = JSON.parse(raw) as CachedSummaries;
-    if (!payload?.timestamp || Date.now() - payload.timestamp > CACHE_TTL_MS) return null;
-    if (!Array.isArray(payload.data)) return null;
+    if (!payload?.timestamp || Date.now() - payload.timestamp > CACHE_TTL_MS) {
+      return null;
+    }
+    if (!Array.isArray(payload.data)) {
+      return null;
+    }
     return payload.data;
   } catch {
     return null;
@@ -104,11 +110,13 @@ async function fetchSummaries(): Promise<ArchetypeSummary[]> {
   const summaries = normalized.map(normalizeSummary);
 
   // Sort by deck count (descending), then alphabetically
-  summaries.sort((a, b) => {
-    const aDeck = a.deckCount ?? 0;
-    const bDeck = b.deckCount ?? 0;
-    if (bDeck !== aDeck) return bDeck - aDeck;
-    return a.label.localeCompare(b.label);
+  summaries.sort((itemA, itemB) => {
+    const aDeck = itemA.deckCount ?? 0;
+    const bDeck = itemB.deckCount ?? 0;
+    if (bDeck !== aDeck) {
+      return bDeck - aDeck;
+    }
+    return itemA.label.localeCompare(itemB.label);
   });
 
   return summaries;
@@ -119,11 +127,17 @@ async function fetchSummaries(): Promise<ArchetypeSummary[]> {
 // ============================================================================
 
 function formatCardNumber(raw: string | number | null | undefined): string | null {
-  if (raw === undefined || raw === null) return null;
+  if (raw === undefined || raw === null) {
+    return null;
+  }
   const str = String(raw).trim();
-  if (!str) return null;
+  if (!str) {
+    return null;
+  }
   const match = str.match(/^(\d+)([A-Za-z]*)$/);
-  if (!match) return str.toUpperCase();
+  if (!match) {
+    return str.toUpperCase();
+  }
   const [, digits, suffix = ''] = match;
   return `${digits.padStart(3, '0')}${suffix.toUpperCase()}`;
 }
@@ -132,14 +146,20 @@ function buildThumbnailUrl(setCode: string, number: string): string | null {
   const set = String(setCode || '')
     .toUpperCase()
     .trim();
-  if (!set) return null;
+  if (!set) {
+    return null;
+  }
   const num = formatCardNumber(number);
-  if (!num) return null;
+  if (!num) {
+    return null;
+  }
   return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${set}/${set}_${num}_R_EN_SM.png`;
 }
 
 function getThumbnailUrls(thumbnails?: string[]): string[] {
-  if (!Array.isArray(thumbnails) || !thumbnails.length) return [];
+  if (!Array.isArray(thumbnails) || !thumbnails.length) {
+    return [];
+  }
   return thumbnails
     .slice(0, 2) // Max 2 thumbnails for split view
     .map(entry => {
@@ -151,7 +171,9 @@ function getThumbnailUrls(thumbnails?: string[]): string[] {
 
 function buildFallbackText(name: string): string {
   const parts = name.replace(/_/g, ' ').split(/\s+/u).filter(Boolean).slice(0, 3);
-  if (!parts.length) return '??';
+  if (!parts.length) {
+    return '??';
+  }
   return parts.map(word => word[0].toUpperCase()).join('');
 }
 
@@ -160,10 +182,14 @@ function buildFallbackText(name: string): string {
 // ============================================================================
 
 function createListItem(summary: ArchetypeSummary, index: number): HTMLElement | null {
-  if (!templates.listItem?.content) return null;
+  if (!templates.listItem?.content) {
+    return null;
+  }
 
   const node = templates.listItem.content.firstElementChild?.cloneNode(true) as HTMLElement | null;
-  if (!node) return null;
+  if (!node) {
+    return null;
+  }
 
   // Set link and data attributes
   const anchor = node.querySelector('.analysis-list-item__button') as HTMLAnchorElement | null;
@@ -177,7 +203,9 @@ function createListItem(summary: ArchetypeSummary, index: number): HTMLElement |
   const pctEl = node.querySelector('.analysis-list-item__percent');
   const deckEl = node.querySelector('.analysis-list-item__count');
 
-  if (nameEl) nameEl.textContent = summary.label;
+  if (nameEl) {
+    nameEl.textContent = summary.label;
+  }
   if (pctEl) {
     pctEl.textContent =
       summary.percent === null || Number.isNaN(summary.percent) ? '—' : `${(summary.percent * 100).toFixed(1)}%`;
@@ -216,16 +244,22 @@ function createListItem(summary: ArchetypeSummary, index: number): HTMLElement |
 }
 
 function setupSingleThumbnail(img: HTMLImageElement, container: HTMLElement, url: string, eager: boolean): void {
+  // eslint-disable-next-line no-param-reassign
   img.loading = eager ? 'eager' : 'lazy';
+  // eslint-disable-next-line no-param-reassign
   img.decoding = 'async';
+  // eslint-disable-next-line no-param-reassign
   img.alt = '';
 
   // Simple error handling - just show fallback on error
+  // eslint-disable-next-line no-param-reassign
   img.onerror = () => {
     container.classList.add('is-placeholder');
+    // eslint-disable-next-line no-param-reassign
     img.style.display = 'none';
   };
 
+  // eslint-disable-next-line no-param-reassign
   img.src = url;
 }
 
@@ -237,7 +271,10 @@ function setupSplitThumbnail(
   eager: boolean
 ): void {
   // Hide the base image for split view
-  if (baseImg) baseImg.style.display = 'none';
+  if (baseImg) {
+    // eslint-disable-next-line no-param-reassign
+    baseImg.style.display = 'none';
+  }
 
   container.classList.add('analysis-list-item__thumbnail--split');
 
@@ -245,7 +282,6 @@ function setupSplitThumbnail(
   const splitWrapper = document.createElement('div');
   splitWrapper.className = 'analysis-list-item__split';
 
-  let loadedCount = 0;
   let errorCount = 0;
 
   const checkComplete = () => {
@@ -302,13 +338,17 @@ function setupSplitThumbnail(
 
 function renderList(archetypes: ArchetypeSummary[]): void {
   const listEl = elements.archetypeList;
-  if (!listEl || state.rendered) return;
+  if (!listEl || state.rendered) {
+    return;
+  }
 
   // Clear any existing content
   listEl.innerHTML = '';
 
   if (archetypes.length === 0) {
-    if (elements.listEmpty) elements.listEmpty.hidden = false;
+    if (elements.listEmpty) {
+      elements.listEmpty.hidden = false;
+    }
     return;
   }
 
@@ -316,14 +356,18 @@ function renderList(archetypes: ArchetypeSummary[]): void {
   const fragment = document.createDocumentFragment();
   archetypes.forEach((summary, index) => {
     const item = createListItem(summary, index);
-    if (item) fragment.appendChild(item);
+    if (item) {
+      fragment.appendChild(item);
+    }
   });
 
   listEl.appendChild(fragment);
   state.rendered = true;
 
   // Hide empty state
-  if (elements.listEmpty) elements.listEmpty.hidden = true;
+  if (elements.listEmpty) {
+    elements.listEmpty.hidden = true;
+  }
 }
 
 function showLoading(show: boolean): void {
@@ -350,7 +394,9 @@ function showError(message: string): void {
 // ============================================================================
 
 async function prefetchArchetype(name: string): Promise<void> {
-  if (state.prefetched.has(name)) return;
+  if (state.prefetched.has(name)) {
+    return;
+  }
   try {
     const raw = await fetchArchetypeReport(ONLINE_META_TOURNAMENT, name);
     parseReport(raw);
@@ -361,7 +407,9 @@ async function prefetchArchetype(name: string): Promise<void> {
 }
 
 function schedulePrefetchBatch(): void {
-  if (!state.archetypes.length) return;
+  if (!state.archetypes.length) {
+    return;
+  }
 
   // Prefetch top archetypes
   const batch = state.archetypes.slice(0, PREFETCH_BATCH);
@@ -374,10 +422,14 @@ function schedulePrefetchBatch(): void {
 }
 
 function drainPrefetchQueue(): void {
-  if (!state.prefetchQueue.length || state.prefetchHandle !== null) return;
+  if (!state.prefetchQueue.length || state.prefetchHandle !== null) {
+    return;
+  }
 
   const next = state.prefetchQueue.shift();
-  if (!next) return;
+  if (!next) {
+    return;
+  }
 
   state.prefetchHandle = window.setTimeout(async () => {
     state.prefetchHandle = null;
@@ -388,15 +440,19 @@ function drainPrefetchQueue(): void {
 
 function setupHoverPrefetch(): void {
   const listEl = elements.archetypeList;
-  if (!listEl) return;
+  if (!listEl) {
+    return;
+  }
 
   listEl.addEventListener(
     'pointerenter',
-    e => {
-      const target = (e.target as HTMLElement)?.closest('.analysis-list-item__button') as HTMLElement | null;
-      if (!target?.dataset.archetype) return;
+    event => {
+      const target = (event.target as HTMLElement)?.closest('.analysis-list-item__button') as HTMLElement | null;
+      if (!target?.dataset.archetype) {
+        return;
+      }
 
-      const archetype = target.dataset.archetype;
+      const { archetype } = target.dataset;
 
       // Cancel any existing timer
       if (state.hoverTimer) {
@@ -417,9 +473,11 @@ function setupHoverPrefetch(): void {
 
   listEl.addEventListener(
     'pointerleave',
-    e => {
-      const target = (e.target as HTMLElement)?.closest('.analysis-list-item__button') as HTMLElement | null;
-      if (!target?.dataset.archetype) return;
+    event => {
+      const target = (event.target as HTMLElement)?.closest('.analysis-list-item__button') as HTMLElement | null;
+      if (!target?.dataset.archetype) {
+        return;
+      }
 
       if (state.hoverTimer?.target === target.dataset.archetype) {
         clearTimeout(state.hoverTimer.id);
@@ -470,7 +528,9 @@ async function initialize(): Promise<void> {
       }
     } else if (!state.rendered) {
       // No data at all
-      if (elements.listEmpty) elements.listEmpty.hidden = false;
+      if (elements.listEmpty) {
+        elements.listEmpty.hidden = false;
+      }
     }
 
     showLoading(false);
@@ -491,12 +551,20 @@ async function initialize(): Promise<void> {
 }
 
 function hasDataChanged(oldData: ArchetypeSummary[], newData: ArchetypeSummary[]): boolean {
-  if (oldData.length !== newData.length) return true;
+  if (oldData.length !== newData.length) {
+    return true;
+  }
 
   for (let i = 0; i < oldData.length; i++) {
-    if (oldData[i].name !== newData[i].name) return true;
-    if (oldData[i].deckCount !== newData[i].deckCount) return true;
-    if (oldData[i].percent !== newData[i].percent) return true;
+    if (oldData[i].name !== newData[i].name) {
+      return true;
+    }
+    if (oldData[i].deckCount !== newData[i].deckCount) {
+      return true;
+    }
+    if (oldData[i].percent !== newData[i].percent) {
+      return true;
+    }
   }
 
   return false;

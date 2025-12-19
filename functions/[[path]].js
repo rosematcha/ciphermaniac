@@ -27,7 +27,7 @@ const RESERVED_PATHS = new Set([
 
 export async function onRequest(context) {
   const url = new URL(context.request.url);
-  const pathname = url.pathname;
+  const { pathname } = url;
 
   // Clean up path
   const pathParts = pathname.split('/').filter(Boolean);
@@ -54,7 +54,7 @@ export async function onRequest(context) {
 
   // Assume it's an archetype slug
   // Route: /:slug or /:slug/subpage
-  const archetypeSlug = pathParts[0]; // Keep original case for slug? Usually we normalize or decode later.
+  const _archetypeSlug = pathParts[0]; // Keep original case for slug? Usually we normalize or decode later.
   const subpage = pathParts[1] ? pathParts[1].toLowerCase() : null;
 
   // Validate subpage if present
@@ -62,7 +62,9 @@ export async function onRequest(context) {
     // Unknown subpage, might be a 404 or a static asset that looks like an archetype?
     // Let's try to fetch it as an asset first.
     const assetResponse = await context.env.ASSETS.fetch(url);
-    if (assetResponse.ok) return assetResponse;
+    if (assetResponse.ok) {
+      return assetResponse;
+    }
 
     // If not found, maybe 404?
     // Or maybe we treat it as Home?
