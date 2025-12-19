@@ -1,12 +1,13 @@
+/* eslint-disable id-length */
 /**
  * Include-Exclude Report Generator for Online Meta
- * 
+ *
  * This module generates include-exclude analysis reports for archetypes based on
  * online tournament data. It supports:
  * - Traditional include/exclude filtering (card present/absent)
  * - Card count filtering (e.g., 2+ copies, exactly 1 copy, 3+ copies)
  * - Automatic deduplication of reports with identical card distributions
- * 
+ *
  */
 
 import { generateReportFromDecks, sanitizeForFilename } from './reportBuilder.js';
@@ -14,7 +15,6 @@ import { loadCardTypesDatabase } from './cardTypesDatabase.js';
 import { enrichDecksWithOnTheFlyFetch } from './cardTypeFetcher.js';
 
 const MIN_DECKS_FOR_ANALYSIS = 4;
-const ALWAYS_INCLUDED_THRESHOLD = 1.0; // 100% of decks must have the card
 
 // Optimization thresholds
 // Design philosophy: Keep granular filtering (1%+ cards) for comprehensive user searches,
@@ -65,7 +65,7 @@ function buildCardIdentifier(setCode, number) {
 /**
  * Extracts unique cards from archetype report data and categorizes them
  * Returns: { alwaysIncluded: [], optional: [], cardLookup: Map }
- * 
+ *
  * Note: Cards that appear in 100% of decks but with varying counts are treated
  * as "optional" for count-filtering purposes (e.g., Kirlia appearing in all decks
  * but with 1-3 copies each should still generate count-based filters)
@@ -76,12 +76,12 @@ function extractCardsFromReport(reportData, deckTotal) {
   const optional = [];
 
   const items = reportData?.items || [];
-  
+
   for (const item of items) {
     const setCode = item.set;
-    const number = item.number;
+    const { number } = item;
     const cardId = buildCardIdentifier(setCode, number);
-    
+
     if (!cardId) {
       continue;
     }
@@ -90,7 +90,7 @@ function extractCardsFromReport(reportData, deckTotal) {
     const total = Number(item.total) || deckTotal;
     const pct = total ? Math.round(((found / total) * 100 + Number.EPSILON) * 100) / 100 : 0;
     const isAlwaysIncluded = found === total;
-    
+
     // Check if card has varying counts (makes it filterable even if always present)
     const dist = item.dist || [];
     const hasVaryingCounts = dist.length > 1;
@@ -128,7 +128,7 @@ function extractCardsFromReport(reportData, deckTotal) {
  */
 function indexDeckCardPresence(decks) {
   const cardPresence = new Map(); // cardId -> Set of deckIds
-  const cardCounts = new Map();    // cardId -> Map of deckId -> count
+  const cardCounts = new Map(); // cardId -> Map of deckId -> count
   const deckById = new Map();
 
   for (const deck of decks) {
@@ -136,7 +136,7 @@ function indexDeckCardPresence(decks) {
     deckById.set(deckId, deck);
 
     const seenCards = new Map(); // cardId -> total count in this deck
-    
+
     for (const card of deck.cards || []) {
       const cardId = buildCardIdentifier(card.set, card.number);
       if (!cardId) {
@@ -167,7 +167,7 @@ function indexDeckCardPresence(decks) {
 /**
  * Generates card count filter options for a card based on its distribution
  * Returns array of count filters like: [{ operator: '>=', count: 2 }, { operator: '=', count: 1 }]
- * 
+ *
  * Optimization: Limits to most meaningful count variations to reduce combinatorial explosion
  */
 function generateCountFilters(cardInfo) {
@@ -176,9 +176,9 @@ function generateCountFilters(cardInfo) {
 
   // Collect all unique copy counts that appear in decks
   const copyCounts = dist
-    .map(d => d.copies)
-    .filter(c => c > 0)
-    .sort((a, b) => a - b);
+    .map(item => item.copies)
+    .filter(copyCount => copyCount > 0)
+    .sort((copyA, copyB) => copyA - copyB);
 
   if (copyCounts.length === 0) {
     return filters;
@@ -186,10 +186,10 @@ function generateCountFilters(cardInfo) {
 
   // Only generate filters for the most common counts (top 3)
   const topCounts = dist
-    .sort((a, b) => b.players - a.players) // Sort by popularity
+    .sort((itemA, itemB) => itemB.players - itemA.players) // Sort by popularity
     .slice(0, MAX_COUNT_VARIATIONS)
-    .map(d => d.copies)
-    .sort((a, b) => a - b);
+    .map(item => item.copies)
+    .sort((copyA, copyB) => copyA - copyB);
 
   // Generate "exactly N" filters for most popular counts only
   for (const count of topCounts) {
@@ -224,17 +224,17 @@ function applyFilters(filters, cardPresence, cardCounts, allDeckIds) {
 
   // Apply include filters (card must be present)
   for (const filter of filters.include || []) {
-    const cardId = filter.cardId;
+    const { cardId } = filter;
     const decksWithCard = cardPresence.get(cardId) || new Set();
-    
+
     if (filter.count !== undefined) {
       // Count-based include: filter by specific count or count range
       const matchingDecks = new Set();
       const cardCountMap = cardCounts.get(cardId) || new Map();
-      
+
       for (const deckId of decksWithCard) {
         const deckCount = cardCountMap.get(deckId) || 0;
-        
+
         if (filter.operator === '=') {
           if (deckCount === filter.count) {
             matchingDecks.add(deckId);
@@ -257,7 +257,7 @@ function applyFilters(filters, cardPresence, cardCounts, allDeckIds) {
           }
         }
       }
-      
+
       eligible = new Set([...eligible].filter(id => matchingDecks.has(id)));
     } else {
       // Simple presence-based include
@@ -267,7 +267,7 @@ function applyFilters(filters, cardPresence, cardCounts, allDeckIds) {
 
   // Apply exclude filters (card must be absent)
   for (const filter of filters.exclude || []) {
-    const cardId = filter.cardId;
+    const { cardId } = filter;
     const decksWithCard = cardPresence.get(cardId) || new Set();
     eligible = new Set([...eligible].filter(id => !decksWithCard.has(id)));
   }
@@ -278,7 +278,16 @@ function applyFilters(filters, cardPresence, cardCounts, allDeckIds) {
 /**
  * Builds a subset report based on filter criteria
  */
-function buildSubsetReport(filters, cardPresence, cardCounts, deckById, allDecks, cardLookup, deckTotal, archetypeName) {
+function buildSubsetReport(
+  filters,
+  cardPresence,
+  cardCounts,
+  deckById,
+  allDecks,
+  cardLookup,
+  deckTotal,
+  archetypeName
+) {
   const allDeckIds = new Set(deckById.keys());
   const eligibleDeckIds = applyFilters(filters, cardPresence, cardCounts, allDeckIds);
 
@@ -291,25 +300,27 @@ function buildSubsetReport(filters, cardPresence, cardCounts, deckById, allDecks
     return null;
   }
 
-  const subsetDecks = Array.from(eligibleDeckIds).map(id => deckById.get(id)).filter(Boolean);
+  const subsetDecks = Array.from(eligibleDeckIds)
+    .map(id => deckById.get(id))
+    .filter(Boolean);
   const report = generateReportFromDecks(subsetDecks, subsetDecks.length);
 
   // Add filter metadata
   report.filters = {
-    include: (filters.include || []).map(f => ({
-      id: f.cardId,
-      name: cardLookup.get(f.cardId)?.name,
-      set: cardLookup.get(f.cardId)?.set,
-      number: cardLookup.get(f.cardId)?.number,
-      operator: f.operator,
-      count: f.count,
-      label: f.label
+    include: (filters.include || []).map(filter => ({
+      id: filter.cardId,
+      name: cardLookup.get(filter.cardId)?.name,
+      set: cardLookup.get(filter.cardId)?.set,
+      number: cardLookup.get(filter.cardId)?.number,
+      operator: filter.operator,
+      count: filter.count,
+      label: filter.label
     })),
-    exclude: (filters.exclude || []).map(f => ({
-      id: f.cardId,
-      name: cardLookup.get(f.cardId)?.name,
-      set: cardLookup.get(f.cardId)?.set,
-      number: cardLookup.get(f.cardId)?.number
+    exclude: (filters.exclude || []).map(filter => ({
+      id: filter.cardId,
+      name: cardLookup.get(filter.cardId)?.name,
+      set: cardLookup.get(filter.cardId)?.set,
+      number: cardLookup.get(filter.cardId)?.number
     })),
     baseDeckTotal: deckTotal
   };
@@ -330,7 +341,7 @@ async function hashReportItems(items) {
   if (!cryptoImpl?.subtle) {
     throw new Error('Web Crypto API not available for hashing reports');
   }
-  
+
   const itemsStr = JSON.stringify(items, null, 0);
   const digest = await cryptoImpl.subtle.digest('SHA-256', new TextEncoder().encode(itemsStr));
   const bytes = Array.from(new Uint8Array(digest));
@@ -339,7 +350,7 @@ async function hashReportItems(items) {
 
 /**
  * Generates all filter combinations for an archetype
- * 
+ *
  * Optimization strategy:
  * 1. Only include cards used in MIN_CARD_USAGE_PERCENT% or more of decks
  * 2. Limit cross-combinations to top cards by usage (avoid N² explosion)
@@ -351,16 +362,18 @@ function generateFilterCombinations(optionalCards) {
 
   // Filter to only cards with meaningful usage (5%+)
   const meaningfulCards = optionalCards.filter(card => card.pct >= MIN_CARD_USAGE_PERCENT);
-  
-  console.log(`[IncludeExclude] Filtering ${optionalCards.length} cards to ${meaningfulCards.length} with ${MIN_CARD_USAGE_PERCENT}%+ usage`);
+
+  console.log(
+    `[IncludeExclude] Filtering ${optionalCards.length} cards to ${meaningfulCards.length} with ${MIN_CARD_USAGE_PERCENT}%+ usage`
+  );
 
   // Sort by usage for prioritization
-  const sortedCards = [...meaningfulCards].sort((a, b) => b.pct - a.pct);
+  const sortedCards = [...meaningfulCards].sort((cardA, cardB) => cardB.pct - cardA.pct);
 
   // Single card include filters with count variations
   for (const card of sortedCards) {
     const countFilters = generateCountFilters(card);
-    
+
     // Basic presence filter
     combinations.push({
       include: [{ cardId: card.id }],
@@ -370,12 +383,14 @@ function generateFilterCombinations(optionalCards) {
     // Count-based filters (limited by generateCountFilters)
     for (const countFilter of countFilters) {
       combinations.push({
-        include: [{
-          cardId: card.id,
-          operator: countFilter.operator,
-          count: countFilter.count,
-          label: countFilter.label
-        }],
+        include: [
+          {
+            cardId: card.id,
+            operator: countFilter.operator,
+            count: countFilter.count,
+            label: countFilter.label
+          }
+        ],
         exclude: []
       });
     }
@@ -392,7 +407,7 @@ function generateFilterCombinations(optionalCards) {
   // Cross include-exclude combinations - LIMITED to avoid explosion
   // Only use top N most-used cards for cross-combinations
   const topCardsForCross = sortedCards.slice(0, MAX_CROSS_FILTERS);
-  
+
   console.log(`[IncludeExclude] Generating cross-filters for top ${topCardsForCross.length} cards`);
 
   for (const includeCard of topCardsForCross) {
@@ -413,12 +428,14 @@ function generateFilterCombinations(optionalCards) {
         // Use the first filter (most common exact count)
         const topFilter = countFilters[0];
         combinations.push({
-          include: [{
-            cardId: includeCard.id,
-            operator: topFilter.operator,
-            count: topFilter.count,
-            label: topFilter.label
-          }],
+          include: [
+            {
+              cardId: includeCard.id,
+              operator: topFilter.operator,
+              count: topFilter.count,
+              label: topFilter.label
+            }
+          ],
           exclude: [{ cardId: excludeCard.id }]
         });
       }
@@ -432,15 +449,18 @@ function generateFilterCombinations(optionalCards) {
  * Builds a filter key for indexing
  */
 function buildFilterKey(filters) {
-  const includeKeys = (filters.include || []).map(f => {
-    if (f.count !== undefined) {
-      return `${f.cardId}:${f.operator}${f.count}`;
-    }
-    return f.cardId;
-  }).sort().join('+');
+  const includeKeys = (filters.include || [])
+    .map(filter => {
+      if (filter.count !== undefined) {
+        return `${filter.cardId}:${filter.operator}${filter.count}`;
+      }
+      return filter.cardId;
+    })
+    .sort()
+    .join('+');
 
   const excludeKeys = (filters.exclude || [])
-    .map(f => f.cardId)
+    .map(filter => filter.cardId)
     .sort()
     .join('+');
 
@@ -455,18 +475,14 @@ function buildFilterKey(filters) {
  * @param {object} env
  * @param {{cardTypesDb?: object, skipCardTypeEnrichment?: boolean}} [options]
  */
-export async function generateIncludeExcludeReports(
-  archetypeName,
-  archetypeDecks,
-  archetypeReport,
-  env,
-  options = {}
-) {
+export async function generateIncludeExcludeReports(archetypeName, archetypeDecks, archetypeReport, env, options = {}) {
   const deckTotal = archetypeDecks.length;
 
   // Skip if not enough decks
   if (deckTotal < MIN_DECKS_FOR_ANALYSIS) {
-    console.log(`[IncludeExclude] Skipping ${archetypeName}: only ${deckTotal} decks (minimum ${MIN_DECKS_FOR_ANALYSIS})`);
+    console.log(
+      `[IncludeExclude] Skipping ${archetypeName}: only ${deckTotal} decks (minimum ${MIN_DECKS_FOR_ANALYSIS})`
+    );
     return null;
   }
 
@@ -495,7 +511,9 @@ export async function generateIncludeExcludeReports(
     return null;
   }
 
-  console.log(`[IncludeExclude] ${archetypeName}: ${optional.length} optional cards, ${alwaysIncluded.length} always included`);
+  console.log(
+    `[IncludeExclude] ${archetypeName}: ${optional.length} optional cards, ${alwaysIncluded.length} always included`
+  );
 
   // Index deck card presence
   const { cardPresence, cardCounts, deckById } = indexDeckCardPresence(archetypeDecks);
@@ -506,7 +524,7 @@ export async function generateIncludeExcludeReports(
 
   // Build subsets and deduplicate
   const uniqueSubsets = new Map(); // contentHash -> subset info
-  const filterMap = new Map();      // filterKey -> subsetId
+  const filterMap = new Map(); // filterKey -> subsetId
   let skippedSmallSubsets = 0;
 
   for (const filters of combinations) {
@@ -556,8 +574,9 @@ export async function generateIncludeExcludeReports(
     filterMap.set(filterKey, subsetId);
   }
 
-  console.log(`[IncludeExclude] ${archetypeName}: ${uniqueSubsets.size} unique subsets from ${combinations.length} combinations (skipped ${skippedSmallSubsets} small subsets)`);
-
+  console.log(
+    `[IncludeExclude] ${archetypeName}: ${uniqueSubsets.size} unique subsets from ${combinations.length} combinations (skipped ${skippedSmallSubsets} small subsets)`
+  );
 
   // Build cards summary
   const cardsSummary = {};
@@ -576,16 +595,16 @@ export async function generateIncludeExcludeReports(
 
   // Build subsets metadata
   const subsetsMetadata = {};
-  for (const [contentHash, subset] of uniqueSubsets.entries()) {
+  for (const [_contentHash, subset] of uniqueSubsets.entries()) {
     subsetsMetadata[subset.id] = {
       deckTotal: subset.data.deckTotal,
       primaryFilters: {
         include: subset.primaryFilter.include || [],
         exclude: subset.primaryFilter.exclude || []
       },
-      alternateFilters: subset.alternateFilters.map(f => ({
-        include: f.include || [],
-        exclude: f.exclude || []
+      alternateFilters: subset.alternateFilters.map(filter => ({
+        include: filter.include || [],
+        exclude: filter.exclude || []
       }))
     };
   }
@@ -596,9 +615,12 @@ export async function generateIncludeExcludeReports(
     deckTotal,
     totalCombinations: combinations.length,
     uniqueSubsets: uniqueSubsets.size,
-    deduplicationRate: combinations.length > 0
-      ? Math.round(((combinations.length - uniqueSubsets.size) / combinations.length * 100 + Number.EPSILON) * 100) / 100
-      : 0,
+    deduplicationRate:
+      combinations.length > 0
+        ? Math.round(
+            (((combinations.length - uniqueSubsets.size) / combinations.length) * 100 + Number.EPSILON) * 100
+          ) / 100
+        : 0,
     cards: cardsSummary,
     filterMap: Object.fromEntries(filterMap),
     subsets: subsetsMetadata,
@@ -613,19 +635,13 @@ export async function generateIncludeExcludeReports(
 
 /**
  * Writes include-exclude reports to R2 storage
- * 
+ *
  * Path structure: include-exclude/{tournament_folder}/{archetype}/
  * Example: include-exclude/Online - Last 14 Days/Gardevoir/
- * 
+ *
  * This places include-exclude at the root level and allows for multiple tournaments
  */
-export async function writeIncludeExcludeReports(
-  archetypeName,
-  reports,
-  env,
-  tournamentFolder,
-  options = {}
-) {
+export async function writeIncludeExcludeReports(archetypeName, reports, env, tournamentFolder, options = {}) {
   if (!reports || !reports.index || !reports.subsets) {
     return;
   }

@@ -1,14 +1,14 @@
 // Entry for per-card page: loads meta-share over tournaments and common decks
 import './utils/buildVersion.js';
 import {
-  ONLINE_META_NAME,
   fetchArchetypeReport,
   fetchArchetypesList,
   fetchCardIndex,
   fetchReport,
   fetchTop8ArchetypesList,
   fetchTournamentsList,
-  fetchTrendReport
+  fetchTrendReport,
+  ONLINE_META_NAME
 } from './api.js';
 import { parseReport } from './parse.js';
 import { buildThumbCandidates } from './thumbs.js';
@@ -24,7 +24,7 @@ import { cleanupOrphanedProgressDisplay, createProgressIndicator, processInParal
 import { logger, setupGlobalErrorHandler } from './utils/errorHandler.js';
 
 // Import card-specific modules
-import { getBaseName, getCanonicalId, getDisplayName, parseDisplayName } from './card/identifiers.js';
+import { getBaseName, getDisplayName, parseDisplayName } from './card/identifiers.js';
 import { findCard, renderCardPrice, renderCardSets } from './card/data.js';
 import { renderChart, renderCopiesHistogram, renderEvents } from './card/charts.js';
 import { getCanonicalCard, getCardVariants, getVariantImageCandidates } from './utils/cardSynonyms.js';
@@ -292,7 +292,9 @@ function enableHeroImageModal(trigger: HTMLElement, image: HTMLImageElement, var
     return;
   }
 
+  // eslint-disable-next-line no-param-reassign
   trigger.classList.add('card-hero__trigger');
+  // eslint-disable-next-line no-param-reassign
   trigger.tabIndex = 0;
   trigger.setAttribute('role', 'button');
   trigger.setAttribute('aria-label', 'Open high-resolution card image');
@@ -346,8 +348,6 @@ const searchInGrid = document.getElementById('search-in-grid') as HTMLAnchorElem
 
 // These will be set inside initCardSearch to ensure DOM is ready
 let cardSearchInput: HTMLInputElement | null = null;
-let cardNamesList: HTMLDataListElement | null = null;
-let suggestionsBox: HTMLElement | null = null;
 
 // Link to grid prefilled with search will be updated after card resolution
 
@@ -1065,14 +1065,17 @@ async function renderMissingCardTrendingCards(container: HTMLElement | null, car
   if (!container) {
     return;
   }
+  // eslint-disable-next-line no-param-reassign
   container.innerHTML = '<p class="card-missing-empty">Loading trending cards...</p>';
   try {
     const previews = await buildMissingCardPreviewData(cardIdentifier);
     if (!previews.length) {
+      // eslint-disable-next-line no-param-reassign
       container.innerHTML =
         '<p class="card-missing-empty">Trending cards will appear once new events are processed.</p>';
       return;
     }
+    // eslint-disable-next-line no-param-reassign
     container.innerHTML = '';
     previews.forEach(preview => {
       const href = buildCardPath(preview.identifier);
@@ -1099,6 +1102,7 @@ async function renderMissingCardTrendingCards(container: HTMLElement | null, car
       cardIdentifier,
       error: error?.message || error
     });
+    // eslint-disable-next-line no-param-reassign
     container.innerHTML = '<p class="card-missing-empty">Trending cards unavailable right now.</p>';
   }
 }
@@ -1131,7 +1135,6 @@ async function renderMissingCardPage(cardIdentifier: string) {
       const baseName =
         getBaseName(displaySource) || getBaseName(canonicalIdentifier) || getBaseName(cardIdentifier) || cardIdentifier;
       const encodedSearch = encodeURIComponent(displayName);
-      const heroVariant = fallbackVariant ?? extractSetAndNumber(cardIdentifier);
       main.innerHTML = `
         <section class="card-missing">
           <div class="card-missing-card">
@@ -1437,7 +1440,7 @@ async function renderMissingCardPage(cardIdentifier: string) {
                 } else {
                   imageContainer.remove();
                 }
-              } catch (error) {
+              } catch {
                 imageContainer.remove();
               }
               return;
@@ -1579,7 +1582,7 @@ function setupImmediateUI() {
               img.src = state.candidates[state.idx++];
             }
           }
-        } catch (error) {
+        } catch {
           // Silently continue if fallback fails
         }
         return;
@@ -1705,14 +1708,14 @@ async function renderProgressively(dataPromises: any) {
   const cache = (() => {
     try {
       return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
-    } catch (error) {
+    } catch {
       return {};
     }
   })();
   const saveCache = () => {
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-    } catch (error) {
+    } catch {
       // Ignore initialization errors
     }
   };
@@ -1762,7 +1765,7 @@ async function loadAndRenderMainContent(tournaments: string[], cacheObject: any,
                 dist: entry.dist
               };
             }
-          } catch (error) {
+          } catch {
             // Ignore initialization errors
           }
         }
@@ -1858,14 +1861,14 @@ async function loadAndRenderMainContent(tournaments: string[], cacheObject: any,
   const pickCache = (() => {
     try {
       return JSON.parse(localStorage.getItem(PICK_CACHE_KEY) || '{}');
-    } catch (error) {
+    } catch {
       return {};
     }
   })();
   const savePickCache = () => {
     try {
       localStorage.setItem(PICK_CACHE_KEY, JSON.stringify(pickCache));
-    } catch (error) {
+    } catch {
       // Ignore initialization errors
     }
   };
@@ -2384,7 +2387,9 @@ async function renderAnalysisTable(tournament: string) {
     analysisTable.style.opacity = '0';
 
     // Wait for fade out, then rebuild
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => {
+      setTimeout(resolve, 100);
+    });
 
     // eslint-disable-next-line require-atomic-updates
     analysisTable.innerHTML = '';
@@ -2581,7 +2586,9 @@ function enableFloatingTableHeader(table: HTMLTableElement) {
 
   // Helper to sync column widths
   function syncWidths() {
-    if (!thead) return;
+    if (!thead) {
+      return;
+    }
     const srcCols = thead.querySelectorAll('th');
     const dstCols = (cloneThead as HTMLElement).querySelectorAll('th');
     const srcRect = table.getBoundingClientRect();
@@ -2594,7 +2601,9 @@ function enableFloatingTableHeader(table: HTMLTableElement) {
   }
 
   function onScroll() {
-    if (!thead) return;
+    if (!thead) {
+      return;
+    }
     const rect = table.getBoundingClientRect();
     const headerRect = thead.getBoundingClientRect();
     // Show floating header once the real header is scrolled above the viewport top

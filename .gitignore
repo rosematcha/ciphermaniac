@@ -22,11 +22,25 @@ Thumbs.db
 
 # Coverage
 coverage/
+.nyc_output/
+playwright-report/
+test-results/
+*.lcov
+
+# Test fixtures
+tests/__fixtures__/generated/
+tests/__fixtures__/real-tournaments/
 
 # TypeScript compiled output - ignore ALL JavaScript files in public/assets/js/
 # since they are all compiled from TypeScript sources in src/
 public/assets/js/*.js
 public/assets/js/**/*.js
+
+# Production build output (minified, stripped debug code)
+public/assets/js-prod/
+
+# HTML backups created during production deployment
+.html-backup/
 
 
 # Misc

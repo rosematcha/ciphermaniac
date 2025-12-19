@@ -90,14 +90,67 @@
               </div>
             </div>
 
-            <div class="filter-field filter-field--card-type">
-              <span class="filter-label">Card type</span>
-              <select id="card-type" title="Filter by card type" aria-label="Filter by card type">
-                <option value="__all__">All card types</option>
-                <option value="pokemon">Pokemon</option>
-                <option value="trainer">Trainer</option>
-                <option value="energy">Energy</option>
-              </select>
+            <div class="filter-field filter-dropdown filter-field--card-type" data-filter="card-types">
+              <span
+                class="filter-label"
+                id="card-type-label"
+                data-label-singular="Card type"
+                data-label-plural="Card types"
+                >Card type</span
+              >
+              <div class="filter-combobox">
+                <button
+                  id="card-type-filter-trigger"
+                  class="filter-trigger"
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-labelledby="card-type-label card-type-filter-summary"
+                >
+                  <span id="card-type-filter-summary" class="filter-summary">All card types</span>
+                </button>
+                <div
+                  id="card-type-filter-chips"
+                  class="filter-chips"
+                  role="list"
+                  aria-label="Selected card types"
+                  hidden
+                ></div>
+                <button
+                  id="card-type-filter-add"
+                  class="filter-add-btn"
+                  type="button"
+                  aria-label="Add another card type"
+                  hidden
+                >
+                  Add another
+                </button>
+              </div>
+              <div id="card-type-filter-menu" class="filter-menu" role="dialog" aria-label="Select card types" hidden>
+                <div class="filter-menu-header">
+                  <input
+                    id="card-type-filter-search"
+                    type="search"
+                    placeholder="Search card types"
+                    aria-label="Search card types"
+                  />
+                </div>
+                <div
+                  id="card-type-filter-list"
+                  class="filter-menu-list"
+                  role="listbox"
+                  aria-multiselectable="true"
+                  aria-labelledby="card-type-label"
+                >
+                  <!-- populated dynamically -->
+                </div>
+                <div class="filter-menu-actions" data-multi-only>
+                  <button type="button" class="filter-action" data-action="clear">Clear</button>
+                  <button type="button" class="filter-action filter-action-primary" data-action="close">Done</button>
+                </div>
+              </div>
+              <!-- Hidden input for state persistence -->
+              <input type="hidden" id="card-type-filter-data" value="" />
             </div>
 
             <div class="filter-field filter-field--sort">

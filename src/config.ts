@@ -133,7 +133,13 @@ export const CONFIG: Config = Object.freeze({
   // Development flags
   DEV: {
     ENABLE_LOGGING: true,
-    ENABLE_PERF_MONITORING: false,
+    // Enable performance monitoring only on localhost
+    ENABLE_PERF_MONITORING:
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname.startsWith('192.168.') ||
+        window.location.hostname.endsWith('.local')),
     MOCK_NETWORK_DELAY: false
   }
 });
