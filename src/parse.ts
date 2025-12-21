@@ -6,33 +6,9 @@
 
 import { logger } from './utils/logger.js';
 import { AppError, ErrorTypes, validateType } from './utils/errorHandler.js';
+import type { CardDistributionEntry, CardItem, ParsedReport } from './types/index.js';
 
-export interface CardDistributionEntry {
-  copies?: number;
-  players?: number;
-  percent?: number;
-}
-
-export interface CardItem {
-  rank?: number;
-  name: string;
-  uid?: string;
-  set?: string;
-  number?: string | number;
-  category?: string;
-  trainerType?: string;
-  energyType?: string;
-  aceSpec?: boolean;
-  found: number;
-  total: number;
-  pct: number;
-  dist?: CardDistributionEntry[];
-}
-
-export interface ParsedReport {
-  deckTotal: number;
-  items: CardItem[];
-}
+export type { CardDistributionEntry, CardItem, ParsedReport };
 
 /**
  * Parse and validate tournament report data

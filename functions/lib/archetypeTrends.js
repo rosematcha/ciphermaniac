@@ -1,4 +1,5 @@
 import { getCanonicalCard } from './cardSynonyms.js';
+import { canonicalizeVariant } from './cardUtils.js';
 
 // All performance tiers - matches src/data/performanceTiers.ts
 const SUCCESS_TAGS = ['all', 'winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'];
@@ -10,31 +11,6 @@ const MIN_PEAK_SHARE_PERCENT = 5.0;
 const INTERESTING_START_SHARE = 10.0;
 const INTERESTING_END_SHARE = 1.0;
 const INTERESTING_RISE_DELTA = 8.0; // Cards that rose by at least 8% are interesting
-
-/**
- * Standardizes set code and number for card ID generation.
- * @param {string} setCode - The set code
- * @param {string|number} number - The card number
- * @returns {[string|null, string|null]} Tuple of [setCode, number]
- */
-function canonicalizeVariant(setCode, number) {
-  const sc = (setCode || '').toUpperCase().trim();
-  if (!sc) {
-    return [null, null];
-  }
-  const match = /^(\d+)([A-Za-z]*)$/.exec(String(number || '').trim());
-  if (!match) {
-    return [
-      sc,
-      String(number || '')
-        .trim()
-        .toUpperCase()
-    ];
-  }
-  const [, digits, suffix = ''] = match;
-  const normalized = digits.padStart(3, '0');
-  return [sc, suffix ? `${normalized}${suffix.toUpperCase()}` : normalized];
-}
 
 /**
  * Determines if a card is "interesting" enough to include in the trend report.

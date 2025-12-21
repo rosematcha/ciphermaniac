@@ -7,6 +7,7 @@ import { normalizeCardNumber } from './card/routing.js';
 import { AppError } from './utils/errorHandler.js';
 import { logger } from './utils/logger.js';
 import { PERFORMANCE_TIER_LABELS } from './data/performanceTiers.js';
+import type { CardItem } from './types/index.js';
 
 const GRANULARITY_MIN_PERCENT = 0;
 const GRANULARITY_DEFAULT_PERCENT = 60; // Default granularity percent
@@ -47,7 +48,100 @@ const elements = {
  * @property {number|null} [count]
  */
 
-const state = {
+/**
+ * Filter row state for the multi-filter UI.
+ */
+interface FilterRow {
+  id: number;
+  cardId: string | null;
+  operator: string | null;
+  count: number | null;
+  elements: {
+    cardSelect: HTMLSelectElement;
+    operatorSelect: HTMLSelectElement;
+    countInput: HTMLInputElement;
+    removeButton: HTMLButtonElement;
+    container: HTMLElement;
+  };
+}
+
+/**
+ * Card lookup entry for filtering.
+ */
+interface CardLookupEntry {
+  id: string;
+  name: string;
+  set: string | null;
+  number: string | null;
+  found: number;
+  total: number;
+  pct: number;
+  alwaysIncluded: boolean;
+  category: string | null;
+  energyType: string | null;
+}
+
+/**
+ * Card item with usage statistics.
+ */
+interface CardItemData {
+  rank?: number;
+  name?: string;
+  uid?: string;
+  set?: string;
+  number?: string | number;
+  category?: string;
+  trainerType?: string;
+  energyType?: string;
+  aceSpec?: boolean;
+  found?: number;
+  total?: number;
+  pct?: number;
+  dist?: Array<{ copies?: number; players?: number; percent?: number }>;
+  price?: number | null;
+}
+
+/**
+ * Skeleton export entry for TCG Live format.
+ */
+interface SkeletonExportEntry {
+  name: string;
+  copies: number;
+  set: string;
+  number: string;
+  primaryCategory: string;
+}
+
+/**
+ * Application state.
+ */
+interface AppState {
+  archetypeBase: string;
+  archetypeLabel: string;
+  tournament: string;
+  tournamentDeckTotal: number;
+  archetypeDeckTotal: number;
+  overrides: Record<string, string>;
+  items: CardItemData[];
+  allCards: CardItemData[];
+  thresholdPercent: number | null;
+  successFilter: string;
+  defaultItems: CardItemData[];
+  defaultDeckTotal: number;
+  cardLookup: Map<string, CardLookupEntry>;
+  filterCache: Map<string, Promise<{ deckTotal: number; items: CardItemData[]; raw?: unknown }>>;
+  filterRows: FilterRow[];
+  nextFilterId: number;
+  skeleton: {
+    totalCards: number;
+    exportEntries: SkeletonExportEntry[];
+    plainWarnings: string[];
+    displayWarnings: string[];
+    lastExportText: string;
+  };
+}
+
+const state: AppState = {
   archetypeBase: '',
   archetypeLabel: '',
   tournament: '',
@@ -62,23 +156,22 @@ const state = {
   defaultDeckTotal: 0,
   cardLookup: new Map(),
   filterCache: new Map(),
-  filterRows: [], // Array of filter objects: { id, cardId, operator, count }
+  filterRows: [],
   nextFilterId: 1,
   skeleton: {
     totalCards: 0,
-    exportEntries: /**
-       @type {Array<{
-      name: string,
-      copies: number,
-      set: string,
-      number: string,
-      primaryCategory: string
-    }>} */ [],
-    plainWarnings: /** @type {string[]} */ [],
-    displayWarnings: /** @type {string[]} */ [],
+    exportEntries: [],
+    plainWarnings: [],
+    displayWarnings: [],
     lastExportText: ''
   }
 };
+
+/**
+ * Cache for sorted items to avoid re-sorting on every render.
+ * Uses WeakMap to automatically clean up when source arrays are GC'd.
+ */
+const sortedItemsCache = new WeakMap<CardItemData[], CardItemData[]>();
 
 const CARD_CATEGORY_SORT_PRIORITY = new Map([
   ['pokemon', 0],
@@ -369,7 +462,7 @@ function formatCardOptionLabel(card, duplicateCounts) {
   return fallbackId ? `${baseName} (${fallbackId.replace('~', ' ')})` : baseName;
 }
 
-function ensureFilterMessageElement() {
+function ensureFilterMessageElement(): HTMLElement | null {
   // Legacy function - disabled as we now use dedicated warning containers
   return null;
   // if (elements.filterMessage instanceof HTMLElement) {
@@ -683,13 +776,13 @@ function deriveCategorySlug(card) {
   return baseCategory || 'pokemon';
 }
 
-function getCategorySortWeight(category) {
+function getCategorySortWeight(category: string | undefined): number {
   if (!category) {
     return CARD_CATEGORY_SORT_PRIORITY.get('trainer') ?? 6;
   }
   const normalizedKey = category.replace(/-/g, '/');
   if (CARD_CATEGORY_SORT_PRIORITY.has(normalizedKey)) {
-    return CARD_CATEGORY_SORT_PRIORITY.get(normalizedKey);
+    return CARD_CATEGORY_SORT_PRIORITY.get(normalizedKey) ?? 6;
   }
   if (normalizedKey.startsWith('trainer')) {
     return 6;
@@ -700,7 +793,7 @@ function getCategorySortWeight(category) {
   return CARD_CATEGORY_SORT_PRIORITY.get('pokemon') ?? 0;
 }
 
-function sortItemsForDisplay(items) {
+function sortItemsForDisplayInternal(items: CardItemData[]): CardItemData[] {
   if (!Array.isArray(items)) {
     return [];
   }
@@ -747,6 +840,29 @@ function sortItemsForDisplay(items) {
     }
     return { ...entry.card, category: entry.categorySlug };
   });
+}
+
+/**
+ * Get sorted items with caching.
+ * Uses WeakMap cache to avoid re-sorting unchanged item arrays.
+ * @param items - Items to sort for display
+ * @returns Sorted items array (may be cached)
+ */
+function sortItemsForDisplay(items: CardItemData[]) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return [];
+  }
+
+  // Check cache first - use array reference as key
+  const cached = sortedItemsCache.get(items);
+  if (cached) {
+    return cached;
+  }
+
+  // Sort and cache
+  const sorted = sortItemsForDisplayInternal(items);
+  sortedItemsCache.set(items, sorted);
+  return sorted;
 }
 
 function syncGranularityOutput(threshold) {
@@ -810,12 +926,14 @@ function createFilterRow() {
   const cardSelect = document.createElement('select');
   cardSelect.className = 'filter-card-select';
   cardSelect.title = 'Select card to filter by';
+  cardSelect.setAttribute('aria-label', 'Select card to filter by');
   cardSelect.innerHTML = '<option value="">Choose card...</option>';
 
   // Operator selector (user-friendly labels, populated dynamically)
   const operatorSelect = document.createElement('select');
   operatorSelect.className = 'filter-operator-select';
   operatorSelect.title = 'Quantity condition';
+  operatorSelect.setAttribute('aria-label', 'Quantity condition');
   operatorSelect.hidden = true;
 
   // Count input
@@ -823,6 +941,7 @@ function createFilterRow() {
   countInput.type = 'number';
   countInput.className = 'filter-count-input';
   countInput.title = 'Number of copies';
+  countInput.setAttribute('aria-label', 'Number of copies');
   countInput.min = '1';
   countInput.max = String(CARD_COUNT_DEFAULT_MAX);
   countInput.step = '1';
@@ -835,7 +954,8 @@ function createFilterRow() {
   removeButton.type = 'button';
   removeButton.className = 'remove-filter-btn';
   removeButton.title = 'Remove this filter';
-  removeButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+  removeButton.setAttribute('aria-label', 'Remove this filter');
+  removeButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
 
   filterRow.appendChild(cardSelect);
   filterRow.appendChild(operatorSelect);
@@ -1133,23 +1253,25 @@ function updateAddFilterButtonVisibility() {
  * Initialize filter rows (create the first one)
  */
 function initializeFilterRows() {
-  if (!elements.filterRowsContainer || !elements.addFilterButton) {
+  const { filterRowsContainer } = elements;
+  const { addFilterButton } = elements;
+  if (!filterRowsContainer || !addFilterButton) {
     return;
   }
 
   // Clear existing rows
-  elements.filterRowsContainer.innerHTML = '';
+  filterRowsContainer.innerHTML = '';
   state.filterRows = [];
   state.nextFilterId = 1;
 
   // Create first row
   const firstRow = createFilterRow();
-  elements.filterRowsContainer.appendChild(firstRow);
+  filterRowsContainer.appendChild(firstRow);
 
   // Add button click handler
-  elements.addFilterButton.addEventListener('click', () => {
+  addFilterButton.addEventListener('click', () => {
     const newRow = createFilterRow();
-    elements.filterRowsContainer.appendChild(newRow);
+    filterRowsContainer.appendChild(newRow);
     updateAddFilterButtonVisibility();
   });
 
@@ -1317,15 +1439,15 @@ function buildSkeletonExportEntries(items) {
   );
 }
 
-function buildTcgliveExportString(entries) {
+function buildTcgliveExportString(entries: SkeletonExportEntry[]): string {
   if (!Array.isArray(entries) || entries.length === 0) {
     return '';
   }
 
-  const sections = {
-    pokemon: /** @type {typeof entries} */ [],
-    trainer: /** @type {typeof entries} */ [],
-    energy: /** @type {typeof entries} */ []
+  const sections: Record<string, SkeletonExportEntry[]> = {
+    pokemon: [],
+    trainer: [],
+    energy: []
   };
 
   entries.forEach(entry => {
@@ -1337,7 +1459,7 @@ function buildTcgliveExportString(entries) {
     sections[key].push(entry);
   });
 
-  const lines = [];
+  const lines: string[] = [];
 
   TCG_LIVE_SECTION_ORDER.forEach(({ key, label }) => {
     const cards = sections[key];
@@ -1398,8 +1520,11 @@ function syncSkeletonExportState() {
   }
 }
 
-function attemptExecCommandCopy(text) {
+function attemptExecCommandCopy(text: string): boolean {
   if (!globalThis.document || typeof globalThis.document.createElement !== 'function') {
+    return false;
+  }
+  if (!document.body) {
     return false;
   }
   try {
@@ -1409,7 +1534,9 @@ function attemptExecCommandCopy(text) {
     textarea.style.position = 'fixed';
     textarea.style.top = '-1000px';
     document.body.appendChild(textarea);
-    textarea.focus();
+    if (typeof textarea.focus === 'function') {
+      textarea.focus();
+    }
     textarea.select();
     const success = document.execCommand('copy');
     document.body.removeChild(textarea);
@@ -1598,9 +1725,19 @@ function getOperatorOptionsForCard(cardId) {
  * Update deck skeleton summary counts, warnings, and export readiness state.
  * @param {any[]} items
  */
-function updateSkeletonSummary(items) {
+function updateSkeletonSummary(items: CardItemData[]) {
   if (!elements.skeletonSummary || !elements.skeletonWarnings) {
     return;
+  }
+
+  // Ensure summary is announced to screen readers
+  if (!elements.skeletonSummary.hasAttribute('aria-live')) {
+    elements.skeletonSummary.setAttribute('aria-live', 'polite');
+  }
+  // Warnings should be announced immediately
+  if (!elements.skeletonWarnings.hasAttribute('role')) {
+    elements.skeletonWarnings.setAttribute('role', 'alert');
+    elements.skeletonWarnings.setAttribute('aria-live', 'assertive');
   }
 
   updateSkeletonExportStatus('');
@@ -1609,7 +1746,7 @@ function updateSkeletonSummary(items) {
 
   let totalCount = 0;
   let aceSpecCount = 0;
-  const aceSpecCards = [];
+  const aceSpecCards: string[] = [];
 
   exportEntries.forEach(entry => {
     totalCount += entry.copies;
@@ -1622,7 +1759,7 @@ function updateSkeletonSummary(items) {
   });
 
   // Generate warnings
-  const displayWarnings = [];
+  const displayWarnings: string[] = [];
   let hasAceSpecWarning = false;
   if (aceSpecCount > 1) {
     hasAceSpecWarning = true;
@@ -1636,15 +1773,16 @@ function updateSkeletonSummary(items) {
   }
 
   // Update warnings display with clickable Ace Spec names
+  const skeletonWarningsEl = elements.skeletonWarnings;
   if (displayWarnings.length > 0) {
     // Clear existing content
-    elements.skeletonWarnings.innerHTML = '';
+    skeletonWarningsEl.innerHTML = '';
 
     if (hasAceSpecWarning) {
       // Build the Ace Spec warning with clickable card names
       const aceSpecPrefixSpan = document.createElement('span');
       aceSpecPrefixSpan.textContent = 'Multiple Ace Spec cards detected: ';
-      elements.skeletonWarnings.appendChild(aceSpecPrefixSpan);
+      skeletonWarningsEl.appendChild(aceSpecPrefixSpan);
 
       aceSpecCards.forEach((cardName, index) => {
         const link = document.createElement('button');
@@ -1652,17 +1790,18 @@ function updateSkeletonSummary(items) {
         link.className = 'ace-spec-quick-filter';
         link.textContent = cardName;
         link.title = `Filter decks with ${cardName}`;
+        link.setAttribute('aria-label', `Add filter for ${cardName} Ace Spec card`);
         link.addEventListener('click', event => {
           event.preventDefault();
           addQuickFilterForCard(cardName);
         });
-        elements.skeletonWarnings.appendChild(link);
+        skeletonWarningsEl.appendChild(link);
 
         // Add separator between card names
         if (index < aceSpecCards.length - 1) {
           const separator = document.createElement('span');
           separator.textContent = ', ';
-          elements.skeletonWarnings.appendChild(separator);
+          skeletonWarningsEl.appendChild(separator);
         }
       });
 
@@ -1670,23 +1809,23 @@ function updateSkeletonSummary(items) {
       if (displayWarnings.length > 1) {
         const bulletSeparator = document.createElement('span');
         bulletSeparator.textContent = ' \u2022 ';
-        elements.skeletonWarnings.appendChild(bulletSeparator);
+        skeletonWarningsEl.appendChild(bulletSeparator);
 
         // Add remaining warnings as plain text
         const otherWarnings = displayWarnings.slice(1).join(' \u2022 ');
         const otherWarningsSpan = document.createElement('span');
         otherWarningsSpan.textContent = otherWarnings;
-        elements.skeletonWarnings.appendChild(otherWarningsSpan);
+        skeletonWarningsEl.appendChild(otherWarningsSpan);
       }
     } else {
       // No Ace Spec warning, just plain text
-      elements.skeletonWarnings.textContent = displayWarnings.join(' \u2022 ');
+      skeletonWarningsEl.textContent = displayWarnings.join(' \u2022 ');
     }
 
-    elements.skeletonWarnings.hidden = false;
+    skeletonWarningsEl.hidden = false;
   } else {
-    elements.skeletonWarnings.innerHTML = '';
-    elements.skeletonWarnings.hidden = true;
+    skeletonWarningsEl.innerHTML = '';
+    skeletonWarningsEl.hidden = true;
   }
 
   // Construct detailed summary message
@@ -1712,7 +1851,7 @@ function updateSkeletonSummary(items) {
   let message = `${deckCount} ${deckLabel} and ${totalCount} ${cardLabel} from ${finishLabel} ${archetypeName} decks`;
 
   // Append active filters description
-  const activeFilters = state.filterRows.filter(r => r.cardId);
+  const activeFilters = state.filterRows.filter((r): r is FilterRow & { cardId: string } => r.cardId !== null);
   if (activeFilters.length > 0) {
     const filterDescriptions = activeFilters.map(filter => {
       const cardName = state.cardLookup.get(filter.cardId)?.name || 'Unknown Card';
@@ -1791,7 +1930,7 @@ function renderCardsWithThreshold(threshold: number) {
       grid._visibleRows = 24;
     }
 
-    render(sortedVisibleItems, state.overrides, RENDER_COMPACT_OPTIONS as any);
+    render(sortedVisibleItems as CardItem[], state.overrides, RENDER_COMPACT_OPTIONS);
     lastRenderedThreshold = currentThreshold;
 
     syncGranularityOutput(currentThreshold);
@@ -1813,7 +1952,7 @@ function renderCards() {
   if (grid) {
     grid._visibleRows = 24;
   }
-  render(sortedVisibleItems, state.overrides, RENDER_COMPACT_OPTIONS as any);
+  render(sortedVisibleItems as CardItem[], state.overrides, RENDER_COMPACT_OPTIONS);
   lastRenderedThreshold = threshold;
   syncGranularityOutput(threshold);
   updateSkeletonSummary(sortedVisibleItems);
@@ -1821,11 +1960,27 @@ function renderCards() {
 }
 
 /**
- * Load filtered card data using client-side filtering.
- * @param {FilterDescriptor[]} filters
- * @returns {Promise<{deckTotal: number, items: any[], raw?: any}>}
+ * Filter descriptor for card filtering.
  */
-function loadFilterCombination(filters) {
+interface FilterDescriptor {
+  cardId: string;
+  operator: string | null;
+  count: number | null;
+}
+
+/**
+ * Filter result from loadFilterCombination.
+ */
+interface FilterResult {
+  deckTotal: number;
+  items: CardItemData[];
+  raw?: unknown;
+}
+
+/**
+ * Load filtered card data using client-side filtering.
+ */
+function loadFilterCombination(filters: FilterDescriptor[]): Promise<FilterResult> {
   const key = getFilterKey(filters, state.successFilter);
   logger.info('loadFilterCombination called', {
     filterCount: filters?.length,
@@ -1834,9 +1989,10 @@ function loadFilterCombination(filters) {
     hasCached: state.filterCache.has(key)
   });
 
-  if (state.filterCache.has(key)) {
+  const cached = state.filterCache.get(key);
+  if (cached) {
     logger.debug('Using cached filter result', { key });
-    return state.filterCache.get(key);
+    return cached as Promise<FilterResult>;
   }
 
   const promise = (async () => {
@@ -1956,7 +2112,7 @@ async function applyFilters() {
 
   // Get all active filters (rows with a card selected)
   const activeFilters = state.filterRows
-    .filter(row => row.cardId)
+    .filter((row): row is FilterRow & { cardId: string } => row.cardId !== null)
     .map(row => ({
       cardId: row.cardId,
       operator: row.operator || null,
@@ -1994,6 +2150,10 @@ async function applyFilters() {
 
   try {
     const result = await loadFilterCombination(activeFilters);
+    if (!result) {
+      logger.warn('Filter combination returned undefined');
+      return;
+    }
 
     logger.debug('Filter result', { deckTotal: result.deckTotal, itemsCount: result.items.length });
 
@@ -2039,7 +2199,8 @@ async function applyFilters() {
     }
 
     // Check if this is a client-side filtering failure
-    if (error.message && error.message.includes('timed out')) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage && errorMessage.includes('timed out')) {
       updateFilterMessage(`Unable to load deck data for filtering. Request timed out.`, 'warning');
       // eslint-disable-next-line require-atomic-updates -- Selection validated above
       Object.assign(state, {
@@ -2209,7 +2370,7 @@ async function initialize() {
     state.tournament = onlineMeta;
 
     const [overrides, tournamentReport, archetypeRaw] = await Promise.all([
-      Promise.resolve({}),
+      Promise.resolve<Record<string, string>>({}),
       fetchReport(state.tournament),
       fetchArchetypeReport(state.tournament, state.archetypeBase)
     ]);
@@ -2294,6 +2455,9 @@ function setupControlsToggle() {
   if (!toggleBtn || !body) {
     return;
   }
+
+  // Associate toggle with controlled content for screen readers
+  toggleBtn.setAttribute('aria-controls', 'controls-body');
 
   toggleBtn.addEventListener('click', () => {
     const isExpanded = toggleBtn.getAttribute('aria-expanded') === 'true';

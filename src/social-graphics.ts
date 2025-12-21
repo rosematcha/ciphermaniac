@@ -1,6 +1,7 @@
 /* eslint-disable no-new */
 import { fetchReportResource, fetchTournamentsList } from './api.js';
 import { buildThumbCandidates } from './thumbs.js';
+import { logger } from './utils/logger.js';
 
 class SocialGraphicsGenerator {
   tournaments: any[];
@@ -42,7 +43,7 @@ class SocialGraphicsGenerator {
       await this.loadConsistentLeaders();
       this.setupEventListeners();
     } catch (error) {
-      console.error('Failed to initialize social graphics generator:', error);
+      logger.error('Failed to initialize social graphics generator:', error);
     }
   }
 
@@ -58,7 +59,7 @@ class SocialGraphicsGenerator {
         .sort((first, second) => second.folder.localeCompare(first.folder)); // Sort by date desc
       this.populateTournamentSelect();
     } catch (error) {
-      console.error('Failed to load tournaments:', error);
+      logger.error('Failed to load tournaments:', error);
       this.showError('Failed to load tournament list');
     }
   }
@@ -104,7 +105,7 @@ class SocialGraphicsGenerator {
         });
       }
     } catch (error) {
-      console.error('Failed to load consistent leaders:', error);
+      logger.error('Failed to load consistent leaders:', error);
       this.showError('Failed to load consistent leaders data');
     }
   }
@@ -176,8 +177,8 @@ class SocialGraphicsGenerator {
 
       await this.renderGraphics();
     } catch (error) {
-      console.error('Failed to generate graphics:', error);
-      this.showError(`Failed to load tournament data: ${error.message}`);
+      logger.error('Failed to generate graphics:', error);
+      this.showError(`Failed to load tournament data: ${(error as Error).message}`);
     }
   }
 
@@ -432,7 +433,7 @@ class SocialGraphicsGenerator {
         await new Promise((resolve, reject) => {
           img.onload = resolve;
           img.onerror = error => {
-            console.error(`Failed to load blob image for ${card.name}:`, error);
+            logger.error(`Failed to load blob image for ${card.name}:`, error);
             reject(error);
           };
           img.src = imagePath;
@@ -440,7 +441,7 @@ class SocialGraphicsGenerator {
 
         await this.applyCropping(img, card, cardSize);
       } catch (error) {
-        console.error(`Image load failed for ${card.name}:`, error);
+        logger.error(`Image load failed for ${card.name}:`, error);
         // Fall through to show placeholder
         img.style.backgroundColor = '#ddd';
         img.style.display = 'flex';
@@ -456,7 +457,7 @@ class SocialGraphicsGenerator {
       img.style.justifyContent = 'center';
       img.style.color = '#666';
       img.innerHTML = 'No Image';
-      console.warn(`No image found for ${card.name} (${card.set} ${card.number})`);
+      logger.warn(`No image found for ${card.name} (${card.set} ${card.number})`);
     }
 
     imageContainer.appendChild(img);
@@ -532,7 +533,7 @@ class SocialGraphicsGenerator {
       }
     }
 
-    console.warn(
+    logger.warn(
       `Failed to load thumbnail for ${card.name} (${card.set} ${card.number}). Tried ${candidates.length} candidates.`
     );
     return null;
@@ -564,7 +565,7 @@ class SocialGraphicsGenerator {
     }
 
     try {
-      console.log(`Fetching image blob from: ${url}`);
+      logger.debug(`Fetching image blob from: ${url}`);
 
       // Determine if this is an external URL
       const isExternal = url.startsWith('http://') || url.startsWith('https://');
@@ -577,20 +578,20 @@ class SocialGraphicsGenerator {
       // For no-cors mode, we can't check response.ok or get blob type
       // Just try to create the blob
       const blob = await response.blob();
-      console.log(`Blob created for ${url}:`, blob.type || 'opaque', blob.size, 'bytes');
+      logger.debug(`Blob created for ${url}: ${blob.type || 'opaque'} ${blob.size} bytes`);
 
       // Skip type validation for opaque responses (no-cors)
       if (!isExternal && blob.type && !blob.type.startsWith('image/')) {
-        console.warn(`Invalid blob type for ${url}: ${blob.type}`);
+        logger.warn(`Invalid blob type for ${url}: ${blob.type}`);
         return null;
       }
 
       const objectUrl = URL.createObjectURL(blob);
-      console.log(`Object URL created: ${objectUrl}`);
+      logger.debug(`Object URL created: ${objectUrl}`);
       this.imageBlobCache.set(url, objectUrl);
       return objectUrl;
     } catch (error) {
-      console.warn(`Failed to download image blob from ${url}:`, error);
+      logger.warn(`Failed to download image blob from ${url}:`, error);
       return null;
     }
   }
@@ -687,7 +688,7 @@ class SocialGraphicsGenerator {
             img.src = canvas.toDataURL();
           }
         } catch (error) {
-          console.warn(`Failed to crop image for ${card.name}:`, error);
+          logger.warn(`Failed to crop image for ${card.name}:`, error);
         }
         resolve(undefined);
       };
@@ -697,7 +698,7 @@ class SocialGraphicsGenerator {
 
       // eslint-disable-next-line no-param-reassign
       img.onerror = () => {
-        console.warn(`Failed to load image for ${card.name}`);
+        logger.warn(`Failed to load image for ${card.name}`);
         resolve(undefined);
       };
 
@@ -877,7 +878,7 @@ class SocialGraphicsGenerator {
 
       link.click();
     } catch (error) {
-      console.error('Export failed:', error);
+      logger.error('Export failed:', error);
       this.showError('Export failed. Please try again.');
     } finally {
       this.cleanupImageBlobs();
@@ -893,7 +894,7 @@ class SocialGraphicsGenerator {
       try {
         URL.revokeObjectURL(objectUrl);
       } catch (error) {
-        console.warn('Failed to revoke object URL:', error);
+        logger.warn('Failed to revoke object URL:', error);
       }
     });
 

@@ -30,3 +30,39 @@ binding = "REPORTS"
 
 # Environment variables (set these in Cloudflare dashboard)
 [env.production.vars]
+
+# =============================================================================
+# Staging Environment Configuration
+# =============================================================================
+# This environment mirrors production but uses separate resources for testing.
+#
+# To deploy to staging:
+#   npx wrangler pages deploy --env staging
+#
+# Required secrets (set via Cloudflare dashboard or wrangler secret):
+#   - POKEMON_TCG_API_KEY: API key for Pokemon TCG data
+#   - (Add other secrets your app requires)
+#
+# Before first deployment, create the staging KV namespace and R2 bucket:
+#   npx wrangler kv:namespace create PRICE_DATA --env staging
+#   npx wrangler r2 bucket create ciphermaniac-reports-staging
+# =============================================================================
+
+[env.staging]
+name = "ciphermaniac-staging"
+
+# KV namespace binding for staging
+# Replace with actual ID after running: npx wrangler kv:namespace create PRICE_DATA --env staging
+[[env.staging.kv_namespaces]]
+binding = "PRICE_DATA"
+id = "staging-price-data-kv-id"
+
+# R2 bucket binding for staging
+[[env.staging.r2_buckets]]
+bucket_name = "ciphermaniac-reports-staging"
+binding = "REPORTS"
+
+# Staging environment variables
+[env.staging.vars]
+ENVIRONMENT = "staging"
+

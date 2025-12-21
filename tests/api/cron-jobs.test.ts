@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { restoreFetch } from '../__utils__/test-helpers';
 import * as onlineMeta from '../../functions/lib/onlineMeta.js';
 
+// Fixed test date for deterministic tests
+const FIXED_TEST_DATE = '2025-01-15T12:00:00.000Z';
+
 // We'll mock external dependencies: fetchLimitlessJson, REPORTS (R2), KV stores, and helper functions
 /* eslint-disable no-import-assign */
 
@@ -30,15 +33,29 @@ test('Cron job - successful execution writes reports to R2 and updates KV', asyn
     }
   };
 
+  // Use current time for deterministic tests
+  const now = new Date();
+  const recentDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000); // 5 days ago
+  const recentDateStr = recentDate.toISOString();
+
   // Mock fetchRecentOnlineTournaments to return a simple tournament
   const tournaments = [
-    { id: 't1', name: 'T1', date: new Date().toISOString(), format: 'STANDARD', platform: 'Online', players: 8 }
+    { id: 't1', name: 'T1', date: recentDateStr, format: 'STANDARD', platform: 'Online', players: 8 }
   ];
 
-  // Mock fetchJson to handle both tournament list and standings requests
+  // Mock fetchJson to handle tournament list, details, and standings requests
   const mockFetchJson = async (path: string) => {
     if (path === '/tournaments') {
       return tournaments;
+    }
+    if (path.includes('/details')) {
+      // Return details indicating this is an online tournament with decklists
+      return {
+        decklists: true,
+        isOnline: true,
+        format: 'STANDARD',
+        platform: 'Online'
+      };
     }
     if (path.includes('/standings')) {
       // Return standings with a valid decklist (must be sections: pokemon, trainer, energy)
@@ -71,7 +88,7 @@ test('Cron job - successful execution writes reports to R2 and updates KV', asyn
 
   // Run job with mocked fetchJson
   const result = await onlineMeta.runOnlineMetaJob(env, {
-    now: new Date().toISOString(),
+    now: now.toISOString(),
     fetchJson: mockFetchJson
   });
   assert.strictEqual(result.success, true);
@@ -117,7 +134,7 @@ test('Cron job - handles partial failures and logs errors without crashing', asy
   let threw = false;
   try {
     result = await onlineMeta.runOnlineMetaJob(env, {
-      now: new Date().toISOString(),
+      now: FIXED_TEST_DATE,
       fetchJson: mockFetchJson
     });
   } catch {

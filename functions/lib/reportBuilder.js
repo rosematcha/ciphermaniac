@@ -1,6 +1,5 @@
 import { getCanonicalCard } from './cardSynonyms.js';
-
-const INVALID_PATH_CHARS = /[<>:"/\\|?*]/g;
+import { canonicalizeVariant, sanitizeForFilename, sanitizeForPath } from './cardUtils.js';
 
 function composeCategoryPath(category, trainerType, energyType, options = {}) {
   const base = (category || '').toLowerCase();
@@ -26,56 +25,12 @@ function composeCategoryPath(category, trainerType, energyType, options = {}) {
   return parts.join('/');
 }
 
-function sanitizeForPath(text) {
-  const value = typeof text === 'string' ? text : String(text || '');
-  // Remove null bytes first
-  let sanitized = value.replace(/\0/g, '');
-  // Remove path traversal sequences
-  sanitized = sanitized.replace(/\.\./g, '');
-  // Remove invalid path characters including path separators
-  sanitized = sanitized.replace(INVALID_PATH_CHARS, '').trim();
-  return sanitized;
-}
-
-function sanitizeForFilename(text) {
-  return sanitizeForPath((text || '').toString().replace(/ /g, '_'));
-}
-
 function normalizeArchetypeName(name) {
   const cleaned = (name || '').replace(/_/g, ' ').trim();
   if (!cleaned) {
     return 'unknown';
   }
   return cleaned.replace(/\s+/g, ' ').toLowerCase();
-}
-
-function normalizeCardNumber(value) {
-  if (value === undefined || value === null) {
-    return '';
-  }
-  const raw = String(value).trim();
-  if (!raw) {
-    return '';
-  }
-  const match = /^(\d+)([A-Za-z]*)$/.exec(raw);
-  if (!match) {
-    return raw.toUpperCase();
-  }
-  const [, digits, suffix = ''] = match;
-  const normalized = digits.padStart(3, '0');
-  return suffix ? `${normalized}${suffix.toUpperCase()}` : normalized;
-}
-
-function canonicalizeVariant(setCode, number) {
-  const sc = (setCode || '').toString().toUpperCase().trim();
-  if (!sc) {
-    return [null, null];
-  }
-  const normalizedNumber = normalizeCardNumber(number);
-  if (!normalizedNumber) {
-    return [sc, null];
-  }
-  return [sc, normalizedNumber];
 }
 
 function createDistribution(counts, found) {

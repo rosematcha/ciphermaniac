@@ -119,6 +119,53 @@ body.has-footer::after {
 /* ==========================================================================
    Base Styles
    ========================================================================== */
+
+/* Accessibility utilities */
+.visually-hidden,
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Skip link for keyboard navigation */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--accent);
+  color: var(--bg);
+  padding: 8px 16px;
+  z-index: 10000;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 0 0 var(--border-radius) 0;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Focus visible styles for better keyboard navigation */
+:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+
+/* Remove default focus outline when using mouse */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 *,
 *::before,
 *::after {
@@ -7763,4 +7810,36 @@ tr:hover td {
 .trend-card__header h3 a:hover {
   color: var(--accent-2);
   text-decoration: underline;
+}
+
+/* ==========================================================================
+   Reduced Motion Preference
+   Respect users who prefer reduced motion for accessibility
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Disable skeleton loading animation */
+  .skeleton-loading > .skeleton-text,
+  .skeleton-loading > .skeleton-image,
+  .skeleton-loading > .skeleton-chart,
+  .skeleton-loading > .skeleton-histogram,
+  .showing-skeleton > *,
+  .skeleton-card {
+    animation: none;
+  }
+
+  /* Disable hover transforms */
+  .movers-list li:hover,
+  .grid-card:hover,
+  .trend-card:hover {
+    transform: none;
+  }
 }

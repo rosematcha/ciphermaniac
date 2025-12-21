@@ -5,6 +5,10 @@ import fs from 'fs/promises';
 import { RealDataFetcher } from '../__utils__/real-data-fetcher';
 import { LocalTestStorage } from '../__mocks__/cloudflare/local-storage';
 
+// Fixed test dates for deterministic tests
+const FIXED_TEST_DATE = '2025-01-15T12:00:00.000Z';
+const FIXED_PROCESSED_DATE = '2025-01-15T14:30:00.000Z';
+
 // NOTE: processTournamentDecklists and generateArchetypeReports are not exported from the main modules
 // These tests are scaffolds for future API development
 const processTournamentDecklists = null;
@@ -40,7 +44,7 @@ test(
       // If network is unavailable, use a minimal local fixture
       return {
         id: tournamentId,
-        date: new Date().toISOString(),
+        date: FIXED_TEST_DATE,
         players: 32,
         decks: [
           { id: 'd1', list: 'Pikachu VMAX x4\nPikachu x4', player: 'Alice' },
@@ -110,7 +114,7 @@ test(
 
       // Test KV cache updates simulated via LocalTestStorage put/get
       const kvKey = `kv/tournament-${tournamentId}-processed`;
-      await storage.put(kvKey, { processedAt: new Date().toISOString() });
+      await storage.put(kvKey, { processedAt: FIXED_PROCESSED_DATE });
       const kvValue = (await storage.get(kvKey)) as any;
       assert.ok(kvValue && kvValue.processedAt, 'KV cache should be updated with processedAt timestamp');
 

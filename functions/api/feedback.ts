@@ -3,8 +3,74 @@
  * Processes feedback and sends emails via Resend
  */
 
+import { jsonError, jsonSuccess } from '../lib/responses.js';
+
 // Maximum allowed payload size (1MB)
 const MAX_PAYLOAD_SIZE = 1024 * 1024;
+
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const RATE_LIMIT_MAX_REQUESTS = 5;
+
+// In-memory rate limit store (acceptable for edge functions)
+// Map<IP, { count: number, windowStart: number }>
+const rateLimitStore = new Map<string, { count: number; windowStart: number }>();
+
+/**
+ * Reset rate limit store - exposed for testing only
+ * @internal
+ */
+export function _resetRateLimitStore(): void {
+  rateLimitStore.clear();
+}
+
+/**
+ * Clean up expired rate limit entries to prevent memory leaks
+ */
+function cleanupRateLimitStore(): void {
+  const now = Date.now();
+  for (const [ip, data] of rateLimitStore.entries()) {
+    if (now - data.windowStart > RATE_LIMIT_WINDOW_MS) {
+      rateLimitStore.delete(ip);
+    }
+  }
+}
+
+/**
+ * Check if an IP has exceeded the rate limit
+ * Returns { allowed: boolean, retryAfter?: number }
+ */
+function checkRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now();
+
+  // Periodic cleanup (run on ~1% of requests to avoid overhead)
+  if (Math.random() < 0.01) {
+    cleanupRateLimitStore();
+  }
+
+  const existing = rateLimitStore.get(ip);
+
+  if (!existing) {
+    rateLimitStore.set(ip, { count: 1, windowStart: now });
+    return { allowed: true };
+  }
+
+  // Check if window has expired
+  if (now - existing.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimitStore.set(ip, { count: 1, windowStart: now });
+    return { allowed: true };
+  }
+
+  // Within window - check count
+  if (existing.count >= RATE_LIMIT_MAX_REQUESTS) {
+    const retryAfter = Math.ceil((existing.windowStart + RATE_LIMIT_WINDOW_MS - now) / 1000);
+    return { allowed: false, retryAfter };
+  }
+
+  // Increment count
+  existing.count++;
+  return { allowed: true };
+}
 
 /**
  * Sanitize text to prevent XSS and remove dangerous characters
@@ -61,7 +127,7 @@ interface RequestContext {
   env: Env;
 }
 
-const JSON_HEADERS = {
+const _JSON_HEADERS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*'
 } as const;
@@ -76,22 +142,27 @@ function isValidFeedbackData(data: unknown): data is FeedbackData {
 
 export async function onRequestPost({ request, env }: RequestContext): Promise<Response> {
   try {
+    // Rate limiting check using Cloudflare's CF-Connecting-IP header
+    const clientIp = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+    const rateLimitResult = checkRateLimit(clientIp);
+
+    if (!rateLimitResult.allowed) {
+      return jsonError('Too many requests. Please try again later.', 429, {
+        'Access-Control-Allow-Origin': '*',
+        'Retry-After': String(rateLimitResult.retryAfter || 3600)
+      });
+    }
+
     // Check content length header first to reject oversized payloads early
     const contentLength = request.headers.get('content-length');
     if (contentLength && parseInt(contentLength, 10) > MAX_PAYLOAD_SIZE) {
-      return new Response(JSON.stringify({ error: 'Payload too large' }), {
-        status: 413,
-        headers: JSON_HEADERS
-      });
+      return jsonError('Payload too large', 413, { 'Access-Control-Allow-Origin': '*' });
     }
 
     // Also check actual body size by reading as text first
     const bodyText = await request.text().catch(() => '');
     if (bodyText.length > MAX_PAYLOAD_SIZE) {
-      return new Response(JSON.stringify({ error: 'Payload too large' }), {
-        status: 413,
-        headers: JSON_HEADERS
-      });
+      return jsonError('Payload too large', 413, { 'Access-Control-Allow-Origin': '*' });
     }
 
     let parsedBody: unknown = null;
@@ -101,10 +172,7 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
       parsedBody = null;
     }
     if (!isValidFeedbackData(parsedBody)) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
-        status: 400,
-        headers: JSON_HEADERS
-      });
+      return jsonError('Missing required fields', 400, { 'Access-Control-Allow-Origin': '*' });
     }
     const feedbackData = parsedBody;
 
@@ -118,17 +186,11 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
       throw new Error(`Resend API error: ${resendResponse.status} - ${errorText}`);
     }
 
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: JSON_HEADERS
-    });
+    return jsonSuccess({ success: true });
   } catch (error) {
     console.error('Feedback submission error:', error);
     // Never expose internal error messages which might contain API keys or secrets
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: JSON_HEADERS
-    });
+    return jsonError('Internal server error', 500, { 'Access-Control-Allow-Origin': '*' });
   }
 }
 

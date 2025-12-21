@@ -13,6 +13,8 @@ import { parallelImageLoader } from './utils/parallelImageLoader.js';
 import { setProperties as _setProperties, createElement, setStyles } from './utils/dom.js';
 import { CONFIG } from './config.js';
 import { perf } from './utils/performance.js';
+import { escapeHtml } from './utils/html.js';
+import type { CardItem } from './types/index.js';
 // Modal removed: navigate to card page instead
 
 const USD_FORMATTER = new Intl.NumberFormat('en-US', {
@@ -154,7 +156,9 @@ function ensureGridTooltip(): HTMLElement {
   }
   const tooltip = document.createElement('div');
   tooltip.className = 'graph-tooltip';
-  tooltip.setAttribute('role', 'status');
+  tooltip.setAttribute('role', 'tooltip');
+  tooltip.setAttribute('aria-live', 'polite');
+  tooltip.id = 'grid-tooltip';
   tooltip.style.position = 'fixed';
   tooltip.style.pointerEvents = 'none';
   tooltip.style.zIndex = '9999';
@@ -187,13 +191,6 @@ function hideGridTooltip() {
   if (__gridGraphTooltip) {
     __gridGraphTooltip.style.display = 'none';
   }
-}
-function escapeHtml(str: string): string {
-  if (!str) {
-    return '';
-  }
-  const htmlEscapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
-  return String(str).replace(/[&<>"]/g, (ch: string) => htmlEscapeMap[ch as keyof typeof htmlEscapeMap] as string);
 }
 
 /**
@@ -255,12 +252,12 @@ export function updateSummaryWithRowCounts(deckTotal: number, cardCount: number)
 }
 
 /**
- *
- * @param items
- * @param overrides
- * @param options
+ * Render card items to the grid
+ * @param items - Array of card items to render
+ * @param overrides - Thumbnail override mappings
+ * @param options - Render options
  */
-export function render(items: any[], overrides: Record<string, string> = {}, options: RenderOptions = {}) {
+export function render(items: CardItem[], overrides: Record<string, string> = {}, options: RenderOptions = {}) {
   perf.start('render');
   perf.start('render:setup');
   const grid = getGridElement();
@@ -348,7 +345,7 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
   perf.end('render:dom-reuse');
 
   // Use the shared card creation function
-  const makeCard = (it: any, useSm: boolean) => {
+  const makeCard = (it: CardItem, useSm: boolean): HTMLElement => {
     // Try to reuse existing element
     const { uid } = it;
     const setCode = it.set ? String(it.set).toUpperCase() : '';
@@ -368,10 +365,11 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
       // Remove entering class if present
       cardEl.classList.remove('card-entering');
       // Mark as reused so we know not to re-parent it unnecessarily
-      (cardEl as any)._reused = true;
+      // Note: _reused is a transient property used only within render() to track DOM reuse
+      cardEl.dataset.reused = 'true';
     } else {
       cardEl = makeCardElement(it, useSm, overrides, { showPrice }, previousCardIds);
-      (cardEl as any)._reused = false;
+      cardEl.dataset.reused = 'false';
     }
 
     return cardEl;
@@ -573,6 +571,7 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
       remainingRows <= CONFIG.UI.ROWS_PER_LOAD
         ? `Load ${remainingRows} more row${remainingRows === 1 ? '' : 's'}...`
         : `Load more (${nextBatchSize} of ${remainingRows} rows)...`;
+    moreBtn.setAttribute('aria-label', `Load ${nextBatchSize} more rows. ${remainingRows} rows remaining.`);
 
     moreBtn.addEventListener('click', () => {
       // Load the next batch of rows incrementally
@@ -693,7 +692,7 @@ export function render(items: any[], overrides: Record<string, string> = {}, opt
 
 // Expand grid by adding remaining rows without touching existing cards
 function expandGridRows(
-  items: any[],
+  items: CardItem[],
   overrides: Record<string, string>,
   targetTotalRows: number,
   options: RenderOptions = {}
@@ -869,6 +868,7 @@ function expandGridRows(
       remainingRows <= CONFIG.UI.ROWS_PER_LOAD
         ? `Load ${remainingRows} more row${remainingRows === 1 ? '' : 's'}...`
         : `Load more (${nextBatchSize} of ${remainingRows} rows)...`;
+    moreBtn.setAttribute('aria-label', `Load ${nextBatchSize} more rows. ${remainingRows} rows remaining.`);
 
     // Remove old event listeners by cloning the button
     const newBtn = moreBtn.cloneNode(true) as HTMLButtonElement;
@@ -922,7 +922,7 @@ function setupCardImage(
   cardName: string,
   useSm: boolean,
   overrides: Record<string, string>,
-  cardData: any
+  cardData: CardItem
 ) {
   if (!img) {
     return;
@@ -960,13 +960,31 @@ function setupCardImage(
 
 /**
  * Preload visible images using parallel loading for even faster performance
- * @param items
- * @param overrides
+ * @param items - Array of card items to preload images for
+ * @param overrides - Thumbnail override mappings
  */
-function preloadVisibleImagesParallel(items: any[], overrides: Record<string, string> = {}) {
+function preloadVisibleImagesParallel(items: CardItem[], overrides: Record<string, string> = {}): void {
   const grid = getGridElement();
   if (!grid || !Array.isArray(items)) {
     return;
+  }
+
+  // Build lookup maps once - O(n) instead of O(n²) with repeated .find() calls
+  const itemsByUid = new Map<string, CardItem>();
+  const itemsBySetNumber = new Map<string, CardItem>();
+  const itemsByName = new Map<string, CardItem>();
+
+  for (const item of items) {
+    if (item.uid) {
+      itemsByUid.set(String(item.uid).toLowerCase(), item);
+    }
+    if (item.set && item.number) {
+      const key = `${String(item.set).toUpperCase()}~${normalizeCardNumber(item.number)}`;
+      itemsBySetNumber.set(key, item);
+    }
+    if (item.name) {
+      itemsByName.set(String(item.name).toLowerCase(), item);
+    }
   }
 
   // Get visible cards
@@ -976,27 +994,24 @@ function preloadVisibleImagesParallel(items: any[], overrides: Record<string, st
   visibleCards.forEach((cardEl: Element) => {
     const htmlCard = cardEl as HTMLElement;
     const { uid, cardId } = htmlCard.dataset;
-    let cardData: any = null;
+    let cardData: CardItem | null = null;
 
+    // O(1) lookup by uid
     if (uid) {
-      cardData = items.find(item => item.uid === uid) || null;
+      cardData = itemsByUid.get(uid.toLowerCase()) ?? null;
     }
 
+    // O(1) lookup by set~number
     if (!cardData && cardId) {
-      const [setCode, number] = cardId.split('~');
-      cardData =
-        items.find(item => {
-          const candidateSet = String(item.set || '').toUpperCase();
-          const candidateNumber = normalizeCardNumber(item.number);
-          return candidateSet === setCode && candidateNumber === number;
-        }) || null;
+      cardData = itemsBySetNumber.get(cardId) ?? null;
     }
 
+    // O(1) lookup by name
     if (!cardData) {
       const baseNameSpan = htmlCard.querySelector('.name span');
       const baseName = baseNameSpan?.textContent || '';
       if (baseName) {
-        cardData = items.find(item => item.name === baseName) || null;
+        cardData = itemsByName.get(baseName.toLowerCase()) ?? null;
       }
     }
 
@@ -1021,7 +1036,7 @@ function preloadVisibleImagesParallel(items: any[], overrides: Record<string, st
   }
 }
 
-function populateCardContent(el: DocumentFragment | HTMLElement, cardData: any, renderFlags: RenderOptions = {}) {
+function populateCardContent(el: DocumentFragment | HTMLElement, cardData: CardItem, renderFlags: RenderOptions = {}) {
   // Remove skeleton classes from the card element itself
   // el could be the card directly or a fragment containing the card
   let card: HTMLElement | null = null;
@@ -1073,14 +1088,18 @@ function populateCardContent(el: DocumentFragment | HTMLElement, cardData: any, 
   const countBadge = el.querySelector('.count-badge') as HTMLElement | null;
   if (countBadge && cardData.dist && cardData.dist.length > 0) {
     // Find the distribution entry with the highest percentage
-    const mostFrequent = cardData.dist.reduce((max: any, current: any) => {
-      if (current.percent > max.percent) {
+    const mostFrequent = cardData.dist.reduce((max, current) => {
+      const currentPct = current.percent ?? 0;
+      const maxPct = max.percent ?? 0;
+      if (currentPct > maxPct) {
         return current;
       }
       return max;
     });
-    countBadge.textContent = String(mostFrequent.copies);
-    countBadge.title = `Most common: ${mostFrequent.copies}x (${mostFrequent.percent.toFixed(1)}%)`;
+    const mfCopies = mostFrequent.copies ?? 0;
+    const mfPercent = mostFrequent.percent ?? 0;
+    countBadge.textContent = String(mfCopies);
+    countBadge.title = `Most common: ${mfCopies}x (${mfPercent.toFixed(1)}%)`;
   } else if (countBadge) {
     // Hide badge if no distribution data
     countBadge.style.display = 'none';
@@ -1140,7 +1159,7 @@ function populateCardContent(el: DocumentFragment | HTMLElement, cardData: any, 
   }
 }
 
-function createCardHistogram(el: DocumentFragment | HTMLElement, cardData: any) {
+function createCardHistogram(el: DocumentFragment | HTMLElement, cardData: CardItem) {
   const hist = el.querySelector('.hist');
 
   if (hist) {
@@ -1157,15 +1176,15 @@ function createCardHistogram(el: DocumentFragment | HTMLElement, cardData: any) 
   }
 
   // Sort distribution by percentage (descending) and take top 4
-  const sortedDist = [...cardData.dist].sort((itemA: any, itemB: any) => itemB.percent - itemA.percent);
+  const sortedDist = [...cardData.dist].sort((itemA, itemB) => (itemB.percent ?? 0) - (itemA.percent ?? 0));
   const topFourDist = sortedDist.slice(0, 4);
 
   // Get the copy counts we're showing and sort them for display
-  const copiesToShow = topFourDist.map(distItem => distItem.copies).sort((countA, countB) => countA - countB);
-  const maxPct = Math.max(1, ...topFourDist.map(distItem => distItem.percent));
+  const copiesToShow = topFourDist.map(distItem => distItem.copies ?? 0).sort((countA, countB) => countA - countB);
+  const maxPct = Math.max(1, ...topFourDist.map(distItem => distItem.percent ?? 0));
 
   for (const copies of copiesToShow) {
-    const distData = cardData.dist.find((x: any) => x.copies === copies);
+    const distData = cardData.dist!.find(x => x.copies === copies);
     const col = createElement('div', { className: 'col' });
     const bar = createElement('div', { className: 'bar' });
     const lbl = createElement('div', {
@@ -1173,7 +1192,8 @@ function createCardHistogram(el: DocumentFragment | HTMLElement, cardData: any) 
       textContent: String(copies)
     });
 
-    const height = distData ? Math.max(2, Math.round(54 * (distData.percent / maxPct))) : 2;
+    const distPct = distData?.percent ?? 0;
+    const height = distData ? Math.max(2, Math.round(54 * (distPct / maxPct))) : 2;
     setStyles(bar, {
       height: `${height}px`,
       ...(distData ? {} : { opacity: '0.25' })
@@ -1182,14 +1202,14 @@ function createCardHistogram(el: DocumentFragment | HTMLElement, cardData: any) 
     // Setup tooltip
     if (distData) {
       const total = Number.isFinite(cardData.total) ? cardData.total : null;
-      const players = Number.isFinite(distData.players) ? distData.players : null;
+      const players = Number.isFinite(distData.players) ? distData.players : undefined;
       const exactPct = Number.isFinite(distData.percent)
         ? distData.percent
-        : players !== null && total
+        : players !== undefined && total
           ? (100 * players) / total
-          : null;
-      const pctStr = exactPct !== null ? `${exactPct.toFixed(1)}%` : '—';
-      const countsStr = players !== null && total !== null ? ` (${players}/${total})` : '';
+          : undefined;
+      const pctStr = exactPct !== undefined ? `${exactPct.toFixed(1)}%` : '—';
+      const countsStr = players !== undefined && total !== null ? ` (${players}/${total})` : '';
       const tip = `${copies}x: ${pctStr}${countsStr}`;
 
       setupHistogramTooltip(col, cardData.name, tip);
@@ -1208,6 +1228,7 @@ function setupHistogramTooltip(col: HTMLElement, cardName: string, tip: string) 
   col.setAttribute('tabindex', '0');
   col.setAttribute('role', 'img');
   col.setAttribute('aria-label', tip);
+  col.setAttribute('aria-describedby', 'grid-tooltip');
 
   const showTooltip = (ev: MouseEvent) =>
     showGridTooltip(
@@ -1220,9 +1241,17 @@ function setupHistogramTooltip(col: HTMLElement, cardName: string, tip: string) 
   col.addEventListener('mouseenter', showTooltip);
   col.addEventListener('mouseleave', hideGridTooltip);
   col.addEventListener('blur', hideGridTooltip);
+  col.addEventListener('focus', (_ev: FocusEvent) => {
+    const rect = col.getBoundingClientRect();
+    showGridTooltip(
+      `<strong>${escapeHtml(cardName)}</strong><div>${escapeHtml(tip)}</div>`,
+      rect.left + rect.width / 2,
+      rect.top
+    );
+  });
 }
 
-function attachCardNavigation(card: HTMLElement, cardData: any) {
+function attachCardNavigation(card: HTMLElement, cardData: CardItem) {
   const cardIdentifier = cardData.uid || cardData.name;
   const url = buildCardPath(cardIdentifier);
 
@@ -1244,7 +1273,7 @@ function attachCardNavigation(card: HTMLElement, cardData: any) {
 
 // Simplified card creation - single responsibility
 function makeCardElement(
-  cardData: any,
+  cardData: CardItem,
   useSm: boolean,
   overrides: Record<string, string>,
   renderFlags: RenderOptions = {},
@@ -1280,13 +1309,14 @@ function makeCardElement(
       card.classList.add('card-entering');
 
       // Remove the entering class after animation completes
-      const removeEnteringClass = () => {
-        if (card) {
+      // Using { once: true } to automatically remove the listener and prevent memory leaks
+      card.addEventListener(
+        'animationend',
+        () => {
           card.classList.remove('card-entering');
-          card.removeEventListener('animationend', removeEnteringClass);
-        }
-      };
-      card.addEventListener('animationend', removeEnteringClass);
+        },
+        { once: true }
+      );
     }
   }
 
@@ -1309,7 +1339,7 @@ function makeCardElement(
 }
 
 // Extract card attributes setup
-function setupCardAttributes(card: HTMLElement, cardData: any) {
+function setupCardAttributes(card: HTMLElement, cardData: CardItem) {
   if (cardData.name) {
     card.dataset.name = cardData.name.toLowerCase();
   } else {
@@ -1356,12 +1386,17 @@ function setupCardAttributes(card: HTMLElement, cardData: any) {
   } else {
     delete card.dataset.pct;
   }
-  card.setAttribute('role', 'link');
-  card.setAttribute('aria-label', `${cardData.name} – open details`);
+  card.setAttribute('role', 'button');
+  card.setAttribute('tabindex', '0');
+  // Make aria-label more descriptive with usage percentage when available
+  const pctText = cardData.pct != null ? `${cardData.pct.toFixed(1)}% usage` : '';
+  const setInfo = cardData.set && cardData.number ? ` ${cardData.set} ${cardData.number}` : '';
+  card.setAttribute('aria-label', `${cardData.name}${setInfo}${pctText ? `, ${pctText}` : ''}, click for details`);
+  card.setAttribute('aria-roledescription', 'card');
 }
 
 // Helper to extract usage percent from card data
-function getCardUsagePercent(card: any): number {
+function getCardUsagePercent(card: CardItem): number {
   if (Number.isFinite(card.pct)) {
     return Number(card.pct);
   }
@@ -1372,7 +1407,7 @@ function getCardUsagePercent(card: any): number {
 }
 
 // Extract counts setup
-function setupCardCounts(element: DocumentFragment | HTMLElement, cardData: any) {
+function setupCardCounts(element: DocumentFragment | HTMLElement, cardData: CardItem) {
   const counts = element.querySelector('.counts');
 
   if (!counts) {

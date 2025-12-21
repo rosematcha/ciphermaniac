@@ -68,8 +68,8 @@ jobs:
       - name: Wait for data to settle
         if: github.event_name == 'workflow_run' && inputs.skip_delay != true
         run: |
-          echo "Waiting 5 minutes for online-meta data to settle..."
-          sleep 300
+          echo "Waiting 1 minute for online-meta data to settle..."
+          sleep 60
 
       - name: Generate trends report
         run: npx tsx .github/scripts/run-trends.ts

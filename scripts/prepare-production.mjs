@@ -25,8 +25,8 @@ console.log('🚀 Preparing production deployment...\n');
 console.log('📦 Building production bundle...');
 try {
   execSync('npm run build:prod', { stdio: 'inherit', cwd: rootDir });
-} catch {
-  console.error('❌ Production build failed');
+} catch (error) {
+  console.error('❌ Production build failed:', error instanceof Error ? error.message : String(error));
   process.exit(1);
 }
 

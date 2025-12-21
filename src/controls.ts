@@ -9,31 +9,28 @@ import { CONFIG } from './config.js';
 import { getCardPrice } from './api.js';
 import { normalizeSetCode, readCardType, readSelectedCardTypes, readSelectedSets } from './utils/filterState.js';
 import { perf } from './utils/performance.js';
+import type { CardItem, SortOption } from './types/index.js';
 
-export interface SortOption {
-  key: 'percent-desc' | 'percent-asc' | 'alpha-asc' | 'alpha-desc' | 'price-desc' | 'price-asc';
-  label: string;
-  compareFn: (a: any, b: any) => number;
-}
+export type { SortOption };
 
 /**
  * Available sort options with their comparison functions
  */
-const SORT_COMPARATORS: Record<string, (a: any, b: any) => number> = {
+const SORT_COMPARATORS: Record<string, (a: CardItem, b: CardItem) => number> = {
   'percent-desc': (first, second) => (second.pct ?? -1) - (first.pct ?? -1),
   'percent-asc': (first, second) => (first.pct ?? Infinity) - (second.pct ?? Infinity),
   'alpha-asc': (first, second) => first.name.localeCompare(second.name),
   'alpha-desc': (first, second) => second.name.localeCompare(first.name),
-  'price-desc': (first, second) => (second.price ?? -1) - (first.price ?? -1),
-  'price-asc': (first, second) => (first.price ?? Infinity) - (second.price ?? Infinity)
+  'price-desc': (first, second) => ((second.price ?? -1) as number) - ((first.price ?? -1) as number),
+  'price-asc': (first, second) => ((first.price ?? Infinity) as number) - ((second.price ?? Infinity) as number)
 };
 
 /**
  * Get comparator function for a given sort key
  * @param {string} sortKey
- * @returns {(a: any, b: any) => number}
+ * @returns {(a: CardItem, b: CardItem) => number}
  */
-export function getComparator(sortKey: string): (a: any, b: any) => number {
+export function getComparator(sortKey: string): (a: CardItem, b: CardItem) => number {
   const comparator = SORT_COMPARATORS[sortKey];
   if (!comparator) {
     logger.warn(`Unknown sort key: ${sortKey}, using default`);
@@ -66,11 +63,11 @@ function getCurrentFilters() {
 
 /**
  * Apply search filter to items
- * @param {any[]} items
- * @param {string} query
- * @returns {any[]}
+ * @param items - Array of card items
+ * @param query - Search query string
+ * @returns Filtered array of card items
  */
-function applySearchFilter(items: any[], query: string): any[] {
+function applySearchFilter(items: CardItem[], query: string): CardItem[] {
   if (!query || query.length < CONFIG.UI.SEARCH_MIN_LENGTH) {
     return items;
   }
@@ -95,8 +92,11 @@ function applySearchFilter(items: any[], query: string): any[] {
       return true;
     }
 
-    if (item.number && item.number.toLowerCase().includes(query)) {
-      return true;
+    if (item.number) {
+      const numStr = String(item.number).toLowerCase();
+      if (numStr.includes(query)) {
+        return true;
+      }
     }
 
     // Search in combined "name set number" format
@@ -118,10 +118,10 @@ function applySearchFilter(items: any[], query: string): any[] {
 
 /**
  * Extract all known set codes for a card item.
- * @param {any} item
- * @returns {Set<string>}
+ * @param item - Card item
+ * @returns Set of set codes
  */
-function extractItemSets(item: any): Set<string> {
+function extractItemSets(item: CardItem): Set<string> {
   const sets = new Set<string>();
   if (item.set) {
     sets.add(normalizeSetCode(item.set));
@@ -137,11 +137,11 @@ function extractItemSets(item: any): Set<string> {
 
 /**
  * Check if an item matches the active set filter.
- * @param {any} item
- * @param {string[]} activeSets
- * @returns {boolean}
+ * @param item - Card item
+ * @param activeSets - Active set codes
+ * @returns Whether the item matches
  */
-function matchesSetFilter(item: any, activeSets: string[] = []): boolean {
+function matchesSetFilter(item: CardItem, activeSets: string[] = []): boolean {
   if (!Array.isArray(activeSets) || activeSets.length === 0) {
     return true;
   }
@@ -157,8 +157,8 @@ function matchesSetFilter(item: any, activeSets: string[] = []): boolean {
  * @param item Card item
  * @returns Evolution stage: 'basic', 'stage1', or 'stage2'
  */
-function getPokemonStage(item: any): string {
-  const evolutionInfo = item.evolutionInfo || '';
+function getPokemonStage(item: CardItem): string {
+  const evolutionInfo = (item as CardItem & { evolutionInfo?: string }).evolutionInfo || '';
   if (typeof evolutionInfo !== 'string') {
     return 'basic';
   }
@@ -174,11 +174,11 @@ function getPokemonStage(item: any): string {
 
 /**
  * Determine whether an item matches ANY of the requested card type filters.
- * @param {any} item
- * @param {string | string[]} cardTypes - Single filter or array of filters
- * @returns {boolean}
+ * @param item - Card item
+ * @param cardTypes - Single filter or array of filters
+ * @returns Whether the item matches
  */
-function matchesCardType(item: any, cardTypes: string | string[]): boolean {
+function matchesCardType(item: CardItem, cardTypes: string | string[]): boolean {
   // Handle backward compatibility - empty or "__all__" means show all
   if (!cardTypes || cardTypes === '__all__' || cardTypes === 'any') {
     return true;
@@ -192,7 +192,7 @@ function matchesCardType(item: any, cardTypes: string | string[]): boolean {
     return true;
   }
 
-  const getBaseCategory = (value: any) => {
+  const getBaseCategory = (value: string | undefined): string => {
     const slug = typeof value === 'string' ? value.toLowerCase() : '';
     return slug.split('/')[0] || '';
   };
@@ -238,21 +238,26 @@ function matchesCardType(item: any, cardTypes: string | string[]): boolean {
 
 /**
  * Apply advanced filters (set, type, etc.) to the items list.
- * @param {any[]} items
- * @param {{ sets?: string[], cardType?: string | string[] }} filters
- * @returns {any[]}
+ * @param items - Array of card items
+ * @param filters - Filter options
+ * @param filters.sets - Set filter options
+ * @param filters.cardType - Card type filter options
+ * @returns Filtered array of card items
  */
-function applyAdvancedFilters(items: any[], filters: { sets?: string[]; cardType?: string | string[] }): any[] {
+function applyAdvancedFilters(
+  items: CardItem[],
+  filters: { sets?: string[]; cardType?: string | string[] }
+): CardItem[] {
   return items.filter(item => matchesSetFilter(item, filters.sets) && matchesCardType(item, filters.cardType || ''));
 }
 
 /**
  * Apply sorting to items
- * @param {any[]} items
- * @param {string} sortKey
- * @returns {any[]}
+ * @param items - Array of card items
+ * @param sortKey - Sort key
+ * @returns Sorted array of card items
  */
-function applySorting(items: any[], sortKey: string): any[] {
+function applySorting(items: CardItem[], sortKey: string): CardItem[] {
   const comparator = getComparator(sortKey);
   const sorted = [...items].sort(comparator);
   logger.debug(`Applied ${sortKey} sorting to ${items.length} items`);
@@ -261,10 +266,10 @@ function applySorting(items: any[], sortKey: string): any[] {
 
 /**
  * Apply all filters and sorting, then render the results
- * @param {any[]} allItems - Complete dataset
- * @param {object} [overrides] - Thumbnail overrides
+ * @param allItems - Complete dataset
+ * @param overrides - Thumbnail overrides
  */
-export async function applyFiltersSort(allItems: any[], overrides: Record<string, string> = {}) {
+export async function applyFiltersSort(allItems: CardItem[], overrides: Record<string, string> = {}) {
   perf.start('applyFiltersSort');
   if (!Array.isArray(allItems)) {
     logger.error('applyFiltersSort called with non-array items', allItems);
@@ -309,10 +314,10 @@ export async function applyFiltersSort(allItems: any[], overrides: Record<string
 
 /**
  * Enrich items with pricing data for sorting
- * @param {any[]} items
- * @returns {Promise<any[]>}
+ * @param items - Array of card items
+ * @returns Promise resolving to enriched card items
  */
-async function enrichWithPricingData(items: any[]): Promise<any[]> {
+async function enrichWithPricingData(items: CardItem[]): Promise<CardItem[]> {
   const enriched = await Promise.all(
     items.map(async item => {
       try {
@@ -326,8 +331,9 @@ async function enrichWithPricingData(items: any[]): Promise<any[]> {
           ...item,
           price: normalizedPrice
         };
-      } catch (error: any) {
-        logger.debug(`Failed to get price for ${item.name}`, error.message);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.debug(`Failed to get price for ${item.name}`, message);
         return {
           ...item,
           price: null
@@ -341,10 +347,10 @@ async function enrichWithPricingData(items: any[]): Promise<any[]> {
 
 /**
  * Build card identifier from item data
- * @param {object} item
- * @returns {string|null}
+ * @param item - Card item
+ * @returns Card identifier string or null
  */
-function buildCardIdentifier(item: any): string | null {
+function buildCardIdentifier(item: CardItem): string | null {
   if (!item.name) {
     return null;
   }
@@ -356,7 +362,7 @@ function buildCardIdentifier(item: any): string | null {
 
   // Build from name, set, and number if available
   if (item.set && item.number) {
-    const paddedNumber = item.number.toString().padStart(3, '0');
+    const paddedNumber = String(item.number).padStart(3, '0');
     return `${item.name}::${item.set}::${paddedNumber}`;
   }
 

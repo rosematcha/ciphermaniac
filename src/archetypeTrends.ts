@@ -448,7 +448,7 @@ function sortCardRows(rows: CardRowData[]): CardRowData[] {
  */
 function renderSparkline(points: DailyPoint[], width = 80, height = 24): string {
   if (points.length < 2) {
-    return `<svg width="${width}" height="${height}" class="sparkline"></svg>`;
+    return `<svg width="${width}" height="${height}" class="sparkline" aria-hidden="true"></svg>`;
   }
 
   const values = points.map(p => p.share);
@@ -468,7 +468,8 @@ function renderSparkline(points: DailyPoint[], width = 80, height = 24): string 
   const last = values[values.length - 1];
   const trendClass = last > first ? 'spark-up' : last < first ? 'spark-down' : 'spark-flat';
 
-  return `<svg width="${width}" height="${height}" class="sparkline ${trendClass}" viewBox="0 0 ${width} ${height}">
+  // aria-hidden: sparklines are decorative, data is in adjacent columns
+  return `<svg width="${width}" height="${height}" class="sparkline ${trendClass}" viewBox="0 0 ${width} ${height}" aria-hidden="true">
     <polyline fill="none" stroke="currentColor" stroke-width="1.5" points="${coords.join(' ')}" />
   </svg>`;
 }
@@ -584,7 +585,7 @@ function renderCardList() {
     row.innerHTML = `
       <td class="col-chart">
         <label class="chart-checkbox">
-          <input type="checkbox" data-uid="${card.uid}" ${isSelected ? 'checked' : ''} />
+          <input type="checkbox" data-uid="${card.uid}" ${isSelected ? 'checked' : ''} aria-label="Add ${card.name} to trend chart" />
           <span class="checkbox-indicator" ${color ? `style="background-color: ${color}"` : ''}></span>
         </label>
       </td>
@@ -725,6 +726,12 @@ function renderChart() {
   svg.setAttribute('height', `${height}px`);
   svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
   svg.classList.add('trends-svg-v2');
+  // Add accessible description for the chart
+  svg.setAttribute('role', 'img');
+  svg.setAttribute(
+    'aria-label',
+    `Card playrate trends for ${state.archetypeName || 'archetype'} showing ${lines.length} card${lines.length === 1 ? '' : 's'}`
+  );
 
   // Grid lines
   const gridInterval = yMax > 50 ? 20 : yMax > 20 ? 10 : 5;
@@ -817,32 +824,52 @@ function renderChart() {
   const tooltip = document.createElement('div');
   tooltip.className = 'chart-tooltip';
   tooltip.hidden = true;
+  tooltip.setAttribute('role', 'tooltip');
+  tooltip.setAttribute('aria-live', 'polite');
   elements.chart.appendChild(tooltip);
 
   elements.chart.appendChild(svg);
 
-  // Add hover interactions
+  // Helper to show tooltip
+  const showTooltip = (el: SVGCircleElement) => {
+    tooltip.innerHTML = `
+      <strong>${el.dataset.name}</strong><br/>
+      ${el.dataset.date}: ${el.dataset.share}%<br/>
+      ${el.dataset.count}/${el.dataset.total} decks, ${el.dataset.copies} avg copies
+    `;
+    tooltip.hidden = false;
+
+    const rect = elements.chart!.getBoundingClientRect();
+    const cx = parseFloat(el.getAttribute('cx') || '0');
+    const cy = parseFloat(el.getAttribute('cy') || '0');
+    const scaleX = rect.width / width;
+    const scaleY = rect.height / height;
+
+    tooltip.style.left = `${cx * scaleX}px`;
+    tooltip.style.top = `${cy * scaleY - 10}px`;
+  };
+
+  // Add hover and keyboard interactions
   svg.querySelectorAll('.chart-point').forEach(point => {
+    // Make points keyboard focusable
+    (point as SVGCircleElement).setAttribute('tabindex', '0');
+    (point as SVGCircleElement).setAttribute('role', 'button');
+    const el = point as SVGCircleElement;
+    el.setAttribute('aria-label', `${el.dataset.name}: ${el.dataset.share}% on ${el.dataset.date}`);
+
     point.addEventListener('mouseenter', (e: Event) => {
-      const el = e.target as SVGCircleElement;
-      tooltip.innerHTML = `
-        <strong>${el.dataset.name}</strong><br/>
-        ${el.dataset.date}: ${el.dataset.share}%<br/>
-        ${el.dataset.count}/${el.dataset.total} decks, ${el.dataset.copies} avg copies
-      `;
-      tooltip.hidden = false;
-
-      const rect = elements.chart!.getBoundingClientRect();
-      const cx = parseFloat(el.getAttribute('cx') || '0');
-      const cy = parseFloat(el.getAttribute('cy') || '0');
-      const scaleX = rect.width / width;
-      const scaleY = rect.height / height;
-
-      tooltip.style.left = `${cx * scaleX}px`;
-      tooltip.style.top = `${cy * scaleY - 10}px`;
+      showTooltip(e.target as SVGCircleElement);
     });
 
     point.addEventListener('mouseleave', () => {
+      tooltip.hidden = true;
+    });
+
+    point.addEventListener('focus', (e: Event) => {
+      showTooltip(e.target as SVGCircleElement);
+    });
+
+    point.addEventListener('blur', () => {
       tooltip.hidden = true;
     });
   });

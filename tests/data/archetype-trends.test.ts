@@ -57,6 +57,9 @@ test('Timeline interpolation, backfill, gaps and overlapping tournaments', () =>
   const fastA = fast.timeline.find((entry: any) => entry.date === '2025-11-01');
   assert.ok(fastA);
   assert.strictEqual(typeof fastA.share, 'number');
+  assert.ok(fastA.share >= 0 && fastA.share <= 100, `Share should be between 0 and 100, got ${fastA.share}`);
+  // Verify the share calculation is approximately correct (1 deck out of 4 = 25%)
+  assert.ok(fastA.share > 0, 'Share should be positive for a deck that appeared');
 
   // Handle archetype name variations: 'Fast Fire' should merge with case/underscore variants
   const decks2 = [

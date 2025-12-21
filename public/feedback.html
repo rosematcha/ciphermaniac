@@ -12,17 +12,17 @@
     <link rel="modulepreload" href="/assets/js/feedback.js" />
   </head>
   <body>
-    <main class="feedback-page">
+    <main id="main-content" class="feedback-page">
       <div class="page-header">
         <h1 class="page-title">Site Feedback</h1>
         <p class="page-subtitle">Help us improve Ciphermaniac by sharing your feedback.</p>
       </div>
 
       <div class="container">
-        <form id="feedbackForm" class="feedback-form">
+        <form id="feedbackForm" class="feedback-form" aria-label="Feedback submission form">
           <div class="form-group">
             <label for="feedbackType">What type of feedback are you submitting?</label>
-            <select id="feedbackType" name="feedbackType" required>
+            <select id="feedbackType" name="feedbackType" required aria-required="true">
               <option value="">Select feedback type</option>
               <option value="bug">Bug Report</option>
               <option value="feature">Feature Request</option>
@@ -109,13 +109,14 @@
               name="feedbackText"
               rows="6"
               required
+              aria-required="true"
               placeholder="Please describe your bug report or feature request in detail..."
             ></textarea>
           </div>
 
           <div class="form-group">
             <label for="followUp">Would you like a follow-up from the developer?</label>
-            <select id="followUp" name="followUp" required>
+            <select id="followUp" name="followUp" required aria-required="true">
               <option value="">Select option</option>
               <option value="yes">Yes</option>
               <option value="no">No</option>
@@ -144,10 +145,10 @@
           </div>
 
           <div class="form-group">
-            <button type="submit" class="submit-button">Submit Feedback</button>
+            <button type="submit" class="submit-button" aria-describedby="submitStatus">Submit Feedback</button>
           </div>
 
-          <div id="submitStatus" class="status-message" style="display: none"></div>
+          <div id="submitStatus" class="status-message" style="display: none" role="alert" aria-live="assertive"></div>
         </form>
       </div>
     </main>

@@ -5,6 +5,9 @@ import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
 import { onRequestOptions, onRequestGet as tournamentsHandler } from '../../functions/api/limitless/tournaments.js';
 import { fetchLimitlessJson } from '../../functions/lib/limitless.js';
 
+// Fixed test date for deterministic tests
+const FIXED_TEST_DATE = '2025-01-15T12:00:00.000Z';
+
 // Helper to construct Request for handler
 function makeRequest(url: string) {
   return new Request(url, { method: 'GET' });
@@ -23,9 +26,7 @@ test('Limitless tournaments - fetch list with pagination and returns Cache-Contr
       predicate: (input: RequestInfo) => String(input).includes('page=1'),
       status: 200,
       headers: { 'content-type': 'application/json' },
-      body: [
-        { id: 't1', name: 'Tourn 1', date: new Date().toISOString(), format: 'STANDARD', game: 'PTCG', players: 10 }
-      ]
+      body: [{ id: 't1', name: 'Tourn 1', date: FIXED_TEST_DATE, format: 'STANDARD', game: 'PTCG', players: 10 }]
     },
     {
       predicate: (input: RequestInfo) => String(input).includes('page=2'),
@@ -109,14 +110,25 @@ test('Limitless - 404 from upstream returns 404 status from handler', async () =
   // @ts-ignore - Set API key first
   globalThis.__LIMITLESS_API_KEY__ = 'k';
 
-  mockFetch([
-    {
-      predicate: (input: RequestInfo) => String(input).includes('/tournaments'),
-      status: 404,
-      headers: { 'content-type': 'application/json' },
-      body: { message: 'Not found' }
+  // Save original fetch and replace with mock
+  // @ts-ignore
+  const orig = globalThis.fetch;
+  // @ts-ignore
+  globalThis.fetch = async (input: RequestInfo) => {
+    const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
+    if (url.includes('/tournaments')) {
+      // Create a proper Response-like object with URL property
+      const body = JSON.stringify({ message: 'Not found' });
+      const resp = new Response(body, {
+        status: 404,
+        headers: { 'content-type': 'application/json' }
+      });
+      // Override the url getter to return the actual URL
+      Object.defineProperty(resp, 'url', { value: url, writable: false });
+      return resp;
     }
-  ]);
+    return new Response(null, { status: 404 });
+  };
 
   const req = makeRequest('https://ciphermaniac.test/api/limitless/tournaments');
   const res = await tournamentsHandler({ request: req, env: { LIMITLESS_API_KEY: 'k' } as any });
@@ -124,7 +136,9 @@ test('Limitless - 404 from upstream returns 404 status from handler', async () =
   const payload = JSON.parse(await res.text());
   assert.strictEqual(payload.success, false);
 
-  restoreFetch();
+  // Restore original fetch
+  // @ts-ignore
+  globalThis.fetch = orig;
   // @ts-ignore
   delete globalThis.__LIMITLESS_API_KEY__;
 });
@@ -133,14 +147,23 @@ test('Limitless - 500 upstream returns 502 from handler and disables cache', asy
   // @ts-ignore - Set API key first
   globalThis.__LIMITLESS_API_KEY__ = 'k';
 
-  mockFetch([
-    {
-      predicate: (input: RequestInfo) => String(input).includes('/tournaments'),
-      status: 500,
-      headers: { 'content-type': 'application/json' },
-      body: 'Server failure'
+  // Save original fetch and replace with mock
+  // @ts-ignore
+  const orig = globalThis.fetch;
+  // @ts-ignore
+  globalThis.fetch = async (input: RequestInfo) => {
+    const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
+    if (url.includes('/tournaments')) {
+      const resp = new Response('Server failure', {
+        status: 500,
+        headers: { 'content-type': 'application/json' }
+      });
+      // Override the url getter to return the actual URL
+      Object.defineProperty(resp, 'url', { value: url, writable: false });
+      return resp;
     }
-  ]);
+    return new Response(null, { status: 500 });
+  };
 
   const req = makeRequest('https://ciphermaniac.test/api/limitless/tournaments');
   const res = await tournamentsHandler({ request: req, env: { LIMITLESS_API_KEY: 'k' } as any });
@@ -149,7 +172,9 @@ test('Limitless - 500 upstream returns 502 from handler and disables cache', asy
   // Should include Cache-Control: no-store
   assert.strictEqual(res.headers.get('Cache-Control'), 'no-store');
 
-  restoreFetch();
+  // Restore original fetch
+  // @ts-ignore
+  globalThis.fetch = orig;
   // @ts-ignore
   delete globalThis.__LIMITLESS_API_KEY__;
 });
@@ -158,19 +183,31 @@ test('Limitless - rate limiting (429) is propagated', async () => {
   // @ts-ignore - Set API key first
   globalThis.__LIMITLESS_API_KEY__ = 'k';
 
-  mockFetch([
-    {
-      predicate: (input: RequestInfo) => String(input).includes('/tournaments'),
-      status: 429,
-      headers: { 'content-type': 'application/json' },
-      body: { error: 'Too Many Requests' }
+  // Save original fetch and replace with mock
+  // @ts-ignore
+  const orig = globalThis.fetch;
+  // @ts-ignore
+  globalThis.fetch = async (input: RequestInfo) => {
+    const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
+    if (url.includes('/tournaments')) {
+      const resp = new Response(JSON.stringify({ error: 'Too Many Requests' }), {
+        status: 429,
+        headers: { 'content-type': 'application/json' }
+      });
+      // Override the url getter to return the actual URL
+      Object.defineProperty(resp, 'url', { value: url, writable: false });
+      return resp;
     }
-  ]);
+    return new Response(null, { status: 429 });
+  };
 
   const req = makeRequest('https://ciphermaniac.test/api/limitless/tournaments');
   const res = await tournamentsHandler({ request: req, env: { LIMITLESS_API_KEY: 'k' } as any });
   assert.strictEqual(res.status, 429);
-  restoreFetch();
+
+  // Restore original fetch
+  // @ts-ignore
+  globalThis.fetch = orig;
   // @ts-ignore
   delete globalThis.__LIMITLESS_API_KEY__;
 });

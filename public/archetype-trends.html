@@ -13,7 +13,7 @@
   </head>
   <body>
     <div class="archetype-page archetype-trends-page" data-state="loading">
-      <main class="archetype-main">
+      <main id="main-content" class="archetype-main">
         <section class="archetype-content">
           <div id="archetype-loading" class="archetype-loading" role="status">
             <p>Loading archetype trends...</p>
@@ -61,7 +61,7 @@
         </section>
 
         <!-- Stats Overview Cards -->
-        <section id="trends-stats" class="trends-stats" hidden>
+        <section id="trends-stats" class="trends-stats" hidden aria-label="Archetype statistics overview">
           <div class="stat-card">
             <span class="stat-label">Tournaments</span>
             <span id="stat-tournaments" class="stat-value">-</span>
@@ -81,14 +81,14 @@
         </section>
 
         <!-- Rising/Cooling Movers (condensed horizontal) -->
-        <section id="trends-movers" class="trends-movers-v2" hidden>
+        <section id="trends-movers" class="trends-movers-v2" hidden aria-label="Cards rising and cooling in popularity">
           <div class="movers-group movers-rising">
-            <h3><span class="mover-icon rising-icon">▲</span> Rising</h3>
-            <ul id="trends-rising" class="movers-list-v2"></ul>
+            <h3><span class="mover-icon rising-icon" aria-hidden="true">▲</span> Rising</h3>
+            <ul id="trends-rising" class="movers-list-v2" role="list" aria-label="Rising cards"></ul>
           </div>
           <div class="movers-group movers-cooling">
-            <h3><span class="mover-icon cooling-icon">▼</span> Cooling</h3>
-            <ul id="trends-falling" class="movers-list-v2"></ul>
+            <h3><span class="mover-icon cooling-icon" aria-hidden="true">▼</span> Cooling</h3>
+            <ul id="trends-falling" class="movers-list-v2" role="list" aria-label="Cooling cards"></ul>
           </div>
         </section>
 
