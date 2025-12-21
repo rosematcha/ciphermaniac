@@ -24,10 +24,11 @@ test('DataCache TTL expiry respects configured TTL', async () => {
   assert.ok(got !== null);
 
   // Temporarily simulate expiry by directly manipulating internal ttl (testing-only)
+  // Use more reliable timing: 50ms TTL with 100ms sleep to avoid race conditions
   // @ts-ignore
-  cache.ttl = 1; // 1ms
+  cache.ttl = 50; // 50ms
   await new Promise(resolve => {
-    setTimeout(resolve, 5);
+    setTimeout(resolve, 100);
   });
   const expired = cache.getCachedMaster(tournament);
   assert.strictEqual(expired, null);

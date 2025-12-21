@@ -70,6 +70,11 @@ const state = {
 function setStatus(message) {
   if (elements.status) {
     elements.status.textContent = message || '';
+    // Ensure status updates are announced to screen readers
+    if (!elements.status.hasAttribute('role')) {
+      elements.status.setAttribute('role', 'status');
+      elements.status.setAttribute('aria-live', 'polite');
+    }
   }
 }
 
@@ -154,21 +159,49 @@ function buildMetaLines(trendData, topN = 8, timeRangeDays = 30) {
   const cutoffDate = new Date(now.getTime() - timeRangeDays * 24 * 60 * 60 * 1000);
   const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
 
-  // First, compute daily bins for ALL series so we can rank by start/end
-  const allSeriesWithBins = trendData.series
-    .map(entry => {
-      const daily = binDaily(entry.timeline || []);
-      // Filter by time range
-      const filteredDaily = daily.filter(pt => pt.date >= cutoffDateStr);
-      const smoothed = smoothSeries(filteredDaily, 3);
-      return { ...entry, daily: smoothed };
-    })
-    .filter(entry => entry.daily.length > 0); // Remove series with no data in range
+  // OPTIMIZATION: Single pass to compute bins, collect dates, and calculate ranking data
+  // Previously: 3 separate passes over series data
+  const allDatesSet = new Set<string>();
+  const allSeriesWithBins: Array<{
+    displayName?: string;
+    base: string;
+    daily: Array<{ date: string; share: number }>;
+    dailyByDate: Map<string, { date: string; share: number }>;
+    startAvg: number;
+    endAvg: number;
+  }> = [];
 
-  // Get all unique dates across all series
-  const allDates = Array.from(
-    new Set<string>(allSeriesWithBins.flatMap(entry => entry.daily.map(pt => String(pt.date || ''))))
-  )
+  for (const entry of trendData.series) {
+    const daily = binDaily(entry.timeline || []);
+    // Filter by time range
+    const filteredDaily = daily.filter(pt => pt.date >= cutoffDateStr);
+    const smoothed = smoothSeries(filteredDaily, 3);
+
+    if (smoothed.length === 0) {
+      continue;
+    }
+
+    // Collect dates in the same pass
+    for (const pt of smoothed) {
+      if (pt.date) {
+        allDatesSet.add(pt.date);
+      }
+    }
+
+    // Pre-build Map for O(1) lookups later (instead of O(n) .find() calls)
+    const dailyByDate = new Map(smoothed.map(pt => [pt.date, pt]));
+
+    allSeriesWithBins.push({
+      ...entry,
+      daily: smoothed,
+      dailyByDate,
+      startAvg: 0, // Will be calculated after we know the date windows
+      endAvg: 0
+    });
+  }
+
+  // Get all unique dates sorted
+  const allDates = Array.from(allDatesSet)
     .filter(Boolean)
     .sort((a, b) => Date.parse(a) - Date.parse(b));
 
@@ -176,28 +209,44 @@ function buildMetaLines(trendData, topN = 8, timeRangeDays = 30) {
     return null;
   }
 
-  // Calculate start and end averages for ranking
+  // Calculate start and end date windows
   const windowSize = Math.max(1, Math.ceil(allDates.length * 0.3));
   const startDates = new Set(allDates.slice(0, windowSize));
   const endDates = new Set(allDates.slice(-windowSize));
 
-  const seriesWithRankingData = allSeriesWithBins.map(entry => {
-    const startPoints = entry.daily.filter(pt => startDates.has(pt.date)).map(pt => pt.share || 0);
-    const endPoints = entry.daily.filter(pt => endDates.has(pt.date)).map(pt => pt.share || 0);
-    const startAvg = startPoints.length ? startPoints.reduce((a, b) => a + b, 0) / startPoints.length : 0;
-    const endAvg = endPoints.length ? endPoints.reduce((a, b) => a + b, 0) / endPoints.length : 0;
-    return { ...entry, startAvg, endAvg };
-  });
+  // OPTIMIZATION: Calculate ranking data using cached dailyByDate Map
+  // Single pass with O(1) lookups instead of O(n) filter operations
+  for (const entry of allSeriesWithBins) {
+    let startSum = 0;
+    let startCount = 0;
+    let endSum = 0;
+    let endCount = 0;
+
+    for (const pt of entry.daily) {
+      const share = pt.share || 0;
+      if (startDates.has(pt.date)) {
+        startSum += share;
+        startCount++;
+      }
+      if (endDates.has(pt.date)) {
+        endSum += share;
+        endCount++;
+      }
+    }
+
+    entry.startAvg = startCount ? startSum / startCount : 0;
+    entry.endAvg = endCount ? endSum / endCount : 0;
+  }
 
   // Get top N by start average (beginning of period)
-  const topByStart = [...seriesWithRankingData].sort((a, b) => b.startAvg - a.startAvg).slice(0, topN);
+  const topByStart = [...allSeriesWithBins].sort((a, b) => b.startAvg - a.startAvg).slice(0, topN);
 
   // Get top N by end average (end of period)
-  const topByEnd = [...seriesWithRankingData].sort((a, b) => b.endAvg - a.endAvg).slice(0, topN);
+  const topByEnd = [...allSeriesWithBins].sort((a, b) => b.endAvg - a.endAvg).slice(0, topN);
 
   // Combine both sets (union), preserving order: start decks first, then new end decks
   const selectedNames = new Set<string>();
-  const selectedSeries: typeof seriesWithRankingData = [];
+  const selectedSeries: typeof allSeriesWithBins = [];
 
   // Add top-at-start decks first
   for (const entry of topByStart) {
@@ -217,32 +266,32 @@ function buildMetaLines(trendData, topN = 8, timeRangeDays = 30) {
     }
   }
 
-  // Assign colors
-  const seriesWithColors = selectedSeries.map((entry, index) => ({
-    ...entry,
-    color: palette[index % palette.length]
-  }));
-
-  if (!seriesWithColors.length) {
+  if (!selectedSeries.length) {
     return null;
   }
 
-  // Build timeline using only dates from selected series
-  const timelineDates = Array.from(
-    new Set<string>(seriesWithColors.flatMap(entry => entry.daily.map(pt => String(pt.date || ''))))
-  )
-    .filter(Boolean)
-    .sort((a, b) => Date.parse(a) - Date.parse(b));
+  // OPTIMIZATION: Build timeline dates from selected series only
+  // Collect dates and assign colors in single pass
+  const timelineDatesSet = new Set<string>();
+  for (const entry of selectedSeries) {
+    for (const pt of entry.daily) {
+      if (pt.date) {
+        timelineDatesSet.add(pt.date);
+      }
+    }
+  }
 
-  const lines = seriesWithColors.map(entry => {
-    const points = timelineDates.map(d => {
-      const found = entry.daily.find(pt => pt.date === d);
-      return found ? found.share : 0;
-    });
+  const timelineDates = Array.from(timelineDatesSet).sort((a, b) => Date.parse(a) - Date.parse(b));
+
+  // OPTIMIZATION: Build lines using pre-computed dailyByDate Map
+  // O(1) per date lookup instead of O(n) .find() calls
+  const lines = selectedSeries.map((entry, index) => {
+    const color = palette[index % palette.length];
+    const points = timelineDates.map(d => entry.dailyByDate.get(d)?.share ?? 0);
     const delta = Math.round((entry.endAvg - entry.startAvg) * 10) / 10;
     return {
       name: entry.displayName || entry.base,
-      color: entry.color,
+      color,
       points,
       latest: points.at(-1) || 0,
       delta
@@ -622,6 +671,9 @@ function renderMetaChart() {
   svg.style.height = `${height}px`;
   svg.setAttribute('preserveAspectRatio', 'none');
   svg.setAttribute('role', 'img');
+  // Add accessible description for the chart
+  const chartLabel = `Meta share trends chart showing ${metaChart.lines.length} archetypes from ${formatDate(metaChart.dates[0])} to ${formatDate(metaChart.dates[metaChart.dates.length - 1])}`;
+  svg.setAttribute('aria-label', chartLabel);
   svg.classList.add('meta-svg');
 
   // grid lines based on yMax - choose appropriate interval
@@ -946,8 +998,14 @@ function renderMetaChart() {
     if (!name) {
       return;
     }
+    // Make legend items keyboard accessible
+    (item as HTMLElement).setAttribute('tabindex', '0');
+    (item as HTMLElement).setAttribute('role', 'button');
+    (item as HTMLElement).setAttribute('aria-label', `Highlight ${name} trend line`);
     item.addEventListener('mouseenter', () => setActive(name));
     item.addEventListener('mouseleave', clearActive);
+    item.addEventListener('focus', () => setActive(name));
+    item.addEventListener('blur', clearActive);
   });
 }
 
@@ -982,6 +1040,9 @@ function setMode(mode) {
   if (elements.modeMeta && elements.modeArchetypes) {
     elements.modeMeta.classList.toggle('is-active', mode === 'meta');
     elements.modeArchetypes.classList.toggle('is-active', mode === 'archetypes');
+    // Update aria-pressed for screen readers
+    elements.modeMeta.setAttribute('aria-pressed', String(mode === 'meta'));
+    elements.modeArchetypes.setAttribute('aria-pressed', String(mode === 'archetypes'));
   }
   if (elements.metaPanel) {
     elements.metaPanel.hidden = mode !== 'meta';

@@ -3,6 +3,9 @@
  * @module card/ui
  */
 
+// Re-export escapeHtml from shared utility for backward compatibility
+export { escapeHtml } from '../utils/html.js';
+
 // Lightweight floating tooltip used for charts/histograms
 let graphTooltipElement: HTMLElement | null = null;
 
@@ -69,25 +72,4 @@ export function hideGraphTooltip(): void {
     return;
   }
   graphTooltipElement.style.display = 'none';
-}
-
-/**
- * Simple HTML escaper for tooltip content
- * @param str - String to escape
- * @returns Escaped HTML string
- */
-export function escapeHtml(str: string | null | undefined): string {
-  if (!str) {
-    return '';
-  }
-
-  return String(str).replace(/[&<>"]/g, character => {
-    const htmlEntities: { [key: string]: string } = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;'
-    };
-    return htmlEntities[character] || character;
-  });
 }

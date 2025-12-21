@@ -1,4 +1,5 @@
 {
+  "root": true,
   "env": {
     "browser": true,
     "es2022": true,
@@ -16,8 +17,13 @@
     "ecmaVersion": 2022,
     "sourceType": "module"
   },
+
   "rules": {
-    // Existing rules
+    // =========================================================================
+    // CORE RULES
+    // =========================================================================
+
+    // Disable private class fields for older mobile browser compatibility
     "no-restricted-syntax": [
       "error",
       {
@@ -25,80 +31,118 @@
         "message": "Private class fields are disallowed for compatibility with older mobile browsers. Use underscored properties or closures instead."
       }
     ],
+
+    // Variable declaration
     "no-unused-vars": "off",
     "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
     "no-undef": "off",
     "prefer-const": "error",
     "no-var": "error",
+    "one-var": ["error", "never"],
+    "one-var-declaration-per-line": ["error", "always"],
+    "vars-on-top": "error",
+
+    // Comparison & equality
     "eqeqeq": ["error", "always", { "null": "ignore" }],
+    "use-isnan": "error",
+    "valid-typeof": "error",
+    "yoda": ["error", "never"],
+
+    // Control flow
     "curly": ["error", "all"],
-    "no-console": "off",
-    "semi": "off", // Handled by Prettier
-    "quotes": "off", // Handled by Prettier
-    "indent": "off", // Handled by Prettier
+    "consistent-return": "error",
+    "default-case": "warn",
+    "default-case-last": "error",
+    "default-param-last": "error",
+    "no-fallthrough": "error",
+    "no-else-return": ["error", { "allowElseIf": false }],
+    "guard-for-in": "error",
+
+    // =========================================================================
+    // FORMATTING (Delegated to Prettier)
+    // =========================================================================
+    "semi": "off",
+    "quotes": "off",
+    "indent": "off",
+    "linebreak-style": "off",
+    "max-len": "off",
+    "arrow-body-style": "off",
+    "arrow-parens": "off",
+    "arrow-spacing": "off",
+    "generator-star-spacing": "off",
+    "rest-spread-spacing": "off",
+    "template-curly-spacing": "off",
+    "yield-star-spacing": "off",
+    "array-bracket-spacing": "off",
+    "brace-style": "off",
+    "comma-dangle": "off",
+    "comma-spacing": "off",
+    "comma-style": "off",
+    "computed-property-spacing": "off",
+    "func-call-spacing": "off",
+    "key-spacing": "off",
+    "keyword-spacing": "off",
+    "no-multiple-empty-lines": "off",
+    "no-whitespace-before-property": "off",
+    "object-curly-spacing": "off",
+    "padded-blocks": "off",
+    "space-before-blocks": "off",
+    "space-before-function-paren": "off",
+    "space-in-parens": "off",
+    "space-infix-ops": "off",
+    "space-unary-ops": "off",
+    "spaced-comment": "off",
+
+    // Whitespace rules that ESLint should still enforce
     "no-trailing-spaces": "error",
     "eol-last": "error",
+    "no-mixed-spaces-and-tabs": "error",
+    "no-tabs": "error",
+
+    // =========================================================================
+    // BEST PRACTICES
+    // =========================================================================
+
+    // Function & parameter handling
+    "no-param-reassign": [
+      "error",
+      { "props": true, "ignorePropertyModificationsFor": ["element", "ctx", "context", "card"] }
+    ],
+    "prefer-rest-params": "error",
+    "array-callback-return": ["error", { "allowImplicit": true }],
+    "no-empty-function": ["error", { "allow": ["arrowFunctions"] }],
+
+    // Object & property access
+    "dot-notation": "error",
+    "no-prototype-builtins": "error",
+    "prefer-object-spread": "error",
+    "no-useless-computed-key": "error",
+    "object-shorthand": ["error", "always"],
+    "prefer-destructuring": ["error", { "array": false, "object": true }],
+
+    // Type coercion & safety
     "no-implicit-coercion": "error",
     "no-unsafe-optional-chaining": "error",
     "no-unsafe-negation": "error",
     "no-implicit-globals": "error",
-    "consistent-return": "error",
-    "default-param-last": "error",
-    "no-param-reassign": ["error", { "props": true, "ignorePropertyModificationsFor": ["element", "ctx", "context", "card"] }],
-    "prefer-rest-params": "error",
-    "dot-notation": "error",
-    "no-delete-var": "error",
-    "no-prototype-builtins": "error",
-    "prefer-object-spread": "error",
-    "no-useless-computed-key": "error",
+    "radix": "error",
+
+    // Error handling
     "no-empty": ["error", { "allowEmptyCatch": false }],
     "prefer-promise-reject-errors": "error",
     "no-async-promise-executor": "error",
+    "no-return-await": "error",
     "require-atomic-updates": "off",
     "no-await-in-loop": "off",
-    "no-return-await": "error",
     "require-await": "off",
 
-    // Code Quality & Maintainability (Progressive enforcement)
-    "complexity": "off",
-    "max-depth": "off",
-    "max-lines-per-function": "off",
-    "max-nested-callbacks": ["warn", 4],
-    "max-params": "off",
-    "max-statements": "off",
-    "no-magic-numbers": ["off"],
-    "max-lines": "off",
-    "no-nested-ternary": "off",
-    "no-unneeded-ternary": "error",
-    "no-unreachable": "error",
-    "no-unreachable-loop": "error",
-
-    // Naming Conventions
-    "camelcase": ["error", { "properties": "always", "ignoreDestructuring": false, "ignoreImports": false }],
-    "id-length": ["error", { "min": 2, "max": 30, "exceptions": ["i", "j", "k", "x", "y", "z", "_"] }],
-    "new-cap": ["error", { "newIsCap": true, "capIsNew": false }],
-
-    // Best Practices
-    "array-callback-return": ["error", { "allowImplicit": true }],
-    "block-scoped-var": "error",
-    "class-methods-use-this": "off",
-    "default-case": "warn",
-    "default-case-last": "error",
-    "grouped-accessor-pairs": ["error", "getBeforeSet"],
-    "guard-for-in": "error",
+    // Deprecated/dangerous patterns
     "no-alert": "error",
     "no-caller": "error",
-    "no-case-declarations": "error",
-    "no-div-regex": "error",
-    "no-else-return": ["error", { "allowElseIf": false }],
-    "no-empty-function": ["error", { "allow": ["arrowFunctions"] }],
-    "no-empty-pattern": "error",
     "no-eval": "error",
     "no-extend-native": "error",
     "no-extra-bind": "error",
     "no-extra-label": "error",
-    "no-fallthrough": "error",
-    "no-floating-decimal": "error",
     "no-global-assign": "error",
     "no-implied-eval": "error",
     "no-invalid-this": "error",
@@ -128,20 +172,62 @@
     "no-useless-return": "error",
     "no-void": "error",
     "no-with": "error",
-    "prefer-named-capture-group": "off",
-    "prefer-regex-literals": "error",
-    "radix": "error",
-    "require-unicode-regexp": "off",
-    "vars-on-top": "error",
+    "no-delete-var": "error",
+    "block-scoped-var": "error",
+    "no-floating-decimal": "error",
+    "no-case-declarations": "error",
+    "no-div-regex": "error",
+    "no-empty-pattern": "error",
     "wrap-iife": ["error", "outside"],
-    "yoda": ["error", "never"],
+    "prefer-regex-literals": "error",
+    "prefer-named-capture-group": "off",
+    "require-unicode-regexp": "off",
 
-    // ES6+ Features
-    "arrow-body-style": "off", // Handled by Prettier
-    "arrow-parens": "off", // Handled by Prettier
-    "arrow-spacing": "off", // Handled by Prettier
+    // =========================================================================
+    // CODE QUALITY & MAINTAINABILITY
+    // =========================================================================
+
+    // Complexity limits (relaxed for existing codebase)
+    "complexity": "off",
+    "max-depth": "off",
+    "max-lines-per-function": "off",
+    "max-nested-callbacks": ["warn", 4],
+    "max-params": "off",
+    "max-statements": "off",
+    "no-magic-numbers": "off",
+    "max-lines": "off",
+
+    // Ternary expressions
+    "no-nested-ternary": "off",
+    "no-unneeded-ternary": "error",
+
+    // Unreachable code
+    "no-unreachable": "error",
+    "no-unreachable-loop": "error",
+
+    // Naming conventions
+    "camelcase": ["error", { "properties": "always", "ignoreDestructuring": false, "ignoreImports": false }],
+    "id-length": ["error", { "min": 2, "max": 30, "exceptions": ["i", "j", "k", "x", "y", "z", "_"] }],
+    "new-cap": ["error", { "newIsCap": true, "capIsNew": false }],
+
+    // Class-related
+    "class-methods-use-this": "off",
+    "grouped-accessor-pairs": ["error", "getBeforeSet"],
+    "no-constructor-return": "error",
+
+    // Console & debugging
+    "no-console": "off",
+    "no-debugger": "error",
+
+    // Comments
+    "no-inline-comments": "off",
+    "no-warning-comments": "off",
+    "operator-assignment": ["error", "always"],
+
+    // =========================================================================
+    // ES6+ FEATURES
+    // =========================================================================
     "constructor-super": "error",
-    "generator-star-spacing": "off", // Handled by Prettier
     "no-class-assign": "error",
     "no-confusing-arrow": ["error", { "allowParens": true }],
     "no-const-assign": "error",
@@ -151,61 +237,23 @@
     "no-this-before-super": "error",
     "no-useless-constructor": "error",
     "no-useless-rename": "error",
-    "object-shorthand": ["error", "always"],
     "prefer-arrow-callback": ["error", { "allowNamedFunctions": false }],
-    "prefer-destructuring": ["error", { "array": false, "object": true }],
     "prefer-exponentiation-operator": "error",
     "prefer-numeric-literals": "error",
     "prefer-object-has-own": "error",
     "prefer-spread": "error",
     "prefer-template": "error",
     "require-yield": "error",
-    "rest-spread-spacing": "off", // Handled by Prettier
     "sort-imports": ["warn", { "ignoreCase": true, "ignoreDeclarationSort": true }],
     "symbol-description": "error",
-    "template-curly-spacing": "off", // Handled by Prettier
-    "yield-star-spacing": "off", // Handled by Prettier
 
-    // Stylistic Issues (most handled by Prettier)
-    "array-bracket-spacing": "off", // Handled by Prettier
-    "brace-style": "off", // Handled by Prettier
-    "comma-dangle": "off", // Handled by Prettier
-    "comma-spacing": "off", // Handled by Prettier
-    "comma-style": "off", // Handled by Prettier
-    "computed-property-spacing": "off", // Handled by Prettier
-    "func-call-spacing": "off", // Handled by Prettier
-    "key-spacing": "off", // Handled by Prettier
-    "keyword-spacing": "off", // Handled by Prettier
-    "linebreak-style": "off",
-    "max-len": "off", // Handled by Prettier
-    "no-mixed-spaces-and-tabs": "error",
-    "no-multiple-empty-lines": "off", // Handled by Prettier
-    "no-tabs": "error",
-    "no-whitespace-before-property": "off", // Handled by Prettier
-    "object-curly-spacing": "off", // Handled by Prettier
-    "padded-blocks": "off", // Handled by Prettier
-    "space-before-blocks": "off", // Handled by Prettier
-    "space-before-function-paren": "off", // Handled by Prettier
-    "space-in-parens": "off", // Handled by Prettier
-    "space-infix-ops": "off", // Handled by Prettier
-    "space-unary-ops": "off", // Handled by Prettier
-    "spaced-comment": "off", // Handled by Prettier
-
-    // Code Organization
-    "no-inline-comments": "off",
-    "no-warning-comments": "off",
-    "one-var": ["error", "never"],
-    "one-var-declaration-per-line": ["error", "always"],
-    "operator-assignment": ["error", "always"],
-
-    // Security & Error Prevention
-    "no-constructor-return": "error",
+    // =========================================================================
+    // ERROR PREVENTION & SECURITY
+    // =========================================================================
     "no-loss-of-precision": "error",
     "no-promise-executor-return": "error",
     "no-template-curly-in-string": "warn",
     "no-unsafe-finally": "error",
-    "use-isnan": "error",
-    "valid-typeof": "error",
     "for-direction": "error",
     "getter-return": "error",
     "no-compare-neg-zero": "error",
@@ -213,7 +261,6 @@
     "no-constant-binary-expression": "error",
     "no-constant-condition": "error",
     "no-control-regex": "error",
-    "no-debugger": "error",
     "no-dupe-args": "error",
     "no-dupe-else-if": "error",
     "no-dupe-keys": "error",
@@ -234,7 +281,17 @@
     "no-unexpected-multiline": "error",
     "no-useless-escape": "error",
 
-    // JSDoc Documentation Rules (Progressive enforcement)
+    // =========================================================================
+    // TYPESCRIPT-SPECIFIC
+    // =========================================================================
+    "@typescript-eslint/ban-ts-comment": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+
+    // =========================================================================
+    // JSDOC RULES
+    // =========================================================================
+
+    // Structure validation
     "jsdoc/check-access": "error",
     "jsdoc/check-alignment": "error",
     "jsdoc/check-examples": "off",
@@ -248,21 +305,22 @@
     "jsdoc/check-values": "error",
     "jsdoc/empty-tags": "error",
     "jsdoc/implements-on-classes": "error",
-    "jsdoc/match-description": "off",
-    "jsdoc/newline-after-description": "off",
     "jsdoc/no-bad-blocks": "error",
     "jsdoc/no-defaults": "error",
     "jsdoc/no-types": "off",
-    // Temporarily disable this check to reduce noisy warnings around DOM/Fetch types
-    // We'll add stricter typedefs incrementally where it provides value.
     "jsdoc/no-undefined-types": "off",
-    "@typescript-eslint/ban-ts-comment": "off",
-    "@typescript-eslint/no-explicit-any": "off",
+    "jsdoc/valid-types": "warn",
+
+    // Description requirements (relaxed)
+    "jsdoc/match-description": "off",
+    "jsdoc/newline-after-description": "off",
     "jsdoc/require-description": "off",
     "jsdoc/require-description-complete-sentence": "off",
     "jsdoc/require-example": "off",
     "jsdoc/require-file-overview": "off",
     "jsdoc/require-hyphen-before-param-description": "off",
+
+    // JSDoc requirements (relaxed for TypeScript which has type inference)
     "jsdoc/require-jsdoc": "off",
     "jsdoc/require-param": "off",
     "jsdoc/require-param-description": "off",
@@ -279,11 +337,88 @@
     "jsdoc/require-throws": "off",
     "jsdoc/require-yields": "warn",
     "jsdoc/require-yields-check": "warn",
-    "jsdoc/valid-types": "warn",
 
-    // Prettier Integration
+    // =========================================================================
+    // PRETTIER INTEGRATION
+    // =========================================================================
     "prettier/prettier": "error"
   },
-  "globals": {
-  }
+
+  "globals": {},
+
+  // =========================================================================
+  // FILE-SPECIFIC OVERRIDES
+  // =========================================================================
+  "overrides": [
+    // -------------------------------------------------------------------------
+    // Test files: Relaxed rules for testing convenience
+    // -------------------------------------------------------------------------
+    {
+      "files": [
+        "tests/**/*.ts",
+        "tests/**/*.js",
+        "dev/tests/**/*.ts",
+        "tools/**/*.test.ts",
+        "**/*.test.ts",
+        "**/*.test.js",
+        "**/*.test.mjs"
+      ],
+      "env": {
+        "node": true
+      },
+      "rules": {
+        "no-magic-numbers": "off",
+        "max-lines-per-function": "off",
+        "max-nested-callbacks": "off",
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-unused-vars": "off",
+        "no-unused-vars": "off",
+        "no-console": "off",
+        "id-length": "off",
+        "jsdoc/require-jsdoc": "off",
+        "jsdoc/require-param": "off",
+        "jsdoc/require-returns": "off"
+      }
+    },
+
+    // -------------------------------------------------------------------------
+    // Cloudflare Functions: Node/Edge environment
+    // -------------------------------------------------------------------------
+    {
+      "files": ["functions/**/*.ts", "functions/**/*.js"],
+      "env": {
+        "browser": false,
+        "node": true
+      },
+      "rules": {
+        "no-console": "off"
+      }
+    },
+
+    // -------------------------------------------------------------------------
+    // Build/Config scripts: Node environment with relaxed rules
+    // -------------------------------------------------------------------------
+    {
+      "files": ["scripts/**/*.mjs", "scripts/**/*.js", "tools/**/*.mjs", "tools/**/*.js", ".github/scripts/**/*"],
+      "env": {
+        "browser": false,
+        "node": true
+      },
+      "rules": {
+        "no-console": "off",
+        "jsdoc/require-jsdoc": "off"
+      }
+    },
+
+    // -------------------------------------------------------------------------
+    // Plain JavaScript files: Use base ESLint no-unused-vars
+    // -------------------------------------------------------------------------
+    {
+      "files": ["**/*.js", "**/*.mjs"],
+      "rules": {
+        "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+        "@typescript-eslint/no-unused-vars": "off"
+      }
+    }
+  ]
 }

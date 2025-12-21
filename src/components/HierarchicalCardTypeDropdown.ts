@@ -44,6 +44,7 @@ export interface DropdownInstance {
   open: () => void;
   close: () => void;
   toggle: () => void;
+  destroy: () => void;
   key: string;
   contains: (node: Node | null) => boolean;
 }
@@ -380,12 +381,14 @@ export function createHierarchicalCardTypeDropdown(
     label.className = 'filter-option filter-option--multi filter-option--parent';
     label.setAttribute('role', 'option');
     label.setAttribute('data-parent', parent.value);
+    label.id = `parent-option-${parent.value}`;
 
     // Expand/collapse button
     const expandButton = document.createElement('button');
     expandButton.type = 'button';
     expandButton.className = 'filter-option-expand';
-    expandButton.setAttribute('aria-label', isCollapsed ? 'Expand' : 'Collapse');
+    expandButton.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+    expandButton.setAttribute('aria-label', `${isCollapsed ? 'Expand' : 'Collapse'} ${parent.label} category`);
     expandButton.innerHTML = isCollapsed ? '▶' : '▼';
     expandButton.addEventListener('click', e => {
       e.preventDefault();
@@ -403,6 +406,7 @@ export function createHierarchicalCardTypeDropdown(
     checkbox.type = 'checkbox';
     checkbox.checked = state === 'all';
     checkbox.indeterminate = state === 'some';
+    checkbox.setAttribute('aria-label', `Select all ${parent.label} types`);
     checkbox.addEventListener('change', () => {
       handleParentToggle(parent.value, checkbox.checked);
     });
@@ -434,10 +438,12 @@ export function createHierarchicalCardTypeDropdown(
     label.setAttribute('role', 'option');
     label.setAttribute('data-parent', parent.value);
     label.setAttribute('data-child', child.value);
+    label.id = `child-option-${parent.value}-${child.value}`;
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.checked = hierarchicalState.selected.has(child.value);
+    checkbox.setAttribute('aria-label', `${parent.label} - ${child.label}`);
     checkbox.addEventListener('change', () => {
       handleChildToggle(child.value, checkbox.checked);
     });
@@ -641,16 +647,28 @@ export function createHierarchicalCardTypeDropdown(
     });
   }
 
-  // Handle external close requests
-  document.addEventListener('dropdown:open', ((e: CustomEvent) => {
+  // Handle external close requests (e.g. from other dropdowns opening)
+  const handleDropdownOpen = ((e: CustomEvent) => {
     if (e.detail.key !== config.key) {
       close();
     }
-  }) as EventListener);
+  }) as EventListener;
 
-  document.addEventListener('dropdown:close-all', () => {
+  const handleCloseAll = () => {
     close();
-  });
+  };
+
+  document.addEventListener('dropdown:open', handleDropdownOpen);
+  document.addEventListener('dropdown:close-all', handleCloseAll);
+
+  /**
+   * Destroy the dropdown instance and clean up event listeners.
+   * Call this method when the dropdown is no longer needed to prevent memory leaks.
+   */
+  function destroy() {
+    document.removeEventListener('dropdown:open', handleDropdownOpen);
+    document.removeEventListener('dropdown:close-all', handleCloseAll);
+  }
 
   // Initial render
   render([], []);
@@ -661,6 +679,7 @@ export function createHierarchicalCardTypeDropdown(
     open,
     close,
     toggle,
+    destroy,
     key: config.key,
     contains: (node: Node | null) => {
       if (!node) {

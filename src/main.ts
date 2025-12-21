@@ -25,7 +25,8 @@ import {
 } from './utils/filtersPanel.js';
 import { normalizeSetValues, readCardType, readSelectedSets, writeSelectedSets } from './utils/filterState.js';
 import { DataCache } from './utils/DataCache.js';
-import { createMultiSelectDropdown } from './components/MultiSelectDropdown.js';
+import { createMultiSelectDropdown, type DropdownInstance } from './components/MultiSelectDropdown.js';
+import type { CardItem, Deck, TournamentReport } from './types/index.js';
 
 /**
  * Application state - simple object
@@ -45,18 +46,18 @@ export interface AppState {
   availableTournaments: string[];
   availableSets: string[];
   archetypeOptions: Map<string, ArchetypeOptionMeta>;
-  current: { items: any[]; deckTotal: number };
+  current: TournamentReport;
   overrides: Record<string, string>;
-  masterCache: Map<string, any>;
-  archeCache: Map<string, any>;
+  masterCache: Map<string, TournamentReport>;
+  archeCache: Map<string, TournamentReport>;
   cleanup: CleanupManager;
   cache: DataCache | null;
   applyArchetypeSelection: ((selection: string[], options?: { force?: boolean }) => Promise<void>) | null;
   ui: {
-    dropdowns: Record<string, any>;
-    openDropdown: any;
+    dropdowns: Record<string, DropdownInstance | null>;
+    openDropdown: string | null;
     onTournamentSelection: ((selection: string[]) => void) | null;
-    onSetSelection: ((selection: string[], options?: any) => void) | null;
+    onSetSelection: ((selection: string[], options?: { silent?: boolean }) => void) | null;
     onArchetypeSelection: ((selection: string[]) => void | Promise<void>) | null;
   };
 }
@@ -73,8 +74,8 @@ const appState: AppState = {
   archetypeOptions: new Map(),
   current: { items: [], deckTotal: 0 },
   overrides: {},
-  masterCache: new Map(),
-  archeCache: new Map(),
+  masterCache: new Map<string, TournamentReport>(),
+  archeCache: new Map<string, TournamentReport>(),
   cleanup: new CleanupManager(),
   cache: null,
   applyArchetypeSelection: null,
@@ -88,6 +89,9 @@ const appState: AppState = {
 };
 
 const DEFAULT_ONLINE_META = 'Online - Last 14 Days';
+
+// AbortController for cancelling pending tournament selection requests (race condition prevention)
+let pendingSelectionController: AbortController | null = null;
 const _SUCCESS_FILTER_LABELS: Record<string, string> = {
   all: 'all decks',
   winner: 'winners',
@@ -100,13 +104,13 @@ const _SUCCESS_FILTER_LABELS: Record<string, string> = {
   top50: 'top 50%'
 };
 
-const deckCache = new Map<string, Promise<any>>();
+const deckCache = new Map<string, Promise<Deck[]>>();
 
 function normalizeArchetypeValue(value: string | null | undefined): string {
   return (value || '').toLowerCase().replace(/_/g, ' ').trim();
 }
 
-async function fetchTournamentDecks(tournament: string): Promise<any[]> {
+async function fetchTournamentDecks(tournament: string): Promise<Deck[]> {
   if (deckCache.has(tournament)) {
     return deckCache.get(tournament)!;
   }
@@ -122,7 +126,7 @@ async function buildDeckReport(
   tournaments: string | string[],
   successFilter: string = 'all',
   archetypeBase: string | string[] | null = null
-) {
+): Promise<TournamentReport> {
   const { aggregateDecks, filterDecksBySuccess } = await import('./utils/clientSideFiltering.js');
   const selection = Array.isArray(tournaments) ? tournaments : [tournaments];
   const deckLists = await Promise.all(selection.map(tournament => fetchTournamentDecks(tournament)));
@@ -136,7 +140,7 @@ async function buildDeckReport(
   const archetypeFilter = normalizedTargets.length ? new Set(normalizedTargets) : null;
 
   const scopedDecks = archetypeFilter
-    ? successDecks.filter((deck: any) => archetypeFilter.has(normalizeArchetypeValue(deck?.archetype)))
+    ? successDecks.filter((deck: Deck) => archetypeFilter.has(normalizeArchetypeValue(deck?.archetype)))
     : successDecks;
 
   return aggregateDecks(scopedDecks);
@@ -193,9 +197,9 @@ function parseArchetypeQueryParam(value: string | null | undefined): string[] {
 
 /**
  * Populate the set filter with available set codes from the current dataset.
- * @param {Array<{set?: string, uid?: string}>} items
+ * @param items - Card items from the current report
  */
-function updateSetFilterOptions(items: any[]) {
+function updateSetFilterOptions(items: CardItem[]): void {
   const dropdown = appState.ui?.dropdowns?.sets || null;
 
   const setCodes = new Set<string>();
@@ -331,7 +335,7 @@ function setupDropdownFilters(state: AppState) {
 
   const onDocumentPointerDown = (event: Event) => {
     const target = event.target as Node;
-    const dropdownList = Object.values(dropdowns).filter((d): d is any => Boolean(d));
+    const dropdownList = Object.values(dropdowns).filter((d): d is DropdownInstance => Boolean(d));
     const clickedInsideDropdown = dropdownList.some(dropdown => dropdown.contains(target));
 
     if (!clickedInsideDropdown) {
@@ -452,16 +456,16 @@ async function applyCurrentFilters(state: AppState) {
 
 /**
  * Load and optionally aggregate tournament data for the provided selection.
- * @param {string|string[]} selection
- * @param {DataCache} cache
- * @param {{ showSkeleton?: boolean }} [options]
- * @returns {Promise<{ deckTotal: number, items: any[] }>}
+ * @param selection - Tournament name(s) to load
+ * @param cache - DataCache instance
+ * @param options - Loading options
+ * @returns Tournament report with deck total and card items
  */
 async function loadSelectionData(
   selection: string | string[],
   cache: DataCache,
   options: { showSkeleton?: boolean; successFilter?: string; archetypeBase?: string | null } = {}
-) {
+): Promise<TournamentReport> {
   const { showSkeleton = false, successFilter = 'all', archetypeBase = null } = options;
   const tournaments = normalizeTournamentSelection(selection);
 
@@ -643,12 +647,16 @@ async function ensureTournamentListLoaded(state: AppState): Promise<void> {
 
 /**
  * Load and parse tournament data
- * @param {string} tournament
- * @param {DataCache} cache
- * @param {boolean} showSkeletonLoading - Whether to show skeleton loading state
- * @returns {Promise<{deckTotal: number, items: any[]}>}
+ * @param tournament - Tournament identifier
+ * @param cache - DataCache instance
+ * @param showSkeletonLoading - Whether to show skeleton loading state
+ * @returns Tournament report with deck total and card items
  */
-async function loadTournamentData(tournament: string, cache: DataCache, showSkeletonLoading = false) {
+async function loadTournamentData(
+  tournament: string,
+  cache: DataCache,
+  showSkeletonLoading = false
+): Promise<TournamentReport> {
   // Check cache first
   const cached = cache.getCachedMaster(tournament);
   if (cached) {
@@ -836,7 +844,7 @@ async function setupArchetypeSelector(
       if (state.successFilter !== 'all') {
         cached = await buildDeckReport(archetypeTournaments, state.successFilter, normalizedSelection);
       } else {
-        const archetypeReports = [];
+        const archetypeReports: TournamentReport[] = [];
 
         for (const tournament of archetypeTournaments) {
           for (const archetypeBase of normalizedSelection) {
@@ -845,7 +853,7 @@ async function setupArchetypeSelector(
               const data = await fetchArchetypeReport(tournament, archetypeBase);
               const parsed = parseReport(data);
               archetypeReports.push(parsed);
-            } catch (error: any) {
+            } catch (error: unknown) {
               if (error instanceof AppError && error.context?.status === 404) {
                 logger.debug(`Archetype ${archetypeBase} not available for ${tournament}, skipping`);
               } else {
@@ -855,7 +863,7 @@ async function setupArchetypeSelector(
           }
         }
 
-        let aggregate;
+        let aggregate: TournamentReport;
         if (archetypeReports.length === 0) {
           aggregate = { deckTotal: 0, items: [] };
         } else if (archetypeReports.length === 1) {
@@ -945,6 +953,13 @@ function setupControlHandlers(state: AppState) {
   };
 
   const handleTournamentSelectionChange = async (newSelection: string[]) => {
+    // Cancel any pending request to prevent race conditions
+    if (pendingSelectionController) {
+      pendingSelectionController.abort();
+    }
+    pendingSelectionController = new AbortController();
+    const { signal } = pendingSelectionController;
+
     const previousSelection = Array.isArray(state.selectedTournaments) ? [...state.selectedTournaments] : [];
     let selection = normalizeTournamentSelection(newSelection);
 
@@ -969,19 +984,38 @@ function setupControlHandlers(state: AppState) {
     state.currentTournament = selection[0] || null;
 
     const cache = state.cache || (state.cache = new DataCache());
-    const data = await loadSelectionData(selection, cache, {
-      showSkeleton: true,
-      successFilter: state.successFilter,
-      archetypeBase: null
-    });
+    try {
+      const data = await loadSelectionData(selection, cache, {
+        showSkeleton: true,
+        successFilter: state.successFilter,
+        archetypeBase: null
+      });
 
-    state.current = data;
-    renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
-    updateSetFilterOptions(data.items);
-    await setupArchetypeSelector(selection, cache, state, true);
-    await applyCurrentFilters(state);
+      // Check if this request was cancelled
+      if (signal.aborted) {
+        return;
+      }
 
-    setStateInURL({ tour: selection.join(',') }, { merge: true });
+      state.current = data;
+      renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
+      updateSetFilterOptions(data.items);
+      await setupArchetypeSelector(selection, cache, state, true);
+
+      // Check again after async operations
+      if (signal.aborted) {
+        return;
+      }
+
+      await applyCurrentFilters(state);
+
+      setStateInURL({ tour: selection.join(',') }, { merge: true });
+    } catch (error) {
+      // Ignore cancelled requests
+      if (signal.aborted) {
+        return;
+      }
+      throw error;
+    }
   };
 
   state.ui.onTournamentSelection = handleTournamentSelectionChange;

@@ -1,0 +1,383 @@
+/* ==========================================================================
+   Toolbar Component System
+   ========================================================================== */
+
+/* Toolbar container */
+.toolbar {
+  background: transparent;
+  border-bottom: 1px solid #171824;
+  padding: var(--space-5) 0 var(--space-3);
+  position: relative;
+  /* Ensure toolbar expands with filters content */
+  overflow: visible;
+}
+
+.toolbar-inner {
+  width: min(1380px, 100%);
+  margin: 0 auto;
+  padding: 0 var(--space-3);
+}
+
+/* Toolbar controls grid system */
+.toolbar .controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  gap: var(--space-3);
+  align-items: start;
+  width: 100%;
+  /* Prevent scroll anchoring from causing jumps when filters toggle */
+  overflow-anchor: none;
+}
+
+.toolbar .controls input[type='search'] {
+  grid-column: 1;
+  grid-row: 1;
+  width: 100%;
+}
+
+#filtersToggle {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: flex-start;
+  align-self: start;
+}
+
+.toolbar .controls #filters {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  overflow-anchor: none;
+}
+
+/* ==========================================================================
+   Search Component System
+   ========================================================================== */
+
+/* Search wrapper */
+.search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-wrap input[type='search'] {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-3) var(--space-4);
+  font-size: 17px;
+  min-height: 48px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(106, 163, 255, 0.1);
+  transition: var(--transition-normal);
+  width: 100%;
+}
+
+/* Search icon */
+.search-icon {
+  position: absolute;
+  left: var(--space-3);
+  color: #7c86a8;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Search with extra left padding for icon */
+.search-wrap input[type='search'] {
+  padding-left: 36px;
+}
+
+/* Search suggestions dropdown */
+.suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--border-radius-lg);
+  margin-top: var(--space-2);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-dropdown);
+  display: none;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.suggestions.is-open {
+  display: block;
+}
+
+.suggestions .item {
+  padding: var(--space-3) var(--space-3);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-tight);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: var(--transition-fast);
+}
+
+.suggestions .item[aria-selected='true'] {
+  background: var(--bg-hover);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .suggestions .item:hover {
+    background: var(--bg-hover);
+  }
+}
+
+/* Suggestion content structure */
+.suggestion-name {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.suggestion-set {
+  font-size: 0.85em;
+  color: var(--muted);
+  margin-left: 0.5em;
+}
+
+/* Tab-complete hint */
+.tab-hint {
+  position: absolute;
+  right: var(--space-3);
+  color: #8b93b3;
+  font-size: var(--font-size-sm);
+  background: rgba(18, 19, 23, 0.7);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-accent);
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Filters Component System
+   ========================================================================== */
+
+/* Filters panel */
+.filters {
+  position: relative;
+  display: none;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-areas:
+    'tournaments tournaments tournaments tournaments tournaments tournaments tournaments tournaments tournaments'
+    'set set set set archetype archetype archetype archetype'
+    'card card card card sort sort success success';
+  align-items: start;
+  column-gap: var(--space-6);
+  row-gap: var(--space-6);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-anchor: none;
+}
+
+body.filters-panel-open #filters {
+  display: grid;
+  padding: var(--space-6) var(--space-5) var(--space-6);
+  margin-top: var(--space-4);
+  background: rgba(23, 24, 29, 0.9);
+  border: 1px solid rgba(124, 134, 168, 0.25);
+  border-radius: var(--border-radius-lg);
+}
+
+/* Filter field system */
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+  position: relative;
+}
+
+.filter-field--wide {
+  grid-column: 1 / -1;
+}
+
+.filter-field--archetype {
+  grid-area: archetype;
+}
+.filter-field--card-type {
+  grid-area: card;
+}
+.filter-field--sort {
+  grid-area: sort;
+}
+.filter-field--tournaments {
+  grid-area: tournaments;
+}
+.filter-field--set {
+  grid-area: set;
+}
+.filter-field--success {
+  grid-area: success;
+}
+
+.filters.compact .filter-field {
+  grid-column: 1 / -1;
+}
+
+.filter-label {
+  font-size: var(--font-size-sm);
+  color: var(--muted);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  margin-bottom: var(--space-1);
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+/* Medium screens */
+@media (max-width: 800px) {
+  .filter-field,
+  .filter-dropdown {
+    min-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Small screens */
+@media (max-width: 700px) {
+  .toolbar .controls {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2);
+  }
+
+  .toolbar {
+    padding: var(--space-4) 0 var(--space-2);
+  }
+
+  .toolbar-inner {
+    padding: 0 var(--space-2);
+  }
+
+  #filtersToggle {
+    justify-self: flex-end;
+    white-space: nowrap;
+    padding: var(--space-3) var(--space-4);
+  }
+}
+
+/* Mobile */
+@media (max-width: 720px) {
+  .toolbar {
+    padding: var(--space-4) 0 var(--space-2);
+  }
+
+  .controls {
+    width: 100% !important;
+    margin: 0 auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  .controls input[type='search'],
+  .controls select {
+    width: 100%;
+    font-size: 16px !important; /* Prevent iOS zoom */
+  }
+
+  .search-icon {
+    left: var(--space-4);
+  }
+
+  .search-wrap input[type='search'] {
+    padding-left: 48px;
+  }
+
+  /* Hide tab hint on mobile */
+  .tab-hint {
+    display: none;
+  }
+
+  /* Adjust filters for mobile */
+  @media (max-width: 899px) {
+    .filter-dropdown .filter-menu {
+      position: static;
+      box-shadow: none;
+      margin-top: var(--space-3);
+    }
+  }
+}
+
+/* Tablet and larger */
+@media (max-width: 1100px) {
+  .filters {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-areas:
+      'tournaments tournaments tournaments tournaments tournaments tournaments tournaments tournaments'
+      'set set set set archetype archetype archetype archetype'
+      'card card card card sort sort success success';
+  }
+}
+
+@media (max-width: 780px) {
+  .filters {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-areas:
+      'tournaments tournaments tournaments tournaments'
+      'set set set set'
+      'archetype archetype archetype archetype'
+      'card card card card'
+      'sort sort success success';
+    row-gap: var(--space-4);
+  }
+}
+
+@media (max-width: 560px) {
+  .filters {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'tournaments'
+      'set'
+      'archetype'
+      'card'
+      'sort'
+      'success';
+    row-gap: var(--space-4);
+  }
+}
+
+/* Mobile-friendly controls layout */
+@media (max-width: 899px) {
+  .controls {
+    width: 100% !important;
+    margin: 0 auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  .controls input[type='search'],
+  .controls select {
+    width: 100%;
+  }
+}
+
+/* Large screens */
+@media (min-width: 900px) {
+  .controls {
+    justify-content: center;
+  }
+
+  .controls input[type='search'],
+  .controls select {
+    font-size: 17px;
+    min-height: 46px;
+  }
+
+  main {
+    padding: 0 var(--space-5) var(--space-6);
+  }
+}

@@ -7,21 +7,13 @@
 
 import { normalizeCardNumber } from '../card/routing.js';
 import { logger } from './logger.js';
+import { normalizeArchetypeName } from './format.js';
+import type { Deck, DeckCard, Filter, Operator, PercentRule, PlacementRule } from '../types/index.js';
+
+export type { Deck, DeckCard, Filter, Operator };
 
 const DECK_FETCH_TIMEOUT_MS = 30000;
 const SUCCESS_TAG_HIERARCHY = ['winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'];
-
-interface PlacementRule {
-  tag: string;
-  maxPlacing: number;
-  minPlayers: number;
-}
-
-interface PercentRule {
-  tag: string;
-  fraction: number;
-  minPlayers: number;
-}
 
 const PLACEMENT_TAG_RULES: PlacementRule[] = [
   { tag: 'winner', maxPlacing: 1, minPlayers: 2 },
@@ -37,8 +29,6 @@ const PERCENT_TAG_RULES: PercentRule[] = [
   { tag: 'top50', fraction: 0.5, minPlayers: 8 }
 ];
 
-type Operator = '=' | '<' | '<=' | '>' | '>=' | 'any' | '';
-
 const OPERATOR_COMPARATORS: Record<string, (count: number, expected: number) => boolean> = {
   '=': (count, expected) => count === expected,
   '<': (count, expected) => count < expected,
@@ -47,42 +37,8 @@ const OPERATOR_COMPARATORS: Record<string, (count: number, expected: number) => 
   '>=': (count, expected) => count >= expected
 };
 
-interface Card {
-  name?: string;
-  set?: string;
-  number?: string | number;
-  count?: number;
-  copies?: number;
-  category?: string;
-  trainerType?: string;
-  energyType?: string;
-  aceSpec?: boolean;
-  supertype?: string;
-  uid?: string;
-}
-
-interface Deck {
-  id?: string;
-  deckId?: string;
-  deckHash?: string;
-  slug?: string;
-  archetype?: string;
-  cards?: Card[];
-  deck?: Card[];
-  successTags?: string[];
-  placement?: number | string;
-  placing?: number | string;
-  tournamentPlayers?: number | string;
-  players?: number | string;
-  tournamentId?: string;
-  tournamentName?: string;
-}
-
-interface Filter {
-  cardId: string;
-  operator?: Operator | null;
-  count?: number | null;
-}
+// Local type alias for Card since we use DeckCard from types
+type Card = DeckCard;
 
 interface CardUsage {
   cardId: string;
@@ -166,10 +122,6 @@ function buildCardId(set: string, number: string | number | null | undefined): s
   return `${set}~${fullNumber}`;
 }
 
-function normalizeArchetypeName(value?: string): string {
-  return (value || '').toLowerCase().replace(/_/g, ' ').trim();
-}
-
 function deckMatchesArchetype(deck: Deck, archetypeBase: string): boolean {
   return normalizeArchetypeName(deck?.archetype) === normalizeArchetypeName(archetypeBase);
 }
@@ -219,6 +171,22 @@ function buildDeckCardCounts(deck: Deck): Map<string, number> {
   return counts;
 }
 
+// WeakMap cache to memoize deck card counts per deck object
+const deckCardCountsCache = new WeakMap<Deck, Map<string, number>>();
+
+/**
+ * Get deck card counts with memoization to avoid recomputation during filtering
+ */
+function getDeckCardCounts(deck: Deck): Map<string, number> {
+  const cached = deckCardCountsCache.get(deck);
+  if (cached) {
+    return cached;
+  }
+  const counts = buildDeckCardCounts(deck);
+  deckCardCountsCache.set(deck, counts);
+  return counts;
+}
+
 function normalizeFilters(filters: any[]): Filter[] {
   return (Array.isArray(filters) ? filters : [])
     .filter(filter => filter && typeof filter.cardId === 'string' && filter.cardId)
@@ -264,7 +232,7 @@ function deckMatchesFilters(deck: Deck, filters: Filter[]): boolean {
   if (!filters.length) {
     return true;
   }
-  const counts = buildDeckCardCounts(deck);
+  const counts = getDeckCardCounts(deck);
   return filters.every(filter => {
     const count = counts.get(filter.cardId) || 0;
     return matchesQuantity(count, filter.operator, filter.count);

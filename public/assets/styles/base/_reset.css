@@ -1,0 +1,360 @@
+/* ==========================================================================
+   CSS Reset & Base Styles
+   ========================================================================== */
+
+/* Box sizing rules */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Remove default margin/padding */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+}
+
+p {
+  margin: 0;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Base body styles */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  /* Safe area insets for notched devices */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* ==========================================================================
+   Typography System
+   ========================================================================== */
+
+h1 {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-black);
+  line-height: var(--line-height-tight);
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+h2 {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+h3 {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-normal);
+  color: var(--text);
+}
+
+/* ==========================================================================
+   Layout Utilities
+   ========================================================================== */
+
+/* Container system */
+.container {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 var(--space-4);
+}
+
+.container-sm {
+  max-width: var(--container-sm);
+}
+
+.container-md {
+  max-width: var(--container-md);
+}
+
+/* Grid system */
+.grid {
+  display: grid;
+  gap: var(--gap);
+}
+
+.grid-auto-fit {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.grid-auto-fill {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+/* Flexbox utilities */
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.items-start {
+  align-items: flex-start;
+}
+
+.items-end {
+  align-items: flex-end;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
+
+/* ==========================================================================
+   Accessibility Utilities
+   ========================================================================== */
+
+/* Screen reader only content */
+.sr-only,
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Skip link for keyboard navigation */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--accent);
+  color: var(--bg);
+  padding: var(--space-2) var(--space-4);
+  z-index: var(--z-skip-link);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  border-radius: 0 0 var(--border-radius) 0;
+  transition: var(--transition-fast);
+}
+
+.skip-link:focus {
+  top: 0;
+  outline: 2px solid var(--accent);
+  outline-offset: var(--space-2);
+}
+
+/* Focus styles */
+.focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: var(--space-2);
+}
+
+.focus-none:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ==========================================================================
+   Animation & Motion
+   ========================================================================== */
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Loading animation */
+@keyframes skeleton-loading {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: translateY(-50%) rotate(0deg);
+  }
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ==========================================================================
+   CSS Custom Properties Utilities
+   ========================================================================== */
+
+/* Spacing utilities */
+.u-p-0 {
+  padding: 0;
+}
+.u-p-1 {
+  padding: var(--space-1);
+}
+.u-p-2 {
+  padding: var(--space-2);
+}
+.u-p-3 {
+  padding: var(--space-3);
+}
+.u-p-4 {
+  padding: var(--space-4);
+}
+.u-p-5 {
+  padding: var(--space-5);
+}
+.u-p-6 {
+  padding: var(--space-6);
+}
+
+.u-m-0 {
+  margin: 0;
+}
+.u-m-1 {
+  margin: var(--space-1);
+}
+.u-m-2 {
+  margin: var(--space-2);
+}
+.u-m-3 {
+  margin: var(--space-3);
+}
+.u-m-4 {
+  margin: var(--space-4);
+}
+.u-m-5 {
+  margin: var(--space-5);
+}
+.u-m-6 {
+  margin: var(--space-6);
+}
+
+/* Text utilities */
+.u-text-center {
+  text-align: center;
+}
+.u-text-left {
+  text-align: left;
+}
+.u-text-right {
+  text-align: right;
+}
+.u-text-sm {
+  font-size: var(--font-size-sm);
+}
+.u-text-lg {
+  font-size: var(--font-size-lg);
+}
+.u-text-bold {
+  font-weight: var(--font-weight-bold);
+}
+.u-text-muted {
+  color: var(--muted);
+}
+.u-text-uppercase {
+  text-transform: uppercase;
+}
+.u-text-no-wrap {
+  white-space: nowrap;
+}
+.u-text-ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Visibility utilities */
+.u-hidden {
+  display: none !important;
+}
+.u-invisible {
+  visibility: hidden;
+}
+.u-block {
+  display: block;
+}
+.u-inline {
+  display: inline;
+}
+.u-inline-block {
+  display: inline-block;
+}
+.u-flex {
+  display: flex;
+}
+.u-grid {
+  display: grid;
+}

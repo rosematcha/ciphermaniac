@@ -65,6 +65,9 @@ export interface MaliciousPayloads {
 // Internal registry of file paths created during tests that may need cleanup.
 export const generatedFileRegistry = new Set<string>();
 
+// Fixed test date for deterministic mock data generation
+const FIXED_MOCK_DATE = '2025-01-15T12:00:00.000Z';
+
 /**
  * Generate a simple random identifier string.
  * @param prefix optional prefix for the id
@@ -116,7 +119,7 @@ export function generateMockTournament(overrides: Partial<Tournament> = {}): Tou
   const defaults: Tournament = {
     id: makeId('tourn'),
     name: `Tournament ${Math.random().toString(36).slice(2, 6)}`,
-    date: new Date().toISOString(),
+    date: FIXED_MOCK_DATE,
     format: ['Advanced', 'Traditional', 'Unlimited'][Math.floor(Math.random() * 3)],
     platform: ['Tabletop', 'Online', 'Event'][Math.floor(Math.random() * 3)],
     players: Math.floor(Math.random() * 256) + 4

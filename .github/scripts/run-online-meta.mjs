@@ -18,9 +18,21 @@ const ARCHETYPE_THUMBNAILS = archetypeThumbnails || {};
 function env(name) {
   const value = process.env[name];
   if (!value) {
-    throw new Error(`Missing environment variable: ${name}`);
+    env._missing = env._missing || [];
+    env._missing.push(name);
+    return '';
   }
   return value;
+}
+
+function validateEnv() {
+  if (env._missing && env._missing.length > 0) {
+    const missing = env._missing;
+    env._missing = [];
+    throw new Error(
+      `Missing required environment variables:\n${missing.map(v => `  - ${v}`).join('\n')}\n\nPlease ensure all required variables are set before running this script.`
+    );
+  }
 }
 
 const LIMITLESS_API_KEY = env('LIMITLESS_API_KEY');
@@ -29,6 +41,9 @@ const R2_ACCESS_KEY_ID = env('R2_ACCESS_KEY_ID');
 const R2_SECRET_ACCESS_KEY = env('R2_SECRET_ACCESS_KEY');
 const R2_BUCKET_NAME = env('R2_BUCKET_NAME');
 const R2_REPORTS_PREFIX = process.env.R2_REPORTS_PREFIX || 'reports';
+
+// Validate all required environment variables are present
+validateEnv();
 
 // Feature flags - default to true if not specified
 const GENERATE_MASTER = process.env.GENERATE_MASTER !== 'false';

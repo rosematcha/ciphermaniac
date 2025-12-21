@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
 
-import { onRequestOptions, onRequestPost } from '../../functions/api/feedback.js';
+import { _resetRateLimitStore, onRequestOptions, onRequestPost } from '../../functions/api/feedback.js';
 
 // Helper to build a Request with JSON body
 function makeJsonRequest(body: unknown) {
@@ -127,6 +127,8 @@ test('Feedback API - platform-specific validation: mobile requires mobileOS/mobi
 });
 
 test('Feedback API - email format validation for follow-up contact info', async () => {
+  // Reset rate limit store to ensure clean state
+  _resetRateLimitStore();
   // The function only checks presence and doesn't validate format heavily, but we validate that invalid email still allowed or case handled
   mockFetch({ 'https://api.resend.com/emails': { status: 200, body: { id: 'ok' } } });
   const env = { RESEND_API_KEY: 'k' } as any;
@@ -147,6 +149,8 @@ test('Feedback API - email format validation for follow-up contact info', async 
 });
 
 test('Feedback API - 500 response when Resend API fails and error message includes failure', async () => {
+  // Reset rate limit store to ensure clean state
+  _resetRateLimitStore();
   // Simulate Resend returning 500
   mockFetch({ 'https://api.resend.com/emails': { status: 500, body: 'internal resend error' } });
   const env = { RESEND_API_KEY: 'k' } as any;
@@ -160,6 +164,8 @@ test('Feedback API - 500 response when Resend API fails and error message includ
 });
 
 test('Feedback API - throws error when RESEND_API_KEY missing (handled gracefully returns 500)', async () => {
+  // Reset rate limit store to ensure clean state
+  _resetRateLimitStore();
   const env = {} as any;
   const payload = { feedbackType: 'feature', feedbackText: 'Enable sync' };
   const res = await onRequestPost({ request: makeJsonRequest(payload), env });

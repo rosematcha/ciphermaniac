@@ -1,0 +1,463 @@
+/* ==========================================================================
+   Form Component System
+   ========================================================================== */
+
+/* Base form elements */
+input[type='text'],
+input[type='search'],
+input[type='number'],
+textarea,
+select {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--border-radius-lg);
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  transition: var(--transition-fast);
+  width: 100%;
+}
+
+/* Form focus states */
+input[type='text']:focus,
+input[type='search']:focus,
+input[type='number']:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 2px rgba(106, 163, 255, 0.1);
+}
+
+/* Form placeholders */
+input::placeholder,
+textarea::placeholder {
+  color: rgba(163, 168, 183, 0.7);
+}
+
+/* ==========================================================================
+   Form Groups
+   ========================================================================== */
+
+.form-group {
+  margin-bottom: var(--space-4);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--text);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ==========================================================================
+   Dropdown/Select Components
+   ========================================================================== */
+
+.filter-dropdown {
+  min-width: 0;
+}
+
+.filter-combobox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--panel);
+  border: 1px solid rgba(124, 134, 168, 0.3);
+  border-radius: var(--border-radius-lg);
+  color: var(--text);
+  min-height: 44px;
+  transition: var(--transition-fast);
+}
+
+.filter-combobox:focus-within {
+  border-color: rgba(106, 163, 255, 0.6);
+  box-shadow: 0 0 0 2px rgba(106, 163, 255, 0.18);
+}
+
+.filter-dropdown.has-selection .filter-combobox {
+  border-color: rgba(106, 163, 255, 0.45);
+  background: rgba(106, 163, 255, 0.06);
+}
+
+.filter-dropdown.is-open .filter-combobox {
+  border-color: rgba(106, 163, 255, 0.7);
+  box-shadow: 0 0 0 3px rgba(106, 163, 255, 0.12);
+}
+
+/* Filter value display */
+.filter-value {
+  font-size: var(--font-size-base);
+  color: var(--text);
+  font-weight: var(--font-weight-semibold);
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-height: 18px;
+  max-width: 100%;
+}
+
+.filter-value.is-hidden {
+  opacity: 0;
+  width: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.filter-combobox[data-state='empty'] .filter-value {
+  color: var(--muted);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Filter trigger button */
+.filter-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-2) var(--space-2) 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-height: 28px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(106, 163, 255, 0.15);
+  transition: var(--transition-fast);
+}
+
+.filter-trigger::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform var(--transition-normal);
+  flex-shrink: 0;
+  opacity: 0.7;
+  margin-left: auto;
+}
+
+.filter-dropdown.is-open .filter-trigger::after {
+  transform: rotate(225deg);
+}
+
+/* ==========================================================================
+   Filter Chips
+   ========================================================================== */
+
+.filter-chip-list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  flex: 1 1 auto;
+  min-height: 28px;
+}
+
+.filter-chip-list[hidden] {
+  display: none;
+}
+
+.filter-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--border-radius-full);
+  background: rgba(106, 163, 255, 0.12);
+  border: 1px solid rgba(106, 163, 255, 0.35);
+  color: var(--text);
+  font-size: 13px;
+  line-height: var(--line-height-tight);
+  max-width: 240px;
+}
+
+.filter-chip-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  overflow: hidden;
+}
+
+.filter-chip-name {
+  font-weight: var(--font-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.filter-chip-code {
+  font-size: var(--font-size-sm);
+  color: var(--muted);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.filter-chip-remove {
+  background: transparent;
+  border: none;
+  color: rgba(235, 239, 255, 0.8);
+  font-size: 13px;
+  padding: 0;
+  line-height: 1;
+  cursor: pointer;
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255, 107, 107, 0.15);
+  transition: var(--transition-fast);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .filter-chip-remove:hover {
+    color: #fff;
+  }
+}
+
+.filter-chip-remove:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: var(--space-2);
+}
+
+/* ==========================================================================
+   Filter Menu
+   ========================================================================== */
+
+.filter-menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  right: 0;
+  min-width: 100%;
+  max-height: 360px;
+  overflow: auto;
+  z-index: var(--z-dropdown);
+  background: var(--panel);
+  border: 1px solid rgba(124, 134, 168, 0.25);
+  box-shadow: var(--shadow-xl);
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-3);
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 720px) {
+  .filter-menu {
+    max-height: 50vh;
+  }
+}
+
+/* Filter menu header */
+.filter-menu-header {
+  margin-bottom: var(--space-3);
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.filter-menu-header input[type='search'] {
+  flex: 1;
+  padding: var(--space-3);
+  border-radius: var(--border-radius);
+  background: rgba(18, 19, 23, 0.9);
+  color: var(--text);
+  font-size: var(--font-size-base);
+}
+
+/* Filter menu options */
+.filter-menu-list {
+  max-height: 240px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-right: var(--space-1);
+}
+
+.filter-option {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--border-radius);
+  background: rgba(23, 24, 29, 0.6);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  width: 100%;
+  color: inherit;
+  text-align: left;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .filter-option:hover {
+    border-color: rgba(124, 134, 168, 0.4);
+    background: rgba(124, 134, 168, 0.08);
+  }
+}
+
+/* Checkbox styling */
+.filter-option input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-2);
+}
+
+/* Option types */
+.filter-option--single {
+  border: 1px solid transparent;
+  background: rgba(23, 24, 29, 0.6);
+  justify-content: space-between;
+  font: inherit;
+}
+
+.filter-option--all {
+  font-weight: var(--font-weight-semibold);
+}
+
+.filter-option--single.is-active,
+.filter-option--all.is-active {
+  border-color: rgba(106, 163, 255, 0.45);
+  background: rgba(106, 163, 255, 0.12);
+}
+
+.filter-option--single:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: var(--space-2);
+}
+
+.filter-option--multi input[type='checkbox'] {
+  flex: 0 0 auto;
+}
+
+.filter-option--multi span {
+  flex: 1;
+  font-size: var(--font-size-base);
+}
+
+/* Hierarchical options */
+.filter-option--parent {
+  font-weight: var(--font-weight-semibold);
+  background: rgba(23, 24, 29, 0.8);
+  position: relative;
+}
+
+.filter-option--child {
+  padding-left: 40px;
+  background: rgba(23, 24, 29, 0.4);
+  font-size: 13px;
+}
+
+/* ==========================================================================
+   Range Sliders
+   ========================================================================== */
+
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: var(--border-radius-full);
+  background: linear-gradient(90deg, rgba(106, 163, 255, 0.8), rgba(98, 90, 255, 0.4));
+  outline: none;
+  width: 100%;
+}
+
+input[type='range']:hover {
+  background: linear-gradient(90deg, rgba(106, 163, 255, 1), rgba(98, 90, 255, 0.6));
+}
+
+/* Range slider thumbs */
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 3px solid var(--accent-2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 3px solid var(--accent-2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+input[type='range']::-webkit-slider-thumb:hover,
+input[type='range']::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.5),
+    0 0 0 4px rgba(106, 163, 255, 0.2);
+}
+
+/* ==========================================================================
+   Number Inputs
+   ========================================================================== */
+
+input[type='number'] {
+  text-align: center;
+  padding: var(--space-1) var(--space-2);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text);
+  background: rgba(106, 163, 255, 0.15);
+  border: 1px solid rgba(106, 163, 255, 0.3);
+  border-radius: var(--border-radius);
+  width: 60px;
+  height: 26px;
+}
+
+/* ==========================================================================
+   Form validation states
+   ========================================================================== */
+
+input:invalid {
+  border-color: var(--error);
+}
+
+input:invalid:focus {
+  border-color: var(--error);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
+}
+
+/* ==========================================================================
+   Mobile form adjustments
+   ========================================================================== */
+
+@media (max-width: 720px) {
+  .filter-trigger {
+    min-height: 44px;
+    padding: var(--space-2) var(--space-2) var(--space-2) 0;
+  }
+
+  .filter-chip-remove {
+    min-width: 32px;
+    min-height: 32px;
+    font-size: 16px;
+  }
+
+  input[type='search'],
+  select {
+    font-size: 16px !important; /* Prevent iOS zoom */
+  }
+}

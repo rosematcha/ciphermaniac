@@ -4,16 +4,37 @@ import path from 'path';
 import { LocalTestStorage } from '../__mocks__/cloudflare/local-storage';
 import { buildCardTrendReport, buildTrendReport, runOnlineMetaJob } from '../../functions/lib/onlineMeta';
 
+// Fixed test date for deterministic tests
+const FIXED_TEST_DATE = '2025-01-15T12:00:00.000Z';
+
 const storage = new LocalTestStorage(path.join(process.cwd(), 'tests', '__fixtures__', 'generated', 'online-meta'));
+
+// Mock card types database (empty but valid structure)
+const MOCK_CARD_TYPES_DB = {};
+
+// Mock card synonyms database (empty but valid structure)
+const MOCK_CARD_SYNONYMS_DB = { synonyms: {}, canonicals: {} };
 
 test('Online meta pipeline end-to-end (aggregation + trends + storage)', async () => {
   await storage.clear();
 
   // Provide a fake env that uses LocalTestStorage for REPORTS and simple KV
+  // Also provide mock data for card types and synonyms databases
   const env: any = {
     REPORTS: {
       put: async (key: string, val: string) => storage.put(key, val),
       get: async (key: string) => {
+        // Return mock databases for the expected paths
+        if (key === 'assets/data/card-types.json') {
+          return {
+            text: async () => JSON.stringify(MOCK_CARD_TYPES_DB)
+          } as any;
+        }
+        if (key === 'assets/card-synonyms.json') {
+          return {
+            text: async () => JSON.stringify(MOCK_CARD_SYNONYMS_DB)
+          } as any;
+        }
         const value = await storage.get(key);
         if (value === null) {
           return null;
@@ -23,7 +44,7 @@ test('Online meta pipeline end-to-end (aggregation + trends + storage)', async (
         } as any;
       }
     },
-    CARD_TYPES_KV: { get: async () => null, put: async () => null }
+    CARD_TYPES_KV: { get: async () => null, put: async () => null, delete: async () => null }
   };
 
   // Mock fetchJson to return minimal details for recent tournaments
@@ -50,17 +71,31 @@ test('Online meta pipeline end-to-end (aggregation + trends + storage)', async (
     }
     if (String(pathUrl).startsWith('/tournaments')) {
       // return a small list of tournament summaries
-      return [{ id: 'ot1', name: 'Online Test 1', date: new Date().toISOString(), format: 'STANDARD', players: 32 }];
+      return [{ id: 'ot1', name: 'Online Test 1', date: FIXED_TEST_DATE, format: 'STANDARD', players: 32 }];
     }
     return [];
   };
 
-  const result = await runOnlineMetaJob(env, { fetchJson, pageSize: 10, maxPages: 1 }).catch(err => {
+  // Use 'now' and 'since' options to align with the fixed test date
+  const testNow = new Date(FIXED_TEST_DATE);
+  const testSince = new Date(testNow.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 days before
+
+  const result = await runOnlineMetaJob(env, {
+    fetchJson,
+    pageSize: 10,
+    maxPages: 1,
+    now: testNow,
+    since: testSince
+  }).catch(err => {
     return { success: false, error: String(err) } as any;
   });
 
   assert.ok(result, 'Result must be returned');
-  assert.strictEqual(result.success, true, 'Online meta job should succeed');
+  assert.strictEqual(
+    result.success,
+    true,
+    `Online meta job should succeed: ${result.reason || result.error || JSON.stringify(result)}`
+  );
 
   // Verify writes in LocalTestStorage
   const index = await storage.get('reports/Online - Last 14 Days/archetypes/index.json');
