@@ -7,47 +7,36 @@ import { CONFIG } from './config.js';
 import { logger } from './utils/logger.js';
 import { AppError, ErrorTypes, safeFetch, validateType, withRetry } from './utils/errorHandler.js';
 import { perf } from './utils/performance.js';
+import type {
+  ArchetypeIndexEntry,
+  ArchetypeReport,
+  CacheEntry,
+  LimitlessResponse,
+  LimitlessTournament,
+  MetaReport,
+  PricingData,
+  TournamentReport,
+  TrendReport,
+  TrendReportPayload
+} from './types/index.js';
 
-interface CacheEntry<T = any> {
-  data?: T;
-  promise?: Promise<T>;
-  expiresAt: number;
-}
-
-interface LimitlessTournament {
-  id: string;
-  name: string;
-  game: string | null;
-  format: string | null;
-  date: string | null;
-  players: number | null;
-  source: 'limitless';
-}
-
-interface LimitlessResponse {
-  success: boolean;
-  data: any[];
-}
-
-interface PricingData {
-  cardPrices: Record<string, { price?: number; tcgPlayerId?: string }>;
-}
-
-interface ArchetypeIndexEntry {
-  name: string;
-  label: string;
-  deckCount: number | null;
-  percent: number | null;
-  thumbnails: string[];
-}
+export type {
+  ArchetypeIndexEntry,
+  LimitlessTournament,
+  MetaReport,
+  PricingData,
+  TournamentReport,
+  TrendReport,
+  TrendReportPayload
+};
 
 let pricingData: PricingData | null = null;
 const jsonCache = new Map<string, CacheEntry>();
 export const ONLINE_META_NAME = 'Online - Last 14 Days';
 // const _ONLINE_META_SEGMENT = `/${encodeURIComponent(ONLINE_META_NAME)}`; // Reserved for future use
 
-function hasCachedData(entry: CacheEntry): entry is CacheEntry & { data: any } {
-  return Object.hasOwn(entry, 'data');
+function hasCachedData(entry: CacheEntry): entry is CacheEntry & { data: unknown } {
+  return 'data' in entry;
 }
 
 function pruneJsonCache() {
@@ -163,16 +152,17 @@ async function safeJsonParse(response: Response, url: string): Promise<any> {
 
   try {
     return JSON.parse(text);
-  } catch (error: any) {
-    if (error.name === 'SyntaxError') {
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    if (err.name === 'SyntaxError') {
       const preview = text.slice(0, 100) + (text.length > 100 ? '...' : '');
-      throw new AppError(ErrorTypes.PARSE, `Invalid JSON response: ${error.message}`, null, {
+      throw new AppError(ErrorTypes.PARSE, `Invalid JSON response: ${err.message}`, null, {
         url,
         contentType,
         preview
       });
     }
-    throw error;
+    throw err;
   }
 }
 
@@ -299,10 +289,11 @@ export async function fetchReportResource<T = any>(
         ...options,
         cacheKey: url
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errMessage = error instanceof Error ? error.message : String(error);
       lastError = error;
       logger.warn(`${operation} failed via ${url}`, {
-        message: error?.message || error
+        message: errMessage
       });
     }
   }
@@ -391,12 +382,12 @@ export async function fetchLimitlessTournaments(filters: LimitlessFilters = {}):
 /**
  * Fetch tournament report data
  * @param tournament
- * @returns
+ * @returns Promise resolving to tournament report
  */
-export function fetchReport(tournament: string): Promise<any> {
+export function fetchReport(tournament: string): Promise<TournamentReport> {
   perf.start(`fetchReport:${tournament}`);
   const encodedTournament = encodeURIComponent(tournament);
-  return fetchReportResource(
+  return fetchReportResource<TournamentReport>(
     `${encodedTournament}/master.json`,
     `report for ${tournament}`,
     'object',
@@ -408,13 +399,19 @@ export function fetchReport(tournament: string): Promise<any> {
 /**
  * Fetch archetype trend data for a tournament group
  * @param tournament
- * @returns
+ * @returns Promise resolving to trend report payload
  */
-export function fetchTrendReport(tournament: string): Promise<any> {
+export function fetchTrendReport(tournament: string): Promise<TrendReportPayload> {
   const encodedTournament = encodeURIComponent(tournament);
-  return fetchReportResource(`${encodedTournament}/trends.json`, `trends for ${tournament}`, 'object', 'trend report', {
-    cache: true
-  });
+  return fetchReportResource<TrendReportPayload>(
+    `${encodedTournament}/trends.json`,
+    `trends for ${tournament}`,
+    'object',
+    'trend report',
+    {
+      cache: true
+    }
+  );
 }
 
 /**
@@ -436,8 +433,9 @@ export async function fetchOverrides(): Promise<Record<string, string>> {
     );
     logger.debug(`Loaded ${Object.keys(data).length} thumbnail overrides`);
     return data;
-  } catch (error: any) {
-    logger.warn('Failed to load overrides, using empty object', error.message);
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : String(error);
+    logger.warn('Failed to load overrides, using empty object', errMessage);
     return {};
   }
 }
@@ -507,10 +505,10 @@ export async function fetchArchetypesList(tournament: string): Promise<Archetype
  * Falls back to legacy path: /archetypes/{archetype}.json
  * @param tournament
  * @param archetypeBase
- * @returns
+ * @returns Promise resolving to archetype report
  * @throws AppError
  */
-export async function fetchArchetypeReport(tournament: string, archetypeBase: string): Promise<any> {
+export async function fetchArchetypeReport(tournament: string, archetypeBase: string): Promise<ArchetypeReport> {
   logger.debug(`Fetching archetype report: ${tournament}/${archetypeBase}`);
 
   // Try new folder structure first: /archetypes/Gardevoir/cards.json
@@ -531,7 +529,7 @@ export async function fetchArchetypeReport(tournament: string, archetypeBase: st
       });
       return data;
     });
-  } catch (newPathError: any) {
+  } catch (newPathError: unknown) {
     // Fall back to legacy path if new path fails
     if (newPathError instanceof AppError && newPathError.context?.status === 404) {
       logger.debug(`New path not found, trying legacy path: ${legacyPath}`);
@@ -581,7 +579,7 @@ export async function fetchArchetypeDecks(tournament: string, archetypeBase: str
     );
     logger.info(`Loaded archetype-specific decks for ${archetypeBase}`, { deckCount: data?.length || 0 });
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof AppError && error.context?.status === 404) {
       logger.debug(`Archetype-specific decks not found for ${archetypeBase}, falling back to main decks.json`);
       // Fall back to main decks.json - caller will need to filter
@@ -681,7 +679,8 @@ export async function fetchArchetypeFiltersReport(
     });
 
     return report;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : String(error);
     logger.error('Client-side filtering failed', {
       tournament,
       archetypeBase,
@@ -689,7 +688,7 @@ export async function fetchArchetypeFiltersReport(
       includeOperator,
       includeCount,
       exclude: excludeId,
-      message: error?.message || error
+      message: errMessage
     });
     throw error;
   }
@@ -698,10 +697,10 @@ export async function fetchArchetypeFiltersReport(
 /**
  * Fetch tournament metadata (meta.json)
  * @param tournament
- * @returns
+ * @returns Promise resolving to meta report
  */
-export function fetchMeta(tournament: string): Promise<any> {
-  return fetchReportResource(
+export function fetchMeta(tournament: string): Promise<MetaReport> {
+  return fetchReportResource<MetaReport>(
     `${encodeURIComponent(tournament)}/meta.json`,
     `meta for ${tournament}`,
     'object',
@@ -746,10 +745,10 @@ export function fetchDecks(tournament: string): Promise<any[] | null> {
   if (existing) {
     if (hasCachedData(existing) && existing.expiresAt > now) {
       logger.debug('Cache hit for decks.json', { tournament });
-      return Promise.resolve(existing.data);
+      return Promise.resolve(existing.data as any[] | null);
     }
     if (existing.promise) {
-      return existing.promise;
+      return existing.promise as Promise<any[] | null>;
     }
     if (!existing.promise && existing.expiresAt <= now) {
       jsonCache.delete(cacheKey);
@@ -764,10 +763,11 @@ export function fetchDecks(tournament: string): Promise<any[] | null> {
         const data = await safeJsonParse(response, url);
         validateType(data, 'array', 'decks');
         return data;
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errMessage = err instanceof Error ? err.message : String(err);
         logger.debug('decks.json not available via url', {
           url,
-          message: err.message
+          message: errMessage
         });
       }
     }
@@ -806,10 +806,10 @@ export function fetchTop8ArchetypesList(tournament: string): Promise<string[] | 
   if (existing) {
     if (hasCachedData(existing) && existing.expiresAt > now) {
       logger.debug('Cache hit for top8 archetypes', { tournament });
-      return Promise.resolve(existing.data);
+      return Promise.resolve(existing.data as string[] | null);
     }
     if (existing.promise) {
-      return existing.promise;
+      return existing.promise as Promise<string[] | null>;
     }
     if (!existing.promise && existing.expiresAt <= now) {
       jsonCache.delete(cacheKey);
@@ -828,8 +828,9 @@ export function fetchTop8ArchetypesList(tournament: string): Promise<string[] | 
           return data;
         }
         logger.warn('Top 8 data is not an array, continuing fallback');
-      } catch (error: any) {
-        logger.debug(`Top 8 archetypes not available via ${url}`, error.message);
+      } catch (error: unknown) {
+        const errMessage = error instanceof Error ? error.message : String(error);
+        logger.debug(`Top 8 archetypes not available via ${url}`, errMessage);
       }
     }
     return null;
@@ -876,8 +877,9 @@ export async function fetchPricingData(): Promise<PricingData> {
     pricingData = data;
     logger.info(`Loaded pricing data for ${Object.keys(data.cardPrices).length} cards`);
     return data;
-  } catch (error: any) {
-    logger.warn('Failed to fetch pricing data', error.message);
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : String(error);
+    logger.warn('Failed to fetch pricing data', errMessage);
     return { cardPrices: {} };
   }
 }
@@ -944,8 +946,9 @@ async function resolveCardPricingEntry(
         return entry;
       }
     }
-  } catch (synonymError: any) {
-    logger.debug(`Synonym resolution failed during ${logLabel} lookup`, synonymError.message);
+  } catch (synonymError: unknown) {
+    const errMessage = synonymError instanceof Error ? synonymError.message : String(synonymError);
+    logger.debug(`Synonym resolution failed during ${logLabel} lookup`, errMessage);
   }
 
   logger.debug(`No ${logLabel} found for ${cardId} or its variants`);
@@ -961,8 +964,9 @@ export async function getCardPrice(cardId: string): Promise<number | null> {
   try {
     const entry = await resolveCardPricingEntry(cardId, 'price', 'price');
     return entry?.price ?? null;
-  } catch (error: any) {
-    logger.debug(`Failed to get price for ${cardId}`, error.message);
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : String(error);
+    logger.debug(`Failed to get price for ${cardId}`, errMessage);
     logger.error('Error in getCardPrice:', error);
     return null;
   }
@@ -977,8 +981,9 @@ export async function getCardTCGPlayerId(cardId: string): Promise<string | null>
   try {
     const entry = await resolveCardPricingEntry(cardId, 'tcgPlayerId', 'TCGPlayer ID');
     return entry?.tcgPlayerId ?? null;
-  } catch (error: any) {
-    logger.debug(`Failed to get TCGPlayer ID for ${cardId}`, error.message);
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : String(error);
+    logger.debug(`Failed to get TCGPlayer ID for ${cardId}`, errMessage);
     return null;
   }
 }
@@ -992,8 +997,9 @@ export async function getCardData(cardId: string): Promise<{ price?: number; tcg
   try {
     const entry = await resolveCardPricingEntry(cardId, null, 'card data');
     return entry ?? null;
-  } catch (error: any) {
-    logger.debug(`Failed to get card data for ${cardId}`, error.message);
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : String(error);
+    logger.debug(`Failed to get card data for ${cardId}`, errMessage);
     return null;
   }
 }

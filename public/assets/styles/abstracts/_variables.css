@@ -1,0 +1,174 @@
+/* ==========================================================================
+   CSS Custom Properties (Design Tokens)
+   ========================================================================== */
+:root {
+  /* Colors - Dark theme (neutral, not overly blue) */
+  --bg: #121317;
+  --panel: #17181d;
+  --text: #eef1f7;
+  --muted: #a3a8b7;
+  --muted-darker: #6f7382;
+  --accent: #ff6b6b;
+  --accent-2: #6aa3ff;
+  --bar-bg: #262833;
+  --link: #7cc6ff;
+  --status-yes: #3ad27a;
+  --status-no: #ff6b6b;
+  --status-pending: #7a7f8c;
+
+  /* Color Variations */
+  --success: #22c55e;
+  --error: #ef4444;
+  --warning: #ffb74d;
+
+  /* Layout */
+  --gap: 12px;
+  --gap-xs: 4px;
+  --gap-sm: 8px;
+  --gap-md: 12px;
+  --gap-lg: 16px;
+  --gap-xl: 24px;
+  --gap-xxl: 48px;
+
+  --border-radius: 8px;
+  --border-radius-sm: 6px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 16px;
+  --border-radius-xxl: 24px;
+  --border-radius-full: 999px;
+
+  --container-max-width: 1200px;
+  --container-sm: 900px;
+  --container-md: 1000px;
+
+  /* Header/Footer heights for CLS prevention */
+  --header-height: 53px;
+  --footer-height: 45px;
+
+  /* Typography */
+  --font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Inter, Arial, sans-serif;
+  --font-family-serif: 'Fraunces', 'Fraunces Fallback', Georgia, serif;
+
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 32px;
+
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-black: 900;
+
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.4;
+  --line-height-relaxed: 1.6;
+
+  /* Spacing Scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.2);
+  --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.35);
+  --shadow-2xl: 0 20px 60px rgba(0, 0, 0, 0.45);
+
+  /* Border Colors */
+  --border-primary: #2c335a;
+  --border-secondary: #1d2133;
+  --border-muted: rgba(255, 255, 255, 0.08);
+  --border-accent: rgba(106, 163, 255, 0.25);
+  --border-focus: rgba(106, 163, 255, 0.6);
+
+  /* Background Variations */
+  --bg-hover: rgba(255, 255, 255, 0.02);
+  --bg-active: rgba(255, 255, 255, 0.04);
+  --bg-accent: rgba(106, 163, 255, 0.08);
+  --bg-accent-hover: rgba(106, 163, 255, 0.14);
+
+  /* Opacity Values */
+  --opacity-muted: 0.7;
+  --opacity-disabled: 0.55;
+  --opacity-hover: 0.8;
+  --opacity-active: 0.9;
+
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+
+  /* Z-index Scale */
+  --z-dropdown: 40;
+  --z-sticky: 50;
+  --z-overlay: 100;
+  --z-modal: 200;
+  --z-tooltip: 400;
+  --z-skip-link: 10000;
+}
+
+/* ==========================================================================
+   Utility Classes for Design Tokens
+   ========================================================================== */
+.u-bg {
+  background: var(--bg);
+}
+.u-panel {
+  background: var(--panel);
+}
+.u-text {
+  color: var(--text);
+}
+.u-muted {
+  color: var(--muted);
+}
+.u-accent {
+  color: var(--accent);
+}
+.u-accent-2 {
+  color: var(--accent-2);
+}
+.u-link {
+  color: var(--link);
+}
+.u-border {
+  border: 1px solid var(--border-primary);
+}
+.u-border-radius {
+  border-radius: var(--border-radius);
+}
+.u-gap {
+  gap: var(--gap);
+}
+.u-shadow-sm {
+  box-shadow: var(--shadow-sm);
+}
+.u-shadow-md {
+  box-shadow: var(--shadow-md);
+}
+.u-shadow-lg {
+  box-shadow: var(--shadow-lg);
+}
+.u-transition-fast {
+  transition: var(--transition-fast);
+}
+.u-transition-normal {
+  transition: var(--transition-normal);
+}
+.u-transition-slow {
+  transition: var(--transition-slow);
+}

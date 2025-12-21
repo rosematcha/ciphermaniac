@@ -70,15 +70,21 @@ function init() {
   }
   document.title = `${formattedName} \u2013 Ciphermaniac`;
 
-  // Update tab links
+  // Update tab links with proper ARIA for navigation
   if (elements.tabHome) {
     elements.tabHome.href = buildUrl('');
+    elements.tabHome.setAttribute('aria-current', 'page');
   }
   if (elements.tabAnalysis) {
     elements.tabAnalysis.href = buildUrl('analysis');
   }
   if (elements.tabTrends) {
     elements.tabTrends.href = buildUrl('trends');
+  }
+
+  // Set accessible alt text for card image
+  if (elements.cardImage) {
+    elements.cardImage.alt = `${formattedName} representative card`;
   }
 }
 

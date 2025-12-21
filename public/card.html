@@ -53,8 +53,8 @@
       </div>
     </div>
 
-    <main>
-      <section id="card-meta" class="card-sect">
+    <main id="main-content">
+      <section id="card-meta" class="card-sect" aria-labelledby="card-title">
         <div class="header-title">
           <div class="title-row">
             <h1 id="card-title">Card Details</h1>
@@ -82,27 +82,27 @@
         </div>
         <div id="card-center">
           <!-- window-select removed; card page always shows the most recent 6 tournaments -->
-          <div id="card-chart">
+          <div id="card-chart" role="img" aria-label="Usage chart across tournaments">
             <!-- Chart loads asynchronously with smooth transition -->
           </div>
-          <div id="card-copies">
+          <div id="card-copies" role="img" aria-label="Copy count distribution histogram">
             <!-- Histogram loads asynchronously with smooth transition -->
           </div>
         </div>
         <div id="card-events"></div>
         <!-- Card meta-share and copy count graph will go here -->
       </section>
-      <section id="card-analysis" class="card-sect">
+      <section id="card-analysis" class="card-sect" aria-labelledby="analysis-heading">
         <div class="analysis-header">
-          <h2>In-Depth Analysis</h2>
+          <h2 id="analysis-heading">In-Depth Analysis</h2>
           <div class="controls">
-            <label>
+            <label for="analysis-event">
               Event:
-              <select id="analysis-event"></select>
+              <select id="analysis-event" aria-label="Select tournament event for analysis"></select>
             </label>
           </div>
         </div>
-        <div id="analysis-table" style="margin-top: 8px"></div>
+        <div id="analysis-table" style="margin-top: 8px" role="region" aria-label="Analysis data table"></div>
       </section>
     </main>
     <!-- Modal will be injected by JS when needed -->

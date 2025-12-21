@@ -1,6 +1,7 @@
 /* eslint-disable id-length */
 import { logger } from './logger.js';
 import { SUCCESS_TAGS } from '../data/performanceTiers.js';
+import { normalizeArchetypeName } from './format.js';
 
 const DEFAULT_MIN_APPEARANCES = 3;
 
@@ -75,14 +76,6 @@ interface TrendDataset {
   tournaments: TournamentMeta[];
   series: ArchetypeSeries[];
   successFilter?: string;
-}
-
-function normalizeArchetypeName(name: string | undefined): string {
-  const cleaned = (name || '').replace(/_/g, ' ').trim();
-  if (!cleaned) {
-    return 'unknown';
-  }
-  return cleaned.replace(/\s+/g, ' ').toLowerCase();
 }
 
 function buildBaseName(normalized: string): string {

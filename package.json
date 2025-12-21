@@ -19,10 +19,11 @@
     "dev": "node dev/test-server.js",
     "test": "npm run test:all",
     "test:all": "npm run test:unit && npm run test:external",
-    "test:unit": "npm run test:security && npm run test:data && npm run test:client && npm run test:integration && npm run test:edge-cases && npm run test:performance && npm run test:reliability && npm run test:legacy",
+    "test:unit": "npm run test:security && npm run test:data && npm run test:client && npm run test:integration && npm run test:edge-cases && npm run test:performance && npm run test:reliability && npm run test:utils && npm run test:legacy",
     "test:external": "npm run test:api",
     "test:security": "node --test --import tsx tests/security/*.test.ts",
     "test:api": "node --test --import tsx tests/api/*.test.ts",
+    "test:utils": "node --test --import tsx tests/utils/*.test.ts",
     "test:data": "node --test --import tsx tests/data/*.test.ts",
     "test:client": "node --test --import tsx tests/client/*.test.ts",
     "test:integration": "node --test --import tsx tests/integration/*.test.ts",
@@ -107,7 +108,7 @@
     "typescript": "^5.9.2"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=20.0.0"
   },
   "keywords": [
     "pokemon",

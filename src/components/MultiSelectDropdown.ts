@@ -30,7 +30,7 @@ interface DropdownConfig {
   maxWidth?: number;
   placeholder?: string;
   emptyMessage?: string;
-  formatOption?: (value: any) => string | { label: string; fullName?: string; code?: string; codeLabel?: string };
+  formatOption?: (value: string) => string | { label: string; fullName?: string; code?: string; codeLabel?: string };
   addButtonLabel?: string;
   addAriaLabel?: string;
   allSelectedLabel?: string;
@@ -41,13 +41,13 @@ interface DropdownConfig {
   pluralLabel?: string;
   placeholderAriaLabel?: string;
   disabledSummary?: string;
-  onChange?: (selected: any[]) => Promise<void> | void;
+  onChange?: (selected: string[]) => Promise<void> | void;
   onOpen?: () => Promise<void> | void;
 }
 
 interface DropdownState {
-  options: any[];
-  selected: any[];
+  options: string[];
+  selected: string[];
   filterText: string;
   isOpen: boolean;
   disabled: boolean;
@@ -56,12 +56,13 @@ interface DropdownState {
 }
 
 export interface DropdownInstance {
-  render: (options?: any[], selection?: any[]) => void;
-  setSelection: (selection: any[], options?: { silent?: boolean }) => void;
+  render: (options?: string[], selection?: string[]) => void;
+  setSelection: (selection: string[], options?: { silent?: boolean }) => void;
   setDisabled: (disabled: boolean) => void;
   open: (options?: { multi?: boolean }) => void;
-  close: () => void;
+  close: (restoreFocus?: boolean) => void;
   toggle: () => void;
+  destroy: () => void;
   key: string;
   contains: (node: Node | null) => boolean;
   refresh: () => void;
@@ -96,7 +97,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
   const maxWidth = config.maxWidth || 500;
   const placeholderSummary = config.placeholder || 'Select option';
   const emptyMessage = config.emptyMessage || 'No results';
-  const formatOption = config.formatOption || ((value: any) => String(value));
+  const formatOption = config.formatOption || ((value: string) => String(value));
   const addButtonLabel = config.addButtonLabel || 'Add another';
   const addButtonAriaLabel = config.addAriaLabel || 'Add another selection';
   const allSelectedLabel = config.allSelectedLabel || 'All selected';
@@ -110,9 +111,11 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
   const measureCanvas = document.createElement('canvas');
   const measureContext = measureCanvas.getContext('2d');
   chipsContainer.setAttribute('role', 'list');
+  chipsContainer.setAttribute('aria-label', `Selected ${pluralLabel.toLowerCase()}`);
   addButton.textContent = addButtonLabel;
+  addButton.setAttribute('aria-label', addButtonAriaLabel);
 
-  const getDisplayParts = (optionValue: any) => {
+  const getDisplayParts = (optionValue: string) => {
     const raw = formatOption(optionValue);
     if (raw && typeof raw === 'object') {
       const label = typeof raw.label === 'string' ? raw.label : '';
@@ -232,7 +235,6 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
       return;
     }
     const selection = dropdownState.selected;
-    chipsContainer.innerHTML = '';
 
     const showChips = selection.length > 1;
     chipsContainer.hidden = !showChips;
@@ -240,6 +242,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
     if (!showChips) {
       dropdownState.chipsExpanded = false;
       chipsContainer.removeAttribute('aria-label');
+      chipsContainer.replaceChildren(); // Efficiently clear children
       return;
     }
 
@@ -258,6 +261,9 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
       dropdownState.chipsExpanded || selection.length <= maxVisibleChips
         ? selection.length
         : Math.min(selection.length, maxVisibleChips);
+
+    // Build chips in a DocumentFragment for efficient DOM updates
+    const fragment = document.createDocumentFragment();
 
     selection.slice(0, visibleCount).forEach(value => {
       const chip = document.createElement('span');
@@ -283,7 +289,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
       const removeButton = document.createElement('button');
       removeButton.type = 'button';
       removeButton.className = 'filter-chip-remove';
-      removeButton.setAttribute('aria-label', `Remove ${display.label}`);
+      removeButton.setAttribute('aria-label', `Remove ${display.label} from selection`);
       removeButton.textContent = 'x';
       removeButton.addEventListener('click', () => {
         const nextSelection = dropdownState.selected.filter(item => item !== value);
@@ -293,7 +299,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
 
       chip.appendChild(label);
       chip.appendChild(removeButton);
-      chipsContainer.appendChild(chip);
+      fragment.appendChild(chip);
     });
 
     if (selection.length > maxVisibleChips) {
@@ -309,7 +315,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
           dropdownState.chipsExpanded = true;
           renderChips();
         });
-        chipsContainer.appendChild(expandButton);
+        fragment.appendChild(expandButton);
       } else {
         const collapseButton = document.createElement('button');
         collapseButton.type = 'button';
@@ -321,20 +327,22 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
           dropdownState.chipsExpanded = false;
           renderChips();
         });
-        chipsContainer.appendChild(collapseButton);
+        fragment.appendChild(collapseButton);
       }
     }
+
+    // Replace all children at once for efficient DOM update
+    chipsContainer.replaceChildren(...fragment.childNodes);
   };
 
-  const measureWidth = (textValue: any) => {
-    const safeValue = typeof textValue === 'string' ? textValue : String(textValue ?? '');
+  const measureWidth = (textValue: string) => {
     if (!measureContext) {
-      return safeValue.length * 8;
+      return textValue.length * 8;
     }
     const computedStyle = window.getComputedStyle(trigger);
     const font = `${computedStyle.fontWeight} ${computedStyle.fontSize} ${computedStyle.fontFamily}`;
     measureContext.font = font;
-    return measureContext.measureText(safeValue).width;
+    return measureContext.measureText(textValue).width;
   };
 
   const updateWidth = () => {
@@ -362,12 +370,12 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
     });
   };
 
-  const commitSelection = (selection: any[], { silent = false } = {}) => {
+  const commitSelection = (selection: string[], { silent = false } = {}) => {
     const wasMulti = dropdownState.multi;
     let normalized = Array.isArray(selection) ? dropdownState.options.filter(option => selection.includes(option)) : [];
 
     if (!dropdownState.multi && normalized.length > 1) {
-      let chosen = null;
+      let chosen: string | null = null;
       if (Array.isArray(selection)) {
         for (let index = selection.length - 1; index >= 0; index -= 1) {
           const candidate = selection[index];
@@ -416,7 +424,8 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
   };
 
   const renderOptions = () => {
-    list.innerHTML = '';
+    // Build options in a DocumentFragment for efficient DOM updates
+    const fragment = document.createDocumentFragment();
     if (!dropdownState.multi && dropdownState.selected.length > 1) {
       dropdownState.multi = true;
     }
@@ -439,7 +448,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
         close();
         trigger.focus();
       });
-      list.appendChild(allButton);
+      fragment.appendChild(allButton);
     }
 
     const filtered = getFilteredOptions();
@@ -447,7 +456,8 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
       const empty = document.createElement('div');
       empty.className = 'filter-menu-empty';
       empty.textContent = emptyMessage;
-      list.appendChild(empty);
+      fragment.appendChild(empty);
+      list.replaceChildren(...fragment.childNodes);
       return;
     }
 
@@ -478,7 +488,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
 
         optionLabel.appendChild(checkbox);
         optionLabel.appendChild(textSpan);
-        list.appendChild(optionLabel);
+        fragment.appendChild(optionLabel);
       } else {
         const optionButton = document.createElement('button');
         optionButton.type = 'button';
@@ -515,12 +525,15 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
           trigger.focus();
         });
 
-        list.appendChild(optionButton);
+        fragment.appendChild(optionButton);
       }
     });
+
+    // Replace all children at once for efficient DOM update
+    list.replaceChildren(...fragment.childNodes);
   };
 
-  const render = (options: any[] = dropdownState.options, selection: any[] = dropdownState.selected) => {
+  const render = (options: string[] = dropdownState.options, selection: string[] = dropdownState.selected) => {
     dropdownState.options = Array.isArray(options) ? options.slice() : [];
     dropdownState.selected = Array.isArray(selection)
       ? dropdownState.options.filter(option => selection.includes(option))
@@ -534,7 +547,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
     updateWidth();
   };
 
-  const setSelection = (selection: any[], options: { silent?: boolean } = {}) => {
+  const setSelection = (selection: string[], options: { silent?: boolean } = {}) => {
     commitSelection(selection, { silent: options.silent === true });
     renderOptions();
   };
@@ -592,7 +605,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
     }
   };
 
-  const close = () => {
+  const close = (restoreFocus = true) => {
     if (!dropdownState.isOpen) {
       return;
     }
@@ -603,6 +616,12 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
       root.classList.remove('is-open');
     }
     dropdownState.multi = dropdownState.selected.length > 1;
+
+    // Restore focus to trigger if focus was inside menu
+    if (restoreFocus && document.activeElement && menu.contains(document.activeElement)) {
+      trigger.focus();
+    }
+
     updateWidth();
     if (state && state.ui && state.ui.openDropdown === config.key) {
       state.ui.openDropdown = null;
@@ -697,16 +716,28 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
   });
 
   // Handle external close requests (e.g. from other dropdowns opening)
-  document.addEventListener('dropdown:open', ((e: CustomEvent) => {
+  const handleDropdownOpen = ((e: CustomEvent) => {
     if (e.detail.key !== config.key) {
       close();
     }
-  }) as EventListener);
+  }) as EventListener;
 
   // Handle global close requests
-  document.addEventListener('dropdown:close-all', () => {
+  const handleCloseAll = () => {
     close();
-  });
+  };
+
+  document.addEventListener('dropdown:open', handleDropdownOpen);
+  document.addEventListener('dropdown:close-all', handleCloseAll);
+
+  /**
+   * Destroy the dropdown instance and clean up event listeners.
+   * Call this method when the dropdown is no longer needed to prevent memory leaks.
+   */
+  const destroy = () => {
+    document.removeEventListener('dropdown:open', handleDropdownOpen);
+    document.removeEventListener('dropdown:close-all', handleCloseAll);
+  };
 
   render();
 
@@ -717,6 +748,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
     open,
     close,
     toggle,
+    destroy,
     // Expose key for identification
     key: config.key,
     // Expose contains for click handling

@@ -6,6 +6,7 @@ import { fetchReport, fetchTournamentsList } from '../api.js';
 import { parseReport } from '../parse.js';
 import { buildCardPath } from '../card/routing.js';
 import { getCanonicalId, parseDisplayName } from '../card/identifiers.js';
+import { logger } from '../utils/logger.js';
 
 interface CardOptionItem {
   display: string;
@@ -91,8 +92,8 @@ function enrichSuggestions(
         updateDatalist();
       }
     })
-    .catch(() => {
-      // Silently continue
+    .catch(error => {
+      logger.debug('Tournament processing skipped:', error);
     });
 
   // Process remaining tournaments in parallel batches (background)
@@ -162,8 +163,8 @@ async function processTournament(
     processedTournaments.add(tournament);
 
     return added;
-  } catch {
-    // Skip missing tournaments
+  } catch (error) {
+    logger.debug('Failed to process tournament:', tournament, error);
     return false;
   }
 }
@@ -206,8 +207,8 @@ export function initCardSearch(options: SearchOptions) {
             enrichSuggestions(tournaments, byExactName, updateDatalist, processedTournaments);
           }
         })
-        .catch(() => {
-          // Silently continue with fallback
+        .catch(error => {
+          logger.debug('Failed to fetch tournaments list:', error);
         });
 
       // Incrementally enrich suggestions by scanning tournaments sequentially
@@ -251,8 +252,8 @@ export function initCardSearch(options: SearchOptions) {
     cardSearchInput.addEventListener('input', loadData, { once: true });
 
     setupSearchHandlers(cardSearchInput, cardNamesList, suggestionsBox, options);
-  } catch {
-    // Ignore initialization errors
+  } catch (error) {
+    logger.debug('Card search initialization failed:', error);
   }
 }
 
@@ -310,6 +311,8 @@ function setupSearchHandlers(
 
     if (matches.length === 0 || document.activeElement !== cardSearchInput) {
       suggestionsBox.classList.remove('is-open');
+      cardSearchInput?.setAttribute('aria-expanded', 'false');
+      cardSearchInput?.removeAttribute('aria-activedescendant');
       return;
     }
 
@@ -319,12 +322,15 @@ function setupSearchHandlers(
     });
 
     suggestionsBox.classList.add('is-open');
+    cardSearchInput?.setAttribute('aria-expanded', 'true');
   }
 
   function createSuggestionItem(match: string, matchIndex: number, matches: string[]) {
     const item = document.createElement('div');
     item.className = 'item';
     item.setAttribute('role', 'option');
+    item.id = `suggestion-${matchIndex}`;
+    item.setAttribute('tabindex', '-1');
 
     if (matchIndex === selectedIndex) {
       item.setAttribute('aria-selected', 'true');
@@ -390,6 +396,15 @@ function setupSearchHandlers(
   }
 
   if (cardSearchInput) {
+    // Set up ARIA attributes for combobox pattern
+    cardSearchInput.setAttribute('role', 'combobox');
+    cardSearchInput.setAttribute('aria-autocomplete', 'list');
+    cardSearchInput.setAttribute('aria-haspopup', 'listbox');
+    cardSearchInput.setAttribute('aria-expanded', 'false');
+    if (suggestionsBox) {
+      cardSearchInput.setAttribute('aria-controls', suggestionsBox.id || options.suggestionsId);
+    }
+
     cardSearchInput.addEventListener('focus', renderSuggestions);
     cardSearchInput.addEventListener('input', renderSuggestions);
     cardSearchInput.addEventListener('keydown', handleKeyDown);
@@ -404,6 +419,8 @@ function setupSearchHandlers(
     }
     if (!suggestionsBox.contains(event.target as Node) && event.target !== cardSearchInput) {
       suggestionsBox.classList.remove('is-open');
+      cardSearchInput?.setAttribute('aria-expanded', 'false');
+      cardSearchInput?.removeAttribute('aria-activedescendant');
     }
   }
 
@@ -452,6 +469,10 @@ function setupSearchHandlers(
     if (selectedIndex >= 0 && cardSearchInput) {
       // Preview selection into the input so user sees the chosen suggestion
       cardSearchInput.value = currentMatches[selectedIndex];
+      // Update aria-activedescendant for screen readers
+      cardSearchInput.setAttribute('aria-activedescendant', `suggestion-${selectedIndex}`);
+    } else {
+      cardSearchInput?.removeAttribute('aria-activedescendant');
     }
   }
 
@@ -521,6 +542,8 @@ function setupSearchHandlers(
       if (suggestionsBox) {
         suggestionsBox.classList.remove('is-open');
       }
+      cardSearchInput?.setAttribute('aria-expanded', 'false');
+      cardSearchInput?.removeAttribute('aria-activedescendant');
       selectedIndex = -1;
       currentMatches = [];
     }

@@ -1,0 +1,388 @@
+/* ==========================================================================
+   Responsive Design Utilities
+   ========================================================================== */
+
+/* ==========================================================================
+   Responsive Breakpoints
+   ========================================================================== */
+
+/* Mobile-first responsive design */
+@media (min-width: 560px) {
+  .grid-sm {
+    display: grid;
+  }
+}
+
+@media (min-width: 720px) {
+  .grid-md {
+    display: grid;
+  }
+}
+
+@media (min-width: 780px) {
+  .grid-lg {
+    display: grid;
+  }
+}
+
+@media (min-width: 900px) {
+  .grid-xl {
+    display: grid;
+  }
+}
+
+@media (min-width: 1000px) {
+  .grid-2xl {
+    display: grid;
+  }
+}
+
+/* ==========================================================================
+   Container Responsive System
+   ========================================================================== */
+
+.responsive-container {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--space-3);
+}
+
+@media (min-width: 560px) {
+  .responsive-container {
+    padding: 0 var(--space-4);
+  }
+}
+
+@media (min-width: 720px) {
+  .responsive-container {
+    padding: 0 var(--space-6);
+  }
+}
+
+/* ==========================================================================
+   Hide/Show Utilities
+   ========================================================================== */
+
+/* Hide elements on specific breakpoints */
+.hidden-mobile {
+  display: none;
+}
+
+.hidden-tablet {
+  display: none;
+}
+
+.hidden-desktop {
+  display: none;
+}
+
+@media (min-width: 720px) {
+  .hidden-mobile {
+    display: inherit;
+  }
+  .hidden-tablet {
+    display: none;
+  }
+  .hidden-desktop {
+    display: none;
+  }
+}
+
+@media (min-width: 900px) {
+  .hidden-mobile {
+    display: inherit;
+  }
+  .hidden-tablet {
+    display: inherit;
+  }
+  .hidden-desktop {
+    display: none;
+  }
+}
+
+@media (min-width: 1200px) {
+  .hidden-mobile {
+    display: inherit;
+  }
+  .hidden-tablet {
+    display: inherit;
+  }
+  .hidden-desktop {
+    display: inherit;
+  }
+}
+
+/* Show elements on specific breakpoints */
+.show-mobile {
+  display: none;
+}
+.show-tablet {
+  display: none;
+}
+.show-desktop {
+  display: none;
+}
+
+@media (min-width: 720px) and (max-width: 899px) {
+  .show-tablet {
+    display: inherit;
+  }
+  .show-mobile {
+    display: none;
+  }
+}
+
+@media (min-width: 900px) {
+  .show-desktop {
+    display: inherit;
+  }
+  .show-mobile {
+    display: none;
+  }
+  .show-tablet {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   Text Responsive Utilities
+   ========================================================================== */
+
+.text-responsive-sm {
+  font-size: clamp(var(--font-size-sm), 2vw, var(--font-size-base));
+}
+
+.text-responsive-base {
+  font-size: clamp(var(--font-size-base), 2.5vw, var(--font-size-lg));
+}
+
+.text-responsive-lg {
+  font-size: clamp(var(--font-size-lg), 3vw, var(--font-size-xl));
+}
+
+.text-responsive-xl {
+  font-size: clamp(var(--font-size-xl), 4vw, var(--font-size-2xl));
+}
+
+/* ==========================================================================
+   Layout Responsive Utilities
+   ========================================================================== */
+
+/* Responsive grid layouts */
+.grid-responsive {
+  display: grid;
+  gap: var(--gap);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.grid-responsive-compact {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+@media (max-width: 720px) {
+  .grid-responsive {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+
+  .grid-responsive-compact {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-1);
+  }
+}
+
+/* Responsive flex layouts */
+.flex-responsive {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+@media (max-width: 720px) {
+  .flex-responsive {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+}
+
+/* ==========================================================================
+   Spacing Responsive Utilities
+   ========================================================================== */
+
+.p-responsive {
+  padding: var(--space-4);
+}
+.m-responsive {
+  margin: var(--space-4);
+}
+
+@media (max-width: 720px) {
+  .p-responsive {
+    padding: var(--space-2);
+  }
+  .m-responsive {
+    margin: var(--space-2);
+  }
+}
+
+.p-responsive-lg {
+  padding: var(--space-6);
+}
+.m-responsive-lg {
+  margin: var(--space-6);
+}
+
+@media (max-width: 720px) {
+  .p-responsive-lg {
+    padding: var(--space-3);
+  }
+  .m-responsive-lg {
+    margin: var(--space-3);
+  }
+}
+
+/* ==========================================================================
+   Component Responsive Helpers
+   ========================================================================== */
+
+/* Responsive toolbar */
+.toolbar-responsive {
+  background: transparent;
+  border-bottom: 1px solid #171824;
+}
+
+.toolbar-responsive .controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+}
+
+@media (max-width: 700px) {
+  .toolbar-responsive .controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+}
+
+/* Responsive cards */
+.cards-responsive {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--gap);
+  padding: var(--space-3);
+}
+
+@media (max-width: 560px) {
+  .cards-responsive {
+    grid-template-columns: 1fr;
+    padding: var(--space-2);
+  }
+}
+
+@media (min-width: 560px) and (max-width: 720px) {
+  .cards-responsive {
+    grid-template-columns: repeat(2, 1fr);
+    padding: var(--space-2);
+  }
+}
+
+@media (min-width: 720px) and (max-width: 900px) {
+  .cards-responsive {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ==========================================================================
+   Navigation Responsive
+   ========================================================================== */
+
+.nav-responsive {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.nav-responsive .nav-link {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--border-radius);
+  transition: var(--transition-fast);
+}
+
+@media (max-width: 720px) {
+  .nav-responsive {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .nav-responsive .nav-link {
+    padding: var(--space-3);
+    font-size: var(--font-size-lg);
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* ==========================================================================
+   Form Responsive Utilities
+   ========================================================================== */
+
+.form-responsive .form-group {
+  margin-bottom: var(--space-4);
+}
+
+.form-responsive input,
+.form-responsive select,
+.form-responsive textarea {
+  width: 100%;
+  padding: var(--space-3);
+}
+
+@media (max-width: 720px) {
+  .form-responsive input,
+  .form-responsive select,
+  .form-responsive textarea {
+    font-size: 16px; /* Prevent iOS zoom */
+    padding: var(--space-4);
+  }
+}
+
+/* ==========================================================================
+   Performance Optimizations
+   ========================================================================== */
+
+/* Use contain for heavy components */
+.performance-optimized {
+  contain: layout style paint;
+}
+
+/* Reduce motion for performance */
+.performance-saver * {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* ==========================================================================
+   Touch Target Sizes
+   ========================================================================== */
+
+/* Ensure minimum touch target sizes */
+.touch-target-min {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 720px) {
+  .touch-target-min {
+    min-width: 48px;
+    min-height: 48px;
+  }
+}

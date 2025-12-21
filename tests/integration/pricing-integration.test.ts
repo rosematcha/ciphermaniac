@@ -7,6 +7,9 @@ import { LocalTestStorage } from '../__mocks__/cloudflare/local-storage';
 import PricingManager from '../../public/assets/js/pricing.js';
 import { generateReportFromDecks } from '../../functions/lib/reportBuilder.js';
 
+// Fixed test date for deterministic tests
+const FIXED_TEST_DATE = '2025-01-15T12:00:00.000Z';
+
 const storage = new LocalTestStorage(path.join(process.cwd(), 'tests', '__fixtures__', 'generated', 'pricing'));
 
 test('Pricing pipeline integration (fetch, cache, TTL, propagate to reports)', async () => {
@@ -14,7 +17,7 @@ test('Pricing pipeline integration (fetch, cache, TTL, propagate to reports)', a
 
   // Mock TCGCSV endpoint by stubbing fetch used inside PricingManager
   const pricingPayload = {
-    lastUpdated: new Date().toISOString(),
+    lastUpdated: FIXED_TEST_DATE,
     updateSource: 'tcgcsv-test',
     cardPrices: {
       'Multi::S1::001': { price: 3.5, tcgPlayerId: 123 },

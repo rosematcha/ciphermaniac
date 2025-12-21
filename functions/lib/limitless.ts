@@ -13,6 +13,20 @@ export interface LimitlessOptions {
 
 export type LimitlessError = Error & { status?: number; body?: string };
 
+/**
+ * Strips sensitive parameters (like API keys) from URLs for safe logging
+ */
+function safeUrlForLogging(url: URL | string): string {
+  const urlObj = typeof url === 'string' ? new URL(url) : new URL(url.toString());
+  const sensitiveParams = ['key', 'api_key', 'apikey', 'token', 'access_token', 'secret'];
+  for (const param of sensitiveParams) {
+    if (urlObj.searchParams.has(param)) {
+      urlObj.searchParams.set(param, '[REDACTED]');
+    }
+  }
+  return urlObj.toString();
+}
+
 function resolveLimitlessApiKey(env?: LimitlessEnv | null): string | null {
   const direct = env?.LIMITLESS_API_KEY;
   if (typeof direct === 'string' && direct.trim()) {
@@ -69,19 +83,7 @@ export async function fetchLimitlessJson(pathname: string, options: LimitlessOpt
   }
 
   const url = buildLimitlessUrl(pathname, searchParams);
-  // Comply with the documented authentication scheme by appending the key query parameter.
-  if (!url.searchParams.has('key')) {
-    url.searchParams.set('key', apiKey);
-  }
-
-  // Temporary debug logging to verify authentication plumbing during development.
-  if (typeof console !== 'undefined' && typeof console.debug === 'function') {
-    console.debug('[Limitless] Proxying request', {
-      path: url.pathname,
-      hasKeyQuery: url.searchParams.has('key'),
-      hasHeader: true
-    });
-  }
+  // Authentication is handled via X-Access-Key header only (no query params for security)
 
   const headers = new Headers(fetchOptions?.headers || undefined);
   if (!headers.has('X-Access-Key')) {
@@ -104,7 +106,7 @@ export async function fetchLimitlessJson(pathname: string, options: LimitlessOpt
     if (typeof console !== 'undefined' && typeof console.warn === 'function') {
       console.warn('[Limitless] Non-ok response', {
         status: response.status,
-        url: response.url,
+        url: safeUrlForLogging(response.url),
         contentType
       });
     }
@@ -119,7 +121,7 @@ export async function fetchLimitlessJson(pathname: string, options: LimitlessOpt
     if (typeof console !== 'undefined' && typeof console.warn === 'function') {
       console.warn('[Limitless] Unexpected content type response', {
         status: response.status,
-        url: response.url,
+        url: safeUrlForLogging(response.url),
         contentType
       });
     }
@@ -133,4 +135,4 @@ export async function fetchLimitlessJson(pathname: string, options: LimitlessOpt
   return response.json();
 }
 
-export { buildLimitlessUrl, resolveLimitlessApiKey };
+export { buildLimitlessUrl, resolveLimitlessApiKey, safeUrlForLogging };

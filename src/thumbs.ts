@@ -32,6 +32,9 @@ function getVariantOverride(
   return overrides[key] || null;
 }
 
+// Memoization cache for thumbnail URLs
+const urlCache = new Map<string, string | null>();
+
 /**
  * Build Limitless CDN thumbnail URL
  * Format: https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/[SET]/[SET]_[NUMBER]_R_EN_[SIZE].png
@@ -45,10 +48,17 @@ function buildLimitlessUrl(setCode: string, number: string | number, useSm: bool
     return null;
   }
 
+  const cacheKey = `${setCode}|${number}|${useSm}`;
+  const cached = urlCache.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
+
   const normalizedSet = String(setCode).toUpperCase().trim();
   const normalizedNumber = String(number).trim();
 
   if (!normalizedSet || !normalizedNumber) {
+    urlCache.set(cacheKey, null);
     return null;
   }
 
@@ -58,7 +68,16 @@ function buildLimitlessUrl(setCode: string, number: string | number, useSm: bool
   // Use SM for small thumbnails, XS for extra-small
   const size = useSm ? 'SM' : 'XS';
 
-  return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${normalizedSet}/${normalizedSet}_${paddedNumber}_R_EN_${size}.png`;
+  const url = `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${normalizedSet}/${normalizedSet}_${paddedNumber}_R_EN_${size}.png`;
+  urlCache.set(cacheKey, url);
+  return url;
+}
+
+/**
+ * Clear the thumbnail URL cache for memory management
+ */
+export function clearThumbnailCache(): void {
+  urlCache.clear();
 }
 
 function resolveOverrideCandidate(raw: string | null | undefined, useSm: boolean): string | null {

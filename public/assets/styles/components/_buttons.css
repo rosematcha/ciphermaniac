@@ -1,0 +1,310 @@
+/* ==========================================================================
+   Button Component System
+   ========================================================================== */
+
+/* Base button styles */
+.btn {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-3) var(--space-4);
+  min-height: 44px;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-appearance: button;
+  appearance: button;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  transition: var(--transition-normal);
+  -webkit-tap-highlight-color: rgba(106, 163, 255, 0.1);
+}
+
+/* Button variants */
+.btn--primary {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  color: #0c111f;
+}
+
+.btn--secondary {
+  background: transparent;
+  border-color: var(--border-accent);
+  color: var(--accent-2);
+}
+
+.btn--accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn--ghost {
+  background: transparent;
+  border-color: var(--border-muted);
+  color: var(--text);
+}
+
+.btn--sm {
+  padding: var(--space-2) var(--space-3);
+  min-height: 36px;
+  font-size: var(--font-size-sm);
+}
+
+.btn--lg {
+  padding: var(--space-4) var(--space-6);
+  min-height: 52px;
+  font-size: var(--font-size-lg);
+}
+
+/* Button states */
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: var(--space-2);
+}
+
+/* Button with icons */
+.btn--icon-left {
+  gap: var(--space-2);
+}
+
+.btn--icon-right {
+  gap: var(--space-2);
+}
+
+.btn__icon {
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+}
+
+/* Full width button */
+.btn--full {
+  width: 100%;
+}
+
+/* Loading state */
+.btn--loading {
+  pointer-events: none;
+  position: relative;
+  color: transparent !important;
+}
+
+.btn--loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ==========================================================================
+   Specialized Button Variants
+   ========================================================================== */
+
+/* Toggle buttons */
+.btn-toggle {
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  color: var(--muted);
+  border-radius: var(--border-radius);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+}
+
+.btn-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+  border-color: var(--border-accent);
+}
+
+.btn-toggle.is-active {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  color: #0c111f;
+}
+
+.btn-toggle[aria-expanded='true'] {
+  background: var(--bg-accent);
+  color: var(--accent-2);
+  border-color: var(--accent-2);
+}
+
+/* Filter toggle specific */
+.filters-toggle {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--border-radius-xl);
+  padding: var(--space-3) var(--space-3);
+  min-height: 48px;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  -webkit-tap-highlight-color: rgba(106, 163, 255, 0.1);
+  -webkit-appearance: button;
+  appearance: button;
+}
+
+.filters-toggle.is-active {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  color: #0c111f;
+}
+
+/* Navigation toggle */
+.nav-toggle {
+  display: none;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-3) var(--space-3);
+  min-height: 48px;
+  cursor: pointer;
+  transition: var(--transition-normal);
+  -webkit-appearance: button;
+  appearance: button;
+  -webkit-tap-highlight-color: rgba(106, 163, 255, 0.1);
+}
+
+.nav-toggle.is-active {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  color: #0c111f;
+}
+
+/* Mobile adjustments */
+@media (max-width: 720px) {
+  .btn,
+  .filters-toggle,
+  .nav-toggle {
+    min-height: 48px;
+    padding: var(--space-3) var(--space-4);
+  }
+}
+
+/* ==========================================================================
+   Button Groups
+   ========================================================================== */
+
+.btn-group {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.btn-group--vertical {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.btn-group--stacked {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
+}
+
+/* ==========================================================================
+   Icon Buttons
+   ========================================================================== */
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  border-radius: var(--border-radius);
+  padding: var(--space-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  transition: var(--transition-fast);
+  -webkit-tap-highlight-color: rgba(106, 163, 255, 0.1);
+}
+
+.btn-icon:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.btn-icon:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: var(--space-2);
+}
+
+.btn-icon--close {
+  width: 38px;
+  height: 38px;
+  font-size: 20px;
+}
+
+.btn-icon--remove {
+  width: 24px;
+  height: 24px;
+  font-size: 16px;
+}
+
+/* ==========================================================================
+   Link Buttons
+   ========================================================================== */
+
+.btn-link {
+  background: transparent;
+  border: none;
+  color: var(--link);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  padding: var(--space-2);
+  border-radius: var(--border-radius);
+  transition: var(--transition-fast);
+}
+
+.btn-link:hover {
+  color: var(--accent-2);
+  text-decoration: underline;
+}
+
+.btn-link:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: var(--space-2);
+}

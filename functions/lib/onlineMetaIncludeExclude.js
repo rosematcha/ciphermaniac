@@ -10,7 +10,8 @@
  *
  */
 
-import { generateReportFromDecks, sanitizeForFilename } from './reportBuilder.js';
+import { generateReportFromDecks } from './reportBuilder.js';
+import { buildCardIdentifier, normalizeCardNumber, sanitizeForFilename } from './cardUtils.js';
 import { loadCardTypesDatabase } from './cardTypesDatabase.js';
 import { enrichDecksWithOnTheFlyFetch } from './cardTypeFetcher.js';
 
@@ -26,41 +27,6 @@ const MIN_CARD_USAGE_PERCENT = 1; // Only generate filters for cards in 1%+ of d
 const MAX_CROSS_FILTERS = 20; // Limit cross-combinations to top N cards by usage (increased for more options)
 const MIN_SUBSET_SIZE = 2; // Skip subsets with fewer than 2 decks
 const MAX_COUNT_VARIATIONS = 3; // Limit count variations (e.g., only =1, =2, >=2)
-
-/**
- * Normalizes a card number to 3-digit format with optional suffix
- */
-function normalizeCardNumber(value) {
-  if (value === undefined || value === null) {
-    return '';
-  }
-  const raw = String(value).trim();
-  if (!raw) {
-    return '';
-  }
-  const match = /^(\d+)([A-Za-z]*)$/.exec(raw);
-  if (!match) {
-    return raw.toUpperCase();
-  }
-  const [, digits, suffix = ''] = match;
-  const normalized = digits.padStart(3, '0');
-  return suffix ? `${normalized}${suffix.toUpperCase()}` : normalized;
-}
-
-/**
- * Builds a card identifier string (e.g., "SVI~118")
- */
-function buildCardIdentifier(setCode, number) {
-  const sc = (setCode || '').toString().toUpperCase().trim();
-  if (!sc) {
-    return null;
-  }
-  const normalized = normalizeCardNumber(number);
-  if (!normalized) {
-    return null;
-  }
-  return `${sc}~${normalized}`;
-}
 
 /**
  * Extracts unique cards from archetype report data and categorizes them

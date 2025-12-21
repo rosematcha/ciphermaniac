@@ -5,11 +5,34 @@
  */
 
 const RATE_LIMIT_DELAY_MS = 250;
+const DEFAULT_FETCH_TIMEOUT_MS = 10000; // 10 seconds
 
 function delay(ms) {
   return new Promise(resolve => {
     setTimeout(resolve, ms);
   });
+}
+
+/**
+ * Fetch with timeout wrapper to prevent hanging requests
+ * @param {string} url - URL to fetch
+ * @param {RequestInit} options - Fetch options
+ * @param {number} timeoutMs - Timeout in milliseconds (default: 10000)
+ * @returns {Promise<Response>}
+ */
+async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function persistCardTypesDatabase(env, database) {
@@ -77,7 +100,7 @@ async function fetchCardTypeFromLimitless(setCode, number) {
 async function fetchCardTypeVariant(setCode, numberVariant) {
   try {
     const url = `https://limitlesstcg.com/cards/${setCode}/${numberVariant}`;
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       headers: {
         'User-Agent': 'Ciphermaniac/1.0 (Card Type Enrichment)'
       }
