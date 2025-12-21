@@ -1,0 +1,279 @@
+/* ==========================================================================
+   Grid System
+   ========================================================================== */
+
+/* ==========================================================================
+   Responsive Grid Layouts
+   ========================================================================== */
+
+/* Card grid system */
+.grid-auto-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--gap);
+}
+
+.grid-auto-4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--gap);
+}
+
+.grid-auto-5 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--gap);
+}
+
+/* Fixed column grids */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--gap);
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gap);
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--gap);
+}
+
+/* ==========================================================================
+   Responsive Card Grids
+   ========================================================================== */
+
+/* Cards responsive grid */
+.cards-grid {
+  --grid-columns: repeat(auto-fit, minmax(200px, 1fr));
+  display: grid;
+  grid-template-columns: var(--grid-columns);
+  gap: var(--gap);
+}
+
+/* Mobile: 1-2 cards */
+@media (max-width: 560px) {
+  .cards-grid {
+    --grid-columns: 1fr;
+    gap: var(--space-1);
+  }
+}
+
+/* Small tablet: 2-3 cards */
+@media (min-width: 560px) and (max-width: 720px) {
+  .cards-grid {
+    --grid-columns: repeat(2, 1fr);
+    gap: var(--space-2);
+  }
+}
+
+/* Large tablet: 3-4 cards */
+@media (min-width: 720px) and (max-width: 900px) {
+  .cards-grid {
+    --grid-columns: repeat(3, 1fr);
+    gap: var(--space-3);
+  }
+}
+
+/* Desktop: 4-5 cards */
+@media (min-width: 900px) {
+  .cards-grid {
+    --grid-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--space-3);
+  }
+}
+
+/* ==========================================================================
+   Responsive Layout Grids
+   ========================================================================== */
+
+/* Sidebar layouts */
+.layout-sidebar {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .layout-sidebar {
+    grid-template-columns: 240px 1fr;
+    gap: var(--space-4);
+  }
+}
+
+@media (max-width: 720px) {
+  .layout-sidebar {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}
+
+/* Two column layouts */
+.layout-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .layout-two-col {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}
+
+/* Three column layouts */
+.layout-three-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .layout-three-col {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+  }
+}
+
+@media (max-width: 720px) {
+  .layout-three-col {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+}
+
+/* ==========================================================================
+   Specific Grid Areas
+   ========================================================================== */
+
+/* Card detail layout */
+.card-detail-grid {
+  display: grid;
+  grid-template-columns: 300px minmax(480px, 1fr) minmax(380px, 520px);
+  grid-template-areas:
+    'header header header'
+    'hero   center  events'
+    'hero   center  events';
+  gap: var(--space-4);
+  align-items: stretch;
+  max-width: var(--container-max-width);
+  margin: var(--space-4) auto;
+  padding: var(--space-4);
+}
+
+@media (max-width: 1100px) {
+  .card-detail-grid {
+    grid-template-columns: 240px minmax(0, 1fr);
+    grid-template-areas:
+      'header header'
+      'hero   center'
+      'hero   events';
+  }
+}
+
+@media (max-width: 720px) {
+  .card-detail-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'header'
+      'hero'
+      'center'
+      'events';
+  }
+}
+
+/* Analysis layout */
+.analysis-grid {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .analysis-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}
+
+/* ==========================================================================
+   Grid Utilities
+   ========================================================================== */
+
+/* Grid areas */
+.grid-area-header {
+  grid-area: header;
+}
+.grid-area-sidebar {
+  grid-area: sidebar;
+}
+.grid-area-main {
+  grid-area: main;
+}
+.grid-area-footer {
+  grid-area: footer;
+}
+
+/* Grid positioning */
+.grid-center {
+  display: grid;
+  place-items: center;
+}
+
+.grid-start {
+  display: grid;
+  place-items: start;
+}
+
+.grid-end {
+  display: grid;
+  place-items: end;
+}
+
+/* Grid sizing */
+.grid-span-2 {
+  grid-column: span 2;
+}
+.grid-span-3 {
+  grid-column: span 3;
+}
+.grid-span-4 {
+  grid-column: span 4;
+}
+
+.grid-row-span-2 {
+  grid-row: span 2;
+}
+.grid-row-span-3 {
+  grid-row: span 3;
+}
+
+/* ==========================================================================
+   Performance Optimizations
+   ========================================================================== */
+
+/* Contain grid layouts */
+.grid-contained {
+  contain: layout style paint;
+}
+
+/* Optimize for scrolling */
+.grid-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent content shift */
+.grid-prevent-shift {
+  min-height: 400px;
+}

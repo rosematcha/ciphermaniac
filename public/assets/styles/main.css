@@ -1,0 +1,372 @@
+/* ==========================================================================
+   Ciphermaniac CSS - Modular Architecture
+   ========================================================================== */
+
+/* Import design system and utilities */
+@import './abstracts/variables.css';
+@import './base/reset.css';
+
+/* Import component systems */
+@import './components/buttons.css';
+@import './components/cards.css';
+@import './components/forms.css';
+@import './layout/header.css';
+@import './layout/toolbar.css';
+
+/* Import layout patterns */
+@import './layout/grid.css';
+
+/* Import page-specific styles */
+@import './pages/responsive.css';
+
+/* ==========================================================================
+   Main Layout & Base Components
+   ========================================================================== */
+
+/* Main content area */
+main {
+  padding: 0 var(--space-3) var(--space-6);
+  flex: 1;
+}
+
+/* Content sections */
+.card-sect {
+  background: var(--panel);
+  border: 1px solid #242a4a;
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-3);
+  margin: var(--space-3) var(--space-1);
+}
+
+/* Typography fixes for sections */
+.card-sect h1 {
+  margin: var(--space-3) 0 var(--space-2);
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.card-sect h2 {
+  margin: var(--space-2) 0 var(--space-2);
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+/* Tabs system */
+.tabs {
+  display: flex;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  margin: var(--space-1) var(--space-1) var(--space-2);
+}
+
+.tab {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--border-radius-full);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.tab.is-active {
+  border-color: #3b4aa0;
+  box-shadow: 0 0 0 1px #3b4aa0 inset;
+}
+
+/* Summary text */
+.summary {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+  margin: var(--space-1) var(--space-1) var(--space-3);
+}
+
+.summary .overall-pct {
+  margin: 0 var(--space-1);
+  color: var(--text);
+  font-weight: var(--font-weight-black);
+}
+
+/* Empty states */
+.empty-state {
+  padding: var(--space-12) var(--space-4);
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty-state h2 {
+  margin: 0 0 var(--space-2);
+  color: var(--text);
+  font-size: var(--font-size-xl);
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: var(--font-size-base);
+}
+
+/* More rows button */
+.more-rows {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-5) 0;
+}
+
+.more-rows .btn {
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--border-radius-lg);
+}
+
+/* ==========================================================================
+   Tables
+   ========================================================================== */
+
+.card-sect table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Table headers */
+.card-sect table thead th {
+  background: var(--bg-hover);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Zebra striping */
+.card-sect table tbody tr:nth-child(odd) {
+  background: var(--bg-hover);
+}
+
+.card-sect table tbody tr:nth-child(even) {
+  background: var(--bg-active);
+}
+
+.card-sect table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.card-sect table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  padding: var(--space-3);
+}
+
+/* Column specific styling */
+.card-sect table td.zero-pct {
+  color: var(--muted-darker);
+}
+
+/* ==========================================================================
+   Navigation Breadcrumbs
+   ========================================================================== */
+
+.breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-base);
+  color: rgba(255, 255, 255, 0.75);
+  text-transform: none;
+}
+
+.breadcrumb__link {
+  color: var(--accent-2);
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+.breadcrumb__link:hover {
+  color: var(--accent-2);
+  text-decoration: underline;
+}
+
+.breadcrumb__separator {
+  opacity: 0.6;
+}
+
+.breadcrumb__current {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ==========================================================================
+   Action Rows
+   ========================================================================== */
+
+.action-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: var(--space-2);
+}
+
+/* ==========================================================================
+   Status Messages
+   ========================================================================== */
+
+.note {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+  margin: var(--space-2) 0 0;
+}
+
+.note a {
+  color: var(--link);
+  transition: var(--transition-fast);
+}
+
+.note a:hover {
+  color: var(--accent-2);
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Modal & Overlay System
+   ========================================================================== */
+
+/* Base modal */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal);
+  z-index: var(--z-modal);
+}
+
+.modal.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 7, 18, 0.82);
+  backdrop-filter: blur(2px);
+}
+
+.modal__dialog {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  border-radius: 0;
+  border: none;
+  width: min(560px, 92vw);
+  max-height: calc(100vh - var(--space-15));
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  box-shadow: none;
+}
+
+/* Close button */
+.modal__close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 10;
+  background: rgba(15, 17, 34, 0.85);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: var(--transition-normal);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255, 107, 107, 0.15);
+}
+
+.modal__close:hover {
+  transform: scale(1.05);
+  border-color: var(--accent-2);
+}
+
+.modal__close:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: var(--space-2);
+}
+
+/* ==========================================================================
+   Loading & Skeleton States
+   ========================================================================== */
+
+.skeleton-loading,
+.showing-skeleton {
+  position: relative;
+}
+
+.skeleton-loading > .skeleton-text,
+.skeleton-loading > .skeleton-image,
+.skeleton-loading > .skeleton-chart,
+.skeleton-loading > .skeleton-histogram,
+.showing-skeleton > * {
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+/* Fade in content when skeleton is removed */
+.card-sect > *:not(.skeleton-loading):not(.skeleton-chart):not(.skeleton-histogram):not([aria-hidden='true']) {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+/* ==========================================================================
+   Responsive Utilities
+   ========================================================================== */
+
+/* Slim controls */
+.controls.slim label {
+  font-size: var(--font-size-sm);
+  color: var(--muted);
+}
+
+.controls.slim select {
+  min-height: 34px;
+  font-size: var(--font-size-base);
+  padding: var(--space-2) var(--space-3);
+}
+
+/* ==========================================================================
+   Component overrides and specific fixes
+   ========================================================================== */
+
+/* Card image modal specific */
+body.card-image-modal-open {
+  overflow: hidden;
+}
+
+/* Prevent image layout shift */
+.thumb img {
+  width: 100%;
+  height: 100%;
+}
+
+/* Contain layout for sections that load content dynamically */
+.card-sect {
+  contain: layout style;
+}
+
+/* Ensure footer has fixed height */
+.site-footer {
+  min-height: var(--footer-height);
+}
+
+/* Filter panel close button scroll margin */
+#filtersToggle {
+  scroll-margin-top: 100px;
+}
+
+/* Prevent iOS zoom on inputs */
+@media (max-width: 720px) {
+  input[type='search'],
+  input[type='number'],
+  select {
+    font-size: 16px !important;
+  }
+}
