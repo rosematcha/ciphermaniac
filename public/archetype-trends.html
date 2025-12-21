@@ -63,6 +63,10 @@
         <!-- Stats Overview Cards -->
         <section id="trends-stats" class="trends-stats" hidden aria-label="Archetype statistics overview">
           <div class="stat-card">
+            <span class="stat-label">Weeks</span>
+            <span id="stat-weeks" class="stat-value">-</span>
+          </div>
+          <div class="stat-card">
             <span class="stat-label">Tournaments</span>
             <span id="stat-tournaments" class="stat-value">-</span>
           </div>
@@ -74,45 +78,130 @@
             <span class="stat-label">Date Range</span>
             <span id="stat-range" class="stat-value">-</span>
           </div>
-          <div class="stat-card">
-            <span class="stat-label">Most Played</span>
-            <span id="stat-most-played" class="stat-value">-</span>
+        </section>
+
+        <!-- Key Insights Summary -->
+        <section id="trends-insights" class="trends-insights" hidden aria-label="Key deck building insights">
+          <h2 class="section-heading">What's Changing?</h2>
+          <div class="insights-grid">
+            <!-- Core Cards -->
+            <div class="insight-card insight-core" id="insight-core">
+              <div class="insight-header">
+                <h3 class="insight-title">Core Cards</h3>
+                <span class="insight-badge" id="core-count">0</span>
+              </div>
+              <p class="insight-description">Cards in nearly every build</p>
+              <ul id="core-cards-list" class="insight-list"></ul>
+            </div>
+
+            <!-- Flex Slots -->
+            <div class="insight-card insight-flex" id="insight-flex">
+              <div class="insight-header">
+                <h3 class="insight-title">Flex Slots</h3>
+                <span class="insight-badge" id="flex-count">0</span>
+              </div>
+              <p class="insight-description">High variance in counts</p>
+              <ul id="flex-cards-list" class="insight-list"></ul>
+            </div>
+
+            <!-- Rising Stars -->
+            <div class="insight-card insight-rising" id="insight-rising">
+              <div class="insight-header">
+                <h3 class="insight-title">
+                  <span class="trend-icon rising-icon" aria-hidden="true">▲</span>
+                  Rising
+                </h3>
+                <span class="insight-badge" id="rising-count">0</span>
+              </div>
+              <p class="insight-description">Gaining popularity</p>
+              <ul id="rising-cards-list" class="insight-list"></ul>
+            </div>
+
+            <!-- Falling Stars -->
+            <div class="insight-card insight-falling" id="insight-falling">
+              <div class="insight-header">
+                <h3 class="insight-title">
+                  <span class="trend-icon falling-icon" aria-hidden="true">▼</span>
+                  Falling
+                </h3>
+                <span class="insight-badge" id="falling-count">0</span>
+              </div>
+              <p class="insight-description">Declining usage</p>
+              <ul id="falling-cards-list" class="insight-list"></ul>
+            </div>
+          </div>
+
+          <!-- Substitution Patterns -->
+          <div id="substitutions-section" class="substitutions-section" hidden>
+            <h3 class="subsection-heading">Substitution Patterns</h3>
+            <p class="section-description">Cards that tend to replace each other in builds</p>
+            <div id="substitutions-list" class="substitutions-grid"></div>
           </div>
         </section>
 
-        <!-- Rising/Cooling Movers (condensed horizontal) -->
-        <section id="trends-movers" class="trends-movers-v2" hidden aria-label="Cards rising and cooling in popularity">
-          <div class="movers-group movers-rising">
-            <h3><span class="mover-icon rising-icon" aria-hidden="true">▲</span> Rising</h3>
-            <ul id="trends-rising" class="movers-list-v2" role="list" aria-label="Rising cards"></ul>
+        <!-- Copy Count Evolution -->
+        <section id="copy-evolution" class="copy-evolution" hidden aria-label="How copy counts are changing">
+          <h2 class="section-heading">Copy Count Evolution</h2>
+          <p class="section-description">How many copies players are running over time</p>
+          <div class="copy-evolution-controls">
+            <label for="copy-card-select">Select card:</label>
+            <div class="select-wrapper">
+              <select id="copy-card-select" class="filter-card-select">
+                <option value="">Choose a card...</option>
+              </select>
+            </div>
           </div>
-          <div class="movers-group movers-cooling">
-            <h3><span class="mover-icon cooling-icon" aria-hidden="true">▼</span> Cooling</h3>
-            <ul id="trends-falling" class="movers-list-v2" role="list" aria-label="Cooling cards"></ul>
+          <div id="copy-chart-container" class="copy-chart-container">
+            <div id="copy-chart" class="copy-chart" role="img" aria-label="Copy count distribution over time"></div>
+            <div id="copy-stats" class="copy-stats">
+              <div class="copy-stat">
+                <span class="copy-stat-label">Current Average:</span>
+                <span id="copy-avg-current" class="copy-stat-value">-</span>
+              </div>
+              <div class="copy-stat">
+                <span class="copy-stat-label">Most Common:</span>
+                <span id="copy-mode-current" class="copy-stat-value">-</span>
+              </div>
+              <div class="copy-stat">
+                <span class="copy-stat-label">Change:</span>
+                <span id="copy-change" class="copy-stat-value copy-stat-delta">-</span>
+              </div>
+            </div>
           </div>
         </section>
 
-        <!-- Main Chart Area -->
+        <!-- Main Playrate Timeline Chart -->
         <section id="trends-chart-container" class="trends-chart-container-v2" hidden>
           <div class="chart-header">
             <h2>Playrate Over Time</h2>
-            <p class="chart-subtitle" id="chart-subtitle">Select cards below to chart their playrate</p>
+            <p class="chart-subtitle" id="chart-subtitle">Click cards in the table below to add them to the chart</p>
           </div>
           <div id="trends-chart" class="trends-chart-v2" role="img" aria-label="Card usage trends over time"></div>
           <div id="trends-chart-legend" class="trends-chart-legend-v2"></div>
         </section>
 
-        <!-- Card List with Sparklines -->
+        <!-- Card List with Enhanced Info -->
         <section id="trends-card-list" class="trends-card-list" hidden>
           <div class="card-list-header">
             <h2>All Cards</h2>
             <div class="card-list-controls">
+              <label for="card-category-filter">Filter:</label>
+              <select id="card-category-filter" class="filter-card-select">
+                <option value="all">All Cards</option>
+                <option value="core">Core</option>
+                <option value="staple">Staple</option>
+                <option value="flex">Flex</option>
+                <option value="tech">Tech</option>
+                <option value="emerging">Emerging</option>
+                <option value="fading">Fading</option>
+              </select>
               <label for="card-sort">Sort by:</label>
               <select id="card-sort" class="filter-card-select">
-                <option value="playrate">Playrate</option>
+                <option value="playrate">Current Playrate</option>
                 <option value="trending">Trending</option>
                 <option value="name">Name</option>
                 <option value="copies">Avg Copies</option>
+                <option value="volatility">Volatility</option>
               </select>
             </div>
           </div>
@@ -122,10 +211,11 @@
                 <tr>
                   <th class="col-chart">Chart</th>
                   <th class="col-name">Card</th>
-                  <th class="col-sparkline">Trend</th>
+                  <th class="col-category">Type</th>
                   <th class="col-playrate">Playrate</th>
-                  <th class="col-copies">Avg Copies</th>
+                  <th class="col-copies">Copies</th>
                   <th class="col-change">Change</th>
+                  <th class="col-sparkline">Weekly Trend</th>
                 </tr>
               </thead>
               <tbody id="card-list-body"></tbody>
@@ -136,7 +226,7 @@
         <!-- Empty State -->
         <div id="trends-empty" class="trends-empty" hidden>
           <p>Not enough data to show trends for this archetype yet.</p>
-          <p class="muted">Trends require at least 2 tournaments with this archetype present.</p>
+          <p class="muted">Trends require at least 2 weeks of tournament data.</p>
         </div>
       </main>
     </div>
