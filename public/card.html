@@ -57,13 +57,10 @@
       <section id="card-meta" class="card-sect" aria-labelledby="card-title">
         <div class="header-title">
           <div class="title-row">
-            <h1 id="card-title">Card Details</h1>
+            <h1 id="card-title"></h1>
             <div id="card-price" class="card-price">
               <!-- Price loads asynchronously -->
             </div>
-          </div>
-          <div id="card-sets" class="card-sets">
-            <!-- Sets load asynchronously -->
           </div>
         </div>
         <div id="card-hero" class="card-hero">
@@ -132,29 +129,19 @@
           const titleEl = document.getElementById('card-title');
           if (titleEl) {
             let primary = initialLabel;
-            let setBadge = '';
 
             if (initialLabel.includes('::')) {
               const parts = initialLabel.split('::');
               primary = parts[0] || initialLabel;
-              if (parts.length >= 3 && parts[1] && parts[2]) {
-                setBadge = `${parts[1]} ${parts[2]}`;
-              }
             }
 
-            titleEl.textContent = '';
+            // Show only the clean card name in the title
+            titleEl.innerHTML = '';
             const nameSpan = document.createElement('span');
             nameSpan.textContent = primary;
             titleEl.appendChild(nameSpan);
 
-            if (setBadge) {
-              const setSpan = document.createElement('span');
-              setSpan.className = 'card-title-set';
-              setSpan.textContent = setBadge;
-              titleEl.appendChild(setSpan);
-            }
-
-            document.title = `${primary}${setBadge ? ` ${setBadge}` : ''} – Ciphermaniac`;
+            document.title = `${primary} – Ciphermaniac`;
           }
         }
       })();

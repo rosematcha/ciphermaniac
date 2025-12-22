@@ -383,9 +383,9 @@ function showPriceError(container: HTMLElement, message: string): void {
  * @param cardIdentifier - Card identifier
  */
 export async function renderCardSets(cardIdentifier: string): Promise<void> {
-  const setsContainer = document.getElementById('card-sets');
-  if (!setsContainer) {
-    logger.debug('renderCardSets: sets container not found');
+  const cardTitleEl = document.getElementById('card-title');
+  if (!cardTitleEl) {
+    logger.debug('renderCardSets: card-title element not found');
     return;
   }
 
@@ -398,30 +398,44 @@ export async function renderCardSets(cardIdentifier: string): Promise<void> {
     // Load variants silently in the background (no loading indicator)
     const variants = await collectCardVariants(validatedIdentifier);
 
-    // Remove any skeleton styling
-    setsContainer.classList.remove('skeleton-loading');
+    // Remove any existing card-title-set spans from the h1
+    const existingSetSpans = cardTitleEl.querySelectorAll('.card-title-set');
+    existingSetSpans.forEach(span => span.remove());
 
     if (variants.length === 0) {
-      // No variants found - keep the container empty
-      setsContainer.textContent = '';
+      // No variants found
       logger.debug('No variants found', {
         cardIdentifier: validatedIdentifier
       });
     } else {
-      // Show variants with fade-in
-      setsContainer.style.opacity = '0';
-      setsContainer.style.transition = 'opacity 0.15s ease-out';
-      setsContainer.textContent = variants.join(', ');
+      // Extract just the UIDs (set codes and numbers) from variants
+      const uids = variants
+        .map(variant => {
+          const { setId } = parseDisplayName(variant);
+          return setId || null;
+        })
+        .filter(Boolean);
 
-      logger.debug('Variants displayed', {
-        cardIdentifier: validatedIdentifier,
-        variantCount: variants.length
-      });
+      if (uids.length > 0) {
+        // Create and append UIDs sub-heading with fade-in
+        const setSpan = document.createElement('span');
+        setSpan.className = 'card-title-set';
+        setSpan.textContent = uids.join(', ');
+        setSpan.style.opacity = '0';
+        setSpan.style.transition = 'opacity 0.15s ease-out';
+        cardTitleEl.appendChild(setSpan);
 
-      // Trigger fade-in
-      requestAnimationFrame(() => {
-        setsContainer.style.opacity = '1';
-      });
+        logger.debug('Variants displayed', {
+          cardIdentifier: validatedIdentifier,
+          variantCount: variants.length,
+          uids: uids.join(', ')
+        });
+
+        // Trigger fade-in
+        requestAnimationFrame(() => {
+          setSpan.style.opacity = '1';
+        });
+      }
     }
   } catch (error) {
     // Silently fail for this non-critical section - just log the error
@@ -429,8 +443,11 @@ export async function renderCardSets(cardIdentifier: string): Promise<void> {
       cardIdentifier,
       error: error instanceof Error ? error.message : String(error)
     });
-    // Clear any loading state and leave container empty
-    setsContainer.classList.remove('skeleton-loading');
-    setsContainer.textContent = '';
+    // Clear any existing set spans
+    const cardTitleEl = document.getElementById('card-title');
+    if (cardTitleEl) {
+      const existingSetSpans = cardTitleEl.querySelectorAll('.card-title-set');
+      existingSetSpans.forEach(span => span.remove());
+    }
   }
 }

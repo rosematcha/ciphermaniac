@@ -12,17 +12,22 @@
     <link rel="modulepreload" href="/assets/js/archetypeHome.js" />
   </head>
   <body>
-    <div class="archetype-page" data-state="ready">
+    <div class="archetype-page archetype-home-page" data-state="loading">
+      <!-- Loading State -->
+      <div id="archetype-loading" class="archetype-loading">
+        <div class="loading-spinner"></div>
+        <p>Loading archetype data...</p>
+      </div>
+
+      <!-- Error State -->
+      <div id="archetype-error" class="archetype-error" hidden>
+        <p>Failed to load archetype data. Please try again.</p>
+        <a href="/archetypes" class="btn-primary">Back to Archetypes</a>
+      </div>
+
       <main id="main-content" class="archetype-main">
         <section class="archetype-content">
           <div class="archetype-simple">
-            <div class="archetype-header-row">
-              <nav class="archetype-breadcrumb" aria-label="Breadcrumb">
-                <a class="archetype-breadcrumb__link" href="/archetypes">← Back to Archetypes</a>
-              </nav>
-              <h1 id="archetype-title" class="archetype-title">Loading...</h1>
-            </div>
-
             <!-- Tab Navigation -->
             <nav class="archetype-tabs" aria-label="Archetype views">
               <a id="tab-home" class="archetype-tab is-active" href="#" aria-current="page">Overview</a>
@@ -30,21 +35,75 @@
               <a id="tab-trends" class="archetype-tab" href="#">Trends</a>
             </nav>
 
-            <div class="archetype-home-content">
-              <!-- Card showing Analysis options -->
+            <!-- Hero Section with Key Card(s) - Banner Style -->
+            <section id="archetype-hero" class="archetype-hero-banner" hidden>
+              <div class="hero-banner-container">
+                <div id="hero-banner-images" class="hero-banner-images">
+                  <!-- Images rendered by JS (1-2 cards with clip-path) -->
+                </div>
+                <div class="hero-banner-overlay"></div>
+                <div class="hero-banner-fallback" id="hero-banner-fallback"></div>
+              </div>
+            </section>
+
+            <!-- Stats Grid -->
+            <section id="archetype-stats" class="archetype-stats" hidden>
+              <div class="stats-grid">
+                <div class="stat-card">
+                  <span class="stat-value" id="stat-total-decks">--</span>
+                  <span class="stat-label">Decks Tracked</span>
+                </div>
+                <div class="stat-card">
+                  <span class="stat-value" id="stat-tournaments">--</span>
+                  <span class="stat-label">Tournaments</span>
+                </div>
+                <div class="stat-card">
+                  <span class="stat-value" id="stat-win-rate">--</span>
+                  <span class="stat-label">Win Rate</span>
+                </div>
+                <div class="stat-card">
+                  <span class="stat-value" id="stat-top8-rate">--</span>
+                  <span class="stat-label">Top 8 Rate</span>
+                </div>
+              </div>
+            </section>
+
+            <!-- Top Performers Section -->
+            <section id="top-performers" class="top-performers-section" hidden>
+              <div class="section-header">
+                <h2 class="section-title">Top Performers</h2>
+                <p class="section-subtitle">Best tournament results for this archetype</p>
+              </div>
+              <div id="performers-list" class="performers-list">
+                <!-- Performer items rendered by JS -->
+              </div>
+            </section>
+
+            <!-- Core Cards Section -->
+            <section id="core-cards-section" class="core-cards-section" hidden>
+              <div class="section-header">
+                <h2 class="section-title">Core Cards</h2>
+                <p class="section-subtitle">Cards found in nearly every deck</p>
+              </div>
+              <div id="core-cards-list" class="core-cards-list">
+                <!-- Core card items rendered by JS -->
+              </div>
+            </section>
+
+            <!-- Action Cards -->
+            <section id="archetype-actions" class="archetype-home-content" hidden>
               <div class="archetype-home-card">
                 <h2>Deck Analysis</h2>
                 <p>Deep dive into card inclusions, win rates, and matchups for this archetype.</p>
                 <a id="link-analysis-card" href="analysis" class="btn-primary">View Analysis</a>
               </div>
 
-              <!-- Card showing Trends options -->
               <div class="archetype-home-card">
                 <h2>Metagame Trends</h2>
                 <p>Track performance and popularity over time. See which cards are rising or falling in usage.</p>
                 <a id="link-trends-card" href="trends" class="btn-primary">View Trends</a>
               </div>
-            </div>
+            </section>
           </div>
         </section>
       </main>

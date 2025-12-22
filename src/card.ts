@@ -44,13 +44,10 @@ setupGlobalErrorHandler();
 const CARD_META_TEMPLATE = `
   <div class="header-title">
     <div class="title-row">
-      <h1 id="card-title">Card Details</h1>
+      <h1 id="card-title"></h1>
       <div id="card-price" class="card-price">
         <!-- Price loads asynchronously -->
       </div>
-    </div>
-    <div id="card-sets" class="card-sets">
-      <!-- Sets load asynchronously -->
     </div>
   </div>
   <div id="card-hero" class="card-hero">
@@ -359,7 +356,9 @@ function updateCardTitle(displayName: string | null, slugHint?: string) {
   cardTitleEl.innerHTML = '';
 
   if (!displayName && !slugHint) {
-    cardTitleEl.textContent = 'Card Details';
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = 'Card Details';
+    cardTitleEl.appendChild(nameSpan);
     document.title = 'Card Details – Ciphermaniac';
     return;
   }
@@ -367,20 +366,13 @@ function updateCardTitle(displayName: string | null, slugHint?: string) {
   const label = displayName || slugHint || 'Card Details';
   const parsed = displayName ? parseDisplayName(displayName) : null;
   const resolvedName = parsed?.name || label;
-  const setId = parsed?.setId || '';
 
+  // Show only the clean card name in the title
   const nameSpan = document.createElement('span');
   nameSpan.textContent = resolvedName;
   cardTitleEl.appendChild(nameSpan);
 
-  if (setId) {
-    const setSpan = document.createElement('span');
-    setSpan.className = 'card-title-set';
-    setSpan.textContent = setId;
-    cardTitleEl.appendChild(setSpan);
-  }
-
-  document.title = `${resolvedName}${setId ? ` ${setId}` : ''} – Ciphermaniac`;
+  document.title = `${resolvedName} – Ciphermaniac`;
 }
 
 function updateSearchLink() {

@@ -1,6 +1,6 @@
 /* ==========================================================================
      Ciphermaniac - Optimized CSS Build
-     Generated: 2025-12-21T03:43:09.798Z
+     Generated: 2025-12-22T17:46:51.469Z
      Architecture: Modular CSS with Design Tokens
      Size Reduction: ~25% from original
      ========================================================================== */
@@ -4453,6 +4453,484 @@ body.filters-panel-open #filters {
     text-align: left;
     padding-left: var(--space-3);
   }
+}
+
+/* ==========================================================================
+   Archetype Home Enhancements
+   ========================================================================== */
+
+/* Section Headers */
+.section-header {
+  margin-bottom: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.section-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.section-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--muted);
+  margin: 0;
+}
+
+/* Loading State */
+.archetype-loading {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: var(--space-4);
+  color: var(--muted);
+  padding: var(--space-8);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--accent-2);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Hero Section */
+.archetype-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-8) 0;
+  gap: var(--space-6);
+}
+
+.hero-card-container {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-card-image {
+  width: 220px;
+  max-width: 100%;
+  border-radius: var(--border-radius-lg);
+  box-shadow: 0 0 40px rgba(106, 163, 255, 0.15);
+  transition: transform var(--transition-slow);
+}
+
+.hero-card-image:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 0 50px rgba(106, 163, 255, 0.25);
+}
+
+/* Stats Grid */
+.archetype-stats {
+  margin-bottom: var(--space-8);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.stat-card {
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: center;
+  transition: background var(--transition-normal);
+}
+
+.stat-card:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.stat-card .stat-label {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  font-weight: var(--font-weight-bold);
+}
+
+.stat-card .stat-value {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-black);
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.stat-card .stat-subtext {
+  font-size: var(--font-size-xs);
+  color: var(--muted-darker);
+}
+
+/* Top Performers */
+.top-performers-section {
+  margin-bottom: var(--space-8);
+}
+
+.performers-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.performer-item {
+  display: flex;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--border-radius);
+  padding: var(--space-3) var(--space-4);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  color: var(--text);
+}
+
+.performer-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  transform: translateX(4px);
+  border-color: rgba(106, 163, 255, 0.2);
+}
+
+.performer-rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 50%;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  margin-right: var(--space-4);
+  flex-shrink: 0;
+}
+
+.performer-rank.gold {
+  background: rgba(255, 215, 0, 0.15);
+  color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.performer-rank.silver {
+  background: rgba(192, 192, 192, 0.15);
+  color: #c0c0c0;
+  border: 1px solid rgba(192, 192, 192, 0.3);
+}
+
+.performer-rank.bronze {
+  background: rgba(205, 127, 50, 0.15);
+  color: #cd7f32;
+  border: 1px solid rgba(205, 127, 50, 0.3);
+}
+
+.performer-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.performer-name {
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-base);
+}
+
+.performer-deck {
+  font-size: var(--font-size-xs);
+  color: var(--muted);
+}
+
+.performer-arrow {
+  color: var(--muted);
+  opacity: 0.5;
+  transition: transform var(--transition-fast);
+}
+
+.performer-item:hover .performer-arrow {
+  opacity: 1;
+  transform: translateX(2px);
+  color: var(--accent-2);
+}
+
+/* Core Cards */
+.core-cards-section {
+  margin-bottom: var(--space-8);
+}
+
+.core-cards-list {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding-bottom: var(--space-4);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-primary) transparent;
+}
+
+.core-cards-list::-webkit-scrollbar {
+  height: 6px;
+}
+
+.core-cards-list::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: var(--border-radius-full);
+}
+
+.core-card-item {
+  flex: 0 0 120px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-decoration: none;
+  color: var(--text);
+  transition: transform var(--transition-fast);
+}
+
+.core-card-item:hover {
+  transform: translateY(-4px);
+}
+
+.core-card-image {
+  width: 100%;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  aspect-ratio: 0.71;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.core-card-count {
+  font-size: var(--font-size-xs);
+  color: var(--muted);
+  text-align: center;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: var(--border-radius-sm);
+  align-self: center;
+}
+
+/* Additional Hero Card Styles */
+.hero-card-wrapper {
+  position: relative;
+}
+
+.hero-card-glow {
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(circle, rgba(106, 163, 255, 0.15) 0%, transparent 70%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.hero-card-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+}
+
+.hero-card-name {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text);
+}
+
+.hero-card-label {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  background: rgba(106, 163, 255, 0.1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--border-radius-full);
+}
+
+/* Additional Performer Styles */
+.performer-player {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.performer-flag {
+  font-size: 1.1em;
+}
+
+.performer-result {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  flex-wrap: wrap;
+}
+
+.performer-placement {
+  font-weight: var(--font-weight-bold);
+}
+
+.performer-placement.gold {
+  color: #ffd700;
+}
+
+.performer-placement.silver {
+  color: #c0c0c0;
+}
+
+.performer-placement.bronze {
+  color: #cd7f32;
+}
+
+.performer-separator {
+  color: var(--muted);
+}
+
+.performer-tournament {
+  color: var(--muted);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.performer-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--muted);
+  margin-top: var(--space-1);
+}
+
+.performer-players::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  background: var(--muted);
+  border-radius: 50%;
+  margin-right: var(--space-2);
+  opacity: 0.5;
+}
+
+/* Additional Core Card Styles */
+.core-card-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+  color: var(--text);
+  padding: var(--space-2);
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--border-radius);
+  transition: all var(--transition-fast);
+}
+
+.core-card-link:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(106, 163, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.core-card-thumb {
+  width: 80px;
+  height: auto;
+  border-radius: var(--border-radius-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.core-card-name {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-align: center;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.core-card-rate {
+  font-size: var(--font-size-xs);
+  color: var(--accent-2);
+  font-weight: var(--font-weight-bold);
+}
+
+/* Responsive adjustments for core cards */
+@media (max-width: 600px) {
+  .core-cards-list {
+    gap: var(--space-2);
+  }
+
+  .core-card-item {
+    flex: 0 0 100px;
+  }
+
+  .core-card-thumb {
+    width: 60px;
+  }
+}
+
+/* Error State */
+.archetype-error {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  gap: var(--space-4);
+  text-align: center;
+  color: var(--muted);
+}
+
+/* Page state management - ONLY for archetype home page */
+.archetype-home-page[data-state='loading'] .archetype-main {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.archetype-home-page[data-state='loading'] .archetype-loading {
+  display: flex;
+}
+
+.archetype-home-page[data-state='ready'] .archetype-loading {
+  display: none;
+}
+
+.archetype-home-page[data-state='error'] .archetype-main {
+  display: none;
+}
+
+.archetype-home-page[data-state='error'] .archetype-error {
+  display: flex;
 }
 
 
