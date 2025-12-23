@@ -3,13 +3,50 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Card Details &mdash; Ciphermaniac</title>
+    <title>Card Details - Pokemon TCG Analysis | Ciphermaniac</title>
+    <meta
+      name="description"
+      content="View detailed Pokemon TCG card statistics including usage rates, deck inclusion, copy counts, and price data across tournaments."
+    />
+    <meta
+      name="keywords"
+      content="Pokemon TCG card, card usage stats, deck inclusion, Pokemon card price, PTCG card analysis"
+    />
+
+    <!-- Canonical URL - dynamic pages use JS to set this -->
+    <link rel="canonical" href="https://ciphermaniac.com/cards" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ciphermaniac.com/cards" />
+    <meta property="og:title" content="Card Details - Pokemon TCG Analysis" />
+    <meta
+      property="og:description"
+      content="View detailed Pokemon TCG card statistics including usage rates and deck inclusion."
+    />
+    <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+    <meta property="og:site_name" content="Ciphermaniac" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://ciphermaniac.com/cards" />
+    <meta name="twitter:title" content="Card Details - Pokemon TCG" />
+    <meta name="twitter:description" content="View detailed Pokemon TCG card statistics and usage data." />
+    <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+
+    <!-- Favicon - PNG for Google compatibility -->
+    <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#fee475" />
+
     <!-- DNS prefetch for external resources -->
     <link rel="dns-prefetch" href="https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com" />
     <!-- Preload critical font to reduce layout shift -->
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/assets/style.css" />
-    <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
     <!-- Preload critical JS modules for faster page load -->
     <link rel="modulepreload" href="/assets/js/card.js" />
     <link rel="modulepreload" href="/assets/js/api.js" />
@@ -156,13 +193,13 @@
             }
 
             titleEl.innerHTML = '';
-            
+
             if (primary) {
               const nameSpan = document.createElement('span');
               nameSpan.className = 'card-title-name';
               nameSpan.textContent = primary;
               titleEl.appendChild(nameSpan);
-              
+
               if (setInfo) {
                 const setSpan = document.createElement('span');
                 setSpan.className = 'card-title-set';
