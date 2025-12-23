@@ -419,6 +419,10 @@ const AUTO_THUMB_MAX = 2;
 const AUTO_THUMB_REQUIRED_PCT = 99.9;
 const ARCHETYPE_DESCRIPTOR_TOKENS = new Set(['box', 'control', 'festival', 'lead', 'toolbox', 'turbo']);
 
+// --- Signature cards configuration ---
+const SIGNATURE_CARDS_COUNT = 5;
+const SIGNATURE_MIN_ARCHETYPE_PCT = 20; // Minimum usage in archetype to consider
+
 function tokenizeForMatching(text) {
   const normalized = String(text || '')
     .replace(/['']s\b/gi, 's')
@@ -547,6 +551,234 @@ function resolveArchetypeThumbnails(baseName, displayName, reportData) {
   }
 
   return inferArchetypeThumbnails(displayName || baseName || '', reportData);
+}
+
+// --- Signature Cards Generation ---
+
+/**
+ * Normalize a Pokémon name for matching by removing suffixes like "ex", "V", "VSTAR", etc.
+ * @param {string} name - Card name
+ * @returns {string} Normalized base name
+ */
+function normalizeForPokemonMatch(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/\s+(ex|v|vmax|vstar|gx|break|radiant|prism star)$/i, '')
+    .replace(/['']/g, "'")
+    .trim();
+}
+
+/**
+ * Check if a card name matches any archetype keyword.
+ * Handles "ex" suffix matching (e.g., "Dragapult ex" matches "Dragapult").
+ * @param {string} cardName - Card name to check
+ * @param {Set<string>} archetypeKeywords - Keywords from archetype name
+ * @returns {boolean}
+ */
+function cardMatchesArchetypeKeyword(cardName, archetypeKeywords) {
+  const normalizedName = normalizeForPokemonMatch(cardName);
+  const cardTokens = tokenizeForMatching(normalizedName);
+
+  // Check if any card token matches an archetype keyword
+  for (const token of cardTokens) {
+    if (archetypeKeywords.has(token)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Check if a card is in the thumbnail set for this archetype.
+ * @param {object} card - Card item with set/number
+ * @param {string[]} thumbnails - Thumbnail IDs (e.g., ["PRE/037", "TWM/130"])
+ * @returns {boolean}
+ */
+function cardInThumbnails(card, thumbnails) {
+  if (!thumbnails || !Array.isArray(thumbnails) || thumbnails.length === 0) {
+    return false;
+  }
+  const cardThumbId = buildThumbnailId(card.set, card.number);
+  if (!cardThumbId) {
+    return false;
+  }
+  return thumbnails.some(thumb => {
+    // Normalize both for comparison (handle different number padding)
+    const normalizedThumb = thumb.toUpperCase().replace(/\/0*(\d)/, '/$1');
+    const normalizedCard = cardThumbId.toUpperCase().replace(/\/0*(\d)/, '/$1');
+    return normalizedThumb === normalizedCard;
+  });
+}
+
+/**
+ * Check if a card is a Basic Energy card.
+ * @param {object} card - Card item
+ * @returns {boolean}
+ */
+function isBasicEnergy(card) {
+  const category = String(card.category || '').toLowerCase();
+  const energyType = String(card.energyType || '').toLowerCase();
+
+  if (category.includes('energy/basic') || category === 'energy/basic') {
+    return true;
+  }
+  if (energyType === 'basic') {
+    return true;
+  }
+  // Check for common basic energy names
+  const name = String(card.name || '').toLowerCase();
+  const basicEnergyNames = [
+    'grass energy',
+    'fire energy',
+    'water energy',
+    'lightning energy',
+    'psychic energy',
+    'fighting energy',
+    'darkness energy',
+    'metal energy',
+    'fairy energy',
+    'dragon energy'
+  ];
+  return basicEnergyNames.some(e => name === e);
+}
+
+/**
+ * Check if a card is a Pokémon.
+ * @param {object} card - Card item
+ * @returns {boolean}
+ */
+function isPokemon(card) {
+  const category = String(card.category || '').toLowerCase();
+  return category === 'pokemon' || category.startsWith('pokemon/');
+}
+
+/**
+ * Check if a card is a Trainer (Supporter, Item, Tool, Stadium).
+ * @param {object} card - Card item
+ * @returns {boolean}
+ */
+function isTrainer(card) {
+  const category = String(card.category || '').toLowerCase();
+  return category === 'trainer' || category.startsWith('trainer/');
+}
+
+/**
+ * Check if a card is Special Energy.
+ * @param {object} card - Card item
+ * @returns {boolean}
+ */
+function isSpecialEnergy(card) {
+  const category = String(card.category || '').toLowerCase();
+  const energyType = String(card.energyType || '').toLowerCase();
+
+  if (category.includes('energy/special')) {
+    return true;
+  }
+  if (energyType === 'special') {
+    return true;
+  }
+  // If it's energy but not basic, it's special
+  if ((category === 'energy' || category.startsWith('energy')) && !isBasicEnergy(card)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Generate signature cards for an archetype.
+ * These are cards that best exemplify the archetype:
+ * - Pokémon in the archetype name or thumbnails (highest priority)
+ * - Trainers/Special Energy with high archetype usage vs low meta usage (distinctive)
+ *
+ * @param {string} displayName - Archetype display name
+ * @param {object} archetypeReport - Report with items array
+ * @param {object} masterReport - Overall meta report with items array
+ * @param {string[]} thumbnails - Thumbnail card IDs
+ * @returns {Array<{name: string, set: string, number: string, pct: number}>}
+ */
+function generateSignatureCards(displayName, archetypeReport, masterReport, thumbnails) {
+  const items = archetypeReport?.items || [];
+  if (items.length === 0) {
+    return [];
+  }
+
+  // Build archetype keywords set
+  const archetypeKeywords = new Set(extractArchetypeKeywords(displayName));
+
+  // Build meta usage lookup: cardName -> metaPct
+  const metaUsage = new Map();
+  for (const item of masterReport?.items || []) {
+    const name = item.name;
+    if (name) {
+      metaUsage.set(name, item.pct || 0);
+    }
+  }
+
+  const candidates = [];
+
+  for (const card of items) {
+    const archetypePct = card.pct || 0;
+
+    // Skip cards with very low archetype usage
+    if (archetypePct < SIGNATURE_MIN_ARCHETYPE_PCT) {
+      continue;
+    }
+
+    // Never show Basic Energy
+    if (isBasicEnergy(card)) {
+      continue;
+    }
+
+    const metaPct = metaUsage.get(card.name) || 0;
+
+    if (isPokemon(card)) {
+      // Only include Pokémon if they're in the archetype name or thumbnails
+      const matchesName = cardMatchesArchetypeKeyword(card.name, archetypeKeywords);
+      const inThumbs = cardInThumbnails(card, thumbnails);
+
+      if (matchesName || inThumbs) {
+        // Pokémon in name/thumbnails get highest priority (score = 1000 + pct)
+        candidates.push({
+          name: card.name,
+          set: card.set || null,
+          number: card.number || null,
+          pct: archetypePct,
+          score: 1000 + archetypePct, // Ensure these sort first
+          isDefining: true
+        });
+      }
+      // Non-defining Pokémon are skipped entirely
+    } else if (isTrainer(card) || isSpecialEnergy(card)) {
+      // Score by distinctiveness: how much more this deck uses it vs the meta
+      const distinctiveness = archetypePct - metaPct;
+
+      // Only consider if distinctiveness is meaningful (used more in archetype than meta)
+      if (distinctiveness > 5) {
+        candidates.push({
+          name: card.name,
+          set: card.set || null,
+          number: card.number || null,
+          pct: archetypePct,
+          score: distinctiveness,
+          isDefining: false
+        });
+      }
+    }
+  }
+
+  // Sort by score descending
+  candidates.sort((a, b) => b.score - a.score);
+
+  // Take top N, ensuring we get defining Pokémon first
+  const selected = candidates.slice(0, SIGNATURE_CARDS_COUNT);
+
+  // Return simplified structure (without internal scoring fields)
+  return selected.map(c => ({
+    name: c.name,
+    set: c.set,
+    number: c.number,
+    pct: c.pct
+  }));
 }
 
 function canonicalizeVariant(setCode, number) {
@@ -692,7 +924,7 @@ function generateReportFromDecks(deckList, deckTotal, synonymDb) {
   };
 }
 
-function buildArchetypeReports(decks, synonymDb) {
+function buildArchetypeReports(decks, synonymDb, masterReport = null) {
   const groups = new Map();
   const deckTotal = decks.length || 0;
   const minDecks = Math.max(1, Math.ceil(deckTotal * 0.005));
@@ -731,13 +963,21 @@ function buildArchetypeReports(decks, synonymDb) {
   }
 
   files.sort((a, b) => b.deckCount - a.deckCount);
-  const index = files.map(file => ({
-    name: file.base,
-    label: file.displayName || file.base.replace(/_/g, ' '),
-    deckCount: file.deckCount,
-    percent: deckTotal ? file.deckCount / deckTotal : 0,
-    thumbnails: resolveArchetypeThumbnails(file.base, file.displayName, file.data)
-  }));
+  const index = files.map(file => {
+    const thumbnails = resolveArchetypeThumbnails(file.base, file.displayName, file.data);
+    const signatureCards = masterReport
+      ? generateSignatureCards(file.displayName, file.data, masterReport, thumbnails)
+      : [];
+
+    return {
+      name: file.base,
+      label: file.displayName || file.base.replace(/_/g, ' '),
+      deckCount: file.deckCount,
+      percent: deckTotal ? file.deckCount / deckTotal : 0,
+      thumbnails,
+      signatureCards
+    };
+  });
 
   return {
     minDecks,
@@ -1345,7 +1585,7 @@ async function main() {
     index: archetypeIndex,
     minDecks,
     decksByArchetype
-  } = buildArchetypeReports(decks, synonymDb);
+  } = buildArchetypeReports(decks, synonymDb, masterReport);
 
   const meta = {
     name: TARGET_FOLDER,
