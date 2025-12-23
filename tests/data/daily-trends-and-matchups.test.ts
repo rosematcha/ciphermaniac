@@ -402,8 +402,8 @@ test('buildMatchupMatrix calculates winRate correctly', () => {
   const result = buildMatchupMatrix(targetArchetype, pairingsData);
 
   const opponent = result.OpponentDeck;
-  // Win rate = wins / total = 2 / 4 = 0.5
-  assert.strictEqual(opponent.winRate, 0.5, 'Win rate should be 0.5');
+  // Win rate = wins / total = 2 / 4 = 50%
+  assert.strictEqual(opponent.winRate, 50, 'Win rate should be 50%');
 });
 
 test('buildMatchupMatrix aggregates across multiple tournaments', () => {
@@ -507,7 +507,7 @@ test('generateArchetypeTrends includes matchups when pairingsData is provided', 
   assert.strictEqual(gholdengo.wins, 3);
   assert.strictEqual(gholdengo.losses, 1);
   assert.strictEqual(gholdengo.total, 4);
-  assert.strictEqual(gholdengo.winRate, 0.75);
+  assert.strictEqual(gholdengo.winRate, 75); // 75% win rate
 });
 
 test('generateArchetypeTrends returns empty matchups when no pairingsData', () => {

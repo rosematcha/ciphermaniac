@@ -67,6 +67,23 @@
         color: var(--text-muted, #94a3b8);
       }
 
+      .matchups-toggle-btn {
+        display: block;
+        margin: 1rem auto 0;
+        padding: 0.5rem 1rem;
+        background: var(--bg-surface-2, #1a1f35);
+        border: 1px solid var(--border-color, #2d3348);
+        border-radius: 6px;
+        color: var(--text-muted, #94a3b8);
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .matchups-toggle-btn:hover {
+        background: var(--bg-surface-3, #2d3348);
+        color: var(--text-main, #fff);
+      }
+
       /* Chart Toggle */
       .chart-header {
         display: flex;
@@ -247,6 +264,7 @@
               <tbody id="matchups-list"></tbody>
             </table>
           </div>
+          <button type="button" id="matchups-toggle" class="matchups-toggle-btn" hidden>Show All</button>
         </section>
 
         <!-- Copy Count Evolution -->

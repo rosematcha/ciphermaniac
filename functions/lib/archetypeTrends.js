@@ -301,7 +301,8 @@ export function buildMatchupMatrix(targetArchetype, allPairings) {
         losses: data.losses,
         ties: data.ties,
         total: data.total,
-        winRate: data.total > 0 ? Math.round((data.wins / data.total) * 1000) / 1000 : 0
+        // Store as percentage (0-100), not decimal (0-1)
+        winRate: data.total > 0 ? Math.round((data.wins / data.total) * 1000) / 10 : 0
       };
     }
   }
@@ -525,7 +526,7 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb, options) 
     weekIndex.set(weekItem.weekStart, idx);
   });
 
-  // 3. Build final card data structure with daily granularity
+  // 3. Build final card data structure with BOTH daily and weekly granularity
   const finalCards = {};
   const cardPlayrateTimelines = new Map(); // For correlation analysis (daily)
 
@@ -533,13 +534,15 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb, options) 
     const meta = cardMeta.get(uid);
     const dailyPlayrates = [];
     const dailyCopies = [];
-    const timeline = {}; // dayIndex -> tier data
+    const timeline = {}; // dayIndex -> tier data (DAILY)
+    const timelineWeeks = {}; // weekIndex -> tier data (WEEKLY aggregated)
     const copyTrend = []; // daily copy distribution
 
     let maxShare = 0;
     let firstPlayrate = null;
     let lastPlayrate = 0;
 
+    // First pass: build daily timeline
     for (const dayItem of activeDays) {
       const idx = dayIndex.get(dayItem.date);
       const entry = daysData.get(dayItem.date);
@@ -607,6 +610,55 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb, options) 
         dailyPlayrates.push(0);
         dailyCopies.push(0);
         copyTrend.push({ avg: 0, mode: 0, dist: [0, 0, 0, 0] });
+      }
+    }
+
+    // Second pass: aggregate daily data into weekly timeline
+    for (const weekItem of activeWeeks) {
+      const wkIdx = weekIndex.get(weekItem.weekStart);
+      const weekTierEntry = {};
+
+      // Aggregate all days that fall within this week
+      for (const tag of SUCCESS_TAGS) {
+        let totalCount = 0;
+        let totalDecks = 0;
+        const allCounts = [];
+
+        for (const dayItem of activeDays) {
+          // Check if this day falls within the week
+          if (dayItem.date >= weekItem.weekStart && dayItem.date <= weekItem.weekEnd) {
+            const dayEntry = daysData.get(dayItem.date);
+            if (dayEntry && dayEntry[tag] && dayEntry[tag].counts.length > 0) {
+              totalCount += dayEntry[tag].counts.length;
+              allCounts.push(...dayEntry[tag].counts);
+            }
+            totalDecks += dayItem.totals[tag] || 0;
+          }
+        }
+
+        if (allCounts.length > 0) {
+          const tierAvg = Math.round((allCounts.reduce((acc, val) => acc + val, 0) / allCounts.length) * 100) / 100;
+          const tierMode = calculateMode(allCounts);
+          const tierDist = [totalDecks - allCounts.length, 0, 0, 0, 0];
+          for (const copyCount of allCounts) {
+            if (copyCount >= 4) {
+              tierDist[4] += 1;
+            } else if (copyCount >= 1) {
+              tierDist[copyCount] += 1;
+            }
+          }
+
+          weekTierEntry[tag] = {
+            count: totalCount,
+            avg: tierAvg,
+            mode: tierMode,
+            dist: tierDist
+          };
+        }
+      }
+
+      if (Object.keys(weekTierEntry).length > 0) {
+        timelineWeeks[wkIdx] = weekTierEntry;
       }
     }
 
