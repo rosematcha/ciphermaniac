@@ -8,6 +8,105 @@
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/assets/style.css" />
     <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
+    <style>
+      /* Matchup Spread Styles */
+      .trends-matchups {
+        margin-bottom: 3rem;
+      }
+      .matchups-table-wrapper {
+        overflow-x: auto;
+        border-radius: 8px;
+        border: 1px solid var(--border-color, #2d3348);
+      }
+      .matchups-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9375rem;
+      }
+      .matchups-table th {
+        text-align: left;
+        padding: 0.75rem 1rem;
+        background: var(--bg-surface-2, #1a1f35);
+        border-bottom: 1px solid var(--border-color, #2d3348);
+        color: var(--text-muted, #94a3b8);
+        font-weight: 500;
+      }
+      .matchups-table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color, #2d3348);
+      }
+      .matchups-table tr:last-child td {
+        border-bottom: none;
+      }
+      .col-opponent {
+        width: 40%;
+        font-weight: 500;
+        color: var(--text-main, #fff);
+      }
+      .col-winrate {
+        width: 20%;
+      }
+      .col-record {
+        width: 20%;
+        font-family: var(--font-mono, monospace);
+      }
+      .col-total {
+        width: 20%;
+        text-align: right;
+      }
+
+      .winrate-high {
+        color: var(--color-success, #22c55e);
+        font-weight: 600;
+      }
+      .winrate-low {
+        color: var(--color-danger, #ef4444);
+        font-weight: 600;
+      }
+      .winrate-mid {
+        color: var(--text-muted, #94a3b8);
+      }
+
+      /* Chart Toggle */
+      .chart-header {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+      }
+      .chart-title-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+      .chart-toggle {
+        display: flex;
+        background: var(--bg-surface-2, #1a1f35);
+        border-radius: 6px;
+        padding: 2px;
+        border: 1px solid var(--border-color, #2d3348);
+      }
+      .toggle-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-muted, #94a3b8);
+        padding: 4px 12px;
+        font-size: 0.875rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .toggle-btn:hover {
+        color: var(--text-main, #fff);
+      }
+      .toggle-btn.active {
+        background: var(--bg-surface-3, #2d3348);
+        color: var(--text-main, #fff);
+        font-weight: 500;
+      }
+    </style>
     <!-- Preload critical JS module for faster page load -->
     <link rel="modulepreload" href="/assets/js/archetypeTrends.js" />
   </head>
@@ -132,6 +231,24 @@
           </div>
         </section>
 
+        <!-- Matchup Spread -->
+        <section id="trends-matchups" class="trends-matchups" hidden aria-label="Matchup win rates">
+          <h2 class="section-heading">Matchup Spread</h2>
+          <div class="matchups-table-wrapper">
+            <table class="matchups-table">
+              <thead>
+                <tr>
+                  <th class="col-opponent">Opponent</th>
+                  <th class="col-winrate">Win Rate</th>
+                  <th class="col-record">Record</th>
+                  <th class="col-total" style="text-align: right">Games</th>
+                </tr>
+              </thead>
+              <tbody id="matchups-list"></tbody>
+            </table>
+          </div>
+        </section>
+
         <!-- Copy Count Evolution -->
         <section id="copy-evolution" class="copy-evolution" hidden aria-label="How copy counts are changing">
           <h2 class="section-heading">Copy Count Evolution</h2>
@@ -166,7 +283,13 @@
         <!-- Main Playrate Timeline Chart -->
         <section id="trends-chart-container" class="trends-chart-container-v2" hidden>
           <div class="chart-header">
-            <h2>Playrate Over Time</h2>
+            <div class="chart-title-group">
+              <h2>Playrate Over Time</h2>
+              <div class="chart-toggle">
+                <button type="button" id="chart-toggle-weekly" class="toggle-btn active">Weekly</button>
+                <button type="button" id="chart-toggle-daily" class="toggle-btn">Daily</button>
+              </div>
+            </div>
             <p class="chart-subtitle" id="chart-subtitle">Click cards in the table below to add them to the chart</p>
           </div>
           <div id="trends-chart" class="trends-chart-v2" role="img" aria-label="Card usage trends over time"></div>

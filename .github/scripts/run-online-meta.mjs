@@ -270,6 +270,40 @@ function toCardEntries(decklist, cardTypesDb) {
   return cards;
 }
 
+/**
+ * Fetches pairings and standings for all tournaments for matchup analysis.
+ * @param {Array} tournaments - List of tournaments
+ * @returns {Promise<Array>} Array of { tournamentId, pairings, standings }
+ */
+async function gatherPairingsData(tournaments) {
+  const pairingsData = [];
+
+  console.log(`[online-meta] Fetching pairings data for ${tournaments.length} tournaments...`);
+
+  for (const tournament of tournaments) {
+    try {
+      const [pairings, standings] = await Promise.all([
+        fetchLimitless(`/tournaments/${tournament.id}/pairings`),
+        fetchLimitless(`/tournaments/${tournament.id}/standings`)
+      ]);
+
+      if (pairings && standings) {
+        pairingsData.push({
+          tournamentId: tournament.id,
+          pairings,
+          standings
+        });
+      }
+    } catch (error) {
+      console.warn(`[online-meta] Failed to fetch pairings for ${tournament.name}: ${error.message}`);
+      // Continue with other tournaments
+    }
+  }
+
+  console.log(`[online-meta] Gathered pairings data for ${pairingsData.length} tournaments`);
+  return pairingsData;
+}
+
 async function gatherDecks(tournaments, cardTypesDb) {
   const decks = [];
 
@@ -1301,6 +1335,9 @@ async function main() {
     throw new Error('No decklists gathered from online tournaments');
   }
 
+  // Gather pairings data for matchup analysis
+  const pairingsData = await gatherPairingsData(tournaments);
+
   console.log(`[online-meta] Aggregating ${decks.length} decks`);
   const masterReport = generateReportFromDecks(decks, decks.length, synonymDb);
   const {
@@ -1366,7 +1403,11 @@ async function main() {
 
         // Generate and upload trends.json for each archetype
         try {
-          const trends = generateArchetypeTrends(archetypeDecks, tournaments, synonymDb);
+          const archetypeName = file.displayName || file.base.replace(/_/g, ' ');
+          const trends = generateArchetypeTrends(archetypeDecks, tournaments, synonymDb, {
+            pairingsData,
+            archetypeName
+          });
           await putJson(`${basePath}/archetypes/${file.base}/trends.json`, trends);
         } catch (err) {
           console.error(`[online-meta] Failed to generate trends for ${file.base}:`, err.message || err);
