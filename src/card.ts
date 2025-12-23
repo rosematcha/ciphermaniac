@@ -365,12 +365,48 @@ function updateCardTitle(displayName: string | null, slugHint?: string) {
 
   const label = displayName || slugHint || 'Card Details';
   const parsed = displayName ? parseDisplayName(displayName) : null;
-  const resolvedName = parsed?.name || label;
 
-  // Show only the clean card name in the title
+  // Determine the clean card name and set info
+  let resolvedName = parsed?.name || '';
+  let setInfo = parsed?.setId || '';
+
+  // If parsing didn't find a name but found setId, or if the label looks like just "SET NUMBER",
+  // the displayName was just a set ID - we need to extract the name from the base identifier
+  if (!resolvedName && setInfo) {
+    // The "name" wasn't found, so the entire displayName is likely just set info
+    // Use the label as a fallback for now - renderCardSets will fix it later with proper data
+    resolvedName = label;
+    setInfo = '';
+  } else if (!resolvedName && !setInfo) {
+    // No parsing succeeded at all, use the label
+    resolvedName = label;
+  }
+
+  // If resolvedName still looks like a set ID pattern (e.g., "SVI 181"), try to get base name from cardIdentifier
+  const setIdOnlyPattern = /^[A-Z]{2,4}\s+\d+[A-Za-z]?$/i;
+  if (setIdOnlyPattern.test(resolvedName) && cardIdentifier) {
+    // The resolved name is just a set ID - get the base name from the card identifier
+    const baseName = getBaseName(cardIdentifier);
+    if (baseName && !setIdOnlyPattern.test(baseName)) {
+      resolvedName = baseName;
+      // Extract set info from the original display name
+      setInfo = displayName || '';
+    }
+  }
+
+  // Create and append the clean card name as the main title
   const nameSpan = document.createElement('span');
+  nameSpan.className = 'card-title-name';
   nameSpan.textContent = resolvedName;
   cardTitleEl.appendChild(nameSpan);
+
+  // If we have set info, add it as a subheading
+  if (setInfo) {
+    const setSpan = document.createElement('span');
+    setSpan.className = 'card-title-set';
+    setSpan.textContent = setInfo;
+    cardTitleEl.appendChild(setSpan);
+  }
 
   document.title = `${resolvedName} – Ciphermaniac`;
 }
@@ -1636,7 +1672,7 @@ function startParallelDataLoading() {
   const overridesPromise = Promise.resolve({});
 
   // Secondary data that doesn't block initial content
-  const cardSetsPromise = cardName ? renderCardSets(cardName).catch(() => null) : Promise.resolve(null);
+  const cardSetsPromise = cardIdentifier ? renderCardSets(cardIdentifier).catch(() => null) : Promise.resolve(null);
   const cardPricePromise = cardIdentifier ? renderCardPrice(cardIdentifier).catch(() => null) : Promise.resolve(null);
 
   return {

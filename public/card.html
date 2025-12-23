@@ -129,19 +129,56 @@
           const titleEl = document.getElementById('card-title');
           if (titleEl) {
             let primary = initialLabel;
+            let setInfo = '';
 
             if (initialLabel.includes('::')) {
               const parts = initialLabel.split('::');
               primary = parts[0] || initialLabel;
+              if (parts[1] && parts[2]) {
+                setInfo = parts[1] + ' ' + parts[2];
+              }
+            } else {
+              // Try to parse "Name SET NUMBER" format
+              const match = initialLabel.match(/^(.+?)\s+([A-Z]+\s+\d+[A-Za-z]?)$/);
+              if (match) {
+                primary = match[1];
+                setInfo = match[2];
+              }
             }
 
-            // Show only the clean card name in the title
-            titleEl.innerHTML = '';
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = primary;
-            titleEl.appendChild(nameSpan);
+            // Check if primary is just a set ID pattern (e.g., "SVI 181" or "Svi~181")
+            const setIdPattern = /^[A-Z]{2,4}[\s~]\d+[A-Za-z]?$/i;
+            if (setIdPattern.test(primary)) {
+              // Can't resolve the actual name without async data, show as-is for now
+              // The module script will fix it with proper card data
+              setInfo = primary.replace(/~/g, ' ');
+              primary = ''; // Will show loading state
+            }
 
-            document.title = `${primary} – Ciphermaniac`;
+            titleEl.innerHTML = '';
+            
+            if (primary) {
+              const nameSpan = document.createElement('span');
+              nameSpan.className = 'card-title-name';
+              nameSpan.textContent = primary;
+              titleEl.appendChild(nameSpan);
+              
+              if (setInfo) {
+                const setSpan = document.createElement('span');
+                setSpan.className = 'card-title-set';
+                setSpan.textContent = setInfo;
+                titleEl.appendChild(setSpan);
+              }
+
+              document.title = `${primary} – Ciphermaniac`;
+            } else {
+              // Show a placeholder that will be replaced by the module
+              const nameSpan = document.createElement('span');
+              nameSpan.className = 'card-title-name';
+              nameSpan.textContent = 'Loading...';
+              titleEl.appendChild(nameSpan);
+              document.title = 'Card Details – Ciphermaniac';
+            }
           }
         }
       })();

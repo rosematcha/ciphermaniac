@@ -7,6 +7,7 @@ import { fetchReport, fetchTournamentsList, getCardPrice } from '../api.js';
 import { parseReport } from '../parse.js';
 import { getBaseName, getCanonicalId, getDisplayName, parseDisplayName } from './identifiers.js';
 import { ErrorBoundary, logger, validators } from '../utils/errorHandler.js';
+import { getCanonicalCard, getCardVariants } from '../utils/cardSynonyms.js';
 
 interface CardItem {
   set?: string;
@@ -395,8 +396,36 @@ export async function renderCardSets(cardIdentifier: string): Promise<void> {
       cardIdentifier: validatedIdentifier
     });
 
-    // Load variants silently in the background (no loading indicator)
-    const variants = await collectCardVariants(validatedIdentifier);
+    // Ensure the card name span exists and is set correctly
+    // This acts as a safety net in case updateCardTitle didn't run or its changes were lost
+    const baseName = getBaseName(validatedIdentifier);
+    let nameSpan = cardTitleEl.querySelector('.card-title-name') as HTMLElement | null;
+
+    if (!nameSpan && baseName) {
+      // Name span is missing - create it
+      nameSpan = document.createElement('span');
+      nameSpan.className = 'card-title-name';
+      nameSpan.textContent = baseName;
+      // Insert at the beginning of the title element
+      cardTitleEl.insertBefore(nameSpan, cardTitleEl.firstChild);
+      logger.debug('renderCardSets: created missing name span', { baseName });
+    } else if (nameSpan && !nameSpan.textContent && baseName) {
+      // Name span exists but is empty - fill it
+      nameSpan.textContent = baseName;
+      logger.debug('renderCardSets: filled empty name span', { baseName });
+    }
+
+    // Load actual synonyms/reprints from the synonym data
+    // This shows true reprints (mechanically identical cards in different sets)
+    // rather than just cards with the same name (which may be different cards)
+    // First ensure the identifier is in canonical UID format for proper lookup
+    const canonicalIdentifier = await getCanonicalCard(validatedIdentifier);
+    const synonymVariants = await getCardVariants(canonicalIdentifier);
+
+    // Convert UIDs to display names for extraction of set info
+    const variants = synonymVariants
+      .map(uid => getDisplayName(uid))
+      .filter((displayName): displayName is string => displayName !== null);
 
     // Remove any existing card-title-set spans from the h1
     const existingSetSpans = cardTitleEl.querySelectorAll('.card-title-set');
@@ -417,18 +446,69 @@ export async function renderCardSets(cardIdentifier: string): Promise<void> {
         .filter(Boolean);
 
       if (uids.length > 0) {
+        const MAX_VISIBLE = 5;
+        const hasMore = uids.length > MAX_VISIBLE;
+        const visibleUids = hasMore ? uids.slice(0, MAX_VISIBLE) : uids;
+        const hiddenUids = hasMore ? uids.slice(MAX_VISIBLE) : [];
+
         // Create and append UIDs sub-heading with fade-in
         const setSpan = document.createElement('span');
         setSpan.className = 'card-title-set';
-        setSpan.textContent = uids.join(', ');
         setSpan.style.opacity = '0';
         setSpan.style.transition = 'opacity 0.15s ease-out';
+
+        // Create visible sets text
+        const visibleText = document.createElement('span');
+        visibleText.className = 'set-visible';
+        visibleText.textContent = visibleUids.join(', ');
+        setSpan.appendChild(visibleText);
+
+        if (hasMore) {
+          // Create hidden sets container (initially hidden)
+          const hiddenText = document.createElement('span');
+          hiddenText.className = 'set-hidden';
+          hiddenText.textContent = `, ${hiddenUids.join(', ')}`;
+          hiddenText.style.display = 'none';
+          setSpan.appendChild(hiddenText);
+
+          // Create expand button
+          const expandBtn = document.createElement('button');
+          expandBtn.className = 'set-expand-btn';
+          expandBtn.textContent = `+${hiddenUids.length}`;
+          expandBtn.title = `Show ${hiddenUids.length} more set${hiddenUids.length > 1 ? 's' : ''}`;
+          expandBtn.setAttribute('aria-expanded', 'false');
+          expandBtn.setAttribute('aria-label', `Show ${hiddenUids.length} more sets`);
+
+          expandBtn.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const isExpanded = expandBtn.getAttribute('aria-expanded') === 'true';
+
+            if (isExpanded) {
+              // Collapse
+              hiddenText.style.display = 'none';
+              expandBtn.textContent = `+${hiddenUids.length}`;
+              expandBtn.setAttribute('aria-expanded', 'false');
+              expandBtn.title = `Show ${hiddenUids.length} more set${hiddenUids.length > 1 ? 's' : ''}`;
+            } else {
+              // Expand
+              hiddenText.style.display = 'inline';
+              expandBtn.textContent = '−'; // Minus sign to collapse
+              expandBtn.setAttribute('aria-expanded', 'true');
+              expandBtn.title = 'Show fewer';
+            }
+          });
+
+          setSpan.appendChild(expandBtn);
+        }
+
         cardTitleEl.appendChild(setSpan);
 
         logger.debug('Variants displayed', {
           cardIdentifier: validatedIdentifier,
           variantCount: variants.length,
-          uids: uids.join(', ')
+          visibleCount: visibleUids.length,
+          hiddenCount: hiddenUids.length
         });
 
         // Trigger fade-in

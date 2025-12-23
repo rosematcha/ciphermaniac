@@ -10,6 +10,7 @@ import './utils/buildVersion.js';
 import { CONFIG } from './config.js';
 import { logger } from './utils/logger.js';
 import { fetchArchetypesList } from './api.js';
+import type { SignatureCardEntry } from './types/index.js';
 
 // --- Interfaces ---
 
@@ -91,6 +92,7 @@ interface AppState {
   decks: DeckEntry[] | null;
   trends: TrendsData | null;
   thumbnails: string[]; // Array of "SET/NUMBER" strings from API
+  signatureCards: SignatureCardEntry[]; // Signature cards from archetype index
   keyCard: { set: string; number: string } | null;
 }
 
@@ -100,6 +102,7 @@ const state: AppState = {
   decks: null,
   trends: null,
   thumbnails: [],
+  signatureCards: [],
   keyCard: null
 };
 
@@ -121,8 +124,8 @@ const elements = {
   statTop8Rate: document.getElementById('stat-top8-rate'),
   performersSection: document.getElementById('top-performers') as HTMLElement | null,
   performersList: document.getElementById('performers-list') as HTMLElement | null,
-  coreCardsSection: document.getElementById('core-cards-section') as HTMLElement | null,
-  coreCardsList: document.getElementById('core-cards-list') as HTMLElement | null,
+  signatureCardsSection: document.getElementById('signature-cards-section') as HTMLElement | null,
+  signatureCardsList: document.getElementById('signature-cards-list') as HTMLElement | null,
   actionsSection: document.getElementById('archetype-actions') as HTMLElement | null,
   loadingIndicator: document.getElementById('archetype-loading') as HTMLElement | null,
   errorMessage: document.getElementById('archetype-error') as HTMLElement | null
@@ -201,25 +204,33 @@ async function fetchTrendsData(): Promise<TrendsData | null> {
   }
 }
 
+interface ArchetypeIndexData {
+  thumbnails: string[];
+  signatureCards: SignatureCardEntry[];
+}
+
 /**
- * Fetch thumbnails from the archetypes index API
+ * Fetch thumbnails and signature cards from the archetypes index API
  * Uses the same source of truth as the archetypes list page
  */
-async function fetchThumbnailsFromAPI(archetypeName: string): Promise<string[]> {
+async function fetchArchetypeIndexData(archetypeName: string): Promise<ArchetypeIndexData> {
   try {
     const archetypesList = await fetchArchetypesList(ONLINE_META_TOURNAMENT);
     const archetype = archetypesList.find(
       entry => entry.name === archetypeName || entry.name.replace(/_/g, ' ') === archetypeName
     );
 
-    if (archetype && Array.isArray(archetype.thumbnails)) {
-      return archetype.thumbnails.filter(Boolean);
+    if (archetype) {
+      return {
+        thumbnails: Array.isArray(archetype.thumbnails) ? archetype.thumbnails.filter(Boolean) : [],
+        signatureCards: Array.isArray(archetype.signatureCards) ? archetype.signatureCards : []
+      };
     }
 
-    return [];
+    return { thumbnails: [], signatureCards: [] };
   } catch (error) {
-    logger.error('Failed to fetch thumbnails from API', { error });
-    return [];
+    logger.error('Failed to fetch archetype index data from API', { error });
+    return { thumbnails: [], signatureCards: [] };
   }
 }
 
@@ -593,60 +604,52 @@ function renderTopPerformers(): void {
   }
 }
 
-function renderCoreCards(): void {
-  if (!state.trends?.insights?.coreCards || !elements.coreCardsList) {
-    if (elements.coreCardsSection) {
-      elements.coreCardsSection.hidden = true;
+function renderSignatureCards(): void {
+  if (!state.signatureCards || state.signatureCards.length === 0 || !elements.signatureCardsList) {
+    if (elements.signatureCardsSection) {
+      elements.signatureCardsSection.hidden = true;
     }
     return;
   }
 
-  const coreCards = state.trends.insights.coreCards.slice(0, 6);
-  if (coreCards.length === 0) {
-    if (elements.coreCardsSection) {
-      elements.coreCardsSection.hidden = true;
+  // Show 3-5 signature cards
+  const signatureCards = state.signatureCards.slice(0, 5);
+  if (signatureCards.length < 3) {
+    if (elements.signatureCardsSection) {
+      elements.signatureCardsSection.hidden = true;
     }
     return;
   }
 
-  elements.coreCardsList.innerHTML = '';
+  elements.signatureCardsList.innerHTML = '';
 
-  coreCards.forEach(uid => {
-    const cardData = state.trends?.cards[uid] as
-      | { name: string; set: string | null; number: string | null; currentPlayrate: number }
-      | undefined;
-    if (!cardData) {
-      return;
-    }
-
+  signatureCards.forEach(card => {
     const item = document.createElement('div');
-    item.className = 'core-card-item';
+    item.className = 'signature-card-item';
 
     // Build card link
     const cardUrl =
-      cardData.set && cardData.number
-        ? buildCardUrl(cardData.set, cardData.number)
-        : `/cards?card=${encodeURIComponent(cardData.name)}`;
+      card.set && card.number ? buildCardUrl(card.set, card.number) : `/cards?card=${encodeURIComponent(card.name)}`;
 
     // Build thumbnail
     const thumbHtml =
-      cardData.set && cardData.number
-        ? `<img class="core-card-thumb" src="/thumbnails/xs/${cardData.set}/${cardData.number}" alt="${cardData.name}" loading="lazy" />`
+      card.set && card.number
+        ? `<img class="signature-card-thumb" src="/thumbnails/xs/${card.set}/${card.number}" alt="${card.name}" loading="lazy" />`
         : '';
 
     item.innerHTML = `
-      <a href="${cardUrl}" class="core-card-link">
+      <a href="${cardUrl}" class="signature-card-link">
         ${thumbHtml}
-        <span class="core-card-name">${cardData.name}</span>
-        <span class="core-card-rate">${Math.round(cardData.currentPlayrate)}%</span>
+        <span class="signature-card-name">${card.name}</span>
+        <span class="signature-card-rate">${Math.round(card.pct)}%</span>
       </a>
     `;
 
-    elements.coreCardsList!.appendChild(item);
+    elements.signatureCardsList!.appendChild(item);
   });
 
-  if (elements.coreCardsSection) {
-    elements.coreCardsSection.hidden = false;
+  if (elements.signatureCardsSection) {
+    elements.signatureCardsSection.hidden = false;
   }
 }
 
@@ -703,16 +706,18 @@ async function init(): Promise<void> {
   setPageState('loading');
 
   // Performance optimization: Progressive rendering
-  // Fetch thumbnails first (from API, with built-in caching) to render hero ASAP
+  // Fetch archetype index data first (from API, with built-in caching) to render hero ASAP
   // Then fetch larger data files in parallel
 
   // Start all fetches immediately
-  const thumbnailsPromise = fetchThumbnailsFromAPI(state.archetypeName);
+  const indexDataPromise = fetchArchetypeIndexData(state.archetypeName);
   const decksPromise = fetchDecksData();
   const trendsPromise = fetchTrendsData();
 
-  // Render hero as soon as thumbnails are ready (usually from cache)
-  state.thumbnails = await thumbnailsPromise;
+  // Render hero as soon as index data is ready (usually from cache)
+  const indexData = await indexDataPromise;
+  state.thumbnails = indexData.thumbnails;
+  state.signatureCards = indexData.signatureCards;
   renderHero();
 
   // Wait for remaining data
@@ -728,7 +733,7 @@ async function init(): Promise<void> {
   }
   renderStats();
   renderTopPerformers();
-  renderCoreCards();
+  renderSignatureCards();
   renderActions();
 
   // Preload hero images for next visit

@@ -193,8 +193,8 @@ body {
 }
 
 /* Ensure header always has correct styles with high specificity */
-body:not(.no-header) > .site-header,
-body:not(.no-header) > header {
+body:not(.no-header)>.site-header,
+body:not(.no-header)>header {
   padding: 12px 0;
   background: var(--panel);
   border-bottom: 1px solid #20243a;
@@ -393,7 +393,8 @@ body:not(.no-header) > header {
     border-radius: 12px;
     padding: 12px;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
-    z-index: 2000; /* Higher than search suggestions and filters */
+    z-index: 2000;
+    /* Higher than search suggestions and filters */
     max-height: calc(100vh - 120px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -422,12 +423,14 @@ body:not(.no-header) > header {
     flex-direction: row;
     align-items: center;
     gap: 12px;
-    font-size: 11px; /* Smaller to fit in one line */
+    font-size: 11px;
+    /* Smaller to fit in one line */
     flex-wrap: nowrap;
   }
 
   .site-footer {
-    padding-bottom: max(24px, env(safe-area-inset-bottom)); /* More bottom padding on mobile */
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+    /* More bottom padding on mobile */
   }
 }
 
@@ -441,7 +444,8 @@ body:not(.no-header) > header {
 .toolbar-inner {
   width: min(1380px, 100%);
   margin: 0 auto;
-  padding: 0 12px; /* Reduced from 20px for mobile optimization */
+  padding: 0 12px;
+  /* Reduced from 20px for mobile optimization */
 }
 
 .toolbar .controls {
@@ -476,6 +480,7 @@ body:not(.no-header) > header {
 }
 
 @media (max-width: 800px) {
+
   .filter-field,
   .filter-dropdown {
     min-width: 100%;
@@ -485,7 +490,8 @@ body:not(.no-header) > header {
 
 @media (max-width: 700px) {
   .toolbar .controls {
-    grid-template-columns: minmax(0, 1fr) auto; /* Keep search and button on same row */
+    grid-template-columns: minmax(0, 1fr) auto;
+    /* Keep search and button on same row */
     gap: 8px;
   }
 
@@ -498,8 +504,10 @@ body:not(.no-header) > header {
     grid-column: 2;
     grid-row: 1;
     justify-self: flex-end;
-    white-space: nowrap; /* Prevent button text wrapping */
-    padding: 12px 14px; /* Slightly tighter padding */
+    white-space: nowrap;
+    /* Prevent button text wrapping */
+    padding: 12px 14px;
+    /* Slightly tighter padding */
   }
 
   .toolbar .controls #filters {
@@ -513,7 +521,8 @@ body:not(.no-header) > header {
   }
 
   .toolbar-inner {
-    padding: 0 6px; /* Even tighter on very small screens */
+    padding: 0 6px;
+    /* Even tighter on very small screens */
   }
 }
 
@@ -526,6 +535,7 @@ body:not(.no-header) > header {
 
 /* Button mobile adjustments */
 @media (max-width: 720px) {
+
   .btn,
   .filters-toggle,
   .nav-toggle {
@@ -640,9 +650,12 @@ body.filters-panel-open #filters {
 /* Mobile: adjust spacing for filters panel - more compact for better mobile UX */
 @media (max-width: 899px) {
   body.filters-panel-open #filters {
-    margin-top: 8px; /* Reduced from 12px */
-    margin-bottom: 8px; /* Reduced from 12px */
-    padding: 14px 10px 16px; /* More compact padding */
+    margin-top: 8px;
+    /* Reduced from 12px */
+    margin-bottom: 8px;
+    /* Reduced from 12px */
+    padding: 14px 10px 16px;
+    /* More compact padding */
   }
 
   body.filters-panel-open .toolbar {
@@ -855,6 +868,7 @@ body.filters-panel-open #filters {
 }
 
 @media (hover: hover) and (pointer: fine) {
+
   .filter-chip--more:hover,
   .filter-chip--collapse:hover {
     background: rgba(106, 163, 255, 0.08);
@@ -1276,7 +1290,8 @@ input[type='checkbox']:indeterminate::before {
       'archetype archetype archetype archetype'
       'card card card card'
       'sort sort success success';
-    row-gap: 16px; /* Reduced from 22px for more compact mobile layout */
+    row-gap: 16px;
+    /* Reduced from 22px for more compact mobile layout */
   }
 }
 
@@ -1290,7 +1305,8 @@ input[type='checkbox']:indeterminate::before {
       'card'
       'sort'
       'success';
-    row-gap: 14px; /* Even more compact on very small screens */
+    row-gap: 14px;
+    /* Even more compact on very small screens */
   }
 }
 
@@ -1355,6 +1371,7 @@ input[type='checkbox']:indeterminate::before {
 }
 
 @media (max-width: 720px) {
+
   .controls input[type='search'],
   .controls select {
     padding: 14px 16px;
@@ -1394,6 +1411,7 @@ input[type='checkbox']:indeterminate::before {
 }
 
 @media (max-width: 720px) {
+
   .card-search .search-wrap .search-icon,
   .toolbar .search-wrap .search-icon {
     left: 16px;
@@ -1408,6 +1426,7 @@ input[type='checkbox']:indeterminate::before {
 }
 
 @media (max-width: 720px) {
+
   .card-search .search-wrap input[type='search'],
   .toolbar .search-wrap input[type='search'] {
     padding-left: 48px;
@@ -1477,6 +1496,7 @@ input[type='checkbox']:indeterminate::before {
 }
 
 @media (hover: hover) and (pointer: fine) {
+
   .card-search .suggestions .item:hover,
   .toolbar .suggestions .item:hover,
   .hero-search .suggestions .item:hover {
@@ -1514,6 +1534,7 @@ input[type='checkbox']:indeterminate::before {
 }
 
 @media (max-width: 720px) {
+
   .card-search .search-wrap,
   .toolbar .search-wrap {
     width: 100%;
@@ -1526,11 +1547,13 @@ input[type='checkbox']:indeterminate::before {
 
   /* Better mobile spacing - optimized for 3 cards per row */
   main {
-    padding: 0 6px 16px; /* Reduced from 12px to 6px for tighter spacing */
+    padding: 0 6px 16px;
+    /* Reduced from 12px to 6px for tighter spacing */
   }
 
   .grid {
-    gap: 8px; /* Reduced from 10px to match MOBILE_GAP */
+    gap: 8px;
+    /* Reduced from 10px to match MOBILE_GAP */
   }
 
   /* Prevent iOS zoom on inputs */
@@ -1541,23 +1564,29 @@ input[type='checkbox']:indeterminate::before {
 
   /* Improve card touch interaction - reduced padding for denser layout */
   .card {
-    padding: 6px; /* Reduced from 12px to 6px */
-    margin-bottom: 0; /* Remove extra margin */
-    margin-left: 0; /* Remove side margins for more space */
+    padding: 6px;
+    /* Reduced from 12px to 6px */
+    margin-bottom: 0;
+    /* Remove extra margin */
+    margin-left: 0;
+    /* Remove side margins for more space */
     margin-right: 0;
   }
 
   /* Optimize card text sizes for mobile readability */
   .name {
-    font-size: 13px; /* Slightly smaller for mobile */
+    font-size: 13px;
+    /* Slightly smaller for mobile */
   }
 
   .titleRow {
-    gap: 3px; /* Tighter spacing */
+    gap: 3px;
+    /* Tighter spacing */
   }
 
   .counts {
-    font-size: 11px; /* Smaller count text */
+    font-size: 11px;
+    /* Smaller count text */
   }
 
   /* Better mobile typography */
@@ -1736,7 +1765,7 @@ h2 {
     border-color: var(--accent-2);
   }
 
-  .card:hover .titleRow .name > span:first-child {
+  .card:hover .titleRow .name>span:first-child {
     text-decoration: underline;
     text-underline-offset: 2px;
   }
@@ -2504,6 +2533,63 @@ body.card-image-modal-open {
   vertical-align: baseline;
 }
 
+/* Expand button for showing more synonym sets */
+.set-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.35em;
+  padding: 0.1em 0.5em;
+  min-width: 1.8em;
+  font-size: 0.9em;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--accent-2, #6b8cff);
+  background: rgba(107, 140, 255, 0.12);
+  border: 1px solid rgba(107, 140, 255, 0.25);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  vertical-align: baseline;
+  line-height: 1.4;
+}
+
+.set-expand-btn:hover {
+  background: rgba(107, 140, 255, 0.22);
+  border-color: rgba(107, 140, 255, 0.4);
+  color: #8fa8ff;
+  transform: translateY(-1px);
+}
+
+.set-expand-btn:active {
+  transform: translateY(0);
+}
+
+.set-expand-btn:focus-visible {
+  outline: 2px solid var(--accent-2, #6b8cff);
+  outline-offset: 2px;
+}
+
+.set-expand-btn[aria-expanded="true"] {
+  background: rgba(107, 140, 255, 0.18);
+  color: var(--muted);
+}
+
+/* Hidden sets fade in smoothly */
+.set-hidden {
+  animation: fadeInSets 0.2s ease-out;
+}
+
+@keyframes fadeInSets {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 .card-sets {
   color: var(--muted);
   font-size: 13px;
@@ -2579,7 +2665,7 @@ body.card-image-modal-open {
 }
 
 /* Avoid duplicate timeline notes: prefer the one near the events table */
-#card-meta > .toggle-note {
+#card-meta>.toggle-note {
   display: none;
 }
 
@@ -2715,6 +2801,7 @@ body.card-image-modal-open {
 }
 
 @media (max-width: 720px) {
+
   .card-sect th,
   .card-sect td {
     padding: 8px;
@@ -2723,6 +2810,7 @@ body.card-image-modal-open {
 }
 
 @media (max-width: 480px) {
+
   .card-sect th,
   .card-sect td {
     padding: 6px;
@@ -2813,6 +2901,7 @@ body.card-image-modal-open {
 }
 
 @media (max-width: 720px) {
+
   /* On medium/narrow screens, allow the table to keep proportions but be scrollable */
   .card-sect table {
     table-layout: fixed;
@@ -2857,16 +2946,16 @@ body.card-image-modal-open {
   position: relative;
 }
 
-.skeleton-loading > .skeleton-text,
-.skeleton-loading > .skeleton-image,
-.skeleton-loading > .skeleton-chart,
-.skeleton-loading > .skeleton-histogram,
-.showing-skeleton > * {
+.skeleton-loading>.skeleton-text,
+.skeleton-loading>.skeleton-image,
+.skeleton-loading>.skeleton-chart,
+.skeleton-loading>.skeleton-histogram,
+.showing-skeleton>* {
   animation: skeleton-loading 1.5s ease-in-out infinite;
 }
 
 /* When skeleton is removed, fade in the new content */
-.card-sect > *:not(.skeleton-loading):not(.skeleton-chart):not(.skeleton-histogram):not([aria-hidden='true']) {
+.card-sect>*:not(.skeleton-loading):not(.skeleton-chart):not(.skeleton-histogram):not([aria-hidden='true']) {
   animation: fadeInContent 0.2s ease-out forwards;
 }
 
@@ -2899,6 +2988,7 @@ body.card-image-modal-open {
 #card-chart {
   min-height: 180px;
 }
+
 #card-copies {
   min-height: 100px;
 }
@@ -2970,27 +3060,33 @@ body.card-image-modal-open {
   height: 0.8em;
   width: 60%;
 }
+
 .skeleton-text.name {
   width: 80%;
   margin-bottom: 4px;
 }
+
 .skeleton-text.counts {
   width: 40%;
   height: 0.9em;
 }
+
 .skeleton-text.title {
   height: 1.5em;
   margin-bottom: 8px;
 }
+
 .skeleton-text.title.large {
   height: 2em;
   width: 70%;
 }
+
 .skeleton-text.sets {
   width: 50%;
   height: 0.9em;
   margin-bottom: 12px;
 }
+
 .skeleton-text.select-text {
   width: 100%;
   height: 1.2em;
@@ -3242,23 +3338,21 @@ body.card-image-modal-open {
   top: 40%;
   right: 0;
   height: 2px;
-  background: linear-gradient(
-    to right,
-    var(--accent-2) 0%,
-    var(--accent-2) 15%,
-    transparent 15%,
-    transparent 25%,
-    var(--accent-2) 25%,
-    var(--accent-2) 40%,
-    transparent 40%,
-    transparent 60%,
-    var(--accent-2) 60%,
-    var(--accent-2) 75%,
-    transparent 75%,
-    transparent 85%,
-    var(--accent-2) 85%,
-    var(--accent-2) 100%
-  );
+  background: linear-gradient(to right,
+      var(--accent-2) 0%,
+      var(--accent-2) 15%,
+      transparent 15%,
+      transparent 25%,
+      var(--accent-2) 25%,
+      var(--accent-2) 40%,
+      transparent 40%,
+      transparent 60%,
+      var(--accent-2) 60%,
+      var(--accent-2) 75%,
+      transparent 75%,
+      transparent 85%,
+      var(--accent-2) 85%,
+      var(--accent-2) 100%);
   border-radius: 1px;
   animation: skeleton-loading 2s ease-in-out infinite;
 }
@@ -3452,6 +3546,7 @@ body.card-image-modal-open {
 }
 
 @media (hover: hover) and (pointer: fine) {
+
   .analysis-list-item__button:hover,
   .analysis-list-item__button:focus-visible {
     border-color: rgba(112, 128, 255, 0.4);
@@ -3529,7 +3624,7 @@ body.card-image-modal-open {
 }
 
 /* Hide base image when using split view */
-.analysis-list-item__thumbnail--split > .analysis-list-item__thumbnail-image {
+.analysis-list-item__thumbnail--split>.analysis-list-item__thumbnail-image {
   display: none;
 }
 
@@ -3662,7 +3757,8 @@ body.card-image-modal-open {
   }
 
   .analysis-list-item__thumbnail {
-    width: 80px; /* Smaller thumbnail on mobile */
+    width: 80px;
+    /* Smaller thumbnail on mobile */
     height: 54px;
     border-radius: 8px;
   }
@@ -3672,33 +3768,40 @@ body.card-image-modal-open {
   }
 
   .analysis-list-item__name {
-    font-size: 14px; /* Smaller name text */
+    font-size: 14px;
+    /* Smaller name text */
   }
 
   .analysis-list-item__count {
-    font-size: 12px; /* Smaller count text */
+    font-size: 12px;
+    /* Smaller count text */
   }
 
   .analysis-list-item__stats {
-    flex-direction: row; /* Keep stats horizontal */
+    flex-direction: row;
+    /* Keep stats horizontal */
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
     flex-shrink: 0;
     margin-left: 0;
     padding-top: 0;
-    border-top: none; /* Remove border */
+    border-top: none;
+    /* Remove border */
   }
 
   .analysis-list-item__percent {
-    font-size: 16px; /* Slightly smaller percentage */
+    font-size: 16px;
+    /* Slightly smaller percentage */
     font-weight: 700;
-    text-align: right; /* Keep right-aligned */
+    text-align: right;
+    /* Keep right-aligned */
     min-width: auto;
   }
 
   .analysis-list-item__chevron {
-    display: inline-block; /* Show chevron */
+    display: inline-block;
+    /* Show chevron */
     font-size: 18px;
   }
 }
@@ -4974,11 +5077,11 @@ body.card-image-modal-open {
   transition: all 0.15s;
 }
 
-.chart-checkbox input:checked + .checkbox-indicator {
+.chart-checkbox input:checked+.checkbox-indicator {
   border-color: transparent;
 }
 
-.chart-checkbox input:not(:checked) + .checkbox-indicator:hover {
+.chart-checkbox input:not(:checked)+.checkbox-indicator:hover {
   border-color: rgba(112, 128, 255, 0.7);
 }
 
@@ -6325,13 +6428,11 @@ body.card-image-modal-open {
 }
 
 .binder-card__thumb--missing {
-  background: repeating-linear-gradient(
-    45deg,
-    rgba(255, 255, 255, 0.08),
-    rgba(255, 255, 255, 0.08) 8px,
-    rgba(255, 255, 255, 0.02) 8px,
-    rgba(255, 255, 255, 0.02) 16px
-  );
+  background: repeating-linear-gradient(45deg,
+      rgba(255, 255, 255, 0.08),
+      rgba(255, 255, 255, 0.08) 8px,
+      rgba(255, 255, 255, 0.02) 8px,
+      rgba(255, 255, 255, 0.02) 16px);
 }
 
 .binder-card__thumb--missing::after {
@@ -6375,13 +6476,11 @@ body.card-image-modal-open {
 .binder-card--placeholder {
   border-radius: var(--border-radius);
   border: 1px dashed rgba(255, 255, 255, 0.2);
-  background: repeating-linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.06),
-    rgba(255, 255, 255, 0.06) 12px,
-    rgba(255, 255, 255, 0.02) 12px,
-    rgba(255, 255, 255, 0.02) 24px
-  );
+  background: repeating-linear-gradient(135deg,
+      rgba(255, 255, 255, 0.06),
+      rgba(255, 255, 255, 0.06) 12px,
+      rgba(255, 255, 255, 0.02) 12px,
+      rgba(255, 255, 255, 0.02) 24px);
   min-height: 0;
 }
 
@@ -6886,7 +6985,7 @@ body.card-image-modal-open {
   min-height: 46px;
 }
 
-.archetype-filter-message + .archetype-filter-message {
+.archetype-filter-message+.archetype-filter-message {
   margin-top: 12px;
 }
 
@@ -7071,6 +7170,7 @@ body.card-image-modal-open {
 
 /* Mobile Adjustments for Filter Rows */
 @media (max-width: 600px) {
+
   .archetype-controls-panel .filter-card-select,
   .archetype-controls-panel .filter-operator-select,
   .archetype-controls-panel .filter-count-input {
@@ -7360,7 +7460,7 @@ body.card-image-modal-open {
   flex-wrap: wrap;
 }
 
-.trend-panel__header > div:first-child {
+.trend-panel__header>div:first-child {
   flex-shrink: 0;
 }
 
@@ -7593,7 +7693,7 @@ body.card-image-modal-open {
 }
 
 /* Hide standalone y-axis info - it's now in the controls */
-.trend-panel > .meta-ymax {
+.trend-panel>.meta-ymax {
   display: none;
 }
 
@@ -7936,6 +8036,7 @@ tr:hover td {
 }
 
 @keyframes float {
+
   0%,
   100% {
     transform: translateY(0px);
@@ -8134,6 +8235,7 @@ tr:hover td {
 
 /* Smooth content appearance instead of jarring pop-in */
 @media (prefers-reduced-motion: no-preference) {
+
   .card,
   .feature-card,
   .analysis-list-item__button {
@@ -8258,6 +8360,7 @@ tr:hover td {
    Respect users who prefer reduced motion for accessibility
    ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -8268,11 +8371,11 @@ tr:hover td {
   }
 
   /* Disable skeleton loading animation */
-  .skeleton-loading > .skeleton-text,
-  .skeleton-loading > .skeleton-image,
-  .skeleton-loading > .skeleton-chart,
-  .skeleton-loading > .skeleton-histogram,
-  .showing-skeleton > *,
+  .skeleton-loading>.skeleton-text,
+  .skeleton-loading>.skeleton-image,
+  .skeleton-loading>.skeleton-chart,
+  .skeleton-loading>.skeleton-histogram,
+  .showing-skeleton>*,
   .skeleton-card {
     animation: none;
   }
@@ -8284,6 +8387,7 @@ tr:hover td {
     transform: none;
   }
 }
+
 /* ==========================================================================
    Archetype Page Styles
    ========================================================================== */
@@ -8690,6 +8794,7 @@ tr:hover td {
     padding-left: var(--space-3);
   }
 }
+
 /* ==========================================================================
    Trends & Charts Page Styles
    ========================================================================== */
@@ -9628,12 +9733,12 @@ tr:hover td {
   justify-content: center;
 }
 
-.chart-checkbox input:checked + .checkbox-indicator {
+.chart-checkbox input:checked+.checkbox-indicator {
   border-color: var(--accent-2);
   background: var(--accent-2);
 }
 
-.chart-checkbox input:focus + .checkbox-indicator {
+.chart-checkbox input:focus+.checkbox-indicator {
   box-shadow: 0 0 0 2px rgba(106, 163, 255, 0.2);
 }
 
@@ -9914,6 +10019,7 @@ tr:hover td {
 [hidden] {
   display: none !important;
 }
+
 /* New Variables */
 /* ==========================================================================
    CSS Custom Properties (Design Tokens)
@@ -10044,48 +10150,63 @@ tr:hover td {
 .u-bg {
   background: var(--bg);
 }
+
 .u-panel {
   background: var(--panel);
 }
+
 .u-text {
   color: var(--text);
 }
+
 .u-muted {
   color: var(--muted);
 }
+
 .u-accent {
   color: var(--accent);
 }
+
 .u-accent-2 {
   color: var(--accent-2);
 }
+
 .u-link {
   color: var(--link);
 }
+
 .u-border {
   border: 1px solid var(--border-primary);
 }
+
 .u-border-radius {
   border-radius: var(--border-radius);
 }
+
 .u-gap {
   gap: var(--gap);
 }
+
 .u-shadow-sm {
   box-shadow: var(--shadow-sm);
 }
+
 .u-shadow-md {
   box-shadow: var(--shadow-md);
 }
+
 .u-shadow-lg {
   box-shadow: var(--shadow-lg);
 }
+
 .u-transition-fast {
   transition: var(--transition-fast);
 }
+
 .u-transition-normal {
   transition: var(--transition-normal);
 }
+
 .u-transition-slow {
   transition: var(--transition-slow);
 }
