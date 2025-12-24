@@ -2513,9 +2513,8 @@ body.card-image-modal-open {
 
 .title-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 16px;
-  margin: 2px 0 8px;
 }
 
 .header-title h1 {
