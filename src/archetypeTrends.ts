@@ -20,6 +20,7 @@ interface TrendsMeta {
   tournamentCount: number;
   cardCount: number;
   weekCount: number;
+  dayCount: number;
   windowStart: string;
   windowEnd: string;
 }
@@ -27,6 +28,17 @@ interface TrendsMeta {
 interface WeekEntry {
   weekStart: string;
   weekEnd: string;
+  tournamentIds: string[];
+  totals: {
+    all: number;
+    winner?: number;
+    top8?: number;
+    [key: string]: number | undefined;
+  };
+}
+
+interface DayEntry {
+  date: string;
   tournamentIds: string[];
   totals: {
     all: number;
@@ -65,6 +77,11 @@ interface EnhancedCardEntry {
       [tier: string]: CardTimelineWeek;
     };
   };
+  timelineDays?: {
+    [dayIndex: string]: {
+      [tier: string]: CardTimelineWeek;
+    };
+  };
   copyTrend: CopyTrendWeek[];
 }
 
@@ -76,18 +93,29 @@ interface Insights {
   substitutions: Array<{ cardA: string; cardB: string; correlation: number }>;
 }
 
+interface MatchupStats {
+  opponent: string;
+  wins: number;
+  losses: number;
+  ties: number;
+  total: number;
+  winRate: number;
+}
+
 interface TrendsData {
   meta: TrendsMeta;
   weeks: WeekEntry[];
+  days: DayEntry[];
   cards: Record<string, EnhancedCardEntry>;
   insights: Insights;
+  matchups: Record<string, MatchupStats>;
 }
 
 interface ChartLine {
   card: EnhancedCardEntry;
   color: string;
   points: {
-    weekIdx: number;
+    index: number;
     date: string;
     share: number;
     count: number;
@@ -104,9 +132,11 @@ interface AppState {
   selectedCards: Set<string>; // UIDs
   categoryFilter: 'all' | 'core' | 'staple' | 'flex' | 'tech' | 'emerging' | 'fading';
   sortBy: 'playrate' | 'trending' | 'name' | 'copies' | 'volatility';
+  timeScale: 'daily' | 'weekly';
   resizeTimer: number | null;
   activeCopyCard: string | null; // UID for copy evolution chart
   chartLines: ChartLine[];
+  showAllMatchups: boolean; // Whether to show all matchups or just top 10
 }
 
 // --- Constants & Config ---
@@ -183,6 +213,11 @@ const elements = {
   substitutionsSection: document.getElementById('substitutions-section'),
   substitutionsList: document.getElementById('substitutions-list'),
 
+  // Matchups
+  matchupsSection: document.getElementById('trends-matchups'),
+  matchupsList: document.getElementById('matchups-list'),
+  matchupsToggle: document.getElementById('matchups-toggle') as HTMLButtonElement | null,
+
   // Copy Evolution
   copyEvolutionSection: document.getElementById('copy-evolution'),
   copyCardSelect: document.getElementById('copy-card-select') as HTMLSelectElement | null,
@@ -197,6 +232,8 @@ const elements = {
   chartSubtitle: document.getElementById('chart-subtitle'),
   chart: document.getElementById('trends-chart'),
   chartLegend: document.getElementById('trends-chart-legend'),
+  toggleWeekly: document.getElementById('chart-toggle-weekly'),
+  toggleDaily: document.getElementById('chart-toggle-daily'),
 
   // Card List
   cardListSection: document.getElementById('trends-card-list'),
@@ -216,9 +253,11 @@ const state: AppState = {
   selectedCards: new Set(),
   categoryFilter: 'all',
   sortBy: 'playrate',
+  timeScale: 'daily',
   resizeTimer: null,
   activeCopyCard: null,
-  chartLines: []
+  chartLines: [],
+  showAllMatchups: false
 };
 
 // --- Utilities ---
@@ -417,6 +456,55 @@ function renderInsights() {
   }
 }
 
+// --- Rendering: Matchups ---
+
+const MAX_MATCHUPS_DEFAULT = 10;
+
+function renderMatchups() {
+  if (!state.trendsData || !elements.matchupsSection || !elements.matchupsList) return;
+  const { matchups } = state.trendsData;
+
+  if (!matchups || Object.keys(matchups).length === 0) {
+    elements.matchupsSection.hidden = true;
+    return;
+  }
+
+  const allRows = Object.values(matchups).sort((a, b) => b.total - a.total);
+  const totalMatchups = allRows.length;
+  const showAll = state.showAllMatchups;
+  const rows = showAll ? allRows : allRows.slice(0, MAX_MATCHUPS_DEFAULT);
+
+  elements.matchupsList.innerHTML = '';
+  rows.forEach(mt => {
+    const tr = document.createElement('tr');
+
+    // Determine winrate class - winRate is now 0-100 percentage
+    let wrClass = 'winrate-mid';
+    if (mt.winRate > 55) wrClass = 'winrate-high';
+    else if (mt.winRate < 45) wrClass = 'winrate-low';
+
+    tr.innerHTML = `
+      <td class="col-opponent">${mt.opponent}</td>
+      <td class="col-winrate">
+        <span class="${wrClass}">${mt.winRate.toFixed(1)}%</span>
+      </td>
+      <td class="col-record">${mt.wins}-${mt.losses}-${mt.ties}</td>
+      <td class="col-total">${mt.total}</td>
+    `;
+    elements.matchupsList!.appendChild(tr);
+  });
+
+  // Add toggle button if there are more than MAX_MATCHUPS_DEFAULT
+  if (totalMatchups > MAX_MATCHUPS_DEFAULT && elements.matchupsToggle) {
+    elements.matchupsToggle.textContent = showAll ? `Show Top ${MAX_MATCHUPS_DEFAULT}` : `Show All (${totalMatchups})`;
+    elements.matchupsToggle.hidden = false;
+  } else if (elements.matchupsToggle) {
+    elements.matchupsToggle.hidden = true;
+  }
+
+  elements.matchupsSection.hidden = false;
+}
+
 // --- Rendering: Copy Evolution Chart ---
 
 function renderCopyEvolution() {
@@ -536,31 +624,83 @@ function renderCopyEvolution() {
 function renderChart() {
   if (!elements.chart || !state.trendsData) return;
 
-  const { weeks, cards } = state.trendsData;
+  const { weeks, days, cards } = state.trendsData;
   const tier = state.selectedTier;
+  const isDaily = state.timeScale === 'daily';
+
+  // Always use daily data from backend - aggregate to weekly on frontend if needed
+  if (!days || days.length === 0) return;
 
   elements.chart.innerHTML = '';
+
+  // Build day-to-week mapping for weekly aggregation
+  const dayToWeekIdx = new Map<number, number>();
+  if (!isDaily && weeks) {
+    days.forEach((day, dayIdx) => {
+      const weekIdx = weeks.findIndex(wk => day.date >= wk.weekStart && day.date <= wk.weekEnd);
+      if (weekIdx >= 0) {
+        dayToWeekIdx.set(dayIdx, weekIdx);
+      }
+    });
+  }
+
+  const timeData = isDaily ? days : weeks;
+  if (!timeData || timeData.length === 0) return;
+
   const lines: ChartLine[] = Array.from(state.selectedCards)
     .map(uid => cards[uid])
     .filter(Boolean)
-    .map((card, idx) => ({
-      card,
-      color: PALETTE[idx % PALETTE.length],
-      // Build points from weekly timeline
-      points: weeks.map((week, weekIdx) => {
-        const weekData = card.timeline[weekIdx]?.[tier];
-        // Calculate playrate relative to week total
-        const totalDecks = week.totals[tier] || week.totals.all || 1;
-        const count = weekData ? weekData.count : 0;
-        return {
-          weekIdx,
-          date: week.weekStart,
-          share: (count / totalDecks) * 100,
-          count,
-          total: totalDecks
-        };
-      })
-    }));
+    .map((card, idx) => {
+      let points: ChartLine['points'];
+
+      if (isDaily) {
+        // Daily: direct mapping - timeline is keyed by day index
+        points = days.map((entry, index) => {
+          const entryData: CardTimelineWeek | undefined = card.timeline[index]?.[tier];
+          const totalDecks = entry.totals[tier] || entry.totals.all || 1;
+          const count = entryData ? entryData.count : 0;
+
+          return {
+            index,
+            date: entry.date,
+            share: (count / totalDecks) * 100,
+            count,
+            total: totalDecks
+          };
+        });
+      } else {
+        // Weekly: aggregate daily timeline data into weeks
+        points = weeks.map((weekEntry, weekIdx) => {
+          let totalCount = 0;
+          let totalDecks = 0;
+
+          // Sum up all days in this week
+          days.forEach((day, dayIdx) => {
+            if (day.date >= weekEntry.weekStart && day.date <= weekEntry.weekEnd) {
+              const dayData = card.timeline[dayIdx]?.[tier];
+              if (dayData) {
+                totalCount += dayData.count;
+              }
+              totalDecks += day.totals[tier] || day.totals.all || 0;
+            }
+          });
+
+          return {
+            index: weekIdx,
+            date: weekEntry.weekStart,
+            share: totalDecks > 0 ? (totalCount / totalDecks) * 100 : 0,
+            count: totalCount,
+            total: totalDecks
+          };
+        });
+      }
+
+      return {
+        card,
+        color: PALETTE[idx % PALETTE.length],
+        points
+      };
+    });
 
   state.chartLines = lines; // Save for legend
 
@@ -572,7 +712,7 @@ function renderChart() {
   }
 
   if (elements.chartSubtitle) {
-    elements.chartSubtitle.textContent = `Showing ${lines.length} card${lines.length === 1 ? '' : 's'}`;
+    elements.chartSubtitle.textContent = `Showing ${lines.length} card${lines.length === 1 ? '' : 's'} (${isDaily ? 'Daily' : 'Weekly'})`;
   }
 
   // Chart dimensions
@@ -588,7 +728,7 @@ function renderChart() {
   const allShares = lines.flatMap(l => l.points.map(p => p.share));
   const maxShare = Math.max(10, Math.ceil(Math.max(...allShares) * 1.1));
 
-  const xScale = (weekIdx: number) => padX + (weekIdx / (weeks.length - 1)) * contentWidth;
+  const xScale = (idx: number) => padX + (idx / (timeData.length - 1)) * contentWidth;
   const yScale = (share: number) => height - padY - (share / maxShare) * contentHeight;
 
   // SVG
@@ -623,7 +763,7 @@ function renderChart() {
 
   // Draw Lines
   lines.forEach(line => {
-    const d = line.points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xScale(p.weekIdx)} ${yScale(p.share)}`).join(' ');
+    const d = line.points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xScale(p.index)} ${yScale(p.share)}`).join(' ');
 
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', d);
@@ -637,7 +777,7 @@ function renderChart() {
     // Points
     line.points.forEach(p => {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('cx', String(xScale(p.weekIdx)));
+      circle.setAttribute('cx', String(xScale(p.index)));
       circle.setAttribute('cy', String(yScale(p.share)));
       circle.setAttribute('r', '4');
       circle.setAttribute('fill', line.color);
@@ -660,16 +800,21 @@ function renderChart() {
   });
 
   // X-Axis Labels
-  weeks.forEach((week, i) => {
-    // Show every other label if crowded
-    if (weeks.length > 8 && i % 2 !== 0) return;
+  const maxLabels = 8;
+  const skip = Math.ceil(timeData.length / maxLabels);
+
+  timeData.forEach((entry, i) => {
+    // Show label logic: first, last, and every 'skip' in between
+    if (i !== 0 && i !== timeData.length - 1 && i % skip !== 0) return;
+
+    const dateStr = isDaily ? (entry as DayEntry).date : (entry as WeekEntry).weekStart;
 
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', String(xScale(i)));
     text.setAttribute('y', String(height - 5));
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('class', 'chart-axis-label');
-    text.textContent = formatDate(week.weekStart);
+    text.textContent = formatDate(dateStr);
     svg.appendChild(text);
   });
 
@@ -701,13 +846,41 @@ function renderSparkline(card: EnhancedCardEntry): string {
   const width = 80;
   const height = 24;
   const tier = state.selectedTier;
-  const weeks = state.trendsData!.weeks;
+  const isDaily = state.timeScale === 'daily';
 
-  const points = weeks.map((w, i) => {
-    const d = card.timeline[i]?.[tier];
-    const total = w.totals[tier] || w.totals.all || 1;
-    return d ? (d.count / total) * 100 : 0;
-  });
+  const days = state.trendsData?.days;
+  const weeks = state.trendsData?.weeks;
+  if (!days || days.length === 0) return '';
+
+  let points: number[];
+
+  if (isDaily) {
+    // Daily: direct mapping
+    points = days.map((entry, idx) => {
+      const entryData = card.timeline[idx]?.[tier];
+      const total = entry.totals[tier] || entry.totals.all || 1;
+      return entryData ? (entryData.count / total) * 100 : 0;
+    });
+  } else {
+    // Weekly: aggregate daily data
+    if (!weeks) return '';
+    points = weeks.map(weekEntry => {
+      let totalCount = 0;
+      let totalDecks = 0;
+
+      days.forEach((day, dayIdx) => {
+        if (day.date >= weekEntry.weekStart && day.date <= weekEntry.weekEnd) {
+          const dayData = card.timeline[dayIdx]?.[tier];
+          if (dayData) {
+            totalCount += dayData.count;
+          }
+          totalDecks += day.totals[tier] || day.totals.all || 0;
+        }
+      });
+
+      return totalDecks > 0 ? (totalCount / totalDecks) * 100 : 0;
+    });
+  }
 
   if (points.length < 2) return '';
 
@@ -715,7 +888,7 @@ function renderSparkline(card: EnhancedCardEntry): string {
   const xStep = width / (points.length - 1);
 
   const coords = points
-    .map((p, i) => `${(i * xStep).toFixed(1)},${(height - (p / max) * height).toFixed(1)}`)
+    .map((pt, idx) => `${(idx * xStep).toFixed(1)},${(height - (pt / max) * height).toFixed(1)}`)
     .join(' ');
 
   const trendClass = points[points.length - 1] > points[0] ? 'spark-up' : 'spark-down';
@@ -868,6 +1041,40 @@ function bindEvents() {
     });
   }
 
+  // Chart Toggle
+  if (elements.toggleWeekly && elements.toggleDaily) {
+    elements.toggleWeekly.addEventListener('click', () => {
+      if (state.timeScale === 'weekly') return;
+      state.timeScale = 'weekly';
+      elements.toggleWeekly!.classList.add('active');
+      elements.toggleDaily!.classList.remove('active');
+      renderChart();
+      renderCardList();
+    });
+    elements.toggleDaily.addEventListener('click', () => {
+      if (state.timeScale === 'daily') return;
+      // Check if we have daily data
+      if (!state.trendsData?.days || state.trendsData.days.length === 0) {
+        console.warn('No daily data available');
+        return;
+      }
+
+      state.timeScale = 'daily';
+      elements.toggleDaily!.classList.add('active');
+      elements.toggleWeekly!.classList.remove('active');
+      renderChart();
+      renderCardList();
+    });
+  }
+
+  // Matchups Toggle
+  if (elements.matchupsToggle) {
+    elements.matchupsToggle.addEventListener('click', () => {
+      state.showAllMatchups = !state.showAllMatchups;
+      renderMatchups();
+    });
+  }
+
   // Resize Handler
   window.addEventListener('resize', () => {
     if (state.resizeTimer) clearTimeout(state.resizeTimer);
@@ -920,6 +1127,7 @@ async function init() {
 
   renderStats();
   renderInsights();
+  renderMatchups();
   renderChart();
   renderCardList();
   renderCopyEvolution();

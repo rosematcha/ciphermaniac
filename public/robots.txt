@@ -1,0 +1,15 @@
+# Ciphermaniac - Pokemon TCG Meta Analysis
+# https://ciphermaniac.com
+
+User-agent: *
+Allow: /
+
+# Allow favicon crawling for Google Search
+Allow: /favicon.ico
+Allow: /assets/images/
+
+# Sitemap location
+Sitemap: https://ciphermaniac.com/sitemap.xml
+
+# Crawl-delay (optional, be kind to our server)
+Crawl-delay: 1

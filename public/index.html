@@ -3,18 +3,100 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Ciphermaniac - Pokémon TCG Data</title>
+    <title>Ciphermaniac - Pokemon TCG Meta Analysis & Deck Statistics</title>
+    <meta
+      name="description"
+      content="Analyze Pokemon TCG tournament data, deck archetypes, card usage statistics, and competitive meta trends. The ultimate tool for Pokemon TCG players looking to improve their game."
+    />
+    <meta
+      name="keywords"
+      content="Pokemon TCG, Pokemon TCG meta, deck analysis, card statistics, tournament data, Pokemon decks, competitive Pokemon, PTCG meta, Pokemon deck builder"
+    />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://ciphermaniac.com/" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ciphermaniac.com/" />
+    <meta property="og:title" content="Ciphermaniac - Pokemon TCG Meta Analysis & Deck Statistics" />
+    <meta
+      property="og:description"
+      content="Analyze Pokemon TCG tournament data, deck archetypes, card usage statistics, and competitive meta trends. The ultimate tool for Pokemon TCG players."
+    />
+    <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+    <meta property="og:site_name" content="Ciphermaniac" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://ciphermaniac.com/" />
+    <meta name="twitter:title" content="Ciphermaniac - Pokemon TCG Meta Analysis" />
+    <meta
+      name="twitter:description"
+      content="Analyze Pokemon TCG tournament data, deck archetypes, card usage statistics, and competitive meta trends."
+    />
+    <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+
+    <!-- Favicon - PNG for Google compatibility -->
+    <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#fee475" />
+
     <!-- Preload critical font to reduce layout shift -->
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/assets/style.css" />
-    <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Ciphermaniac",
+        "alternateName": "Ciphermaniac Pokemon TCG Analysis",
+        "url": "https://ciphermaniac.com",
+        "description": "Pokemon TCG meta analysis tool for tournament data, deck archetypes, and card usage statistics.",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://ciphermaniac.com/cards?q={search_term_string}"
+          },
+          "query-input": "required name=search_term_string"
+        }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Ciphermaniac",
+        "url": "https://ciphermaniac.com",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "Web Browser",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "description": "Free Pokemon TCG meta analysis tool providing tournament data, deck archetypes, card usage statistics, and competitive trends."
+      }
+    </script>
   </head>
   <body class="no-header">
     <main id="main-content" class="home-page">
       <section class="hero">
         <div class="hero-content">
           <h1 class="hero-title">
-            <img src="/assets/images/logo.svg" alt="Ciphermaniac Logo" class="hero-logo" width="110" height="110" />
+            <img
+              src="/assets/images/logo.svg"
+              alt="Ciphermaniac - Pokemon TCG Meta Analysis Tool"
+              class="hero-logo"
+              width="110"
+              height="110"
+            />
             Ciphermaniac
           </h1>
 

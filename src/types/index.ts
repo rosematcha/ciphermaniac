@@ -189,6 +189,21 @@ export interface ParsedReport {
 }
 
 /**
+ * Signature card entry for archetype display.
+ * These are cards that best exemplify the archetype.
+ */
+export interface SignatureCardEntry {
+  /** Card name */
+  name: string;
+  /** Set code */
+  set: string | null;
+  /** Collector number */
+  number: string | null;
+  /** Usage percentage in this archetype */
+  pct: number;
+}
+
+/**
  * Entry in the archetype index (list of archetypes for a tournament).
  */
 export interface ArchetypeIndexEntry {
@@ -202,6 +217,8 @@ export interface ArchetypeIndexEntry {
   percent: number | null;
   /** Thumbnail image paths (e.g., ["PAF/001", "SFA/025"]) */
   thumbnails: string[];
+  /** Signature cards that exemplify this archetype */
+  signatureCards?: SignatureCardEntry[];
 }
 
 /**

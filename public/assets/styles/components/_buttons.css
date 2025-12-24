@@ -33,6 +33,30 @@
   color: #0c111f;
 }
 
+/* Legacy .btn-primary class (single dash) for backwards compatibility */
+.btn-primary {
+  background: var(--accent-2);
+  color: #fff;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  padding: var(--space-2) var(--space-4);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: background var(--transition-normal);
+}
+
+.btn-primary:hover {
+  background: #5a95ff;
+}
+
+.btn-primary:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+
 .btn--secondary {
   background: transparent;
   border-color: var(--border-accent);

@@ -335,6 +335,11 @@
   will-change: contents;
 }
 
+/* Add a subtle top padding to the first row of cards */
+.grid > .card-row:first-child {
+  padding-top: 2px;
+}
+
 /* ==========================================================================
    Skeleton Loading States
    ========================================================================== */

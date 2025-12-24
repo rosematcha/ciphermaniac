@@ -2396,8 +2396,9 @@ async function initialize() {
     updateFilterMessage('');
     setupSuccessFilter();
     populateCardDropdowns();
-    renderCards();
 
+    // Hide loading/error states and show content BEFORE rendering
+    // This ensures grid has proper dimensions for layout calculation
     if (elements.loading) {
       elements.loading.hidden = true;
     }
@@ -2412,6 +2413,10 @@ async function initialize() {
     if (grid) {
       grid.hidden = false;
     }
+
+    // Render cards AFTER grid is visible so layout calculations work correctly
+    renderCards();
+
     setPageState('ready');
   } catch (error) {
     logger.exception('Failed to load archetype detail', error);
