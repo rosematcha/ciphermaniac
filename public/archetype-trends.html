@@ -44,129 +44,14 @@
 
     <!-- Preload critical font to reduce layout shift -->
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="/assets/style.css" />
-    <style>
-      /* Matchup Spread Styles */
-      .trends-matchups {
-        margin-bottom: 3rem;
-      }
-      .matchups-table-wrapper {
-        overflow-x: auto;
-        border-radius: 8px;
-        border: 1px solid var(--border-color, #2d3348);
-      }
-      .matchups-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.9375rem;
-      }
-      .matchups-table th {
-        text-align: left;
-        padding: 0.75rem 1rem;
-        background: var(--bg-surface-2, #1a1f35);
-        border-bottom: 1px solid var(--border-color, #2d3348);
-        color: var(--text-muted, #94a3b8);
-        font-weight: 500;
-      }
-      .matchups-table td {
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid var(--border-color, #2d3348);
-      }
-      .matchups-table tr:last-child td {
-        border-bottom: none;
-      }
-      .col-opponent {
-        width: 40%;
-        font-weight: 500;
-        color: var(--text-main, #fff);
-      }
-      .col-winrate {
-        width: 20%;
-      }
-      .col-record {
-        width: 20%;
-        font-family: var(--font-mono, monospace);
-      }
-      .col-total {
-        width: 20%;
-        text-align: right;
-      }
-
-      .winrate-high {
-        color: var(--color-success, #22c55e);
-        font-weight: 600;
-      }
-      .winrate-low {
-        color: var(--color-danger, #ef4444);
-        font-weight: 600;
-      }
-      .winrate-mid {
-        color: var(--text-muted, #94a3b8);
-      }
-
-      .matchups-toggle-btn {
-        display: block;
-        margin: 1rem auto 0;
-        padding: 0.5rem 1rem;
-        background: var(--bg-surface-2, #1a1f35);
-        border: 1px solid var(--border-color, #2d3348);
-        border-radius: 6px;
-        color: var(--text-muted, #94a3b8);
-        font-size: 0.875rem;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-      .matchups-toggle-btn:hover {
-        background: var(--bg-surface-3, #2d3348);
-        color: var(--text-main, #fff);
-      }
-
-      /* Chart Toggle */
-      .chart-header {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        margin-bottom: 1.5rem;
-      }
-      .chart-title-group {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 1rem;
-      }
-      .chart-toggle {
-        display: flex;
-        background: var(--bg-surface-2, #1a1f35);
-        border-radius: 6px;
-        padding: 2px;
-        border: 1px solid var(--border-color, #2d3348);
-      }
-      .toggle-btn {
-        background: transparent;
-        border: none;
-        color: var(--text-muted, #94a3b8);
-        padding: 4px 12px;
-        font-size: 0.875rem;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-      .toggle-btn:hover {
-        color: var(--text-main, #fff);
-      }
-      .toggle-btn.active {
-        background: var(--bg-surface-3, #2d3348);
-        color: var(--text-main, #fff);
-        font-weight: 500;
-      }
-    </style>
+    <link rel="stylesheet" href="/assets/style-optimized.css" />
     <!-- Preload critical JS module for faster page load -->
     <link rel="modulepreload" href="/assets/js/archetypeTrends.js" />
   </head>
   <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     <div class="archetype-page archetype-trends-page" data-state="loading">
-      <main id="main-content" class="archetype-main">
+      <main id="main-content" class="archetype-main" tabindex="-1">
         <section class="archetype-content">
           <div id="archetype-loading" class="archetype-loading" role="status">
             <p>Loading archetype trends...</p>
@@ -206,74 +91,87 @@
           </div>
         </section>
 
-        <!-- Stats Overview Cards -->
-        <section id="trends-stats" class="trends-stats" hidden aria-label="Archetype statistics overview">
-          <div class="stat-card">
-            <span class="stat-label">Weeks</span>
-            <span id="stat-weeks" class="stat-value">-</span>
+        <!-- Hero Stats Section -->
+        <section id="trends-stats" class="trends-hero-stats" hidden aria-label="Archetype statistics overview">
+          <div class="hero-stat-card">
+            <span id="stat-tournaments" class="hero-stat-value hero-stat-value--accent">-</span>
+            <span class="hero-stat-label">Tournaments</span>
           </div>
-          <div class="stat-card">
-            <span class="stat-label">Tournaments</span>
-            <span id="stat-tournaments" class="stat-value">-</span>
+          <div class="hero-stat-card">
+            <span id="stat-weeks" class="hero-stat-value">-</span>
+            <span class="hero-stat-label">Weeks Tracked</span>
           </div>
-          <div class="stat-card">
-            <span class="stat-label">Cards Tracked</span>
-            <span id="stat-cards" class="stat-value">-</span>
+          <div class="hero-stat-card">
+            <span id="stat-cards" class="hero-stat-value">-</span>
+            <span class="hero-stat-label">Cards Analyzed</span>
           </div>
-          <div class="stat-card">
-            <span class="stat-label">Date Range</span>
-            <span id="stat-range" class="stat-value">-</span>
+          <div class="hero-stat-card">
+            <span id="stat-range" class="hero-stat-value" style="font-size: 1rem">-</span>
+            <span class="hero-stat-label">Date Range</span>
           </div>
         </section>
 
+        <!-- Narrative Summary (filled by JS) -->
+        <div id="trends-narrative" class="trends-narrative" hidden>
+          <p id="narrative-text">Loading trend analysis...</p>
+        </div>
+
         <!-- Key Insights Summary -->
-        <section id="trends-insights" class="trends-insights" hidden aria-label="Key deck building insights">
-          <h2 class="section-heading">What's Changing?</h2>
-          <div class="insights-grid">
+        <section id="trends-insights" class="trends-insights-panel" hidden aria-label="Key deck building insights">
+          <header class="insights-header">
+            <h2>What's Changing?</h2>
+          </header>
+          <div class="insights-grid-enhanced">
             <!-- Core Cards -->
-            <div class="insight-card insight-core" id="insight-core">
-              <div class="insight-header">
-                <h3 class="insight-title">Core Cards</h3>
-                <span class="insight-badge" id="core-count">0</span>
+            <div class="insight-card-enhanced" id="insight-core">
+              <div class="insight-card-header">
+                <div class="insight-icon insight-icon--core">🎯</div>
+                <div class="insight-title-group">
+                  <h3>Core Cards</h3>
+                  <span class="insight-subtitle">In nearly every build</span>
+                </div>
+                <span class="insight-count" id="core-count">0</span>
               </div>
-              <p class="insight-description">Cards in nearly every build</p>
-              <ul id="core-cards-list" class="insight-list"></ul>
+              <div class="insight-card-body" id="core-cards-list"></div>
             </div>
 
             <!-- Flex Slots -->
-            <div class="insight-card insight-flex" id="insight-flex">
-              <div class="insight-header">
-                <h3 class="insight-title">Flex Slots</h3>
-                <span class="insight-badge" id="flex-count">0</span>
+            <div class="insight-card-enhanced" id="insight-flex">
+              <div class="insight-card-header">
+                <div class="insight-icon insight-icon--flex">🔀</div>
+                <div class="insight-title-group">
+                  <h3>Flex Slots</h3>
+                  <span class="insight-subtitle">High variance in counts</span>
+                </div>
+                <span class="insight-count" id="flex-count">0</span>
               </div>
-              <p class="insight-description">High variance in counts</p>
-              <ul id="flex-cards-list" class="insight-list"></ul>
+              <div class="insight-card-body" id="flex-cards-list"></div>
             </div>
 
             <!-- Rising Stars -->
-            <div class="insight-card insight-rising" id="insight-rising">
-              <div class="insight-header">
-                <h3 class="insight-title">
-                  <span class="trend-icon rising-icon" aria-hidden="true">▲</span>
-                  Rising
-                </h3>
-                <span class="insight-badge" id="rising-count">0</span>
+            <div class="insight-card-enhanced" id="insight-rising">
+              <div class="insight-card-header">
+                <div class="insight-icon insight-icon--rising">📈</div>
+                <div class="insight-title-group">
+                  <h3>Rising</h3>
+                  <span class="insight-subtitle">Gaining popularity</span>
+                </div>
+                <span class="insight-count" id="rising-count">0</span>
               </div>
-              <p class="insight-description">Gaining popularity</p>
-              <ul id="rising-cards-list" class="insight-list"></ul>
+              <div class="insight-card-body" id="rising-cards-list"></div>
             </div>
 
             <!-- Falling Stars -->
-            <div class="insight-card insight-falling" id="insight-falling">
-              <div class="insight-header">
-                <h3 class="insight-title">
-                  <span class="trend-icon falling-icon" aria-hidden="true">▼</span>
-                  Falling
-                </h3>
-                <span class="insight-badge" id="falling-count">0</span>
+            <div class="insight-card-enhanced" id="insight-falling">
+              <div class="insight-card-header">
+                <div class="insight-icon insight-icon--falling">📉</div>
+                <div class="insight-title-group">
+                  <h3>Falling</h3>
+                  <span class="insight-subtitle">Declining usage</span>
+                </div>
+                <span class="insight-count" id="falling-count">0</span>
               </div>
-              <p class="insight-description">Declining usage</p>
-              <ul id="falling-cards-list" class="insight-list"></ul>
+              <div class="insight-card-body" id="falling-cards-list"></div>
             </div>
           </div>
 
@@ -287,48 +185,102 @@
 
         <!-- Matchup Spread -->
         <section id="trends-matchups" class="trends-matchups" hidden aria-label="Matchup win rates">
-          <h2 class="section-heading">Matchup Spread</h2>
-          <div class="matchups-table-wrapper">
-            <table class="matchups-table">
-              <thead>
-                <tr>
-                  <th class="col-opponent">Opponent</th>
-                  <th class="col-winrate">Win Rate</th>
-                  <th class="col-record">Record</th>
-                  <th class="col-total" style="text-align: right">Games</th>
-                </tr>
-              </thead>
-              <tbody id="matchups-list"></tbody>
-            </table>
+          <div class="matchups-panel">
+            <header class="matchups-header">
+              <h2>Matchup Spread</h2>
+              <div class="matchups-controls" role="group" aria-label="Sort matchups">
+                <button
+                  type="button"
+                  class="matchups-sort-btn active"
+                  data-sort="games"
+                  aria-pressed="true"
+                  title="Sort by games played"
+                >
+                  Games
+                </button>
+                <button
+                  type="button"
+                  class="matchups-sort-btn"
+                  data-sort="winrate"
+                  aria-pressed="false"
+                  title="Sort by win rate"
+                >
+                  Win Rate
+                </button>
+                <button
+                  type="button"
+                  class="matchups-sort-btn"
+                  data-sort="name"
+                  aria-pressed="false"
+                  title="Sort alphabetically"
+                >
+                  A-Z
+                </button>
+              </div>
+            </header>
+            <div class="matchups-table-wrapper">
+              <table class="matchups-table">
+                <thead>
+                  <tr>
+                    <th class="col-opponent">Opponent</th>
+                    <th class="col-winrate">Win Rate</th>
+                    <th class="col-record">Record</th>
+                    <th class="col-total">Games</th>
+                  </tr>
+                </thead>
+                <tbody id="matchups-list"></tbody>
+              </table>
+            </div>
+            <button type="button" id="matchups-toggle" class="matchups-toggle-btn" hidden>Show All</button>
           </div>
-          <button type="button" id="matchups-toggle" class="matchups-toggle-btn" hidden>Show All</button>
         </section>
 
         <!-- Copy Count Evolution -->
-        <section id="copy-evolution" class="copy-evolution" hidden aria-label="How copy counts are changing">
-          <h2 class="section-heading">Copy Count Evolution</h2>
-          <p class="section-description">How many copies players are running over time</p>
-          <div class="copy-evolution-controls">
-            <label for="copy-card-select">Select card:</label>
-            <div class="select-wrapper">
-              <select id="copy-card-select" class="filter-card-select">
-                <option value="">Choose a card...</option>
-              </select>
+        <section id="copy-evolution" class="copy-evolution-panel" hidden aria-label="How copy counts are changing">
+          <header class="copy-evolution-header">
+            <h2>Copy Count Evolution</h2>
+            <div class="copy-evolution-controls">
+              <label for="copy-card-select">Select card:</label>
+              <div class="select-wrapper">
+                <select id="copy-card-select" class="filter-card-select">
+                  <option value="">Choose a card...</option>
+                </select>
+              </div>
             </div>
-          </div>
-          <div id="copy-chart-container" class="copy-chart-container">
-            <div id="copy-chart" class="copy-chart" role="img" aria-label="Copy count distribution over time"></div>
-            <div id="copy-stats" class="copy-stats">
+          </header>
+          <div class="copy-evolution-body">
+            <div id="copy-chart" class="copy-chart" role="img" aria-label="Copy count distribution over time">
+              <div class="chart-placeholder">Select a card to see copy count evolution</div>
+            </div>
+            <div class="copy-legend">
+              <div class="copy-legend-item">
+                <span class="copy-legend-swatch copy-color-1"></span>
+                <span>1 Copy</span>
+              </div>
+              <div class="copy-legend-item">
+                <span class="copy-legend-swatch copy-color-2"></span>
+                <span>2 Copies</span>
+              </div>
+              <div class="copy-legend-item">
+                <span class="copy-legend-swatch copy-color-3"></span>
+                <span>3 Copies</span>
+              </div>
+              <div class="copy-legend-item">
+                <span class="copy-legend-swatch copy-color-4"></span>
+                <span>4 Copies</span>
+              </div>
+            </div>
+            <div id="copy-stats" class="copy-stats" hidden>
               <div class="copy-stat">
-                <span class="copy-stat-label">Current Average:</span>
+                <span class="copy-stat-label">Current Average</span>
                 <span id="copy-avg-current" class="copy-stat-value">-</span>
               </div>
               <div class="copy-stat">
-                <span class="copy-stat-label">Most Common:</span>
+                <span class="copy-stat-label">Most Common</span>
                 <span id="copy-mode-current" class="copy-stat-value">-</span>
               </div>
               <div class="copy-stat">
-                <span class="copy-stat-label">Change:</span>
+                <span class="copy-stat-label">Change</span>
                 <span id="copy-change" class="copy-stat-value copy-stat-delta">-</span>
               </div>
             </div>
@@ -347,6 +299,27 @@
             </div>
             <p class="chart-subtitle" id="chart-subtitle">Click cards in the table below to add them to the chart</p>
           </div>
+
+          <!-- Chart Summary Statistics -->
+          <div id="chart-summary" class="chart-summary-stats" hidden>
+            <div class="chart-summary-stat">
+              <span id="summary-cards-count" class="chart-summary-value chart-summary-value--accent">0</span>
+              <span class="chart-summary-label">Cards Tracked</span>
+            </div>
+            <div class="chart-summary-stat">
+              <span id="summary-avg-playrate" class="chart-summary-value">0%</span>
+              <span class="chart-summary-label">Avg Playrate</span>
+            </div>
+            <div class="chart-summary-stat">
+              <span id="summary-peak" class="chart-summary-value">0%</span>
+              <span class="chart-summary-label">Peak</span>
+            </div>
+            <div class="chart-summary-stat">
+              <span id="summary-trend" class="chart-summary-value">-</span>
+              <span class="chart-summary-label">Overall Trend</span>
+            </div>
+          </div>
+
           <div id="trends-chart" class="trends-chart-v2" role="img" aria-label="Card usage trends over time"></div>
           <div id="trends-chart-legend" class="trends-chart-legend-v2"></div>
         </section>
@@ -356,17 +329,7 @@
           <div class="card-list-header">
             <h2>All Cards</h2>
             <div class="card-list-controls">
-              <label for="card-category-filter">Filter:</label>
-              <select id="card-category-filter" class="filter-card-select">
-                <option value="all">All Cards</option>
-                <option value="core">Core</option>
-                <option value="staple">Staple</option>
-                <option value="flex">Flex</option>
-                <option value="tech">Tech</option>
-                <option value="emerging">Emerging</option>
-                <option value="fading">Fading</option>
-              </select>
-              <label for="card-sort">Sort by:</label>
+              <label for="card-sort">Sort:</label>
               <select id="card-sort" class="filter-card-select">
                 <option value="playrate">Current Playrate</option>
                 <option value="trending">Trending</option>
@@ -375,6 +338,31 @@
                 <option value="volatility">Volatility</option>
               </select>
             </div>
+          </div>
+
+          <!-- Category Tabs -->
+          <div class="card-categories-tabs" role="tablist" aria-label="Filter cards by category">
+            <button type="button" class="category-tab active" data-category="all" role="tab" aria-selected="true">
+              All <span class="tab-count" id="count-all">0</span>
+            </button>
+            <button type="button" class="category-tab" data-category="core" role="tab" aria-selected="false">
+              Core <span class="tab-count" id="count-core">0</span>
+            </button>
+            <button type="button" class="category-tab" data-category="staple" role="tab" aria-selected="false">
+              Staple <span class="tab-count" id="count-staple">0</span>
+            </button>
+            <button type="button" class="category-tab" data-category="flex" role="tab" aria-selected="false">
+              Flex <span class="tab-count" id="count-flex">0</span>
+            </button>
+            <button type="button" class="category-tab" data-category="tech" role="tab" aria-selected="false">
+              Tech <span class="tab-count" id="count-tech">0</span>
+            </button>
+            <button type="button" class="category-tab" data-category="emerging" role="tab" aria-selected="false">
+              Rising <span class="tab-count" id="count-emerging">0</span>
+            </button>
+            <button type="button" class="category-tab" data-category="fading" role="tab" aria-selected="false">
+              Falling <span class="tab-count" id="count-fading">0</span>
+            </button>
           </div>
           <div class="card-list-table-wrapper">
             <table class="card-list-table">

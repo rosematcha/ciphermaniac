@@ -18,6 +18,7 @@
 
 /* Import page-specific styles */
 @import './pages/responsive.css';
+@import './pages/archetype-trends.css';
 
 /* ==========================================================================
    Main Layout & Base Components

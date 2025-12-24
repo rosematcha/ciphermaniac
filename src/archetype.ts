@@ -1858,6 +1858,9 @@ function updateSkeletonSummary(items: CardItemData[]) {
       const { operator } = filter;
       const { count } = filter;
 
+      if (operator === '') {
+        return `no ${cardName}`;
+      }
       if (!operator || operator === 'any') {
         return `any ${cardName}`;
       }
