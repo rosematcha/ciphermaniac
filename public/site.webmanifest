@@ -1,0 +1,23 @@
+{
+  "name": "Ciphermaniac - Pokemon TCG Meta Analysis",
+  "short_name": "Ciphermaniac",
+  "description": "Analyze Pokemon TCG tournament data, deck archetypes, card usage statistics, and meta trends. The ultimate tool for competitive Pokemon TCG players.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#fee475",
+  "icons": [
+    {
+      "src": "/assets/images/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/images/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

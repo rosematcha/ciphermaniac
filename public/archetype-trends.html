@@ -3,11 +3,164 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Archetype Trends • Ciphermaniac</title>
+    <title>Archetype Trends - Card Usage Over Time | Ciphermaniac</title>
+    <meta
+      name="description"
+      content="Track how Pokemon TCG deck archetypes evolve over time. Analyze card usage trends, matchup data, and build optimization insights."
+    />
+    <meta
+      name="keywords"
+      content="Pokemon TCG trends, archetype evolution, card usage trends, deck optimization, PTCG matchups"
+    />
+
+    <!-- Canonical URL - dynamic pages use JS to set this -->
+    <link rel="canonical" href="https://ciphermaniac.com/archetypes" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ciphermaniac.com/archetypes" />
+    <meta property="og:title" content="Archetype Trends - Card Usage Over Time" />
+    <meta
+      property="og:description"
+      content="Track how Pokemon TCG deck archetypes evolve over time with detailed card usage trends."
+    />
+    <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+    <meta property="og:site_name" content="Ciphermaniac" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://ciphermaniac.com/archetypes" />
+    <meta name="twitter:title" content="Archetype Trends - Pokemon TCG" />
+    <meta name="twitter:description" content="Track how Pokemon TCG deck archetypes evolve over time." />
+    <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+
+    <!-- Favicon - PNG for Google compatibility -->
+    <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#fee475" />
+
     <!-- Preload critical font to reduce layout shift -->
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/assets/style.css" />
-    <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
+    <style>
+      /* Matchup Spread Styles */
+      .trends-matchups {
+        margin-bottom: 3rem;
+      }
+      .matchups-table-wrapper {
+        overflow-x: auto;
+        border-radius: 8px;
+        border: 1px solid var(--border-color, #2d3348);
+      }
+      .matchups-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9375rem;
+      }
+      .matchups-table th {
+        text-align: left;
+        padding: 0.75rem 1rem;
+        background: var(--bg-surface-2, #1a1f35);
+        border-bottom: 1px solid var(--border-color, #2d3348);
+        color: var(--text-muted, #94a3b8);
+        font-weight: 500;
+      }
+      .matchups-table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color, #2d3348);
+      }
+      .matchups-table tr:last-child td {
+        border-bottom: none;
+      }
+      .col-opponent {
+        width: 40%;
+        font-weight: 500;
+        color: var(--text-main, #fff);
+      }
+      .col-winrate {
+        width: 20%;
+      }
+      .col-record {
+        width: 20%;
+        font-family: var(--font-mono, monospace);
+      }
+      .col-total {
+        width: 20%;
+        text-align: right;
+      }
+
+      .winrate-high {
+        color: var(--color-success, #22c55e);
+        font-weight: 600;
+      }
+      .winrate-low {
+        color: var(--color-danger, #ef4444);
+        font-weight: 600;
+      }
+      .winrate-mid {
+        color: var(--text-muted, #94a3b8);
+      }
+
+      .matchups-toggle-btn {
+        display: block;
+        margin: 1rem auto 0;
+        padding: 0.5rem 1rem;
+        background: var(--bg-surface-2, #1a1f35);
+        border: 1px solid var(--border-color, #2d3348);
+        border-radius: 6px;
+        color: var(--text-muted, #94a3b8);
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .matchups-toggle-btn:hover {
+        background: var(--bg-surface-3, #2d3348);
+        color: var(--text-main, #fff);
+      }
+
+      /* Chart Toggle */
+      .chart-header {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+      }
+      .chart-title-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+      .chart-toggle {
+        display: flex;
+        background: var(--bg-surface-2, #1a1f35);
+        border-radius: 6px;
+        padding: 2px;
+        border: 1px solid var(--border-color, #2d3348);
+      }
+      .toggle-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-muted, #94a3b8);
+        padding: 4px 12px;
+        font-size: 0.875rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .toggle-btn:hover {
+        color: var(--text-main, #fff);
+      }
+      .toggle-btn.active {
+        background: var(--bg-surface-3, #2d3348);
+        color: var(--text-main, #fff);
+        font-weight: 500;
+      }
+    </style>
     <!-- Preload critical JS module for faster page load -->
     <link rel="modulepreload" href="/assets/js/archetypeTrends.js" />
   </head>
@@ -25,13 +178,6 @@
           </div>
 
           <div class="archetype-simple" hidden>
-            <div class="archetype-header-row">
-              <nav class="archetype-breadcrumb" aria-label="Breadcrumb">
-                <a class="archetype-breadcrumb__link" href="/archetypes">← Back to Archetypes</a>
-              </nav>
-              <h1 id="archetype-title" class="archetype-title">Loading archetype...</h1>
-            </div>
-
             <!-- Tab Navigation -->
             <nav class="archetype-tabs" aria-label="Archetype views">
               <a id="tab-home" class="archetype-tab" href="#">Overview</a>
@@ -139,6 +285,25 @@
           </div>
         </section>
 
+        <!-- Matchup Spread -->
+        <section id="trends-matchups" class="trends-matchups" hidden aria-label="Matchup win rates">
+          <h2 class="section-heading">Matchup Spread</h2>
+          <div class="matchups-table-wrapper">
+            <table class="matchups-table">
+              <thead>
+                <tr>
+                  <th class="col-opponent">Opponent</th>
+                  <th class="col-winrate">Win Rate</th>
+                  <th class="col-record">Record</th>
+                  <th class="col-total" style="text-align: right">Games</th>
+                </tr>
+              </thead>
+              <tbody id="matchups-list"></tbody>
+            </table>
+          </div>
+          <button type="button" id="matchups-toggle" class="matchups-toggle-btn" hidden>Show All</button>
+        </section>
+
         <!-- Copy Count Evolution -->
         <section id="copy-evolution" class="copy-evolution" hidden aria-label="How copy counts are changing">
           <h2 class="section-heading">Copy Count Evolution</h2>
@@ -173,7 +338,13 @@
         <!-- Main Playrate Timeline Chart -->
         <section id="trends-chart-container" class="trends-chart-container-v2" hidden>
           <div class="chart-header">
-            <h2>Playrate Over Time</h2>
+            <div class="chart-title-group">
+              <h2>Playrate Over Time</h2>
+              <div class="chart-toggle">
+                <button type="button" id="chart-toggle-weekly" class="toggle-btn active">Weekly</button>
+                <button type="button" id="chart-toggle-daily" class="toggle-btn">Daily</button>
+              </div>
+            </div>
             <p class="chart-subtitle" id="chart-subtitle">Click cards in the table below to add them to the chart</p>
           </div>
           <div id="trends-chart" class="trends-chart-v2" role="img" aria-label="Card usage trends over time"></div>

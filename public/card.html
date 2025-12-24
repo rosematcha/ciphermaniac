@@ -3,13 +3,50 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Card Details &mdash; Ciphermaniac</title>
+    <title>Card Details - Pokemon TCG Analysis | Ciphermaniac</title>
+    <meta
+      name="description"
+      content="View detailed Pokemon TCG card statistics including usage rates, deck inclusion, copy counts, and price data across tournaments."
+    />
+    <meta
+      name="keywords"
+      content="Pokemon TCG card, card usage stats, deck inclusion, Pokemon card price, PTCG card analysis"
+    />
+
+    <!-- Canonical URL - dynamic pages use JS to set this -->
+    <link rel="canonical" href="https://ciphermaniac.com/cards" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ciphermaniac.com/cards" />
+    <meta property="og:title" content="Card Details - Pokemon TCG Analysis" />
+    <meta
+      property="og:description"
+      content="View detailed Pokemon TCG card statistics including usage rates and deck inclusion."
+    />
+    <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+    <meta property="og:site_name" content="Ciphermaniac" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://ciphermaniac.com/cards" />
+    <meta name="twitter:title" content="Card Details - Pokemon TCG" />
+    <meta name="twitter:description" content="View detailed Pokemon TCG card statistics and usage data." />
+    <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+
+    <!-- Favicon - PNG for Google compatibility -->
+    <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#fee475" />
+
     <!-- DNS prefetch for external resources -->
     <link rel="dns-prefetch" href="https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com" />
     <!-- Preload critical font to reduce layout shift -->
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/assets/style.css" />
-    <link rel="icon" type="image/svg+xml" href="/assets/images/logo.svg" />
     <!-- Preload critical JS modules for faster page load -->
     <link rel="modulepreload" href="/assets/js/card.js" />
     <link rel="modulepreload" href="/assets/js/api.js" />
@@ -57,13 +94,10 @@
       <section id="card-meta" class="card-sect" aria-labelledby="card-title">
         <div class="header-title">
           <div class="title-row">
-            <h1 id="card-title">Card Details</h1>
+            <h1 id="card-title"></h1>
             <div id="card-price" class="card-price">
               <!-- Price loads asynchronously -->
             </div>
-          </div>
-          <div id="card-sets" class="card-sets">
-            <!-- Sets load asynchronously -->
           </div>
         </div>
         <div id="card-hero" class="card-hero">
@@ -132,29 +166,56 @@
           const titleEl = document.getElementById('card-title');
           if (titleEl) {
             let primary = initialLabel;
-            let setBadge = '';
+            let setInfo = '';
 
             if (initialLabel.includes('::')) {
               const parts = initialLabel.split('::');
               primary = parts[0] || initialLabel;
-              if (parts.length >= 3 && parts[1] && parts[2]) {
-                setBadge = `${parts[1]} ${parts[2]}`;
+              if (parts[1] && parts[2]) {
+                setInfo = parts[1] + ' ' + parts[2];
+              }
+            } else {
+              // Try to parse "Name SET NUMBER" format
+              const match = initialLabel.match(/^(.+?)\s+([A-Z]+\s+\d+[A-Za-z]?)$/);
+              if (match) {
+                primary = match[1];
+                setInfo = match[2];
               }
             }
 
-            titleEl.textContent = '';
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = primary;
-            titleEl.appendChild(nameSpan);
-
-            if (setBadge) {
-              const setSpan = document.createElement('span');
-              setSpan.className = 'card-title-set';
-              setSpan.textContent = setBadge;
-              titleEl.appendChild(setSpan);
+            // Check if primary is just a set ID pattern (e.g., "SVI 181" or "Svi~181")
+            const setIdPattern = /^[A-Z]{2,4}[\s~]\d+[A-Za-z]?$/i;
+            if (setIdPattern.test(primary)) {
+              // Can't resolve the actual name without async data, show as-is for now
+              // The module script will fix it with proper card data
+              setInfo = primary.replace(/~/g, ' ');
+              primary = ''; // Will show loading state
             }
 
-            document.title = `${primary}${setBadge ? ` ${setBadge}` : ''} – Ciphermaniac`;
+            titleEl.innerHTML = '';
+
+            if (primary) {
+              const nameSpan = document.createElement('span');
+              nameSpan.className = 'card-title-name';
+              nameSpan.textContent = primary;
+              titleEl.appendChild(nameSpan);
+
+              if (setInfo) {
+                const setSpan = document.createElement('span');
+                setSpan.className = 'card-title-set';
+                setSpan.textContent = setInfo;
+                titleEl.appendChild(setSpan);
+              }
+
+              document.title = `${primary} – Ciphermaniac`;
+            } else {
+              // Show a placeholder that will be replaced by the module
+              const nameSpan = document.createElement('span');
+              nameSpan.className = 'card-title-name';
+              nameSpan.textContent = 'Loading...';
+              titleEl.appendChild(nameSpan);
+              document.title = 'Card Details – Ciphermaniac';
+            }
           }
         }
       })();
