@@ -8,62 +8,22 @@ import { buildThumbCandidates } from './thumbs.js';
 import { computeLayout, syncControlsWidth } from './layoutHelper.js';
 import { trackMissing } from './dev/missingThumbs.js';
 import { buildCardPath, normalizeCardNumber } from './card/routing.js';
-// import { setupImagePreloading } from './utils/imagePreloader.js'; // Disabled - using parallelImageLoader instead
 import { parallelImageLoader } from './utils/parallelImageLoader.js';
-import { setProperties as _setProperties, createElement, setStyles } from './utils/dom.js';
+import { createElement, setStyles } from './utils/dom.js';
 import { CONFIG } from './config.js';
 import { perf } from './utils/performance.js';
 import { escapeHtml } from './utils/html.js';
 import type { CardItem } from './types/index.js';
-// Modal removed: navigate to card page instead
 
-const USD_FORMATTER = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2
-});
+// Re-export types from render/types.ts for backwards compatibility
+export type { LayoutMode, RenderOptions, CachedLayoutMetrics, GridElement } from './render/types.js';
+import type { GridElement, RenderOptions } from './render/types.js';
 
-function formatCardPrice(rawPrice: number | undefined | null): string | null {
-  if (typeof rawPrice === 'number' && Number.isFinite(rawPrice)) {
-    return USD_FORMATTER.format(rawPrice);
-  }
-  return null;
-}
+// Import formatCardPrice from cardElement module
+import { formatCardPrice } from './render/cardElement.js';
 
-export type LayoutMode = 'standard' | 'compact';
-
-export interface RenderOptions {
-  layoutMode?: LayoutMode;
-  showPrice?: boolean;
-}
-
-export interface CachedLayoutMetrics {
-  base: number;
-  perRowBig: number;
-  bigRowContentWidth: number;
-  targetMedium: number;
-  mediumScale: number;
-  targetSmall: number;
-  smallScale: number;
-  bigRows: number;
-  mediumRows: number;
-  useSmallRows: boolean;
-  forceCompact: boolean;
-}
-
-export interface GridElement extends HTMLElement {
-  _visibleRows?: number;
-  _totalRows?: number;
-  _totalCards?: number;
-  _moreWrapRef?: HTMLElement | null;
-  _layoutMetrics?: CachedLayoutMetrics;
-  _renderOptions?: RenderOptions;
-  _autoCompact?: boolean;
-  _kbNavAttached?: boolean;
-  _resizeObserver?: ResizeObserver | null;
-  _lastContainerWidth?: number;
-}
+// Note: Card element creation functions are also available from './render/cardElement.js'
+// for reuse in other modules. The local versions below are kept for backwards compatibility.
 
 // Throttle helper for resize handling - limits execution frequency
 function throttle<T extends (...args: Parameters<T>) => void>(fn: T, wait: number): T {

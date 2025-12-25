@@ -193,8 +193,8 @@ body {
 }
 
 /* Ensure header always has correct styles with high specificity */
-body:not(.no-header)>.site-header,
-body:not(.no-header)>header {
+body:not(.no-header) > .site-header,
+body:not(.no-header) > header {
   padding: 12px 0;
   background: var(--panel);
   border-bottom: 1px solid #20243a;
@@ -480,7 +480,6 @@ body:not(.no-header)>header {
 }
 
 @media (max-width: 800px) {
-
   .filter-field,
   .filter-dropdown {
     min-width: 100%;
@@ -535,7 +534,6 @@ body:not(.no-header)>header {
 
 /* Button mobile adjustments */
 @media (max-width: 720px) {
-
   .btn,
   .filters-toggle,
   .nav-toggle {
@@ -868,7 +866,6 @@ body.filters-panel-open #filters {
 }
 
 @media (hover: hover) and (pointer: fine) {
-
   .filter-chip--more:hover,
   .filter-chip--collapse:hover {
     background: rgba(106, 163, 255, 0.08);
@@ -1371,7 +1368,6 @@ input[type='checkbox']:indeterminate::before {
 }
 
 @media (max-width: 720px) {
-
   .controls input[type='search'],
   .controls select {
     padding: 14px 16px;
@@ -1411,7 +1407,6 @@ input[type='checkbox']:indeterminate::before {
 }
 
 @media (max-width: 720px) {
-
   .card-search .search-wrap .search-icon,
   .toolbar .search-wrap .search-icon {
     left: 16px;
@@ -1426,7 +1421,6 @@ input[type='checkbox']:indeterminate::before {
 }
 
 @media (max-width: 720px) {
-
   .card-search .search-wrap input[type='search'],
   .toolbar .search-wrap input[type='search'] {
     padding-left: 48px;
@@ -1496,7 +1490,6 @@ input[type='checkbox']:indeterminate::before {
 }
 
 @media (hover: hover) and (pointer: fine) {
-
   .card-search .suggestions .item:hover,
   .toolbar .suggestions .item:hover,
   .hero-search .suggestions .item:hover {
@@ -1534,7 +1527,6 @@ input[type='checkbox']:indeterminate::before {
 }
 
 @media (max-width: 720px) {
-
   .card-search .search-wrap,
   .toolbar .search-wrap {
     width: 100%;
@@ -1765,7 +1757,7 @@ h2 {
     border-color: var(--accent-2);
   }
 
-  .card:hover .titleRow .name>span:first-child {
+  .card:hover .titleRow .name > span:first-child {
     text-decoration: underline;
     text-underline-offset: 2px;
   }
@@ -2569,7 +2561,7 @@ body.card-image-modal-open {
   outline-offset: 2px;
 }
 
-.set-expand-btn[aria-expanded="true"] {
+.set-expand-btn[aria-expanded='true'] {
   background: rgba(107, 140, 255, 0.18);
   color: var(--muted);
 }
@@ -2664,7 +2656,7 @@ body.card-image-modal-open {
 }
 
 /* Avoid duplicate timeline notes: prefer the one near the events table */
-#card-meta>.toggle-note {
+#card-meta > .toggle-note {
   display: none;
 }
 
@@ -2800,7 +2792,6 @@ body.card-image-modal-open {
 }
 
 @media (max-width: 720px) {
-
   .card-sect th,
   .card-sect td {
     padding: 8px;
@@ -2809,7 +2800,6 @@ body.card-image-modal-open {
 }
 
 @media (max-width: 480px) {
-
   .card-sect th,
   .card-sect td {
     padding: 6px;
@@ -2900,7 +2890,6 @@ body.card-image-modal-open {
 }
 
 @media (max-width: 720px) {
-
   /* On medium/narrow screens, allow the table to keep proportions but be scrollable */
   .card-sect table {
     table-layout: fixed;
@@ -2945,16 +2934,16 @@ body.card-image-modal-open {
   position: relative;
 }
 
-.skeleton-loading>.skeleton-text,
-.skeleton-loading>.skeleton-image,
-.skeleton-loading>.skeleton-chart,
-.skeleton-loading>.skeleton-histogram,
-.showing-skeleton>* {
+.skeleton-loading > .skeleton-text,
+.skeleton-loading > .skeleton-image,
+.skeleton-loading > .skeleton-chart,
+.skeleton-loading > .skeleton-histogram,
+.showing-skeleton > * {
   animation: skeleton-loading 1.5s ease-in-out infinite;
 }
 
 /* When skeleton is removed, fade in the new content */
-.card-sect>*:not(.skeleton-loading):not(.skeleton-chart):not(.skeleton-histogram):not([aria-hidden='true']) {
+.card-sect > *:not(.skeleton-loading):not(.skeleton-chart):not(.skeleton-histogram):not([aria-hidden='true']) {
   animation: fadeInContent 0.2s ease-out forwards;
 }
 
@@ -3337,21 +3326,23 @@ body.card-image-modal-open {
   top: 40%;
   right: 0;
   height: 2px;
-  background: linear-gradient(to right,
-      var(--accent-2) 0%,
-      var(--accent-2) 15%,
-      transparent 15%,
-      transparent 25%,
-      var(--accent-2) 25%,
-      var(--accent-2) 40%,
-      transparent 40%,
-      transparent 60%,
-      var(--accent-2) 60%,
-      var(--accent-2) 75%,
-      transparent 75%,
-      transparent 85%,
-      var(--accent-2) 85%,
-      var(--accent-2) 100%);
+  background: linear-gradient(
+    to right,
+    var(--accent-2) 0%,
+    var(--accent-2) 15%,
+    transparent 15%,
+    transparent 25%,
+    var(--accent-2) 25%,
+    var(--accent-2) 40%,
+    transparent 40%,
+    transparent 60%,
+    var(--accent-2) 60%,
+    var(--accent-2) 75%,
+    transparent 75%,
+    transparent 85%,
+    var(--accent-2) 85%,
+    var(--accent-2) 100%
+  );
   border-radius: 1px;
   animation: skeleton-loading 2s ease-in-out infinite;
 }
@@ -3545,7 +3536,6 @@ body.card-image-modal-open {
 }
 
 @media (hover: hover) and (pointer: fine) {
-
   .analysis-list-item__button:hover,
   .analysis-list-item__button:focus-visible {
     border-color: rgba(112, 128, 255, 0.4);
@@ -3623,7 +3613,7 @@ body.card-image-modal-open {
 }
 
 /* Hide base image when using split view */
-.analysis-list-item__thumbnail--split>.analysis-list-item__thumbnail-image {
+.analysis-list-item__thumbnail--split > .analysis-list-item__thumbnail-image {
   display: none;
 }
 
@@ -5076,11 +5066,11 @@ body.card-image-modal-open {
   transition: all 0.15s;
 }
 
-.chart-checkbox input:checked+.checkbox-indicator {
+.chart-checkbox input:checked + .checkbox-indicator {
   border-color: transparent;
 }
 
-.chart-checkbox input:not(:checked)+.checkbox-indicator:hover {
+.chart-checkbox input:not(:checked) + .checkbox-indicator:hover {
   border-color: rgba(112, 128, 255, 0.7);
 }
 
@@ -5276,13 +5266,6 @@ body.card-image-modal-open {
   grid-template-columns: 1fr;
   gap: 8px;
   width: 100%;
-}
-
-/* Two columns on larger viewports with adequate space */
-@media (min-width: 1400px) {
-  #archetype-filter-rows {
-    grid-template-columns: repeat(2, minmax(380px, 1fr));
-  }
 }
 
 .archetype-filter-group {
@@ -6427,11 +6410,13 @@ body.card-image-modal-open {
 }
 
 .binder-card__thumb--missing {
-  background: repeating-linear-gradient(45deg,
-      rgba(255, 255, 255, 0.08),
-      rgba(255, 255, 255, 0.08) 8px,
-      rgba(255, 255, 255, 0.02) 8px,
-      rgba(255, 255, 255, 0.02) 16px);
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.08) 8px,
+    rgba(255, 255, 255, 0.02) 8px,
+    rgba(255, 255, 255, 0.02) 16px
+  );
 }
 
 .binder-card__thumb--missing::after {
@@ -6475,11 +6460,13 @@ body.card-image-modal-open {
 .binder-card--placeholder {
   border-radius: var(--border-radius);
   border: 1px dashed rgba(255, 255, 255, 0.2);
-  background: repeating-linear-gradient(135deg,
-      rgba(255, 255, 255, 0.06),
-      rgba(255, 255, 255, 0.06) 12px,
-      rgba(255, 255, 255, 0.02) 12px,
-      rgba(255, 255, 255, 0.02) 24px);
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.06),
+    rgba(255, 255, 255, 0.06) 12px,
+    rgba(255, 255, 255, 0.02) 12px,
+    rgba(255, 255, 255, 0.02) 24px
+  );
   min-height: 0;
 }
 
@@ -6984,7 +6971,7 @@ body.card-image-modal-open {
   min-height: 46px;
 }
 
-.archetype-filter-message+.archetype-filter-message {
+.archetype-filter-message + .archetype-filter-message {
   margin-top: 12px;
 }
 
@@ -7169,7 +7156,6 @@ body.card-image-modal-open {
 
 /* Mobile Adjustments for Filter Rows */
 @media (max-width: 600px) {
-
   .archetype-controls-panel .filter-card-select,
   .archetype-controls-panel .filter-operator-select,
   .archetype-controls-panel .filter-count-input {
@@ -7459,7 +7445,7 @@ body.card-image-modal-open {
   flex-wrap: wrap;
 }
 
-.trend-panel__header>div:first-child {
+.trend-panel__header > div:first-child {
   flex-shrink: 0;
 }
 
@@ -7692,7 +7678,7 @@ body.card-image-modal-open {
 }
 
 /* Hide standalone y-axis info - it's now in the controls */
-.trend-panel>.meta-ymax {
+.trend-panel > .meta-ymax {
   display: none;
 }
 
@@ -8035,7 +8021,6 @@ tr:hover td {
 }
 
 @keyframes float {
-
   0%,
   100% {
     transform: translateY(0px);
@@ -8234,7 +8219,6 @@ tr:hover td {
 
 /* Smooth content appearance instead of jarring pop-in */
 @media (prefers-reduced-motion: no-preference) {
-
   .card,
   .feature-card,
   .analysis-list-item__button {
@@ -8359,7 +8343,6 @@ tr:hover td {
    Respect users who prefer reduced motion for accessibility
    ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
-
   *,
   *::before,
   *::after {
@@ -8370,11 +8353,11 @@ tr:hover td {
   }
 
   /* Disable skeleton loading animation */
-  .skeleton-loading>.skeleton-text,
-  .skeleton-loading>.skeleton-image,
-  .skeleton-loading>.skeleton-chart,
-  .skeleton-loading>.skeleton-histogram,
-  .showing-skeleton>*,
+  .skeleton-loading > .skeleton-text,
+  .skeleton-loading > .skeleton-image,
+  .skeleton-loading > .skeleton-chart,
+  .skeleton-loading > .skeleton-histogram,
+  .showing-skeleton > *,
   .skeleton-card {
     animation: none;
   }
@@ -9732,12 +9715,12 @@ tr:hover td {
   justify-content: center;
 }
 
-.chart-checkbox input:checked+.checkbox-indicator {
+.chart-checkbox input:checked + .checkbox-indicator {
   border-color: var(--accent-2);
   background: var(--accent-2);
 }
 
-.chart-checkbox input:focus+.checkbox-indicator {
+.chart-checkbox input:focus + .checkbox-indicator {
   box-shadow: 0 0 0 2px rgba(106, 163, 255, 0.2);
 }
 

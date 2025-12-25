@@ -36,6 +36,9 @@ tests/__fixtures__/real-tournaments/
 public/assets/js/*.js
 public/assets/js/**/*.js
 
+# Shared utilities compiled output (built during CI for server-side scripts)
+shared/*.js
+
 # Production build output (minified, stripped debug code)
 public/assets/js-prod/
 

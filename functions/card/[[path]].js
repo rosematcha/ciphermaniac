@@ -1,25 +1,4 @@
-/**
- * Normalize card number to 3 digits with optional suffix
- * @param {string} value - Card number to normalize
- * @returns {string} Normalized card number
- */
-function normalizeCardNumber(value) {
-  if (!value) {
-    return '';
-  }
-  const raw = String(value).trim();
-  if (!raw) {
-    return '';
-  }
-  const match = raw.match(/^(\d+)([A-Za-z]*)$/);
-  if (!match) {
-    return raw.toUpperCase();
-  }
-  const digits = match[1];
-  const suffix = match[2] || '';
-  const padded = digits.padStart(3, '0');
-  return `${padded}${suffix.toUpperCase()}`;
-}
+import { normalizeCardNumber } from '../lib/cardUtils.js';
 
 // Cloudflare Pages Function to serve card.html for all /card/* routes
 export async function onRequest(context) {
