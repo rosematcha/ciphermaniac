@@ -65,6 +65,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build shared utilities
+        run: npm run build:shared
+
       - name: Wait for data to settle
         if: github.event_name == 'workflow_run' && inputs.skip_delay != true
         run: |
