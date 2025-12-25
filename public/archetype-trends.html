@@ -46,7 +46,7 @@
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/assets/style-optimized.css" />
     <!-- Preload critical JS module for faster page load -->
-    <link rel="modulepreload" href="/assets/js/archetypeTrends.js" />
+    <link rel="modulepreload" href="/assets/js/src/archetypeTrends.js" />
   </head>
   <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -391,8 +391,8 @@
     </div>
 
     <script type="module">
-      import { createHeader } from '/assets/js/components/header.js';
-      import { createFooter } from '/assets/js/components/footer.js';
+      import { createHeader } from '/assets/js/src/components/header.js';
+      import { createFooter } from '/assets/js/src/components/footer.js';
 
       const header = createHeader({ currentPage: 'archetypes' });
       const footer = createFooter();
@@ -400,6 +400,6 @@
       document.body.insertAdjacentElement('afterbegin', header);
       document.body.insertAdjacentElement('beforeend', footer);
     </script>
-    <script src="/assets/js/archetypeTrends.js" type="module"></script>
+    <script src="/assets/js/src/archetypeTrends.js" type="module"></script>
   </body>
 </html>

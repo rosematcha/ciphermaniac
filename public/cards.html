@@ -49,8 +49,8 @@
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/assets/style.css" />
     <!-- Preload critical JS modules for faster page load -->
-    <link rel="modulepreload" href="/assets/js/main.js" />
-    <link rel="modulepreload" href="/assets/js/ui.js" />
+    <link rel="modulepreload" href="/assets/js/src/main.js" />
+    <link rel="modulepreload" href="/assets/js/src/ui.js" />
   </head>
   <body>
     <div class="toolbar" role="search" aria-label="Card filtering and search">
@@ -375,8 +375,8 @@
     </template>
 
     <script type="module">
-      import { createHeader } from '/assets/js/components/header.js';
-      import { createFooter } from '/assets/js/components/footer.js';
+      import { createHeader } from '/assets/js/src/components/header.js';
+      import { createFooter } from '/assets/js/src/components/footer.js';
 
       // Insert header and footer
       const header = createHeader({ currentPage: 'cards' });
@@ -385,7 +385,7 @@
       document.body.insertAdjacentElement('afterbegin', header);
       document.body.insertAdjacentElement('beforeend', footer);
     </script>
-    <script src="/assets/js/main.js" type="module"></script>
-    <script src="/assets/js/ui.js" type="module"></script>
+    <script src="/assets/js/src/main.js" type="module"></script>
+    <script src="/assets/js/src/ui.js" type="module"></script>
   </body>
 </html>
