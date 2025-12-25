@@ -1,53 +1,6 @@
 import { getCanonicalCard } from './cardSynonyms.js';
-import { canonicalizeVariant, sanitizeForFilename, sanitizeForPath } from './cardUtils.js';
-
-function composeCategoryPath(category, trainerType, energyType, options = {}) {
-  const base = (category || '').toLowerCase();
-  if (!base) {
-    return '';
-  }
-
-  const parts = [base];
-  if (base === 'trainer') {
-    if (trainerType) {
-      parts.push(trainerType.toLowerCase());
-    }
-    if (options.aceSpec) {
-      if (!parts.includes('tool') && (!trainerType || trainerType.toLowerCase() !== 'tool')) {
-        parts.push('tool');
-      }
-      parts.push('acespec');
-    }
-  } else if (base === 'energy' && energyType) {
-    parts.push(energyType.toLowerCase());
-  }
-
-  return parts.join('/');
-}
-
-function normalizeArchetypeName(name) {
-  const cleaned = (name || '').replace(/_/g, ' ').trim();
-  if (!cleaned) {
-    return 'unknown';
-  }
-  return cleaned.replace(/\s+/g, ' ').toLowerCase();
-}
-
-function createDistribution(counts, found) {
-  const counter = new Map();
-  counts.forEach(value => {
-    const key = Number(value) || 0;
-    counter.set(key, (counter.get(key) || 0) + 1);
-  });
-
-  return Array.from(counter.entries())
-    .sort((first, second) => first[0] - second[0])
-    .map(([copies, players]) => ({
-      copies,
-      players,
-      percent: found ? Math.round(((players / found) * 100 + Number.EPSILON) * 100) / 100 : 0
-    }));
-}
+import { canonicalizeVariant, normalizeArchetypeName, sanitizeForFilename, sanitizeForPath } from './cardUtils.js';
+import { calculatePercentage, composeCategoryPath, createDistributionFromCounts } from '../../shared/reportUtils.js';
 
 function generateReportFromDecks(deckList, deckTotal, _unused, synonymDb) {
   const cardData = new Map();
@@ -131,8 +84,8 @@ function generateReportFromDecks(deckList, deckTotal, _unused, synonymDb) {
       name: safeName,
       found: foundCount,
       total: deckTotal,
-      pct: deckTotal ? Math.round(((foundCount / deckTotal) * 100 + Number.EPSILON) * 100) / 100 : 0,
-      dist: createDistribution(countsList, foundCount)
+      pct: calculatePercentage(foundCount, deckTotal),
+      dist: createDistributionFromCounts(countsList, foundCount)
     };
 
     if (uid.includes('::')) {

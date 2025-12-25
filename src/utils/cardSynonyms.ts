@@ -1,23 +1,31 @@
 /**
  * Card synonyms utilities for handling reprints and alternate versions
  * @module utils/cardSynonyms
+ *
+ * This module provides browser-side card synonym resolution.
+ * Core logic is shared with backend via shared/synonyms.ts
  */
 
 import { CONFIG } from '../config.js';
+import {
+  EMPTY_DATABASE,
+  getCanonicalCardFromData,
+  getCardVariantsFromData,
+  hasCardSynonymsInData,
+  type SynonymDatabase
+} from '../../shared/synonyms.js';
 
-interface SynonymData {
-  synonyms: Record<string, string>;
-  canonicals: Record<string, string>;
-}
+// Re-export types for consumers
+export type { SynonymDatabase } from '../../shared/synonyms.js';
 
-// Lazy-loaded synonym data
-let synonymData: SynonymData | null = null;
+// Lazy-loaded synonym data (browser-side cache)
+let synonymData: SynonymDatabase | null = null;
 
 /**
- * Load synonym data from JSON file
+ * Load synonym data from JSON file (browser-side via fetch)
  * @returns Synonym data object
  */
-async function loadSynonymData(): Promise<SynonymData> {
+async function loadSynonymData(): Promise<SynonymDatabase> {
   if (synonymData) {
     return synonymData;
   }
@@ -26,13 +34,15 @@ async function loadSynonymData(): Promise<SynonymData> {
     const response = await fetch(CONFIG.API.SYNONYMS_URL);
     if (!response.ok) {
       console.warn('Card synonyms data not found, synonym resolution disabled');
-      return { synonyms: {}, canonicals: {} };
+      synonymData = EMPTY_DATABASE;
+      return synonymData;
     }
     synonymData = await response.json();
-    return synonymData;
+    return synonymData ?? EMPTY_DATABASE;
   } catch (error) {
     console.warn('Failed to load card synonyms:', error);
-    return { synonyms: {}, canonicals: {} };
+    synonymData = EMPTY_DATABASE;
+    return synonymData;
   }
 }
 
@@ -47,29 +57,7 @@ export async function getCanonicalCard(cardIdentifier: string): Promise<string> 
   }
 
   const data = await loadSynonymData();
-
-  // If this looks like a UID (Name::SET::NUMBER), check explicit synonym mapping first.
-  // Cards with the same name but different abilities (e.g., Ralts PAF 027 vs Ralts MEG 058)
-  // must not be merged - only cards explicitly listed in synonyms should be canonicalized.
-  if (cardIdentifier.includes('::')) {
-    if (data.synonyms && data.synonyms[cardIdentifier]) {
-      return data.synonyms[cardIdentifier];
-    }
-    // UID not in synonyms means it's its own canonical - return as-is
-    return cardIdentifier;
-  }
-
-  // For name-only inputs, return configured canonical if present
-  if (data.canonicals && data.canonicals[cardIdentifier]) {
-    return data.canonicals[cardIdentifier];
-  }
-
-  // Fall back to direct synonym mapping if someone passed a name mapped in synonyms
-  if (data.synonyms && data.synonyms[cardIdentifier]) {
-    return data.synonyms[cardIdentifier];
-  }
-
-  return cardIdentifier;
+  return getCanonicalCardFromData(data, cardIdentifier);
 }
 
 /**
@@ -83,8 +71,7 @@ export async function hasCardSynonyms(cardIdentifier: string): Promise<boolean> 
   }
 
   const data = await loadSynonymData();
-
-  return Boolean(data.synonyms[cardIdentifier] || data.canonicals[cardIdentifier]);
+  return hasCardSynonymsInData(data, cardIdentifier);
 }
 
 /**
@@ -104,18 +91,8 @@ export function normalizeCardIdentifier(cardIdentifier: string): Promise<string>
  */
 export async function getCardVariants(cardIdentifier: string): Promise<string[]> {
   const data = await loadSynonymData();
-  const canonical = await getCanonicalCard(cardIdentifier);
-
-  // Find all UIDs that map to this canonical
-  const variants = [canonical];
-
-  for (const [uid, canonicalUID] of Object.entries(data.synonyms)) {
-    if (canonicalUID === canonical && uid !== canonical) {
-      variants.push(uid);
-    }
-  }
-
-  return variants;
+  const canonical = getCanonicalCardFromData(data, cardIdentifier);
+  return getCardVariantsFromData(data, canonical);
 }
 
 /**
@@ -129,26 +106,7 @@ export const sync = {
    * @returns
    */
   getCanonicalCard(cardIdentifier: string): string {
-    if (!cardIdentifier) {
-      return cardIdentifier;
-    }
-
-    if (!synonymData) {
-      return cardIdentifier;
-    }
-
-    // If this looks like a UID, check explicit synonym mapping first.
-    // Cards with the same name but different abilities must not be merged.
-    if (String(cardIdentifier).includes('::')) {
-      if (synonymData.synonyms && synonymData.synonyms[cardIdentifier]) {
-        return synonymData.synonyms[cardIdentifier];
-      }
-      // UID not in synonyms means it's its own canonical - return as-is
-      return cardIdentifier;
-    }
-
-    // For name-only inputs, use canonicals then synonyms lookup
-    return synonymData.canonicals[cardIdentifier] || synonymData.synonyms[cardIdentifier] || cardIdentifier;
+    return getCanonicalCardFromData(synonymData, cardIdentifier);
   },
 
   /**
@@ -171,7 +129,7 @@ export const sync = {
 export async function getVariantImageCandidates(
   cardIdentifier: string,
   useSm: boolean = false,
-  overrides: Record<string, any> = {}
+  overrides: Record<string, string> = {}
 ): Promise<string[]> {
   try {
     const variants = await getCardVariants(cardIdentifier);

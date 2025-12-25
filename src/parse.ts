@@ -16,28 +16,29 @@ export type { CardDistributionEntry, CardItem, ParsedReport };
  * @returns ParsedReport
  * @throws AppError
  */
-export function parseReport(data: any): ParsedReport {
+export function parseReport(data: unknown): ParsedReport {
   if (!data) {
     throw new AppError(ErrorTypes.PARSE, 'Report data is null or undefined');
   }
 
   validateType(data, 'object', 'report data');
 
-  if (!Array.isArray(data.items)) {
+  const record = data as Record<string, unknown>;
+  if (!Array.isArray(record.items)) {
     throw new AppError(ErrorTypes.PARSE, 'Report data must contain an items array', null, { data });
   }
 
-  const { deckTotal } = data;
+  const { deckTotal } = record;
   if (typeof deckTotal !== 'number' || deckTotal < 0) {
     logger.warn('Invalid or missing deckTotal, using items length as fallback', { deckTotal });
   }
 
   // Validate and clean items
-  const validItems = data.items
-    .map((item: any, index: number) => validateAndCleanItem(item, index))
+  const validItems = record.items
+    .map((item: unknown, index: number) => validateAndCleanItem(item, index))
     .filter((item: CardItem | null): item is CardItem => item !== null);
 
-  logger.info(`Parsed report with ${validItems.length} valid items out of ${data.items.length} total`);
+  logger.info(`Parsed report with ${validItems.length} valid items out of ${record.items.length} total`);
 
   return {
     deckTotal: typeof deckTotal === 'number' && deckTotal >= 0 ? deckTotal : validItems.length,
@@ -51,13 +52,14 @@ export function parseReport(data: any): ParsedReport {
  * @param index - Item index for error reporting
  * @returns Cleaned item or null if invalid
  */
-function validateAndCleanItem(item: any, index: number): CardItem | null {
+function validateAndCleanItem(item: unknown, index: number): CardItem | null {
   if (!item || typeof item !== 'object') {
     logger.warn(`Item at index ${index} is not an object, skipping`, item);
     return null;
   }
 
-  const { name, found, total, pct, rank, dist, category } = item;
+  const record = item as Record<string, unknown>;
+  const { name, found, total, pct, rank, dist, category } = record;
 
   // Name is required
   if (typeof name !== 'string' || name.trim() === '') {
@@ -76,29 +78,29 @@ function validateAndCleanItem(item: any, index: number): CardItem | null {
   }
 
   const cleanItem: CardItem = {
-    name: name.trim(),
+    name: (name as string).trim(),
     found: cleanFound,
     total: cleanTotal,
     pct: Math.round(cleanPct * 100) / 100 // Round to 2 decimal places
   };
   // Preserve optional variant metadata if present
-  if (typeof item.uid === 'string' && item.uid) {
-    cleanItem.uid = item.uid;
+  if (typeof record.uid === 'string' && record.uid) {
+    cleanItem.uid = record.uid;
   }
-  if (typeof item.set === 'string' && item.set) {
-    cleanItem.set = item.set;
+  if (typeof record.set === 'string' && record.set) {
+    cleanItem.set = record.set;
   }
-  if (typeof item.number === 'string' || typeof item.number === 'number') {
-    cleanItem.number = item.number;
+  if (typeof record.number === 'string' || typeof record.number === 'number') {
+    cleanItem.number = record.number;
   }
-  if (typeof category === 'string' && category.trim()) {
-    cleanItem.category = category.trim().toLowerCase();
+  if (typeof category === 'string' && (category as string).trim()) {
+    cleanItem.category = (category as string).trim().toLowerCase();
   }
-  const trainerType = typeof item.trainerType === 'string' ? item.trainerType.trim().toLowerCase() : '';
+  const trainerType = typeof record.trainerType === 'string' ? record.trainerType.trim().toLowerCase() : '';
   if (trainerType) {
     cleanItem.trainerType = trainerType;
   }
-  const energyType = typeof item.energyType === 'string' ? item.energyType.trim().toLowerCase() : '';
+  const energyType = typeof record.energyType === 'string' ? record.energyType.trim().toLowerCase() : '';
   if (energyType) {
     cleanItem.energyType = energyType;
   }
@@ -108,22 +110,23 @@ function validateAndCleanItem(item: any, index: number): CardItem | null {
     cleanItem.rank = rank;
   }
 
-  if (item.aceSpec === true) {
+  if (record.aceSpec === true) {
     cleanItem.aceSpec = true;
   }
 
   if (Array.isArray(dist)) {
     // Keep v2 schema objects { copies, players, percent } if present; otherwise accept numeric array fallback
     cleanItem.dist = dist
-      .map((distItem: any): CardDistributionEntry | null => {
+      .map((distItem: unknown): CardDistributionEntry | null => {
         if (typeof distItem === 'number') {
           return { copies: distItem, players: undefined, percent: undefined };
         }
         if (distItem && typeof distItem === 'object') {
+          const distRecord = distItem as Record<string, unknown>;
           return {
-            copies: Number.isFinite(distItem.copies) ? distItem.copies : undefined,
-            players: Number.isFinite(distItem.players) ? distItem.players : undefined,
-            percent: Number.isFinite(distItem.percent) ? distItem.percent : undefined
+            copies: Number.isFinite(distRecord.copies) ? (distRecord.copies as number) : undefined,
+            players: Number.isFinite(distRecord.players) ? (distRecord.players as number) : undefined,
+            percent: Number.isFinite(distRecord.percent) ? (distRecord.percent as number) : undefined
           };
         }
         return null;

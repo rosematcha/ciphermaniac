@@ -3,10 +3,10 @@
   "compilerOptions": {
     "noEmit": false,
     "outDir": "public/assets/js",
-    "rootDir": "src",
+    "rootDir": ".",
     "allowJs": false,
     "checkJs": false
   },
-  "include": ["src/**/*.ts", "types/**/*.d.ts", "global.d.ts"],
-  "exclude": ["node_modules", "backend", "config"]
+  "include": ["src/**/*.ts", "shared/**/*.ts", "types/**/*.d.ts", "global.d.ts"],
+  "exclude": ["node_modules", "backend", "config", "functions"]
 }
