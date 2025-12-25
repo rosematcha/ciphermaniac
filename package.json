@@ -5,7 +5,8 @@
   "description": "Pokemon TCG tournament data visualization tool",
   "main": "public/assets/js/main.js",
   "scripts": {
-    "build": "npm run build:frontend",
+    "build": "npm run build:frontend && npm run build:css",
+    "build:css": "node scripts/build-css-simple.mjs",
     "build:prod": "npm run build:frontend && node scripts/build-production.mjs",
     "prepare:prod": "node scripts/prepare-production.mjs",
     "restore:dev": "node scripts/restore-dev.mjs",
@@ -53,6 +54,7 @@
     "prepare": "husky",
     "build:card-types": "node tools/build-card-types.mjs",
     "build:frontend": "tsc --project tsconfig.frontend.json",
+    "build:shared": "tsc --project tsconfig.shared.json",
     "check:card-types": "node tools/check-card-types.mjs"
   },
   "c8": {

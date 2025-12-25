@@ -8,6 +8,12 @@
 import { normalizeCardNumber } from '../card/routing.js';
 import { logger } from './logger.js';
 import { normalizeArchetypeName } from './format.js';
+import {
+  assignRanks,
+  calculatePercentage,
+  createDistFromHistogram,
+  sortReportItems
+} from '../../shared/reportUtils.js';
 import type { Deck, DeckCard, Filter, Operator, PercentRule, PlacementRule } from '../types/index.js';
 
 export type { Deck, DeckCard, Filter, Operator };
@@ -296,56 +302,41 @@ function aggregateDecks(decks: Deck[]): FilteredReport {
   });
 
   const deckTotal = decks.length;
-  const items = Array.from(cardUsage.values())
-    .map(usage => {
-      const dist: Distribution[] = Array.from(usage.histogram.entries())
-        .map(([copies, players]) => ({
-          copies,
-          players,
-          percent: usage.found ? Math.round(((players / usage.found) * 100 + Number.EPSILON) * 100) / 100 : 0
-        }))
-        .sort((left, right) => {
-          if (right.percent !== left.percent) {
-            return right.percent - left.percent;
-          }
-          return right.copies - left.copies;
-        });
-
-      const pct = deckTotal ? Math.round(((usage.found / deckTotal) * 100 + Number.EPSILON) * 100) / 100 : 0;
-
-      return {
-        name: usage.name,
-        set: usage.set,
-        number: usage.number,
-        category: usage.category,
-        trainerType: usage.trainerType,
-        energyType: usage.energyType,
-        aceSpec: Boolean(usage.aceSpec),
-        supertype: usage.supertype,
-        uid: usage.uid,
-        cardId: usage.cardId,
-        found: usage.found,
-        total: deckTotal,
-        pct,
-        dist,
-        deckInstances: usage.deckInstances.slice(),
-        rank: 0
-      };
-    })
-    .sort((left, right) => {
-      if (right.pct !== left.pct) {
-        return right.pct - left.pct;
+  const items = Array.from(cardUsage.values()).map(usage => {
+    // Use shared distribution calculation - note: we sort by percent desc here (different from backend)
+    const distEntries = createDistFromHistogram(usage.histogram, usage.found);
+    const dist: Distribution[] = distEntries.sort((left, right) => {
+      if (right.percent !== left.percent) {
+        return right.percent - left.percent;
       }
-      if (right.found !== left.found) {
-        return right.found - left.found;
-      }
-      return (left.name || '').localeCompare(right.name || '');
+      return right.copies - left.copies;
     });
 
-  const rankedItems = items.map((item, index) => ({
-    ...item,
-    rank: index + 1
-  }));
+    const pct = calculatePercentage(usage.found, deckTotal);
+
+    return {
+      name: usage.name,
+      set: usage.set,
+      number: usage.number,
+      category: usage.category,
+      trainerType: usage.trainerType,
+      energyType: usage.energyType,
+      aceSpec: Boolean(usage.aceSpec),
+      supertype: usage.supertype,
+      uid: usage.uid,
+      cardId: usage.cardId,
+      found: usage.found,
+      total: deckTotal,
+      pct,
+      dist,
+      deckInstances: usage.deckInstances.slice(),
+      rank: 0
+    };
+  });
+
+  // Use shared sorting and ranking
+  const sortedItems = sortReportItems(items);
+  const rankedItems = assignRanks(sortedItems);
 
   return { deckTotal, items: rankedItems };
 }

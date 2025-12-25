@@ -69,6 +69,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build shared utilities
+        run: npm run build:shared
+
       - name: Generate online meta report
         run: node .github/scripts/run-online-meta.mjs
         env:

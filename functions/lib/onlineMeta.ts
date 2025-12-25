@@ -3,6 +3,7 @@ import { generateReportFromDecks, normalizeArchetypeName, sanitizeForFilename } 
 import { enrichCardWithType, loadCardTypesDatabase } from './cardTypesDatabase.js';
 import { enrichDecksWithOnTheFlyFetch } from './cardTypeFetcher.js';
 import { loadCardSynonyms } from './cardSynonyms.js';
+import { inferEnergyType, inferTrainerType, isAceSpecName } from './cardTypeInference.js';
 import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json';
 
 const WINDOW_DAYS = 30;
@@ -40,8 +41,188 @@ const SUCCESS_TAGS = Array.from(
 );
 const CARD_TREND_MIN_APPEARANCES = 2;
 const DEFAULT_CARD_TREND_TOP = 12;
-type AnyOptions = Record<string, any>;
+
+// =============================================================================
+// Type Definitions
+// =============================================================================
+
+/** Configuration for archetype thumbnail mappings */
 type ThumbnailConfig = Record<string, string[]>;
+
+/** Card entry created from decklist parsing */
+interface CardEntry {
+  count: number;
+  name: string;
+  set: string | null;
+  number: string | null;
+  category: 'pokemon' | 'trainer' | 'energy';
+  trainerType?: string;
+  energyType?: string;
+  aceSpec?: boolean;
+}
+
+/** Report item for thumbnail inference (subset of CardItem) */
+interface ReportItem {
+  name?: string;
+  set?: string;
+  number?: string | number;
+  pct?: number;
+  category?: string;
+}
+
+/** Report data structure with items array */
+interface ReportData {
+  items?: ReportItem[];
+}
+
+/** Tournament details response from Limitless API */
+interface TournamentDetailsResponse {
+  decklists?: boolean;
+  isOnline?: boolean;
+  format?: string | null;
+  platform?: string | null;
+  organizer?: {
+    name?: string;
+    id?: string;
+  } | null;
+}
+
+/** Base options for functions that accept env and diagnostic options */
+interface BaseOptions {
+  diagnostics?: DiagnosticsCollector;
+  fetchJson?: typeof fetchLimitlessJson;
+}
+
+/** Diagnostics collector for tracking issues during processing */
+interface DiagnosticsCollector {
+  detailsWithoutDecklists?: Array<{ tournamentId: string; name: string }>;
+  detailsOffline?: Array<{ tournamentId: string; name: string }>;
+  detailsUnsupportedFormat?: Array<{ tournamentId: string; name: string; format: string }>;
+  standingsFetchFailures?: Array<{ tournamentId: string; name: string; message: string }>;
+  invalidStandingsPayload?: Array<{ tournamentId: string; name: string }>;
+  entriesWithoutDecklists?: Array<{ tournamentId: string; player: string }>;
+  entriesWithoutPlacing?: Array<{ tournamentId: string; name: string; player: string }>;
+  tournamentsBelowMinimum?: Array<{ tournamentId: string; name: string; players: number }>;
+}
+
+/** Options for fetchRecentOnlineTournaments */
+interface FetchTournamentsOptions extends BaseOptions {
+  windowEnd?: string | Date;
+  pageSize?: number;
+  maxPages?: number;
+  detailsConcurrency?: number;
+}
+
+/** Options for gatherDecks */
+interface GatherDecksOptions extends BaseOptions {
+  standingsConcurrency?: number;
+}
+
+/** Options for buildArchetypeReports */
+interface BuildArchetypeReportsOptions {
+  thumbnailConfig?: ThumbnailConfig;
+}
+
+/** Options for buildTrendReport */
+interface BuildTrendReportOptions {
+  now?: string | Date;
+  windowStart?: string | Date;
+  windowEnd?: string | Date;
+  minAppearances?: number;
+  seriesLimit?: number;
+}
+
+/** Options for buildCardTrendReport */
+interface BuildCardTrendReportOptions {
+  now?: string | Date;
+  windowStart?: string | Date;
+  windowEnd?: string | Date;
+  minAppearances?: number;
+  topCount?: number;
+}
+
+/** Options for runOnlineMetaJob */
+interface OnlineMetaJobOptions extends FetchTournamentsOptions, GatherDecksOptions {
+  now?: string | Date;
+  since?: string | Date;
+  seriesLimit?: number;
+  minTrendAppearances?: number;
+  r2Concurrency?: number;
+}
+
+/** Trend report result structure */
+interface TrendReportResult {
+  generatedAt: string;
+  windowStart: string | null;
+  windowEnd: string | null;
+  deckTotal: number;
+  tournamentCount: number;
+  minAppearances: number;
+  archetypeCount: number;
+  series: TrendSeriesEntry[];
+  tournaments: TournamentWithDeckCount[];
+  totalArchetypes?: number;
+  cardTrends?: CardTrendsResult;
+}
+
+/** Single archetype trend series entry */
+interface TrendSeriesEntry {
+  base: string;
+  displayName: string;
+  totalDecks: number;
+  appearances: number;
+  avgShare: number;
+  maxShare: number;
+  peakShare: number;
+  minShare: number;
+  successTotals: Record<string, number>;
+  timeline: DailyTimelineEntry[];
+}
+
+/** Daily aggregated timeline entry */
+interface DailyTimelineEntry {
+  date: string;
+  decks: number;
+  totalDecks: number;
+  share: number;
+}
+
+/** Tournament with deck count for trend reports */
+interface TournamentWithDeckCount {
+  id: string;
+  name: string;
+  date: string;
+  deckTotal: number;
+  players?: number;
+  format?: string | null;
+  platform?: string | null;
+}
+
+/** Card trends result structure */
+interface CardTrendsResult {
+  generatedAt: string;
+  windowStart: string | null;
+  windowEnd: string | null;
+  cardsAnalyzed: number;
+  minAppearances: number;
+  topCount: number;
+  rising: CardTrendItem[];
+  falling: CardTrendItem[];
+}
+
+/** Individual card trend item */
+interface CardTrendItem {
+  key: string;
+  name: string;
+  set: string | null;
+  number: string | null;
+  appearances: number;
+  startShare: number;
+  endShare: number;
+  delta: number;
+  currentShare: number;
+}
+
 const ARCHETYPE_THUMBNAILS: ThumbnailConfig = (archetypeThumbnails as ThumbnailConfig) || {};
 const AUTO_THUMB_MAX = 2;
 const AUTO_THUMB_REQUIRED_PCT = 99.9;
@@ -76,168 +257,7 @@ function daysAgo(count) {
   return new Date(Date.now() - count * 24 * 60 * 60 * 1000);
 }
 
-// Lightweight heuristics to enrich trainer/energy subtypes without extra API calls
-// These mirror client-side logic where possible to keep categories consistent.
-const ACE_SPEC_KEYWORDS = [
-  'ace spec',
-  'prime catcher',
-  'reboot pod',
-  'legacy energy',
-  'enriching energy',
-  'neo upper energy',
-  'master ball',
-  'secret box',
-  'sparkling crystal',
-  "hero's cape",
-  'scramble switch',
-  'dowsing machine',
-  'computer search',
-  'life dew',
-  'scoop up cyclone',
-  'gold potion',
-  'victory piece',
-  'g booster',
-  'g scope',
-  'g spirit',
-  'crystal edge',
-  'crystal wall',
-  'rock guard',
-  'surprise megaphone',
-  'chaotic amplifier',
-  'precious trolley',
-  'poke vital a',
-  'unfair stamp',
-  'brilliant blender'
-].map(k => k.toLowerCase());
-
-function isAceSpecName(name) {
-  const normalized = String(name || '').toLowerCase();
-  return ACE_SPEC_KEYWORDS.some(k => normalized.includes(k));
-}
-
-function inferEnergyType(name, setCode) {
-  // Basic Energy cards (SVE set)
-  if ((setCode || '').toUpperCase() === 'SVE') {
-    return 'basic';
-  }
-
-  // Check for basic energy type names (Grass, Fire, Water, Lightning, Psychic, Fighting, Darkness, Metal, Fairy, Dragon)
-  const basicEnergyTypes = [
-    'grass energy',
-    'fire energy',
-    'water energy',
-    'lightning energy',
-    'psychic energy',
-    'fighting energy',
-    'darkness energy',
-    'metal energy',
-    'fairy energy',
-    'dragon energy',
-    'basic energy'
-  ];
-  const lowerName = (name || '').toLowerCase().trim();
-  if (basicEnergyTypes.includes(lowerName)) {
-    return 'basic';
-  }
-
-  // Special Energy cards - "Energy" is always the last word but not a basic type
-  if ((name || '').endsWith(' Energy')) {
-    return 'special';
-  }
-  return null;
-}
-
-function inferTrainerType(name) {
-  const cardName = String(name || '');
-  const lower = cardName.toLowerCase();
-  // Stadiums often include these tokens explicitly
-  if (
-    cardName.includes('Stadium') ||
-    cardName.includes('Tower') ||
-    cardName.includes('Artazon') ||
-    cardName.includes('Mesagoza') ||
-    cardName.includes('Levincia')
-  ) {
-    return 'stadium';
-  }
-  // Tools typically have equipment-like words or TM
-  const toolHints = [
-    'tool',
-    'belt',
-    'helmet',
-    'cape',
-    'charm',
-    'vest',
-    'band',
-    'mask',
-    'glasses',
-    'rescue board',
-    'seal stone',
-    'technical machine',
-    'tm:'
-  ];
-  if (toolHints.some(hint => lower.includes(hint))) {
-    return 'tool';
-  }
-  // Ace Specs override other trainer subtypes
-  if (isAceSpecName(cardName)) {
-    return 'tool';
-  }
-  // Common supporter indicators
-  const supporterHints = [
-    'professor',
-    "boss's orders",
-    'orders',
-    'research',
-    'judge',
-    'scenario',
-    'vitality',
-    'grant',
-    'roxanne',
-    'miriam',
-    'iono',
-    'arven',
-    'jacq',
-    'penny',
-    'briar',
-    'carmine',
-    'kieran',
-    'geeta',
-    'grusha',
-    'ryme',
-    'clavell',
-    'giacomo'
-  ];
-  if (supporterHints.some(hint => lower.includes(hint))) {
-    return 'supporter';
-  }
-  // Item catch-alls (keep broad; many trainers are items)
-  const itemHints = [
-    'ball',
-    'rod',
-    'catcher',
-    'switch',
-    'machine',
-    'basket',
-    'retrieval',
-    'hammer',
-    'potion',
-    'stretcher',
-    'vessel',
-    'candy',
-    'poffin',
-    'powerglass',
-    'energy search',
-    'ultra ball'
-  ];
-  if (itemHints.some(hint => lower.includes(hint))) {
-    return 'item';
-  }
-  // Default to item for unknown trainers
-  return 'item';
-}
-
-async function fetchRecentOnlineTournaments(env, since, options: AnyOptions = {}) {
+async function fetchRecentOnlineTournaments(env, since, options: FetchTournamentsOptions = {}) {
   const sinceMs = since.getTime();
   const windowEndMs = options.windowEnd ? new Date(options.windowEnd).getTime() : null;
   const pageSize = options.pageSize || PAGE_SIZE;
@@ -286,7 +306,7 @@ async function fetchRecentOnlineTournaments(env, since, options: AnyOptions = {}
   const summaries = Array.from(unique.values());
   const detailed = await runWithConcurrency(summaries, detailsConcurrency, async summary => {
     try {
-      const details = await fetchJson(`/tournaments/${summary.id}/details`, { env });
+      const details = (await fetchJson(`/tournaments/${summary.id}/details`, { env })) as TournamentDetailsResponse;
       if (details.decklists === false) {
         diagnostics?.detailsWithoutDecklists.push({
           tournamentId: summary.id,
@@ -349,7 +369,7 @@ function toCardEntries(decklist, cardTypesDb = null) {
         continue;
       }
       const rawCategory = sectionName.toLowerCase();
-      let category = 'trainer';
+      let category: 'pokemon' | 'trainer' | 'energy' = 'trainer';
       if (rawCategory === 'pokemon') {
         category = 'pokemon';
       } else if (rawCategory === 'energy') {
@@ -361,7 +381,7 @@ function toCardEntries(decklist, cardTypesDb = null) {
       const number = card?.number || null;
 
       // Build base entry
-      let entry: any = {
+      let entry: CardEntry = {
         count,
         name,
         set,
@@ -443,7 +463,7 @@ function determinePlacementTags(placing, players) {
   return tags;
 }
 
-async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, options: AnyOptions = {}) {
+async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, options: GatherDecksOptions = {}) {
   if (!Array.isArray(tournaments) || tournaments.length === 0) {
     return [];
   }
@@ -580,7 +600,7 @@ function extractArchetypeKeywords(name: string): string[] {
   return tokenizeForMatching(name).filter(token => !ARCHETYPE_DESCRIPTOR_TOKENS.has(token));
 }
 
-function formatCardNumber(raw: any): string | null {
+function formatCardNumber(raw: string | number | null | undefined): string | null {
   if (raw === undefined || raw === null) {
     return null;
   }
@@ -596,7 +616,10 @@ function formatCardNumber(raw: any): string | null {
   return `${digits.padStart(3, '0')}${suffix.toUpperCase()}`;
 }
 
-function buildThumbnailId(setCode: any, number: any): string | null {
+function buildThumbnailId(
+  setCode: string | null | undefined,
+  number: string | number | null | undefined
+): string | null {
   const formattedNumber = formatCardNumber(number);
   const set = String(setCode || '')
     .toUpperCase()
@@ -607,7 +630,7 @@ function buildThumbnailId(setCode: any, number: any): string | null {
   return `${set}/${formattedNumber}`;
 }
 
-function inferArchetypeThumbnails(displayName: string, reportData: { items?: any[] } | undefined | null): string[] {
+function inferArchetypeThumbnails(displayName: string, reportData: ReportData | undefined | null): string[] {
   const keywords = extractArchetypeKeywords(displayName);
   if (!keywords.length || !reportData || !Array.isArray(reportData.items)) {
     return [];
@@ -678,7 +701,7 @@ function resolveArchetypeThumbnails(
   baseName: string,
   displayName: string,
   config: ThumbnailConfig,
-  reportData?: { items?: any[] }
+  reportData?: ReportData
 ): string[] {
   const attempts = [displayName, displayName?.replace(/_/g, ' '), baseName];
   for (const candidate of attempts) {
@@ -701,7 +724,7 @@ function resolveArchetypeThumbnails(
   return inferArchetypeThumbnails(displayName || baseName || '', reportData);
 }
 
-function buildArchetypeReports(decks, minPercent, synonymDb, options: AnyOptions = {}) {
+function buildArchetypeReports(decks, minPercent, synonymDb, options: BuildArchetypeReportsOptions = {}) {
   const groups = new Map();
   const thumbnailConfig: ThumbnailConfig = options.thumbnailConfig || {};
 
@@ -758,7 +781,7 @@ function buildArchetypeReports(decks, minPercent, synonymDb, options: AnyOptions
   };
 }
 
-function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
+function buildTrendReport(decks, tournaments, options: BuildTrendReportOptions = {}): TrendReportResult {
   const now = options.now ? new Date(options.now) : new Date();
   const windowStart = options.windowStart ? new Date(options.windowStart) : null;
   const windowEnd = options.windowEnd ? new Date(options.windowEnd) : now;
@@ -927,7 +950,7 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
     };
   });
 
-  const result: AnyOptions = {
+  const result: TrendReportResult = {
     generatedAt: now.toISOString(),
     windowStart: windowStart ? windowStart.toISOString() : null,
     windowEnd: windowEnd ? windowEnd.toISOString() : null,
@@ -946,7 +969,7 @@ function buildTrendReport(decks, tournaments, options: AnyOptions = {}) {
   return result;
 }
 
-function buildCardTrendReport(decks, tournaments, options: AnyOptions = {}) {
+function buildCardTrendReport(decks, tournaments, options: BuildCardTrendReportOptions = {}): CardTrendsResult {
   const now = options.now ? new Date(options.now) : new Date();
   const windowStart = options.windowStart ? new Date(options.windowStart) : null;
   const windowEnd = options.windowEnd ? new Date(options.windowEnd) : now;
@@ -1130,7 +1153,7 @@ function determinePlacementLimit(players) {
   return 64;
 }
 
-export async function runOnlineMetaJob(env, options: AnyOptions = {}) {
+export async function runOnlineMetaJob(env, options: OnlineMetaJobOptions = {}) {
   const now = options.now ? new Date(options.now) : new Date();
   const since = options.since ? new Date(options.since) : daysAgo(WINDOW_DAYS);
 
@@ -1198,7 +1221,7 @@ export async function runOnlineMetaJob(env, options: AnyOptions = {}) {
     thumbnailConfig: ARCHETYPE_THUMBNAILS
   });
   const trendSeriesLimit = Number.isFinite(options.seriesLimit) ? Number(options.seriesLimit) : 32;
-  const trendReport: AnyOptions = buildTrendReport(decks, tournaments, {
+  const trendReport = buildTrendReport(decks, tournaments, {
     windowStart: since,
     windowEnd: now,
     now,

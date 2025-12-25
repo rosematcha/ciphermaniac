@@ -25,6 +25,7 @@
     "public/assets/js/**/*.{js,ts}",
     "functions/**/*.ts",
     "functions/**/*.js",
+    "shared/**/*.ts",
     "types/**/*.d.ts",
     "global.d.ts"
   ],

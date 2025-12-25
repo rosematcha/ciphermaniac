@@ -37,6 +37,7 @@ try {
     'pages/_home.css',
     'pages/_trends.css',
     'pages/_archetype.css',
+    'pages/_archetype-trends.css',
     'pages/_responsive.css',
     'main.css'
   ];

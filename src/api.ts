@@ -101,23 +101,24 @@ function buildQueryString(params: Record<string, any> = {}) {
   return serialized ? `?${serialized}` : '';
 }
 
-function normalizeLimitlessTournament(entry: any): LimitlessTournament | null {
+function normalizeLimitlessTournament(entry: unknown): LimitlessTournament | null {
   if (!entry || typeof entry !== 'object') {
     return null;
   }
 
-  const id = typeof entry.id === 'string' ? entry.id.trim() : String(entry.id ?? '').trim();
+  const record = entry as Record<string, unknown>;
+  const id = typeof record.id === 'string' ? record.id.trim() : String(record.id ?? '').trim();
   if (!id) {
     return null;
   }
 
   return {
     id,
-    name: typeof entry.name === 'string' && entry.name.trim() ? entry.name.trim() : 'Unnamed Tournament',
-    game: typeof entry.game === 'string' ? entry.game.trim() : null,
-    format: typeof entry.format === 'string' ? entry.format.trim() : null,
-    date: typeof entry.date === 'string' ? entry.date : null,
-    players: typeof entry.players === 'number' ? entry.players : null,
+    name: typeof record.name === 'string' && record.name.trim() ? record.name.trim() : 'Unnamed Tournament',
+    game: typeof record.game === 'string' ? record.game.trim() : null,
+    format: typeof record.format === 'string' ? record.format.trim() : null,
+    date: typeof record.date === 'string' ? record.date : null,
+    players: typeof record.players === 'number' ? record.players : null,
     source: 'limitless'
   };
 }
@@ -445,7 +446,7 @@ export async function fetchOverrides(): Promise<Record<string, string>> {
  * @param entry
  * @returns
  */
-function normalizeArchetypeIndexEntry(entry: any): ArchetypeIndexEntry | null {
+function normalizeArchetypeIndexEntry(entry: unknown): ArchetypeIndexEntry | null {
   if (!entry) {
     return null;
   }
@@ -459,15 +460,16 @@ function normalizeArchetypeIndexEntry(entry: any): ArchetypeIndexEntry | null {
     };
   }
   if (typeof entry === 'object') {
-    const name = String(entry.name || entry.base || entry.id || '').trim();
+    const record = entry as Record<string, unknown>;
+    const name = String(record.name || record.base || record.id || '').trim();
     if (!name) {
       return null;
     }
-    const label = entry.label || entry.display || name.replace(/_/g, ' ');
-    const deckCount = Number.isFinite(entry.deckCount) ? Number(entry.deckCount) : null;
-    const percentValue = Number(entry.percent);
+    const label = (record.label as string) || (record.display as string) || name.replace(/_/g, ' ');
+    const deckCount = Number.isFinite(record.deckCount) ? Number(record.deckCount) : null;
+    const percentValue = Number(record.percent);
     const percent = Number.isFinite(percentValue) ? percentValue : null;
-    const thumbnails = Array.isArray(entry.thumbnails) ? entry.thumbnails.filter(Boolean) : [];
+    const thumbnails = Array.isArray(record.thumbnails) ? record.thumbnails.filter(Boolean) : [];
     return {
       name,
       label,

@@ -48,9 +48,9 @@
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/assets/style.css" />
     <!-- Preload critical JS modules for faster page load -->
-    <link rel="modulepreload" href="/assets/js/card.js" />
-    <link rel="modulepreload" href="/assets/js/api.js" />
-    <link rel="modulepreload" href="/assets/js/card/charts.js" />
+    <link rel="modulepreload" href="/assets/js/src/card.js" />
+    <link rel="modulepreload" href="/assets/js/src/api.js" />
+    <link rel="modulepreload" href="/assets/js/src/card/charts.js" />
   </head>
   <body>
     <!-- Search toolbar (minimal, card-only) -->
@@ -222,8 +222,8 @@
     </script>
     <script type="module">
       // Defer header/footer until after initial content paint
-      import { createHeader } from '/assets/js/components/header.js';
-      import { createFooter } from '/assets/js/components/footer.js';
+      import { createHeader } from '/assets/js/src/components/header.js';
+      import { createFooter } from '/assets/js/src/components/footer.js';
 
       const header = createHeader({ currentPage: 'cards' });
       const footer = createFooter();
@@ -231,6 +231,6 @@
       document.body.insertAdjacentElement('afterbegin', header);
       document.body.insertAdjacentElement('beforeend', footer);
     </script>
-    <script src="/assets/js/card.js" type="module"></script>
+    <script src="/assets/js/src/card.js" type="module"></script>
   </body>
 </html>

@@ -193,6 +193,10 @@ const elements = {
   statCards: document.getElementById('stat-cards'),
   statRange: document.getElementById('stat-range'),
 
+  // Narrative
+  narrativeSection: document.getElementById('trends-narrative') as HTMLElement | null,
+  narrativeText: document.getElementById('narrative-text') as HTMLElement | null,
+
   // Insights
   insightsSection: document.getElementById('trends-insights') as HTMLElement | null,
   insightCore: document.getElementById('insight-core'),
@@ -235,9 +239,15 @@ const elements = {
   toggleWeekly: document.getElementById('chart-toggle-weekly'),
   toggleDaily: document.getElementById('chart-toggle-daily'),
 
+  // Chart Summary Stats
+  chartSummary: document.getElementById('chart-summary'),
+  summaryCardsCount: document.getElementById('summary-cards-count'),
+  summaryAvgPlayrate: document.getElementById('summary-avg-playrate'),
+  summaryPeak: document.getElementById('summary-peak'),
+  summaryTrend: document.getElementById('summary-trend'),
+
   // Card List
   cardListSection: document.getElementById('trends-card-list'),
-  cardCategoryFilter: document.getElementById('card-category-filter') as HTMLSelectElement | null,
   cardSortSelect: document.getElementById('card-sort') as HTMLSelectElement | null,
   cardListBody: document.getElementById('card-list-body'),
 
@@ -354,6 +364,17 @@ function renderStats() {
 
 // --- Rendering: Insights ---
 
+function renderInsightItem(card: EnhancedCardEntry, stat?: string, statClass?: string): HTMLElement {
+  const div = document.createElement('a');
+  div.className = 'insight-item';
+  div.href = buildCardUrl(card);
+  div.innerHTML = `
+    <span class="insight-item-name">${card.name}</span>
+    ${stat ? `<span class="insight-item-stat ${statClass || ''}">${stat}</span>` : ''}
+  `;
+  return div;
+}
+
 function renderInsights() {
   if (!state.trendsData || !elements.insightsSection) return;
   const { insights, cards } = state.trendsData;
@@ -361,69 +382,69 @@ function renderInsights() {
   // 1. Core Cards
   if (elements.coreCount) elements.coreCount.textContent = String(insights.coreCards.length);
   if (elements.coreList) {
-    elements.coreList.innerHTML = insights.coreCards.length ? '' : '<li class="muted">No core cards identified</li>';
-    insights.coreCards.slice(0, 5).forEach(uid => {
-      const card = cards[uid];
-      if (card) {
-        const li = document.createElement('li');
-        li.innerHTML = `<a href="${buildCardUrl(card)}" class="insight-link">${card.name}</a>`;
-        elements.coreList!.appendChild(li);
-      }
-    });
+    elements.coreList.innerHTML = '';
+    if (insights.coreCards.length === 0) {
+      elements.coreList.innerHTML = '<div class="insight-empty">No core cards identified</div>';
+    } else {
+      insights.coreCards.slice(0, 5).forEach(uid => {
+        const card = cards[uid];
+        if (card) {
+          elements.coreList!.appendChild(renderInsightItem(card, formatPercent(card.currentPlayrate)));
+        }
+      });
+    }
   }
 
   // 2. Flex Slots
   if (elements.flexCount) elements.flexCount.textContent = String(insights.flexSlots.length);
   if (elements.flexList) {
-    elements.flexList.innerHTML = insights.flexSlots.length ? '' : '<li class="muted">No highly variable slots</li>';
-    insights.flexSlots.slice(0, 5).forEach(slot => {
-      const card = cards[slot.uid];
-      if (card) {
-        const li = document.createElement('li');
-        li.innerHTML = `
-          <a href="${buildCardUrl(card)}" class="insight-link">
-            <span>${card.name}</span>
-            <span class="insight-meta">${slot.copyRange[0]}-${slot.copyRange[1]} copies</span>
-          </a>`;
-        elements.flexList!.appendChild(li);
-      }
-    });
+    elements.flexList.innerHTML = '';
+    if (insights.flexSlots.length === 0) {
+      elements.flexList.innerHTML = '<div class="insight-empty">No highly variable slots</div>';
+    } else {
+      insights.flexSlots.slice(0, 5).forEach(slot => {
+        const card = cards[slot.uid];
+        if (card) {
+          elements.flexList!.appendChild(renderInsightItem(card, `${slot.copyRange[0]}-${slot.copyRange[1]}`));
+        }
+      });
+    }
   }
 
   // 3. Risers
   if (elements.risingCount) elements.risingCount.textContent = String(insights.risers.length);
   if (elements.risingList) {
-    elements.risingList.innerHTML = insights.risers.length ? '' : '<li class="muted">No significant risers</li>';
-    insights.risers.forEach(item => {
-      const card = cards[item.uid];
-      if (card) {
-        const li = document.createElement('li');
-        li.innerHTML = `
-          <a href="${buildCardUrl(card)}" class="insight-link">
-            <span>${card.name}</span>
-            <span class="trend-up">+${item.delta.toFixed(1)}%</span>
-          </a>`;
-        elements.risingList!.appendChild(li);
-      }
-    });
+    elements.risingList.innerHTML = '';
+    if (insights.risers.length === 0) {
+      elements.risingList.innerHTML = '<div class="insight-empty">No significant risers</div>';
+    } else {
+      insights.risers.slice(0, 5).forEach(item => {
+        const card = cards[item.uid];
+        if (card) {
+          elements.risingList!.appendChild(
+            renderInsightItem(card, `+${item.delta.toFixed(1)}%`, 'insight-item-stat--rising')
+          );
+        }
+      });
+    }
   }
 
   // 4. Fallers
   if (elements.fallingCount) elements.fallingCount.textContent = String(insights.fallers.length);
   if (elements.fallingList) {
-    elements.fallingList.innerHTML = insights.fallers.length ? '' : '<li class="muted">No significant fallers</li>';
-    insights.fallers.forEach(item => {
-      const card = cards[item.uid];
-      if (card) {
-        const li = document.createElement('li');
-        li.innerHTML = `
-          <a href="${buildCardUrl(card)}" class="insight-link">
-            <span>${card.name}</span>
-            <span class="trend-down">${item.delta.toFixed(1)}%</span>
-          </a>`;
-        elements.fallingList!.appendChild(li);
-      }
-    });
+    elements.fallingList.innerHTML = '';
+    if (insights.fallers.length === 0) {
+      elements.fallingList.innerHTML = '<div class="insight-empty">No significant fallers</div>';
+    } else {
+      insights.fallers.slice(0, 5).forEach(item => {
+        const card = cards[item.uid];
+        if (card) {
+          elements.fallingList!.appendChild(
+            renderInsightItem(card, `${item.delta.toFixed(1)}%`, 'insight-item-stat--falling')
+          );
+        }
+      });
+    }
   }
 
   elements.insightsSection.hidden = false;
@@ -437,14 +458,14 @@ function renderInsights() {
         const c2 = cards[sub.cardB];
         if (c1 && c2) {
           const div = document.createElement('div');
-          div.className = 'substitution-card';
+          div.className = 'substitution-item';
           div.innerHTML = `
-            <div class="sub-pair">
+            <div class="substitution-cards">
               <a href="${buildCardUrl(c1)}">${c1.name}</a>
-              <span class="sub-arrow">↔</span>
+              <span class="substitution-arrow">↔</span>
               <a href="${buildCardUrl(c2)}">${c2.name}</a>
             </div>
-            <div class="sub-meta">Strong negative correlation (${sub.correlation.toFixed(2)})</div>
+            <span class="substitution-correlation">${sub.correlation.toFixed(2)}</span>
           `;
           elements.substitutionsList!.appendChild(div);
         }
@@ -456,9 +477,86 @@ function renderInsights() {
   }
 }
 
+// --- Rendering: Narrative ---
+
+function generateNarrative(): string {
+  if (!state.trendsData) return '';
+  const { meta, insights, cards } = state.trendsData;
+
+  const parts: string[] = [];
+
+  // Tournament count context
+  parts.push(
+    `Based on <span class="highlight">${meta.tournamentCount} tournaments</span> over ${meta.weekCount} weeks`
+  );
+
+  // Rising/falling summary
+  if (insights.risers.length > 0) {
+    const topRiser = cards[insights.risers[0].uid];
+    if (topRiser) {
+      parts.push(
+        `<span class="highlight">${topRiser.name}</span> is <span class="trend-up">trending up</span> (+${insights.risers[0].delta.toFixed(1)}%)`
+      );
+    }
+  }
+
+  if (insights.fallers.length > 0) {
+    const topFaller = cards[insights.fallers[0].uid];
+    if (topFaller) {
+      parts.push(
+        `while <span class="highlight">${topFaller.name}</span> is <span class="trend-down">declining</span> (${insights.fallers[0].delta.toFixed(1)}%)`
+      );
+    }
+  }
+
+  // Core stability
+  if (insights.coreCards.length > 0) {
+    parts.push(
+      `The deck has <span class="highlight">${insights.coreCards.length} core cards</span> that appear in nearly every build`
+    );
+  }
+
+  return `${parts.join('. ')}.`;
+}
+
+function renderNarrative() {
+  if (!elements.narrativeSection || !elements.narrativeText) return;
+
+  const narrative = generateNarrative();
+  if (narrative) {
+    elements.narrativeText.innerHTML = narrative;
+    elements.narrativeSection.hidden = false;
+  } else {
+    elements.narrativeSection.hidden = true;
+  }
+}
+
 // --- Rendering: Matchups ---
 
 const MAX_MATCHUPS_DEFAULT = 10;
+
+type MatchupSortMode = 'games' | 'winrate' | 'name';
+let matchupSortMode: MatchupSortMode = 'games';
+
+function sortMatchups(matchups: MatchupStats[], sortBy: MatchupSortMode): MatchupStats[] {
+  return [...matchups].sort((a, b) => {
+    switch (sortBy) {
+      case 'winrate':
+        return b.winRate - a.winRate;
+      case 'name':
+        return a.opponent.localeCompare(b.opponent);
+      case 'games':
+      default:
+        return b.total - a.total;
+    }
+  });
+}
+
+function getWinrateBarClass(winRate: number): string {
+  if (winRate > 55) return 'winrate-bar-fill--high';
+  if (winRate < 45) return 'winrate-bar-fill--low';
+  return 'winrate-bar-fill--mid';
+}
 
 function renderMatchups() {
   if (!state.trendsData || !elements.matchupsSection || !elements.matchupsList) return;
@@ -469,7 +567,7 @@ function renderMatchups() {
     return;
   }
 
-  const allRows = Object.values(matchups).sort((a, b) => b.total - a.total);
+  const allRows = sortMatchups(Object.values(matchups), matchupSortMode);
   const totalMatchups = allRows.length;
   const showAll = state.showAllMatchups;
   const rows = showAll ? allRows : allRows.slice(0, MAX_MATCHUPS_DEFAULT);
@@ -483,10 +581,20 @@ function renderMatchups() {
     if (mt.winRate > 55) wrClass = 'winrate-high';
     else if (mt.winRate < 45) wrClass = 'winrate-low';
 
+    const barFillClass = getWinrateBarClass(mt.winRate);
+    const opponentUrl = `/${encodeURIComponent(mt.opponent.replace(/ /g, '_'))}/trends`;
+
     tr.innerHTML = `
-      <td class="col-opponent">${mt.opponent}</td>
+      <td class="col-opponent">
+        <a href="${opponentUrl}">${mt.opponent}</a>
+      </td>
       <td class="col-winrate">
-        <span class="${wrClass}">${mt.winRate.toFixed(1)}%</span>
+        <div class="winrate-bar-container">
+          <div class="winrate-bar">
+            <div class="winrate-bar-fill ${barFillClass}" style="width: ${mt.winRate}%"></div>
+          </div>
+          <span class="winrate-value ${wrClass}">${mt.winRate.toFixed(1)}%</span>
+        </div>
       </td>
       <td class="col-record">${mt.wins}-${mt.losses}-${mt.ties}</td>
       <td class="col-total">${mt.total}</td>
@@ -503,6 +611,26 @@ function renderMatchups() {
   }
 
   elements.matchupsSection.hidden = false;
+}
+
+function setupMatchupSorting() {
+  const sortButtons = document.querySelectorAll('.matchups-sort-btn');
+  sortButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sortBy = (btn as HTMLElement).dataset.sort as MatchupSortMode;
+      if (sortBy && sortBy !== matchupSortMode) {
+        matchupSortMode = sortBy;
+        // Update button states and ARIA
+        sortButtons.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
+        renderMatchups();
+      }
+    });
+  });
 }
 
 // --- Rendering: Copy Evolution Chart ---
@@ -583,7 +711,7 @@ function renderCopyEvolution() {
 
         // Tooltip
         const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-        title.textContent = `${copyIndex + 1} Copy: ${Math.round(pct * 100)}% (${count} decks)\nWeek of ${formatDate(weeks[i].weekStart)}`;
+        title.textContent = `${copyIndex + 1} Copy: ${Math.round(pct * 100)}% (${count} decks)\nWeek of ${formatDate(weeks[i]?.weekStart || '')}`;
         rect.appendChild(title);
 
         svg.appendChild(rect);
@@ -598,7 +726,7 @@ function renderCopyEvolution() {
       text.setAttribute('y', String(chartHeight - 2));
       text.setAttribute('text-anchor', 'middle');
       text.setAttribute('class', 'chart-axis-label');
-      text.textContent = formatDate(weeks[i].weekStart);
+      text.textContent = formatDate(weeks[i]?.weekStart || '');
       svg.appendChild(text);
     }
   });
@@ -708,6 +836,7 @@ function renderChart() {
     if (elements.chartSubtitle)
       elements.chartSubtitle.textContent = 'Select cards from the list below to chart their playrate';
     if (elements.chartLegend) elements.chartLegend.innerHTML = '';
+    if (elements.chartSummary) elements.chartSummary.hidden = true;
     return;
   }
 
@@ -724,9 +853,8 @@ function renderChart() {
   const contentWidth = width - padX * 2;
   const contentHeight = height - padY * 2;
 
-  // Scales
-  const allShares = lines.flatMap(l => l.points.map(p => p.share));
-  const maxShare = Math.max(10, Math.ceil(Math.max(...allShares) * 1.1));
+  // Scales - always use 0-100% range for consistency
+  const maxShare = 100;
 
   const xScale = (idx: number) => padX + (idx / (timeData.length - 1)) * contentWidth;
   const yScale = (share: number) => height - padY - (share / maxShare) * contentHeight;
@@ -734,110 +862,202 @@ function renderChart() {
   // SVG
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.setAttribute('width', '100%');
+  svg.setAttribute('height', `${height}px`);
+  svg.style.height = `${height}px`;
+  svg.setAttribute('preserveAspectRatio', 'none');
   svg.classList.add('trends-svg-v2');
   svg.setAttribute('role', 'img');
 
-  // Grid
-  const gridSteps = 5;
-  for (let i = 0; i <= gridSteps; i++) {
-    const val = (maxShare / gridSteps) * i;
-    const y = yScale(val);
+  // Grid - use fixed intervals for 0-100% range
+  const gridLevels = [0, 20, 40, 60, 80, 100];
+
+  gridLevels.forEach(level => {
+    const y = yScale(level);
 
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', String(padX));
     line.setAttribute('x2', String(width - padX));
     line.setAttribute('y1', String(y));
     line.setAttribute('y2', String(y));
-    line.setAttribute('stroke', 'rgba(124,134,168,0.15)');
+    line.setAttribute('stroke', 'rgba(124,134,168,0.2)');
+    line.setAttribute('stroke-width', '1');
 
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', String(padX - 8));
+    text.setAttribute('x', String(padX - 10));
     text.setAttribute('y', String(y + 4));
     text.setAttribute('text-anchor', 'end');
-    text.setAttribute('class', 'chart-axis-label');
-    text.textContent = `${Math.round(val)}%`;
+    text.setAttribute('fill', '#7c86a8');
+    text.setAttribute('font-size', '11');
+    text.textContent = `${level}%`;
 
     svg.appendChild(line);
     svg.appendChild(text);
+  });
+
+  // Draw Lines using polylines (matching main trends chart)
+  lines.forEach(line => {
+    const points = line.points.map(p => `${xScale(p.index)},${yScale(p.share)}`).join(' ');
+
+    const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    polyline.setAttribute('fill', 'none');
+    polyline.setAttribute('stroke', line.color);
+    polyline.setAttribute('stroke-width', '2.5');
+    polyline.setAttribute('points', points);
+    polyline.setAttribute('stroke-linecap', 'round');
+    polyline.dataset.name = line.card.name;
+    polyline.classList.add('trends-line');
+    svg.appendChild(polyline);
+  });
+
+  // X-Axis Labels - show first, last, and 2 evenly spaced midpoints
+  const labelIndices = new Set<number>();
+  const count = timeData.length;
+
+  if (count <= 4) {
+    for (let i = 0; i < count; i += 1) {
+      labelIndices.add(i);
+    }
+  } else {
+    labelIndices.add(0);
+    labelIndices.add(count - 1);
+    const segment = (count - 1) / 3;
+    labelIndices.add(Math.max(1, Math.round(segment)));
+    labelIndices.add(Math.min(count - 2, Math.round(segment * 2)));
   }
 
-  // Draw Lines
-  lines.forEach(line => {
-    const d = line.points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xScale(p.index)} ${yScale(p.share)}`).join(' ');
+  Array.from(labelIndices)
+    .sort((a, b) => a - b)
+    .forEach(i => {
+      const dateStr = isDaily ? (timeData[i] as DayEntry).date : (timeData[i] as WeekEntry).weekStart;
 
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', d);
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', line.color);
-    path.setAttribute('stroke-width', '2.5');
-    path.setAttribute('stroke-linecap', 'round');
-    path.setAttribute('stroke-linejoin', 'round');
-    svg.appendChild(path);
-
-    // Points
-    line.points.forEach(p => {
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('cx', String(xScale(p.index)));
-      circle.setAttribute('cy', String(yScale(p.share)));
-      circle.setAttribute('r', '4');
-      circle.setAttribute('fill', line.color);
-      circle.setAttribute('stroke', '#0c1020');
-      circle.setAttribute('stroke-width', '1.5');
-      circle.classList.add('chart-point');
-
-      // Interaction data
-      circle.dataset.name = line.card.name;
-      circle.dataset.share = p.share.toFixed(1);
-      circle.dataset.date = formatDate(p.date);
-
-      // Tooltip logic (simplified inline for brevity, better to use shared tooltip)
-      const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-      title.textContent = `${line.card.name}\n${formatDate(p.date)}: ${p.share.toFixed(1)}%`;
-      circle.appendChild(title);
-
-      svg.appendChild(circle);
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', String(xScale(i)));
+      text.setAttribute('y', String(height - 6));
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('fill', '#7c86a8');
+      text.setAttribute('font-size', '11');
+      text.textContent = formatDate(dateStr);
+      svg.appendChild(text);
     });
-  });
-
-  // X-Axis Labels
-  const maxLabels = 8;
-  const skip = Math.ceil(timeData.length / maxLabels);
-
-  timeData.forEach((entry, i) => {
-    // Show label logic: first, last, and every 'skip' in between
-    if (i !== 0 && i !== timeData.length - 1 && i % skip !== 0) return;
-
-    const dateStr = isDaily ? (entry as DayEntry).date : (entry as WeekEntry).weekStart;
-
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', String(xScale(i)));
-    text.setAttribute('y', String(height - 5));
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('class', 'chart-axis-label');
-    text.textContent = formatDate(dateStr);
-    svg.appendChild(text);
-  });
 
   elements.chart.appendChild(svg);
   if (elements.chartContainer) elements.chartContainer.hidden = false;
 
   renderLegend();
+  renderChartSummary();
 }
 
 function renderLegend() {
   if (!elements.chartLegend || !state.chartLines) return;
   elements.chartLegend.innerHTML = '';
 
+  if (state.chartLines.length === 0) {
+    elements.chartLegend.innerHTML = '<span class="chart-empty-hint">Select cards below to compare trends</span>';
+    return;
+  }
+
   state.chartLines.forEach(line => {
+    const change = line.card.playrateChange;
+    const deltaClass = change > 0 ? 'up' : change < 0 ? 'down' : '';
+    const changeSign = change > 0 ? '+' : '';
+
     const div = document.createElement('div');
     div.className = 'legend-item-v2';
-    div.innerHTML = `
-      <span class="legend-swatch" style="background-color: ${line.color}"></span>
-      <span class="legend-name">${line.card.name}</span>
-      <span class="legend-value">${formatPercent(line.card.currentPlayrate)}</span>
-    `;
+
+    const swatch = document.createElement('span');
+    swatch.className = 'legend-swatch';
+    swatch.style.backgroundColor = line.color;
+
+    const name = document.createElement('span');
+    name.className = 'legend-name';
+    name.textContent = line.card.name;
+
+    const value = document.createElement('span');
+    value.className = 'legend-value';
+    value.innerHTML = `${formatPercent(line.card.currentPlayrate)} <span class="legend-delta ${deltaClass}">(${changeSign}${change.toFixed(Math.abs(change) % 1 === 0 ? 0 : 1)}%)</span>`;
+
+    div.appendChild(swatch);
+    div.appendChild(name);
+    div.appendChild(value);
     elements.chartLegend!.appendChild(div);
   });
+}
+
+function renderChartSummary() {
+  if (!elements.chartSummary || !state.chartLines || state.chartLines.length === 0) {
+    if (elements.chartSummary) elements.chartSummary.hidden = true;
+    return;
+  }
+
+  const lines = state.chartLines;
+
+  // Calculate summary statistics
+  const cardsCount = lines.length;
+
+  // Average current playrate of selected cards
+  const avgPlayrate = lines.reduce((sum, l) => sum + l.card.currentPlayrate, 0) / cardsCount;
+
+  // Peak playrate across all selected cards in the time period
+  let peakShare = 0;
+  let peakCard = '';
+  lines.forEach(line => {
+    line.points.forEach(p => {
+      if (p.share > peakShare) {
+        peakShare = p.share;
+        peakCard = line.card.name;
+      }
+    });
+  });
+
+  // Overall trend: compare first half average to second half average
+  let firstHalfSum = 0;
+  let firstHalfCount = 0;
+  let secondHalfSum = 0;
+  let secondHalfCount = 0;
+
+  lines.forEach(line => {
+    const midpoint = Math.floor(line.points.length / 2);
+    line.points.forEach((p, idx) => {
+      if (idx < midpoint) {
+        firstHalfSum += p.share;
+        firstHalfCount++;
+      } else {
+        secondHalfSum += p.share;
+        secondHalfCount++;
+      }
+    });
+  });
+
+  const firstHalfAvg = firstHalfCount > 0 ? firstHalfSum / firstHalfCount : 0;
+  const secondHalfAvg = secondHalfCount > 0 ? secondHalfSum / secondHalfCount : 0;
+  const trendDelta = secondHalfAvg - firstHalfAvg;
+
+  // Update DOM
+  if (elements.summaryCardsCount) {
+    elements.summaryCardsCount.textContent = String(cardsCount);
+  }
+
+  if (elements.summaryAvgPlayrate) {
+    elements.summaryAvgPlayrate.textContent = formatPercent(avgPlayrate);
+  }
+
+  if (elements.summaryPeak) {
+    elements.summaryPeak.textContent = formatPercent(peakShare);
+    elements.summaryPeak.title = `Peak: ${peakCard}`;
+  }
+
+  if (elements.summaryTrend) {
+    const trendIcon = trendDelta > 1 ? '↑' : trendDelta < -1 ? '↓' : '→';
+    const trendClass =
+      trendDelta > 1 ? 'chart-summary-value--success' : trendDelta < -1 ? 'chart-summary-value--error' : '';
+
+    elements.summaryTrend.textContent = trendIcon;
+    elements.summaryTrend.className = `chart-summary-value ${trendClass}`;
+    elements.summaryTrend.title = `${trendDelta > 0 ? '+' : ''}${trendDelta.toFixed(1)}% change`;
+  }
+
+  elements.chartSummary.hidden = false;
 }
 
 // --- Rendering: Card List ---
@@ -979,6 +1199,58 @@ function renderCardList() {
   elements.cardListSection.hidden = false;
 }
 
+// --- Category Tabs ---
+
+function updateCategoryCounts() {
+  if (!state.trendsData) return;
+  const { cards } = state.trendsData;
+
+  const counts = {
+    all: 0,
+    core: 0,
+    staple: 0,
+    flex: 0,
+    tech: 0,
+    emerging: 0,
+    fading: 0
+  };
+
+  Object.values(cards).forEach(card => {
+    counts.all++;
+    if (card.category in counts) {
+      counts[card.category as keyof typeof counts]++;
+    }
+  });
+
+  // Update tab count badges
+  Object.entries(counts).forEach(([category, count]) => {
+    const countEl = document.getElementById(`count-${category}`);
+    if (countEl) countEl.textContent = String(count);
+  });
+}
+
+function setupCategoryTabs() {
+  const tabs = document.querySelectorAll('.category-tab');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const category = (tab as HTMLElement).dataset.category;
+      if (category) {
+        state.categoryFilter = category as any;
+
+        // Update tab states
+        tabs.forEach(t => {
+          t.classList.remove('active');
+          t.setAttribute('aria-selected', 'false');
+        });
+        tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
+
+        renderCardList();
+      }
+    });
+  });
+}
+
 // --- Initialization & Events ---
 
 function setPageState(status: 'loading' | 'ready' | 'error') {
@@ -1017,13 +1289,8 @@ function bindEvents() {
     });
   }
 
-  // Category Filter
-  if (elements.cardCategoryFilter) {
-    elements.cardCategoryFilter.addEventListener('change', () => {
-      state.categoryFilter = elements.cardCategoryFilter!.value as any;
-      renderCardList();
-    });
-  }
+  // Category Tabs
+  setupCategoryTabs();
 
   // Sort Filter
   if (elements.cardSortSelect) {
@@ -1075,6 +1342,9 @@ function bindEvents() {
     });
   }
 
+  // Matchup Sorting
+  setupMatchupSorting();
+
   // Resize Handler
   window.addEventListener('resize', () => {
     if (state.resizeTimer) clearTimeout(state.resizeTimer);
@@ -1110,12 +1380,45 @@ async function init() {
 
   state.trendsData = data;
 
-  // Initial Selection: Top 5 Core/Staple cards
-  const initialCards = Object.entries(data.cards)
-    .sort((a, b) => b[1].currentPlayrate - a[1].currentPlayrate)
-    .slice(0, 5)
-    .map(([uid]) => uid);
-  state.selectedCards = new Set(initialCards);
+  // Initial Selection: Diverse mix of interesting cards
+  // Pick cards that show interesting trends rather than just top playrate
+  const initialCards: string[] = [];
+
+  // Add 1-2 rising cards (most interesting trends)
+  const risingCards = data.insights.risers.slice(0, 2).map(r => r.uid);
+  initialCards.push(...risingCards);
+
+  // Add 1-2 falling cards (declining trends)
+  const fallingCards = data.insights.fallers.slice(0, 2).map(f => f.uid);
+  initialCards.push(...fallingCards);
+
+  // Add 1 flex card (high variance) if available
+  if (data.insights.flexSlots.length > 0) {
+    initialCards.push(data.insights.flexSlots[0].uid);
+  }
+
+  // If we don't have enough, fill with cards from different playrate ranges
+  if (initialCards.length < 5) {
+    const allCards = Object.entries(data.cards)
+      .filter(([uid]) => !initialCards.includes(uid))
+      .sort((a, b) => b[1].currentPlayrate - a[1].currentPlayrate);
+
+    // Add one high playrate card (if not already included)
+    if (allCards.length > 0) initialCards.push(allCards[0][0]);
+
+    // Add one mid-range playrate card (around 40-60%)
+    const midCard = allCards.find(([_, card]) => card.currentPlayrate >= 40 && card.currentPlayrate <= 60);
+    if (midCard && initialCards.length < 5) initialCards.push(midCard[0]);
+
+    // Fill remaining with top cards
+    while (initialCards.length < 5 && allCards.length > initialCards.length) {
+      const nextCard = allCards[initialCards.length];
+      if (nextCard) initialCards.push(nextCard[0]);
+      else break;
+    }
+  }
+
+  state.selectedCards = new Set(initialCards.slice(0, 5));
 
   // Initial Copy Card: Most popular card
   if (initialCards.length > 0) {
@@ -1126,9 +1429,11 @@ async function init() {
   if (elements.emptyState) elements.emptyState.hidden = true;
 
   renderStats();
+  renderNarrative();
   renderInsights();
   renderMatchups();
   renderChart();
+  updateCategoryCounts();
   renderCardList();
   renderCopyEvolution();
 }

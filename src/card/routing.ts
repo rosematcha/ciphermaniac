@@ -4,6 +4,9 @@ import { getDisplayName } from './identifiers.js';
 import { getCanonicalCard } from '../utils/cardSynonyms.js';
 import { logger } from '../utils/logger.js';
 import { CONFIG } from '../config.js';
+// Re-export normalizeCardNumber from shared module for backwards compatibility
+export { normalizeCardNumber } from '../../shared/cardUtils.js';
+import { normalizeCardNumber } from '../../shared/cardUtils.js';
 
 const SLUG_CACHE_KEY = 'cardSlugCacheV2';
 const DEFAULT_SCAN_LIMIT = 12;
@@ -36,28 +39,6 @@ interface RouteInfo {
 
 interface ResolveOptions {
   scanLimit?: number;
-}
-
-/**
- * Normalize card number to 3 digits with optional suffix
- * @param value
- */
-export function normalizeCardNumber(value: string | number | null | undefined): string {
-  if (value === undefined || value === null) {
-    return '';
-  }
-  const raw = String(value).trim();
-  if (!raw) {
-    return '';
-  }
-  const match = raw.match(/^(\d+)([A-Za-z]*)$/);
-  if (!match) {
-    return raw.toUpperCase();
-  }
-  const digits = match[1];
-  const suffix = match[2] || '';
-  const padded = digits.padStart(3, '0');
-  return `${padded}${suffix.toUpperCase()}`;
 }
 
 function sanitizeName(value: string | null | undefined): string {
@@ -416,4 +397,76 @@ export function describeSlug(slug: string | null): string {
     return `${setCode} ${number}`.trim();
   }
   return normalized.replace(/-/g, ' ');
+}
+
+/**
+ * Build a lookup structure for searching card identifiers
+ * @param cardIdentifier - The card identifier to build lookups for
+ * @returns Object with searchKeys set and baseName
+ */
+export function buildIdentifierLookup(cardIdentifier: string): { searchKeys: Set<string>; baseName: string | null } {
+  const searchKeys = new Set<string>();
+  const addIdentifier = (value: string | null | undefined) => {
+    if (value) {
+      searchKeys.add(String(value).trim().toLowerCase());
+    }
+  };
+  addIdentifier(cardIdentifier);
+  addIdentifier(cardIdentifier?.toLowerCase());
+
+  // Import getBaseName functionality inline to avoid circular dependency
+  const baseName =
+    getDisplayName(cardIdentifier)
+      ?.split(/::|\s+(?=[A-Z]{2,}\s*\d)/)[0]
+      ?.trim() || null;
+  if (baseName) {
+    addIdentifier(baseName);
+  }
+  // Add a space-delimited version of UID (e.g., "DRI:175" -> "DRI 175")
+  if (cardIdentifier && cardIdentifier.includes(':')) {
+    addIdentifier(cardIdentifier.replace(':', ' '));
+  }
+  // Add colon-delimited version if we were passed a space-delimited UID
+  if (cardIdentifier && cardIdentifier.includes(' ')) {
+    const parts = cardIdentifier.split(/\s+/);
+    if (parts.length === 2 && parts[0].length >= 2 && /^\d/.test(parts[1]) === false) {
+      addIdentifier(`${parts[0]}:${parts[1]}`);
+    }
+  }
+  // Handle slug separators like "~" (from /card/SET~###)
+  if (cardIdentifier && cardIdentifier.includes('~')) {
+    const tildeColon = cardIdentifier.replace(/~/g, ':');
+    addIdentifier(tildeColon);
+    addIdentifier(tildeColon.replace(':', ' '));
+  }
+  const slugVariant = cardIdentifier?.replace(/[-_]/g, ' ');
+  addIdentifier(slugVariant);
+  return { searchKeys, baseName };
+}
+
+/**
+ * Extract set code and card number from an identifier
+ * @param identifier - Card identifier in various formats
+ * @returns Object with set and number, or nulls if not extractable
+ */
+export function extractSetAndNumber(identifier: string | null | undefined): {
+  set: string | null;
+  number: string | null;
+} {
+  if (!identifier) {
+    return { set: null, number: null };
+  }
+  // UID form Name::SET::NUMBER
+  if (identifier.includes('::')) {
+    const parts = identifier.split('::');
+    if (parts.length >= 3 && parts[1] && parts[2]) {
+      return { set: parts[1], number: parts[2] };
+    }
+  }
+  const setNumberPattern = /^([A-Z]{2,})[:~\s]+(\d+[A-Za-z]?)$/;
+  const match = identifier.toUpperCase().match(setNumberPattern);
+  if (match) {
+    return { set: match[1], number: match[2] };
+  }
+  return { set: null, number: null };
 }
