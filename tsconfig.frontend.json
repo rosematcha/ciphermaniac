@@ -3,7 +3,12 @@
   "compilerOptions": {
     "noEmit": false,
     "outDir": "public/assets/js",
-    "rootDir": ".",
+    "rootDirs": ["src", "shared", "types"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "shared/*": ["shared/*"]
+    },
     "allowJs": false,
     "checkJs": false
   },

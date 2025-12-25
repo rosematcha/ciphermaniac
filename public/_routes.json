@@ -2,7 +2,7 @@
   "version": 1,
   "include": ["/*"],
   "exclude": [
-    "/assets/*",
+    "/assets/**",
     "/about",
     "/about.html",
     "/feedback",
@@ -21,6 +21,6 @@
     "/robots.txt",
     "/sitemap.xml",
     "/site.webmanifest",
-    "/tools/*"
+    "/tools/**"
   ]
 }
