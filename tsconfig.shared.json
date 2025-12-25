@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "shared",
+    "rootDir": "shared",
+    "declaration": false
+  },
+  "include": ["shared/**/*.ts"],
+  "exclude": ["node_modules"]
+}
