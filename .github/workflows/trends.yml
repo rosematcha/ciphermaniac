@@ -19,7 +19,7 @@ run-name: >-
 
 on:
   workflow_run:
-    workflows: ['Online Meta Report']
+    workflows: ['(Daily Chore) Online Meta Report']
     types:
       - completed
   workflow_dispatch:
