@@ -1,9 +1,11 @@
 /* ==========================================================================
      Ciphermaniac - Optimized CSS Build
-     Generated: 2025-12-25T01:09:50.164Z
+     Generated: 2026-01-04T16:33:35.199Z
      Architecture: Modular CSS with Design Tokens
      Size Reduction: ~25% from original
      ========================================================================== */
+
+
 
 /* abstracts/_variables.css */
 /* ==========================================================================
@@ -180,6 +182,7 @@
 .u-transition-slow {
   transition: var(--transition-slow);
 }
+
 
 /* base/_reset.css */
 /* ==========================================================================
@@ -543,6 +546,7 @@ h3 {
   display: grid;
 }
 
+
 /* components/_buttons.css */
 /* ==========================================================================
    Button Component System
@@ -879,6 +883,7 @@ h3 {
   outline-offset: var(--space-2);
 }
 
+
 /* components/_cards.css */
 /* ==========================================================================
    Card Component System
@@ -897,7 +902,10 @@ h3 {
   position: relative;
   width: calc(var(--card-base, 200px) * var(--scale, 1));
   flex: 0 0 auto;
-  transition: var(--transition-normal);
+  transition:
+    transform var(--transition-normal),
+    box-shadow var(--transition-normal),
+    border-color var(--transition-normal);
   touch-action: manipulation;
   -webkit-tap-highlight-color: rgba(106, 163, 255, 0.1);
   box-shadow: var(--shadow-sm);
@@ -1137,7 +1145,9 @@ h3 {
   justify-content: center;
   touch-action: manipulation;
   -webkit-tap-highlight-color: rgba(255, 208, 90, 0.2);
-  transition: var(--transition-fast);
+  transition:
+    transform var(--transition-fast),
+    filter var(--transition-fast);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1291,6 +1301,7 @@ h3 {
     font-size: 11px;
   }
 }
+
 
 /* components/_forms.css */
 /* ==========================================================================
@@ -1757,6 +1768,7 @@ input:invalid:focus {
   }
 }
 
+
 /* layout/_header.css */
 /* ==========================================================================
    Header Component System
@@ -1988,6 +2000,7 @@ body.has-footer::after {
     padding-bottom: max(var(--space-6), env(safe-area-inset-bottom));
   }
 }
+
 
 /* layout/_toolbar.css */
 /* ==========================================================================
@@ -2374,6 +2387,7 @@ body.filters-panel-open #filters {
   }
 }
 
+
 /* layout/_grid.css */
 /* ==========================================================================
    Grid System
@@ -2655,6 +2669,7 @@ body.filters-panel-open #filters {
   min-height: 400px;
 }
 
+
 /* pages/_home.css */
 /* ==========================================================================
    Home Page Styles
@@ -2839,6 +2854,7 @@ body.filters-panel-open #filters {
     gap: var(--space-4);
   }
 }
+
 
 /* pages/_trends.css */
 /* ==========================================================================
@@ -4061,6 +4077,7 @@ body.filters-panel-open #filters {
   }
 }
 
+
 /* pages/_archetype.css */
 /* ==========================================================================
    Archetype Page Styles
@@ -5262,6 +5279,7 @@ body.filters-panel-open #filters {
 .archetype-home-page[data-state='error'] .archetype-error {
   display: flex;
 }
+
 
 /* pages/_archetype-trends.css */
 /* ==========================================================================
@@ -6522,6 +6540,7 @@ body.filters-panel-open #filters {
   top: var(--space-2);
 }
 
+
 /* pages/_responsive.css */
 /* ==========================================================================
    Responsive Design Utilities
@@ -6911,6 +6930,7 @@ body.filters-panel-open #filters {
     min-height: 48px;
   }
 }
+
 
 /* main.css */
 /* ==========================================================================
