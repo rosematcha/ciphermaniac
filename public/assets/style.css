@@ -1698,10 +1698,7 @@ h2 {
   gap: var(--gap);
   align-items: stretch;
   --scale: 1;
-  /* Performance: contain row layout to prevent reflow propagation */
   contain: layout style;
-  /* Hint to browser for transform/opacity animations */
-  will-change: contents;
 }
 
 /* Removed empty rule */
