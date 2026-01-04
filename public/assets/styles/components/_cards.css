@@ -329,10 +329,7 @@
   gap: var(--gap);
   align-items: stretch;
   --scale: 1;
-  /* Performance: contain row layout to prevent reflow propagation */
   contain: layout style;
-  /* Hint to browser for transform/opacity animations */
-  will-change: contents;
 }
 
 /* Add a subtle top padding to the first row of cards */
