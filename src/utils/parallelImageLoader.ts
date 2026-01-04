@@ -104,51 +104,17 @@ class ParallelImageLoader {
   private _loadSingleImage(url: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      if (this._isSameOriginUrl(url)) {
-        // Only opt into anonymous CORS when the image URL resolves to the same origin.
-        img.crossOrigin = 'anonymous';
-      }
 
       img.onload = () => {
-        resolve(url); // Return the successful URL
+        resolve(url);
       };
 
       img.onerror = () => {
         reject(new Error(`Failed to load: ${url}`));
       };
 
-      // Start loading
       img.src = url;
     });
-  }
-
-  /**
-   * Determine if a URL resolves to the same origin as the current page.
-   * We only set crossOrigin for same-origin assets because third-party CDNs
-   * (like Limitless) do not expose the headers required for anonymous CORS.
-   * @param url
-   * @returns
-   */
-  private _isSameOriginUrl(url: string): boolean {
-    const hasScheme = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(url);
-    const isProtocolRelative = url.startsWith('//');
-
-    if (!hasScheme && !isProtocolRelative) {
-      // Relative (including root-relative) paths always resolve against our origin.
-      return true;
-    }
-
-    if (typeof window === 'undefined' || !window.location) {
-      // Unable to determine origin outside the browser context - assume external.
-      return false;
-    }
-
-    try {
-      const parsed = new URL(url, window.location.origin);
-      return parsed.origin === window.location.origin;
-    } catch {
-      return false;
-    }
   }
 
   /**

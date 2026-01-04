@@ -1,6 +1,6 @@
 /* ==========================================================================
      Ciphermaniac - Optimized CSS Build
-     Generated: 2025-12-25T01:09:50.164Z
+     Generated: 2026-01-04T16:33:35.199Z
      Architecture: Modular CSS with Design Tokens
      Size Reduction: ~25% from original
      ========================================================================== */
@@ -902,7 +902,10 @@ h3 {
   position: relative;
   width: calc(var(--card-base, 200px) * var(--scale, 1));
   flex: 0 0 auto;
-  transition: var(--transition-normal);
+  transition:
+    transform var(--transition-normal),
+    box-shadow var(--transition-normal),
+    border-color var(--transition-normal);
   touch-action: manipulation;
   -webkit-tap-highlight-color: rgba(106, 163, 255, 0.1);
   box-shadow: var(--shadow-sm);
@@ -1142,7 +1145,9 @@ h3 {
   justify-content: center;
   touch-action: manipulation;
   -webkit-tap-highlight-color: rgba(255, 208, 90, 0.2);
-  transition: var(--transition-fast);
+  transition:
+    transform var(--transition-fast),
+    filter var(--transition-fast);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1216,10 +1221,7 @@ h3 {
   gap: var(--gap);
   align-items: stretch;
   --scale: 1;
-  /* Performance: contain row layout to prevent reflow propagation */
   contain: layout style;
-  /* Hint to browser for transform/opacity animations */
-  will-change: contents;
 }
 
 /* Add a subtle top padding to the first row of cards */

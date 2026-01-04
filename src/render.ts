@@ -4,6 +4,12 @@ export const NUM_LARGE_ROWS = 1;
 // Number of rows to render as 'medium' rows (after large rows)
 export const NUM_MEDIUM_ROWS = 1;
 const MOBILE_MAX_WIDTH = 880;
+
+// Safari detection for performance tuning - Safari's ResizeObserver needs longer throttle
+const IS_SAFARI = typeof navigator !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+// Safari needs longer throttle (150ms) due to slower layout recalculation
+const RESIZE_THROTTLE_MS = IS_SAFARI ? 150 : 50;
 import { buildThumbCandidates } from './thumbs.js';
 import { computeLayout, syncControlsWidth } from './layoutHelper.js';
 import { trackMissing } from './dev/missingThumbs.js';
@@ -66,11 +72,10 @@ export function initGridResizeObserver(): void {
     return;
   }
 
-  // Create throttled version of updateLayout (50ms throttle for smooth resize)
   if (!throttledUpdateLayout) {
     throttledUpdateLayout = throttle(() => {
       updateLayout();
-    }, 50);
+    }, RESIZE_THROTTLE_MS);
   }
 
   const observer = new ResizeObserver(entries => {
@@ -1668,8 +1673,10 @@ export function updateLayout() {
     grid._moreWrapRef = null;
   }
 
-  // Atomically replace grid content to prevent flashing
-  grid.replaceChildren(frag);
+  // Atomically replace grid content - wrap in rAF for Safari layout batching
+  requestAnimationFrame(() => {
+    grid.replaceChildren(frag);
+  });
 
   // Cache last layout metrics for fast-path updates on minor resizes
   grid._layoutMetrics = {
