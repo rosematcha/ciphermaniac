@@ -1,6 +1,6 @@
 /* ==========================================================================
      Ciphermaniac - Optimized CSS Build
-     Generated: 2026-01-04T16:33:35.199Z
+     Generated: 2026-01-05T16:36:33.023Z
      Architecture: Modular CSS with Design Tokens
      Size Reduction: ~25% from original
      ========================================================================== */
@@ -2679,8 +2679,15 @@ body.filters-panel-open #filters {
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
-  padding-top: var(--space-16);
+  /* Fill the available viewport height (footer sits outside main) */
+  flex-grow: 1;
+  min-height: 0;
+  /* Position content around 40% from the top by using padding ratio */
+  /* Top padding is larger to push content down, creating the 40/60 split feel */
+  padding-top: min(18vh, 180px);
   padding-bottom: var(--space-16);
+  /* Center the content wrapper within the flex container */
+  justify-content: flex-start;
 }
 
 /* Hero Section */
@@ -2839,7 +2846,8 @@ body.filters-panel-open #filters {
 @media (max-width: 720px) {
   .home-page {
     gap: var(--space-12);
-    padding-top: var(--space-8);
+    /* Keep similar 40% visual positioning on mobile, with smaller values */
+    padding-top: min(15vh, 100px);
   }
 
   .hero-search input[type='search'] {
@@ -2854,7 +2862,6 @@ body.filters-panel-open #filters {
     gap: var(--space-4);
   }
 }
-
 
 /* pages/_trends.css */
 /* ==========================================================================

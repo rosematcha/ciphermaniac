@@ -193,8 +193,8 @@ body {
 }
 
 /* Ensure header always has correct styles with high specificity */
-body:not(.no-header) > .site-header,
-body:not(.no-header) > header {
+body:not(.no-header)>.site-header,
+body:not(.no-header)>header {
   padding: 12px 0;
   background: var(--panel);
   border-bottom: 1px solid #20243a;
@@ -480,6 +480,7 @@ body:not(.no-header) > header {
 }
 
 @media (max-width: 800px) {
+
   .filter-field,
   .filter-dropdown {
     min-width: 100%;
@@ -534,6 +535,7 @@ body:not(.no-header) > header {
 
 /* Button mobile adjustments */
 @media (max-width: 720px) {
+
   .btn,
   .filters-toggle,
   .nav-toggle {
@@ -866,6 +868,7 @@ body.filters-panel-open #filters {
 }
 
 @media (hover: hover) and (pointer: fine) {
+
   .filter-chip--more:hover,
   .filter-chip--collapse:hover {
     background: rgba(106, 163, 255, 0.08);
@@ -1368,6 +1371,7 @@ input[type='checkbox']:indeterminate::before {
 }
 
 @media (max-width: 720px) {
+
   .controls input[type='search'],
   .controls select {
     padding: 14px 16px;
@@ -1407,6 +1411,7 @@ input[type='checkbox']:indeterminate::before {
 }
 
 @media (max-width: 720px) {
+
   .card-search .search-wrap .search-icon,
   .toolbar .search-wrap .search-icon {
     left: 16px;
@@ -1421,6 +1426,7 @@ input[type='checkbox']:indeterminate::before {
 }
 
 @media (max-width: 720px) {
+
   .card-search .search-wrap input[type='search'],
   .toolbar .search-wrap input[type='search'] {
     padding-left: 48px;
@@ -1490,6 +1496,7 @@ input[type='checkbox']:indeterminate::before {
 }
 
 @media (hover: hover) and (pointer: fine) {
+
   .card-search .suggestions .item:hover,
   .toolbar .suggestions .item:hover,
   .hero-search .suggestions .item:hover {
@@ -1527,6 +1534,7 @@ input[type='checkbox']:indeterminate::before {
 }
 
 @media (max-width: 720px) {
+
   .card-search .search-wrap,
   .toolbar .search-wrap {
     width: 100%;
@@ -1754,7 +1762,7 @@ h2 {
     border-color: var(--accent-2);
   }
 
-  .card:hover .titleRow .name > span:first-child {
+  .card:hover .titleRow .name>span:first-child {
     text-decoration: underline;
     text-underline-offset: 2px;
   }
@@ -2653,7 +2661,7 @@ body.card-image-modal-open {
 }
 
 /* Avoid duplicate timeline notes: prefer the one near the events table */
-#card-meta > .toggle-note {
+#card-meta>.toggle-note {
   display: none;
 }
 
@@ -2789,6 +2797,7 @@ body.card-image-modal-open {
 }
 
 @media (max-width: 720px) {
+
   .card-sect th,
   .card-sect td {
     padding: 8px;
@@ -2797,6 +2806,7 @@ body.card-image-modal-open {
 }
 
 @media (max-width: 480px) {
+
   .card-sect th,
   .card-sect td {
     padding: 6px;
@@ -2887,6 +2897,7 @@ body.card-image-modal-open {
 }
 
 @media (max-width: 720px) {
+
   /* On medium/narrow screens, allow the table to keep proportions but be scrollable */
   .card-sect table {
     table-layout: fixed;
@@ -2931,16 +2942,16 @@ body.card-image-modal-open {
   position: relative;
 }
 
-.skeleton-loading > .skeleton-text,
-.skeleton-loading > .skeleton-image,
-.skeleton-loading > .skeleton-chart,
-.skeleton-loading > .skeleton-histogram,
-.showing-skeleton > * {
+.skeleton-loading>.skeleton-text,
+.skeleton-loading>.skeleton-image,
+.skeleton-loading>.skeleton-chart,
+.skeleton-loading>.skeleton-histogram,
+.showing-skeleton>* {
   animation: skeleton-loading 1.5s ease-in-out infinite;
 }
 
 /* When skeleton is removed, fade in the new content */
-.card-sect > *:not(.skeleton-loading):not(.skeleton-chart):not(.skeleton-histogram):not([aria-hidden='true']) {
+.card-sect>*:not(.skeleton-loading):not(.skeleton-chart):not(.skeleton-histogram):not([aria-hidden='true']) {
   animation: fadeInContent 0.2s ease-out forwards;
 }
 
@@ -3323,23 +3334,21 @@ body.card-image-modal-open {
   top: 40%;
   right: 0;
   height: 2px;
-  background: linear-gradient(
-    to right,
-    var(--accent-2) 0%,
-    var(--accent-2) 15%,
-    transparent 15%,
-    transparent 25%,
-    var(--accent-2) 25%,
-    var(--accent-2) 40%,
-    transparent 40%,
-    transparent 60%,
-    var(--accent-2) 60%,
-    var(--accent-2) 75%,
-    transparent 75%,
-    transparent 85%,
-    var(--accent-2) 85%,
-    var(--accent-2) 100%
-  );
+  background: linear-gradient(to right,
+      var(--accent-2) 0%,
+      var(--accent-2) 15%,
+      transparent 15%,
+      transparent 25%,
+      var(--accent-2) 25%,
+      var(--accent-2) 40%,
+      transparent 40%,
+      transparent 60%,
+      var(--accent-2) 60%,
+      var(--accent-2) 75%,
+      transparent 75%,
+      transparent 85%,
+      var(--accent-2) 85%,
+      var(--accent-2) 100%);
   border-radius: 1px;
   animation: skeleton-loading 2s ease-in-out infinite;
 }
@@ -3533,6 +3542,7 @@ body.card-image-modal-open {
 }
 
 @media (hover: hover) and (pointer: fine) {
+
   .analysis-list-item__button:hover,
   .analysis-list-item__button:focus-visible {
     border-color: rgba(112, 128, 255, 0.4);
@@ -3610,7 +3620,7 @@ body.card-image-modal-open {
 }
 
 /* Hide base image when using split view */
-.analysis-list-item__thumbnail--split > .analysis-list-item__thumbnail-image {
+.analysis-list-item__thumbnail--split>.analysis-list-item__thumbnail-image {
   display: none;
 }
 
@@ -5063,11 +5073,11 @@ body.card-image-modal-open {
   transition: all 0.15s;
 }
 
-.chart-checkbox input:checked + .checkbox-indicator {
+.chart-checkbox input:checked+.checkbox-indicator {
   border-color: transparent;
 }
 
-.chart-checkbox input:not(:checked) + .checkbox-indicator:hover {
+.chart-checkbox input:not(:checked)+.checkbox-indicator:hover {
   border-color: rgba(112, 128, 255, 0.7);
 }
 
@@ -6407,13 +6417,11 @@ body.card-image-modal-open {
 }
 
 .binder-card__thumb--missing {
-  background: repeating-linear-gradient(
-    45deg,
-    rgba(255, 255, 255, 0.08),
-    rgba(255, 255, 255, 0.08) 8px,
-    rgba(255, 255, 255, 0.02) 8px,
-    rgba(255, 255, 255, 0.02) 16px
-  );
+  background: repeating-linear-gradient(45deg,
+      rgba(255, 255, 255, 0.08),
+      rgba(255, 255, 255, 0.08) 8px,
+      rgba(255, 255, 255, 0.02) 8px,
+      rgba(255, 255, 255, 0.02) 16px);
 }
 
 .binder-card__thumb--missing::after {
@@ -6457,13 +6465,11 @@ body.card-image-modal-open {
 .binder-card--placeholder {
   border-radius: var(--border-radius);
   border: 1px dashed rgba(255, 255, 255, 0.2);
-  background: repeating-linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.06),
-    rgba(255, 255, 255, 0.06) 12px,
-    rgba(255, 255, 255, 0.02) 12px,
-    rgba(255, 255, 255, 0.02) 24px
-  );
+  background: repeating-linear-gradient(135deg,
+      rgba(255, 255, 255, 0.06),
+      rgba(255, 255, 255, 0.06) 12px,
+      rgba(255, 255, 255, 0.02) 12px,
+      rgba(255, 255, 255, 0.02) 24px);
   min-height: 0;
 }
 
@@ -6968,7 +6974,7 @@ body.card-image-modal-open {
   min-height: 46px;
 }
 
-.archetype-filter-message + .archetype-filter-message {
+.archetype-filter-message+.archetype-filter-message {
   margin-top: 12px;
 }
 
@@ -7153,6 +7159,7 @@ body.card-image-modal-open {
 
 /* Mobile Adjustments for Filter Rows */
 @media (max-width: 600px) {
+
   .archetype-controls-panel .filter-card-select,
   .archetype-controls-panel .filter-operator-select,
   .archetype-controls-panel .filter-count-input {
@@ -7442,7 +7449,7 @@ body.card-image-modal-open {
   flex-wrap: wrap;
 }
 
-.trend-panel__header > div:first-child {
+.trend-panel__header>div:first-child {
   flex-shrink: 0;
 }
 
@@ -7675,7 +7682,7 @@ body.card-image-modal-open {
 }
 
 /* Hide standalone y-axis info - it's now in the controls */
-.trend-panel > .meta-ymax {
+.trend-panel>.meta-ymax {
   display: none;
 }
 
@@ -8018,6 +8025,7 @@ tr:hover td {
 }
 
 @keyframes float {
+
   0%,
   100% {
     transform: translateY(0px);
@@ -8216,6 +8224,7 @@ tr:hover td {
 
 /* Smooth content appearance instead of jarring pop-in */
 @media (prefers-reduced-motion: no-preference) {
+
   .card,
   .feature-card,
   .analysis-list-item__button {
@@ -8340,6 +8349,7 @@ tr:hover td {
    Respect users who prefer reduced motion for accessibility
    ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -8350,11 +8360,11 @@ tr:hover td {
   }
 
   /* Disable skeleton loading animation */
-  .skeleton-loading > .skeleton-text,
-  .skeleton-loading > .skeleton-image,
-  .skeleton-loading > .skeleton-chart,
-  .skeleton-loading > .skeleton-histogram,
-  .showing-skeleton > *,
+  .skeleton-loading>.skeleton-text,
+  .skeleton-loading>.skeleton-image,
+  .skeleton-loading>.skeleton-chart,
+  .skeleton-loading>.skeleton-histogram,
+  .showing-skeleton>*,
   .skeleton-card {
     animation: none;
   }
@@ -9712,12 +9722,12 @@ tr:hover td {
   justify-content: center;
 }
 
-.chart-checkbox input:checked + .checkbox-indicator {
+.chart-checkbox input:checked+.checkbox-indicator {
   border-color: var(--accent-2);
   background: var(--accent-2);
 }
 
-.chart-checkbox input:focus + .checkbox-indicator {
+.chart-checkbox input:focus+.checkbox-indicator {
   box-shadow: 0 0 0 2px rgba(106, 163, 255, 0.2);
 }
 
@@ -10188,4 +10198,222 @@ tr:hover td {
 
 .u-transition-slow {
   transition: var(--transition-slow);
+}
+
+/* ==========================================================================
+   Home Page Styles
+   ========================================================================== */
+
+.home-page {
+  display: flex;
+  flex-direction: column;
+  gap: 64px;
+  /* Fill the available viewport height */
+  flex-grow: 1;
+  min-height: 0;
+  /* Dynamic positioning based on viewport height:
+     - Small screens (720p): ~8vh padding (~58px)
+     - Medium screens (1080p): ~12vh padding (~130px)
+     - Large screens (1440p+): ~15vh padding (~216px, capped at 200px)
+     Uses clamp to scale smoothly between these values */
+  padding-top: clamp(40px, 10vh, 160px);
+  padding-bottom: 64px;
+  justify-content: flex-start;
+}
+
+/* Hero Section */
+.hero {
+  text-align: center;
+  padding: 0 20px;
+}
+
+.hero-content {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.hero-title {
+  font-family: 'Fraunces', 'Fraunces Fallback', Georgia, serif;
+  font-size: clamp(48px, 8vw, 80px);
+  font-weight: 900;
+  font-variation-settings:
+    'SOFT' 100,
+    'WONK' 1;
+  margin: 0;
+  color: #fff;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+}
+
+.hero-logo {
+  width: clamp(70px, 11vw, 110px);
+  height: auto;
+  filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 24px rgba(254, 228, 117, 0.15));
+  flex-shrink: 0;
+  margin-bottom: 4px;
+  aspect-ratio: 1 / 1;
+}
+
+.hero-subtitle {
+  font-size: clamp(18px, 4vw, 24px);
+  color: var(--muted);
+  margin: 0;
+  max-width: 600px;
+  line-height: 1.6;
+}
+
+/* Hero Search */
+.hero-search {
+  width: 100%;
+  max-width: 600px;
+  margin-top: 16px;
+}
+
+.hero-search .search-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.hero-search input[type='search'] {
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 20px 24px 20px 56px;
+  font-size: 18px;
+  color: var(--text);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.hero-search input[type='search']:focus {
+  outline: none;
+  border-color: var(--accent-2);
+  box-shadow: 0 12px 32px rgba(106, 163, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.hero-search .search-icon {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Features Section */
+.features-section {
+  padding: 0 20px;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.feature-card {
+  background: linear-gradient(145deg, var(--panel), #1c1e24);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 20px;
+  padding: 32px;
+  text-decoration: none;
+  color: var(--text);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  border-color: var(--accent-2);
+}
+
+.feature-icon {
+  width: 56px;
+  height: 56px;
+  background: rgba(106, 163, 255, 0.1);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-2);
+  margin-bottom: 8px;
+}
+
+.feature-card h3 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+}
+
+.feature-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 16px;
+}
+
+/* Responsive adjustments for home page */
+
+/* Short height screens (720p or landscape mobile) - minimal padding */
+@media (max-height: 800px) {
+  .home-page {
+    gap: 40px;
+    padding-top: clamp(24px, 6vh, 80px);
+  }
+}
+
+/* Very short screens (landscape phone, 720p windowed) - even less padding */
+@media (max-height: 600px) {
+  .home-page {
+    gap: 32px;
+    padding-top: clamp(16px, 4vh, 48px);
+  }
+}
+
+/* Mobile width adjustments */
+@media (max-width: 720px) {
+  .home-page {
+    gap: 48px;
+    /* Mobile uses smaller padding, prioritizing content visibility */
+    padding-top: clamp(24px, 8vh, 80px);
+  }
+
+  .hero-search input[type='search'] {
+    font-size: 16px;
+    padding: 16px 20px 16px 48px;
+  }
+}
+
+/* Small phones - very compact */
+@media (max-width: 400px) {
+  .home-page {
+    gap: 32px;
+    padding-top: 20px;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
