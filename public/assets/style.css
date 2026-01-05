@@ -437,8 +437,8 @@ body:not(.no-header)>header {
 /* Toolbar (search & filters) sits below header */
 .toolbar {
   background: transparent;
-  border-bottom: 1px solid #171824;
-  padding: 20px 0 10px;
+  /* border-bottom: 1px solid #171824; */
+  padding: 20px 0 0;
 }
 
 .toolbar-inner {
@@ -2604,6 +2604,7 @@ body.card-image-modal-open {
   display: grid;
   grid-template-rows: auto auto;
   gap: 8px 16px;
+  max-width: 700px;
 }
 
 #card-window {
@@ -2615,6 +2616,11 @@ body.card-image-modal-open {
 #card-chart {
   width: 100%;
   overflow: hidden;
+}
+
+#card-chart svg {
+  width: 100%;
+  height: auto;
 }
 
 #card-copies {
@@ -2665,13 +2671,13 @@ body.card-image-modal-open {
   display: none;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1270px) {
   #card-meta {
     grid-template-columns: 240px minmax(0, 1fr);
     grid-template-areas:
       'header header'
       'hero   center'
-      'hero   events';
+      'events events';
   }
 
   .card-hero .thumb {
@@ -2679,7 +2685,7 @@ body.card-image-modal-open {
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 560px) {
   #card-meta {
     grid-template-columns: 1fr;
     grid-template-areas:
@@ -2866,11 +2872,13 @@ body.card-image-modal-open {
 /* Floating header clone styling (used by JS fallback) */
 .floating-thead {
   pointer-events: none;
+  background: var(--bg, #0a0c15);
 }
 
 .floating-thead table {
   width: 100%;
   border-collapse: collapse;
+  margin: 0;
 }
 
 .floating-thead th {
