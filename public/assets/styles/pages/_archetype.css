@@ -15,6 +15,7 @@
   flex-direction: column;
   gap: var(--space-6);
   width: 100%;
+  position: relative;
 }
 
 /* Reset for pages using archetype-simple */
@@ -625,16 +626,19 @@
   margin: 0;
 }
 
-/* Loading State */
+/* Loading State - uses overlay positioning to prevent layout shift */
 .archetype-loading {
   display: none;
+  position: absolute;
+  inset: 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 300px;
   gap: var(--space-4);
   color: var(--muted);
   padding: var(--space-8);
+  background: rgba(10, 14, 28, 0.92);
+  z-index: 10;
 }
 
 .loading-spinner {
@@ -1178,8 +1182,8 @@
 }
 
 /* Page state management - ONLY for archetype home page */
+/* Loading overlay covers content - no opacity change to prevent double dim */
 .archetype-home-page[data-state='loading'] .archetype-main {
-  opacity: 0.3;
   pointer-events: none;
 }
 

@@ -1,6 +1,6 @@
 /* ==========================================================================
      Ciphermaniac - Optimized CSS Build
-     Generated: 2026-01-05T16:36:33.023Z
+     Generated: 2026-01-05T19:26:35.119Z
      Architecture: Modular CSS with Design Tokens
      Size Reduction: ~25% from original
      ========================================================================== */
@@ -2679,14 +2679,16 @@ body.filters-panel-open #filters {
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
-  /* Fill the available viewport height (footer sits outside main) */
+  /* Fill the available viewport height */
   flex-grow: 1;
   min-height: 0;
-  /* Position content around 40% from the top by using padding ratio */
-  /* Top padding is larger to push content down, creating the 40/60 split feel */
-  padding-top: min(18vh, 180px);
+  /* Dynamic positioning based on viewport height:
+     - Small screens (720p): ~8vh padding (~58px)
+     - Medium screens (1080p): ~12vh padding (~130px)
+     - Large screens (1440p+): ~15vh padding (~216px, capped at 160px)
+     Uses clamp to scale smoothly between these values */
+  padding-top: clamp(40px, 10vh, 160px);
   padding-bottom: var(--space-16);
-  /* Center the content wrapper within the flex container */
   justify-content: flex-start;
 }
 
@@ -2842,12 +2844,30 @@ body.filters-panel-open #filters {
   font-size: var(--font-size-lg);
 }
 
-/* Responsive adjustments */
+/* Responsive adjustments for home page */
+
+/* Short height screens (720p or landscape mobile) - minimal padding */
+@media (max-height: 800px) {
+  .home-page {
+    gap: var(--space-10);
+    padding-top: clamp(24px, 6vh, 80px);
+  }
+}
+
+/* Very short screens (landscape phone, 720p windowed) - even less padding */
+@media (max-height: 600px) {
+  .home-page {
+    gap: var(--space-8);
+    padding-top: clamp(16px, 4vh, 48px);
+  }
+}
+
+/* Mobile width adjustments */
 @media (max-width: 720px) {
   .home-page {
     gap: var(--space-12);
-    /* Keep similar 40% visual positioning on mobile, with smaller values */
-    padding-top: min(15vh, 100px);
+    /* Mobile uses smaller padding, prioritizing content visibility */
+    padding-top: clamp(24px, 8vh, 80px);
   }
 
   .hero-search input[type='search'] {
@@ -2856,7 +2876,13 @@ body.filters-panel-open #filters {
   }
 }
 
+/* Small phones - very compact */
 @media (max-width: 400px) {
+  .home-page {
+    gap: var(--space-8);
+    padding-top: 20px;
+  }
+
   .features-grid {
     grid-template-columns: 1fr;
     gap: var(--space-4);
@@ -4103,6 +4129,7 @@ body.filters-panel-open #filters {
   flex-direction: column;
   gap: var(--space-6);
   width: 100%;
+  position: relative;
 }
 
 /* Reset for pages using archetype-simple */
@@ -4713,16 +4740,19 @@ body.filters-panel-open #filters {
   margin: 0;
 }
 
-/* Loading State */
+/* Loading State - uses overlay positioning to prevent layout shift */
 .archetype-loading {
   display: none;
+  position: absolute;
+  inset: 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 300px;
   gap: var(--space-4);
   color: var(--muted);
   padding: var(--space-8);
+  background: rgba(10, 14, 28, 0.92);
+  z-index: 10;
 }
 
 .loading-spinner {
@@ -5266,8 +5296,8 @@ body.filters-panel-open #filters {
 }
 
 /* Page state management - ONLY for archetype home page */
+/* Loading overlay covers content - no opacity change to prevent double dim */
 .archetype-home-page[data-state='loading'] .archetype-main {
-  opacity: 0.3;
   pointer-events: none;
 }
 
@@ -5286,7 +5316,6 @@ body.filters-panel-open #filters {
 .archetype-home-page[data-state='error'] .archetype-error {
   display: flex;
 }
-
 
 /* pages/_archetype-trends.css */
 /* ==========================================================================
