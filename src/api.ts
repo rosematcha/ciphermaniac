@@ -712,24 +712,48 @@ export function fetchMeta(tournament: string): Promise<MetaReport> {
 }
 
 /**
- * Fetch per-tournament card index (cardIndex.json)
- * @param tournament
- * @returns
+ * Card index entry structure (derived from master.json items)
  */
-export async function fetchCardIndex(tournament: string): Promise<{ deckTotal: number; cards: Record<string, any> }> {
-  const data = await fetchReportResource(
-    `${encodeURIComponent(tournament)}/cardIndex.json`,
-    `card index for ${tournament}`,
-    'object',
-    'card index',
-    { cache: true }
-  );
-  if (typeof data.deckTotal !== 'number' || !data.cards || typeof data.cards !== 'object') {
-    throw new AppError(ErrorTypes.PARSE, 'Invalid card index schema', null, {
-      tournament
-    });
+interface CardIndexEntry {
+  found: number;
+  total: number;
+  pct: number;
+  dist?: Array<{ copies: number; players: number; percent: number }>;
+  sets: string[];
+}
+
+/**
+ * Build a card index from master.json report data
+ * Transforms the items array into a name-keyed lookup matching the old cardIndex.json format
+ * @param report - Tournament report from fetchReport
+ * @returns Card index with deckTotal and cards lookup
+ */
+export function buildCardIndexFromMaster(report: TournamentReport): {
+  deckTotal: number;
+  cards: Record<string, CardIndexEntry>;
+} {
+  const cards: Record<string, CardIndexEntry> = {};
+  for (const item of report.items || []) {
+    const { name } = item;
+    if (!name) {
+      continue;
+    }
+    // Aggregate sets for cards with same name (different printings)
+    if (cards[name]) {
+      if (item.set && !cards[name].sets.includes(item.set)) {
+        cards[name].sets.push(item.set);
+      }
+      continue;
+    }
+    cards[name] = {
+      found: item.found ?? 0,
+      total: item.total ?? report.deckTotal ?? 0,
+      pct: item.pct ?? 0,
+      dist: item.dist as CardIndexEntry['dist'],
+      sets: item.set ? [item.set] : []
+    };
   }
-  return data;
+  return { deckTotal: report.deckTotal ?? 0, cards };
 }
 
 /**

@@ -1,9 +1,9 @@
 // Entry for per-card page: loads meta-share over tournaments and common decks
 import './utils/buildVersion.js';
 import {
+  buildCardIndexFromMaster,
   fetchArchetypeReport,
   fetchArchetypesList,
-  fetchCardIndex,
   fetchReport,
   fetchTop8ArchetypesList,
   fetchTournamentsList
@@ -378,7 +378,8 @@ async function checkCardExistsInDatabase(cardIdentifier: string): Promise<boolea
     const tournamentsToCheck = tournamentList.slice(0, 8);
     for (const tournament of tournamentsToCheck) {
       try {
-        const index = await fetchCardIndex(tournament);
+        const report = await fetchReport(tournament);
+        const index = buildCardIndexFromMaster(report);
         const cards = index?.cards;
         if (!cards || typeof cards !== 'object') {
           continue;
@@ -686,7 +687,8 @@ async function loadAndRenderMainContent(tournaments: string[], cacheObject: any,
         if (!hasUID) {
           // Try cardIndex for base name lookups (trainers and base Pokemon names)
           try {
-            const idx = await fetchCardIndex(tournamentName);
+            const report = await fetchReport(tournamentName);
+            const idx = buildCardIndexFromMaster(report);
             const baseName = getBaseName(cardIdentifier!) || '';
             const matchingKey =
               Object.keys(idx.cards || {}).find(k => k.toLowerCase() === baseName.toLowerCase()) || '';

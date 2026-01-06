@@ -4,7 +4,13 @@
  * @module card/missingCard
  */
 
-import { fetchCardIndex, fetchReport, fetchTournamentsList, fetchTrendReport, ONLINE_META_NAME } from '../api.js';
+import {
+  buildCardIndexFromMaster,
+  fetchReport,
+  fetchTournamentsList,
+  fetchTrendReport,
+  ONLINE_META_NAME
+} from '../api.js';
 import { parseReport } from '../parse.js';
 import { buildThumbCandidates } from '../thumbs.js';
 import { logger } from '../utils/errorHandler.js';
@@ -497,7 +503,8 @@ export async function resolveMissingCardDisplayName(cardIdentifier: string): Pro
   const subset = tournaments.slice(0, 12);
   for (const tournament of subset) {
     try {
-      const index = await fetchCardIndex(tournament);
+      const report = await fetchReport(tournament);
+      const index = buildCardIndexFromMaster(report);
       const match = matchFromIndex(index?.cards, searchKeys);
       if (match) {
         return match;
