@@ -1,6 +1,8 @@
-<p align="center">
-  <img src="public/assets/images/logo.svg" alt="Ciphermaniac Logo" width="120" height="120">
-</p>
+<a href="https://ciphermaniac.com">
+  <p align="center">
+    <img src="public/assets/images/logo.svg" alt="Ciphermaniac Logo" width="120" height="120">
+  </p>
+</a>
 
 <h1 align="center">Ciphermaniac</h1>
 
@@ -26,20 +28,18 @@
 
 ---
 
-Ciphermaniac aggregates Pokémon TCG tournament data and turns it into something useful. Look up any card and see where it's played. Browse archetypes and filter by specific cards. Track what's rising and falling in the meta.
-
-**[ciphermaniac.com](https://ciphermaniac.com)**
+Ciphermaniac aggregates and analyzes Pokémon TCG tournament data to provide useful insights. Look up any card and see where it's played. Browse archetypes and filter by specific cards, and track what's rising and falling in the meta.
 
 ---
 
 ## Features
 
-- **Per-card data** — Pick any card, see which decks run it, average copy count, and usage over time
-- **Archetype breakdowns** — Core lists, tech choices, and variant comparisons
-- **Flexible filtering** — Multiple includes, multiple excludes, specific copy counts
-- **Meta trends** — Track archetype popularity and card usage shifts over time
-- **Price data** — Current market prices from TCGPlayer
-- **Fast loads** — Reports are statically compiled, so pages load in under a second
+- **Per-card data** - Pick any card, see which decks run it, average copy count, and usage over time
+- **Archetype breakdowns** - Core lists, tech choices, and variant comparisons
+- **Flexible filtering** - Multiple includes, multiple excludes, specific copy counts
+- **Meta trends** - Track archetype popularity and card usage shifts over time
+- **Price data** - Current market prices from TCGPlayer
+- **Fast loads** - Reports are statically compiled, so pages load in under a second
 
 ---
 
@@ -51,10 +51,10 @@ Tournament data is collected and processed automatically through GitHub Actions:
 |----------|-------------|----------|
 | **Online Meta** | Aggregates the last 14 days of online tournaments from [PlayLimitless](https://play.limitlesstcg.com/) | Daily |
 | **Daily Pricing** | Fetches market prices from [TCGCSV](https://tcgcsv.com/) | Daily |
-| **Tournament Reports** | Scrapes Day 2 decklists from major events on [LimitlessTCG](https://limitlesstcg.com/) | On-demand |
 | **Meta Trends** | Computes archetype popularity and card usage trends | Daily |
+| **Tournament Reports** | Scrapes Day 2 decklists from major events on [LimitlessTCG](https://limitlesstcg.com/) | On-demand |
 
-Data is stored in Cloudflare R2 and served via Cloudflare Pages.
+Data is stored in Cloudflare R2; more details at [r2.ciphermaniac.com](https://r2.ciphermaniac.com/).
 
 ---
 
@@ -162,7 +162,7 @@ perf.end('myOperation');
 
 - **[TrainerHill](https://trainerhill.com)** and **Brad** — Deck archetype analysis and early development support.
 
-- **[TCGCSV](https://tcgcsv.com)** and **CptSpaceToaster** — TCGPlayer market prices.
+- **[TCGCSV](https://tcgcsv.com)** and **CptSpaceToaster** —For exposing TCGPlayer market price in a compatible and malleable form after TCGPlayer's API crackdown.
 
 ---
 
