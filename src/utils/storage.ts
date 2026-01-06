@@ -14,7 +14,6 @@ interface StorageConfigEntry<T> {
 
 interface GridCache {
   master?: Record<string, any>;
-  cardIndex?: Record<string, any>;
   archeIndex?: Record<string, any>;
 }
 

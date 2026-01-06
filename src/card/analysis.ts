@@ -59,10 +59,16 @@ export async function renderAnalysisTable(tournament: string, cardIdentifier: st
     return;
   }
 
-  // Show loading state with skeleton
+  // Create wrapper with relative positioning for overlay loading indicator
+  const loadingWrapper = document.createElement('div');
+  loadingWrapper.className = 'analysis-loading-wrapper';
+  loadingWrapper.style.cssText = 'position: relative; min-height: 200px;';
+
+  // Show loading state with skeleton (provides reserved space)
   const loadingSkeleton = document.createElement('div');
   loadingSkeleton.className = 'skeleton-analysis-loading';
   loadingSkeleton.setAttribute('aria-hidden', 'true');
+  loadingSkeleton.style.cssText = 'opacity: 0.3;'; // Dimmed to show loading overlay on top
   loadingSkeleton.innerHTML = `
     <div class="skeleton-text medium" style="margin-bottom: 8px;"></div>
     <div class="skeleton-text large" style="margin-bottom: 16px;"></div>
@@ -91,21 +97,40 @@ export async function renderAnalysisTable(tournament: string, cardIdentifier: st
       .join('')}
   `;
 
-  analysisTable.innerHTML = '';
+  // Create overlay container for the progress indicator
+  const progressOverlay = document.createElement('div');
+  progressOverlay.className = 'analysis-progress-overlay';
+  progressOverlay.style.cssText = `
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--panel);
+    opacity: 0.95;
+    z-index: 5;
+    border-radius: 8px;
+  `;
 
-  // Create enhanced progress indicator positioned within the analysis section
+  // Create progress indicator inside the overlay
+  // This restores the status bars and steps the user liked
   const progress = createProgressIndicator(
     'Loading Archetype Analysis',
     ['Processing archetype data', 'Building analysis table'],
     {
-      position: 'relative',
-      container: analysisTable,
+      position: 'relative', // Relative to the overlay flex container
+      container: progressOverlay,
       autoRemove: true,
       showPercentage: true
     }
   );
 
-  analysisTable.appendChild(loadingSkeleton);
+  // Assemble: skeleton + overlay inside wrapper
+  loadingWrapper.appendChild(loadingSkeleton);
+  loadingWrapper.appendChild(progressOverlay);
+
+  analysisTable.innerHTML = '';
+  analysisTable.appendChild(loadingWrapper);
 
   try {
     // Overall (All archetypes) distribution for this event
@@ -267,8 +292,10 @@ export async function renderAnalysisTable(tournament: string, cardIdentifier: st
 
     // Filter out null results
     const rows = archetypeResults.filter((result): result is NonNullable<typeof result> => result !== null);
+
     progress.updateStep(0, 'complete', `Processed ${rows.length} archetypes with data`);
     progress.updateStep(1, 'loading');
+
     rows.sort((archA, archB) => {
       // Primary sort: actual deck count (found)
       const foundDiff = (archB.found ?? 0) - (archA.found ?? 0);
@@ -304,6 +331,7 @@ export async function renderAnalysisTable(tournament: string, cardIdentifier: st
       note.className = 'summary';
       note.textContent = 'No per-archetype usage found for this event (or all archetypes have only one deck).';
       analysisTable.appendChild(note);
+
       progress.updateStep(1, 'complete');
       progress.setComplete(500); // Show for half a second then fade
 
@@ -414,6 +442,9 @@ export async function renderAnalysisTable(tournament: string, cardIdentifier: st
     analysisTable.textContent = 'Failed to load analysis for this event.';
 
     // Clean up progress indicator and any orphans
+    if (progress && progress.fadeAndRemove) {
+      progress.fadeAndRemove();
+    }
     if (progress && progress.fadeAndRemove) {
       progress.fadeAndRemove();
     }
