@@ -6,8 +6,17 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
-  padding-top: var(--space-16);
+  /* Fill the available viewport height */
+  flex-grow: 1;
+  min-height: 0;
+  /* Dynamic positioning based on viewport height:
+     - Small screens (720p): ~8vh padding (~58px)
+     - Medium screens (1080p): ~12vh padding (~130px)
+     - Large screens (1440p+): ~15vh padding (~216px, capped at 160px)
+     Uses clamp to scale smoothly between these values */
+  padding-top: clamp(40px, 10vh, 160px);
   padding-bottom: var(--space-16);
+  justify-content: flex-start;
 }
 
 /* Hero Section */
@@ -162,11 +171,30 @@
   font-size: var(--font-size-lg);
 }
 
-/* Responsive adjustments */
+/* Responsive adjustments for home page */
+
+/* Short height screens (720p or landscape mobile) - minimal padding */
+@media (max-height: 800px) {
+  .home-page {
+    gap: var(--space-10);
+    padding-top: clamp(24px, 6vh, 80px);
+  }
+}
+
+/* Very short screens (landscape phone, 720p windowed) - even less padding */
+@media (max-height: 600px) {
+  .home-page {
+    gap: var(--space-8);
+    padding-top: clamp(16px, 4vh, 48px);
+  }
+}
+
+/* Mobile width adjustments */
 @media (max-width: 720px) {
   .home-page {
     gap: var(--space-12);
-    padding-top: var(--space-8);
+    /* Mobile uses smaller padding, prioritizing content visibility */
+    padding-top: clamp(24px, 8vh, 80px);
   }
 
   .hero-search input[type='search'] {
@@ -175,7 +203,13 @@
   }
 }
 
+/* Small phones - very compact */
 @media (max-width: 400px) {
+  .home-page {
+    gap: var(--space-8);
+    padding-top: 20px;
+  }
+
   .features-grid {
     grid-template-columns: 1fr;
     gap: var(--space-4);

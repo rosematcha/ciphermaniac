@@ -149,7 +149,7 @@ function matchesSanitizedName(item: CardItem, targetName: string): boolean | nul
   const sanitizedTarget = sanitizeName(targetName);
   const byUid = item.uid ? sanitizeName(getDisplayName(item.uid) || item.uid) : null;
   const byName = sanitizeName(item.name || '');
-  return sanitizedTarget && (sanitizedTarget === byUid || sanitizedTarget === byName);
+  return sanitizedTarget ? sanitizedTarget === byUid || sanitizedTarget === byName : null;
 }
 
 async function resolveBySetAndNumber(

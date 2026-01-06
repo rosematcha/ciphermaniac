@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * Centralized logging utility with consistent formatting and levels
  * (no private class fields to maximize mobile Firefox compatibility)

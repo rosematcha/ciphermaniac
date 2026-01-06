@@ -1,4 +1,3 @@
-/* eslint-disable id-length */
 import { logger } from './logger.js';
 import { SUCCESS_TAGS } from '../data/performanceTiers.js';
 import { normalizeArchetypeName } from './format.js';
@@ -65,7 +64,7 @@ interface TrendDatasetOptions {
   successFilter?: string;
 }
 
-interface TrendDataset {
+export interface TrendDataset {
   generatedAt: string;
   windowStart: string | null;
   windowEnd: string | null;
@@ -284,7 +283,7 @@ interface CardTrendDatasetOptions {
   windowEnd?: string | null;
 }
 
-interface CardTrendDataset {
+export interface CardTrendDataset {
   generatedAt: string;
   windowStart: string | null;
   windowEnd: string | null;

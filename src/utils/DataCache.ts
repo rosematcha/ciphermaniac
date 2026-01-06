@@ -7,11 +7,6 @@ interface MasterCacheEntry {
   items: any[];
 }
 
-interface CardIndexCacheEntry {
-  ts: number;
-  idx: any;
-}
-
 interface ArcheIndexCacheEntry {
   ts: number;
   list: any[];
@@ -19,7 +14,6 @@ interface ArcheIndexCacheEntry {
 
 interface GridCache {
   master?: Record<string, MasterCacheEntry>;
-  cardIndex?: Record<string, CardIndexCacheEntry>;
   archeIndex?: Record<string, ArcheIndexCacheEntry>;
 }
 
@@ -71,29 +65,6 @@ export class DataCache {
       items: data.items
     };
     storage.set('gridCache', this.cache);
-  }
-
-  /**
-   * Set cached card index for a tournament
-   * @param tournament
-   * @param idx
-   */
-  setCachedCardIndex(tournament: string, idx: any): void {
-    this.cache.cardIndex = this.cache.cardIndex || {};
-    this.cache.cardIndex[tournament] = { ts: Date.now(), idx };
-    storage.set('gridCache', this.cache);
-  }
-
-  /**
-   * Get cached card index for a tournament
-   * @param tournament
-   */
-  getCachedCardIndex(tournament: string): any | null {
-    const entry = this.cache?.cardIndex?.[tournament];
-    if (!entry || this.isExpired(entry.ts)) {
-      return null;
-    }
-    return entry.idx;
   }
 
   /**

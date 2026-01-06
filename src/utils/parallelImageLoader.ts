@@ -127,11 +127,8 @@ class ParallelImageLoader {
     const { alt = '', onSuccess = null, onFailure = null, maxParallel = this.maxConcurrentPerImage } = options;
 
     // Set basic attributes
-    // eslint-disable-next-line no-param-reassign
     img.alt = alt;
-    // eslint-disable-next-line no-param-reassign
     img.decoding = 'async';
-    // eslint-disable-next-line no-param-reassign
     img.loading = img.loading || 'lazy';
 
     // Fade-in effect disabled to prevent flashing
@@ -142,12 +139,10 @@ class ParallelImageLoader {
 
       if (successfulUrl) {
         // Set the successful URL
-        // eslint-disable-next-line no-param-reassign
         img.src = successfulUrl;
 
         // Handle load event
         if (onSuccess) {
-          // eslint-disable-next-line no-param-reassign
           img.onload = () => onSuccess(successfulUrl);
           // If image is already cached and loaded, trigger immediately
           if (img.complete && img.naturalHeight !== 0) {

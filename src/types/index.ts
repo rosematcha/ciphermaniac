@@ -349,10 +349,6 @@ export interface CardTrendsReport {
   windowEnd: string | null;
   /** Number of cards analyzed */
   cardsAnalyzed: number;
-  /** Minimum appearances threshold */
-  minAppearances: number;
-  /** Number of top cards to include */
-  topCount: number;
   /** Cards with increasing usage */
   rising: CardTrendEntry[];
   /** Cards with decreasing usage */
@@ -395,70 +391,14 @@ export interface TrendReport {
 }
 
 /**
- * Suggestion entry for trend analysis (leaders, rising, falling cards).
- */
-export interface SuggestionEntry {
-  /** Card identifier key */
-  key: string;
-  /** Card name */
-  name: string;
-  /** Set code */
-  set: string | null;
-  /** Collector number */
-  number: string | null;
-  /** Primary archetype using this card */
-  archetype: string | null;
-  /** Latest share percentage */
-  latest?: number;
-  /** Average share percentage */
-  avgShare?: number;
-  /** Recent average share */
-  recentAvg?: number;
-  /** Absolute delta change */
-  deltaAbs?: number;
-  /** Relative delta change */
-  deltaRel?: number;
-  /** Trend slope */
-  slope?: number;
-  /** Ranking score */
-  score?: number;
-  /** Peak share percentage */
-  peakShare?: number;
-  /** Absolute drop from peak */
-  absDrop?: number;
-  /** Relative drop from peak */
-  relDrop?: number;
-  /** Maximum usage */
-  maxUsage?: number;
-  /** Total usage sum */
-  totalUsage?: number;
-}
-
-/**
- * Card suggestions for trend visualization.
- */
-export interface TrendSuggestions {
-  /** Cards with consistent high usage */
-  leaders: SuggestionEntry[];
-  /** Cards with increasing usage */
-  onTheRise: SuggestionEntry[];
-  /** Cards that have fallen from prominence */
-  choppedAndWashed: SuggestionEntry[];
-  /** Cards with brief appearances ("that Day 2'd") */
-  thatDay2d?: SuggestionEntry[];
-}
-
-/**
  * Full payload returned by trends.json endpoint.
- * Contains the trend report, card trends, and suggestions.
+ * Contains the trend report and card trends.
  */
 export interface TrendReportPayload {
   /** Archetype trend report */
   trendReport: TrendReport;
   /** Card-level trends */
   cardTrends: CardTrendsReport | null;
-  /** Card suggestions for visualization */
-  suggestions: TrendSuggestions | null;
 }
 
 // =============================================================================

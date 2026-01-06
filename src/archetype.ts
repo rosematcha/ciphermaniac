@@ -1,4 +1,3 @@
-/* eslint-disable id-length, no-param-reassign, no-unused-vars */
 import './utils/buildVersion.js';
 import { fetchArchetypeReport, fetchReport } from './api.js';
 import { parseReport } from './parse.js';
@@ -308,12 +307,12 @@ function updateFilterMessage(text, tone = 'info') {
   if (!text) {
     message.hidden = true;
     message.textContent = '';
-    delete message.dataset.tone; // eslint-disable-line no-param-reassign
+    delete message.dataset.tone;
     return;
   }
   message.hidden = false;
   message.textContent = text;
-  message.dataset.tone = tone; // eslint-disable-line no-param-reassign
+  message.dataset.tone = tone;
 }
 
 function updateFilterEmptyState() {
@@ -1765,7 +1764,6 @@ async function applyFilters() {
       return;
     }
 
-    // eslint-disable-next-line require-atomic-updates -- Guarded by requestKey check
     Object.assign(state, {
       items: result.items,
       archetypeDeckTotal: result.deckTotal
@@ -1783,7 +1781,6 @@ async function applyFilters() {
 
     if (error instanceof AppError && error.context?.status === 404) {
       updateFilterMessage(`No decks match ${comboLabel}.`, 'warning');
-      // eslint-disable-next-line require-atomic-updates -- Selection validated above
       Object.assign(state, {
         items: [],
         archetypeDeckTotal: 0
@@ -1796,7 +1793,6 @@ async function applyFilters() {
     const errorMessage = error instanceof Error ? error.message : String(error);
     if (errorMessage && errorMessage.includes('timed out')) {
       updateFilterMessage(`Unable to load deck data for filtering. Request timed out.`, 'warning');
-      // eslint-disable-next-line require-atomic-updates -- Selection validated above
       Object.assign(state, {
         items: [],
         archetypeDeckTotal: 0

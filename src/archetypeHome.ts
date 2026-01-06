@@ -10,6 +10,7 @@ import './utils/buildVersion.js';
 import { CONFIG } from './config.js';
 import { logger } from './utils/logger.js';
 import { fetchArchetypesList } from './api.js';
+import { escapeHtml } from './utils/html.js';
 import type { SignatureCardEntry } from './types/index.js';
 
 // --- Interfaces ---
@@ -577,12 +578,12 @@ function renderTopPerformers(): void {
       <div class="performer-info">
         <div class="performer-player">
           ${flag ? `<span class="performer-flag">${flag}</span>` : ''}
-          <span class="performer-name">${performer.player}</span>
+          <span class="performer-name">${escapeHtml(performer.player)}</span>
         </div>
         <div class="performer-result">
           <span class="performer-placement ${placementClass}">${formatPlacement(performer.placement)}</span>
           <span class="performer-separator">in</span>
-          <span class="performer-tournament">${performer.tournamentName}</span>
+          <span class="performer-tournament">${escapeHtml(performer.tournamentName)}</span>
         </div>
         <div class="performer-meta">
           <span class="performer-players">${performer.tournamentPlayers} players</span>
@@ -634,13 +635,13 @@ function renderSignatureCards(): void {
     // Build thumbnail
     const thumbHtml =
       card.set && card.number
-        ? `<img class="signature-card-thumb" src="/thumbnails/xs/${card.set}/${card.number}" alt="${card.name}" loading="lazy" />`
+        ? `<img class="signature-card-thumb" src="/thumbnails/xs/${card.set}/${card.number}" alt="${escapeHtml(card.name)}" loading="lazy" />`
         : '';
 
     item.innerHTML = `
       <a href="${cardUrl}" class="signature-card-link">
         ${thumbHtml}
-        <span class="signature-card-name">${card.name}</span>
+        <span class="signature-card-name">${escapeHtml(card.name)}</span>
         <span class="signature-card-rate">${Math.round(card.pct)}%</span>
       </a>
     `;

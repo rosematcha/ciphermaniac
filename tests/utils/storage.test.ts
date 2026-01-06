@@ -241,10 +241,10 @@ test('storage: handles complex nested objects', async t => {
         ]
       }
     },
-    cardIndex: {
+    archeIndex: {
       'tournament-1': {
         ts: Date.now(),
-        idx: { card1: [1, 2], card2: [3] }
+        list: [{ name: 'Charizard' }, { name: 'Pikachu' }]
       }
     }
   };

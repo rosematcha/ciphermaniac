@@ -343,7 +343,7 @@ export async function processInParallel<T, R>(
   }
 
   for (const chunk of chunks) {
-    // eslint-disable-next-line no-loop-func
+    // eslint-disable-next-line no-loop-func -- closure captures processed for progress tracking
     const promises = chunk.map((item, chunkIndex) => {
       const globalIndex = chunks.indexOf(chunk) * config.concurrency + chunkIndex;
 
@@ -536,7 +536,6 @@ export async function loadWithCache<T, R>(
       try {
         const result = await loader(item, index);
         const key = cacheKey(item);
-        // eslint-disable-next-line no-param-reassign
         cache[key] = result;
 
         if (config.onCacheMiss) {
