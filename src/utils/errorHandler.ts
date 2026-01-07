@@ -102,7 +102,7 @@ export class ErrorBoundary {
   }
 
   /**
-   * Execute an async operation with error handling
+   * Execute an async operation with error handling and retry
    * @param operation - Async operation to execute
    * @param onSuccess - Success callback
    * @param config - Configuration options
@@ -117,35 +117,27 @@ export class ErrorBoundary {
 
     this.showLoading(loadingMessage);
 
-    let lastError: any = null;
+    try {
+      const result = await withRetry(operation, {
+        maxAttempts: retryAttempts + 1, // withRetry uses total attempts, not retry count
+        delayMs: retryDelay,
+        onAttemptFail: this.options.logErrors
+          ? (error, attempt, maxAttempts) => {
+              logger.exception(`Operation failed (attempt ${attempt}/${maxAttempts})`, error);
+            }
+          : undefined
+      });
 
-    for (let attempt = 0; attempt <= retryAttempts; attempt++) {
-      try {
-        const result = await operation();
-
-        if (onSuccess) {
-          onSuccess(result);
-        }
-
-        this.clearError();
-        return result;
-      } catch (error) {
-        lastError = error;
-
-        if (this.options.logErrors) {
-          logger.exception(`Operation failed (attempt ${attempt + 1}/${retryAttempts + 1})`, error);
-        }
-
-        // If this wasn't the last attempt, wait before retrying
-        if (attempt < retryAttempts) {
-          await this.sleep(retryDelay * 2 ** attempt); // Exponential backoff
-        }
+      if (onSuccess) {
+        onSuccess(result);
       }
-    }
 
-    // All attempts failed
-    this.showError(lastError);
-    throw lastError;
+      this.clearError();
+      return result;
+    } catch (error) {
+      this.showError(error);
+      throw error;
+    }
   }
 
   /**
@@ -233,7 +225,7 @@ export class ErrorBoundary {
 export type ExtendedRequestInit = RequestInit & { timeout?: number; retries?: number; retryDelay?: number };
 
 /**
- * Enhanced safe fetch with comprehensive error handling
+ * Enhanced safe fetch with comprehensive error handling and retry
  * @param input - URL or Request object
  * @param init - Fetch options
  * @returns Enhanced response
@@ -244,55 +236,44 @@ export async function safeFetch(input: string | Request, init: ExtendedRequestIn
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-  try {
-    let lastError: any = null;
+  const singleFetch = async (): Promise<Response> => {
+    try {
+      const response = await fetch(input, {
+        ...fetchOptions,
+        signal: controller.signal
+      });
 
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        const response = await fetch(input, {
-          ...fetchOptions,
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const error = new AppError(
-            ErrorTypes.API,
-            `HTTP ${response.status}: ${response.statusText}`,
-            response.status === 404
-              ? 'The requested data was not found.'
-              : response.status >= 500
-                ? 'Server is temporarily unavailable.'
-                : 'Request failed. Please try again.'
-          );
-          throw error;
-        }
-
-        return response;
-      } catch (error: any) {
-        lastError = error;
-
-        if (error.name === 'AbortError') {
-          throw new AppError(ErrorTypes.TIMEOUT, 'Request timed out', null, {
-            timeout
-          });
-        }
-
-        if (error.name === 'TypeError' && error.message.includes('fetch')) {
-          throw new AppError(ErrorTypes.NETWORK, 'Network connection failed', null, { originalError: error });
-        }
-
-        // If this wasn't the last attempt, wait before retrying
-        if (attempt < retries) {
-          await new Promise(resolve => {
-            setTimeout(resolve, retryDelay * 2 ** attempt);
-          });
-        }
+      if (!response.ok) {
+        const error = new AppError(
+          ErrorTypes.API,
+          `HTTP ${response.status}: ${response.statusText}`,
+          response.status === 404
+            ? 'The requested data was not found.'
+            : response.status >= 500
+              ? 'Server is temporarily unavailable.'
+              : 'Request failed. Please try again.'
+        );
+        throw error;
       }
-    }
 
-    throw lastError;
+      return response;
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        throw new AppError(ErrorTypes.TIMEOUT, 'Request timed out', null, {
+          timeout
+        });
+      }
+
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new AppError(ErrorTypes.NETWORK, 'Network connection failed', null, { originalError: error });
+      }
+
+      throw error;
+    }
+  };
+
+  try {
+    return await withRetry(singleFetch, { maxAttempts: retries + 1, delayMs: retryDelay });
   } finally {
     clearTimeout(timeoutId);
   }
@@ -373,13 +354,25 @@ export function validateType(value: any, expectedType: string, paramName = 'valu
 }
 
 /**
- * Retry wrapper for async operations
+ * Options for withRetry function
+ */
+export interface RetryOptions {
+  /** Maximum number of attempts (default: 3) */
+  maxAttempts?: number;
+  /** Initial delay between attempts in milliseconds (default: 1000) */
+  delayMs?: number;
+  /** Optional callback for each failed attempt */
+  onAttemptFail?: (error: any, attempt: number, maxAttempts: number) => void;
+}
+
+/**
+ * Retry wrapper for async operations with exponential backoff
  * @param operation - Async operation to retry
- * @param maxAttempts - Maximum number of attempts
- * @param delayMs - Delay between attempts in milliseconds
+ * @param options - Retry configuration options
  * @returns Result of the operation
  */
-export async function withRetry<T>(operation: () => Promise<T>, maxAttempts = 3, delayMs = 1000): Promise<T> {
+export async function withRetry<T>(operation: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
+  const { maxAttempts = 3, delayMs = 1000, onAttemptFail } = options;
   let lastError: any = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -387,6 +380,10 @@ export async function withRetry<T>(operation: () => Promise<T>, maxAttempts = 3,
       return await operation();
     } catch (error) {
       lastError = error;
+
+      if (onAttemptFail) {
+        onAttemptFail(error, attempt, maxAttempts);
+      }
 
       if (attempt === maxAttempts) {
         throw error;
