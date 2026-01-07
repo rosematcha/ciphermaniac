@@ -56,7 +56,6 @@ interface Config {
   API: ApiConfig;
   CACHE: CacheConfig;
   UI: UiConfig;
-  ARCHETYPES: readonly string[];
   DEV: DevConfig;
 }
 
@@ -109,27 +108,6 @@ export const CONFIG: Config = Object.freeze({
     ROWS_PER_LOAD: 8
   },
 
-  // Known archetype base names
-  ARCHETYPES: [
-    'Blissey',
-    'Charizard_Dragapult',
-    'Charizard_Dusknoir',
-    'Charizard_Pidgeot',
-    'Dragapult_Dusknoir',
-    'Dragapult',
-    'Flareon_Noctowl',
-    'Gardevoir',
-    'Gholdengo_Joltik_Box',
-    'Gholdengo',
-    'Grimmsnarl_Froslass',
-    'Ho-Oh_Armarouge',
-    'Joltik_Box',
-    'Milotic_Farigiraf',
-    'Ns_Zoroark',
-    'Raging_Bolt_Ogerpon',
-    'Tera_Box'
-  ],
-
   // Development flags
   DEV: {
     ENABLE_LOGGING: true,
@@ -181,10 +159,6 @@ function validateConfig(config: Config): void {
     typeof config.API.JSON_CACHE_TTL_MS === 'number' && config.API.JSON_CACHE_TTL_MS > 0,
     'JSON_CACHE_TTL_MS must be positive number'
   );
-
-  // Validate archetypes
-  assert(Array.isArray(config.ARCHETYPES), 'ARCHETYPES must be array');
-  assert(config.ARCHETYPES.length > 0, 'ARCHETYPES cannot be empty');
 }
 
 // Validate configuration on load
@@ -192,7 +166,6 @@ validateConfig(CONFIG);
 
 // Legacy exports for backwards compatibility
 export const { REPORTS_BASE } = CONFIG.API;
-export const { ARCHETYPES } = CONFIG;
 
 // Layout constants for backwards compatibility
 export const { GAP } = CONFIG.LAYOUT;
