@@ -11,6 +11,7 @@
 import './utils/buildVersion.js';
 import { CONFIG } from './config.js';
 import { logger } from './utils/logger.js';
+import { escapeHtml } from './utils/html.js';
 import { PERFORMANCE_TIER_LABELS } from './data/performanceTiers.js';
 
 // --- Interfaces ---
@@ -369,7 +370,7 @@ function renderInsightItem(card: EnhancedCardEntry, stat?: string, statClass?: s
   div.className = 'insight-item';
   div.href = buildCardUrl(card);
   div.innerHTML = `
-    <span class="insight-item-name">${card.name}</span>
+    <span class="insight-item-name">${escapeHtml(card.name)}</span>
     ${stat ? `<span class="insight-item-stat ${statClass || ''}">${stat}</span>` : ''}
   `;
   return div;
@@ -461,9 +462,9 @@ function renderInsights() {
           div.className = 'substitution-item';
           div.innerHTML = `
             <div class="substitution-cards">
-              <a href="${buildCardUrl(c1)}">${c1.name}</a>
+              <a href="${buildCardUrl(c1)}">${escapeHtml(c1.name)}</a>
               <span class="substitution-arrow">↔</span>
-              <a href="${buildCardUrl(c2)}">${c2.name}</a>
+              <a href="${buildCardUrl(c2)}">${escapeHtml(c2.name)}</a>
             </div>
             <span class="substitution-correlation">${sub.correlation.toFixed(2)}</span>
           `;
@@ -495,7 +496,7 @@ function generateNarrative(): string {
     const topRiser = cards[insights.risers[0].uid];
     if (topRiser) {
       parts.push(
-        `<span class="highlight">${topRiser.name}</span> is <span class="trend-up">trending up</span> (+${insights.risers[0].delta.toFixed(1)}%)`
+        `<span class="highlight">${escapeHtml(topRiser.name)}</span> is <span class="trend-up">trending up</span> (+${insights.risers[0].delta.toFixed(1)}%)`
       );
     }
   }
@@ -504,7 +505,7 @@ function generateNarrative(): string {
     const topFaller = cards[insights.fallers[0].uid];
     if (topFaller) {
       parts.push(
-        `while <span class="highlight">${topFaller.name}</span> is <span class="trend-down">declining</span> (${insights.fallers[0].delta.toFixed(1)}%)`
+        `while <span class="highlight">${escapeHtml(topFaller.name)}</span> is <span class="trend-down">declining</span> (${insights.fallers[0].delta.toFixed(1)}%)`
       );
     }
   }
@@ -586,7 +587,7 @@ function renderMatchups() {
 
     tr.innerHTML = `
       <td class="col-opponent">
-        <a href="${opponentUrl}">${mt.opponent}</a>
+        <a href="${opponentUrl}">${escapeHtml(mt.opponent)}</a>
       </td>
       <td class="col-winrate">
         <div class="winrate-bar-container">
@@ -1160,12 +1161,12 @@ function renderCardList() {
     tr.innerHTML = `
       <td class="col-chart">
         <label class="chart-checkbox">
-          <input type="checkbox" data-uid="${uid}" ${isSelected ? 'checked' : ''} aria-label="Toggle ${card.name}">
+          <input type="checkbox" data-uid="${uid}" ${isSelected ? 'checked' : ''} aria-label="Toggle ${escapeHtml(card.name)}">
           <span class="checkbox-indicator" ${color ? `style="background-color: ${color}"` : ''}></span>
         </label>
       </td>
       <td class="col-name">
-        <a href="${cardUrl}">${card.name}</a>
+        <a href="${cardUrl}">${escapeHtml(card.name)}</a>
       </td>
       <td class="col-category">
         <span class="category-badge cat-${card.category}">${CATEGORY_LABELS[card.category]}</span>

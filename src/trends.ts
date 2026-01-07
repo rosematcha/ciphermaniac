@@ -11,6 +11,7 @@ import {
   type TrendDataset
 } from './utils/trendAggregator.js';
 import { logger } from './utils/logger.js';
+import { escapeHtml } from './utils/html.js';
 import { getPerformanceLabel } from './data/performanceTiers.js';
 
 // High-contrast palette with distinct hues - designed for dark backgrounds
@@ -393,7 +394,7 @@ function renderMovers(lines) {
       li.innerHTML = `
         <a href="${url}">
           <span class="dot" style="background:${item.color}"></span>
-          <span class="name">${item.name}</span>
+          <span class="name">${escapeHtml(item.name)}</span>
           <span class="perc">${formatPercent(item.latest)}</span>
           <span class="delta ${direction}">${sign}${item.delta.toFixed(Math.abs(item.delta) % 1 === 0 ? 0 : 1)}%</span>
         </a>
@@ -474,7 +475,7 @@ function renderCardMovers(cardTrends) {
       li.innerHTML = `
         <a href="${url}">
           <span class="dot"></span>
-          <span class="name">${item.name}${idLabel}</span>
+          <span class="name">${escapeHtml(item.name)}${escapeHtml(idLabel)}</span>
           <span class="perc">${formatPercent(item.latest || 0)}</span>
           <span class="delta ${direction}">${deltaSign}${item.delta?.toFixed(Math.abs(item.delta) % 1 === 0 ? 0 : 1)}%</span>
         </a>
