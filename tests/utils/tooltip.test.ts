@@ -13,21 +13,52 @@ let appendedToBody: HTMLElement[] = [];
 interface MockElement {
   className: string;
   innerHTML: string;
+  id: string;
   style: Record<string, string>;
   remove: () => void;
+  setAttribute: (name: string, value: string) => void;
+  getAttribute: (name: string) => string | null;
+  getBoundingClientRect: () => {
+    width: number;
+    height: number;
+    top: number;
+    left: number;
+    right: number;
+    bottom: number;
+  };
+  _attributes: Map<string, string>;
 }
 
 function createMockDocument(): void {
   mockElements = new Map();
   appendedToBody = [];
 
+  // Mock window/document dimensions for viewport clamping
+  // @ts-expect-error - mocking window
+  globalThis.window = {
+    innerWidth: 1024,
+    innerHeight: 768
+  };
+
   // @ts-expect-error - mocking document
   globalThis.document = {
     createElement: (tagName: string): MockElement => {
+      const attributes = new Map<string, string>();
       const element: MockElement = {
         className: '',
         innerHTML: '',
+        id: '',
         style: {},
+        _attributes: attributes,
+        setAttribute(name: string, value: string) {
+          attributes.set(name, value);
+        },
+        getAttribute(name: string) {
+          return attributes.get(name) || null;
+        },
+        getBoundingClientRect() {
+          return { width: 100, height: 50, top: 0, left: 0, right: 100, bottom: 50 };
+        },
         remove() {
           const idx = appendedToBody.indexOf(element as unknown as HTMLElement);
           if (idx !== -1) {
@@ -41,6 +72,10 @@ function createMockDocument(): void {
       appendChild: (element: HTMLElement): void => {
         appendedToBody.push(element);
       }
+    },
+    documentElement: {
+      clientWidth: 1024,
+      clientHeight: 768
     }
   };
 }
@@ -48,6 +83,8 @@ function createMockDocument(): void {
 function cleanupMockDocument(): void {
   // @ts-expect-error - cleaning up mock
   delete globalThis.document;
+  // @ts-expect-error - cleaning up mock
+  delete globalThis.window;
 }
 
 // ============================================================================
