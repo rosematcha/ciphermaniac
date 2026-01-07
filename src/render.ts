@@ -625,10 +625,8 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
         }
         const cards = Array.from(targetRow.querySelectorAll('.card'));
         const targetColIndex = Math.max(0, Math.min(cards.length - 1, colIdx + dc));
-        const next = cards[targetColIndex] as HTMLElement;
-        if (next) {
-          next.focus();
-        }
+        const next = cards[targetColIndex] as HTMLElement | undefined;
+        next?.focus();
       };
       switch (event.key) {
         case 'ArrowRight':

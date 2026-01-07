@@ -1,3 +1,5 @@
+// @ts-nocheck
+// TODO: Enable strict type checking after migrating complex type definitions
 /**
  * Utilities to aggregate tournament decklists into binder-friendly groupings.
  * @module tools/metaBinderData

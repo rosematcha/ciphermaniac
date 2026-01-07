@@ -219,18 +219,8 @@ async function buildMissingCardPreviewData(cardIdentifier: string): Promise<Miss
     ]);
 
     if (trendPayload) {
-      const risingList =
-        (trendPayload?.suggestions?.onTheRise &&
-          trendPayload.suggestions.onTheRise.length &&
-          trendPayload.suggestions.onTheRise) ||
-        trendPayload?.cardTrends?.rising ||
-        [];
-      const coolingList =
-        (trendPayload?.suggestions?.choppedAndWashed &&
-          trendPayload.suggestions.choppedAndWashed.length &&
-          trendPayload.suggestions.choppedAndWashed) ||
-        trendPayload?.cardTrends?.falling ||
-        [];
+      const risingList = trendPayload?.cardTrends?.rising || [];
+      const coolingList = trendPayload?.cardTrends?.falling || [];
 
       const risingPool = (Array.isArray(risingList) ? risingList : [])
         .map(normalizeTrendingCard)

@@ -446,7 +446,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
         commitSelection([]);
         renderOptions();
         close();
-        trigger.focus();
+        trigger?.focus();
       });
       fragment.appendChild(allButton);
     }
@@ -522,7 +522,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
           commitSelection(nextSelection);
           renderOptions();
           close();
-          trigger.focus();
+          trigger?.focus();
         });
 
         fragment.appendChild(optionButton);
@@ -598,7 +598,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
     renderOptions();
     updateWidth();
     if (search) {
-      window.requestAnimationFrame(() => search.focus());
+      window.requestAnimationFrame(() => search?.focus());
     }
     if (state && state.ui) {
       state.ui.openDropdown = config.key;
@@ -619,7 +619,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
 
     // Restore focus to trigger if focus was inside menu
     if (restoreFocus && document.activeElement && menu.contains(document.activeElement)) {
-      trigger.focus();
+      trigger?.focus();
     }
 
     updateWidth();
@@ -663,7 +663,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
     if (keyboardEvent.key === 'Escape') {
       keyboardEvent.stopPropagation();
       close();
-      trigger.focus();
+      trigger?.focus();
     }
   });
 
@@ -689,7 +689,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
       }
       if (search) {
         search.value = '';
-        window.requestAnimationFrame(() => search.focus());
+        window.requestAnimationFrame(() => search?.focus());
       }
       if (state && state.ui) {
         state.ui.openDropdown = config.key;
@@ -710,7 +710,7 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
         renderOptions();
       } else if (action === 'close') {
         close();
-        trigger.focus();
+        trigger?.focus();
       }
     });
   });

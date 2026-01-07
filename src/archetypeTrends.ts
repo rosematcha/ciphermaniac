@@ -864,7 +864,7 @@ function renderChart() {
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
   svg.setAttribute('width', '100%');
   svg.setAttribute('height', `${height}px`);
-  svg.style.height = `${height}px`;
+  (svg as SVGSVGElement & { style: CSSStyleDeclaration }).style.height = `${height}px`;
   svg.setAttribute('preserveAspectRatio', 'none');
   svg.classList.add('trends-svg-v2');
   svg.setAttribute('role', 'img');
@@ -905,7 +905,7 @@ function renderChart() {
     polyline.setAttribute('stroke-width', '2.5');
     polyline.setAttribute('points', points);
     polyline.setAttribute('stroke-linecap', 'round');
-    polyline.dataset.name = line.card.name;
+    polyline.setAttribute('data-name', line.card.name);
     polyline.classList.add('trends-line');
     svg.appendChild(polyline);
   });

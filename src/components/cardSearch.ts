@@ -378,7 +378,7 @@ function setupSearchHandlers(
         cardSearchInput.value = matches[matchIndex];
         selectedIndex = matchIndex;
         updateSelection(matchIndex);
-        cardSearchInput.focus();
+        cardSearchInput?.focus();
       }
     }
 

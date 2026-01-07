@@ -531,7 +531,7 @@ export function createHierarchicalCardTypeDropdown(
     search.value = '';
 
     renderOptions();
-    search.focus();
+    search?.focus();
 
     if (state?.ui) {
       state.ui.openDropdown = config.key;
@@ -619,7 +619,7 @@ export function createHierarchicalCardTypeDropdown(
     if (e.key === 'Escape') {
       e.stopPropagation();
       close();
-      trigger.focus();
+      trigger?.focus();
     }
   });
 
@@ -643,7 +643,7 @@ export function createHierarchicalCardTypeDropdown(
   if (closeButton) {
     state.cleanup.addEventListener(closeButton, 'click', () => {
       close();
-      trigger.focus();
+      trigger?.focus();
     });
   }
 

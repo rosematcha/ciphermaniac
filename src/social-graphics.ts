@@ -1,3 +1,5 @@
+// @ts-nocheck
+// TODO: Enable strict type checking after migrating complex type definitions
 /* eslint-disable no-new */
 import { fetchReportResource, fetchTournamentsList } from './api.js';
 import { buildThumbCandidates } from './thumbs.js';

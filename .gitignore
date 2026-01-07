@@ -74,5 +74,4 @@ tools/__pycache__/
 tools/synonym_cache.json
 tools/temp_inspect.py
 tools/generate_suggestions.py
-global.d.ts
 trends.json

@@ -65,7 +65,7 @@ interface TrendDatasetOptions {
   successFilter?: string;
 }
 
-interface TrendDataset {
+export interface TrendDataset {
   generatedAt: string;
   windowStart: string | null;
   windowEnd: string | null;
@@ -284,7 +284,7 @@ interface CardTrendDatasetOptions {
   windowEnd?: string | null;
 }
 
-interface CardTrendDataset {
+export interface CardTrendDataset {
   generatedAt: string;
   windowStart: string | null;
   windowEnd: string | null;
