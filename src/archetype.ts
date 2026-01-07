@@ -70,6 +70,8 @@ interface FilterRow {
     removeButton: HTMLButtonElement;
     container: HTMLElement;
   };
+  /** AbortController for cleaning up event listeners when row is removed */
+  abortController?: AbortController;
 }
 
 /**
@@ -641,6 +643,10 @@ function createFilterRow() {
   filterRow.className = 'archetype-filter-group';
   filterRow.dataset.filterId = String(filterId);
 
+  // AbortController for cleanup of event listeners
+  const abortController = new AbortController();
+  const { signal } = abortController;
+
   // Card selector
   const cardSelect = document.createElement('select');
   cardSelect.className = 'filter-card-select';
@@ -681,12 +687,12 @@ function createFilterRow() {
   filterRow.appendChild(countInput);
   filterRow.appendChild(removeButton);
 
-  // Add event listeners
-  cardSelect.addEventListener('change', () => handleFilterChange(filterId));
-  operatorSelect.addEventListener('change', () => handleFilterChange(filterId));
-  countInput.addEventListener('change', () => handleFilterChange(filterId));
-  countInput.addEventListener('input', () => handleFilterChange(filterId));
-  removeButton.addEventListener('click', () => removeFilterRow(filterId));
+  // Add event listeners with abort signal for cleanup
+  cardSelect.addEventListener('change', () => handleFilterChange(filterId), { signal });
+  operatorSelect.addEventListener('change', () => handleFilterChange(filterId), { signal });
+  countInput.addEventListener('change', () => handleFilterChange(filterId), { signal });
+  countInput.addEventListener('input', () => handleFilterChange(filterId), { signal });
+  removeButton.addEventListener('click', () => removeFilterRow(filterId), { signal });
 
   // Add to state
   state.filterRows.push({
@@ -694,7 +700,8 @@ function createFilterRow() {
     cardId: null,
     operator: null,
     count: null,
-    elements: { cardSelect, operatorSelect, countInput, removeButton, container: filterRow }
+    elements: { cardSelect, operatorSelect, countInput, removeButton, container: filterRow },
+    abortController
   });
 
   updateFilterEmptyState();
@@ -716,6 +723,10 @@ function removeFilterRow(filterId) {
   }
 
   const row = state.filterRows[index];
+
+  // Abort all event listeners to prevent memory leaks
+  row.abortController?.abort();
+
   row.elements.container.remove();
   state.filterRows.splice(index, 1);
   updateFilterEmptyState();
