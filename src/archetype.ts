@@ -70,6 +70,8 @@ interface FilterRow {
     removeButton: HTMLButtonElement;
     container: HTMLElement;
   };
+  /** AbortController for cleaning up event listeners when row is removed */
+  abortController?: AbortController;
 }
 
 /**
@@ -179,6 +181,83 @@ const state: AppState = {
  * Uses WeakMap to automatically clean up when source arrays are GC'd.
  */
 const sortedItemsCache = new WeakMap<CardItemData[], CardItemData[]>();
+
+/**
+ * Cache for filter row card sorting and duplicate counts.
+ * Invalidated when allCards changes.
+ */
+interface FilterRowCardsCache {
+  sourceArray: CardItemData[] | null;
+  deckTotal: number;
+  sortedCards: CardItemData[];
+  duplicateCounts: Map<string, number>;
+}
+
+const filterRowCardsCache: FilterRowCardsCache = {
+  sourceArray: null,
+  deckTotal: 0,
+  sortedCards: [],
+  duplicateCounts: new Map()
+};
+
+/**
+ * Get cached sorted cards and duplicate counts for filter row population.
+ * Recalculates only when the source data changes.
+ */
+function getFilterRowCardsData(
+  cards: CardItemData[],
+  deckTotal: number
+): {
+  sortedCards: CardItemData[];
+  duplicateCounts: Map<string, number>;
+} {
+  // Check if cache is valid (same source array reference and deck total)
+  if (
+    filterRowCardsCache.sourceArray === cards &&
+    filterRowCardsCache.deckTotal === deckTotal &&
+    filterRowCardsCache.sortedCards.length > 0
+  ) {
+    return {
+      sortedCards: filterRowCardsCache.sortedCards,
+      duplicateCounts: filterRowCardsCache.duplicateCounts
+    };
+  }
+
+  // Sort cards by usage percentage (descending), then by name
+  const sortedCards = [...cards].sort((left, right) => {
+    const leftFound = Number(left.found ?? 0);
+    const leftTotal = Number(left.total ?? deckTotal);
+    const leftPct = leftTotal > 0 ? (leftFound / leftTotal) * 100 : 0;
+
+    const rightFound = Number(right.found ?? 0);
+    const rightTotal = Number(right.total ?? deckTotal);
+    const rightPct = rightTotal > 0 ? (rightFound / rightTotal) * 100 : 0;
+
+    if (rightPct !== leftPct) {
+      return rightPct - leftPct;
+    }
+    return (left.name || '').localeCompare(right.name || '');
+  });
+
+  // Build duplicate counts map
+  const duplicateCounts = new Map<string, number>();
+  cards.forEach(card => {
+    const cardId = buildCardId(card);
+    const baseName = card?.name;
+    if (!cardId || !baseName) {
+      return;
+    }
+    duplicateCounts.set(baseName, (duplicateCounts.get(baseName) || 0) + 1);
+  });
+
+  // Update cache
+  filterRowCardsCache.sourceArray = cards;
+  filterRowCardsCache.deckTotal = deckTotal;
+  filterRowCardsCache.sortedCards = sortedCards;
+  filterRowCardsCache.duplicateCounts = duplicateCounts;
+
+  return { sortedCards, duplicateCounts };
+}
 
 const _WARNING_ICON = '\u26A0\uFE0F';
 
@@ -564,6 +643,10 @@ function createFilterRow() {
   filterRow.className = 'archetype-filter-group';
   filterRow.dataset.filterId = String(filterId);
 
+  // AbortController for cleanup of event listeners
+  const abortController = new AbortController();
+  const { signal } = abortController;
+
   // Card selector
   const cardSelect = document.createElement('select');
   cardSelect.className = 'filter-card-select';
@@ -604,12 +687,12 @@ function createFilterRow() {
   filterRow.appendChild(countInput);
   filterRow.appendChild(removeButton);
 
-  // Add event listeners
-  cardSelect.addEventListener('change', () => handleFilterChange(filterId));
-  operatorSelect.addEventListener('change', () => handleFilterChange(filterId));
-  countInput.addEventListener('change', () => handleFilterChange(filterId));
-  countInput.addEventListener('input', () => handleFilterChange(filterId));
-  removeButton.addEventListener('click', () => removeFilterRow(filterId));
+  // Add event listeners with abort signal for cleanup
+  cardSelect.addEventListener('change', () => handleFilterChange(filterId), { signal });
+  operatorSelect.addEventListener('change', () => handleFilterChange(filterId), { signal });
+  countInput.addEventListener('change', () => handleFilterChange(filterId), { signal });
+  countInput.addEventListener('input', () => handleFilterChange(filterId), { signal });
+  removeButton.addEventListener('click', () => removeFilterRow(filterId), { signal });
 
   // Add to state
   state.filterRows.push({
@@ -617,7 +700,8 @@ function createFilterRow() {
     cardId: null,
     operator: null,
     count: null,
-    elements: { cardSelect, operatorSelect, countInput, removeButton, container: filterRow }
+    elements: { cardSelect, operatorSelect, countInput, removeButton, container: filterRow },
+    abortController
   });
 
   updateFilterEmptyState();
@@ -639,6 +723,10 @@ function removeFilterRow(filterId) {
   }
 
   const row = state.filterRows[index];
+
+  // Abort all event listeners to prevent memory leaks
+  row.abortController?.abort();
+
   row.elements.container.remove();
   state.filterRows.splice(index, 1);
   updateFilterEmptyState();
@@ -740,37 +828,12 @@ function populateFilterRowCards(filterId) {
   // Get all selected card IDs (excluding this row's current selection)
   const selectedCards = new Set(state.filterRows.filter(r => r.id !== filterId && r.cardId).map(r => r.cardId));
 
-  // Calculate deck total for sorting
+  // Get cached sorted cards and duplicate counts
   const deckTotal = state.defaultDeckTotal || state.archetypeDeckTotal || 0;
-
-  // Sort cards by usage
-  const sortedCards = [...state.allCards].sort((left, right) => {
-    const leftFound = Number(left.found ?? 0);
-    const leftTotal = Number(left.total ?? deckTotal);
-    const leftPct = leftTotal > 0 ? (leftFound / leftTotal) * 100 : 0;
-
-    const rightFound = Number(right.found ?? 0);
-    const rightTotal = Number(right.total ?? deckTotal);
-    const rightPct = rightTotal > 0 ? (rightFound / rightTotal) * 100 : 0;
-
-    if (rightPct !== leftPct) {
-      return rightPct - leftPct;
-    }
-    return (left.name || '').localeCompare(right.name || '');
-  });
+  const { sortedCards, duplicateCounts } = getFilterRowCardsData(state.allCards, deckTotal);
 
   // Clear and repopulate
   cardSelect.length = 1; // Keep the first "Choose card..." option
-
-  const duplicateCounts = new Map();
-  state.allCards.forEach(card => {
-    const cardId = buildCardId(card);
-    const baseName = card?.name;
-    if (!cardId || !baseName) {
-      return;
-    }
-    duplicateCounts.set(baseName, (duplicateCounts.get(baseName) || 0) + 1);
-  });
 
   sortedCards.forEach(card => {
     const cardId = buildCardId(card);

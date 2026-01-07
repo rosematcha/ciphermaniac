@@ -6,28 +6,23 @@
 // Re-export escapeHtml from shared utility for backward compatibility
 export { escapeHtml } from '../utils/html.js';
 
-// Lightweight floating tooltip used for charts/histograms
-let graphTooltipElement: HTMLElement | null = null;
+import { getGraphTooltip } from '../utils/tooltip.js';
+
+// Use shared tooltip manager for charts/histograms
+const graphTooltip = getGraphTooltip();
 
 /**
  * Ensure graph tooltip element exists
  * @returns Tooltip element
+ * @deprecated Use getGraphTooltip() from utils/tooltip.js instead
  */
 export function ensureGraphTooltip(): HTMLElement {
-  if (graphTooltipElement) {
-    return graphTooltipElement;
-  }
-
-  const tooltip = document.createElement('div');
-  tooltip.className = 'graph-tooltip';
-  tooltip.setAttribute('role', 'status');
-  tooltip.style.position = 'fixed';
-  tooltip.style.pointerEvents = 'none';
-  tooltip.style.zIndex = '9999';
-  tooltip.style.display = 'none';
-  document.body.appendChild(tooltip);
-  graphTooltipElement = tooltip;
-  return tooltip;
+  // For backward compatibility, trigger tooltip creation and return a proxy element
+  // This is deprecated - callers should use showGraphTooltip/hideGraphTooltip instead
+  graphTooltip.show('', 0, 0);
+  graphTooltip.hide();
+  const el = document.querySelector('.graph-tooltip') as HTMLElement;
+  return el || document.createElement('div');
 }
 
 /**
@@ -37,39 +32,12 @@ export function ensureGraphTooltip(): HTMLElement {
  * @param y - Y coordinate
  */
 export function showGraphTooltip(html: string, x: number, y: number): void {
-  const tooltip = ensureGraphTooltip();
-  tooltip.innerHTML = html;
-  tooltip.style.display = 'block';
-
-  // Offset so pointer doesn't overlap
-  const offsetX = 12;
-  const offsetY = 12;
-
-  // Clamp to viewport
-  const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-  const viewportHeight = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-  let left = x + offsetX;
-  let top = y + offsetY;
-
-  // If overflowing right, move left
-  const rect = tooltip.getBoundingClientRect();
-  if (left + rect.width > viewportWidth) {
-    left = Math.max(8, x - rect.width - offsetX);
-  }
-  if (top + rect.height > viewportHeight) {
-    top = Math.max(8, y - rect.height - offsetY);
-  }
-
-  tooltip.style.left = `${left}px`;
-  tooltip.style.top = `${top}px`;
+  graphTooltip.show(html, x, y);
 }
 
 /**
  * Hide graph tooltip
  */
 export function hideGraphTooltip(): void {
-  if (!graphTooltipElement) {
-    return;
-  }
-  graphTooltipElement.style.display = 'none';
+  graphTooltip.hide();
 }

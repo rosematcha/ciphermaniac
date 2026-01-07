@@ -222,7 +222,10 @@ function fetchWithRetry<T>(
     return data;
   };
 
-  const fetchPromise = withRetry(loader, CONFIG.API.RETRY_ATTEMPTS, CONFIG.API.RETRY_DELAY_MS).catch(error => {
+  const fetchPromise = withRetry(loader, {
+    maxAttempts: CONFIG.API.RETRY_ATTEMPTS,
+    delayMs: CONFIG.API.RETRY_DELAY_MS
+  }).catch(error => {
     logger.error(`Failed ${operation}`, {
       url,
       message: error?.message || error,
