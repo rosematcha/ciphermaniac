@@ -1,4 +1,3 @@
-/* eslint-disable no-param-reassign */
 /**
  * Reusable card search component with autocomplete
  */
@@ -378,7 +377,7 @@ function setupSearchHandlers(
         cardSearchInput.value = matches[matchIndex];
         selectedIndex = matchIndex;
         updateSelection(matchIndex);
-        cardSearchInput.focus();
+        cardSearchInput?.focus();
       }
     }
 

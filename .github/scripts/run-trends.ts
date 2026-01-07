@@ -19,39 +19,6 @@ import { loadCardTypesDatabase } from '../../functions/lib/cardTypesDatabase.js'
 
 const TRENDS_FOLDER = 'Trends - Last 30 Days';
 const LOOKBACK_DAYS = 30;
-const BASIC_ENERGY = new Set([
-  'Psychic Energy',
-  'Fire Energy',
-  'Lightning Energy',
-  'Grass Energy',
-  'Darkness Energy',
-  'Metal Energy',
-  'Fighting Energy',
-  'Water Energy'
-]);
-
-// Suggestion/category thresholds (mirroring generate_suggestions.py)
-const RECENT_WEIGHT_HALF_LIFE_DAYS = 30;
-const MIN_LEADER_APPEARANCE_PCT = 0.6;
-const MIN_LEADER_AVG_PCT = 4.0;
-const LEADER_RECENCY_WEIGHT = 0.1;
-const MIN_RISE_CURRENT_PCT = 1.0;
-const MIN_RISE_DELTA_ABS = 1.0;
-const MIN_RISE_DELTA_REL = 1.15;
-const MIN_RISE_TOURNAMENTS = 3;
-const MIN_CHOPPED_PEAK_PCT = 6.0;
-const MIN_CHOPPED_DROP_ABS = 5.0;
-const MIN_CHOPPED_DROP_REL = 0.6;
-const MIN_SUSTAINED_PEAK_TOURNAMENTS = 2;
-const MAX_CHOPPED_RECENT_PCT = 2.0;
-const MIN_CHOPPED_RECENT_FLOOR = 0.2;
-const MAX_DAY2D_TOTAL_APPEARANCES = 2;
-const MAX_DAY2D_PEAK_USAGE = 1.5;
-const MAX_DAY2D_TOTAL_USAGE_SUM = 3.0;
-const MIN_DAY2D_MIN_APPEARANCE = 0.3;
-const MAX_DAY2D_RECENT_PCT = 0.1;
-const MAX_PER_ARCHETYPE = 2;
-const MAX_SUGGESTIONS = 18;
 const MAX_ARCHETYPES_IN_SERIES = 32;
 
 function requireEnv(name) {
@@ -124,28 +91,6 @@ class R2Binding {
   }
 }
 
-function recencyWeight(daysDiff) {
-  return Math.pow(0.5, daysDiff / RECENT_WEIGHT_HALF_LIFE_DAYS);
-}
-
-function selectWithArchetypeCap(items, getArchetype, maxPer = MAX_PER_ARCHETYPE, limit = MAX_SUGGESTIONS) {
-  const result = [];
-  const counts = new Map();
-  for (const item of items) {
-    if (result.length >= limit) {
-      break;
-    }
-    const arch = getArchetype(item) || 'unknown';
-    const current = counts.get(arch) || 0;
-    if (current >= maxPer) {
-      continue;
-    }
-    counts.set(arch, current + 1);
-    result.push(item);
-  }
-  return result;
-}
-
 function trimTrendSeries(series = [], limit = MAX_ARCHETYPES_IN_SERIES) {
   const max = Math.max(0, Number(limit) || 0);
   if (!Array.isArray(series) || !series.length || max === 0) {
@@ -153,291 +98,6 @@ function trimTrendSeries(series = [], limit = MAX_ARCHETYPES_IN_SERIES) {
   }
 
   return series.slice(0, max);
-}
-
-function buildCardTimelines(decks, tournaments) {
-  const sortedTournaments = [...tournaments].sort(
-    (first, second) => Date.parse(first.date || 0) - Date.parse(second.date || 0)
-  );
-  const deckTotals = new Map(sortedTournaments.map(tournament => [tournament.id, Number(tournament.deckTotal) || 0]));
-  const countsByCard = new Map(); // key -> Map<tournamentId, presentCount>
-  const metaByCard = new Map(); // key -> {name,set,number, archetypes:Map}
-
-  for (const deck of decks) {
-    const seenInDeck = new Set();
-    for (const card of Array.isArray(deck.cards) ? deck.cards : []) {
-      const name = card?.name || 'Unknown Card';
-      const set = (card?.set || '').toString().toUpperCase();
-      const number = card?.number || '';
-      const key = set && number ? `${name}::${set}::${number}` : name;
-      if (seenInDeck.has(key)) {
-        continue;
-      }
-      seenInDeck.add(key);
-      if (!countsByCard.has(key)) {
-        countsByCard.set(key, new Map());
-      }
-      const byTournament = countsByCard.get(key);
-      const tournamentId = deck.tournamentId;
-      byTournament.set(tournamentId, (byTournament.get(tournamentId) || 0) + 1);
-
-      if (!metaByCard.has(key)) {
-        metaByCard.set(key, {
-          name,
-          set: set || null,
-          number: number || null,
-          archetypes: new Map()
-        });
-      }
-      if (deck.archetype) {
-        const archMap = metaByCard.get(key).archetypes;
-        archMap.set(deck.archetype, (archMap.get(deck.archetype) || 0) + 1);
-      }
-    }
-  }
-
-  const timelines = new Map();
-  sortedTournaments.forEach(tournament => {
-    if (!deckTotals.has(tournament.id)) {
-      deckTotals.set(tournament.id, 0);
-    }
-  });
-
-  countsByCard.forEach((tournamentMap, key) => {
-    const meta = metaByCard.get(key) || {};
-    const timeline = sortedTournaments.map(tournament => {
-      const present = tournamentMap.get(tournament.id) || 0;
-      const total = deckTotals.get(tournament.id) || 0;
-      const share = total ? Math.round((present / total) * 10000) / 100 : 0;
-      return {
-        tournamentId: tournament.id,
-        date: tournament.date || null,
-        present,
-        total,
-        share
-      };
-    });
-    timelines.set(key, { ...meta, timeline });
-  });
-
-  return { timelines, tournaments: sortedTournaments };
-}
-
-function buildSuggestions(cardTimelines, now) {
-  const leaders = [];
-  const rising = [];
-  const chopped = [];
-  const day2d = [];
-
-  const computeWindowAverages = series => {
-    const n = series.length;
-    if (n === 0) {
-      return { startAvg: 0, recentAvg: 0, overallAvg: 0 };
-    }
-    const windowSize = Math.max(2, Math.ceil(n * 0.4));
-    const startWindow = series.slice(0, windowSize);
-    const recentWindow = series.slice(-windowSize);
-
-    const avg = arr => (arr.length ? arr.reduce((sum, s) => sum + (s.share || 0), 0) / arr.length : 0);
-    const weightedAvg = arr => {
-      let num = 0;
-      let den = 0;
-      for (const s of arr) {
-        const date = s.date ? new Date(s.date) : null;
-        const daysDiff = date ? (now - date) / (1000 * 60 * 60 * 24) : 0;
-        const w = recencyWeight(daysDiff);
-        num += (s.share || 0) * w;
-        den += w;
-      }
-      return den ? num / den : 0;
-    };
-
-    // Simple linear regression slope over index (trend direction across full window)
-    const xs = series.map((_, idx) => idx);
-    const ys = series.map(s => s.share || 0);
-    const xMean = xs.reduce((a, b) => a + b, 0) / xs.length;
-    const yMean = ys.reduce((a, b) => a + b, 0) / ys.length || 0;
-    let num = 0;
-    let den = 0;
-    for (let i = 0; i < xs.length; i += 1) {
-      const dx = xs[i] - xMean;
-      num += dx * (ys[i] - yMean);
-      den += dx * dx;
-    }
-    const slope = den > 0 ? num / den : 0;
-
-    return {
-      startAvg: avg(startWindow),
-      recentAvg: weightedAvg(recentWindow),
-      overallAvg: avg(series),
-      slope
-    };
-  };
-
-  const entries = Array.from(cardTimelines.entries());
-  for (const [key, data] of entries) {
-    if (BASIC_ENERGY.has(data.name)) {
-      continue;
-    }
-    const seriesRaw = data.timeline || [];
-    if (!seriesRaw.length) continue;
-
-    // Smooth shares with a simple tri-weighted average to reduce single-day noise.
-    const series = seriesRaw.map((point, idx) => {
-      const neighbors = [seriesRaw[idx - 1], seriesRaw[idx], seriesRaw[idx + 1]].filter(Boolean);
-      const avgShare =
-        neighbors.reduce((sum, p) => sum + (p.share || 0), 0) / (neighbors.length || 1);
-      return { ...point, share: avgShare };
-    });
-
-    const windowSpanDays = LOOKBACK_DAYS;
-    const firstSeenIdx = series.findIndex(s => (s.present || 0) > 0);
-    const firstSeenDate = firstSeenIdx >= 0 ? (series[firstSeenIdx].date ? new Date(series[firstSeenIdx].date) : null) : null;
-    const fractionThroughWindow = firstSeenIdx >= 0 ? firstSeenIdx / Math.max(1, series.length - 1) : 1;
-    // Exclude cards that only appear after the mid-point (e.g., new set like PFL mid-window).
-    if (firstSeenIdx >= 0 && fractionThroughWindow > 0.55) {
-      continue;
-    }
-    if (!series.length) continue;
-    const latest = series[series.length - 1].share || 0;
-    const appearances = series.filter(s => (s.present || 0) > 0).length;
-    const totalTournaments = series.length;
-    const { startAvg, recentAvg, overallAvg, slope } = computeWindowAverages(series);
-
-    // Leaders
-    if (
-      totalTournaments > 0 &&
-      appearances / totalTournaments >= MIN_LEADER_APPEARANCE_PCT &&
-      overallAvg >= MIN_LEADER_AVG_PCT &&
-      recentAvg >= MIN_LEADER_AVG_PCT
-    ) {
-      const latestDate = series[series.length - 1].date ? new Date(series[series.length - 1].date) : null;
-      const daysDiff = latestDate ? (now - latestDate) / (1000 * 60 * 60 * 24) : 0;
-      const score = overallAvg + recentAvg + (latest * LEADER_RECENCY_WEIGHT) + recencyWeight(daysDiff);
-      leaders.push({ key, ...data, latest, avgShare: overallAvg, recentAvg, score });
-    }
-
-    // Rising
-    if (appearances >= MIN_RISE_TOURNAMENTS) {
-      const deltaAbs = recentAvg - startAvg;
-      const deltaRel = startAvg > 0 ? recentAvg / startAvg : recentAvg > 0 ? Infinity : 0;
-      if (
-        recentAvg >= MIN_RISE_CURRENT_PCT &&
-        deltaAbs >= MIN_RISE_DELTA_ABS &&
-        deltaRel >= MIN_RISE_DELTA_REL &&
-        slope > 0
-      ) {
-        const score = deltaAbs * 2 + recentAvg + slope + (deltaRel >= MIN_RISE_DELTA_REL ? deltaRel : 0);
-        rising.push({ key, ...data, latest, recentAvg, startAvg, deltaAbs, deltaRel, slope, score });
-      }
-    }
-
-    // Chopped and washed
-    const peakShare = Math.max(...series.map(s => s.share || 0));
-    const peakIdx = series.findIndex(s => (s.share || 0) === peakShare);
-    let sustained = 0;
-    if (peakIdx >= 0) {
-      for (let idx = peakIdx; idx < series.length; idx += 1) {
-        const share = series[idx].share || 0;
-        if (share >= MIN_CHOPPED_PEAK_PCT * 0.7 && share >= MIN_CHOPPED_PEAK_PCT) {
-          sustained += 1;
-        } else {
-          break;
-        }
-      }
-    }
-    const absDrop = peakShare - latest;
-    const relDrop = peakShare > 0 ? absDrop / peakShare : 0;
-    const slopeNegative = slope < 0 ? Math.abs(slope) : 0;
-    if (
-      peakShare >= MIN_CHOPPED_PEAK_PCT &&
-      sustained >= MIN_SUSTAINED_PEAK_TOURNAMENTS &&
-      latest <= MAX_CHOPPED_RECENT_PCT &&
-      latest >= MIN_CHOPPED_RECENT_FLOOR &&
-      absDrop >= MIN_CHOPPED_DROP_ABS &&
-      relDrop >= MIN_CHOPPED_DROP_REL
-    ) {
-      const peakDate = peakIdx >= 0 && series[peakIdx].date ? new Date(series[peakIdx].date) : null;
-      const daysSincePeak = peakDate ? (now - peakDate) / (1000 * 60 * 60 * 24) : (series.length - peakIdx) * 7;
-      const steepness = absDrop / Math.max(1, series.length - peakIdx);
-      let score = absDrop * 2 + relDrop * peakShare + steepness * 3 + sustained * 2 + recencyWeight(daysSincePeak) * 5 + slopeNegative;
-      if (latest <= 0) {
-        score *= 1.5;
-      }
-      chopped.push({ key, ...data, peakShare, latest, absDrop, relDrop, score });
-    }
-
-    // That Day 2'd
-    const totalUsage = series.reduce((sum, s) => sum + (s.share || 0), 0);
-    const maxUsage = peakShare;
-    const minUsage = Math.min(...series.map(s => s.share || 0));
-    if (
-      appearances <= MAX_DAY2D_TOTAL_APPEARANCES &&
-      maxUsage <= MAX_DAY2D_PEAK_USAGE &&
-      totalUsage <= MAX_DAY2D_TOTAL_USAGE_SUM &&
-      minUsage >= MIN_DAY2D_MIN_APPEARANCE &&
-      latest <= MAX_DAY2D_RECENT_PCT
-    ) {
-      day2d.push({ key, ...data, latest, maxUsage, totalUsage });
-    }
-  }
-
-  const sortDesc = (arr, field = 'score') => [...arr].sort((a, b) => (b[field] || 0) - (a[field] || 0));
-  const pickArch = item => {
-    const archMap = item.archetypes || new Map();
-    if (archMap instanceof Map) {
-      let best = null;
-      let bestCount = -1;
-      archMap.forEach((count, name) => {
-        if (count > bestCount) {
-          best = name;
-          bestCount = count;
-        }
-      });
-      return best;
-    }
-    return null;
-  };
-
-  const toPlain = (item, extra = {}) => ({
-    key: item.key,
-    name: item.name,
-    set: item.set || null,
-    number: item.number || null,
-    archetype: pickArch(item) || null,
-    ...extra
-  });
-
-  return {
-    leaders: selectWithArchetypeCap(sortDesc(leaders), pickArch).map(item =>
-      toPlain(item, { latest: item.latest, avgShare: item.avgShare, recentAvg: item.recentAvg, score: item.score })
-    ),
-    onTheRise: selectWithArchetypeCap(sortDesc(rising), pickArch, MAX_PER_ARCHETYPE + 1, MAX_SUGGESTIONS + 4).map(item =>
-      toPlain(item, {
-        latest: item.latest,
-        deltaAbs: item.deltaAbs,
-        deltaRel: item.deltaRel,
-        slope: item.slope,
-        score: item.score
-      })
-    ),
-    choppedAndWashed: selectWithArchetypeCap(sortDesc(chopped), pickArch).map(item =>
-      toPlain(item, {
-        peakShare: item.peakShare,
-        latest: item.latest,
-        absDrop: item.absDrop,
-        relDrop: item.relDrop,
-        score: item.score
-      })
-    ),
-    thatDay2d: selectWithArchetypeCap(sortDesc(day2d, 'maxUsage'), pickArch).map(item =>
-      toPlain(item, {
-        latest: item.latest,
-        maxUsage: item.maxUsage,
-        totalUsage: item.totalUsage
-      })
-    )
-  };
 }
 
 async function main() {
@@ -505,8 +165,6 @@ async function main() {
     windowEnd: now,
     minAppearances: 2
   });
-  const { timelines: cardTimelines } = buildCardTimelines(decks, trendTournaments);
-  const suggestions = buildSuggestions(cardTimelines, now);
 
   const meta = {
     name: TRENDS_FOLDER,
@@ -520,8 +178,8 @@ async function main() {
   const baseKey = `${TRENDS_FOLDER}`;
   console.log('[trends] Uploading meta, trends, decks, and tournaments...');
   await env.REPORTS.put(`${baseKey}/meta.json`, meta);
-  await env.REPORTS.put(`${baseKey}/trends.json`, { trendReport, cardTrends, suggestions });
-  
+  await env.REPORTS.put(`${baseKey}/trends.json`, { trendReport, cardTrends });
+
   // Save raw decks for client-side performance filtering
   // Include only necessary fields to reduce payload size
   const decksForFiltering = decks.map(deck => ({
@@ -533,7 +191,7 @@ async function main() {
     cards: deck.cards || []
   }));
   await env.REPORTS.put(`${baseKey}/decks.json`, decksForFiltering);
-  
+
   // Save tournaments for client-side filtering
   const tournamentsForFiltering = tournamentsWithDecks.map(t => ({
     id: t.id,

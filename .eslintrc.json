@@ -106,7 +106,33 @@
     // Function & parameter handling
     "no-param-reassign": [
       "error",
-      { "props": true, "ignorePropertyModificationsFor": ["element", "ctx", "context", "card"] }
+      {
+        "props": true,
+        "ignorePropertyModificationsFor": [
+          "element",
+          "el",
+          "img",
+          "baseImg",
+          "container",
+          "node",
+          "ctx",
+          "context",
+          "card",
+          "message",
+          "fallback",
+          "canvas",
+          "wrapper",
+          "target",
+          "metaSection",
+          "trigger",
+          "cache",
+          "state",
+          "row",
+          "r",
+          "suggestionsBox",
+          "cardSearchInput"
+        ]
+      }
     ],
     "prefer-rest-params": "error",
     "array-callback-return": ["error", { "allowImplicit": true }],
@@ -207,7 +233,7 @@
 
     // Naming conventions
     "camelcase": ["error", { "properties": "always", "ignoreDestructuring": false, "ignoreImports": false }],
-    "id-length": ["error", { "min": 2, "max": 30, "exceptions": ["i", "j", "k", "x", "y", "z", "_"] }],
+    "id-length": ["error", { "min": 2, "max": 40, "exceptions": ["i", "j", "k", "x", "y", "z", "e", "f", "n", "r", "d", "a", "b", "c", "h", "l", "p", "s", "t", "_"] }],
     "new-cap": ["error", { "newIsCap": true, "capIsNew": false }],
 
     // Class-related

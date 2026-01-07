@@ -129,10 +129,10 @@ export function ensureCardImageModal(): CardImageModalController | null {
       const last = focusableElements[focusableElements.length - 1];
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
-        last.focus();
+        last?.focus();
       } else if (!event.shiftKey && document.activeElement === last) {
         event.preventDefault();
-        first.focus();
+        first?.focus();
       }
     }
   };
@@ -231,7 +231,6 @@ export function enableHeroImageModal(
   }
 
   trigger.classList.add('card-hero__trigger');
-  // eslint-disable-next-line no-param-reassign
   trigger.tabIndex = 0;
   trigger.setAttribute('role', 'button');
   trigger.setAttribute('aria-label', 'Open high-resolution card image');

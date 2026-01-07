@@ -204,8 +204,6 @@ interface CardTrendsResult {
   windowStart: string | null;
   windowEnd: string | null;
   cardsAnalyzed: number;
-  minAppearances: number;
-  topCount: number;
   rising: CardTrendItem[];
   falling: CardTrendItem[];
 }
@@ -1086,8 +1084,6 @@ function buildCardTrendReport(decks, tournaments, options: BuildCardTrendReportO
     windowStart: windowStart ? windowStart.toISOString() : null,
     windowEnd: windowEnd ? windowEnd.toISOString() : null,
     cardsAnalyzed: series.length,
-    minAppearances,
-    topCount,
     rising,
     falling
   };

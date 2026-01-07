@@ -899,7 +899,6 @@ export async function fetchPricingData(): Promise<PricingData> {
       throw new AppError(ErrorTypes.PARSE, 'Invalid pricing data schema');
     }
 
-    // eslint-disable-next-line require-atomic-updates
     pricingData = data;
     logger.info(`Loaded pricing data for ${Object.keys(data.cardPrices).length} cards`);
     return data;

@@ -867,7 +867,6 @@ async function loadAndRenderMainContent(tournaments: string[], cacheObject: any,
       const minTotal = overallUsage > 20 ? 1 : 3; // Lower threshold for high-usage cards
       const chosen = pickArchetype(candidates, top8 || undefined, { minTotal });
       const label = chosen ? baseToLabel(chosen.base) : null;
-      // eslint-disable-next-line require-atomic-updates
       pickCache[ck] = label;
       savePickCache();
       return label;

@@ -14,6 +14,7 @@ import {
 import { parseReport } from '../parse.js';
 import { buildThumbCandidates } from '../thumbs.js';
 import { logger } from '../utils/errorHandler.js';
+import { escapeHtml } from '../utils/html.js';
 import { getBaseName, getDisplayName, parseDisplayName } from './identifiers.js';
 import { buildCardPath, buildIdentifierLookup, describeSlug, extractSetAndNumber } from './routing.js';
 import { getCanonicalCard, getVariantImageCandidates } from '../utils/cardSynonyms.js';
@@ -219,18 +220,8 @@ async function buildMissingCardPreviewData(cardIdentifier: string): Promise<Miss
     ]);
 
     if (trendPayload) {
-      const risingList =
-        (trendPayload?.suggestions?.onTheRise &&
-          trendPayload.suggestions.onTheRise.length &&
-          trendPayload.suggestions.onTheRise) ||
-        trendPayload?.cardTrends?.rising ||
-        [];
-      const coolingList =
-        (trendPayload?.suggestions?.choppedAndWashed &&
-          trendPayload.suggestions.choppedAndWashed.length &&
-          trendPayload.suggestions.choppedAndWashed) ||
-        trendPayload?.cardTrends?.falling ||
-        [];
+      const risingList = trendPayload?.cardTrends?.rising || [];
+      const coolingList = trendPayload?.cardTrends?.falling || [];
 
       const risingPool = (Array.isArray(risingList) ? risingList : [])
         .map(normalizeTrendingCard)
@@ -369,17 +360,14 @@ async function renderMissingCardTrendingCards(container: HTMLElement | null, car
   if (!container) {
     return;
   }
-  // eslint-disable-next-line no-param-reassign
   container.innerHTML = '<p class="card-missing-empty">Loading trending cards...</p>';
   try {
     const previews = await buildMissingCardPreviewData(cardIdentifier);
     if (!previews.length) {
-      // eslint-disable-next-line no-param-reassign
       container.innerHTML =
         '<p class="card-missing-empty">Trending cards will appear once new events are processed.</p>';
       return;
     }
-    // eslint-disable-next-line no-param-reassign
     container.innerHTML = '';
     previews.forEach(preview => {
       const href = buildCardPath(preview.identifier);
@@ -389,10 +377,10 @@ async function renderMissingCardTrendingCards(container: HTMLElement | null, car
       link.innerHTML = `
         <div class="card-missing-trend-thumb" aria-hidden="true"></div>
         <div class="card-missing-trend-copy">
-          <span class="card-missing-trend-label">${preview.label}</span>
-          <span class="card-missing-trend-name">${preview.name}</span>
-          ${preview.set && preview.number ? `<span class="card-missing-trend-set">${preview.set} ${preview.number}</span>` : ''}
-          <span class="card-missing-trend-meta">${preview.meta}</span>
+          <span class="card-missing-trend-label">${escapeHtml(preview.label)}</span>
+          <span class="card-missing-trend-name">${escapeHtml(preview.name)}</span>
+          ${preview.set && preview.number ? `<span class="card-missing-trend-set">${escapeHtml(preview.set)} ${escapeHtml(String(preview.number))}</span>` : ''}
+          <span class="card-missing-trend-meta">${escapeHtml(preview.meta)}</span>
         </div>
       `;
       container.appendChild(link);
@@ -406,7 +394,6 @@ async function renderMissingCardTrendingCards(container: HTMLElement | null, car
       cardIdentifier,
       error: error?.message || error
     });
-    // eslint-disable-next-line no-param-reassign
     container.innerHTML = '<p class="card-missing-empty">Trending cards unavailable right now.</p>';
   }
 }
@@ -780,16 +767,17 @@ export async function renderMissingCardPage(cardIdentifier: string, metaSection:
       const baseName =
         getBaseName(displaySource) || getBaseName(canonicalIdentifier) || getBaseName(cardIdentifier) || cardIdentifier;
       const encodedSearch = encodeURIComponent(displayName);
+      const escapedDisplayName = escapeHtml(displayName);
       main.innerHTML = `
         <section class="card-missing">
           <div class="card-missing-card">
             <div class="card-missing-thumb" aria-hidden="true"></div>
             <div class="card-missing-info">
               <p class="card-missing-eyebrow">No tournament entries yet</p>
-              <h1>${displayName}</h1>
+              <h1>${escapedDisplayName}</h1>
               <p class="card-missing-meta">This card has no Day 2 finishes, so no data can be shown.<br><span>Maybe you can get it its page?</span></p>
             <div class="card-missing-actions">
-                <a href="/cards?q=${encodedSearch}" class="card-missing-button primary">Search for ${displayName}</a>
+                <a href="/cards?q=${encodedSearch}" class="card-missing-button primary">Search for ${escapedDisplayName}</a>
                 <a href="/trends.html" class="card-missing-button">View meta trends</a>
               </div>
             </div>
@@ -889,7 +877,6 @@ export async function renderMissingCardPage(cardIdentifier: string, metaSection:
       error: error.message
     });
     if (metaSection) {
-      // eslint-disable-next-line no-param-reassign
       metaSection.innerHTML =
         '<div style="text-align: center; padding: 2rem; color: var(--text);">Card page not available. We do not have tournament data for this card yet.</div>';
     }

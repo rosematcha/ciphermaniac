@@ -68,15 +68,17 @@ class StorageManager {
    * @returns
    */
   static get isAvailable(): boolean {
-    return safeSync(
-      () => {
-        const test = '__storage_test__';
-        localStorage.setItem(test, test);
-        localStorage.removeItem(test);
-        return true;
-      },
-      'localStorage availability check',
-      false
+    return (
+      safeSync(
+        () => {
+          const test = '__storage_test__';
+          localStorage.setItem(test, test);
+          localStorage.removeItem(test);
+          return true;
+        },
+        'localStorage availability check',
+        false
+      ) ?? false
     );
   }
 
@@ -122,17 +124,19 @@ class StorageManager {
       throw new AppError(ErrorTypes.VALIDATION, `Unknown storage key: ${storageKey}`);
     }
 
-    return safeSync(
-      () => {
-        const serialized = JSON.stringify(data);
-        localStorage.setItem(config.key, serialized);
-        logger.debug(`Saved ${storageKey} to localStorage`, {
-          size: serialized.length
-        });
-        return true;
-      },
-      `saving ${storageKey} to localStorage`,
-      false
+    return (
+      safeSync(
+        () => {
+          const serialized = JSON.stringify(data);
+          localStorage.setItem(config.key, serialized);
+          logger.debug(`Saved ${storageKey} to localStorage`, {
+            size: serialized.length
+          });
+          return true;
+        },
+        `saving ${storageKey} to localStorage`,
+        false
+      ) ?? false
     );
   }
 
@@ -147,14 +151,16 @@ class StorageManager {
       throw new AppError(ErrorTypes.VALIDATION, `Unknown storage key: ${storageKey}`);
     }
 
-    return safeSync(
-      () => {
-        localStorage.removeItem(config.key);
-        logger.debug(`Removed ${storageKey} from localStorage`);
-        return true;
-      },
-      `removing ${storageKey} from localStorage`,
-      false
+    return (
+      safeSync(
+        () => {
+          localStorage.removeItem(config.key);
+          logger.debug(`Removed ${storageKey} from localStorage`);
+          return true;
+        },
+        `removing ${storageKey} from localStorage`,
+        false
+      ) ?? false
     );
   }
 

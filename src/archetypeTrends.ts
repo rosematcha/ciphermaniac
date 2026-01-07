@@ -1,4 +1,4 @@
-/* eslint-disable id-length, curly, prefer-destructuring, one-var, no-param-reassign */
+/* eslint-disable curly, one-var */
 /**
  * Archetype Trends Page - Redesigned v3 (Weekly Aggregation)
  * Displays weekly time-series trend data, copy count evolution, and deck building insights.
@@ -11,6 +11,7 @@
 import './utils/buildVersion.js';
 import { CONFIG } from './config.js';
 import { logger } from './utils/logger.js';
+import { escapeHtml } from './utils/html.js';
 import { PERFORMANCE_TIER_LABELS } from './data/performanceTiers.js';
 
 // --- Interfaces ---
@@ -287,7 +288,7 @@ function formatDate(dateStr: string): string {
 }
 
 function extractArchetypeFromUrl(): string | null {
-  const pathname = window.location.pathname;
+  const { pathname } = window.location;
   const parts = pathname.split('/').filter(Boolean);
   if (parts.length === 0) return null;
   const rawSlug = parts[0];
@@ -369,7 +370,7 @@ function renderInsightItem(card: EnhancedCardEntry, stat?: string, statClass?: s
   div.className = 'insight-item';
   div.href = buildCardUrl(card);
   div.innerHTML = `
-    <span class="insight-item-name">${card.name}</span>
+    <span class="insight-item-name">${escapeHtml(card.name)}</span>
     ${stat ? `<span class="insight-item-stat ${statClass || ''}">${stat}</span>` : ''}
   `;
   return div;
@@ -461,9 +462,9 @@ function renderInsights() {
           div.className = 'substitution-item';
           div.innerHTML = `
             <div class="substitution-cards">
-              <a href="${buildCardUrl(c1)}">${c1.name}</a>
+              <a href="${buildCardUrl(c1)}">${escapeHtml(c1.name)}</a>
               <span class="substitution-arrow">↔</span>
-              <a href="${buildCardUrl(c2)}">${c2.name}</a>
+              <a href="${buildCardUrl(c2)}">${escapeHtml(c2.name)}</a>
             </div>
             <span class="substitution-correlation">${sub.correlation.toFixed(2)}</span>
           `;
@@ -495,7 +496,7 @@ function generateNarrative(): string {
     const topRiser = cards[insights.risers[0].uid];
     if (topRiser) {
       parts.push(
-        `<span class="highlight">${topRiser.name}</span> is <span class="trend-up">trending up</span> (+${insights.risers[0].delta.toFixed(1)}%)`
+        `<span class="highlight">${escapeHtml(topRiser.name)}</span> is <span class="trend-up">trending up</span> (+${insights.risers[0].delta.toFixed(1)}%)`
       );
     }
   }
@@ -504,7 +505,7 @@ function generateNarrative(): string {
     const topFaller = cards[insights.fallers[0].uid];
     if (topFaller) {
       parts.push(
-        `while <span class="highlight">${topFaller.name}</span> is <span class="trend-down">declining</span> (${insights.fallers[0].delta.toFixed(1)}%)`
+        `while <span class="highlight">${escapeHtml(topFaller.name)}</span> is <span class="trend-down">declining</span> (${insights.fallers[0].delta.toFixed(1)}%)`
       );
     }
   }
@@ -586,7 +587,7 @@ function renderMatchups() {
 
     tr.innerHTML = `
       <td class="col-opponent">
-        <a href="${opponentUrl}">${mt.opponent}</a>
+        <a href="${opponentUrl}">${escapeHtml(mt.opponent)}</a>
       </td>
       <td class="col-winrate">
         <div class="winrate-bar-container">
@@ -864,7 +865,7 @@ function renderChart() {
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
   svg.setAttribute('width', '100%');
   svg.setAttribute('height', `${height}px`);
-  svg.style.height = `${height}px`;
+  (svg as SVGSVGElement & { style: CSSStyleDeclaration }).style.height = `${height}px`;
   svg.setAttribute('preserveAspectRatio', 'none');
   svg.classList.add('trends-svg-v2');
   svg.setAttribute('role', 'img');
@@ -905,7 +906,7 @@ function renderChart() {
     polyline.setAttribute('stroke-width', '2.5');
     polyline.setAttribute('points', points);
     polyline.setAttribute('stroke-linecap', 'round');
-    polyline.dataset.name = line.card.name;
+    polyline.setAttribute('data-name', line.card.name);
     polyline.classList.add('trends-line');
     svg.appendChild(polyline);
   });
@@ -1160,12 +1161,12 @@ function renderCardList() {
     tr.innerHTML = `
       <td class="col-chart">
         <label class="chart-checkbox">
-          <input type="checkbox" data-uid="${uid}" ${isSelected ? 'checked' : ''} aria-label="Toggle ${card.name}">
+          <input type="checkbox" data-uid="${uid}" ${isSelected ? 'checked' : ''} aria-label="Toggle ${escapeHtml(card.name)}">
           <span class="checkbox-indicator" ${color ? `style="background-color: ${color}"` : ''}></span>
         </label>
       </td>
       <td class="col-name">
-        <a href="${cardUrl}">${card.name}</a>
+        <a href="${cardUrl}">${escapeHtml(card.name)}</a>
       </td>
       <td class="col-category">
         <span class="category-badge cat-${card.category}">${CATEGORY_LABELS[card.category]}</span>
@@ -1183,7 +1184,7 @@ function renderCardList() {
     // Event listener for checkbox
     const checkbox = tr.querySelector('input');
     checkbox?.addEventListener('change', e => {
-      const checked = (e.target as HTMLInputElement).checked;
+      const { checked } = e.target as HTMLInputElement;
       if (checked) {
         if (state.selectedCards.size < 10) state.selectedCards.add(uid);
       } else {
@@ -1233,7 +1234,7 @@ function setupCategoryTabs() {
   const tabs = document.querySelectorAll('.category-tab');
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
-      const category = (tab as HTMLElement).dataset.category;
+      const { category } = (tab as HTMLElement).dataset;
       if (category) {
         state.categoryFilter = category as any;
 

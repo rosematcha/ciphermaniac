@@ -51,9 +51,7 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
       toggle.setAttribute('aria-expanded', 'true');
       // Focus first nav link when opening
       const firstLink = nav.querySelector('.nav-link') as HTMLElement | null;
-      if (firstLink) {
-        firstLink.focus();
-      }
+      firstLink?.focus();
     };
 
     const closeNav = () => {
@@ -92,17 +90,17 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
         if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
           event.preventDefault();
           const nextIndex = (currentIndex + 1) % navLinks.length;
-          navLinks[nextIndex].focus();
+          navLinks[nextIndex]?.focus();
         } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
           event.preventDefault();
           const prevIndex = (currentIndex - 1 + navLinks.length) % navLinks.length;
-          navLinks[prevIndex].focus();
+          navLinks[prevIndex]?.focus();
         } else if (event.key === 'Home') {
           event.preventDefault();
-          navLinks[0].focus();
+          navLinks[0]?.focus();
         } else if (event.key === 'End') {
           event.preventDefault();
-          navLinks[navLinks.length - 1].focus();
+          navLinks[navLinks.length - 1]?.focus();
         }
       }
     });

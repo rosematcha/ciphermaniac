@@ -1,4 +1,3 @@
-/* eslint-disable no-console, id-length, max-lines-per-function, max-statements, complexity, no-param-reassign, prefer-destructuring, max-len, no-multiple-empty-lines, require-atomic-updates, jsdoc/require-param, jsdoc/check-param-names */
 /**
  * Main application bootstrap and initialization
  * @module Main
@@ -459,6 +458,9 @@ async function applyCurrentFilters(state: AppState) {
  * @param selection - Tournament name(s) to load
  * @param cache - DataCache instance
  * @param options - Loading options
+ * @param options.showSkeleton - Whether to show skeleton loading state
+ * @param options.successFilter - Success filter to apply
+ * @param options.archetypeBase - Archetype base for filtering
  * @returns Tournament report with deck total and card items
  */
 async function loadSelectionData(
@@ -721,7 +723,6 @@ async function setupArchetypeSelector(
     let archetypesList = activeCache.getCachedArcheIndex(tournament);
 
     if (!archetypesList) {
-      // eslint-disable-next-line no-await-in-loop
       archetypesList = await safeAsync(
         () => fetchArchetypesList(tournament),
         `fetching archetypes for ${tournament}`,
@@ -849,7 +850,6 @@ async function setupArchetypeSelector(
         for (const tournament of archetypeTournaments) {
           for (const archetypeBase of normalizedSelection) {
             try {
-              // eslint-disable-next-line no-await-in-loop
               const data = await fetchArchetypeReport(tournament, archetypeBase);
               const parsed = parseReport(data);
               archetypeReports.push(parsed);
@@ -1026,7 +1026,7 @@ function setupControlHandlers(state: AppState) {
 
   const handleSuccessFilterChange = async () => {
     const select = elements.success as HTMLSelectElement;
-    const value = select.value;
+    const { value } = select;
     state.successFilter = value;
 
     const selection = state.selectedTournaments.length
@@ -1125,7 +1125,7 @@ async function init() {
 
     logger.info(`Starting with initial selection: ${initialSelection.join(', ')}`);
 
-    const cache = appState.cache;
+    const { cache } = appState;
     let finalSelection = initialSelection;
 
     // PRIORITY 1 & 2: If URL has ?tour param, validate it first (might change selection)

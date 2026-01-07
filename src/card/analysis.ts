@@ -322,7 +322,6 @@ export async function renderAnalysisTable(tournament: string, cardIdentifier: st
       setTimeout(resolve, 100);
     });
 
-    // eslint-disable-next-line require-atomic-updates
     analysisTable.innerHTML = '';
 
     // Per-archetype table
@@ -438,7 +437,6 @@ export async function renderAnalysisTable(tournament: string, cardIdentifier: st
     progress.setComplete(500); // Show for half a second then fade away
   } catch (error) {
     logger.error('Analysis table error:', error);
-    // eslint-disable-next-line require-atomic-updates
     analysisTable.textContent = 'Failed to load analysis for this event.';
 
     // Clean up progress indicator and any orphans
