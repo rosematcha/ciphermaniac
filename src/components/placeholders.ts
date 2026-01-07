@@ -1,4 +1,3 @@
-/* eslint-disable no-param-reassign */
 /**
  * Placeholder components to reduce Cumulative Layout Shift (CLS)
  * @module Placeholders

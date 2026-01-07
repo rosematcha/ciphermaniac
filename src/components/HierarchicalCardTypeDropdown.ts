@@ -1,4 +1,3 @@
-/* eslint-disable id-length, no-param-reassign */
 /**
  * Hierarchical card type dropdown component with enhanced UX
  * Features: visual nesting, indeterminate states, collapse/expand, smart parent selection

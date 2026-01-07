@@ -231,7 +231,6 @@ export function enableHeroImageModal(
   }
 
   trigger.classList.add('card-hero__trigger');
-  // eslint-disable-next-line no-param-reassign
   trigger.tabIndex = 0;
   trigger.setAttribute('role', 'button');
   trigger.setAttribute('aria-label', 'Open high-resolution card image');

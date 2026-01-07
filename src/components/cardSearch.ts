@@ -1,4 +1,3 @@
-/* eslint-disable no-param-reassign */
 /**
  * Reusable card search component with autocomplete
  */

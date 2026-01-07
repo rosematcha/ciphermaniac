@@ -244,22 +244,16 @@ function createListItem(summary: ArchetypeSummary, index: number): HTMLElement |
 }
 
 function setupSingleThumbnail(img: HTMLImageElement, container: HTMLElement, url: string, eager: boolean): void {
-  // eslint-disable-next-line no-param-reassign
   img.loading = eager ? 'eager' : 'lazy';
-  // eslint-disable-next-line no-param-reassign
   img.decoding = 'async';
-  // eslint-disable-next-line no-param-reassign
   img.alt = '';
 
   // Simple error handling - just show fallback on error
-  // eslint-disable-next-line no-param-reassign
   img.onerror = () => {
     container.classList.add('is-placeholder');
-    // eslint-disable-next-line no-param-reassign
     img.style.display = 'none';
   };
 
-  // eslint-disable-next-line no-param-reassign
   img.src = url;
 }
 
@@ -272,7 +266,6 @@ function setupSplitThumbnail(
 ): void {
   // Hide the base image for split view
   if (baseImg) {
-    // eslint-disable-next-line no-param-reassign
     baseImg.style.display = 'none';
   }
 

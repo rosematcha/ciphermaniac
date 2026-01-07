@@ -1,4 +1,3 @@
-/* eslint-disable id-length, no-param-reassign */
 // Number of rows to render as 'large' rows in grid view. Edit this value to change how many rows are 'large'.
 export const NUM_LARGE_ROWS = 1;
 // Number of rows to render as 'medium' rows (after large rows)
@@ -193,7 +192,6 @@ export function renderSummary(
     parts.push(`showing ${visibleRows} of ${totalRows} rows`);
   }
 
-  // eslint-disable-next-line no-param-reassign
   container.textContent = parts.join(' • ');
 }
 

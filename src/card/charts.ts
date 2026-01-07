@@ -41,7 +41,6 @@ function smoothReplaceContent(container: HTMLElement, newContent: Node | Documen
   }
 
   // Otherwise, replace content directly (no async fade to avoid race conditions)
-  // eslint-disable-next-line no-param-reassign
   container.innerHTML = '';
   container.appendChild(newContent);
 }

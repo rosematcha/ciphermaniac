@@ -1,4 +1,3 @@
-/* eslint-disable id-length */
 import { logger } from './logger.js';
 import { SUCCESS_TAGS } from '../data/performanceTiers.js';
 import { normalizeArchetypeName } from './format.js';

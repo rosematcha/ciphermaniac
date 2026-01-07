@@ -2,7 +2,6 @@
  * Multi-select dropdown component
  * @module MultiSelectDropdown
  */
-/* eslint-disable no-param-reassign, id-length */
 
 import { logger } from '../utils/logger.js';
 

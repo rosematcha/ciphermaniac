@@ -359,17 +359,14 @@ async function renderMissingCardTrendingCards(container: HTMLElement | null, car
   if (!container) {
     return;
   }
-  // eslint-disable-next-line no-param-reassign
   container.innerHTML = '<p class="card-missing-empty">Loading trending cards...</p>';
   try {
     const previews = await buildMissingCardPreviewData(cardIdentifier);
     if (!previews.length) {
-      // eslint-disable-next-line no-param-reassign
       container.innerHTML =
         '<p class="card-missing-empty">Trending cards will appear once new events are processed.</p>';
       return;
     }
-    // eslint-disable-next-line no-param-reassign
     container.innerHTML = '';
     previews.forEach(preview => {
       const href = buildCardPath(preview.identifier);
@@ -396,7 +393,6 @@ async function renderMissingCardTrendingCards(container: HTMLElement | null, car
       cardIdentifier,
       error: error?.message || error
     });
-    // eslint-disable-next-line no-param-reassign
     container.innerHTML = '<p class="card-missing-empty">Trending cards unavailable right now.</p>';
   }
 }
@@ -879,7 +875,6 @@ export async function renderMissingCardPage(cardIdentifier: string, metaSection:
       error: error.message
     });
     if (metaSection) {
-      // eslint-disable-next-line no-param-reassign
       metaSection.innerHTML =
         '<div style="text-align: center; padding: 2rem; color: var(--text);">Card page not available. We do not have tournament data for this card yet.</div>';
     }

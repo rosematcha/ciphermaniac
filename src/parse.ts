@@ -1,4 +1,3 @@
-/* eslint-disable id-length */
 /**
  * Tournament report parsing and validation
  * @module Parse

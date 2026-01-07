@@ -1,4 +1,4 @@
-/* eslint-disable id-length, curly, prefer-destructuring, one-var, no-param-reassign */
+/* eslint-disable curly, one-var */
 /**
  * Archetype Trends Page - Redesigned v3 (Weekly Aggregation)
  * Displays weekly time-series trend data, copy count evolution, and deck building insights.
@@ -287,7 +287,7 @@ function formatDate(dateStr: string): string {
 }
 
 function extractArchetypeFromUrl(): string | null {
-  const pathname = window.location.pathname;
+  const { pathname } = window.location;
   const parts = pathname.split('/').filter(Boolean);
   if (parts.length === 0) return null;
   const rawSlug = parts[0];
@@ -1183,7 +1183,7 @@ function renderCardList() {
     // Event listener for checkbox
     const checkbox = tr.querySelector('input');
     checkbox?.addEventListener('change', e => {
-      const checked = (e.target as HTMLInputElement).checked;
+      const { checked } = e.target as HTMLInputElement;
       if (checked) {
         if (state.selectedCards.size < 10) state.selectedCards.add(uid);
       } else {
@@ -1233,7 +1233,7 @@ function setupCategoryTabs() {
   const tabs = document.querySelectorAll('.category-tab');
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
-      const category = (tab as HTMLElement).dataset.category;
+      const { category } = (tab as HTMLElement).dataset;
       if (category) {
         state.categoryFilter = category as any;
 
