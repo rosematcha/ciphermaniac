@@ -18,6 +18,7 @@ import { createElement, setStyles } from './utils/dom.js';
 import { CONFIG } from './config.js';
 import { perf } from './utils/performance.js';
 import { escapeHtml } from './utils/html.js';
+import { getGridTooltip } from './utils/tooltip.js';
 import type { CardItem } from './types/index.js';
 
 // Re-export types from render/types.ts for backwards compatibility
@@ -112,49 +113,13 @@ function getGridElement(): GridElement | null {
   return document.getElementById('grid') as GridElement | null;
 }
 
-// Lightweight floating tooltip used for thumbnails' histograms
-let __gridGraphTooltip: HTMLElement | null = null;
-function ensureGridTooltip(): HTMLElement {
-  if (__gridGraphTooltip) {
-    return __gridGraphTooltip;
-  }
-  const tooltip = document.createElement('div');
-  tooltip.className = 'graph-tooltip';
-  tooltip.setAttribute('role', 'tooltip');
-  tooltip.setAttribute('aria-live', 'polite');
-  tooltip.id = 'grid-tooltip';
-  tooltip.style.position = 'fixed';
-  tooltip.style.pointerEvents = 'none';
-  tooltip.style.zIndex = '9999';
-  tooltip.style.display = 'none';
-  document.body.appendChild(tooltip);
-  __gridGraphTooltip = tooltip;
-  return tooltip;
-}
+// Use shared tooltip manager for grid histograms
+const gridTooltip = getGridTooltip();
 function showGridTooltip(html: string, x: number, y: number) {
-  const tooltip = ensureGridTooltip();
-  tooltip.innerHTML = html;
-  tooltip.style.display = 'block';
-  const offsetX = 12;
-  const offsetY = 12;
-  const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-  const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-  let left = x + offsetX;
-  let top = y + offsetY;
-  const rect = tooltip.getBoundingClientRect();
-  if (left + rect.width > vw) {
-    left = Math.max(8, x - rect.width - offsetX);
-  }
-  if (top + rect.height > vh) {
-    top = Math.max(8, y - rect.height - offsetY);
-  }
-  tooltip.style.left = `${left}px`;
-  tooltip.style.top = `${top}px`;
+  gridTooltip.show(html, x, y);
 }
 function hideGridTooltip() {
-  if (__gridGraphTooltip) {
-    __gridGraphTooltip.style.display = 'none';
-  }
+  gridTooltip.hide();
 }
 
 /**
@@ -230,14 +195,15 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
     return;
   }
 
-  // Track which cards were visible before this render
+  // Track which cards were visible before this render AND capture for DOM reuse
+  // Combined into single pass for efficiency
   const previousCardIds = new Set<string>();
+  const existingCardsMap = new Map<string, HTMLElement>();
   const existingCards = grid.querySelectorAll('.card');
   existingCards.forEach((card: Element) => {
     const htmlCard = card as HTMLElement;
-    const { uid } = htmlCard.dataset;
-    const { cardId } = htmlCard.dataset;
-    const { name } = htmlCard.dataset;
+    const { uid, cardId, name } = htmlCard.dataset;
+    // Add to previousCardIds for animation tracking
     if (uid) {
       previousCardIds.add(uid);
     }
@@ -246,6 +212,11 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
     }
     if (name) {
       previousCardIds.add(name);
+    }
+    // Add to existingCardsMap for DOM reuse
+    const key = uid || cardId || name;
+    if (key) {
+      existingCardsMap.set(key, htmlCard);
     }
   });
 
@@ -291,21 +262,6 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
 
   const largeRowsLimit = forceCompact ? 0 : NUM_LARGE_ROWS;
   const mediumRowsLimit = forceCompact ? 0 : NUM_MEDIUM_ROWS;
-
-  perf.start('render:dom-reuse');
-  // Capture existing cards to reuse DOM elements (prevents image flashing)
-  const existingCardsMap = new Map<string, HTMLElement>();
-  grid.querySelectorAll('.card').forEach(el => {
-    const cardEl = el as HTMLElement;
-    const { uid } = cardEl.dataset;
-    const { cardId } = cardEl.dataset;
-    const { name } = cardEl.dataset;
-    const key = uid || cardId || name;
-    if (key) {
-      existingCardsMap.set(key, cardEl);
-    }
-  });
-  perf.end('render:dom-reuse');
 
   // Use the shared card creation function
   const makeCard = (it: CardItem, useSm: boolean): HTMLElement => {
