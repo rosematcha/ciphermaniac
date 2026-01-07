@@ -195,14 +195,15 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
     return;
   }
 
-  // Track which cards were visible before this render
+  // Track which cards were visible before this render AND capture for DOM reuse
+  // Combined into single pass for efficiency
   const previousCardIds = new Set<string>();
+  const existingCardsMap = new Map<string, HTMLElement>();
   const existingCards = grid.querySelectorAll('.card');
   existingCards.forEach((card: Element) => {
     const htmlCard = card as HTMLElement;
-    const { uid } = htmlCard.dataset;
-    const { cardId } = htmlCard.dataset;
-    const { name } = htmlCard.dataset;
+    const { uid, cardId, name } = htmlCard.dataset;
+    // Add to previousCardIds for animation tracking
     if (uid) {
       previousCardIds.add(uid);
     }
@@ -211,6 +212,11 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
     }
     if (name) {
       previousCardIds.add(name);
+    }
+    // Add to existingCardsMap for DOM reuse
+    const key = uid || cardId || name;
+    if (key) {
+      existingCardsMap.set(key, htmlCard);
     }
   });
 
@@ -256,21 +262,6 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
 
   const largeRowsLimit = forceCompact ? 0 : NUM_LARGE_ROWS;
   const mediumRowsLimit = forceCompact ? 0 : NUM_MEDIUM_ROWS;
-
-  perf.start('render:dom-reuse');
-  // Capture existing cards to reuse DOM elements (prevents image flashing)
-  const existingCardsMap = new Map<string, HTMLElement>();
-  grid.querySelectorAll('.card').forEach(el => {
-    const cardEl = el as HTMLElement;
-    const { uid } = cardEl.dataset;
-    const { cardId } = cardEl.dataset;
-    const { name } = cardEl.dataset;
-    const key = uid || cardId || name;
-    if (key) {
-      existingCardsMap.set(key, cardEl);
-    }
-  });
-  perf.end('render:dom-reuse');
 
   // Use the shared card creation function
   const makeCard = (it: CardItem, useSm: boolean): HTMLElement => {
