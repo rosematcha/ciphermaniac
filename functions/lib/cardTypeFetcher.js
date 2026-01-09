@@ -145,11 +145,12 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
       lastUpdated: new Date().toISOString()
     };
 
-    // Parse regulation mark from div.regulation-mark
+    // Parse regulation mark from div.regulation-mark (scrape from full HTML, not just type div)
     // Format: "G Regulation Mark •" or "H Regulation Mark •" or "I Regulation Mark •"
-    const regMarkMatch = html.match(/<div class="regulation-mark"[^>]*>\s*([A-Z])\s+Regulation Mark/i);
+    const regMarkMatch = html.match(/<div class="regulation-mark"[^>]*>\s*([A-Z])\s*Regulation\s*Mark/i);
     if (regMarkMatch) {
       result.regulationMark = regMarkMatch[1].toUpperCase();
+      console.log(`[CardTypeFetcher] Found regulation mark ${result.regulationMark} for ${setCode}::${numberVariant}`);
     }
 
     // Parse card type
@@ -217,6 +218,13 @@ function needsTypeEnrichment(card) {
     return true;
   }
 
+  // Check database entry if available
+  const key = `${card?.set}::${card?.number}`;
+  if (!key) {
+    return false;
+  }
+
+  // Return false if card not in database yet (will be handled elsewhere)
   return false;
 }
 
@@ -370,6 +378,45 @@ function extractUniqueCards(decks) {
   }
 
   return Array.from(uniqueCardsMap.values());
+}
+
+/**
+ * Refresh regulation marks for cards that are missing them
+ * @param {Array<Object>} cards - Array of card objects
+ * @param {Object} database - Card types database
+ * @param {Object} env - Cloudflare Workers environment
+ * @returns {Promise<void>}
+ */
+export async function refreshRegulationMarks(cards, database, env) {
+  if (!Array.isArray(cards) || cards.length === 0 || !env) {
+    return;
+  }
+
+  const cardsNeedingUpdate = cards.filter(card => {
+    const _key = `${card.set}::${card.number}`;
+    return database[_key] && !database[_key]?.regulationMark;
+  });
+
+  if (cardsNeedingUpdate.length === 0) {
+    console.log('[CardTypeFetcher] No cards need regulation mark refresh.');
+    return;
+  }
+
+  console.log(`[CardTypeFetcher] Refreshing regulation marks for ${cardsNeedingUpdate.length} cards...`);
+
+  const pendingUpdates = {};
+  for (const card of cardsNeedingUpdate) {
+    await fetchAndCacheCardType(card, database, env, {
+      persist: false,
+      recordUpdates: pendingUpdates
+    });
+  }
+
+  // Persist all updates at once
+  if (Object.keys(pendingUpdates).length > 0) {
+    await persistCardTypesDatabase(env, database);
+    console.log(`[CardTypeFetcher] Updated regulation marks for ${Object.keys(pendingUpdates).length} cards.`);
+  }
 }
 
 /**

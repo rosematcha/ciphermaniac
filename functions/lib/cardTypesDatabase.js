@@ -68,19 +68,25 @@ export function getCardType(database, setCode, number) {
  * @returns {Object} - Enriched card object
  */
 export function enrichCardWithType(card, database) {
-  if (!card || !card.set || !card.number || !database) {
+  if (!card) {
     return card;
   }
 
-  const typeInfo = getCardType(database, card.set, card.number);
-  if (!typeInfo) {
+  const key = card?.uid || `${card?.set}::${card?.number}`;
+
+  if (!key) {
     return card;
   }
 
   const enriched = { ...card };
+  const typeInfo = database[key];
 
-  // Only set category if not already present
-  if (!enriched.category && typeInfo.cardType) {
+  if (!typeInfo) {
+    return enriched;
+  }
+
+  // Set category from cardType if not already present
+  if (typeInfo.cardType && !enriched.category) {
     enriched.category = typeInfo.cardType;
   }
 
@@ -104,8 +110,8 @@ export function enrichCardWithType(card, database) {
     enriched.fullType = typeInfo.fullType;
   }
 
-  // Add regulation mark if present
-  if (typeInfo.regulationMark && !enriched.regulationMark) {
+  // Add regulation mark if present (overwrites if missing to update from DB)
+  if (typeInfo.regulationMark) {
     enriched.regulationMark = typeInfo.regulationMark;
   }
 

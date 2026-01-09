@@ -1,7 +1,7 @@
 import { fetchLimitlessJson } from './limitless.js';
 import { generateReportFromDecks, normalizeArchetypeName, sanitizeForFilename } from './reportBuilder.js';
 import { enrichCardWithType, loadCardTypesDatabase } from './cardTypesDatabase.js';
-import { enrichDecksWithOnTheFlyFetch } from './cardTypeFetcher.js';
+import { enrichDecksWithOnTheFlyFetch, refreshRegulationMarks } from './cardTypeFetcher.js';
 import { loadCardSynonyms } from './cardSynonyms.js';
 import { inferEnergyType, inferTrainerType, isAceSpecName } from './cardTypeInference.js';
 import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json';
@@ -1211,6 +1211,10 @@ export async function runOnlineMetaJob(env, options: OnlineMetaJobOptions = {}) 
   console.info('[OnlineMeta] Checking for missing card types...');
   await enrichDecksWithOnTheFlyFetch(decks, cardTypesDb, env);
   console.info('[OnlineMeta] Card type enrichment complete');
+
+  // Refresh regulation marks for cards that are missing them
+  console.info('[OnlineMeta] Refreshing regulation marks...');
+  await refreshRegulationMarks(decks, cardTypesDb, env);
 
   const deckTotal = decks.length;
   const masterReport = generateReportFromDecks(decks, deckTotal, decks, synonymDb);
