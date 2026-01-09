@@ -829,18 +829,23 @@ function generateReportFromDecks(deckList, deckTotal, synonymDb) {
         category: card.category || undefined,
         trainerType: card.trainerType || undefined,
         energyType: card.energyType || undefined,
-        aceSpec: card.aceSpec || undefined
+        aceSpec: card.aceSpec || undefined,
+        regulationMark: card.regulationMark || undefined
       });
 
       if (!nameCasing.has(uid)) {
         nameCasing.set(uid, card.name);
       }
-      if ((card.category || card.trainerType || card.energyType || card.aceSpec) && !uidCategory.has(uid)) {
+      if (
+        (card.category || card.trainerType || card.energyType || card.aceSpec || card.regulationMark) &&
+        !uidCategory.has(uid)
+      ) {
         uidCategory.set(uid, {
           category: card.category || undefined,
           trainerType: card.trainerType || undefined,
           energyType: card.energyType || undefined,
-          aceSpec: card.aceSpec || undefined
+          aceSpec: card.aceSpec || undefined,
+          regulationMark: card.regulationMark || undefined
         });
       }
     }
@@ -904,6 +909,9 @@ function generateReportFromDecks(deckList, deckTotal, synonymDb) {
       }
       if (categoryInfo.aceSpec) {
         entry.aceSpec = true;
+      }
+      if (categoryInfo.regulationMark) {
+        entry.regulationMark = categoryInfo.regulationMark;
       }
       const slug = composeCategorySlug(categoryInfo.category, categoryInfo.trainerType, categoryInfo.energyType, {
         aceSpec: Boolean(categoryInfo.aceSpec)

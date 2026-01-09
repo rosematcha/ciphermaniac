@@ -1,7 +1,7 @@
 import { fetchLimitlessJson } from './limitless.js';
 import { generateReportFromDecks, normalizeArchetypeName, sanitizeForFilename } from './reportBuilder.js';
-import { enrichCardWithType, loadCardTypesDatabase } from './cardTypesDatabase.js';
-import { enrichDecksWithOnTheFlyFetch } from './cardTypeFetcher.js';
+import { enrichAllDecks, enrichCardWithType, loadCardTypesDatabase } from './cardTypesDatabase.js';
+import { enrichDecksWithOnTheFlyFetch, refreshRegulationMarks } from './cardTypeFetcher.js';
 import { loadCardSynonyms } from './cardSynonyms.js';
 import { inferEnergyType, inferTrainerType, isAceSpecName } from './cardTypeInference.js';
 import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json';
@@ -59,6 +59,7 @@ interface CardEntry {
   trainerType?: string;
   energyType?: string;
   aceSpec?: boolean;
+  regulationMark?: string;
 }
 
 /** Report item for thumbnail inference (subset of CardItem) */
@@ -1211,13 +1212,37 @@ export async function runOnlineMetaJob(env, options: OnlineMetaJobOptions = {}) 
   await enrichDecksWithOnTheFlyFetch(decks, cardTypesDb, env);
   console.info('[OnlineMeta] Card type enrichment complete');
 
-  const deckTotal = decks.length;
-  const masterReport = generateReportFromDecks(decks, deckTotal, decks, synonymDb);
-  const { archetypeFiles, archetypeIndex, minDecks } = buildArchetypeReports(decks, MIN_USAGE_PERCENT, synonymDb, {
-    thumbnailConfig: ARCHETYPE_THUMBNAILS
-  });
+  // Refresh regulation marks for cards that are missing them
+  console.info('[OnlineMeta] Refreshing regulation marks...');
+  // Extract unique cards from all decks for regulation mark refresh
+  const uniqueCardsMap = new Map<string, { set: string; number: string }>();
+  for (const deck of decks) {
+    for (const card of Array.isArray(deck?.cards) ? deck.cards : []) {
+      if (card?.set && card?.number) {
+        const key = `${card.set}::${card.number}`;
+        if (!uniqueCardsMap.has(key)) {
+          uniqueCardsMap.set(key, { set: card.set, number: card.number });
+        }
+      }
+    }
+  }
+  await refreshRegulationMarks(Array.from(uniqueCardsMap.values()), cardTypesDb, env);
+
+  // Re-enrich deck cards with updated regulation marks from database
+  const enrichedDecks = enrichAllDecks(decks, cardTypesDb);
+
+  const deckTotal = enrichedDecks.length;
+  const masterReport = generateReportFromDecks(enrichedDecks, deckTotal, enrichedDecks, synonymDb);
+  const { archetypeFiles, archetypeIndex, minDecks } = buildArchetypeReports(
+    enrichedDecks,
+    MIN_USAGE_PERCENT,
+    synonymDb,
+    {
+      thumbnailConfig: ARCHETYPE_THUMBNAILS
+    }
+  );
   const trendSeriesLimit = Number.isFinite(options.seriesLimit) ? Number(options.seriesLimit) : 32;
-  const trendReport = buildTrendReport(decks, tournaments, {
+  const trendReport = buildTrendReport(enrichedDecks, tournaments, {
     windowStart: since,
     windowEnd: now,
     now,
@@ -1226,7 +1251,7 @@ export async function runOnlineMetaJob(env, options: OnlineMetaJobOptions = {}) 
   });
   const trendTournaments =
     Array.isArray(trendReport?.tournaments) && trendReport.tournaments.length ? trendReport.tournaments : tournaments;
-  const cardTrends = buildCardTrendReport(decks, trendTournaments, {
+  const cardTrends = buildCardTrendReport(enrichedDecks, trendTournaments, {
     windowStart: since,
     windowEnd: now
   });
