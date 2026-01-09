@@ -329,12 +329,22 @@ async function main() {
   const existingCount = Object.keys(database).length;
   console.log(`📚 Loaded existing database with ${existingCount} cards\n`);
 
-  // Collect all cards
+  // Collect all cards from reports
   const allCards = await collectAllCards();
+
+  // In force refresh mode, also include existing database cards
+  // (they may have aged out of reports but still need regulation marks updated)
+  const allCardsToProcess = forceRefresh ? new Set([...Object.keys(database), ...allCards]) : allCards;
+
+  if (forceRefresh) {
+    console.log(
+      `📊 Database cards: ${Object.keys(database).length}, Report cards: ${allCards.length}, Combined: ${allCardsToProcess.size}`
+    );
+  }
 
   // Find cards that need to be fetched
   const cardsToFetch = [];
-  for (const cardKey of allCards) {
+  for (const cardKey of allCardsToProcess) {
     if (forceRefresh) {
       // In force refresh mode, re-fetch all cards
       cardsToFetch.push(cardKey);
