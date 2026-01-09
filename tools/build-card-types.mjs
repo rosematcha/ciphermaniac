@@ -54,7 +54,9 @@ const MASTER_FILE_NAME = 'master.json';
  * @returns {Promise<void>}
  */
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise(resolve => {
+    setTimeout(resolve, ms);
+  });
 }
 
 /**
@@ -106,7 +108,10 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
       }
 
       const rawType = match[1].replace(/<[^>]+>/g, ' ');
-      const fullType = rawType.replace(/\s+/g, ' ').replace(/\s*–\s*/g, ' - ').trim();
+      const fullType = rawType
+        .replace(/\s+/g, ' ')
+        .replace(/\s*–\s*/g, ' - ')
+        .trim();
       const parts = fullType
         .split(/\s*-\s*/)
         .map(p => p.trim())
@@ -116,6 +121,14 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '')
           .toLowerCase();
+
+      // Parse regulation mark from div.regulation-mark
+      // Format: "G Regulation Mark •" or "H Regulation Mark •" etc.
+      let regulationMark = null;
+      const regMarkMatch = html.match(/<div class="regulation-mark"[^>]*>\s*([A-Z])\s*Regulation\s*Mark/i);
+      if (regMarkMatch) {
+        regulationMark = regMarkMatch[1].toUpperCase();
+      }
 
       // Parse the type information
       const cardType = normalize(parts[0]); // "pokemon", "trainer", "energy"
@@ -159,7 +172,8 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
         subType,
         evolutionInfo,
         fullType,
-        ...(aceSpec ? { aceSpec: true } : {})
+        ...(aceSpec ? { aceSpec: true } : {}),
+        ...(regulationMark ? { regulationMark } : {})
       };
     } catch (error) {
       if (attempt < MAX_RETRIES - 1) {
@@ -201,18 +215,13 @@ async function saveDatabase(database) {
   await fs.mkdir(dirname(CARD_TYPES_DB_PATH), { recursive: true });
 
   // Sort by key for consistent output
-  const sorted = Object.keys(database)
-    .sort()
-    .reduce((acc, key) => {
-      acc[key] = database[key];
-      return acc;
-    }, {});
+  const sortedKeys = Object.keys(database).sort();
+  const sorted = {};
+  for (const key of sortedKeys) {
+    sorted[key] = database[key];
+  }
 
-  await fs.writeFile(
-    CARD_TYPES_DB_PATH,
-    JSON.stringify(sorted, null, 2) + '\n',
-    'utf-8'
-  );
+  await fs.writeFile(CARD_TYPES_DB_PATH, `${JSON.stringify(sorted, null, 2)}\n`, 'utf-8');
 }
 
 /**
@@ -294,10 +303,26 @@ async function collectAllCards() {
 }
 
 /**
+ * Parse command line arguments
+ * @returns {{ forceRefresh: boolean }}
+ */
+function parseArgs() {
+  const args = process.argv.slice(2);
+  return {
+    forceRefresh: args.includes('--force-refresh') || args.includes('-f')
+  };
+}
+
+/**
  * Main execution
  */
 async function main() {
+  const { forceRefresh } = parseArgs();
+
   console.log('🎴 Card Type Database Builder\n');
+  if (forceRefresh) {
+    console.log('⚠️  FORCE REFRESH MODE: Re-fetching ALL cards to update regulation marks\n');
+  }
 
   // Load existing database
   const database = await loadExistingDatabase();
@@ -310,7 +335,11 @@ async function main() {
   // Find cards that need to be fetched
   const cardsToFetch = [];
   for (const cardKey of allCards) {
-    if (!database[cardKey]) {
+    if (forceRefresh) {
+      // In force refresh mode, re-fetch all cards
+      cardsToFetch.push(cardKey);
+    } else if (!database[cardKey]) {
+      // Normal mode: only fetch missing cards
       cardsToFetch.push(cardKey);
     }
   }
@@ -334,13 +363,14 @@ async function main() {
 
     if (typeInfo) {
       console.log(
-        `  ✅ Success: ${cardKey} → ${typeInfo.cardType}${typeInfo.subType ? `/${typeInfo.subType}` : ''}`
+        `  ✅ Success: ${cardKey} → ${typeInfo.cardType}${typeInfo.subType ? `/${typeInfo.subType}` : ''}${typeInfo.regulationMark ? ` [${typeInfo.regulationMark}]` : ''}`
       );
       database[cardKey] = {
         cardType: typeInfo.cardType,
         ...(typeInfo.subType ? { subType: typeInfo.subType } : {}),
         ...(typeInfo.evolutionInfo ? { evolutionInfo: typeInfo.evolutionInfo } : {}),
         ...(typeInfo.aceSpec ? { aceSpec: true } : {}),
+        ...(typeInfo.regulationMark ? { regulationMark: typeInfo.regulationMark } : {}),
         fullType: typeInfo.fullType,
         lastUpdated: new Date().toISOString()
       };

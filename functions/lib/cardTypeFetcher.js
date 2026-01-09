@@ -421,6 +421,67 @@ export async function refreshRegulationMarks(cards, database, env) {
 }
 
 /**
+ * Force refresh all card types in the database, including regulation marks.
+ * This re-fetches every card from Limitless, useful for backfilling new fields.
+ * @param {Object} database - Card types database
+ * @param {Object} env - Cloudflare Workers environment
+ * @returns {Promise<{updated: number, total: number}>}
+ */
+export async function forceRefreshAllCardTypes(database, env) {
+  if (!database || !env) {
+    return { updated: 0, total: 0 };
+  }
+
+  const allKeys = Object.keys(database);
+  if (allKeys.length === 0) {
+    console.log('[CardTypeFetcher] No cards in database to refresh.');
+    return { updated: 0, total: 0 };
+  }
+
+  console.log(`[CardTypeFetcher] Force refreshing ALL ${allKeys.length} cards in database...`);
+
+  const pendingUpdates = {};
+  let processed = 0;
+
+  for (const key of allKeys) {
+    const [set, number] = key.split('::');
+    if (!set || !number) {
+      continue;
+    }
+
+    const card = { set, number };
+    // eslint-disable-next-line no-await-in-loop
+    await fetchAndCacheCardType(card, database, env, {
+      persist: false,
+      recordUpdates: pendingUpdates,
+      force: true
+    });
+
+    processed += 1;
+
+    // Log progress every 50 cards
+    if (processed % 50 === 0) {
+      console.log(`[CardTypeFetcher] Progress: ${processed}/${allKeys.length} cards refreshed...`);
+    }
+
+    // Rate limit
+    // eslint-disable-next-line no-await-in-loop
+    await delay(RATE_LIMIT_DELAY_MS);
+  }
+
+  // Persist all updates at once
+  const updatedCount = Object.keys(pendingUpdates).length;
+  if (updatedCount > 0) {
+    await persistCardTypesDatabase(env, database);
+    console.log(`[CardTypeFetcher] Force refresh complete. Updated ${updatedCount}/${allKeys.length} cards.`);
+  } else {
+    console.log('[CardTypeFetcher] Force refresh complete. No changes detected.');
+  }
+
+  return { updated: updatedCount, total: allKeys.length };
+}
+
+/**
  * Enrich decks with on-the-fly card type fetching
  * This is the main entry point for integrating into report generation
  * @param {Array<Object>} decks - Array of deck objects
