@@ -240,11 +240,11 @@ export async function fetchAndCacheCardType(card, database, env, options = {}) {
     return card;
   }
 
-  const { persist = true, recordUpdates } = options;
+  const { persist = true, recordUpdates, force = false } = options;
   const key = `${card.set}::${card.number}`;
 
-  // Check if already in database
-  if (database[key] && !needsTypeEnrichment(card)) {
+  // Check if already in database (skip if force is true, used for regulation mark refresh)
+  if (!force && database[key] && !needsTypeEnrichment(card)) {
     return card;
   }
 
@@ -408,7 +408,8 @@ export async function refreshRegulationMarks(cards, database, env) {
   for (const card of cardsNeedingUpdate) {
     await fetchAndCacheCardType(card, database, env, {
       persist: false,
-      recordUpdates: pendingUpdates
+      recordUpdates: pendingUpdates,
+      force: true
     });
   }
 
