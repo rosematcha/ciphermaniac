@@ -22,7 +22,13 @@ import {
   openFiltersPanel as openFiltersPanelState,
   toggleFiltersPanel as toggleFiltersPanelState
 } from './utils/filtersPanel.js';
-import { normalizeSetValues, readCardType, readSelectedSets, writeSelectedSets } from './utils/filterState.js';
+import {
+  normalizeSetValues,
+  readCardType,
+  readSelectedSets,
+  writeSelectedRegulationMarks,
+  writeSelectedSets
+} from './utils/filterState.js';
 import { DataCache } from './utils/DataCache.js';
 import { createMultiSelectDropdown, type DropdownInstance } from './components/MultiSelectDropdown.js';
 import type { CardItem, Deck, TournamentReport } from './types/index.js';
@@ -1082,6 +1088,22 @@ function setupControlHandlers(state: AppState) {
       setStateInURL({ cardType: state.selectedCardType }, { merge: true });
     });
   }
+
+  // Regulation mark checkboxes
+  const regmarkCheckboxes = document.querySelectorAll<HTMLInputElement>('input[name="regmark"]');
+  const handleRegmarkChange = async () => {
+    const selected: string[] = [];
+    regmarkCheckboxes.forEach(cb => {
+      if (cb.checked) {
+        selected.push(cb.value.toUpperCase());
+      }
+    });
+    writeSelectedRegulationMarks(selected);
+    await applyCurrentFilters(state);
+  };
+  regmarkCheckboxes.forEach(cb => {
+    state.cleanup.addEventListener(cb, 'change', handleRegmarkChange);
+  });
 
   // Initialize controls from URL
   const urlState = getStateFromURL();

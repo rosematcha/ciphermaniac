@@ -118,8 +118,8 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
 
     const html = await response.text();
 
-    // Parse the card-text-type div
-    const typeMatch = html.match(/<div class="card-text-type"[^>]*>([\s\S]*?)<\/div>/i);
+    // Parse the card-text-type element (can be div or p tag)
+    const typeMatch = html.match(/<(?:div|p)[^>]*class="card-text-type"[^>]*>([\s\S]*?)<\/(?:div|p)>/i);
     if (!typeMatch) {
       console.warn(`[CardTypeFetcher] Could not find type div for ${setCode}::${numberVariant}`);
       return null;
@@ -144,6 +144,14 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
       fullType,
       lastUpdated: new Date().toISOString()
     };
+
+    // Parse regulation mark from div.regulation-mark (scrape from full HTML, not just type div)
+    // Format: "G Regulation Mark •" or "H Regulation Mark •" or "I Regulation Mark •"
+    const regMarkMatch = html.match(/<div class="regulation-mark"[^>]*>\s*([A-Z])\s*Regulation\s*Mark/i);
+    if (regMarkMatch) {
+      result.regulationMark = regMarkMatch[1].toUpperCase();
+      console.log(`[CardTypeFetcher] Found regulation mark ${result.regulationMark} for ${setCode}::${numberVariant}`);
+    }
 
     // Parse card type
     const mainType = normalize(parts[0]);
@@ -210,6 +218,13 @@ function needsTypeEnrichment(card) {
     return true;
   }
 
+  // Check database entry if available
+  const key = `${card?.set}::${card?.number}`;
+  if (!key) {
+    return false;
+  }
+
+  // Return false if card not in database yet (will be handled elsewhere)
   return false;
 }
 
@@ -225,11 +240,11 @@ export async function fetchAndCacheCardType(card, database, env, options = {}) {
     return card;
   }
 
-  const { persist = true, recordUpdates } = options;
+  const { persist = true, recordUpdates, force = false } = options;
   const key = `${card.set}::${card.number}`;
 
-  // Check if already in database
-  if (database[key] && !needsTypeEnrichment(card)) {
+  // Check if already in database (skip if force is true, used for regulation mark refresh)
+  if (!force && database[key] && !needsTypeEnrichment(card)) {
     return card;
   }
 
@@ -275,6 +290,10 @@ export async function fetchAndCacheCardType(card, database, env, options = {}) {
 
   if (typeInfo.fullType) {
     enriched.fullType = typeInfo.fullType;
+  }
+
+  if (typeInfo.regulationMark) {
+    enriched.regulationMark = typeInfo.regulationMark;
   }
 
   if (typeInfo.cardType === 'trainer' && typeInfo.aceSpec) {
@@ -359,6 +378,107 @@ function extractUniqueCards(decks) {
   }
 
   return Array.from(uniqueCardsMap.values());
+}
+
+/**
+ * Refresh regulation marks for cards that are missing them
+ * @param {Array<Object>} cards - Array of card objects
+ * @param {Object} database - Card types database
+ * @param {Object} env - Cloudflare Workers environment
+ * @returns {Promise<void>}
+ */
+export async function refreshRegulationMarks(cards, database, env) {
+  if (!Array.isArray(cards) || cards.length === 0 || !env) {
+    return;
+  }
+
+  const cardsNeedingUpdate = cards.filter(card => {
+    const _key = `${card.set}::${card.number}`;
+    return database[_key] && !database[_key]?.regulationMark;
+  });
+
+  if (cardsNeedingUpdate.length === 0) {
+    console.log('[CardTypeFetcher] No cards need regulation mark refresh.');
+    return;
+  }
+
+  console.log(`[CardTypeFetcher] Refreshing regulation marks for ${cardsNeedingUpdate.length} cards...`);
+
+  const pendingUpdates = {};
+  for (const card of cardsNeedingUpdate) {
+    await fetchAndCacheCardType(card, database, env, {
+      persist: false,
+      recordUpdates: pendingUpdates,
+      force: true
+    });
+  }
+
+  // Persist all updates at once
+  if (Object.keys(pendingUpdates).length > 0) {
+    await persistCardTypesDatabase(env, database);
+    console.log(`[CardTypeFetcher] Updated regulation marks for ${Object.keys(pendingUpdates).length} cards.`);
+  }
+}
+
+/**
+ * Force refresh all card types in the database, including regulation marks.
+ * This re-fetches every card from Limitless, useful for backfilling new fields.
+ * @param {Object} database - Card types database
+ * @param {Object} env - Cloudflare Workers environment
+ * @returns {Promise<{updated: number, total: number}>}
+ */
+export async function forceRefreshAllCardTypes(database, env) {
+  if (!database || !env) {
+    return { updated: 0, total: 0 };
+  }
+
+  const allKeys = Object.keys(database);
+  if (allKeys.length === 0) {
+    console.log('[CardTypeFetcher] No cards in database to refresh.');
+    return { updated: 0, total: 0 };
+  }
+
+  console.log(`[CardTypeFetcher] Force refreshing ALL ${allKeys.length} cards in database...`);
+
+  const pendingUpdates = {};
+  let processed = 0;
+
+  for (const key of allKeys) {
+    const [set, number] = key.split('::');
+    if (!set || !number) {
+      continue;
+    }
+
+    const card = { set, number };
+    // eslint-disable-next-line no-await-in-loop
+    await fetchAndCacheCardType(card, database, env, {
+      persist: false,
+      recordUpdates: pendingUpdates,
+      force: true
+    });
+
+    processed += 1;
+
+    // Log progress every 50 cards
+    if (processed % 50 === 0) {
+      console.log(`[CardTypeFetcher] Progress: ${processed}/${allKeys.length} cards refreshed...`);
+    }
+
+    // Rate limit
+    // eslint-disable-next-line no-await-in-loop
+    await delay(RATE_LIMIT_DELAY_MS);
+  }
+
+  // Persist all updates at once
+  const updatedCount = Object.keys(pendingUpdates).length;
+  if (updatedCount > 0) {
+    await persistCardTypesDatabase(env, database);
+    console.log(`[CardTypeFetcher] Force refresh complete. Updated ${updatedCount}/${allKeys.length} cards.`);
+  } else {
+    console.log('[CardTypeFetcher] Force refresh complete. No changes detected.');
+  }
+
+  return { updated: updatedCount, total: allKeys.length };
 }
 
 /**

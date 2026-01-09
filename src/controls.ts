@@ -7,7 +7,13 @@ import { render } from './render.js';
 import { logger } from './utils/logger.js';
 import { CONFIG } from './config.js';
 import { getCardPrice } from './api.js';
-import { normalizeSetCode, readCardType, readSelectedCardTypes, readSelectedSets } from './utils/filterState.js';
+import {
+  normalizeSetCode,
+  readCardType,
+  readSelectedCardTypes,
+  readSelectedRegulationMarks,
+  readSelectedSets
+} from './utils/filterState.js';
 import { perf } from './utils/performance.js';
 import type { CardItem, SortOption } from './types/index.js';
 
@@ -47,6 +53,7 @@ function getCurrentFilters() {
   const searchInput = document.getElementById('search') as HTMLInputElement | null;
   const sortSelect = document.getElementById('sort') as HTMLSelectElement | null;
   const selectedSets = readSelectedSets();
+  const selectedRegulationMarks = readSelectedRegulationMarks();
 
   // Try to read from new multi-select card type filter
   const selectedCardTypes = readSelectedCardTypes();
@@ -57,7 +64,8 @@ function getCurrentFilters() {
     query: searchInput?.value?.trim()?.toLowerCase() || '',
     sort: sortSelect?.value || 'percent-desc',
     sets: selectedSets,
-    cardType
+    cardType,
+    regulationMarks: selectedRegulationMarks
   };
 }
 
@@ -237,18 +245,43 @@ function matchesCardType(item: CardItem, cardTypes: string | string[]): boolean 
 }
 
 /**
- * Apply advanced filters (set, type, etc.) to the items list.
+ * Check if an item matches the active regulation mark filter.
+ * @param item - Card item
+ * @param activeMarks - Active regulation marks (e.g., ['G', 'H', 'I'])
+ * @returns Whether the item matches
+ */
+function matchesRegulationMarkFilter(item: CardItem, activeMarks: string[] = []): boolean {
+  // If no marks selected, show all cards
+  if (!Array.isArray(activeMarks) || activeMarks.length === 0) {
+    return true;
+  }
+  // Card must have a regulation mark that matches one of the selected marks
+  const itemMark = (item.regulationMark || '').toUpperCase();
+  if (!itemMark) {
+    return false;
+  }
+  return activeMarks.some(mark => mark.toUpperCase() === itemMark);
+}
+
+/**
+ * Apply advanced filters (set, type, regulation mark, etc.) to the items list.
  * @param items - Array of card items
  * @param filters - Filter options
  * @param filters.sets - Set filter options
  * @param filters.cardType - Card type filter options
+ * @param filters.regulationMarks - Regulation mark filter options
  * @returns Filtered array of card items
  */
 function applyAdvancedFilters(
   items: CardItem[],
-  filters: { sets?: string[]; cardType?: string | string[] }
+  filters: { sets?: string[]; cardType?: string | string[]; regulationMarks?: string[] }
 ): CardItem[] {
-  return items.filter(item => matchesSetFilter(item, filters.sets) && matchesCardType(item, filters.cardType || ''));
+  return items.filter(
+    item =>
+      matchesSetFilter(item, filters.sets) &&
+      matchesCardType(item, filters.cardType || '') &&
+      matchesRegulationMarkFilter(item, filters.regulationMarks)
+  );
 }
 
 /**

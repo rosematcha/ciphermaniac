@@ -14,12 +14,19 @@
 name: (Card Metadata) Types
 
 run-name: >-
-  ${{ github.event_name == 'schedule' && 'Daily Card Types Update' || 'Card Types Update (manual)' }}
+  ${{ github.event_name == 'schedule' && 'Daily Card Types Update' || 
+      (github.event.inputs.force_refresh == 'true' && 'Card Types FORCE REFRESH (manual)' || 'Card Types Update (manual)') }}
 
 on:
   schedule:
     - cron: '0 3 * * *' # Daily at 3:00 AM UTC (after online-meta)
   workflow_dispatch:
+    inputs:
+      force_refresh:
+        description: 'Force refresh ALL cards (re-scrape to get regulation marks)'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: card-types-${{ github.ref }}
@@ -100,7 +107,12 @@ jobs:
       - name: Build card types database
         run: |
           echo "Building card types database..."
-          node tools/build-card-types.mjs
+          if [ "${{ github.event.inputs.force_refresh }}" == "true" ]; then
+            echo "Force refresh mode enabled - re-fetching ALL cards"
+            node tools/build-card-types.mjs --force-refresh
+          else
+            node tools/build-card-types.mjs
+          fi
 
       - name: Upload card types database to R2
         env:
@@ -160,12 +172,21 @@ jobs:
           echo "## Card Types Database Update" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
+          if [ "${{ github.event.inputs.force_refresh }}" == "true" ]; then
+            echo "🔄 **Force refresh mode** - All cards were re-scraped to update regulation marks" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
           if [ "${{ steps.check_changes.outputs.has_changes }}" == "true" ]; then
             echo "Database updated with new card types" >> $GITHUB_STEP_SUMMARY
 
             # Count cards in database
             CARD_COUNT=$(jq 'length' public/assets/data/card-types.json)
             echo "- Total cards in database: **${CARD_COUNT}**" >> $GITHUB_STEP_SUMMARY
+
+            # Count cards with regulation marks
+            REG_MARK_COUNT=$(jq '[.[] | select(.regulationMark != null)] | length' public/assets/data/card-types.json)
+            echo "- Cards with regulation marks: **${REG_MARK_COUNT}**" >> $GITHUB_STEP_SUMMARY
           else
             echo "No new cards to add - database is up to date" >> $GITHUB_STEP_SUMMARY
           fi

@@ -25,6 +25,7 @@ function generateReportFromDecks(deckList, deckTotal, _unused, synonymDb) {
       const trainerType = card?.trainerType || null;
       const energyType = card?.energyType || null;
       const aceSpec = Boolean(card?.aceSpec);
+      const regulationMark = card?.regulationMark || null;
 
       const [canonSet, canonNumber] = canonicalizeVariant(card?.set, card?.number);
       let uid = canonSet && canonNumber ? `${name}::${canonSet}::${canonNumber}` : name;
@@ -41,18 +42,20 @@ function generateReportFromDecks(deckList, deckTotal, _unused, synonymDb) {
         category: category || undefined,
         trainerType: trainerType || undefined,
         energyType: energyType || undefined,
-        aceSpec: aceSpec || undefined
+        aceSpec: aceSpec || undefined,
+        regulationMark: regulationMark || undefined
       });
 
       if (!nameCasing.has(uid)) {
         nameCasing.set(uid, name);
       }
-      if ((category || trainerType || energyType || aceSpec) && !uidCategory.has(uid)) {
+      if ((category || trainerType || energyType || aceSpec || regulationMark) && !uidCategory.has(uid)) {
         uidCategory.set(uid, {
           category: category || undefined,
           trainerType: trainerType || undefined,
           energyType: energyType || undefined,
-          aceSpec: aceSpec || undefined
+          aceSpec: aceSpec || undefined,
+          regulationMark: regulationMark || undefined
         });
       }
     }
@@ -109,6 +112,9 @@ function generateReportFromDecks(deckList, deckTotal, _unused, synonymDb) {
       }
       if (categoryInfo.aceSpec) {
         item.aceSpec = true;
+      }
+      if (categoryInfo.regulationMark) {
+        item.regulationMark = categoryInfo.regulationMark;
       }
       const categorySlug = composeCategoryPath(
         categoryInfo.category,
