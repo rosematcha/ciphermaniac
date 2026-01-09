@@ -72,7 +72,8 @@ export function enrichCardWithType(card, database) {
     return card;
   }
 
-  const key = card?.uid || `${card?.set}::${card?.number}`;
+  // Database keys are SET::NUMBER format, not NAME::SET::NUMBER (uid format)
+  const key = card?.set && card?.number ? `${card.set}::${card.number}` : null;
 
   if (!key) {
     return card;
