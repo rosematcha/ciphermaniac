@@ -104,6 +104,11 @@ export function enrichCardWithType(card, database) {
     enriched.fullType = typeInfo.fullType;
   }
 
+  // Add regulation mark if present
+  if (typeInfo.regulationMark && !enriched.regulationMark) {
+    enriched.regulationMark = typeInfo.regulationMark;
+  }
+
   if (typeInfo.cardType === 'trainer' && typeInfo.aceSpec) {
     enriched.aceSpec = true;
   }

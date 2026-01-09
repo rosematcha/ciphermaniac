@@ -231,3 +231,79 @@ export function writeSelectedCardTypes(
   const values = Array.isArray(selected) ? selected : [];
   hiddenInput.value = values.join(',');
 }
+
+// =============================================================================
+// Regulation Mark Filter State
+// =============================================================================
+
+const DEFAULT_REGMARK_HIDDEN_ID = 'regmark-filter-data';
+
+/**
+ * Normalize a regulation mark value (uppercase single letter).
+ * @param value
+ * @returns
+ */
+export function normalizeRegulationMark(value: unknown): string {
+  const str = String(value || '')
+    .trim()
+    .toUpperCase();
+  // Regulation marks are single uppercase letters (A-Z)
+  return /^[A-Z]$/.test(str) ? str : '';
+}
+
+/**
+ * Read selected regulation marks from a hidden comma-delimited input.
+ * @param hiddenInput
+ * @returns
+ */
+function readRegulationMarksFromHidden(hiddenInput: HTMLInputElement | null): string[] {
+  if (!hiddenInput || typeof hiddenInput.value !== 'string' || !hiddenInput.value) {
+    return [];
+  }
+
+  return hiddenInput.value
+    .split(',')
+    .map(value => normalizeRegulationMark(value))
+    .filter(Boolean);
+}
+
+interface ReadSelectedRegulationMarksOptions {
+  hiddenId?: string;
+}
+
+/**
+ * Resolve currently selected regulation marks from the DOM.
+ * @param options
+ * @param options.hiddenId
+ * @returns Array of selected regulation marks (e.g., ['G', 'H', 'I'])
+ */
+export function readSelectedRegulationMarks({
+  hiddenId = DEFAULT_REGMARK_HIDDEN_ID
+}: ReadSelectedRegulationMarksOptions = {}): string[] {
+  const hiddenInput = document.getElementById(hiddenId) as HTMLInputElement | null;
+  return readRegulationMarksFromHidden(hiddenInput);
+}
+
+interface WriteSelectedRegulationMarksOptions {
+  hiddenId?: string;
+}
+
+/**
+ * Persist the selected regulation marks into the hidden input.
+ * @param selected
+ * @param options
+ * @param options.hiddenId
+ * @returns
+ */
+export function writeSelectedRegulationMarks(
+  selected: unknown,
+  { hiddenId = DEFAULT_REGMARK_HIDDEN_ID }: WriteSelectedRegulationMarksOptions = {}
+): void {
+  const hiddenInput = document.getElementById(hiddenId) as HTMLInputElement | null;
+  if (!hiddenInput) {
+    return;
+  }
+
+  const values = Array.isArray(selected) ? selected.map(normalizeRegulationMark).filter(Boolean) : [];
+  hiddenInput.value = values.join(',');
+}

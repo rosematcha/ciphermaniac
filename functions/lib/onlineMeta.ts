@@ -59,6 +59,7 @@ interface CardEntry {
   trainerType?: string;
   energyType?: string;
   aceSpec?: boolean;
+  regulationMark?: string;
 }
 
 /** Report item for thumbnail inference (subset of CardItem) */

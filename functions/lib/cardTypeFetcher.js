@@ -145,6 +145,13 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
       lastUpdated: new Date().toISOString()
     };
 
+    // Parse regulation mark from div.regulation-mark
+    // Format: "G Regulation Mark •" or "H Regulation Mark •" or "I Regulation Mark •"
+    const regMarkMatch = html.match(/<div class="regulation-mark"[^>]*>\s*([A-Z])\s+Regulation Mark/i);
+    if (regMarkMatch) {
+      result.regulationMark = regMarkMatch[1].toUpperCase();
+    }
+
     // Parse card type
     const mainType = normalize(parts[0]);
     if (mainType === 'pokemon') {
@@ -275,6 +282,10 @@ export async function fetchAndCacheCardType(card, database, env, options = {}) {
 
   if (typeInfo.fullType) {
     enriched.fullType = typeInfo.fullType;
+  }
+
+  if (typeInfo.regulationMark) {
+    enriched.regulationMark = typeInfo.regulationMark;
   }
 
   if (typeInfo.cardType === 'trainer' && typeInfo.aceSpec) {

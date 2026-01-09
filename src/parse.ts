@@ -113,6 +113,11 @@ function validateAndCleanItem(item: unknown, index: number): CardItem | null {
     cleanItem.aceSpec = true;
   }
 
+  // Preserve regulation mark if present
+  if (typeof record.regulationMark === 'string' && record.regulationMark.trim()) {
+    cleanItem.regulationMark = record.regulationMark.trim().toUpperCase();
+  }
+
   if (Array.isArray(dist)) {
     // Keep v2 schema objects { copies, players, percent } if present; otherwise accept numeric array fallback
     cleanItem.dist = dist

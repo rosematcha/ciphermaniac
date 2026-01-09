@@ -46,6 +46,8 @@ export interface CardItem {
   aceSpec?: boolean;
   /** Pokemon TCG supertype from API */
   supertype?: string;
+  /** Regulation mark (e.g., "G", "H", "I") for format legality */
+  regulationMark?: string;
   /** Number of decks containing this card */
   found: number;
   /** Total number of decks analyzed */
@@ -83,6 +85,8 @@ export interface DeckCard {
   aceSpec?: boolean;
   /** Pokemon TCG supertype */
   supertype?: string;
+  /** Regulation mark (e.g., "G", "H", "I") for format legality */
+  regulationMark?: string;
   /** Unique identifier */
   uid?: string;
 }
