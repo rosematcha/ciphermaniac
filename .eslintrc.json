@@ -1,5 +1,6 @@
 {
   "root": true,
+  "ignorePatterns": ["public/assets/sql.js/**"],
   "env": {
     "browser": true,
     "es2022": true,
@@ -233,7 +234,35 @@
 
     // Naming conventions
     "camelcase": ["error", { "properties": "always", "ignoreDestructuring": false, "ignoreImports": false }],
-    "id-length": ["error", { "min": 2, "max": 40, "exceptions": ["i", "j", "k", "x", "y", "z", "e", "f", "n", "r", "d", "a", "b", "c", "h", "l", "p", "s", "t", "_"] }],
+    "id-length": [
+      "error",
+      {
+        "min": 2,
+        "max": 40,
+        "exceptions": [
+          "i",
+          "j",
+          "k",
+          "x",
+          "y",
+          "z",
+          "e",
+          "f",
+          "n",
+          "r",
+          "d",
+          "a",
+          "b",
+          "c",
+          "h",
+          "l",
+          "p",
+          "s",
+          "t",
+          "_"
+        ]
+      }
+    ],
     "new-cap": ["error", { "newIsCap": true, "capIsNew": false }],
 
     // Class-related
