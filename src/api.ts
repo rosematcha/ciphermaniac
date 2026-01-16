@@ -7,6 +7,7 @@ import { CONFIG } from './config.js';
 import { logger } from './utils/logger.js';
 import { AppError, ErrorTypes, safeFetch, validateType, withRetry } from './utils/errorHandler.js';
 import { perf } from './utils/performance.js';
+import { clearDatabaseCache, loadDatabase } from './lib/database.js';
 import type {
   ArchetypeIndexEntry,
   ArchetypeReport,
@@ -78,6 +79,7 @@ function cachePendingJson(cacheKey: string, promise: Promise<any>, ttl: number) 
 
 export function clearApiCache() {
   jsonCache.clear();
+  clearDatabaseCache();
 }
 
 function fetchWithTimeout(url: string, options: RequestInit = {}) {
@@ -384,20 +386,49 @@ export async function fetchLimitlessTournaments(filters: LimitlessFilters = {}):
 }
 
 /**
- * Fetch tournament report data
+ * Fetch master report for a tournament - tries SQLite first, falls back to JSON
  * @param tournament
  * @returns Promise resolving to tournament report
  */
-export function fetchReport(tournament: string): Promise<TournamentReport> {
+export async function fetchReport(tournament: string): Promise<TournamentReport> {
   perf.start(`fetchReport:${tournament}`);
-  const encodedTournament = encodeURIComponent(tournament);
-  return fetchReportResource<TournamentReport>(
-    `${encodedTournament}/master.json`,
-    `report for ${tournament}`,
-    'object',
-    'tournament report',
-    { cache: true }
-  ).finally(() => perf.end(`fetchReport:${tournament}`));
+  try {
+    const db = await loadDatabase(tournament);
+    const cardStats = db.getCardStats();
+    const deckTotal = db.getTotalDecks();
+    const items = cardStats.map((row: any) => ({
+      name: row.card_name,
+      set: row.card_set ?? undefined,
+      number: row.card_number ?? undefined,
+      uid: row.card_uid,
+      found: row.found,
+      total: deckTotal,
+      pct: row.pct,
+      category: row.category ?? undefined,
+      trainerType: row.trainer_type ?? undefined,
+      energyType: row.energy_type ?? undefined,
+      aceSpec: Boolean(row.ace_spec),
+      dist: row.dist || [],
+      rank: row.rank
+    }));
+    logger.debug(`Loaded tournament report from SQLite for ${tournament}`, { deckTotal, itemCount: items.length });
+    return { deckTotal, items };
+  } catch (dbError) {
+    logger.debug('SQLite report failed, falling back to JSON', {
+      tournament,
+      error: dbError instanceof Error ? dbError.message : String(dbError)
+    });
+    const encodedTournament = encodeURIComponent(tournament);
+    return fetchReportResource<TournamentReport>(
+      `${encodedTournament}/master.json`,
+      `report for ${tournament}`,
+      'object',
+      'tournament report',
+      { cache: true }
+    );
+  } finally {
+    perf.end(`fetchReport:${tournament}`);
+  }
 }
 
 /**
