@@ -4,6 +4,7 @@ import { enrichAllDecks, enrichCardWithType, loadCardTypesDatabase } from './car
 import { enrichDecksWithOnTheFlyFetch, refreshRegulationMarks } from './cardTypeFetcher.js';
 import { loadCardSynonyms } from './cardSynonyms.js';
 import { inferEnergyType, inferTrainerType, isAceSpecName } from './cardTypeInference.js';
+import { buildTournamentDatabase } from './sqliteBuilder.js';
 import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json';
 
 const WINDOW_DAYS = 30;
@@ -1102,6 +1103,17 @@ async function putJson(env, key, data) {
   });
 }
 
+async function putBinary(env, key: string, data: Uint8Array | Buffer, contentType = 'application/octet-stream') {
+  if (!env?.REPORTS?.put) {
+    throw new Error('REPORTS bucket not configured');
+  }
+  await env.REPORTS.put(key, data, {
+    httpMetadata: {
+      contentType
+    }
+  });
+}
+
 async function batchPutJson(env, entries, concurrency = DEFAULT_R2_CONCURRENCY) {
   if (!Array.isArray(entries) || entries.length === 0) {
     return;
@@ -1291,6 +1303,18 @@ export async function runOnlineMetaJob(env, options: OnlineMetaJobOptions = {}) 
     data: file.data
   }));
   await batchPutJson(env, [...baseWrites, ...archetypeWrites], r2Concurrency);
+
+  console.info('[OnlineMeta] Building SQLite database...');
+  try {
+    const sqliteData = await buildTournamentDatabase(decks, {
+      tournamentId: TARGET_FOLDER,
+      generatedAt: new Date().toISOString()
+    });
+    await putBinary(env, `${REPORT_BASE_KEY}/tournament.db`, sqliteData, 'application/x-sqlite3');
+    console.info('[OnlineMeta] SQLite database uploaded', { size: sqliteData.length });
+  } catch (sqliteError) {
+    console.error('[OnlineMeta] SQLite generation failed, falling back to JSON only:', sqliteError);
+  }
 
   // Note: Online tournaments are NOT added to tournaments.json
   // They are treated as a special case in the UI
