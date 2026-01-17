@@ -195,11 +195,49 @@
     gap: var(--space-12);
     /* Mobile uses smaller padding, prioritizing content visibility */
     padding-top: clamp(24px, 8vh, 80px);
+    /* Extra bottom padding to prevent footer overlap */
+    padding-bottom: var(--space-8);
+    /* Tighter mobile margins: top right bottom left */
+    margin: 10px 5px 10px 5px;
+  }
+
+  .features-section {
+    padding-bottom: var(--space-6);
   }
 
   .hero-search input[type='search'] {
     font-size: 16px;
     padding: var(--space-4) var(--space-5) var(--space-4) 48px;
+  }
+
+  /* Feature cards: horizontal layout on mobile (icon + title inline) */
+  .feature-card {
+    flex-direction: row;
+    align-items: center;
+    padding: var(--space-5);
+    gap: var(--space-4);
+  }
+
+  /* Icon sizing matches title font size on mobile */
+  .feature-icon {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    margin-bottom: 0;
+  }
+
+  .feature-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .feature-card h3 {
+    font-size: var(--font-size-lg);
+  }
+
+  /* Hide description on mobile for compact cards */
+  .feature-card p {
+    display: none;
   }
 }
 

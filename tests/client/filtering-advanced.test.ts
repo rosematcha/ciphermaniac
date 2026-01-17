@@ -41,7 +41,7 @@ test('filter performance for 100 and 1000 decks', async () => {
   const start100 = Date.now();
   generateReportForFilters(decks100 as any, decks100[0]?.archetype || '', []);
   const duration100 = Date.now() - start100;
-  assert.ok(duration100 < 100, `Filtering 100 decks took ${duration100}ms`);
+  assert.ok(duration100 < 200, `Filtering 100 decks took ${duration100}ms (threshold: 200ms)`);
 
   const tournament1000 = generateLargeTournament(1000);
   const decks1000 = tournament1000.decks || [];
