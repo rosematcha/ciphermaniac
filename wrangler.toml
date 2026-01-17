@@ -1,6 +1,6 @@
 # Cloudflare Pages configuration for Ciphermaniac
 name = "ciphermaniac"
-compatibility_date = "2023-10-30"
+compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
 # Pages build output directory (required by Wrangler/Pages)
