@@ -326,7 +326,7 @@ export const validators = {
  */
 export function assert(condition: any, message = 'Assertion failed'): asserts condition {
   if (!condition) {
-    throw new Error(message);
+    throw new AppError(ErrorTypes.VALIDATION, message);
   }
 }
 
@@ -344,12 +344,12 @@ export function validateType(value: any, expectedType: string, paramName = 'valu
       return; // Valid array
     }
     const actualType = Array.isArray(value) ? 'array' : typeof value;
-    throw new Error(`${paramName} must be ${expectedType}, got ${actualType}`);
+    throw new AppError(ErrorTypes.VALIDATION, `${paramName} must be ${expectedType}, got ${actualType}`);
   }
 
   const actualType = typeof value;
   if (actualType !== expectedType) {
-    throw new Error(`${paramName} must be ${expectedType}, got ${actualType}`);
+    throw new AppError(ErrorTypes.VALIDATION, `${paramName} must be ${expectedType}, got ${actualType}`);
   }
 }
 

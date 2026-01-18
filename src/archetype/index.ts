@@ -1,6 +1,7 @@
 import { fetchArchetypeReport, fetchReport } from '../api.js';
 import { parseReport } from '../parse.js';
 import { updateLayout } from '../render.js';
+import { AppError, ErrorTypes } from '../utils/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import { GRANULARITY_DEFAULT_PERCENT, SUCCESS_FILTER_LABELS } from './constants.js';
 import { applyFilters } from './filters/apply.js';
@@ -104,7 +105,10 @@ async function initialize() {
     ]);
 
     if (!tournamentReport || typeof tournamentReport.deckTotal !== 'number') {
-      throw new Error(`Tournament report for ${state.tournament} is missing deck totals.`);
+      throw new AppError(
+        ErrorTypes.DATA_FORMAT,
+        `Tournament report for ${state.tournament} is missing deck totals.`
+      );
     }
 
     const parsedArchetype = parseReport(archetypeRaw);
@@ -150,6 +154,9 @@ async function initialize() {
   }
 }
 
+/**
+ * Initialize the archetype detail page.
+ */
 export function initArchetypePage(): void {
   if (typeof document === 'undefined') {
     return;

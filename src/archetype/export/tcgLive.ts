@@ -6,6 +6,10 @@ const TCG_LIVE_SECTION_ORDER = [
   { key: 'energy', label: 'Energy' }
 ];
 
+/**
+ * Build a TCG Live compatible deck list string.
+ * @param entries - Skeleton export entries.
+ */
 export function buildTcgliveExportString(entries: SkeletonExportEntry[]): string {
   if (!Array.isArray(entries) || entries.length === 0) {
     return '';

@@ -6,6 +6,9 @@ import { getState } from '../state.js';
 import type { FilterRow } from '../types.js';
 import { describeFilters, describeSuccessFilter, getFilterKey, updateFilterMessage } from './utils.js';
 
+/**
+ * Reset filters and return to the baseline dataset.
+ */
 export async function resetToDefaultData(): Promise<void> {
   await applySuccessFilter();
   const state = getState();
@@ -22,6 +25,9 @@ export async function resetToDefaultData(): Promise<void> {
   updateFilterMessage('');
 }
 
+/**
+ * Apply current filter rows and update the rendered cards.
+ */
 export async function applyFilters(): Promise<void> {
   const state = getState();
   if (!state.tournament || !state.archetypeBase) {
@@ -29,7 +35,7 @@ export async function applyFilters(): Promise<void> {
   }
 
   const activeFilters = state.filterRows
-    .filter((row): row is FilterRow & { cardId: string } => row.cardId !== null)
+    .filter((row): row is FilterRow & { cardId: string } => Boolean(row.cardId))
     .map(row => ({
       cardId: row.cardId,
       operator: row.operator || null,
@@ -72,7 +78,7 @@ export async function applyFilters(): Promise<void> {
     logger.debug('Filter result', { deckTotal: result.deckTotal, itemsCount: result.items.length });
 
     const currentActiveFilters = state.filterRows
-      .filter(row => row.cardId)
+      .filter((row): row is FilterRow & { cardId: string } => Boolean(row.cardId))
       .map(row => ({
         cardId: row.cardId,
         operator: row.operator || null,
@@ -130,6 +136,9 @@ export async function applyFilters(): Promise<void> {
   }
 }
 
+/**
+ * Apply the current success filter baseline.
+ */
 export async function applySuccessFilter(): Promise<void> {
   const baseline = await loadSuccessBaseline();
   const state = getState();

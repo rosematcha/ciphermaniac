@@ -76,10 +76,17 @@ export const filterRowCardsCache: FilterRowCardsCache = {
   duplicateCounts: new Map()
 };
 
+/**
+ * Return the shared archetype page state.
+ */
 export function getState(): AppState {
   return state;
 }
 
+/**
+ * Merge partial updates into the shared archetype state.
+ * @param partial - State fields to update.
+ */
 export function setState(partial: Partial<AppState>): void {
   Object.assign(state, partial);
 }

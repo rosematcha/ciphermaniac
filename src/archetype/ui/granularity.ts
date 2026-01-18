@@ -5,6 +5,10 @@ import { getState } from '../state.js';
 import { elements } from './elements.js';
 import { renderCardsWithThreshold } from './render.js';
 
+/**
+ * Sync the granularity output label with the current threshold.
+ * @param threshold - Percent threshold.
+ */
 export function syncGranularityOutput(threshold: number): void {
   const safeValue = Number.isFinite(threshold) ? Math.max(GRANULARITY_MIN_PERCENT, threshold) : GRANULARITY_MIN_PERCENT;
   const step = elements.granularityRange
@@ -21,6 +25,10 @@ export function syncGranularityOutput(threshold: number): void {
   }
 }
 
+/**
+ * Configure granularity slider range based on items.
+ * @param items - Current card items.
+ */
 export function configureGranularity(items: ReturnType<typeof getState>['items']): void {
   const state = getState();
   const range = elements.granularityRange;
@@ -39,13 +47,20 @@ export function configureGranularity(items: ReturnType<typeof getState>['items']
   range.max = String(maxValue);
   range.step = String(GRANULARITY_STEP_PERCENT);
 
-  const desired = Number.isFinite(state.thresholdPercent) ? state.thresholdPercent : GRANULARITY_DEFAULT_PERCENT;
+  const desired =
+    typeof state.thresholdPercent === 'number' && Number.isFinite(state.thresholdPercent)
+      ? state.thresholdPercent
+      : GRANULARITY_DEFAULT_PERCENT;
   const normalized = normalizeThreshold(desired, minValue, maxValue);
   state.thresholdPercent = normalized;
 
   syncGranularityOutput(normalized);
 }
 
+/**
+ * Handle granularity input changes.
+ * @param event - Input event.
+ */
 export function handleGranularityInput(event: Event): void {
   const state = getState();
   const target = (event.currentTarget || event.target) as HTMLInputElement | null;
@@ -71,6 +86,9 @@ export function handleGranularityInput(event: Event): void {
   renderCardsWithThreshold(normalized);
 }
 
+/**
+ * Attach granularity slider event listeners.
+ */
 export function setupGranularityListeners(): void {
   const range = elements.granularityRange;
   if (!range) {

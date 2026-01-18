@@ -1,5 +1,10 @@
+import { AppError, ErrorTypes } from '../../utils/errorHandler.js';
 import { logger } from '../../utils/logger.js';
 
+/**
+ * Attempt to copy text using document.execCommand.
+ * @param text - Text to copy.
+ */
 export function attemptExecCommandCopy(text: string): boolean {
   if (!globalThis.document || typeof globalThis.document.createElement !== 'function') {
     return false;
@@ -27,6 +32,10 @@ export function attemptExecCommandCopy(text: string): boolean {
   }
 }
 
+/**
+ * Copy a deck list to the clipboard with fallbacks.
+ * @param text - Deck list text.
+ */
 export async function copyDecklistToClipboard(text: string): Promise<'clipboard' | 'execCommand' | 'prompt'> {
   const clipboard = globalThis.navigator?.clipboard;
   if (clipboard?.writeText) {
@@ -50,5 +59,5 @@ export async function copyDecklistToClipboard(text: string): Promise<'clipboard'
     }
   }
 
-  throw new Error('TCGLiveExportCopyCancelled');
+  throw new AppError(ErrorTypes.USER_INPUT, 'TCGLiveExportCopyCancelled', 'Copy canceled by user.');
 }

@@ -1,3 +1,6 @@
+/**
+ * Initialize filter collapse/expand behavior.
+ */
 export function setupFilterCollapse(): void {
   const filtersLabel = document.querySelector('.archetype-filters-label');
   const filtersContainer = document.querySelector('.archetype-filters');
@@ -11,6 +14,9 @@ export function setupFilterCollapse(): void {
   });
 }
 
+/**
+ * Initialize the controls toggle UI.
+ */
 export function setupControlsToggle(): void {
   const toggleBtn = document.getElementById('controls-toggle');
   const body = document.getElementById('controls-body');

@@ -1,4 +1,5 @@
 import './utils/buildVersion.js';
+import { AppError, ErrorTypes } from './utils/errorHandler.js';
 import { logger } from './utils/logger.js';
 
 /**
@@ -25,7 +26,7 @@ interface FeedbackElements {
 function getRequiredElement<T extends HTMLElement>(id: string, Constructor: ElementConstructor<T>): T {
   const element = document.getElementById(id);
   if (!element || !(element instanceof Constructor)) {
-    throw new Error(`Element with id "${id}" not found or not a ${Constructor.name}`);
+    throw new AppError(ErrorTypes.RENDER, `Element with id "${id}" not found or not a ${Constructor.name}`);
   }
   return element;
 }
@@ -219,7 +220,7 @@ export class FeedbackForm {
 
     const submitButton = this.form.querySelector<HTMLButtonElement>('.submit-button');
     if (!submitButton) {
-      throw new Error('Submit button not found');
+      throw new AppError(ErrorTypes.RENDER, 'Submit button not found');
     }
     const { textContent: originalText } = submitButton;
 
@@ -245,7 +246,9 @@ export class FeedbackForm {
       } else {
         const errorData = await response.text();
         logger.error('Feedback submission rejected by server', errorData);
-        throw new Error(`Server error: ${response.status} - ${errorData}`);
+        throw new AppError(ErrorTypes.API, `Server error: ${response.status} - ${errorData}`, null, {
+          status: response.status
+        });
       }
     } catch (error: any) {
       logger.error('Submission error', error);

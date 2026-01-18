@@ -52,6 +52,10 @@ function sortItemsForDisplayInternal(items: CardItemData[]): CardItemData[] {
   });
 }
 
+/**
+ * Sort card items for display ordering.
+ * @param items - Card items to sort.
+ */
 export function sortItemsForDisplay(items: CardItemData[]): CardItemData[] {
   if (!Array.isArray(items)) {
     return [];
@@ -65,6 +69,11 @@ export function sortItemsForDisplay(items: CardItemData[]): CardItemData[] {
   return sorted;
 }
 
+/**
+ * Filter items by the usage threshold, if set.
+ * @param items - Card items to filter.
+ * @param threshold - Minimum percent threshold.
+ */
 export function filterItemsByThreshold(items: CardItemData[], threshold: number | null): CardItemData[] {
   if (!Array.isArray(items)) {
     return [];

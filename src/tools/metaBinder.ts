@@ -1,6 +1,7 @@
 import { fetchDecks, fetchTournamentsList, getCardPrice } from '../api.js';
 import { analyzeEvents, type BinderDataset, buildBinderDataset } from './metaBinderData.js';
 import { buildThumbCandidates } from '../thumbs.js';
+import { AppError, ErrorTypes } from '../utils/errorHandler.js';
 import { debounce } from '../utils/performance.js';
 import { storage } from '../utils/storage.js';
 import { logger } from '../utils/logger.js';
@@ -14,11 +15,11 @@ const DEFAULT_ONLINE_META = 'Online - Last 14 Days';
 
 type AnalysisResult = ReturnType<typeof analyzeEvents>;
 type _BinderSelections = { tournaments: string[]; archetypes: string[] };
-type AnalysisEvent = Parameters<typeof analyzeEvents>[0][number];
+type AnalysisEvent = NonNullable<Parameters<typeof analyzeEvents>[0]>[number];
 type DeckRecord = AnalysisEvent['decks'][number];
 type BinderSection = BinderDataset['sections'][keyof BinderDataset['sections']];
-type BinderCard = BinderSection extends Array<infer T> ? T : never;
 type BinderArchetypeGroup = BinderDataset['sections']['archetypePokemon'][number];
+type BinderCard = Exclude<BinderSection extends Array<infer T> ? T : never, BinderArchetypeGroup>;
 
 interface BinderMetrics {
   priceTotal: number;
@@ -203,7 +204,8 @@ function computeSelectionDecks() {
   let count = 0;
   for (const event of state.analysis.events) {
     for (const deck of event.decks) {
-      if (!allowed || allowed.has(deck.canonicalArchetype)) {
+      const archetype = deck.canonicalArchetype;
+      if (!allowed || (archetype && allowed.has(archetype))) {
         count += 1;
       }
     }
@@ -243,14 +245,14 @@ function chunk<T>(array: T[], size: number): T[][] {
 
 function ensureCardTemplate(): HTMLTemplateElement {
   if (!elements.cardTemplate) {
-    throw new Error('Card template missing');
+    throw new AppError(ErrorTypes.RENDER, 'Card template missing');
   }
   return elements.cardTemplate;
 }
 
 function ensurePlaceholderTemplate(): HTMLTemplateElement {
   if (!elements.placeholderTemplate) {
-    throw new Error('Placeholder template missing');
+    throw new AppError(ErrorTypes.RENDER, 'Placeholder template missing');
   }
   return elements.placeholderTemplate;
 }
@@ -277,7 +279,7 @@ function createCardElement(
   const template = ensureCardTemplate();
   const root = template.content.firstElementChild;
   if (!root) {
-    throw new Error('Card template missing content');
+    throw new AppError(ErrorTypes.RENDER, 'Card template missing content');
   }
   const clone = root.cloneNode(true) as HTMLElement;
   const img = clone.querySelector<HTMLImageElement>('img');
@@ -318,7 +320,7 @@ function createPlaceholderElement(): HTMLElement {
   const template = ensurePlaceholderTemplate();
   const node = template.content.firstElementChild;
   if (!node) {
-    throw new Error('Placeholder template missing content');
+    throw new AppError(ErrorTypes.RENDER, 'Placeholder template missing content');
   }
   return node.cloneNode(true) as HTMLElement;
 }
@@ -603,7 +605,7 @@ function updateStats(): void {
   const metaDecks = getTotalMetaDecks();
 
   if (!binderData || state.isBinderDirty) {
-    const parts = [];
+    const parts: string[] = [];
     parts.push(`${eventCount} event${eventCount === 1 ? '' : 's'} selected`);
     parts.push(`${selectionDecks} deck${selectionDecks === 1 ? '' : 's'} available`);
     if (state.isBinderDirty && binderData) {
@@ -904,7 +906,9 @@ async function computeBinderMetrics(
       unique.set(mapKey, { card, quantity });
     } else {
       const entry = unique.get(mapKey);
-      entry.quantity = Math.max(entry.quantity, quantity);
+      if (entry) {
+        entry.quantity = Math.max(entry.quantity, quantity);
+      }
     }
   }
 
@@ -912,7 +916,7 @@ async function computeBinderMetrics(
     Array.from(unique.values()).map(async entry => {
       const { card, quantity } = entry;
       const lookupId = card.priceKey || (card.set && card.number ? `${card.name}::${card.set}::${card.number}` : null);
-      let price = null;
+      let price: number | null = null;
       if (lookupId) {
         try {
           price = await getCardPrice(lookupId);
@@ -1180,7 +1184,7 @@ async function handleImportLayout(event: Event): Promise<void> {
     };
 
     if (!importData.version || !importData.binderData) {
-      throw new Error('Invalid binder export file format');
+      throw new AppError(ErrorTypes.DATA_FORMAT, 'Invalid binder export file format');
     }
 
     // Validate tournaments exist

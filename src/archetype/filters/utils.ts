@@ -9,6 +9,11 @@ import type { CardItemData, FilterDescriptor } from '../types.js';
  * Get cached sorted cards and duplicate counts for filter row population.
  * Recalculates only when the source data changes.
  */
+/**
+ * Get sorted card options and duplicate counts for filter rows.
+ * @param cards - Card items to list.
+ * @param deckTotal - Total decks for percent calculation.
+ */
 export function getFilterRowCardsData(
   cards: CardItemData[],
   deckTotal: number
@@ -60,6 +65,11 @@ export function getFilterRowCardsData(
   return { sortedCards, duplicateCounts };
 }
 
+/**
+ * Format a card option label, disambiguating duplicates.
+ * @param card - Card item data.
+ * @param duplicateCounts - Count of duplicate base names.
+ */
 export function formatCardOptionLabel(card: CardItemData, duplicateCounts: Map<string, number>): string {
   const baseName = card?.name || '';
   const count = duplicateCounts.get(baseName) || 0;
@@ -80,10 +90,18 @@ export function formatCardOptionLabel(card: CardItemData, duplicateCounts: Map<s
   return fallbackId ? `${baseName} (${fallbackId.replace('~', ' ')})` : baseName;
 }
 
+/**
+ * Ensure the filter message element is available.
+ */
 export function ensureFilterMessageElement(): HTMLElement | null {
   return null;
 }
 
+/**
+ * Update the filter status message in the UI.
+ * @param text - Message text.
+ * @param tone - Visual tone key.
+ */
 export function updateFilterMessage(text: string, tone = 'info'): void {
   const message = ensureFilterMessageElement();
   if (!message) {
@@ -100,6 +118,9 @@ export function updateFilterMessage(text: string, tone = 'info'): void {
   message.dataset.tone = tone;
 }
 
+/**
+ * Toggle the empty state message based on active filters.
+ */
 export function updateFilterEmptyState(): void {
   const message = elements.filterEmptyState;
   if (!message) {
@@ -110,6 +131,10 @@ export function updateFilterEmptyState(): void {
   message.hidden = hasFilters;
 }
 
+/**
+ * Build a human-readable description for active filters.
+ * @param filters - Filter descriptors.
+ */
 export function describeFilters(filters: FilterDescriptor[]): string {
   const state = getState();
   if (!filters || filters.length === 0) {
@@ -147,6 +172,10 @@ export function describeFilters(filters: FilterDescriptor[]): string {
   return `including ${descriptions.slice(0, -1).join(', ')} and ${descriptions[descriptions.length - 1]}`;
 }
 
+/**
+ * Map a success filter tag to its label.
+ * @param tag - Success filter key.
+ */
 export function describeSuccessFilter(tag: string): string {
   if (!tag || tag === 'all') {
     return '';
@@ -154,6 +183,11 @@ export function describeSuccessFilter(tag: string): string {
   return SUCCESS_FILTER_LABELS[tag] || tag;
 }
 
+/**
+ * Build a cache key for the active filters and success tag.
+ * @param filters - Filter descriptors.
+ * @param successFilter - Success tag.
+ */
 export function getFilterKey(filters: FilterDescriptor[], successFilter = 'all'): string {
   const base = successFilter || 'all';
   if (!filters || filters.length === 0) {
@@ -175,6 +209,12 @@ export function getFilterKey(filters: FilterDescriptor[], successFilter = 'all')
     .join('||')}`;
 }
 
+/**
+ * Clamp and round a threshold to the configured step size.
+ * @param value - Input value.
+ * @param min - Minimum bound.
+ * @param max - Maximum bound.
+ */
 export function normalizeThreshold(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) {
     return min;

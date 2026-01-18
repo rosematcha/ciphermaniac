@@ -156,8 +156,8 @@ async function safeJsonParse(response: Response, url: string): Promise<any> {
   try {
     return JSON.parse(text);
   } catch (error: unknown) {
-    const err = error instanceof Error ? error : new Error(String(error));
-    if (err.name === 'SyntaxError') {
+    const err = error instanceof Error ? error : new AppError(ErrorTypes.PARSE, String(error));
+    if (err instanceof SyntaxError) {
       const preview = text.slice(0, 100) + (text.length > 100 ? '...' : '');
       throw new AppError(ErrorTypes.PARSE, `Invalid JSON response: ${err.message}`, null, {
         url,
@@ -165,7 +165,10 @@ async function safeJsonParse(response: Response, url: string): Promise<any> {
         preview
       });
     }
-    throw err;
+    if (err instanceof AppError) {
+      throw err;
+    }
+    throw new AppError(ErrorTypes.PARSE, err.message, null, { url, contentType });
   }
 }
 

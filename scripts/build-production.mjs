@@ -4,7 +4,7 @@
  *
  * This script:
  * 1. Compiles TypeScript to JavaScript (development build)
- * 2. Uses esbuild to tree-shake and minify for production
+ * 2. Uses esbuild to bundle, split, tree-shake, and minify for production
  * 3. Strips all performance monitoring calls (perf.start/perf.end)
  * 4. Removes debug logging (logger.debug)
  * 5. Outputs optimized production code
@@ -91,12 +91,14 @@ console.log(`📂 Output: ${distDir}\n`);
 const buildOptions = {
   entryPoints,
   outdir: distDir,
-  bundle: false, // Don't bundle - keep module structure
+  bundle: true, // Bundle entry points for production
+  splitting: true,
   format: 'esm',
   target: 'es2022',
   minify: true,
   treeShaking: true,
   sourcemap: false,
+  chunkNames: 'chunks/[name]-[hash]',
   plugins: [stripDebugPlugin],
   logLevel: 'info',
   // Pure annotations help with tree-shaking

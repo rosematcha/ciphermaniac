@@ -1,6 +1,9 @@
 import { getState } from '../state.js';
 import { elements } from './elements.js';
 
+/**
+ * Set up keyboard tab navigation for the archetype view.
+ */
 export function setupTabNavigation(): void {
   const { tabHome, tabTrends } = elements;
   const state = getState();

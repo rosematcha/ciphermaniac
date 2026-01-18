@@ -269,12 +269,16 @@ export function analyzeEvents(events: Array<{ tournament: string; decks: DeckRec
       }
       const canonical = canonicalizeArchetype(deck.archetype);
       const displayName = formatArchetypeName(canonical);
-      const stats = ensureMapEntry(archetypeStats, canonical, (): ArchetypeStatsEntry => ({
+      const stats = ensureMapEntry(
+        archetypeStats,
         canonical,
-        displayName,
-        deckCount: 0,
-        originalNames: new Set()
-      }));
+        (): ArchetypeStatsEntry => ({
+          canonical,
+          displayName,
+          deckCount: 0,
+          originalNames: new Set()
+        })
+      );
       stats.deckCount += 1;
       if (deck.archetype) {
         stats.originalNames.add(deck.archetype);
@@ -317,10 +321,7 @@ function pickPrimaryVariant(entry: CardAccumulator): { set: string | null; numbe
   };
 }
 
-function deriveUsageByArchetype(
-  entry: CardAccumulator,
-  archetypeDeckCounts: Map<string, number>
-): ArchetypeUsage[] {
+function deriveUsageByArchetype(entry: CardAccumulator, archetypeDeckCounts: Map<string, number>): ArchetypeUsage[] {
   const usage: ArchetypeUsage[] = [];
   for (const [archetype, data] of entry.perArchetype.entries()) {
     const totalDecks = archetypeDeckCounts.get(archetype) || 0;
@@ -429,7 +430,7 @@ export function buildBinderDataset(
 
     for (const deck of event.decks) {
       const archetype = deck.canonicalArchetype;
-      if (allowedArchetypes && !allowedArchetypes.has(archetype)) {
+      if (!archetype || (allowedArchetypes && !allowedArchetypes.has(archetype))) {
         continue;
       }
 
