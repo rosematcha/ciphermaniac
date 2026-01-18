@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createReadStream, existsSync, statSync } from 'fs';
 import { createServer } from 'http';
+import https from 'https';
 import { extname, join, normalize, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -9,6 +10,7 @@ const __dirname = resolve(__filename, '..');
 const rootDir = resolve(__dirname, '..');
 const publicDir = join(rootDir, 'public');
 const port = Number(process.env.PORT || 3000);
+const R2_BASE = 'https://r2.ciphermaniac.com';
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -62,6 +64,23 @@ function resolvePath(urlPath) {
 }
 
 const server = createServer((req, res) => {
+  const reqUrl = req.url || '/';
+
+  // Proxy R2 report assets to avoid stale placeholders in dev
+  if (reqUrl.startsWith('/reports/')) {
+    const target = new URL(reqUrl, R2_BASE);
+    https
+      .get(target, proxyRes => {
+        res.writeHead(proxyRes.statusCode || 502, proxyRes.headers || {});
+        proxyRes.pipe(res);
+      })
+      .on('error', error => {
+        res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end(`Upstream fetch failed: ${error.message}`);
+      });
+    return;
+  }
+
   const filePath = resolvePath(req.url || '/');
   if (!filePath || !existsSync(filePath) || !statSync(filePath).isFile()) {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
