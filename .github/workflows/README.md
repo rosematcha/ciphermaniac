@@ -303,9 +303,10 @@ Runs linting, typechecking, and coverage checks on code changes.
 1. Checks out the repository
 2. Sets up Node.js 20
 3. Installs npm dependencies
-4. Runs ESLint
-5. Runs TypeScript typecheck
-6. Runs coverage thresholds via `npm run test:coverage:check`
+4. Runs `npm audit --omit=dev --audit-level=high`
+5. Runs ESLint
+6. Runs TypeScript typecheck
+7. Runs coverage thresholds via `npm run test:coverage:check`
 
 ### When It Runs
 **Automatic**: Runs on pull requests and on pushes to `main`
