@@ -1,5 +1,3 @@
-// @ts-nocheck
-// TODO: Enable strict type checking after migrating complex type definitions
 /* eslint-disable id-length, no-param-reassign, no-unused-vars */
 import './utils/buildVersion.js';
 import { fetchTrendReport } from './api.js';
@@ -13,6 +11,69 @@ import {
 import { logger } from './utils/logger.js';
 import { escapeHtml } from './utils/html.js';
 import { getPerformanceLabel } from './data/performanceTiers.js';
+import type { Deck, TrendReport } from './types/index.js';
+
+type TrendSeries = TrendDataset['series'][number];
+type TrendTimelineEntry = TrendSeries['timeline'][number];
+type TrendsMode = 'meta' | 'archetypes';
+
+interface TrendSharePoint {
+  date: string;
+  share: number;
+}
+
+interface TrendTimelinePoint {
+  date?: string | null;
+  share?: number;
+  totalDecks?: number;
+  total?: number;
+}
+
+interface MetaLine {
+  name: string;
+  color: string;
+  points: number[];
+  latest: number;
+  delta: number;
+}
+
+interface MetaChart {
+  dates: string[];
+  lines: MetaLine[];
+}
+
+interface TrendTournament {
+  id: string;
+  name: string;
+  date: string;
+  players: number | string | null;
+  format: string | null;
+  platform: string | null;
+  organizer: string | null;
+}
+
+interface CardTrendMover {
+  name: string;
+  set?: string | null;
+  number?: string | null;
+  archetype?: string | null;
+  recentAvg?: number;
+  latest?: number;
+  currentShare?: number;
+  endShare?: number;
+  startShare?: number;
+  avgShare?: number;
+  absDrop?: number;
+  deltaAbs?: number;
+  delta?: number;
+}
+
+interface CardMoversPayload {
+  rising?: CardTrendMover[];
+  falling?: CardTrendMover[];
+}
+
+type CardTrendsState = CardTrendDataset | CardMoversPayload | null;
 
 // High-contrast palette with distinct hues - designed for dark backgrounds
 const palette = [
@@ -60,13 +121,13 @@ const elements = {
 
 interface TrendsState {
   trendData: TrendDataset | null;
-  cardTrends: CardTrendDataset | null;
-  rawDecks: unknown[] | null;
-  rawTournaments: unknown[] | null;
+  cardTrends: CardTrendsState;
+  rawDecks: Deck[] | null;
+  rawTournaments: TrendTournament[] | null;
   isLoading: boolean;
   isHydrating: boolean;
   minAppearances: number;
-  mode: string;
+  mode: TrendsMode;
   performanceFilter: string;
   chartDensity: number;
   timeRangeDays: number;
@@ -88,7 +149,7 @@ const state: TrendsState = {
   resizeTimer: null
 };
 
-function setStatus(message) {
+function setStatus(message: string | null | undefined): void {
   if (elements.status) {
     elements.status.textContent = message || '';
     // Ensure status updates are announced to screen readers
@@ -99,27 +160,27 @@ function setStatus(message) {
   }
 }
 
-function setLoadingMeta(isLoading) {
+function setLoadingMeta(isLoading: boolean): void {
   if (!elements.loadingMeta) {
     return;
   }
   elements.loadingMeta.style.display = isLoading ? 'block' : 'none';
 }
 
-function setLoadingArchetypes(isLoading) {
+function setLoadingArchetypes(isLoading: boolean): void {
   if (!elements.loadingArch) {
     return;
   }
   elements.loadingArch.style.display = isLoading ? 'block' : 'none';
 }
 
-function setLoading(isLoading) {
+function setLoading(isLoading: boolean): void {
   state.isLoading = isLoading;
   setLoadingMeta(isLoading);
   setLoadingArchetypes(isLoading);
 }
 
-function formatDate(value) {
+function formatDate(value: string | null | undefined): string {
   if (!value) {
     return 'unknown date';
   }
@@ -127,17 +188,17 @@ function formatDate(value) {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function formatPercent(value) {
+function formatPercent(value: number): string {
   const pct = Math.round(value * 10) / 10;
   return `${pct.toFixed(pct % 1 === 0 ? 0 : 1)}%`;
 }
 
-function smoothSeries(series, window = 3) {
+function smoothSeries(series: TrendSharePoint[], window = 3): TrendSharePoint[] {
   if (!Array.isArray(series) || series.length === 0) {
     return series;
   }
   const w = Math.max(1, window);
-  const result: Array<{ date: string; share: number }> = [];
+  const result: TrendSharePoint[] = [];
   for (let i = 0; i < series.length; i += 1) {
     const slice = series.slice(Math.max(0, i - Math.floor(w / 2)), Math.min(series.length, i + Math.ceil(w / 2) + 1));
     const avg = slice.reduce((sum, point) => sum + (point.share || 0), 0) / slice.length;
@@ -146,8 +207,8 @@ function smoothSeries(series, window = 3) {
   return result;
 }
 
-function binDaily(timeline) {
-  const byDay = new Map();
+function binDaily(timeline: TrendTimelinePoint[]): TrendSharePoint[] {
+  const byDay = new Map<string, { weighted: number; decks: number }>();
   (timeline || []).forEach(point => {
     if (!point?.date) {
       return;
@@ -159,6 +220,9 @@ function binDaily(timeline) {
       byDay.set(day, { weighted: 0, decks: 0 });
     }
     const entry = byDay.get(day);
+    if (!entry) {
+      return;
+    }
     entry.weighted += share * (total || 1);
     entry.decks += total || 1;
   });
@@ -170,7 +234,7 @@ function binDaily(timeline) {
     .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
 }
 
-function buildMetaLines(trendData, topN = 8, timeRangeDays = 30) {
+function buildMetaLines(trendData: TrendDataset | null, topN = 8, timeRangeDays = 30): MetaChart | null {
   if (!trendData || !Array.isArray(trendData.series)) {
     return null;
   }
@@ -186,8 +250,8 @@ function buildMetaLines(trendData, topN = 8, timeRangeDays = 30) {
   const allSeriesWithBins: Array<{
     displayName?: string;
     base: string;
-    daily: Array<{ date: string; share: number }>;
-    dailyByDate: Map<string, { date: string; share: number }>;
+    daily: TrendSharePoint[];
+    dailyByDate: Map<string, TrendSharePoint>;
     startAvg: number;
     endAvg: number;
   }> = [];
@@ -306,7 +370,7 @@ function buildMetaLines(trendData, topN = 8, timeRangeDays = 30) {
 
   // OPTIMIZATION: Build lines using pre-computed dailyByDate Map
   // O(1) per date lookup instead of O(n) .find() calls
-  const lines = selectedSeries.map((entry, index) => {
+  const lines: MetaLine[] = selectedSeries.map((entry, index) => {
     const color = palette[index % palette.length];
     const points = timelineDates.map(d => entry.dailyByDate.get(d)?.share ?? 0);
     const delta = Math.round((entry.endAvg - entry.startAvg) * 10) / 10;
@@ -322,7 +386,37 @@ function buildMetaLines(trendData, topN = 8, timeRangeDays = 30) {
   return { dates: timelineDates, lines };
 }
 
-function findMovers(lines) {
+function normalizeTrendReport(report: TrendReport): TrendDataset {
+  return {
+    generatedAt: report.generatedAt,
+    windowStart: report.windowStart,
+    windowEnd: report.windowEnd,
+    minAppearances: report.minAppearances,
+    deckTotal: report.deckTotal,
+    tournamentCount: report.tournamentCount,
+    archetypeCount: report.archetypeCount,
+    tournaments: report.tournaments.map(tournament => ({
+      id: tournament.id,
+      name: tournament.name,
+      date: tournament.date,
+      deckTotal: typeof tournament.deckTotal === 'number' ? tournament.deckTotal : 0
+    })),
+    series: report.series.map(series => ({
+      ...series,
+      timeline: series.timeline.map(point => ({
+        tournamentId: point.date || '',
+        tournamentName: point.date || '',
+        date: point.date || null,
+        decks: typeof point.decks === 'number' ? point.decks : 0,
+        success: (point as { success?: Record<string, number> }).success || {},
+        totalDecks: point.totalDecks,
+        share: typeof point.share === 'number' ? point.share : 0
+      }))
+    }))
+  };
+}
+
+function findMovers(lines: MetaLine[]): { rising: MetaLine[]; falling: MetaLine[] } {
   if (!Array.isArray(lines) || !lines.length) {
     return { rising: [], falling: [] };
   }
@@ -334,11 +428,12 @@ function findMovers(lines) {
   };
 }
 
-function renderLegend(lines) {
-  if (!elements.legend) {
+function renderLegend(lines: MetaLine[]): void {
+  const legend = elements.legend;
+  if (!legend) {
     return;
   }
-  elements.legend.innerHTML = '';
+  legend.innerHTML = '';
   if (!lines || !lines.length) {
     return;
   }
@@ -359,11 +454,11 @@ function renderLegend(lines) {
     item.appendChild(swatch);
     item.appendChild(label);
     item.appendChild(value);
-    elements.legend.appendChild(item);
+    legend.appendChild(item);
   });
 }
 
-function renderMovers(lines) {
+function renderMovers(lines: MetaLine[]): void {
   if (!elements.movers) {
     return;
   }
@@ -372,7 +467,7 @@ function renderMovers(lines) {
     return;
   }
   const { rising, falling } = findMovers(lines);
-  const buildGroup = (title, items, direction) => {
+  const buildGroup = (title: string, items: MetaLine[], direction: 'up' | 'down') => {
     const group = document.createElement('div');
     group.className = 'movers-group';
     const heading = document.createElement('h3');
@@ -409,13 +504,13 @@ function renderMovers(lines) {
   elements.movers.appendChild(buildGroup('Cooling', falling, 'down'));
 }
 
-function renderCardMovers(cardTrends) {
+function renderCardMovers(cardTrends: CardTrendsState): void {
   if (!elements.cardMovers) {
     return;
   }
   elements.cardMovers.innerHTML = '';
-  const risingList = cardTrends?.rising || [];
-  const fallingList = cardTrends?.falling || [];
+  const risingList = (cardTrends && 'rising' in cardTrends ? cardTrends.rising : []) || [];
+  const fallingList = (cardTrends && 'falling' in cardTrends ? cardTrends.falling : []) || [];
 
   if (!risingList.length && !fallingList.length) {
     const empty = document.createElement('p');
@@ -424,7 +519,7 @@ function renderCardMovers(cardTrends) {
     elements.cardMovers.appendChild(empty);
     return;
   }
-  const normalizeCard = item => {
+  const normalizeCard = (item: CardTrendMover) => {
     const latest =
       item.recentAvg ?? item.latest ?? item.currentShare ?? item.endShare ?? item.startShare ?? item.avgShare ?? 0;
     // For cooling cards, use absDrop (positive value for decline) but negate it for display
@@ -447,7 +542,7 @@ function renderCardMovers(cardTrends) {
     };
   };
 
-  const buildGroup = (title, list, direction) => {
+  const buildGroup = (title: string, list: CardTrendMover[], direction: 'up' | 'down') => {
     const group = document.createElement('div');
     group.className = 'movers-group';
     const heading = document.createElement('h3');
@@ -489,8 +584,8 @@ function renderCardMovers(cardTrends) {
   elements.cardMovers.appendChild(buildGroup('Cards rising', risingList, 'up'));
   elements.cardMovers.appendChild(buildGroup('Cards cooling', fallingList, 'down'));
 }
-function deriveTournamentsFromDecks(decks) {
-  const map = new Map();
+function deriveTournamentsFromDecks(decks: Deck[] | null | undefined): TrendTournament[] {
+  const map = new Map<string, TrendTournament>();
   (Array.isArray(decks) ? decks : []).forEach(deck => {
     const tournamentId = deck?.tournamentId;
     if (!tournamentId) {
@@ -500,7 +595,7 @@ function deriveTournamentsFromDecks(decks) {
       map.set(tournamentId, {
         id: tournamentId,
         name: deck?.tournamentName || 'Unknown Tournament',
-        date: deck?.tournamentDate || null,
+        date: deck?.tournamentDate || '',
         players: deck?.tournamentPlayers || null,
         format: deck?.tournamentFormat || null,
         platform: deck?.tournamentPlatform || null,
@@ -508,10 +603,10 @@ function deriveTournamentsFromDecks(decks) {
       });
     }
   });
-  return Array.from(map.values()).sort((a, b) => Date.parse(a.date || 0) - Date.parse(b.date || 0));
+  return Array.from(map.values()).sort((a, b) => Date.parse(a.date || '') - Date.parse(b.date || ''));
 }
 
-function renderSummary() {
+function renderSummary(): void {
   if (!elements.summary || !state.trendData) {
     return;
   }
@@ -525,7 +620,7 @@ function renderSummary() {
   elements.summary.textContent = `Tracking ${archetypes} archetypes across ${tournaments} tournaments (${windowLabel}). Last updated ${lastUpdated}.`;
 }
 
-function updateMinSliderBounds() {
+function updateMinSliderBounds(): void {
   const { minSlider } = elements;
   const { minValue } = elements;
 
@@ -542,7 +637,7 @@ function updateMinSliderBounds() {
   minValue.textContent = `${requiredMin}+ (auto)`;
 }
 
-function buildSparkline(timeline) {
+function buildSparkline(timeline: TrendTimelineEntry[]): string {
   const width = 220;
   const height = 56;
   const stroke = '#3b5bdb';
@@ -553,7 +648,8 @@ function buildSparkline(timeline) {
 
   const points = timeline.map((entry, index) => {
     const x = count === 1 ? width / 2 : (index / (count - 1)) * width;
-    const y = height - (entry.share / maxShare) * height;
+    const share = typeof entry.share === 'number' && Number.isFinite(entry.share) ? entry.share : 0;
+    const y = height - (share / maxShare) * height;
     return `${x},${y}`;
   });
 
@@ -567,7 +663,7 @@ function buildSparkline(timeline) {
   `;
 }
 
-function renderSeriesCard(series) {
+function renderSeriesCard(series: TrendSeries): HTMLElement {
   const card = document.createElement('article');
   card.className = 'trend-card';
 
@@ -593,7 +689,7 @@ function renderSeriesCard(series) {
 
   const peak = document.createElement('div');
   peak.className = 'trend-card__stat';
-  peak.textContent = `Peak share ${formatPercent(series.peakShare || series.maxShare)}`;
+  peak.textContent = `Peak share ${formatPercent(series.maxShare)}`;
 
   const delta = document.createElement('div');
   delta.className = 'trend-card__stat';
@@ -628,11 +724,12 @@ function renderSeriesCard(series) {
   return card;
 }
 
-function renderMetaChart() {
-  if (!elements.metaChart) {
+function renderMetaChart(): void {
+  const metaChartEl = elements.metaChart;
+  if (!metaChartEl) {
     return;
   }
-  elements.metaChart.innerHTML = '';
+  metaChartEl.innerHTML = '';
   const metaChart = buildMetaLines(state.trendData, state.chartDensity, state.timeRangeDays);
   const metaMovers =
     buildMetaLines(state.trendData, Math.max(16, state.chartDensity * 2), state.timeRangeDays) || metaChart;
@@ -640,11 +737,11 @@ function renderMetaChart() {
     const empty = document.createElement('div');
     empty.className = 'muted';
     empty.textContent = 'Not enough data to show meta trends yet.';
-    elements.metaChart.appendChild(empty);
+    metaChartEl.appendChild(empty);
     return;
   }
 
-  const containerRect = elements.metaChart.getBoundingClientRect();
+  const containerRect = metaChartEl.getBoundingClientRect();
   const width = Math.max(320, Math.round(containerRect.width || 900));
   // favor a wide, shorter chart; allow shrinking height while still filling width
   const height = Math.round(Math.min(520, Math.max(260, containerRect.height || 0, width * 0.38)));
@@ -673,8 +770,9 @@ function renderMetaChart() {
   }
   const yRange = yMax - yMin || 1;
 
-  const xForIndex = idx => (count === 1 ? contentWidth / 2 : (idx / (count - 1)) * contentWidth) + padX;
-  const yForShare = share => {
+  const xForIndex = (idx: number): number =>
+    (count === 1 ? contentWidth / 2 : (idx / (count - 1)) * contentWidth) + padX;
+  const yForShare = (share: number): number => {
     const value = Number.isFinite(Number(share)) ? Number(share) : 0;
     const clamped = Math.min(yMax, Math.max(yMin, value));
     const normalized = (clamped - yMin) / yRange;
@@ -810,12 +908,12 @@ function renderMetaChart() {
   overlay.style.cursor = 'crosshair';
   svg.appendChild(overlay);
 
-  elements.metaChart.style.position = 'relative';
-  elements.metaChart.appendChild(svg);
+  metaChartEl.style.position = 'relative';
+  metaChartEl.appendChild(svg);
 
   const tooltip = document.createElement('div');
   tooltip.className = 'chart-tooltip';
-  elements.metaChart.appendChild(tooltip);
+  metaChartEl.appendChild(tooltip);
 
   if (elements.metaRange) {
     const formatAxisValue = (value: number) => (value % 1 === 0 ? `${value}%` : `${value.toFixed(1)}%`);
@@ -825,10 +923,10 @@ function renderMetaChart() {
   renderMovers(metaMovers?.lines || metaChart.lines);
 
   // Interaction Logic
-  const lines = Array.from(elements.metaChart.querySelectorAll<HTMLElement>('.meta-line'));
+  const lines = Array.from(metaChartEl.querySelectorAll<HTMLElement>('.meta-line'));
   const legendItems = elements.legend ? Array.from(elements.legend.querySelectorAll<HTMLElement>('.legend-item')) : [];
 
-  const setActive = name => {
+  const setActive = (name: string): void => {
     lines.forEach(line => {
       const active = line.dataset.name === name;
       line.style.opacity = active ? '1' : '0.25';
@@ -843,7 +941,7 @@ function renderMetaChart() {
     });
   };
 
-  const clearActive = () => {
+  const clearActive = (): void => {
     lines.forEach(line => {
       line.style.opacity = '1';
       line.style.strokeWidth = '2.5';
@@ -895,7 +993,7 @@ function renderMetaChart() {
     return { x: screenPt.x, y: screenPt.y };
   };
 
-  let activeArchetype = null;
+  let activeArchetype: string | null = null;
 
   overlay.addEventListener('mousemove', e => {
     // Convert screen coordinates to SVG coordinates using proper transform matrix
@@ -913,10 +1011,12 @@ function renderMetaChart() {
     guideLine.style.opacity = '0.5';
 
     const date = metaChart.dates[idx];
-    const values = metaChart.lines.map(line => ({ ...line, val: line.points[idx] })).sort((a, b) => b.val - a.val);
+    const values: Array<MetaLine & { val: number }> = metaChart.lines
+      .map(line => ({ ...line, val: line.points[idx] ?? 0 }))
+      .sort((a, b) => b.val - a.val);
 
     // Find closest line using SVG Y coordinate
-    let closest = null;
+    let closest: (MetaLine & { val: number }) | null = null;
     let minDiff = Infinity;
 
     values.forEach(v => {
@@ -931,14 +1031,15 @@ function renderMetaChart() {
     // Highlight closest if within range (50 SVG units)
     activeArchetype = null;
     if (closest && minDiff < 50) {
-      setActive(closest.name);
-      activeArchetype = closest.name;
+      const activeLine = closest as MetaLine & { val: number };
+      setActive(activeLine.name);
+      activeArchetype = activeLine.name;
 
       // Move dot
-      const dotY = yForShare(closest.val);
+      const dotY = yForShare(activeLine.val);
       highlightDot.setAttribute('cx', String(targetX));
       highlightDot.setAttribute('cy', String(dotY));
-      highlightDot.setAttribute('stroke', closest.color);
+      highlightDot.setAttribute('stroke', activeLine.color);
       highlightDot.style.opacity = '1';
       overlay.style.cursor = 'pointer';
     } else {
@@ -964,7 +1065,7 @@ function renderMetaChart() {
     `;
 
     // Position tooltip using proper SVG-to-screen conversion
-    const containerRect = elements.metaChart.getBoundingClientRect();
+    const containerRect = metaChartEl.getBoundingClientRect();
     const screenPoint = svgToScreen(targetX, 0);
     const screenTargetX = screenPoint.x - containerRect.left;
 
@@ -1026,11 +1127,12 @@ function renderMetaChart() {
   });
 }
 
-function renderList() {
-  if (!elements.list) {
+function renderList(): void {
+  const list = elements.list;
+  if (!list) {
     return;
   }
-  elements.list.innerHTML = '';
+  list.innerHTML = '';
 
   if (!state.trendData) {
     return;
@@ -1042,17 +1144,17 @@ function renderList() {
     const empty = document.createElement('div');
     empty.className = 'trend-empty';
     empty.textContent = 'No archetypes meet the current filters yet.';
-    elements.list.appendChild(empty);
+    list.appendChild(empty);
     return;
   }
 
   filtered.forEach(series => {
     const card = renderSeriesCard(series);
-    elements.list.appendChild(card);
+    list.appendChild(card);
   });
 }
 
-function setMode(mode) {
+function setMode(mode: TrendsMode): void {
   state.mode = mode;
   if (elements.modeMeta && elements.modeArchetypes) {
     elements.modeMeta.classList.toggle('is-active', mode === 'meta');
@@ -1208,7 +1310,11 @@ async function init() {
   setLoading(true);
   try {
     const payload = await fetchTrendReport(TRENDS_SOURCE);
-    state.trendData = payload?.trendReport || payload || null;
+    const trendReport =
+      (payload?.trendReport ? normalizeTrendReport(payload.trendReport) : null) ||
+      (payload && 'series' in payload ? (payload as unknown as TrendDataset) : null) ||
+      null;
+    state.trendData = trendReport;
     state.cardTrends = payload?.cardTrends || null;
     updateMinSliderBounds();
     renderSummary();

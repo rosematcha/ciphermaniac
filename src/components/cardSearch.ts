@@ -274,7 +274,7 @@ function setupSearchHandlers(
   function computeMatches(query: string): string[] {
     const searchQuery = query.trim().toLowerCase();
     if (!searchQuery) {
-      return getAllNames().slice(0, 8);
+      return [];
     }
 
     const allNames = getAllNames();

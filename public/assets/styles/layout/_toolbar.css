@@ -344,7 +344,8 @@ body.filters-panel-open #filters {
   }
 
   /* Hide tab hint on mobile */
-  .tab-hint {
+  .tab-hint,
+  .tab-indicator {
     display: none;
   }
 

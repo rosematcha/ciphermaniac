@@ -8,6 +8,7 @@
  */
 import './utils/buildVersion.js';
 import { CONFIG } from './config.js';
+import { AppError, ErrorTypes } from './utils/errorHandler.js';
 import { logger } from './utils/logger.js';
 import { fetchArchetypesList } from './api.js';
 import { escapeHtml } from './utils/html.js';
@@ -177,7 +178,7 @@ async function fetchDecksData(): Promise<DeckEntry[] | null> {
         logger.warn('Decks data not found', { archetype: state.archetypeSlug });
         return null;
       }
-      throw new Error(`HTTP ${response.status}`);
+      throw new AppError(ErrorTypes.API, `HTTP ${response.status}`, null, { status: response.status, url });
     }
     return (await response.json()) as DeckEntry[];
   } catch (error) {
@@ -196,7 +197,7 @@ async function fetchTrendsData(): Promise<TrendsData | null> {
         logger.warn('Trends data not found', { archetype: state.archetypeSlug });
         return null;
       }
-      throw new Error(`HTTP ${response.status}`);
+      throw new AppError(ErrorTypes.API, `HTTP ${response.status}`, null, { status: response.status, url });
     }
     return (await response.json()) as TrendsData;
   } catch (error) {

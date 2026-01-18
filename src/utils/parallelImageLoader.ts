@@ -1,3 +1,5 @@
+import { AppError, ErrorTypes } from './errorHandler.js';
+
 /**
  * Parallel Image Loading Utility
  * Loads multiple image candidates simultaneously instead of sequentially
@@ -9,6 +11,7 @@ interface SetupImageOptions {
   onSuccess?: (url: string) => void;
   onFailure?: () => void;
   maxParallel?: number;
+  deferUntilVisible?: boolean;
 }
 
 /**
@@ -18,11 +21,17 @@ class ParallelImageLoader {
   private loadingImages: Map<string, Promise<string | null>>;
   private loadedImages: Set<string>;
   private maxConcurrentPerImage: number;
+  private observedImages: Map<HTMLImageElement, { candidates: string[]; options: SetupImageOptions }>;
+  private observer: IntersectionObserver | null;
+  private observerRootMargin: string;
 
   constructor() {
     this.loadingImages = new Map(); // key -> Promise
     this.loadedImages = new Set(); // successful URLs
     this.maxConcurrentPerImage = 3; // Try first 3 candidates in parallel
+    this.observedImages = new Map();
+    this.observer = null;
+    this.observerRootMargin = '200px';
   }
 
   /**
@@ -110,7 +119,7 @@ class ParallelImageLoader {
       };
 
       img.onerror = () => {
-        reject(new Error(`Failed to load: ${url}`));
+        reject(new AppError(ErrorTypes.NETWORK, `Failed to load: ${url}`));
       };
 
       img.src = url;
@@ -124,6 +133,26 @@ class ParallelImageLoader {
    * @param options - Loading options
    */
   async setupImageElement(img: HTMLImageElement, candidates: string[], options: SetupImageOptions = {}): Promise<void> {
+    if (options.deferUntilVisible && typeof IntersectionObserver !== 'undefined') {
+      this.ensureObserver();
+      if (!this.observedImages.has(img)) {
+        this.observedImages.set(img, {
+          candidates,
+          options: { ...options, deferUntilVisible: false }
+        });
+        this.observer?.observe(img);
+      }
+      return;
+    }
+
+    await this.setupImageElementImmediate(img, candidates, options);
+  }
+
+  private async setupImageElementImmediate(
+    img: HTMLImageElement,
+    candidates: string[],
+    options: SetupImageOptions
+  ): Promise<void> {
     const { alt = '', onSuccess = null, onFailure = null, maxParallel = this.maxConcurrentPerImage } = options;
 
     // Set basic attributes
@@ -161,6 +190,33 @@ class ParallelImageLoader {
         onFailure();
       }
     }
+  }
+
+  private ensureObserver(): void {
+    if (this.observer || typeof IntersectionObserver === 'undefined') {
+      return;
+    }
+
+    this.observer = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) {
+            return;
+          }
+          const img = entry.target as HTMLImageElement;
+          const payload = this.observedImages.get(img);
+          if (!payload) {
+            return;
+          }
+          this.observedImages.delete(img);
+          this.observer?.unobserve(img);
+          this.setupImageElementImmediate(img, payload.candidates, payload.options).catch(() => {
+            // Errors are handled in setupImageElementImmediate.
+          });
+        });
+      },
+      { rootMargin: this.observerRootMargin }
+    );
   }
 
   /**

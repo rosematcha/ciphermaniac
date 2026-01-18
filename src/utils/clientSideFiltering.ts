@@ -6,6 +6,7 @@
  */
 
 import { normalizeCardNumber } from '../card/routing.js';
+import { AppError, ErrorTypes } from './errorHandler.js';
 import { logger } from './logger.js';
 import { normalizeArchetypeName } from './format.js';
 import {
@@ -559,7 +560,7 @@ export async function fetchAllDecks(tournament: string, archetype?: string): Pro
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      throw new AppError(ErrorTypes.API, `HTTP ${response.status}`, null, { status: response.status, url });
     }
     const data = await response.json();
 
@@ -575,7 +576,7 @@ export async function fetchAllDecks(tournament: string, archetype?: string): Pro
         url,
         error: `Request timed out after ${DECK_FETCH_TIMEOUT_MS}ms`
       });
-      throw new Error('Request timed out while fetching deck data');
+      throw new AppError(ErrorTypes.TIMEOUT, 'Request timed out while fetching deck data', null, { url });
     }
 
     logger.warn('Could not fetch decks for client-side filtering', {

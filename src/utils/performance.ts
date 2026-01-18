@@ -4,6 +4,7 @@
  * @module Utils
  */
 
+import { AppError, ErrorTypes } from './errorHandler.js';
 import { logger } from './logger.js';
 import { CONFIG } from '../config.js';
 
@@ -255,7 +256,7 @@ export function validateElements(selectors: Record<string, string>, context: str
   });
 
   if (missing.length > 0) {
-    throw new Error(`Missing required elements in ${context}: ${missing.join(', ')}`);
+    throw new AppError(ErrorTypes.RENDER, `Missing required elements in ${context}: ${missing.join(', ')}`);
   }
 
   return elements;
