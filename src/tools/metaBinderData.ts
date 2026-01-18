@@ -1,5 +1,3 @@
-// @ts-nocheck
-// TODO: Enable strict type checking after migrating complex type definitions
 /**
  * Utilities to aggregate tournament decklists into binder-friendly groupings.
  * @module tools/metaBinderData
@@ -98,8 +96,8 @@ interface BinderCard {
   maxCopies: number;
   totalDecksWithCard: number;
   deckShare: number;
-  usageByArchetype: any[];
-  usageByTournament: any[];
+  usageByArchetype: ArchetypeUsage[];
+  usageByTournament: TournamentUsage[];
   highUsageArchetypes: number;
   moderateUsageArchetypes: number;
 }
@@ -143,18 +141,59 @@ interface AnalyzedEvents {
   archetypeStats: Map<string, ArchetypeStatsEntry>;
 }
 
+interface CardVariant {
+  set: string;
+  number: string;
+  decks: number;
+}
+
+interface ArchetypeUsageAccumulator {
+  decks: number;
+  maxCopies: number;
+}
+
+interface TournamentUsageAccumulator {
+  decks: number;
+}
+
+interface CardAccumulator {
+  name: string;
+  category: string | null;
+  trainerType: string | null;
+  energyType: string | null;
+  variants: Map<string, CardVariant>;
+  maxCopies: number;
+  totalDecksWithCard: number;
+  perArchetype: Map<string, ArchetypeUsageAccumulator>;
+  perTournament: Map<string, TournamentUsageAccumulator>;
+}
+
+interface ArchetypeUsage {
+  archetype: string;
+  displayName: string;
+  decks: number;
+  totalDecks: number;
+  ratio: number;
+  maxCopies: number;
+}
+
+interface TournamentUsage {
+  tournament: string;
+  decks: number;
+}
+
 export interface BinderDataset {
   meta: BinderMeta;
   sections: BinderSections;
 }
 
-function normalizeWhitespace(value) {
+function normalizeWhitespace(value: unknown): string {
   return String(value ?? '')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-function formatArchetypeName(rawName) {
+function formatArchetypeName(rawName: unknown): string {
   const name = normalizeWhitespace(rawName);
   if (!name) {
     return 'Unknown';
@@ -162,7 +201,7 @@ function formatArchetypeName(rawName) {
   return name.replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 }
 
-function canonicalizeArchetype(rawName) {
+function canonicalizeArchetype(rawName: unknown): string {
   const normalized = normalizeWhitespace(rawName || 'Unknown');
   const underscored = normalized.replace(/\s+/g, '_').toLowerCase();
   for (const { prefix, canonical } of ARCHETYPE_PREFIX_ALIASES) {
@@ -173,11 +212,11 @@ function canonicalizeArchetype(rawName) {
   return formatArchetypeName(underscored);
 }
 
-function normalizeCardKey(name) {
+function normalizeCardKey(name: unknown): string {
   return normalizeWhitespace(name).toLowerCase();
 }
 
-function isAceSpec(name, trainerType) {
+function isAceSpec(name: string, trainerType: string | null | undefined): boolean {
   if ((trainerType || '').toLowerCase() === 'ace-spec') {
     return true;
   }
@@ -185,7 +224,7 @@ function isAceSpec(name, trainerType) {
   return ACE_SPEC_KEYWORDS.some(keyword => normalized.includes(keyword));
 }
 
-function ensureMapEntry(map, key, factory) {
+function ensureMapEntry<K, V>(map: Map<K, V>, key: K, factory: () => V): V {
   let entry = map.get(key);
   if (!entry) {
     entry = factory();
@@ -194,7 +233,7 @@ function ensureMapEntry(map, key, factory) {
   return entry;
 }
 
-function createCardAccumulator(card) {
+function createCardAccumulator(card: DeckCard): CardAccumulator {
   return {
     name: card.name,
     category: card.category || null,
@@ -214,8 +253,8 @@ function createCardAccumulator(card) {
  * @returns {AnalyzedEvents}
  */
 export function analyzeEvents(events: Array<{ tournament: string; decks: DeckRecord[] }> = []): AnalyzedEvents {
-  const processed = [];
-  const archetypeStats = new Map();
+  const processed: Array<{ tournament: string; decks: Array<DeckRecord & { canonicalArchetype: string }> }> = [];
+  const archetypeStats = new Map<string, ArchetypeStatsEntry>();
   let totalDecks = 0;
 
   for (const event of events) {
@@ -223,14 +262,14 @@ export function analyzeEvents(events: Array<{ tournament: string; decks: DeckRec
       continue;
     }
 
-    const enrichedDecks = [];
+    const enrichedDecks: Array<DeckRecord & { canonicalArchetype: string }> = [];
     for (const deck of event.decks) {
       if (!deck || !Array.isArray(deck.cards)) {
         continue;
       }
       const canonical = canonicalizeArchetype(deck.archetype);
       const displayName = formatArchetypeName(canonical);
-      const stats = ensureMapEntry(archetypeStats, canonical, () => ({
+      const stats = ensureMapEntry(archetypeStats, canonical, (): ArchetypeStatsEntry => ({
         canonical,
         displayName,
         deckCount: 0,
@@ -262,11 +301,11 @@ export function analyzeEvents(events: Array<{ tournament: string; decks: DeckRec
   return { events: processed, archetypeStats };
 }
 
-function pickPrimaryVariant(entry) {
+function pickPrimaryVariant(entry: CardAccumulator): { set: string | null; number: string | null } {
   if (!entry.variants.size) {
     return { set: null, number: null };
   }
-  let selected = null;
+  let selected: CardVariant | null = null;
   for (const variant of entry.variants.values()) {
     if (!selected || variant.decks > selected.decks) {
       selected = variant;
@@ -278,8 +317,11 @@ function pickPrimaryVariant(entry) {
   };
 }
 
-function deriveUsageByArchetype(entry, archetypeDeckCounts) {
-  const usage = [];
+function deriveUsageByArchetype(
+  entry: CardAccumulator,
+  archetypeDeckCounts: Map<string, number>
+): ArchetypeUsage[] {
+  const usage: ArchetypeUsage[] = [];
   for (const [archetype, data] of entry.perArchetype.entries()) {
     const totalDecks = archetypeDeckCounts.get(archetype) || 0;
     if (!totalDecks) {
@@ -305,15 +347,15 @@ function deriveUsageByArchetype(entry, archetypeDeckCounts) {
   });
 }
 
-function deriveUsageByTournament(entry) {
-  const usage = [];
+function deriveUsageByTournament(entry: CardAccumulator): TournamentUsage[] {
+  const usage: TournamentUsage[] = [];
   for (const [tournament, data] of entry.perTournament.entries()) {
     usage.push({ tournament, decks: data.decks });
   }
   return usage.sort((first, second) => second.decks - first.decks);
 }
 
-function isCrossArchetypeStaple(card, deckShare) {
+function isCrossArchetypeStaple(card: BinderCard, deckShare: number): boolean {
   if (deckShare < CROSS_ARCH_MIN_DECK_SHARE) {
     return false;
   }
@@ -341,8 +383,8 @@ const sortByPriority = (first: BinderCard, second: BinderCard) => {
   return first.name.localeCompare(second.name);
 };
 
-function sortArchetypeCards(archetype) {
-  return (first, second) => {
+function sortArchetypeCards(archetype: string) {
+  return (first: BinderCard, second: BinderCard): number => {
     const copyDiff = (second.maxCopies || 0) - (first.maxCopies || 0);
     if (copyDiff !== 0) {
       return copyDiff;
@@ -374,7 +416,7 @@ export function buildBinderDataset(
 ): BinderDataset {
   const allowedArchetypes = includedArchetypes instanceof Set ? includedArchetypes : null;
 
-  const cardMap = new Map<string, any>();
+  const cardMap = new Map<string, CardAccumulator>();
   const archetypeDeckCounts = new Map<string, number>();
   const tournamentsIncluded = new Set<string>();
   let totalDecks = 0;
@@ -460,20 +502,20 @@ export function buildBinderDataset(
     };
   }
 
-  const aceSpecs = [];
-  const staplePokemon = [];
-  const archetypePokemonMap = new Map();
-  const frequentSupporters = [];
-  const nicheSupporters = [];
-  const stadiums = [];
-  const tools = [];
-  const frequentItems = [];
-  const nicheItems = [];
-  const specialEnergy = [];
-  const basicEnergy = [];
+  const aceSpecs: BinderCard[] = [];
+  const staplePokemon: BinderCard[] = [];
+  const archetypePokemonMap = new Map<string, BinderCard[]>();
+  const frequentSupporters: BinderCard[] = [];
+  const nicheSupporters: BinderCard[] = [];
+  const stadiums: BinderCard[] = [];
+  const tools: BinderCard[] = [];
+  const frequentItems: BinderCard[] = [];
+  const nicheItems: BinderCard[] = [];
+  const specialEnergy: BinderCard[] = [];
+  const basicEnergy: BinderCard[] = [];
 
-  const placedIds = new Set();
-  const placeCard = (card, target) => {
+  const placedIds = new Set<string>();
+  const placeCard = (card: BinderCard, target: BinderCard[]): boolean => {
     if (placedIds.has(card.id)) {
       return false;
     }
@@ -496,7 +538,7 @@ export function buildBinderDataset(
     const priceKey = setCode && numberCode ? `${entry.name}::${setCode}::${numberCode}` : null;
 
     const deckShare = entry.totalDecksWithCard / totalDecks;
-    const card = /** @type {BinderCard} */ {
+    const card: BinderCard = {
       id: normalizeCardKey(entry.name),
       name: entry.name,
       set: setCode,
@@ -660,7 +702,7 @@ export const thresholds = {
   STAPLE_POKEMON_MIN_ARCHETYPES,
   ARCHETYPE_CORE_RATIO
 };
-function getBaseCategory(category) {
+function getBaseCategory(category: string | null | undefined): string {
   const slug = typeof category === 'string' ? category.toLowerCase() : '';
   return slug.split('/')[0] || '';
 }

@@ -276,10 +276,9 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
     let cardEl: HTMLElement;
     if (key && existingCardsMap.has(key)) {
       cardEl = existingCardsMap.get(key)!;
-      // Update dynamic content
+      populateCardContent(cardEl, it, { showPrice });
       setupCardCounts(cardEl, it);
       createCardHistogram(cardEl, it);
-      // Ensure attributes are up to date
       setupCardAttributes(cardEl, it);
       // Remove entering class if present
       cardEl.classList.remove('card-entering');

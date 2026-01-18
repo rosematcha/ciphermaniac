@@ -1,5 +1,3 @@
-// @ts-nocheck
-// TODO: Enable strict type checking after migrating complex type definitions
 import { fetchDecks, fetchTournamentsList, getCardPrice } from '../api.js';
 import { analyzeEvents, type BinderDataset, buildBinderDataset } from './metaBinderData.js';
 import { buildThumbCandidates } from '../thumbs.js';
@@ -16,6 +14,28 @@ const DEFAULT_ONLINE_META = 'Online - Last 14 Days';
 
 type AnalysisResult = ReturnType<typeof analyzeEvents>;
 type _BinderSelections = { tournaments: string[]; archetypes: string[] };
+type AnalysisEvent = Parameters<typeof analyzeEvents>[0][number];
+type DeckRecord = AnalysisEvent['decks'][number];
+type BinderSection = BinderDataset['sections'][keyof BinderDataset['sections']];
+type BinderCard = BinderSection extends Array<infer T> ? T : never;
+type BinderArchetypeGroup = BinderDataset['sections']['archetypePokemon'][number];
+
+interface BinderMetrics {
+  priceTotal: number;
+  missingPrices: number;
+  coverageSelected: number;
+  coverageMeta: number;
+}
+
+interface CardRenderOptions {
+  mode?: 'all' | 'archetype';
+  archetype?: string;
+}
+
+interface BinderMetricsContext {
+  selectedDecks?: number;
+  metaDecks?: number;
+}
 
 interface BinderElements {
   tournamentsList: HTMLElement | null;
@@ -44,8 +64,8 @@ interface BinderElements {
 const state: {
   tournaments: string[];
   selectedTournaments: Set<string>;
-  decksCache: Map<string, any>;
-  overrides: Record<string, any>;
+  decksCache: Map<string, DeckRecord[]>;
+  overrides: Record<string, string>;
   analysis: AnalysisResult | null;
   binderData: BinderDataset | null;
   selectedArchetypes: Set<string>;
@@ -54,7 +74,7 @@ const state: {
   isGenerating: boolean;
   isBinderDirty: boolean;
   selectionDecks: number;
-  metrics: any;
+  metrics: BinderMetrics | null;
 } = {
   tournaments: [],
   selectedTournaments: new Set(),
@@ -97,7 +117,7 @@ const elements: BinderElements = {
   importFile: document.getElementById('binder-import-file') as HTMLInputElement | null
 };
 
-function setLoading(isLoading) {
+function setLoading(isLoading: boolean): void {
   state.isLoading = isLoading;
   if (!elements.app || !elements.loading || !elements.content) {
     return;
@@ -113,7 +133,7 @@ function setLoading(isLoading) {
   updateGenerateState();
 }
 
-function showError(message) {
+function showError(message: string): void {
   if (!elements.error || !elements.errorMessage || !elements.content || !elements.loading) {
     return;
   }
@@ -130,7 +150,7 @@ function hideError() {
   }
 }
 
-function setPendingMessage(message) {
+function setPendingMessage(message: string): void {
   if (elements.pendingMessage) {
     elements.pendingMessage.textContent = message;
   }
@@ -191,52 +211,52 @@ function computeSelectionDecks() {
   state.selectionDecks = count;
 }
 
-function formatPercent(value) {
+function formatPercent(value: number): string {
   const percent = Math.round(value * 1000) / 10;
   return `${percent.toFixed(percent % 1 === 0 ? 0 : 1)}%`;
 }
 
-function formatFractionUsage(decks, total) {
+function formatFractionUsage(decks: number, total: number): string {
   return `${decks}/${total} decks`;
 }
 
-function formatCurrency(value) {
+function formatCurrency(value: number): string {
   if (!Number.isFinite(value)) {
     return '$0.00';
   }
   return `$${value.toFixed(2)}`;
 }
 
-function normalizeId(value) {
+function normalizeId(value: string): string {
   return String(value || '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-');
 }
 
-function chunk(array, size) {
-  const pages = [];
+function chunk<T>(array: T[], size: number): T[][] {
+  const pages: T[][] = [];
   for (let index = 0; index < array.length; index += size) {
     pages.push(array.slice(index, index + size));
   }
   return pages;
 }
 
-function ensureCardTemplate() {
+function ensureCardTemplate(): HTMLTemplateElement {
   if (!elements.cardTemplate) {
     throw new Error('Card template missing');
   }
   return elements.cardTemplate;
 }
 
-function ensurePlaceholderTemplate() {
+function ensurePlaceholderTemplate(): HTMLTemplateElement {
   if (!elements.placeholderTemplate) {
     throw new Error('Placeholder template missing');
   }
   return elements.placeholderTemplate;
 }
 
-function inflateCards(cards) {
-  const expanded = [];
+function inflateCards(cards: BinderCard[]): Array<BinderCard & { copyIndex: number; copyTotal: number }> {
+  const expanded: Array<BinderCard & { copyIndex: number; copyTotal: number }> = [];
   for (const card of cards) {
     const total = Math.max(1, Number(card.maxCopies) || 1);
     for (let copyIndex = 1; copyIndex <= total; copyIndex += 1) {
@@ -250,7 +270,10 @@ function inflateCards(cards) {
   return expanded;
 }
 
-function createCardElement(card, options = {}) {
+function createCardElement(
+  card: BinderCard & { copyIndex?: number; copyTotal?: number },
+  options: CardRenderOptions = {}
+): HTMLElement {
   const template = ensureCardTemplate();
   const root = template.content.firstElementChild;
   if (!root) {
@@ -291,12 +314,16 @@ function createCardElement(card, options = {}) {
   return clone;
 }
 
-function createPlaceholderElement() {
+function createPlaceholderElement(): HTMLElement {
   const template = ensurePlaceholderTemplate();
-  return /** @type {HTMLElement} */ template.content.firstElementChild.cloneNode(true);
+  const node = template.content.firstElementChild;
+  if (!node) {
+    throw new Error('Placeholder template missing content');
+  }
+  return node.cloneNode(true) as HTMLElement;
 }
 
-function applyCardImage(imageElement, card) {
+function applyCardImage(imageElement: HTMLImageElement, card: BinderCard): void {
   const imgEl = imageElement;
   const variant = card.set && card.number ? { set: card.set, number: card.number } : undefined;
   const candidates = buildThumbCandidates(card.name, false, state.overrides, variant);
@@ -343,7 +370,7 @@ function applyCardImage(imageElement, card) {
   tryNext();
 }
 
-function buildMetaLine(card, options) {
+function buildMetaLine(card: BinderCard, options: CardRenderOptions): string {
   if (options.mode === 'archetype' && options.archetype) {
     const usage = card.usageByArchetype.find(entry => entry.archetype === options.archetype);
     if (usage) {
@@ -361,7 +388,7 @@ function buildMetaLine(card, options) {
   return parts.join(' | ');
 }
 
-function buildTooltip(card, options) {
+function buildTooltip(card: BinderCard, options: CardRenderOptions): string {
   const lines = [`Max copies: ${Math.max(1, Number(card.maxCopies) || 1)}`];
   if (options.mode === 'archetype' && options.archetype) {
     const usage = card.usageByArchetype.find(entry => entry.archetype === options.archetype);
@@ -387,7 +414,7 @@ function buildTooltip(card, options) {
   return lines.join('\n');
 }
 
-function renderBinderPages(cards, container, options = {}) {
+function renderBinderPages(cards: BinderCard[], container: HTMLElement, options: CardRenderOptions = {}): void {
   const targetContainer = container;
   targetContainer.innerHTML = '';
   const expandedCards = inflateCards(cards);
@@ -550,7 +577,7 @@ function renderBinderSections() {
   elements.content.appendChild(fragment);
 }
 
-function getTotalMetaDecks() {
+function getTotalMetaDecks(): number {
   if (!state.analysis) {
     return 0;
   }
@@ -561,7 +588,7 @@ function getTotalMetaDecks() {
   return total;
 }
 
-function updateStats() {
+function updateStats(): void {
   if (!elements.stats) {
     return;
   }
@@ -607,7 +634,7 @@ function updateStats() {
   ].join(' | ');
 }
 
-function renderTournamentsControls() {
+function renderTournamentsControls(): void {
   if (!elements.tournamentsList) {
     return;
   }
@@ -651,7 +678,7 @@ function renderTournamentsControls() {
   elements.tournamentsList.appendChild(fragment);
 }
 
-function renderArchetypeControls() {
+function renderArchetypeControls(): void {
   if (!elements.archetypesList) {
     return;
   }
@@ -719,7 +746,7 @@ function renderArchetypeControls() {
   elements.archetypesList.appendChild(fragment);
 }
 
-function handleTournamentToggle(tournament, isSelected) {
+function handleTournamentToggle(tournament: string, isSelected: boolean): void {
   if (isSelected) {
     state.selectedTournaments.add(tournament);
   } else {
@@ -729,14 +756,14 @@ function handleTournamentToggle(tournament, isSelected) {
   recomputeFromSelection();
 }
 
-function handleSelectAllTournaments() {
+function handleSelectAllTournaments(): void {
   state.selectedTournaments = new Set(state.tournaments);
   renderTournamentsControls();
   saveSelections();
   recomputeFromSelection();
 }
 
-function handleSelectRecentTournaments() {
+function handleSelectRecentTournaments(): void {
   const recent = state.tournaments.slice(0, DEFAULT_RECENT_EVENTS);
   state.selectedTournaments = recent.length ? new Set(recent) : new Set(state.tournaments);
   renderTournamentsControls();
@@ -744,14 +771,14 @@ function handleSelectRecentTournaments() {
   recomputeFromSelection();
 }
 
-function handleClearTournaments() {
+function handleClearTournaments(): void {
   state.selectedTournaments.clear();
   renderTournamentsControls();
   saveSelections();
   recomputeFromSelection();
 }
 
-function handleArchetypeToggle(archetype, isSelected) {
+function handleArchetypeToggle(archetype: string, isSelected: boolean): void {
   if (isSelected) {
     state.selectedArchetypes.add(archetype);
   } else {
@@ -763,7 +790,7 @@ function handleArchetypeToggle(archetype, isSelected) {
   saveSelections();
 }
 
-function handleSelectAllArchetypes() {
+function handleSelectAllArchetypes(): void {
   if (!state.analysis) {
     return;
   }
@@ -776,7 +803,7 @@ function handleSelectAllArchetypes() {
   saveSelections();
 }
 
-function handleClearArchetypes() {
+function handleClearArchetypes(): void {
   if (!state.analysis) {
     return;
   }
@@ -790,7 +817,7 @@ function handleClearArchetypes() {
   saveSelections();
 }
 
-async function ensureDecksLoaded(tournaments) {
+async function ensureDecksLoaded(tournaments: string[]): Promise<void> {
   const missing = tournaments.filter(name => !state.decksCache.has(name));
   if (!missing.length) {
     return;
@@ -798,7 +825,7 @@ async function ensureDecksLoaded(tournaments) {
 
   const loaders = missing.map(async tournament => {
     const decks = await fetchDecks(tournament);
-    const deckList = Array.isArray(decks) ? decks : [];
+    const deckList = Array.isArray(decks) ? (decks as DeckRecord[]) : [];
     state.decksCache.set(tournament, deckList);
     logger.debug('Loaded decks for binder', {
       tournament,
@@ -809,13 +836,13 @@ async function ensureDecksLoaded(tournaments) {
   await Promise.all(loaders);
 }
 
-function loadSelections() {
+function loadSelections(): _BinderSelections | null {
   if (!storage.isAvailable) {
     return null;
   }
 
   try {
-    const stored = storage.get(STORAGE_KEY);
+    const stored = storage.get(STORAGE_KEY) as Partial<_BinderSelections> | null;
     if (!stored || typeof stored !== 'object') {
       return null;
     }
@@ -832,7 +859,7 @@ function loadSelections() {
   }
 }
 
-function saveSelections() {
+function saveSelections(): void {
   if (!storage.isAvailable) {
     return;
   }
@@ -843,8 +870,8 @@ function saveSelections() {
   storage.set(STORAGE_KEY, payload);
 }
 
-function collectAllCards(sections) {
-  const lists = [
+function collectAllCards(sections: BinderDataset['sections']): BinderCard[] {
+  const lists: BinderCard[][] = [
     sections.aceSpecs,
     sections.staplePokemon,
     sections.frequentSupporters,
@@ -862,9 +889,12 @@ function collectAllCards(sections) {
   return lists.flat();
 }
 
-async function computeBinderMetrics(binderData, context) {
+async function computeBinderMetrics(
+  binderData: BinderDataset,
+  context: BinderMetricsContext
+): Promise<BinderMetrics> {
   const allCards = collectAllCards(binderData.sections);
-  const unique = new Map();
+  const unique = new Map<string, { card: BinderCard; quantity: number }>();
 
   for (const card of allCards) {
     const quantity = Math.max(1, Number(card.maxCopies) || 1);
@@ -889,7 +919,7 @@ async function computeBinderMetrics(binderData, context) {
         } catch (error) {
           logger.debug('Price lookup failed', {
             id: lookupId,
-            error: error.message
+            error: error instanceof Error ? error.message : String(error)
           });
         }
       }
@@ -899,7 +929,7 @@ async function computeBinderMetrics(binderData, context) {
         } catch (error) {
           logger.debug('Fallback price lookup failed', {
             name: card.name,
-            error: error.message
+            error: error instanceof Error ? error.message : String(error)
           });
         }
       }
@@ -953,7 +983,7 @@ async function recomputeFromSelection() {
 
     await ensureDecksLoaded(tournaments);
 
-    const events = tournaments.map(tournament => ({
+    const events: AnalysisEvent[] = tournaments.map(tournament => ({
       tournament,
       decks: state.decksCache.get(tournament) || []
     }));
@@ -961,7 +991,7 @@ async function recomputeFromSelection() {
     const analysis = analyzeEvents(events);
     const availableArchetypes = new Set<string>(Array.from(analysis.archetypeStats.keys()));
 
-    let nextSelectedArchetypes;
+    let nextSelectedArchetypes: Set<string>;
     if (pendingArchetypeSelection) {
       nextSelectedArchetypes = new Set(
         Array.from(pendingArchetypeSelection).filter(archetype => availableArchetypes.has(archetype as string))
@@ -999,7 +1029,7 @@ async function recomputeFromSelection() {
   }
 }
 
-async function generateBinder() {
+async function generateBinder(): Promise<void> {
   if (state.isLoading || state.isGenerating || !state.analysis || !state.selectedTournaments.size) {
     return;
   }
@@ -1054,8 +1084,8 @@ function bindControlEvents() {
     elements.archetypeSearch.addEventListener(
       'input',
       debounce(event => {
-        const { value } = /** @type {HTMLInputElement} */ event.target;
-        state.archetypeFilter = value;
+        const target = event.target as HTMLInputElement | null;
+        state.archetypeFilter = target?.value ?? '';
         renderArchetypeControls();
       }, 150)
     );
@@ -1078,7 +1108,7 @@ function bindControlEvents() {
   });
 }
 
-function handleExportLayout() {
+function handleExportLayout(): void {
   logger.info('Export layout clicked', {
     hasBinderData: Boolean(state.binderData)
   });
@@ -1129,8 +1159,11 @@ function handleExportLayout() {
   }
 }
 
-async function handleImportLayout(event) {
-  const input = /** @type {HTMLInputElement} */ event.target;
+async function handleImportLayout(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement | null;
+  if (!input) {
+    return;
+  }
   const file = input.files?.[0];
   if (!file) {
     return;
@@ -1138,14 +1171,20 @@ async function handleImportLayout(event) {
 
   try {
     const text = await file.text();
-    const importData = JSON.parse(text);
+    const importData = JSON.parse(text) as {
+      version?: number;
+      tournaments?: string[];
+      archetypes?: string[];
+      binderData?: BinderDataset;
+      metrics?: BinderMetrics | null;
+    };
 
     if (!importData.version || !importData.binderData) {
       throw new Error('Invalid binder export file format');
     }
 
     // Validate tournaments exist
-    const validTournaments = importData.tournaments.filter(tournament => state.tournaments.includes(tournament));
+    const validTournaments = (importData.tournaments || []).filter(tournament => state.tournaments.includes(tournament));
     if (validTournaments.length === 0) {
       // eslint-disable-next-line no-alert
       alert(
@@ -1186,7 +1225,7 @@ async function handleImportLayout(event) {
   }
 }
 
-async function checkOnlineMetaAvailability() {
+async function checkOnlineMetaAvailability(): Promise<boolean> {
   try {
     const response = await fetch(
       `${CONFIG.API.R2_BASE}/reports/${encodeURIComponent(DEFAULT_ONLINE_META)}/master.json`,

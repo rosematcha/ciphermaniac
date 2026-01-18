@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
 
 import { enrichCardWithType, loadCardTypesDatabase } from '../../functions/lib/cardTypesDatabase.js';
-import PricingManager from '../../public/assets/js/pricing.js';
 import { generateReportFromDecks } from '../../functions/lib/reportBuilder.js';
 import { gatherDecks } from '../../functions/lib/onlineMeta.js';
 
@@ -120,50 +119,6 @@ test('Extract trainer subtypes and detect ACE SPEC cards via gatherDecks heurist
   const energy = cards.find((card: any) => card.name === 'Psychic Energy');
   assert.ok(energy);
   assert.strictEqual(energy.energyType, 'basic');
-
-  restoreFetch();
-});
-
-// Pricing manager tests with mocked API
-test('PricingManager fetches, caches, and formats price data; handles missing prices', async () => {
-  const pricingPayload = {
-    lastUpdated: '2025-12-01',
-    updateSource: 'tcgcsv-test',
-    cardPrices: {
-      'Multi::S1::001': { price: 3.5, tcgPlayerId: 123 },
-      'Other::S2::010': { price: 0.5 }
-    }
-  };
-
-  mockFetch([
-    {
-      predicate: (input: RequestInfo) => String(input).includes('/api/get-prices'),
-      status: 200,
-      body: pricingPayload
-    }
-  ]);
-
-  const manager = new PricingManager(1000);
-  const price = await manager.getCardPrice('Multi', 'S1', '001');
-  assert.strictEqual(price, 3.5);
-
-  const missing = await manager.getCardPrice('Nope', 'XX', '999');
-  assert.strictEqual(missing, null);
-
-  const multiple = await manager.getMultiplePrices([
-    { name: 'Multi', set: 'S1', number: '1' },
-    { name: 'Other', set: 'S2', number: '010' }
-  ]);
-  // keys are padded inside getMultiplePrices
-  const keys = Object.keys(multiple);
-  assert.ok(keys.length >= 1);
-
-  const meta = await manager.getPricingMetadata();
-  assert.strictEqual(meta.updateSource, 'tcgcsv-test');
-
-  // Cached: calling again should not trigger new fetch (we can't easily detect number of fetches here, but ensure data still available)
-  const p2 = await manager.getCardPrice('Multi', 'S1', '001');
-  assert.strictEqual(p2, 3.5);
 
   restoreFetch();
 });

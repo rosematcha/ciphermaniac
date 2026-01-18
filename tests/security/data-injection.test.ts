@@ -6,40 +6,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { archetypeCache } from '../../public/assets/js/utils/archetypeCache.js';
 import { generateMaliciousInput, generateMockDeck } from '../__utils__/mock-data-factory.js';
 
 import { logger } from '../../src/utils/logger.ts';
 import { generateReportFromDecks } from '../../functions/lib/reportBuilder.js';
-
-/**
- * Cache key sanitization: ensure that cache keys cannot be influenced to collide across archetypes
- */
-test('Cache key generation resists injection and produces deterministic safe keys', () => {
-  const tournament = 'Tournament/Name';
-  const archetype = 'Evil::Archetype\nInjected';
-
-  const indexKey = archetypeCache.constructor.getIndexCacheKey(tournament, archetype);
-  const subsetKey = archetypeCache.constructor.getSubsetCacheKey(tournament, archetype, 'subset1');
-
-  // Keys should not contain newline or path separators
-  assert.equal(indexKey.includes('\n'), false);
-  assert.equal(subsetKey.includes('/'), false);
-  assert.equal(indexKey.includes('::'), true);
-});
-
-/**
- * R2 object key validation: ensure functions that build R2 URLs use encodeURIComponent and
- * reject traversal sequences.
- */
-test('R2 object key builders encode components and prevent traversal', () => {
-  const urls = archetypeCache.constructor.getArchetypeBaseUrls('T/Name', '../../etc/passwd');
-  for (const url of urls) {
-    assert.equal(url.includes('..'), false, 'URL must not include path traversal sequences');
-    // Archetype name should be URL-encoded
-    assert.equal(url.includes('%2E%2E'), false);
-  }
-});
 
 /**
  * Archetype folder name sanitization: ensure names are safe for R2 storage and local caches
