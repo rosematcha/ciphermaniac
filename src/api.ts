@@ -46,7 +46,7 @@ function pruneJsonCache() {
   }
 
   const now = Date.now();
-  for (const [key, entry] of jsonCache.entries()) {
+  for (const [key, entry] of Array.from(jsonCache.entries())) {
     if (!entry.promise && entry.expiresAt <= now) {
       jsonCache.delete(key);
     }
@@ -77,6 +77,9 @@ function cachePendingJson(cacheKey: string, promise: Promise<any>, ttl: number) 
   jsonCache.set(cacheKey, { promise, expiresAt: Date.now() + ttl });
 }
 
+/**
+ * Clear cached API data and reset database cache.
+ */
 export function clearApiCache() {
   jsonCache.clear();
   clearDatabaseCache();
@@ -275,12 +278,12 @@ function buildReportUrls(relativePath: string): string[] {
 }
 
 /**
- * Fetch report resource
- * @param relativePath
- * @param operation
- * @param expectedType
- * @param fieldName
- * @param options
+ * Fetch a report resource from R2.
+ * @param relativePath - Report path relative to R2 reports.
+ * @param operation - Description for logging.
+ * @param expectedType - Expected payload type.
+ * @param fieldName - Field name for validation errors.
+ * @param options - Cache options.
  */
 export async function fetchReportResource<T = any>(
   relativePath: string,
@@ -311,7 +314,7 @@ export async function fetchReportResource<T = any>(
 }
 
 /**
- * Fetch tournaments list
+ * Fetch the list of tournaments.
  */
 export function fetchTournamentsList(): Promise<string[]> {
   return fetchReportResource<string[]>('tournaments.json', 'tournaments list', 'array', 'tournaments list', {
@@ -328,9 +331,8 @@ interface LimitlessFilters {
 }
 
 /**
- * Fetch tournament summaries from the Limitless API via our proxy.
- * @param filters
- * @returns
+ * Fetch tournaments from Limitless with optional filters.
+ * @param filters - Filter options.
  */
 export async function fetchLimitlessTournaments(filters: LimitlessFilters = {}): Promise<LimitlessTournament[]> {
   const {
@@ -389,9 +391,8 @@ export async function fetchLimitlessTournaments(filters: LimitlessFilters = {}):
 }
 
 /**
- * Fetch master report for a tournament - tries SQLite first, falls back to JSON
- * @param tournament
- * @returns Promise resolving to tournament report
+ * Fetch the master report for a tournament.
+ * @param tournament - Tournament identifier.
  */
 export async function fetchReport(tournament: string): Promise<TournamentReport> {
   perf.start(`fetchReport:${tournament}`);
@@ -435,9 +436,8 @@ export async function fetchReport(tournament: string): Promise<TournamentReport>
 }
 
 /**
- * Fetch archetype trend data for a tournament group
- * @param tournament
- * @returns Promise resolving to trend report payload
+ * Fetch the trends report payload for a tournament.
+ * @param tournament - Tournament identifier.
  */
 export function fetchTrendReport(tournament: string): Promise<TrendReportPayload> {
   const encodedTournament = encodeURIComponent(tournament);
@@ -453,8 +453,7 @@ export function fetchTrendReport(tournament: string): Promise<TrendReportPayload
 }
 
 /**
- * Fetch thumbnail overrides configuration
- * @returns
+ * Fetch card override metadata.
  */
 export async function fetchOverrides(): Promise<Record<string, string>> {
   try {
@@ -519,8 +518,8 @@ function normalizeArchetypeIndexEntry(entry: unknown): ArchetypeIndexEntry | nul
 }
 
 /**
- * Fetch archetypes list
- * @param tournament
+ * Fetch the archetype index list for a tournament.
+ * @param tournament - Tournament identifier.
  */
 export async function fetchArchetypesList(tournament: string): Promise<ArchetypeIndexEntry[]> {
   const result = await fetchReportResource<any[]>(
@@ -539,13 +538,9 @@ export async function fetchArchetypesList(tournament: string): Promise<Archetype
 }
 
 /**
- * Fetch specific archetype report data (cards.json)
- * Uses new folder structure: /archetypes/{archetype}/cards.json
- * Falls back to legacy path: /archetypes/{archetype}.json
- * @param tournament
- * @param archetypeBase
- * @returns Promise resolving to archetype report
- * @throws AppError
+ * Fetch an archetype report for a tournament.
+ * @param tournament - Tournament identifier.
+ * @param archetypeBase - Archetype slug.
  */
 export async function fetchArchetypeReport(tournament: string, archetypeBase: string): Promise<ArchetypeReport> {
   logger.debug(`Fetching archetype report: ${tournament}/${archetypeBase}`);
@@ -594,13 +589,9 @@ export async function fetchArchetypeReport(tournament: string, archetypeBase: st
 }
 
 /**
- * Fetch archetype-specific deck data (decks.json)
- * Uses new folder structure: /archetypes/{archetype}/decks.json
- * Falls back to main decks.json with filtering if the archetype-specific file doesn't exist
- * @param tournament
- * @param archetypeBase
- * @returns
- * @throws AppError
+ * Fetch archetype deck lists for a tournament.
+ * @param tournament - Tournament identifier.
+ * @param archetypeBase - Archetype slug.
  */
 export async function fetchArchetypeDecks(tournament: string, archetypeBase: string): Promise<any[] | null> {
   logger.debug(`Fetching archetype decks: ${tournament}/${archetypeBase}`);
@@ -629,16 +620,13 @@ export async function fetchArchetypeDecks(tournament: string, archetypeBase: str
 }
 
 /**
- * Fetch include/exclude filtered archetype report data
- * Performs all filtering client-side using deck data
- * Uses archetype-specific decks.json when available for better performance
- * @param tournament
- * @param archetypeBase
- * @param includeId
- * @param excludeId
- * @param includeOperator - Quantity operator (=, <, <=, >, >=)
- * @param includeCount - Quantity threshold
- * @returns
+ * Fetch the archetype filters report payload.
+ * @param tournament - Tournament identifier.
+ * @param archetypeBase - Archetype slug.
+ * @param includeId - Included card id.
+ * @param excludeId - Excluded card id.
+ * @param includeOperator - Quantity operator.
+ * @param includeCount - Quantity threshold.
  */
 export async function fetchArchetypeFiltersReport(
   tournament: string,
@@ -738,6 +726,10 @@ export async function fetchArchetypeFiltersReport(
  * @param tournament
  * @returns Promise resolving to meta report
  */
+/**
+ * Fetch the meta report for a tournament.
+ * @param tournament - Tournament identifier.
+ */
 export function fetchMeta(tournament: string): Promise<MetaReport> {
   return fetchReportResource<MetaReport>(
     `${encodeURIComponent(tournament)}/meta.json`,
@@ -764,6 +756,10 @@ interface CardIndexEntry {
  * Transforms the items array into a name-keyed lookup matching the old cardIndex.json format
  * @param report - Tournament report from fetchReport
  * @returns Card index with deckTotal and cards lookup
+ */
+/**
+ * Build a card index map from a master report.
+ * @param report - Tournament report.
  */
 export function buildCardIndexFromMaster(report: TournamentReport): {
   deckTotal: number;
@@ -797,6 +793,10 @@ export function buildCardIndexFromMaster(report: TournamentReport): {
  * Fetch raw deck list export (decks.json)
  * @param tournament
  * @returns
+ */
+/**
+ * Fetch full deck lists for a tournament.
+ * @param tournament - Tournament identifier.
  */
 export function fetchDecks(tournament: string): Promise<any[] | null> {
   const relativePath = `${encodeURIComponent(tournament)}/decks.json`;
@@ -859,6 +859,10 @@ export function fetchDecks(tournament: string): Promise<any[] | null> {
  * @param tournament
  * @returns
  */
+/**
+ * Fetch top 8 archetype list for a tournament.
+ * @param tournament - Tournament identifier.
+ */
 export function fetchTop8ArchetypesList(tournament: string): Promise<string[] | null> {
   const relativePath = `${encodeURIComponent(tournament)}/archetypes/top8.json`;
   const urls = buildReportUrls(relativePath);
@@ -919,6 +923,9 @@ export function fetchTop8ArchetypesList(tournament: string): Promise<string[] | 
 /**
  * Fetch pricing data from the pricing API
  * @returns Pricing data with card prices
+ */
+/**
+ * Fetch pricing data and cache it in memory.
  */
 export async function fetchPricingData(): Promise<PricingData> {
   if (pricingData) {
@@ -1022,6 +1029,10 @@ async function resolveCardPricingEntry(
  * @param cardId - Card identifier in format "Name::SET::NUMBER"
  * @returns Price in USD or null if not found
  */
+/**
+ * Get the latest price for a card.
+ * @param cardId - Card identifier.
+ */
 export async function getCardPrice(cardId: string): Promise<number | null> {
   try {
     const entry = await resolveCardPricingEntry(cardId, 'price', 'price');
@@ -1039,6 +1050,10 @@ export async function getCardPrice(cardId: string): Promise<number | null> {
  * @param cardId - Card identifier in format "Name::SET::NUMBER"
  * @returns TCGPlayer ID or null if not found
  */
+/**
+ * Get the TCGPlayer id for a card.
+ * @param cardId - Card identifier.
+ */
 export async function getCardTCGPlayerId(cardId: string): Promise<string | null> {
   try {
     const entry = await resolveCardPricingEntry(cardId, 'tcgPlayerId', 'TCGPlayer ID');
@@ -1054,6 +1069,10 @@ export async function getCardTCGPlayerId(cardId: string): Promise<string | null>
  * Get complete card data (price and TCGPlayer ID) (with canonical fallback)
  * @param cardId - Card identifier in format "Name::SET::NUMBER"
  * @returns Object with price and tcgPlayerId or null if not found
+ */
+/**
+ * Get card pricing data and TCGPlayer id.
+ * @param cardId - Card identifier.
  */
 export async function getCardData(cardId: string): Promise<{ price?: number; tcgPlayerId?: string } | null> {
   try {
