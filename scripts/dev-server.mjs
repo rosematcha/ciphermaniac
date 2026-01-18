@@ -41,6 +41,9 @@ function resolvePath(urlPath) {
   if (!candidate.startsWith(publicDir)) {
     return null;
   }
+  if (existsSync(`${candidate}.html`)) {
+    return `${candidate}.html`;
+  }
   if (existsSync(candidate) && statSync(candidate).isDirectory()) {
     const indexPath = join(candidate, 'index.html');
     return existsSync(indexPath) ? indexPath : null;
