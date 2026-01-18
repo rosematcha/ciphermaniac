@@ -33,6 +33,9 @@ function throttle<T extends (...args: Parameters<T>) => void>(fn: T, wait: numbe
 
 let throttledUpdateLayout: (() => void) | null = null;
 
+/**
+ * Initialize a ResizeObserver for the grid container.
+ */
 export function initGridResizeObserver(): void {
   const grid = getGridElement();
   if (!grid || grid._resizeObserver) {
@@ -61,6 +64,9 @@ export function initGridResizeObserver(): void {
   grid._resizeObserver = observer;
 }
 
+/**
+ * Disconnect the grid ResizeObserver.
+ */
 export function cleanupGridResizeObserver(): void {
   const grid = getGridElement();
   if (grid?._resizeObserver) {

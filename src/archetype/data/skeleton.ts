@@ -2,6 +2,10 @@ import { inferPrimaryCategory } from '../cardCategories.js';
 import { formatTcgliveCardNumber } from '../utils/format.js';
 import type { CardItemData, SkeletonExportEntry } from '../types.js';
 
+/**
+ * Resolve the set and number needed for TCG Live exports.
+ * @param card - Card item data.
+ */
 export function resolveCardPrintInfo(card: CardItemData): { set: string; number: string } {
   let setCode = typeof card?.set === 'string' ? card.set.trim().toUpperCase() : '';
   let numberValue = typeof card?.number === 'string' || typeof card?.number === 'number' ? card.number : '';
@@ -24,6 +28,10 @@ export function resolveCardPrintInfo(card: CardItemData): { set: string; number:
   };
 }
 
+/**
+ * Pick the most common distribution entry for a card.
+ * @param card - Card item data.
+ */
 export function pickCommonDistEntry(
   card: CardItemData
 ): { copies?: number; players?: number; percent?: number } | null {
@@ -63,6 +71,10 @@ export function pickCommonDistEntry(
   }, null);
 }
 
+/**
+ * Build export entries for the skeleton deck list.
+ * @param items - Card items to convert.
+ */
 export function buildSkeletonExportEntries(items: CardItemData[]): SkeletonExportEntry[] {
   if (!Array.isArray(items)) {
     return [];

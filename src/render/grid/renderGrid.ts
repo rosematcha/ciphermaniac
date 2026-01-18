@@ -17,6 +17,12 @@ import { preloadVisibleImagesParallel } from '../images/preloader.js';
 import { attachGridKeyboardNavigation } from '../navigation/keyboard.js';
 import { expandGridRows } from './expandRows.js';
 
+/**
+ * Render the grid for the provided card items.
+ * @param items - Card items to render.
+ * @param overrides - Image override map.
+ * @param options - Rendering options.
+ */
 export function render(items: CardItem[], overrides: Record<string, string> = {}, options: RenderOptions = {}): void {
   perf.start('render');
   perf.start('render:setup');

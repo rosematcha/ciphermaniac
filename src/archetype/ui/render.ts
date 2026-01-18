@@ -10,6 +10,10 @@ import { configureGranularity, syncGranularityOutput } from './granularity.js';
 let lastRenderedThreshold: number | null = null;
 let thresholdRenderPending = false;
 
+/**
+ * Render cards after applying a threshold.
+ * @param threshold - Percent threshold.
+ */
 export function renderCardsWithThreshold(threshold: number): void {
   const state = getState();
   if (lastRenderedThreshold === threshold) {
@@ -48,6 +52,9 @@ export function renderCardsWithThreshold(threshold: number): void {
   });
 }
 
+/**
+ * Render cards for the current state.
+ */
 export function renderCards(): void {
   const state = getState();
   if (!Array.isArray(state.items)) {

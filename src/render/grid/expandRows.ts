@@ -7,6 +7,13 @@ import type { RenderOptions } from '../types.js';
 import { makeCardElement } from '../cards/gridCards.js';
 import { renderSummary } from '../summary/summary.js';
 
+/**
+ * Expand the grid with additional rows.
+ * @param items - Card items to render.
+ * @param overrides - Image override map.
+ * @param targetTotalRows - Target total row count.
+ * @param options - Rendering options.
+ */
 export function expandGridRows(
   items: CardItem[],
   overrides: Record<string, string>,

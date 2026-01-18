@@ -3,6 +3,9 @@ import { CARD_COUNT_BASIC_ENERGY_MAX, CARD_COUNT_DEFAULT_MAX } from '../constant
 import { getState } from '../state.js';
 import type { CardItemData, CardLookupEntry } from '../types.js';
 
+/**
+ * Build a lookup map of cardId to card metadata from the current state.
+ */
 export function buildCardLookup(): Map<string, CardLookupEntry> {
   const state = getState();
   state.cardLookup = new Map();
@@ -40,6 +43,10 @@ export function buildCardLookup(): Map<string, CardLookupEntry> {
   return state.cardLookup;
 }
 
+/**
+ * Determine whether a card is treated as basic energy.
+ * @param cardInfo - Card metadata entry.
+ */
 export function isBasicEnergyCard(cardInfo: CardLookupEntry | undefined): boolean {
   if (!cardInfo) {
     return false;
@@ -56,6 +63,10 @@ export function isBasicEnergyCard(cardInfo: CardLookupEntry | undefined): boolea
   return category === 'energy' && isSVEnergy;
 }
 
+/**
+ * Get the maximum allowed copies for a given card.
+ * @param cardId - Card identifier.
+ */
 export function getMaxCopiesForCard(cardId: string | null): number {
   if (!cardId) {
     return CARD_COUNT_DEFAULT_MAX;
@@ -65,6 +76,10 @@ export function getMaxCopiesForCard(cardId: string | null): number {
   return isBasicEnergyCard(info) ? CARD_COUNT_BASIC_ENERGY_MAX : CARD_COUNT_DEFAULT_MAX;
 }
 
+/**
+ * Build a canonical cardId from set and number.
+ * @param card - Card item data.
+ */
 export function buildCardId(card: CardItemData): string | null {
   const setCode = String(card?.set ?? '')
     .toUpperCase()

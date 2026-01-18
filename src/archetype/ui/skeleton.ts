@@ -10,6 +10,10 @@ import { logger } from '../../utils/logger.js';
 
 let quickFilterHandler: ((cardName: string) => void) | null = null;
 
+/**
+ * Register a quick filter handler for skeleton interactions.
+ * @param handler - Handler function.
+ */
 export function setQuickFilterHandler(handler: ((cardName: string) => void) | null): void {
   quickFilterHandler = handler;
 }
@@ -83,6 +87,9 @@ async function handleSkeletonExport(event: Event): Promise<void> {
   }
 }
 
+/**
+ * Set up skeleton export UI interactions.
+ */
 export function setupSkeletonExport(): void {
   const exportButton = document.getElementById('skeleton-export-live');
   if (!exportButton) {
@@ -92,6 +99,10 @@ export function setupSkeletonExport(): void {
   syncSkeletonExportState();
 }
 
+/**
+ * Update the skeleton summary counts.
+ * @param items - Card items to summarize.
+ */
 export function updateSkeletonSummary(items: CardItemData[]): void {
   if (!elements.skeletonSummary || !elements.skeletonWarnings) {
     return;

@@ -14,6 +14,9 @@ const state = getState();
 /**
  * Create a new filter row with card selector, operator, and count.
  */
+/**
+ * Create a new filter row element.
+ */
 export function createFilterRow(): HTMLDivElement {
   const filterId = state.nextFilterId++;
   const filterRow = document.createElement('div');
@@ -83,6 +86,10 @@ export function createFilterRow(): HTMLDivElement {
 /**
  * Remove a filter row.
  */
+/**
+ * Remove a filter row by id.
+ * @param filterId - Filter row id.
+ */
 export function removeFilterRow(filterId: number): void {
   const index = state.filterRows.findIndex(row => row.id === filterId);
   if (index === -1) {
@@ -105,6 +112,10 @@ export function removeFilterRow(filterId: number): void {
 
 /**
  * Programmatically add a filter for a card by its name.
+ */
+/**
+ * Add a filter row prefilled for the provided card name.
+ * @param cardName - Card name to target.
  */
 export function addQuickFilterForCard(cardName: string): void {
   if (!cardName) {
@@ -161,6 +172,10 @@ export function addQuickFilterForCard(cardName: string): void {
 /**
  * Populate card options for a specific filter row, excluding already-selected cards.
  */
+/**
+ * Populate card options for the given filter row.
+ * @param filterId - Filter row id.
+ */
 export function populateFilterRowCards(filterId: number): void {
   const row = state.filterRows.find(r => r.id === filterId);
   if (!row) {
@@ -195,6 +210,10 @@ export function populateFilterRowCards(filterId: number): void {
 
 /**
  * Handle filter row changes.
+ */
+/**
+ * Apply logic when a filter row changes.
+ * @param filterId - Filter row id.
  */
 export function handleFilterChange(filterId: number): void {
   const row = state.filterRows.find(r => r.id === filterId);
@@ -269,6 +288,9 @@ export function handleFilterChange(filterId: number): void {
 /**
  * Update add filter button visibility.
  */
+/**
+ * Toggle the add-filter button state based on current rows.
+ */
 export function updateAddFilterButtonVisibility(): void {
   if (!elements.addFilterButton) {
     return;
@@ -283,6 +305,9 @@ export function updateAddFilterButtonVisibility(): void {
 
 /**
  * Initialize filter rows (create the first one).
+ */
+/**
+ * Initialize filter rows from stored state.
  */
 export function initializeFilterRows(): void {
   const { filterRowsContainer } = elements;
@@ -307,6 +332,9 @@ export function initializeFilterRows(): void {
   updateAddFilterButtonVisibility();
 }
 
+/**
+ * Populate all filter card dropdowns from current data.
+ */
 export function populateCardDropdowns(): void {
   buildCardLookup();
   initializeFilterRows();

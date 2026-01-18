@@ -2,6 +2,10 @@ import { elements } from './elements.js';
 import { getState } from '../state.js';
 import { formatEventName } from '../utils/format.js';
 
+/**
+ * Update the page status attribute.
+ * @param status - Status string.
+ */
 export function setPageState(status: string): void {
   if (!elements.page) {
     return;
@@ -9,12 +13,20 @@ export function setPageState(status: string): void {
   elements.page.setAttribute('data-state', status);
 }
 
+/**
+ * Toggle loading state on the page.
+ * @param isLoading - Whether the page is loading.
+ */
 export function toggleLoading(isLoading: boolean): void {
   if (elements.loading) {
     elements.loading.hidden = !isLoading;
   }
 }
 
+/**
+ * Show an error message on the page.
+ * @param message - Error message.
+ */
 export function showError(message: string): void {
   if (elements.error) {
     elements.error.hidden = false;
@@ -25,6 +37,9 @@ export function showError(message: string): void {
   }
 }
 
+/**
+ * Update the hero section based on current state.
+ */
 export function updateHero(): void {
   const state = getState();
   if (elements.title) {

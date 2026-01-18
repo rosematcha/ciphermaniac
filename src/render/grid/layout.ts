@@ -62,6 +62,9 @@ function computeTotalRows(
   return cnt;
 }
 
+/**
+ * Recalculate layout and apply the grid layout changes.
+ */
 export function updateLayout(): void {
   perf.start('updateLayout');
   const grid = getGridElement();

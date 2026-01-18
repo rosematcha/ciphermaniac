@@ -32,6 +32,14 @@ function shouldPreferLowQuality(): boolean {
   return effectiveType === '2g' || effectiveType === 'slow-2g';
 }
 
+/**
+ * Initialize the card image element with lazy loading and fallbacks.
+ * @param img - Image element.
+ * @param cardName - Card name.
+ * @param useSm - Whether to prefer small images.
+ * @param overrides - Image override map.
+ * @param cardData - Card data.
+ */
 export function setupCardImage(
   img: HTMLImageElement | null,
   cardName: string,
@@ -71,6 +79,12 @@ export function setupCardImage(
 }
 
 
+/**
+ * Populate a card element with data and markup.
+ * @param el - Card container.
+ * @param cardData - Card data.
+ * @param renderFlags - Rendering options.
+ */
 export function populateCardContent(
   el: DocumentFragment | HTMLElement,
   cardData: CardItem,
@@ -182,6 +196,11 @@ export function populateCardContent(
   }
 }
 
+/**
+ * Render the histogram for a card.
+ * @param el - Card container.
+ * @param cardData - Card data.
+ */
 export function createCardHistogram(el: DocumentFragment | HTMLElement, cardData: CardItem): void {
   const hist = el.querySelector('.hist');
 
@@ -269,6 +288,11 @@ function setupHistogramTooltip(col: HTMLElement, cardName: string, tip: string):
   });
 }
 
+/**
+ * Attach navigation handlers for a card element.
+ * @param card - Card element.
+ * @param cardData - Card data.
+ */
 export function attachCardNavigation(card: HTMLElement, cardData: CardItem): void {
   const cardIdentifier = cardData.uid || cardData.name;
   const url = buildCardPath(cardIdentifier);
@@ -289,6 +313,12 @@ export function attachCardNavigation(card: HTMLElement, cardData: CardItem): voi
   });
 }
 
+/**
+ * Build a card element for the grid.
+ * @param cardData - Card data.
+ * @param overrides - Image override map.
+ * @param renderFlags - Rendering options.
+ */
 export function makeCardElement(
   cardData: CardItem,
   useSm: boolean,
@@ -348,6 +378,11 @@ export function makeCardElement(
   return card;
 }
 
+/**
+ * Assign dataset and accessibility attributes on the card element.
+ * @param card - Card element.
+ * @param cardData - Card data.
+ */
 export function setupCardAttributes(card: HTMLElement, cardData: CardItem): void {
   if (cardData.name) {
     card.dataset.name = cardData.name.toLowerCase();
@@ -402,6 +437,10 @@ export function setupCardAttributes(card: HTMLElement, cardData: CardItem): void
   card.setAttribute('aria-roledescription', 'card');
 }
 
+/**
+ * Resolve the usage percent for a card.
+ * @param card - Card data.
+ */
 export function getCardUsagePercent(card: CardItem): number {
   if (Number.isFinite(card.pct)) {
     return Number(card.pct);
@@ -412,6 +451,11 @@ export function getCardUsagePercent(card: CardItem): number {
   return 0;
 }
 
+/**
+ * Populate the count summary for a card.
+ * @param element - Card container.
+ * @param cardData - Card data.
+ */
 export function setupCardCounts(element: DocumentFragment | HTMLElement, cardData: CardItem): void {
   const counts = element.querySelector('.counts');
 

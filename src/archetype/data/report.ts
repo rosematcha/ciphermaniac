@@ -3,6 +3,10 @@ import { getState } from '../state.js';
 import type { FilterDescriptor, FilterResult } from '../types.js';
 import { logger } from '../../utils/logger.js';
 
+/**
+ * Load or compute the report for a filter combination.
+ * @param filters - Active filter descriptors.
+ */
 export async function loadFilterCombination(filters: FilterDescriptor[]): Promise<FilterResult> {
   const state = getState();
   const key = getFilterKey(filters, state.successFilter);
@@ -74,6 +78,9 @@ export async function loadFilterCombination(filters: FilterDescriptor[]): Promis
   return promise;
 }
 
+/**
+ * Load the baseline report for the current success filter.
+ */
 export async function loadSuccessBaseline(): Promise<{ deckTotal: number; items: FilterResult['items'] }> {
   const state = getState();
   if (state.successFilter === 'all') {

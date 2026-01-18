@@ -5,6 +5,11 @@ import { perf } from '../../utils/performance.js';
 import type { CardItem } from '../../types/index.js';
 import { getGridElement } from '../grid/elements.js';
 
+/**
+ * Preload visible card images in parallel.
+ * @param items - Card items to preload.
+ * @param overrides - Image override map.
+ */
 export function preloadVisibleImagesParallel(items: CardItem[], overrides: Record<string, string> = {}): void {
   const grid = getGridElement();
   if (!grid || !Array.isArray(items)) {
@@ -71,6 +76,12 @@ export function preloadVisibleImagesParallel(items: CardItem[], overrides: Recor
   }
 }
 
+/**
+ * Preload image candidates for the grid items.
+ * @param items - Card items to preload.
+ * @param overrides - Image override map.
+ * @param useSm - Whether to prefer small images.
+ */
 export function setupImagePreloading(
   items: CardItem[],
   overrides: Record<string, string> = {},

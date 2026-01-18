@@ -237,12 +237,20 @@ export const CARD_CATEGORY_SORT_PRIORITY = new Map([
 /**
  * Convert value to lowercase string.
  */
+/**
+ * Normalize a value to lowercase string.
+ * @param value - Input value.
+ */
 export function toLower(value: unknown): string {
   return typeof value === 'string' ? value.toLowerCase() : '';
 }
 
 /**
  * Normalize a category value for comparison.
+ */
+/**
+ * Normalize category values for comparison.
+ * @param value - Input value.
  */
 export function normalizeCategoryValue(value: unknown): string {
   if (typeof value !== 'string' || !value.trim()) {
@@ -257,6 +265,10 @@ export function normalizeCategoryValue(value: unknown): string {
 
 /**
  * Infer the primary category (pokemon/trainer/energy) from card data.
+ */
+/**
+ * Infer the primary category for a card.
+ * @param card - Card data.
  */
 export function inferPrimaryCategory(card: CardForCategory | null | undefined): string {
   const direct = normalizeCategoryValue(card?.category);
@@ -300,6 +312,10 @@ export function inferPrimaryCategory(card: CardForCategory | null | undefined): 
 
 /**
  * Infer trainer subtype (supporter/item/tool/stadium) from card data.
+ */
+/**
+ * Infer the trainer subtype for a card.
+ * @param card - Card data.
  */
 export function inferTrainerSubtype(card: CardForCategory | null | undefined): string {
   const trainerType = toLower(card?.trainerType);
@@ -350,6 +366,11 @@ export function inferTrainerSubtype(card: CardForCategory | null | undefined): s
 /**
  * Build category slug for trainer cards.
  */
+/**
+ * Build a trainer category slug for filtering.
+ * @param card - Card data.
+ * @param baseCategory - Base category slug.
+ */
 export function buildTrainerCategorySlug(card: CardForCategory | null | undefined, baseCategory: string): string {
   if (baseCategory !== 'trainer') {
     return '';
@@ -377,6 +398,11 @@ export function buildTrainerCategorySlug(card: CardForCategory | null | undefine
 /**
  * Build category slug for energy cards.
  */
+/**
+ * Build an energy category slug for filtering.
+ * @param card - Card data.
+ * @param baseCategory - Base category slug.
+ */
 export function buildEnergyCategorySlug(card: CardForCategory | null | undefined, baseCategory: string): string {
   if (baseCategory !== 'energy') {
     return '';
@@ -387,6 +413,10 @@ export function buildEnergyCategorySlug(card: CardForCategory | null | undefined
 
 /**
  * Derive full category slug from card data.
+ */
+/**
+ * Derive a category slug from card metadata.
+ * @param card - Card data.
  */
 export function deriveCategorySlug(card: CardForCategory | null | undefined): string {
   const direct = normalizeCategoryValue(card?.category);
@@ -414,6 +444,10 @@ export function deriveCategorySlug(card: CardForCategory | null | undefined): st
 /**
  * Get sort weight for a category (lower = higher priority).
  */
+/**
+ * Get a numeric sort weight for a category slug.
+ * @param category - Category slug.
+ */
 export function getCategorySortWeight(category: string | undefined): number {
   if (!category) {
     return 999;
@@ -438,6 +472,10 @@ export function getCategorySortWeight(category: string | undefined): number {
 
 /**
  * Get usage percentage from a card.
+ */
+/**
+ * Get usage percent from card metadata.
+ * @param card - Card data.
  */
 export function getUsagePercent(card: CardForCategory | null | undefined): number {
   if (!card) {
@@ -504,6 +542,10 @@ export const ACE_SPEC_KEYWORDS = [
 
 /**
  * Check if a card name indicates it's an Ace Spec card.
+ */
+/**
+ * Check if a card name indicates an ACE SPEC.
+ * @param cardName - Card name.
  */
 export function isAceSpec(cardName: string | null | undefined): boolean {
   const lowerName = (cardName || '').toLowerCase();

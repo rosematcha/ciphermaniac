@@ -1,5 +1,9 @@
 import type { GridElement } from '../types.js';
 
+/**
+ * Attach keyboard navigation handlers for the grid.
+ * @param grid - Grid element.
+ */
 export function attachGridKeyboardNavigation(grid: GridElement): void {
   if (grid._kbNavAttached) {
     return;

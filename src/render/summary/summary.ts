@@ -1,5 +1,13 @@
 import { getGridElement } from '../grid/elements.js';
 
+/**
+ * Render the summary text for the grid.
+ * @param container - Summary container.
+ * @param deckTotal - Total deck count.
+ * @param count - Card count.
+ * @param visibleRows - Visible row count.
+ * @param totalRows - Total row count.
+ */
 export function renderSummary(
   container: HTMLElement | null,
   deckTotal: number,
@@ -29,6 +37,11 @@ export function renderSummary(
   container.textContent = parts.join(' - ');
 }
 
+/**
+ * Update the summary using current grid row counts.
+ * @param deckTotal - Total deck count.
+ * @param cardCount - Total card count.
+ */
 export function updateSummaryWithRowCounts(deckTotal: number, cardCount: number): void {
   const grid = getGridElement();
   const summaryEl = document.getElementById('summary');

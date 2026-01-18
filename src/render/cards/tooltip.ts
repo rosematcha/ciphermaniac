@@ -18,6 +18,12 @@ function ensureGridTooltip(): HTMLElement {
   return tooltip;
 }
 
+/**
+ * Show the grid tooltip at a viewport position.
+ * @param html - Tooltip HTML.
+ * @param x - Client X coordinate.
+ * @param y - Client Y coordinate.
+ */
 export function showGridTooltip(html: string, x: number, y: number): void {
   const tooltip = ensureGridTooltip();
   tooltip.innerHTML = html;
@@ -39,6 +45,9 @@ export function showGridTooltip(html: string, x: number, y: number): void {
   tooltip.style.top = `${top}px`;
 }
 
+/**
+ * Hide the grid tooltip.
+ */
 export function hideGridTooltip(): void {
   if (gridTooltip) {
     gridTooltip.style.display = 'none';
