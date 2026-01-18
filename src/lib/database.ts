@@ -371,20 +371,32 @@ export class TournamentDatabase {
   }
 }
 
-const dbCache = new Map<string, TournamentDatabase>();
+const dbCache = new Map<string, Promise<TournamentDatabase>>();
 
 export async function loadDatabase(tournamentPath: string): Promise<TournamentDatabase> {
-  if (dbCache.has(tournamentPath)) {
-    return dbCache.get(tournamentPath)!;
+  const existing = dbCache.get(tournamentPath);
+  if (existing) {
+    return existing;
   }
-  const db = await TournamentDatabase.load(tournamentPath);
-  dbCache.set(tournamentPath, db);
-  return db;
+  const dbPromise = TournamentDatabase.load(tournamentPath);
+  dbCache.set(tournamentPath, dbPromise);
+  try {
+    return await dbPromise;
+  } catch (error) {
+    dbCache.delete(tournamentPath);
+    throw error;
+  }
 }
 
 export function clearDatabaseCache(): void {
-  for (const db of dbCache.values()) {
-    db.close();
+  for (const dbPromise of dbCache.values()) {
+    dbPromise
+      .then(db => {
+        db.close();
+      })
+      .catch(() => {
+        // Ignore close failures for uninitialized databases.
+      });
   }
   dbCache.clear();
 }
