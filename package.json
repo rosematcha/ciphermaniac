@@ -17,7 +17,7 @@
     "jsdoc": "jsdoc -c config/jsdoc.config.js",
     "jsdoc:validate": "eslint public/assets/js --ext .js --rule 'valid-jsdoc: error'",
     "complexity": "plato -r -d complexity-report public/assets/js",
-    "dev": "node dev/test-server.js",
+    "dev": "node scripts/dev-server.mjs",
     "test": "npm run test:all",
     "test:all": "npm run test:unit && npm run test:external",
     "test:unit": "npm run test:security && npm run test:data && npm run test:client && npm run test:integration && npm run test:edge-cases && npm run test:performance && npm run test:reliability && npm run test:utils",
