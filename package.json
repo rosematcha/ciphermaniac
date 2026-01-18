@@ -85,7 +85,8 @@
   },
   "lint-staged": {
     "*.{ts,js,mjs}": [
-      "eslint --fix"
+      "eslint --fix",
+      "tsc --noEmit"
     ]
   },
   "devDependencies": {

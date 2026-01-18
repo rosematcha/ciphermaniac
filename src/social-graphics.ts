@@ -1,16 +1,53 @@
-// @ts-nocheck
-// TODO: Enable strict type checking after migrating complex type definitions
 /* eslint-disable no-new */
 import { fetchReportResource, fetchTournamentsList } from './api.js';
 import { buildThumbCandidates } from './thumbs.js';
 import { logger } from './utils/logger.js';
 import { escapeHtml } from './utils/html.js';
+import type { CardDistributionEntry, CardItem, TournamentReport } from './types/index.js';
+
+type DisplayMode = 'standard' | 'no-leaders' | 'rising';
+type CardSize = 'normal' | 'featured' | 'medium' | 'small' | 'tiny';
+type CardType = 'pokemon' | 'trainer' | 'basic-energy' | 'special-energy';
+
+interface TournamentListEntry {
+  folder: string;
+  name: string;
+  index: number;
+}
+
+interface SuggestionsPayload {
+  categories: Array<{
+    id: string;
+    items: Array<{
+      name: string;
+    }>;
+  }>;
+}
+
+type ReportCard = CardItem & {
+  uid?: string;
+  increase?: number;
+  previousPct?: number;
+};
+
+type TournamentReportData = Omit<TournamentReport, 'items'> & {
+  items: ReportCard[];
+};
+
+interface Html2CanvasOptions {
+  backgroundColor?: string;
+  scale?: number;
+  useCORS?: boolean;
+  allowTaint?: boolean;
+  imageTimeout?: number;
+  logging?: boolean;
+}
 
 class SocialGraphicsGenerator {
-  tournaments: any[];
-  currentTournamentData: any;
-  previousTournamentData: any;
-  comparisonTournamentData: any;
+  tournaments: TournamentListEntry[];
+  currentTournamentData: TournamentReportData | null;
+  previousTournamentData: TournamentReportData | null;
+  comparisonTournamentData: TournamentReportData | null;
   consistentLeaders: Set<string>;
   imageBlobCache: Map<string, string>;
 
@@ -30,7 +67,7 @@ class SocialGraphicsGenerator {
    * @param {string} id
    * @returns {string}
    */
-  getFieldValue(id) {
+  getFieldValue(id: string): string {
     const el = document.getElementById(id);
     if (!el) {
       return '';
@@ -40,7 +77,7 @@ class SocialGraphicsGenerator {
     return typed.value ?? '';
   }
 
-  async init() {
+  async init(): Promise<void> {
     try {
       await this.loadTournaments();
       await this.loadConsistentLeaders();
@@ -50,7 +87,7 @@ class SocialGraphicsGenerator {
     }
   }
 
-  async loadTournaments() {
+  async loadTournaments(): Promise<void> {
     try {
       const tournamentNames = await fetchTournamentsList();
       this.tournaments = tournamentNames
@@ -67,9 +104,12 @@ class SocialGraphicsGenerator {
     }
   }
 
-  populateTournamentSelect() {
-    const select = document.getElementById('tournament-select');
-    const comparisonSelect = document.getElementById('comparison-tournament-select');
+  populateTournamentSelect(): void {
+    const select = document.getElementById('tournament-select') as HTMLSelectElement | null;
+    const comparisonSelect = document.getElementById('comparison-tournament-select') as HTMLSelectElement | null;
+    if (!select || !comparisonSelect) {
+      return;
+    }
 
     select.innerHTML = '<option value="">Select a tournament...</option>';
     comparisonSelect.innerHTML = '<option value="">No comparison...</option>';
@@ -92,11 +132,17 @@ class SocialGraphicsGenerator {
     });
   }
 
-  async loadConsistentLeaders() {
+  async loadConsistentLeaders(): Promise<void> {
     try {
-      const suggestions = await fetchReportResource('suggestions.json', 'suggestions', 'object', 'suggestions', {
-        cache: true
-      });
+      const suggestions = await fetchReportResource<SuggestionsPayload>(
+        'suggestions.json',
+        'suggestions',
+        'object',
+        'suggestions',
+        {
+          cache: true
+        }
+      );
 
       // Find the consistent leaders category
       const consistentLeadersCategory = suggestions.categories.find(cat => cat.id === 'consistent-leaders');
@@ -113,18 +159,21 @@ class SocialGraphicsGenerator {
     }
   }
 
-  showError(message) {
+  showError(message: string): void {
     const output = document.getElementById('graphics-output');
+    if (!output) {
+      return;
+    }
     output.innerHTML = `<div style="color: red; padding: 20px; text-align: center;">${escapeHtml(message)}</div>`;
   }
 
-  setupEventListeners() {
-    document.getElementById('generate-btn').addEventListener('click', () => this.generateGraphics());
-    document.getElementById('export-png').addEventListener('click', () => this.exportGraphics('png'));
-    document.getElementById('export-jpg').addEventListener('click', () => this.exportGraphics('jpg'));
+  setupEventListeners(): void {
+    document.getElementById('generate-btn')?.addEventListener('click', () => this.generateGraphics());
+    document.getElementById('export-png')?.addEventListener('click', () => this.exportGraphics('png'));
+    document.getElementById('export-jpg')?.addEventListener('click', () => this.exportGraphics('jpg'));
   }
 
-  async generateGraphics() {
+  async generateGraphics(): Promise<void> {
     const tournamentFolder = this.getFieldValue('tournament-select');
     const comparisonTournamentFolder = this.getFieldValue('comparison-tournament-select');
 
@@ -135,7 +184,7 @@ class SocialGraphicsGenerator {
 
     try {
       // Load main tournament data
-      this.currentTournamentData = await fetchReportResource(
+      this.currentTournamentData = await fetchReportResource<TournamentReportData>(
         `${tournamentFolder}/master.json`,
         'tournament data',
         'object',
@@ -145,7 +194,7 @@ class SocialGraphicsGenerator {
       // Load comparison tournament data if selected
       if (comparisonTournamentFolder && comparisonTournamentFolder !== tournamentFolder) {
         try {
-          this.comparisonTournamentData = await fetchReportResource(
+          this.comparisonTournamentData = await fetchReportResource<TournamentReportData>(
             `${comparisonTournamentFolder}/master.json`,
             'comparison tournament data',
             'object',
@@ -164,7 +213,7 @@ class SocialGraphicsGenerator {
       if (currentIndex < this.tournaments.length - 1) {
         const previousFolder = this.tournaments[currentIndex + 1].folder;
         try {
-          this.previousTournamentData = await fetchReportResource(
+          this.previousTournamentData = await fetchReportResource<TournamentReportData>(
             `${previousFolder}/master.json`,
             'previous tournament data',
             'object',
@@ -185,8 +234,8 @@ class SocialGraphicsGenerator {
     }
   }
 
-  async renderGraphics() {
-    const displayMode = this.getFieldValue('display-mode');
+  async renderGraphics(): Promise<void> {
+    const displayMode = this.getFieldValue('display-mode') as DisplayMode;
     const layoutValue = this.getFieldValue('graphics-layout');
     const layoutSize = parseInt(layoutValue, 10) || 20;
 
@@ -194,6 +243,9 @@ class SocialGraphicsGenerator {
     filteredData = filteredData.slice(0, layoutSize);
 
     const output = document.getElementById('graphics-output');
+    if (!output) {
+      return;
+    }
     output.innerHTML = '';
 
     if (filteredData.length === 0) {
@@ -288,7 +340,7 @@ class SocialGraphicsGenerator {
     output.appendChild(tournamentLayout);
   }
 
-  createHeaderSection(displayMode) {
+  createHeaderSection(displayMode: DisplayMode): HTMLElement {
     const headerSection = document.createElement('div');
     headerSection.className = 'graphics-header';
 
@@ -339,7 +391,10 @@ class SocialGraphicsGenerator {
     return headerSection;
   }
 
-  getFilteredData(displayMode) {
+  getFilteredData(displayMode: DisplayMode): ReportCard[] {
+    if (!this.currentTournamentData) {
+      return [];
+    }
     const data = this.currentTournamentData.items.filter(card => card.set !== 'SVE');
 
     switch (displayMode) {
@@ -357,7 +412,7 @@ class SocialGraphicsGenerator {
     }
   }
 
-  getRisingCards(currentData) {
+  getRisingCards(currentData: ReportCard[]): ReportCard[] {
     // Use comparison tournament if available, otherwise fall back to previous tournament
     const comparisonData = this.comparisonTournamentData || this.previousTournamentData;
 
@@ -371,14 +426,20 @@ class SocialGraphicsGenerator {
     }
 
     // Create lookup map for comparison tournament data
-    const comparisonLookup = new Map();
+    const comparisonLookup = new Map<string, number>();
     comparisonData.items.forEach(card => {
+      if (!card.uid) {
+        return;
+      }
       comparisonLookup.set(card.uid, card.pct);
     });
 
     // Calculate increases and filter out new cards (0% to something)
-    const risingCards = [];
+    const risingCards: ReportCard[] = [];
     currentData.forEach(card => {
+      if (!card.uid) {
+        return;
+      }
       const comparisonPct = comparisonLookup.get(card.uid);
 
       if (comparisonPct !== undefined && comparisonPct > 0) {
@@ -397,12 +458,17 @@ class SocialGraphicsGenerator {
     return risingCards.sort((first, second) => second.increase - first.increase);
   }
 
-  isConsistentLeader(card) {
+  isConsistentLeader(card: ReportCard): boolean {
     const cardKey = card.name.replace(/[^a-zA-Z0-9]/g, '_');
     return this.consistentLeaders.has(cardKey);
   }
 
-  async createCardGraphic(card, displayRank, displayMode = 'standard', cardSize = 'normal') {
+  async createCardGraphic(
+    card: ReportCard,
+    displayRank: number,
+    displayMode: DisplayMode = 'standard',
+    cardSize: CardSize = 'normal'
+  ): Promise<HTMLDivElement> {
     const cardDiv = document.createElement('div');
     cardDiv.className =
       cardSize === 'featured'
@@ -418,7 +484,7 @@ class SocialGraphicsGenerator {
     // Add rank badge
     const rankBadge = document.createElement('div');
     rankBadge.className = 'card-rank-badge';
-    rankBadge.textContent = displayRank;
+    rankBadge.textContent = String(displayRank);
     cardDiv.appendChild(rankBadge);
 
     const imageContainer = document.createElement('div');
@@ -501,7 +567,7 @@ class SocialGraphicsGenerator {
     return cardDiv;
   }
 
-  async loadImageWithFallback(card, _cardSize = 'normal') {
+  async loadImageWithFallback(card: ReportCard, _cardSize: CardSize = 'normal'): Promise<string | null> {
     const variant = {
       set: card.set,
       number: card.number
@@ -542,7 +608,11 @@ class SocialGraphicsGenerator {
     return null;
   }
 
-  buildProxyThumbnailUrl(setCode, number, useSm = true) {
+  buildProxyThumbnailUrl(
+    setCode: string | null | undefined,
+    number: string | number | null | undefined,
+    useSm = true
+  ): string | null {
     if (!setCode || !number) {
       return null;
     }
@@ -558,13 +628,13 @@ class SocialGraphicsGenerator {
     return `/thumbnails/${size}/${normalizedSet}/${normalizedNumber}`;
   }
 
-  async fetchImageAsBlob(url) {
+  async fetchImageAsBlob(url: string): Promise<string | null> {
     if (!url) {
       return null;
     }
 
     if (this.imageBlobCache.has(url)) {
-      return this.imageBlobCache.get(url);
+      return this.imageBlobCache.get(url) || null;
     }
 
     try {
@@ -599,7 +669,7 @@ class SocialGraphicsGenerator {
     }
   }
 
-  applyCropping(img: HTMLImageElement, card: any, _cardSize = 'normal'): Promise<void> {
+  applyCropping(img: HTMLImageElement, card: ReportCard, _cardSize: CardSize = 'normal'): Promise<void> {
     return new Promise<void>(resolve => {
       // Prevent recursive cropping by checking if already processed
       if (img.dataset.cropped === 'true') {
@@ -615,6 +685,10 @@ class SocialGraphicsGenerator {
 
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(undefined);
+            return;
+          }
 
           // Use proper aspect ratios for card display
           const canvasWidth =
@@ -711,7 +785,7 @@ class SocialGraphicsGenerator {
     });
   }
 
-  getCropParameters(card) {
+  getCropParameters(card: ReportCard): { left: number; right: number; top: number; bottom: number } {
     const cardType = this.determineCardType(card);
 
     const sidesCrop = parseInt(this.getFieldValue('crop-sides'), 10) || 22;
@@ -744,7 +818,7 @@ class SocialGraphicsGenerator {
     };
   }
 
-  determineCardType(card) {
+  determineCardType(card: ReportCard): CardType {
     const { name } = card;
 
     // Basic Energy cards (SVE set)
@@ -828,27 +902,30 @@ class SocialGraphicsGenerator {
     return 'pokemon';
   }
 
-  createHistogram(distribution) {
+  createHistogram(distribution: CardDistributionEntry[]): HTMLElement {
     const histogram = document.createElement('div');
     histogram.className = 'histogram';
 
     // Filter to only show 1-4 copies (Pokemon cards max 4)
-    const validDist = distribution.filter(dist => dist.copies <= 4);
-    const maxPlayers = Math.max(...validDist.map(dist => dist.players));
+    const validDist = distribution.filter(dist => (dist.copies ?? 0) <= 4);
+    const maxPlayers = Math.max(1, ...validDist.map(dist => dist.players ?? 0));
 
     validDist.forEach(dist => {
       const bar = document.createElement('div');
       bar.className = 'histogram-bar';
-      bar.style.height = `${(dist.players / maxPlayers) * 15}px`;
-      bar.textContent = dist.copies;
-      bar.title = `${dist.copies} copies: ${dist.players} players (${dist.percent}%)`;
+      const copies = dist.copies ?? 0;
+      const players = dist.players ?? 0;
+      const percent = dist.percent ?? 0;
+      bar.style.height = `${(players / maxPlayers) * 15}px`;
+      bar.textContent = String(copies);
+      bar.title = `${copies} copies: ${players} players (${percent}%)`;
       histogram.appendChild(bar);
     });
 
     return histogram;
   }
 
-  async exportGraphics(format) {
+  async exportGraphics(format: 'png' | 'jpg'): Promise<void> {
     if (!this.currentTournamentData) {
       this.showError('Please generate graphics first.');
       return;
@@ -888,7 +965,7 @@ class SocialGraphicsGenerator {
     }
   }
 
-  cleanupImageBlobs() {
+  cleanupImageBlobs(): void {
     if (!this.imageBlobCache || this.imageBlobCache.size === 0) {
       return;
     }
@@ -906,9 +983,11 @@ class SocialGraphicsGenerator {
 }
 
 const html2canvas = (() => {
-  return function (element: HTMLElement, options?: any): Promise<HTMLCanvasElement> {
+  return function (element: HTMLElement, options?: Html2CanvasOptions): Promise<HTMLCanvasElement> {
     return new Promise<HTMLCanvasElement>((resolve, reject) => {
-      const globalWindow = window as any;
+      const globalWindow = window as Window & {
+        html2canvas?: (target: HTMLElement, canvasOptions?: Html2CanvasOptions) => Promise<HTMLCanvasElement>;
+      };
       if (typeof globalWindow.html2canvas !== 'undefined') {
         globalWindow
           .html2canvas(element, options)
