@@ -1,6 +1,7 @@
 /* eslint-disable no-new */
 import { fetchReportResource, fetchTournamentsList } from './api.js';
 import { buildThumbCandidates } from './thumbs.js';
+import { AppError, ErrorTypes } from './utils/errorHandler.js';
 import { logger } from './utils/logger.js';
 import { escapeHtml } from './utils/html.js';
 import type { CardDistributionEntry, CardItem, TournamentReport } from './types/index.js';
@@ -998,7 +999,7 @@ const html2canvas = (() => {
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
         script.onload = () => {
           if (!globalWindow.html2canvas) {
-            reject(new Error('html2canvas failed to load'));
+            reject(new AppError(ErrorTypes.RENDER, 'html2canvas failed to load'));
             return;
           }
           globalWindow

@@ -1,3 +1,4 @@
+import { AppError, ErrorTypes } from '../../utils/errorHandler.js';
 import { logger } from '../../utils/logger.js';
 import { R2_BASE_URL } from '../constants.js';
 import type { TrendsData } from '../types.js';
@@ -13,7 +14,7 @@ export async function fetchTrendsData(archetypeName: string): Promise<TrendsData
         logger.warn('Trends data not found', { archetypeName });
         return null;
       }
-      throw new Error(`HTTP ${response.status}`);
+      throw new AppError(ErrorTypes.API, `HTTP ${response.status}`, null, { status: response.status, url });
     }
     return (await response.json()) as TrendsData;
   } catch (error) {

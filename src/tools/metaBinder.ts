@@ -1,6 +1,7 @@
 import { fetchDecks, fetchTournamentsList, getCardPrice } from '../api.js';
 import { analyzeEvents, type BinderDataset, buildBinderDataset } from './metaBinderData.js';
 import { buildThumbCandidates } from '../thumbs.js';
+import { AppError, ErrorTypes } from '../utils/errorHandler.js';
 import { debounce } from '../utils/performance.js';
 import { storage } from '../utils/storage.js';
 import { logger } from '../utils/logger.js';
@@ -244,14 +245,14 @@ function chunk<T>(array: T[], size: number): T[][] {
 
 function ensureCardTemplate(): HTMLTemplateElement {
   if (!elements.cardTemplate) {
-    throw new Error('Card template missing');
+    throw new AppError(ErrorTypes.RENDER, 'Card template missing');
   }
   return elements.cardTemplate;
 }
 
 function ensurePlaceholderTemplate(): HTMLTemplateElement {
   if (!elements.placeholderTemplate) {
-    throw new Error('Placeholder template missing');
+    throw new AppError(ErrorTypes.RENDER, 'Placeholder template missing');
   }
   return elements.placeholderTemplate;
 }
@@ -278,7 +279,7 @@ function createCardElement(
   const template = ensureCardTemplate();
   const root = template.content.firstElementChild;
   if (!root) {
-    throw new Error('Card template missing content');
+    throw new AppError(ErrorTypes.RENDER, 'Card template missing content');
   }
   const clone = root.cloneNode(true) as HTMLElement;
   const img = clone.querySelector<HTMLImageElement>('img');
@@ -319,7 +320,7 @@ function createPlaceholderElement(): HTMLElement {
   const template = ensurePlaceholderTemplate();
   const node = template.content.firstElementChild;
   if (!node) {
-    throw new Error('Placeholder template missing content');
+    throw new AppError(ErrorTypes.RENDER, 'Placeholder template missing content');
   }
   return node.cloneNode(true) as HTMLElement;
 }
@@ -1183,7 +1184,7 @@ async function handleImportLayout(event: Event): Promise<void> {
     };
 
     if (!importData.version || !importData.binderData) {
-      throw new Error('Invalid binder export file format');
+      throw new AppError(ErrorTypes.DATA_FORMAT, 'Invalid binder export file format');
     }
 
     // Validate tournaments exist

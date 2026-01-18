@@ -1,3 +1,5 @@
+import { AppError, ErrorTypes } from '../utils/errorHandler.js';
+
 type SqlJsDatabase = {
   prepare(sql: string): SqlJsStatement;
   close(): void;
@@ -74,7 +76,7 @@ function loadSqlJsScript(): Promise<(options?: InitSqlJsOptions) => Promise<SqlJ
     const script = document.createElement('script');
     script.src = '/assets/sql.js/sql-wasm.js';
     script.onload = () => resolve(window.initSqlJs!);
-    script.onerror = () => reject(new Error('Failed to load sql.js'));
+    script.onerror = () => reject(new AppError(ErrorTypes.NETWORK, 'Failed to load sql.js', null, { src: script.src }));
     document.head.appendChild(script);
   });
 }
@@ -105,7 +107,10 @@ export class TournamentDatabase {
     const url = `/reports/${encodeURIComponent(tournamentPath)}/tournament.db`;
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`Failed to load database: ${response.status} ${response.statusText}`);
+      throw new AppError(ErrorTypes.API, `Failed to load database: ${response.status} ${response.statusText}`, null, {
+        status: response.status,
+        url
+      });
     }
     const buffer = await response.arrayBuffer();
     const db = new SQL.Database(new Uint8Array(buffer));

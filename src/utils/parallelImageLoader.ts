@@ -1,3 +1,5 @@
+import { AppError, ErrorTypes } from './errorHandler.js';
+
 /**
  * Parallel Image Loading Utility
  * Loads multiple image candidates simultaneously instead of sequentially
@@ -117,7 +119,7 @@ class ParallelImageLoader {
       };
 
       img.onerror = () => {
-        reject(new Error(`Failed to load: ${url}`));
+        reject(new AppError(ErrorTypes.NETWORK, `Failed to load: ${url}`));
       };
 
       img.src = url;

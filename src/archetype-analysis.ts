@@ -12,6 +12,7 @@
 import './utils/buildVersion.js';
 import { fetchArchetypeReport, fetchArchetypesList, fetchReport } from './api.js';
 import { parseReport } from './parse.js';
+import { AppError, ErrorTypes } from './utils/errorHandler.js';
 import { logger } from './utils/logger.js';
 
 type ArchetypeSummary = {
@@ -501,7 +502,7 @@ async function initialize(): Promise<void> {
     // Verify tournament is available (required for the page)
     const tournamentReport = await fetchReport(ONLINE_META_TOURNAMENT);
     if (!tournamentReport || typeof tournamentReport.deckTotal !== 'number') {
-      throw new Error(`Tournament data unavailable`);
+      throw new AppError(ErrorTypes.DATA_FORMAT, 'Tournament data unavailable');
     }
 
     // Fetch fresh data
