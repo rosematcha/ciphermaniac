@@ -38,28 +38,55 @@ function resolvePath(urlPath) {
   if (decoded === '/' || decoded === '') {
     return join(publicDir, 'index.html');
   }
+
   const normalized = normalize(decoded).replace(/^(\.\.[/\\])+/, '');
+  const normalizedForRouting = normalized.replace(/\\/g, '/');
   const candidate = resolve(publicDir, `.${normalized}`);
+
   if (!candidate.startsWith(publicDir)) {
     return null;
   }
+
+  // Direct file or .html matches
   if (existsSync(`${candidate}.html`)) {
     return `${candidate}.html`;
   }
+
   if (existsSync(candidate) && statSync(candidate).isDirectory()) {
     const indexPath = join(candidate, 'index.html');
     return existsSync(indexPath) ? indexPath : null;
   }
+
   // SPA-like fallbacks for extensionless routes (e.g., /card/ABC-123, /Gardevoir_ex)
   if (!extname(candidate)) {
-    const parts = normalized.split('/').filter(Boolean);
+    const parts = normalizedForRouting.split('/').filter(Boolean);
+
     if (parts[0] === 'card') {
       return join(publicDir, 'card.html');
     }
-    if (parts[0] === 'archetype' || parts.length === 1) {
-      return join(publicDir, 'archetype.html');
+
+    if (parts[0] === 'archetype' && parts.length === 1) {
+      return join(publicDir, 'archetypes.html');
+    }
+
+    // Support both `/archetype/<slug>` and `/<slug>` style archetype URLs
+    const isPrefixedArchetype = parts[0] === 'archetype' && parts.length > 1;
+    const archetypeSlug = isPrefixedArchetype ? parts[1] : parts[0];
+    const archetypeSubpage = isPrefixedArchetype ? parts[2] : parts[1];
+
+    if (archetypeSlug) {
+      if (archetypeSubpage === 'analysis') {
+        return join(publicDir, 'archetype.html');
+      }
+      if (archetypeSubpage === 'trends') {
+        return join(publicDir, 'archetype-trends.html');
+      }
+      if (!archetypeSubpage) {
+        return join(publicDir, 'archetype-home.html');
+      }
     }
   }
+
   return candidate;
 }
 
