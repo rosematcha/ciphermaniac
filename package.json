@@ -55,7 +55,8 @@
     "build:card-types": "node tools/build-card-types.mjs",
     "build:frontend": "tsc --project tsconfig.frontend.json",
     "build:shared": "tsc --project tsconfig.shared.json",
-    "check:card-types": "node tools/check-card-types.mjs"
+    "check:card-types": "node tools/check-card-types.mjs",
+    "check:bundle-size": "node scripts/check-bundle-size.mjs"
   },
   "c8": {
     "include": [

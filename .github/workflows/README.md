@@ -306,7 +306,9 @@ Runs linting, typechecking, and coverage checks on code changes.
 4. Runs `npm audit --omit=dev --audit-level=high`
 5. Runs ESLint
 6. Runs TypeScript typecheck
-7. Runs coverage thresholds via `npm run test:coverage:check`
+7. Builds the production bundle
+8. Enforces bundle size via `npm run check:bundle-size`
+9. Runs coverage thresholds via `npm run test:coverage:check`
 
 ### When It Runs
 **Automatic**: Runs on pull requests and on pushes to `main`
