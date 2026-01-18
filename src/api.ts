@@ -138,16 +138,24 @@ async function safeJsonParse(response: Response, url: string): Promise<any> {
   const contentType = response.headers.get('content-type') || '';
 
   const text = await response.text();
+  const trimmed = text.trim();
 
-  if (!text.trim()) {
+  if (!trimmed) {
     throw new AppError(ErrorTypes.PARSE, 'Empty response body', null, {
       url,
       contentType
     });
   }
 
-  if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
-    const preview = text.slice(0, 100) + (text.length > 100 ? '...' : '');
+  const isJsonContent = contentType.includes('application/json') || contentType.includes('text/json');
+  const looksLikeJson = trimmed.startsWith('{') || trimmed.startsWith('[');
+
+  // Some upstream endpoints incorrectly return text/plain while serving JSON.
+  // Accept JSON-like bodies even with the wrong content-type, but log a warning.
+  if (!isJsonContent && looksLikeJson) {
+    logger.warn('Non-JSON content-type, parsing as JSON anyway', { url, contentType });
+  } else if (!isJsonContent) {
+    const preview = trimmed.slice(0, 100) + (trimmed.length > 100 ? '...' : '');
     throw new AppError(
       ErrorTypes.PARSE,
       `Expected JSON response but got ${contentType || 'unknown content type'}`,
@@ -157,11 +165,11 @@ async function safeJsonParse(response: Response, url: string): Promise<any> {
   }
 
   try {
-    return JSON.parse(text);
+    return JSON.parse(trimmed);
   } catch (error: unknown) {
     const err = error instanceof Error ? error : new AppError(ErrorTypes.PARSE, String(error));
     if (err instanceof SyntaxError) {
-      const preview = text.slice(0, 100) + (text.length > 100 ? '...' : '');
+      const preview = trimmed.slice(0, 100) + (trimmed.length > 100 ? '...' : '');
       throw new AppError(ErrorTypes.PARSE, `Invalid JSON response: ${err.message}`, null, {
         url,
         contentType,
