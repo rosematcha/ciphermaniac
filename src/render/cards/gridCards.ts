@@ -19,6 +19,19 @@ function hideGridTooltip(): void {
   gridTooltip.hide();
 }
 
+function shouldPreferLowQuality(): boolean {
+  if (typeof navigator === 'undefined') {
+    return false;
+  }
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } })
+    .connection;
+  if (connection?.saveData) {
+    return true;
+  }
+  const effectiveType = connection?.effectiveType || '';
+  return effectiveType === '2g' || effectiveType === 'slow-2g';
+}
+
 export function setupCardImage(
   img: HTMLImageElement | null,
   cardName: string,
@@ -42,15 +55,18 @@ export function setupCardImage(
   const variant =
     cardData && cardData.set && cardData.number ? { set: cardData.set, number: cardData.number } : undefined;
 
-  const candidates = buildThumbCandidates(cardName, useSm, overrides, variant);
+  const preferLowQuality = shouldPreferLowQuality();
+  const resolvedUseSm = preferLowQuality ? true : useSm;
+  const candidates = buildThumbCandidates(cardName, resolvedUseSm, overrides, variant);
 
   parallelImageLoader.setupImageElement(img, candidates, {
     alt: cardName,
     fadeIn: false,
-    maxParallel: 3,
+    maxParallel: preferLowQuality ? 2 : 3,
     onFailure: () => {
-      trackMissing(cardName, useSm, overrides);
-    }
+      trackMissing(cardName, resolvedUseSm, overrides);
+    },
+    deferUntilVisible: true
   });
 }
 
