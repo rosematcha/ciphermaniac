@@ -46,7 +46,7 @@
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/assets/style-optimized.css" />
     <!-- Preload critical JS module for faster page load -->
-    <link rel="modulepreload" href="/assets/js/src/archetypeHome.js" />
+    <link rel="modulepreload" href="/assets/js/src/loaders/archetype-home.js" />
   </head>
   <body>
     <div class="archetype-page archetype-home-page" data-state="loading">
@@ -156,7 +156,7 @@
       document.body.insertAdjacentElement('afterbegin', header);
       document.body.insertAdjacentElement('beforeend', footer);
     </script>
-    <script type="module" src="/assets/js/src/archetypeHome.js"></script>
+    <script type="module" src="/assets/js/src/loaders/archetype-home.js"></script>
     <script>
       // Simple inline script to update the card links based on current URL
       (function () {

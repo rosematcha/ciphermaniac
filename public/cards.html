@@ -48,9 +48,8 @@
     <!-- Preload critical font to reduce layout shift -->
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/assets/style.css" />
-    <!-- Preload critical JS modules for faster page load -->
-    <link rel="modulepreload" href="/assets/js/src/main.js" />
-    <link rel="modulepreload" href="/assets/js/src/ui.js" />
+    <!-- Preload loader module for faster page load -->
+    <link rel="modulepreload" href="/assets/js/src/loaders/cards.js" />
   </head>
   <body>
     <div class="toolbar" role="search" aria-label="Card filtering and search">
@@ -408,7 +407,6 @@
       document.body.insertAdjacentElement('afterbegin', header);
       document.body.insertAdjacentElement('beforeend', footer);
     </script>
-    <script src="/assets/js/src/main.js" type="module"></script>
-    <script src="/assets/js/src/ui.js" type="module"></script>
+    <script src="/assets/js/src/loaders/cards.js" type="module"></script>
   </body>
 </html>

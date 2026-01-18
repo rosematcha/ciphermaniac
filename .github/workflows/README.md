@@ -9,6 +9,7 @@ All automation for Ciphermaniac is centralized in GitHub Actions. This includes:
 - Generating the daily online meta report
 - Updating card prices daily
 - Downloading individual tournament reports (manual)
+- Enforcing lint, typecheck, and coverage gates on code changes
 
 ---
 
@@ -288,6 +289,39 @@ Regenerates tournament reports for tournaments that need to be updated with the 
 - Use `dry_run: true` to preview changes before executing
 - Maintains backward compatibility with legacy `{archetype}.json` files
 - Preserves synonym data and tournament metadata
+
+---
+
+## 6. Quality Gates
+
+**File**: `.github/workflows/quality-gates.yml`
+
+### Purpose
+Runs linting, typechecking, and coverage checks on code changes.
+
+### What It Does
+1. Checks out the repository
+2. Sets up Node.js 20
+3. Installs npm dependencies
+4. Runs `npm audit --omit=dev --audit-level=high`
+5. Runs ESLint
+6. Runs TypeScript typecheck
+7. Builds the production bundle
+8. Enforces bundle size via `npm run check:bundle-size`
+9. Runs coverage thresholds via `npm run test:coverage:check`
+
+### When It Runs
+**Automatic**: Runs on pull requests and on pushes to `main`
+
+### Trigger Type
+- `pull_request`
+- `push` to `main`
+
+### Output
+- Fails the workflow if linting, typechecking, or coverage thresholds fail
+
+### Notes
+- Coverage thresholds are enforced via the c8 check in `test:coverage:check`
 
 ---
 

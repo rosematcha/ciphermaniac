@@ -456,7 +456,7 @@ export async function safeAsync<T>(
   let defaultValue: T | null = null;
   let errorMessage = 'Async operation failed';
 
-  const argCount = arguments.length;
+  const argCount = arg2 !== undefined ? 3 : arg1 !== undefined ? 2 : 1;
 
   if (argCount >= 3) {
     if (typeof arg1 === 'string' && typeof arg2 !== 'string') {
