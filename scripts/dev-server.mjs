@@ -48,6 +48,16 @@ function resolvePath(urlPath) {
     const indexPath = join(candidate, 'index.html');
     return existsSync(indexPath) ? indexPath : null;
   }
+  // SPA-like fallbacks for extensionless routes (e.g., /card/ABC-123, /Gardevoir_ex)
+  if (!extname(candidate)) {
+    const parts = normalized.split('/').filter(Boolean);
+    if (parts[0] === 'card') {
+      return join(publicDir, 'card.html');
+    }
+    if (parts[0] === 'archetype' || parts.length === 1) {
+      return join(publicDir, 'archetype.html');
+    }
+  }
   return candidate;
 }
 
