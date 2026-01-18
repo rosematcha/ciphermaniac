@@ -10,7 +10,7 @@ import { createElement, setStyles } from '../utils/dom.js';
 import { escapeHtml } from '../utils/html.js';
 import type { CardItem } from '../types/index.js';
 import type { RenderOptions } from './types.js';
-import { showGridTooltip, hideGridTooltip } from './cards/tooltip.js';
+import { hideGridTooltip, showGridTooltip } from './cards/tooltip.js';
 
 export { showGridTooltip, hideGridTooltip };
 
@@ -22,6 +22,18 @@ const USD_FORMATTER = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 2
 });
 
+function shouldPreferLowQuality(): boolean {
+  if (typeof navigator === 'undefined') {
+    return false;
+  }
+  const { connection } = navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } };
+  if (connection?.saveData) {
+    return true;
+  }
+  const effectiveType = connection?.effectiveType || '';
+  return effectiveType === '2g' || effectiveType === 'slow-2g';
+}
+
 /**
  * Format a card price for display
  */
@@ -31,7 +43,6 @@ export function formatCardPrice(rawPrice: number | undefined | null): string | n
   }
   return null;
 }
-
 
 /**
  * Helper to extract usage percent from card data
@@ -157,17 +168,20 @@ export function setupCardImage(
   const variant =
     cardData && cardData.set && cardData.number ? { set: cardData.set, number: cardData.number } : undefined;
 
-  const candidates = buildThumbCandidates(cardName, useSm, overrides, variant);
+  const preferLowQuality = shouldPreferLowQuality();
+  const resolvedUseSm = preferLowQuality ? true : useSm;
+  const candidates = buildThumbCandidates(cardName, resolvedUseSm, overrides, variant);
 
   // Use parallel image loader for better performance
   parallelImageLoader.setupImageElement(img, candidates, {
     alt: cardName,
     fadeIn: false, // Disabled to prevent flashing on re-render
-    maxParallel: 3, // Try first 3 candidates in parallel
+    maxParallel: preferLowQuality ? 2 : 3, // Try candidates in parallel
     onFailure: () => {
       // Track missing images for debugging
-      trackMissing(cardName, useSm, overrides);
-    }
+      trackMissing(cardName, resolvedUseSm, overrides);
+    },
+    deferUntilVisible: true
   });
 }
 
