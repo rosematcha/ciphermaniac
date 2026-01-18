@@ -394,7 +394,7 @@ export async function loadDatabase(tournamentPath: string): Promise<TournamentDa
 }
 
 export function clearDatabaseCache(): void {
-  for (const dbPromise of dbCache.values()) {
+  Array.from(dbCache.values()).forEach(dbPromise => {
     dbPromise
       .then(db => {
         db.close();
@@ -402,6 +402,6 @@ export function clearDatabaseCache(): void {
       .catch(() => {
         // Ignore close failures for uninitialized databases.
       });
-  }
+  });
   dbCache.clear();
 }

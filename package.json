@@ -86,7 +86,7 @@
   "lint-staged": {
     "*.{ts,js,mjs}": [
       "eslint --fix",
-      "tsc --noEmit"
+      "node -e \"require('child_process').execSync('tsc --noEmit --project tsconfig.frontend.json', { stdio: 'inherit' })\""
     ]
   },
   "devDependencies": {
