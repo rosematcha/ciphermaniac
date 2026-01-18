@@ -25,7 +25,10 @@ export function renderCardsWithThreshold(threshold: number): void {
   requestAnimationFrame(() => {
     thresholdRenderPending = false;
 
-    const currentThreshold = state.thresholdPercent;
+    const currentThreshold =
+      typeof state.thresholdPercent === 'number' && Number.isFinite(state.thresholdPercent)
+        ? state.thresholdPercent
+        : threshold;
     if (lastRenderedThreshold === currentThreshold) {
       return;
     }
@@ -52,7 +55,10 @@ export function renderCards(): void {
   }
 
   configureGranularity(state.items);
-  const threshold = Number.isFinite(state.thresholdPercent) ? state.thresholdPercent : 0;
+  const threshold =
+    typeof state.thresholdPercent === 'number' && Number.isFinite(state.thresholdPercent)
+      ? state.thresholdPercent
+      : 0;
   const visibleItems = filterItemsByThreshold(state.items, threshold);
   const sortedVisibleItems = sortItemsForDisplay(visibleItems);
 

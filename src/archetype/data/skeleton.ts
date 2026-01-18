@@ -31,7 +31,9 @@ export function pickCommonDistEntry(
     return null;
   }
 
-  return card.dist.reduce((best, candidate) => {
+  type DistEntry = NonNullable<CardItemData['dist']>[number];
+
+  return card.dist.reduce<DistEntry | null>((best, candidate) => {
     if (!candidate) {
       return best;
     }

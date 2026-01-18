@@ -412,7 +412,7 @@ class SocialGraphicsGenerator {
     }
   }
 
-  getRisingCards(currentData: ReportCard[]): ReportCard[] {
+  getRisingCards(currentData: ReportCard[]): Array<ReportCard & { increase: number; previousPct: number }> {
     // Use comparison tournament if available, otherwise fall back to previous tournament
     const comparisonData = this.comparisonTournamentData || this.previousTournamentData;
 
@@ -435,7 +435,7 @@ class SocialGraphicsGenerator {
     });
 
     // Calculate increases and filter out new cards (0% to something)
-    const risingCards: ReportCard[] = [];
+    const risingCards: Array<ReportCard & { increase: number; previousPct: number }> = [];
     currentData.forEach(card => {
       if (!card.uid) {
         return;
@@ -580,7 +580,7 @@ class SocialGraphicsGenerator {
       return typeof candidate === 'string' && candidate.startsWith('http');
     });
 
-    const candidates = [];
+    const candidates: string[] = [];
     if (proxyCandidate) {
       candidates.push(proxyCandidate);
     }
@@ -997,6 +997,10 @@ const html2canvas = (() => {
         const script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
         script.onload = () => {
+          if (!globalWindow.html2canvas) {
+            reject(new Error('html2canvas failed to load'));
+            return;
+          }
           globalWindow
             .html2canvas(element, options)
             .then((canvas: HTMLCanvasElement) => resolve(canvas))

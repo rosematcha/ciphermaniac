@@ -39,7 +39,10 @@ export function configureGranularity(items: ReturnType<typeof getState>['items']
   range.max = String(maxValue);
   range.step = String(GRANULARITY_STEP_PERCENT);
 
-  const desired = Number.isFinite(state.thresholdPercent) ? state.thresholdPercent : GRANULARITY_DEFAULT_PERCENT;
+  const desired =
+    typeof state.thresholdPercent === 'number' && Number.isFinite(state.thresholdPercent)
+      ? state.thresholdPercent
+      : GRANULARITY_DEFAULT_PERCENT;
   const normalized = normalizeThreshold(desired, minValue, maxValue);
   state.thresholdPercent = normalized;
 

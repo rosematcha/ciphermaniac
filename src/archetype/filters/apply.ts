@@ -29,7 +29,7 @@ export async function applyFilters(): Promise<void> {
   }
 
   const activeFilters = state.filterRows
-    .filter((row): row is FilterRow & { cardId: string } => row.cardId !== null)
+    .filter((row): row is FilterRow & { cardId: string } => Boolean(row.cardId))
     .map(row => ({
       cardId: row.cardId,
       operator: row.operator || null,
@@ -72,7 +72,7 @@ export async function applyFilters(): Promise<void> {
     logger.debug('Filter result', { deckTotal: result.deckTotal, itemsCount: result.items.length });
 
     const currentActiveFilters = state.filterRows
-      .filter(row => row.cardId)
+      .filter((row): row is FilterRow & { cardId: string } => Boolean(row.cardId))
       .map(row => ({
         cardId: row.cardId,
         operator: row.operator || null,

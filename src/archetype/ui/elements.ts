@@ -1,4 +1,4 @@
-import type { GridElement } from '../render.js';
+import type { GridElement } from '../../render.js';
 
 export const elements = {
   page: document.querySelector('.archetype-page'),
