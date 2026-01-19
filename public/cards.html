@@ -81,181 +81,6 @@
             role="group"
             aria-label="Filter options"
           >
-            <div class="filter-field filter-dropdown filter-field--archetype" data-filter="archetypes">
-              <span
-                class="filter-label"
-                id="archetype-label"
-                data-label-singular="Archetype"
-                data-label-plural="Archetypes"
-                >Archetype</span
-              >
-              <div class="filter-combobox" role="group" aria-labelledby="archetype-label">
-                <button
-                  id="archetype-trigger"
-                  class="filter-trigger"
-                  type="button"
-                  aria-haspopup="listbox"
-                  aria-expanded="false"
-                  aria-controls="archetype-menu"
-                >
-                  <span class="filter-value" id="archetype-summary">All archetypes</span>
-                </button>
-                <div
-                  id="archetype-chips"
-                  class="filter-chip-list"
-                  role="list"
-                  aria-live="polite"
-                  aria-relevant="additions removals"
-                  hidden
-                ></div>
-                <button
-                  id="archetype-add"
-                  class="filter-add-btn"
-                  type="button"
-                  aria-label="Add another archetype"
-                  hidden
-                >
-                  Add another
-                </button>
-              </div>
-              <div id="archetype-menu" class="filter-menu" role="dialog" aria-label="Select archetypes" hidden>
-                <div class="filter-menu-header">
-                  <input
-                    id="archetype-search"
-                    type="search"
-                    placeholder="Search archetypes"
-                    aria-label="Search archetypes"
-                  />
-                </div>
-                <div
-                  id="archetype-options"
-                  class="filter-menu-list"
-                  role="listbox"
-                  aria-multiselectable="true"
-                  aria-labelledby="archetype-label"
-                >
-                  <!-- populated dynamically -->
-                </div>
-                <div class="filter-menu-actions" data-multi-only>
-                  <button type="button" class="filter-action" data-action="clear">Clear</button>
-                  <button type="button" class="filter-action filter-action-primary" data-action="close">Done</button>
-                </div>
-              </div>
-            </div>
-
-            <div class="filter-field filter-dropdown filter-field--card-type" data-filter="card-types">
-              <span
-                class="filter-label"
-                id="card-type-label"
-                data-label-singular="Card type"
-                data-label-plural="Card types"
-                >Card type</span
-              >
-              <div class="filter-combobox">
-                <button
-                  id="card-type-filter-trigger"
-                  class="filter-trigger"
-                  type="button"
-                  aria-haspopup="listbox"
-                  aria-expanded="false"
-                  aria-labelledby="card-type-label card-type-filter-summary"
-                >
-                  <span id="card-type-filter-summary" class="filter-summary">All card types</span>
-                </button>
-                <div
-                  id="card-type-filter-chips"
-                  class="filter-chips"
-                  role="list"
-                  aria-label="Selected card types"
-                  hidden
-                ></div>
-                <button
-                  id="card-type-filter-add"
-                  class="filter-add-btn"
-                  type="button"
-                  aria-label="Add another card type"
-                  hidden
-                >
-                  Add another
-                </button>
-              </div>
-              <div id="card-type-filter-menu" class="filter-menu" role="dialog" aria-label="Select card types" hidden>
-                <div class="filter-menu-header">
-                  <input
-                    id="card-type-filter-search"
-                    type="search"
-                    placeholder="Search card types"
-                    aria-label="Search card types"
-                  />
-                </div>
-                <div
-                  id="card-type-filter-list"
-                  class="filter-menu-list"
-                  role="listbox"
-                  aria-multiselectable="true"
-                  aria-labelledby="card-type-label"
-                >
-                  <!-- populated dynamically -->
-                </div>
-                <div class="filter-menu-actions" data-multi-only>
-                  <button type="button" class="filter-action" data-action="clear">Clear</button>
-                  <button type="button" class="filter-action filter-action-primary" data-action="close">Done</button>
-                </div>
-              </div>
-              <!-- Hidden input for state persistence -->
-              <input type="hidden" id="card-type-filter-data" value="" />
-            </div>
-
-            <div class="filter-field filter-field--sort">
-              <label for="sort" class="filter-label">Sort</label>
-              <select id="sort" aria-label="Sort order">
-                <option value="percent-desc">Sort: most used</option>
-                <option value="percent-asc">Sort: least used</option>
-                <option value="alpha-asc">Sort: A-Z</option>
-                <option value="alpha-desc">Sort: Z-A</option>
-                <option value="price-desc">Sort: highest price</option>
-                <option value="price-asc">Sort: lowest price</option>
-              </select>
-            </div>
-
-            <div class="filter-field filter-field--regmark" data-filter="regmark">
-              <span class="filter-label" id="regmark-label">Regulation</span>
-              <div class="filter-checkboxes" role="group" aria-labelledby="regmark-label">
-                <label class="filter-checkbox">
-                  <input type="checkbox" name="regmark" value="G" />
-                  <span>G</span>
-                </label>
-                <label class="filter-checkbox">
-                  <input type="checkbox" name="regmark" value="H" />
-                  <span>H</span>
-                </label>
-                <label class="filter-checkbox">
-                  <input type="checkbox" name="regmark" value="I" />
-                  <span>I</span>
-                </label>
-                <label class="filter-checkbox">
-                  <input type="checkbox" name="regmark" value="J" />
-                  <span>J</span>
-                </label>
-              </div>
-              <input type="hidden" id="regmark-filter-data" value="" />
-            </div>
-
-            <div class="filter-field filter-field--success">
-              <label for="success-filter" class="filter-label">Finish</label>
-              <select id="success-filter" aria-label="Filter by placement">
-                <option value="all">All decks</option>
-                <option value="winner">Winners</option>
-                <option value="top2">Finals</option>
-                <option value="top4">Top 4</option>
-                <option value="top8">Top 8</option>
-                <option value="top16">Top 16</option>
-                <option value="top10">Top 10%</option>
-                <option value="top25">Top 25%</option>
-                <option value="top50">Top 50%</option>
-              </select>
-            </div>
-
             <div class="filter-field filter-dropdown filter-field--tournaments" data-filter="tournaments">
               <span
                 class="filter-label"
@@ -269,7 +94,7 @@
                   id="tournament-trigger"
                   class="filter-trigger"
                   type="button"
-                  aria-haspopup="listbox"
+                  aria-haspopup="dialog"
                   aria-expanded="false"
                   aria-controls="tournament-menu"
                 >
@@ -326,7 +151,7 @@
                   id="set-trigger"
                   class="filter-trigger"
                   type="button"
-                  aria-haspopup="listbox"
+                  aria-haspopup="dialog"
                   aria-expanded="false"
                   aria-controls="set-menu"
                 >
@@ -363,6 +188,181 @@
                 </div>
               </div>
               <input id="set-filter-data" type="hidden" value="" />
+            </div>
+
+            <div class="filter-field filter-dropdown filter-field--archetype" data-filter="archetypes">
+              <span
+                class="filter-label"
+                id="archetype-label"
+                data-label-singular="Archetype"
+                data-label-plural="Archetypes"
+                >Archetype</span
+              >
+              <div class="filter-combobox" role="group" aria-labelledby="archetype-label">
+                <button
+                  id="archetype-trigger"
+                  class="filter-trigger"
+                  type="button"
+                  aria-haspopup="dialog"
+                  aria-expanded="false"
+                  aria-controls="archetype-menu"
+                >
+                  <span class="filter-value" id="archetype-summary">All archetypes</span>
+                </button>
+                <div
+                  id="archetype-chips"
+                  class="filter-chip-list"
+                  role="list"
+                  aria-live="polite"
+                  aria-relevant="additions removals"
+                  hidden
+                ></div>
+                <button
+                  id="archetype-add"
+                  class="filter-add-btn"
+                  type="button"
+                  aria-label="Add another archetype"
+                  hidden
+                >
+                  Add another
+                </button>
+              </div>
+              <div id="archetype-menu" class="filter-menu" role="dialog" aria-label="Select archetypes" hidden>
+                <div class="filter-menu-header">
+                  <input
+                    id="archetype-search"
+                    type="search"
+                    placeholder="Search archetypes"
+                    aria-label="Search archetypes"
+                  />
+                </div>
+                <div
+                  id="archetype-options"
+                  class="filter-menu-list"
+                  role="listbox"
+                  aria-multiselectable="true"
+                  aria-labelledby="archetype-label"
+                >
+                  <!-- populated dynamically -->
+                </div>
+                <div class="filter-menu-actions" data-multi-only>
+                  <button type="button" class="filter-action" data-action="clear">Clear</button>
+                  <button type="button" class="filter-action filter-action-primary" data-action="close">Done</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="filter-field filter-dropdown filter-field--card-type" data-filter="card-types">
+              <span
+                class="filter-label"
+                id="card-type-label"
+                data-label-singular="Card type"
+                data-label-plural="Card types"
+                >Card type</span
+              >
+              <div class="filter-combobox" role="group" aria-labelledby="card-type-label">
+                <button
+                  id="card-type-filter-trigger"
+                  class="filter-trigger"
+                  type="button"
+                  aria-haspopup="dialog"
+                  aria-expanded="false"
+                  aria-labelledby="card-type-label card-type-filter-summary"
+                >
+                  <span id="card-type-filter-summary" class="filter-summary">All card types</span>
+                </button>
+                <div
+                  id="card-type-filter-chips"
+                  class="filter-chips"
+                  role="list"
+                  aria-label="Selected card types"
+                  hidden
+                ></div>
+                <button
+                  id="card-type-filter-add"
+                  class="filter-add-btn"
+                  type="button"
+                  aria-label="Add another card type"
+                  hidden
+                >
+                  Add another
+                </button>
+              </div>
+              <div id="card-type-filter-menu" class="filter-menu" role="dialog" aria-label="Select card types" hidden>
+                <div class="filter-menu-header">
+                  <input
+                    id="card-type-filter-search"
+                    type="search"
+                    placeholder="Search card types"
+                    aria-label="Search card types"
+                  />
+                </div>
+                <div
+                  id="card-type-filter-list"
+                  class="filter-menu-list"
+                  role="listbox"
+                  aria-multiselectable="true"
+                  aria-labelledby="card-type-label"
+                >
+                  <!-- populated dynamically -->
+                </div>
+                <div class="filter-menu-actions" data-multi-only>
+                  <button type="button" class="filter-action" data-action="clear">Clear</button>
+                  <button type="button" class="filter-action filter-action-primary" data-action="close">Done</button>
+                </div>
+              </div>
+              <!-- Hidden input for state persistence -->
+              <input type="hidden" id="card-type-filter-data" value="" />
+            </div>
+
+            <div class="filter-field filter-field--success">
+              <label for="success-filter" class="filter-label">Finish</label>
+              <select id="success-filter" aria-label="Filter by placement">
+                <option value="all">All decks</option>
+                <option value="winner">Winners</option>
+                <option value="top2">Finals</option>
+                <option value="top4">Top 4</option>
+                <option value="top8">Top 8</option>
+                <option value="top16">Top 16</option>
+                <option value="top10">Top 10%</option>
+                <option value="top25">Top 25%</option>
+                <option value="top50">Top 50%</option>
+              </select>
+            </div>
+
+            <div class="filter-field filter-field--regmark" data-filter="regmark">
+              <span class="filter-label" id="regmark-label">Regulation</span>
+              <div class="filter-checkboxes" role="group" aria-labelledby="regmark-label">
+                <label class="filter-checkbox">
+                  <input type="checkbox" name="regmark" value="G" />
+                  <span>G</span>
+                </label>
+                <label class="filter-checkbox">
+                  <input type="checkbox" name="regmark" value="H" />
+                  <span>H</span>
+                </label>
+                <label class="filter-checkbox">
+                  <input type="checkbox" name="regmark" value="I" />
+                  <span>I</span>
+                </label>
+                <label class="filter-checkbox">
+                  <input type="checkbox" name="regmark" value="J" />
+                  <span>J</span>
+                </label>
+              </div>
+              <input type="hidden" id="regmark-filter-data" value="" />
+            </div>
+
+            <div class="filter-field filter-field--sort">
+              <label for="sort" class="filter-label">Sort</label>
+              <select id="sort" aria-label="Sort order">
+                <option value="percent-desc">Sort: most used</option>
+                <option value="percent-asc">Sort: least used</option>
+                <option value="alpha-asc">Sort: A-Z</option>
+                <option value="alpha-desc">Sort: Z-A</option>
+                <option value="price-desc">Sort: highest price</option>
+                <option value="price-asc">Sort: lowest price</option>
+              </select>
             </div>
           </div>
         </div>
