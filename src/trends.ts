@@ -234,7 +234,12 @@ function binDaily(timeline: TrendTimelinePoint[]): TrendSharePoint[] {
     .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
 }
 
-function buildMetaLines(trendData: TrendDataset | null, topN = 8, timeRangeDays = 30): MetaChart | null {
+function buildMetaLines(
+  trendData: TrendDataset | null,
+  topN = 8,
+  timeRangeDays = 30,
+  minAppearances = 1
+): MetaChart | null {
   if (!trendData || !Array.isArray(trendData.series)) {
     return null;
   }
@@ -257,6 +262,10 @@ function buildMetaLines(trendData: TrendDataset | null, topN = 8, timeRangeDays 
   }> = [];
 
   for (const entry of trendData.series) {
+    if (entry.appearances && entry.appearances < minAppearances) {
+      continue;
+    }
+
     const daily = binDaily(entry.timeline || []);
     // Filter by time range
     const filteredDaily = daily.filter(pt => pt.date >= cutoffDateStr);
@@ -323,33 +332,16 @@ function buildMetaLines(trendData: TrendDataset | null, topN = 8, timeRangeDays 
     entry.endAvg = endCount ? endSum / endCount : 0;
   }
 
-  // Get top N by start average (beginning of period)
-  const topByStart = [...allSeriesWithBins].sort((a, b) => b.startAvg - a.startAvg).slice(0, topN);
+  // Rank by latest share to emphasize current meta, then trim to top N
+  const ranked = [...allSeriesWithBins]
+    .map(series => {
+      const lastPoint = series.daily.at(-1)?.share ?? 0;
+      return { ...series, latestShare: lastPoint };
+    })
+    .filter(series => series.latestShare > 0.05) // ignore effectively zero-share noise
+    .sort((a, b) => b.latestShare - a.latestShare);
 
-  // Get top N by end average (end of period)
-  const topByEnd = [...allSeriesWithBins].sort((a, b) => b.endAvg - a.endAvg).slice(0, topN);
-
-  // Combine both sets (union), preserving order: start decks first, then new end decks
-  const selectedNames = new Set<string>();
-  const selectedSeries: typeof allSeriesWithBins = [];
-
-  // Add top-at-start decks first
-  for (const entry of topByStart) {
-    const name = entry.displayName || entry.base;
-    if (!selectedNames.has(name)) {
-      selectedNames.add(name);
-      selectedSeries.push(entry);
-    }
-  }
-
-  // Add top-at-end decks that aren't already included
-  for (const entry of topByEnd) {
-    const name = entry.displayName || entry.base;
-    if (!selectedNames.has(name)) {
-      selectedNames.add(name);
-      selectedSeries.push(entry);
-    }
-  }
+  const selectedSeries = ranked.slice(0, topN);
 
   if (!selectedSeries.length) {
     return null;
@@ -429,7 +421,7 @@ function findMovers(lines: MetaLine[]): { rising: MetaLine[]; falling: MetaLine[
 }
 
 function renderLegend(lines: MetaLine[]): void {
-  const legend = elements.legend;
+  const { legend } = elements;
   if (!legend) {
     return;
   }
@@ -730,9 +722,10 @@ function renderMetaChart(): void {
     return;
   }
   metaChartEl.innerHTML = '';
-  const metaChart = buildMetaLines(state.trendData, state.chartDensity, state.timeRangeDays);
+  const minApps = Math.max(state.minAppearances, state.trendData?.minAppearances || 1);
+  const metaChart = buildMetaLines(state.trendData, state.chartDensity, state.timeRangeDays, minApps);
   const metaMovers =
-    buildMetaLines(state.trendData, Math.max(16, state.chartDensity * 2), state.timeRangeDays) || metaChart;
+    buildMetaLines(state.trendData, Math.max(16, state.chartDensity * 2), state.timeRangeDays, minApps) || metaChart;
   if (!metaChart || !metaChart.lines?.length) {
     const empty = document.createElement('div');
     empty.className = 'muted';
@@ -1128,7 +1121,7 @@ function renderMetaChart(): void {
 }
 
 function renderList(): void {
-  const list = elements.list;
+  const { list } = elements;
   if (!list) {
     return;
   }
