@@ -234,12 +234,7 @@ function binDaily(timeline: TrendTimelinePoint[]): TrendSharePoint[] {
     .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
 }
 
-function buildMetaLines(
-  trendData: TrendDataset | null,
-  topN = 8,
-  timeRangeDays = 30,
-  minAppearances = 1
-): MetaChart | null {
+function buildMetaLines(trendData: TrendDataset | null, topN = 8, timeRangeDays = 30): MetaChart | null {
   if (!trendData || !Array.isArray(trendData.series)) {
     return null;
   }
@@ -262,10 +257,6 @@ function buildMetaLines(
   }> = [];
 
   for (const entry of trendData.series) {
-    if (entry.appearances && entry.appearances < minAppearances) {
-      continue;
-    }
-
     const daily = binDaily(entry.timeline || []);
     // Filter by time range
     const filteredDaily = daily.filter(pt => pt.date >= cutoffDateStr);
@@ -332,25 +323,45 @@ function buildMetaLines(
     entry.endAvg = endCount ? endSum / endCount : 0;
   }
 
-  // Rank by latest share to emphasize current meta, then trim to top N
-  const ranked = [...allSeriesWithBins]
-    .map(series => {
-      const lastPoint = series.daily.at(-1)?.share ?? 0;
-      return { ...series, latestShare: lastPoint };
-    })
-    .filter(series => series.latestShare > 0.05) // ignore effectively zero-share noise
-    .sort((a, b) => b.latestShare - a.latestShare);
+  // Get top N by start average (beginning of period)
+  const topByStart = [...allSeriesWithBins].sort((a, b) => b.startAvg - a.startAvg).slice(0, topN);
 
-  const selectedSeries = ranked.slice(0, topN);
+  // Get top N by end average (end of period)
+  const topByEnd = [...allSeriesWithBins].sort((a, b) => b.endAvg - a.endAvg).slice(0, topN);
 
-  if (!selectedSeries.length) {
+  // Combine both sets (union), preserving order: start decks first, then new end decks
+  const selectedNames = new Set<string>();
+  const selectedSeries: typeof allSeriesWithBins = [];
+
+  // Add top-at-start decks first
+  for (const entry of topByStart) {
+    const name = entry.displayName || entry.base;
+    if (!selectedNames.has(name)) {
+      selectedNames.add(name);
+      selectedSeries.push(entry);
+    }
+  }
+
+  // Add top-at-end decks that aren't already included
+  for (const entry of topByEnd) {
+    const name = entry.displayName || entry.base;
+    if (!selectedNames.has(name)) {
+      selectedNames.add(name);
+      selectedSeries.push(entry);
+    }
+  }
+
+  // Drop the catch-all bucket and clamp to requested count
+  const filteredSeries = selectedSeries.filter(entry => entry.displayName !== 'Other').slice(0, topN);
+
+  if (!filteredSeries.length) {
     return null;
   }
 
   // OPTIMIZATION: Build timeline dates from selected series only
   // Collect dates and assign colors in single pass
   const timelineDatesSet = new Set<string>();
-  for (const entry of selectedSeries) {
+  for (const entry of filteredSeries) {
     for (const pt of entry.daily) {
       if (pt.date) {
         timelineDatesSet.add(pt.date);
@@ -362,7 +373,7 @@ function buildMetaLines(
 
   // OPTIMIZATION: Build lines using pre-computed dailyByDate Map
   // O(1) per date lookup instead of O(n) .find() calls
-  const lines: MetaLine[] = selectedSeries.map((entry, index) => {
+  const lines: MetaLine[] = filteredSeries.map((entry, index) => {
     const color = palette[index % palette.length];
     const points = timelineDates.map(d => entry.dailyByDate.get(d)?.share ?? 0);
     const delta = Math.round((entry.endAvg - entry.startAvg) * 10) / 10;
@@ -722,10 +733,9 @@ function renderMetaChart(): void {
     return;
   }
   metaChartEl.innerHTML = '';
-  const minApps = Math.max(state.minAppearances, state.trendData?.minAppearances || 1);
-  const metaChart = buildMetaLines(state.trendData, state.chartDensity, state.timeRangeDays, minApps);
+  const metaChart = buildMetaLines(state.trendData, state.chartDensity, state.timeRangeDays);
   const metaMovers =
-    buildMetaLines(state.trendData, Math.max(16, state.chartDensity * 2), state.timeRangeDays, minApps) || metaChart;
+    buildMetaLines(state.trendData, Math.max(16, state.chartDensity * 2), state.timeRangeDays) || metaChart;
   if (!metaChart || !metaChart.lines?.length) {
     const empty = document.createElement('div');
     empty.className = 'muted';
