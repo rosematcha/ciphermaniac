@@ -63,8 +63,8 @@ textarea::placeholder {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
-  background: var(--panel);
-  border: 1px solid rgba(124, 134, 168, 0.3);
+  background: rgba(18, 19, 23, 0.9);
+  border: 1px solid rgba(124, 134, 168, 0.22);
   border-radius: var(--border-radius-lg);
   color: var(--text);
   min-height: 44px;
@@ -78,12 +78,12 @@ textarea::placeholder {
 
 .filter-dropdown.has-selection .filter-combobox {
   border-color: rgba(106, 163, 255, 0.45);
-  background: rgba(106, 163, 255, 0.06);
+  background: rgba(106, 163, 255, 0.08);
 }
 
 .filter-dropdown.is-open .filter-combobox {
-  border-color: rgba(106, 163, 255, 0.7);
-  box-shadow: 0 0 0 3px rgba(106, 163, 255, 0.12);
+  border-color: rgba(106, 163, 255, 0.65);
+  box-shadow: 0 0 0 2px rgba(106, 163, 255, 0.16);
 }
 
 /* Filter value display */
@@ -245,9 +245,9 @@ textarea::placeholder {
   max-height: 360px;
   overflow: auto;
   z-index: var(--z-dropdown);
-  background: var(--panel);
-  border: 1px solid rgba(124, 134, 168, 0.25);
-  box-shadow: var(--shadow-xl);
+  background: rgba(19, 21, 27, 0.98);
+  border: 1px solid rgba(124, 134, 168, 0.2);
+  box-shadow: var(--shadow-lg);
   border-radius: var(--border-radius-lg);
   padding: var(--space-3);
   -webkit-overflow-scrolling: touch;
@@ -271,7 +271,8 @@ textarea::placeholder {
   flex: 1;
   padding: var(--space-3);
   border-radius: var(--border-radius);
-  background: rgba(18, 19, 23, 0.9);
+  background: rgba(14, 16, 21, 0.95);
+  border: 1px solid rgba(124, 134, 168, 0.25);
   color: var(--text);
   font-size: var(--font-size-base);
 }
@@ -292,7 +293,7 @@ textarea::placeholder {
   align-items: center;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--border-radius);
-  background: rgba(23, 24, 29, 0.6);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid transparent;
   cursor: pointer;
   transition: var(--transition-fast);
@@ -303,8 +304,8 @@ textarea::placeholder {
 
 @media (hover: hover) and (pointer: fine) {
   .filter-option:hover {
-    border-color: rgba(124, 134, 168, 0.4);
-    background: rgba(124, 134, 168, 0.08);
+    border-color: rgba(124, 134, 168, 0.35);
+    background: rgba(255, 255, 255, 0.06);
   }
 }
 
@@ -318,7 +319,7 @@ textarea::placeholder {
 /* Option types */
 .filter-option--single {
   border: 1px solid transparent;
-  background: rgba(23, 24, 29, 0.6);
+  background: rgba(255, 255, 255, 0.03);
   justify-content: space-between;
   font: inherit;
 }
@@ -350,13 +351,13 @@ textarea::placeholder {
 /* Hierarchical options */
 .filter-option--parent {
   font-weight: var(--font-weight-semibold);
-  background: rgba(23, 24, 29, 0.8);
+  background: rgba(255, 255, 255, 0.05);
   position: relative;
 }
 
 .filter-option--child {
   padding-left: 40px;
-  background: rgba(23, 24, 29, 0.4);
+  background: rgba(255, 255, 255, 0.02);
   font-size: 13px;
 }
 
