@@ -1,6 +1,6 @@
 /* ==========================================================================
      Ciphermaniac - Optimized CSS Build
-     Generated: 2026-01-19T02:18:51.797Z
+     Generated: 2026-01-19T15:44:40.818Z
      Architecture: Modular CSS with Design Tokens
      Size Reduction: ~25% from original
      ========================================================================== */
@@ -1369,8 +1369,8 @@ textarea::placeholder {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
-  background: var(--panel);
-  border: 1px solid rgba(124, 134, 168, 0.3);
+  background: rgba(18, 19, 23, 0.9);
+  border: 1px solid rgba(124, 134, 168, 0.22);
   border-radius: var(--border-radius-lg);
   color: var(--text);
   min-height: 44px;
@@ -1384,12 +1384,12 @@ textarea::placeholder {
 
 .filter-dropdown.has-selection .filter-combobox {
   border-color: rgba(106, 163, 255, 0.45);
-  background: rgba(106, 163, 255, 0.06);
+  background: rgba(106, 163, 255, 0.08);
 }
 
 .filter-dropdown.is-open .filter-combobox {
-  border-color: rgba(106, 163, 255, 0.7);
-  box-shadow: 0 0 0 3px rgba(106, 163, 255, 0.12);
+  border-color: rgba(106, 163, 255, 0.65);
+  box-shadow: 0 0 0 2px rgba(106, 163, 255, 0.16);
 }
 
 /* Filter value display */
@@ -1551,9 +1551,9 @@ textarea::placeholder {
   max-height: 360px;
   overflow: auto;
   z-index: var(--z-dropdown);
-  background: var(--panel);
-  border: 1px solid rgba(124, 134, 168, 0.25);
-  box-shadow: var(--shadow-xl);
+  background: rgba(19, 21, 27, 0.98);
+  border: 1px solid rgba(124, 134, 168, 0.2);
+  box-shadow: var(--shadow-lg);
   border-radius: var(--border-radius-lg);
   padding: var(--space-3);
   -webkit-overflow-scrolling: touch;
@@ -1577,7 +1577,8 @@ textarea::placeholder {
   flex: 1;
   padding: var(--space-3);
   border-radius: var(--border-radius);
-  background: rgba(18, 19, 23, 0.9);
+  background: rgba(14, 16, 21, 0.95);
+  border: 1px solid rgba(124, 134, 168, 0.25);
   color: var(--text);
   font-size: var(--font-size-base);
 }
@@ -1598,7 +1599,7 @@ textarea::placeholder {
   align-items: center;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--border-radius);
-  background: rgba(23, 24, 29, 0.6);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid transparent;
   cursor: pointer;
   transition: var(--transition-fast);
@@ -1609,8 +1610,8 @@ textarea::placeholder {
 
 @media (hover: hover) and (pointer: fine) {
   .filter-option:hover {
-    border-color: rgba(124, 134, 168, 0.4);
-    background: rgba(124, 134, 168, 0.08);
+    border-color: rgba(124, 134, 168, 0.35);
+    background: rgba(255, 255, 255, 0.06);
   }
 }
 
@@ -1624,7 +1625,7 @@ textarea::placeholder {
 /* Option types */
 .filter-option--single {
   border: 1px solid transparent;
-  background: rgba(23, 24, 29, 0.6);
+  background: rgba(255, 255, 255, 0.03);
   justify-content: space-between;
   font: inherit;
 }
@@ -1656,13 +1657,13 @@ textarea::placeholder {
 /* Hierarchical options */
 .filter-option--parent {
   font-weight: var(--font-weight-semibold);
-  background: rgba(23, 24, 29, 0.8);
+  background: rgba(255, 255, 255, 0.05);
   position: relative;
 }
 
 .filter-option--child {
   padding-left: 40px;
-  background: rgba(23, 24, 29, 0.4);
+  background: rgba(255, 255, 255, 0.02);
   font-size: 13px;
 }
 
@@ -2170,14 +2171,9 @@ body.has-footer::after {
 .filters {
   position: relative;
   display: none;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  grid-template-areas:
-    'tournaments tournaments tournaments tournaments tournaments tournaments tournaments tournaments tournaments'
-    'set set set set archetype archetype archetype archetype'
-    'card card card sort sort success success regmark';
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   align-items: start;
-  column-gap: var(--space-6);
-  row-gap: var(--space-6);
+  gap: var(--space-4) var(--space-5);
   width: 100%;
   margin: 0;
   padding: 0;
@@ -2186,11 +2182,12 @@ body.has-footer::after {
 
 body.filters-panel-open #filters {
   display: grid;
-  padding: var(--space-6) var(--space-5) var(--space-6);
+  padding: var(--space-5);
   margin-top: var(--space-4);
-  background: rgba(23, 24, 29, 0.9);
-  border: 1px solid rgba(124, 134, 168, 0.25);
+  background: linear-gradient(180deg, rgba(23, 24, 29, 0.92), rgba(16, 18, 24, 0.92));
+  border: 1px solid rgba(124, 134, 168, 0.18);
   border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
 }
 
 /* Filter field system */
@@ -2201,49 +2198,63 @@ body.filters-panel-open #filters {
   min-width: 0;
   max-width: 100%;
   position: relative;
+  padding: var(--space-3);
+  background: rgba(16, 18, 24, 0.6);
+  border: 1px solid rgba(124, 134, 168, 0.18);
+  border-radius: var(--border-radius-lg);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.filter-field:focus-within {
+  border-color: rgba(106, 163, 255, 0.45);
+  box-shadow: 0 0 0 1px rgba(106, 163, 255, 0.2);
 }
 
 .filter-field--wide {
   grid-column: 1 / -1;
 }
 
-.filter-field--archetype {
-  grid-area: archetype;
-}
-.filter-field--card-type {
-  grid-area: card;
-}
-.filter-field--sort {
-  grid-area: sort;
-}
 .filter-field--tournaments {
-  grid-area: tournaments;
+  grid-column: span 8;
 }
 .filter-field--set {
-  grid-area: set;
+  grid-column: span 4;
+}
+.filter-field--archetype {
+  grid-column: span 6;
+}
+.filter-field--card-type {
+  grid-column: span 6;
 }
 .filter-field--success {
-  grid-area: success;
+  grid-column: span 4;
 }
 .filter-field--regmark {
-  grid-area: regmark;
+  grid-column: span 4;
+}
+.filter-field--sort {
+  grid-column: span 4;
 }
 
 /* Regulation mark checkbox group */
 .filter-checkboxes {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-2);
 }
 
 .filter-checkbox {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  justify-content: center;
+  gap: var(--space-2);
   cursor: pointer;
-  padding: var(--space-1) var(--space-2);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(124, 134, 168, 0.3);
+  padding: var(--space-2);
+  min-height: 36px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(124, 134, 168, 0.25);
   border-radius: var(--border-radius);
   transition:
     background 0.15s,
@@ -2256,12 +2267,12 @@ body.filters-panel-open #filters {
 }
 
 .filter-checkbox:has(input:checked) {
-  background: rgba(254, 228, 117, 0.15);
-  border-color: var(--brand);
+  background: rgba(106, 163, 255, 0.16);
+  border-color: rgba(106, 163, 255, 0.6);
 }
 
 .filter-checkbox input[type='checkbox'] {
-  accent-color: var(--brand);
+  accent-color: var(--accent-2);
   width: 14px;
   height: 14px;
   cursor: pointer;
@@ -2278,11 +2289,36 @@ body.filters-panel-open #filters {
 }
 
 .filter-label {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--muted);
-  letter-spacing: 0.3px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  margin-bottom: var(--space-1);
+  margin-bottom: 0;
+}
+
+.filters select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--border-radius-lg);
+  background: rgba(18, 19, 23, 0.9);
+  border: 1px solid rgba(124, 134, 168, 0.3);
+  color: var(--text);
+  font-weight: var(--font-weight-medium);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.filters select:focus {
+  outline: none;
+  border-color: rgba(106, 163, 255, 0.6);
+  box-shadow: 0 0 0 2px rgba(106, 163, 255, 0.16);
+}
+
+.filters select[multiple] {
+  min-height: 96px;
 }
 
 /* ==========================================================================
@@ -2354,51 +2390,77 @@ body.filters-panel-open #filters {
     display: none;
   }
 
-  /* Adjust filters for mobile */
-  @media (max-width: 899px) {
-    .filter-dropdown .filter-menu {
-      position: static;
-      box-shadow: none;
-      margin-top: var(--space-3);
-    }
-  }
 }
 
-/* Tablet and larger */
 @media (max-width: 1100px) {
   .filters {
-    grid-template-columns: repeat(8, minmax(0, 1fr));
-    grid-template-areas:
-      'tournaments tournaments tournaments tournaments tournaments tournaments tournaments tournaments'
-      'set set set set archetype archetype archetype archetype'
-      'card card card card sort sort success success';
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  .filter-field--tournaments {
+    grid-column: span 6;
+  }
+
+  .filter-field--set,
+  .filter-field--archetype,
+  .filter-field--card-type,
+  .filter-field--success,
+  .filter-field--sort {
+    grid-column: span 3;
+  }
+
+  .filter-field--regmark {
+    grid-column: span 6;
   }
 }
 
 @media (max-width: 780px) {
   .filters {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-template-areas:
-      'tournaments tournaments tournaments tournaments'
-      'set set set set'
-      'archetype archetype archetype archetype'
-      'card card card card'
-      'sort sort success success';
-    row-gap: var(--space-4);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .filter-field--tournaments,
+  .filter-field--set,
+  .filter-field--archetype,
+  .filter-field--card-type,
+  .filter-field--regmark {
+    grid-column: span 2;
+  }
+
+  .filter-field--success,
+  .filter-field--sort {
+    grid-column: span 1;
   }
 }
 
 @media (max-width: 560px) {
   .filters {
     grid-template-columns: 1fr;
-    grid-template-areas:
-      'tournaments'
-      'set'
-      'archetype'
-      'card'
-      'sort'
-      'success';
-    row-gap: var(--space-4);
+    gap: var(--space-3);
+  }
+
+  .filter-field--tournaments,
+  .filter-field--set,
+  .filter-field--archetype,
+  .filter-field--card-type,
+  .filter-field--success,
+  .filter-field--regmark,
+  .filter-field--sort {
+    grid-column: span 1;
+  }
+
+  .filter-checkboxes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 899px) {
+  .filter-dropdown .filter-menu {
+    position: static;
+    box-shadow: none;
+    margin-top: var(--space-3);
   }
 }
 

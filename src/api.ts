@@ -500,7 +500,8 @@ function normalizeArchetypeIndexEntry(entry: unknown): ArchetypeIndexEntry | nul
       label: entry.replace(/_/g, ' '),
       deckCount: null,
       percent: null,
-      thumbnails: []
+      thumbnails: [],
+      signatureCards: []
     };
   }
   if (typeof entry === 'object') {
@@ -514,12 +515,32 @@ function normalizeArchetypeIndexEntry(entry: unknown): ArchetypeIndexEntry | nul
     const percentValue = Number(record.percent);
     const percent = Number.isFinite(percentValue) ? percentValue : null;
     const thumbnails = Array.isArray(record.thumbnails) ? record.thumbnails.filter(Boolean) : [];
+    const signatureCards = Array.isArray(record.signatureCards)
+      ? record.signatureCards
+          .map(entry => {
+            if (!entry || typeof entry !== 'object') {
+              return null;
+            }
+            const card = entry as Record<string, unknown>;
+            const cardName = String(card.name || '').trim();
+            if (!cardName) {
+              return null;
+            }
+            const set = typeof card.set === 'string' && card.set.trim() ? card.set.trim() : null;
+            const number = typeof card.number === 'string' && card.number.trim() ? card.number.trim() : null;
+            const pctValue = Number(card.pct);
+            const pct = Number.isFinite(pctValue) ? pctValue : 0;
+            return { name: cardName, set, number, pct };
+          })
+          .filter((card): card is NonNullable<typeof card> => Boolean(card))
+      : [];
     return {
       name,
       label,
       deckCount,
       percent,
-      thumbnails
+      thumbnails,
+      signatureCards
     };
   }
   return null;
