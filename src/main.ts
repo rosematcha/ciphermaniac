@@ -24,13 +24,22 @@ import {
 } from './utils/filtersPanel.js';
 import {
   normalizeSetValues,
+  parseCardTypeList,
   readCardType,
   readSelectedSets,
+  writeSelectedCardTypes,
   writeSelectedRegulationMarks,
   writeSelectedSets
 } from './utils/filterState.js';
 import { DataCache } from './utils/DataCache.js';
-import { createMultiSelectDropdown, type DropdownInstance } from './components/MultiSelectDropdown.js';
+import {
+  type DropdownInstance as CardTypeDropdownInstance,
+  createHierarchicalCardTypeDropdown
+} from './components/HierarchicalCardTypeDropdown.js';
+import {
+  createMultiSelectDropdown,
+  type DropdownInstance as MultiSelectDropdownInstance
+} from './components/MultiSelectDropdown.js';
 import type { CardItem, Deck, TournamentReport } from './types/index.js';
 
 /**
@@ -39,6 +48,12 @@ import type { CardItem, Deck, TournamentReport } from './types/index.js';
 interface ArchetypeOptionMeta {
   label: string;
   deckCount: number;
+}
+
+type AnyDropdownInstance = MultiSelectDropdownInstance | CardTypeDropdownInstance;
+
+function isMultiSelectDropdown(dropdown: AnyDropdownInstance): dropdown is MultiSelectDropdownInstance {
+  return typeof (dropdown as MultiSelectDropdownInstance).setDisabled === 'function';
 }
 
 export interface AppState {
@@ -59,7 +74,7 @@ export interface AppState {
   cache: DataCache | null;
   applyArchetypeSelection: ((selection: string[], options?: { force?: boolean }) => Promise<void>) | null;
   ui: {
-    dropdowns: Record<string, DropdownInstance | null>;
+    dropdowns: Record<string, AnyDropdownInstance | null>;
     openDropdown: string | null;
     onTournamentSelection: ((selection: string[]) => void) | null;
     onSetSelection: ((selection: string[], options?: { silent?: boolean }) => void) | null;
@@ -238,7 +253,9 @@ function updateSetFilterOptions(items: CardItem[]): void {
   writeSelectedSets(appState.selectedSets);
 
   if (dropdown) {
-    dropdown.setDisabled(orderedCodes.length === 0);
+    if (isMultiSelectDropdown(dropdown)) {
+      dropdown.setDisabled(orderedCodes.length === 0);
+    }
     dropdown.render(orderedCodes, appState.selectedSets);
   }
 }
@@ -333,6 +350,23 @@ function setupDropdownFilters(state: AppState) {
         return { label: display, fullName: label };
       },
       onChange: (selection: string[]) => state.ui.onArchetypeSelection?.(selection)
+    }),
+    cardTypes: createHierarchicalCardTypeDropdown(state, {
+      key: 'cardTypes',
+      triggerId: 'card-type-filter-trigger',
+      menuId: 'card-type-filter-menu',
+      listId: 'card-type-filter-list',
+      summaryId: 'card-type-filter-summary',
+      searchId: 'card-type-filter-search',
+      chipsId: 'card-type-filter-chips',
+      addButtonId: 'card-type-filter-add',
+      labelId: 'card-type-label',
+      placeholder: 'All card types',
+      onChange: async (selection: string[]) => {
+        writeSelectedCardTypes(selection);
+        await applyCurrentFilters(state);
+        setStateInURL({ cardType: selection.length ? selection.join(',') : '' }, { merge: true });
+      }
     })
   };
 
@@ -340,7 +374,7 @@ function setupDropdownFilters(state: AppState) {
 
   const onDocumentPointerDown = (event: Event) => {
     const target = event.target as Node;
-    const dropdownList = Object.values(dropdowns).filter((d): d is DropdownInstance => Boolean(d));
+    const dropdownList = Object.values(dropdowns).filter((d): d is AnyDropdownInstance => Boolean(d));
     const clickedInsideDropdown = dropdownList.some(dropdown => dropdown.contains(target));
 
     if (!clickedInsideDropdown) {
@@ -406,7 +440,7 @@ function consumeFiltersRedirectFlag() {
 function refreshFiltersDropdowns() {
   const dropdowns = appState.ui?.dropdowns || {};
   Object.values(dropdowns).forEach(dropdown => {
-    if (dropdown && typeof dropdown.refresh === 'function') {
+    if (dropdown && isMultiSelectDropdown(dropdown)) {
       dropdown.refresh();
     }
   });
@@ -780,7 +814,9 @@ async function setupArchetypeSelector(
   );
   const optionValues = sortedArchetypes.map(entry => entry.slug);
   const availableSet = new Set(optionValues);
-  dropdown.setDisabled(optionValues.length === 0);
+  if (isMultiSelectDropdown(dropdown)) {
+    dropdown.setDisabled(optionValues.length === 0);
+  }
 
   const sanitizeSelection = (values: string[]): string[] => {
     if (!Array.isArray(values)) {
@@ -814,7 +850,9 @@ async function setupArchetypeSelector(
 
     state.selectedArchetypes = normalizedSelection;
     dropdown.setSelection(normalizedSelection, { silent: true });
-    dropdown.refresh();
+    if (isMultiSelectDropdown(dropdown)) {
+      dropdown.refresh();
+    }
 
     if (normalizedSelection.length === 0) {
       const selection = state.selectedTournaments.length
@@ -1081,6 +1119,7 @@ function setupControlHandlers(state: AppState) {
   state.cleanup.addEventListener(elements.success, 'change', handleSuccessFilterChange);
 
   const cardTypeSelect = document.getElementById('card-type') as HTMLSelectElement | null;
+  const cardTypeDropdown = state.ui?.dropdowns?.cardTypes || null;
   if (cardTypeSelect) {
     state.cleanup.addEventListener(cardTypeSelect, 'change', async () => {
       state.selectedCardType = cardTypeSelect.value;
@@ -1114,7 +1153,11 @@ function setupControlHandlers(state: AppState) {
     (elements.sort as HTMLSelectElement).value = urlState.sort;
   }
   if (urlState.cardType) {
-    if (cardTypeSelect) {
+    const parsed = parseCardTypeList(urlState.cardType);
+    if (parsed.length && cardTypeDropdown && typeof cardTypeDropdown.setSelection === 'function') {
+      writeSelectedCardTypes(parsed);
+      cardTypeDropdown.setSelection(parsed, { silent: true });
+    } else if (cardTypeSelect) {
       cardTypeSelect.value = urlState.cardType;
       state.selectedCardType = urlState.cardType;
     }
