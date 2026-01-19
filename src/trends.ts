@@ -387,7 +387,7 @@ function normalizeTrendReport(report: TrendReport): TrendDataset {
     deckTotal: report.deckTotal,
     tournamentCount: report.tournamentCount,
     archetypeCount: report.archetypeCount,
-    tournaments: report.tournaments.map(tournament => ({
+    tournaments: (report.tournaments || []).map(tournament => ({
       id: tournament.id,
       name: tournament.name,
       date: tournament.date,
