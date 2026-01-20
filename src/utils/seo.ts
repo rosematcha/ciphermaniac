@@ -9,6 +9,7 @@ type PageSeoOptions = {
   canonicalPath: string;
   breadcrumbs?: BreadcrumbItem[];
   structuredData?: Record<string, unknown> | Array<Record<string, unknown>>;
+  robots?: string;
 };
 
 const SITE_NAME = 'Ciphermaniac';
@@ -28,6 +29,16 @@ function setCanonicalUrl(url: string): void {
     document.head.appendChild(link);
   }
   link.href = url;
+}
+
+function setRobotsTag(content: string): void {
+  let meta = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.setAttribute('name', 'robots');
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute('content', content);
 }
 
 function buildAbsoluteUrl(path: string): string {
@@ -88,6 +99,9 @@ export function applyPageSeo(options: PageSeoOptions): void {
   setMetaTag('meta[name="twitter:title"]', options.title);
   setMetaTag('meta[name="twitter:description"]', options.description);
   setMetaTag('meta[name="twitter:url"]', canonicalUrl);
+  if (options.robots) {
+    setRobotsTag(options.robots);
+  }
 
   const structuredItems: Array<Record<string, unknown>> = [];
   if (options.structuredData) {

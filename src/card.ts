@@ -307,6 +307,9 @@ async function initializeCardPage() {
   const seoDescription = `Usage trends, deck inclusion, and pricing context for ${cardLabel} in the Pokemon TCG.`;
   const absoluteCanonical = new URL(canonicalPath, window.location.origin).toString();
 
+  const isAlternateRoute =
+    routeInfo.source === 'query' || routeInfo.source === 'hash' || window.location.search.length > 0;
+
   applyPageSeo({
     title: seoTitle,
     description: seoDescription,
@@ -319,7 +322,8 @@ async function initializeCardPage() {
       { name: 'Home', url: `${window.location.origin}/` },
       { name: 'Cards', url: `${window.location.origin}/cards` },
       { name: cardLabel, url: absoluteCanonical }
-    ]
+    ],
+    robots: isAlternateRoute ? 'noindex, follow' : 'index, follow'
   });
 
   await load();
