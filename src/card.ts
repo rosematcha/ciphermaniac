@@ -41,6 +41,7 @@ import {
 } from './card/modal.js';
 import { renderMissingCardPage } from './card/missingCard.js';
 import { renderAnalysisSelector } from './card/analysis.js';
+import { applyPageSeo, buildCardSchema, buildWebPageSchema } from './utils/seo.js';
 
 // Set up global error handling
 setupGlobalErrorHandler();
@@ -298,6 +299,28 @@ async function initializeCardPage() {
   } else if (location.hash) {
     history.replaceState(null, '', `${location.pathname}${location.search || ''}`);
   }
+
+  const parsed = cardName ? parseDisplayName(cardName) : null;
+  const canonicalPath = buildCardPath(cardIdentifier);
+  const cardLabel = parsed?.name || cardName || cardIdentifier;
+  const seoTitle = `${cardLabel} Card Stats - Pokemon TCG | Ciphermaniac`;
+  const seoDescription = `Usage trends, deck inclusion, and pricing context for ${cardLabel} in the Pokemon TCG.`;
+  const absoluteCanonical = new URL(canonicalPath, window.location.origin).toString();
+
+  applyPageSeo({
+    title: seoTitle,
+    description: seoDescription,
+    canonicalPath,
+    structuredData: [
+      buildWebPageSchema(seoTitle, seoDescription, absoluteCanonical),
+      buildCardSchema(cardLabel, absoluteCanonical, parsed?.setId || null)
+    ],
+    breadcrumbs: [
+      { name: 'Home', url: `${window.location.origin}/` },
+      { name: 'Cards', url: `${window.location.origin}/cards` },
+      { name: cardLabel, url: absoluteCanonical }
+    ]
+  });
 
   await load();
 }

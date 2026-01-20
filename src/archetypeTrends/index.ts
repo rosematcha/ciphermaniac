@@ -2,7 +2,7 @@ import { fetchTrendsData } from './data/fetch.js';
 import { getState } from './state.js';
 import { renderCopyEvolution } from './charts/copyEvolution.js';
 import { renderChart } from './charts/trendsChart.js';
-import { updateCategoryCounts, renderCardList } from './ui/cards.js';
+import { renderCardList, updateCategoryCounts } from './ui/cards.js';
 import { bindEvents } from './ui/controls.js';
 import { renderInsights } from './ui/insights.js';
 import { renderMatchups } from './ui/matchups.js';
@@ -11,6 +11,7 @@ import { setPageState, updateTitle } from './ui/page.js';
 import { renderStats } from './ui/stats.js';
 import { elements } from './ui/elements.js';
 import { buildAnalysisUrl, buildHomeUrl, extractArchetypeFromUrl } from './utils/url.js';
+import { applyPageSeo, buildWebPageSchema } from '../utils/seo.js';
 
 async function initialize(): Promise<void> {
   const state = getState();
@@ -23,6 +24,24 @@ async function initialize(): Promise<void> {
   state.archetypeName = archetypeName;
   state.archetypeSlug = archetypeName.replace(/ /g, '_');
   updateTitle();
+
+  const canonicalPath = `/${encodeURIComponent(state.archetypeSlug)}/trends`;
+  const title = `${state.archetypeName} Meta Trends - Pokemon TCG Archetype | Ciphermaniac`;
+  const description = `Meta share, card trends, and matchups for the ${state.archetypeName} Pokemon TCG archetype.`;
+  const absoluteCanonical = new URL(canonicalPath, window.location.origin).toString();
+
+  applyPageSeo({
+    title,
+    description,
+    canonicalPath,
+    structuredData: buildWebPageSchema(title, description, absoluteCanonical),
+    breadcrumbs: [
+      { name: 'Home', url: `${window.location.origin}/` },
+      { name: 'Archetypes', url: `${window.location.origin}/archetypes` },
+      { name: state.archetypeName, url: `${window.location.origin}/${encodeURIComponent(state.archetypeSlug)}` },
+      { name: 'Trends', url: absoluteCanonical }
+    ]
+  });
 
   if (elements.tabHome) {
     elements.tabHome.href = buildHomeUrl(state.archetypeSlug);

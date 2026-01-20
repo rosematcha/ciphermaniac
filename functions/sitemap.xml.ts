@@ -1,27 +1,9 @@
-/**
- * Dynamic sitemap generator for Ciphermaniac.
- * Includes static pages, archetype pages, and card pages.
- */
-
 import { loadCardSynonyms } from './lib/cardSynonyms.js';
 import { loadCardTypesDatabase } from './lib/cardTypesDatabase.js';
 
-interface R2ObjectBody {
-  text(): Promise<string>;
-}
-
-interface ReportsBucket {
-  get(key: string): Promise<R2ObjectBody | null>;
-}
-
-interface KeyValueNamespace {
-  get(key: string, type?: 'json'): Promise<unknown>;
-  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
-}
-
 interface Env {
-  REPORTS?: ReportsBucket;
-  CARD_TYPES_KV?: KeyValueNamespace;
+  REPORTS?: { get: (key: string) => Promise<{ text(): Promise<string> } | null> };
+  CARD_TYPES_KV?: unknown;
 }
 
 interface RequestContext {
@@ -91,7 +73,6 @@ async function loadArchetypeIndex(env: Env): Promise<ArchetypeIndexEntry[]> {
     if (!object) {
       return [];
     }
-
     const text = await object.text();
     const parsed = JSON.parse(text);
     return Array.isArray(parsed) ? parsed : [];
@@ -150,11 +131,11 @@ export async function onRequest({ request, env }: RequestContext): Promise<Respo
 
   const [archetypeIndex, cardTypesDb, synonymDb] = await Promise.all([
     loadArchetypeIndex(env),
-    loadCardTypesDatabase(env),
-    loadCardSynonyms(env)
+    loadCardTypesDatabase(env as any),
+    loadCardSynonyms(env as any)
   ]);
 
-  const synonymExclusions = buildSynonymExclusions(synonymDb?.synonyms);
+  const synonymExclusions = buildSynonymExclusions((synonymDb as any)?.synonyms);
 
   archetypeIndex
     .filter(entry => entry && typeof entry.name === 'string' && entry.name.trim())
@@ -175,7 +156,7 @@ export async function onRequest({ request, env }: RequestContext): Promise<Respo
     });
 
   if (cardTypesDb && typeof cardTypesDb === 'object') {
-    const cardKeys = Object.keys(cardTypesDb).sort();
+    const cardKeys = Object.keys(cardTypesDb as Record<string, unknown>).sort();
     for (const key of cardKeys) {
       const parts = key.split('::');
       if (parts.length < 2) {

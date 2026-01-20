@@ -16,6 +16,7 @@ import { setPageState, showError, toggleLoading, updateHero } from './ui/page.js
 import { renderCards } from './ui/render.js';
 import { setQuickFilterHandler, setupSkeletonExport } from './ui/skeleton.js';
 import { decodeArchetypeLabel } from './utils/format.js';
+import { applyPageSeo, buildWebPageSchema } from '../utils/seo.js';
 
 const state = getState();
 
@@ -91,6 +92,24 @@ async function initialize() {
   state.thresholdPercent = GRANULARITY_DEFAULT_PERCENT;
   syncGranularityOutput(GRANULARITY_DEFAULT_PERCENT);
 
+  const canonicalPath = `/${encodeURIComponent(state.archetypeBase)}/analysis`;
+  const title = `${state.archetypeLabel} Deck Analysis - Pokemon TCG Archetype | Ciphermaniac`;
+  const description = `Card usage, matchups, and success rates for the ${state.archetypeLabel} Pokemon TCG archetype.`;
+  const absoluteCanonical = new URL(canonicalPath, window.location.origin).toString();
+
+  applyPageSeo({
+    title,
+    description,
+    canonicalPath,
+    structuredData: buildWebPageSchema(title, description, absoluteCanonical),
+    breadcrumbs: [
+      { name: 'Home', url: `${window.location.origin}/` },
+      { name: 'Archetypes', url: `${window.location.origin}/archetypes` },
+      { name: state.archetypeLabel, url: `${window.location.origin}/${encodeURIComponent(state.archetypeBase)}` },
+      { name: 'Analysis', url: absoluteCanonical }
+    ]
+  });
+
   try {
     setPageState('loading');
     toggleLoading(true);
@@ -105,10 +124,7 @@ async function initialize() {
     ]);
 
     if (!tournamentReport || typeof tournamentReport.deckTotal !== 'number') {
-      throw new AppError(
-        ErrorTypes.DATA_FORMAT,
-        `Tournament report for ${state.tournament} is missing deck totals.`
-      );
+      throw new AppError(ErrorTypes.DATA_FORMAT, `Tournament report for ${state.tournament} is missing deck totals.`);
     }
 
     const parsedArchetype = parseReport(archetypeRaw);
