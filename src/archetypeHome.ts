@@ -12,6 +12,7 @@ import { AppError, ErrorTypes } from './utils/errorHandler.js';
 import { logger } from './utils/logger.js';
 import { fetchArchetypesList } from './api.js';
 import { escapeHtml } from './utils/html.js';
+import { applyPageSeo, buildWebPageSchema } from './utils/seo.js';
 import type { SignatureCardEntry } from './types/index.js';
 
 // --- Interfaces ---
@@ -692,6 +693,23 @@ async function init(): Promise<void> {
     elements.title.textContent = archetypeName;
   }
   document.title = `${archetypeName} \u2013 Ciphermaniac`;
+
+  const canonicalPath = buildUrl('');
+  const title = `${archetypeName} Deck Overview - Pokemon TCG Archetype | Ciphermaniac`;
+  const description = `Meta stats, signature cards, and top performers for the ${archetypeName} Pokemon TCG archetype.`;
+  const absoluteCanonical = new URL(canonicalPath, window.location.origin).toString();
+
+  applyPageSeo({
+    title,
+    description,
+    canonicalPath,
+    structuredData: buildWebPageSchema(title, description, absoluteCanonical),
+    breadcrumbs: [
+      { name: 'Home', url: `${window.location.origin}/` },
+      { name: 'Archetypes', url: `${window.location.origin}/archetypes` },
+      { name: archetypeName, url: absoluteCanonical }
+    ]
+  });
 
   // Update tab links
   if (elements.tabHome) {
