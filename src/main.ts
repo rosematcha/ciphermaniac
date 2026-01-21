@@ -13,6 +13,7 @@ import { getStateFromURL, normalizeRouteOnLoad, setStateInURL } from './router.j
 import { logger } from './utils/logger.js';
 import { CleanupManager, debounce, validateElements } from './utils/performance.js';
 import { CONFIG } from './config.js';
+import { applyPageSeo, buildWebPageSchema } from './utils/seo.js';
 import { prettyTournamentName } from './utils/format.js';
 import { hideGridSkeleton, showGridSkeleton } from './components/placeholders.js';
 import { aggregateReports } from './utils/reportAggregator.js';
@@ -1170,6 +1171,24 @@ function setupControlHandlers(state: AppState) {
 async function init() {
   try {
     logger.info('Initializing application...');
+
+    const path = window.location.pathname.replace(/\/$/, '');
+    if (path === '/cards' || path === '/cards.html') {
+      const title = 'Pokemon TCG Card Database - Usage Stats & Prices | Ciphermaniac';
+      const description =
+        'Browse Pokemon TCG card usage statistics, deck inclusion rates, and market prices. Filter by archetype, card type, set, and tournament performance.';
+      const canonicalPath = '/cards';
+      const absoluteCanonical = new URL(canonicalPath, window.location.origin).toString();
+      const hasQuery = window.location.search.length > 0;
+
+      applyPageSeo({
+        title,
+        description,
+        canonicalPath,
+        structuredData: buildWebPageSchema(title, description, absoluteCanonical),
+        robots: hasQuery ? 'noindex, follow' : 'index, follow'
+      });
+    }
 
     // Initialize cache
     appState.cache = new DataCache();
