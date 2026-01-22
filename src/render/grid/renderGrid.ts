@@ -2,8 +2,10 @@ import { computeLayout, syncControlsWidth } from '../../layoutHelper.js';
 import { CONFIG } from '../../config.js';
 import { perf } from '../../utils/performance.js';
 import { normalizeCardNumber } from '../../card/routing.js';
+import { escapeHtml } from '../../utils/html.js';
 import type { CardItem } from '../../types/index.js';
 import type { RenderOptions } from '../types.js';
+import { hideGridTooltip, showGridTooltip } from '../cardElement.js';
 import { MOBILE_MAX_WIDTH, NUM_LARGE_ROWS, NUM_MEDIUM_ROWS } from '../constants.js';
 import { getGridElement } from './elements.js';
 import {
@@ -317,5 +319,60 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
   }
 
   attachGridKeyboardNavigation(grid);
+  setupHistogramDelegation(grid);
   perf.end('render');
+}
+
+/** Setup event delegation for histogram tooltips (runs once per grid) */
+function setupHistogramDelegation(grid: HTMLElement & { _histDelegation?: boolean }): void {
+  const hostGrid = grid;
+  if (hostGrid._histDelegation) {
+    return;
+  }
+  hostGrid._histDelegation = true;
+
+  const showTip = (e: Event) => {
+    const col = (e.target as Element).closest('.hist .col') as HTMLElement | null;
+    if (!col?.dataset.tip) {
+      return;
+    }
+    const { cardName = '', tip } = col.dataset;
+    const html = cardName ? `<strong>${escapeHtml(cardName)}</strong><div>${escapeHtml(tip)}</div>` : escapeHtml(tip);
+    const { clientX: x, clientY: y } = e as MouseEvent;
+    showGridTooltip(html, x, y);
+  };
+
+  hostGrid.addEventListener('mousemove', showTip, { passive: true });
+  hostGrid.addEventListener(
+    'focusin',
+    e => {
+      const col = (e.target as Element).closest('.hist .col') as HTMLElement | null;
+      if (!col?.dataset.tip) {
+        return;
+      }
+      const rect = col.getBoundingClientRect();
+      const { cardName = '', tip } = col.dataset;
+      const html = cardName ? `<strong>${escapeHtml(cardName)}</strong><div>${escapeHtml(tip)}</div>` : escapeHtml(tip);
+      showGridTooltip(html, rect.left + rect.width / 2, rect.top);
+    },
+    { passive: true }
+  );
+  hostGrid.addEventListener(
+    'mouseleave',
+    e => {
+      if ((e.target as Element).closest('.hist .col')) {
+        hideGridTooltip();
+      }
+    },
+    { passive: true, capture: true }
+  );
+  hostGrid.addEventListener(
+    'focusout',
+    e => {
+      if ((e.target as Element).closest('.hist .col')) {
+        hideGridTooltip();
+      }
+    },
+    { passive: true }
+  );
 }
