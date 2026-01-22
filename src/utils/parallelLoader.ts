@@ -193,6 +193,17 @@ export function createProgressIndicator(
 
   let completedSteps = 0;
   const totalSteps = steps.length;
+  let maxProgressPercent = 0;
+
+  const setProgressPercent = (nextPercent: number) => {
+    if (!progressFill || !config.showPercentage) {
+      return;
+    }
+    const safePercent = Math.max(0, Math.min(100, Math.round(nextPercent)));
+    const clampedPercent = Math.max(maxProgressPercent, safePercent);
+    maxProgressPercent = clampedPercent;
+    progressFill.style.width = `${clampedPercent}%`;
+  };
 
   const controller: ProgressController = {
     container,
@@ -209,21 +220,21 @@ export function createProgressIndicator(
         }
 
         // Update progress bar
-        if (progressFill && config.showPercentage) {
-          const percentage = Math.round((completedSteps / totalSteps) * 100);
-          progressFill.style.width = `${percentage}%`;
+        if (totalSteps > 0) {
+          const percentage = (completedSteps / totalSteps) * 100;
+          setProgressPercent(percentage);
         }
       }
     },
 
     updateProgress(completed, total, details = '') {
-      if (progressFill && config.showPercentage) {
-        const percentage = Math.round((completed / total) * 100);
-        progressFill.style.width = `${percentage}%`;
+      if (total > 0) {
+        const percentage = (completed / total) * 100;
+        setProgressPercent(percentage);
+      }
 
-        if (details) {
-          titleEl.textContent = `${title} - ${details}`;
-        }
+      if (details) {
+        titleEl.textContent = `${title} - ${details}`;
       }
     },
 
