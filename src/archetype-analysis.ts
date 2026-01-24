@@ -14,12 +14,20 @@ import { fetchArchetypeReport, fetchArchetypesList } from './api.js';
 import { parseReport } from './parse.js';
 import { logger } from './utils/logger.js';
 
+type SignatureCard = {
+  name: string;
+  set: string | null;
+  number: string | null;
+  pct: number;
+};
+
 type ArchetypeSummary = {
   name: string;
   label: string;
   deckCount: number | null;
   percent: number | null;
   thumbnails?: string[];
+  signatureCards?: SignatureCard[];
 };
 
 type CachedSummaries = {
@@ -33,15 +41,26 @@ const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const PREFETCH_BATCH = 5;
 const PREFETCH_DELAY_MS = 150;
 const ONLINE_META_TOURNAMENT = 'Online - Last 14 Days';
+const DEFAULT_SORT = 'deck-desc';
+
+const numberFormatter = new Intl.NumberFormat('en-US');
 
 const { document } = globalThis;
 
 // DOM references
 const elements = {
-  container: document.querySelector('.analysis-page'),
   archetypeList: document.getElementById('analysis-archetype-list') as HTMLUListElement | null,
   listLoading: document.getElementById('analysis-list-loading'),
-  listEmpty: document.getElementById('analysis-list-empty')
+  listEmpty: document.getElementById('analysis-list-empty'),
+  listEmptyResults: document.getElementById('analysis-list-empty-results'),
+  searchInput: document.getElementById('archetype-search') as HTMLInputElement | null,
+  sortSelect: document.getElementById('archetype-sort') as HTMLSelectElement | null,
+  resultsSummary: document.getElementById('analysis-results'),
+  summaryWindow: document.getElementById('archetypes-summary-window'),
+  summaryCount: document.getElementById('archetypes-summary-count'),
+  summaryDecks: document.getElementById('archetypes-summary-decks'),
+  summaryTop: document.getElementById('archetypes-summary-top'),
+  summaryTopLabel: document.getElementById('archetypes-summary-top-label')
 };
 
 const templates = {
@@ -51,11 +70,14 @@ const templates = {
 // Simple state
 const state = {
   archetypes: [] as ArchetypeSummary[],
+  filtered: [] as ArchetypeSummary[],
   prefetched: new Set<string>(),
   prefetchQueue: [] as string[],
   prefetchHandle: null as number | null,
   hoverTimer: null as { target: string; id: number } | null,
-  rendered: false
+  query: '',
+  sortMode: DEFAULT_SORT,
+  searchTimer: null as number | null
 };
 
 // ============================================================================
@@ -100,7 +122,8 @@ function normalizeSummary(entry: ArchetypeSummary): ArchetypeSummary {
     label: entry.label || entry.name.replace(/_/g, ' '),
     deckCount: Number.isFinite(entry.deckCount) ? Number(entry.deckCount) : null,
     percent: Number.isFinite(entry.percent) ? Number(entry.percent) : null,
-    thumbnails: Array.isArray(entry.thumbnails) ? entry.thumbnails.filter(Boolean) : []
+    thumbnails: Array.isArray(entry.thumbnails) ? entry.thumbnails.filter(Boolean) : [],
+    signatureCards: Array.isArray(entry.signatureCards) ? entry.signatureCards : []
   };
 }
 
@@ -178,6 +201,77 @@ function buildFallbackText(name: string): string {
 }
 
 // ============================================================================
+// Formatting + Sorting
+// ============================================================================
+
+function formatNumber(value: number): string {
+  return numberFormatter.format(value);
+}
+
+function formatPercent(value: number | null, digits = 1): string {
+  if (value === null || Number.isNaN(value)) {
+    return '--';
+  }
+  return `${(value * 100).toFixed(digits)}%`;
+}
+
+function compareNullableNumber(a: number | null, b: number | null, direction: 'asc' | 'desc'): number {
+  if (a === null && b === null) {
+    return 0;
+  }
+  if (a === null) {
+    return 1;
+  }
+  if (b === null) {
+    return -1;
+  }
+  return direction === 'asc' ? a - b : b - a;
+}
+
+function sortArchetypes(list: ArchetypeSummary[], mode: string): ArchetypeSummary[] {
+  const sorted = [...list];
+  switch (mode) {
+    case 'deck-asc':
+      sorted.sort((a, b) => compareNullableNumber(a.deckCount, b.deckCount, 'asc') || a.label.localeCompare(b.label));
+      break;
+    case 'percent-desc':
+      sorted.sort((a, b) => compareNullableNumber(a.percent, b.percent, 'desc') || a.label.localeCompare(b.label));
+      break;
+    case 'percent-asc':
+      sorted.sort((a, b) => compareNullableNumber(a.percent, b.percent, 'asc') || a.label.localeCompare(b.label));
+      break;
+    case 'alpha-asc':
+      sorted.sort((a, b) => a.label.localeCompare(b.label));
+      break;
+    case 'alpha-desc':
+      sorted.sort((a, b) => b.label.localeCompare(a.label));
+      break;
+    case 'deck-desc':
+    default:
+      sorted.sort((a, b) => compareNullableNumber(a.deckCount, b.deckCount, 'desc') || a.label.localeCompare(b.label));
+      break;
+  }
+  return sorted;
+}
+
+function matchesQuery(summary: ArchetypeSummary, query: string): boolean {
+  if (!query) {
+    return true;
+  }
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+  if (summary.label.toLowerCase().includes(normalized) || summary.name.toLowerCase().includes(normalized)) {
+    return true;
+  }
+  if (summary.signatureCards?.some(card => card.name.toLowerCase().includes(normalized))) {
+    return true;
+  }
+  return false;
+}
+
+// ============================================================================
 // List Item Creation - Simple, stable DOM structure
 // ============================================================================
 
@@ -202,25 +296,37 @@ function createListItem(summary: ArchetypeSummary, index: number): HTMLElement |
   const nameEl = node.querySelector('.analysis-list-item__name');
   const pctEl = node.querySelector('.analysis-list-item__percent');
   const deckEl = node.querySelector('.analysis-list-item__count');
+  const rankEl = node.querySelector('.analysis-list-item__rank');
 
   if (nameEl) {
     nameEl.textContent = summary.label;
   }
   if (pctEl) {
-    pctEl.textContent =
-      summary.percent === null || Number.isNaN(summary.percent) ? '—' : `${(summary.percent * 100).toFixed(1)}%`;
+    pctEl.textContent = formatPercent(summary.percent, 1);
   }
   if (deckEl) {
     deckEl.textContent =
       summary.deckCount === null
         ? 'Deck count unavailable'
-        : `${summary.deckCount} deck${summary.deckCount === 1 ? '' : 's'}`;
+        : `${formatNumber(summary.deckCount)} deck${summary.deckCount === 1 ? '' : 's'}`;
+  }
+  if (rankEl) {
+    rankEl.textContent = `#${index + 1}`;
+  }
+
+  if (index < 3) {
+    node.classList.add(`analysis-list-item--rank-${index + 1}`);
   }
 
   // Setup thumbnail - simple approach
   const thumbnailContainer = node.querySelector('.analysis-list-item__thumbnail') as HTMLElement | null;
   const thumbnailImage = node.querySelector('.analysis-list-item__thumbnail-image') as HTMLImageElement | null;
   const thumbnailFallback = node.querySelector('.analysis-list-item__thumbnail-fallback') as HTMLElement | null;
+  const signatureSection = node.querySelector('.analysis-list-item__signature') as HTMLElement | null;
+  const signatureList = node.querySelector('.analysis-list-item__signature-list') as HTMLElement | null;
+  const bar = node.querySelector('.analysis-list-item__bar') as HTMLElement | null;
+  const barFill = bar?.querySelector('.bar') as HTMLElement | null;
+  const barPct = bar?.querySelector('.pct') as HTMLElement | null;
 
   if (thumbnailContainer && thumbnailFallback) {
     const fallbackText = buildFallbackText(summary.label);
@@ -237,6 +343,44 @@ function createListItem(summary: ArchetypeSummary, index: number): HTMLElement |
     } else if (urls.length >= 2) {
       // Split thumbnail - create structure upfront
       setupSplitThumbnail(thumbnailContainer, thumbnailImage, thumbnailFallback, urls, index < 10);
+    }
+  }
+
+  if (bar && barFill && barPct) {
+    if (summary.percent === null || Number.isNaN(summary.percent)) {
+      bar.classList.add('is-empty');
+      barFill.style.width = '0%';
+      barPct.textContent = '--';
+    } else {
+      const clamped = Math.max(0, Math.min(1, summary.percent));
+      bar.classList.remove('is-empty');
+      barFill.style.width = `${(clamped * 100).toFixed(2)}%`;
+      barPct.textContent = formatPercent(clamped, 1);
+    }
+  }
+
+  if (signatureSection && signatureList) {
+    signatureList.innerHTML = '';
+    const cards = summary.signatureCards?.filter(card => card?.name) ?? [];
+    if (cards.length) {
+      signatureSection.hidden = false;
+      cards.slice(0, 3).forEach(card => {
+        const chip = document.createElement('span');
+        chip.className = 'analysis-signature-card';
+        const name = document.createElement('span');
+        name.className = 'analysis-signature-card__name';
+        name.textContent = card.name;
+        chip.appendChild(name);
+        if (Number.isFinite(card.pct)) {
+          const pct = document.createElement('span');
+          pct.className = 'analysis-signature-card__pct';
+          pct.textContent = formatPercent(card.pct, 0);
+          chip.appendChild(pct);
+        }
+        signatureList.appendChild(chip);
+      });
+    } else {
+      signatureSection.hidden = true;
     }
   }
 
@@ -332,7 +476,7 @@ function setupSplitThumbnail(
 
 function renderList(archetypes: ArchetypeSummary[]): void {
   const listEl = elements.archetypeList;
-  if (!listEl || state.rendered) {
+  if (!listEl) {
     return;
   }
 
@@ -340,9 +484,6 @@ function renderList(archetypes: ArchetypeSummary[]): void {
   listEl.innerHTML = '';
 
   if (archetypes.length === 0) {
-    if (elements.listEmpty) {
-      elements.listEmpty.hidden = false;
-    }
     return;
   }
 
@@ -356,20 +497,22 @@ function renderList(archetypes: ArchetypeSummary[]): void {
   });
 
   listEl.appendChild(fragment);
-  state.rendered = true;
-
-  // Hide empty state
-  if (elements.listEmpty) {
-    elements.listEmpty.hidden = true;
-  }
 }
 
 function showLoading(show: boolean): void {
   if (elements.listLoading) {
     elements.listLoading.hidden = !show;
   }
-  if (elements.archetypeList) {
-    elements.archetypeList.hidden = show;
+  if (show) {
+    if (elements.archetypeList) {
+      elements.archetypeList.hidden = true;
+    }
+    if (elements.listEmpty) {
+      elements.listEmpty.hidden = true;
+    }
+    if (elements.listEmptyResults) {
+      elements.listEmptyResults.hidden = true;
+    }
   }
 }
 
@@ -381,6 +524,100 @@ function showError(message: string): void {
   if (elements.archetypeList) {
     elements.archetypeList.hidden = true;
   }
+  if (elements.listEmpty) {
+    elements.listEmpty.hidden = true;
+  }
+  if (elements.listEmptyResults) {
+    elements.listEmptyResults.hidden = true;
+  }
+}
+
+function updateSummary(archetypes: ArchetypeSummary[]): void {
+  if (elements.summaryWindow) {
+    elements.summaryWindow.textContent = ONLINE_META_TOURNAMENT;
+  }
+
+  if (elements.summaryCount) {
+    elements.summaryCount.textContent = archetypes.length ? formatNumber(archetypes.length) : '--';
+  }
+
+  if (elements.summaryDecks) {
+    let totalDecks = 0;
+    let unknownCount = 0;
+    archetypes.forEach(entry => {
+      if (entry.deckCount === null || Number.isNaN(entry.deckCount)) {
+        unknownCount += 1;
+      } else {
+        totalDecks += entry.deckCount;
+      }
+    });
+    if (!archetypes.length) {
+      elements.summaryDecks.textContent = '--';
+    } else {
+      elements.summaryDecks.textContent = `${formatNumber(totalDecks)}${unknownCount ? '+' : ''}`;
+      elements.summaryDecks.title = unknownCount
+        ? `${unknownCount} archetype${unknownCount === 1 ? '' : 's'} missing deck counts`
+        : '';
+    }
+  }
+
+  if (elements.summaryTop) {
+    const top = archetypes.reduce<ArchetypeSummary | null>((best, entry) => {
+      if (entry.percent === null || Number.isNaN(entry.percent)) {
+        return best;
+      }
+      if (!best || best.percent === null || Number.isNaN(best.percent)) {
+        return entry;
+      }
+      return entry.percent > best.percent ? entry : best;
+    }, null);
+
+    elements.summaryTop.textContent = top?.percent != null ? formatPercent(top.percent, 1) : '--';
+    if (elements.summaryTopLabel) {
+      elements.summaryTopLabel.textContent = top?.label ?? '';
+    }
+  }
+}
+
+function updateResultsSummary(): void {
+  if (!elements.resultsSummary) {
+    return;
+  }
+  if (!state.archetypes.length) {
+    elements.resultsSummary.textContent = '';
+    return;
+  }
+
+  const total = state.archetypes.length;
+  const shown = state.filtered.length;
+  const queryLabel = state.query ? ` for "${state.query}"` : '';
+  elements.resultsSummary.textContent = `Showing ${formatNumber(shown)} of ${formatNumber(total)} archetype${
+    total === 1 ? '' : 's'
+  }${queryLabel}.`;
+}
+
+function updateEmptyState(): void {
+  const hasData = state.archetypes.length > 0;
+  const hasResults = state.filtered.length > 0;
+
+  if (elements.listEmpty) {
+    elements.listEmpty.hidden = hasData;
+  }
+  if (elements.listEmptyResults) {
+    elements.listEmptyResults.hidden = !hasData || hasResults;
+  }
+  if (elements.archetypeList) {
+    elements.archetypeList.hidden = !hasResults;
+  }
+}
+
+function applyFiltersAndRender(): void {
+  const filtered = state.archetypes.filter(entry => matchesQuery(entry, state.query));
+  state.filtered = sortArchetypes(filtered, state.sortMode);
+  renderList(state.filtered);
+  updateResultsSummary();
+  updateEmptyState();
+  resetPrefetchQueue(state.filtered.length ? state.filtered : state.archetypes);
 }
 
 // ============================================================================
@@ -400,18 +637,25 @@ async function prefetchArchetype(name: string): Promise<void> {
   }
 }
 
-function schedulePrefetchBatch(): void {
-  if (!state.archetypes.length) {
+function resetPrefetchQueue(archetypes: ArchetypeSummary[]): void {
+  if (!archetypes.length) {
     return;
   }
 
-  // Prefetch top archetypes
-  const batch = state.archetypes.slice(0, PREFETCH_BATCH);
+  if (state.prefetchHandle !== null) {
+    clearTimeout(state.prefetchHandle);
+    state.prefetchHandle = null;
+  }
+
+  state.prefetchQueue = [];
+
+  const batch = archetypes.slice(0, PREFETCH_BATCH);
   for (const item of batch) {
     if (!state.prefetched.has(item.name)) {
       state.prefetchQueue.push(item.name);
     }
   }
+
   drainPrefetchQueue();
 }
 
@@ -483,18 +727,54 @@ function setupHoverPrefetch(): void {
 }
 
 // ============================================================================
+// Controls
+// ============================================================================
+
+function setupControls(): void {
+  if (elements.searchInput) {
+    elements.searchInput.addEventListener('input', event => {
+      const target = event.target as HTMLInputElement | null;
+      const nextQuery = target?.value ?? '';
+      if (state.searchTimer) {
+        clearTimeout(state.searchTimer);
+      }
+      state.searchTimer = window.setTimeout(() => {
+        state.query = nextQuery.trim();
+        applyFiltersAndRender();
+        state.searchTimer = null;
+      }, 150);
+    });
+  }
+
+  if (elements.sortSelect) {
+    elements.sortSelect.value = state.sortMode;
+    elements.sortSelect.addEventListener('change', event => {
+      const target = event.target as HTMLSelectElement | null;
+      const nextSort = target?.value ?? DEFAULT_SORT;
+      if (nextSort === state.sortMode) {
+        return;
+      }
+      state.sortMode = nextSort;
+      applyFiltersAndRender();
+    });
+  }
+}
+
+// ============================================================================
 // Initialization
 // ============================================================================
 
 async function initialize(): Promise<void> {
   showLoading(true);
+  setupControls();
 
   try {
     // First, try to show cached data immediately
     const cached = readCache();
     if (cached?.length) {
       state.archetypes = cached;
-      renderList(cached);
+      updateSummary(cached);
+      applyFiltersAndRender();
       showLoading(false);
     }
 
@@ -503,34 +783,26 @@ async function initialize(): Promise<void> {
 
     if (freshData.length) {
       writeCache(freshData);
-
-      // Only re-render if we haven't rendered yet (no cache) or data changed
-      if (!state.rendered) {
+      if (!state.archetypes.length || hasDataChanged(state.archetypes, freshData)) {
         state.archetypes = freshData;
-        renderList(freshData);
-      } else if (hasDataChanged(state.archetypes, freshData)) {
-        // Data changed - update quietly without flashing
-        state.archetypes = freshData;
-        state.rendered = false;
-        renderList(freshData);
+        updateSummary(freshData);
+        applyFiltersAndRender();
       }
-    } else if (!state.rendered) {
-      // No data at all
-      if (elements.listEmpty) {
-        elements.listEmpty.hidden = false;
-      }
+      showLoading(false);
+    } else if (!state.archetypes.length) {
+      updateSummary([]);
+      showLoading(false);
+      updateEmptyState();
     }
-
-    showLoading(false);
 
     // Setup prefetching
     setupHoverPrefetch();
-    schedulePrefetchBatch();
+    resetPrefetchQueue(state.filtered.length ? state.filtered : state.archetypes);
   } catch (err) {
     logger.exception('Failed to initialize archetypes page', err);
 
     // If we have cached data, keep showing it
-    if (state.rendered) {
+    if (state.archetypes.length) {
       showLoading(false);
     } else {
       showError('Unable to load archetypes. Please try again later.');
@@ -552,6 +824,16 @@ function hasDataChanged(oldData: ArchetypeSummary[], newData: ArchetypeSummary[]
     }
     if (oldData[i].percent !== newData[i].percent) {
       return true;
+    }
+    const oldSig = oldData[i].signatureCards ?? [];
+    const newSig = newData[i].signatureCards ?? [];
+    if (oldSig.length !== newSig.length) {
+      return true;
+    }
+    for (let j = 0; j < oldSig.length; j++) {
+      if (oldSig[j].name !== newSig[j].name || oldSig[j].pct !== newSig[j].pct) {
+        return true;
+      }
     }
   }
 

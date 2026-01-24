@@ -299,14 +299,7 @@ export function renderCopiesHistogram(container: HTMLElement, overall: OverallDi
     column.setAttribute('tabindex', '0');
     column.setAttribute('role', 'img');
     column.setAttribute('aria-label', tooltipText);
-    column.addEventListener('mousemove', (event: Event) =>
-      showGraphTooltip(escapeHtml(tooltipText), (event as MouseEvent).clientX, (event as MouseEvent).clientY)
-    );
-    column.addEventListener('mouseenter', (event: Event) =>
-      showGraphTooltip(escapeHtml(tooltipText), (event as MouseEvent).clientX, (event as MouseEvent).clientY)
-    );
-    column.addEventListener('mouseleave', hideGraphTooltip);
-    column.addEventListener('blur', hideGraphTooltip);
+    column.dataset.tip = tooltipText;
 
     column.appendChild(bar);
     column.appendChild(label);
@@ -314,6 +307,7 @@ export function renderCopiesHistogram(container: HTMLElement, overall: OverallDi
   }
 
   histogramContent.appendChild(histogramElement);
+  setupHistDelegation(container);
 
   if (container.classList.contains('showing-skeleton')) {
     hideSkeleton(container, histogramContent);
@@ -321,6 +315,54 @@ export function renderCopiesHistogram(container: HTMLElement, overall: OverallDi
     // Use smooth transition for re-renders
     smoothReplaceContent(container, histogramContent);
   }
+}
+
+/** Setup event delegation for histogram tooltips (runs once per container) */
+function setupHistDelegation(el: HTMLElement & { _histDel?: boolean }): void {
+  if (el._histDel) {
+    return;
+  }
+  el._histDel = true;
+  el.addEventListener(
+    'mousemove',
+    e => {
+      const col = (e.target as Element).closest('.col') as HTMLElement | null;
+      if (col?.dataset.tip) {
+        showGraphTooltip(escapeHtml(col.dataset.tip), e.clientX, e.clientY);
+      }
+    },
+    { passive: true }
+  );
+  el.addEventListener(
+    'focusin',
+    e => {
+      const col = (e.target as Element).closest('.col') as HTMLElement | null;
+      if (!col?.dataset.tip) {
+        return;
+      }
+      const r = col.getBoundingClientRect();
+      showGraphTooltip(escapeHtml(col.dataset.tip), r.left + r.width / 2, r.top);
+    },
+    { passive: true }
+  );
+  el.addEventListener(
+    'mouseleave',
+    e => {
+      if ((e.target as Element).closest('.col')) {
+        hideGraphTooltip();
+      }
+    },
+    { passive: true, capture: true }
+  );
+  el.addEventListener(
+    'focusout',
+    e => {
+      if ((e.target as Element).closest('.col')) {
+        hideGraphTooltip();
+      }
+    },
+    { passive: true }
+  );
 }
 
 /**

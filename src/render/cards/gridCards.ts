@@ -3,28 +3,15 @@ import { buildCardPath, normalizeCardNumber } from '../../card/routing.js';
 import { trackMissing } from '../../dev/missingThumbs.js';
 import { parallelImageLoader } from '../../utils/parallelImageLoader.js';
 import { createElement, setStyles } from '../../utils/dom.js';
-import { escapeHtml } from '../../utils/html.js';
-import { getGridTooltip } from '../../utils/tooltip.js';
 import type { CardItem } from '../../types/index.js';
 import type { RenderOptions } from '../types.js';
 import { formatCardPrice } from '../cardElement.js';
-
-const gridTooltip = getGridTooltip();
-
-function showGridTooltip(html: string, x: number, y: number): void {
-  gridTooltip.show(html, x, y);
-}
-
-function hideGridTooltip(): void {
-  gridTooltip.hide();
-}
 
 function shouldPreferLowQuality(): boolean {
   if (typeof navigator === 'undefined') {
     return false;
   }
-  const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } })
-    .connection;
+  const { connection } = navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } };
   if (connection?.saveData) {
     return true;
   }
@@ -77,7 +64,6 @@ export function setupCardImage(
     deferUntilVisible: true
   });
 }
-
 
 /**
  * Populate a card element with data and markup.
@@ -261,31 +247,15 @@ export function createCardHistogram(el: DocumentFragment | HTMLElement, cardData
   }
 }
 
+/** Setup tooltip for histogram columns via data attributes (event delegation handles listeners) */
 function setupHistogramTooltip(col: HTMLElement, cardName: string, tip: string): void {
-  col.setAttribute('tabindex', '0');
-  col.setAttribute('role', 'img');
-  col.setAttribute('aria-label', tip);
-  col.setAttribute('aria-describedby', 'grid-tooltip');
-
-  const showTooltip = (ev: MouseEvent) =>
-    showGridTooltip(
-      `<strong>${escapeHtml(cardName)}</strong><div>${escapeHtml(tip)}</div>`,
-      ev.clientX || 0,
-      ev.clientY || 0
-    );
-
-  col.addEventListener('mousemove', showTooltip);
-  col.addEventListener('mouseenter', showTooltip);
-  col.addEventListener('mouseleave', hideGridTooltip);
-  col.addEventListener('blur', hideGridTooltip);
-  col.addEventListener('focus', () => {
-    const rect = col.getBoundingClientRect();
-    showGridTooltip(
-      `<strong>${escapeHtml(cardName)}</strong><div>${escapeHtml(tip)}</div>`,
-      rect.left + rect.width / 2,
-      rect.top
-    );
-  });
+  const column = col;
+  column.setAttribute('tabindex', '0');
+  column.setAttribute('role', 'img');
+  column.setAttribute('aria-label', tip);
+  column.setAttribute('aria-describedby', 'grid-tooltip');
+  column.dataset.cardName = cardName;
+  column.dataset.tip = tip;
 }
 
 /**
@@ -316,8 +286,10 @@ export function attachCardNavigation(card: HTMLElement, cardData: CardItem): voi
 /**
  * Build a card element for the grid.
  * @param cardData - Card data.
+ * @param useSm - Whether to use small images.
  * @param overrides - Image override map.
  * @param renderFlags - Rendering options.
+ * @param previousCardIds - Previously rendered card ids.
  */
 export function makeCardElement(
   cardData: CardItem,
