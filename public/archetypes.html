@@ -52,16 +52,68 @@
     <link rel="modulepreload" href="/assets/js/src/loaders/archetypes.js" />
   </head>
   <body>
-    <div class="analysis-page">
+    <div class="analysis-page archetypes-page">
       <main id="main-content" class="analysis-main" tabindex="-1">
         <div class="page-header">
           <h1 class="page-title">Archetypes</h1>
           <p class="page-subtitle">Analyze the top performing decks in the current meta.</p>
         </div>
-        <div id="analysis-list-loading" class="analysis-loading" role="status">Loading archetypes…</div>
-        <div id="analysis-list-empty" class="analysis-empty-state" hidden>
+
+        <section class="archetypes-summary" aria-live="polite">
+          <div class="archetypes-summary__stat">
+            <span class="archetypes-summary__label">Timeframe</span>
+            <span id="archetypes-summary-window" class="archetypes-summary__value">Online - Last 14 Days</span>
+          </div>
+          <div class="archetypes-summary__stat">
+            <span class="archetypes-summary__label">Archetypes</span>
+            <span id="archetypes-summary-count" class="archetypes-summary__value">--</span>
+          </div>
+          <div class="archetypes-summary__stat">
+            <span class="archetypes-summary__label">Decks tracked</span>
+            <span id="archetypes-summary-decks" class="archetypes-summary__value">--</span>
+          </div>
+          <div class="archetypes-summary__stat">
+            <span class="archetypes-summary__label">Top share</span>
+            <span id="archetypes-summary-top" class="archetypes-summary__value">--</span>
+            <span id="archetypes-summary-top-label" class="archetypes-summary__hint"></span>
+          </div>
+        </section>
+
+        <div class="toolbar archetypes-toolbar" role="search" aria-label="Archetype search and sorting">
+          <div class="toolbar-inner">
+            <div class="controls">
+              <input
+                id="archetype-search"
+                type="search"
+                placeholder="Search archetypes..."
+                aria-label="Search archetypes by name or signature card"
+                autocomplete="off"
+                role="searchbox"
+              />
+              <div class="archetypes-sort">
+                <label class="filter-label" for="archetype-sort">Sort</label>
+                <select id="archetype-sort" aria-label="Sort archetypes">
+                  <option value="deck-desc" selected>Most decks</option>
+                  <option value="deck-asc">Fewest decks</option>
+                  <option value="percent-desc">Highest share</option>
+                  <option value="percent-asc">Lowest share</option>
+                  <option value="alpha-asc">A to Z</option>
+                  <option value="alpha-desc">Z to A</option>
+                </select>
+              </div>
+              <div id="analysis-results" class="archetypes-results" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="analysis-list-loading" class="analysis-loading" role="status">Loading archetypes...</div>
+        <div id="analysis-list-empty" class="analysis-empty-state empty-state" hidden>
           <h2>No archetypes available</h2>
           <p>Try again later once new tournaments are published.</p>
+        </div>
+        <div id="analysis-list-empty-results" class="analysis-empty-state empty-state" hidden>
+          <h2>No matches found</h2>
+          <p>Try a different search term or sort option.</p>
         </div>
         <ul id="analysis-archetype-list" class="analysis-list__items" hidden></ul>
       </main>
@@ -74,15 +126,26 @@
             <div class="analysis-list-item__thumbnail" aria-hidden="true">
               <img class="analysis-list-item__thumbnail-image" alt="" loading="lazy" />
               <span class="analysis-list-item__thumbnail-fallback"></span>
+              <span class="analysis-list-item__rank" aria-hidden="true"></span>
             </div>
             <div class="analysis-list-item__main">
-              <span class="analysis-list-item__name"></span>
+              <div class="analysis-list-item__header">
+                <span class="analysis-list-item__name"></span>
+              </div>
               <span class="analysis-list-item__count"></span>
+              <div class="analysis-list-item__bar usagebar" aria-hidden="true">
+                <div class="bar"></div>
+                <span class="pct"></span>
+              </div>
+              <div class="analysis-list-item__signature" hidden>
+                <span class="analysis-list-item__signature-label">Signature cards</span>
+                <div class="analysis-list-item__signature-list" aria-label="Signature cards"></div>
+              </div>
             </div>
           </div>
           <div class="analysis-list-item__stats">
             <span class="analysis-list-item__percent"></span>
-            <span class="analysis-list-item__chevron" aria-hidden="true">→</span>
+            <span class="analysis-list-item__chevron" aria-hidden="true">&rarr;</span>
           </div>
         </a>
       </li>
