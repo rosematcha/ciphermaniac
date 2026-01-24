@@ -33,6 +33,7 @@ export type {
 
 let pricingData: PricingData | null = null;
 const jsonCache = new Map<string, CacheEntry>();
+const reportCache = new Map<string, CacheEntry<TournamentReport>>();
 export const ONLINE_META_NAME = 'Online - Last 14 Days';
 // const _ONLINE_META_SEGMENT = `/${encodeURIComponent(ONLINE_META_NAME)}`; // Reserved for future use
 
@@ -75,6 +76,14 @@ function cacheResolvedJson(cacheKey: string, data: any, ttl: number) {
 
 function cachePendingJson(cacheKey: string, promise: Promise<any>, ttl: number) {
   jsonCache.set(cacheKey, { promise, expiresAt: Date.now() + ttl });
+}
+
+function cacheResolvedReport(cacheKey: string, data: TournamentReport, ttl: number) {
+  reportCache.set(cacheKey, { data, expiresAt: Date.now() + ttl });
+}
+
+function cachePendingReport(cacheKey: string, promise: Promise<TournamentReport>, ttl: number) {
+  reportCache.set(cacheKey, { promise, expiresAt: Date.now() + ttl });
 }
 
 /**
@@ -403,41 +412,69 @@ export async function fetchLimitlessTournaments(filters: LimitlessFilters = {}):
  * @param tournament - Tournament identifier.
  */
 export async function fetchReport(tournament: string): Promise<TournamentReport> {
+  const cacheKey = `report:${tournament}`;
+  const now = Date.now();
+  const existing = reportCache.get(cacheKey);
+
+  if (existing) {
+    if (existing.data && existing.expiresAt > now) {
+      logger.debug('Report cache hit', { tournament });
+      return existing.data;
+    }
+    if (existing.promise) {
+      logger.debug('Awaiting in-flight report request', { tournament });
+      return existing.promise;
+    }
+    if (!existing.promise && existing.expiresAt <= now) {
+      reportCache.delete(cacheKey);
+    }
+  }
+
   perf.start(`fetchReport:${tournament}`);
+  const loader = (async () => {
+    try {
+      const db = await loadDatabase(tournament);
+      const cardStats = db.getCardStats();
+      const deckTotal = db.getTotalDecks();
+      const items = cardStats.map((row: any) => ({
+        name: row.card_name,
+        set: row.card_set ?? undefined,
+        number: row.card_number ?? undefined,
+        uid: row.card_uid,
+        found: row.found,
+        total: deckTotal,
+        pct: row.pct,
+        category: row.category ?? undefined,
+        trainerType: row.trainer_type ?? undefined,
+        energyType: row.energy_type ?? undefined,
+        aceSpec: Boolean(row.ace_spec),
+        dist: row.dist || [],
+        rank: row.rank
+      }));
+      logger.debug(`Loaded tournament report from SQLite for ${tournament}`, { deckTotal, itemCount: items.length });
+      return { deckTotal, items };
+    } catch (dbError) {
+      logger.debug('SQLite report failed, falling back to JSON', {
+        tournament,
+        error: dbError instanceof Error ? dbError.message : String(dbError)
+      });
+      const encodedTournament = encodeURIComponent(tournament);
+      return fetchReportResource<TournamentReport>(
+        `${encodedTournament}/master.json`,
+        `report for ${tournament}`,
+        'object',
+        'tournament report',
+        { cache: true }
+      );
+    }
+  })();
+
+  cachePendingReport(cacheKey, loader, CONFIG.API.JSON_CACHE_TTL_MS);
+
   try {
-    const db = await loadDatabase(tournament);
-    const cardStats = db.getCardStats();
-    const deckTotal = db.getTotalDecks();
-    const items = cardStats.map((row: any) => ({
-      name: row.card_name,
-      set: row.card_set ?? undefined,
-      number: row.card_number ?? undefined,
-      uid: row.card_uid,
-      found: row.found,
-      total: deckTotal,
-      pct: row.pct,
-      category: row.category ?? undefined,
-      trainerType: row.trainer_type ?? undefined,
-      energyType: row.energy_type ?? undefined,
-      aceSpec: Boolean(row.ace_spec),
-      dist: row.dist || [],
-      rank: row.rank
-    }));
-    logger.debug(`Loaded tournament report from SQLite for ${tournament}`, { deckTotal, itemCount: items.length });
-    return { deckTotal, items };
-  } catch (dbError) {
-    logger.debug('SQLite report failed, falling back to JSON', {
-      tournament,
-      error: dbError instanceof Error ? dbError.message : String(dbError)
-    });
-    const encodedTournament = encodeURIComponent(tournament);
-    return fetchReportResource<TournamentReport>(
-      `${encodedTournament}/master.json`,
-      `report for ${tournament}`,
-      'object',
-      'tournament report',
-      { cache: true }
-    );
+    const data = await loader;
+    cacheResolvedReport(cacheKey, data, CONFIG.API.JSON_CACHE_TTL_MS);
+    return data;
   } finally {
     perf.end(`fetchReport:${tournament}`);
   }

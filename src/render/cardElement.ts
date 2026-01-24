@@ -7,7 +7,6 @@ import { buildCardPath, normalizeCardNumber } from '../card/routing.js';
 import { trackMissing } from '../dev/missingThumbs.js';
 import { parallelImageLoader } from '../utils/parallelImageLoader.js';
 import { createElement, setStyles } from '../utils/dom.js';
-import { escapeHtml } from '../utils/html.js';
 import type { CardItem } from '../types/index.js';
 import type { RenderOptions } from './types.js';
 import { hideGridTooltip, showGridTooltip } from './cards/tooltip.js';
@@ -316,33 +315,16 @@ export function populateCardContent(
 }
 
 /**
- * Setup tooltip for histogram columns
+ * Setup tooltip for histogram columns via data attributes (event delegation handles listeners)
  */
 function setupHistogramTooltip(col: HTMLElement, cardName: string, tip: string): void {
-  col.setAttribute('tabindex', '0');
-  col.setAttribute('role', 'img');
-  col.setAttribute('aria-label', tip);
-  col.setAttribute('aria-describedby', 'grid-tooltip');
-
-  const showTooltip = (ev: MouseEvent) =>
-    showGridTooltip(
-      `<strong>${escapeHtml(cardName)}</strong><div>${escapeHtml(tip)}</div>`,
-      ev.clientX || 0,
-      ev.clientY || 0
-    );
-
-  col.addEventListener('mousemove', showTooltip);
-  col.addEventListener('mouseenter', showTooltip);
-  col.addEventListener('mouseleave', hideGridTooltip);
-  col.addEventListener('blur', hideGridTooltip);
-  col.addEventListener('focus', (_ev: FocusEvent) => {
-    const rect = col.getBoundingClientRect();
-    showGridTooltip(
-      `<strong>${escapeHtml(cardName)}</strong><div>${escapeHtml(tip)}</div>`,
-      rect.left + rect.width / 2,
-      rect.top
-    );
-  });
+  const column = col;
+  column.setAttribute('tabindex', '0');
+  column.setAttribute('role', 'img');
+  column.setAttribute('aria-label', tip);
+  column.setAttribute('aria-describedby', 'grid-tooltip');
+  column.dataset.cardName = cardName;
+  column.dataset.tip = tip;
 }
 
 /**

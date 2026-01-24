@@ -77,12 +77,56 @@ let decksSection: HTMLElement | null = null;
 let eventsSection: HTMLElement | null = null;
 let copiesSection: HTMLElement | null = null;
 
+type CardPageState = 'idle' | 'loading' | 'ready' | 'missing' | 'error';
+let cardPageState: CardPageState = 'idle';
+let cardLoadTriggered = false;
+const perfMarksEnabled = typeof performance !== 'undefined' && typeof performance.mark === 'function';
+
+function markCardPerf(name: string): void {
+  if (!perfMarksEnabled) {
+    return;
+  }
+  try {
+    performance.mark(name);
+  } catch {
+    // ignore perf mark errors
+  }
+}
+
+function measureCardPerf(name: string, startMark: string, endMark: string): void {
+  if (!perfMarksEnabled || typeof performance.measure !== 'function') {
+    return;
+  }
+  try {
+    performance.measure(name, startMark, endMark);
+  } catch {
+    // ignore perf measure errors
+  }
+}
+
+function setCardPageState(nextState: CardPageState): void {
+  if (cardPageState === nextState) {
+    return;
+  }
+  cardPageState = nextState;
+  const main = document.querySelector('main');
+  if (main) {
+    main.setAttribute('data-card-state', nextState);
+  }
+  if (metaSection) {
+    metaSection.setAttribute('data-card-state', nextState);
+  }
+}
+
 function refreshDomRefs() {
   cardTitleEl = document.getElementById('card-title');
   metaSection = document.getElementById('card-meta');
   decksSection = document.getElementById('card-decks');
   eventsSection = document.getElementById('card-events');
   copiesSection = document.getElementById('card-copies');
+  if (metaSection) {
+    metaSection.setAttribute('data-card-state', cardPageState);
+  }
 }
 
 function ensureCardMetaStructure(): boolean {
@@ -366,12 +410,21 @@ if (document.readyState === 'loading') {
  * @param cardIdentifier - Card identifier to check
  * @returns Whether the card has a Ciphermaniac page
  */
-async function checkCardExistsInDatabase(cardIdentifier: string): Promise<boolean> {
+interface CardExistenceResult {
+  exists: boolean;
+  checked: boolean;
+  reason?: 'not-found' | 'empty';
+}
+
+async function checkCardExistsInDatabase(
+  cardIdentifier: string,
+  tournamentsPromise?: Promise<string[]>
+): Promise<CardExistenceResult> {
   try {
-    const tournaments = await fetchTournamentsList();
+    const tournaments = tournamentsPromise ? await tournamentsPromise : await fetchTournamentsList();
     const tournamentList = Array.isArray(tournaments) ? tournaments : [];
     if (tournamentList.length === 0) {
-      return true;
+      return { exists: true, checked: false };
     }
     let canonicalIdentifier = cardIdentifier;
     try {
@@ -403,6 +456,9 @@ async function checkCardExistsInDatabase(cardIdentifier: string): Promise<boolea
       });
     }
     const tournamentsToCheck = tournamentList.slice(0, 8);
+    let reportsChecked = 0;
+    let nonEmptyIndex = 0;
+    let notFoundReports = 0;
     for (const tournament of tournamentsToCheck) {
       try {
         const report = await fetchReport(tournament);
@@ -411,13 +467,22 @@ async function checkCardExistsInDatabase(cardIdentifier: string): Promise<boolea
         if (!cards || typeof cards !== 'object') {
           continue;
         }
-        const available = new Set(Object.keys(cards).map(name => name.toLowerCase()));
+        reportsChecked++;
+        const cardNames = Object.keys(cards);
+        if (cardNames.length === 0) {
+          continue;
+        }
+        nonEmptyIndex++;
+        const available = new Set(cardNames.map(name => name.toLowerCase()));
         for (const key of searchKeys) {
           if (available.has(key)) {
-            return true;
+            return { exists: true, checked: true };
           }
         }
       } catch (error: any) {
+        if (typeof error?.message === 'string' && error.message.includes('HTTP 404')) {
+          notFoundReports += 1;
+        }
         logger.debug('Card index unavailable during existence check', {
           cardIdentifier,
           tournament,
@@ -425,44 +490,70 @@ async function checkCardExistsInDatabase(cardIdentifier: string): Promise<boolea
         });
       }
     }
-    return false;
+    if (reportsChecked === 0 && notFoundReports === 0) {
+      return { exists: true, checked: false };
+    }
+    if (nonEmptyIndex === 0 && reportsChecked > 0) {
+      return { exists: false, checked: true, reason: 'empty' };
+    }
+    if (reportsChecked === 0 && notFoundReports > 0) {
+      return { exists: false, checked: true, reason: 'not-found' };
+    }
+    return { exists: false, checked: true, reason: 'not-found' };
   } catch (error: any) {
     logger.warn('Failed to check card existence via card indices', {
       cardIdentifier,
       error: error.message
     });
-    return true;
+    return { exists: true, checked: false };
   }
 }
 
 // Missing card page functionality moved to ./card/missingCard.js
 
 async function load() {
+  if (cardLoadTriggered) {
+    return;
+  }
+  cardLoadTriggered = true;
+  markCardPerf('card:load-start');
   ensureCardMetaStructure();
   refreshDomRefs();
+  setCardPageState('loading');
 
   if (!cardIdentifier) {
     if (metaSection) {
       metaSection.textContent = 'Missing card identifier.';
     }
-    return;
-  }
-
-  // Check if card exists in Ciphermaniac database before proceeding
-  const cardExistsInDatabase = await checkCardExistsInDatabase(cardIdentifier);
-  if (!cardExistsInDatabase) {
-    await renderMissingCardPage(cardIdentifier, metaSection);
+    setCardPageState('error');
     return;
   }
 
   // Phase 1: Immediate UI Setup (synchronous, runs before any network)
   setupImmediateUI();
+  markCardPerf('card:immediate-ui');
 
   // Phase 2: Start all async operations in parallel
   const dataPromises = startParallelDataLoading();
+  const existencePromise = checkCardExistsInDatabase(cardIdentifier, dataPromises.tournaments);
 
   // Phase 3: Progressive rendering as data becomes available
-  await renderProgressively(dataPromises);
+  const hasData = await renderProgressively(dataPromises);
+  markCardPerf('card:data-ready');
+  const existence = await existencePromise;
+
+  if (!existence.exists && existence.checked && !hasData) {
+    setCardPageState('missing');
+    markCardPerf('card:missing');
+    measureCardPerf('card:ttm-missing', 'card:load-start', 'card:missing');
+    await renderMissingCardPage(cardIdentifier, metaSection);
+    return;
+  }
+
+  setCardPageState('ready');
+  markCardPerf('card:ready');
+  measureCardPerf('card:ttm-ready', 'card:load-start', 'card:ready');
+  measureCardPerf('card:ttm-data', 'card:load-start', 'card:data-ready');
 }
 
 function setupImmediateUI() {
@@ -618,7 +709,7 @@ function startParallelDataLoading() {
   };
 }
 
-async function renderProgressively(dataPromises: any) {
+async function renderProgressively(dataPromises: any): Promise<boolean> {
   // Get tournaments data first (needed for most content)
   let tournaments: string[] = [];
   try {
@@ -684,10 +775,14 @@ async function renderProgressively(dataPromises: any) {
   };
 
   // Load main chart data in parallel
-  await loadAndRenderMainContent(tournaments, cache, saveCache);
+  return loadAndRenderMainContent(tournaments, cache, saveCache);
 }
 
-async function loadAndRenderMainContent(tournaments: string[], cacheObject: any, saveCache: () => void) {
+async function loadAndRenderMainContent(
+  tournaments: string[],
+  cacheObject: any,
+  saveCache: () => void
+): Promise<boolean> {
   // Fixed window: only process the most recent 6 tournaments to minimize network calls
   const PROCESS_LIMIT = 6;
   const recentTournaments = tournaments.slice(0, PROCESS_LIMIT);
@@ -1090,8 +1185,7 @@ async function loadAndRenderMainContent(tournaments: string[], cacheObject: any,
   });
 
   // No min-decks selector in UI; default minTotal used in picker
+  return deckRows.length > 0 || timePoints.length > 0 || eventsWithCard.length > 0;
 }
 
-if (!__ROUTE_REDIRECTING) {
-  load();
-}
+// initializeCardPage handles load() after resolving the card identifier.

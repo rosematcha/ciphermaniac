@@ -18,6 +18,7 @@
 
 /* Import page-specific styles */
 @import './pages/responsive.css';
+@import './pages/_archetypes.css';
 @import './pages/archetype-trends.css';
 
 /* ==========================================================================
