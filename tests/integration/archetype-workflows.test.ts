@@ -48,8 +48,8 @@ let modulesPromise: Promise<{
   loadFilterCombination: typeof import('../../src/archetype/data/report.ts').loadFilterCombination;
   loadSuccessBaseline: typeof import('../../src/archetype/data/report.ts').loadSuccessBaseline;
   buildTcgliveExportString: typeof import('../../src/archetype/export/tcgLive.ts').buildTcgliveExportString;
-  getState: typeof import('../../src/archetype/state.ts').getState;
-  setState: typeof import('../../src/archetype/state.ts').setState;
+  getState: typeof import('../../src/archetype/state.js').getState;
+  setState: typeof import('../../src/archetype/state.js').setState;
   fetchArchetypeDecksLocal: typeof import('../../src/utils/clientSideFiltering.ts').fetchArchetypeDecksLocal;
   filterDecksBySuccess: typeof import('../../src/utils/clientSideFiltering.ts').filterDecksBySuccess;
   generateReportForFilters: typeof import('../../src/utils/clientSideFiltering.ts').generateReportForFilters;
@@ -75,7 +75,7 @@ async function loadModules() {
       import('../../src/archetype/data/skeleton.ts'),
       import('../../src/archetype/data/report.ts'),
       import('../../src/archetype/export/tcgLive.ts'),
-      import('../../src/archetype/state.ts'),
+      import('../../src/archetype/state.js'),
       import('../../src/utils/clientSideFiltering.ts')
     ]).then(([skeleton, report, tcg, state, client]) => ({
       buildSkeletonExportEntries: skeleton.buildSkeletonExportEntries,
