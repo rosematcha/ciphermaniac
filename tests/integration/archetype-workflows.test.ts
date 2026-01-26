@@ -48,8 +48,8 @@ let modulesPromise: Promise<{
   loadFilterCombination: typeof import('../../src/archetype/data/report.ts').loadFilterCombination;
   loadSuccessBaseline: typeof import('../../src/archetype/data/report.ts').loadSuccessBaseline;
   buildTcgliveExportString: typeof import('../../src/archetype/export/tcgLive.ts').buildTcgliveExportString;
-  getState: typeof import('../../src/archetype/state.ts').getState;
-  setState: typeof import('../../src/archetype/state.ts').setState;
+  getState: typeof import('../../src/archetype/state.js').getState;
+  setState: typeof import('../../src/archetype/state.js').setState;
   fetchArchetypeDecksLocal: typeof import('../../src/utils/clientSideFiltering.ts').fetchArchetypeDecksLocal;
   filterDecksBySuccess: typeof import('../../src/utils/clientSideFiltering.ts').filterDecksBySuccess;
   generateReportForFilters: typeof import('../../src/utils/clientSideFiltering.ts').generateReportForFilters;
@@ -68,14 +68,23 @@ function ensureDomMocks(): void {
   }
 }
 
+function resolveModuleUrl(specifier: string, parentUrl: string): string {
+  if (typeof import.meta.resolve === 'function') {
+    return import.meta.resolve(specifier, parentUrl);
+  }
+  return new URL(specifier, parentUrl).href;
+}
+
 async function loadModules() {
   if (!modulesPromise) {
     ensureDomMocks();
+    const reportUrl = new URL('../../src/archetype/data/report.ts', import.meta.url).href;
+    const stateUrl = resolveModuleUrl('../state.js', reportUrl);
     modulesPromise = Promise.all([
       import('../../src/archetype/data/skeleton.ts'),
-      import('../../src/archetype/data/report.ts'),
+      import(reportUrl),
       import('../../src/archetype/export/tcgLive.ts'),
-      import('../../src/archetype/state.ts'),
+      import(stateUrl),
       import('../../src/utils/clientSideFiltering.ts')
     ]).then(([skeleton, report, tcg, state, client]) => ({
       buildSkeletonExportEntries: skeleton.buildSkeletonExportEntries,

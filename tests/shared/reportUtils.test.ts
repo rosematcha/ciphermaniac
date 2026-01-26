@@ -10,8 +10,8 @@ import {
   assignRanks,
   calculatePercentage,
   composeCategoryPath,
+  createDistFromHistogram,
   createDistributionFromCounts,
-  createDistributionFromHistogram,
   sortReportItems
 } from '../../shared/reportUtils.js';
 
@@ -45,13 +45,13 @@ test('calculatePercentage handles small percentages', () => {
 // createDistributionFromHistogram tests
 // ============================================================================
 
-test('createDistributionFromHistogram creates correct distribution', () => {
+test('createDistFromHistogram creates correct distribution', () => {
   const histogram = new Map<number, number>([
     [1, 5],
     [2, 10],
     [3, 3]
   ]);
-  const result = createDistributionFromHistogram(histogram, 18);
+  const result = createDistFromHistogram(histogram, 18);
 
   assert.strictEqual(result.length, 3);
   assert.deepStrictEqual(result[0], { copies: 1, players: 5, percent: 27.78 });
@@ -59,22 +59,22 @@ test('createDistributionFromHistogram creates correct distribution', () => {
   assert.deepStrictEqual(result[2], { copies: 3, players: 3, percent: 16.67 });
 });
 
-test('createDistributionFromHistogram sorts by copies ascending', () => {
+test('createDistFromHistogram sorts by copies ascending', () => {
   const histogram = new Map<number, number>([
     [4, 2],
     [1, 5],
     [2, 3]
   ]);
-  const result = createDistributionFromHistogram(histogram, 10);
+  const result = createDistFromHistogram(histogram, 10);
 
   assert.strictEqual(result[0].copies, 1);
   assert.strictEqual(result[1].copies, 2);
   assert.strictEqual(result[2].copies, 4);
 });
 
-test('createDistributionFromHistogram handles empty histogram', () => {
+test('createDistFromHistogram handles empty histogram', () => {
   const histogram = new Map<number, number>();
-  const result = createDistributionFromHistogram(histogram, 0);
+  const result = createDistFromHistogram(histogram, 0);
 
   assert.strictEqual(result.length, 0);
 });

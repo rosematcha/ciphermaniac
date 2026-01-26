@@ -7,13 +7,36 @@
 
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import * as cheerio from 'cheerio';
-import { SET_CATALOG } from '../../public/assets/js/data/setCatalog.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+async function loadSetCatalog() {
+    const candidates = [
+        join(__dirname, '../../public/assets/js/data/setCatalog.js'),
+        join(__dirname, '../../public/assets/js/src/data/setCatalog.js')
+    ];
+
+    for (const candidate of candidates) {
+        try {
+            const module = await import(pathToFileURL(candidate));
+            if (module?.SET_CATALOG) {
+                return module.SET_CATALOG;
+            }
+        } catch (error) {
+            if (error?.code !== 'ERR_MODULE_NOT_FOUND') {
+                throw error;
+            }
+        }
+    }
+
+    throw new Error('Unable to load setCatalog.js from public assets');
+}
+
+const SET_CATALOG = await loadSetCatalog();
 
 const PUBLIC_R2_BASE = process.env.PUBLIC_R2_BASE_URL || 'https://r2.ciphermaniac.com';
 const OUTPUT_PATH = join(__dirname, '../../public/assets/card-synonyms.json');
