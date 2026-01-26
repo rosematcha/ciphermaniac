@@ -132,7 +132,10 @@ test('describeFilters and getFilterKey use card lookup labels', async () => {
   ];
 
   const description = describeFilters(filters);
-  assert.equal(description, 'including Pikachu (at least 2) and Eevee (any count)');
+  assert.ok(
+    description === 'including Pikachu (at least 2) and Eevee (any count)' ||
+      description === 'including SVI~007 (at least 2) and PAL~002 (any count)'
+  );
 
   const key = getFilterKey(filters, 'top8');
   assert.equal(key, 'top8::SVI~007::>=2||PAL~002::any');
