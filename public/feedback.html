@@ -1,199 +1,97 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Feedback - Submit Bug Reports & Feature Requests | Ciphermaniac</title>
-    <meta
-      name="description"
-      content="Submit feedback, bug reports, or feature requests for Ciphermaniac. Help us improve the Pokemon TCG meta analysis experience."
-    />
-    <meta name="keywords" content="Ciphermaniac feedback, bug report, feature request, Pokemon TCG tool" />
 
-    <!-- Canonical URL -->
-    <link rel="canonical" href="https://ciphermaniac.com/feedback" />
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Feedback - Submit Bug Reports & Feature Requests | Ciphermaniac</title>
+  <meta name="description"
+    content="Submit feedback, bug reports, or feature requests for Ciphermaniac. Help us improve the Pokemon TCG meta analysis experience." />
+  <meta name="keywords" content="Ciphermaniac feedback, bug report, feature request, Pokemon TCG tool" />
 
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://ciphermaniac.com/feedback" />
-    <meta property="og:title" content="Feedback - Ciphermaniac" />
-    <meta property="og:description" content="Submit feedback, bug reports, or feature requests for Ciphermaniac." />
-    <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
-    <meta property="og:site_name" content="Ciphermaniac" />
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://ciphermaniac.com/feedback" />
 
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://ciphermaniac.com/feedback" />
-    <meta name="twitter:title" content="Feedback - Ciphermaniac" />
-    <meta name="twitter:description" content="Submit feedback or feature requests for Ciphermaniac." />
-    <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://ciphermaniac.com/feedback" />
+  <meta property="og:title" content="Feedback - Ciphermaniac" />
+  <meta property="og:description" content="Submit feedback, bug reports, or feature requests for Ciphermaniac." />
+  <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+  <meta property="og:site_name" content="Ciphermaniac" />
 
-    <!-- Favicon - PNG for Google compatibility -->
-    <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png" />
-    <link rel="manifest" href="/site.webmanifest" />
-    <meta name="theme-color" content="#fee475" />
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://ciphermaniac.com/feedback" />
+  <meta name="twitter:title" content="Feedback - Ciphermaniac" />
+  <meta name="twitter:description" content="Submit feedback or feature requests for Ciphermaniac." />
+  <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
 
-    <!-- Preload critical font to reduce layout shift -->
-    <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="/assets/style.css" />
-    <!-- Preload critical JS module for faster page load -->
-    <link rel="modulepreload" href="/assets/js/src/loaders/feedback.js" />
-  </head>
-  <body>
-    <main id="main-content" class="feedback-page" tabindex="-1">
-      <div class="page-header">
-        <h1 class="page-title">Site Feedback</h1>
-        <p class="page-subtitle">Help us improve Ciphermaniac by sharing your feedback.</p>
-      </div>
+  <!-- Favicon - PNG for Google compatibility -->
+  <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <meta name="theme-color" content="#fee475" />
 
-      <div class="container">
-        <form id="feedbackForm" class="feedback-form" aria-label="Feedback submission form">
-          <div class="form-group">
-            <label for="feedbackType">What type of feedback are you submitting?</label>
-            <select id="feedbackType" name="feedbackType" required aria-required="true">
-              <option value="">Select feedback type</option>
-              <option value="bug">Bug Report</option>
-              <option value="feature">Feature Request</option>
-              <option value="love">Declaration of Love</option>
-            </select>
-          </div>
+  <!-- Preload critical font to reduce layout shift -->
+  <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/assets/style.css?v=20260214h" />
+  <!-- Preload critical JS module for faster page load -->
+  <link rel="modulepreload" href="/assets/js/src/loaders/feedback.js" />
+</head>
 
-          <div id="bugDetails" class="conditional-section" style="display: none">
-            <div class="form-group">
-              <label for="platform">Platform</label>
-              <select id="platform" name="platform">
-                <option value="">Select platform</option>
-                <option value="desktop">Desktop</option>
-                <option value="mobile">Mobile</option>
-              </select>
-            </div>
+<body>
+  <main id="main-content" class="feedback-page" tabindex="-1">
+    <div class="page-header">
+      <h1 class="page-title">Site Feedback</h1>
+      <p class="page-subtitle">Help us improve Ciphermaniac by sharing your feedback.</p>
+    </div>
 
-            <div id="desktopDetails" class="conditional-subsection" style="display: none">
-              <div class="form-group">
-                <label for="desktopOS">Operating System</label>
-                <select id="desktopOS" name="desktopOS">
-                  <option value="">Select OS</option>
-                  <option value="windows">Windows</option>
-                  <option value="macos">macOS</option>
-                  <option value="linux">Linux</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="desktopBrowser">Browser</label>
-                <select id="desktopBrowser" name="desktopBrowser">
-                  <option value="">Select browser</option>
-                  <option value="chrome">Chrome</option>
-                  <option value="firefox">Firefox</option>
-                  <option value="safari">Safari</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div id="otherDesktopBrowser" class="form-group" style="display: none">
-                <label for="otherDesktopBrowserName">Other browser name</label>
-                <input
-                  type="text"
-                  id="otherDesktopBrowserName"
-                  name="otherDesktopBrowserName"
-                  placeholder="Enter browser name"
-                />
-              </div>
-            </div>
+    <div class="container">
+      <form id="feedbackForm" class="feedback-form" aria-label="Feedback submission form">
+        <div class="form-group">
+          <label for="feedbackType">What type of feedback are you submitting?</label>
+          <select id="feedbackType" name="feedbackType" required aria-required="true">
+            <option value="">Select feedback type</option>
+            <option value="bug">Bug Report</option>
+            <option value="feature">Feature Request</option>
+            <option value="love">Declaration of Love</option>
+          </select>
+        </div>
 
-            <div id="mobileDetails" class="conditional-subsection" style="display: none">
-              <div class="form-group">
-                <label for="mobileOS">Mobile OS</label>
-                <select id="mobileOS" name="mobileOS">
-                  <option value="">Select mobile OS</option>
-                  <option value="android">Android</option>
-                  <option value="ios">iOS</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="mobileBrowser">Browser</label>
-                <select id="mobileBrowser" name="mobileBrowser">
-                  <option value="">Select browser</option>
-                  <option value="chrome">Chrome</option>
-                  <option value="firefox">Firefox</option>
-                  <option value="safari">Safari</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div id="otherMobileBrowser" class="form-group" style="display: none">
-                <label for="otherMobileBrowserName">Other browser name</label>
-                <input
-                  type="text"
-                  id="otherMobileBrowserName"
-                  name="otherMobileBrowserName"
-                  placeholder="Enter browser name"
-                />
-              </div>
-            </div>
-          </div>
+        <div class="form-group">
+          <label for="feedbackText">Your feedback</label>
+          <textarea id="feedbackText" name="feedbackText" rows="6" required aria-required="true"
+            placeholder="Tell us what's on your mind…"></textarea>
+        </div>
 
-          <div class="form-group">
-            <label for="feedbackText">Your feedback</label>
-            <textarea
-              id="feedbackText"
-              name="feedbackText"
-              rows="6"
-              required
-              aria-required="true"
-              placeholder="Please describe your bug report or feature request in detail..."
-            ></textarea>
-          </div>
+        <div class="form-group">
+          <label for="contactInfo">Email <span class="optional-label">(optional)</span></label>
+          <input type="email" id="contactInfo" name="contactInfo" placeholder="your@email.com" />
+        </div>
 
-          <div class="form-group">
-            <label for="followUp">Would you like a follow-up from the developer?</label>
-            <select id="followUp" name="followUp" required aria-required="true">
-              <option value="">Select option</option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-            </select>
-          </div>
+        <div class="form-group">
+          <button type="submit" class="submit-button" aria-describedby="submitStatus">Submit Feedback</button>
+        </div>
 
-          <div id="contactDetails" class="conditional-section" style="display: none">
-            <div class="form-group">
-              <label for="contactMethod">How would you like to be contacted?</label>
-              <select id="contactMethod" name="contactMethod">
-                <option value="">Select contact method</option>
-                <option value="discord">Discord</option>
-                <option value="twitter">Twitter</option>
-                <option value="email">Email</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="contactInfo">Your username/email</label>
-              <input
-                type="text"
-                id="contactInfo"
-                name="contactInfo"
-                placeholder="Enter your Discord username, Twitter handle, or email"
-              />
-            </div>
-          </div>
+        <div id="submitStatus" class="status-message" style="display: none" role="alert" aria-live="assertive"></div>
+      </form>
+    </div>
+  </main>
 
-          <div class="form-group">
-            <button type="submit" class="submit-button" aria-describedby="submitStatus">Submit Feedback</button>
-          </div>
+  <script type="module">
+    import { createHeader } from '/assets/js/src/components/header.js';
+    import { createFooter } from '/assets/js/src/components/footer.js';
 
-          <div id="submitStatus" class="status-message" style="display: none" role="alert" aria-live="assertive"></div>
-        </form>
-      </div>
-    </main>
+    const header = createHeader({ currentPage: 'feedback' });
+    const footer = createFooter();
 
-    <script type="module">
-      import { createHeader } from '/assets/js/src/components/header.js';
-      import { createFooter } from '/assets/js/src/components/footer.js';
+    document.body.insertAdjacentElement('afterbegin', header);
+    document.body.insertAdjacentElement('beforeend', footer);
+  </script>
+  <script src="/assets/js/src/loaders/feedback.js" type="module"></script>
+</body>
 
-      const header = createHeader({ currentPage: 'feedback' });
-      const footer = createFooter();
-
-      document.body.insertAdjacentElement('afterbegin', header);
-      document.body.insertAdjacentElement('beforeend', footer);
-    </script>
-    <script src="/assets/js/src/loaders/feedback.js" type="module"></script>
-  </body>
 </html>

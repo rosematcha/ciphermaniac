@@ -1,170 +1,133 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Pokemon TCG Deck Archetypes - Meta Analysis | Ciphermaniac</title>
-    <meta
-      name="description"
-      content="Explore the top Pokemon TCG deck archetypes. Analyze win rates, matchups, core cards, and deck variants to master the competitive meta."
-    />
-    <meta
-      name="keywords"
-      content="Pokemon TCG decks, deck archetypes, PTCG meta, competitive decks, Pokemon deck analysis, top tier decks, meta report"
-    />
 
-    <!-- Canonical URL -->
-    <link rel="canonical" href="https://ciphermaniac.com/archetypes" />
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pokemon TCG Deck Archetypes - Meta Analysis | Ciphermaniac</title>
+  <meta name="description"
+    content="Explore the top Pokemon TCG deck archetypes. Analyze win rates, matchups, core cards, and deck variants to master the competitive meta." />
+  <meta name="keywords"
+    content="Pokemon TCG decks, deck archetypes, PTCG meta, competitive decks, Pokemon deck analysis, top tier decks, meta report" />
 
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://ciphermaniac.com/archetypes" />
-    <meta property="og:title" content="Pokemon TCG Deck Archetypes - Meta Analysis" />
-    <meta
-      property="og:description"
-      content="Explore the top Pokemon TCG deck archetypes. Analyze win rates, matchups, core cards, and deck variants."
-    />
-    <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
-    <meta property="og:site_name" content="Ciphermaniac" />
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://ciphermaniac.com/archetypes" />
 
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://ciphermaniac.com/archetypes" />
-    <meta name="twitter:title" content="Pokemon TCG Deck Archetypes" />
-    <meta
-      name="twitter:description"
-      content="Explore the top Pokemon TCG deck archetypes and analyze the competitive meta."
-    />
-    <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://ciphermaniac.com/archetypes" />
+  <meta property="og:title" content="Pokemon TCG Deck Archetypes - Meta Analysis" />
+  <meta property="og:description"
+    content="Explore the top Pokemon TCG deck archetypes. Analyze win rates, matchups, core cards, and deck variants." />
+  <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+  <meta property="og:site_name" content="Ciphermaniac" />
 
-    <!-- Favicon - PNG for Google compatibility -->
-    <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png" />
-    <link rel="manifest" href="/site.webmanifest" />
-    <meta name="theme-color" content="#fee475" />
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://ciphermaniac.com/archetypes" />
+  <meta name="twitter:title" content="Pokemon TCG Deck Archetypes" />
+  <meta name="twitter:description"
+    content="Explore the top Pokemon TCG deck archetypes and analyze the competitive meta." />
+  <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
 
-    <!-- Preload critical font to reduce layout shift -->
-    <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="/assets/style.css" />
-    <!-- Preload critical JS module for faster page load -->
-    <link rel="modulepreload" href="/assets/js/src/loaders/archetypes.js" />
-  </head>
-  <body>
-    <div class="analysis-page archetypes-page">
-      <main id="main-content" class="analysis-main" tabindex="-1">
-        <div class="page-header">
-          <h1 class="page-title">Archetypes</h1>
-          <p class="page-subtitle">Analyze the top performing decks in the current meta.</p>
+  <!-- Favicon - PNG for Google compatibility -->
+  <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <meta name="theme-color" content="#fee475" />
+
+  <!-- Preload critical font to reduce layout shift -->
+  <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/assets/style.css?v=20260214h" />
+  <!-- Preload critical JS module for faster page load -->
+  <link rel="modulepreload" href="/assets/js/src/loaders/archetypes.js" />
+</head>
+
+<body class="archetypes-index-page">
+  <div class="analysis-page archetypes-page">
+    <main id="main-content" class="analysis-main" tabindex="-1">
+      <div class="page-header">
+        <h1 class="page-title">Archetypes</h1>
+        <p class="page-subtitle">Analyze the top performing decks in the current meta.</p>
+      </div>
+
+      <div class="toolbar archetypes-toolbar" role="search" aria-label="Archetype search and sorting">
+        <div class="toolbar-inner">
+          <div class="controls">
+            <input id="archetype-search" type="search" placeholder="Search archetypes..."
+              aria-label="Search archetypes by name" autocomplete="off" role="searchbox" />
+            <div class="archetypes-sort">
+              <label class="filter-label" for="archetype-sort">Sort</label>
+              <select id="archetype-sort" aria-label="Sort archetypes">
+                <option value="deck-desc" selected>Most decks</option>
+                <option value="deck-asc">Fewest decks</option>
+                <option value="alpha-asc">A to Z</option>
+                <option value="alpha-desc">Z to A</option>
+              </select>
+            </div>
+            <div id="analysis-results" class="archetypes-results" aria-live="polite"></div>
+          </div>
         </div>
+      </div>
 
-        <section class="archetypes-summary" aria-live="polite">
-          <div class="archetypes-summary__stat">
-            <span class="archetypes-summary__label">Timeframe</span>
-            <span id="archetypes-summary-window" class="archetypes-summary__value">Online - Last 14 Days</span>
-          </div>
-          <div class="archetypes-summary__stat">
-            <span class="archetypes-summary__label">Archetypes</span>
-            <span id="archetypes-summary-count" class="archetypes-summary__value">--</span>
-          </div>
-          <div class="archetypes-summary__stat">
-            <span class="archetypes-summary__label">Decks tracked</span>
-            <span id="archetypes-summary-decks" class="archetypes-summary__value">--</span>
-          </div>
-          <div class="archetypes-summary__stat">
-            <span class="archetypes-summary__label">Top share</span>
-            <span id="archetypes-summary-top" class="archetypes-summary__value">--</span>
-            <span id="archetypes-summary-top-label" class="archetypes-summary__hint"></span>
-          </div>
-        </section>
+      <div id="analysis-list-loading" class="analysis-loading" role="status">Loading archetypes...</div>
+      <div id="analysis-list-empty" class="analysis-empty-state empty-state" hidden>
+        <h2>No archetypes available</h2>
+        <p>Try again later once new tournaments are published.</p>
+      </div>
+      <div id="analysis-list-empty-results" class="analysis-empty-state empty-state" hidden>
+        <h2>No matches found</h2>
+        <p>Try a different search term or sort option.</p>
+      </div>
+      <ul id="analysis-archetype-list" class="analysis-list__items" hidden></ul>
+    </main>
+  </div>
 
-        <div class="toolbar archetypes-toolbar" role="search" aria-label="Archetype search and sorting">
-          <div class="toolbar-inner">
-            <div class="controls">
-              <input
-                id="archetype-search"
-                type="search"
-                placeholder="Search archetypes..."
-                aria-label="Search archetypes by name or signature card"
-                autocomplete="off"
-                role="searchbox"
-              />
-              <div class="archetypes-sort">
-                <label class="filter-label" for="archetype-sort">Sort</label>
-                <select id="archetype-sort" aria-label="Sort archetypes">
-                  <option value="deck-desc" selected>Most decks</option>
-                  <option value="deck-asc">Fewest decks</option>
-                  <option value="percent-desc">Highest share</option>
-                  <option value="percent-asc">Lowest share</option>
-                  <option value="alpha-asc">A to Z</option>
-                  <option value="alpha-desc">Z to A</option>
-                </select>
-              </div>
-              <div id="analysis-results" class="archetypes-results" aria-live="polite"></div>
+  <template id="analysis-list-item">
+    <li class="analysis-list-item">
+      <a class="analysis-list-item__button" href="#">
+        <div class="analysis-list-item__preview">
+          <div class="analysis-list-item__thumbnail" aria-hidden="true">
+            <img class="analysis-list-item__thumbnail-image" alt="" loading="lazy" />
+            <span class="analysis-list-item__thumbnail-fallback"></span>
+            <span class="analysis-list-item__rank" aria-hidden="true"></span>
+          </div>
+          <div class="analysis-list-item__main">
+            <div class="analysis-list-item__header">
+              <span class="analysis-list-item__name"></span>
+            </div>
+            <span class="analysis-list-item__count"></span>
+            <div class="analysis-list-item__bar usagebar" aria-hidden="true">
+              <div class="bar"></div>
+              <span class="pct"></span>
             </div>
           </div>
         </div>
-
-        <div id="analysis-list-loading" class="analysis-loading" role="status">Loading archetypes...</div>
-        <div id="analysis-list-empty" class="analysis-empty-state empty-state" hidden>
-          <h2>No archetypes available</h2>
-          <p>Try again later once new tournaments are published.</p>
+        <div class="analysis-list-item__stats">
+          <span class="analysis-list-item__percent"></span>
+          <span class="analysis-list-item__chevron" aria-hidden="true">&rarr;</span>
         </div>
-        <div id="analysis-list-empty-results" class="analysis-empty-state empty-state" hidden>
-          <h2>No matches found</h2>
-          <p>Try a different search term or sort option.</p>
-        </div>
-        <ul id="analysis-archetype-list" class="analysis-list__items" hidden></ul>
-      </main>
-    </div>
+      </a>
+    </li>
+  </template>
 
-    <template id="analysis-list-item">
-      <li class="analysis-list-item">
-        <a class="analysis-list-item__button" href="#">
-          <div class="analysis-list-item__preview">
-            <div class="analysis-list-item__thumbnail" aria-hidden="true">
-              <img class="analysis-list-item__thumbnail-image" alt="" loading="lazy" />
-              <span class="analysis-list-item__thumbnail-fallback"></span>
-              <span class="analysis-list-item__rank" aria-hidden="true"></span>
-            </div>
-            <div class="analysis-list-item__main">
-              <div class="analysis-list-item__header">
-                <span class="analysis-list-item__name"></span>
-              </div>
-              <span class="analysis-list-item__count"></span>
-              <div class="analysis-list-item__bar usagebar" aria-hidden="true">
-                <div class="bar"></div>
-                <span class="pct"></span>
-              </div>
-              <div class="analysis-list-item__signature" hidden>
-                <span class="analysis-list-item__signature-label">Signature cards</span>
-                <div class="analysis-list-item__signature-list" aria-label="Signature cards"></div>
-              </div>
-            </div>
-          </div>
-          <div class="analysis-list-item__stats">
-            <span class="analysis-list-item__percent"></span>
-            <span class="analysis-list-item__chevron" aria-hidden="true">&rarr;</span>
-          </div>
-        </a>
-      </li>
-    </template>
+  <script type="module">
+    import { createHeader } from '/assets/js/src/components/header.js';
+    import { createFooter } from '/assets/js/src/components/footer.js';
 
-    <script type="module">
-      import { createHeader } from '/assets/js/src/components/header.js';
-      import { createFooter } from '/assets/js/src/components/footer.js';
+    const header = createHeader({ currentPage: 'archetypes' });
+    const footer = createFooter();
+    document.body.insertAdjacentElement('afterbegin', header);
+    const pageRoot = document.querySelector('.analysis-page');
+    if (pageRoot) {
+      pageRoot.insertAdjacentElement('afterend', footer);
+    } else {
+      document.body.insertAdjacentElement('beforeend', footer);
+    }
+  </script>
+  <script src="/assets/js/src/loaders/archetypes.js" type="module"></script>
+</body>
 
-      const header = createHeader({ currentPage: 'archetypes' });
-      const footer = createFooter();
-      document.body.insertAdjacentElement('afterbegin', header);
-      const pageRoot = document.querySelector('.analysis-page');
-      if (pageRoot) {
-        pageRoot.insertAdjacentElement('afterend', footer);
-      } else {
-        document.body.insertAdjacentElement('beforeend', footer);
-      }
-    </script>
-    <script src="/assets/js/src/loaders/archetypes.js" type="module"></script>
-  </body>
 </html>

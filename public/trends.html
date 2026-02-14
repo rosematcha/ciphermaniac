@@ -1,131 +1,125 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Pokemon TCG Meta Trends - Deck Popularity Over Time | Ciphermaniac</title>
-    <meta
-      name="description"
-      content="Track Pokemon TCG meta trends and deck popularity over time. See which decks are rising, falling, and dominating the competitive scene."
-    />
-    <meta
-      name="keywords"
-      content="Pokemon TCG meta trends, deck popularity, meta shifts, PTCG trends, competitive Pokemon trends, rising decks"
-    />
 
-    <!-- Canonical URL -->
-    <link rel="canonical" href="https://ciphermaniac.com/trends" />
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pokemon TCG Meta Trends - Deck Popularity Over Time | Ciphermaniac</title>
+  <meta name="description"
+    content="Track Pokemon TCG meta trends and deck popularity over time. See which decks are rising, falling, and dominating the competitive scene." />
+  <meta name="keywords"
+    content="Pokemon TCG meta trends, deck popularity, meta shifts, PTCG trends, competitive Pokemon trends, rising decks" />
 
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://ciphermaniac.com/trends" />
-    <meta property="og:title" content="Pokemon TCG Meta Trends - Deck Popularity Over Time" />
-    <meta
-      property="og:description"
-      content="Track Pokemon TCG meta trends and deck popularity over time. See which decks are rising, falling, and dominating."
-    />
-    <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
-    <meta property="og:site_name" content="Ciphermaniac" />
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://ciphermaniac.com/trends" />
 
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://ciphermaniac.com/trends" />
-    <meta name="twitter:title" content="Pokemon TCG Meta Trends" />
-    <meta name="twitter:description" content="Track Pokemon TCG meta trends and deck popularity over time." />
-    <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://ciphermaniac.com/trends" />
+  <meta property="og:title" content="Pokemon TCG Meta Trends - Deck Popularity Over Time" />
+  <meta property="og:description"
+    content="Track Pokemon TCG meta trends and deck popularity over time. See which decks are rising, falling, and dominating." />
+  <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+  <meta property="og:site_name" content="Ciphermaniac" />
 
-    <!-- Favicon - PNG for Google compatibility -->
-    <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png" />
-    <link rel="manifest" href="/site.webmanifest" />
-    <meta name="theme-color" content="#fee475" />
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://ciphermaniac.com/trends" />
+  <meta name="twitter:title" content="Pokemon TCG Meta Trends" />
+  <meta name="twitter:description" content="Track Pokemon TCG meta trends and deck popularity over time." />
+  <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
 
-    <!-- Preload critical font to reduce layout shift -->
-    <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="/assets/style.css" />
-    <!-- Preload critical JS module for faster page load -->
-    <link rel="modulepreload" href="/assets/js/src/loaders/trends.js" />
-  </head>
-  <body>
-    <main id="main-content" class="trends-page" tabindex="-1">
-      <div class="page-header">
-        <h1 class="page-title">Meta Trends</h1>
-        <p class="page-subtitle">Track the rise and fall of decks over time.</p>
+  <!-- Favicon - PNG for Google compatibility -->
+  <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <meta name="theme-color" content="#fee475" />
+
+  <!-- Preload critical font to reduce layout shift -->
+  <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/assets/style.css?v=20260214h" />
+  <!-- Preload critical JS module for faster page load -->
+  <link rel="modulepreload" href="/assets/js/src/loaders/trends.js" />
+</head>
+
+<body>
+  <main id="main-content" class="trends-page" tabindex="-1">
+    <div class="page-header">
+      <h1 class="page-title">Meta Trends</h1>
+      <p class="page-subtitle">Track the rise and fall of decks over time.</p>
+    </div>
+
+    <section class="page-intel-strip page-intel-strip--trends" aria-label="Trend page context">
+      <div class="page-intel-item page-intel-item--wide">
+        <span class="page-intel-item__label">Status</span>
+        <span id="trend-status" class="page-intel-item__value">Loading trend report...</span>
       </div>
-      <section class="trends-shell">
-        <section id="trend-meta" class="trend-panel" aria-live="polite">
-          <div class="meta-chart-wrapper">
-            <div id="trend-meta-chart" class="meta-chart">
-              <div class="loading" id="trends-loading">Loading trend data...</div>
-            </div>
-            <div class="meta-chart-chin" role="group" aria-label="Trend filters">
-              <div class="chin-filter">
-                <label for="trend-time-filter">Time</label>
-                <select id="trend-time-filter" class="chin-select" aria-label="Select time period">
-                  <option value="7">This Week</option>
-                  <option value="14" selected>Last 2 Weeks</option>
-                  <option value="30">Last Month</option>
-                </select>
-              </div>
-              <div class="chin-filter" hidden>
-                <label for="trend-performance-filter">Show</label>
-                <select id="trend-performance-filter" class="chin-select" aria-label="Filter by performance">
-                  <option value="all" selected>All Decks</option>
-                  <option value="top50">Top 50%</option>
-                  <option value="top25">Top 25%</option>
-                  <option value="top16">Top 16</option>
-                  <option value="top8">Top 8</option>
-                  <option value="top4">Top 4</option>
-                  <option value="top2">Finals</option>
-                  <option value="winner">Winners Only</option>
-                </select>
-              </div>
-              <div class="chin-filter">
-                <label for="trend-density-filter">Density</label>
-                <select id="trend-density-filter" class="chin-select" aria-label="Select chart density">
-                  <option value="4">Low</option>
-                  <option value="6" selected>Medium</option>
-                  <option value="8">High</option>
-                  <option value="10">Extreme</option>
-                </select>
-              </div>
-              <span class="chin-yaxis" id="trend-meta-range" aria-live="polite"></span>
-            </div>
-          </div>
-          <div class="meta-legend" id="trend-legend"></div>
-          <div class="movers" id="trend-movers"></div>
-          <div class="card-movers">
-            <h3>Card movers (past month)</h3>
-            <div class="movers" id="trend-card-movers"></div>
-          </div>
-        </section>
+      <p id="trend-summary" class="trend-summary"></p>
+    </section>
 
-        <section id="trend-archetypes" class="trend-panel" aria-live="polite" hidden>
-          <header class="trend-panel__header">
-            <div>
-              <p class="eyebrow">Archetype focus</p>
-              <h2>Consistent performers</h2>
-            </div>
-          </header>
-          <div class="trends-list" id="trends-list">
-            <div class="loading" id="trends-loading-arch">Loading trend data...</div>
+    <section class="trends-shell">
+      <section id="trend-meta" class="trend-panel" aria-live="polite">
+        <div class="meta-chart-wrapper">
+          <div id="trend-meta-chart" class="meta-chart">
+            <div class="loading" id="trends-loading">Loading trend data...</div>
           </div>
-        </section>
+          <div class="meta-chart-chin" role="group" aria-label="Trend filters">
+            <div class="chin-filter">
+              <label for="trend-time-filter">Time</label>
+              <select id="trend-time-filter" class="chin-select" aria-label="Select time period">
+                <option value="7">This Week</option>
+                <option value="14" selected>Last 2 Weeks</option>
+                <option value="30">Last Month</option>
+              </select>
+            </div>
+            <div class="chin-filter">
+              <label for="trend-performance-filter">Show</label>
+              <select id="trend-performance-filter" class="chin-select" aria-label="Filter by performance">
+                <option value="all" selected>All Decks</option>
+                <option value="top50">Top 50%</option>
+                <option value="top25">Top 25%</option>
+                <option value="top16">Top 16</option>
+                <option value="top8">Top 8</option>
+                <option value="top4">Top 4</option>
+                <option value="top2">Finals</option>
+                <option value="winner">Winners Only</option>
+              </select>
+            </div>
+            <span id="trend-meta-range" class="chin-yaxis"></span>
+          </div>
+        </div>
+        <div class="meta-legend" id="trend-legend"></div>
+        <div class="movers" id="trend-movers"></div>
+        <div id="trend-card-movers" class="card-movers"></div>
       </section>
-    </main>
 
-    <script type="module">
-      import { createHeader } from '/assets/js/src/components/header.js';
-      import { createFooter } from '/assets/js/src/components/footer.js';
+      <section id="trend-archetypes" class="trend-panel" aria-live="polite" hidden>
+        <header class="trend-panel__header">
+          <div>
+            <p class="eyebrow">Archetype focus</p>
+            <h2>Consistent performers</h2>
+          </div>
+        </header>
+        <div class="trends-list" id="trends-list">
+          <div class="loading" id="trends-loading-arch">Loading trend data...</div>
+        </div>
+      </section>
+    </section>
+  </main>
 
-      const header = createHeader({ currentPage: 'trends' });
-      const footer = createFooter();
+  <script type="module">
+    import { createHeader } from '/assets/js/src/components/header.js';
+    import { createFooter } from '/assets/js/src/components/footer.js';
 
-      document.body.insertAdjacentElement('afterbegin', header);
-      document.body.insertAdjacentElement('beforeend', footer);
-    </script>
-    <script src="/assets/js/src/loaders/trends.js" type="module"></script>
-  </body>
+    const header = createHeader({ currentPage: 'trends' });
+    const footer = createFooter();
+
+    document.body.insertAdjacentElement('afterbegin', header);
+    document.body.insertAdjacentElement('beforeend', footer);
+  </script>
+  <script src="/assets/js/src/loaders/trends.js" type="module"></script>
+</body>
+
 </html>
