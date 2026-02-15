@@ -4,6 +4,7 @@
  */
 import { fetchArchetypeReport, fetchArchetypesList, fetchReport } from '../api.js';
 import { parseReport } from '../parse.js';
+import { prettyTournamentName } from '../utils/format.js';
 import { findCard } from './data.js';
 import { getDisplayName } from './identifiers.js';
 import { getCanonicalCard, getCardVariants } from '../utils/cardSynonyms.js';
@@ -33,7 +34,7 @@ export function renderAnalysisSelector(events: string[], cardIdentifier: string 
   for (const tournamentName of events) {
     const opt = document.createElement('option');
     opt.value = tournamentName;
-    opt.textContent = tournamentName;
+    opt.textContent = prettyTournamentName(tournamentName);
     analysisSel.appendChild(opt);
   }
 

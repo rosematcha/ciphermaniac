@@ -68,7 +68,7 @@ export const CONFIG: Config = Object.freeze({
     GAP: 12,
     BASE_CARD_WIDTH: 200,
     MIN_BASE_CARD_WIDTH: 140,
-    MOBILE_MIN_CARD_WIDTH: 105, // Optimized for 3 cards per row on mobile
+    MOBILE_MIN_CARD_WIDTH: 118, // Better legibility on mobile, especially on narrow phones
     MOBILE_GAP: 8, // Reduced gap on mobile for more space
     MOBILE_PADDING: 12, // Reduced horizontal padding on mobile
     BIG_ROWS_COUNT: 2,

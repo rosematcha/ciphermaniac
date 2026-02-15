@@ -178,24 +178,39 @@ export function buildTrendDataset(
 
   const series: ArchetypeSeries[] = [];
   archetypes.forEach(archetype => {
-    const timeline = Array.from(archetype.timeline.values())
-      .map(entry => {
-        const tournamentMeta = tournamentIndex.get(entry.tournamentId);
-        const totalDecks = tournamentMeta?.deckTotal || 0;
+    const timeline = sortedTournaments.map(tournament => {
+      const entry = archetype.timeline.get(tournament.id);
+      const tournamentMeta = tournamentIndex.get(tournament.id);
+      const totalDecks = tournamentMeta?.deckTotal || 0;
+
+      if (entry) {
         const share = totalDecks ? Math.round((entry.decks / totalDecks) * 10000) / 100 : 0;
         return {
           ...entry,
           totalDecks,
           share
         };
-      })
-      .sort((a, b) => Date.parse(a.date || '0') - Date.parse(b.date || '0'));
+      }
 
-    if (timeline.length < minAppearances) {
+      return {
+        tournamentId: tournament.id,
+        tournamentName: tournament.name || 'Unknown Tournament',
+        date: tournament.date || null,
+        decks: 0,
+        success: {},
+        totalDecks,
+        share: 0
+      };
+    });
+
+    const appearances = timeline.filter(entry => (entry.decks || 0) > 0).length;
+    if (appearances < minAppearances) {
       return;
     }
 
     const shares = timeline.map(item => item.share || 0);
+    const timelineDecks = timeline.reduce((sum, item) => sum + (item.decks || 0), 0);
+    const timelineTotalDecks = timeline.reduce((sum, item) => sum + (item.totalDecks || 0), 0);
     const successTotals: Record<string, number> = {};
     for (const entry of timeline) {
       Object.entries(entry.success || {}).forEach(([tag, count]) => {
@@ -203,9 +218,8 @@ export function buildTrendDataset(
       });
     }
 
-    const avgShare = shares.length
-      ? Math.round((shares.reduce((sum, value) => sum + value, 0) / shares.length) * 10) / 10
-      : 0;
+    // Weighted share across all tournaments in the window.
+    const avgShare = timelineTotalDecks ? Math.round((timelineDecks / timelineTotalDecks) * 100 * 10) / 10 : 0;
     const maxShare = shares.length ? Math.max(...shares) : 0;
     const minShare = shares.length ? Math.min(...shares) : 0;
 
@@ -213,7 +227,7 @@ export function buildTrendDataset(
       base: archetype.base,
       displayName: archetype.displayName,
       totalDecks: archetype.totalDecks,
-      appearances: timeline.length,
+      appearances,
       avgShare,
       maxShare,
       minShare,
