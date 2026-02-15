@@ -122,6 +122,18 @@ test('gatherDecks derives success tags and handles small tournaments / ties', as
 
   mockFetch([
     {
+      predicate: (input: RequestInfo) => String(input).includes('/games/PTCG/decks'),
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+      body: [
+        {
+          id: 'event-1-sample',
+          name: 'Event 1 Sample',
+          cards: [{ name: 'A' }]
+        }
+      ]
+    },
+    {
       predicate: (input: RequestInfo) => String(input).includes('/tournaments/t1/standings'),
       status: 200,
       headers: { 'content-type': 'application/json' },
@@ -160,6 +172,53 @@ test('gatherDecks derives success tags and handles small tournaments / ties', as
   assert.ok(bob);
   assert.ok(bob.successTags.includes('top4'));
 
+  restoreFetch();
+});
+
+test('gatherDecks reclassifies generic archetypes using Limitless deck ids', async () => {
+  const tournaments = [{ id: 't3', name: 'Event 3', date: '2025-12-03T12:00:00Z', players: 8 }];
+
+  mockFetch([
+    {
+      predicate: (input: RequestInfo) => String(input).includes('/games/PTCG/decks'),
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+      body: [
+        {
+          id: 'gholdengo-lunatone',
+          name: 'Gholdengo Lunatone',
+          cards: [{ name: 'Gholdengo ex' }, { name: 'Lunatone' }]
+        }
+      ]
+    },
+    {
+      predicate: (input: RequestInfo) => String(input).includes('/tournaments/t3/standings'),
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+      body: [
+        {
+          name: 'Eve',
+          placing: 1,
+          deck: { id: 'gholdengo-lunatone', name: 'Other' },
+          decklist: {
+            pokemon: [
+              { name: 'Gholdengo ex', count: 4 },
+              { name: 'Lunatone', count: 2 }
+            ]
+          }
+        }
+      ]
+    }
+  ]);
+
+  const diagnostics: any = {};
+  const mockEnv = { LIMITLESS_API_KEY: 'test-key' };
+  const decks = await gatherDecks(mockEnv as any, tournaments as any, diagnostics, null, {});
+
+  assert.equal(decks.length, 1);
+  assert.equal(decks[0].archetype, 'Gholdengo Lunatone');
+  assert.equal(decks[0].archetypeSource, 'deck-id');
+  assert.equal(diagnostics?.archetypeClassification?.deckId, 1);
   restoreFetch();
 });
 

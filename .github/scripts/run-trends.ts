@@ -213,8 +213,12 @@ async function main() {
   }
 
   console.log('[trends] Gathering decks...');
-  const decks = await gatherDecks(env, tournaments, {}, cardTypesDb, { fetchJson });
+  const diagnostics = {};
+  const decks = await gatherDecks(env, tournaments, diagnostics, cardTypesDb, { fetchJson });
   console.log(`[trends] Decks: ${decks.length}`);
+  if (diagnostics?.archetypeClassification) {
+    console.log('[trends] Archetype classification summary:', diagnostics.archetypeClassification);
+  }
   if (!decks.length) {
     throw new Error('No decks gathered for trends');
   }

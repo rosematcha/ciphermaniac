@@ -34,6 +34,7 @@ export function computeLayout(containerWidth: number): LayoutMetrics {
   const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : containerWidth;
   const prefersCompact = viewportWidth <= 880;
   const isHamburgerWidth = viewportWidth <= HAMBURGER_BREAKPOINT;
+  const isNarrowPhone = viewportWidth <= 430;
 
   // Use mobile-optimized values for small screens
   const gap = isHamburgerWidth ? MOBILE_GAP : GAP;
@@ -43,9 +44,11 @@ export function computeLayout(containerWidth: number): LayoutMetrics {
   const effectiveWidth = Math.max(0, containerWidth - minHorizontalPadding);
 
   if (prefersCompact) {
-    // Target 3 cards per row on mobile devices
+    // Target 2-up on narrow phones for readability, 3-up on wider mobile screens
     const targetCardsPerRow = isHamburgerWidth
-      ? 3
+      ? isNarrowPhone
+        ? 2
+        : 3
       : Math.max(1, Math.floor((effectiveWidth + gap) / (minCardWidth + gap)));
 
     // Calculate optimal card width for target number of cards
@@ -56,8 +59,8 @@ export function computeLayout(containerWidth: number): LayoutMetrics {
     const base = Math.max(minCardWidth, Math.min(BASE_CARD_WIDTH, computedBase));
     const contentWidth = targetCardsPerRow * base + Math.max(0, targetCardsPerRow - 1) * gap;
 
-    // Use a more permissive scale for mobile to maximize space usage
-    const MIN_MOBILE_SCALE = 0.75;
+    // Keep cards legible on phones while still filling available width
+    const MIN_MOBILE_SCALE = isNarrowPhone ? 0.82 : 0.75;
     const columns = targetCardsPerRow;
     let targetSmall = columns;
     let rawSmallScale = ((contentWidth + gap) / targetSmall - gap) / base;
@@ -86,6 +89,7 @@ export function computeLayout(containerWidth: number): LayoutMetrics {
     logger.debug('Computed layout metrics (compact)', {
       containerWidth,
       viewportWidth,
+      isNarrowPhone,
       targetCardsPerRow,
       ...compactMetrics
     });

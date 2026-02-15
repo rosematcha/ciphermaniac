@@ -12355,3 +12355,228 @@ body > .analysis-page,
 body > .archetype-page {
   flex: 1 0 auto;
 }
+
+/* Mobile nav hard override
+   Keeps nav collapsed by default on small screens even if legacy desktop
+   blocks later in this file redefine .main-nav display. */
+@media (max-width: 720px) {
+  body:not(.no-header) > .site-header .nav-toggle,
+  body:not(.no-header) > header .nav-toggle {
+    display: flex;
+  }
+
+  body:not(.no-header) > .site-header .main-nav,
+  body:not(.no-header) > header .main-nav {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 12px;
+    left: 12px;
+    background: var(--panel);
+    border: 1px solid #2c335a;
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    z-index: 2000;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body:not(.no-header) > .site-header .main-nav.is-open,
+  body:not(.no-header) > header .main-nav.is-open {
+    display: flex;
+  }
+}
+
+/* Mobile UX pass:
+   - menu behaves like a drawer with backdrop
+   - cards controls stay within thumb reach
+   - filters open as a bottom sheet
+   - narrow phones prioritize readability over max density */
+@media (max-width: 720px) {
+  :root {
+    --mobile-header-offset: 74px;
+  }
+
+  body.mobile-nav-open {
+    overflow: hidden;
+  }
+
+  body:not(.no-header) > .site-header,
+  body:not(.no-header) > header {
+    position: sticky;
+    top: 0;
+    z-index: 2300;
+  }
+
+  body:not(.no-header) > .site-header .header-inner,
+  body:not(.no-header) > header .header-inner {
+    min-height: 54px;
+    padding: 8px 12px;
+    position: relative;
+    z-index: 2311;
+  }
+
+  body:not(.no-header) > .site-header .site-logo,
+  body:not(.no-header) > header .site-logo {
+    width: 24px;
+    height: 24px;
+    margin-right: 8px;
+  }
+
+  body:not(.no-header) > .site-header .site-title,
+  body:not(.no-header) > header .site-title {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  body:not(.no-header) > .site-header .nav-toggle,
+  body:not(.no-header) > header .nav-toggle {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+
+  body:not(.no-header) > .site-header .main-nav,
+  body:not(.no-header) > header .main-nav {
+    position: fixed;
+    top: var(--mobile-header-offset);
+    right: 12px;
+    left: 12px;
+    max-height: min(70dvh, 520px);
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(130, 160, 224, 0.34);
+    background: linear-gradient(180deg, rgba(17, 22, 37, 0.98), rgba(13, 18, 30, 0.98));
+    box-shadow: 0 20px 44px rgba(0, 0, 0, 0.5);
+    z-index: 2310;
+  }
+
+  body.mobile-nav-open:not(.no-header) > .site-header::after,
+  body.mobile-nav-open:not(.no-header) > header::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 8, 16, 0.55);
+    backdrop-filter: blur(2px);
+    z-index: 2305;
+  }
+
+  body.cards-page .toolbar {
+    position: sticky;
+    top: var(--mobile-header-offset);
+    z-index: 1800;
+    padding: 8px 0 10px;
+    margin-bottom: 8px;
+    background: linear-gradient(180deg, rgba(8, 16, 34, 0.95), rgba(8, 16, 34, 0.82));
+    border-bottom: 1px solid rgba(115, 147, 206, 0.24);
+  }
+
+  body.cards-page .toolbar-inner {
+    padding: 0 10px;
+  }
+
+  body.cards-page .toolbar .controls {
+    gap: 10px;
+  }
+
+  body.cards-page .toolbar .controls input[type='search'] {
+    min-height: 50px;
+    font-size: 16px;
+  }
+
+  body.cards-page #filtersToggle {
+    min-width: 88px;
+    min-height: 50px;
+  }
+
+  body.cards-page.filters-panel-open {
+    overflow: hidden;
+  }
+
+  body.cards-page.filters-panel-open .toolbar::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 12, 0.62);
+    backdrop-filter: blur(2px);
+    z-index: 1840;
+  }
+
+  body.cards-page.filters-panel-open #filters {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    margin: 0;
+    padding: 14px 12px calc(20px + env(safe-area-inset-bottom));
+    max-height: min(78dvh, 680px);
+    overflow-y: auto;
+    border-radius: 18px 18px 0 0;
+    border: 1px solid rgba(133, 165, 224, 0.34);
+    border-bottom: none;
+    background: linear-gradient(180deg, rgba(17, 24, 41, 0.98), rgba(11, 17, 31, 0.98));
+    box-shadow: 0 -24px 48px rgba(0, 0, 0, 0.52);
+    z-index: 1850;
+    gap: 12px;
+  }
+
+  body.cards-page.filters-panel-open #filters .filter-field {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  body.cards-page.filters-panel-open #filters .filter-menu {
+    max-height: 42vh;
+  }
+
+  body.cards-page main#main-content {
+    padding: 0 8px 20px;
+  }
+
+  body.cards-page .card {
+    padding: 8px;
+    border-radius: 14px;
+  }
+
+  body.cards-page .titleRow {
+    gap: 6px;
+  }
+
+  body.cards-page .titleRow .name {
+    display: block;
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: initial;
+    line-height: 1.25;
+    min-height: 2.5em;
+    margin-top: 4px;
+  }
+
+  body.cards-page .titleRow .name > span:first-child {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  body.cards-page .titleRow .name > .card-title-set {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+
+  body.cards-page .titleRow .counts {
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  body.cards-page .usagebar {
+    height: 20px;
+  }
+}

@@ -44,10 +44,16 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
   const toggle = header.querySelector('.nav-toggle') as HTMLButtonElement | null;
 
   if (nav && toggle) {
+    const isMobileViewport = () => window.matchMedia('(max-width: 720px)').matches;
+    const setMobileNavState = (isOpen: boolean) => {
+      document.body.classList.toggle('mobile-nav-open', isOpen && isMobileViewport());
+    };
+
     const openNav = () => {
       nav.classList.add('is-open');
       toggle.classList.add('is-active');
       toggle.setAttribute('aria-expanded', 'true');
+      setMobileNavState(true);
       // Focus first nav link when opening
       const firstLink = nav.querySelector('.nav-link') as HTMLElement | null;
       firstLink?.focus();
@@ -57,6 +63,7 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
       nav.classList.remove('is-open');
       toggle.classList.remove('is-active');
       toggle.setAttribute('aria-expanded', 'false');
+      setMobileNavState(false);
     };
 
     toggle.addEventListener('click', () => {
@@ -71,6 +78,22 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
     nav.addEventListener('click', event => {
       const { target } = event;
       if (target instanceof Element && target.closest('.nav-link')) {
+        closeNav();
+      }
+    });
+
+    document.addEventListener('click', event => {
+      if (!(event.target instanceof Node)) {
+        return;
+      }
+
+      if (!isMobileViewport()) {
+        return;
+      }
+
+      const clickedInsideNav = nav.contains(event.target);
+      const clickedToggle = toggle.contains(event.target);
+      if (!clickedInsideNav && !clickedToggle) {
         closeNav();
       }
     });

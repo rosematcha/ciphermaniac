@@ -81,6 +81,12 @@ test('Extract trainer subtypes and detect ACE SPEC cards via gatherDecks heurist
   // Mock standings response with decklist structure gatherDecks expects
   mockFetch([
     {
+      predicate: (input: RequestInfo) => String(input).includes('/games/PTCG/decks'),
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+      body: []
+    },
+    {
       predicate: (input: RequestInfo) => String(input).includes('/tournaments/tX/standings'),
       status: 200,
       headers: { 'content-type': 'application/json' },
