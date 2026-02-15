@@ -32,6 +32,29 @@ test('resolveArchetypeClassification prefers deck-id mapping when name is generi
   assert.equal(classification.id, 'gholdengo-lunatone');
 });
 
+test('resolveArchetypeClassification supports Limitless identifier field for deck-id mapping', () => {
+  const deckRules = [
+    {
+      identifier: 'dragapult-dusknoir',
+      name: 'Dragapult Dusknoir',
+      cards: [{ name: 'Dragapult ex' }, { name: 'Dusknoir' }]
+    }
+  ];
+
+  const index = buildArchetypeDeckIndex(deckRules);
+  const classification = resolveArchetypeClassification(
+    {
+      deckName: 'Other',
+      deckId: 'dragapult-dusknoir',
+      decklist: null
+    },
+    index
+  );
+
+  assert.equal(classification.name, 'Dragapult Dusknoir');
+  assert.equal(classification.source, 'deck-id');
+});
+
 test('resolveArchetypeClassification infers archetype from decklist cards when id is unavailable', () => {
   const deckRules = [
     {

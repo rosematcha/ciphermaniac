@@ -232,25 +232,11 @@ async function fetchRecentOnlineTournaments(since) {
 
 function determinePlacementLimit(players) {
   const count = Number(players) || 0;
-  if (count > 0 && count <= 4) {
+  if (count > 0 && count <= 3) {
     return 0;
   }
-  if (count <= 8) {
-    return 4;
-  }
-  if (count <= 16) {
-    return 8;
-  }
-  if (count <= 32) {
-    return 16;
-  }
-  if (count <= 64) {
-    return 24;
-  }
-  if (count >= 65) {
-    return 32;
-  }
-  return 32;
+  // Use full standings so archetype shares represent what was actually played.
+  return Number.POSITIVE_INFINITY;
 }
 
 function toCardEntries(decklist, cardTypesDb) {
@@ -366,21 +352,6 @@ async function gatherDecks(tournaments, cardTypesDb) {
 
     const topEntries = sorted.slice(0, limit);
     for (const entry of topEntries) {
-      const cards = toCardEntries(entry?.decklist, cardTypesDb);
-      if (!cards.length) {
-        continue;
-      }
-
-      const hash = crypto
-        .createHash('sha1')
-        .update(
-          cards
-            .map(card => `${card.count}x${card.name}::${card.set || ''}::${card.number || ''}`)
-            .sort()
-            .join('|')
-        )
-        .digest('hex');
-
       const classification = resolveArchetypeClassification(
         {
           deckName: entry?.deck?.name,
@@ -389,6 +360,28 @@ async function gatherDecks(tournaments, cardTypesDb) {
         },
         deckIndex
       );
+
+      const cards = toCardEntries(entry?.decklist, cardTypesDb);
+      if (!cards.length) {
+        const hasDeckDescriptor = Boolean(entry?.deck?.name || entry?.deck?.id);
+        if (!hasDeckDescriptor) {
+          continue;
+        }
+      }
+
+      const fallbackIdentity = `${tournament.id}::${entry?.player || entry?.name || ''}::${entry?.placing ?? ''}::${classification?.id || entry?.deck?.id || classification?.name || entry?.deck?.name || ''}`;
+      const hashSource =
+        cards.length > 0
+          ? cards
+              .map(card => `${card.count}x${card.name}::${card.set || ''}::${card.number || ''}`)
+              .sort()
+              .join('|')
+          : fallbackIdentity;
+
+      const hash = crypto
+        .createHash('sha1')
+        .update(hashSource || 'unknown-deck')
+        .digest('hex');
 
       decks.push({
         id: hash.slice(0, 12),
@@ -400,6 +393,7 @@ async function gatherDecks(tournaments, cardTypesDb) {
         archetypeId: classification?.id || entry?.deck?.id || null,
         archetypeSource: classification?.source || 'unknown',
         cards,
+        hasDecklist: cards.length > 0,
         tournamentId: tournament.id,
         tournamentName: tournament.name,
         tournamentDate: tournament.date,

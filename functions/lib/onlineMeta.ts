@@ -431,7 +431,7 @@ function toCardEntries(decklist, cardTypesDb = null) {
   return cards;
 }
 
-async function hashDeck(cards, playerId = '') {
+async function hashDeck(cards, fallbackKey = '') {
   const cryptoImpl = globalThis.crypto;
   if (!cryptoImpl?.subtle) {
     throw new Error('Web Crypto API not available for hashing decks');
@@ -440,7 +440,7 @@ async function hashDeck(cards, playerId = '') {
     .map(card => `${card.count}x${card.name || ''}::${card.set || ''}::${card.number || ''}`)
     .sort()
     .join('|');
-  const source = canonical || playerId || `${Date.now()}-${Math.random()}`;
+  const source = canonical || fallbackKey || 'unknown-deck';
   const digest = await cryptoImpl.subtle.digest('SHA-1', new TextEncoder().encode(source));
   const bytes = Array.from(new Uint8Array(digest));
   return bytes.map(byte => byte.toString(16).padStart(2, '0')).join('');
@@ -572,7 +572,10 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
           tournamentId: tournament.id,
           player: entry?.name || entry?.player || 'Unknown Player'
         });
-        continue;
+        const hasDeckDescriptor = Boolean(entry?.deck?.name || entry?.deck?.id);
+        if (!hasDeckDescriptor) {
+          continue;
+        }
       }
 
       const classification = resolveArchetypeClassification(
@@ -605,7 +608,10 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
       }
 
       // eslint-disable-next-line no-await-in-loop
-      const id = await hashDeck(cards, entry?.player);
+      const id = await hashDeck(
+        cards,
+        `${tournament.id}::${entry?.player || entry?.name || ''}::${entry?.placing ?? ''}::${classification?.id || entry?.deck?.id || classification?.name || entry?.deck?.name || ''}`
+      );
       decks.push({
         id,
         player: entry?.name || entry?.player || 'Unknown Player',
@@ -616,6 +622,7 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
         archetypeId: classification?.id || entry?.deck?.id || null,
         archetypeSource: classificationSource,
         cards,
+        hasDecklist: cards.length > 0,
         tournamentId: tournament.id,
         tournamentName: tournament.name,
         tournamentDate: tournament.date,
@@ -1199,26 +1206,8 @@ function determinePlacementLimit(players) {
   if (count > 0 && count <= 3) {
     return 0;
   }
-  // Known small events: capture full field
-  if (count > 0 && count <= 16) {
-    return count;
-  }
-  // Medium events: capture top 75%
-  if (count > 0 && count <= 32) {
-    return 32;
-  }
-  if (count > 0 && count <= 64) {
-    return 64;
-  }
-  if (count > 0 && count <= 128) {
-    return 96;
-  }
-  // Large events: capture top 128
-  if (count >= 129) {
-    return 128;
-  }
-  // Unknown player counts: grab a richer slice to avoid under-sampling
-  return 64;
+  // Use full standings so archetype shares represent what was actually played.
+  return Number.POSITIVE_INFINITY;
 }
 
 export async function runOnlineMetaJob(env, options: OnlineMetaJobOptions = {}) {
