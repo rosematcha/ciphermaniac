@@ -15,7 +15,7 @@ name: (Daily Chore) Trends Report
 
 run-name: >-
   ${{ github.event_name == 'workflow_run' && 'Trends (post-meta)' ||
-      format('Trends Report (prefix={0})', inputs.reports_prefix || 'reports') }}
+      format('Trends Report (prefix={0}, clean_cache={1})', inputs.reports_prefix || 'reports', inputs.clean_month_cache || false) }}
 
 on:
   workflow_run:
@@ -31,6 +31,11 @@ on:
         type: string
       skip_delay:
         description: 'Skip the 5-minute settling delay'
+        required: false
+        default: false
+        type: boolean
+      clean_month_cache:
+        description: 'Delete last-month trends cache/artifacts before rebuilding and force fresh downloads'
         required: false
         default: false
         type: boolean
@@ -83,6 +88,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           R2_REPORTS_PREFIX: ${{ github.event.inputs.reports_prefix || 'reports' }}
+          CLEAN_MONTH_CACHE: ${{ github.event.inputs.clean_month_cache || 'false' }}
 
       - name: Summary
         run: |
@@ -90,6 +96,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Reports prefix**: \`${{ inputs.reports_prefix || 'reports' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Clean month cache**: ${{ github.event.inputs.clean_month_cache == 'true' && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
           if [ "${{ github.event_name }}" == "workflow_run" ]; then
             echo "- **Upstream run**: [Online Meta Report #${{ github.event.workflow_run.run_number }}](${{ github.event.workflow_run.html_url }})" >> $GITHUB_STEP_SUMMARY
           fi

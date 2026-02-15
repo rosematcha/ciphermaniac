@@ -8,7 +8,7 @@
  */
 
 import process from 'node:process';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import {
   fetchRecentOnlineTournaments,
   gatherDecks,
@@ -16,6 +16,7 @@ import {
   buildCardTrendReport
 } from '../../functions/lib/onlineMeta.ts';
 import { loadCardTypesDatabase } from '../../functions/lib/cardTypesDatabase.js';
+import { fetchLimitlessJson } from '../../functions/lib/limitless.ts';
 
 const TRENDS_FOLDER = 'Trends - Last 30 Days';
 const LOOKBACK_DAYS = 30;
@@ -89,6 +90,56 @@ class R2Binding {
       throw error;
     }
   }
+
+  async listKeys(prefix: string) {
+    const keys: string[] = [];
+    let continuationToken: string | undefined;
+    do {
+      // eslint-disable-next-line no-await-in-loop
+      const response = await s3Client.send(
+        new ListObjectsV2Command({
+          Bucket: R2_BUCKET_NAME,
+          Prefix: this.withPrefix(prefix),
+          ContinuationToken: continuationToken
+        })
+      );
+      for (const object of response.Contents || []) {
+        if (object.Key) {
+          keys.push(object.Key);
+        }
+      }
+      continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+    } while (continuationToken);
+    return keys;
+  }
+
+  async deleteKeys(keys: string[]) {
+    if (!Array.isArray(keys) || !keys.length) {
+      return 0;
+    }
+    let deleted = 0;
+    for (let i = 0; i < keys.length; i += 1000) {
+      const chunk = keys.slice(i, i + 1000);
+      // eslint-disable-next-line no-await-in-loop
+      await s3Client.send(
+        new DeleteObjectsCommand({
+          Bucket: R2_BUCKET_NAME,
+          Delete: {
+            Objects: chunk.map(key => ({ Key: key })),
+            Quiet: true
+          }
+        })
+      );
+      deleted += chunk.length;
+    }
+    return deleted;
+  }
+
+  async deletePrefix(prefix: string) {
+    const keys = await this.listKeys(prefix);
+    const deleted = await this.deleteKeys(keys);
+    return { keys: keys.length, deleted };
+  }
 }
 
 function trimTrendSeries(series = [], limit = MAX_ARCHETYPES_IN_SERIES) {
@@ -100,7 +151,22 @@ function trimTrendSeries(series = [], limit = MAX_ARCHETYPES_IN_SERIES) {
   return series.slice(0, max);
 }
 
+function parseBoolean(value: string | undefined, fallback = false): boolean {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) {
+    return true;
+  }
+  if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) {
+    return false;
+  }
+  return fallback;
+}
+
 async function main() {
+  const cleanMonthCache = parseBoolean(process.env.CLEAN_MONTH_CACHE, false);
   const windowEnd = new Date();
   const since = new Date(windowEnd.getTime() - (LOOKBACK_DAYS - 1) * 24 * 60 * 60 * 1000);
   const now = windowEnd;
@@ -110,19 +176,44 @@ async function main() {
     LIMITLESS_API_KEY: requireEnv('LIMITLESS_API_KEY')
   };
 
+  if (cleanMonthCache) {
+    console.log(`[trends] CLEAN_MONTH_CACHE=true: deleting existing ${TRENDS_FOLDER} artifacts before rebuild...`);
+    const deleted = await env.REPORTS.deletePrefix(`${TRENDS_FOLDER}/`);
+    console.log(`[trends] Deleted ${deleted.deleted}/${deleted.keys} objects from ${TRENDS_FOLDER}/`);
+  }
+
+  const fetchJson = async (pathname, options = {}) => {
+    const baseFetchOptions = options?.fetchOptions || {};
+    const headers = new Headers(baseFetchOptions.headers || undefined);
+    if (cleanMonthCache) {
+      // Force origin revalidation when doing a clean rebuild.
+      headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      headers.set('Pragma', 'no-cache');
+    }
+    return fetchLimitlessJson(pathname, {
+      ...options,
+      env,
+      fetchOptions: {
+        ...baseFetchOptions,
+        cache: cleanMonthCache ? 'no-store' : baseFetchOptions.cache,
+        headers
+      }
+    });
+  };
+
   console.log(`[trends] Loading card types database...`);
   const cardTypesDb = await loadCardTypesDatabase(env);
   console.log(`[trends] Card DB entries: ${Object.keys(cardTypesDb || {}).length}`);
 
   console.log(`[trends] Fetching tournaments since ${since.toISOString()}`);
-  const tournaments = await fetchRecentOnlineTournaments(env, since, { maxPages: 20, windowEnd });
+  const tournaments = await fetchRecentOnlineTournaments(env, since, { maxPages: 20, windowEnd, fetchJson });
   console.log(`[trends] Tournaments: ${tournaments.length}`);
   if (!tournaments.length) {
     throw new Error('No tournaments found for trends window');
   }
 
   console.log('[trends] Gathering decks...');
-  const decks = await gatherDecks(env, tournaments, {}, cardTypesDb, {});
+  const decks = await gatherDecks(env, tournaments, {}, cardTypesDb, { fetchJson });
   console.log(`[trends] Decks: ${decks.length}`);
   if (!decks.length) {
     throw new Error('No decks gathered for trends');
