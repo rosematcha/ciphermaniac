@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { enrichCardWithType } from '../../functions/lib/cardTypesDatabase.js';
 import { getCanonicalCard } from '../../functions/lib/cardSynonyms.js';
+import { buildArchetypeDeckIndex, resolveArchetypeClassification } from '../../functions/lib/archetypeClassifier.js';
 import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json' assert { type: 'json' };
 import { generateArchetypeTrends } from '../../functions/lib/archetypeTrends.js';
 
@@ -305,6 +306,15 @@ async function gatherPairingsData(tournaments) {
 }
 
 async function gatherDecks(tournaments, cardTypesDb) {
+  let deckIndex = null;
+  try {
+    const deckRulesPayload = await fetchLimitless('/games/PTCG/decks');
+    deckIndex = buildArchetypeDeckIndex(deckRulesPayload);
+    console.log(`[online-meta] Loaded ${deckIndex?.ruleCount || 0} archetype deck rules`);
+  } catch (error) {
+    console.warn(`[online-meta] Failed to fetch deck rules for archetype classification: ${error.message || error}`);
+  }
+
   const decks = [];
 
   for (const tournament of tournaments) {
@@ -348,14 +358,24 @@ async function gatherDecks(tournaments, cardTypesDb) {
         )
         .digest('hex');
 
+      const classification = resolveArchetypeClassification(
+        {
+          deckName: entry?.deck?.name,
+          deckId: entry?.deck?.id,
+          decklist: entry?.decklist
+        },
+        deckIndex
+      );
+
       decks.push({
         id: hash.slice(0, 12),
         player: entry?.name || entry?.player || 'Unknown Player',
         playerId: entry?.player || null,
         country: entry?.country || null,
         placement: entry?.placing ?? null,
-        archetype: entry?.deck?.name || 'Unknown',
-        archetypeId: entry?.deck?.id || null,
+        archetype: classification?.name || entry?.deck?.name || 'Unknown',
+        archetypeId: classification?.id || entry?.deck?.id || null,
+        archetypeSource: classification?.source || 'unknown',
         cards,
         tournamentId: tournament.id,
         tournamentName: tournament.name,

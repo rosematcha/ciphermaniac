@@ -5,6 +5,7 @@ import { enrichDecksWithOnTheFlyFetch, refreshRegulationMarks } from './cardType
 import { loadCardSynonyms } from './cardSynonyms.js';
 import { inferEnergyType, inferTrainerType, isAceSpecName } from './cardTypeInference.js';
 import { buildTournamentDatabase } from './sqliteBuilder.js';
+import { buildArchetypeDeckIndex, resolveArchetypeClassification } from './archetypeClassifier.js';
 import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json';
 
 const WINDOW_DAYS = 30;
@@ -96,6 +97,15 @@ interface BaseOptions {
 }
 
 /** Diagnostics collector for tracking issues during processing */
+interface ArchetypeClassificationDiagnostics {
+  deckRulesLoaded: number;
+  apiName: number;
+  deckId: number;
+  decklistMatch: number;
+  fallback: number;
+  unknown: number;
+}
+
 interface DiagnosticsCollector {
   detailsWithoutDecklists?: Array<{ tournamentId: string; name: string }>;
   detailsOffline?: Array<{ tournamentId: string; name: string }>;
@@ -105,6 +115,7 @@ interface DiagnosticsCollector {
   entriesWithoutDecklists?: Array<{ tournamentId: string; player: string }>;
   entriesWithoutPlacing?: Array<{ tournamentId: string; name: string; player: string }>;
   tournamentsBelowMinimum?: Array<{ tournamentId: string; name: string; players: number }>;
+  archetypeClassification?: ArchetypeClassificationDiagnostics;
 }
 
 /** Options for fetchRecentOnlineTournaments */
@@ -477,9 +488,27 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
   diag.entriesWithoutDecklists = diag.entriesWithoutDecklists || [];
   diag.entriesWithoutPlacing = diag.entriesWithoutPlacing || [];
   diag.tournamentsBelowMinimum = diag.tournamentsBelowMinimum || [];
+  diag.archetypeClassification = diag.archetypeClassification || {
+    deckRulesLoaded: 0,
+    apiName: 0,
+    deckId: 0,
+    decklistMatch: 0,
+    fallback: 0,
+    unknown: 0
+  };
 
   const fetchJson = options.fetchJson || fetchLimitlessJson;
   const standingsConcurrency = options.standingsConcurrency || DEFAULT_STANDINGS_CONCURRENCY;
+  let deckIndex = null;
+
+  try {
+    const deckRulesPayload = await fetchJson('/games/PTCG/decks', { env });
+    deckIndex = buildArchetypeDeckIndex(deckRulesPayload);
+    diag.archetypeClassification.deckRulesLoaded = Number(deckIndex?.ruleCount) || 0;
+  } catch (error) {
+    console.warn('Failed to fetch deck rules for archetype classification', error?.message || error);
+    deckIndex = null;
+  }
 
   const perTournamentDecks = await runWithConcurrency(tournaments, standingsConcurrency, async tournament => {
     const limit = determinePlacementLimit(tournament?.players);
@@ -546,7 +575,35 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
         continue;
       }
 
-      const archetypeName = entry?.deck?.name || 'Unknown';
+      const classification = resolveArchetypeClassification(
+        {
+          deckName: entry?.deck?.name,
+          deckId: entry?.deck?.id,
+          decklist: entry?.decklist
+        },
+        deckIndex
+      );
+      const archetypeName = classification?.name || 'Unknown';
+      const classificationSource = classification?.source || 'unknown';
+
+      switch (classificationSource) {
+        case 'api-name':
+          diag.archetypeClassification.apiName += 1;
+          break;
+        case 'deck-id':
+          diag.archetypeClassification.deckId += 1;
+          break;
+        case 'decklist-match':
+          diag.archetypeClassification.decklistMatch += 1;
+          break;
+        case 'fallback':
+          diag.archetypeClassification.fallback += 1;
+          break;
+        default:
+          diag.archetypeClassification.unknown += 1;
+          break;
+      }
+
       // eslint-disable-next-line no-await-in-loop
       const id = await hashDeck(cards, entry?.player);
       decks.push({
@@ -556,7 +613,8 @@ async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, op
         country: entry?.country || null,
         placement: entry?.placing ?? null,
         archetype: archetypeName,
-        archetypeId: entry?.deck?.id || null,
+        archetypeId: classification?.id || entry?.deck?.id || null,
+        archetypeSource: classificationSource,
         cards,
         tournamentId: tournament.id,
         tournamentName: tournament.name,
