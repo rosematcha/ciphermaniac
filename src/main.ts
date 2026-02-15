@@ -403,6 +403,25 @@ function setupDropdownFilters(state: AppState) {
     });
   }
 
+  state.cleanup.addEventListener(document, 'pointerdown', event => {
+    const panel = document.getElementById('filters');
+    const toggle = document.getElementById('filtersToggle');
+    if (!(panel instanceof HTMLElement) || !(toggle instanceof HTMLElement)) {
+      return;
+    }
+
+    const isMobileViewport = window.matchMedia('(max-width: 899px)').matches;
+    const isPanelOpen = panel.getAttribute('aria-hidden') === 'false';
+    const target = event.target as Node | null;
+    if (!isMobileViewport || !isPanelOpen || !target) {
+      return;
+    }
+
+    if (!panel.contains(target) && !toggle.contains(target)) {
+      closeFiltersPanel();
+    }
+  });
+
   if (dropdowns.tournaments && Array.isArray(state.availableTournaments) && state.availableTournaments.length) {
     dropdowns.tournaments.render(state.availableTournaments, state.selectedTournaments);
   } else if (dropdowns.tournaments) {
