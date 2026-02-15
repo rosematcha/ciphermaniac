@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import crypto from 'node:crypto';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import { enrichCardWithType } from '../../functions/lib/cardTypesDatabase.js';
 import { getCanonicalCard } from '../../functions/lib/cardSynonyms.js';
 import { buildArchetypeDeckIndex, resolveArchetypeClassification } from '../../functions/lib/archetypeClassifier.js';
@@ -10,6 +10,7 @@ import { generateArchetypeTrends } from '../../functions/lib/archetypeTrends.js'
 
 const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api';
 const WINDOW_DAYS = 14;
+const CACHE_REFRESH_LOOKBACK_DAYS = 30;
 const TARGET_FOLDER = 'Online - Last 14 Days';
 const PAGE_SIZE = 100;
 const MAX_PAGES = 15;
@@ -81,6 +82,22 @@ function daysAgo(days) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
 
+function parseBoolean(value, fallback = false) {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+  const normalized = String(value).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) {
+    return true;
+  }
+  if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) {
+    return false;
+  }
+  return fallback;
+}
+
+const CLEAN_MONTH_CACHE = parseBoolean(process.env.CLEAN_MONTH_CACHE, false);
+
 /**
  * Determines placement tags (success tiers) for a deck based on its finishing position.
  * @param {number} placing - The deck's finishing position
@@ -131,11 +148,17 @@ function buildLimitlessUrl(path, params = {}) {
 
 async function fetchLimitless(path, params) {
   const url = buildLimitlessUrl(path, params);
+  const headers = {
+    'X-Access-Key': LIMITLESS_API_KEY,
+    Accept: 'application/json'
+  };
+  if (CLEAN_MONTH_CACHE) {
+    headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    headers.Pragma = 'no-cache';
+  }
   const response = await fetch(url, {
-    headers: {
-      'X-Access-Key': LIMITLESS_API_KEY,
-      Accept: 'application/json'
-    }
+    headers,
+    cache: CLEAN_MONTH_CACHE ? 'no-store' : undefined
   });
 
   if (!response.ok) {
@@ -1048,6 +1071,60 @@ async function readJson(key) {
   }
 }
 
+async function listKeys(prefix) {
+  const keys = [];
+  let continuationToken;
+  do {
+    // eslint-disable-next-line no-await-in-loop
+    const response = await s3Client.send(
+      new ListObjectsV2Command({
+        Bucket: R2_BUCKET_NAME,
+        Prefix: prefix,
+        ContinuationToken: continuationToken
+      })
+    );
+    for (const object of response.Contents || []) {
+      if (object.Key) {
+        keys.push(object.Key);
+      }
+    }
+    continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+  } while (continuationToken);
+  return keys;
+}
+
+async function deleteKeys(keys) {
+  if (!Array.isArray(keys) || !keys.length) {
+    return 0;
+  }
+
+  let deleted = 0;
+  for (let index = 0; index < keys.length; index += 1000) {
+    const chunk = keys.slice(index, index + 1000);
+    // eslint-disable-next-line no-await-in-loop
+    await s3Client.send(
+      new DeleteObjectsCommand({
+        Bucket: R2_BUCKET_NAME,
+        Delete: {
+          Objects: chunk.map(key => ({ Key: key })),
+          Quiet: true
+        }
+      })
+    );
+    deleted += chunk.length;
+  }
+  return deleted;
+}
+
+async function deletePrefix(prefix) {
+  const keys = await listKeys(prefix);
+  const deleted = await deleteKeys(keys);
+  return {
+    keys: keys.length,
+    deleted
+  };
+}
+
 async function loadCardTypesDatabase() {
   const key = 'assets/data/card-types.json';
   const data = await readJson(key);
@@ -1590,10 +1667,19 @@ async function writeIncludeExcludeReports(archetypeName, reports, tournamentFold
 
 async function main() {
   const now = new Date();
-  const windowStart = daysAgo(WINDOW_DAYS);
+  const reportWindowStart = daysAgo(WINDOW_DAYS);
+  const fetchWindowDays = CLEAN_MONTH_CACHE ? Math.max(WINDOW_DAYS, CACHE_REFRESH_LOOKBACK_DAYS) : WINDOW_DAYS;
+  const fetchWindowStart = daysAgo(fetchWindowDays);
+  const basePath = `${R2_REPORTS_PREFIX}/${TARGET_FOLDER}`;
 
-  console.log(`[online-meta] Gathering tournaments since ${windowStart.toISOString()}`);
-  const tournaments = await fetchRecentOnlineTournaments(windowStart);
+  if (CLEAN_MONTH_CACHE) {
+    console.log(`[online-meta] CLEAN_MONTH_CACHE=true: deleting existing ${basePath} artifacts before rebuild...`);
+    const deleted = await deletePrefix(`${basePath}/`);
+    console.log(`[online-meta] Deleted ${deleted.deleted}/${deleted.keys} objects from ${basePath}/`);
+  }
+
+  console.log(`[online-meta] Gathering tournaments since ${fetchWindowStart.toISOString()}`);
+  const tournaments = await fetchRecentOnlineTournaments(fetchWindowStart);
   console.log(`[online-meta] Found ${tournaments.length} eligible tournaments`);
 
   const cardTypesDb = await loadCardTypesDatabase();
@@ -1603,29 +1689,43 @@ async function main() {
     throw new Error('No decklists gathered from online tournaments');
   }
 
-  // Gather pairings data for matchup analysis
-  const pairingsData = await gatherPairingsData(tournaments);
+  const reportWindowStartMs = reportWindowStart.getTime();
+  const inReportWindow = tournaments.filter(tournament => {
+    const dateMs = Date.parse(tournament?.date);
+    return Number.isFinite(dateMs) && dateMs >= reportWindowStartMs;
+  });
+  const reportTournaments = inReportWindow.length ? inReportWindow : tournaments;
+  const reportTournamentIds = new Set(reportTournaments.map(tournament => tournament.id));
+  const reportDecks = decks.filter(deck => reportTournamentIds.has(deck?.tournamentId));
+  if (!reportDecks.length) {
+    throw new Error('No decklists remained after report-window filtering');
+  }
 
-  console.log(`[online-meta] Aggregating ${decks.length} decks`);
-  const masterReport = generateReportFromDecks(decks, decks.length, synonymDb);
+  // Gather pairings data for matchup analysis
+  const pairingsData = await gatherPairingsData(reportTournaments);
+
+  console.log(`[online-meta] Aggregating ${reportDecks.length} decks`);
+  const masterReport = generateReportFromDecks(reportDecks, reportDecks.length, synonymDb);
   const {
     files: archetypeFiles,
     index: archetypeIndex,
     minDecks,
     decksByArchetype
-  } = buildArchetypeReports(decks, synonymDb, masterReport);
+  } = buildArchetypeReports(reportDecks, synonymDb, masterReport);
 
   const meta = {
     name: TARGET_FOLDER,
     source: 'limitless-online',
     generatedAt: now.toISOString(),
-    windowStart: windowStart.toISOString(),
+    windowStart: reportWindowStart.toISOString(),
     windowEnd: now.toISOString(),
-    deckTotal: decks.length,
-    tournamentCount: tournaments.length,
+    deckTotal: reportDecks.length,
+    tournamentCount: reportTournaments.length,
     archetypeMinPercent: 0.5,
     archetypeMinDecks: minDecks,
-    tournaments: tournaments.map(t => ({
+    refreshMode: CLEAN_MONTH_CACHE,
+    refreshLookbackDays: fetchWindowDays,
+    tournaments: reportTournaments.map(t => ({
       id: t.id,
       name: t.name,
       date: t.date,
@@ -1635,8 +1735,6 @@ async function main() {
       organizer: t.organizer
     }))
   };
-
-  const basePath = `${R2_REPORTS_PREFIX}/${TARGET_FOLDER}`;
 
   // Always upload meta.json (required for the UI)
   await putJson(`${basePath}/meta.json`, meta);
@@ -1651,7 +1749,7 @@ async function main() {
 
   if (GENERATE_DECKS) {
     console.log('[online-meta] Uploading decks.json...');
-    await putJson(`${basePath}/decks.json`, decks);
+    await putJson(`${basePath}/decks.json`, reportDecks);
   } else {
     console.log('[online-meta] Skipping decks.json (GENERATE_DECKS=false)');
   }
@@ -1672,7 +1770,7 @@ async function main() {
         // Generate and upload trends.json for each archetype
         try {
           const archetypeName = file.displayName || file.base.replace(/_/g, ' ');
-          const trends = generateArchetypeTrends(archetypeDecks, tournaments, synonymDb, {
+          const trends = generateArchetypeTrends(archetypeDecks, reportTournaments, synonymDb, {
             pairingsData,
             archetypeName
           });

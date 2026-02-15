@@ -15,8 +15,8 @@ name: (Daily Chore) Online Meta Report
 
 run-name: >-
   ${{ github.event_name == 'schedule' && 'Daily Meta Report' ||
-      format('Meta Report (master={0}, archetypes={1})',
-        inputs.generate_master, inputs.generate_archetypes) }}
+      format('Meta Report (master={0}, archetypes={1}, clean_cache={2})',
+        inputs.generate_master, inputs.generate_archetypes, inputs.clean_month_cache || false) }}
 
 on:
   schedule:
@@ -43,6 +43,11 @@ on:
         required: false
         type: boolean
         default: true
+      clean_month_cache:
+        description: 'Delete Online - Last 14 Days artifacts and force fresh Limitless re-download (up to past month)'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: online-meta-${{ github.ref }}
@@ -85,6 +90,7 @@ jobs:
           GENERATE_ARCHETYPES: ${{ inputs.generate_archetypes == '' && 'true' || inputs.generate_archetypes }}
           GENERATE_INCLUDE_EXCLUDE: ${{ inputs.generate_include_exclude == '' && 'true' || inputs.generate_include_exclude }}
           GENERATE_DECKS: ${{ inputs.generate_decks == '' && 'true' || inputs.generate_decks }}
+          CLEAN_MONTH_CACHE: ${{ github.event.inputs.clean_month_cache || 'false' }}
 
       - name: Summary
         run: |
@@ -96,3 +102,4 @@ jobs:
           echo "| Archetypes | ${{ inputs.generate_archetypes != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Include/Exclude | ${{ inputs.generate_include_exclude != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Decks | ${{ inputs.generate_decks != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Clean Month Cache | ${{ github.event.inputs.clean_month_cache == 'true' && 'Enabled' || 'Disabled' }} |" >> $GITHUB_STEP_SUMMARY
