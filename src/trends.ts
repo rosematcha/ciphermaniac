@@ -20,6 +20,8 @@ type TrendsMode = 'meta' | 'archetypes';
 interface TrendSharePoint {
   date: string;
   share: number;
+  decks?: number;
+  totalDecks?: number;
 }
 
 interface TrendTimelinePoint {
@@ -33,7 +35,8 @@ interface MetaLine {
   name: string;
   color: string;
   points: number[];
-  latest: number;
+  latestPointShare: number;
+  windowShare: number;
   delta: number;
 }
 
@@ -208,28 +211,33 @@ function smoothSeries(series: TrendSharePoint[], window = 3): TrendSharePoint[] 
 }
 
 function binDaily(timeline: TrendTimelinePoint[]): TrendSharePoint[] {
-  const byDay = new Map<string, { weighted: number; decks: number }>();
+  const byDay = new Map<string, { decks: number; totalDecks: number }>();
   (timeline || []).forEach(point => {
     if (!point?.date) {
       return;
     }
     const day = point.date.split('T')[0];
-    const total = Number(point.totalDecks || point.total || 0);
+    const totalDecks = Number(point.totalDecks || point.total || 0);
+    const fallbackTotal = totalDecks > 0 ? totalDecks : 1;
+    const explicitDecks = Number((point as { decks?: number }).decks);
     const share = Number(point.share) || 0;
+    const decks = Number.isFinite(explicitDecks) && explicitDecks >= 0 ? explicitDecks : (share / 100) * fallbackTotal;
     if (!byDay.has(day)) {
-      byDay.set(day, { weighted: 0, decks: 0 });
+      byDay.set(day, { decks: 0, totalDecks: 0 });
     }
     const entry = byDay.get(day);
     if (!entry) {
       return;
     }
-    entry.weighted += share * (total || 1);
-    entry.decks += total || 1;
+    entry.decks += decks;
+    entry.totalDecks += fallbackTotal;
   });
   return Array.from(byDay.entries())
     .map(([date, val]) => ({
       date,
-      share: val.decks ? val.weighted / val.decks : 0
+      decks: val.decks,
+      totalDecks: val.totalDecks,
+      share: val.totalDecks ? (val.decks / val.totalDecks) * 100 : 0
     }))
     .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
 }
@@ -245,8 +253,9 @@ function buildMetaLines(
   }
 
   // Calculate cutoff date for time filtering
-  const now = new Date();
-  const cutoffDate = new Date(now.getTime() - timeRangeDays * 24 * 60 * 60 * 1000);
+  const anchor = trendData.windowEnd ? new Date(trendData.windowEnd) : new Date();
+  const anchorMs = Number.isFinite(anchor.getTime()) ? anchor.getTime() : Date.now();
+  const cutoffDate = new Date(anchorMs - timeRangeDays * 24 * 60 * 60 * 1000);
   const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
 
   // OPTIMIZATION: Single pass to compute bins, collect dates, and calculate ranking data
@@ -255,10 +264,13 @@ function buildMetaLines(
   const allSeriesWithBins: Array<{
     displayName?: string;
     base: string;
+    rawDaily: TrendSharePoint[];
     daily: TrendSharePoint[];
     dailyByDate: Map<string, TrendSharePoint>;
-    startAvg: number;
-    endAvg: number;
+    windowShare: number;
+    latestPointShare: number;
+    startShare: number;
+    endShare: number;
   }> = [];
 
   for (const entry of trendData.series) {
@@ -284,13 +296,23 @@ function buildMetaLines(
 
     // Pre-build Map for O(1) lookups later (instead of O(n) .find() calls)
     const dailyByDate = new Map(smoothed.map(pt => [pt.date, pt]));
+    const windowTotalDecks = filteredDaily.reduce((sum, point) => sum + (Number(point.totalDecks) || 0), 0);
+    const windowDecks = filteredDaily.reduce((sum, point) => sum + (Number(point.decks) || 0), 0);
+    const fallbackWindowShare = filteredDaily.length
+      ? filteredDaily.reduce((sum, point) => sum + (Number(point.share) || 0), 0) / filteredDaily.length
+      : 0;
+    const windowShare = windowTotalDecks > 0 ? (windowDecks / windowTotalDecks) * 100 : fallbackWindowShare;
+    const latestPointShare = smoothed.at(-1)?.share ?? 0;
 
     allSeriesWithBins.push({
       ...entry,
+      rawDaily: filteredDaily,
       daily: smoothed,
       dailyByDate,
-      startAvg: 0, // Will be calculated after we know the date windows
-      endAvg: 0
+      windowShare,
+      latestPointShare,
+      startShare: 0,
+      endShare: 0
     });
   }
 
@@ -311,35 +333,32 @@ function buildMetaLines(
   // OPTIMIZATION: Calculate ranking data using cached dailyByDate Map
   // Single pass with O(1) lookups instead of O(n) filter operations
   for (const entry of allSeriesWithBins) {
-    let startSum = 0;
-    let startCount = 0;
-    let endSum = 0;
-    let endCount = 0;
+    let startDecks = 0;
+    let startTotalDecks = 0;
+    let endDecks = 0;
+    let endTotalDecks = 0;
 
-    for (const pt of entry.daily) {
-      const share = pt.share || 0;
+    for (const pt of entry.rawDaily) {
+      const decks = Number(pt.decks) || 0;
+      const totalDecks = Number(pt.totalDecks) || 0;
       if (startDates.has(pt.date)) {
-        startSum += share;
-        startCount++;
+        startDecks += decks;
+        startTotalDecks += totalDecks;
       }
       if (endDates.has(pt.date)) {
-        endSum += share;
-        endCount++;
+        endDecks += decks;
+        endTotalDecks += totalDecks;
       }
     }
 
-    entry.startAvg = startCount ? startSum / startCount : 0;
-    entry.endAvg = endCount ? endSum / endCount : 0;
+    entry.startShare = startTotalDecks ? (startDecks / startTotalDecks) * 100 : 0;
+    entry.endShare = endTotalDecks ? (endDecks / endTotalDecks) * 100 : 0;
   }
 
-  // Rank by latest share to emphasize current meta, then trim to top N
+  // Rank by weighted share across the selected window to reflect tournament results.
   const ranked = [...allSeriesWithBins]
-    .map(series => {
-      const lastPoint = series.daily.at(-1)?.share ?? 0;
-      return { ...series, latestShare: lastPoint };
-    })
-    .filter(series => series.latestShare > 0.05) // ignore effectively zero-share noise
-    .sort((a, b) => b.latestShare - a.latestShare);
+    .filter(series => series.windowShare > 0.05) // ignore effectively zero-share noise
+    .sort((a, b) => b.windowShare - a.windowShare || b.latestPointShare - a.latestPointShare);
 
   const selectedSeries = ranked.slice(0, topN);
 
@@ -365,12 +384,13 @@ function buildMetaLines(
   const lines: MetaLine[] = selectedSeries.map((entry, index) => {
     const color = palette[index % palette.length];
     const points = timelineDates.map(d => entry.dailyByDate.get(d)?.share ?? 0);
-    const delta = Math.round((entry.endAvg - entry.startAvg) * 10) / 10;
+    const delta = Math.round((entry.endShare - entry.startShare) * 10) / 10;
     return {
       name: entry.displayName || entry.base,
       color,
       points,
-      latest: points.at(-1) || 0,
+      latestPointShare: points.at(-1) || 0,
+      windowShare: Math.round(entry.windowShare * 10) / 10,
       delta
     };
   });
@@ -442,7 +462,7 @@ function renderLegend(lines: MetaLine[]): void {
     value.className = 'legend-value';
     const sign = line.delta > 0 ? '+' : '';
     const deltaClass = line.delta > 0 ? 'up' : line.delta < 0 ? 'down' : '';
-    value.innerHTML = `${formatPercent(line.latest)} <span class="legend-delta ${deltaClass}">(${sign}${line.delta.toFixed(Math.abs(line.delta) % 1 === 0 ? 0 : 1)}%)</span>`;
+    value.innerHTML = `${formatPercent(line.windowShare)} <span class="legend-delta ${deltaClass}">(${sign}${line.delta.toFixed(Math.abs(line.delta) % 1 === 0 ? 0 : 1)}%)</span>`;
     item.appendChild(swatch);
     item.appendChild(label);
     item.appendChild(value);
@@ -482,7 +502,7 @@ function renderMovers(lines: MetaLine[]): void {
         <a href="${url}">
           <span class="dot" style="background:${item.color}"></span>
           <span class="name">${escapeHtml(item.name)}</span>
-          <span class="perc">${formatPercent(item.latest)}</span>
+          <span class="perc">${formatPercent(item.windowShare)}</span>
           <span class="delta ${direction}">${sign}${item.delta.toFixed(Math.abs(item.delta) % 1 === 0 ? 0 : 1)}%</span>
         </a>
       `;

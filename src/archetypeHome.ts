@@ -696,7 +696,7 @@ async function init(): Promise<void> {
 
   const canonicalPath = buildUrl('');
   const title = `${archetypeName} Deck Overview - Pokemon TCG Archetype | Ciphermaniac`;
-  const description = `Meta stats, signature cards, and top performers for the ${archetypeName} Pokemon TCG archetype.`;
+  const description = `Meta stats, performance trends, and top performers for the ${archetypeName} Pokemon TCG archetype.`;
   const absoluteCanonical = new URL(canonicalPath, window.location.origin).toString();
 
   applyPageSeo({

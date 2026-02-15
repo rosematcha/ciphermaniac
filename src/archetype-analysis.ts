@@ -42,6 +42,7 @@ const PREFETCH_BATCH = 5;
 const PREFETCH_DELAY_MS = 150;
 const ONLINE_META_TOURNAMENT = 'Online - Last 14 Days';
 const DEFAULT_SORT = 'deck-desc';
+const SORT_MODES = new Set(['deck-desc', 'deck-asc', 'alpha-asc', 'alpha-desc']);
 
 const numberFormatter = new Intl.NumberFormat('en-US');
 
@@ -71,6 +72,7 @@ const templates = {
 const state = {
   archetypes: [] as ArchetypeSummary[],
   filtered: [] as ArchetypeSummary[],
+  maxPercent: 0,
   prefetched: new Set<string>(),
   prefetchQueue: [] as string[],
   prefetchHandle: null as number | null,
@@ -231,14 +233,9 @@ function compareNullableNumber(a: number | null, b: number | null, direction: 'a
 function sortArchetypes(list: ArchetypeSummary[], mode: string): ArchetypeSummary[] {
   const sorted = [...list];
   switch (mode) {
+    case 'percent-asc':
     case 'deck-asc':
       sorted.sort((a, b) => compareNullableNumber(a.deckCount, b.deckCount, 'asc') || a.label.localeCompare(b.label));
-      break;
-    case 'percent-desc':
-      sorted.sort((a, b) => compareNullableNumber(a.percent, b.percent, 'desc') || a.label.localeCompare(b.label));
-      break;
-    case 'percent-asc':
-      sorted.sort((a, b) => compareNullableNumber(a.percent, b.percent, 'asc') || a.label.localeCompare(b.label));
       break;
     case 'alpha-asc':
       sorted.sort((a, b) => a.label.localeCompare(b.label));
@@ -246,12 +243,26 @@ function sortArchetypes(list: ArchetypeSummary[], mode: string): ArchetypeSummar
     case 'alpha-desc':
       sorted.sort((a, b) => b.label.localeCompare(a.label));
       break;
+    case 'percent-desc':
     case 'deck-desc':
     default:
       sorted.sort((a, b) => compareNullableNumber(a.deckCount, b.deckCount, 'desc') || a.label.localeCompare(b.label));
       break;
   }
   return sorted;
+}
+
+function normalizeSortMode(value: string | null | undefined): string {
+  if (!value) {
+    return DEFAULT_SORT;
+  }
+  if (value === 'percent-desc') {
+    return 'deck-desc';
+  }
+  if (value === 'percent-asc') {
+    return 'deck-asc';
+  }
+  return SORT_MODES.has(value) ? value : DEFAULT_SORT;
 }
 
 function matchesQuery(summary: ArchetypeSummary, query: string): boolean {
@@ -275,7 +286,7 @@ function matchesQuery(summary: ArchetypeSummary, query: string): boolean {
 // List Item Creation - Simple, stable DOM structure
 // ============================================================================
 
-function createListItem(summary: ArchetypeSummary, index: number): HTMLElement | null {
+function createListItem(summary: ArchetypeSummary, index: number, maxPercent: number): HTMLElement | null {
   if (!templates.listItem?.content) {
     return null;
   }
@@ -322,8 +333,6 @@ function createListItem(summary: ArchetypeSummary, index: number): HTMLElement |
   const thumbnailContainer = node.querySelector('.analysis-list-item__thumbnail') as HTMLElement | null;
   const thumbnailImage = node.querySelector('.analysis-list-item__thumbnail-image') as HTMLImageElement | null;
   const thumbnailFallback = node.querySelector('.analysis-list-item__thumbnail-fallback') as HTMLElement | null;
-  const signatureSection = node.querySelector('.analysis-list-item__signature') as HTMLElement | null;
-  const signatureList = node.querySelector('.analysis-list-item__signature-list') as HTMLElement | null;
   const bar = node.querySelector('.analysis-list-item__bar') as HTMLElement | null;
   const barFill = bar?.querySelector('.bar') as HTMLElement | null;
   const barPct = bar?.querySelector('.pct') as HTMLElement | null;
@@ -352,35 +361,12 @@ function createListItem(summary: ArchetypeSummary, index: number): HTMLElement |
       barFill.style.width = '0%';
       barPct.textContent = '--';
     } else {
-      const clamped = Math.max(0, Math.min(1, summary.percent));
+      const absolute = Math.max(0, summary.percent);
+      const scaleBase = maxPercent > 0 ? maxPercent : absolute || 1;
+      const relative = Math.max(0, Math.min(1, absolute / scaleBase));
       bar.classList.remove('is-empty');
-      barFill.style.width = `${(clamped * 100).toFixed(2)}%`;
-      barPct.textContent = formatPercent(clamped, 1);
-    }
-  }
-
-  if (signatureSection && signatureList) {
-    signatureList.innerHTML = '';
-    const cards = summary.signatureCards?.filter(card => card?.name) ?? [];
-    if (cards.length) {
-      signatureSection.hidden = false;
-      cards.slice(0, 3).forEach(card => {
-        const chip = document.createElement('span');
-        chip.className = 'analysis-signature-card';
-        const name = document.createElement('span');
-        name.className = 'analysis-signature-card__name';
-        name.textContent = card.name;
-        chip.appendChild(name);
-        if (Number.isFinite(card.pct)) {
-          const pct = document.createElement('span');
-          pct.className = 'analysis-signature-card__pct';
-          pct.textContent = formatPercent(card.pct, 0);
-          chip.appendChild(pct);
-        }
-        signatureList.appendChild(chip);
-      });
-    } else {
-      signatureSection.hidden = true;
+      barFill.style.width = `${(relative * 100).toFixed(2)}%`;
+      barPct.textContent = formatPercent(absolute, 1);
     }
   }
 
@@ -489,8 +475,9 @@ function renderList(archetypes: ArchetypeSummary[]): void {
 
   // Build all items in a single fragment
   const fragment = document.createDocumentFragment();
+  const maxPercent = state.maxPercent > 0 ? state.maxPercent : 0;
   archetypes.forEach((summary, index) => {
-    const item = createListItem(summary, index);
+    const item = createListItem(summary, index, maxPercent);
     if (item) {
       fragment.appendChild(item);
     }
@@ -614,6 +601,12 @@ function updateEmptyState(): void {
 function applyFiltersAndRender(): void {
   const filtered = state.archetypes.filter(entry => matchesQuery(entry, state.query));
   state.filtered = sortArchetypes(filtered, state.sortMode);
+  state.maxPercent = state.filtered.reduce((max, entry) => {
+    if (entry.percent === null || Number.isNaN(entry.percent)) {
+      return max;
+    }
+    return Math.max(max, Math.max(0, entry.percent));
+  }, 0);
   renderList(state.filtered);
   updateResultsSummary();
   updateEmptyState();
@@ -747,10 +740,11 @@ function setupControls(): void {
   }
 
   if (elements.sortSelect) {
+    state.sortMode = normalizeSortMode(state.sortMode);
     elements.sortSelect.value = state.sortMode;
     elements.sortSelect.addEventListener('change', event => {
       const target = event.target as HTMLSelectElement | null;
-      const nextSort = target?.value ?? DEFAULT_SORT;
+      const nextSort = normalizeSortMode(target?.value);
       if (nextSort === state.sortMode) {
         return;
       }

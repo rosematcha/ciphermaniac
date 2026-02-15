@@ -75,3 +75,6 @@ tools/synonym_cache.json
 tools/temp_inspect.py
 tools/generate_suggestions.py
 trends.json
+/.npm-cache
+/.playwright-cli
+/output
