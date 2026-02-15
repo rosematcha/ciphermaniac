@@ -895,9 +895,10 @@ function buildTrendReport(decks, tournaments, options: BuildTrendReportOptions =
     }
 
     const shares = timeline.map(entry => entry.share || 0);
-    const avgShare = shares.length
-      ? Math.round((shares.reduce((sum, value) => sum + value, 0) / shares.length) * 10) / 10
-      : 0;
+    const timelineDecks = timeline.reduce((sum, entry) => sum + (entry.decks || 0), 0);
+    const timelineTotalDecks = timeline.reduce((sum, entry) => sum + (entry.totalDecks || 0), 0);
+    // Weighted share across all tournaments in the window.
+    const avgShare = timelineTotalDecks ? Math.round((timelineDecks / timelineTotalDecks) * 100 * 10) / 10 : 0;
     const maxShare = shares.length ? Math.max(...shares) : 0;
     const peakShare = maxShare; // Alias for clarity
     const minShare = shares.length ? Math.min(...shares) : 0;

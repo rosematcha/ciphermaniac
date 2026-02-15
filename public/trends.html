@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Pokemon TCG Meta Trends - Deck Popularity Over Time | Ciphermaniac</title>
   <meta name="description"
     content="Track Pokemon TCG meta trends and deck popularity over time. See which decks are rising, falling, and dominating the competitive scene." />
@@ -85,6 +85,15 @@
                 <option value="top4">Top 4</option>
                 <option value="top2">Finals</option>
                 <option value="winner">Winners Only</option>
+              </select>
+            </div>
+            <div class="chin-filter">
+              <label for="trend-density-filter">Density</label>
+              <select id="trend-density-filter" class="chin-select" aria-label="Select chart density">
+                <option value="4">Low</option>
+                <option value="6" selected>Normal</option>
+                <option value="8">High</option>
+                <option value="12">Ultra</option>
               </select>
             </div>
             <span id="trend-meta-range" class="chin-yaxis"></span>

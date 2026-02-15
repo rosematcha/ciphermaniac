@@ -30,6 +30,34 @@ test('buildTrendDataset filters by success tag and computes share', () => {
   );
 });
 
+test('buildTrendDataset backfills missing tournaments and uses weighted share', () => {
+  const tournaments = [
+    { id: 't1', name: 'Event One', date: '2025-01-01' },
+    { id: 't2', name: 'Event Two', date: '2025-01-02' }
+  ];
+  const decks = [
+    { tournamentId: 't1', tournamentName: 'Event One', archetype: 'Mew', successTags: ['top8'] },
+    { tournamentId: 't1', tournamentName: 'Event One', archetype: 'Pikachu', successTags: ['top8'] },
+    { tournamentId: 't2', tournamentName: 'Event Two', archetype: 'Pikachu', successTags: ['top8'] }
+  ];
+
+  const dataset = buildTrendDataset(decks, tournaments, {
+    minAppearances: 1,
+    now: '2025-03-01'
+  });
+
+  const mew = dataset.series.find(series => series.displayName === 'Mew');
+  assert.ok(mew, 'Mew series should exist');
+  assert.equal(mew!.timeline.length, 2);
+  assert.equal(mew!.appearances, 1);
+  assert.deepEqual(
+    mew!.timeline.map(entry => entry.share),
+    [50, 0]
+  );
+  // Weighted share: 1 deck out of 3 total decks across the window = 33.3%
+  assert.equal(mew!.avgShare, 33.3);
+});
+
 test('buildCardTrendDataset ranks rising and falling cards', () => {
   const tournaments = [
     { id: 't1', date: '2025-01-01', deckTotal: 2 },
