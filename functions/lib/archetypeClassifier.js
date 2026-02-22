@@ -276,7 +276,7 @@ function toMatcher(rule) {
     return null;
   }
 
-  const id = String(rule?.id || '').trim() || null;
+  const id = String(rule?.identifier || rule?.id || '').trim() || null;
   return {
     id,
     name,
@@ -292,7 +292,7 @@ function buildArchetypeDeckIndex(payload) {
 
   rules.forEach(rule => {
     const name = canonicalizeArchetypeLabel(rule?.name);
-    const id = String(rule?.id || '').trim();
+    const id = String(rule?.identifier || rule?.id || '').trim();
 
     if (id && name && !byId.has(id.toLowerCase())) {
       byId.set(id.toLowerCase(), { id, name });
