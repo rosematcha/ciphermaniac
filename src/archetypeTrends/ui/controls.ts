@@ -11,16 +11,29 @@ import { renderMatchups, setupMatchupSorting } from './matchups.js';
 
 export function bindEvents(): void {
   const state = getState();
-  if (elements.tabHome) {
-    elements.tabHome.addEventListener('click', e => {
-      e.preventDefault();
-      window.location.href = buildHomeUrl(state.archetypeSlug);
-    });
+  const { tabHome, tabAnalysis, tabTrends } = elements;
+  if (tabHome) {
+    const syncHomeHref = () => {
+      tabHome.href = buildHomeUrl(state.archetypeSlug);
+    };
+    syncHomeHref();
+    tabHome.addEventListener('pointerenter', syncHomeHref);
+    tabHome.addEventListener('focus', syncHomeHref);
+    tabHome.addEventListener('click', syncHomeHref);
   }
-  if (elements.tabAnalysis) {
-    elements.tabAnalysis.addEventListener('click', e => {
-      e.preventDefault();
-      window.location.href = buildAnalysisUrl(state.archetypeSlug);
+  if (tabAnalysis) {
+    const syncAnalysisHref = () => {
+      tabAnalysis.href = buildAnalysisUrl(state.archetypeSlug);
+    };
+    syncAnalysisHref();
+    tabAnalysis.addEventListener('pointerenter', syncAnalysisHref);
+    tabAnalysis.addEventListener('focus', syncAnalysisHref);
+    tabAnalysis.addEventListener('click', syncAnalysisHref);
+  }
+
+  if (tabTrends) {
+    tabTrends.addEventListener('click', () => {
+      tabTrends.setAttribute('aria-current', 'page');
     });
   }
 

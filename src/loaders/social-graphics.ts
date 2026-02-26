@@ -1,5 +1,5 @@
-import { logger } from '../utils/logger.js';
+import { handleLoaderFailure } from './fallback.js';
 
 import('../social-graphics.js').catch(error => {
-  logger.exception('Failed to load social graphics module', error);
+  handleLoaderFailure('Social graphics tool', error);
 });

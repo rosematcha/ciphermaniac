@@ -511,7 +511,7 @@
     </style>
   </head>
   <body>
-    <main>
+    <main id="main-content" tabindex="-1">
       <div class="graphics-container">
         <h1>Tournament Usage Graphics Generator</h1>
 
@@ -576,7 +576,7 @@
       import { createFooter } from '../assets/js/src/components/footer.js';
 
       // Insert header and footer
-      const header = createHeader({ currentPage: 'graphics' });
+      const header = createHeader({ currentPage: 'tools' });
       const footer = createFooter();
 
       document.body.insertAdjacentElement('afterbegin', header);

@@ -348,14 +348,18 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
     if (!menu) {
       return;
     }
-    let width = baseWidth;
+    const viewportLimit = Math.max(220, window.innerWidth - 24);
+    const upperBound = Math.min(maxWidth, viewportLimit);
+    const effectiveBase = Math.min(baseWidth, upperBound);
+    let width = effectiveBase;
     if (dropdownState.options.length) {
       const optionWidths = dropdownState.options.map(option => measureWidth(getDisplayParts(option).label));
       const longest = Math.max(...optionWidths, measureWidth(summary?.textContent || ''));
-      width = Math.min(Math.max(Math.ceil(longest + 120), baseWidth), maxWidth);
+      width = Math.min(Math.max(Math.ceil(longest + 120), effectiveBase), upperBound);
     }
-    menu.style.minWidth = `${width}px`;
-    menu.style.maxWidth = `${width}px`;
+    menu.style.width = `${width}px`;
+    menu.style.minWidth = `${Math.min(width, upperBound)}px`;
+    menu.style.maxWidth = `${upperBound}px`;
   };
 
   const getFilteredOptions = () => {

@@ -1,5 +1,5 @@
-import { logger } from '../utils/logger.js';
+import { handleLoaderFailure } from './fallback.js';
 
 import('../archetype.js').catch(error => {
-  logger.exception('Failed to load archetype page module', error);
+  handleLoaderFailure('Archetype analysis', error);
 });

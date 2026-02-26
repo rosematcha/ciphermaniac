@@ -3,23 +3,23 @@
    ========================================================================== */
 
 /* Import design system and utilities */
-@import './abstracts/variables.css';
-@import './base/reset.css';
+@import './abstracts/_variables.css';
+@import './base/_reset.css';
 
 /* Import component systems */
-@import './components/buttons.css';
-@import './components/cards.css';
-@import './components/forms.css';
-@import './layout/header.css';
-@import './layout/toolbar.css';
+@import './components/_buttons.css';
+@import './components/_cards.css';
+@import './components/_forms.css';
+@import './layout/_header.css';
+@import './layout/_toolbar.css';
 
 /* Import layout patterns */
-@import './layout/grid.css';
+@import './layout/_grid.css';
 
 /* Import page-specific styles */
-@import './pages/responsive.css';
+@import './pages/_responsive.css';
 @import './pages/_archetypes.css';
-@import './pages/archetype-trends.css';
+@import './pages/_archetype-trends.css';
 
 /* ==========================================================================
    Main Layout & Base Components

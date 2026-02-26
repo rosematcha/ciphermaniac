@@ -575,7 +575,7 @@ function renderCardMovers(cardTrends: CardTrendsState): void {
       const li = document.createElement('li');
       const deltaSign = item.delta > 0 ? '+' : '';
       const idLabel = item.set && item.number ? ` (${item.set} ${item.number})` : '';
-      let url = `/cards?card=${encodeURIComponent(item.name)}`;
+      let url = `/cards?q=${encodeURIComponent(item.name)}`;
       if (item.set && item.number) {
         url = `/card/${item.set}~${item.number}`;
       }
@@ -1007,10 +1007,13 @@ function renderMetaChart(): void {
   };
 
   let activeArchetype: string | null = null;
+  overlay.setAttribute('tabindex', '0');
+  overlay.setAttribute('role', 'button');
+  overlay.setAttribute('aria-label', 'Explore trend lines and press Enter to open the highlighted archetype');
 
-  overlay.addEventListener('mousemove', e => {
+  const handleOverlayMove = (clientX: number, clientY: number): void => {
     // Convert screen coordinates to SVG coordinates using proper transform matrix
-    const svgCoords = screenToSVG(e.clientX, e.clientY);
+    const svgCoords = screenToSVG(clientX, clientY);
     const svgX = svgCoords.x;
     const svgY = svgCoords.y;
 
@@ -1083,7 +1086,7 @@ function renderMetaChart(): void {
     const screenTargetX = screenPoint.x - containerRect.left;
 
     const tipRect = tooltip.getBoundingClientRect();
-    const mouseY = e.clientY - containerRect.top;
+    const mouseY = clientY - containerRect.top;
 
     let left = screenTargetX + 20;
     let transform = 'translate(0, -50%)';
@@ -1106,6 +1109,22 @@ function renderMetaChart(): void {
     tooltip.style.top = `${top}px`;
     tooltip.style.transform = transform;
     tooltip.classList.add('is-visible');
+  };
+
+  overlay.addEventListener('mousemove', e => {
+    handleOverlayMove(e.clientX, e.clientY);
+  });
+
+  overlay.addEventListener('pointermove', e => {
+    handleOverlayMove(e.clientX, e.clientY);
+  });
+
+  overlay.addEventListener('focus', () => {
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width || !rect.height) {
+      return;
+    }
+    handleOverlayMove(rect.left + rect.width - 6, rect.top + rect.height / 2);
   });
 
   overlay.addEventListener('click', () => {
@@ -1115,7 +1134,22 @@ function renderMetaChart(): void {
     }
   });
 
+  overlay.addEventListener('keydown', event => {
+    if ((event.key === 'Enter' || event.key === ' ') && activeArchetype) {
+      event.preventDefault();
+      const url = `/${activeArchetype.replace(/ /g, '_')}`;
+      window.location.href = url;
+    }
+  });
+
   overlay.addEventListener('mouseleave', () => {
+    guideLine.style.opacity = '0';
+    highlightDot.style.opacity = '0';
+    tooltip.classList.remove('is-visible');
+    clearActive();
+    activeArchetype = null;
+  });
+  overlay.addEventListener('pointerleave', () => {
     guideLine.style.opacity = '0';
     highlightDot.style.opacity = '0';
     tooltip.classList.remove('is-visible');

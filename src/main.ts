@@ -1114,26 +1114,7 @@ function setupControlHandlers(state: AppState) {
       await applyCurrentFilters(state);
     }
 
-    // Update URL
-    const urlState = getStateFromURL();
-    if (value === 'all') {
-      // Remove from URL if default
-      if (urlState.query) {
-        // If we have other params, just remove 'success' (which is mapped to 'advanced' param for now or custom?)
-        // Wait, success filter is not in AppState interface in router.ts?
-        // It seems it might be part of 'advanced' or just not persisted?
-        // Looking at router.ts, there is no 'success' param.
-        // But there is 'advanced'. Maybe it's stored there?
-        // For now, let's assume it's not persisted or I need to add it.
-        // But the original code didn't seem to persist it?
-        // Wait, let's check if I missed it.
-        // In `getStateFromURL`, `advanced` is read.
-        // Maybe success filter is stored in `advanced`?
-        // Let's check `handleSuccessFilterChange` in original code if possible.
-        // But I don't have it.
-        // I'll just leave it as is for now.
-      }
-    }
+    setStateInURL({ success: value === 'all' ? '' : value }, { merge: true });
   };
 
   state.cleanup.addEventListener(elements.success, 'change', handleSuccessFilterChange);
@@ -1171,6 +1152,10 @@ function setupControlHandlers(state: AppState) {
   }
   if (urlState.sort) {
     (elements.sort as HTMLSelectElement).value = urlState.sort;
+  }
+  if (urlState.success && _SUCCESS_FILTER_LABELS[urlState.success]) {
+    (elements.success as HTMLSelectElement).value = urlState.success;
+    state.successFilter = urlState.success;
   }
   if (urlState.cardType) {
     const parsed = parseCardTypeList(urlState.cardType);
@@ -1243,7 +1228,10 @@ async function init() {
     }
 
     // Load data for the final (possibly validated) selection
-    const data = await loadSelectionData(finalSelection, cache, { showSkeleton: true });
+    const data = await loadSelectionData(finalSelection, cache, {
+      showSkeleton: true,
+      successFilter: appState.successFilter
+    });
     appState.current = data;
 
     renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);

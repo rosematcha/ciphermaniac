@@ -22,25 +22,17 @@ export function setupTabNavigation(): void {
     }
   };
 
-  if (tabTrends) {
-    tabTrends.addEventListener('click', e => {
-      e.preventDefault();
-      updateLinks();
-      if (tabTrends.href) {
-        window.location.href = tabTrends.href;
-      }
-    });
-  }
+  const keepHrefFresh = (link: HTMLAnchorElement | null): void => {
+    if (!link) {
+      return;
+    }
+    link.addEventListener('pointerenter', updateLinks);
+    link.addEventListener('focus', updateLinks);
+    link.addEventListener('click', updateLinks);
+  };
 
-  if (tabHome) {
-    tabHome.addEventListener('click', e => {
-      e.preventDefault();
-      updateLinks();
-      if (tabHome.href) {
-        window.location.href = tabHome.href;
-      }
-    });
-  }
+  keepHrefFresh(tabHome);
+  keepHrefFresh(tabTrends);
 
   updateLinks();
 }
