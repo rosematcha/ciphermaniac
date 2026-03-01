@@ -232,8 +232,8 @@
   justify-content: flex-start;
   gap: var(--space-2);
   padding: var(--space-3);
-  background: var(--panel);
-  border: 1px solid var(--border-primary);
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
   border-radius: var(--border-radius);
   white-space: nowrap;
   overflow: hidden;
@@ -502,8 +502,8 @@
 }
 
 .stat-card {
-  background: var(--panel);
-  border: 1px solid var(--border-primary);
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
   border-radius: var(--border-radius);
   padding: var(--space-4);
   display: flex;
@@ -558,8 +558,8 @@
 }
 
 .insight-card {
-  background: var(--panel);
-  border: 1px solid var(--border-primary);
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
   border-radius: var(--border-radius-lg);
   padding: var(--space-4);
   transition: var(--transition-fast);
@@ -1215,5 +1215,189 @@
 
   .substitutions-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   Trends Surface Refresh (Softer / Less Boxed)
+   ========================================================================== */
+
+.trends-shell {
+  gap: 18px;
+}
+
+.trends-page .trend-panel {
+  border: 0;
+  border-radius: 20px;
+  background:
+    radial-gradient(900px 260px at 78% -15%, rgba(104, 173, 255, 0.18), transparent 65%),
+    linear-gradient(180deg, rgba(15, 23, 39, 0.78), rgba(9, 16, 29, 0.88));
+  box-shadow:
+    inset 0 1px 0 rgba(232, 244, 255, 0.13),
+    inset 0 -1px 0 rgba(5, 10, 18, 0.5),
+    0 20px 42px rgba(4, 8, 17, 0.35);
+  backdrop-filter: blur(6px);
+}
+
+.trends-page .meta-chart-wrapper {
+  border: 0;
+  border-radius: 16px;
+  background: rgba(9, 15, 27, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(174, 201, 244, 0.12);
+}
+
+.trends-page .meta-chart {
+  background: transparent;
+  border: 0;
+  padding: var(--space-3) var(--space-2) var(--space-2);
+}
+
+.trends-page .meta-chart-chin {
+  border-top: 0;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-3);
+}
+
+.trends-page .chin-filter label {
+  font-size: 10px;
+  color: #b5c9ec;
+}
+
+.trends-page .chin-select {
+  border: 0;
+  border-radius: 999px;
+  min-height: 34px;
+  padding: 0 14px;
+  background: linear-gradient(180deg, rgba(29, 46, 73, 0.65), rgba(14, 24, 41, 0.88));
+  box-shadow:
+    inset 0 1px 0 rgba(225, 239, 255, 0.14),
+    0 6px 14px rgba(2, 7, 14, 0.35);
+}
+
+.trends-page .meta-legend {
+  gap: 10px;
+}
+
+.trends-page .legend-item {
+  border: 0;
+  border-radius: 12px;
+  background: rgba(13, 23, 40, 0.58);
+  box-shadow: inset 0 0 0 1px rgba(163, 189, 235, 0.16);
+}
+
+.trends-page .legend-item:hover {
+  border-color: transparent;
+  background: rgba(20, 34, 58, 0.72);
+}
+
+.trends-page .movers {
+  gap: 12px;
+}
+
+.trends-page .movers-group {
+  border: 0;
+  border-radius: 16px;
+  background: rgba(8, 15, 27, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(159, 186, 233, 0.14);
+}
+
+.trends-page .movers-group h3 {
+  color: #bfd2f1;
+  letter-spacing: 0.06em;
+  font-size: 0.74rem;
+}
+
+.trends-page .card-movers {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+}
+
+.trends-page .movers-list li {
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+.trends-page .movers-list a.mover-link {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 12px;
+  border: 0;
+  text-decoration: none;
+  background: rgba(11, 18, 32, 0.3);
+  transition:
+    transform var(--transition-fast),
+    background var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.trends-page .movers-list a.mover-link:hover,
+.trends-page .movers-list a.mover-link:focus-visible {
+  transform: translateY(-1px);
+  background: rgba(17, 30, 50, 0.55);
+  box-shadow:
+    inset 0 0 0 1px rgba(165, 192, 236, 0.25),
+    0 10px 18px rgba(3, 7, 14, 0.3);
+}
+
+.mover-media {
+  width: 52px;
+  aspect-ratio: 5 / 7;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 0 1px rgba(195, 214, 244, 0.25),
+    0 10px 14px rgba(1, 4, 10, 0.35);
+  background: radial-gradient(circle at 30% 20%, rgba(87, 128, 196, 0.3), rgba(10, 17, 29, 0.95));
+}
+
+.mover-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.mover-media-fallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: #d6e7ff;
+  letter-spacing: 0.04em;
+}
+
+.mover-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.mover-copy .name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mover-copy .perc {
+  color: #9fb4d7;
+}
+
+@media (max-width: 640px) {
+  .trends-page .movers-list a.mover-link {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 6px 7px;
+  }
+
+  .mover-media {
+    width: 44px;
+    border-radius: 8px;
   }
 }

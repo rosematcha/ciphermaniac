@@ -8,6 +8,8 @@ function hideKnownLoadingIndicators(): void {
     'trends-loading',
     'trends-loading-arch',
     'analysis-list-loading',
+    'players-list-loading',
+    'player-loading',
     'binder-loading'
   ];
   loadingIds.forEach(id => {

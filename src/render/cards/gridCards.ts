@@ -6,6 +6,7 @@ import { createElement, setStyles } from '../../utils/dom.js';
 import type { CardItem } from '../../types/index.js';
 import type { RenderOptions } from '../types.js';
 import { formatCardPrice } from '../cardElement.js';
+import { saveGridScroll } from '../../utils/scrollRestore.js';
 
 function shouldPreferLowQuality(): boolean {
   if (typeof navigator === 'undefined') {
@@ -271,6 +272,7 @@ export function attachCardNavigation(card: HTMLElement, cardData: CardItem): voi
     if (event.ctrlKey || event.metaKey) {
       window.open(url, '_blank');
     } else {
+      saveGridScroll();
       location.assign(url);
     }
   });
@@ -278,6 +280,7 @@ export function attachCardNavigation(card: HTMLElement, cardData: CardItem): voi
   card.addEventListener('keydown', event => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
+      saveGridScroll();
       location.assign(url);
     }
   });

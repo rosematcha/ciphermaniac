@@ -9,8 +9,8 @@ import {
   type TrendDataset
 } from './utils/trendAggregator.js';
 import { logger } from './utils/logger.js';
-import { escapeHtml } from './utils/html.js';
 import { getPerformanceLabel } from './data/performanceTiers.js';
+import { buildThumbCandidates } from './thumbs.js';
 import type { Deck, TrendReport } from './types/index.js';
 
 type TrendSeries = TrendDataset['series'][number];
@@ -76,6 +76,18 @@ interface CardMoversPayload {
   falling?: CardTrendMover[];
 }
 
+interface NormalizedCardMover {
+  name: string;
+  set: string | null;
+  number: string | null;
+  latest: number;
+  delta: number;
+}
+
+interface DisplayCardMover extends NormalizedCardMover {
+  variantCount: number;
+}
+
 type CardTrendsState = CardTrendDataset | CardMoversPayload | null;
 
 // High-contrast palette with distinct hues - designed for dark backgrounds
@@ -135,6 +147,8 @@ interface TrendsState {
   chartDensity: number;
   timeRangeDays: number;
   resizeTimer: number | null;
+  archetypeThumbnails: Map<string, string[]>;
+  thumbIndexLoading: boolean;
 }
 
 const state: TrendsState = {
@@ -149,7 +163,9 @@ const state: TrendsState = {
   performanceFilter: 'all',
   chartDensity: 6,
   timeRangeDays: 14,
-  resizeTimer: null
+  resizeTimer: null,
+  archetypeThumbnails: new Map(),
+  thumbIndexLoading: false
 };
 
 function setStatus(message: string | null | undefined): void {
@@ -194,6 +210,155 @@ function formatDate(value: string | null | undefined): string {
 function formatPercent(value: number): string {
   const pct = Math.round(value * 10) / 10;
   return `${pct.toFixed(pct % 1 === 0 ? 0 : 1)}%`;
+}
+
+function formatSignedPercent(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  const normalized = Math.abs(rounded) < 0.05 ? 0 : rounded;
+  const sign = normalized > 0 ? '+' : '';
+  return `${sign}${normalized.toFixed(Math.abs(normalized) % 1 === 0 ? 0 : 1)}%`;
+}
+
+function normalizeLookupKey(value: string | null | undefined): string {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function buildFallbackLabel(value: string, maxWords = 2): string {
+  const parts = value
+    .replace(/_/g, ' ')
+    .split(/\s+/u)
+    .filter(Boolean)
+    .slice(0, maxWords);
+  if (!parts.length) {
+    return '?';
+  }
+  return parts.map(part => part[0]?.toUpperCase() || '').join('');
+}
+
+function buildArchetypeHref(name: string): string {
+  return `/${name.replace(/\s+/g, '_')}`;
+}
+
+function buildCardHref(card: NormalizedCardMover): string {
+  if (card.set && card.number) {
+    return `/card/${encodeURIComponent(card.set)}~${encodeURIComponent(card.number)}`;
+  }
+  return `/cards?q=${encodeURIComponent(card.name)}`;
+}
+
+function normalizeCardMover(item: CardTrendMover): NormalizedCardMover {
+  const latest =
+    item.recentAvg ?? item.latest ?? item.currentShare ?? item.endShare ?? item.startShare ?? item.avgShare ?? 0;
+
+  // For cooling cards, absDrop is reported as positive; convert to negative for UI consistency.
+  const delta =
+    item.absDrop !== undefined && item.absDrop !== null
+      ? -Math.abs(item.absDrop)
+      : (item.deltaAbs ?? item.delta ?? 0);
+
+  return {
+    name: item.name,
+    set: item.set || null,
+    number: item.number || null,
+    latest,
+    delta
+  };
+}
+
+function parseSetNumber(value: string | null | undefined): { set: string; number: string } | null {
+  if (!value) {
+    return null;
+  }
+  const [setRaw, numberRaw] = value.split('/');
+  const set = String(setRaw || '').trim();
+  const number = String(numberRaw || '').trim();
+  if (!set || !number) {
+    return null;
+  }
+  return { set, number };
+}
+
+function getArchetypeThumbUrl(archetypeName: string): string | null {
+  const normalized = normalizeLookupKey(archetypeName);
+  if (!normalized || !state.archetypeThumbnails.size) {
+    return null;
+  }
+
+  const direct = state.archetypeThumbnails.get(normalized);
+  const candidates =
+    direct ||
+    Array.from(state.archetypeThumbnails.entries()).find(
+      ([key]) => normalized.includes(key) || key.includes(normalized)
+    )?.[1] ||
+    null;
+
+  const firstCard = parseSetNumber(candidates?.[0] || null);
+  if (!firstCard) {
+    return null;
+  }
+  return buildThumbCandidates(archetypeName, false, undefined, firstCard)[0] || null;
+}
+
+function getCardThumbUrl(card: NormalizedCardMover): string | null {
+  if (!card.set || !card.number) {
+    return null;
+  }
+  return buildThumbCandidates(card.name, false, undefined, { set: card.set, number: card.number })[0] || null;
+}
+
+function createMoverMedia(name: string, mediaUrl: string | null): HTMLElement {
+  const media = document.createElement('span');
+  media.className = 'mover-media';
+  if (mediaUrl) {
+    const img = document.createElement('img');
+    img.src = mediaUrl;
+    img.alt = '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    media.appendChild(img);
+  } else {
+    const fallback = document.createElement('span');
+    fallback.className = 'mover-media-fallback';
+    fallback.textContent = buildFallbackLabel(name);
+    media.appendChild(fallback);
+  }
+  return media;
+}
+
+async function loadArchetypeThumbnails(): Promise<void> {
+  if (state.thumbIndexLoading || state.archetypeThumbnails.size) {
+    return;
+  }
+  state.thumbIndexLoading = true;
+  try {
+    const response = await fetch('/assets/data/archetype-thumbnails.json', { cache: 'force-cache' });
+    if (!response.ok) {
+      return;
+    }
+    const data = (await response.json()) as Record<string, string[]>;
+    const nextMap = new Map<string, string[]>();
+    Object.entries(data || {}).forEach(([name, cards]) => {
+      const key = normalizeLookupKey(name);
+      if (!key || !Array.isArray(cards)) {
+        return;
+      }
+      nextMap.set(key, cards.filter(Boolean));
+    });
+    state.archetypeThumbnails = nextMap;
+    if (state.trendData) {
+      renderMetaChart();
+      renderCardMovers(state.cardTrends);
+    }
+  } catch (error) {
+    logger.warn('Unable to load archetype thumbnails for trends media', { message: error?.message || error });
+  } finally {
+    state.thumbIndexLoading = false;
+  }
 }
 
 function smoothSeries(series: TrendSharePoint[], window = 3): TrendSharePoint[] {
@@ -494,18 +659,37 @@ function renderMovers(lines: MetaLine[]): void {
     }
     const list = document.createElement('ul');
     list.className = 'movers-list';
-    items.forEach(item => {
+    items.forEach((item, index) => {
       const li = document.createElement('li');
-      const sign = item.delta > 0 ? '+' : '';
-      const url = `/${item.name.replace(/ /g, '_')}`;
-      li.innerHTML = `
-        <a href="${url}">
-          <span class="dot" style="background:${item.color}"></span>
-          <span class="name">${escapeHtml(item.name)}</span>
-          <span class="perc">${formatPercent(item.windowShare)}</span>
-          <span class="delta ${direction}">${sign}${item.delta.toFixed(Math.abs(item.delta) % 1 === 0 ? 0 : 1)}%</span>
-        </a>
-      `;
+      const link = document.createElement('a');
+      link.className = 'mover-link';
+      link.href = buildArchetypeHref(item.name);
+
+      const mediaUrl = getArchetypeThumbUrl(item.name);
+      const media = createMoverMedia(item.name, mediaUrl);
+      link.appendChild(media);
+
+      const copy = document.createElement('span');
+      copy.className = 'mover-copy';
+
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = item.name;
+
+      const share = document.createElement('span');
+      share.className = 'perc';
+      share.textContent = `#${index + 1} | ${formatPercent(item.windowShare)} share`;
+
+      copy.appendChild(name);
+      copy.appendChild(share);
+      link.appendChild(copy);
+
+      const delta = document.createElement('span');
+      delta.className = `delta ${direction}`;
+      delta.textContent = formatSignedPercent(item.delta);
+      link.appendChild(delta);
+
+      li.appendChild(link);
       list.appendChild(li);
     });
     group.appendChild(list);
@@ -516,6 +700,73 @@ function renderMovers(lines: MetaLine[]): void {
   elements.movers.appendChild(buildGroup('Cooling', falling, 'down'));
 }
 
+function aggregateCardMoverDirection(
+  list: CardTrendMover[],
+  direction: 'up' | 'down',
+  includeZero = false
+): DisplayCardMover[] {
+  const normalized = (Array.isArray(list) ? list : []).map(normalizeCardMover).filter(item => item.name);
+  const groups = new Map<
+    string,
+    {
+      name: string;
+      latest: number;
+      delta: number;
+      variants: Map<string, NormalizedCardMover>;
+    }
+  >();
+
+  normalized.forEach(item => {
+    const nameKey = normalizeLookupKey(item.name);
+    if (!groups.has(nameKey)) {
+      groups.set(nameKey, {
+        name: item.name,
+        latest: 0,
+        delta: 0,
+        variants: new Map()
+      });
+    }
+    const group = groups.get(nameKey);
+    if (!group) {
+      return;
+    }
+
+    const variantKey = `${item.name}::${item.set || ''}::${item.number || ''}`;
+    if (group.variants.has(variantKey)) {
+      return;
+    }
+    group.variants.set(variantKey, item);
+    group.latest += Math.max(0, item.latest || 0);
+    if (direction === 'up') {
+      group.delta += Math.max(0, item.delta || 0);
+    } else {
+      group.delta += Math.min(0, item.delta || 0);
+    }
+  });
+
+  const merged = Array.from(groups.values())
+    .map(group => {
+      const variants = Array.from(group.variants.values());
+      const preferred =
+        variants.sort(
+          (a, b) => (b.latest || 0) - (a.latest || 0) || Math.abs(b.delta || 0) - Math.abs(a.delta || 0)
+        )[0] || null;
+      return {
+        name: group.name,
+        set: preferred?.set || null,
+        number: preferred?.number || null,
+        latest: Math.min(100, Math.max(0, group.latest)),
+        delta: Math.round(group.delta * 10) / 10,
+        variantCount: variants.length
+      } satisfies DisplayCardMover;
+    })
+    .filter(item => (direction === 'up' ? (includeZero ? item.delta >= 0 : item.delta > 0) : includeZero ? item.delta <= 0 : item.delta < 0))
+    .sort((a, b) => (direction === 'up' ? b.delta - a.delta : a.delta - b.delta) || b.latest - a.latest)
+    .slice(0, 8);
+
+  return merged;
+}
+
 function renderCardMovers(cardTrends: CardTrendsState): void {
   if (!elements.cardMovers) {
     return;
@@ -524,6 +775,13 @@ function renderCardMovers(cardTrends: CardTrendsState): void {
   const risingList = (cardTrends && 'rising' in cardTrends ? cardTrends.rising : []) || [];
   const fallingList = (cardTrends && 'falling' in cardTrends ? cardTrends.falling : []) || [];
 
+  // Pre-generated payloads can lag behind set reprints; if cooling cards collapse to 0,
+  // trigger a one-time deck hydration so card trends are recomputed from raw decklists.
+  const hasZeroCooling = fallingList.some(item => (normalizeCardMover(item).latest || 0) <= 0.05);
+  if (hasZeroCooling && !state.rawDecks && !state.isHydrating) {
+    void hydrateFromDecks();
+  }
+
   if (!risingList.length && !fallingList.length) {
     const empty = document.createElement('p');
     empty.className = 'muted';
@@ -531,30 +789,20 @@ function renderCardMovers(cardTrends: CardTrendsState): void {
     elements.cardMovers.appendChild(empty);
     return;
   }
-  const normalizeCard = (item: CardTrendMover) => {
-    const latest =
-      item.recentAvg ?? item.latest ?? item.currentShare ?? item.endShare ?? item.startShare ?? item.avgShare ?? 0;
-    // For cooling cards, use absDrop (positive value for decline) but negate it for display
-    // For rising cards, use deltaAbs or delta
-    let delta = 0;
-    if (item.absDrop !== undefined && item.absDrop !== null) {
-      // Cooling card - absDrop is positive, but we want to show it as negative
-      delta = -Math.abs(item.absDrop);
-    } else {
-      // Rising card
-      delta = item.deltaAbs ?? item.delta ?? 0;
-    }
-    return {
-      name: item.name,
-      set: item.set || null,
-      number: item.number || null,
-      archetype: item.archetype || null,
-      latest,
-      delta
-    };
+
+  const merged = {
+    rising: aggregateCardMoverDirection(risingList, 'up'),
+    falling: aggregateCardMoverDirection(fallingList, 'down')
   };
 
-  const buildGroup = (title: string, list: CardTrendMover[], direction: 'up' | 'down') => {
+  if (!merged.rising.length && risingList.length) {
+    merged.rising = aggregateCardMoverDirection(risingList, 'up', true);
+  }
+  if (!merged.falling.length && fallingList.length) {
+    merged.falling = aggregateCardMoverDirection(fallingList, 'down', true);
+  }
+
+  const buildGroup = (title: string, list: DisplayCardMover[], direction: 'up' | 'down') => {
     const group = document.createElement('div');
     group.className = 'movers-group';
     const heading = document.createElement('h3');
@@ -570,31 +818,45 @@ function renderCardMovers(cardTrends: CardTrendsState): void {
     }
     const ul = document.createElement('ul');
     ul.className = 'movers-list';
-    items.forEach(raw => {
-      const item = normalizeCard(raw);
+    items.forEach(item => {
       const li = document.createElement('li');
-      const deltaSign = item.delta > 0 ? '+' : '';
+      const link = document.createElement('a');
+      link.className = 'mover-link mover-link--card';
+      link.href = buildCardHref(item);
+
+      link.appendChild(createMoverMedia(item.name, getCardThumbUrl(item)));
+
+      const copy = document.createElement('span');
+      copy.className = 'mover-copy';
+
+      const name = document.createElement('span');
+      name.className = 'name';
       const idLabel = item.set && item.number ? ` (${item.set} ${item.number})` : '';
-      let url = `/cards?q=${encodeURIComponent(item.name)}`;
-      if (item.set && item.number) {
-        url = `/card/${item.set}~${item.number}`;
-      }
-      li.innerHTML = `
-        <a href="${url}">
-          <span class="dot"></span>
-          <span class="name">${escapeHtml(item.name)}${escapeHtml(idLabel)}</span>
-          <span class="perc">${formatPercent(item.latest || 0)}</span>
-          <span class="delta ${direction}">${deltaSign}${item.delta?.toFixed(Math.abs(item.delta) % 1 === 0 ? 0 : 1)}%</span>
-        </a>
-      `;
+      name.textContent = `${item.name}${idLabel}`;
+
+      const share = document.createElement('span');
+      share.className = 'perc';
+      const printingsLabel = item.variantCount > 1 ? ` | ${item.variantCount} printings` : '';
+      share.textContent = `Seen in ${formatPercent(item.latest || 0)} of decks${printingsLabel}`;
+
+      copy.appendChild(name);
+      copy.appendChild(share);
+      link.appendChild(copy);
+
+      const delta = document.createElement('span');
+      delta.className = `delta ${direction}`;
+      delta.textContent = formatSignedPercent(item.delta || 0);
+      link.appendChild(delta);
+
+      li.appendChild(link);
       ul.appendChild(li);
     });
     group.appendChild(ul);
     return group;
   };
 
-  elements.cardMovers.appendChild(buildGroup('Cards rising', risingList, 'up'));
-  elements.cardMovers.appendChild(buildGroup('Cards cooling', fallingList, 'down'));
+  elements.cardMovers.appendChild(buildGroup('Cards rising', merged.rising, 'up'));
+  elements.cardMovers.appendChild(buildGroup('Cards cooling', merged.falling, 'down'));
 }
 function deriveTournamentsFromDecks(decks: Deck[] | null | undefined): TrendTournament[] {
   const map = new Map<string, TrendTournament>();
@@ -758,11 +1020,9 @@ function renderMetaChart(): void {
   const width = Math.max(320, Math.round(containerRect.width || 900));
   // favor a wide, shorter chart; allow shrinking height while still filling width
   const height = Math.round(Math.min(520, Math.max(260, containerRect.height || 0, width * 0.38)));
-  const padX = 36;
-  const padY = 32;
-  const contentWidth = width - padX * 2;
-  const contentHeight = height - padY * 2;
   const count = metaChart.dates.length;
+  const padTop = 32;
+  const padBottom = 32;
 
   // Dynamic Y domain based on visible data - round bounds to nearest 0.5%
   const allShares = metaChart.lines.flatMap(line =>
@@ -773,7 +1033,7 @@ function renderMetaChart(): void {
   );
   const maxObserved = allShares.length ? Math.max(...allShares) : 0;
   const minObserved = allShares.length ? Math.min(...allShares) : 0;
-  const yMax = Math.max(1, Math.ceil(maxObserved * 2) / 2); // Round up to nearest 0.5
+  let yMax = Math.max(1, Math.ceil(maxObserved * 2) / 2); // Round up to nearest 0.5
   let yMin = Math.floor(minObserved * 2) / 2; // Round down to nearest 0.5
   if (!Number.isFinite(yMin) || yMin < 0) {
     yMin = 0;
@@ -781,16 +1041,6 @@ function renderMetaChart(): void {
   if (yMin >= yMax) {
     yMin = Math.max(0, yMax - 1);
   }
-  const yRange = yMax - yMin || 1;
-
-  const xForIndex = (idx: number): number =>
-    (count === 1 ? contentWidth / 2 : (idx / (count - 1)) * contentWidth) + padX;
-  const yForShare = (share: number): number => {
-    const value = Number.isFinite(Number(share)) ? Number(share) : 0;
-    const clamped = Math.min(yMax, Math.max(yMin, value));
-    const normalized = (clamped - yMin) / yRange;
-    return height - padY - normalized * contentHeight;
-  };
 
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
@@ -804,37 +1054,58 @@ function renderMetaChart(): void {
   svg.setAttribute('aria-label', chartLabel);
   svg.classList.add('meta-svg');
 
-  // grid lines based on yMax - choose appropriate interval
-  const gridLevels: number[] = [];
-  // Choose grid interval based on span: aim for 3-6 grid lines
-  const span = yMax - yMin;
-  let gridInterval = 0.5;
-  if (span > 20) {
-    gridInterval = 5;
-  } else if (span > 10) {
-    gridInterval = 2.5;
-  } else if (span > 5) {
-    gridInterval = 2;
-  } else if (span > 2) {
-    gridInterval = 1;
-  }
+  const formatAxisValue = (value: number) => (value % 1 === 0 ? `${value}%` : `${value.toFixed(1)}%`);
 
+  // Choose a readable Y-axis interval and then snap bounds to it.
+  const chooseGridInterval = (span: number): number => {
+    if (span > 24) {
+      return 5;
+    }
+    if (span > 12) {
+      return 2.5;
+    }
+    if (span > 6) {
+      return 2;
+    }
+    if (span > 3) {
+      return 1;
+    }
+    return 0.5;
+  };
+
+  const gridInterval = chooseGridInterval(yMax - yMin);
+  yMin = Math.max(0, Math.floor(yMin / gridInterval) * gridInterval);
+  yMax = Math.max(yMin + gridInterval, Math.ceil(yMax / gridInterval) * gridInterval);
+
+  const gridLevels: number[] = [];
   for (let lvl = yMin; lvl <= yMax + 1e-6; lvl += gridInterval) {
     gridLevels.push(Number(lvl.toFixed(2)));
   }
-  if (!gridLevels.includes(Number(yMax.toFixed(2)))) {
-    gridLevels.push(Number(yMax.toFixed(2)));
+  if (!gridLevels.length) {
+    gridLevels.push(yMin, yMax);
   }
-  if (!gridLevels.includes(Number(yMin.toFixed(2)))) {
-    gridLevels.push(Number(yMin.toFixed(2)));
-  }
-  gridLevels.sort((a, b) => a - b);
+
+  const longestAxisLabel = gridLevels.reduce((max, level) => Math.max(max, formatAxisValue(level).length), 0);
+  const padLeft = Math.max(42, Math.ceil(longestAxisLabel * 6.4 + 12));
+  const padRight = 36;
+  const contentWidth = Math.max(1, width - padLeft - padRight);
+  const contentHeight = Math.max(1, height - padTop - padBottom);
+  const yRange = yMax - yMin || 1;
+
+  const xForIndex = (idx: number): number =>
+    (count === 1 ? contentWidth / 2 : (idx / (count - 1)) * contentWidth) + padLeft;
+  const yForShare = (share: number): number => {
+    const value = Number.isFinite(Number(share)) ? Number(share) : 0;
+    const clamped = Math.min(yMax, Math.max(yMin, value));
+    const normalized = (clamped - yMin) / yRange;
+    return height - padBottom - normalized * contentHeight;
+  };
 
   gridLevels.forEach(level => {
     const y = yForShare(level);
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', `${padX}`);
-    line.setAttribute('x2', `${width - padX}`);
+    line.setAttribute('x1', `${padLeft}`);
+    line.setAttribute('x2', `${width - padRight}`);
     line.setAttribute('y1', `${y}`);
     line.setAttribute('y2', `${y}`);
     line.setAttribute('stroke', 'rgba(124,134,168,0.2)');
@@ -842,13 +1113,11 @@ function renderMetaChart(): void {
     svg.appendChild(line);
 
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    label.setAttribute('x', `${padX - 10}`);
+    label.setAttribute('x', `${padLeft - 8}`);
     label.setAttribute('y', `${y + 4}`);
     label.setAttribute('fill', '#7c86a8');
     label.setAttribute('font-size', '11');
-    // Format label: show decimal only if needed
-    const labelText = level % 1 === 0 ? `${level}%` : `${level.toFixed(1)}%`;
-    label.textContent = labelText;
+    label.textContent = formatAxisValue(level);
     label.setAttribute('text-anchor', 'end');
     svg.appendChild(label);
   });
@@ -896,7 +1165,7 @@ function renderMetaChart(): void {
   // Interactive Elements
   const guideLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
   guideLine.setAttribute('y1', '0');
-  guideLine.setAttribute('y2', String(height - padY));
+  guideLine.setAttribute('y2', String(height - padBottom));
   guideLine.setAttribute('stroke', '#7c86a8');
   guideLine.setAttribute('stroke-width', '1');
   guideLine.setAttribute('stroke-dasharray', '4 4');
@@ -929,7 +1198,6 @@ function renderMetaChart(): void {
   metaChartEl.appendChild(tooltip);
 
   if (elements.metaRange) {
-    const formatAxisValue = (value: number) => (value % 1 === 0 ? `${value}%` : `${value.toFixed(1)}%`);
     elements.metaRange.textContent = `Y-axis ${formatAxisValue(yMin)} – ${formatAxisValue(yMax)}`;
   }
   renderLegend(metaChart.lines);
@@ -1018,7 +1286,7 @@ function renderMetaChart(): void {
     const svgY = svgCoords.y;
 
     // Calculate index from SVG X coordinate
-    let idx = Math.round(((svgX - padX) / contentWidth) * (count - 1));
+    let idx = Math.round(((svgX - padLeft) / contentWidth) * (count - 1));
     idx = Math.max(0, Math.min(count - 1, idx));
 
     const targetX = xForIndex(idx);
@@ -1238,7 +1506,7 @@ async function hydrateFromDecks() {
       windowEnd: state.trendData.windowEnd,
       successFilter: state.performanceFilter
     });
-    const cardTrends = buildCardTrendDataset(decks, tournaments, { minAppearances: 2 });
+    const cardTrends = buildCardTrendDataset(decks, tournaments, { minAppearances: 2, topCount: 72 });
     state.trendData = { ...recomputed };
     state.cardTrends = cardTrends;
     updateMinSliderBounds();
@@ -1354,6 +1622,7 @@ async function init() {
   if (state.isLoading) {
     return;
   }
+  loadArchetypeThumbnails();
   setLoading(true);
   try {
     const payload = await fetchTrendReport(TRENDS_SOURCE);
@@ -1386,7 +1655,7 @@ async function init() {
         minAppearances: 1,
         successFilter: state.performanceFilter
       });
-      const cardTrends = buildCardTrendDataset(decks, fallbackTournaments, { minAppearances: 2 });
+      const cardTrends = buildCardTrendDataset(decks, fallbackTournaments, { minAppearances: 2, topCount: 72 });
       state.trendData = archetypeTrends;
       state.cardTrends = cardTrends;
       updateMinSliderBounds();

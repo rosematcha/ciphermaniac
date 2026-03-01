@@ -34,6 +34,7 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
       <a class="nav-link${currentPage === 'cards' ? ' active' : ''}" href="/cards"${currentPage === 'cards' ? ' aria-current="page"' : ''}>Cards</a>
       <a class="nav-link${currentPage === 'trends' ? ' active' : ''}" href="/trends"${currentPage === 'trends' ? ' aria-current="page"' : ''}>Trends</a>
       <a class="nav-link${currentPage === 'analysis' || currentPage === 'archetypes' ? ' active' : ''}" href="/archetypes"${currentPage === 'analysis' || currentPage === 'archetypes' ? ' aria-current="page"' : ''}>Archetypes</a>
+      <a class="nav-link${currentPage === 'players' ? ' active' : ''}" href="/players"${currentPage === 'players' ? ' aria-current="page"' : ''}>Players</a>
       <a class="nav-link${toolsActive ? ' active' : ''}" href="/tools/meta-binder"${toolsActive ? ' aria-current="page"' : ''}>Tools</a>
     </nav>
     </div>

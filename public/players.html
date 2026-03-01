@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Regional Player Trends - Pokemon TCG | Ciphermaniac</title>
+  <meta name="description"
+    content="Analyze recurring Pokemon TCG Regional players with consistency metrics, top-finish conversion, and most-played archetypes." />
+  <meta name="keywords"
+    content="Pokemon TCG regionals, player stats, player trends, regional deck results, competitive Pokemon players" />
+
+  <link rel="canonical" href="https://ciphermaniac.com/players" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://ciphermaniac.com/players" />
+  <meta property="og:title" content="Regional Player Trends - Pokemon TCG" />
+  <meta property="og:description"
+    content="Track recurring regional players, placements, and archetype preferences in the Pokemon TCG competitive scene." />
+  <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+  <meta property="og:site_name" content="Ciphermaniac" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://ciphermaniac.com/players" />
+  <meta name="twitter:title" content="Regional Player Trends" />
+  <meta name="twitter:description" content="Track recurring players and top finishes from regional events." />
+  <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+
+  <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <meta name="theme-color" content="#fee475" />
+
+  <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/assets/style.css?v=20260214h" />
+  <link rel="modulepreload" href="/assets/js/src/loaders/players.js" />
+</head>
+
+<body class="archetypes-index-page players-index-page">
+  <div class="analysis-page archetypes-page">
+    <main id="main-content" class="analysis-main" tabindex="-1">
+      <div class="page-header">
+        <h1 class="page-title">Regional Players</h1>
+        <p class="page-subtitle">Who keeps showing up and converting regional appearances into high finishes.</p>
+      </div>
+
+      <section class="page-intel-strip" aria-label="Regional player dataset status">
+        <div class="page-intel-item page-intel-item--wide">
+          <span class="page-intel-item__label">Status</span>
+          <span id="players-status" class="page-intel-item__value">Loading regional player data...</span>
+        </div>
+      </section>
+
+      <section class="archetypes-summary" aria-label="Regional player summary">
+        <div class="archetypes-summary__stat">
+          <span class="archetypes-summary__label">Regionals</span>
+          <span id="players-summary-regionals" class="archetypes-summary__value">--</span>
+        </div>
+        <div class="archetypes-summary__stat">
+          <span class="archetypes-summary__label">Decklists</span>
+          <span id="players-summary-decks" class="archetypes-summary__value">--</span>
+        </div>
+        <div class="archetypes-summary__stat">
+          <span class="archetypes-summary__label">Tracked Players</span>
+          <span id="players-summary-players" class="archetypes-summary__value">--</span>
+        </div>
+        <div class="archetypes-summary__stat">
+          <span class="archetypes-summary__label">Repeat Players</span>
+          <span id="players-summary-repeat" class="archetypes-summary__value">--</span>
+        </div>
+        <div class="archetypes-summary__stat">
+          <span class="archetypes-summary__label">Last Updated</span>
+          <span id="players-summary-generated" class="archetypes-summary__value">--</span>
+        </div>
+      </section>
+
+      <section class="card-sect" aria-labelledby="players-insights-title">
+        <h2 id="players-insights-title">Player Insights</h2>
+        <div class="analysis-list__items">
+          <section class="analysis-list-item">
+            <h3 class="analysis-list-item__name">Consistency Leaders</h3>
+            <p class="analysis-list-item__count">Best sustained regional performance over multiple events.</p>
+            <ul id="players-insight-consistency"></ul>
+          </section>
+          <section class="analysis-list-item">
+            <h3 class="analysis-list-item__name">Top Conversion</h3>
+            <p class="analysis-list-item__count">Players converting appearances into top 16 and top 8 finishes.</p>
+            <ul id="players-insight-conversion"></ul>
+          </section>
+          <section class="analysis-list-item">
+            <h3 class="analysis-list-item__name">Archetype Specialists</h3>
+            <p class="analysis-list-item__count">Players heavily concentrated on one archetype.</p>
+            <ul id="players-insight-specialists"></ul>
+          </section>
+        </div>
+      </section>
+
+      <div class="toolbar archetypes-toolbar" role="search" aria-label="Player search and sorting">
+        <div class="toolbar-inner">
+          <div class="controls">
+            <input id="players-search" type="search" placeholder="Search players or archetypes..."
+              aria-label="Search players by name or archetype" autocomplete="off" role="searchbox" />
+            <div class="archetypes-sort">
+              <label class="filter-label" for="players-sort">Sort</label>
+              <select id="players-sort" aria-label="Sort players">
+                <option value="consistency-desc" selected>Best consistency</option>
+                <option value="top16-rate-desc">Top 16 conversion</option>
+                <option value="top8-rate-desc">Top 8 conversion</option>
+                <option value="events-desc">Most events</option>
+                <option value="best-asc">Best finish</option>
+                <option value="recent-desc">Most recent result</option>
+              </select>
+            </div>
+            <div class="archetypes-sort">
+              <label class="filter-label" for="players-min-events">Min events</label>
+              <select id="players-min-events" aria-label="Minimum regional appearances">
+                <option value="1">1+</option>
+                <option value="2" selected>2+</option>
+                <option value="3">3+</option>
+                <option value="5">5+</option>
+              </select>
+            </div>
+            <div id="players-results" class="archetypes-results" aria-live="polite"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="players-list-loading" class="analysis-loading" role="status">Loading players...</div>
+      <div id="players-list-empty" class="analysis-empty-state empty-state" hidden>
+        <h2>No players available</h2>
+        <p>Regional deck data has not been loaded yet.</p>
+      </div>
+      <div id="players-list-empty-results" class="analysis-empty-state empty-state" hidden>
+        <h2>No matches found</h2>
+        <p>Try changing search text, sorting, or minimum events.</p>
+      </div>
+      <ul id="players-list" class="analysis-list__items" hidden></ul>
+    </main>
+  </div>
+
+  <script type="module">
+    import { createHeader } from '/assets/js/src/components/header.js';
+    import { createFooter } from '/assets/js/src/components/footer.js';
+
+    const header = createHeader({ currentPage: 'players' });
+    const footer = createFooter();
+    document.body.insertAdjacentElement('afterbegin', header);
+    document.body.insertAdjacentElement('beforeend', footer);
+  </script>
+  <script src="/assets/js/src/loaders/players.js" type="module"></script>
+</body>
+
+</html>

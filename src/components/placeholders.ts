@@ -333,6 +333,8 @@ export function showGridSkeleton(): void {
     return;
   }
 
+  grid.setAttribute('aria-busy', 'true');
+
   // Get the actual available width for the grid content
   // This should match how the real render calculates container width
   let containerWidth = grid.clientWidth || grid.getBoundingClientRect().width;
@@ -363,6 +365,7 @@ export function hideGridSkeleton(newContent: string | Node | null = null): void 
     return;
   }
 
+  grid.removeAttribute('aria-busy');
   hideSkeleton(grid, newContent);
 }
 

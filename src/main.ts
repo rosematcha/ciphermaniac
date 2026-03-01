@@ -6,6 +6,9 @@
 import './utils/buildVersion.js';
 import { fetchArchetypeReport, fetchArchetypesList, fetchReport, fetchTournamentsList } from './api.js';
 import { AppError, safeAsync } from './utils/errorHandler.js';
+import { initActiveFilters, updateActiveFilters } from './components/activeFilters.js';
+import { initBackToTop } from './components/backToTop.js';
+import { restoreGridScroll } from './utils/scrollRestore.js';
 import { parseReport } from './parse.js';
 import { initGridResizeObserver, renderSummary, updateLayout } from './render.js';
 import { applyFiltersSort } from './controls.js';
@@ -511,6 +514,7 @@ async function applyCurrentFilters(state: AppState) {
     Array.isArray(state.selectedSets) && state.selectedSets.length > 0 ? [...state.selectedSets] : readSelectedSets();
   state.selectedSets = existingSets;
   state.selectedCardType = readCardType();
+  updateActiveFilters();
 }
 
 /**
@@ -983,6 +987,7 @@ function setupControlHandlers(state: AppState) {
 
   const handleSearch = debounce(async () => {
     await applyFiltersSort(state.current.items, state.overrides);
+    updateActiveFilters();
     setStateInURL({ query: (elements.search as HTMLInputElement).value }, { merge: true, replace: true });
   });
 
@@ -1205,6 +1210,79 @@ async function init() {
     // Setup UI components
     setupDropdownFilters(appState);
     setupControlHandlers(appState);
+    initActiveFilters({
+      onClearSearch: async () => {
+        const s = document.getElementById('search') as HTMLInputElement | null;
+        if (s) s.value = '';
+        await applyCurrentFilters(appState);
+        setStateInURL({ query: '' }, { merge: true, replace: true });
+      },
+      onClearSets: async () => {
+        writeSelectedSets([]);
+        appState.selectedSets = [];
+        appState.ui?.dropdowns?.sets?.setSelection([], { silent: true });
+        await applyCurrentFilters(appState);
+        setStateInURL({ sets: '' }, { merge: true });
+      },
+      onClearCardTypes: async () => {
+        writeSelectedCardTypes([]);
+        appState.selectedCardType = '';
+        appState.ui?.dropdowns?.cardTypes?.setSelection([], { silent: true });
+        await applyCurrentFilters(appState);
+        setStateInURL({ cardType: '' }, { merge: true });
+      },
+      onClearRegulationMarks: async () => {
+        writeSelectedRegulationMarks([]);
+        document.querySelectorAll<HTMLInputElement>('input[name="regmark"]').forEach(cb => { cb.checked = false; });
+        await applyCurrentFilters(appState);
+      },
+      onClearSuccess: async () => {
+        const sel = document.getElementById('success-filter') as HTMLSelectElement | null;
+        if (sel) sel.value = 'all';
+        appState.successFilter = 'all';
+        const selection = appState.selectedTournaments.length
+          ? appState.selectedTournaments
+          : [appState.currentTournament || DEFAULT_ONLINE_META];
+        const cache = appState.cache || (appState.cache = new DataCache());
+        const data = await loadSelectionData(selection, cache, {
+          showSkeleton: true,
+          successFilter: 'all'
+        });
+        appState.current = data;
+        renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
+        updateSetFilterOptions(data.items);
+        await applyCurrentFilters(appState);
+        setStateInURL({ success: '' }, { merge: true });
+      },
+      onClearAll: async () => {
+        const s = document.getElementById('search') as HTMLInputElement | null;
+        if (s) s.value = '';
+        writeSelectedSets([]);
+        appState.selectedSets = [];
+        appState.ui?.dropdowns?.sets?.setSelection([], { silent: true });
+        writeSelectedCardTypes([]);
+        appState.selectedCardType = '';
+        appState.ui?.dropdowns?.cardTypes?.setSelection([], { silent: true });
+        writeSelectedRegulationMarks([]);
+        document.querySelectorAll<HTMLInputElement>('input[name="regmark"]').forEach(cb => { cb.checked = false; });
+        const sel = document.getElementById('success-filter') as HTMLSelectElement | null;
+        if (sel) sel.value = 'all';
+        appState.successFilter = 'all';
+        const selection = appState.selectedTournaments.length
+          ? appState.selectedTournaments
+          : [appState.currentTournament || DEFAULT_ONLINE_META];
+        const cache = appState.cache || (appState.cache = new DataCache());
+        const data = await loadSelectionData(selection, cache, {
+          showSkeleton: true,
+          successFilter: 'all'
+        });
+        appState.current = data;
+        renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
+        updateSetFilterOptions(data.items);
+        await applyCurrentFilters(appState);
+        setStateInURL({ query: '', sets: '', cardType: '', success: '' }, { merge: true });
+      }
+    });
 
     // Determine initial tournament selection (fast, no network calls)
     const { selection: initialSelection, needsTournamentList } = getInitialTournamentSelection(appState);
@@ -1242,6 +1320,12 @@ async function init() {
 
     // Apply initial filters
     await applyCurrentFilters(appState);
+
+    // Restore scroll position if returning from card detail
+    restoreGridScroll();
+
+    // Back-to-top floating button
+    initBackToTop();
 
     // PRIORITY 3: Cards are now rendered in DOM
     // The render.js/updateLayout handles image loading with intersection observer

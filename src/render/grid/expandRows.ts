@@ -6,6 +6,7 @@ import type { CardItem } from '../../types/index.js';
 import type { RenderOptions } from '../types.js';
 import { makeCardElement } from '../cards/gridCards.js';
 import { renderSummary } from '../summary/summary.js';
+import { observeLoadMore } from './autoLoad.js';
 
 /**
  * Expand the grid with additional rows.
@@ -192,8 +193,10 @@ export function expandGridRows(
     newMoreWrap.appendChild(newMoreBtn);
     grid.appendChild(newMoreWrap);
     grid._moreWrapRef = newMoreWrap;
+    observeLoadMore(newMoreWrap);
   } else {
     grid._moreWrapRef = null;
+    observeLoadMore(null);
   }
 
   requestAnimationFrame(() => {

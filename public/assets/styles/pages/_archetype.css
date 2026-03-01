@@ -1181,24 +1181,77 @@
   color: var(--muted);
 }
 
-/* Page state management - ONLY for archetype home page */
-/* Loading overlay covers content - no opacity change to prevent double dim */
-.archetype-home-page[data-state='loading'] .archetype-main {
-  pointer-events: none;
+/* ==========================================================================
+   Page State Management (all archetype pages)
+   ========================================================================== */
+
+@keyframes archetype-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.archetype-home-page[data-state='loading'] .archetype-loading {
+@keyframes archetype-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Loading state — overlay shown, interaction disabled */
+.archetype-page[data-state='loading'] .archetype-loading {
   display: flex;
 }
 
-.archetype-home-page[data-state='ready'] .archetype-loading {
+.archetype-page[data-state='loading'] .archetype-main {
+  pointer-events: none;
+}
+
+.archetype-page[data-state='loading'] .archetype-error {
   display: none;
 }
 
+/* Ready state — loading hidden, content revealed with animation */
+.archetype-page[data-state='ready'] .archetype-loading {
+  display: none;
+}
+
+.archetype-page[data-state='ready'] .archetype-error {
+  display: none;
+}
+
+.archetype-page[data-state='ready'] .archetype-simple {
+  animation: archetype-reveal 0.4s ease both;
+}
+
+.archetype-page[data-state='ready'] .grid {
+  animation: archetype-reveal 0.4s ease 0.08s both;
+}
+
+/* Error state — loading hidden, error revealed */
+.archetype-page[data-state='error'] .archetype-loading {
+  display: none;
+}
+
+.archetype-page[data-state='error'] .archetype-error {
+  display: flex;
+  animation: archetype-fade-in 0.3s ease both;
+}
+
+/* Home page: error is outside main, so hide main on error */
 .archetype-home-page[data-state='error'] .archetype-main {
   display: none;
 }
 
-.archetype-home-page[data-state='error'] .archetype-error {
-  display: flex;
+/* Non-home pages: error is inside main, hide sibling content on error */
+.archetype-page:not(.archetype-home-page)[data-state='error'] .archetype-simple,
+.archetype-page:not(.archetype-home-page)[data-state='error'] .grid {
+  display: none;
 }

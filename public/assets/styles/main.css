@@ -34,7 +34,7 @@ main {
 /* Content sections */
 .card-sect {
   background: var(--panel);
-  border: 1px solid #242a4a;
+  border: 1px solid var(--border-subtle);
   border-radius: var(--border-radius-lg);
   padding: var(--space-3);
   margin: var(--space-3) var(--space-1);

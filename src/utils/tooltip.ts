@@ -34,7 +34,7 @@ export function createTooltipManager(options?: TooltipOptions): TooltipManager {
       if (ariaLive !== 'off') {
         element.setAttribute('aria-live', ariaLive);
       }
-      element.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;display:none;';
+      element.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;';
       document.body.appendChild(element);
     }
     return element;
@@ -44,7 +44,7 @@ export function createTooltipManager(options?: TooltipOptions): TooltipManager {
     show(html: string, x: number, y: number) {
       const el = ensure();
       el.innerHTML = html;
-      el.style.display = 'block';
+      el.classList.add('is-visible');
 
       // Offset so pointer doesn't overlap
       const offsetX = 12;
@@ -69,7 +69,7 @@ export function createTooltipManager(options?: TooltipOptions): TooltipManager {
     },
     hide() {
       if (element) {
-        element.style.display = 'none';
+        element.classList.remove('is-visible');
       }
     },
     destroy() {

@@ -17,9 +17,12 @@ const RESERVED_PATHS = new Set([
   'card', // handled by functions/card/[[path]].js
   'feedback',
   'trends', // global trends page
+  'players', // regional players pages
   'suggested',
   'about',
   'index.html',
+  'players.html',
+  'player.html',
   'favicon.ico',
   'robots.txt',
   'sitemap.xml'
