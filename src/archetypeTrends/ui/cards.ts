@@ -7,6 +7,8 @@ import { buildCardUrl } from '../utils/url.js';
 import { escapeHtml } from '../../utils/html.js';
 import { renderChart } from '../charts/trendsChart.js';
 
+const MAX_CHART_SELECTIONS = 10;
+
 function getCardColor(uid: string): string {
   const state = getState();
   if (!state.selectedCards.has(uid)) {
@@ -140,11 +142,17 @@ export function renderCardList(): void {
     `;
 
     const checkbox = tr.querySelector('input');
-    checkbox?.addEventListener('change', e => {
-      const { checked } = e.target as HTMLInputElement;
+    checkbox?.addEventListener('change', event => {
+      const target = event.target as HTMLInputElement;
+      const { checked } = target;
       if (checked) {
-        if (state.selectedCards.size < 10) {
+        if (state.selectedCards.size < MAX_CHART_SELECTIONS) {
           state.selectedCards.add(uid);
+        } else {
+          target.checked = false;
+          if (elements.metaInfo) {
+            elements.metaInfo.textContent = `You can compare up to ${MAX_CHART_SELECTIONS} cards at once.`;
+          }
         }
       } else {
         state.selectedCards.delete(uid);

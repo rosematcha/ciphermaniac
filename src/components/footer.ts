@@ -21,9 +21,9 @@ export function createFooter(options: FooterOptions = {}): HTMLElement {
   footer.innerHTML = `
     <div class="footer-inner">
       <div class="footer-links">
-        <a href="/about.html">About & Credits</a>
+        <a href="/about">About & Credits</a>
         <span class="footer-sep" aria-hidden="true">·</span>
-        <a href="/feedback.html">Feedback</a>
+        <a href="/feedback">Feedback</a>
         <span class="footer-sep" aria-hidden="true">·</span>
         <a href="https://x.com/ciphermaniac" target="_blank" rel="noopener noreferrer" aria-label="Follow Ciphermaniac on Twitter (opens in new tab)">Follow on Twitter<span class="visually-hidden"> (opens in new tab)</span></a>
       </div>

@@ -59,7 +59,7 @@
         </p>
       </header>
 
-      <main class="binder-main">
+      <main id="main-content" class="binder-main" tabindex="-1">
         <section class="binder-controls" aria-labelledby="binder-controls-heading">
           <h2 id="binder-controls-heading">Filters</h2>
 
@@ -139,6 +139,16 @@
       <div class="binder-card binder-card--placeholder" aria-hidden="true"></div>
     </template>
 
+    <script type="module">
+      import { createHeader } from '/assets/js/src/components/header.js';
+      import { createFooter } from '/assets/js/src/components/footer.js';
+
+      const header = createHeader({ currentPage: 'tools' });
+      const footer = createFooter();
+
+      document.body.insertAdjacentElement('afterbegin', header);
+      document.body.insertAdjacentElement('beforeend', footer);
+    </script>
     <script src="/assets/js/src/loaders/meta-binder.js" type="module"></script>
   </body>
 </html>

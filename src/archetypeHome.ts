@@ -632,7 +632,7 @@ function renderSignatureCards(): void {
 
     // Build card link
     const cardUrl =
-      card.set && card.number ? buildCardUrl(card.set, card.number) : `/cards?card=${encodeURIComponent(card.name)}`;
+      card.set && card.number ? buildCardUrl(card.set, card.number) : `/cards?q=${encodeURIComponent(card.name)}`;
 
     // Build thumbnail
     const thumbHtml =

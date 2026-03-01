@@ -94,6 +94,16 @@ export function formatCardOptionLabel(card: CardItemData, duplicateCounts: Map<s
  * Ensure the filter message element is available.
  */
 export function ensureFilterMessageElement(): HTMLElement | null {
+  if (elements.filterMessage) {
+    return elements.filterMessage;
+  }
+
+  const fallback = document.getElementById('skeleton-warnings');
+  if (fallback instanceof HTMLElement) {
+    elements.filterMessage = fallback;
+    return fallback;
+  }
+
   return null;
 }
 

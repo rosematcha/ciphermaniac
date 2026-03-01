@@ -65,6 +65,15 @@ function resolvePath(urlPath) {
       return join(publicDir, 'card.html');
     }
 
+    if (parts[0] === 'players') {
+      if (parts.length === 1) {
+        return join(publicDir, 'players.html');
+      }
+      if (parts.length === 2) {
+        return join(publicDir, 'player.html');
+      }
+    }
+
     if (parts[0] === 'archetype' && parts.length === 1) {
       return join(publicDir, 'archetypes.html');
     }

@@ -12,7 +12,7 @@ import { elements } from './ui/elements.js';
 import { setupControlsToggle, setupFilterCollapse } from './ui/controls.js';
 import { setupGranularityListeners, syncGranularityOutput } from './ui/granularity.js';
 import { setupTabNavigation } from './ui/keyboard.js';
-import { setPageState, showError, toggleLoading, updateHero } from './ui/page.js';
+import { setPageState, showError, updateHero } from './ui/page.js';
 import { renderCards } from './ui/render.js';
 import { setQuickFilterHandler, setupSkeletonExport } from './ui/skeleton.js';
 import { decodeArchetypeLabel } from './utils/format.js';
@@ -83,7 +83,6 @@ async function initialize() {
   if (!base) {
     showError('Choose an archetype from the archetypes page first.');
     setPageState('error');
-    toggleLoading(false);
     return;
   }
 
@@ -112,7 +111,6 @@ async function initialize() {
 
   try {
     setPageState('loading');
-    toggleLoading(true);
 
     const onlineMeta = 'Online - Last 14 Days';
     state.tournament = onlineMeta;
@@ -144,12 +142,6 @@ async function initialize() {
     setupSuccessFilter();
     populateCardDropdowns();
 
-    if (elements.loading) {
-      elements.loading.hidden = true;
-    }
-    if (elements.error) {
-      elements.error.hidden = true;
-    }
     const simple = elements.simple as HTMLElement | null;
     const grid = elements.grid as HTMLElement | null;
     if (simple) {
@@ -164,7 +156,6 @@ async function initialize() {
     setPageState('ready');
   } catch (error) {
     logger.exception('Failed to load archetype detail', error);
-    toggleLoading(false);
     showError("We couldn't load that archetype.");
     setPageState('error');
   }

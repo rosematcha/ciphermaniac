@@ -14,15 +14,15 @@ const outputFile = path.join(__dirname, '..', 'public', 'assets', 'style-optimiz
 
 // Read all CSS files
 const cssFiles = [
-  'abstracts/variables.css',
-  'base/reset.css',
-  'components/buttons.css',
-  'components/cards.css',
-  'components/forms.css',
-  'layout/header.css',
-  'layout/toolbar.css',
-  'layout/grid.css',
-  'pages/responsive.css',
+  'abstracts/_variables.css',
+  'base/_reset.css',
+  'components/_buttons.css',
+  'components/_cards.css',
+  'components/_forms.css',
+  'layout/_header.css',
+  'layout/_toolbar.css',
+  'layout/_grid.css',
+  'pages/_responsive.css',
   'main.css'
 ];
 
@@ -72,7 +72,7 @@ try {
   console.log(`📊 Size: ${fs.statSync(outputFile).size} bytes`);
 
   // Compare with original size
-  const originalSize = fs.statSync(path.join(__dirname, 'assets', 'style.css')).size;
+  const originalSize = fs.statSync(path.join(__dirname, '..', 'public', 'assets', 'style.css')).size;
   const optimizedSize = fs.statSync(outputFile).size;
   const reduction = (((originalSize - optimizedSize) / originalSize) * 100).toFixed(1);
 

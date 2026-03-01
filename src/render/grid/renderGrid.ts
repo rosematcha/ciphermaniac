@@ -18,6 +18,7 @@ import {
 import { preloadVisibleImagesParallel } from '../images/preloader.js';
 import { attachGridKeyboardNavigation } from '../navigation/keyboard.js';
 import { expandGridRows } from './expandRows.js';
+import { observeLoadMore } from './autoLoad.js';
 
 /**
  * Render the grid for the provided card items.
@@ -311,11 +312,13 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
       grid.appendChild(moreWrap);
     }
     grid._moreWrapRef = moreWrap;
+    observeLoadMore(moreWrap);
   } else {
     if (existingMoreWrap) {
       existingMoreWrap.remove();
     }
     grid._moreWrapRef = null;
+    observeLoadMore(null);
   }
 
   attachGridKeyboardNavigation(grid);

@@ -24,5 +24,5 @@ export function buildCardUrl(card: { name: string; set: string | null; number: s
   if (card.set && card.number) {
     return `/card/${card.set}~${card.number}`;
   }
-  return `/cards?card=${encodeURIComponent(card.name)}`;
+  return `/cards?q=${encodeURIComponent(card.name)}`;
 }
