@@ -12,6 +12,12 @@ let appendedToBody: HTMLElement[] = [];
 
 interface MockElement {
   className: string;
+  classList: {
+    _classes: Set<string>;
+    add: (cls: string) => void;
+    remove: (cls: string) => void;
+    contains: (cls: string) => boolean;
+  };
   innerHTML: string;
   id: string;
   style: Record<string, string>;
@@ -44,8 +50,15 @@ function createMockDocument(): void {
   globalThis.document = {
     createElement: (tagName: string): MockElement => {
       const attributes = new Map<string, string>();
+      const classes = new Set<string>();
       const element: MockElement = {
         className: '',
+        classList: {
+          _classes: classes,
+          add(cls: string) { classes.add(cls); },
+          remove(cls: string) { classes.delete(cls); },
+          contains(cls: string) { return classes.has(cls); }
+        },
         innerHTML: '',
         id: '',
         style: {},
@@ -150,7 +163,7 @@ test('tooltip: show() sets innerHTML correctly', async t => {
   cleanupMockDocument();
 });
 
-test('tooltip: show() sets display to block', async t => {
+test('tooltip: show() adds is-visible class', async t => {
   createMockDocument();
 
   const { createTooltipManager } = await import('../../src/utils/tooltip.js');
@@ -159,7 +172,7 @@ test('tooltip: show() sets display to block', async t => {
   manager.show('<p>Test</p>', 0, 0);
 
   const element = appendedToBody[0] as unknown as MockElement;
-  assert.strictEqual(element.style.display, 'block', 'should set display to block');
+  assert.ok(element.classList.contains('is-visible'), 'should add is-visible class');
 
   cleanupMockDocument();
 });
@@ -183,7 +196,7 @@ test('tooltip: multiple show() calls reuse same element', async t => {
   cleanupMockDocument();
 });
 
-test('tooltip: hide() sets display to none', async t => {
+test('tooltip: hide() removes is-visible class', async t => {
   createMockDocument();
 
   const { createTooltipManager } = await import('../../src/utils/tooltip.js');
@@ -193,7 +206,7 @@ test('tooltip: hide() sets display to none', async t => {
   manager.hide();
 
   const element = appendedToBody[0] as unknown as MockElement;
-  assert.strictEqual(element.style.display, 'none', 'should set display to none');
+  assert.ok(!element.classList.contains('is-visible'), 'should remove is-visible class');
 
   cleanupMockDocument();
 });
@@ -297,6 +310,7 @@ test('tooltip: element has correct base styles', async t => {
   assert.ok(element.style.cssText?.includes('position:fixed'), 'should have fixed position');
   assert.ok(element.style.cssText?.includes('pointer-events:none'), 'should have pointer-events:none');
   assert.ok(element.style.cssText?.includes('z-index:9999'), 'should have high z-index');
+  assert.ok(!element.style.cssText?.includes('display:none'), 'should not set display:none (uses opacity via CSS class)');
 
   cleanupMockDocument();
 });

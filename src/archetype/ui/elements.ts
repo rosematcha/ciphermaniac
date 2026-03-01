@@ -14,7 +14,7 @@ export const elements = {
   addFilterButton: /** @type {HTMLButtonElement|null} */ document.getElementById('archetype-add-filter'),
   filtersContainer: /** @type {HTMLElement|null} */ document.querySelector('.archetype-controls'),
   filterEmptyState: /** @type {HTMLElement|null} */ document.getElementById('archetype-filter-empty-state'),
-  filterMessage: /** @type {HTMLElement|null} */ null,
+  filterMessage: /** @type {HTMLElement|null} */ document.getElementById('skeleton-warnings'),
   skeletonSummary: /** @type {HTMLElement|null} */ document.getElementById('skeleton-summary'),
   skeletonCountValue: /** @type {HTMLElement|null} */ document.getElementById('skeleton-count-value'),
   skeletonWarnings: /** @type {HTMLElement|null} */ document.getElementById('skeleton-warnings'),

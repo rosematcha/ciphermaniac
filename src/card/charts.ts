@@ -40,9 +40,15 @@ function smoothReplaceContent(container: HTMLElement, newContent: Node | Documen
     return;
   }
 
-  // Otherwise, replace content directly (no async fade to avoid race conditions)
-  container.innerHTML = '';
-  container.appendChild(newContent);
+  // Fade out, swap, fade in to avoid jarring pop-in
+  container.style.opacity = '0';
+  requestAnimationFrame(() => {
+    container.innerHTML = '';
+    container.appendChild(newContent);
+    requestAnimationFrame(() => {
+      container.style.opacity = '1';
+    });
+  });
 }
 
 /**

@@ -1,5 +1,5 @@
-import { logger } from '../utils/logger.js';
+import { handleLoaderFailure } from './fallback.js';
 
 import('../card.js').catch(error => {
-  logger.exception('Failed to load card page module', error);
+  handleLoaderFailure('Card details page', error);
 });

@@ -8,6 +8,7 @@ export interface AppState {
   tour?: string;
   sets?: string;
   cardType?: string;
+  success?: string;
   advanced?: string;
 }
 
@@ -40,6 +41,7 @@ export function getStateFromURL(loc: Location | URL = window.location): AppState
     tour: params.get('tour') || '',
     sets: params.get('sets') || '',
     cardType: params.get('type') || '',
+    success: params.get('success') || '',
     advanced: params.get('advanced') || ''
   };
 }
@@ -82,6 +84,9 @@ export function setStateInURL(state: AppState, opts: SetStateOptions = {}): void
   }
   if ('cardType' in state) {
     setOrDelete('type', state.cardType);
+  }
+  if ('success' in state) {
+    setOrDelete('success', state.success);
   }
   if ('advanced' in state) {
     setOrDelete('advanced', state.advanced);

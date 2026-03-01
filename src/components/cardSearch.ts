@@ -407,7 +407,7 @@ function setupSearchHandlers(
     cardSearchInput.addEventListener('focus', renderSuggestions);
     cardSearchInput.addEventListener('input', renderSuggestions);
     cardSearchInput.addEventListener('keydown', handleKeyDown);
-    cardSearchInput.addEventListener('change', handleInputChange);
+    cardSearchInput.addEventListener('blur', handleInputBlur);
   }
 
   document.addEventListener('click', handleDocumentClick);
@@ -507,17 +507,13 @@ function setupSearchHandlers(
       if (!currentMatches || currentMatches.length === 0) {
         return;
       }
-      event.preventDefault();
-
-      // Tab completes the current highlight (or top/last when none)
-      if (selectedIndex >= 0) {
-        handleTabCompletion(currentMatches[selectedIndex]);
-      } else {
-        // No selection yet: choose top (or last if shift)
-        const idx = event.shiftKey ? currentMatches.length - 1 : 0;
-        updateSelection(idx);
-        handleTabCompletion(currentMatches[idx]);
+      // Do not trap keyboard users: only intercept Tab when a suggestion
+      // is explicitly highlighted via arrow navigation.
+      if (selectedIndex < 0) {
+        return;
       }
+      event.preventDefault();
+      handleTabCompletion(currentMatches[selectedIndex]);
       return;
     }
 
@@ -561,14 +557,17 @@ function setupSearchHandlers(
     }
   }
 
-  function handleInputChange() {
-    // Only trigger navigation on change if it's not a result of typing (which is handled by input/keydown)
-    // I'll wrap it in `if (!options.onSubmit)` to preserve legacy behavior only if no custom submit handler is present.
-    if (!options.onSubmit) {
-      const inputValue = cardSearchInput?.value.trim();
-      if (inputValue) {
-        goTo(inputValue);
+  function handleInputBlur() {
+    window.setTimeout(() => {
+      if (!suggestionsBox) {
+        return;
       }
-    }
+      if (document.activeElement === cardSearchInput) {
+        return;
+      }
+      suggestionsBox.classList.remove('is-open');
+      cardSearchInput?.setAttribute('aria-expanded', 'false');
+      cardSearchInput?.removeAttribute('aria-activedescendant');
+    }, 80);
   }
 }

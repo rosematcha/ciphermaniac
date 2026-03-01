@@ -22,7 +22,7 @@ import { logger, setupGlobalErrorHandler } from './utils/errorHandler.js';
 
 // Import card-specific modules
 import { getBaseName, getDisplayName, parseDisplayName } from './card/identifiers.js';
-import { findCard, renderCardPrice, renderCardSets } from './card/data.js';
+import { findCard, renderCardPrice } from './card/data.js';
 import { renderChart, renderCopiesHistogram, renderEvents } from './card/charts.js';
 import { getCanonicalCard, getCardVariants, getVariantImageCandidates } from './utils/cardSynonyms.js';
 import {
@@ -204,7 +204,7 @@ function updateCardTitle(displayName: string | null, slugHint?: string) {
   // the displayName was just a set ID - we need to extract the name from the base identifier
   if (!resolvedName && setInfo) {
     // The "name" wasn't found, so the entire displayName is likely just set info
-    // Use the label as a fallback for now - renderCardSets will fix it later with proper data
+    // Use the label as a fallback for now when only a set id-like display label is available
     resolvedName = label;
     setInfo = '';
   } else if (!resolvedName && !setInfo) {
@@ -456,40 +456,58 @@ async function checkCardExistsInDatabase(
       });
     }
     const tournamentsToCheck = tournamentList.slice(0, 8);
+
+    // Check tournaments in parallel with early-exit on first match
+    const controller = new AbortController();
+    const results = await Promise.allSettled(
+      tournamentsToCheck.map(async tournament => {
+        if (controller.signal.aborted) return { status: 'skipped' as const };
+        try {
+          const report = await fetchReport(tournament);
+          if (controller.signal.aborted) return { status: 'skipped' as const };
+          const index = buildCardIndexFromMaster(report);
+          const cards = index?.cards;
+          if (!cards || typeof cards !== 'object') {
+            return { status: 'no-cards' as const };
+          }
+          const cardNames = Object.keys(cards);
+          if (cardNames.length === 0) {
+            return { status: 'empty-index' as const };
+          }
+          const available = new Set(cardNames.map(name => name.toLowerCase()));
+          for (const key of searchKeys) {
+            if (available.has(key)) {
+              controller.abort();
+              return { status: 'found' as const };
+            }
+          }
+          return { status: 'checked' as const };
+        } catch (error: any) {
+          if (typeof error?.message === 'string' && error.message.includes('HTTP 404')) {
+            return { status: '404' as const };
+          }
+          logger.debug('Card index unavailable during existence check', {
+            cardIdentifier,
+            tournament,
+            error: error?.message
+          });
+          return { status: 'error' as const };
+        }
+      })
+    );
+
     let reportsChecked = 0;
     let nonEmptyIndex = 0;
     let notFoundReports = 0;
-    for (const tournament of tournamentsToCheck) {
-      try {
-        const report = await fetchReport(tournament);
-        const index = buildCardIndexFromMaster(report);
-        const cards = index?.cards;
-        if (!cards || typeof cards !== 'object') {
-          continue;
-        }
-        reportsChecked++;
-        const cardNames = Object.keys(cards);
-        if (cardNames.length === 0) {
-          continue;
-        }
-        nonEmptyIndex++;
-        const available = new Set(cardNames.map(name => name.toLowerCase()));
-        for (const key of searchKeys) {
-          if (available.has(key)) {
-            return { exists: true, checked: true };
-          }
-        }
-      } catch (error: any) {
-        if (typeof error?.message === 'string' && error.message.includes('HTTP 404')) {
-          notFoundReports += 1;
-        }
-        logger.debug('Card index unavailable during existence check', {
-          cardIdentifier,
-          tournament,
-          error: error.message
-        });
-      }
+    for (const result of results) {
+      if (result.status !== 'fulfilled') continue;
+      const val = result.value;
+      if (val.status === 'found') return { exists: true, checked: true };
+      if (val.status === 'checked') { reportsChecked++; nonEmptyIndex++; }
+      if (val.status === 'empty-index') { reportsChecked++; }
+      if (val.status === '404') { notFoundReports++; }
     }
+
     if (reportsChecked === 0 && notFoundReports === 0) {
       return { exists: true, checked: false };
     }
@@ -698,13 +716,11 @@ function startParallelDataLoading() {
   const overridesPromise = Promise.resolve({});
 
   // Secondary data that doesn't block initial content
-  const cardSetsPromise = cardIdentifier ? renderCardSets(cardIdentifier).catch(() => null) : Promise.resolve(null);
   const cardPricePromise = cardIdentifier ? renderCardPrice(cardIdentifier).catch(() => null) : Promise.resolve(null);
 
   return {
     tournaments: tournamentsPromise,
     overrides: overridesPromise,
-    cardSets: cardSetsPromise,
     cardPrice: cardPricePromise
   };
 }
@@ -793,12 +809,24 @@ async function loadAndRenderMainContent(
   const eventsWithCard: string[] = [];
 
   // Process tournaments in parallel with Promise.all for faster loading
+  // Precompute canonical + variants once (shared across all tournament lookups)
+  let sharedCanonical: string | null = null;
+  let sharedVariants: string[] | null = null;
+  const getSharedVariants = async () => {
+    if (!sharedCanonical) {
+      sharedCanonical = await getCanonicalCard(cardIdentifier!);
+      sharedVariants = await getCardVariants(sharedCanonical);
+    }
+    return { canonical: sharedCanonical, variants: sharedVariants! };
+  };
+
   const tournamentPromises = recentTournaments.map(async tournamentName => {
     try {
       const ck = `${tournamentName}::${cardIdentifier}`;
       let globalPct: number | null = null;
       let globalFound: number | null = null;
       let globalTotal: number | null = null;
+      let globalDist: any[] | null = null;
       if (cacheObject[ck]) {
         ({ pct: globalPct, found: globalFound, total: globalTotal } = cacheObject[ck]);
       } else {
@@ -831,8 +859,7 @@ async function loadAndRenderMainContent(
 
         if (!card) {
           // Get canonical card and all its variants for combined usage statistics
-          const canonical = await getCanonicalCard(cardIdentifier!);
-          const variants = await getCardVariants(canonical);
+          const { canonical, variants } = await getSharedVariants();
 
           const master = await fetchReport(tournamentName);
           const parsed = parseReport(master);
@@ -841,6 +868,7 @@ async function loadAndRenderMainContent(
           let combinedFound = 0;
           let combinedTotal: number | null = null;
           let hasAnyData = false;
+          const combinedDist: any[] = [];
 
           for (const variant of variants) {
             const variantCard = findCard(parsed.items, variant);
@@ -849,9 +877,18 @@ async function loadAndRenderMainContent(
               if (Number.isFinite(variantCard.found)) {
                 combinedFound += variantCard.found;
               }
-              // Use the total from any variant (should be the same across all variants in a tournament)
               if (combinedTotal === null && Number.isFinite(variantCard.total)) {
                 combinedTotal = variantCard.total;
+              }
+              if (variantCard.dist && Array.isArray(variantCard.dist)) {
+                for (const distEntry of variantCard.dist) {
+                  const existing = combinedDist.find(distItem => distItem.copies === distEntry.copies);
+                  if (existing) {
+                    existing.players += distEntry.players || 0;
+                  } else {
+                    combinedDist.push({ copies: distEntry.copies, players: distEntry.players || 0 });
+                  }
+                }
               }
             }
           }
@@ -861,7 +898,8 @@ async function loadAndRenderMainContent(
               name: getDisplayName(canonical),
               found: combinedFound,
               total: combinedTotal,
-              pct: combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0
+              pct: combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0,
+              dist: combinedDist.sort((a: any, b: any) => a.copies - b.copies)
             };
           }
         }
@@ -869,6 +907,7 @@ async function loadAndRenderMainContent(
           globalPct = Number.isFinite(card.pct) ? card.pct : card.total ? (100 * card.found) / card.total : 0;
           globalFound = Number.isFinite(card.found) ? card.found : null;
           globalTotal = Number.isFinite(card.total) ? card.total : null;
+          globalDist = card.dist || null;
           const cacheEntry = {
             pct: globalPct,
             found: globalFound,
@@ -884,7 +923,8 @@ async function loadAndRenderMainContent(
           tournament: tournamentName,
           pct: globalPct,
           found: globalFound,
-          total: globalTotal
+          total: globalTotal,
+          dist: globalDist
         };
       }
       return null;
@@ -906,7 +946,8 @@ async function loadAndRenderMainContent(
         archetype: null,
         pct: result.pct,
         found: result.found,
-        total: result.total
+        total: result.total,
+        dist: result.dist
       });
     }
   });
@@ -944,8 +985,7 @@ async function loadAndRenderMainContent(
         : [];
       const top8 = await fetchTop8ArchetypesList(tournament);
       const candidates: any[] = [];
-      const canonical = await getCanonicalCard(cardIdentifier!);
-      const variants = await getCardVariants(canonical);
+      const { canonical, variants } = await getSharedVariants();
 
       for (const base of archetypeBases) {
         try {
@@ -1016,7 +1056,6 @@ async function loadAndRenderMainContent(
       }
       if (cardIdentifier) {
         // Re-run derived renderers so new DOM receives content
-        renderCardSets(cardIdentifier).catch(() => {});
         renderCardPrice(cardIdentifier).catch(() => {});
       }
     }
@@ -1046,16 +1085,20 @@ async function loadAndRenderMainContent(
     const copiesTarget = document.getElementById('card-copies');
     if (copiesTarget) {
       const latest = rows[rows.length - 1];
-      if (latest) {
+      if (latest && latest.dist && Array.isArray(latest.dist) && latest.dist.length > 0) {
+        // Use distribution data already collected during tournament processing
+        renderCopiesHistogram(copiesTarget, {
+          dist: latest.dist,
+          total: latest.total || 0
+        });
+      } else if (latest) {
+        // Fallback: fetch dist data if not available from cache hit
         (async () => {
           try {
-            const canonical = await getCanonicalCard(cardIdentifier!);
-            const variants = await getCardVariants(canonical);
-
+            const { canonical, variants } = await getSharedVariants();
             const master = await fetchReport(latest.tournament);
             const parsed = parseReport(master);
 
-            let overall: any = null;
             let combinedFound = 0;
             let combinedTotal: number | null = null;
             const combinedDist: any[] = [];
@@ -1069,17 +1112,13 @@ async function loadAndRenderMainContent(
                 if (combinedTotal === null && Number.isFinite(variantCard.total)) {
                   combinedTotal = variantCard.total;
                 }
-
                 if (variantCard.dist && Array.isArray(variantCard.dist)) {
                   for (const distEntry of variantCard.dist) {
                     const existing = combinedDist.find(distItem => distItem.copies === distEntry.copies);
                     if (existing) {
                       existing.players += distEntry.players || 0;
                     } else {
-                      combinedDist.push({
-                        copies: distEntry.copies,
-                        players: distEntry.players || 0
-                      });
+                      combinedDist.push({ copies: distEntry.copies, players: distEntry.players || 0 });
                     }
                   }
                 }
@@ -1087,17 +1126,10 @@ async function loadAndRenderMainContent(
             }
 
             if (combinedFound > 0 && combinedTotal !== null) {
-              overall = {
-                name: getDisplayName(canonical),
-                found: combinedFound,
-                total: combinedTotal,
-                pct: combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0,
-                dist: combinedDist.sort((first, second) => first.copies - second.copies)
-              };
-            }
-
-            if (overall) {
-              renderCopiesHistogram(copiesTarget, overall);
+              renderCopiesHistogram(copiesTarget, {
+                dist: combinedDist.sort((a: any, b: any) => a.copies - b.copies),
+                total: combinedTotal
+              });
             } else {
               copiesTarget.textContent = '';
             }

@@ -10,9 +10,7 @@ function ensureGridTooltip(): HTMLElement {
   tooltip.setAttribute('aria-live', 'polite');
   tooltip.id = 'grid-tooltip';
   tooltip.style.position = 'fixed';
-  tooltip.style.pointerEvents = 'none';
   tooltip.style.zIndex = '9999';
-  tooltip.style.display = 'none';
   document.body.appendChild(tooltip);
   gridTooltip = tooltip;
   return tooltip;
@@ -27,7 +25,7 @@ function ensureGridTooltip(): HTMLElement {
 export function showGridTooltip(html: string, x: number, y: number): void {
   const tooltip = ensureGridTooltip();
   tooltip.innerHTML = html;
-  tooltip.style.display = 'block';
+  tooltip.classList.add('is-visible');
   const offsetX = 12;
   const offsetY = 12;
   const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
@@ -50,6 +48,6 @@ export function showGridTooltip(html: string, x: number, y: number): void {
  */
 export function hideGridTooltip(): void {
   if (gridTooltip) {
-    gridTooltip.style.display = 'none';
+    gridTooltip.classList.remove('is-visible');
   }
 }

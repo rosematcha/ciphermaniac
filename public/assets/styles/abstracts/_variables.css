@@ -95,6 +95,12 @@
   --border-accent: rgba(106, 163, 255, 0.25);
   --border-focus: rgba(106, 163, 255, 0.6);
 
+  /* Surface hierarchy: 3-tier depth system */
+  --surface-1: #1a1b21;          /* Primary content containers */
+  --surface-2: #1e1f26;          /* Utility sub-panels, interactive elements */
+  --border-subtle: rgba(255, 255, 255, 0.06);  /* Soft border for primary surfaces */
+  --border-default: rgba(255, 255, 255, 0.09); /* Standard border for sub-panels */
+
   /* Background Variations */
   --bg-hover: rgba(255, 255, 255, 0.02);
   --bg-active: rgba(255, 255, 255, 0.04);
