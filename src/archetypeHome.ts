@@ -13,6 +13,7 @@ import { logger } from './utils/logger.js';
 import { fetchArchetypesList } from './api.js';
 import { escapeHtml } from './utils/html.js';
 import { applyPageSeo, buildWebPageSchema } from './utils/seo.js';
+import { shouldHideUnreadyFeatures } from './utils/releaseChannel.js';
 import type { SignatureCardEntry } from './types/index.js';
 
 // --- Interfaces ---
@@ -86,6 +87,7 @@ interface TopPerformer {
 const R2_BASE_URL = CONFIG.API.R2_BASE;
 const LIMITLESS_DECKLIST_BASE = 'https://play.limitlesstcg.com/tournament';
 const ONLINE_META_TOURNAMENT = 'Online - Last 14 Days';
+const hideUnreadyFeatures = shouldHideUnreadyFeatures();
 
 // --- State ---
 
@@ -117,6 +119,7 @@ const elements = {
   tabHome: document.getElementById('tab-home') as HTMLAnchorElement | null,
   tabAnalysis: document.getElementById('tab-analysis') as HTMLAnchorElement | null,
   tabTrends: document.getElementById('tab-trends') as HTMLAnchorElement | null,
+  trendsActionLink: document.getElementById('link-trends-card') as HTMLAnchorElement | null,
   heroSection: document.getElementById('archetype-hero') as HTMLElement | null,
   heroBannerImages: document.getElementById('hero-banner-images') as HTMLElement | null,
   heroBannerFallback: document.getElementById('hero-banner-fallback') as HTMLElement | null,
@@ -662,6 +665,15 @@ function renderActions(): void {
   }
 }
 
+function applyReleaseGates(): void {
+  if (!hideUnreadyFeatures) {
+    return;
+  }
+
+  elements.tabTrends?.remove();
+  elements.trendsActionLink?.closest('.archetype-home-card')?.remove();
+}
+
 function setPageState(status: 'loading' | 'ready' | 'error'): void {
   if (elements.page) {
     elements.page.setAttribute('data-state', status);
@@ -679,6 +691,8 @@ function setPageState(status: 'loading' | 'ready' | 'error'): void {
 // --- Initialization ---
 
 async function init(): Promise<void> {
+  applyReleaseGates();
+
   const archetypeName = extractArchetypeFromUrl();
   if (!archetypeName) {
     setPageState('error');
@@ -719,7 +733,7 @@ async function init(): Promise<void> {
   if (elements.tabAnalysis) {
     elements.tabAnalysis.href = buildUrl('analysis');
   }
-  if (elements.tabTrends) {
+  if (!hideUnreadyFeatures && elements.tabTrends) {
     elements.tabTrends.href = buildUrl('trends');
   }
 
@@ -732,7 +746,7 @@ async function init(): Promise<void> {
   // Start all fetches immediately
   const indexDataPromise = fetchArchetypeIndexData(state.archetypeName);
   const decksPromise = fetchDecksData();
-  const trendsPromise = fetchTrendsData();
+  const trendsPromise: Promise<TrendsData | null> = hideUnreadyFeatures ? Promise.resolve(null) : fetchTrendsData();
 
   // Render hero as soon as index data is ready (usually from cache)
   const indexData = await indexDataPromise;

@@ -31,6 +31,7 @@ const RESERVED_PATHS = new Set([
 export async function onRequest(context) {
   const url = new URL(context.request.url);
   const { pathname } = url;
+  const isProductionEnv = String(context.env?.ENVIRONMENT || '').toLowerCase() === 'production';
 
   // Clean up path
   const pathParts = pathname.split('/').filter(Boolean);
@@ -72,6 +73,11 @@ export async function onRequest(context) {
     // If not found, maybe 404?
     // Or maybe we treat it as Home?
     return new Response('Not found', { status: 404 });
+  }
+
+  if (subpage === 'trends' && isProductionEnv) {
+    const redirectTarget = new URL(`/${pathParts[0]}/analysis`, url);
+    return Response.redirect(redirectTarget.toString(), 302);
   }
 
   // Determine template

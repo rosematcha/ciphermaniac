@@ -5,9 +5,10 @@
   "description": "Pokemon TCG tournament data visualization tool",
   "main": "public/assets/js/main.js",
   "scripts": {
-    "build": "npm run build:frontend && npm run build:css",
+    "build": "npm run build:frontend && npm run build:css && npm run build:release-flags",
     "build:css": "node scripts/build-css-simple.mjs",
-    "build:prod": "npm run build:frontend && node scripts/build-production.mjs",
+    "build:prod": "npm run build:frontend && node scripts/build-production.mjs && npm run build:release-flags",
+    "build:release-flags": "node scripts/apply-release-flags.mjs",
     "prepare:prod": "node scripts/prepare-production.mjs",
     "restore:dev": "node scripts/restore-dev.mjs",
     "postinstall": "npm run build:frontend",
