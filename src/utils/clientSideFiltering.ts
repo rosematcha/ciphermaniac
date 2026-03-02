@@ -5,7 +5,7 @@
  * can generate the filtered report client-side using the raw deck data.
  */
 
-import { normalizeCardNumber } from '../card/routing.js';
+import { normalizeCardNumber } from '../../shared/cardUtils.js';
 import { AppError, ErrorTypes } from './errorHandler.js';
 import { logger } from './logger.js';
 import { normalizeArchetypeName } from './format.js';

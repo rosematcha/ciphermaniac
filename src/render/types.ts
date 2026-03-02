@@ -24,6 +24,8 @@ export interface CachedLayoutMetrics {
 }
 
 export interface GridElement extends HTMLElement {
+  _cardRegistry?: Map<string, HTMLElement>;
+  _cardDelegationAttached?: boolean;
   _visibleRows?: number;
   _totalRows?: number;
   _totalCards?: number;

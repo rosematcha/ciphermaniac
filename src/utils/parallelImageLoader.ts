@@ -24,6 +24,7 @@ class ParallelImageLoader {
   private observedImages: Map<HTMLImageElement, { candidates: string[]; options: SetupImageOptions }>;
   private observer: IntersectionObserver | null;
   private observerRootMargin: string;
+  private activePreloadBatch: number;
 
   constructor() {
     this.loadingImages = new Map(); // key -> Promise
@@ -32,6 +33,7 @@ class ParallelImageLoader {
     this.observedImages = new Map();
     this.observer = null;
     this.observerRootMargin = '200px';
+    this.activePreloadBatch = 0;
   }
 
   /**
@@ -76,6 +78,21 @@ class ParallelImageLoader {
     } finally {
       this.loadingImages.delete(cacheKey);
     }
+  }
+
+  /**
+   * Start a new preload batch and invalidate older queued batches.
+   */
+  startPreloadBatch(): number {
+    this.activePreloadBatch += 1;
+    return this.activePreloadBatch;
+  }
+
+  private isBatchActive(batchId?: number): boolean {
+    if (!batchId) {
+      return true;
+    }
+    return batchId === this.activePreloadBatch;
   }
 
   /**
@@ -223,15 +240,44 @@ class ParallelImageLoader {
    * Preload images for better performance
    * @param candidatesList - Array of candidate arrays
    * @param concurrency - Max concurrent preloads
+   * @param batchId - Optional preload batch id from startPreloadBatch()
    */
-  async preloadImages(candidatesList: string[][], concurrency = 6): Promise<void> {
+  async preloadImages(candidatesList: string[][], concurrency?: number, batchId?: number): Promise<void> {
+    if (!Array.isArray(candidatesList) || candidatesList.length === 0) {
+      return;
+    }
+    const concurrencyLimit = typeof concurrency === 'number' && concurrency > 0 ? concurrency : 6;
+
+    const seen = new Set<string>();
+    const deduped = candidatesList.filter(candidates => {
+      if (!Array.isArray(candidates) || candidates.length === 0) {
+        return false;
+      }
+      const key = candidates[0];
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+
     const chunks: string[][][] = [];
-    for (let i = 0; i < candidatesList.length; i += concurrency) {
-      chunks.push(candidatesList.slice(i, i + concurrency));
+    for (let i = 0; i < deduped.length; i += concurrencyLimit) {
+      chunks.push(deduped.slice(i, i + concurrencyLimit));
     }
 
     for (const chunk of chunks) {
-      await Promise.allSettled(chunk.map(candidates => this.loadImageParallel(candidates)));
+      if (!this.isBatchActive(batchId)) {
+        return;
+      }
+      await Promise.allSettled(
+        chunk.map(candidates => {
+          if (!this.isBatchActive(batchId)) {
+            return Promise.resolve(null);
+          }
+          return this.loadImageParallel(candidates);
+        })
+      );
     }
   }
 

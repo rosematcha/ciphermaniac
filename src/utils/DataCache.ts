@@ -7,13 +7,19 @@ interface MasterCacheEntry {
   items: any[];
 }
 
+interface MasterCacheMetaEntry {
+  ts: number;
+  deckTotal: number;
+  itemCount: number;
+}
+
 interface ArcheIndexCacheEntry {
   ts: number;
   list: any[];
 }
 
 interface GridCache {
-  master?: Record<string, MasterCacheEntry>;
+  master?: Record<string, MasterCacheMetaEntry>;
   archeIndex?: Record<string, ArcheIndexCacheEntry>;
 }
 
@@ -24,10 +30,34 @@ interface GridCache {
 export class DataCache {
   private cache: GridCache;
   private ttl: number;
+  private masterMemory: Map<string, MasterCacheEntry>;
 
   constructor() {
-    this.cache = (storage.get('gridCache') as GridCache) || {};
+    const persisted = (storage.get('gridCache') as GridCache | null) || {};
+    this.cache = {
+      master: {},
+      archeIndex: persisted.archeIndex || {}
+    };
     this.ttl = CONFIG.CACHE.TTL_MS;
+    this.masterMemory = new Map();
+
+    // Migrate/trim persisted master cache to metadata-only shape.
+    const persistedMaster = (persisted as { master?: Record<string, any> }).master || {};
+    Object.entries(persistedMaster).forEach(([tournament, value]) => {
+      if (!value || typeof value !== 'object') {
+        return;
+      }
+      const raw = value as Record<string, unknown>;
+      const ts = Number(raw.ts);
+      const deckTotal = Number(raw.deckTotal);
+      const itemCount = Array.isArray(raw.items) ? raw.items.length : Number(raw.itemCount);
+      this.cache.master![tournament] = {
+        ts: Number.isFinite(ts) ? ts : Date.now(),
+        deckTotal: Number.isFinite(deckTotal) ? deckTotal : 0,
+        itemCount: Number.isFinite(itemCount) ? itemCount : 0
+      };
+    });
+    storage.set('gridCache', this.cache);
   }
 
   /**
@@ -43,11 +73,19 @@ export class DataCache {
    * @param tournament
    */
   getCachedMaster(tournament: string): MasterCacheEntry | null {
-    const entry = this.cache?.master?.[tournament];
-    if (!entry || this.isExpired(entry.ts)) {
+    const memoryEntry = this.masterMemory.get(tournament);
+    if (!memoryEntry) {
       return null;
     }
-    return entry;
+    if (this.isExpired(memoryEntry.ts)) {
+      this.masterMemory.delete(tournament);
+      if (this.cache.master?.[tournament]) {
+        delete this.cache.master[tournament];
+        storage.set('gridCache', this.cache);
+      }
+      return null;
+    }
+    return memoryEntry;
   }
 
   /**
@@ -58,11 +96,18 @@ export class DataCache {
    * @param data.items
    */
   setCachedMaster(tournament: string, data: { deckTotal: number; items: any[] }): void {
-    this.cache.master = this.cache.master || {};
-    this.cache.master[tournament] = {
+    const entry: MasterCacheEntry = {
       ts: Date.now(),
       deckTotal: data.deckTotal,
       items: data.items
+    };
+    this.masterMemory.set(tournament, entry);
+
+    this.cache.master = this.cache.master || {};
+    this.cache.master[tournament] = {
+      ts: entry.ts,
+      deckTotal: data.deckTotal,
+      itemCount: Array.isArray(data.items) ? data.items.length : 0
     };
     storage.set('gridCache', this.cache);
   }

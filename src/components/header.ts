@@ -48,11 +48,26 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
     </div>
   `;
 
+  enhanceHeader(header);
+
+  return header;
+}
+
+/**
+ * Enhance an already-rendered header with interaction handlers.
+ */
+export function enhanceHeader(header: HTMLElement | null): void {
+  if (!header || header.dataset.cmHeaderEnhanced === 'true') {
+    return;
+  }
+  const hostHeader = header;
+  hostHeader.dataset.cmHeaderEnhanced = 'true';
+
   // Add class for browsers without :has() support (CLS prevention fallback)
   document.body.classList.add('has-header');
 
-  const nav = header.querySelector('.main-nav') as HTMLElement | null;
-  const toggle = header.querySelector('.nav-toggle') as HTMLButtonElement | null;
+  const nav = hostHeader.querySelector('.main-nav') as HTMLElement | null;
+  const toggle = hostHeader.querySelector('.nav-toggle') as HTMLButtonElement | null;
 
   if (nav && toggle) {
     const isMobileViewport = () => window.matchMedia('(max-width: 720px)').matches;
@@ -65,7 +80,6 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
       toggle.classList.add('is-active');
       toggle.setAttribute('aria-expanded', 'true');
       setMobileNavState(true);
-      // Focus first nav link when opening
       const firstLink = nav.querySelector('.nav-link') as HTMLElement | null;
       firstLink?.focus();
     };
@@ -115,7 +129,6 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
         toggle.focus();
       }
 
-      // Arrow key navigation within nav
       const navLinks = Array.from(nav.querySelectorAll('.nav-link')) as HTMLElement[];
       const currentIndex = navLinks.indexOf(document.activeElement as HTMLElement);
 
@@ -151,8 +164,6 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
       mq.addListener(handleChange);
     }
   }
-
-  return header;
 }
 
 /**

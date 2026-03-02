@@ -3,10 +3,11 @@
  * Contains all functions related to creating, populating, and managing individual card DOM elements.
  */
 import { buildThumbCandidates } from '../thumbs.js';
-import { buildCardPath, normalizeCardNumber } from '../card/routing.js';
+import { buildCardPath } from '../card/routing.js';
 import { trackMissing } from '../dev/missingThumbs.js';
 import { parallelImageLoader } from '../utils/parallelImageLoader.js';
 import { createElement, setStyles } from '../utils/dom.js';
+import { normalizeCardNumber } from '../../shared/cardUtils.js';
 import type { CardItem } from '../types/index.js';
 import type { RenderOptions } from './types.js';
 import { hideGridTooltip, showGridTooltip } from './cards/tooltip.js';

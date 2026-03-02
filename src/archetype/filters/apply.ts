@@ -103,6 +103,11 @@ export async function applyFilters(): Promise<void> {
     }
     renderCards();
   } catch (error) {
+    if ((error as { name?: string })?.name === 'AbortError') {
+      logger.debug('Ignoring stale filter response after cancellation');
+      return;
+    }
+
     logger.error('Filter application failed', error);
 
     if (error instanceof AppError && error.context?.status === 404) {
@@ -140,17 +145,25 @@ export async function applyFilters(): Promise<void> {
  * Apply the current success filter baseline.
  */
 export async function applySuccessFilter(): Promise<void> {
-  const baseline = await loadSuccessBaseline();
-  const state = getState();
-  Object.assign(state, {
-    items: baseline.items,
-    archetypeDeckTotal: baseline.deckTotal
-  });
-  const label = describeSuccessFilter(state.successFilter) || 'selected finish';
-  if (!baseline.deckTotal) {
-    updateFilterMessage(`No decks found for ${label}.`, 'warning');
-  } else {
-    updateFilterMessage('');
+  try {
+    const baseline = await loadSuccessBaseline();
+    const state = getState();
+    Object.assign(state, {
+      items: baseline.items,
+      archetypeDeckTotal: baseline.deckTotal
+    });
+    const label = describeSuccessFilter(state.successFilter) || 'selected finish';
+    if (!baseline.deckTotal) {
+      updateFilterMessage(`No decks found for ${label}.`, 'warning');
+    } else {
+      updateFilterMessage('');
+    }
+    renderCards();
+  } catch (error) {
+    if ((error as { name?: string })?.name === 'AbortError') {
+      logger.debug('Ignoring stale success-filter response after cancellation');
+      return;
+    }
+    throw error;
   }
-  renderCards();
 }

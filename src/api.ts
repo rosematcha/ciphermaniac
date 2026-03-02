@@ -8,9 +8,13 @@ import { logger } from './utils/logger.js';
 import { AppError, ErrorTypes, safeFetch, validateType, withRetry } from './utils/errorHandler.js';
 import { perf } from './utils/performance.js';
 import { clearDatabaseCache, loadDatabase } from './lib/database.js';
+import { isFeatureEnabled } from './utils/featureFlags.js';
 import type {
+  ArchetypeFilterRequest,
+  ArchetypeFilterResponse,
   ArchetypeIndexEntry,
   ArchetypeReport,
+  ArchetypeSuccessSummaryByTag,
   CacheEntry,
   CanonicalMatchRecord,
   LimitlessResponse,
@@ -18,6 +22,7 @@ import type {
   MatchupProfilesReport,
   MetaReport,
   PricingData,
+  TournamentManifest,
   TournamentParticipant,
   TournamentReport,
   TrendReport,
@@ -25,11 +30,15 @@ import type {
 } from './types/index.js';
 
 export type {
+  ArchetypeFilterRequest,
+  ArchetypeFilterResponse,
   ArchetypeIndexEntry,
+  ArchetypeSuccessSummaryByTag,
   LimitlessTournament,
   MatchupProfilesReport,
   MetaReport,
   PricingData,
+  TournamentManifest,
   TournamentParticipant,
   TournamentReport,
   TrendReport,
@@ -39,6 +48,11 @@ export type {
 let pricingData: PricingData | null = null;
 const jsonCache = new Map<string, CacheEntry>();
 const reportCache = new Map<string, CacheEntry<TournamentReport>>();
+const tournamentDbAvailabilityCache = new Map<string, boolean>();
+let apiTestHooks: {
+  loadDatabase?: (tournament: string) => Promise<any>;
+  fetchTournamentManifest?: (tournament: string) => Promise<TournamentManifest>;
+} = {};
 export const ONLINE_META_NAME = 'Online - Last 14 Days';
 export type ReportSlice = 'all' | 'phase2' | 'topcut';
 // const _ONLINE_META_SEGMENT = `/${encodeURIComponent(ONLINE_META_NAME)}`; // Reserved for future use
@@ -97,7 +111,26 @@ function cachePendingReport(cacheKey: string, promise: Promise<TournamentReport>
  */
 export function clearApiCache() {
   jsonCache.clear();
+  reportCache.clear();
+  tournamentDbAvailabilityCache.clear();
+  apiTestHooks = {};
   clearDatabaseCache();
+}
+
+/**
+ * Test-only hook registration for API internals.
+ * @internal
+ */
+export function __setApiTestHooks(
+  hooks: Partial<{
+    loadDatabase: (tournament: string) => Promise<any>;
+    fetchTournamentManifest: (tournament: string) => Promise<TournamentManifest>;
+  }>
+): void {
+  apiTestHooks = {
+    ...(hooks.loadDatabase ? { loadDatabase: hooks.loadDatabase } : {}),
+    ...(hooks.fetchTournamentManifest ? { fetchTournamentManifest: hooks.fetchTournamentManifest } : {})
+  };
 }
 
 function fetchWithTimeout(url: string, options: RequestInit = {}) {
@@ -127,6 +160,26 @@ function buildQueryString(params: Record<string, any> = {}) {
 
   const serialized = query.toString();
   return serialized ? `?${serialized}` : '';
+}
+
+function normalizeTournamentManifest(raw: unknown): TournamentManifest {
+  const record = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const assetsRecord =
+    record.assets && typeof record.assets === 'object' ? (record.assets as Record<string, unknown>) : {};
+
+  const masterBytes = Number(assetsRecord.masterBytes);
+  const dbBytes = Number(assetsRecord.dbBytes);
+  const updatedAt = typeof assetsRecord.updatedAt === 'string' ? assetsRecord.updatedAt : '';
+  const hasTournamentDb = record.hasTournamentDb === true;
+
+  return {
+    hasTournamentDb,
+    assets: {
+      masterBytes: Number.isFinite(masterBytes) && masterBytes >= 0 ? masterBytes : 0,
+      updatedAt,
+      ...(Number.isFinite(dbBytes) && dbBytes >= 0 ? { dbBytes } : {})
+    }
+  };
 }
 
 function normalizeLimitlessTournament(entry: unknown): LimitlessTournament | null {
@@ -353,6 +406,74 @@ export function fetchTournamentsList(): Promise<string[]> {
   });
 }
 
+/**
+ * Fetch tournament manifest metadata.
+ * Falls back to an explicit "no db" manifest when unavailable.
+ * @param tournament - Tournament identifier.
+ */
+export async function fetchTournamentManifest(tournament: string): Promise<TournamentManifest> {
+  const relativePath = `${encodeURIComponent(tournament)}/manifest.json`;
+  try {
+    const data = await fetchReportResource<TournamentManifest>(
+      relativePath,
+      `manifest for ${tournament}`,
+      'object',
+      'tournament manifest',
+      { cache: true }
+    );
+    return normalizeTournamentManifest(data);
+  } catch (error: unknown) {
+    logger.debug('Tournament manifest unavailable, assuming no SQLite database', {
+      tournament,
+      message: error instanceof Error ? error.message : String(error)
+    });
+    return {
+      hasTournamentDb: false,
+      assets: {
+        masterBytes: 0,
+        updatedAt: ''
+      }
+    };
+  }
+}
+
+/**
+ * Fetch a lightweight tournament summary.
+ * Prefers meta.json and only falls back to master.json deckTotal.
+ * @param tournament - Tournament identifier.
+ */
+export async function fetchTournamentSummary(
+  tournament: string
+): Promise<{ deckTotal: number; updatedAt?: string | null }> {
+  try {
+    const meta = await fetchMeta(tournament);
+    if (Number.isFinite(meta?.deckTotal)) {
+      return {
+        deckTotal: Number(meta.deckTotal),
+        updatedAt: typeof meta.generatedAt === 'string' ? meta.generatedAt : null
+      };
+    }
+  } catch (error) {
+    logger.debug('meta.json summary unavailable, falling back to master.json', {
+      tournament,
+      message: error instanceof Error ? error.message : String(error)
+    });
+  }
+
+  const report = await fetchReportResource<TournamentReport>(
+    `${encodeURIComponent(tournament)}/master.json`,
+    `master summary for ${tournament}`,
+    'object',
+    'tournament summary',
+    { cache: true }
+  );
+
+  return {
+    deckTotal: Number(report?.deckTotal || 0),
+    updatedAt: null
+  };
+}
+
 interface LimitlessFilters {
   game?: string;
   format?: string;
@@ -421,6 +542,20 @@ export async function fetchLimitlessTournaments(filters: LimitlessFilters = {}):
   return normalized;
 }
 
+async function hasTournamentDatabase(tournament: string): Promise<boolean> {
+  const cached = tournamentDbAvailabilityCache.get(tournament);
+  if (typeof cached === 'boolean') {
+    return cached;
+  }
+
+  const manifest = apiTestHooks.fetchTournamentManifest
+    ? await apiTestHooks.fetchTournamentManifest(tournament)
+    : await fetchTournamentManifest(tournament);
+  const hasDb = manifest.hasTournamentDb === true;
+  tournamentDbAvailabilityCache.set(tournament, hasDb);
+  return hasDb;
+}
+
 /**
  * Fetch the master report for a tournament.
  * @param tournament - Tournament identifier.
@@ -447,32 +582,51 @@ export async function fetchReport(tournament: string, slice: ReportSlice = 'all'
   perf.start(`fetchReport:${tournament}:${slice}`);
   const loader = (async () => {
     if (slice === 'all') {
-      try {
-        const db = await loadDatabase(tournament);
-        const cardStats = db.getCardStats();
-        const deckTotal = db.getTotalDecks();
-        const items = cardStats.map((row: any) => ({
-          name: row.card_name,
-          set: row.card_set ?? undefined,
-          number: row.card_number ?? undefined,
-          uid: row.card_uid,
-          found: row.found,
-          total: deckTotal,
-          pct: row.pct,
-          category: row.category ?? undefined,
-          trainerType: row.trainer_type ?? undefined,
-          energyType: row.energy_type ?? undefined,
-          aceSpec: Boolean(row.ace_spec),
-          dist: row.dist || [],
-          rank: row.rank
-        }));
-        logger.debug(`Loaded tournament report from SQLite for ${tournament}`, { deckTotal, itemCount: items.length });
-        return { deckTotal, items };
-      } catch (dbError) {
-        logger.debug('SQLite report failed, falling back to JSON', {
-          tournament,
-          slice,
-          error: dbError instanceof Error ? dbError.message : String(dbError)
+      const useManifestGate = isFeatureEnabled('useSqliteManifestGate');
+      const shouldAttemptSqlite = useManifestGate ? await hasTournamentDatabase(tournament) : true;
+
+      if (shouldAttemptSqlite) {
+        try {
+          const db = apiTestHooks.loadDatabase
+            ? await apiTestHooks.loadDatabase(tournament)
+            : await loadDatabase(tournament);
+          const cardStats = db.getCardStats();
+          const deckTotal = db.getTotalDecks();
+          const items = cardStats.map((row: any) => ({
+            name: row.card_name,
+            set: row.card_set ?? undefined,
+            number: row.card_number ?? undefined,
+            uid: row.card_uid,
+            found: row.found,
+            total: deckTotal,
+            pct: row.pct,
+            category: row.category ?? undefined,
+            trainerType: row.trainer_type ?? undefined,
+            energyType: row.energy_type ?? undefined,
+            aceSpec: Boolean(row.ace_spec),
+            dist: row.dist || [],
+            rank: row.rank
+          }));
+          logger.debug(`Loaded tournament report from SQLite for ${tournament}`, {
+            deckTotal,
+            itemCount: items.length
+          });
+          return { deckTotal, items };
+        } catch (dbError) {
+          logger.debug('SQLite report failed, falling back to JSON', {
+            tournament,
+            slice,
+            error: dbError instanceof Error ? dbError.message : String(dbError)
+          });
+
+          // If SQLite fails despite manifest saying available, avoid repeated attempts for this session.
+          if (dbError instanceof AppError && Number(dbError.context?.status) === 404) {
+            tournamentDbAvailabilityCache.set(tournament, false);
+          }
+        }
+      } else {
+        logger.debug('Skipping SQLite load based on manifest gate', {
+          tournament
         });
       }
     }
@@ -656,6 +810,63 @@ export async function fetchArchetypeReport(
     });
     return data;
   });
+}
+
+/**
+ * Fetch optional pre-aggregated archetype success summaries.
+ * @param tournament - Tournament identifier.
+ * @param archetypeBase - Archetype slug.
+ * @param slice - Optional tournament slice.
+ */
+export async function fetchArchetypeSummaryBySuccess(
+  tournament: string,
+  archetypeBase: string,
+  slice: ReportSlice = 'all'
+): Promise<ArchetypeSuccessSummaryByTag | null> {
+  const basePath = getSliceBasePath(tournament, slice);
+  const path = `${basePath}/archetypes/${encodeURIComponent(archetypeBase)}/summary-by-success.json`;
+
+  try {
+    const data = await fetchReportResource<ArchetypeSuccessSummaryByTag>(
+      path,
+      `archetype success summary ${archetypeBase} for ${tournament}`,
+      'object',
+      'archetype success summary',
+      { cache: true }
+    );
+    return data && typeof data === 'object' ? data : null;
+  } catch (error) {
+    logger.debug('Optional archetype success summary unavailable', {
+      tournament,
+      archetypeBase,
+      slice,
+      message: error instanceof Error ? error.message : String(error)
+    });
+    return null;
+  }
+}
+
+/**
+ * Fetch server-side archetype filter aggregation.
+ * @param request - Filter request payload.
+ * @param signal - Optional abort signal.
+ */
+export async function fetchArchetypeFilterReport(
+  request: ArchetypeFilterRequest,
+  signal?: AbortSignal
+): Promise<ArchetypeFilterResponse> {
+  const response = await fetchWithTimeout('/api/archetype/filter-report', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(request),
+    signal
+  });
+
+  const payload = await safeJsonParse(response, '/api/archetype/filter-report');
+  validateType(payload, 'object', 'archetype filter report');
+  return payload as ArchetypeFilterResponse;
 }
 
 /**

@@ -320,6 +320,34 @@ export interface ArchetypeReport extends TournamentReport {
 }
 
 /**
+ * Tournament manifest used to advertise optional assets.
+ */
+export interface TournamentManifest {
+  /** Whether a SQLite tournament.db exists for this report. */
+  hasTournamentDb: boolean;
+  assets: {
+    /** Size of master.json payload in bytes. */
+    masterBytes: number;
+    /** Last updated timestamp (ISO string). */
+    updatedAt: string;
+    /** Optional SQLite database size in bytes. */
+    dbBytes?: number;
+  };
+}
+
+/**
+ * Optional archetype summary buckets keyed by success filter tag.
+ */
+export type ArchetypeSuccessSummaryByTag = Record<
+  string,
+  {
+    deckTotal: number;
+    items?: CardItem[];
+    updatedAt?: string;
+  }
+>;
+
+/**
  * Parsed report after validation and cleaning.
  */
 export interface ParsedReport {
@@ -561,6 +589,26 @@ export interface Filter {
   operator?: Operator | null;
   /** Count threshold for comparison */
   count?: number | null;
+}
+
+/**
+ * Request payload for server-side archetype filter reports.
+ */
+export interface ArchetypeFilterRequest {
+  tournament: string;
+  archetype: string;
+  successFilter: string;
+  filters: Filter[];
+  slice?: 'all' | 'phase2' | 'topcut';
+}
+
+/**
+ * API response for server-side archetype filter reports.
+ */
+export interface ArchetypeFilterResponse {
+  deckTotal: number;
+  items: CardItem[];
+  raw?: unknown;
 }
 
 /**
