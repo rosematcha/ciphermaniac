@@ -181,8 +181,8 @@ Downloads and processes an individual tournament report from Limitless Labs (man
 1. Resolves tournament input (Labs URL/code or Limitless URL/ID) to a Labs tournament code
 2. Fetches Masters standings + tournament metadata from Labs endpoints
 3. Fetches every decklist player's decklist and round-by-round matches
-4. Generates card synonym mappings by scraping Limitless print variations
-5. Generates reports:
+4. Generates reports:
+   - `index.json` - Compact report metadata/counters
    - `players.json` - Full participant standings (all entrants)
    - `playerMatches.json` - Per-player round paths
    - `matches.json` - Canonical deduped matches
@@ -191,11 +191,12 @@ Downloads and processes an individual tournament report from Limitless Labs (man
    - `meta.json` - Tournament metadata
    - `decks.json` - Deck analytics dataset (decklist players)
    - `cardIndex.json` - Card usage index
-   - `synonyms.json` - Card reprint mappings
+   - `tournament.db` - SQLite export for fast client-side read paths
+   - `synonyms.json` - Optional, generated only when explicitly enabled
    - `archetypes/{name}/cards.json` + `archetypes/{name}/decks.json`
    - `slices/phase2/*` and `slices/topcut/*` reports
-6. Uploads all files to R2 at `reports/{YYYY-MM-DD, Tournament Name}/`
-7. Updates `reports/tournaments.json` with the new tournament entry
+5. Uploads all files to R2 at `reports/{YYYY-MM-DD, Tournament Name}/`
+6. Updates `reports/tournaments.json` with the new tournament entry
 
 ### When It Runs
 **Manual Only**: Must be triggered via "Run workflow" button in GitHub Actions
@@ -231,35 +232,38 @@ Downloads and processes an individual tournament report from Limitless Labs (man
 - Updates: `reports/tournaments.json` (adds new entry at top)
 - Folder naming: `{YYYY-MM-DD}, {Tournament Name}`
   - Example: `2025-11-11, Regional Fakecitytownville`
-- Processing time: 5-15 minutes (depending on synonym generation)
+- Processing time: 5-15 minutes (tournament size dependent)
 
 ### Notes
 - Masters division only (`MA`) in current implementation
 - Supports Limitless URL/ID inputs by resolving linked Labs standings URL
-- Generates synonyms by scraping Limitless for all card printings
-- Chooses canonical print intelligently (prefers standard-legal, non-promo, lowest price)
+- Per-tournament synonym output is disabled by default (`GENERATE_TOURNAMENT_SYNONYMS=false`)
+- SQLite export is enabled by default (`WRITE_TOURNAMENT_DB=true`)
 - Does NOT download card images (no longer hosting images)
 - Automatically inserts tournament into `tournaments.json` in chronological order
 
 ---
 
-## 5. Regenerate Tournament Reports
+## 5. Reset Labs History (One-Time)
 
-**File**: `.github/workflows/regenerate-tournaments.yml`
+**File**: `.github/workflows/reset-labs-history.yml`
 
 ### Purpose
-Regenerates tournament reports for tournaments that need to be updated with the new folder structure (per-archetype `decks.json` files).
+Performs a destructive one-time reset of offline tournament reports, then rebuilds Labs history sequentially for a configured ID range.
 
 ### What It Does
-1. For each tournament in the backlog:
-   - Fetches `meta.json` to get the original `sourceUrl`
-   - Deletes all existing R2 data for that tournament
-   - Re-downloads from the source URL to regenerate with new structure
-2. Generates the new archetype folder structure:
-   - `archetypes/{name}/cards.json` - Card statistics (new path)
-   - `archetypes/{name}/decks.json` - Deck data for this archetype only
-   - `archetypes/{name}.json` - Legacy backward compatibility
-3. Preserves all tournament metadata and deck data
+1. Enumerates all keys under `reports/`
+2. Deletes all tournament report data except:
+   - `reports/Online - Last 14 Days/**`
+   - `reports/Trends - Last 30 Days/**`
+   - `reports/prices.json`
+3. Resets `reports/tournaments.json` to an empty list
+4. Rebuilds Labs tournaments sequentially from `start_id` to `end_id` by invoking `download-tournament.py` for each code
+5. Uses these downloader flags for rebuild:
+   - `ANONYMIZE=false`
+   - `GENERATE_TOURNAMENT_SYNONYMS=false`
+   - `WRITE_TOURNAMENT_DB=true`
+6. Fails fast by default (optional continue-on-error mode)
 
 ### When It Runs
 **Manual Only**: Must be triggered via "Run workflow" button in GitHub Actions
@@ -268,20 +272,20 @@ Regenerates tournament reports for tournaments that need to be updated with the 
 - `workflow_dispatch`: Manual trigger only
 
 ### Inputs
-- `mode` (required) - Which tournaments to regenerate:
-  - `all-backlog` - Process all tournaments in the predefined backlog list
-  - `single` - Process a single specified tournament
-- `single_tournament` (optional) - Tournament name for single mode
-  - Example: `2025-04-12, Regional Atlanta, GA`
-- `dry_run` (optional, default: false) - Show what would be done without making changes
+- `start_id` (optional, default: `1`) - Start Labs code (inclusive)
+- `end_id` (optional, default: `54`) - End Labs code (inclusive)
+- `dry_run` (optional, default: `false`) - Preview only (no delete/rebuild)
+- `fail_fast` (optional, default: `true`) - Stop on first failed tournament
+- `reset_reports` (optional, default: `true`) - Whether to run destructive deletion phase
 
 ### Required Secrets
 - `R2_ACCOUNT_ID` - Cloudflare R2 account ID
 - `R2_ACCESS_KEY_ID` - R2 access key
 - `R2_SECRET_ACCESS_KEY` - R2 secret key
+- `R2_BUCKET_NAME` - Target R2 bucket
 
 ### Script
-`.github/scripts/regenerate-tournaments.py` (Python)
+`.github/scripts/reset-labs-history.py` (Python)
 
 ### Dependencies
 - Python 3.11
@@ -290,15 +294,14 @@ Regenerates tournament reports for tournaments that need to be updated with the 
 - `boto3` - AWS S3/R2 client
 
 ### Output
-- Updates: `reports/{tournament_name}/archetypes/` with new folder structure
-- Processing time: 5-10 minutes per tournament
-- Full backlog: ~2 hours for all tournaments
+- Rebuilds `reports/{YYYY-MM-DD, Tournament Name}/` for the selected Labs range
+- Rewrites `reports/tournaments.json`
+- Processing time: long-running (full range can take hours)
 
 ### Notes
-- The backlog list is hardcoded in `regenerate-tournaments.py`
-- Use `dry_run: true` to preview changes before executing
-- Maintains backward compatibility with legacy `{archetype}.json` files
-- Preserves synonym data and tournament metadata
+- This workflow is destructive when `reset_reports=true`
+- Protected report roots are intentionally preserved (online meta, trends, prices)
+- Intended for one-time/full reset operations, not daily maintenance
 
 ---
 
@@ -351,8 +354,8 @@ Manual (as needed)
 ├─ Download Tournament Report
 │  └─ Adds individual regional/special tournaments
 │
-└─ Regenerate Tournament Reports
-   └─ Updates existing tournaments with new structure
+└─ Reset Labs History (One-Time)
+   └─ Destructive reset + sequential historical Labs rebuild
 ```
 
 The online meta and pricing workflows run concurrently and independently. They don't depend on each other.

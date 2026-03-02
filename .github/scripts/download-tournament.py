@@ -12,7 +12,9 @@ import hashlib
 import json
 import os
 import re
+import sqlite3
 import sys
+import tempfile
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -56,6 +58,7 @@ PERCENT_TAG_RULES = [
 ]
 
 PHASE_MULTIPLIERS = {1: 1.0, 2: 1.75, 3: 3.0}
+REPORT_VERSION = "3.1"
 
 # Month mapping for date parsing
 _MONTHS = {
@@ -89,6 +92,18 @@ def compose_category_path(category, trainer_type=None, energy_type=None, ace_spe
     elif base == "energy" and energy_type:
         parts.append(energy_type.lower())
     return "/".join(parts)
+
+
+def parse_bool_env(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    normalized = str(raw).strip().lower()
+    if normalized in {"1", "true", "yes", "y", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "n", "off"}:
+        return False
+    return default
 
 
 def sanitize_for_path(text):
@@ -1190,6 +1205,23 @@ def upload_to_r2(r2_client, bucket_name, key, data):
     )
 
 
+def upload_binary_to_r2(r2_client, bucket_name, key, data: bytes, content_type: str):
+    if LOCAL_EXPORT_DIR:
+        local_path = Path(LOCAL_EXPORT_DIR) / key
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        local_path.write_bytes(data)
+        print(f"  Saved {local_path}")
+        return
+
+    print(f"  Uploading {key}...")
+    r2_client.put_object(
+        Bucket=bucket_name,
+        Key=key,
+        Body=data,
+        ContentType=content_type,
+    )
+
+
 def update_tournaments_json(r2_client, bucket_name, tournament_name):
     if LOCAL_EXPORT_DIR:
         print("Skipping tournaments.json update (local export mode)")
@@ -1237,9 +1269,509 @@ def build_slice_payloads(base_path: str, slice_name: str, decks: List[Dict[str, 
         upload_to_r2(r2_client, bucket_name, f"{slice_path}/archetypes/{archetype_base}/decks.json", payload["decks"])
 
 
+def build_card_uid(card: Dict[str, Any]) -> str:
+    name = str(card.get("name") or "Unknown Card").strip()
+    set_code = str(card.get("set") or "").strip().upper()
+    number = normalize_card_number(card.get("number"))
+    if set_code and number:
+        return f"{name}::{set_code}::{number}"
+    return name
+
+
+def to_int(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        return int(float(text))
+    except Exception:
+        return None
+
+
+def to_float(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        return float(text)
+    except Exception:
+        return None
+
+
+def bool_to_int(value: Any) -> int:
+    return 1 if bool(value) else 0
+
+
+def build_tournament_sqlite_bytes(
+    all_decks: List[Dict[str, Any]],
+    master_report: Dict[str, Any],
+    participants: List[Dict[str, Any]],
+    player_matches: List[Dict[str, Any]],
+    canonical_matches: List[Dict[str, Any]],
+    matchup_profiles: Dict[str, Any],
+    metadata: Dict[str, Any],
+    labs_code: str,
+) -> bytes:
+    db_path = None
+    conn = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as handle:
+            db_path = handle.name
+
+        conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA journal_mode=DELETE;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        conn.execute("PRAGMA temp_store=MEMORY;")
+        cur = conn.cursor()
+
+        cur.executescript(
+            """
+            CREATE TABLE decks (
+              id TEXT PRIMARY KEY,
+              player TEXT,
+              player_id TEXT,
+              country TEXT,
+              placement INTEGER,
+              archetype TEXT,
+              archetype_id TEXT,
+              tournament_id TEXT,
+              made_phase2 INTEGER,
+              made_topcut INTEGER
+            );
+
+            CREATE TABLE deck_cards (
+              deck_id TEXT NOT NULL,
+              card_uid TEXT NOT NULL,
+              card_name TEXT NOT NULL,
+              card_set TEXT,
+              card_number TEXT,
+              count INTEGER NOT NULL,
+              category TEXT,
+              trainer_type TEXT,
+              energy_type TEXT,
+              ace_spec INTEGER DEFAULT 0,
+              regulation_mark TEXT
+            );
+
+            CREATE TABLE card_stats (
+              card_uid TEXT PRIMARY KEY,
+              card_name TEXT NOT NULL,
+              card_set TEXT,
+              card_number TEXT,
+              category TEXT,
+              trainer_type TEXT,
+              energy_type TEXT,
+              ace_spec INTEGER DEFAULT 0,
+              rank INTEGER NOT NULL,
+              found INTEGER NOT NULL,
+              total INTEGER NOT NULL,
+              pct REAL NOT NULL
+            );
+
+            CREATE TABLE card_distributions (
+              card_uid TEXT NOT NULL,
+              copies INTEGER NOT NULL,
+              players INTEGER NOT NULL,
+              percent REAL NOT NULL
+            );
+
+            CREATE TABLE success_tags (
+              deck_id TEXT NOT NULL,
+              tag TEXT NOT NULL
+            );
+
+            CREATE TABLE db_metadata (
+              key TEXT PRIMARY KEY,
+              value TEXT
+            );
+
+            CREATE TABLE participants (
+              tp_id INTEGER PRIMARY KEY,
+              player_id TEXT,
+              name TEXT NOT NULL,
+              country TEXT,
+              placement INTEGER,
+              points INTEGER,
+              wins INTEGER,
+              losses INTEGER,
+              ties INTEGER,
+              opw REAL,
+              oopw REAL,
+              made_phase2 INTEGER,
+              made_topcut INTEGER,
+              decklist_published INTEGER,
+              deck_id TEXT,
+              deck_name TEXT,
+              icons TEXT,
+              drop_round INTEGER,
+              dropped INTEGER,
+              dqed INTEGER,
+              late INTEGER
+            );
+
+            CREATE TABLE player_matches (
+              id TEXT PRIMARY KEY,
+              player_id INTEGER,
+              player_name TEXT,
+              opponent_id INTEGER,
+              opponent_name TEXT,
+              opponent_country TEXT,
+              opponent_archetype TEXT,
+              player_archetype TEXT,
+              round INTEGER,
+              phase INTEGER,
+              table_no INTEGER,
+              completed INTEGER,
+              winner_code INTEGER,
+              outcome TEXT,
+              made_phase2 INTEGER,
+              made_topcut INTEGER
+            );
+
+            CREATE TABLE matches (
+              id TEXT PRIMARY KEY,
+              match_key TEXT UNIQUE,
+              round INTEGER,
+              phase INTEGER,
+              table_no INTEGER,
+              completed INTEGER,
+              player1_id INTEGER,
+              player2_id INTEGER,
+              winner_code INTEGER,
+              winner INTEGER,
+              outcome_type TEXT,
+              player1_result TEXT,
+              player2_result TEXT,
+              player1_name TEXT,
+              player2_name TEXT,
+              player1_country TEXT,
+              player2_country TEXT,
+              player1_archetype TEXT,
+              player2_archetype TEXT,
+              player1_made_phase2 INTEGER,
+              player1_made_topcut INTEGER,
+              player2_made_phase2 INTEGER,
+              player2_made_topcut INTEGER
+            );
+
+            CREATE TABLE matchup_pair_profiles (
+              profile_name TEXT NOT NULL,
+              archetype_a TEXT NOT NULL,
+              archetype_b TEXT NOT NULL,
+              matches INTEGER NOT NULL,
+              weighted_matches REAL NOT NULL,
+              wins_a REAL NOT NULL,
+              wins_b REAL NOT NULL,
+              ties INTEGER NOT NULL,
+              double_losses INTEGER NOT NULL,
+              weighted_wins_a REAL NOT NULL,
+              weighted_wins_b REAL NOT NULL,
+              weighted_ties REAL NOT NULL,
+              weighted_win_rate_a REAL,
+              weighted_win_rate_b REAL,
+              PRIMARY KEY (profile_name, archetype_a, archetype_b)
+            );
+
+            CREATE TABLE matchup_archetype_profiles (
+              profile_name TEXT NOT NULL,
+              archetype TEXT NOT NULL,
+              matches INTEGER NOT NULL,
+              weighted_matches REAL NOT NULL,
+              weighted_wins REAL NOT NULL,
+              weighted_losses REAL NOT NULL,
+              weighted_ties REAL NOT NULL,
+              weighted_win_rate REAL,
+              PRIMARY KEY (profile_name, archetype)
+            );
+
+            CREATE INDEX idx_decks_archetype ON decks(archetype);
+            CREATE INDEX idx_decks_placement ON decks(placement);
+            CREATE INDEX idx_deck_cards_deck_id ON deck_cards(deck_id);
+            CREATE INDEX idx_deck_cards_card_uid ON deck_cards(card_uid);
+            CREATE INDEX idx_card_distributions_uid ON card_distributions(card_uid);
+            CREATE INDEX idx_success_tags_deck_id ON success_tags(deck_id);
+            CREATE INDEX idx_success_tags_tag ON success_tags(tag);
+            CREATE INDEX idx_participants_placement ON participants(placement);
+            CREATE INDEX idx_player_matches_player_round ON player_matches(player_id, round);
+            CREATE INDEX idx_matches_round_table ON matches(round, table_no);
+            """
+        )
+
+        seen_ids = set()
+        for index, deck in enumerate(all_decks):
+            deck_id = str(deck.get("id") or f"deck-{index}")
+            if deck_id in seen_ids:
+                deck_id = f"{deck_id}-{index}"
+            seen_ids.add(deck_id)
+
+            cur.execute(
+                """
+                INSERT INTO decks (
+                  id, player, player_id, country, placement, archetype, archetype_id, tournament_id, made_phase2, made_topcut
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    deck_id,
+                    deck.get("player"),
+                    deck.get("playerId"),
+                    deck.get("country"),
+                    to_int(deck.get("placement")),
+                    deck.get("archetype"),
+                    deck.get("archetypeId"),
+                    deck.get("tournamentId"),
+                    bool_to_int(deck.get("madePhase2")),
+                    bool_to_int(deck.get("madeTopCut")),
+                ),
+            )
+
+            for tag in deck.get("successTags") or []:
+                cur.execute("INSERT INTO success_tags (deck_id, tag) VALUES (?, ?)", (deck_id, str(tag)))
+
+            for card in deck.get("cards") or []:
+                cur.execute(
+                    """
+                    INSERT INTO deck_cards (
+                      deck_id, card_uid, card_name, card_set, card_number, count, category, trainer_type, energy_type, ace_spec, regulation_mark
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        deck_id,
+                        build_card_uid(card),
+                        card.get("name"),
+                        (card.get("set") or "").upper() or None,
+                        normalize_card_number(card.get("number")),
+                        to_int(card.get("count")) or 0,
+                        card.get("category"),
+                        card.get("trainerType"),
+                        card.get("energyType"),
+                        bool_to_int(card.get("aceSpec")),
+                        card.get("regulationMark"),
+                    ),
+                )
+
+        for item in master_report.get("items") or []:
+            uid = item.get("uid") or build_card_uid(item)
+            cur.execute(
+                """
+                INSERT INTO card_stats (
+                  card_uid, card_name, card_set, card_number, category, trainer_type, energy_type, ace_spec, rank, found, total, pct
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    uid,
+                    item.get("name"),
+                    item.get("set"),
+                    normalize_card_number(item.get("number")),
+                    item.get("category"),
+                    item.get("trainerType"),
+                    item.get("energyType"),
+                    bool_to_int(item.get("aceSpec")),
+                    to_int(item.get("rank")) or 0,
+                    to_int(item.get("found")) or 0,
+                    to_int(item.get("total")) or 0,
+                    to_float(item.get("pct")) or 0.0,
+                ),
+            )
+            for dist in item.get("dist") or []:
+                cur.execute(
+                    "INSERT INTO card_distributions (card_uid, copies, players, percent) VALUES (?, ?, ?, ?)",
+                    (
+                        uid,
+                        to_int(dist.get("copies")) or 0,
+                        to_int(dist.get("players")) or 0,
+                        to_float(dist.get("percent")) or 0.0,
+                    ),
+                )
+
+        for participant in participants:
+            cur.execute(
+                """
+                INSERT INTO participants (
+                  tp_id, player_id, name, country, placement, points, wins, losses, ties, opw, oopw, made_phase2, made_topcut,
+                  decklist_published, deck_id, deck_name, icons, drop_round, dropped, dqed, late
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    to_int(participant.get("tpId")) or 0,
+                    str(participant.get("playerId")) if participant.get("playerId") is not None else None,
+                    participant.get("name"),
+                    participant.get("country"),
+                    to_int(participant.get("placement")),
+                    to_int(participant.get("points")),
+                    to_int(participant.get("wins")),
+                    to_int(participant.get("losses")),
+                    to_int(participant.get("ties")),
+                    to_float(participant.get("opw")),
+                    to_float(participant.get("oopw")),
+                    bool_to_int(participant.get("madePhase2")),
+                    bool_to_int(participant.get("madeTopCut")),
+                    bool_to_int(participant.get("decklistPublished")),
+                    str(participant.get("deckId")) if participant.get("deckId") is not None else None,
+                    participant.get("deckName"),
+                    participant.get("icons"),
+                    to_int(participant.get("dropRound")),
+                    bool_to_int(participant.get("dropped")),
+                    bool_to_int(participant.get("dqed")),
+                    bool_to_int(participant.get("late")),
+                ),
+            )
+
+        for player_match in player_matches:
+            cur.execute(
+                """
+                INSERT INTO player_matches (
+                  id, player_id, player_name, opponent_id, opponent_name, opponent_country, opponent_archetype, player_archetype,
+                  round, phase, table_no, completed, winner_code, outcome, made_phase2, made_topcut
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    player_match.get("id"),
+                    to_int(player_match.get("playerId")),
+                    player_match.get("playerName"),
+                    to_int(player_match.get("opponentId")),
+                    player_match.get("opponentName"),
+                    player_match.get("opponentCountry"),
+                    player_match.get("opponentArchetype"),
+                    player_match.get("playerArchetype"),
+                    to_int(player_match.get("round")) or 0,
+                    to_int(player_match.get("phase")),
+                    to_int(player_match.get("table")),
+                    bool_to_int(player_match.get("completed")),
+                    to_int(player_match.get("winnerCode")),
+                    player_match.get("outcome"),
+                    bool_to_int(player_match.get("madePhase2")),
+                    bool_to_int(player_match.get("madeTopCut")),
+                ),
+            )
+
+        for match in canonical_matches:
+            cur.execute(
+                """
+                INSERT INTO matches (
+                  id, match_key, round, phase, table_no, completed, player1_id, player2_id, winner_code, winner, outcome_type,
+                  player1_result, player2_result, player1_name, player2_name, player1_country, player2_country,
+                  player1_archetype, player2_archetype, player1_made_phase2, player1_made_topcut, player2_made_phase2, player2_made_topcut
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    match.get("id"),
+                    match.get("key"),
+                    to_int(match.get("round")) or 0,
+                    to_int(match.get("phase")),
+                    to_int(match.get("table")),
+                    bool_to_int(match.get("completed")),
+                    to_int(match.get("player1Id")),
+                    to_int(match.get("player2Id")),
+                    to_int(match.get("winnerCode")),
+                    to_int(match.get("winner")),
+                    match.get("outcomeType"),
+                    match.get("player1Result"),
+                    match.get("player2Result"),
+                    match.get("player1Name"),
+                    match.get("player2Name"),
+                    match.get("player1Country"),
+                    match.get("player2Country"),
+                    match.get("player1Archetype"),
+                    match.get("player2Archetype"),
+                    bool_to_int(match.get("player1MadePhase2")),
+                    bool_to_int(match.get("player1MadeTopCut")),
+                    bool_to_int(match.get("player2MadePhase2")),
+                    bool_to_int(match.get("player2MadeTopCut")),
+                ),
+            )
+
+        profiles = matchup_profiles.get("profiles") or {}
+        for profile_name, profile in profiles.items():
+            for pair in profile.get("byArchetypePair") or []:
+                cur.execute(
+                    """
+                    INSERT INTO matchup_pair_profiles (
+                      profile_name, archetype_a, archetype_b, matches, weighted_matches, wins_a, wins_b, ties, double_losses,
+                      weighted_wins_a, weighted_wins_b, weighted_ties, weighted_win_rate_a, weighted_win_rate_b
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        profile_name,
+                        pair.get("archetypeA"),
+                        pair.get("archetypeB"),
+                        to_int(pair.get("matches")) or 0,
+                        to_float(pair.get("weightedMatches")) or 0.0,
+                        to_float(pair.get("winsA")) or 0.0,
+                        to_float(pair.get("winsB")) or 0.0,
+                        to_int(pair.get("ties")) or 0,
+                        to_int(pair.get("doubleLosses")) or 0,
+                        to_float(pair.get("weightedWinsA")) or 0.0,
+                        to_float(pair.get("weightedWinsB")) or 0.0,
+                        to_float(pair.get("weightedTies")) or 0.0,
+                        to_float(pair.get("weightedWinRateA")),
+                        to_float(pair.get("weightedWinRateB")),
+                    ),
+                )
+            for archetype_row in profile.get("byArchetype") or []:
+                cur.execute(
+                    """
+                    INSERT INTO matchup_archetype_profiles (
+                      profile_name, archetype, matches, weighted_matches, weighted_wins, weighted_losses, weighted_ties, weighted_win_rate
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        profile_name,
+                        archetype_row.get("archetype"),
+                        to_int(archetype_row.get("matches")) or 0,
+                        to_float(archetype_row.get("weightedMatches")) or 0.0,
+                        to_float(archetype_row.get("weightedWins")) or 0.0,
+                        to_float(archetype_row.get("weightedLosses")) or 0.0,
+                        to_float(archetype_row.get("weightedTies")) or 0.0,
+                        to_float(archetype_row.get("weightedWinRate")),
+                    ),
+                )
+
+        metadata_rows = [
+            ("schema_version", "2.0"),
+            ("report_version", str(metadata.get("reportVersion") or REPORT_VERSION)),
+            ("generated_at", str(metadata.get("fetchedAt") or datetime.now(timezone.utc).isoformat())),
+            ("tournament_id", str(metadata.get("tournamentId") or "")),
+            ("labs_code", str(labs_code)),
+            ("tournament_name", str(metadata.get("name") or "")),
+            ("total_decks", str(len(all_decks))),
+            ("total_participants", str(len(participants))),
+            ("total_player_matches", str(len(player_matches))),
+            ("total_matches", str(len(canonical_matches))),
+        ]
+        cur.executemany("INSERT INTO db_metadata (key, value) VALUES (?, ?)", metadata_rows)
+
+        conn.commit()
+        conn.close()
+        conn = None
+        data = Path(db_path).read_bytes()
+        return data
+    finally:
+        if conn is not None:
+            conn.close()
+        if db_path:
+            try:
+                os.unlink(db_path)
+            except FileNotFoundError:
+                pass
+
+
 def main():
     tournament_input = os.environ.get("LIMITLESS_INPUT") or os.environ.get("LIMITLESS_URL")
     anonymize = os.environ.get("ANONYMIZE", "false").lower() == "true"
+    generate_tournament_synonyms = parse_bool_env("GENERATE_TOURNAMENT_SYNONYMS", False)
+    write_tournament_db = parse_bool_env("WRITE_TOURNAMENT_DB", True)
 
     r2_account_id = os.environ.get("R2_ACCOUNT_ID")
     r2_access_key_id = os.environ.get("R2_ACCESS_KEY_ID")
@@ -1267,7 +1799,9 @@ def main():
         )
 
     card_types_db = load_card_types_database(r2_client, r2_bucket_name)
-    existing_synonyms, existing_canonicals = load_existing_canonicals(r2_client, r2_bucket_name)
+    existing_synonyms, existing_canonicals = {}, {}
+    if generate_tournament_synonyms:
+        existing_synonyms, existing_canonicals = load_existing_canonicals(r2_client, r2_bucket_name)
 
     session = requests.Session()
 
@@ -1303,7 +1837,7 @@ def main():
         "format": None,
         "players": players_total,
         "fetchedAt": datetime.now(timezone.utc).isoformat(),
-        "reportVersion": "3.0",
+        "reportVersion": REPORT_VERSION,
         "startDate": start_date_iso,
         "startDateText": start_date_text,
         "country": labs_page_meta.get("country") or tournament_meta.get("country"),
@@ -1570,7 +2104,9 @@ def main():
 
     master_report = generate_report_json(all_decks, len(all_decks), all_decks)
     card_index = generate_card_index(all_decks)
-    synonyms_data = generate_card_synonyms(all_decks, session, existing_synonyms, existing_canonicals)
+    synonyms_data = None
+    if generate_tournament_synonyms:
+        synonyms_data = generate_card_synonyms(all_decks, session, existing_synonyms, existing_canonicals)
 
     archetype_data_map, archetype_index = build_archetype_reports(all_decks)
 
@@ -1585,8 +2121,30 @@ def main():
         folder_name = f"Tournament {labs_code}"
 
     base_path = f"reports/{folder_name}"
+    participants_phase2 = sum(1 for row in participants if row.get("madePhase2"))
+    participants_topcut = sum(1 for row in participants if row.get("madeTopCut"))
+    index_report = {
+        "folder": folder_name,
+        "path": base_path,
+        "name": tournament_name,
+        "labsCode": labs_code,
+        "tournamentId": str(tournament_id),
+        "date": start_date_iso or date_text,
+        "playersTotal": len(participants),
+        "decklistPlayers": len(all_decks),
+        "playerMatches": len(player_matches),
+        "canonicalMatches": len(canonical_matches),
+        "archetypes": len(archetype_data_map),
+        "phase2Participants": participants_phase2,
+        "topcutParticipants": participants_topcut,
+        "phase2Decks": len(phase2_decks),
+        "topcutDecks": len(topcut_decks),
+        "generatedAt": metadata.get("fetchedAt"),
+        "reportVersion": metadata.get("reportVersion"),
+    }
 
     print(f"\nUploading tournament report to {base_path}")
+    upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/index.json", index_report)
     upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/meta.json", metadata)
     upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/players.json", participants)
     upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/decks.json", all_decks)
@@ -1595,8 +2153,29 @@ def main():
     upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/matchupProfiles.json", matchup_profiles)
     upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/master.json", master_report)
     upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/cardIndex.json", card_index)
-    upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/synonyms.json", synonyms_data)
+    if synonyms_data is not None:
+        upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/synonyms.json", synonyms_data)
     upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/archetypes/index.json", archetype_index)
+
+    if write_tournament_db:
+        print("  Building tournament.db...")
+        sqlite_blob = build_tournament_sqlite_bytes(
+            all_decks=all_decks,
+            master_report=master_report,
+            participants=participants,
+            player_matches=player_matches,
+            canonical_matches=canonical_matches,
+            matchup_profiles=matchup_profiles,
+            metadata=metadata,
+            labs_code=labs_code,
+        )
+        upload_binary_to_r2(
+            r2_client,
+            r2_bucket_name,
+            f"{base_path}/tournament.db",
+            sqlite_blob,
+            "application/x-sqlite3",
+        )
 
     for archetype_base, payload in archetype_data_map.items():
         upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/archetypes/{archetype_base}/cards.json", payload["cards"])
@@ -1618,6 +2197,8 @@ def main():
     print(f"  Phase2 decks: {len(phase2_decks)}")
     print(f"  Topcut decks: {len(topcut_decks)}")
     print(f"  Archetypes: {len(archetype_data_map)}")
+    print(f"  Tournament DB: {'enabled' if write_tournament_db else 'disabled'}")
+    print(f"  Tournament synonyms: {'enabled' if generate_tournament_synonyms else 'disabled'}")
 
 
 if __name__ == "__main__":
