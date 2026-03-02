@@ -178,17 +178,22 @@ Updates card prices for all cards in the online meta by fetching current market 
 Downloads and processes an individual tournament report from Limitless Labs (manual trigger only).
 
 ### What It Does
-1. Downloads tournament page HTML from provided Limitless Labs URL
-2. Extracts tournament metadata (date, name, format, players)
-3. Parses all decklists from the page
-4. Generates card synonym mappings by scraping Limitless for print variations
+1. Resolves tournament input (Labs URL/code or Limitless URL/ID) to a Labs tournament code
+2. Fetches Masters standings + tournament metadata from Labs endpoints
+3. Fetches every decklist player's decklist and round-by-round matches
+4. Generates card synonym mappings by scraping Limitless print variations
 5. Generates reports:
+   - `players.json` - Full participant standings (all entrants)
+   - `playerMatches.json` - Per-player round paths
+   - `matches.json` - Canonical deduped matches
+   - `matchupProfiles.json` - Weighted matchup outputs (`all`, `phaseWeighted`, `qualityWeighted`)
    - `master.json` - Aggregated card statistics
    - `meta.json` - Tournament metadata
-   - `decks.json` - Raw deck data
+   - `decks.json` - Deck analytics dataset (decklist players)
    - `cardIndex.json` - Card usage index
    - `synonyms.json` - Card reprint mappings
-   - `archetypes/*.json` - Per-archetype statistics
+   - `archetypes/{name}/cards.json` + `archetypes/{name}/decks.json`
+   - `slices/phase2/*` and `slices/topcut/*` reports
 6. Uploads all files to R2 at `reports/{YYYY-MM-DD, Tournament Name}/`
 7. Updates `reports/tournaments.json` with the new tournament entry
 
@@ -199,8 +204,12 @@ Downloads and processes an individual tournament report from Limitless Labs (man
 - `workflow_dispatch`: Manual trigger only
 
 ### Inputs
-- `limitless_url` (required) - Full Limitless Labs tournament URL
-  - Example: `https://labs.limitlesstcg.com/tournaments/...`
+- `limitless_url` (required) - Tournament reference (Labs URL/code or Limitless URL/ID)
+  - Examples:
+    - `0054`
+    - `https://labs.limitlesstcg.com/0054/standings`
+    - `https://limitlesstcg.com/tournaments/517`
+    - `517`
 - `anonymize` (optional, default: false) - Anonymize player names
 
 ### Required Secrets
@@ -225,7 +234,8 @@ Downloads and processes an individual tournament report from Limitless Labs (man
 - Processing time: 5-15 minutes (depending on synonym generation)
 
 ### Notes
-- Only supports Limitless Labs tournaments (RK9 support removed)
+- Masters division only (`MA`) in current implementation
+- Supports Limitless URL/ID inputs by resolving linked Labs standings URL
 - Generates synonyms by scraping Limitless for all card printings
 - Chooses canonical print intelligently (prefers standard-legal, non-promo, lowest price)
 - Does NOT download card images (no longer hosting images)

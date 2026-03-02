@@ -146,6 +146,143 @@ export interface Deck {
   country?: string | null;
   /** Source of deck data */
   deckSource?: string;
+  /** Whether player reached phase 2/day 2 */
+  madePhase2?: boolean;
+  /** Whether player reached top cut */
+  madeTopCut?: boolean;
+}
+
+/**
+ * Full tournament participant row from Labs standings.
+ */
+export interface TournamentParticipant {
+  tpId: number;
+  playerId?: number | string | null;
+  name: string;
+  country?: string | null;
+  placement?: number | null;
+  points?: number | null;
+  wins?: number | null;
+  losses?: number | null;
+  ties?: number | null;
+  opw?: string | number | null;
+  oopw?: string | number | null;
+  madePhase2?: boolean;
+  madeTopCut?: boolean;
+  decklistPublished?: boolean;
+  deckId?: string | null;
+  deckName?: string | null;
+  icons?: string | null;
+  dropRound?: number | null;
+  dropped?: boolean;
+  dqed?: boolean;
+  late?: boolean;
+}
+
+/**
+ * Round-by-round player perspective match record.
+ */
+export interface PlayerMatchRecord {
+  id: string;
+  playerId: number | string;
+  playerName?: string;
+  opponentId?: number | string | null;
+  opponentName?: string | null;
+  opponentCountry?: string | null;
+  opponentArchetype?: string | null;
+  playerArchetype?: string | null;
+  round: number;
+  phase?: number | null;
+  table?: number | null;
+  completed?: boolean;
+  winnerCode?: number | null;
+  outcome?: 'win' | 'loss' | 'tie' | 'double_loss' | 'bye' | 'unpaired' | 'unknown';
+  madePhase2?: boolean;
+  madeTopCut?: boolean;
+}
+
+/**
+ * Canonical deduped match record.
+ */
+export interface CanonicalMatchRecord {
+  id: string;
+  key: string;
+  round: number;
+  phase?: number | null;
+  table?: number | null;
+  completed?: boolean;
+  player1Id?: number | null;
+  player2Id?: number | null;
+  winner?: number | null;
+  winnerCode?: number | null;
+  player1Name?: string | null;
+  player2Name?: string | null;
+  player1Country?: string | null;
+  player2Country?: string | null;
+  player1Archetype?: string | null;
+  player2Archetype?: string | null;
+  outcomeType?: 'decided' | 'tie' | 'double_loss' | 'bye' | 'unpaired' | 'unknown';
+  player1Result?: 'win' | 'loss' | 'tie' | 'double_loss' | 'bye' | 'unpaired' | 'unknown' | null;
+  player2Result?: 'win' | 'loss' | 'tie' | 'double_loss' | 'bye' | 'unpaired' | 'unknown' | null;
+  player1MadePhase2?: boolean | null;
+  player1MadeTopCut?: boolean | null;
+  player2MadePhase2?: boolean | null;
+  player2MadeTopCut?: boolean | null;
+}
+
+export interface MatchupPairSummary {
+  archetypeA: string;
+  archetypeB: string;
+  matches: number;
+  weightedMatches: number;
+  winsA: number;
+  winsB: number;
+  ties: number;
+  doubleLosses: number;
+  weightedWinsA: number;
+  weightedWinsB: number;
+  weightedTies: number;
+  weightedWinRateA?: number;
+  weightedWinRateB?: number;
+}
+
+export interface MatchupArchetypeSummary {
+  archetype: string;
+  matches: number;
+  weightedMatches: number;
+  weightedWins: number;
+  weightedLosses: number;
+  weightedTies: number;
+  weightedWinRate?: number;
+}
+
+export interface MatchupProfile {
+  name: string;
+  matchesConsidered: number;
+  weightedMatches: number;
+  byArchetypePair: MatchupPairSummary[];
+  byArchetype: MatchupArchetypeSummary[];
+}
+
+/**
+ * Weighted matchup profile export.
+ */
+export interface MatchupProfilesReport {
+  generatedAt: string;
+  tournament: {
+    id: string;
+    labsCode?: string;
+    name: string;
+    players?: number;
+    division?: string;
+  };
+  phaseMultipliers?: Record<string, number>;
+  qualityModel?: Record<string, unknown>;
+  profiles: {
+    all: MatchupProfile;
+    phaseWeighted: MatchupProfile;
+    qualityWeighted: MatchupProfile;
+  };
 }
 
 // =============================================================================

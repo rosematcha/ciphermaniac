@@ -18,6 +18,7 @@ import {
 import type { Deck, DeckCard, Filter, Operator, PercentRule, PlacementRule } from '../types/index.js';
 
 export type { Deck, DeckCard, Filter, Operator };
+export type ReportSlice = 'all' | 'phase2' | 'topcut';
 
 const DECK_FETCH_TIMEOUT_MS = 30000;
 const SUCCESS_TAG_HIERARCHY = ['winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'];
@@ -537,20 +538,25 @@ export function generateFilteredReport(
  * @param archetype - Optional archetype name to fetch archetype-specific decks
  * @returns Array of deck objects
  */
-export async function fetchAllDecks(tournament: string, archetype?: string): Promise<Deck[]> {
+export async function fetchAllDecks(
+  tournament: string,
+  archetype?: string,
+  slice: ReportSlice = 'all'
+): Promise<Deck[]> {
   const tournamentEncoded = encodeURIComponent(tournament);
+  const slicePrefix = slice === 'all' ? '' : `/slices/${slice}`;
 
   // Build URL based on whether archetype is specified
   let url: string;
   if (archetype) {
     // New folder structure: /archetypes/Gardevoir/decks.json
-    url = `https://r2.ciphermaniac.com/reports/${tournamentEncoded}/archetypes/${encodeURIComponent(archetype)}/decks.json`;
+    url = `https://r2.ciphermaniac.com/reports/${tournamentEncoded}${slicePrefix}/archetypes/${encodeURIComponent(archetype)}/decks.json`;
   } else {
     // Full tournament decks: /decks.json
-    url = `https://r2.ciphermaniac.com/reports/${tournamentEncoded}/decks.json`;
+    url = `https://r2.ciphermaniac.com/reports/${tournamentEncoded}${slicePrefix}/decks.json`;
   }
 
-  logger.debug('Fetching decks data', { url, archetype });
+  logger.debug('Fetching decks data', { url, archetype, slice });
 
   try {
     const controller = new AbortController();
@@ -595,16 +601,17 @@ export async function fetchAllDecks(tournament: string, archetype?: string): Pro
  */
 export async function fetchArchetypeDecksLocal(
   tournament: string,
-  archetype: string
+  archetype: string,
+  slice: ReportSlice = 'all'
 ): Promise<{ decks: Deck[]; isFiltered: boolean }> {
   try {
     // Try archetype-specific decks first
-    const decks = await fetchAllDecks(tournament, archetype);
+    const decks = await fetchAllDecks(tournament, archetype, slice);
     return { decks, isFiltered: false }; // Already contains only this archetype's decks
   } catch {
     // Fall back to main decks.json
     logger.debug(`Archetype-specific decks not found for ${archetype}, falling back to main decks.json`);
-    const decks = await fetchAllDecks(tournament);
+    const decks = await fetchAllDecks(tournament, undefined, slice);
     return { decks, isFiltered: true }; // Will need to filter by archetype
   }
 }

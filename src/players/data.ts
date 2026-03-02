@@ -44,6 +44,8 @@ export interface PlayerDataset {
   players: PlayerProfile[];
 }
 
+export type PlayerSlice = 'all' | 'phase2' | 'topcut';
+
 interface CacheEntry {
   timestamp: number;
   data: PlayerDataset;
@@ -143,7 +145,7 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, handler: (ite
   let index = 0;
 
   async function worker(): Promise<void> {
-    while (true) {
+    while (index < items.length) {
       const i = index;
       index += 1;
       if (i >= items.length) {
@@ -158,9 +160,9 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, handler: (ite
   return out;
 }
 
-function readCache(): PlayerDataset | null {
+function readCache(cacheKey = CACHE_KEY): PlayerDataset | null {
   try {
-    const raw = globalThis.localStorage?.getItem(CACHE_KEY);
+    const raw = globalThis.localStorage?.getItem(cacheKey);
     if (!raw) {
       return null;
     }
@@ -177,13 +179,13 @@ function readCache(): PlayerDataset | null {
   }
 }
 
-function writeCache(data: PlayerDataset): void {
+function writeCache(data: PlayerDataset, cacheKey = CACHE_KEY): void {
   try {
     const payload: CacheEntry = {
       timestamp: Date.now(),
       data
     };
-    globalThis.localStorage?.setItem(CACHE_KEY, JSON.stringify(payload));
+    globalThis.localStorage?.setItem(cacheKey, JSON.stringify(payload));
   } catch {
     // cache is optional
   }
@@ -233,23 +235,24 @@ function computeConsistencyScore(params: {
   }
 
   const eventWeight = clamp(Math.log2(events + 1) / Math.log2(13), 0, 1);
-  const bestFinishScore =
-    bestFinish && bestFinish > 0 ? clamp((33 - Math.min(bestFinish, 32)) / 32, 0, 1) : 0;
-  const avgFinishScore =
-    avgFinish && avgFinish > 0 ? clamp((33 - Math.min(avgFinish, 32)) / 32, 0, 1) : 0;
+  const bestFinishScore = bestFinish && bestFinish > 0 ? clamp((33 - Math.min(bestFinish, 32)) / 32, 0, 1) : 0;
+  const avgFinishScore = avgFinish && avgFinish > 0 ? clamp((33 - Math.min(avgFinish, 32)) / 32, 0, 1) : 0;
 
-  const weighted =
-    top16Rate * 0.4 + top8Rate * 0.35 + bestFinishScore * 0.15 + avgFinishScore * 0.1;
+  const weighted = top16Rate * 0.4 + top8Rate * 0.35 + bestFinishScore * 0.15 + avgFinishScore * 0.1;
 
   return Math.round(weighted * eventWeight * 1000) / 1000;
 }
 
-export async function buildPlayerDataset(): Promise<PlayerDataset> {
+export async function buildPlayerDataset(slice: PlayerSlice = 'all'): Promise<PlayerDataset> {
   const tournaments = await fetchJsonArray('tournaments.json');
   const regionals = (Array.isArray(tournaments) ? tournaments : []).filter(item => /regional/i.test(String(item)));
 
   const decksByTournament = await mapWithConcurrency(regionals, FETCH_CONCURRENCY, async tournament => {
-    const decks = await fetchJsonArray(`${encodeURIComponent(tournament)}/decks.json`);
+    const relativePath =
+      slice === 'all'
+        ? `${encodeURIComponent(tournament)}/decks.json`
+        : `${encodeURIComponent(tournament)}/slices/${slice}/decks.json`;
+    const decks = await fetchJsonArray(relativePath);
     return {
       tournament,
       decks: Array.isArray(decks) ? decks : []
@@ -322,7 +325,9 @@ export async function buildPlayerDataset(): Promise<PlayerDataset> {
       row.archetypes.set(archetype, (row.archetypes.get(archetype) || 0) + 1);
 
       const date =
-        typeof deck?.tournamentDate === 'string' && deck.tournamentDate ? normalizeWhitespace(deck.tournamentDate) : inferredDate;
+        typeof deck?.tournamentDate === 'string' && deck.tournamentDate
+          ? normalizeWhitespace(deck.tournamentDate)
+          : inferredDate;
       if (date) {
         if (!row.lastEvent || Date.parse(date) > Date.parse(row.lastEvent)) {
           row.lastEvent = date;
@@ -401,15 +406,16 @@ export async function buildPlayerDataset(): Promise<PlayerDataset> {
   };
 }
 
-export async function loadPlayerDataset(forceRefresh = false): Promise<PlayerDataset> {
+export async function loadPlayerDataset(forceRefresh = false, slice: PlayerSlice = 'all'): Promise<PlayerDataset> {
+  const scopedCacheKey = `${CACHE_KEY}:${slice}`;
   if (!forceRefresh) {
-    const cached = readCache();
+    const cached = readCache(scopedCacheKey);
     if (cached) {
       return cached;
     }
   }
-  const data = await buildPlayerDataset();
-  writeCache(data);
+  const data = await buildPlayerDataset(slice);
+  writeCache(data, scopedCacheKey);
   return data;
 }
 

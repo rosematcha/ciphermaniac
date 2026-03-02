@@ -12,10 +12,13 @@ import type {
   ArchetypeIndexEntry,
   ArchetypeReport,
   CacheEntry,
+  CanonicalMatchRecord,
   LimitlessResponse,
   LimitlessTournament,
+  MatchupProfilesReport,
   MetaReport,
   PricingData,
+  TournamentParticipant,
   TournamentReport,
   TrendReport,
   TrendReportPayload
@@ -24,8 +27,10 @@ import type {
 export type {
   ArchetypeIndexEntry,
   LimitlessTournament,
+  MatchupProfilesReport,
   MetaReport,
   PricingData,
+  TournamentParticipant,
   TournamentReport,
   TrendReport,
   TrendReportPayload
@@ -35,6 +40,7 @@ let pricingData: PricingData | null = null;
 const jsonCache = new Map<string, CacheEntry>();
 const reportCache = new Map<string, CacheEntry<TournamentReport>>();
 export const ONLINE_META_NAME = 'Online - Last 14 Days';
+export type ReportSlice = 'all' | 'phase2' | 'topcut';
 // const _ONLINE_META_SEGMENT = `/${encodeURIComponent(ONLINE_META_NAME)}`; // Reserved for future use
 
 function hasCachedData(entry: CacheEntry): entry is CacheEntry & { data: unknown } {
@@ -96,6 +102,14 @@ export function clearApiCache() {
 
 function fetchWithTimeout(url: string, options: RequestInit = {}) {
   return safeFetch(url, { timeout: CONFIG.API.TIMEOUT_MS, ...options });
+}
+
+function getSliceBasePath(tournament: string, slice: ReportSlice = 'all'): string {
+  const encodedTournament = encodeURIComponent(tournament);
+  if (slice === 'all') {
+    return encodedTournament;
+  }
+  return `${encodedTournament}/slices/${slice}`;
 }
 
 function buildQueryString(params: Record<string, any> = {}) {
@@ -411,18 +425,18 @@ export async function fetchLimitlessTournaments(filters: LimitlessFilters = {}):
  * Fetch the master report for a tournament.
  * @param tournament - Tournament identifier.
  */
-export async function fetchReport(tournament: string): Promise<TournamentReport> {
-  const cacheKey = `report:${tournament}`;
+export async function fetchReport(tournament: string, slice: ReportSlice = 'all'): Promise<TournamentReport> {
+  const cacheKey = `report:${tournament}:${slice}`;
   const now = Date.now();
   const existing = reportCache.get(cacheKey);
 
   if (existing) {
     if (existing.data && existing.expiresAt > now) {
-      logger.debug('Report cache hit', { tournament });
+      logger.debug('Report cache hit', { tournament, slice });
       return existing.data;
     }
     if (existing.promise) {
-      logger.debug('Awaiting in-flight report request', { tournament });
+      logger.debug('Awaiting in-flight report request', { tournament, slice });
       return existing.promise;
     }
     if (!existing.promise && existing.expiresAt <= now) {
@@ -430,43 +444,49 @@ export async function fetchReport(tournament: string): Promise<TournamentReport>
     }
   }
 
-  perf.start(`fetchReport:${tournament}`);
+  perf.start(`fetchReport:${tournament}:${slice}`);
   const loader = (async () => {
-    try {
-      const db = await loadDatabase(tournament);
-      const cardStats = db.getCardStats();
-      const deckTotal = db.getTotalDecks();
-      const items = cardStats.map((row: any) => ({
-        name: row.card_name,
-        set: row.card_set ?? undefined,
-        number: row.card_number ?? undefined,
-        uid: row.card_uid,
-        found: row.found,
-        total: deckTotal,
-        pct: row.pct,
-        category: row.category ?? undefined,
-        trainerType: row.trainer_type ?? undefined,
-        energyType: row.energy_type ?? undefined,
-        aceSpec: Boolean(row.ace_spec),
-        dist: row.dist || [],
-        rank: row.rank
-      }));
-      logger.debug(`Loaded tournament report from SQLite for ${tournament}`, { deckTotal, itemCount: items.length });
-      return { deckTotal, items };
-    } catch (dbError) {
-      logger.debug('SQLite report failed, falling back to JSON', {
-        tournament,
-        error: dbError instanceof Error ? dbError.message : String(dbError)
-      });
-      const encodedTournament = encodeURIComponent(tournament);
-      return fetchReportResource<TournamentReport>(
-        `${encodedTournament}/master.json`,
-        `report for ${tournament}`,
-        'object',
-        'tournament report',
-        { cache: true }
-      );
+    if (slice === 'all') {
+      try {
+        const db = await loadDatabase(tournament);
+        const cardStats = db.getCardStats();
+        const deckTotal = db.getTotalDecks();
+        const items = cardStats.map((row: any) => ({
+          name: row.card_name,
+          set: row.card_set ?? undefined,
+          number: row.card_number ?? undefined,
+          uid: row.card_uid,
+          found: row.found,
+          total: deckTotal,
+          pct: row.pct,
+          category: row.category ?? undefined,
+          trainerType: row.trainer_type ?? undefined,
+          energyType: row.energy_type ?? undefined,
+          aceSpec: Boolean(row.ace_spec),
+          dist: row.dist || [],
+          rank: row.rank
+        }));
+        logger.debug(`Loaded tournament report from SQLite for ${tournament}`, { deckTotal, itemCount: items.length });
+        return { deckTotal, items };
+      } catch (dbError) {
+        logger.debug('SQLite report failed, falling back to JSON', {
+          tournament,
+          slice,
+          error: dbError instanceof Error ? dbError.message : String(dbError)
+        });
+      }
     }
+
+    const basePath = getSliceBasePath(tournament, slice);
+    return fetchReportResource<TournamentReport>(
+      `${basePath}/master.json`,
+      `report for ${tournament}`,
+      'object',
+      'tournament report',
+      {
+        cache: true
+      }
+    );
   })();
 
   cachePendingReport(cacheKey, loader, CONFIG.API.JSON_CACHE_TTL_MS);
@@ -476,7 +496,7 @@ export async function fetchReport(tournament: string): Promise<TournamentReport>
     cacheResolvedReport(cacheKey, data, CONFIG.API.JSON_CACHE_TTL_MS);
     return data;
   } finally {
-    perf.end(`fetchReport:${tournament}`);
+    perf.end(`fetchReport:${tournament}:${slice}`);
   }
 }
 
@@ -587,9 +607,13 @@ function normalizeArchetypeIndexEntry(entry: unknown): ArchetypeIndexEntry | nul
  * Fetch the archetype index list for a tournament.
  * @param tournament - Tournament identifier.
  */
-export async function fetchArchetypesList(tournament: string): Promise<ArchetypeIndexEntry[]> {
+export async function fetchArchetypesList(
+  tournament: string,
+  slice: ReportSlice = 'all'
+): Promise<ArchetypeIndexEntry[]> {
+  const basePath = getSliceBasePath(tournament, slice);
   const result = await fetchReportResource<any[]>(
-    `${encodeURIComponent(tournament)}/archetypes/index.json`,
+    `${basePath}/archetypes/index.json`,
     `archetypes for ${tournament}`,
     'array',
     'archetypes list',
@@ -608,50 +632,30 @@ export async function fetchArchetypesList(tournament: string): Promise<Archetype
  * @param tournament - Tournament identifier.
  * @param archetypeBase - Archetype slug.
  */
-export async function fetchArchetypeReport(tournament: string, archetypeBase: string): Promise<ArchetypeReport> {
-  logger.debug(`Fetching archetype report: ${tournament}/${archetypeBase}`);
+export async function fetchArchetypeReport(
+  tournament: string,
+  archetypeBase: string,
+  slice: ReportSlice = 'all'
+): Promise<ArchetypeReport> {
+  logger.debug(`Fetching archetype report: ${tournament}/${archetypeBase}`, { slice });
+  const basePath = getSliceBasePath(tournament, slice);
+  const path = `${basePath}/archetypes/${encodeURIComponent(archetypeBase)}/cards.json`;
 
-  // Try new folder structure first: /archetypes/Gardevoir/cards.json
-  const newPath = `${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}/cards.json`;
-  // Legacy flat file path: /archetypes/Gardevoir.json
-  const legacyPath = `${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}.json`;
-
-  try {
-    return await fetchReportResource(
-      newPath,
-      `archetype report ${archetypeBase} for ${tournament}`,
-      'object',
-      'archetype report',
-      { cache: true }
-    ).then(data => {
-      logger.info(`Loaded archetype report ${archetypeBase} for ${tournament} (new path)`, {
-        itemCount: data.items?.length
-      });
-      return data;
-    });
-  } catch (newPathError: unknown) {
-    // Fall back to legacy path if new path fails
-    if (newPathError instanceof AppError && newPathError.context?.status === 404) {
-      logger.debug(`New path not found, trying legacy path: ${legacyPath}`);
-      try {
-        return await fetchReportResource(
-          legacyPath,
-          `archetype report ${archetypeBase} for ${tournament}`,
-          'object',
-          'archetype report',
-          { cache: true }
-        ).then(data => {
-          logger.info(`Loaded archetype report ${archetypeBase} for ${tournament} (legacy path)`, {
-            itemCount: data.items?.length
-          });
-          return data;
-        });
-      } catch {
-        // If legacy also fails, throw the original error
-      }
+  return fetchReportResource(
+    path,
+    `archetype report ${archetypeBase} for ${tournament}`,
+    'object',
+    'archetype report',
+    {
+      cache: true
     }
-    throw newPathError;
-  }
+  ).then(data => {
+    logger.info(`Loaded archetype report ${archetypeBase} for ${tournament}`, {
+      slice,
+      itemCount: data.items?.length
+    });
+    return data;
+  });
 }
 
 /**
@@ -659,11 +663,14 @@ export async function fetchArchetypeReport(tournament: string, archetypeBase: st
  * @param tournament - Tournament identifier.
  * @param archetypeBase - Archetype slug.
  */
-export async function fetchArchetypeDecks(tournament: string, archetypeBase: string): Promise<any[] | null> {
-  logger.debug(`Fetching archetype decks: ${tournament}/${archetypeBase}`);
-
-  // Try new folder structure: /archetypes/Gardevoir/decks.json
-  const archetypeDecksPath = `${encodeURIComponent(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}/decks.json`;
+export async function fetchArchetypeDecks(
+  tournament: string,
+  archetypeBase: string,
+  slice: ReportSlice = 'all'
+): Promise<any[] | null> {
+  logger.debug(`Fetching archetype decks: ${tournament}/${archetypeBase}`, { slice });
+  const basePath = getSliceBasePath(tournament, slice);
+  const archetypeDecksPath = `${basePath}/archetypes/${encodeURIComponent(archetypeBase)}/decks.json`;
 
   try {
     const data = await fetchReportResource<any[]>(
@@ -673,7 +680,10 @@ export async function fetchArchetypeDecks(tournament: string, archetypeBase: str
       'archetype decks',
       { cache: true }
     );
-    logger.info(`Loaded archetype-specific decks for ${archetypeBase}`, { deckCount: data?.length || 0 });
+    logger.info(`Loaded archetype-specific decks for ${archetypeBase}`, {
+      slice,
+      deckCount: data?.length || 0
+    });
     return data;
   } catch (error: unknown) {
     if (error instanceof AppError && error.context?.status === 404) {
@@ -700,7 +710,8 @@ export async function fetchArchetypeFiltersReport(
   includeId: string | null,
   excludeId: string | null,
   includeOperator: '=' | '<' | '<=' | '>' | '>=' | null = null,
-  includeCount: number | null = null
+  includeCount: number | null = null,
+  slice: ReportSlice = 'all'
 ): Promise<any> {
   // If both include and exclude are null, fetch the base archetype report
   const isBaseReport = !includeId && !excludeId;
@@ -712,8 +723,9 @@ export async function fetchArchetypeFiltersReport(
       archetypeBase
     });
 
-    return fetchArchetypeReport(tournament, archetypeBase).then(data => {
+    return fetchArchetypeReport(tournament, archetypeBase, slice).then(data => {
       logger.info(`Loaded base archetype report ${archetypeBase}`, {
+        slice,
         deckTotal: data.deckTotal
       });
       return data;
@@ -734,7 +746,7 @@ export async function fetchArchetypeFiltersReport(
 
   try {
     // Try to use archetype-specific decks.json for better performance
-    const archetypeDecks = await fetchArchetypeDecks(tournament, archetypeBase);
+    const archetypeDecks = await fetchArchetypeDecks(tournament, archetypeBase, slice);
 
     // If archetype-specific decks available, use them directly (already filtered by archetype)
     if (archetypeDecks) {
@@ -760,6 +772,18 @@ export async function fetchArchetypeFiltersReport(
     }
 
     // Fall back to main decks.json and filter by archetype
+    if (slice !== 'all') {
+      const scopedDecks = await fetchAllDecks(tournament, undefined, slice);
+      const report = generateFilteredReport(
+        scopedDecks,
+        archetypeBase,
+        includeId,
+        excludeId,
+        includeOperator,
+        includeCount
+      );
+      return report;
+    }
     const allDecks = await fetchAllDecks(tournament);
     const report = generateFilteredReport(allDecks, archetypeBase, includeId, excludeId, includeOperator, includeCount);
 
@@ -864,8 +888,9 @@ export function buildCardIndexFromMaster(report: TournamentReport): {
  * Fetch full deck lists for a tournament.
  * @param tournament - Tournament identifier.
  */
-export function fetchDecks(tournament: string): Promise<any[] | null> {
-  const relativePath = `${encodeURIComponent(tournament)}/decks.json`;
+export function fetchDecks(tournament: string, slice: ReportSlice = 'all'): Promise<any[] | null> {
+  const basePath = getSliceBasePath(tournament, slice);
+  const relativePath = `${basePath}/decks.json`;
   const urls = buildReportUrls(relativePath);
   const cacheKey = `decks:${relativePath}`;
   const now = Date.now();
@@ -873,7 +898,7 @@ export function fetchDecks(tournament: string): Promise<any[] | null> {
 
   if (existing) {
     if (hasCachedData(existing) && existing.expiresAt > now) {
-      logger.debug('Cache hit for decks.json', { tournament });
+      logger.debug('Cache hit for decks.json', { tournament, slice });
       return Promise.resolve(existing.data as any[] | null);
     }
     if (existing.promise) {
@@ -887,7 +912,7 @@ export function fetchDecks(tournament: string): Promise<any[] | null> {
   const loader = (async () => {
     for (const url of urls) {
       try {
-        logger.debug(`Fetching decks.json for: ${tournament}`, { url });
+        logger.debug(`Fetching decks.json for: ${tournament}`, { slice, url });
         const response = await fetchWithTimeout(url);
         const data = await safeJsonParse(response, url);
         validateType(data, 'array', 'decks');
@@ -895,6 +920,7 @@ export function fetchDecks(tournament: string): Promise<any[] | null> {
       } catch (err: unknown) {
         const errMessage = err instanceof Error ? err.message : String(err);
         logger.debug('decks.json not available via url', {
+          slice,
           url,
           message: errMessage
         });
@@ -918,6 +944,55 @@ export function fetchDecks(tournament: string): Promise<any[] | null> {
 
   cachePendingJson(cacheKey, tracked, CONFIG.API.JSON_CACHE_TTL_MS);
   return tracked;
+}
+
+/**
+ * Fetch raw deck export with optional tournament slice.
+ * Alias kept explicit for callers that need raw exports.
+ */
+export function fetchRawDeckExport(tournament: string, slice: ReportSlice = 'all'): Promise<any[] | null> {
+  return fetchDecks(tournament, slice);
+}
+
+/**
+ * Fetch full participant standings export (players.json).
+ * Note: currently available only on the root tournament path.
+ */
+export function fetchParticipants(tournament: string): Promise<TournamentParticipant[]> {
+  const relativePath = `${encodeURIComponent(tournament)}/players.json`;
+  return fetchReportResource<TournamentParticipant[]>(
+    relativePath,
+    `participants for ${tournament}`,
+    'array',
+    'participants',
+    { cache: true }
+  );
+}
+
+/**
+ * Fetch canonical deduped matches export (matches.json).
+ * Note: currently available only on the root tournament path.
+ */
+export function fetchMatches(tournament: string): Promise<CanonicalMatchRecord[]> {
+  const relativePath = `${encodeURIComponent(tournament)}/matches.json`;
+  return fetchReportResource<CanonicalMatchRecord[]>(relativePath, `matches for ${tournament}`, 'array', 'matches', {
+    cache: true
+  });
+}
+
+/**
+ * Fetch weighted matchup profiles export (matchupProfiles.json).
+ * Note: currently available only on the root tournament path.
+ */
+export function fetchMatchupProfiles(tournament: string): Promise<MatchupProfilesReport> {
+  const relativePath = `${encodeURIComponent(tournament)}/matchupProfiles.json`;
+  return fetchReportResource<MatchupProfilesReport>(
+    relativePath,
+    `matchup profiles for ${tournament}`,
+    'object',
+    'matchup profiles',
+    { cache: true }
+  );
 }
 
 /**
