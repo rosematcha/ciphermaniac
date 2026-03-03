@@ -75,6 +75,13 @@ _MONTHS = {
     "november": 11,
     "december": 12,
 }
+_DATE_PREFIX_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}),\s+")
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_START_DATE_RE = re.compile(
+    r"^([A-Za-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?"
+    r"(?:\s*[\-–]\s*(?:(?:[A-Za-z]+)\s+)?\d{1,2}(?:st|nd|rd|th)?)?,\s*(\d{4})$"
+)
+ONLINE_META_NAME = "Online - Last 14 Days"
 
 
 def compose_category_path(category, trainer_type=None, energy_type=None, ace_spec=False):
@@ -298,21 +305,191 @@ def parse_start_date(text: str):
     if not text:
         return None, None
     t = text.strip()
-    # Accept ranges like February 13–15, 2026 by keeping first day.
-    m = re.search(r"^([A-Za-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s*[\-–]\s*\d{1,2}(?:st|nd|rd|th)?)?,\s*(\d{4})$", t)
+    iso = extract_start_date_from_text(t)
+    return iso, t
+
+
+def extract_start_date_from_text(text: Optional[str]) -> Optional[str]:
+    if not text:
+        return None
+    t = text.strip()
+    # Accept:
+    # - same-month ranges: February 13-15, 2026
+    # - cross-month ranges: February 27-March 1, 2026
+    m = _START_DATE_RE.search(t)
     if not m:
-        return None, t
+        return None
     month_name = m.group(1).lower()
     day = int(m.group(2))
     year = int(m.group(3))
     month = _MONTHS.get(month_name)
     if not month:
-        return None, t
+        return None
     try:
-        iso = datetime(year, month, day, tzinfo=timezone.utc).date().isoformat()
-        return iso, t
+        return datetime(year, month, day, tzinfo=timezone.utc).date().isoformat()
     except Exception:
-        return None, t
+        return None
+
+
+def extract_date_prefix(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    match = _DATE_PREFIX_RE.match(value.strip())
+    if not match:
+        return None
+    candidate = match.group(1)
+    return candidate if is_valid_iso_date(candidate) else None
+
+
+def is_valid_iso_date(value: Optional[str]) -> bool:
+    if not value or not _ISO_DATE_RE.match(value):
+        return False
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+        return True
+    except Exception:
+        return False
+
+
+def parse_iso_to_ordinal(value: Optional[str]) -> Optional[int]:
+    if not is_valid_iso_date(value):
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date().toordinal()
+    except Exception:
+        return None
+
+
+def fetch_tournament_meta(r2_client, bucket_name: str, tournament_name: str) -> Dict[str, Any]:
+    if not r2_client:
+        return {}
+    key = f"reports/{tournament_name}/meta.json"
+    try:
+        response = r2_client.get_object(Bucket=bucket_name, Key=key)
+    except Exception as exc:
+        no_such_key_exc = getattr(getattr(r2_client, "exceptions", object), "NoSuchKey", None)
+        if no_such_key_exc and isinstance(exc, no_such_key_exc):
+            return {}
+        if isinstance(exc, ClientError):
+            code = exc.response.get("Error", {}).get("Code")
+            if code in {"NoSuchKey", "404", "NotFound"}:
+                return {}
+        print(f"  Warning: Could not read {key}: {exc}")
+        return {}
+
+    try:
+        payload = response["Body"].read().decode("utf-8")
+        parsed = json.loads(payload)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception as exc:
+        print(f"  Warning: Invalid meta payload for {tournament_name}: {exc}")
+        return {}
+
+
+def derive_tournament_start_date(tournament_name: str, meta: Optional[Dict[str, Any]] = None) -> Optional[str]:
+    prefixed = extract_date_prefix(tournament_name)
+    if prefixed:
+        return prefixed
+
+    if isinstance(meta, dict):
+        raw_start = repair_text(meta.get("startDate"))
+        if is_valid_iso_date(raw_start):
+            return raw_start
+        raw_date = repair_text(meta.get("date"))
+        parsed_from_date = extract_start_date_from_text(raw_date)
+        if parsed_from_date:
+            return parsed_from_date
+
+    return None
+
+
+def build_tournament_meta_map(r2_client, bucket_name: str, tournaments: List[str]) -> Dict[str, Dict[str, Any]]:
+    meta_map: Dict[str, Dict[str, Any]] = {}
+    for tournament_name in tournaments:
+        if extract_date_prefix(tournament_name):
+            continue
+        meta_map[tournament_name] = fetch_tournament_meta(r2_client, bucket_name, tournament_name)
+    return meta_map
+
+
+def sort_tournament_names_by_recency(
+    tournaments: List[str], meta_map: Optional[Dict[str, Dict[str, Any]]] = None
+) -> List[str]:
+    decorated = []
+    for idx, tournament_name in enumerate(tournaments):
+        meta = meta_map.get(tournament_name) if meta_map else None
+        date_iso = derive_tournament_start_date(tournament_name, meta)
+        ordinal = parse_iso_to_ordinal(date_iso)
+        decorated.append(
+            {
+                "name": tournament_name,
+                "ordinal": ordinal,
+                "index": idx,
+            }
+        )
+
+    decorated.sort(
+        key=lambda item: (
+            0 if item["ordinal"] is not None else 1,
+            -(item["ordinal"] or 0),
+            item["name"].lower(),
+            item["name"],
+            item["index"],
+        )
+    )
+    return [item["name"] for item in decorated]
+
+
+def list_report_folders(r2_client, bucket_name: str) -> List[str]:
+    folders: List[str] = []
+    continuation_token = None
+
+    while True:
+        params = {
+            "Bucket": bucket_name,
+            "Prefix": "reports/",
+            "Delimiter": "/",
+        }
+        if continuation_token:
+            params["ContinuationToken"] = continuation_token
+
+        response = r2_client.list_objects_v2(**params)
+        prefixes = response.get("CommonPrefixes") or []
+        for entry in prefixes:
+            prefix = entry.get("Prefix") or ""
+            if not prefix.startswith("reports/"):
+                continue
+            folder_name = prefix[len("reports/") :].strip("/")
+            if not folder_name or folder_name == ONLINE_META_NAME:
+                continue
+            folders.append(folder_name)
+
+        if not response.get("IsTruncated"):
+            break
+        continuation_token = response.get("NextContinuationToken")
+
+    # Preserve first occurrence order if R2 returns duplicates across pages.
+    return list(dict.fromkeys(folders))
+
+
+def rebuild_tournaments_json_from_reports(r2_client, bucket_name: str) -> List[str]:
+    tournaments_key = "reports/tournaments.json"
+    folders = list_report_folders(r2_client, bucket_name)
+    if not folders:
+        print("  Warning: no report folders found under reports/")
+        updated: List[str] = []
+    else:
+        meta_map = build_tournament_meta_map(r2_client, bucket_name, folders)
+        updated = sort_tournament_names_by_recency(folders, meta_map)
+
+    print(f"  Uploading rebuilt {tournaments_key} with {len(updated)} entries...")
+    r2_client.put_object(
+        Bucket=bucket_name,
+        Key=tournaments_key,
+        Body=json.dumps(updated, indent=2),
+        ContentType="application/json",
+    )
+    return updated
 
 
 def resolve_reference_to_labs_code(input_value: str, session: requests.Session) -> Tuple[str, str, Optional[str]]:
@@ -1241,7 +1418,8 @@ def update_tournaments_json(r2_client, bucket_name, tournament_name):
 
     existing = [x for x in existing if x != tournament_name]
     updated = [tournament_name] + existing
-    updated.sort(reverse=True)
+    meta_map = build_tournament_meta_map(r2_client, bucket_name, updated)
+    updated = sort_tournament_names_by_recency(updated, meta_map)
 
     print(f"  Uploading updated {tournaments_key}...")
     r2_client.put_object(
@@ -1772,13 +1950,14 @@ def main():
     anonymize = os.environ.get("ANONYMIZE", "false").lower() == "true"
     generate_tournament_synonyms = parse_bool_env("GENERATE_TOURNAMENT_SYNONYMS", False)
     write_tournament_db = parse_bool_env("WRITE_TOURNAMENT_DB", True)
+    rebuild_tournaments_only = parse_bool_env("REBUILD_TOURNAMENTS_JSON_ONLY", False)
 
     r2_account_id = os.environ.get("R2_ACCOUNT_ID")
     r2_access_key_id = os.environ.get("R2_ACCESS_KEY_ID")
     r2_secret_access_key = os.environ.get("R2_SECRET_ACCESS_KEY")
     r2_bucket_name = os.environ.get("R2_BUCKET_NAME", "ciphermaniac-reports")
 
-    if not tournament_input:
+    if not tournament_input and not rebuild_tournaments_only:
         print("Error: LIMITLESS_INPUT (or LIMITLESS_URL) environment variable not set")
         sys.exit(1)
 
@@ -1797,6 +1976,15 @@ def main():
             aws_secret_access_key=r2_secret_access_key,
             region_name="auto",
         )
+
+    if rebuild_tournaments_only:
+        if not r2_client:
+            print("Error: R2 client is required to rebuild tournaments.json")
+            sys.exit(1)
+        print("Rebuilding tournaments.json from existing report folders...")
+        rebuilt = rebuild_tournaments_json_from_reports(r2_client, r2_bucket_name)
+        print(f"✓ Rebuilt tournaments.json with {len(rebuilt)} entries")
+        return
 
     card_types_db = load_card_types_database(r2_client, r2_bucket_name)
     existing_synonyms, existing_canonicals = {}, {}

@@ -9,6 +9,7 @@ import { AppError, ErrorTypes, safeFetch, validateType, withRetry } from './util
 import { perf } from './utils/performance.js';
 import { clearDatabaseCache, loadDatabase } from './lib/database.js';
 import { isFeatureEnabled } from './utils/featureFlags.js';
+import { sortTournamentNamesByRecency } from './utils/tournamentRecency.js';
 import type {
   ArchetypeFilterRequest,
   ArchetypeFilterResponse,
@@ -403,7 +404,7 @@ export async function fetchReportResource<T = any>(
 export function fetchTournamentsList(): Promise<string[]> {
   return fetchReportResource<string[]>('tournaments.json', 'tournaments list', 'array', 'tournaments list', {
     cache: true
-  });
+  }).then(tournaments => sortTournamentNamesByRecency(tournaments));
 }
 
 /**
