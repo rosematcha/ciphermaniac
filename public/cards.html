@@ -58,7 +58,7 @@
           if (['0', 'false', 'no', 'off', 'disabled'].includes(normalized)) return false;
           return null;
         };
-        let enabled = true;
+        let enabled = false;
         try {
           const params = new URLSearchParams(window.location.search || '');
           const direct = parse(params.get(`ff_${flagName}`));
@@ -97,8 +97,7 @@
       })();
     </script>
     <noscript>
-      <link rel="stylesheet" href="/assets/style-core.css?v=20260302a" />
-      <link rel="stylesheet" href="/assets/style-cards.css?v=20260302a" />
+      <link rel="stylesheet" href="/assets/style.css?v=20260214h" />
     </noscript>
     <!-- Preload loader module for faster page load -->
     <link rel="modulepreload" href="/assets/js/src/loaders/cards.js" />

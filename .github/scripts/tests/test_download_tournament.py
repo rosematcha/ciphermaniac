@@ -54,6 +54,24 @@ class _FakeR2Client:
             }
         )
 
+    def list_objects_v2(self, Bucket, Prefix, Delimiter, ContinuationToken=None):
+        folders = []
+        for key in self._objects.keys():
+            if not key.startswith("reports/"):
+                continue
+            remainder = key[len("reports/") :]
+            if "/" not in remainder:
+                continue
+            folder = remainder.split("/", 1)[0]
+            if folder:
+                folders.append(folder)
+
+        unique_sorted = sorted(set(folders))
+        return {
+            "IsTruncated": False,
+            "CommonPrefixes": [{"Prefix": f"reports/{name}/"} for name in unique_sorted],
+        }
+
 
 class DownloadTournamentTests(unittest.TestCase):
     def test_parse_start_date_supports_cross_month_ranges(self):
@@ -95,6 +113,7 @@ class DownloadTournamentTests(unittest.TestCase):
             "Special Event Bologna",
             "2026-02-13, International Championship London",
             "Regional Championship Stuttgart",
+            "Regional Championship Seattle",
         ]
         objects = {
             "reports/tournaments.json": json.dumps(existing),
@@ -103,6 +122,9 @@ class DownloadTournamentTests(unittest.TestCase):
             ),
             "reports/Regional Championship Stuttgart/meta.json": json.dumps(
                 {"date": "November 30–December 1, 2024", "startDate": None}
+            ),
+            "reports/Regional Championship Seattle/meta.json": json.dumps(
+                {"date": "February 27–March 1, 2026", "startDate": None}
             ),
         }
         client = _FakeR2Client(objects)
@@ -119,10 +141,62 @@ class DownloadTournamentTests(unittest.TestCase):
             [
                 "2026-02-27, Regional Championship Seattle",
                 "2026-02-13, International Championship London",
-                "Special Event Bologna",
+            ],
+        )
+
+    def test_dedupe_tournament_names_removes_undated_alias_when_dated_exists(self):
+        tournaments = [
+            "2026-02-27, Regional Championship Seattle",
+            "Regional Championship Seattle",
+            "2025-11-29, Regional Championship Stuttgart",
+            "Regional Championship Stuttgart",
+        ]
+        meta_map = {
+            "Regional Championship Seattle": {"date": "February 27–March 1, 2026", "startDate": None},
+            "Regional Championship Stuttgart": {"date": "November 30–December 1, 2024", "startDate": None},
+        }
+
+        deduped = download_tournament.dedupe_tournament_names(tournaments, meta_map)
+        self.assertEqual(
+            deduped,
+            [
+                "2026-02-27, Regional Championship Seattle",
+                "2025-11-29, Regional Championship Stuttgart",
                 "Regional Championship Stuttgart",
             ],
         )
+
+    def test_filter_dated_tournament_names_drops_undated_entries(self):
+        tournaments = [
+            "2026-02-27, Regional Championship Seattle",
+            "Regional Championship Seattle",
+            "2025-11-29, Regional Championship Stuttgart",
+            "Regional Championship Stuttgart",
+        ]
+        filtered = download_tournament.filter_dated_tournament_names(tournaments)
+        self.assertEqual(
+            filtered,
+            [
+                "2026-02-27, Regional Championship Seattle",
+                "2025-11-29, Regional Championship Stuttgart",
+            ],
+        )
+
+    def test_rebuild_tournaments_json_from_reports_dry_run_does_not_upload(self):
+        objects = {
+            "reports/2026-02-13, International Championship London/meta.json": json.dumps(
+                {"date": "February 13–15, 2026", "startDate": "2026-02-13"}
+            ),
+            "reports/Regional Championship Seattle/meta.json": json.dumps(
+                {"date": "February 27–March 1, 2026", "startDate": None}
+            ),
+            "reports/tournaments.json": json.dumps([]),
+        }
+        client = _FakeR2Client(objects)
+
+        rebuilt = download_tournament.rebuild_tournaments_json_from_reports(client, "bucket", dry_run=True)
+        self.assertEqual(rebuilt, ["2026-02-13, International Championship London"])
+        self.assertEqual(client.put_calls, [])
 
 
 if __name__ == "__main__":

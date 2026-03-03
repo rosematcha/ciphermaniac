@@ -15,6 +15,18 @@ from pathlib import Path
 import boto3
 
 
+def parse_bool_env(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    normalized = str(raw).strip().lower()
+    if normalized in {"1", "true", "yes", "y", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "n", "off"}:
+        return False
+    return default
+
+
 def load_download_module():
     script_path = Path(__file__).with_name("download-tournament.py")
     spec = importlib.util.spec_from_file_location("download_tournament", script_path)
@@ -30,6 +42,7 @@ def main():
     r2_access_key_id = os.environ.get("R2_ACCESS_KEY_ID")
     r2_secret_access_key = os.environ.get("R2_SECRET_ACCESS_KEY")
     r2_bucket_name = os.environ.get("R2_BUCKET_NAME", "ciphermaniac-reports")
+    dry_run = parse_bool_env("DRY_RUN", False)
 
     if not all([r2_account_id, r2_access_key_id, r2_secret_access_key]):
         print("Error: R2 credentials not set")
@@ -44,8 +57,9 @@ def main():
     )
 
     module = load_download_module()
-    rebuilt = module.rebuild_tournaments_json_from_reports(client, r2_bucket_name)
-    print(f"✓ Rebuilt reports/tournaments.json with {len(rebuilt)} entries")
+    rebuilt = module.rebuild_tournaments_json_from_reports(client, r2_bucket_name, dry_run=dry_run)
+    action = "Would rebuild" if dry_run else "Rebuilt"
+    print(f"✓ {action} reports/tournaments.json with {len(rebuilt)} entries")
 
 
 if __name__ == "__main__":

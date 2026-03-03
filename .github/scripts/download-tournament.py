@@ -341,6 +341,16 @@ def extract_date_prefix(value: Optional[str]) -> Optional[str]:
     return candidate if is_valid_iso_date(candidate) else None
 
 
+def strip_date_prefix(value: Optional[str]) -> str:
+    if not value:
+        return ""
+    text = str(value).strip()
+    match = _DATE_PREFIX_RE.match(text)
+    if match:
+        return text[match.end() :].strip()
+    return text
+
+
 def is_valid_iso_date(value: Optional[str]) -> bool:
     if not value or not _ISO_DATE_RE.match(value):
         return False
@@ -412,6 +422,61 @@ def build_tournament_meta_map(r2_client, bucket_name: str, tournaments: List[str
     return meta_map
 
 
+def should_replace_tournament_entry(current_name: str, candidate_name: str) -> bool:
+    current_has_prefix = extract_date_prefix(current_name) is not None
+    candidate_has_prefix = extract_date_prefix(candidate_name) is not None
+
+    if candidate_has_prefix != current_has_prefix:
+        return candidate_has_prefix
+
+    # Deterministic tie-break: prefer lexicographically smaller key.
+    return candidate_name < current_name
+
+
+def dedupe_tournament_names(
+    tournaments: List[str], meta_map: Optional[Dict[str, Dict[str, Any]]] = None
+) -> List[str]:
+    deduped: List[str] = []
+    key_to_index: Dict[str, int] = {}
+
+    for tournament_name in tournaments:
+        meta = meta_map.get(tournament_name) if meta_map else None
+        date_iso = derive_tournament_start_date(tournament_name, meta) or ""
+        display_name = strip_date_prefix(tournament_name).lower()
+        dedupe_key = f"{date_iso}::{display_name}"
+
+        if dedupe_key not in key_to_index:
+            key_to_index[dedupe_key] = len(deduped)
+            deduped.append(tournament_name)
+            continue
+
+        existing_index = key_to_index[dedupe_key]
+        existing_name = deduped[existing_index]
+        if should_replace_tournament_entry(existing_name, tournament_name):
+            deduped[existing_index] = tournament_name
+
+    return deduped
+
+
+def filter_dated_tournament_names(tournaments: List[str]) -> List[str]:
+    dated: List[str] = []
+    undated: List[str] = []
+
+    for tournament_name in tournaments:
+        if extract_date_prefix(tournament_name):
+            dated.append(tournament_name)
+        else:
+            undated.append(tournament_name)
+
+    if undated:
+        preview = ", ".join(undated[:5])
+        if len(undated) > 5:
+            preview += ", ..."
+        print(f"  Dropping {len(undated)} undated tournament entries from index: {preview}")
+
+    return dated
+
+
 def sort_tournament_names_by_recency(
     tournaments: List[str], meta_map: Optional[Dict[str, Dict[str, Any]]] = None
 ) -> List[str]:
@@ -472,7 +537,7 @@ def list_report_folders(r2_client, bucket_name: str) -> List[str]:
     return list(dict.fromkeys(folders))
 
 
-def rebuild_tournaments_json_from_reports(r2_client, bucket_name: str) -> List[str]:
+def rebuild_tournaments_json_from_reports(r2_client, bucket_name: str, dry_run: bool = False) -> List[str]:
     tournaments_key = "reports/tournaments.json"
     folders = list_report_folders(r2_client, bucket_name)
     if not folders:
@@ -480,7 +545,13 @@ def rebuild_tournaments_json_from_reports(r2_client, bucket_name: str) -> List[s
         updated: List[str] = []
     else:
         meta_map = build_tournament_meta_map(r2_client, bucket_name, folders)
+        folders = dedupe_tournament_names(folders, meta_map)
+        folders = filter_dated_tournament_names(folders)
         updated = sort_tournament_names_by_recency(folders, meta_map)
+
+    if dry_run:
+        print(f"  Dry run: would upload rebuilt {tournaments_key} with {len(updated)} entries")
+        return updated
 
     print(f"  Uploading rebuilt {tournaments_key} with {len(updated)} entries...")
     r2_client.put_object(
@@ -1419,6 +1490,8 @@ def update_tournaments_json(r2_client, bucket_name, tournament_name):
     existing = [x for x in existing if x != tournament_name]
     updated = [tournament_name] + existing
     meta_map = build_tournament_meta_map(r2_client, bucket_name, updated)
+    updated = dedupe_tournament_names(updated, meta_map)
+    updated = filter_dated_tournament_names(updated)
     updated = sort_tournament_names_by_recency(updated, meta_map)
 
     print(f"  Uploading updated {tournaments_key}...")
@@ -1951,6 +2024,7 @@ def main():
     generate_tournament_synonyms = parse_bool_env("GENERATE_TOURNAMENT_SYNONYMS", False)
     write_tournament_db = parse_bool_env("WRITE_TOURNAMENT_DB", True)
     rebuild_tournaments_only = parse_bool_env("REBUILD_TOURNAMENTS_JSON_ONLY", False)
+    rebuild_tournaments_dry_run = parse_bool_env("REBUILD_TOURNAMENTS_JSON_DRY_RUN", False)
 
     r2_account_id = os.environ.get("R2_ACCOUNT_ID")
     r2_access_key_id = os.environ.get("R2_ACCESS_KEY_ID")
@@ -1982,8 +2056,13 @@ def main():
             print("Error: R2 client is required to rebuild tournaments.json")
             sys.exit(1)
         print("Rebuilding tournaments.json from existing report folders...")
-        rebuilt = rebuild_tournaments_json_from_reports(r2_client, r2_bucket_name)
-        print(f"✓ Rebuilt tournaments.json with {len(rebuilt)} entries")
+        rebuilt = rebuild_tournaments_json_from_reports(
+            r2_client,
+            r2_bucket_name,
+            dry_run=rebuild_tournaments_dry_run,
+        )
+        action = "Would rebuild" if rebuild_tournaments_dry_run else "Rebuilt"
+        print(f"✓ {action} tournaments.json with {len(rebuilt)} entries")
         return
 
     card_types_db = load_card_types_database(r2_client, r2_bucket_name)

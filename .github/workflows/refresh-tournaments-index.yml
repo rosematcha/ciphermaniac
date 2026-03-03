@@ -1,0 +1,52 @@
+name: Refresh Tournaments Index
+
+run-name: >-
+  Refresh tournaments index${{ inputs.dry_run_refresh == true && ' (dry run)' || '' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run_refresh:
+        description: 'Preview updated tournaments.json without uploading'
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: refresh-tournaments-index-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh-tournaments-index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install boto3 requests beautifulsoup4
+
+      - name: Rebuild tournaments index
+        env:
+          DRY_RUN: ${{ inputs.dry_run_refresh == true && 'true' || 'false' }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
+        run: python .github/scripts/rebuild-tournaments-index.py
+
+      - name: Summary
+        run: |
+          echo "## Refresh Tournaments Index" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry run**: ${{ inputs.dry_run_refresh == true && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
