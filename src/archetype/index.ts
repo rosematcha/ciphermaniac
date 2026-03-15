@@ -1,4 +1,4 @@
-import { fetchArchetypeReport, fetchReport } from '../api.js';
+import { fetchArchetypeReport, fetchTournamentSummary } from '../api.js';
 import { parseReport } from '../parse.js';
 import { updateLayout } from '../render.js';
 import { AppError, ErrorTypes } from '../utils/errorHandler.js';
@@ -115,26 +115,27 @@ async function initialize() {
     const onlineMeta = 'Online - Last 14 Days';
     state.tournament = onlineMeta;
 
-    const [overrides, tournamentReport, archetypeRaw] = await Promise.all([
+    const [overrides, tournamentSummary, archetypeRaw] = await Promise.all([
       Promise.resolve<Record<string, string>>({}),
-      fetchReport(state.tournament),
+      fetchTournamentSummary(state.tournament),
       fetchArchetypeReport(state.tournament, state.archetypeBase)
     ]);
 
-    if (!tournamentReport || typeof tournamentReport.deckTotal !== 'number') {
+    if (!tournamentSummary || typeof tournamentSummary.deckTotal !== 'number') {
       throw new AppError(ErrorTypes.DATA_FORMAT, `Tournament report for ${state.tournament} is missing deck totals.`);
     }
 
     const parsedArchetype = parseReport(archetypeRaw);
     Object.assign(state, {
       overrides: overrides || {},
-      tournamentDeckTotal: tournamentReport.deckTotal,
+      tournamentDeckTotal: tournamentSummary.deckTotal,
       archetypeDeckTotal: parsedArchetype.deckTotal,
       items: parsedArchetype.items,
       allCards: parsedArchetype.items,
       defaultItems: parsedArchetype.items,
       defaultDeckTotal: parsedArchetype.deckTotal,
-      filterCache: new Map()
+      filterCache: new Map(),
+      filterRequestController: null
     });
 
     updateHero();

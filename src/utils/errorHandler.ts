@@ -251,7 +251,12 @@ export async function safeFetch(input: string | Request, init: ExtendedRequestIn
             ? 'The requested data was not found.'
             : response.status >= 500
               ? 'Server is temporarily unavailable.'
-              : 'Request failed. Please try again.'
+              : 'Request failed. Please try again.',
+          {
+            status: response.status,
+            statusText: response.statusText,
+            url: typeof input === 'string' ? input : input.url
+          }
         );
         throw error;
       }

@@ -30,3 +30,4 @@ binding = "REPORTS"
 
 # Environment variables (set these in Cloudflare dashboard)
 [env.production.vars]
+ENVIRONMENT = "production"

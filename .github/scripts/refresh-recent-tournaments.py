@@ -170,7 +170,7 @@ def main() -> int:
 
         print(f"[refresh] Rebuilding {folder_name} from {source_url}")
         env = os.environ.copy()
-        env["LIMITLESS_URL"] = source_url
+        env["LIMITLESS_INPUT"] = source_url
         env["ANONYMIZE"] = "false"
 
         try:

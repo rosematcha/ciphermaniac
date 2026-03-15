@@ -1,0 +1,89 @@
+# =============================================================================
+# Reset Labs History (One-Time)
+# =============================================================================
+# Destructive reset for offline tournament reports, preserving only:
+#   - reports/Online - Last 14 Days/**
+#   - reports/Trends - Last 30 Days/**
+#   - reports/prices.json
+# Then rebuilds Labs Masters tournaments sequentially for a configurable ID range.
+# =============================================================================
+
+name: Reset Labs History
+
+run-name: >-
+  Reset Labs ${{ inputs.start_id || '1' }}-${{ inputs.end_id || '54' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_id:
+        description: 'Starting Labs ID (inclusive)'
+        required: false
+        type: string
+        default: '1'
+      end_id:
+        description: 'Ending Labs ID (inclusive)'
+        required: false
+        type: string
+        default: '54'
+      dry_run:
+        description: 'Preview only (no delete/no rebuild)'
+        required: false
+        type: boolean
+        default: false
+      fail_fast:
+        description: 'Stop on first failed tournament'
+        required: false
+        type: boolean
+        default: true
+      reset_reports:
+        description: 'Delete existing tournament reports before rebuild'
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: reset-labs-history-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  reset-labs-history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 boto3
+
+      - name: Run destructive reset + sequential rebuild
+        env:
+          LABS_START_ID: ${{ inputs.start_id || '1' }}
+          LABS_END_ID: ${{ inputs.end_id || '54' }}
+          DRY_RUN: ${{ inputs.dry_run == true && 'true' || 'false' }}
+          FAIL_FAST: ${{ inputs.fail_fast == true && 'true' || 'false' }}
+          RESET_REPORTS: ${{ inputs.reset_reports == true && 'true' || 'false' }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
+        run: python .github/scripts/reset-labs-history.py
+
+      - name: Summary
+        run: |
+          echo "## Reset Labs History" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Range**: \\`${{ inputs.start_id || '1' }}..${{ inputs.end_id || '54' }}\\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry Run**: ${{ inputs.dry_run == true && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Fail Fast**: ${{ inputs.fail_fast == true && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Reset Reports**: ${{ inputs.reset_reports == true && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY

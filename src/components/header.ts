@@ -3,6 +3,7 @@
  */
 
 import '../utils/buildVersion.js';
+import { shouldHideUnreadyFeatures } from '../utils/releaseChannel.js';
 
 interface HeaderOptions {
   currentPage?: string;
@@ -16,6 +17,13 @@ interface HeaderOptions {
 export function createHeader(options: HeaderOptions = {}): HTMLElement {
   const { currentPage = '' } = options;
   const toolsActive = ['tools', 'graphics', 'incidents', 'meta-binder'].includes(currentPage);
+  const hideUnreadyFeatures = shouldHideUnreadyFeatures();
+  const playersLink = hideUnreadyFeatures
+    ? ''
+    : `<a class="nav-link${currentPage === 'players' ? ' active' : ''}" href="/players"${currentPage === 'players' ? ' aria-current="page"' : ''}>Players</a>`;
+  const toolsLink = hideUnreadyFeatures
+    ? ''
+    : `<a class="nav-link${toolsActive ? ' active' : ''}" href="/tools/meta-binder"${toolsActive ? ' aria-current="page"' : ''}>Tools</a>`;
 
   const header = document.createElement('header');
   header.className = 'site-header';
@@ -34,17 +42,32 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
       <a class="nav-link${currentPage === 'cards' ? ' active' : ''}" href="/cards"${currentPage === 'cards' ? ' aria-current="page"' : ''}>Cards</a>
       <a class="nav-link${currentPage === 'trends' ? ' active' : ''}" href="/trends"${currentPage === 'trends' ? ' aria-current="page"' : ''}>Trends</a>
       <a class="nav-link${currentPage === 'analysis' || currentPage === 'archetypes' ? ' active' : ''}" href="/archetypes"${currentPage === 'analysis' || currentPage === 'archetypes' ? ' aria-current="page"' : ''}>Archetypes</a>
-      <a class="nav-link${currentPage === 'players' ? ' active' : ''}" href="/players"${currentPage === 'players' ? ' aria-current="page"' : ''}>Players</a>
-      <a class="nav-link${toolsActive ? ' active' : ''}" href="/tools/meta-binder"${toolsActive ? ' aria-current="page"' : ''}>Tools</a>
+      ${playersLink}
+      ${toolsLink}
     </nav>
     </div>
   `;
 
+  enhanceHeader(header);
+
+  return header;
+}
+
+/**
+ * Enhance an already-rendered header with interaction handlers.
+ */
+export function enhanceHeader(header: HTMLElement | null): void {
+  if (!header || header.dataset.cmHeaderEnhanced === 'true') {
+    return;
+  }
+  const hostHeader = header;
+  hostHeader.dataset.cmHeaderEnhanced = 'true';
+
   // Add class for browsers without :has() support (CLS prevention fallback)
   document.body.classList.add('has-header');
 
-  const nav = header.querySelector('.main-nav') as HTMLElement | null;
-  const toggle = header.querySelector('.nav-toggle') as HTMLButtonElement | null;
+  const nav = hostHeader.querySelector('.main-nav') as HTMLElement | null;
+  const toggle = hostHeader.querySelector('.nav-toggle') as HTMLButtonElement | null;
 
   if (nav && toggle) {
     const isMobileViewport = () => window.matchMedia('(max-width: 720px)').matches;
@@ -57,7 +80,6 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
       toggle.classList.add('is-active');
       toggle.setAttribute('aria-expanded', 'true');
       setMobileNavState(true);
-      // Focus first nav link when opening
       const firstLink = nav.querySelector('.nav-link') as HTMLElement | null;
       firstLink?.focus();
     };
@@ -107,7 +129,6 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
         toggle.focus();
       }
 
-      // Arrow key navigation within nav
       const navLinks = Array.from(nav.querySelectorAll('.nav-link')) as HTMLElement[];
       const currentIndex = navLinks.indexOf(document.activeElement as HTMLElement);
 
@@ -143,8 +164,6 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
       mq.addListener(handleChange);
     }
   }
-
-  return header;
 }
 
 /**

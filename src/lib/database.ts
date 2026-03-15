@@ -104,17 +104,40 @@ export class TournamentDatabase {
 
   static async load(tournamentPath: string): Promise<TournamentDatabase> {
     const SQL = await initSqlJs();
-    const url = `/reports/${encodeURIComponent(tournamentPath)}/tournament.db`;
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new AppError(ErrorTypes.API, `Failed to load database: ${response.status} ${response.statusText}`, null, {
-        status: response.status,
-        url
-      });
+    const encodedTournament = encodeURIComponent(tournamentPath);
+    const urls = [
+      `https://r2.ciphermaniac.com/reports/${encodedTournament}/tournament.db`,
+      `/reports/${encodedTournament}/tournament.db`
+    ];
+
+    let lastError: AppError | null = null;
+    for (const url of urls) {
+      const response = await fetch(url);
+      if (!response.ok) {
+        lastError = new AppError(
+          ErrorTypes.API,
+          `Failed to load database: ${response.status} ${response.statusText}`,
+          null,
+          {
+            status: response.status,
+            url
+          }
+        );
+        continue;
+      }
+
+      const buffer = await response.arrayBuffer();
+      const db = new SQL.Database(new Uint8Array(buffer));
+      return new TournamentDatabase(db, tournamentPath);
     }
-    const buffer = await response.arrayBuffer();
-    const db = new SQL.Database(new Uint8Array(buffer));
-    return new TournamentDatabase(db, tournamentPath);
+
+    if (lastError) {
+      throw lastError;
+    }
+
+    throw new AppError(ErrorTypes.API, 'Failed to load database', null, {
+      tournamentPath
+    });
   }
 
   close(): void {

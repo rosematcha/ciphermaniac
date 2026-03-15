@@ -1,14 +1,16 @@
 import { computeLayout, syncControlsWidth } from '../../layoutHelper.js';
 import { CONFIG } from '../../config.js';
 import { perf } from '../../utils/performance.js';
-import { normalizeCardNumber } from '../../card/routing.js';
+import { normalizeCardNumber } from '../../../shared/cardUtils.js';
 import { escapeHtml } from '../../utils/html.js';
+import { saveGridScroll } from '../../utils/scrollRestore.js';
 import type { CardItem } from '../../types/index.js';
 import type { RenderOptions } from '../types.js';
 import { hideGridTooltip, showGridTooltip } from '../cardElement.js';
 import { MOBILE_MAX_WIDTH, NUM_LARGE_ROWS, NUM_MEDIUM_ROWS } from '../constants.js';
 import { getGridElement } from './elements.js';
 import {
+  buildCardRenderHash,
   createCardHistogram,
   makeCardElement,
   populateCardContent,
@@ -19,6 +21,60 @@ import { preloadVisibleImagesParallel } from '../images/preloader.js';
 import { attachGridKeyboardNavigation } from '../navigation/keyboard.js';
 import { expandGridRows } from './expandRows.js';
 import { observeLoadMore } from './autoLoad.js';
+
+function getCardIdentityKey(item: CardItem): string | null {
+  const { uid } = item;
+  const setCode = item.set ? String(item.set).toUpperCase() : '';
+  const number = item.number ? normalizeCardNumber(item.number) : '';
+  const cardId = setCode && number ? `${setCode}~${number}` : null;
+  const name = item.name ? item.name.toLowerCase() : null;
+  return uid || cardId || name;
+}
+
+function setupCardNavigationDelegation(grid: HTMLElement & { _cardDelegationAttached?: boolean }): void {
+  const hostGrid = grid;
+  if (hostGrid._cardDelegationAttached) {
+    return;
+  }
+  hostGrid._cardDelegationAttached = true;
+
+  hostGrid.addEventListener('click', event => {
+    const target = event.target as Element | null;
+    const card = target?.closest('.card') as HTMLElement | null;
+    if (!card || !hostGrid.contains(card)) {
+      return;
+    }
+    const url = card.dataset.cardUrl;
+    if (!url) {
+      return;
+    }
+    const mouseEvent = event as MouseEvent;
+    if (mouseEvent.ctrlKey || mouseEvent.metaKey) {
+      window.open(url, '_blank');
+      return;
+    }
+    saveGridScroll();
+    location.assign(url);
+  });
+
+  hostGrid.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+    const target = event.target as Element | null;
+    const card = target?.closest('.card') as HTMLElement | null;
+    if (!card || !hostGrid.contains(card)) {
+      return;
+    }
+    const url = card.dataset.cardUrl;
+    if (!url) {
+      return;
+    }
+    event.preventDefault();
+    saveGridScroll();
+    location.assign(url);
+  });
+}
 
 /**
  * Render the grid for the provided card items.
@@ -36,26 +92,12 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
     return;
   }
 
-  const previousCardIds = new Set<string>();
-  const existingCardsMap = new Map<string, HTMLElement>();
-  const existingCards = grid.querySelectorAll('.card');
-  existingCards.forEach((card: Element) => {
-    const htmlCard = card as HTMLElement;
-    const { uid, cardId, name } = htmlCard.dataset;
-    if (uid) {
-      previousCardIds.add(uid);
-    }
-    if (cardId) {
-      previousCardIds.add(cardId);
-    }
-    if (name) {
-      previousCardIds.add(name);
-    }
-    const key = uid || cardId || name;
-    if (key) {
-      existingCardsMap.set(key, htmlCard);
-    }
-  });
+  if (!grid._cardRegistry) {
+    grid._cardRegistry = new Map<string, HTMLElement>();
+  }
+  const existingCardsMap = grid._cardRegistry;
+  const previousCardIds = new Set(existingCardsMap.keys());
+  const activeCardKeys = new Set<string>();
 
   const prefersCompact = typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX_WIDTH;
   const requestedLayout = options?.layoutMode === 'compact' ? 'compact' : 'standard';
@@ -76,6 +118,7 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
     empty.className = 'empty-state';
     empty.innerHTML = `<h2>Dead draw.</h2><p>No results for this search, try another!</p>`;
     grid.replaceChildren(empty);
+    existingCardsMap.clear();
     perf.end('render');
     return;
   }
@@ -98,25 +141,31 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
   const mediumRowsLimit = forceCompact ? 0 : NUM_MEDIUM_ROWS;
 
   const makeCard = (it: CardItem, useSm: boolean): HTMLElement => {
-    const { uid } = it;
-    const setCode = it.set ? String(it.set).toUpperCase() : '';
-    const number = it.number ? normalizeCardNumber(it.number) : '';
-    const cardId = setCode && number ? `${setCode}~${number}` : null;
-    const name = it.name ? it.name.toLowerCase() : null;
-    const key = uid || cardId || name;
+    const key = getCardIdentityKey(it);
 
     let cardEl: HTMLElement;
+    const nextHash = buildCardRenderHash(it, { showPrice });
     if (key && existingCardsMap.has(key)) {
       cardEl = existingCardsMap.get(key)!;
-      populateCardContent(cardEl, it, { showPrice });
-      setupCardCounts(cardEl, it);
-      createCardHistogram(cardEl, it);
+      if (cardEl.dataset.renderHash !== nextHash) {
+        populateCardContent(cardEl, it, { showPrice });
+        setupCardCounts(cardEl, it);
+        createCardHistogram(cardEl, it);
+        cardEl.dataset.renderHash = nextHash;
+      }
       setupCardAttributes(cardEl, it);
       cardEl.classList.remove('card-entering');
       cardEl.dataset.reused = 'true';
     } else {
       cardEl = makeCardElement(it, useSm, overrides, { showPrice }, previousCardIds);
       cardEl.dataset.reused = 'false';
+      if (key) {
+        existingCardsMap.set(key, cardEl);
+      }
+    }
+
+    if (key) {
+      activeCardKeys.add(key);
     }
 
     return cardEl;
@@ -131,8 +180,6 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
     grid._visibleRows = CONFIG.UI.INITIAL_VISIBLE_ROWS;
   }
   const visibleRowsLimit = grid._visibleRows || CONFIG.UI.INITIAL_VISIBLE_ROWS;
-
-  const rowsToKeep: HTMLElement[] = [];
 
   perf.start('render:create-cards');
   while (i < items.length && rowIndex < visibleRowsLimit) {
@@ -205,7 +252,6 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
       }
     }
 
-    rowsToKeep.push(row);
     rowIndex++;
   }
   perf.end('render:create-cards');
@@ -213,6 +259,11 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
   perf.start('render:cleanup');
   for (let r = rowIndex; r < existingRows.length; r++) {
     existingRows[r].remove();
+  }
+  for (const [key, element] of Array.from(existingCardsMap.entries())) {
+    if (!activeCardKeys.has(key) || !element.isConnected) {
+      existingCardsMap.delete(key);
+    }
   }
   perf.end('render:cleanup');
 
@@ -321,6 +372,7 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
     observeLoadMore(null);
   }
 
+  setupCardNavigationDelegation(grid);
   attachGridKeyboardNavigation(grid);
   setupHistogramDelegation(grid);
   perf.end('render');

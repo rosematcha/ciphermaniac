@@ -1,5 +1,6 @@
 import { getState } from '../state.js';
 import { elements } from './elements.js';
+import { shouldHideUnreadyFeatures } from '../../utils/releaseChannel.js';
 
 /**
  * Set up keyboard tab navigation for the archetype view.
@@ -7,6 +8,11 @@ import { elements } from './elements.js';
 export function setupTabNavigation(): void {
   const { tabHome, tabTrends } = elements;
   const state = getState();
+  const hideUnreadyFeatures = shouldHideUnreadyFeatures();
+
+  if (hideUnreadyFeatures && tabTrends) {
+    tabTrends.remove();
+  }
 
   const updateLinks = (): void => {
     if (state.archetypeBase) {
@@ -16,7 +22,7 @@ export function setupTabNavigation(): void {
         tabHome.href = `/${encodedName}`;
       }
 
-      if (tabTrends) {
+      if (!hideUnreadyFeatures && tabTrends) {
         tabTrends.href = `/${encodedName}/trends`;
       }
     }
@@ -32,7 +38,7 @@ export function setupTabNavigation(): void {
   };
 
   keepHrefFresh(tabHome);
-  keepHrefFresh(tabTrends);
+  keepHrefFresh(hideUnreadyFeatures ? null : tabTrends);
 
   updateLinks();
 }

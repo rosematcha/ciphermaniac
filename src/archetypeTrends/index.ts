@@ -12,6 +12,7 @@ import { renderStats } from './ui/stats.js';
 import { elements } from './ui/elements.js';
 import { buildAnalysisUrl, buildHomeUrl, extractArchetypeFromUrl } from './utils/url.js';
 import { applyPageSeo, buildWebPageSchema } from '../utils/seo.js';
+import { shouldHideUnreadyFeatures } from '../utils/releaseChannel.js';
 
 async function initialize(): Promise<void> {
   const state = getState();
@@ -120,6 +121,14 @@ async function initialize(): Promise<void> {
 
 export function initArchetypeTrendsPage(): void {
   if (typeof document === 'undefined') {
+    return;
+  }
+
+  if (shouldHideUnreadyFeatures()) {
+    const archetypeName = extractArchetypeFromUrl();
+    const archetypeSlug = archetypeName ? archetypeName.replace(/ /g, '_') : '';
+    const fallbackUrl = archetypeSlug ? buildAnalysisUrl(archetypeSlug) : '/archetypes';
+    window.location.replace(fallbackUrl);
     return;
   }
 

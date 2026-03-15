@@ -1,12 +1,12 @@
 import { buildThumbCandidates } from '../../thumbs.js';
-import { buildCardPath, normalizeCardNumber } from '../../card/routing.js';
+import { buildCardPath } from '../../card/routing.js';
 import { trackMissing } from '../../dev/missingThumbs.js';
 import { parallelImageLoader } from '../../utils/parallelImageLoader.js';
 import { createElement, setStyles } from '../../utils/dom.js';
+import { normalizeCardNumber } from '../../../shared/cardUtils.js';
 import type { CardItem } from '../../types/index.js';
 import type { RenderOptions } from '../types.js';
 import { formatCardPrice } from '../cardElement.js';
-import { saveGridScroll } from '../../utils/scrollRestore.js';
 
 function shouldPreferLowQuality(): boolean {
   if (typeof navigator === 'undefined') {
@@ -18,6 +18,50 @@ function shouldPreferLowQuality(): boolean {
   }
   const effectiveType = connection?.effectiveType || '';
   return effectiveType === '2g' || effectiveType === 'slow-2g';
+}
+
+function buildDistSignature(cardData: CardItem): string {
+  if (!Array.isArray(cardData.dist) || cardData.dist.length === 0) {
+    return '';
+  }
+  return cardData.dist
+    .map(entry => {
+      const copies = Number.isFinite(entry.copies) ? String(entry.copies) : '';
+      const players = Number.isFinite(entry.players) ? String(entry.players) : '';
+      const percent = Number.isFinite(entry.percent) ? Number(entry.percent).toFixed(3) : '';
+      return `${copies}:${players}:${percent}`;
+    })
+    .join('|');
+}
+
+/**
+ * Build a compact hash for card UI rendering state.
+ * Used to skip expensive count/histogram/content rebuilds when data is unchanged.
+ */
+export function buildCardRenderHash(cardData: CardItem, renderFlags: RenderOptions = {}): string {
+  const shouldShowPrice = Boolean(renderFlags.showPrice);
+  const normalizedNumber = normalizeCardNumber(cardData.number);
+  const priceToken = shouldShowPrice
+    ? Number.isFinite(cardData.price as number)
+      ? Number(cardData.price).toFixed(3)
+      : 'na'
+    : 'off';
+
+  return [
+    cardData.uid || '',
+    cardData.name || '',
+    cardData.set || '',
+    normalizedNumber,
+    Number(cardData.found ?? 0),
+    Number(cardData.total ?? 0),
+    Number.isFinite(cardData.pct) ? Number(cardData.pct).toFixed(3) : '',
+    cardData.category || '',
+    cardData.trainerType || '',
+    cardData.energyType || '',
+    cardData.aceSpec ? '1' : '0',
+    priceToken,
+    buildDistSignature(cardData)
+  ].join('~');
 }
 
 /**
@@ -260,33 +304,6 @@ function setupHistogramTooltip(col: HTMLElement, cardName: string, tip: string):
 }
 
 /**
- * Attach navigation handlers for a card element.
- * @param card - Card element.
- * @param cardData - Card data.
- */
-export function attachCardNavigation(card: HTMLElement, cardData: CardItem): void {
-  const cardIdentifier = cardData.uid || cardData.name;
-  const url = buildCardPath(cardIdentifier);
-
-  card.addEventListener('click', event => {
-    if (event.ctrlKey || event.metaKey) {
-      window.open(url, '_blank');
-    } else {
-      saveGridScroll();
-      location.assign(url);
-    }
-  });
-
-  card.addEventListener('keydown', event => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      saveGridScroll();
-      location.assign(url);
-    }
-  });
-}
-
-/**
  * Build a card element for the grid.
  * @param cardData - Card data.
  * @param useSm - Whether to use small images.
@@ -347,8 +364,7 @@ export function makeCardElement(
   populateCardContent(fragment, cardData, renderFlags);
   setupCardCounts(fragment, cardData);
   createCardHistogram(fragment, cardData);
-
-  attachCardNavigation(card, cardData);
+  card.dataset.renderHash = buildCardRenderHash(cardData, renderFlags);
 
   return card;
 }
@@ -403,6 +419,12 @@ export function setupCardAttributes(card: HTMLElement, cardData: CardItem): void
     card.dataset.pct = String(pct);
   } else {
     delete card.dataset.pct;
+  }
+  const cardIdentifier = cardData.uid || cardData.name;
+  if (cardIdentifier) {
+    card.dataset.cardUrl = buildCardPath(cardIdentifier);
+  } else {
+    delete card.dataset.cardUrl;
   }
   card.setAttribute('role', 'button');
   card.setAttribute('tabindex', '0');
