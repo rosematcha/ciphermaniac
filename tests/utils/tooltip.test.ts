@@ -55,9 +55,15 @@ function createMockDocument(): void {
         className: '',
         classList: {
           _classes: classes,
-          add(cls: string) { classes.add(cls); },
-          remove(cls: string) { classes.delete(cls); },
-          contains(cls: string) { return classes.has(cls); }
+          add(cls: string) {
+            classes.add(cls);
+          },
+          remove(cls: string) {
+            classes.delete(cls);
+          },
+          contains(cls: string) {
+            return classes.has(cls);
+          }
         },
         innerHTML: '',
         id: '',
@@ -310,7 +316,10 @@ test('tooltip: element has correct base styles', async t => {
   assert.ok(element.style.cssText?.includes('position:fixed'), 'should have fixed position');
   assert.ok(element.style.cssText?.includes('pointer-events:none'), 'should have pointer-events:none');
   assert.ok(element.style.cssText?.includes('z-index:9999'), 'should have high z-index');
-  assert.ok(!element.style.cssText?.includes('display:none'), 'should not set display:none (uses opacity via CSS class)');
+  assert.ok(
+    !element.style.cssText?.includes('display:none'),
+    'should not set display:none (uses opacity via CSS class)'
+  );
 
   cleanupMockDocument();
 });

@@ -1,5 +1,6 @@
 import { computeLayout } from '../../layoutHelper.js';
 import { CONFIG } from '../../config.js';
+import { normalizeCardNumber } from '../../../shared/cardUtils.js';
 import { MOBILE_MAX_WIDTH, NUM_LARGE_ROWS, NUM_MEDIUM_ROWS } from '../constants.js';
 import { getGridElement } from './elements.js';
 import type { CardItem } from '../../types/index.js';
@@ -7,6 +8,15 @@ import type { RenderOptions } from '../types.js';
 import { makeCardElement } from '../cards/gridCards.js';
 import { renderSummary } from '../summary/summary.js';
 import { observeLoadMore } from './autoLoad.js';
+
+function getCardIdentityKey(item: CardItem): string | null {
+  const { uid } = item;
+  const setCode = item.set ? String(item.set).toUpperCase() : '';
+  const number = item.number ? normalizeCardNumber(item.number) : '';
+  const cardId = setCode && number ? `${setCode}~${number}` : null;
+  const name = item.name ? item.name.toLowerCase() : null;
+  return uid || cardId || name;
+}
 
 /**
  * Expand the grid with additional rows.
@@ -79,6 +89,10 @@ export function expandGridRows(
   let cardIndex = existingCards;
   let rowIndex = existingRows;
   const frag = document.createDocumentFragment();
+  if (!grid._cardRegistry) {
+    grid._cardRegistry = new Map<string, HTMLElement>();
+  }
+  const cardRegistry = grid._cardRegistry;
 
   while (cardIndex < items.length && rowIndex < targetTotalRows) {
     const row = document.createElement('div');
@@ -120,6 +134,10 @@ export function expandGridRows(
       const cardEl = makeCardElement(item, useSm, overrides, { showPrice }, previousCardIds);
       cardEl.dataset.row = String(rowIndex);
       cardEl.dataset.col = String(j);
+      const key = getCardIdentityKey(item);
+      if (key) {
+        cardRegistry.set(key, cardEl);
+      }
       row.appendChild(cardEl);
     }
     frag.appendChild(row);

@@ -39,3 +39,64 @@ test('ParallelImageLoader: getStats returns current state', () => {
   assert.ok(stats.loading >= 0);
   assert.ok(stats.loaded >= 0);
 });
+
+test('ParallelImageLoader: preloadImages dedupes duplicate candidate groups', async () => {
+  class TestLoader extends ParallelImageLoader {
+    public calls: string[] = [];
+
+    override async loadImageParallel(candidates: string[]): Promise<string | null> {
+      this.calls.push(candidates[0] || '');
+      return candidates[0] || null;
+    }
+  }
+
+  const loader = new TestLoader();
+  await loader.preloadImages(
+    [['https://example.com/a.png'], ['https://example.com/a.png'], ['https://example.com/b.png']],
+    2
+  );
+
+  assert.deepStrictEqual(loader.calls, ['https://example.com/a.png', 'https://example.com/b.png']);
+});
+
+test('ParallelImageLoader: stale preload batches are ignored after a new batch starts', async () => {
+  class TestLoader extends ParallelImageLoader {
+    public calls: string[] = [];
+    private firstResolve: (() => void) | null = null;
+
+    releaseFirstCall(): void {
+      if (this.firstResolve) {
+        this.firstResolve();
+        this.firstResolve = null;
+      }
+    }
+
+    override async loadImageParallel(candidates: string[]): Promise<string | null> {
+      const key = candidates[0] || '';
+      this.calls.push(key);
+      if (key.includes('first')) {
+        await new Promise<void>(resolve => {
+          this.firstResolve = resolve;
+        });
+      }
+      return key || null;
+    }
+  }
+
+  const loader = new TestLoader();
+  const staleBatch = loader.startPreloadBatch();
+  const stalePromise = loader.preloadImages([['first-a'], ['first-b']], 1, staleBatch);
+
+  await Promise.resolve();
+  const activeBatch = loader.startPreloadBatch();
+  const activePromise = loader.preloadImages([['second-a']], 1, activeBatch);
+
+  loader.releaseFirstCall();
+  await Promise.all([stalePromise, activePromise]);
+
+  assert.deepStrictEqual(
+    loader.calls,
+    ['first-a', 'second-a'],
+    'stale batch should stop before scheduling remaining preload candidates'
+  );
+});

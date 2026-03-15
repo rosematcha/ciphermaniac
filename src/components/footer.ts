@@ -30,10 +30,22 @@ export function createFooter(options: FooterOptions = {}): HTMLElement {
     </div>
   `;
 
-  // Add class for browsers without :has() support (CLS prevention fallback)
-  document.body.classList.add('has-footer');
+  enhanceFooter(footer);
 
   return footer;
+}
+
+/**
+ * Enhance an already-rendered footer with shared classes.
+ */
+export function enhanceFooter(footer: HTMLElement | null): void {
+  if (!footer || footer.dataset.cmFooterEnhanced === 'true') {
+    return;
+  }
+  const hostFooter = footer;
+  hostFooter.dataset.cmFooterEnhanced = 'true';
+  // Add class for browsers without :has() support (CLS prevention fallback)
+  document.body.classList.add('has-footer');
 }
 
 /**

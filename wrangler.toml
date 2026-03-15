@@ -31,6 +31,7 @@ binding = "REPORTS"
 
 # Environment variables (set these in Cloudflare dashboard)
 [env.production.vars]
+ENVIRONMENT = "production"
 
 # =============================================================================
 # Preview Environment Configuration
@@ -67,4 +68,3 @@ binding = "REPORTS"
 # Preview environment variables
 [env.preview.vars]
 ENVIRONMENT = "preview"
-

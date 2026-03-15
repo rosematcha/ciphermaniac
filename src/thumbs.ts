@@ -1,4 +1,4 @@
-import { normalizeCardNumber } from './card/routing.js';
+import { normalizeCardNumber } from '../shared/cardUtils.js';
 import { normalizeSetCode } from './utils/filterState.js';
 
 interface Variant {

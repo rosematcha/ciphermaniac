@@ -8,24 +8,37 @@ const __dirname = path.dirname(__filename);
 
 const stylesDir = path.join(__dirname, '..', 'public', 'assets', 'styles');
 const outputFile = path.join(__dirname, '..', 'public', 'assets', 'style-optimized.css');
+const coreOutputFile = path.join(__dirname, '..', 'public', 'assets', 'style-core.css');
+const cardsOutputFile = path.join(__dirname, '..', 'public', 'assets', 'style-cards.css');
+const archetypeOutputFile = path.join(__dirname, '..', 'public', 'assets', 'style-archetype.css');
 
 console.log('🔨 Building optimized CSS...');
 
 try {
-  let combinedCSS = '';
-
-  // Add banner
-  combinedCSS += `/* ==========================================================================
-     Ciphermaniac - Optimized CSS Build
+  const buildBundle = (outputPath, files, title, suffix = '') => {
+    let combinedCSS = `/* ==========================================================================
+     ${title}
      Generated: ${new Date().toISOString()}
-     Architecture: Modular CSS with Design Tokens
-     Size Reduction: ~25% from original
-     ========================================================================== */
+     ========================================================================== */\n`;
 
-`;
+    files.forEach(file => {
+      const filePath = path.join(stylesDir, file);
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf8');
+        combinedCSS += `\n\n/* ${file} */\n${content}`;
+        console.log(`✓ Added ${file}`);
+      } else {
+        console.log(`⚠️  Missing ${file}`);
+      }
+    });
 
-  // Read and combine all CSS files
-  const files = [
+    fs.writeFileSync(outputPath, `${combinedCSS}${suffix}`, 'utf8');
+    const stats = fs.statSync(outputPath);
+    console.log(`✅ Built CSS bundle: ${outputPath}`);
+    console.log(`📊 Size: ${stats.size} bytes`);
+  };
+
+  const optimizedFiles = [
     'abstracts/_variables.css',
     'base/_reset.css',
     'components/_buttons.css',
@@ -43,23 +56,27 @@ try {
     'main.css'
   ];
 
-  files.forEach(file => {
-    const filePath = path.join(stylesDir, file);
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf8');
-      combinedCSS += `\n\n/* ${file} */\n${content}`;
-      console.log(`✓ Added ${file}`);
-    } else {
-      console.log(`⚠️  Missing ${file}`);
-    }
-  });
+  const coreFiles = [
+    'abstracts/_variables.css',
+    'base/_reset.css',
+    'components/_buttons.css',
+    'components/_cards.css',
+    'components/_forms.css',
+    'layout/_header.css',
+    'layout/_toolbar.css',
+    'layout/_grid.css',
+    'main.css'
+  ];
 
-  // Write optimized file
-  fs.writeFileSync(outputFile, combinedCSS, 'utf8');
+  const cardsFiles = ['pages/_responsive.css'];
+  const archetypeFiles = ['pages/_archetype.css', 'pages/_responsive.css'];
 
-  const stats = fs.statSync(outputFile);
-  console.log(`✅ Built optimized CSS: ${outputFile}`);
-  console.log(`📊 Size: ${stats.size} bytes`);
+  const lowEndMotionSuffix = `\n\n/* Motion defer for low-end devices during first meaningful paint */\n.motion-deferred .card-entering,\n.motion-deferred .grid .card,\n.motion-deferred .archetype-page,\n.motion-deferred .archetype-main {\n  animation: none !important;\n  transition: none !important;\n}\n`;
+
+  buildBundle(outputFile, optimizedFiles, 'Ciphermaniac - Optimized CSS Build');
+  buildBundle(coreOutputFile, coreFiles, 'Ciphermaniac - Core CSS Bundle', lowEndMotionSuffix);
+  buildBundle(cardsOutputFile, cardsFiles, 'Ciphermaniac - Cards CSS Bundle');
+  buildBundle(archetypeOutputFile, archetypeFiles, 'Ciphermaniac - Archetype CSS Bundle');
 } catch (error) {
   console.error('❌ Build failed:', error.message);
   process.exit(1);

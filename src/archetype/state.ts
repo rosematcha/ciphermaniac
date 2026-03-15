@@ -22,6 +22,7 @@ export interface AppState {
   defaultDeckTotal: number;
   cardLookup: Map<string, CardLookupEntry>;
   filterCache: Map<string, Promise<FilterResult>>;
+  filterRequestController: AbortController | null;
   filterRows: FilterRow[];
   nextFilterId: number;
   skeleton: {
@@ -48,6 +49,7 @@ const state: AppState = {
   defaultDeckTotal: 0,
   cardLookup: new Map(),
   filterCache: new Map(),
+  filterRequestController: null,
   filterRows: [],
   nextFilterId: 1,
   skeleton: {

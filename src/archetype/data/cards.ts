@@ -1,4 +1,4 @@
-import { normalizeCardNumber } from '../../card/routing.js';
+import { normalizeCardNumber } from '../../../shared/cardUtils.js';
 import { CARD_COUNT_BASIC_ENERGY_MAX, CARD_COUNT_DEFAULT_MAX } from '../constants.js';
 import { getState } from '../state.js';
 import type { CardItemData, CardLookupEntry } from '../types.js';
