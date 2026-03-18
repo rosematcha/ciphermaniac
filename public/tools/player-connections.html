@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Player Connections - Kevin Bacon Degrees | Ciphermaniac</title>
+    <meta
+      name="description"
+      content="Find Kevin Bacon-style degrees of separation between Pokemon TCG players using tournament match data."
+    />
+
+    <link rel="canonical" href="https://ciphermaniac.com/tools/player-connections" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ciphermaniac.com/tools/player-connections" />
+    <meta property="og:title" content="Player Connections - Ciphermaniac" />
+    <meta
+      property="og:description"
+      content="Explore shortest player-to-player match connection paths across offline tournaments."
+    />
+    <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+    <meta property="og:site_name" content="Ciphermaniac" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://ciphermaniac.com/tools/player-connections" />
+    <meta name="twitter:title" content="Player Connections" />
+    <meta
+      name="twitter:description"
+      content="Find degrees of separation between players from canonical tournament matches."
+    />
+    <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+
+    <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#fee475" />
+
+    <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/assets/style.css" />
+    <style>
+      .connections-page {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 24px 16px 64px;
+      }
+
+      .connections-panel {
+        background: rgba(12, 18, 38, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 16px;
+        margin-bottom: 18px;
+      }
+
+      .connections-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .connections-field {
+        position: relative;
+      }
+
+      .connections-field label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+
+      .connections-field input {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(6, 10, 22, 0.9);
+        color: #fff;
+        padding: 10px 12px;
+      }
+
+      .connections-suggestions {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 72px;
+        list-style: none;
+        margin: 0;
+        padding: 6px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: #0d1733;
+        max-height: 260px;
+        overflow: auto;
+        z-index: 15;
+      }
+
+      .connections-suggestions[hidden] {
+        display: none;
+      }
+
+      .connections-suggestions button {
+        width: 100%;
+        text-align: left;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: #ecf1ff;
+        padding: 9px 10px;
+        cursor: pointer;
+      }
+
+      .connections-suggestions button:hover,
+      .connections-suggestions button.is-active {
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      .connections-actions {
+        margin-top: 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .connections-actions button {
+        border: 0;
+        border-radius: 10px;
+        background: linear-gradient(120deg, #56a6ff, #87d0ff);
+        color: #0a132d;
+        font-weight: 700;
+        padding: 9px 16px;
+        cursor: pointer;
+      }
+
+      .connections-note {
+        color: rgba(223, 231, 255, 0.86);
+        margin: 0;
+      }
+
+      .connections-result-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 10px;
+      }
+
+      .connections-result-item {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .connections-progress {
+        width: 100%;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        overflow: hidden;
+        margin: 10px 0 0;
+      }
+
+      .connections-progress__bar {
+        height: 100%;
+        width: 0;
+        background: linear-gradient(90deg, #6caeff, #9fd4ff);
+        transition: width 180ms ease;
+      }
+
+      .connections-stats {
+        color: rgba(223, 231, 255, 0.8);
+        font-size: 0.95rem;
+      }
+
+      .connections-empty {
+        color: rgba(223, 231, 255, 0.8);
+        margin: 0;
+      }
+
+      @media (max-width: 760px) {
+        .connections-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main id="main-content" class="connections-page" tabindex="-1">
+      <section class="connections-panel">
+        <h1>Player Connections</h1>
+        <p class="connections-note">
+          Find the shortest played-match path between two players using canonical offline tournament pairings.
+        </p>
+      </section>
+
+      <section id="player-connections-loading" class="connections-panel" aria-live="polite">
+        <h2>Building match graph...</h2>
+        <p id="player-connections-progress-text" class="connections-note">Preparing tournaments...</p>
+        <div class="connections-progress" aria-hidden="true">
+          <div id="player-connections-progress-fill" class="connections-progress__bar"></div>
+        </div>
+      </section>
+
+      <section id="player-connections-error" class="connections-panel" hidden>
+        <h2>Unable to build player graph</h2>
+        <p id="player-connections-error-text" class="connections-note">Please try again later.</p>
+      </section>
+
+      <section id="player-connections-app" class="connections-panel" hidden>
+        <div class="connections-grid">
+          <div class="connections-field">
+            <label for="player-a-input">Player A</label>
+            <input id="player-a-input" type="search" autocomplete="off" placeholder="Type a player name..." />
+            <ul id="player-a-suggestions" class="connections-suggestions" hidden></ul>
+          </div>
+          <div class="connections-field">
+            <label for="player-b-input">Player B</label>
+            <input id="player-b-input" type="search" autocomplete="off" placeholder="Type a player name..." />
+            <ul id="player-b-suggestions" class="connections-suggestions" hidden></ul>
+          </div>
+        </div>
+
+        <div class="connections-actions">
+          <button type="button" id="player-connections-search">Find Connection</button>
+          <p id="player-connections-note" class="connections-note">Graph ready.</p>
+        </div>
+
+        <p id="player-connections-stats" class="connections-stats"></p>
+      </section>
+
+      <section id="player-connections-results" class="connections-panel" hidden>
+        <h2 id="player-connections-result-title">Results</h2>
+        <p id="player-connections-result-summary" class="connections-note"></p>
+        <ul id="player-connections-result-list" class="connections-result-list"></ul>
+      </section>
+    </main>
+
+    <script type="module">
+      import { createHeader } from '/assets/js/src/components/header.js';
+      import { createFooter } from '/assets/js/src/components/footer.js';
+
+      const header = createHeader({ currentPage: 'tools' });
+      const footer = createFooter();
+
+      document.body.insertAdjacentElement('afterbegin', header);
+      document.body.insertAdjacentElement('beforeend', footer);
+    </script>
+    <script type="module" src="/assets/js/src/loaders/player-connections.js"></script>
+  </body>
+</html>

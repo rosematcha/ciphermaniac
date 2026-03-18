@@ -34,6 +34,7 @@ const STATIC_ROUTES: Array<{ path: string; changefreq: ChangeFreq; priority: num
   { path: '/players', changefreq: 'daily', priority: 0.8 },
   { path: '/suggested', changefreq: 'weekly', priority: 0.5 },
   { path: '/tools/meta-binder', changefreq: 'weekly', priority: 0.6 },
+  { path: '/tools/player-connections', changefreq: 'weekly', priority: 0.5 },
   { path: '/tools/social-graphics', changefreq: 'monthly', priority: 0.4 },
   { path: '/about', changefreq: 'monthly', priority: 0.5 },
   { path: '/feedback', changefreq: 'monthly', priority: 0.4 }
