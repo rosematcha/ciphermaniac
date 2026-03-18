@@ -39,84 +39,12 @@
 
   <!-- Preload critical font to reduce layout shift -->
   <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
-  <script>
-    (() => {
-      const flagName = 'usePageCssSplit';
-      const parse = value => {
-        const normalized = String(value || '')
-          .trim()
-          .toLowerCase();
-        if (['1', 'true', 'yes', 'on', 'enabled'].includes(normalized)) return true;
-        if (['0', 'false', 'no', 'off', 'disabled'].includes(normalized)) return false;
-        return null;
-      };
-      let enabled = true;
-      try {
-        const params = new URLSearchParams(window.location.search || '');
-        const direct = parse(params.get(`ff_${flagName}`));
-        if (direct !== null) {
-          enabled = direct;
-        } else {
-          const flags = String(params.get('ff') || '')
-            .split(',')
-            .map(part => part.trim())
-            .filter(Boolean);
-          if (flags.includes(`-${flagName}`) || flags.includes(`!${flagName}`)) {
-            enabled = false;
-          } else if (flags.includes(flagName)) {
-            enabled = true;
-          } else {
-            const stored = localStorage.getItem('ciphermaniacFeatureFlags');
-            if (stored) {
-              const parsed = JSON.parse(stored);
-              if (typeof parsed?.[flagName] === 'boolean') {
-                enabled = parsed[flagName];
-              }
-            }
-          }
-        }
-      } catch {}
-
-      const styles = enabled
-        ? ['/assets/style-core.css?v=20260302a', '/assets/style-archetype.css?v=20260302a']
-        : ['/assets/style.css?v=20260214h'];
-      styles.forEach(href => {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = href;
-        document.head.appendChild(link);
-      });
-    })();
-  </script>
-  <noscript>
-    <link rel="stylesheet" href="/assets/style-core.css?v=20260302a" />
-    <link rel="stylesheet" href="/assets/style-archetype.css?v=20260302a" />
-  </noscript>
+  <link rel="stylesheet" href="/assets/style.css?v=20260214h" />
   <!-- Preload critical JS module for faster page load -->
   <link rel="modulepreload" href="/assets/js/src/loaders/archetype.js" />
 </head>
 
 <body class="archetype-analysis-page">
-  <header class="site-header">
-    <a class="skip-link" href="#main-content">Skip to main content</a>
-    <div class="header-inner">
-      <a class="logo" href="/" aria-label="Ciphermaniac home">
-        <img src="/assets/images/logo.svg" alt="" class="site-logo" width="28" height="28" />
-        <div class="site-title">Ciphermaniac</div>
-      </a>
-      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mainNav" aria-label="Toggle navigation menu">
-        <span class="nav-toggle__icon" aria-hidden="true"></span>
-        <span class="nav-toggle__text">Menu</span>
-      </button>
-      <nav class="main-nav" id="mainNav" aria-label="Main navigation">
-        <a class="nav-link" href="/cards">Cards</a>
-        <a class="nav-link" href="/trends">Trends</a>
-        <a class="nav-link active" href="/archetypes" aria-current="page">Archetypes</a>
-        <a class="nav-link" href="/players">Players</a>
-        <a class="nav-link" href="/tools/meta-binder">Tools</a>
-      </nav>
-    </div>
-  </header>
   <div class="archetype-page" data-state="loading">
     <main id="main-content" class="archetype-main" tabindex="-1">
       <section class="archetype-content">
@@ -237,45 +165,15 @@
     </article>
   </template>
 
-  <footer class="site-footer" role="contentinfo">
-    <div class="footer-inner">
-      <div class="footer-links">
-        <a href="/about">About & Credits</a>
-        <span class="footer-sep" aria-hidden="true">·</span>
-        <a href="/feedback">Feedback</a>
-        <span class="footer-sep" aria-hidden="true">·</span>
-        <a
-          href="https://x.com/ciphermaniac"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Follow Ciphermaniac on Twitter (opens in new tab)"
-          >Follow on Twitter<span class="visually-hidden"> (opens in new tab)</span></a
-        >
-      </div>
-    </div>
-  </footer>
   <script type="module">
-    import { enhanceHeader } from '/assets/js/src/components/header.js';
-    import { enhanceFooter } from '/assets/js/src/components/footer.js';
-    import { shouldHideUnreadyFeatures } from '/assets/js/src/utils/releaseChannel.js';
+    import { createHeader } from '/assets/js/src/components/header.js';
+    import { createFooter } from '/assets/js/src/components/footer.js';
 
-    const header = document.querySelector('.site-header');
-    if (shouldHideUnreadyFeatures()) {
-      header?.querySelector('a[href="/players"]')?.remove();
-      header?.querySelector('a[href="/tools/meta-binder"]')?.remove();
-    }
-    const connection = navigator.connection || {};
-    const lowEndProfile = connection.saveData === true || ['slow-2g', '2g'].includes(connection.effectiveType || '');
-    if (lowEndProfile) {
-      document.body.classList.add('motion-deferred');
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          document.body.classList.remove('motion-deferred');
-        });
-      });
-    }
-    enhanceHeader(header);
-    enhanceFooter(document.querySelector('.site-footer'));
+    const header = createHeader({ currentPage: 'archetypes' });
+    const footer = createFooter();
+
+    document.body.insertAdjacentElement('afterbegin', header);
+    document.body.insertAdjacentElement('beforeend', footer);
   </script>
   <script src="/assets/js/src/loaders/archetype.js" type="module"></script>
 </body>
