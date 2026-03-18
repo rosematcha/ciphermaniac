@@ -138,6 +138,15 @@
         margin: 0;
       }
 
+      .connections-loading-tip {
+        opacity: 0;
+        transition: opacity 220ms ease;
+      }
+
+      .connections-loading-tip.is-visible {
+        opacity: 1;
+      }
+
       .connections-result-list {
         list-style: none;
         margin: 0;
@@ -205,7 +214,7 @@
 
       <section id="player-connections-loading-insights" class="connections-panel" aria-live="polite">
         <h2>Interesting stats</h2>
-        <p id="player-connections-loading-tip" class="connections-note">
+        <p id="player-connections-loading-tip" class="connections-note connections-loading-tip">
           Interesting stat: We are preparing the graph now.
         </p>
       </section>
@@ -231,6 +240,7 @@
 
         <div class="connections-actions">
           <button type="button" id="player-connections-search">Find Connection</button>
+          <button type="button" id="player-connections-furthest">Find Furthest from A</button>
           <p id="player-connections-note" class="connections-note">Graph ready.</p>
         </div>
 

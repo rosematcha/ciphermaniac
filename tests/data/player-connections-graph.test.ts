@@ -6,6 +6,7 @@ import {
   type BuildPlayerConnectionsGraphOptions,
   computeGraphInterestingStats,
   findConnectionPath,
+  findFurthestConnectionFrom,
   sanitizeParticipantName
 } from '../../src/tools/playerConnectionsGraph.ts';
 import type { CanonicalMatchRecord, TournamentParticipant } from '../../src/types/index.ts';
@@ -306,4 +307,98 @@ test('player ID and name synonym bridges merge known aliases', async () => {
   const path = findConnectionPath(graph, 'pid:474', 'pid:20186');
   assert.equal(path.status, 'connected');
   assert.equal(path.degree, 2);
+});
+
+test('name synonym canonicalizes Reese Ferguson to Reese Lundquist', async () => {
+  const tournament = '2026-03-01, Name Canonical Test';
+  const options = makeOptions([tournament], {
+    [tournament]: {
+      index: { tournamentId: 'canon-1' },
+      participants: [participant(1, 'Reese Ferguson', '17712')]
+    }
+  });
+
+  const graph = await buildPlayerConnectionsGraph(options);
+  assert.equal(graph.identities.get('pid:17712')?.name, 'Reese Lundquist');
+});
+
+test('name synonym canonicalizes Nick Alvarez to Alex Alvarez', async () => {
+  const tournament = '2026-03-01, Alex Nick Canonical Test';
+  const options = makeOptions([tournament], {
+    [tournament]: {
+      index: { tournamentId: 'canon-2' },
+      participants: [participant(1, 'Nick Alvarez', '9038')]
+    }
+  });
+
+  const graph = await buildPlayerConnectionsGraph(options);
+  assert.equal(graph.identities.get('pid:9038')?.name, 'Alex Alvarez');
+});
+
+test('findFurthestConnectionFrom returns farthest reachable player with shortest path', async () => {
+  const tournament = '2026-03-02, Furthest Test';
+  const options = makeOptions([tournament], {
+    [tournament]: {
+      index: { tournamentId: 'furthest-1' },
+      participants: [
+        participant(1, 'Annie Haberstroh', '474'),
+        participant(2, 'Drew Cate', '6208'),
+        participant(3, 'Princess Basser', '20186'),
+        participant(4, 'Far Player', '9999'),
+        participant(5, 'Near Player', '8888')
+      ],
+      matches: [match('ab', 1, 2, 2), match('bc', 2, 3, 2), match('cf', 3, 4, 3), match('an', 1, 5, 1)]
+    }
+  });
+
+  const graph = await buildPlayerConnectionsGraph(options);
+  const result = findFurthestConnectionFrom(graph, 'pid:474');
+
+  assert.equal(result.status, 'connected');
+  assert.equal(result.degree, 3);
+  assert.equal(result.identities[0]?.key, 'pid:474');
+  assert.equal(result.identities[result.identities.length - 1]?.key, 'pid:9999');
+  assert.deepEqual(
+    result.identities.map(identity => identity.key),
+    ['pid:474', 'pid:6208', 'pid:20186', 'pid:9999']
+  );
+  assert.equal(result.reachableCount, 5);
+});
+
+test('findFurthestConnectionFrom returns same for isolated player', async () => {
+  const tournament = '2026-03-03, Furthest Isolated Test';
+  const options = makeOptions([tournament], {
+    [tournament]: {
+      index: { tournamentId: 'furthest-2' },
+      participants: [participant(1, 'Solo', '777')]
+    }
+  });
+
+  const graph = await buildPlayerConnectionsGraph(options);
+  const result = findFurthestConnectionFrom(graph, 'pid:777');
+
+  assert.equal(result.status, 'same');
+  assert.equal(result.degree, 0);
+  assert.deepEqual(
+    result.identities.map(identity => identity.key),
+    ['pid:777']
+  );
+  assert.equal(result.reachableCount, 1);
+});
+
+test('findFurthestConnectionFrom returns not_found for unknown player', async () => {
+  const tournament = '2026-03-04, Furthest Missing Test';
+  const options = makeOptions([tournament], {
+    [tournament]: {
+      index: { tournamentId: 'furthest-3' },
+      participants: [participant(1, 'Known', '100')]
+    }
+  });
+
+  const graph = await buildPlayerConnectionsGraph(options);
+  const result = findFurthestConnectionFrom(graph, 'pid:404');
+
+  assert.equal(result.status, 'not_found');
+  assert.equal(result.degree, null);
+  assert.equal(result.reachableCount, 0);
 });

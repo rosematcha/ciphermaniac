@@ -10,6 +10,8 @@ import {
   computeGraphInterestingStats,
   type ConnectionPathResult,
   findConnectionPath,
+  findFurthestConnectionFrom,
+  type FurthestConnectionResult,
   type GraphInterestingStats,
   normalizePlayerName,
   type PlayerConnectionsGraph,
@@ -55,15 +57,21 @@ interface LoadingInsightCache {
 }
 
 const SUGGESTION_LIMIT = 12;
-const LOADING_TIP_INTERVAL_MS = 2200;
+const LOADING_TIP_INTERVAL_MS = 3600;
+const LOADING_TIP_FADE_MS = 220;
 const LOADING_INSIGHTS_STORAGE_KEY = 'playerConnections.loadingInsights.v1';
 const HARD_BAKED_INTERESTING_STATS = [
   'Interesting stat: Largest cluster covers about 99% of indexed players.',
   'Interesting stat: Longest known pairing is Mirko Pivari to Sebastian Gonzalez at 8 degrees.',
-  'Interesting stat: Gabriel Smart had 396 direct opponents in the latest full analysis.',
-  'Interesting stat: Gabriel Smart logged 407 tracked matches in the latest full analysis.',
+  'Interesting stat: Top direct-opponent counts are Gabriel Smart (396), Brent Tonisson (334), and Rahul Reddy (317).',
+  'Interesting stat: Top tracked-match counts are Gabriel Smart (407), Brent Tonisson (365), and Rahul Reddy (325).',
+  'Interesting stat: Other high-opponent players include Julius Brunfeldt (287), Caleb Rogerson (285), and Nathan Ginsburg (285).',
   'Interesting stat: Most frequent pairing was Henry Chao vs Piper Lepine (5 matches).',
-  'Interesting stat: Average separation density is about 17.74 direct opponents per player.'
+  'Interesting stat: Another five-time rivalry is Michael Davidson vs Aidan Khus.',
+  'Interesting stat: Four-match rivalries include Caleb Rogerson vs Brent Tonisson and Andrew Hedrick vs Xander Pero.',
+  'Interesting stat: Other high-match players include Caleb Rogerson (303), Julius Brunfeldt (297), and Owen Dalgard (295).',
+  'Interesting stat: 3 players have 300+ unique opponents, and 11 players have 250+.',
+  'Interesting stat: 4 players have 300+ tracked matches, and 19 players have 250+.'
 ];
 const BASE_LOADING_TIPS = [
   'Tip: Degree 1 means the players faced each other directly.',
@@ -84,6 +92,7 @@ const elements = {
   note: document.getElementById('player-connections-note') as HTMLElement | null,
   stats: document.getElementById('player-connections-stats') as HTMLElement | null,
   searchButton: document.getElementById('player-connections-search') as HTMLButtonElement | null,
+  furthestButton: document.getElementById('player-connections-furthest') as HTMLButtonElement | null,
   resultSection: document.getElementById('player-connections-results') as HTMLElement | null,
   resultTitle: document.getElementById('player-connections-result-title') as HTMLElement | null,
   resultSummary: document.getElementById('player-connections-result-summary') as HTMLElement | null,
@@ -103,6 +112,7 @@ const state: {
   loadingTips: string[];
   loadingTipIndex: number;
   loadingTipTimer: number | null;
+  loadingTipFadeHandle: number | null;
 } = {
   graph: null,
   candidates: [],
@@ -111,7 +121,8 @@ const state: {
   pickerB: null,
   loadingTips: [],
   loadingTipIndex: 0,
-  loadingTipTimer: null
+  loadingTipTimer: null,
+  loadingTipFadeHandle: null
 };
 
 function setNote(text: string): void {
@@ -161,9 +172,41 @@ function setStats(text: string): void {
 }
 
 function setLoadingTip(text: string): void {
-  if (elements.loadingTip) {
-    elements.loadingTip.textContent = text;
+  if (!elements.loadingTip) {
+    return;
   }
+
+  const currentText = elements.loadingTip.textContent || '';
+  if (currentText === text && elements.loadingTip.classList.contains('is-visible')) {
+    return;
+  }
+
+  if (state.loadingTipFadeHandle) {
+    window.clearTimeout(state.loadingTipFadeHandle);
+    state.loadingTipFadeHandle = null;
+  }
+
+  elements.loadingTip.classList.remove('is-visible');
+  state.loadingTipFadeHandle = window.setTimeout(() => {
+    if (!elements.loadingTip) {
+      return;
+    }
+    elements.loadingTip.textContent = text;
+    elements.loadingTip.classList.add('is-visible');
+    state.loadingTipFadeHandle = null;
+  }, LOADING_TIP_FADE_MS);
+}
+
+function showLoadingTipImmediately(text: string): void {
+  if (!elements.loadingTip) {
+    return;
+  }
+  if (state.loadingTipFadeHandle) {
+    window.clearTimeout(state.loadingTipFadeHandle);
+    state.loadingTipFadeHandle = null;
+  }
+  elements.loadingTip.textContent = text;
+  elements.loadingTip.classList.add('is-visible');
 }
 
 function formatPercent(ratio: number): string {
@@ -226,10 +269,10 @@ function startLoadingTipRotation(): void {
     const offset = Math.floor(Date.now() / LOADING_TIP_INTERVAL_MS) % interestingTips.length;
     const selected = interestingTips[offset];
     const selectedIndex = state.loadingTips.indexOf(selected);
-    setLoadingTip(selected);
+    showLoadingTipImmediately(selected);
     state.loadingTipIndex = selectedIndex >= 0 ? selectedIndex + 1 : 0;
   } else {
-    setLoadingTip('Interesting stat: Building graph insights now.');
+    showLoadingTipImmediately('Interesting stat: Building graph insights now.');
   }
 
   if (state.loadingTipTimer) {
@@ -245,6 +288,10 @@ function stopLoadingTipRotation(): void {
     window.clearInterval(state.loadingTipTimer);
     state.loadingTipTimer = null;
   }
+  if (state.loadingTipFadeHandle) {
+    window.clearTimeout(state.loadingTipFadeHandle);
+    state.loadingTipFadeHandle = null;
+  }
 }
 
 function hideSuggestions(picker: PickerState): void {
@@ -254,18 +301,7 @@ function hideSuggestions(picker: PickerState): void {
   picker.activeIndex = -1;
 }
 
-function getIdentityLabel(identity: PlayerIdentity, graph: PlayerConnectionsGraph): string {
-  const nameKeys = graph.nameIndex.get(identity.normalizedName);
-  const hasNameCollision = Boolean(nameKeys && nameKeys.size > 1);
-
-  if (identity.playerId) {
-    return `${identity.name} (ID ${identity.playerId})`;
-  }
-
-  if (hasNameCollision) {
-    return `${identity.name} (${identity.key.replace(/^name:/, '')})`;
-  }
-
+function getIdentityLabel(identity: PlayerIdentity): string {
   return identity.name;
 }
 
@@ -275,11 +311,17 @@ function buildSearchCandidates(graph: PlayerConnectionsGraph): SearchCandidate[]
   });
 
   const labels = new Set<string>();
+  const duplicateCounts = new Map<string, number>();
 
   return identities.map(identity => {
-    let label = getIdentityLabel(identity, graph);
+    const baseLabel = getIdentityLabel(identity);
+    let label = baseLabel;
     if (labels.has(label)) {
-      label = `${label} [${identity.key}]`;
+      const nextCount = (duplicateCounts.get(baseLabel) || 1) + 1;
+      duplicateCounts.set(baseLabel, nextCount);
+      label = `${baseLabel} (${nextCount})`;
+    } else {
+      duplicateCounts.set(baseLabel, 1);
     }
     labels.add(label);
 
@@ -482,6 +524,44 @@ function formatOutcomeText(
   return `${fromName} played ${toName}`;
 }
 
+function renderHopList(
+  identities: PlayerIdentity[],
+  hops: Array<{
+    round: number | null;
+    phase: number | null;
+    table: number | null;
+    tournament: string;
+    fromResult: string | null;
+    outcomeType: string | null;
+  }>
+): void {
+  if (!elements.resultList) {
+    return;
+  }
+
+  hops.forEach((hop, index) => {
+    const item = document.createElement('li');
+    item.className = 'connections-result-item';
+
+    const fromIdentity = identities[index];
+    const toIdentity = identities[index + 1];
+    const fromName = fromIdentity?.name || 'Unknown Player';
+    const toName = toIdentity?.name || 'Unknown Player';
+
+    const title = document.createElement('p');
+    title.textContent = `${index + 1}. ${formatOutcomeText(fromName, toName, hop.fromResult, hop.outcomeType)}`;
+
+    const detail = document.createElement('p');
+    const roundMeta = formatRoundMeta(hop.round, hop.phase, hop.table);
+    const tournament = prettyTournamentName(hop.tournament);
+    detail.className = 'connections-note';
+    detail.textContent = roundMeta ? `${tournament} · ${roundMeta}` : tournament;
+
+    item.append(title, detail);
+    elements.resultList?.appendChild(item);
+  });
+}
+
 function renderResults(result: ConnectionPathResult): void {
   if (!elements.resultSection || !elements.resultSummary || !elements.resultList || !elements.resultTitle) {
     return;
@@ -522,28 +602,35 @@ function renderResults(result: ConnectionPathResult): void {
 
   elements.resultTitle.textContent = 'Connection found';
   elements.resultSummary.textContent = `${source} and ${target} are ${result.degree} degree${result.degree === 1 ? '' : 's'} apart.`;
+  renderHopList(result.identities, result.hops);
+}
 
-  result.hops.forEach((hop, index) => {
-    const item = document.createElement('li');
-    item.className = 'connections-result-item';
+function renderFurthestResult(result: FurthestConnectionResult): void {
+  if (!elements.resultSection || !elements.resultSummary || !elements.resultList || !elements.resultTitle) {
+    return;
+  }
 
-    const fromIdentity = result.identities[index];
-    const toIdentity = result.identities[index + 1];
-    const fromName = fromIdentity?.name || 'Unknown Player';
-    const toName = toIdentity?.name || 'Unknown Player';
+  elements.resultSection.hidden = false;
+  elements.resultList.innerHTML = '';
 
-    const title = document.createElement('p');
-    title.textContent = `${index + 1}. ${formatOutcomeText(fromName, toName, hop.fromResult, hop.outcomeType)}`;
+  if (result.status === 'not_found') {
+    elements.resultTitle.textContent = 'Player not found';
+    elements.resultSummary.textContent = 'Player A could not be matched to an indexed identity.';
+    return;
+  }
 
-    const detail = document.createElement('p');
-    const roundMeta = formatRoundMeta(hop.round, hop.phase, hop.table);
-    const tournament = prettyTournamentName(hop.tournament);
-    detail.className = 'connections-note';
-    detail.textContent = roundMeta ? `${tournament} · ${roundMeta}` : tournament;
+  const source = result.identities[0]?.name || 'Player A';
+  const target = result.identities[result.identities.length - 1]?.name || source;
 
-    item.append(title, detail);
-    elements.resultList?.appendChild(item);
-  });
+  if (result.status === 'same') {
+    elements.resultTitle.textContent = 'No outward connection';
+    elements.resultSummary.textContent = `${source} has no tracked direct-match chain to another indexed player.`;
+    return;
+  }
+
+  elements.resultTitle.textContent = 'Furthest connection';
+  elements.resultSummary.textContent = `${source}'s furthest reachable player is ${target} at ${result.degree} degree${result.degree === 1 ? '' : 's'} (within ${result.reachableCount.toLocaleString()} reachable players).`;
+  renderHopList(result.identities, result.hops);
 }
 
 function handleSearch(): void {
@@ -565,6 +652,24 @@ function handleSearch(): void {
     setNote('No connection found in the current offline dataset.');
   } else {
     setNote('Please choose valid players from suggestions.');
+  }
+}
+
+function handleFindFurthest(): void {
+  if (!state.graph || !state.pickerA) {
+    return;
+  }
+
+  const sourceKey = state.pickerA.selectedKey || resolveIdentityKey(state.pickerA.input.value);
+  const result = findFurthestConnectionFrom(state.graph, sourceKey);
+  renderFurthestResult(result);
+
+  if (result.status === 'connected') {
+    setNote(`Furthest reachable connection from Player A is degree ${result.degree}.`);
+  } else if (result.status === 'same') {
+    setNote('Player A has no tracked outward connection.');
+  } else {
+    setNote('Please choose a valid Player A from suggestions.');
   }
 }
 
@@ -614,13 +719,17 @@ function initPickers(): void {
   });
 }
 
-function configureSearchButton(): void {
+function configureActionButtons(): void {
   if (!elements.searchButton) {
     return;
   }
 
   elements.searchButton.addEventListener('click', () => {
     handleSearch();
+  });
+
+  elements.furthestButton?.addEventListener('click', () => {
+    handleFindFurthest();
   });
 }
 
@@ -689,7 +798,7 @@ async function init(): Promise<void> {
     );
 
     initPickers();
-    configureSearchButton();
+    configureActionButtons();
 
     const componentPct = formatPercent(graph.stats.largestComponentShare);
     const statsText = `Indexed ${graph.stats.identities.toLocaleString()} identities, ${graph.stats.edgesAdded.toLocaleString()} unique match edges, and ${graph.stats.tournamentsDeduped.toLocaleString()} tournaments. Largest cluster: ${graph.stats.largestComponentSize.toLocaleString()} players (${componentPct}) across ${graph.stats.connectedComponents.toLocaleString()} components.`;
@@ -698,7 +807,11 @@ async function init(): Promise<void> {
       : '';
 
     setStats(`${statsText}${failureText}`);
-    setNote(graph.stats.partialFailure ? 'Graph loaded with partial failures.' : 'Graph ready. Choose two players.');
+    setNote(
+      graph.stats.partialFailure
+        ? 'Graph loaded with partial failures.'
+        : 'Graph ready. Choose two players, or find furthest from Player A.'
+    );
 
     setProgress('Graph build complete.', 1);
     setAppVisible(true);

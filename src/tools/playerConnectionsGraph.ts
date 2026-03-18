@@ -15,7 +15,8 @@ const PLAYER_ID_SYNONYMS: Record<string, string> = {
 
 const PLAYER_NAME_SYNONYMS: Record<string, string> = {
   'prin basser': 'Princess Basser',
-  'reese lundquist': 'Reese Ferguson'
+  'reese ferguson': 'Reese Lundquist',
+  'nick alvarez': 'Alex Alvarez'
 };
 
 // Fallback bridges when playerId is missing in report rows.
@@ -23,7 +24,9 @@ const PLAYER_NAME_TO_CANONICAL_ID: Record<string, string> = {
   'prin basser': '20186',
   'princess basser': '20186',
   'reese lundquist': '17712',
-  'reese ferguson': '17712'
+  'reese ferguson': '17712',
+  'alex alvarez': '17161',
+  'nick alvarez': '17161'
 };
 
 interface TournamentIndexEntry {
@@ -113,6 +116,15 @@ export interface ConnectionPathResult {
   identities: PlayerIdentity[];
   hops: GraphEdge[];
   missing?: 'source' | 'target' | 'both';
+}
+
+export interface FurthestConnectionResult {
+  status: 'same' | 'connected' | 'not_found';
+  degree: number | null;
+  identities: PlayerIdentity[];
+  hops: GraphEdge[];
+  missing?: 'source';
+  reachableCount: number;
 }
 
 export interface GraphInterestingStats {
@@ -750,33 +762,7 @@ export function findConnectionPath(
       });
 
       if (nextKey === target.key) {
-        const identities: PlayerIdentity[] = [];
-        const hops: GraphEdge[] = [];
-        let cursor = nextKey;
-
-        while (cursor !== source.key) {
-          const identity = graph.identities.get(cursor);
-          if (identity) {
-            identities.push(identity);
-          }
-          const parent = parents.get(cursor);
-          if (!parent) {
-            break;
-          }
-          hops.push(parent.edge);
-          cursor = parent.prev;
-        }
-
-        identities.push(source);
-        identities.reverse();
-        hops.reverse();
-
-        return {
-          status: 'connected',
-          degree: hops.length,
-          identities,
-          hops
-        };
+        return buildConnectedPath(graph, source.key, nextKey, parents);
       }
 
       queue.push(nextKey);
@@ -788,6 +774,123 @@ export function findConnectionPath(
     degree: null,
     identities: [source, target],
     hops: []
+  };
+}
+
+function buildConnectedPath(
+  graph: PlayerConnectionsGraph,
+  sourceKey: string,
+  targetKey: string,
+  parents: Map<string, { prev: string; edge: GraphEdge }>
+): ConnectionPathResult {
+  const source = graph.identities.get(sourceKey);
+  if (!source) {
+    return {
+      status: 'not_found',
+      degree: null,
+      identities: [],
+      hops: [],
+      missing: 'source'
+    };
+  }
+
+  const identities: PlayerIdentity[] = [];
+  const hops: GraphEdge[] = [];
+  let cursor = targetKey;
+
+  while (cursor !== sourceKey) {
+    const identity = graph.identities.get(cursor);
+    if (identity) {
+      identities.push(identity);
+    }
+    const parent = parents.get(cursor);
+    if (!parent) {
+      break;
+    }
+    hops.push(parent.edge);
+    cursor = parent.prev;
+  }
+
+  identities.push(source);
+  identities.reverse();
+  hops.reverse();
+
+  return {
+    status: 'connected',
+    degree: hops.length,
+    identities,
+    hops
+  };
+}
+
+export function findFurthestConnectionFrom(
+  graph: PlayerConnectionsGraph,
+  sourceKey: string | null | undefined
+): FurthestConnectionResult {
+  const source = sourceKey ? graph.identities.get(sourceKey) : null;
+  if (!source) {
+    return {
+      status: 'not_found',
+      degree: null,
+      identities: [],
+      hops: [],
+      missing: 'source',
+      reachableCount: 0
+    };
+  }
+
+  const queue: string[] = [source.key];
+  const distances = new Map<string, number>([[source.key, 0]]);
+  const parents = new Map<string, { prev: string; edge: GraphEdge }>();
+  let farthestKey = source.key;
+  let farthestDistance = 0;
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current) {
+      continue;
+    }
+
+    const currentDistance = distances.get(current) || 0;
+    const neighbors = graph.adjacency.get(current);
+    if (!neighbors) {
+      continue;
+    }
+
+    for (const [nextKey, edge] of neighbors.entries()) {
+      if (distances.has(nextKey)) {
+        continue;
+      }
+
+      const nextDistance = currentDistance + 1;
+      distances.set(nextKey, nextDistance);
+      parents.set(nextKey, { prev: current, edge });
+      queue.push(nextKey);
+
+      if (nextDistance > farthestDistance || (nextDistance === farthestDistance && nextKey < farthestKey)) {
+        farthestDistance = nextDistance;
+        farthestKey = nextKey;
+      }
+    }
+  }
+
+  if (farthestKey === source.key) {
+    return {
+      status: 'same',
+      degree: 0,
+      identities: [source],
+      hops: [],
+      reachableCount: distances.size
+    };
+  }
+
+  const path = buildConnectedPath(graph, source.key, farthestKey, parents);
+  return {
+    status: path.status === 'connected' ? 'connected' : 'same',
+    degree: path.degree,
+    identities: path.identities,
+    hops: path.hops,
+    reachableCount: distances.size
   };
 }
 
