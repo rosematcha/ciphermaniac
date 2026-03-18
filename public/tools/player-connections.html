@@ -133,6 +133,11 @@
         cursor: pointer;
       }
 
+      .connections-actions button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+
       .connections-note {
         color: rgba(223, 231, 255, 0.86);
         margin: 0;
@@ -241,6 +246,7 @@
         <div class="connections-actions">
           <button type="button" id="player-connections-search">Find Connection</button>
           <button type="button" id="player-connections-furthest">Find Furthest from A</button>
+          <button type="button" id="player-connections-reroll" disabled>Re-roll Path</button>
           <p id="player-connections-note" class="connections-note">Graph ready.</p>
         </div>
 

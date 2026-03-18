@@ -127,6 +127,15 @@ export interface FurthestConnectionResult {
   reachableCount: number;
 }
 
+export interface PathSearchOptions {
+  randomizeNeighbors?: boolean;
+  rng?: () => number;
+}
+
+export interface FurthestSearchOptions extends PathSearchOptions {
+  randomizeFarthestTie?: boolean;
+}
+
 export interface GraphInterestingStats {
   averageOpponents: number;
   mostConnectedKey: string | null;
@@ -692,7 +701,8 @@ export async function buildPlayerConnectionsGraph(
 export function findConnectionPath(
   graph: PlayerConnectionsGraph,
   sourceKey: string | null | undefined,
-  targetKey: string | null | undefined
+  targetKey: string | null | undefined,
+  options?: PathSearchOptions
 ): ConnectionPathResult {
   const source = sourceKey ? graph.identities.get(sourceKey) : null;
   const target = targetKey ? graph.identities.get(targetKey) : null;
@@ -751,7 +761,8 @@ export function findConnectionPath(
       continue;
     }
 
-    for (const [nextKey, edge] of neighbors.entries()) {
+    const neighborEntries = getNeighborEntries(neighbors, options);
+    for (const [nextKey, edge] of neighborEntries) {
       if (visited.has(nextKey)) {
         continue;
       }
@@ -825,7 +836,8 @@ function buildConnectedPath(
 
 export function findFurthestConnectionFrom(
   graph: PlayerConnectionsGraph,
-  sourceKey: string | null | undefined
+  sourceKey: string | null | undefined,
+  options?: FurthestSearchOptions
 ): FurthestConnectionResult {
   const source = sourceKey ? graph.identities.get(sourceKey) : null;
   if (!source) {
@@ -842,8 +854,8 @@ export function findFurthestConnectionFrom(
   const queue: string[] = [source.key];
   const distances = new Map<string, number>([[source.key, 0]]);
   const parents = new Map<string, { prev: string; edge: GraphEdge }>();
-  let farthestKey = source.key;
   let farthestDistance = 0;
+  const farthestCandidates = new Set<string>([source.key]);
 
   while (queue.length > 0) {
     const current = queue.shift();
@@ -857,7 +869,8 @@ export function findFurthestConnectionFrom(
       continue;
     }
 
-    for (const [nextKey, edge] of neighbors.entries()) {
+    const neighborEntries = getNeighborEntries(neighbors, options);
+    for (const [nextKey, edge] of neighborEntries) {
       if (distances.has(nextKey)) {
         continue;
       }
@@ -867,14 +880,19 @@ export function findFurthestConnectionFrom(
       parents.set(nextKey, { prev: current, edge });
       queue.push(nextKey);
 
-      if (nextDistance > farthestDistance || (nextDistance === farthestDistance && nextKey < farthestKey)) {
+      if (nextDistance > farthestDistance) {
         farthestDistance = nextDistance;
-        farthestKey = nextKey;
+        farthestCandidates.clear();
+        farthestCandidates.add(nextKey);
+      } else if (nextDistance === farthestDistance) {
+        farthestCandidates.add(nextKey);
       }
     }
   }
 
-  if (farthestKey === source.key) {
+  const farthestKey = selectFarthestCandidate(farthestCandidates, options);
+
+  if (!farthestKey || farthestKey === source.key) {
     return {
       status: 'same',
       degree: 0,
@@ -892,6 +910,39 @@ export function findFurthestConnectionFrom(
     hops: path.hops,
     reachableCount: distances.size
   };
+}
+
+function getNeighborEntries(
+  neighbors: Map<string, GraphEdge>,
+  options?: PathSearchOptions
+): Array<[string, GraphEdge]> {
+  const entries = Array.from(neighbors.entries());
+  if (!options?.randomizeNeighbors || entries.length <= 1) {
+    return entries;
+  }
+  const rng = options.rng || Math.random;
+  for (let i = entries.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    const temp = entries[i];
+    entries[i] = entries[j];
+    entries[j] = temp;
+  }
+  return entries;
+}
+
+function selectFarthestCandidate(candidates: Set<string>, options?: FurthestSearchOptions): string | null {
+  if (!candidates.size) {
+    return null;
+  }
+
+  const ordered = Array.from(candidates).sort((left, right) => left.localeCompare(right));
+  if (!options?.randomizeFarthestTie || ordered.length <= 1) {
+    return ordered[0] || null;
+  }
+
+  const rng = options.rng || Math.random;
+  const index = Math.floor(rng() * ordered.length);
+  return ordered[index] || ordered[0] || null;
 }
 
 function findFarthestNode(graph: PlayerConnectionsGraph, startKey: string): { key: string; distance: number } {

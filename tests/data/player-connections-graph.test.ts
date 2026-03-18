@@ -146,6 +146,36 @@ test('findConnectionPath returns shortest BFS path when multiple paths exist', a
   assert.equal(path.identities[path.identities.length - 1]?.key, 'pid:4');
 });
 
+test('findConnectionPath can return an alternate shortest route when neighbor order is randomized', async () => {
+  const tournament = '2026-01-01, Randomized BFS Test';
+
+  const options = makeOptions([tournament], {
+    [tournament]: {
+      index: { tournamentId: '301' },
+      participants: [
+        participant(1, 'Alice', '1'),
+        participant(2, 'Bob', '2'),
+        participant(3, 'Cara', '3'),
+        participant(4, 'Dan', '4')
+      ],
+      matches: [match('ab', 1, 2, 1), match('ac', 1, 3, 1), match('bd', 2, 4, 2), match('cd', 3, 4, 3)]
+    }
+  });
+
+  const graph = await buildPlayerConnectionsGraph(options);
+  const randomized = findConnectionPath(graph, 'pid:1', 'pid:4', {
+    randomizeNeighbors: true,
+    rng: () => 0
+  });
+
+  assert.equal(randomized.status, 'connected');
+  assert.equal(randomized.degree, 2);
+  assert.deepEqual(
+    randomized.identities.map(identity => identity.key),
+    ['pid:1', 'pid:3', 'pid:4']
+  );
+});
+
 test('findConnectionPath returns degree 0 for same player identity', async () => {
   const tournament = '2026-01-01, Same Player Test';
   const options = makeOptions([tournament], {
@@ -401,4 +431,31 @@ test('findFurthestConnectionFrom returns not_found for unknown player', async ()
   assert.equal(result.status, 'not_found');
   assert.equal(result.degree, null);
   assert.equal(result.reachableCount, 0);
+});
+
+test('findFurthestConnectionFrom can randomize ties between equally far players', async () => {
+  const tournament = '2026-03-05, Furthest Tie Test';
+  const options = makeOptions([tournament], {
+    [tournament]: {
+      index: { tournamentId: 'furthest-4' },
+      participants: [
+        participant(1, 'Source', '1'),
+        participant(2, 'Left 1', '2'),
+        participant(3, 'Left 2', '3'),
+        participant(4, 'Right 1', '4'),
+        participant(5, 'Right 2', '5')
+      ],
+      matches: [match('a-b', 1, 2, 1), match('b-c', 2, 3, 2), match('a-d', 1, 4, 1), match('d-e', 4, 5, 4)]
+    }
+  });
+
+  const graph = await buildPlayerConnectionsGraph(options);
+  const randomized = findFurthestConnectionFrom(graph, 'pid:1', {
+    randomizeFarthestTie: true,
+    rng: () => 0.99
+  });
+
+  assert.equal(randomized.status, 'connected');
+  assert.equal(randomized.degree, 2);
+  assert.equal(randomized.identities[randomized.identities.length - 1]?.key, 'pid:5');
 });
