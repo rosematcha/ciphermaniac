@@ -7,8 +7,10 @@ import { logger } from './utils/logger.js';
 import {
   buildPlayerConnectionsGraph,
   type BuildPlayerConnectionsGraphOptions,
+  computeGraphInterestingStats,
   type ConnectionPathResult,
   findConnectionPath,
+  type GraphInterestingStats,
   normalizePlayerName,
   type PlayerConnectionsGraph,
   type PlayerIdentity
@@ -36,12 +38,46 @@ interface PickerState {
   debounceHandle: number | null;
 }
 
+interface LoadingInsightCache {
+  builtAt: string;
+  identities: number;
+  edges: number;
+  tournaments: number;
+  largestComponentShare: number;
+  averageOpponents: number;
+  mostConnectedPlayer: string | null;
+  mostConnectedDegree: number;
+  longestRouteEstimate: number;
+  mostActivePlayer: string | null;
+  mostActivePlayerMatches: number;
+  mostFrequentPairing: string | null;
+  mostFrequentPairingMatches: number;
+}
+
 const SUGGESTION_LIMIT = 12;
+const LOADING_TIP_INTERVAL_MS = 2200;
+const LOADING_INSIGHTS_STORAGE_KEY = 'playerConnections.loadingInsights.v1';
+const HARD_BAKED_INTERESTING_STATS = [
+  'Interesting stat: Largest cluster covers about 99% of indexed players.',
+  'Interesting stat: Longest known pairing is Mirko Pivari to Sebastian Gonzalez at 8 degrees.',
+  'Interesting stat: Gabriel Smart had 396 direct opponents in the latest full analysis.',
+  'Interesting stat: Gabriel Smart logged 407 tracked matches in the latest full analysis.',
+  'Interesting stat: Most frequent pairing was Henry Chao vs Piper Lepine (5 matches).',
+  'Interesting stat: Average separation density is about 17.74 direct opponents per player.'
+];
+const BASE_LOADING_TIPS = [
+  'Tip: Degree 1 means the players faced each other directly.',
+  'Tip: Byes and unpaired rounds are ignored for connection edges.',
+  'Tip: Identity matching prioritizes global player IDs over names.',
+  'Tip: Paths use shortest-hop BFS, so results are the minimum known degrees.'
+];
 
 const elements = {
   loading: document.getElementById('player-connections-loading') as HTMLElement | null,
+  loadingInsights: document.getElementById('player-connections-loading-insights') as HTMLElement | null,
   progressText: document.getElementById('player-connections-progress-text') as HTMLElement | null,
   progressFill: document.getElementById('player-connections-progress-fill') as HTMLElement | null,
+  loadingTip: document.getElementById('player-connections-loading-tip') as HTMLElement | null,
   error: document.getElementById('player-connections-error') as HTMLElement | null,
   errorText: document.getElementById('player-connections-error-text') as HTMLElement | null,
   app: document.getElementById('player-connections-app') as HTMLElement | null,
@@ -64,12 +100,18 @@ const state: {
   candidateByLabel: Map<string, string>;
   pickerA: PickerState | null;
   pickerB: PickerState | null;
+  loadingTips: string[];
+  loadingTipIndex: number;
+  loadingTipTimer: number | null;
 } = {
   graph: null,
   candidates: [],
   candidateByLabel: new Map(),
   pickerA: null,
-  pickerB: null
+  pickerB: null,
+  loadingTips: [],
+  loadingTipIndex: 0,
+  loadingTipTimer: null
 };
 
 function setNote(text: string): void {
@@ -81,6 +123,9 @@ function setNote(text: string): void {
 function setLoadingVisible(isVisible: boolean): void {
   if (elements.loading) {
     elements.loading.hidden = !isVisible;
+  }
+  if (elements.loadingInsights) {
+    elements.loadingInsights.hidden = !isVisible;
   }
 }
 
@@ -112,6 +157,93 @@ function setProgress(phaseText: string, ratio: number): void {
 function setStats(text: string): void {
   if (elements.stats) {
     elements.stats.textContent = text;
+  }
+}
+
+function setLoadingTip(text: string): void {
+  if (elements.loadingTip) {
+    elements.loadingTip.textContent = text;
+  }
+}
+
+function formatPercent(ratio: number): string {
+  const pct = Math.max(0, Math.min(100, ratio * 100));
+  const rounded = pct >= 10 ? Math.round(pct) : Math.round(pct * 10) / 10;
+  return `${rounded}%`;
+}
+
+function writeCachedInsights(graph: PlayerConnectionsGraph, insights: GraphInterestingStats): void {
+  const mostConnected = insights.mostConnectedKey ? graph.identities.get(insights.mostConnectedKey) : null;
+  const mostActive = insights.mostActivePlayerKey ? graph.identities.get(insights.mostActivePlayerKey) : null;
+  const mostFrequentPairingLabel =
+    insights.mostFrequentPairing && insights.mostFrequentPairing.leftKey && insights.mostFrequentPairing.rightKey
+      ? `${graph.identities.get(insights.mostFrequentPairing.leftKey)?.name || insights.mostFrequentPairing.leftKey} vs ${graph.identities.get(insights.mostFrequentPairing.rightKey)?.name || insights.mostFrequentPairing.rightKey}`
+      : null;
+
+  const payload: LoadingInsightCache = {
+    builtAt: new Date().toISOString(),
+    identities: graph.stats.identities,
+    edges: graph.stats.edgesAdded,
+    tournaments: graph.stats.tournamentsDeduped,
+    largestComponentShare: graph.stats.largestComponentShare,
+    averageOpponents: insights.averageOpponents,
+    mostConnectedPlayer: mostConnected?.name || null,
+    mostConnectedDegree: insights.mostConnectedDegree,
+    longestRouteEstimate: insights.longestRouteEstimate,
+    mostActivePlayer: mostActive?.name || null,
+    mostActivePlayerMatches: insights.mostActivePlayerMatches,
+    mostFrequentPairing: mostFrequentPairingLabel,
+    mostFrequentPairingMatches: insights.mostFrequentPairing?.matches || 0
+  };
+
+  try {
+    window.localStorage.setItem(LOADING_INSIGHTS_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function buildLoadingTips(): string[] {
+  return [...HARD_BAKED_INTERESTING_STATS, ...BASE_LOADING_TIPS];
+}
+
+function renderNextLoadingTip(): void {
+  if (!state.loadingTips.length) {
+    return;
+  }
+  if (state.loadingTipIndex >= state.loadingTips.length) {
+    state.loadingTipIndex = 0;
+  }
+  setLoadingTip(state.loadingTips[state.loadingTipIndex]);
+  state.loadingTipIndex += 1;
+}
+
+function startLoadingTipRotation(): void {
+  state.loadingTips = buildLoadingTips();
+  state.loadingTipIndex = 0;
+  const interestingTips = state.loadingTips.filter(tip => tip.startsWith('Interesting stat:'));
+  if (interestingTips.length > 0) {
+    const offset = Math.floor(Date.now() / LOADING_TIP_INTERVAL_MS) % interestingTips.length;
+    const selected = interestingTips[offset];
+    const selectedIndex = state.loadingTips.indexOf(selected);
+    setLoadingTip(selected);
+    state.loadingTipIndex = selectedIndex >= 0 ? selectedIndex + 1 : 0;
+  } else {
+    setLoadingTip('Interesting stat: Building graph insights now.');
+  }
+
+  if (state.loadingTipTimer) {
+    window.clearInterval(state.loadingTipTimer);
+  }
+  state.loadingTipTimer = window.setInterval(() => {
+    renderNextLoadingTip();
+  }, LOADING_TIP_INTERVAL_MS);
+}
+
+function stopLoadingTipRotation(): void {
+  if (state.loadingTipTimer) {
+    window.clearInterval(state.loadingTipTimer);
+    state.loadingTipTimer = null;
   }
 }
 
@@ -497,6 +629,10 @@ function updateProgress(progress: {
   completed: number;
   total: number;
   tournament: string;
+  participantRows?: number;
+  canonicalMatchRows?: number;
+  edgesAdded?: number;
+  identities?: number;
 }): void {
   const safeTotal = Math.max(1, progress.total);
   const phaseRatio = Math.max(0, Math.min(1, progress.completed / safeTotal));
@@ -529,6 +665,7 @@ async function init(): Promise<void> {
   setErrorVisible(false);
   setAppVisible(false);
   setProgress('Preparing tournaments...', 0);
+  startLoadingTipRotation();
 
   try {
     const tournaments = await fetchTournamentsList();
@@ -543,6 +680,8 @@ async function init(): Promise<void> {
     };
 
     const graph = await buildPlayerConnectionsGraph(graphOptions);
+    const insights = computeGraphInterestingStats(graph);
+    writeCachedInsights(graph, insights);
     state.graph = graph;
     state.candidates = buildSearchCandidates(graph);
     state.candidateByLabel = new Map(
@@ -552,7 +691,8 @@ async function init(): Promise<void> {
     initPickers();
     configureSearchButton();
 
-    const statsText = `Indexed ${graph.stats.identities.toLocaleString()} identities, ${graph.stats.edgesAdded.toLocaleString()} unique match edges, and ${graph.stats.tournamentsDeduped.toLocaleString()} tournaments.`;
+    const componentPct = formatPercent(graph.stats.largestComponentShare);
+    const statsText = `Indexed ${graph.stats.identities.toLocaleString()} identities, ${graph.stats.edgesAdded.toLocaleString()} unique match edges, and ${graph.stats.tournamentsDeduped.toLocaleString()} tournaments. Largest cluster: ${graph.stats.largestComponentSize.toLocaleString()} players (${componentPct}) across ${graph.stats.connectedComponents.toLocaleString()} components.`;
     const failureText = graph.stats.partialFailure
       ? ` Partial load warning: ${graph.stats.tournamentsFailed} tournament(s) failed.`
       : '';
@@ -566,6 +706,7 @@ async function init(): Promise<void> {
     logger.exception('Failed to initialize player connections tool', error);
     setErrorVisible(true, 'Unable to load player connection data right now.');
   } finally {
+    stopLoadingTipRotation();
     setLoadingVisible(false);
   }
 }
@@ -573,5 +714,6 @@ async function init(): Promise<void> {
 init().catch(error => {
   logger.exception('Unhandled player connections initialization error', error);
   setErrorVisible(true, 'Unable to load player connection data right now.');
+  stopLoadingTipRotation();
   setLoadingVisible(false);
 });

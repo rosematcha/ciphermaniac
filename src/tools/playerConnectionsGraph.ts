@@ -2,6 +2,29 @@ import type { CanonicalMatchRecord, TournamentParticipant } from '../types/index
 
 const DATE_PREFIX_RE = /^\d{4}-\d{2}-\d{2},\s+/;
 const WHITESPACE_RE = /\s+/g;
+const LEADING_STAGE_MARKER_RE = /^(?:>\s*(?=[a-z0-9-]*\d)[a-z0-9-]{1,12}\s*)+/i;
+const LEADING_TABLE_MARKER_RE = /^(?:(?:\d{1,4}\s+)?(?:table|tbl)\s*(?:\d{1,4}\s+)*)+/i;
+const LEADING_ROUND_MARKER_RE = /^(?:(?:round|rd)\s*\d{1,3}\s*)+/i;
+const LEADING_POSITION_MARKER_RE = /^\d{1,4}\s+(?=[a-z])/i;
+const LEADING_SYMBOL_RE = /^[>#:|/\\-]+/;
+
+// Manual identity bridges for known player-id/name inconsistencies across events.
+const PLAYER_ID_SYNONYMS: Record<string, string> = {
+  '21': '20186'
+};
+
+const PLAYER_NAME_SYNONYMS: Record<string, string> = {
+  'prin basser': 'Princess Basser',
+  'reese lundquist': 'Reese Ferguson'
+};
+
+// Fallback bridges when playerId is missing in report rows.
+const PLAYER_NAME_TO_CANONICAL_ID: Record<string, string> = {
+  'prin basser': '20186',
+  'princess basser': '20186',
+  'reese lundquist': '17712',
+  'reese ferguson': '17712'
+};
 
 interface TournamentIndexEntry {
   tournamentId?: string | number | null;
@@ -47,6 +70,9 @@ export interface GraphBuildStats {
   canonicalMatchRows: number;
   edgesAdded: number;
   identities: number;
+  connectedComponents: number;
+  largestComponentSize: number;
+  largestComponentShare: number;
   partialFailure: boolean;
 }
 
@@ -55,12 +81,18 @@ export interface GraphBuildProgress {
   completed: number;
   total: number;
   tournament: string;
+  participantRows?: number;
+  canonicalMatchRows?: number;
+  edgesAdded?: number;
+  identities?: number;
 }
 
 export interface PlayerConnectionsGraph {
   identities: Map<string, PlayerIdentity>;
   nameIndex: Map<string, Set<string>>;
   adjacency: Map<string, Map<string, GraphEdge>>;
+  pairMatchCounts: Map<string, number>;
+  playerMatchCounts: Map<string, number>;
   tournaments: string[];
   stats: GraphBuildStats;
   failures: Array<{ tournament: string; message: string }>;
@@ -83,6 +115,20 @@ export interface ConnectionPathResult {
   missing?: 'source' | 'target' | 'both';
 }
 
+export interface GraphInterestingStats {
+  averageOpponents: number;
+  mostConnectedKey: string | null;
+  mostConnectedDegree: number;
+  longestRouteEstimate: number;
+  mostFrequentPairing: {
+    leftKey: string;
+    rightKey: string;
+    matches: number;
+  } | null;
+  mostActivePlayerKey: string | null;
+  mostActivePlayerMatches: number;
+}
+
 interface TournamentCandidate {
   folder: string;
   index: TournamentIndexEntry | null;
@@ -95,6 +141,46 @@ interface TournamentsByAlias {
 
 function normalizeWhitespace(value: string): string {
   return value.replace(WHITESPACE_RE, ' ').trim();
+}
+
+/**
+ * Remove known report-artifact prefixes from participant names.
+ * Example artifacts: ">10 TABLE", ">ST6>", "153 ".
+ */
+export function sanitizeParticipantName(raw: unknown): string {
+  const fallback = normalizeWhitespace(String(raw || ''));
+  if (!fallback) {
+    return '';
+  }
+
+  let value = fallback;
+  for (let i = 0; i < 6; i += 1) {
+    const next = normalizeWhitespace(
+      value
+        .replace(LEADING_STAGE_MARKER_RE, '')
+        .replace(LEADING_TABLE_MARKER_RE, '')
+        .replace(LEADING_ROUND_MARKER_RE, '')
+        .replace(LEADING_SYMBOL_RE, '')
+        .replace(LEADING_POSITION_MARKER_RE, '')
+    );
+
+    if (next === value) {
+      break;
+    }
+    value = next;
+  }
+
+  return value || fallback;
+}
+
+function canonicalizeParticipantName(raw: unknown): string {
+  const cleaned = sanitizeParticipantName(raw);
+  if (!cleaned) {
+    return '';
+  }
+  const normalized = normalizePlayerName(cleaned);
+  const synonym = PLAYER_NAME_SYNONYMS[normalized];
+  return synonym || cleaned;
 }
 
 export function normalizePlayerName(raw: unknown): string {
@@ -188,16 +274,21 @@ function toOptionalString(value: unknown): string | null {
   return text || null;
 }
 
-function toIdentityKey(participant: TournamentParticipant): { key: string; playerId: string | null } | null {
+function toIdentityKey(
+  participant: TournamentParticipant,
+  normalizedName: string
+): { key: string; playerId: string | null } | null {
   const rawPlayerId = toOptionalString(participant.playerId);
-  if (rawPlayerId) {
+  const canonicalPlayerId =
+    (rawPlayerId ? PLAYER_ID_SYNONYMS[rawPlayerId] || rawPlayerId : null) ||
+    (normalizedName ? PLAYER_NAME_TO_CANONICAL_ID[normalizedName] || null : null);
+  if (canonicalPlayerId) {
     return {
-      key: `pid:${rawPlayerId}`,
-      playerId: rawPlayerId
+      key: `pid:${canonicalPlayerId}`,
+      playerId: canonicalPlayerId
     };
   }
 
-  const normalizedName = normalizePlayerName(participant.name);
   if (!normalizedName) {
     return null;
   }
@@ -313,6 +404,59 @@ function buildFinalIdentityMap(mutableIdentities: Map<string, MutableIdentity>):
   return out;
 }
 
+function computeConnectivityStats(
+  identityKeys: Iterable<string>,
+  adjacency: Map<string, Map<string, GraphEdge>>
+): {
+  connectedComponents: number;
+  largestComponentSize: number;
+} {
+  const visited = new Set<string>();
+  let connectedComponents = 0;
+  let largestComponentSize = 0;
+
+  for (const start of identityKeys) {
+    if (visited.has(start)) {
+      continue;
+    }
+
+    connectedComponents += 1;
+    let componentSize = 0;
+    const queue: string[] = [start];
+    visited.add(start);
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (!current) {
+        continue;
+      }
+
+      componentSize += 1;
+      const neighbors = adjacency.get(current);
+      if (!neighbors) {
+        continue;
+      }
+
+      for (const next of neighbors.keys()) {
+        if (visited.has(next)) {
+          continue;
+        }
+        visited.add(next);
+        queue.push(next);
+      }
+    }
+
+    if (componentSize > largestComponentSize) {
+      largestComponentSize = componentSize;
+    }
+  }
+
+  return {
+    connectedComponents,
+    largestComponentSize
+  };
+}
+
 async function mapWithConcurrency<T>(
   items: T[],
   concurrency: number,
@@ -399,6 +543,8 @@ export async function buildPlayerConnectionsGraph(
   const nameIndex = new Map<string, Set<string>>();
   const adjacency = new Map<string, Map<string, GraphEdge>>();
   const uniqueEdgeKeys = new Set<string>();
+  const pairMatchCounts = new Map<string, number>();
+  const playerMatchCounts = new Map<string, number>();
 
   let participantRows = 0;
   let canonicalMatchRows = 0;
@@ -416,9 +562,10 @@ export async function buildPlayerConnectionsGraph(
       for (const participant of Array.isArray(participants) ? participants : []) {
         participantRows += 1;
 
-        const normalizedName = normalizePlayerName(participant.name);
-        const displayName = normalizeWhitespace(String(participant.name || 'Unknown Player')) || 'Unknown Player';
-        const identityRef = toIdentityKey(participant);
+        const cleanedName = canonicalizeParticipantName(participant.name);
+        const normalizedName = normalizePlayerName(cleanedName);
+        const displayName = cleanedName || 'Unknown Player';
+        const identityRef = toIdentityKey(participant, normalizedName);
         if (!identityRef) {
           continue;
         }
@@ -456,6 +603,11 @@ export async function buildPlayerConnectionsGraph(
           continue;
         }
 
+        const pairKey = makeEdgeKey(fromKey, toKey);
+        pairMatchCounts.set(pairKey, (pairMatchCounts.get(pairKey) || 0) + 1);
+        playerMatchCounts.set(fromKey, (playerMatchCounts.get(fromKey) || 0) + 1);
+        playerMatchCounts.set(toKey, (playerMatchCounts.get(toKey) || 0) + 1);
+
         const added = addUndirectedEdge(adjacency, uniqueEdgeKeys, {
           fromKey,
           toKey,
@@ -484,12 +636,19 @@ export async function buildPlayerConnectionsGraph(
         phase: 'graph',
         completed: processed,
         total: deduped.length,
-        tournament: tournament.folder
+        tournament: tournament.folder,
+        participantRows,
+        canonicalMatchRows,
+        edgesAdded: uniqueEdgeKeys.size,
+        identities: mutableIdentities.size
       });
     }
   });
 
   const finalIdentities = buildFinalIdentityMap(mutableIdentities);
+  const connectivityStats = computeConnectivityStats(finalIdentities.keys(), adjacency);
+  const largestComponentShare =
+    finalIdentities.size > 0 ? connectivityStats.largestComponentSize / finalIdentities.size : 0;
 
   const stats: GraphBuildStats = {
     tournamentsSeen: candidates.length,
@@ -500,6 +659,9 @@ export async function buildPlayerConnectionsGraph(
     canonicalMatchRows,
     edgesAdded: uniqueEdgeKeys.size,
     identities: finalIdentities.size,
+    connectedComponents: connectivityStats.connectedComponents,
+    largestComponentSize: connectivityStats.largestComponentSize,
+    largestComponentShare,
     partialFailure: failures.length > 0
   };
 
@@ -507,6 +669,8 @@ export async function buildPlayerConnectionsGraph(
     identities: finalIdentities,
     nameIndex,
     adjacency,
+    pairMatchCounts,
+    playerMatchCounts,
     tournaments: deduped.map(entry => entry.folder),
     stats,
     failures
@@ -624,5 +788,114 @@ export function findConnectionPath(
     degree: null,
     identities: [source, target],
     hops: []
+  };
+}
+
+function findFarthestNode(graph: PlayerConnectionsGraph, startKey: string): { key: string; distance: number } {
+  if (!graph.identities.has(startKey)) {
+    return { key: startKey, distance: 0 };
+  }
+
+  const queue: string[] = [startKey];
+  const distances = new Map<string, number>([[startKey, 0]]);
+  let farthestKey = startKey;
+  let farthestDistance = 0;
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current) {
+      continue;
+    }
+
+    const distance = distances.get(current) || 0;
+    if (distance > farthestDistance) {
+      farthestDistance = distance;
+      farthestKey = current;
+    }
+
+    const neighbors = graph.adjacency.get(current);
+    if (!neighbors) {
+      continue;
+    }
+
+    for (const next of neighbors.keys()) {
+      if (distances.has(next)) {
+        continue;
+      }
+      distances.set(next, distance + 1);
+      queue.push(next);
+    }
+  }
+
+  return {
+    key: farthestKey,
+    distance: farthestDistance
+  };
+}
+
+export function computeGraphInterestingStats(graph: PlayerConnectionsGraph): GraphInterestingStats {
+  const identityCount = graph.identities.size;
+  if (identityCount === 0) {
+    return {
+      averageOpponents: 0,
+      mostConnectedKey: null,
+      mostConnectedDegree: 0,
+      longestRouteEstimate: 0,
+      mostFrequentPairing: null,
+      mostActivePlayerKey: null,
+      mostActivePlayerMatches: 0
+    };
+  }
+
+  let mostConnectedKey: string | null = null;
+  let mostConnectedDegree = -1;
+  let mostActivePlayerKey: string | null = null;
+  let mostActivePlayerMatches = -1;
+  let mostFrequentPairing: {
+    leftKey: string;
+    rightKey: string;
+    matches: number;
+  } | null = null;
+
+  graph.identities.forEach((_, key) => {
+    const degree = graph.adjacency.get(key)?.size || 0;
+    if (degree > mostConnectedDegree) {
+      mostConnectedDegree = degree;
+      mostConnectedKey = key;
+    }
+  });
+
+  graph.playerMatchCounts.forEach((matches, key) => {
+    if (matches > mostActivePlayerMatches) {
+      mostActivePlayerMatches = matches;
+      mostActivePlayerKey = key;
+    }
+  });
+
+  graph.pairMatchCounts.forEach((matches, pairKey) => {
+    if (!mostFrequentPairing || matches > mostFrequentPairing.matches) {
+      const [leftKey = '', rightKey = ''] = pairKey.split('||');
+      mostFrequentPairing = {
+        leftKey,
+        rightKey,
+        matches
+      };
+    }
+  });
+
+  const averageOpponents = identityCount > 0 ? (graph.stats.edgesAdded * 2) / identityCount : 0;
+
+  const seedKey = mostConnectedKey || Array.from(graph.identities.keys())[0] || '';
+  const firstSweep = seedKey ? findFarthestNode(graph, seedKey) : { key: '', distance: 0 };
+  const secondSweep = firstSweep.key ? findFarthestNode(graph, firstSweep.key) : { key: '', distance: 0 };
+
+  return {
+    averageOpponents,
+    mostConnectedKey,
+    mostConnectedDegree: Math.max(0, mostConnectedDegree),
+    longestRouteEstimate: secondSweep.distance,
+    mostFrequentPairing,
+    mostActivePlayerKey,
+    mostActivePlayerMatches: Math.max(0, mostActivePlayerMatches)
   };
 }

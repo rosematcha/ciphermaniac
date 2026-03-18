@@ -4,7 +4,9 @@ import assert from 'node:assert/strict';
 import {
   buildPlayerConnectionsGraph,
   type BuildPlayerConnectionsGraphOptions,
-  findConnectionPath
+  computeGraphInterestingStats,
+  findConnectionPath,
+  sanitizeParticipantName
 } from '../../src/tools/playerConnectionsGraph.ts';
 import type { CanonicalMatchRecord, TournamentParticipant } from '../../src/types/index.ts';
 
@@ -205,4 +207,103 @@ test('byes and unpaired rows (missing player2Id) do not create edges', async () 
   assert.equal(graph.stats.edgesAdded, 0);
   const path = findConnectionPath(graph, 'pid:201', 'pid:202');
   assert.equal(path.status, 'disconnected');
+});
+
+test('sanitizeParticipantName removes known standings artifacts', () => {
+  assert.equal(sanitizeParticipantName('>10 TABLE Noah schuler'), 'Noah schuler');
+  assert.equal(sanitizeParticipantName('>ST6>Amy Wosley'), 'Amy Wosley');
+  assert.equal(sanitizeParticipantName('153 TABLE noah schuler'), 'noah schuler');
+});
+
+test('name fallback identities use sanitized participant names', async () => {
+  const tournament = '2026-01-01, Name Repair Test';
+  const options = makeOptions([tournament], {
+    [tournament]: {
+      index: { tournamentId: '905' },
+      participants: [
+        participant(1, '>10 TABLE Noah schuler', null),
+        participant(2, 'Noah schuler', null),
+        participant(3, 'Taylor', null)
+      ],
+      matches: [match('n1', 1, 3, 1), match('n2', 2, 3, 2)]
+    }
+  });
+
+  const graph = await buildPlayerConnectionsGraph(options);
+
+  assert.ok(graph.identities.has('name:noah schuler'));
+  assert.equal(graph.identities.size, 2);
+  assert.equal(graph.identities.get('name:noah schuler')?.name, 'Noah schuler');
+});
+
+test('graph build stats include connected component coverage', async () => {
+  const tournament = '2026-01-01, Component Stats Test';
+  const options = makeOptions([tournament], {
+    [tournament]: {
+      index: { tournamentId: '906' },
+      participants: [participant(1, 'Alpha', '1'), participant(2, 'Beta', '2'), participant(3, 'Gamma', '3')],
+      matches: [match('ab', 1, 2, 1)]
+    }
+  });
+
+  const graph = await buildPlayerConnectionsGraph(options);
+
+  assert.equal(graph.stats.connectedComponents, 2);
+  assert.equal(graph.stats.largestComponentSize, 2);
+  assert.equal(graph.stats.largestComponentShare, 2 / 3);
+});
+
+test('computeGraphInterestingStats returns meaningful graph-level stats', async () => {
+  const tournament = '2026-01-01, Interesting Stats Test';
+  const options = makeOptions([tournament], {
+    [tournament]: {
+      index: { tournamentId: '907' },
+      participants: [participant(1, 'A', '1'), participant(2, 'B', '2'), participant(3, 'C', '3')],
+      matches: [match('ab', 1, 2, 1), match('bc', 2, 3, 2)]
+    }
+  });
+
+  const graph = await buildPlayerConnectionsGraph(options);
+  const insights = computeGraphInterestingStats(graph);
+
+  assert.equal(insights.mostConnectedKey, 'pid:2');
+  assert.equal(insights.mostConnectedDegree, 2);
+  assert.equal(insights.averageOpponents, (graph.stats.edgesAdded * 2) / graph.stats.identities);
+  assert.equal(insights.longestRouteEstimate, 2);
+  assert.equal(insights.mostActivePlayerKey, 'pid:2');
+  assert.equal(insights.mostActivePlayerMatches, 2);
+  assert.equal(insights.mostFrequentPairing?.leftKey, 'pid:1');
+  assert.equal(insights.mostFrequentPairing?.rightKey, 'pid:2');
+  assert.equal(insights.mostFrequentPairing?.matches, 1);
+});
+
+test('player ID and name synonym bridges merge known aliases', async () => {
+  const atlanta = '2025-04-11, Regional Championship Atlanta';
+  const seattle = '2026-02-27, Regional Championship Seattle';
+
+  const options = makeOptions([atlanta, seattle], {
+    [atlanta]: {
+      index: { tournamentId: 'atl' },
+      participants: [
+        participant(1, 'Prin Basser', '21'),
+        participant(2, 'Drew Cate', '6208'),
+        participant(3, 'Annie Haberstroh', '474')
+      ],
+      matches: [match('pd', 1, 2, 2), match('ad', 3, 2, 2)]
+    },
+    [seattle]: {
+      index: { tournamentId: 'sea' },
+      participants: [participant(11, 'Princess Basser', '20186'), participant(12, 'Drew Cate', '6208')],
+      matches: [match('pd2', 11, 12, 12)]
+    }
+  });
+
+  const graph = await buildPlayerConnectionsGraph(options);
+
+  assert.ok(graph.identities.has('pid:20186'));
+  assert.ok(!graph.identities.has('pid:21'));
+
+  const path = findConnectionPath(graph, 'pid:474', 'pid:20186');
+  assert.equal(path.status, 'connected');
+  assert.equal(path.degree, 2);
 });
