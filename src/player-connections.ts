@@ -56,21 +56,6 @@ interface LoadingInsightCache {
   mostFrequentPairingMatches: number;
 }
 
-interface PairQueryState {
-  mode: 'pair';
-  sourceKey: string;
-  targetKey: string;
-  seenPathSignatures: Set<string>;
-}
-
-interface FurthestQueryState {
-  mode: 'furthest';
-  sourceKey: string;
-  seenPathSignatures: Set<string>;
-}
-
-type LastQueryState = PairQueryState | FurthestQueryState;
-
 const SUGGESTION_LIMIT = 12;
 const LOADING_TIP_INTERVAL_MS = 3600;
 const LOADING_TIP_FADE_MS = 220;
@@ -108,7 +93,6 @@ const elements = {
   stats: document.getElementById('player-connections-stats') as HTMLElement | null,
   searchButton: document.getElementById('player-connections-search') as HTMLButtonElement | null,
   furthestButton: document.getElementById('player-connections-furthest') as HTMLButtonElement | null,
-  rerollButton: document.getElementById('player-connections-reroll') as HTMLButtonElement | null,
   resultSection: document.getElementById('player-connections-results') as HTMLElement | null,
   resultTitle: document.getElementById('player-connections-result-title') as HTMLElement | null,
   resultSummary: document.getElementById('player-connections-result-summary') as HTMLElement | null,
@@ -129,7 +113,6 @@ const state: {
   loadingTipIndex: number;
   loadingTipTimer: number | null;
   loadingTipFadeHandle: number | null;
-  lastQuery: LastQueryState | null;
 } = {
   graph: null,
   candidates: [],
@@ -139,8 +122,7 @@ const state: {
   loadingTips: [],
   loadingTipIndex: 0,
   loadingTipTimer: null,
-  loadingTipFadeHandle: null,
-  lastQuery: null
+  loadingTipFadeHandle: null
 };
 
 function setNote(text: string): void {
@@ -187,21 +169,6 @@ function setStats(text: string): void {
   if (elements.stats) {
     elements.stats.textContent = text;
   }
-}
-
-function setRerollEnabled(enabled: boolean): void {
-  if (elements.rerollButton) {
-    elements.rerollButton.disabled = !enabled;
-  }
-}
-
-function clearLastQueryState(): void {
-  state.lastQuery = null;
-  setRerollEnabled(false);
-}
-
-function pathSignatureFromIdentities(identities: PlayerIdentity[]): string {
-  return identities.map(identity => identity.key).join('>');
 }
 
 function setLoadingTip(text: string): void {
@@ -674,31 +641,19 @@ function handleSearch(): void {
   const sourceKey = state.pickerA.selectedKey || resolveIdentityKey(state.pickerA.input.value);
   const targetKey = state.pickerB.selectedKey || resolveIdentityKey(state.pickerB.input.value);
 
-  const result = findConnectionPath(state.graph, sourceKey, targetKey);
+  const result = findConnectionPath(state.graph, sourceKey, targetKey, {
+    randomizeNeighbors: true,
+    rng: Math.random
+  });
   renderResults(result);
 
   if (result.status === 'connected') {
-    const signature = pathSignatureFromIdentities(result.identities);
-    if (sourceKey && targetKey) {
-      state.lastQuery = {
-        mode: 'pair',
-        sourceKey,
-        targetKey,
-        seenPathSignatures: new Set<string>([signature])
-      };
-      setRerollEnabled(true);
-    } else {
-      clearLastQueryState();
-    }
     setNote(`Connection found at degree ${result.degree}.`);
   } else if (result.status === 'same') {
-    clearLastQueryState();
     setNote('Selected players resolve to the same identity.');
   } else if (result.status === 'disconnected') {
-    clearLastQueryState();
     setNote('No connection found in the current offline dataset.');
   } else {
-    clearLastQueryState();
     setNote('Please choose valid players from suggestions.');
   }
 }
@@ -709,107 +664,19 @@ function handleFindFurthest(): void {
   }
 
   const sourceKey = state.pickerA.selectedKey || resolveIdentityKey(state.pickerA.input.value);
-  const result = findFurthestConnectionFrom(state.graph, sourceKey);
+  const result = findFurthestConnectionFrom(state.graph, sourceKey, {
+    randomizeNeighbors: true,
+    randomizeFarthestTie: true,
+    rng: Math.random
+  });
   renderFurthestResult(result);
 
   if (result.status === 'connected') {
-    const signature = pathSignatureFromIdentities(result.identities);
-    if (sourceKey) {
-      state.lastQuery = {
-        mode: 'furthest',
-        sourceKey,
-        seenPathSignatures: new Set<string>([signature])
-      };
-      setRerollEnabled(true);
-    } else {
-      clearLastQueryState();
-    }
     setNote(`Furthest reachable connection from Player A is degree ${result.degree}.`);
   } else if (result.status === 'same') {
-    clearLastQueryState();
     setNote('Player A has no tracked outward connection.');
   } else {
-    clearLastQueryState();
     setNote('Please choose a valid Player A from suggestions.');
-  }
-}
-
-function handleReroll(): void {
-  if (!state.graph || !state.lastQuery) {
-    setNote('Run a search first, then use re-roll.');
-    return;
-  }
-
-  const maxAttempts = 30;
-  let candidateFound = false;
-
-  if (state.lastQuery.mode === 'pair') {
-    let fallback: ConnectionPathResult | null = null;
-
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      const candidate = findConnectionPath(state.graph, state.lastQuery.sourceKey, state.lastQuery.targetKey, {
-        randomizeNeighbors: true,
-        rng: Math.random
-      });
-
-      if (candidate.status !== 'connected') {
-        continue;
-      }
-
-      fallback = candidate;
-      const signature = pathSignatureFromIdentities(candidate.identities);
-      if (state.lastQuery.seenPathSignatures.has(signature)) {
-        continue;
-      }
-
-      state.lastQuery.seenPathSignatures.add(signature);
-      renderResults(candidate);
-      setNote(`Re-rolled to another shortest path at degree ${candidate.degree}.`);
-      candidateFound = true;
-      break;
-    }
-
-    if (!candidateFound && fallback && fallback.status === 'connected') {
-      renderResults(fallback);
-      setNote(`No new route found yet. Showing a valid shortest path at degree ${fallback.degree}.`);
-      candidateFound = true;
-    }
-  } else {
-    let fallback: FurthestConnectionResult | null = null;
-
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      const candidate = findFurthestConnectionFrom(state.graph, state.lastQuery.sourceKey, {
-        randomizeNeighbors: true,
-        randomizeFarthestTie: true,
-        rng: Math.random
-      });
-
-      if (candidate.status !== 'connected') {
-        continue;
-      }
-
-      fallback = candidate;
-      const signature = pathSignatureFromIdentities(candidate.identities);
-      if (state.lastQuery.seenPathSignatures.has(signature)) {
-        continue;
-      }
-
-      state.lastQuery.seenPathSignatures.add(signature);
-      renderFurthestResult(candidate);
-      setNote(`Re-rolled to another furthest path at degree ${candidate.degree}.`);
-      candidateFound = true;
-      break;
-    }
-
-    if (!candidateFound && fallback && fallback.status === 'connected') {
-      renderFurthestResult(fallback);
-      setNote(`No new furthest route found yet. Showing a valid furthest path at degree ${fallback.degree}.`);
-      candidateFound = true;
-    }
-  }
-
-  if (!candidateFound) {
-    setNote('No alternate path available for this query.');
   }
 }
 
@@ -871,12 +738,6 @@ function configureActionButtons(): void {
   elements.furthestButton?.addEventListener('click', () => {
     handleFindFurthest();
   });
-
-  elements.rerollButton?.addEventListener('click', () => {
-    handleReroll();
-  });
-
-  setRerollEnabled(false);
 }
 
 function updateProgress(progress: {
@@ -956,7 +817,7 @@ async function init(): Promise<void> {
     setNote(
       graph.stats.partialFailure
         ? 'Graph loaded with partial failures.'
-        : 'Graph ready. Choose two players, find furthest from Player A, then re-roll for alternates.'
+        : 'Graph ready. Choose two players, or find furthest from Player A.'
     );
 
     setProgress('Graph build complete.', 1);
