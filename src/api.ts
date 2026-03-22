@@ -22,6 +22,7 @@ import type {
   LimitlessTournament,
   MatchupProfilesReport,
   MetaReport,
+  PlayerMatchRecord,
   PricingData,
   TournamentManifest,
   TournamentParticipant,
@@ -35,6 +36,7 @@ export type {
   ArchetypeFilterResponse,
   ArchetypeIndexEntry,
   ArchetypeSuccessSummaryByTag,
+  PlayerMatchRecord,
   LimitlessTournament,
   MatchupProfilesReport,
   MetaReport,
@@ -1178,6 +1180,23 @@ export function fetchParticipants(tournament: string): Promise<TournamentPartici
     'array',
     'participants',
     { cache: true }
+  );
+}
+
+/**
+ * Fetch per-player round-by-round match export (playerMatches.json).
+ * Note: currently available only on the root tournament path.
+ */
+export function fetchPlayerMatches(tournament: string): Promise<PlayerMatchRecord[]> {
+  const relativePath = `${encodeURIComponent(tournament)}/playerMatches.json`;
+  return fetchReportResource<PlayerMatchRecord[]>(
+    relativePath,
+    `player matches for ${tournament}`,
+    'array',
+    'player matches',
+    {
+      cache: true
+    }
   );
 }
 

@@ -10,7 +10,8 @@ function hideKnownLoadingIndicators(): void {
     'analysis-list-loading',
     'players-list-loading',
     'player-loading',
-    'binder-loading'
+    'binder-loading',
+    'player-connections-loading'
   ];
   loadingIds.forEach(id => {
     const element = document.getElementById(id);
