@@ -45,6 +45,12 @@
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
+
+  <url>
+    <loc>https://ciphermaniac.com/tools/player-connections</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
   
   <url>
     <loc>https://ciphermaniac.com/tools/social-graphics</loc>
