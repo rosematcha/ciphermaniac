@@ -319,7 +319,9 @@ function fetchWithRetry<T>(
 
   const fetchPromise = withRetry(loader, {
     maxAttempts: CONFIG.API.RETRY_ATTEMPTS,
-    delayMs: CONFIG.API.RETRY_DELAY_MS
+    delayMs: CONFIG.API.RETRY_DELAY_MS,
+    shouldRetry: error =>
+      !(error instanceof AppError && Number(error.context?.status) >= 400 && Number(error.context?.status) < 500)
   }).catch(error => {
     logger.error(`Failed ${operation}`, {
       url,
@@ -415,10 +417,11 @@ export function fetchTournamentsList(): Promise<string[]> {
  * @param tournament - Tournament identifier.
  */
 export async function fetchTournamentManifest(tournament: string): Promise<TournamentManifest> {
-  const relativePath = `${encodeURIComponent(tournament)}/manifest.json`;
+  // manifest.json is served by the Pages Function, not stored in R2 — fetch directly from origin
+  const localUrl = `${CONFIG.API.REPORTS_BASE}/${encodeURIComponent(tournament)}/manifest.json`;
   try {
-    const data = await fetchReportResource<TournamentManifest>(
-      relativePath,
+    const data = await fetchWithRetry<TournamentManifest>(
+      localUrl,
       `manifest for ${tournament}`,
       'object',
       'tournament manifest',
