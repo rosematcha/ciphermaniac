@@ -353,3 +353,91 @@ test('tooltip: handles negative coordinates', async t => {
 
   cleanupMockDocument();
 });
+
+test('tooltip: clamps left position when tooltip would overflow viewport right edge', async t => {
+  createMockDocument();
+
+  const { createTooltipManager } = await import('../../src/utils/tooltip.js');
+  const manager = createTooltipManager();
+
+  // viewport width=1024, rect.width=100, offset=12
+  // x=950: left = 950+12=962, 962+100=1062 > 1024, so clamp: left = max(8, 950-100-12) = 838
+  manager.show('<p>Test</p>', 950, 100);
+
+  const element = appendedToBody[0] as unknown as MockElement;
+  assert.strictEqual(element.style.left, '838px', 'should clamp left when overflowing right');
+
+  cleanupMockDocument();
+});
+
+test('tooltip: clamps top position when tooltip would overflow viewport bottom edge', async t => {
+  createMockDocument();
+
+  const { createTooltipManager } = await import('../../src/utils/tooltip.js');
+  const manager = createTooltipManager();
+
+  // viewport height=768, rect.height=50, offset=12
+  // y=750: top = 750+12=762, 762+50=812 > 768, so clamp: top = max(8, 750-50-12) = 688
+  manager.show('<p>Test</p>', 100, 750);
+
+  const element = appendedToBody[0] as unknown as MockElement;
+  assert.strictEqual(element.style.top, '688px', 'should clamp top when overflowing bottom');
+
+  cleanupMockDocument();
+});
+
+test('tooltip: getGridTooltip returns a singleton manager', async t => {
+  createMockDocument();
+
+  const { getGridTooltip } = await import('../../src/utils/tooltip.js');
+
+  const first = getGridTooltip();
+  const second = getGridTooltip();
+
+  assert.strictEqual(first, second, 'should return same instance on repeated calls');
+  assert.strictEqual(typeof first.show, 'function');
+
+  cleanupMockDocument();
+});
+
+test('tooltip: getGraphTooltip returns a singleton manager', async t => {
+  createMockDocument();
+
+  const { getGraphTooltip } = await import('../../src/utils/tooltip.js');
+
+  const first = getGraphTooltip();
+  const second = getGraphTooltip();
+
+  assert.strictEqual(first, second, 'should return same instance on repeated calls');
+  assert.strictEqual(typeof first.show, 'function');
+
+  cleanupMockDocument();
+});
+
+test('tooltip: element uses id option when provided', async t => {
+  createMockDocument();
+
+  const { createTooltipManager } = await import('../../src/utils/tooltip.js');
+  const manager = createTooltipManager({ id: 'my-tooltip' });
+
+  manager.show('<p>Test</p>', 0, 0);
+
+  const element = appendedToBody[0] as unknown as MockElement;
+  assert.strictEqual(element.id, 'my-tooltip', 'should set id attribute');
+
+  cleanupMockDocument();
+});
+
+test('tooltip: element skips aria-live when ariaLive is off', async t => {
+  createMockDocument();
+
+  const { createTooltipManager } = await import('../../src/utils/tooltip.js');
+  const manager = createTooltipManager({ ariaLive: 'off' });
+
+  manager.show('<p>Test</p>', 0, 0);
+
+  const element = appendedToBody[0] as unknown as MockElement;
+  assert.strictEqual(element.getAttribute('aria-live'), null, 'should not set aria-live when off');
+
+  cleanupMockDocument();
+});
