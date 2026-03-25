@@ -72,8 +72,9 @@ main {
 }
 
 .tab.is-active {
-  border-color: #3b4aa0;
-  box-shadow: 0 0 0 1px #3b4aa0 inset;
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 1px var(--accent-2) inset;
+  color: var(--accent-2);
 }
 
 /* Summary text */

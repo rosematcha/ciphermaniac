@@ -142,7 +142,7 @@
     0 0 0 2px rgba(133, 188, 255, 0.24),
     inset 0 1px 0 rgba(242, 248, 255, 0.14),
     0 14px 30px rgba(0, 0, 0, 0.34);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .hero-search .search-icon {
