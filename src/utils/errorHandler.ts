@@ -278,7 +278,12 @@ export async function safeFetch(input: string | Request, init: ExtendedRequestIn
   };
 
   try {
-    return await withRetry(singleFetch, { maxAttempts: retries + 1, delayMs: retryDelay });
+    return await withRetry(singleFetch, {
+      maxAttempts: retries + 1,
+      delayMs: retryDelay,
+      shouldRetry: error =>
+        !(error instanceof AppError && Number(error.context?.status) >= 400 && Number(error.context?.status) < 500)
+    });
   } finally {
     clearTimeout(timeoutId);
   }
@@ -368,6 +373,8 @@ export interface RetryOptions {
   delayMs?: number;
   /** Optional callback for each failed attempt */
   onAttemptFail?: (error: any, attempt: number, maxAttempts: number) => void;
+  /** Return false to stop retrying immediately (e.g. for non-transient errors like 404) */
+  shouldRetry?: (error: any) => boolean;
 }
 
 /**
@@ -377,7 +384,7 @@ export interface RetryOptions {
  * @returns Result of the operation
  */
 export async function withRetry<T>(operation: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
-  const { maxAttempts = 3, delayMs = 1000, onAttemptFail } = options;
+  const { maxAttempts = 3, delayMs = 1000, onAttemptFail, shouldRetry } = options;
   let lastError: any = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -390,7 +397,7 @@ export async function withRetry<T>(operation: () => Promise<T>, options: RetryOp
         onAttemptFail(error, attempt, maxAttempts);
       }
 
-      if (attempt === maxAttempts) {
+      if (attempt === maxAttempts || (shouldRetry && !shouldRetry(error))) {
         throw error;
       }
 

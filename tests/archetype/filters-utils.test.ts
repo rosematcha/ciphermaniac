@@ -152,3 +152,49 @@ test('normalizeThreshold clamps and rounds to step size', async () => {
   assert.equal(normalizeThreshold(47, 0, 100), 45);
   assert.equal(normalizeThreshold(102, 0, 100), 100);
 });
+
+test('normalizeThreshold returns min for non-finite input', async () => {
+  const { normalizeThreshold } = await loadModules();
+  assert.equal(normalizeThreshold(NaN, 0, 100), 0);
+  assert.equal(normalizeThreshold(Infinity, 0, 100), 0);
+  assert.equal(normalizeThreshold(-Infinity, 5, 100), 5);
+});
+
+test('normalizeThreshold returns min when max is less than or equal to min', async () => {
+  const { normalizeThreshold } = await loadModules();
+  assert.equal(normalizeThreshold(50, 100, 50), 100);
+  assert.equal(normalizeThreshold(50, 100, 100), 100);
+});
+
+test('getFilterKey handles empty string operator (none)', async () => {
+  const { getFilterKey } = await loadModules();
+  const filters = [{ cardId: 'SVI~007', operator: '' as const, count: null }];
+  const key = getFilterKey(filters, 'all');
+  assert.ok(key.includes('::none'), `expected key to contain "::none", got: ${key}`);
+});
+
+test('getFilterKey handles filter with operator but null count (no suffix added)', async () => {
+  const { getFilterKey } = await loadModules();
+  // operator is present but count is null → falls through all branches, just uses cardId
+  const filters = [{ cardId: 'SVI~007', operator: '>=', count: null }];
+  const key = getFilterKey(filters, 'all');
+  assert.equal(key, 'all::SVI~007');
+});
+
+test('describeFilters handles none (empty string) operator', async () => {
+  const { describeFilters } = await loadModules();
+  const filters = [{ cardId: 'SVI~007', operator: '' as const, count: null }];
+  const desc = describeFilters(filters);
+  assert.ok(desc.includes('(none)'), `expected "(none)" in description, got: ${desc}`);
+});
+
+test('describeFilters returns baseline label for empty filters array', async () => {
+  const { describeFilters } = await loadModules();
+  assert.equal(describeFilters([]), 'the baseline list');
+});
+
+test('describeSuccessFilter returns tag itself for unknown tags', async () => {
+  const { describeSuccessFilter } = await loadModules();
+  assert.equal(describeSuccessFilter('custom-tag'), 'custom-tag');
+  assert.equal(describeSuccessFilter(''), '');
+});
