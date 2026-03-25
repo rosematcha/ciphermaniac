@@ -1779,8 +1779,9 @@ h2 {
 }
 
 .tab.is-active {
-  border-color: #3b4aa0;
-  box-shadow: 0 0 0 1px #3b4aa0 inset;
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 1px var(--accent-2) inset;
+  color: var(--accent-2);
 }
 
 .controls.slim label {
@@ -2261,6 +2262,11 @@ h2 {
 .card-sect table thead th {
   background: rgba(255, 255, 255, 0.02);
   font-weight: 600;
+  padding: 10px 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
 }
 
 .card-sect table tbody tr:nth-child(odd) {
@@ -2587,6 +2593,9 @@ body.card-image-modal-open {
 .card-image-modal.is-loading .card-image-modal__image-wrap::after {
   content: '';
   position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -20px 0 0 -20px;
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -8941,23 +8950,50 @@ details[open] .analysis-toggle::after {
   }
 
   .archetypes-page .analysis-list-item__button {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: center;
+    padding: 10px;
+    gap: 10px;
   }
 
   .archetypes-page .analysis-list-item__preview {
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
   }
 
   .archetypes-page .analysis-list-item__thumbnail {
-    width: 100%;
-    height: 140px;
+    width: 88px;
+    height: 60px;
+    flex-shrink: 0;
+  }
+
+  .archetypes-page .analysis-list-item__main {
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .archetypes-page .analysis-list-item__signature {
+    display: none;
   }
 
   .archetypes-page .analysis-list-item__stats {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  .archetypes-page .analysis-list-item__percent {
+    font-size: var(--font-size-base);
+    min-width: 44px;
+  }
+
+  .archetypes-page .analysis-list-item__bar {
+    margin-top: 0;
   }
 }
 
@@ -11624,6 +11660,14 @@ body:not(.no-header) > header {
     inset 0 -1px 0 rgba(8, 12, 23, 0.48);
 }
 
+/* Reserve vertical space while loading to prevent CLS when list appears */
+#analysis-list-loading {
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .archetypes-page .analysis-list__items {
   grid-template-columns: 1fr;
   gap: 10px;
@@ -13153,7 +13197,7 @@ main#main-content {
     0 0 0 2px rgba(133, 188, 255, 0.24),
     inset 0 1px 0 rgba(242, 248, 255, 0.14),
     0 14px 30px rgba(0, 0, 0, 0.34);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .home-page .hero-search .search-icon {
@@ -13492,5 +13536,90 @@ main#main-content {
   .mover-media {
     width: 44px;
     border-radius: 8px;
+  }
+}
+
+/* ==========================================================================
+   Mobile Polish
+   ========================================================================== */
+
+/* Trends controls: tighter padding on mobile */
+@media (max-width: 600px) {
+  .trend-controls {
+    gap: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+  }
+
+  .trend-filter-label {
+    font-size: 10px;
+    padding: 4px 8px;
+    gap: 6px;
+  }
+}
+
+/* Archetypes toolbar: tighten on mobile */
+@media (max-width: 720px) {
+  .archetypes-toolbar {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+}
+
+/* ==========================================================================
+   Desktop Polish
+   ========================================================================== */
+
+/* Cards page: always stack name + set code vertically, never inline-truncate */
+body.cards-page .titleRow .name {
+  display: block;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: initial;
+  line-height: 1.25;
+  min-height: 2.5em;
+  margin-top: 4px;
+}
+
+body.cards-page .titleRow .name > span:first-child {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+body.cards-page .titleRow .name > .card-title-set {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+/* Home: vertically center content so empty space distributes evenly */
+.home-page {
+  justify-content: center;
+}
+
+/* Home: clamp hero padding tighter on short/narrow viewports */
+/* Archetypes: 2-column grid from 960px up (was 1320px — too wide) */
+@media (min-width: 960px) {
+  .archetypes-page .analysis-list__items {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .archetypes-page .analysis-list__items .analysis-list-item {
+    max-width: none;
+  }
+}
+
+@media (max-width: 375px) {
+  .hero-title {
+    font-size: clamp(36px, 12vw, 56px);
+    gap: 16px;
+  }
+
+  .hero-logo {
+    width: clamp(50px, 14vw, 70px);
   }
 }
