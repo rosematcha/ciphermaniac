@@ -48,10 +48,18 @@ try {
     'layout/_toolbar.css',
     'layout/_grid.css',
     'pages/_home.css',
+    'pages/_card-detail.css',
     'pages/_trends.css',
     'pages/_archetypes.css',
     'pages/_archetype.css',
+    'pages/_archetype-home.css',
     'pages/_archetype-trends.css',
+    'pages/_binder.css',
+    'pages/_about.css',
+    'pages/_incidents.css',
+    'pages/_feedback.css',
+    'pages/_player.css',
+    'pages/_tools.css',
     'pages/_responsive.css',
     'main.css'
   ];
