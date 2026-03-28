@@ -41,7 +41,7 @@
   <link rel="dns-prefetch" href="https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com" />
   <!-- Preload critical font to reduce layout shift -->
   <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="stylesheet" href="/assets/style.css?v=20260214h" />
+  <link rel="stylesheet" href="/assets/style-optimized.css?v=20260327b" />
   <!-- Preload critical JS modules for faster page load -->
   <link rel="modulepreload" href="/assets/js/src/loaders/card.js" />
 </head>
@@ -53,13 +53,13 @@
       <div class="header-title">
         <div class="title-row">
           <h1 id="card-title"></h1>
-          <div id="card-price" class="card-price">
-            <!-- Price loads asynchronously -->
+          <div class="title-row__right">
+            <div id="card-ref-links-slot"></div>
+            <div id="card-price" class="card-price"></div>
           </div>
         </div>
       </div>
       <div id="card-hero" class="card-hero">
-        <!-- Hero image container - populated by JS with smooth fade-in -->
         <div class="thumb" aria-hidden="true">
           <div class="skeleton-image" style="
                 width: 100%;
@@ -70,16 +70,10 @@
         </div>
       </div>
       <div id="card-center">
-        <!-- window-select removed; card page always shows the most recent 6 tournaments -->
-        <div id="card-chart" role="img" aria-label="Usage chart across tournaments">
-          <!-- Chart loads asynchronously with smooth transition -->
-        </div>
-        <div id="card-copies" role="img" aria-label="Copy count distribution histogram">
-          <!-- Histogram loads asynchronously with smooth transition -->
-        </div>
+        <div id="card-chart" role="img" aria-label="Usage chart across tournaments"></div>
+        <div id="card-copies" role="img" aria-label="Copy count distribution histogram"></div>
       </div>
       <div id="card-events"></div>
-      <!-- Card meta-share and copy count graph will go here -->
     </section>
     <details id="card-analysis" class="card-sect" open>
       <summary class="analysis-toggle">

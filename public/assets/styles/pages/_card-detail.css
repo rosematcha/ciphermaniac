@@ -1,0 +1,1200 @@
+/* Card Detail Page Styles */
+
+/* Carousel layout */
+.carousel-viewport {
+  overflow: auto;
+  scroll-snap-type: x mandatory;
+  display: block;
+  width: min(1200px, 100%);
+}
+
+.carousel-track {
+  display: flex;
+  gap: 12px;
+  padding: 0 8px;
+  scroll-padding: 8px;
+  scroll-snap-align: start;
+}
+
+.carousel-track .card {
+  scroll-snap-align: center;
+}
+
+.carousel-arrow {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  align-self: center;
+  cursor: pointer;
+}
+
+.carousel-arrow:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.suggestion-area {
+  gap: 10px;
+}
+
+/* Card page hero */
+.card-hero {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 0;
+}
+
+.card-hero .thumb {
+  width: 242px;
+  aspect-ratio: 200/278;
+}
+
+.card-hero .thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.card-hero .thumb.card-hero__trigger {
+  cursor: zoom-in;
+  border-radius: 14px;
+  outline: none;
+  transition:
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+  position: relative;
+}
+
+.card-hero .thumb.card-hero__trigger::before {
+  content: 'Tap or click to enlarge';
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+  background: rgba(8, 10, 24, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--muted);
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  pointer-events: none;
+}
+
+.card-hero .thumb.card-hero__trigger:hover::before,
+.card-hero .thumb.card-hero__trigger:focus-visible::before {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.card-hero .thumb.card-hero__trigger:focus-visible {
+  box-shadow: 0 0 0 3px rgba(111, 140, 255, 0.65);
+}
+
+.card-hero .thumb.card-hero__trigger img {
+  pointer-events: none;
+}
+
+/* Card pricing styles */
+.card-price {
+  margin: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+body.card-image-modal-open {
+  overflow: hidden;
+}
+
+.card-image-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out;
+  z-index: 400;
+}
+
+.card-image-modal.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (max-width: 480px) {
+  .card-image-modal {
+    padding: 16px;
+  }
+}
+
+.card-image-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 7, 18, 0.82);
+  backdrop-filter: blur(2px);
+}
+
+.card-image-modal__dialog {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  border-radius: 0;
+  border: none;
+  width: min(560px, 92vw);
+  max-height: calc(100vh - 60px);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  box-shadow: none;
+}
+
+.card-image-modal__image-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-height: calc(100vh - 220px);
+}
+
+.card-image-modal__image-wrap img {
+  max-width: 100%;
+  max-height: calc(100vh - 240px);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.card-image-modal__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  background: rgba(15, 17, 34, 0.85);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255, 107, 107, 0.15);
+}
+
+@media (max-width: 720px) {
+  .card-image-modal__close {
+    width: 48px;
+    height: 48px;
+    font-size: 24px;
+    top: 8px;
+    right: 8px;
+  }
+}
+
+.card-image-modal__close:hover {
+  transform: scale(1.05);
+  border-color: var(--accent-2);
+}
+
+.card-image-modal__close:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+.card-image-modal__caption {
+  display: none;
+}
+
+.card-image-modal.is-loading .card-image-modal__image-wrap::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -20px 0 0 -20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-top-color: var(--accent-2);
+  animation: spin 1s linear infinite;
+}
+
+.card-image-modal.is-loading img {
+  opacity: 0;
+}
+
+.card-image-modal.has-error .card-image-modal__image-wrap::after {
+  content: 'Unable to load card image';
+  position: absolute;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(15, 17, 34, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.card-image-modal.has-error img {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .card-image-modal {
+    padding: 16px;
+  }
+
+  .card-image-modal__dialog {
+    width: 100%;
+    padding: 24px 18px 18px;
+  }
+}
+
+.price-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+}
+
+.price-label {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.price-value {
+  color: #4ade80;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.price-info.no-price {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Loading and error states for card components */
+.price-info.loading .price-value,
+#card-sets.loading {
+  color: var(--muted);
+  font-style: italic;
+  position: relative;
+}
+
+.price-info.loading .price-value::after,
+#card-sets.loading::after {
+  content: '';
+  position: absolute;
+  right: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--muted);
+  border-top-color: var(--accent-2);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.price-info.error,
+#card-sets.error {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+@keyframes spin {
+  from {
+    transform: translateY(-50%) rotate(0deg);
+  }
+
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  }
+}
+
+/* Cleaner two-column layout: sticky hero on the left; title spans full width; right column stacks sections. */
+#card-meta {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-areas:
+    'header header'
+    'hero   center'
+    'events events';
+  gap: 24px 32px;
+  align-items: start;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 24px;
+  overflow: hidden;
+}
+
+.header-title {
+  grid-area: header;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.header-title h1 {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: 0.2px;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.card-title-name {
+  /* Card name stays together, truncates if needed */
+}
+
+.card-title-set {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 0.4em;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+/* Expand button for showing more synonym sets */
+.set-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.35em;
+  padding: 0.1em 0.5em;
+  min-width: 1.8em;
+  font-size: 0.9em;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--accent-2, #6b8cff);
+  background: rgba(107, 140, 255, 0.12);
+  border: 1px solid rgba(107, 140, 255, 0.25);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  vertical-align: baseline;
+  line-height: 1.4;
+}
+
+.set-expand-btn:hover {
+  background: rgba(107, 140, 255, 0.22);
+  border-color: rgba(107, 140, 255, 0.4);
+  color: #8fa8ff;
+  transform: translateY(-1px);
+}
+
+.set-expand-btn:active {
+  transform: translateY(0);
+}
+
+.set-expand-btn:focus-visible {
+  outline: 2px solid var(--accent-2, #6b8cff);
+  outline-offset: 2px;
+}
+
+.set-expand-btn[aria-expanded='true'] {
+  background: rgba(107, 140, 255, 0.18);
+  color: var(--muted);
+}
+
+/* Hidden sets fade in smoothly */
+.set-hidden {
+  animation: fadeInSets 0.2s ease-out;
+}
+
+@keyframes fadeInSets {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.card-sets {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0 0 4px;
+  font-weight: normal;
+  letter-spacing: normal;
+}
+
+#card-hero {
+  grid-area: hero;
+  align-self: start;
+  min-height: 280px;
+  position: sticky;
+  top: 20px;
+}
+
+#card-center {
+  grid-area: center;
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 12px;
+  max-width: 700px;
+}
+
+#card-window {
+  margin: 0 0 2px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+#card-chart {
+  width: 100%;
+  overflow: hidden;
+  transition: opacity 0.2s ease;
+  min-height: 60px;
+}
+
+#card-chart svg {
+  width: 100%;
+  height: auto;
+}
+
+#card-copies {
+  width: 100%;
+  transition: opacity 0.2s ease;
+  min-height: 40px;
+}
+
+#card-events {
+  grid-area: events;
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  transition: opacity 0.2s ease;
+  min-height: 40px;
+}
+
+/* Ensure tables in events/copies use full width even if inline styles exist */
+#card-events table {
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Subtle row hover on events table */
+#card-events tbody tr {
+  transition: background 0.12s ease;
+}
+
+#card-events tbody tr:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.card-sect a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+.card-sect a:hover {
+  text-decoration: underline;
+}
+
+/* Floating tooltip for charts and histograms */
+.graph-tooltip {
+  background: linear-gradient(180deg, rgba(26, 27, 34, 0.98), rgba(18, 19, 23, 0.98));
+  color: var(--text);
+  border: 1px solid rgba(60, 80, 140, 0.25);
+  padding: 8px 10px;
+  font-size: 13px;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+  min-width: 80px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.graph-tooltip.is-visible {
+  opacity: 1;
+}
+
+.graph-tooltip strong {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* Avoid duplicate timeline notes: prefer the one near the events table */
+#card-meta>.toggle-note {
+  display: none;
+}
+
+/* Tablet: narrower 2-column */
+@media (max-width: 900px) {
+  #card-meta {
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 20px 24px;
+    padding: 20px;
+  }
+
+  #card-hero {
+    position: static;
+  }
+
+  .card-hero .thumb {
+    width: 200px;
+  }
+}
+
+/* Narrow tablet / large phone: single column, compact card */
+@media (max-width: 640px) {
+  #card-meta {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'header'
+      'hero'
+      'center'
+      'events';
+    gap: 20px;
+    padding: 18px 16px;
+  }
+
+  .header-title {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  #card-hero {
+    position: static;
+    min-height: auto;
+    display: flex;
+    justify-content: center;
+  }
+
+  .card-hero {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .card-hero .thumb {
+    width: 180px !important;
+    min-height: auto !important;
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  .header-title h1 {
+    font-size: 22px;
+    white-space: normal;
+  }
+
+  .card-title-set {
+    display: block;
+    margin-left: 0;
+    margin-top: 3px;
+    font-size: 13px;
+  }
+
+  .card-price {
+    justify-content: flex-start;
+  }
+
+  #card-center {
+    gap: 16px;
+  }
+}
+
+/* Phone: tighter */
+@media (max-width: 480px) {
+  .card-hero .thumb {
+    width: 150px !important;
+  }
+
+  .header-title h1 {
+    font-size: 20px;
+  }
+}
+
+/* Desktop hero size — scoped to avoid overriding smaller screens */
+@media (min-width: 641px) {
+  .card-hero .thumb {
+    width: 240px;
+  }
+}
+
+/* Slightly more spacing for inline summaries within the center column */
+#card-center .summary {
+  margin: 6px 2px 12px;
+}
+
+/* Card analysis layout and responsive tables */
+#card-analysis {
+  max-width: 1280px;
+  margin: 12px auto;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* Analysis header with inline controls */
+.analysis-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.analysis-header h2 {
+  margin: 0;
+}
+
+.analysis-header .controls {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .analysis-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+/* Make tables inside card sections behave on small screens: allow horizontal scroll and wrap cell content */
+.card-sect {
+  position: relative;
+}
+
+.card-sect {
+  -webkit-overflow-scrolling: touch;
+}
+
+.card-sect table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.card-sect th,
+.card-sect td {
+  white-space: normal;
+  word-break: break-word;
+  padding: 10px;
+}
+
+/* Sticky header for analysis table */
+#card-analysis thead th {
+  position: sticky;
+  top: 0;
+  /* stick to top of the scroll container */
+  /* Make the default header visually match the sticky/floating appearance */
+  background: var(--panel);
+  color: var(--text);
+  padding: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  z-index: 50;
+  /* higher so it stays above other content while scrolling */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* Allow horizontal scrolling of wide tables without forcing a min-width that breaks layout */
+.card-sect {
+  overflow-x: auto;
+}
+
+@media (max-width: 720px) {
+
+  .card-sect th,
+  .card-sect td {
+    padding: 8px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+
+  .card-sect th,
+  .card-sect td {
+    padding: 6px;
+    font-size: 12px;
+  }
+
+  /* Make the analysis grid more compact and readable on narrow screens */
+  .card-sect table {
+    font-size: 12px;
+  }
+
+  .card-sect td,
+  .card-sect th {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .card-sect td {
+    text-align: right;
+  }
+
+  .card-sect td:first-child,
+  .card-sect th:first-child {
+    text-align: left;
+  }
+
+  /* Use a tabular number-style so percentages align nicely (better visual alignment) */
+  .card-sect td,
+  .card-sect th {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Slightly increase contrast and weight on numeric cells for legibility */
+  .card-sect td {
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .card-sect td:first-child {
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* Reduce spacing between the small 'Copies across' summary dots */
+  .summary {
+    line-height: 1.2;
+  }
+}
+
+/* Styling for the overall percentage element in the summary */
+.summary .overall-pct {
+  margin: 0 4px;
+  color: var(--text);
+  font-weight: 800;
+}
+
+/* Floating header clone styling (used by JS fallback) */
+.floating-thead {
+  pointer-events: none;
+  background: var(--bg, #0a0c15);
+}
+
+.floating-thead table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+}
+
+.floating-thead th {
+  padding: 10px;
+  background: var(--panel);
+  color: var(--text);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Narrow the archetype/name column and give numeric columns more breathing room */
+.card-sect table thead th:first-child,
+.card-sect table tbody td:first-child {
+  width: 34%;
+  /* leave ~1/3 for name, rest for numbers */
+  min-width: 140px;
+  /* prevent it shrinking to nothing on tiny screens */
+}
+
+.card-sect table thead th:not(:first-child),
+.card-sect table tbody td:not(:first-child) {
+  width: calc(66% / 5);
+  /* distribute remaining space across numeric columns */
+  text-align: right;
+}
+
+@media (max-width: 720px) {
+
+  /* On medium/narrow screens, allow the table to keep proportions but be scrollable */
+  .card-sect table {
+    table-layout: fixed;
+  }
+}
+
+/* Make the 'Played %' column (second column) more prominent */
+.card-sect thead th:nth-child(2),
+.card-sect tbody td:nth-child(2) {
+  font-weight: 600;
+  /* less bold, as requested */
+  color: var(--text);
+}
+
+/* Color for explicit 0% values to increase contrast slightly */
+.card-sect td.zero-pct {
+  color: var(--muted-darker);
+}
+
+/* ==========================================================================
+   Skeleton Placeholders for CLS Reduction
+   ========================================================================== */
+
+/* Base skeleton animation */
+@keyframes skeleton-loading {
+  0% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+
+  100% {
+    opacity: 0.6;
+  }
+}
+
+/* Skeleton loading - consolidated */
+.skeleton-loading,
+.showing-skeleton {
+  position: relative;
+}
+
+.skeleton-loading>.skeleton-text,
+.skeleton-loading>.skeleton-image,
+.skeleton-loading>.skeleton-chart,
+.skeleton-loading>.skeleton-histogram,
+.showing-skeleton>* {
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+/* When skeleton is removed, fade in the new content */
+.card-sect>*:not(.skeleton-loading):not(.skeleton-chart):not(.skeleton-histogram):not([aria-hidden='true']) {
+  animation: fadeInContent 0.2s ease-out forwards;
+}
+
+@keyframes fadeInContent {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Card section loading - consolidated */
+#card-chart,
+#card-copies,
+#card-events,
+#card-price,
+#card-sets {
+  transition: opacity 0.15s ease-out;
+}
+
+#card-chart:empty,
+#card-copies:empty,
+#card-events:empty {
+  min-height: 100px;
+  background: transparent;
+}
+
+#card-chart {
+  min-height: 180px;
+}
+
+#card-copies {
+  min-height: 100px;
+}
+
+/* Smooth hero image reveal */
+.card-hero .thumb {
+  background: #0b0c12;
+  min-height: 280px;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (max-width: 640px) {
+  .card-hero .thumb {
+    min-height: auto;
+  }
+}
+
+.card-hero .thumb img {
+  transition: opacity 0.18s ease-out;
+}
+
+/* Skeleton image within hero */
+.card-hero .thumb .skeleton-image {
+  position: absolute;
+  inset: 0;
+  background: var(--bar-bg);
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+/* Prevent flash when content updates - apply base transition */
+.card-sect {
+  transition: opacity 0.1s ease-out;
+}
+
+/* Ensure SVG charts fade in smoothly */
+#card-chart svg {
+  animation: fadeInContent 0.2s ease-out forwards;
+}
+
+/* Histogram bars should animate in */
+#card-copies .hist {
+  animation: fadeInContent 0.2s ease-out forwards;
+}
+
+/* Events table should animate in */
+#card-events table {
+  animation: fadeInContent 0.2s ease-out forwards;
+}
+
+.skeleton-card {
+  pointer-events: none;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+/* Transition wrapper for smooth content replacement */
+.skeleton-transition-wrapper {
+  transition: opacity 0.15s ease-out;
+}
+
+/* Prevent any FOUC on initial page load */
+.card-sect[aria-hidden='true'] {
+  visibility: hidden;
+}
+
+/* ==========================================================================
+   Card Identity Bar — pills for category, type, reg mark, ace spec, rank
+   ========================================================================== */
+
+.card-identity-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.card-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-radius: 100px;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.card-pill--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.card-pill svg { width: 10px; height: 10px; flex-shrink: 0; }
+
+.card-pill--pokemon { color: var(--accent); border: 1px solid rgba(232, 168, 62, 0.25); }
+.card-pill--trainer { color: var(--accent-2); border: 1px solid rgba(106, 163, 255, 0.2); }
+.card-pill--energy  { color: var(--success); border: 1px solid rgba(58, 210, 122, 0.2); }
+.card-pill--unknown { color: var(--muted); border: 1px solid rgba(255, 255, 255, 0.1); }
+.card-pill--subtype { color: var(--muted); border: 1px solid rgba(255, 255, 255, 0.1); }
+.card-pill--ace {
+  color: #ffd05a;
+  border: 1px solid rgba(255, 208, 90, 0.3);
+}
+.card-pill--reg {
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-weight: 700;
+  font-size: 11px;
+  font-family: 'Fraunces', serif;
+  padding: 2px 7px;
+}
+.card-pill--rank {
+  color: var(--accent);
+  border: 1px solid rgba(232, 168, 62, 0.2);
+}
+
+/* ==========================================================================
+   Stat Line — bare inline text, no card/box
+   ========================================================================== */
+
+.stat-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 8px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.stat-line--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.stat-line__hero {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+  margin-right: 5px;
+  line-height: 1.1;
+}
+
+.stat-line__label {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.stat-line__sep {
+  color: var(--muted-darker);
+  margin: 0 8px;
+  user-select: none;
+}
+
+.stat-line__trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-line__trend svg {
+  position: relative;
+  top: 1px;
+}
+
+.stat-line__trend--up { color: var(--success); }
+.stat-line__trend--down { color: var(--error); }
+.stat-line__trend--flat { color: var(--muted); }
+
+.stat-line__detail {
+  color: var(--text);
+}
+
+.stat-line__muted {
+  color: var(--muted);
+}
+
+/* ==========================================================================
+   Title Row Right — price + external links grouped together
+   ========================================================================== */
+
+.title-row__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Inline Reference Links — next to price in title row
+   ========================================================================== */
+
+.card-ref-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card-ref-links--visible {
+  opacity: 1;
+}
+
+.card-ref-links::before {
+  display: none;
+}
+
+.card-ref-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.card-ref-link:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+  text-decoration: none;
+}
+
+.card-ref-link svg {
+  opacity: 0.4;
+  transition: opacity 0.15s ease;
+}
+
+.card-ref-link:hover svg {
+  opacity: 0.7;
+}
+
+/* ==========================================================================
+   Responsive: Card detail page
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  /* Stack title-row vertically on narrower screens */
+  .title-row {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .title-row__right {
+    margin-left: 0;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .card-ref-link { font-size: 11px; padding: 3px 6px; }
+
+  #card-events { padding-top: 14px; margin-top: 4px; }
+}
+
+/* Extra-small: tighten further */
+@media (max-width: 380px) {
+  .card-hero .thumb { width: 120px !important; }
+  .header-title h1 { font-size: 18px; }
+}
