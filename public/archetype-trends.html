@@ -44,7 +44,7 @@
 
     <!-- Preload critical font to reduce layout shift -->
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="/assets/style.css?v=20260214h" />
+    <link rel="stylesheet" href="/assets/style-optimized.css?v=20260327b" />
     <!-- Preload critical JS module for faster page load -->
     <link rel="modulepreload" href="/assets/js/src/loaders/archetype-trends.js" />
   </head>
@@ -53,6 +53,21 @@
     <div class="archetype-page archetype-trends-page" data-state="loading">
       <main id="main-content" class="archetype-main" tabindex="-1">
         <section class="archetype-content">
+          <!-- Archetype Identity Header - always visible during loading -->
+          <div class="archetype-header-row">
+            <nav class="archetype-breadcrumb" aria-label="Breadcrumb">
+              <a href="/archetypes" class="archetype-breadcrumb__link">← Archetypes</a>
+            </nav>
+            <h1 id="archetype-title" class="archetype-title"></h1>
+          </div>
+
+          <!-- Tab Navigation - always visible during loading -->
+          <nav class="archetype-tabs" aria-label="Archetype views">
+            <a id="tab-home" class="archetype-tab" href="#">Overview</a>
+            <a id="tab-analysis" class="archetype-tab" href="#">Analysis</a>
+            <a id="tab-trends" class="archetype-tab is-active" href="#" aria-current="page">Trends</a>
+          </nav>
+
           <div id="archetype-loading" class="archetype-loading" role="status">
             <div class="loading-spinner"></div>
             <p>Loading archetype trends...</p>
@@ -64,14 +79,7 @@
           </div>
 
           <div class="archetype-simple" hidden>
-            <!-- Tab Navigation -->
-            <nav class="archetype-tabs" aria-label="Archetype views">
-              <a id="tab-home" class="archetype-tab" href="#">Overview</a>
-              <a id="tab-analysis" class="archetype-tab" href="#">Analysis</a>
-              <a id="tab-trends" class="archetype-tab is-active" href="#" aria-current="page">Trends</a>
-            </nav>
-
-            <!-- Tier Filter (simpler, inline) -->
+            <!-- Tier Filter -->
             <div class="trends-tier-bar">
               <label for="trends-performance-filter">Deck finish:</label>
               <div class="select-wrapper">
@@ -111,11 +119,6 @@
             <span class="hero-stat-label">Date Range</span>
           </div>
         </section>
-
-        <!-- Narrative Summary (filled by JS) -->
-        <div id="trends-narrative" class="trends-narrative" hidden>
-          <p id="narrative-text">Loading trend analysis...</p>
-        </div>
 
         <!-- Key Insights Summary -->
         <section id="trends-insights" class="trends-insights-panel" hidden aria-label="Key deck building insights">
@@ -183,6 +186,106 @@
             <div id="substitutions-list" class="substitutions-grid"></div>
           </div>
         </section>
+
+        <!-- Main Playrate Timeline Chart -->
+        <section id="trends-chart-container" class="trends-chart-container-v2" hidden>
+          <div class="chart-header">
+            <div class="chart-title-group">
+              <h2>Playrate Over Time</h2>
+              <div class="chart-toggle">
+                <button type="button" id="chart-toggle-weekly" class="toggle-btn active">Weekly</button>
+                <button type="button" id="chart-toggle-daily" class="toggle-btn">Daily</button>
+              </div>
+            </div>
+            <p class="chart-subtitle" id="chart-subtitle">Click cards in the table below to add them to the chart</p>
+          </div>
+
+          <!-- Chart Summary Statistics -->
+          <div id="chart-summary" class="chart-summary-stats" hidden>
+            <div class="chart-summary-stat">
+              <span id="summary-cards-count" class="chart-summary-value chart-summary-value--accent">0</span>
+              <span class="chart-summary-label">Cards Tracked</span>
+            </div>
+            <div class="chart-summary-stat">
+              <span id="summary-avg-playrate" class="chart-summary-value">0%</span>
+              <span class="chart-summary-label">Avg Playrate</span>
+            </div>
+            <div class="chart-summary-stat">
+              <span id="summary-peak" class="chart-summary-value">0%</span>
+              <span class="chart-summary-label">Peak</span>
+            </div>
+            <div class="chart-summary-stat">
+              <span id="summary-trend" class="chart-summary-value">-</span>
+              <span class="chart-summary-label">Overall Trend</span>
+            </div>
+          </div>
+
+          <div id="trends-chart" class="trends-chart-v2" role="img" aria-label="Card usage trends over time"></div>
+          <div id="trends-chart-legend" class="trends-chart-legend-v2"></div>
+        </section>
+
+        <!-- Card List with Enhanced Info -->
+        <section id="trends-card-list" class="trends-card-list" hidden>
+          <div class="card-list-header">
+            <h2>All Cards</h2>
+            <div class="card-list-controls">
+              <label for="card-sort">Sort:</label>
+              <select id="card-sort" class="filter-card-select">
+                <option value="playrate">Current Playrate</option>
+                <option value="trending">Trending</option>
+                <option value="name">Name</option>
+                <option value="copies">Avg Copies</option>
+                <option value="volatility">Volatility</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Category Tabs -->
+          <div class="card-categories-tabs" role="tablist" aria-label="Filter cards by category">
+            <button type="button" class="category-tab active" data-category="all" role="tab" aria-selected="true">
+              All <span class="tab-count" id="count-all">0</span>
+            </button>
+            <button type="button" class="category-tab" data-category="core" role="tab" aria-selected="false">
+              Core <span class="tab-count" id="count-core">0</span>
+            </button>
+            <button type="button" class="category-tab" data-category="staple" role="tab" aria-selected="false">
+              Staple <span class="tab-count" id="count-staple">0</span>
+            </button>
+            <button type="button" class="category-tab" data-category="flex" role="tab" aria-selected="false">
+              Flex <span class="tab-count" id="count-flex">0</span>
+            </button>
+            <button type="button" class="category-tab" data-category="tech" role="tab" aria-selected="false">
+              Tech <span class="tab-count" id="count-tech">0</span>
+            </button>
+            <button type="button" class="category-tab" data-category="emerging" role="tab" aria-selected="false">
+              Rising <span class="tab-count" id="count-emerging">0</span>
+            </button>
+            <button type="button" class="category-tab" data-category="fading" role="tab" aria-selected="false">
+              Falling <span class="tab-count" id="count-fading">0</span>
+            </button>
+          </div>
+          <div class="card-list-table-wrapper">
+            <table class="card-list-table">
+              <thead>
+                <tr>
+                  <th class="col-chart">Chart</th>
+                  <th class="col-name">Card</th>
+                  <th class="col-category">Type</th>
+                  <th class="col-playrate">Playrate</th>
+                  <th class="col-copies">Copies</th>
+                  <th class="col-change">Change</th>
+                  <th class="col-sparkline">Weekly Trend</th>
+                </tr>
+              </thead>
+              <tbody id="card-list-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Narrative Summary (filled by JS) -->
+        <div id="trends-narrative" class="trends-narrative" hidden>
+          <p id="narrative-text">Loading trend analysis...</p>
+        </div>
 
         <!-- Matchup Spread -->
         <section id="trends-matchups" class="trends-matchups" hidden aria-label="Matchup win rates">
@@ -285,101 +388,6 @@
                 <span id="copy-change" class="copy-stat-value copy-stat-delta">-</span>
               </div>
             </div>
-          </div>
-        </section>
-
-        <!-- Main Playrate Timeline Chart -->
-        <section id="trends-chart-container" class="trends-chart-container-v2" hidden>
-          <div class="chart-header">
-            <div class="chart-title-group">
-              <h2>Playrate Over Time</h2>
-              <div class="chart-toggle">
-                <button type="button" id="chart-toggle-weekly" class="toggle-btn active">Weekly</button>
-                <button type="button" id="chart-toggle-daily" class="toggle-btn">Daily</button>
-              </div>
-            </div>
-            <p class="chart-subtitle" id="chart-subtitle">Click cards in the table below to add them to the chart</p>
-          </div>
-
-          <!-- Chart Summary Statistics -->
-          <div id="chart-summary" class="chart-summary-stats" hidden>
-            <div class="chart-summary-stat">
-              <span id="summary-cards-count" class="chart-summary-value chart-summary-value--accent">0</span>
-              <span class="chart-summary-label">Cards Tracked</span>
-            </div>
-            <div class="chart-summary-stat">
-              <span id="summary-avg-playrate" class="chart-summary-value">0%</span>
-              <span class="chart-summary-label">Avg Playrate</span>
-            </div>
-            <div class="chart-summary-stat">
-              <span id="summary-peak" class="chart-summary-value">0%</span>
-              <span class="chart-summary-label">Peak</span>
-            </div>
-            <div class="chart-summary-stat">
-              <span id="summary-trend" class="chart-summary-value">-</span>
-              <span class="chart-summary-label">Overall Trend</span>
-            </div>
-          </div>
-
-          <div id="trends-chart" class="trends-chart-v2" role="img" aria-label="Card usage trends over time"></div>
-          <div id="trends-chart-legend" class="trends-chart-legend-v2"></div>
-        </section>
-
-        <!-- Card List with Enhanced Info -->
-        <section id="trends-card-list" class="trends-card-list" hidden>
-          <div class="card-list-header">
-            <h2>All Cards</h2>
-            <div class="card-list-controls">
-              <label for="card-sort">Sort:</label>
-              <select id="card-sort" class="filter-card-select">
-                <option value="playrate">Current Playrate</option>
-                <option value="trending">Trending</option>
-                <option value="name">Name</option>
-                <option value="copies">Avg Copies</option>
-                <option value="volatility">Volatility</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Category Tabs -->
-          <div class="card-categories-tabs" role="tablist" aria-label="Filter cards by category">
-            <button type="button" class="category-tab active" data-category="all" role="tab" aria-selected="true">
-              All <span class="tab-count" id="count-all">0</span>
-            </button>
-            <button type="button" class="category-tab" data-category="core" role="tab" aria-selected="false">
-              Core <span class="tab-count" id="count-core">0</span>
-            </button>
-            <button type="button" class="category-tab" data-category="staple" role="tab" aria-selected="false">
-              Staple <span class="tab-count" id="count-staple">0</span>
-            </button>
-            <button type="button" class="category-tab" data-category="flex" role="tab" aria-selected="false">
-              Flex <span class="tab-count" id="count-flex">0</span>
-            </button>
-            <button type="button" class="category-tab" data-category="tech" role="tab" aria-selected="false">
-              Tech <span class="tab-count" id="count-tech">0</span>
-            </button>
-            <button type="button" class="category-tab" data-category="emerging" role="tab" aria-selected="false">
-              Rising <span class="tab-count" id="count-emerging">0</span>
-            </button>
-            <button type="button" class="category-tab" data-category="fading" role="tab" aria-selected="false">
-              Falling <span class="tab-count" id="count-fading">0</span>
-            </button>
-          </div>
-          <div class="card-list-table-wrapper">
-            <table class="card-list-table">
-              <thead>
-                <tr>
-                  <th class="col-chart">Chart</th>
-                  <th class="col-name">Card</th>
-                  <th class="col-category">Type</th>
-                  <th class="col-playrate">Playrate</th>
-                  <th class="col-copies">Copies</th>
-                  <th class="col-change">Change</th>
-                  <th class="col-sparkline">Weekly Trend</th>
-                </tr>
-              </thead>
-              <tbody id="card-list-body"></tbody>
-            </table>
           </div>
         </section>
 

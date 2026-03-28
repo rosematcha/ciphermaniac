@@ -39,7 +39,7 @@
 
   <!-- Preload critical font to reduce layout shift -->
   <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="stylesheet" href="/assets/style.css?v=20260214h" />
+  <link rel="stylesheet" href="/assets/style-optimized.css?v=20260327b" />
   <!-- Preload critical JS module for faster page load -->
   <link rel="modulepreload" href="/assets/js/src/loaders/archetype.js" />
 </head>
@@ -48,6 +48,21 @@
   <div class="archetype-page" data-state="loading">
     <main id="main-content" class="archetype-main" tabindex="-1">
       <section class="archetype-content">
+        <!-- Archetype Identity Header - always visible during loading -->
+        <div class="archetype-header-row">
+          <nav class="archetype-breadcrumb" aria-label="Breadcrumb">
+            <a href="/archetypes" class="archetype-breadcrumb__link">← Archetypes</a>
+          </nav>
+          <h1 id="archetype-title" class="archetype-title"></h1>
+        </div>
+
+        <!-- Tab Navigation - always visible during loading -->
+        <nav class="archetype-tabs" aria-label="Archetype views">
+          <a id="tab-home" class="archetype-tab" href="#">Overview</a>
+          <a id="tab-analysis" class="archetype-tab is-active" href="#" aria-current="page">Analysis</a>
+          <a id="tab-trends" class="archetype-tab" href="#">Trends</a>
+        </nav>
+
         <div id="archetype-loading" class="archetype-loading" role="status">
           <div class="loading-spinner"></div>
           <p>Loading archetype details…</p>
@@ -59,17 +74,13 @@
         </div>
 
         <div class="archetype-simple" hidden>
-          <!-- Tab Navigation -->
-          <nav class="archetype-tabs" aria-label="Archetype views">
-            <a id="tab-home" class="archetype-tab" href="#">Overview</a>
-            <a id="tab-analysis" class="archetype-tab is-active" href="#" aria-current="page">Analysis</a>
-            <a id="tab-trends" class="archetype-tab" href="#">Trends</a>
-          </nav>
-
           <div class="archetype-controls-panel archetype-controls">
             <div class="panel-header">
               <div id="skeleton-summary" class="summary-display" hidden>
                 <span class="skeleton-count">Skeleton: <strong id="skeleton-count-value">0</strong> cards</span>
+              </div>
+              <div id="card-count-display" class="card-count-display" hidden>
+                <span id="card-count-value">0</span> cards shown
               </div>
 
               <div class="header-actions">
@@ -78,8 +89,8 @@
                   <button id="skeleton-export-live" class="btn-primary btn-sm" type="button">Copy Export</button>
                 </div>
 
-                <button id="controls-toggle" class="btn-toggle" aria-expanded="false" aria-label="Toggle controls">
-                  <span class="btn-label">Configure</span>
+                <button id="controls-toggle" class="btn-toggle" aria-expanded="true" aria-label="Toggle controls">
+                  <span class="btn-label">Filters</span>
                   <span class="icon">▼</span>
                 </button>
               </div>

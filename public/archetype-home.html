@@ -44,7 +44,7 @@
 
     <!-- Preload critical font to reduce layout shift -->
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="/assets/style.css?v=20260214h" />
+    <link rel="stylesheet" href="/assets/style-optimized.css?v=20260327b" />
     <!-- Preload critical JS module for faster page load -->
     <link rel="modulepreload" href="/assets/js/src/loaders/archetype-home.js" />
   </head>
@@ -65,6 +65,14 @@
       <main id="main-content" class="archetype-main" tabindex="-1">
         <section class="archetype-content">
           <div class="archetype-simple">
+            <!-- Archetype Identity Header -->
+            <div class="archetype-header-row">
+              <nav class="archetype-breadcrumb" aria-label="Breadcrumb">
+                <a href="/archetypes" class="archetype-breadcrumb__link">← Archetypes</a>
+              </nav>
+              <h1 id="archetype-title" class="archetype-title"></h1>
+            </div>
+
             <!-- Tab Navigation -->
             <nav class="archetype-tabs" aria-label="Archetype views">
               <a id="tab-home" class="archetype-tab is-active" href="#" aria-current="page">Overview</a>
@@ -116,20 +124,6 @@
               </div>
             </section>
 
-            <!-- Action Cards -->
-            <section id="archetype-actions" class="archetype-home-content" hidden>
-              <div class="archetype-home-card">
-                <h2>Deck Analysis</h2>
-                <p>Deep dive into card inclusions, win rates, and matchups for this archetype.</p>
-                <a id="link-analysis-card" href="analysis" class="btn-primary">View Analysis</a>
-              </div>
-
-              <div class="archetype-home-card">
-                <h2>Metagame Trends</h2>
-                <p>Track performance and popularity over time. See which cards are rising or falling in usage.</p>
-                <a id="link-trends-card" href="trends" class="btn-primary">View Trends</a>
-              </div>
-            </section>
           </div>
         </section>
       </main>
@@ -146,18 +140,5 @@
       document.body.insertAdjacentElement('beforeend', footer);
     </script>
     <script type="module" src="/assets/js/src/loaders/archetype-home.js"></script>
-    <script>
-      // Simple inline script to update the card links based on current URL
-      (function () {
-        const path = window.location.pathname;
-        const analysisLink = document.querySelector('#link-analysis-card');
-        const trendsLink = document.querySelector('#link-trends-card');
-
-        // Ensure trailing slash logic works or relative links work
-        // If we are at /archetype/Charizard, 'analysis' -> /archetype/Charizard/analysis
-        if (analysisLink) analysisLink.href = path.replace(/\/$/, '') + '/analysis';
-        if (trendsLink) trendsLink.href = path.replace(/\/$/, '') + '/trends';
-      })();
-    </script>
   </body>
 </html>
