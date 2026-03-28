@@ -592,7 +592,7 @@ async function loadSelectionData(
  */
 function getInitialTournamentSelection(state: AppState): { selection: string[]; needsTournamentList: boolean } {
   const urlState = getStateFromURL();
-  const urlSelectionRaw = urlState.tour ? urlState.tour.split(',') : [];
+  const urlSelectionRaw = urlState.tour ? urlState.tour.split('|') : [];
   const normalizedFromUrl = normalizeTournamentSelection(urlSelectionRaw);
 
   // If URL specifies tournaments, we need to validate against the list
@@ -674,11 +674,11 @@ async function loadTournamentList(state: AppState, currentSelection: string[]) {
   // Update URL if needed
   const urlState = getStateFromURL();
   if (urlState.tour && tournaments && selectionChanged) {
-    const normalizedParam = validatedSelection.join(',');
-    const urlSelectionRaw = urlState.tour.split(',');
+    const normalizedParam = validatedSelection.join('|');
+    const urlSelectionRaw = urlState.tour.split('|');
     const normalizedUrlParam = normalizeTournamentSelection(urlSelectionRaw)
       .filter(value => tournaments.includes(value))
-      .join(',');
+      .join('|');
     if (normalizedUrlParam !== normalizedParam) {
       setStateInURL({ tour: normalizedParam }, { merge: true, replace: true });
     }
@@ -1077,7 +1077,7 @@ function setupControlHandlers(state: AppState) {
 
       await applyCurrentFilters(state);
 
-      setStateInURL({ tour: selection.join(',') }, { merge: true });
+      setStateInURL({ tour: selection.join('|') }, { merge: true });
     } catch (error) {
       // Ignore cancelled requests
       if (signal.aborted) {
@@ -1213,7 +1213,9 @@ async function init() {
     initActiveFilters({
       onClearSearch: async () => {
         const s = document.getElementById('search') as HTMLInputElement | null;
-        if (s) s.value = '';
+        if (s) {
+          s.value = '';
+        }
         await applyCurrentFilters(appState);
         setStateInURL({ query: '' }, { merge: true, replace: true });
       },
@@ -1233,12 +1235,16 @@ async function init() {
       },
       onClearRegulationMarks: async () => {
         writeSelectedRegulationMarks([]);
-        document.querySelectorAll<HTMLInputElement>('input[name="regmark"]').forEach(cb => { cb.checked = false; });
+        document.querySelectorAll<HTMLInputElement>('input[name="regmark"]').forEach(el => {
+          el.checked = false;
+        });
         await applyCurrentFilters(appState);
       },
       onClearSuccess: async () => {
         const sel = document.getElementById('success-filter') as HTMLSelectElement | null;
-        if (sel) sel.value = 'all';
+        if (sel) {
+          sel.value = 'all';
+        }
         appState.successFilter = 'all';
         const selection = appState.selectedTournaments.length
           ? appState.selectedTournaments
@@ -1256,7 +1262,9 @@ async function init() {
       },
       onClearAll: async () => {
         const s = document.getElementById('search') as HTMLInputElement | null;
-        if (s) s.value = '';
+        if (s) {
+          s.value = '';
+        }
         writeSelectedSets([]);
         appState.selectedSets = [];
         appState.ui?.dropdowns?.sets?.setSelection([], { silent: true });
@@ -1264,9 +1272,13 @@ async function init() {
         appState.selectedCardType = '';
         appState.ui?.dropdowns?.cardTypes?.setSelection([], { silent: true });
         writeSelectedRegulationMarks([]);
-        document.querySelectorAll<HTMLInputElement>('input[name="regmark"]').forEach(cb => { cb.checked = false; });
+        document.querySelectorAll<HTMLInputElement>('input[name="regmark"]').forEach(el => {
+          el.checked = false;
+        });
         const sel = document.getElementById('success-filter') as HTMLSelectElement | null;
-        if (sel) sel.value = 'all';
+        if (sel) {
+          sel.value = 'all';
+        }
         appState.successFilter = 'all';
         const selection = appState.selectedTournaments.length
           ? appState.selectedTournaments
