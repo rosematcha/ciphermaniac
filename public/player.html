@@ -36,106 +36,119 @@
 </head>
 
 <body class="player-detail-page">
-  <main id="main-content" class="analysis-page" tabindex="-1">
-    <div id="player-loading" class="analysis-loading" role="status">Loading player profile...</div>
-
-    <section id="player-error" class="analysis-empty-state empty-state" hidden>
-      <h1>Player not found</h1>
-      <p>This player profile could not be found in the regional dataset.</p>
-      <p><a id="player-back-link" href="/players">Back to players</a></p>
-    </section>
-
-    <section id="player-content" hidden>
-      <div class="page-header">
-        <p class="breadcrumb">
-          <a class="breadcrumb__link" href="/players">Players</a>
-          <span class="breadcrumb__separator">/</span>
-          <span id="player-breadcrumb-name" class="breadcrumb__current">Profile</span>
-        </p>
-        <h1 id="player-name" class="page-title">Player</h1>
-        <p id="player-subtitle" class="page-subtitle"></p>
+  <main id="main-content" tabindex="-1">
+    <div class="player-page" data-state="loading">
+      <div id="player-loading" class="player-loading" role="status">
+        <div class="loading-spinner"></div>
+        <p>Loading player profile...</p>
       </div>
 
-      <section class="page-intel-strip" aria-label="Player profile status">
-        <div class="page-intel-item page-intel-item--wide">
-          <span class="page-intel-item__label">Status</span>
-          <span id="player-status" class="page-intel-item__value">Loading player profile...</span>
-        </div>
+      <section id="player-error" class="player-error" role="alert" hidden>
+        <h1>Player not found</h1>
+        <p>This player profile could not be found in the regional dataset.</p>
+        <a id="player-back-link" href="/players" class="btn-primary">Back to Players</a>
       </section>
 
-      <section class="archetypes-summary" aria-label="Player stats">
-        <div class="archetypes-summary__stat">
-          <span class="archetypes-summary__label">Events</span>
-          <span id="player-stat-events" class="archetypes-summary__value">--</span>
+      <section id="player-content" class="player-content" hidden>
+        <!-- Header Row with Breadcrumb -->
+        <div class="player-header-row">
+          <nav class="player-breadcrumb" aria-label="Breadcrumb">
+            <a href="/players" class="player-breadcrumb__link">← Players</a>
+          </nav>
+          <h1 id="player-name" class="player-title">Player</h1>
+          <p id="player-subtitle" class="player-tagline"></p>
         </div>
-        <div class="archetypes-summary__stat">
-          <span class="archetypes-summary__label">Entries</span>
-          <span id="player-stat-entries" class="archetypes-summary__value">--</span>
-        </div>
-        <div class="archetypes-summary__stat">
-          <span class="archetypes-summary__label">Wins</span>
-          <span id="player-stat-wins" class="archetypes-summary__value">--</span>
-        </div>
-        <div class="archetypes-summary__stat">
-          <span class="archetypes-summary__label">Top 8</span>
-          <span id="player-stat-top8" class="archetypes-summary__value">--</span>
-        </div>
-        <div class="archetypes-summary__stat">
-          <span class="archetypes-summary__label">Top 16</span>
-          <span id="player-stat-top16" class="archetypes-summary__value">--</span>
-        </div>
-        <div class="archetypes-summary__stat">
-          <span class="archetypes-summary__label">Best Finish</span>
-          <span id="player-stat-best" class="archetypes-summary__value">--</span>
-        </div>
-        <div class="archetypes-summary__stat">
-          <span class="archetypes-summary__label">Average Finish</span>
-          <span id="player-stat-avg" class="archetypes-summary__value">--</span>
-        </div>
-        <div class="archetypes-summary__stat">
-          <span class="archetypes-summary__label">Consistency</span>
-          <span id="player-stat-consistency" class="archetypes-summary__value">--</span>
-        </div>
-      </section>
 
-      <section class="card-sect" aria-labelledby="player-insights-title">
-        <h2 id="player-insights-title">Profile Insights</h2>
-        <ul id="player-insights-list"></ul>
-      </section>
+        <!-- Stats Grid -->
+        <section class="player-stats" aria-label="Player stats">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span id="player-stat-events" class="stat-value">--</span>
+              <span class="stat-label">Events</span>
+            </div>
+            <div class="stat-card">
+              <span id="player-stat-entries" class="stat-value">--</span>
+              <span class="stat-label">Entries</span>
+            </div>
+            <div class="stat-card">
+              <span id="player-stat-wins" class="stat-value">--</span>
+              <span class="stat-label">Wins</span>
+            </div>
+            <div class="stat-card">
+              <span id="player-stat-top8" class="stat-value">--</span>
+              <span class="stat-label">Top 8</span>
+            </div>
+            <div class="stat-card">
+              <span id="player-stat-top16" class="stat-value">--</span>
+              <span class="stat-label">Top 16</span>
+            </div>
+            <div class="stat-card">
+              <span id="player-stat-best" class="stat-value">--</span>
+              <span class="stat-label">Best Finish</span>
+            </div>
+            <div class="stat-card">
+              <span id="player-stat-avg" class="stat-value">--</span>
+              <span class="stat-label">Avg Finish</span>
+            </div>
+            <div class="stat-card">
+              <span id="player-stat-consistency" class="stat-value">--</span>
+              <span class="stat-label">Consistency</span>
+            </div>
+          </div>
+        </section>
 
-      <section class="card-sect" aria-labelledby="player-archetypes-title">
-        <h2 id="player-archetypes-title">Archetype Usage</h2>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Archetype</th>
-              <th scope="col">Entries</th>
-              <th scope="col">Share</th>
-            </tr>
-          </thead>
-          <tbody id="player-archetype-body"></tbody>
-        </table>
-      </section>
+        <!-- Profile Insights -->
+        <section class="player-section" aria-labelledby="player-insights-title">
+          <div class="section-header">
+            <h2 id="player-insights-title" class="section-title">Profile Insights</h2>
+          </div>
+          <ul id="player-insights-list" class="player-insights-list"></ul>
+        </section>
 
-      <section class="card-sect" aria-labelledby="player-history-title">
-        <h2 id="player-history-title">Regional Event History</h2>
-        <div id="player-history-empty" class="analysis-empty-state" hidden>
-          <p>No event history available for this player.</p>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Date</th>
-              <th scope="col">Event</th>
-              <th scope="col">Placement</th>
-              <th scope="col">Field</th>
-              <th scope="col">Archetype</th>
-            </tr>
-          </thead>
-          <tbody id="player-history-body"></tbody>
-        </table>
+        <!-- Archetype Usage -->
+        <section class="player-section" aria-labelledby="player-archetypes-title">
+          <div class="section-header">
+            <h2 id="player-archetypes-title" class="section-title">Archetype Usage</h2>
+          </div>
+          <div class="player-table-wrap">
+            <table class="player-table">
+              <thead>
+                <tr>
+                  <th scope="col">Archetype</th>
+                  <th scope="col">Entries</th>
+                  <th scope="col">Share</th>
+                </tr>
+              </thead>
+              <tbody id="player-archetype-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Regional Event History -->
+        <section class="player-section" aria-labelledby="player-history-title">
+          <div class="section-header">
+            <h2 id="player-history-title" class="section-title">Regional Event History</h2>
+          </div>
+          <div id="player-history-empty" class="player-empty" hidden>
+            <p>No event history available for this player.</p>
+          </div>
+          <div class="player-table-wrap">
+            <table class="player-table">
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Event</th>
+                  <th scope="col">Placement</th>
+                  <th scope="col">Field</th>
+                  <th scope="col">Archetype</th>
+                </tr>
+              </thead>
+              <tbody id="player-history-body"></tbody>
+            </table>
+          </div>
+        </section>
       </section>
-    </section>
+    </div>
   </main>
 
   <script type="module">
