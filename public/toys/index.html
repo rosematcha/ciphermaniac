@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Toys - Pokemon TCG Tools | Ciphermaniac</title>
+    <meta
+      name="description"
+      content="Explore Ciphermaniac's collection of Pokemon TCG tools — social graphics, meta binders, player connections, and more."
+    />
+    <meta name="keywords" content="Pokemon TCG tools, meta binder, social graphics, player connections, PTCG utilities" />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://ciphermaniac.com/toys" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ciphermaniac.com/toys" />
+    <meta property="og:title" content="Toys - Ciphermaniac" />
+    <meta property="og:description" content="Explore Ciphermaniac's collection of Pokemon TCG tools and utilities." />
+    <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+    <meta property="og:site_name" content="Ciphermaniac" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://ciphermaniac.com/toys" />
+    <meta name="twitter:title" content="Toys - Ciphermaniac" />
+    <meta name="twitter:description" content="Explore Ciphermaniac's collection of Pokemon TCG tools and utilities." />
+    <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+
+    <!-- Favicon - PNG for Google compatibility -->
+    <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#fee475" />
+
+    <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/assets/style-optimized.css?v=20260327b" />
+
+    <style>
+      .toys-page {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: var(--gap-32) var(--gap-16);
+      }
+
+      .toys-heading {
+        font-family: 'Fraunces', serif;
+        font-size: 2rem;
+        color: var(--text);
+        margin-bottom: var(--gap-8);
+      }
+
+      .toys-subtitle {
+        color: var(--muted);
+        font-size: 0.95rem;
+        margin-bottom: var(--gap-32);
+        line-height: 1.5;
+      }
+
+      .toys-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--gap-16);
+      }
+
+      .toy-card {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--gap-16);
+        padding: var(--gap-20);
+        background: var(--panel);
+        border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+        border-radius: var(--border-radius);
+        text-decoration: none;
+        color: var(--text);
+        transition: border-color 0.15s ease, background 0.15s ease;
+      }
+
+      .toy-card:hover,
+      .toy-card:focus-visible {
+        border-color: var(--accent);
+        background: color-mix(in srgb, var(--panel) 90%, var(--accent));
+      }
+
+      .toy-card:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .toy-icon {
+        flex-shrink: 0;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--border-radius-sm, 8px);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        color: var(--accent);
+      }
+
+      .toy-copy h2 {
+        font-size: 1.05rem;
+        font-weight: 600;
+        margin-bottom: var(--gap-4);
+      }
+
+      .toy-copy p {
+        color: var(--muted);
+        font-size: 0.875rem;
+        line-height: 1.5;
+        margin: 0;
+      }
+
+      @media (min-width: 540px) {
+        .toys-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .toy-card {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main id="main-content" class="toys-page" tabindex="-1">
+      <h1 class="toys-heading">Toys</h1>
+      <p class="toys-subtitle">Small tools and widgets for the Pokemon TCG community.</p>
+
+      <div class="toys-grid">
+        <a href="/toys/social-graphics" class="toy-card">
+          <div class="toy-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+          </div>
+          <div class="toy-copy">
+            <h2>Social Graphics</h2>
+            <p>Generate shareable tournament result graphics for social media.</p>
+          </div>
+        </a>
+
+        <a href="/toys/meta-binder" class="toy-card">
+          <div class="toy-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+          </div>
+          <div class="toy-copy">
+            <h2>Meta Binder</h2>
+            <p>Build binder playlists from tournament meta data and archetypes.</p>
+          </div>
+        </a>
+
+        <a href="/toys/player-connections" class="toy-card">
+          <div class="toy-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+          <div class="toy-copy">
+            <h2>Player Connections</h2>
+            <p>Explore degrees of separation between Pokemon TCG players.</p>
+          </div>
+        </a>
+
+        <a href="/toys/incidents" class="toy-card">
+          <div class="toy-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </div>
+          <div class="toy-copy">
+            <h2>Incidents</h2>
+            <p>Track tournament data collection status and processing events.</p>
+          </div>
+        </a>
+      </div>
+    </main>
+
+    <script type="module">
+      import { createHeader } from '/assets/js/src/components/header.js';
+      import { createFooter } from '/assets/js/src/components/footer.js';
+
+      const header = createHeader({ currentPage: 'tools' });
+      const footer = createFooter();
+
+      document.body.insertAdjacentElement('afterbegin', header);
+      document.body.insertAdjacentElement('beforeend', footer);
+    </script>
+  </body>
+</html>

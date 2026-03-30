@@ -23,7 +23,7 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
     : `<a class="nav-link${currentPage === 'players' ? ' active' : ''}" href="/players"${currentPage === 'players' ? ' aria-current="page"' : ''}>Players</a>`;
   const toolsLink = hideUnreadyFeatures
     ? ''
-    : `<a class="nav-link${toolsActive ? ' active' : ''}" href="/tools/meta-binder"${toolsActive ? ' aria-current="page"' : ''}>Tools</a>`;
+    : `<a class="nav-link${toolsActive ? ' active' : ''}" href="/toys"${toolsActive ? ' aria-current="page"' : ''}>Toys</a>`;
 
   const header = document.createElement('header');
   header.className = 'site-header';
