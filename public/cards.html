@@ -125,7 +125,7 @@
           <a class="nav-link" href="/trends">Trends</a>
           <a class="nav-link" href="/archetypes">Archetypes</a>
           <a class="nav-link" href="/players">Players</a>
-          <a class="nav-link" href="/tools/meta-binder">Tools</a>
+          <a class="nav-link" href="/toys">Toys</a>
         </nav>
       </div>
     </header>
@@ -499,7 +499,7 @@
       const header = document.querySelector('.site-header');
       if (shouldHideUnreadyFeatures()) {
         header?.querySelector('a[href="/players"]')?.remove();
-        header?.querySelector('a[href="/tools/meta-binder"]')?.remove();
+        header?.querySelector('a[href="/toys"]')?.remove();
       }
       const connection = navigator.connection || {};
       const lowEndProfile = connection.saveData === true || ['slow-2g', '2g'].includes(connection.effectiveType || '');
