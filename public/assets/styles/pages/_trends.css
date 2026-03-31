@@ -16,25 +16,30 @@
   padding: 0 var(--space-3) var(--space-8);
 }
 
-/* Page Header */
+/* Page Header — clean, no container box */
 .page-header {
   text-align: center;
-  padding: var(--space-5) var(--space-5) 0;
-  margin-bottom: var(--space-6);
+  padding: var(--space-8) var(--space-5) var(--space-4);
+  margin-bottom: var(--space-4);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .page-title {
   font-family: var(--font-family-serif);
-  font-size: clamp(32px, 5vw, 48px);
+  font-size: clamp(28px, 4vw, 40px);
   font-weight: var(--font-weight-black);
   margin: 0 0 var(--space-2);
-  color: #fff;
-  letter-spacing: -0.02em;
+  color: var(--text);
+  letter-spacing: -0.03em;
 }
 
 .page-subtitle {
   color: var(--muted);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   max-width: 600px;
   margin: 0 auto;
 }
@@ -43,23 +48,23 @@
    Chart Components
    ========================================================================== */
 
-/* Chart Wrapper */
+/* Chart Wrapper — lighter border, subtler container */
 .meta-chart-wrapper {
-  background: var(--bar-bg);
-  border: 1px solid #1f2640;
-  border-radius: var(--border-radius-xl);
-  box-shadow: var(--shadow-2xl);
+  background: var(--surface-1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 
 .meta-chart {
-  background: var(--bar-bg);
-  border: 1px solid #1f2640;
-  border-radius: var(--border-radius-xl);
+  background: var(--surface-1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--border-radius-lg);
   padding: var(--space-3);
   min-height: 320px;
   overflow: hidden;
-  box-shadow: var(--shadow-2xl);
+  box-shadow: var(--shadow-lg);
 }
 
 .meta-chart-wrapper .meta-chart {
@@ -232,9 +237,9 @@
   justify-content: flex-start;
   gap: var(--space-2);
   padding: var(--space-3);
-  background: var(--surface-2);
-  border: 1px solid var(--border-default);
-  border-radius: var(--border-radius);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
   white-space: nowrap;
   overflow: hidden;
   transition: var(--transition-fast);
@@ -242,8 +247,8 @@
 }
 
 .legend-item:hover {
-  border-color: #4c5590;
-  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .legend-swatch {
@@ -1400,4 +1405,108 @@
     width: 44px;
     border-radius: 8px;
   }
+}
+
+/* ==========================================================================
+   Chart Footer
+   ========================================================================== */
+
+.meta-chart-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: var(--space-2);
+}
+
+/* ==========================================================================
+   Movers V2 — Scoped Overrides
+   ========================================================================== */
+
+.trends-movers-v2 .movers-group {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: var(--space-3);
+}
+
+.trends-movers-v2 h3 {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mover-icon {
+  font-size: 11px;
+}
+
+.cooling-icon {
+  color: var(--error);
+}
+
+.movers-list-v2 li {
+  margin: 0;
+  padding: 0;
+}
+
+.movers-list-v2 .mover-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 13px;
+  transition: var(--transition-fast);
+}
+
+.movers-list-v2 li:last-child .mover-item {
+  border-bottom: none;
+}
+
+.movers-list-v2 .mover-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+  margin: 0 -8px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+/* ==========================================================================
+   Legend V2 — Sub-element Styles
+   ========================================================================== */
+
+.legend-item-v2 .legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.legend-item-v2 .legend-name {
+  color: var(--text);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legend-item-v2 .legend-value {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+.legend-item-v2 .legend-delta {
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+}
+
+.legend-item-v2 .legend-delta.up {
+  color: var(--success);
+}
+
+.legend-item-v2 .legend-delta.down {
+  color: var(--error);
 }

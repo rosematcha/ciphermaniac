@@ -91,14 +91,13 @@
 
 .archetype-hero-banner {
   width: 100%;
-  max-width: 480px;
-  margin: 0 auto var(--space-4);
+  margin: 0 0 var(--space-4);
 }
 
 .hero-banner-container {
   position: relative;
   width: 100%;
-  aspect-ratio: 7 / 4;
+  aspect-ratio: 21 / 7;
   border-radius: var(--border-radius-xl);
   overflow: hidden;
   background: rgba(12, 18, 40, 0.6);
@@ -114,17 +113,17 @@
 
 .hero-banner-image {
   position: absolute;
-  inset: -60px 0 0;
+  inset: -30px 0 0;
   width: 100%;
   object-fit: cover;
-  object-position: center top;
+  object-position: center 20%;
   z-index: 1;
 }
 
 /* For split view with 2 cards */
 .hero-banner-images--split .hero-banner-image {
   position: absolute;
-  inset: -60px 0 0;
+  inset: -30px 0 0;
 }
 
 /* Gradient overlay for visual polish */
@@ -189,7 +188,7 @@
 }
 
 .archetype-simple .archetype-breadcrumb__link:hover {
-  color: var(--accent-2);
+  color: var(--accent);
 }
 
 .archetype-simple .archetype-title {
@@ -207,7 +206,7 @@
   display: flex;
   gap: var(--space-1);
   margin-bottom: var(--space-4);
-  border-bottom: 1px solid rgba(112, 128, 255, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   padding-bottom: 0;
 }
 
@@ -229,16 +228,16 @@
 }
 
 .archetype-tab.is-active {
-  color: var(--accent-2);
-  border-bottom-color: var(--accent-2);
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
 /* Archetype Controls Panel */
 .archetype-controls-panel {
-  background: var(--panel);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-lg);
+  background: var(--surface-1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
 }
 
@@ -269,6 +268,23 @@
   line-height: var(--line-height-normal);
   flex: 1;
   min-width: 200px;
+}
+
+.card-count-display {
+  font-size: var(--font-size-sm);
+  color: var(--muted);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.card-count-display[hidden] {
+  display: none;
+}
+
+#card-count-value {
+  color: var(--text);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Panel Body */
@@ -342,7 +358,7 @@
 .control-label-row output {
   font-size: 18px;
   font-weight: var(--font-weight-bold);
-  color: var(--accent-2);
+  color: var(--accent);
   font-variant-numeric: tabular-nums;
   text-shadow: 0 0 10px rgba(106, 163, 255, 0.3);
 }
@@ -368,7 +384,7 @@
   -webkit-appearance: none;
   width: 20px;
   height: 20px;
-  background: var(--accent-2);
+  background: var(--accent);
   border: 3px solid var(--panel);
   border-radius: 50%;
   box-shadow:
@@ -436,7 +452,7 @@
 }
 
 .skeleton-count strong {
-  color: var(--accent-2);
+  color: var(--accent);
   font-weight: var(--font-weight-bold);
 }
 
@@ -518,7 +534,7 @@
 .archetype-controls-panel .filter-operator-select:focus,
 .archetype-controls-panel .filter-count-input:focus {
   outline: none;
-  border-color: var(--accent-2);
+  border-color: var(--accent);
   background: rgba(0, 0, 0, 0.3);
 }
 
@@ -645,7 +661,7 @@
   width: 40px;
   height: 40px;
   border: 3px solid rgba(255, 255, 255, 0.1);
-  border-top-color: var(--accent-2);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -702,20 +718,23 @@
 }
 
 .stat-card {
-  background: var(--panel);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: var(--border-radius-lg);
-  padding: var(--space-4);
+  background: transparent;
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 0;
+  padding: var(--space-3) var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
   text-align: center;
-  transition: background var(--transition-normal);
+}
+
+.stat-card:last-child {
+  border-right: none;
 }
 
 .stat-card:hover {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: transparent;
 }
 
 .stat-card .stat-label {
@@ -824,7 +843,7 @@
 .performer-item:hover .performer-arrow {
   opacity: 1;
   transform: translateX(2px);
-  color: var(--accent-2);
+  color: var(--accent);
 }
 
 /* Core Cards */
@@ -1026,7 +1045,7 @@
 
 .core-card-rate {
   font-size: var(--font-size-xs);
-  color: var(--accent-2);
+  color: var(--accent);
   font-weight: var(--font-weight-bold);
 }
 
@@ -1118,7 +1137,7 @@
 
 .signature-card-rate {
   font-size: var(--font-size-xs);
-  color: var(--accent-2);
+  color: var(--accent);
   font-weight: var(--font-weight-bold);
 }
 
@@ -1254,4 +1273,175 @@
 .archetype-page:not(.archetype-home-page)[data-state='error'] .archetype-simple,
 .archetype-page:not(.archetype-home-page)[data-state='error'] .grid {
   display: none;
+}
+
+/* ==========================================================================
+   Archetype Stats (detail page — divider style)
+   ========================================================================== */
+
+.archetype-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-5);
+  margin: 0;
+}
+
+.archetype-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  background: transparent;
+  border-radius: 0;
+  padding: var(--space-4) var(--space-5);
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.archetype-stat:last-child {
+  border-right: none;
+}
+
+.archetype-stat__label {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.archetype-stat__value {
+  margin: 0;
+  font-size: clamp(1rem, 0.9vw + 0.7rem, 1.35rem);
+  font-weight: var(--font-weight-bold);
+  color: var(--text);
+}
+
+/* ==========================================================================
+   Archetype Toolbar / Summary / Controls (detail page)
+   ========================================================================== */
+
+.archetype-toolbar {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--border-radius);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: var(--space-4) var(--space-5);
+  width: 100%;
+}
+
+.archetype-toolbar__inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.archetype-summary {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+.archetype-summary strong {
+  color: var(--text);
+}
+
+.archetype-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+.archetype-controls__range {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.archetype-controls input[type='range'] {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: var(--border-radius-full);
+  background: linear-gradient(90deg, rgba(232, 168, 62, 0.8), rgba(232, 168, 62, 0.4));
+  outline: none;
+}
+
+/* Range slider thumbs */
+.archetype-controls input[type='range']::-webkit-slider-thumb,
+.archetype-control-row input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 3px solid var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.archetype-controls input[type='range']::-moz-range-thumb,
+.archetype-control-row input[type='range']::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 3px solid var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.archetype-controls output {
+  font-weight: var(--font-weight-bold);
+  color: var(--text);
+}
+
+/* Hidden state utilities */
+.archetype-content[hidden],
+.archetype-toolbar[hidden],
+.archetype-summary[hidden],
+.archetype-controls[hidden] {
+  display: none !important;
+}
+
+/* Always-visible header/tabs: same centering as .archetype-simple */
+.archetype-page:not(.archetype-home-page) .archetype-content > .archetype-header-row,
+.archetype-page:not(.archetype-home-page) .archetype-content > .archetype-tabs {
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-5);
+  padding-right: var(--space-5);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.archetype-page:not(.archetype-home-page) .archetype-content > .archetype-header-row {
+  padding-top: var(--space-4);
+}
+
+/* Loading spinner below tabs: reserve space to reduce layout shift */
+.archetype-page:not(.archetype-home-page) .archetype-loading {
+  min-height: 180px;
+}
+
+/* ==========================================================================
+   Archetype Detail Responsive
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  .archetype-hero {
+    padding: var(--space-5);
+  }
+
+  .archetype-toolbar__inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+  }
 }

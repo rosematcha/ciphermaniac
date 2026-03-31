@@ -2,24 +2,24 @@
    CSS Custom Properties (Design Tokens)
    ========================================================================== */
 :root {
-  /* Colors - Dark theme (neutral, not overly blue) */
-  --bg: #121317;
-  --panel: #17181d;
-  --text: #eef1f7;
-  --muted: #a3a8b7;
-  --muted-darker: #6f7382;
-  --accent: #ff6b6b;
+  /* Colors - Dark theme with warm gold accent */
+  --bg: #0e0f13;
+  --panel: #16171c;
+  --text: #e8eaf0;
+  --muted: #8b8fa0;
+  --muted-darker: #5c6070;
+  --accent: #e8a83e;
   --accent-2: #6aa3ff;
-  --bar-bg: #262833;
+  --bar-bg: #1f2029;
   --link: #7cc6ff;
   --status-yes: #3ad27a;
-  --status-no: #ff6b6b;
-  --status-pending: #7a7f8c;
+  --status-no: #e85454;
+  --status-pending: #6b6f80;
 
   /* Color Variations */
   --success: #22c55e;
-  --error: #ef4444;
-  --warning: #ffb74d;
+  --error: #e85454;
+  --warning: #e8a83e;
 
   /* Layout */
   --gap: 12px;
@@ -81,31 +81,32 @@
   --space-16: 64px;
   --space-20: 80px;
 
-  /* Shadows */
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.2);
-  --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.35);
-  --shadow-2xl: 0 20px 60px rgba(0, 0, 0, 0.45);
+  /* Shadows — deeper, warmer */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.18);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.22);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.28);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.4);
+  --shadow-2xl: 0 24px 64px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(232, 168, 62, 0.08);
 
-  /* Border Colors */
-  --border-primary: #2c335a;
-  --border-secondary: #1d2133;
-  --border-muted: rgba(255, 255, 255, 0.08);
-  --border-accent: rgba(106, 163, 255, 0.25);
+  /* Border Colors — subtler, less saturated blue */
+  --border-primary: #222436;
+  --border-secondary: #1a1c2a;
+  --border-muted: rgba(255, 255, 255, 0.05);
+  --border-accent: rgba(232, 168, 62, 0.2);
   --border-focus: rgba(106, 163, 255, 0.6);
 
   /* Surface hierarchy: 3-tier depth system */
-  --surface-1: #1a1b21;          /* Primary content containers */
-  --surface-2: #1e1f26;          /* Utility sub-panels, interactive elements */
-  --border-subtle: rgba(255, 255, 255, 0.06);  /* Soft border for primary surfaces */
-  --border-default: rgba(255, 255, 255, 0.09); /* Standard border for sub-panels */
+  --surface-1: #18191f;          /* Primary content containers */
+  --surface-2: #1c1d24;          /* Utility sub-panels, interactive elements */
+  --border-subtle: rgba(255, 255, 255, 0.04);  /* Near-invisible separation */
+  --border-default: rgba(255, 255, 255, 0.07); /* Standard border for sub-panels */
 
   /* Background Variations */
-  --bg-hover: rgba(255, 255, 255, 0.02);
-  --bg-active: rgba(255, 255, 255, 0.04);
-  --bg-accent: rgba(106, 163, 255, 0.08);
-  --bg-accent-hover: rgba(106, 163, 255, 0.14);
+  --bg-hover: rgba(255, 255, 255, 0.03);
+  --bg-active: rgba(255, 255, 255, 0.05);
+  --bg-accent: rgba(232, 168, 62, 0.06);
+  --bg-accent-hover: rgba(232, 168, 62, 0.12);
 
   /* Opacity Values */
   --opacity-muted: 0.7;

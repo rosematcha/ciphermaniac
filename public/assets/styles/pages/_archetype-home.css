@@ -1,0 +1,488 @@
+/* ==========================================================================
+   Archetype Home Page
+   Styles scoped to .archetype-home-page
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Loading State
+   -------------------------------------------------------------------------- */
+
+.archetype-home-page .archetype-loading {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: var(--space-5);
+  color: var(--muted);
+  padding: var(--space-8);
+}
+
+.archetype-home-page .loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: archetype-spin 1s linear infinite;
+}
+
+@keyframes archetype-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Error State
+   -------------------------------------------------------------------------- */
+
+.archetype-home-page .archetype-error {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  gap: var(--space-5);
+  text-align: center;
+  color: var(--muted);
+}
+
+/* Home page: error is outside main, so hide main on error */
+.archetype-home-page[data-state='error'] .archetype-main {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+   Section Headers
+   -------------------------------------------------------------------------- */
+
+.archetype-home-page .section-header {
+  margin-bottom: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.archetype-home-page .section-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.archetype-home-page .section-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--muted);
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Hero Banner
+   -------------------------------------------------------------------------- */
+
+.archetype-home-page .archetype-hero-banner {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto var(--space-5);
+}
+
+.archetype-home-page .hero-banner-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 7 / 4;
+  border-radius: var(--border-radius-xl);
+  overflow: hidden;
+  background: rgba(12, 18, 40, 0.6);
+}
+
+.archetype-home-page .hero-banner-images {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.archetype-home-page .hero-banner-image {
+  position: absolute;
+  inset: -60px 0 0;
+  width: 100%;
+  object-fit: cover;
+  object-position: center top;
+  z-index: 1;
+}
+
+/* For split view with 2 cards */
+.archetype-home-page .hero-banner-images--split .hero-banner-image {
+  position: absolute;
+  inset: -60px 0 0;
+}
+
+.archetype-home-page .hero-banner-image--split {
+  /* clip-path applied inline by JS */
+}
+
+/* Gradient overlay for visual polish */
+.archetype-home-page .hero-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 0%, transparent 60%, rgba(10, 14, 28, 0.7) 100%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Fallback when no images */
+.archetype-home-page .hero-banner-fallback {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(120, 140, 255, 0.1), rgba(80, 220, 255, 0.12));
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-3xl);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  z-index: 0;
+}
+
+.archetype-home-page .hero-banner-fallback.is-visible {
+  display: flex;
+}
+
+/* --------------------------------------------------------------------------
+   Stats Grid
+   -------------------------------------------------------------------------- */
+
+.archetype-home-page .archetype-stats {
+  margin-bottom: var(--space-8);
+  display: block;
+}
+
+.archetype-home-page .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .archetype-home-page .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.archetype-home-page .stat-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-align: center;
+  transition: background 0.2s ease;
+}
+
+.archetype-home-page .stat-card:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(232, 168, 62, 0.15);
+}
+
+.archetype-home-page .stat-card .stat-label {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  font-weight: var(--font-weight-bold);
+  order: 2;
+}
+
+.archetype-home-page .stat-card .stat-value {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-black);
+  color: var(--text);
+  line-height: 1.1;
+  order: 1;
+}
+
+/* --------------------------------------------------------------------------
+   Top Performers Section
+   -------------------------------------------------------------------------- */
+
+.archetype-home-page .top-performers-section {
+  margin-bottom: var(--space-8);
+}
+
+.archetype-home-page .performers-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.archetype-home-page .performer-item {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--border-radius);
+  padding: var(--space-2) var(--space-4);
+  text-decoration: none;
+  transition: all 0.15s ease;
+  color: var(--text);
+}
+
+.archetype-home-page .performer-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  transform: translateX(4px);
+  border-color: rgba(232, 168, 62, 0.25);
+}
+
+.archetype-home-page .performer-rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 50%;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  margin-right: var(--space-4);
+  flex-shrink: 0;
+}
+
+.archetype-home-page .performer-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.archetype-home-page .performer-player {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.archetype-home-page .performer-flag {
+  font-size: 1.1em;
+}
+
+.archetype-home-page .performer-name {
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-base);
+}
+
+.archetype-home-page .performer-result {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  flex-wrap: wrap;
+}
+
+.archetype-home-page .performer-placement {
+  font-weight: var(--font-weight-bold);
+}
+
+.archetype-home-page .performer-placement.gold {
+  color: #ffd700;
+}
+
+.archetype-home-page .performer-placement.silver {
+  color: #c0c0c0;
+}
+
+.archetype-home-page .performer-placement.bronze {
+  color: #cd7f32;
+}
+
+.archetype-home-page .performer-separator {
+  color: var(--muted);
+}
+
+.archetype-home-page .performer-tournament {
+  color: var(--muted);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.archetype-home-page .performer-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.archetype-home-page .performer-arrow {
+  color: var(--muted);
+  opacity: 0.5;
+  transition: transform 0.15s ease;
+}
+
+.archetype-home-page .performer-item:hover .performer-arrow {
+  opacity: 1;
+  transform: translateX(2px);
+  color: var(--accent);
+}
+
+/* --------------------------------------------------------------------------
+   Core Cards Section
+   -------------------------------------------------------------------------- */
+
+.archetype-home-page .core-cards-section {
+  margin-bottom: var(--space-8);
+}
+
+.archetype-home-page .core-cards-list {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-4);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(232, 168, 62, 0.2) transparent;
+}
+
+.archetype-home-page .core-cards-list::-webkit-scrollbar {
+  height: 6px;
+}
+
+.archetype-home-page .core-cards-list::-webkit-scrollbar-thumb {
+  background: rgba(232, 168, 62, 0.2);
+  border-radius: var(--border-radius-full);
+}
+
+.archetype-home-page .core-card-item {
+  flex: 0 0 120px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-decoration: none;
+  color: var(--text);
+  transition: transform 0.15s ease;
+}
+
+.archetype-home-page .core-card-item:hover {
+  transform: translateY(-4px);
+}
+
+.archetype-home-page .core-card-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  text-decoration: none;
+  color: var(--text);
+  padding: var(--space-2);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--border-radius);
+  transition: all 0.15s ease;
+}
+
+.archetype-home-page .core-card-link:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(232, 168, 62, 0.25);
+  transform: translateY(-2px);
+}
+
+.archetype-home-page .core-card-thumb {
+  width: 80px;
+  height: auto;
+  border-radius: var(--border-radius-sm);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.archetype-home-page .core-card-name {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-align: center;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.archetype-home-page .core-card-rate {
+  font-size: var(--font-size-xs);
+  color: var(--accent);
+  font-weight: var(--font-weight-bold);
+}
+
+/* --------------------------------------------------------------------------
+   Home Content Action Cards Grid
+   -------------------------------------------------------------------------- */
+
+.archetype-home-page .archetype-home-content {
+  margin-top: var(--space-4);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.archetype-home-page .archetype-home-card {
+  padding: var(--space-4);
+  background: var(--panel);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow-md);
+  transition:
+    border-color var(--transition-normal),
+    box-shadow var(--transition-normal);
+}
+
+.archetype-home-page .archetype-home-card:hover {
+  border-color: rgba(232, 168, 62, 0.25);
+  box-shadow: var(--shadow-lg);
+}
+
+.archetype-home-page .archetype-home-card h2 {
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text);
+}
+
+.archetype-home-page .archetype-home-card p {
+  margin: 0 0 var(--space-3) 0;
+  font-size: var(--font-size-base);
+  color: var(--muted);
+  line-height: var(--line-height-relaxed);
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .archetype-home-page .archetype-home-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .archetype-home-page .core-cards-list {
+    gap: var(--space-1);
+  }
+
+  .archetype-home-page .core-card-item {
+    flex: 0 0 100px;
+  }
+
+  .archetype-home-page .core-card-thumb {
+    width: 60px;
+  }
+
+  .archetype-home-page .performer-tournament {
+    max-width: 120px;
+  }
+}

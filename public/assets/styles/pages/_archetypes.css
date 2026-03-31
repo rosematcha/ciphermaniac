@@ -109,46 +109,55 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.archetypes-page .analysis-list-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.archetypes-page .analysis-list-item:last-child {
+  border-bottom: none;
 }
 
 .archetypes-page .analysis-list-item__button {
   width: 100%;
-  background: var(--panel);
-  border: 1px solid var(--border-muted);
-  border-radius: var(--border-radius-lg);
-  padding: var(--space-3);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: var(--space-4) var(--space-2);
   color: var(--text);
   font: inherit;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   cursor: pointer;
   text-decoration: none;
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
   transition:
-    border-color var(--transition-normal),
-    background-color var(--transition-normal),
-    box-shadow var(--transition-normal),
-    transform var(--transition-normal);
+    background-color var(--transition-normal);
   height: 100%;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .archetypes-page .analysis-list-item__button:hover,
   .archetypes-page .analysis-list-item__button:focus-visible {
-    border-color: var(--border-accent);
-    background: var(--bg-hover);
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
+    border-color: transparent;
+    background: rgba(255, 255, 255, 0.02);
+    box-shadow: none;
+    transform: none;
   }
 
   .archetypes-page .analysis-list-item__button:hover .analysis-list-item__chevron {
     transform: translateX(3px);
-    color: var(--accent-2);
+    color: var(--accent);
+  }
+
+  .archetypes-page .analysis-list-item__button:hover .analysis-list-item__name {
+    color: var(--accent);
   }
 }
 
@@ -161,11 +170,11 @@
 }
 
 .archetypes-page .analysis-list-item__thumbnail {
-  width: 120px;
-  height: 80px;
-  border-radius: var(--border-radius-lg);
-  border: 1px solid var(--border-secondary);
-  background: rgba(12, 18, 40, 0.6);
+  width: 100px;
+  height: 68px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(11, 12, 18, 0.8);
   overflow: hidden;
   position: relative;
   flex-shrink: 0;
@@ -226,6 +235,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: color var(--transition-normal);
 }
 
 .archetypes-page .analysis-list-item__count {
@@ -285,7 +295,7 @@
 }
 
 .archetypes-page .analysis-signature-card__pct {
-  color: var(--accent-2);
+  color: var(--accent);
   font-weight: var(--font-weight-semibold);
   flex-shrink: 0;
 }
@@ -301,9 +311,10 @@
 .archetypes-page .analysis-list-item__percent {
   font-weight: var(--font-weight-semibold);
   font-size: var(--font-size-lg);
-  color: var(--accent-2);
+  color: var(--accent);
   min-width: 52px;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .archetypes-page .analysis-list-item__chevron {
@@ -313,28 +324,18 @@
 }
 
 @media (max-width: 720px) {
-  .archetypes-page .analysis-list__items {
-    grid-template-columns: 1fr;
-  }
-
   .archetypes-page .analysis-list-item__button {
-    flex-direction: row;
-    align-items: center;
-    padding: 10px;
+    padding: 12px var(--space-2);
     gap: 10px;
   }
 
   .archetypes-page .analysis-list-item__preview {
-    flex-direction: row;
-    align-items: center;
     gap: 10px;
-    flex: 1;
-    min-width: 0;
   }
 
   .archetypes-page .analysis-list-item__thumbnail {
-    width: 88px;
-    height: 60px;
+    width: 72px;
+    height: 50px;
     flex-shrink: 0;
   }
 
@@ -409,4 +410,364 @@
   display: grid;
   gap: var(--space-2);
   color: var(--text);
+}
+
+/* ==========================================================================
+   Base Analysis Layout (shared by archetypes list and other analysis pages)
+   ========================================================================== */
+
+.analysis-page {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.analysis-header {
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-md);
+}
+
+.analysis-header__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.analysis-header__subtitle {
+  margin: 0;
+  color: var(--muted);
+}
+
+.analysis-header__meta {
+  display: inline-flex;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--border-radius);
+  padding: 4px 8px;
+  width: fit-content;
+}
+
+.analysis-main {
+  display: block;
+}
+
+/* --------------------------------------------------------------------------
+   Analysis List Items (base / shared)
+   -------------------------------------------------------------------------- */
+
+.analysis-list__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.analysis-loading {
+  color: var(--muted);
+  font-size: var(--font-size-base);
+}
+
+.analysis-empty-state,
+.analysis-empty-result {
+  text-align: center;
+  color: var(--muted);
+  padding: var(--space-5);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: var(--border-radius-lg);
+}
+
+.analysis-list-item__button {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 0;
+  padding: 0 12px 0 0;
+  color: var(--text);
+  font: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: none;
+  transition: background-color 0.15s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .analysis-list-item__button:hover,
+  .analysis-list-item__button:focus-visible {
+    background: rgba(255, 255, 255, 0.02);
+    box-shadow: none;
+    transform: none;
+  }
+
+  .analysis-list-item__button:hover .analysis-list-item__name {
+    color: var(--accent);
+  }
+
+  .analysis-list-item__button:hover .analysis-list-item__chevron {
+    transform: translateX(4px);
+    color: var(--accent);
+  }
+}
+
+.analysis-list-item__button.is-active {
+  background: rgba(232, 168, 62, 0.06);
+  border-color: rgba(232, 168, 62, 0.15);
+  box-shadow: none;
+}
+
+.analysis-list-item__preview {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex: 1;
+  min-width: 0;
+}
+
+.analysis-list-item__thumbnail {
+  width: 120px;
+  height: 80px;
+  border-radius: var(--border-radius);
+  border: 1px solid transparent;
+  background: rgba(12, 18, 40, 0.6);
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.analysis-list-item__thumbnail--split {
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.analysis-list-item__split {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.analysis-list-item__slice {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.analysis-list-item__slice--left {
+  z-index: 1;
+}
+
+.analysis-list-item__slice--right {
+  z-index: 2;
+}
+
+.analysis-list-item__slice img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% -10px;
+}
+
+/* Hide base image when using split view */
+.analysis-list-item__thumbnail--split > .analysis-list-item__thumbnail-image {
+  display: none;
+}
+
+.analysis-list-item__thumbnail-image--split {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% -10px;
+}
+
+.analysis-list-item__thumbnail-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(120, 140, 255, 0.1), rgba(80, 220, 255, 0.12));
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-xl);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  z-index: 0;
+}
+
+/* Image sits above fallback when loaded */
+.analysis-list-item__thumbnail-image {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% -10px;
+  display: block;
+}
+
+/* Only show fallback (hide image) when explicitly marked as placeholder */
+.analysis-list-item__thumbnail.is-placeholder .analysis-list-item__thumbnail-image {
+  display: none;
+}
+
+/* Hide fallback when split view is showing */
+.analysis-list-item__thumbnail--split .analysis-list-item__thumbnail-fallback {
+  z-index: 0;
+}
+
+/* Hide split wrapper when placeholder is shown */
+.analysis-list-item__thumbnail.is-placeholder .analysis-list-item__split {
+  display: none;
+}
+
+.analysis-list-item__main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.analysis-list-item__name {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
+  text-align: left;
+  color: var(--text);
+}
+
+.analysis-list-item__count {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+  text-align: left;
+}
+
+.analysis-list-item__stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.analysis-list-item__percent {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-lg);
+  color: var(--accent);
+  min-width: 52px;
+  text-align: right;
+}
+
+.analysis-list-item__chevron {
+  color: var(--muted);
+  font-size: 20px;
+  transition: transform 0.2s ease;
+}
+
+/* --------------------------------------------------------------------------
+   Base Analysis Responsive
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 680px) {
+  .analysis-page {
+    gap: var(--space-4);
+  }
+
+  .analysis-list__items {
+    padding: 0;
+    gap: 10px;
+  }
+
+  .analysis-list-item__button {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px 10px 0;
+  }
+
+  .analysis-list-item__preview {
+    gap: 10px;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .analysis-list-item__thumbnail {
+    width: 80px;
+    height: 54px;
+    border-radius: var(--border-radius);
+  }
+
+  .analysis-list-item__main {
+    gap: 4px;
+  }
+
+  .analysis-list-item__name {
+    font-size: var(--font-size-sm);
+  }
+
+  .analysis-list-item__count {
+    font-size: var(--font-size-xs);
+  }
+
+  .analysis-list-item__stats {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
+    margin-left: 0;
+    padding-top: 0;
+    border-top: none;
+  }
+
+  .analysis-list-item__percent {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    text-align: right;
+    min-width: auto;
+  }
+
+  .analysis-list-item__chevron {
+    display: inline-block;
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 720px) {
+  .analysis-list-item__button {
+    padding: 0;
+    gap: 16px;
+  }
+
+  .analysis-list-item__thumbnail {
+    width: 110px;
+    height: 72px;
+  }
+
+  .analysis-list-item__split {
+    border-radius: inherit;
+  }
+
+  .analysis-list-item__preview {
+    gap: 14px;
+  }
 }

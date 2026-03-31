@@ -2,7 +2,7 @@
  * Analysis table functionality for card page
  * Renders per-archetype usage breakdowns for a card
  */
-import { fetchArchetypeReport, fetchArchetypesList, fetchReport } from '../api.js';
+import { fetchArchetypeReport, fetchArchetypesList, fetchReport, type ReportSlice } from '../api.js';
 import { parseReport } from '../parse.js';
 import { prettyTournamentName } from '../utils/format.js';
 import { findCard } from './data.js';
@@ -18,7 +18,9 @@ import { logger } from '../utils/errorHandler.js';
  */
 export function renderAnalysisSelector(events: string[], cardIdentifier: string | null): void {
   const analysisSel = document.getElementById('analysis-event') as HTMLSelectElement | null;
+  const sliceSel = document.getElementById('analysis-slice') as HTMLSelectElement | null;
   const analysisTable = document.getElementById('analysis-table') as HTMLElement | null;
+  const runBtn = document.getElementById('analysis-run') as HTMLButtonElement | null;
 
   if (!(analysisSel && analysisTable)) {
     return;
@@ -27,7 +29,10 @@ export function renderAnalysisSelector(events: string[], cardIdentifier: string 
   analysisSel.innerHTML = '';
 
   if (!events || events.length === 0) {
-    analysisTable.textContent = 'Select an event to view per-archetype usage.';
+    analysisTable.textContent = 'No events available for this card.';
+    if (runBtn) {
+      runBtn.disabled = true;
+    }
     return;
   }
 
@@ -38,14 +43,25 @@ export function renderAnalysisSelector(events: string[], cardIdentifier: string 
     analysisSel.appendChild(opt);
   }
 
-  // Store cardIdentifier in a data attribute for the change handler
+  // Store cardIdentifier in a data attribute for the handler
   analysisSel.dataset.cardIdentifier = cardIdentifier || '';
 
-  analysisSel.addEventListener('change', () => {
-    renderAnalysisTable(analysisSel.value, analysisSel.dataset.cardIdentifier || null);
-  });
-
-  renderAnalysisTable(analysisSel.value || events[0], cardIdentifier);
+  // Run analysis on button click — no auto-loading
+  if (runBtn) {
+    runBtn.addEventListener('click', () => {
+      const selectedEvent = analysisSel.value;
+      if (!selectedEvent) {
+        return;
+      }
+      const slice = (sliceSel ? sliceSel.value : 'all') as ReportSlice;
+      runBtn.disabled = true;
+      runBtn.textContent = 'Running…';
+      renderAnalysisTable(selectedEvent, analysisSel.dataset.cardIdentifier || null, slice).finally(() => {
+        runBtn.disabled = false;
+        runBtn.textContent = 'Run Analysis';
+      });
+    });
+  }
 }
 
 /**
@@ -53,7 +69,11 @@ export function renderAnalysisSelector(events: string[], cardIdentifier: string 
  * @param tournament - Tournament name to analyze
  * @param cardIdentifier - The card identifier to analyze
  */
-export async function renderAnalysisTable(tournament: string, cardIdentifier: string | null): Promise<void> {
+export async function renderAnalysisTable(
+  tournament: string,
+  cardIdentifier: string | null,
+  slice: ReportSlice = 'all'
+): Promise<void> {
   const analysisTable = document.getElementById('analysis-table') as HTMLElement | null;
 
   if (!analysisTable) {
@@ -137,7 +157,7 @@ export async function renderAnalysisTable(tournament: string, cardIdentifier: st
     // Overall (All archetypes) distribution for this event
     let overall: any = null;
     try {
-      const master = await fetchReport(tournament);
+      const master = await fetchReport(tournament, slice);
       const parsed = parseReport(master);
 
       // Get canonical card and all its variants for combined usage statistics
@@ -192,7 +212,7 @@ export async function renderAnalysisTable(tournament: string, cardIdentifier: st
     }
 
     // Per-archetype distributions using enhanced parallel loading
-    const list = await fetchArchetypesList(tournament);
+    const list = await fetchArchetypesList(tournament, slice);
     const archetypeBases = Array.isArray(list)
       ? list.map(entry => (typeof entry === 'string' ? entry : entry?.name)).filter(Boolean)
       : [];
@@ -208,7 +228,7 @@ export async function renderAnalysisTable(tournament: string, cardIdentifier: st
       archetypeBases,
       async base => {
         try {
-          const archetypeReport = await fetchArchetypeReport(tournament, base);
+          const archetypeReport = await fetchArchetypeReport(tournament, base, slice);
           const parsedReport = parseReport(archetypeReport);
 
           // Combine data from all variants for this archetype
@@ -367,63 +387,29 @@ export async function renderAnalysisTable(tournament: string, cardIdentifier: st
     thead.appendChild(trh);
     tbl.appendChild(thead);
     const tbody = document.createElement('tbody');
-    for (const rowData of rows) {
-      const tableRow = document.createElement('tr');
-      const formatValue = (value: number | null) => (value === null ? '—' : `${Math.round(value)}%`);
-
-      const archetypeDeckCount = rowData.total !== null ? rowData.total : rowData.found !== null ? rowData.found : null;
-      const firstCell = document.createElement('td');
-      const strong = document.createElement('strong');
-      strong.textContent = rowData.archetype;
-      firstCell.appendChild(strong);
-      if (archetypeDeckCount !== null) {
-        firstCell.appendChild(document.createTextNode(` (${archetypeDeckCount})`));
-      }
-      firstCell.style.padding = '10px 12px';
-      firstCell.style.textAlign = 'left';
-      tableRow.appendChild(firstCell);
-
-      const otherValues = [
-        rowData.pct !== null ? `${Math.round(rowData.pct)}%` : '—',
-        formatValue(rowData.c1),
-        formatValue(rowData.c2),
-        formatValue(rowData.c3),
-        formatValue(rowData.c4)
-      ];
-
-      otherValues.forEach((valueText, valueIndex) => {
-        const tableCell = document.createElement('td');
-        tableCell.textContent = valueText;
-
-        if (valueIndex === 0) {
-          tableCell.title = 'Played % = (decks with the card / total decks in archetype)';
-        }
-        if (valueIndex >= 1 && valueIndex <= 4) {
-          const numberOfCopies = valueIndex;
-          tableCell.title = `Percent of decks in archetype that ran exactly ${numberOfCopies}x`;
-        }
-
-        if (typeof valueText === 'string') {
-          const percentageMatch = valueText.match(/^\s*(\d+)%$/);
-          if (percentageMatch && Number(percentageMatch[1]) === 0) {
-            tableCell.classList.add('zero-pct');
-          }
-        }
-
-        tableCell.style.padding = '10px 12px';
-        tableCell.style.textAlign = 'right';
-        tableRow.appendChild(tableCell);
-      });
-
-      tbody.appendChild(tableRow);
-    }
     tbl.appendChild(tbody);
     analysisTable.appendChild(tbl);
 
-    // Fade in the new table content
+    // Fade in the table immediately with the header visible
     requestAnimationFrame(() => {
       analysisTable.style.opacity = '1';
     });
+
+    // Staged rendering: add rows in batches for responsiveness
+    const BATCH_SIZE = 10;
+    for (let batchStart = 0; batchStart < rows.length; batchStart += BATCH_SIZE) {
+      const batch = rows.slice(batchStart, batchStart + BATCH_SIZE);
+      for (const rowData of batch) {
+        const tableRow = createAnalysisRow(rowData);
+        tbody.appendChild(tableRow);
+      }
+      // Yield to the browser between batches so the UI stays responsive
+      if (batchStart + BATCH_SIZE < rows.length) {
+        await new Promise<void>(resolve => {
+          requestAnimationFrame(() => resolve());
+        });
+      }
+    }
 
     // Make table header sticky via a floating cloned header as a fallback when CSS sticky doesn't work
     // This ensures the header row stays visible even if ancestor overflow/transform prevents CSS sticky.
@@ -453,6 +439,60 @@ export async function renderAnalysisTable(tournament: string, cardIdentifier: st
       cleanupOrphanedProgressDisplay();
     }, 100);
   }
+}
+
+/**
+ * Creates a single table row element for an archetype analysis entry
+ */
+function createAnalysisRow(rowData: any): HTMLTableRowElement {
+  const tableRow = document.createElement('tr');
+  const formatValue = (value: number | null) => (value === null ? '—' : `${Math.round(value)}%`);
+
+  const archetypeDeckCount = rowData.total !== null ? rowData.total : rowData.found !== null ? rowData.found : null;
+  const firstCell = document.createElement('td');
+  const strong = document.createElement('strong');
+  strong.textContent = rowData.archetype;
+  firstCell.appendChild(strong);
+  if (archetypeDeckCount !== null) {
+    firstCell.appendChild(document.createTextNode(` (${archetypeDeckCount})`));
+  }
+  firstCell.style.padding = '10px 12px';
+  firstCell.style.textAlign = 'left';
+  tableRow.appendChild(firstCell);
+
+  const otherValues = [
+    rowData.pct !== null ? `${Math.round(rowData.pct)}%` : '—',
+    formatValue(rowData.c1),
+    formatValue(rowData.c2),
+    formatValue(rowData.c3),
+    formatValue(rowData.c4)
+  ];
+
+  otherValues.forEach((valueText: string, valueIndex: number) => {
+    const tableCell = document.createElement('td');
+    tableCell.textContent = valueText;
+
+    if (valueIndex === 0) {
+      tableCell.title = 'Played % = (decks with the card / total decks in archetype)';
+    }
+    if (valueIndex >= 1 && valueIndex <= 4) {
+      const numberOfCopies = valueIndex;
+      tableCell.title = `Percent of decks in archetype that ran exactly ${numberOfCopies}x`;
+    }
+
+    if (typeof valueText === 'string') {
+      const percentageMatch = valueText.match(/^\s*(\d+)%$/);
+      if (percentageMatch && Number(percentageMatch[1]) === 0) {
+        tableCell.classList.add('zero-pct');
+      }
+    }
+
+    tableCell.style.padding = '10px 12px';
+    tableCell.style.textAlign = 'right';
+    tableRow.appendChild(tableCell);
+  });
+
+  return tableRow;
 }
 
 /**

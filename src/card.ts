@@ -42,6 +42,7 @@ import {
 import { renderMissingCardPage } from './card/missingCard.js';
 import { renderAnalysisSelector } from './card/analysis.js';
 import { applyPageSeo, buildCardSchema, buildWebPageSchema } from './utils/seo.js';
+import { extractCardMeta, renderExternalLinks } from './card/insights.js';
 
 // Set up global error handling
 setupGlobalErrorHandler();
@@ -50,8 +51,9 @@ const CARD_META_TEMPLATE = `
   <div class="header-title">
     <div class="title-row">
       <h1 id="card-title"></h1>
-      <div id="card-price" class="card-price">
-        <!-- Price loads asynchronously -->
+      <div class="title-row__right">
+        <div id="card-ref-links-slot"></div>
+        <div id="card-price" class="card-price"></div>
       </div>
     </div>
   </div>
@@ -61,12 +63,8 @@ const CARD_META_TEMPLATE = `
     </div>
   </div>
   <div id="card-center">
-    <div id="card-chart">
-      <!-- Chart loads asynchronously with smooth transition -->
-    </div>
-    <div id="card-copies">
-      <!-- Histogram loads asynchronously with smooth transition -->
-    </div>
+    <div id="card-chart"></div>
+    <div id="card-copies"></div>
   </div>
   <div id="card-events"></div>
 `;
@@ -461,10 +459,14 @@ async function checkCardExistsInDatabase(
     const controller = new AbortController();
     const results = await Promise.allSettled(
       tournamentsToCheck.map(async tournament => {
-        if (controller.signal.aborted) return { status: 'skipped' as const };
+        if (controller.signal.aborted) {
+          return { status: 'skipped' as const };
+        }
         try {
           const report = await fetchReport(tournament);
-          if (controller.signal.aborted) return { status: 'skipped' as const };
+          if (controller.signal.aborted) {
+            return { status: 'skipped' as const };
+          }
           const index = buildCardIndexFromMaster(report);
           const cards = index?.cards;
           if (!cards || typeof cards !== 'object') {
@@ -500,12 +502,23 @@ async function checkCardExistsInDatabase(
     let nonEmptyIndex = 0;
     let notFoundReports = 0;
     for (const result of results) {
-      if (result.status !== 'fulfilled') continue;
+      if (result.status !== 'fulfilled') {
+        continue;
+      }
       const val = result.value;
-      if (val.status === 'found') return { exists: true, checked: true };
-      if (val.status === 'checked') { reportsChecked++; nonEmptyIndex++; }
-      if (val.status === 'empty-index') { reportsChecked++; }
-      if (val.status === '404') { notFoundReports++; }
+      if (val.status === 'found') {
+        return { exists: true, checked: true };
+      }
+      if (val.status === 'checked') {
+        reportsChecked++;
+        nonEmptyIndex++;
+      }
+      if (val.status === 'empty-index') {
+        reportsChecked++;
+      }
+      if (val.status === '404') {
+        notFoundReports++;
+      }
     }
 
     if (reportsChecked === 0 && notFoundReports === 0) {
@@ -827,8 +840,13 @@ async function loadAndRenderMainContent(
       let globalFound: number | null = null;
       let globalTotal: number | null = null;
       let globalDist: any[] | null = null;
+      let cardMetaObj: any = null;
       if (cacheObject[ck]) {
         ({ pct: globalPct, found: globalFound, total: globalTotal } = cacheObject[ck]);
+        // Restore metadata from cache if available
+        if (cacheObject[ck].meta) {
+          cardMetaObj = cacheObject[ck].meta;
+        }
       } else {
         // Get all variants of this card and combine their usage data
         let card: any = null;
@@ -851,6 +869,19 @@ async function loadAndRenderMainContent(
                 pct: entry.pct,
                 dist: entry.dist
               };
+              // Try to get metadata from the raw report items
+              const rawItem = (report as any)?.items?.find(
+                (it: any) => it.name?.toLowerCase() === baseName.toLowerCase()
+              );
+              if (rawItem) {
+                card.category = rawItem.category;
+                card.trainerType = rawItem.trainerType;
+                card.energyType = rawItem.energyType;
+                card.aceSpec = rawItem.aceSpec;
+                card.regulationMark = rawItem.regulationMark;
+                card.supertype = rawItem.supertype;
+                card.rank = rawItem.rank;
+              }
             }
           } catch {
             // Ignore initialization errors
@@ -869,11 +900,15 @@ async function loadAndRenderMainContent(
           let combinedTotal: number | null = null;
           let hasAnyData = false;
           const combinedDist: any[] = [];
+          let firstVariantCard: any = null;
 
           for (const variant of variants) {
             const variantCard = findCard(parsed.items, variant);
             if (variantCard) {
               hasAnyData = true;
+              if (!firstVariantCard) {
+                firstVariantCard = variantCard;
+              }
               if (Number.isFinite(variantCard.found)) {
                 combinedFound += variantCard.found;
               }
@@ -899,7 +934,19 @@ async function loadAndRenderMainContent(
               found: combinedFound,
               total: combinedTotal,
               pct: combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0,
-              dist: combinedDist.sort((a: any, b: any) => a.copies - b.copies)
+              dist: combinedDist.sort((a: any, b: any) => a.copies - b.copies),
+              // Carry over metadata from first variant found
+              ...(firstVariantCard
+                ? {
+                    category: firstVariantCard.category,
+                    trainerType: firstVariantCard.trainerType,
+                    energyType: firstVariantCard.energyType,
+                    aceSpec: firstVariantCard.aceSpec,
+                    regulationMark: firstVariantCard.regulationMark,
+                    supertype: firstVariantCard.supertype,
+                    rank: firstVariantCard.rank
+                  }
+                : {})
             };
           }
         }
@@ -908,10 +955,12 @@ async function loadAndRenderMainContent(
           globalFound = Number.isFinite(card.found) ? card.found : null;
           globalTotal = Number.isFinite(card.total) ? card.total : null;
           globalDist = card.dist || null;
+          cardMetaObj = extractCardMeta(card);
           const cacheEntry = {
             pct: globalPct,
             found: globalFound,
-            total: globalTotal
+            total: globalTotal,
+            meta: cardMetaObj
           };
           // Store cache entry atomically
           Object.assign(cacheObject, { [ck]: cacheEntry });
@@ -924,7 +973,8 @@ async function loadAndRenderMainContent(
           pct: globalPct,
           found: globalFound,
           total: globalTotal,
-          dist: globalDist
+          dist: globalDist,
+          cardMeta: cardMetaObj
         };
       }
       return null;
@@ -937,6 +987,7 @@ async function loadAndRenderMainContent(
   const tournamentResults = await Promise.all(tournamentPromises);
 
   // Filter and collect results
+  let latestCardMeta: any = null;
   tournamentResults.forEach(result => {
     if (result) {
       timePoints.push({ tournament: result.tournament, pct: result.pct });
@@ -949,8 +1000,18 @@ async function loadAndRenderMainContent(
         total: result.total,
         dist: result.dist
       });
+      // Capture metadata from the first (most recent) tournament that has it
+      if (!latestCardMeta && result.cardMeta) {
+        latestCardMeta = result.cardMeta;
+      }
     }
   });
+
+  // Render external links (next to price, async)
+  const refLinksSlot = document.getElementById('card-ref-links-slot');
+  if (refLinksSlot && cardIdentifier && cardName) {
+    renderExternalLinks(refLinksSlot, cardIdentifier, cardName).catch(() => {});
+  }
 
   // Fixed window: always show the most recent 6 tournaments
   const LIMIT = 6;
@@ -985,7 +1046,7 @@ async function loadAndRenderMainContent(
         : [];
       const top8 = await fetchTop8ArchetypesList(tournament);
       const candidates: any[] = [];
-      const { canonical, variants } = await getSharedVariants();
+      const { variants } = await getSharedVariants();
 
       for (const base of archetypeBases) {
         try {
@@ -1095,7 +1156,7 @@ async function loadAndRenderMainContent(
         // Fallback: fetch dist data if not available from cache hit
         (async () => {
           try {
-            const { canonical, variants } = await getSharedVariants();
+            const { variants } = await getSharedVariants();
             const master = await fetchReport(latest.tournament);
             const parsed = parseReport(master);
 

@@ -1,0 +1,55 @@
+/* ==========================================================================
+   About Page Styles
+   ========================================================================== */
+.about-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--spacing-xl) var(--spacing-lg);
+}
+
+.about-content h1 {
+  color: var(--text);
+  font-size: var(--font-size-xl);
+  margin-bottom: var(--spacing-lg);
+  font-weight: 600;
+}
+
+.about-content h2 {
+  color: var(--text);
+  font-size: var(--font-size-lg);
+  margin: var(--spacing-xl) 0 var(--spacing-md);
+  font-weight: 600;
+}
+
+.about-content p {
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: var(--spacing-md);
+}
+
+.credits-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--spacing-lg) 0;
+}
+
+.credits-list li {
+  background: var(--panel);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  border-radius: var(--border-radius);
+  border-left: 3px solid var(--accent-2);
+}
+
+.credits-list strong {
+  color: var(--text);
+}
+
+.credits-list a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+.credits-list a:hover {
+  text-decoration: underline;
+}
