@@ -20,14 +20,45 @@
   <meta property="og:description"
     content="View detailed Pokemon TCG card statistics including usage rates and deck inclusion." />
   <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
   <meta property="og:site_name" content="Ciphermaniac" />
+  <meta property="og:locale" content="en_US" />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@ciphermaniac" />
   <meta name="twitter:url" content="https://ciphermaniac.com/cards" />
   <meta name="twitter:title" content="Card Details - Pokemon TCG" />
   <meta name="twitter:description" content="View detailed Pokemon TCG card statistics and usage data." />
   <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "Card Details - Pokemon TCG Analysis",
+      "description": "View detailed Pokemon TCG card statistics including usage rates, deck inclusion, copy counts, and price data across tournaments.",
+      "url": "https://ciphermaniac.com/cards",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "Ciphermaniac",
+        "url": "https://ciphermaniac.com"
+      }
+    }
+  </script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://ciphermaniac.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Card Database", "item": "https://ciphermaniac.com/cards" },
+        { "@type": "ListItem", "position": 3, "name": "Card Details" }
+      ]
+    }
+  </script>
 
   <!-- Favicon - PNG for Google compatibility -->
   <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
@@ -75,20 +106,32 @@
       </div>
       <div id="card-events"></div>
     </section>
-    <details id="card-analysis" class="card-sect" open>
-      <summary class="analysis-toggle">
-        <h2 id="analysis-heading">In-Depth Analysis</h2>
-      </summary>
-      <div class="analysis-content">
-        <div class="controls">
-          <label for="analysis-event">
-            <span class="analysis-event-label">Event</span>
+    <section id="card-analysis" class="card-sect">
+      <div class="analysis-panel">
+        <div class="analysis-panel-intro">
+          <h2 id="analysis-heading">In-Depth Analysis</h2>
+          <p class="analysis-blurb">Break down this card's usage by archetype for a specific tournament — see which decks run it, at what rate, and how many copies.</p>
+        </div>
+        <div class="analysis-panel-controls">
+          <label for="analysis-event" class="analysis-field">
+            <span class="analysis-field-label">Event</span>
             <select id="analysis-event" aria-label="Select tournament event for analysis"></select>
           </label>
+          <label for="analysis-slice" class="analysis-field">
+            <span class="analysis-field-label">Decks</span>
+            <select id="analysis-slice" aria-label="Filter by tournament placement">
+              <option value="all">All Decks</option>
+              <option value="phase2">Day 2</option>
+              <option value="topcut">Top Cut</option>
+            </select>
+          </label>
+          <div class="analysis-field analysis-field--btn">
+            <button id="analysis-run" class="btn btn--primary" type="button">Run Analysis</button>
+          </div>
         </div>
-        <div id="analysis-table" role="region" aria-label="Analysis data table"></div>
       </div>
-    </details>
+      <div id="analysis-table" role="region" aria-label="Analysis data table"></div>
+    </section>
   </main>
   <!-- Modal will be injected by JS when needed -->
 
