@@ -188,6 +188,15 @@
   border-color: var(--accent-2);
 }
 
+.btn-toggle .icon {
+  transition: transform var(--transition-fast);
+  display: inline-block;
+}
+
+.btn-toggle[aria-expanded='true'] .icon {
+  transform: rotate(180deg);
+}
+
 /* Filter toggle specific */
 .filters-toggle {
   background: var(--panel);

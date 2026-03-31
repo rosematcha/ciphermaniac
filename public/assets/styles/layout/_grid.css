@@ -3,6 +3,74 @@
    ========================================================================== */
 
 /* ==========================================================================
+   JS Card Grid (used by renderGrid.ts)
+   The JS renderer creates .grid > .row > .card structure
+   ========================================================================== */
+
+.grid {
+  --gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  /* Prevent layout thrashing and flashing during updates */
+  contain: layout style paint;
+}
+
+/* Prevent any flash during grid updates */
+.grid.updating {
+  pointer-events: none;
+}
+
+/* Each .row is a flex row of cards sized by JS */
+.row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--gap);
+  align-items: stretch;
+  --scale: 1;
+  contain: layout style;
+}
+
+/* Add subtle top padding to first row */
+.grid > .row:first-child {
+  padding-top: 2px;
+}
+
+/* Ensure card images show immediately without flash */
+.thumb img {
+  opacity: 1 !important;
+}
+
+/* Empty state placeholder */
+.empty-state {
+  padding: var(--space-12) var(--space-4);
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty-state h2 {
+  margin: 0 0 var(--space-2);
+  color: var(--text);
+  font-size: var(--font-size-xl);
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: var(--font-size-base);
+}
+
+/* Grid minimum height to prevent collapse */
+.grid:empty {
+  min-height: 400px;
+}
+
+@media (max-width: 720px) {
+  .grid {
+    gap: var(--space-2);
+  }
+}
+
+/* ==========================================================================
    Responsive Grid Layouts
    ========================================================================== */
 

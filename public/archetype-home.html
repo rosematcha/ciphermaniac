@@ -25,14 +25,45 @@
       content="Get an overview of Pokemon TCG deck archetypes including stats and top performers."
     />
     <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="Ciphermaniac" />
+    <meta property="og:locale" content="en_US" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@ciphermaniac" />
     <meta name="twitter:url" content="https://ciphermaniac.com/archetypes" />
     <meta name="twitter:title" content="Deck Overview - Pokemon TCG" />
     <meta name="twitter:description" content="Get an overview of Pokemon TCG deck archetypes." />
     <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "Deck Overview - Pokemon TCG Archetype",
+        "description": "Get an overview of Pokemon TCG deck archetypes including stats, top performers, and signature cards.",
+        "url": "https://ciphermaniac.com/archetypes",
+        "isPartOf": {
+          "@type": "WebSite",
+          "name": "Ciphermaniac",
+          "url": "https://ciphermaniac.com"
+        }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://ciphermaniac.com/" },
+          { "@type": "ListItem", "position": 2, "name": "Deck Archetypes", "item": "https://ciphermaniac.com/archetypes" },
+          { "@type": "ListItem", "position": 3, "name": "Deck Overview" }
+        ]
+      }
+    </script>
 
     <!-- Favicon - PNG for Google compatibility -->
     <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
@@ -44,7 +75,7 @@
 
     <!-- Preload critical font to reduce layout shift -->
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="/assets/style.css?v=20260214h" />
+    <link rel="stylesheet" href="/assets/style-optimized.css?v=20260327b" />
     <!-- Preload critical JS module for faster page load -->
     <link rel="modulepreload" href="/assets/js/src/loaders/archetype-home.js" />
   </head>
@@ -65,6 +96,14 @@
       <main id="main-content" class="archetype-main" tabindex="-1">
         <section class="archetype-content">
           <div class="archetype-simple">
+            <!-- Archetype Identity Header -->
+            <div class="archetype-header-row">
+              <nav class="archetype-breadcrumb" aria-label="Breadcrumb">
+                <a href="/archetypes" class="archetype-breadcrumb__link">← Archetypes</a>
+              </nav>
+              <h1 id="archetype-title" class="archetype-title"></h1>
+            </div>
+
             <!-- Tab Navigation -->
             <nav class="archetype-tabs" aria-label="Archetype views">
               <a id="tab-home" class="archetype-tab is-active" href="#" aria-current="page">Overview</a>
@@ -116,20 +155,6 @@
               </div>
             </section>
 
-            <!-- Action Cards -->
-            <section id="archetype-actions" class="archetype-home-content" hidden>
-              <div class="archetype-home-card">
-                <h2>Deck Analysis</h2>
-                <p>Deep dive into card inclusions, win rates, and matchups for this archetype.</p>
-                <a id="link-analysis-card" href="analysis" class="btn-primary">View Analysis</a>
-              </div>
-
-              <div class="archetype-home-card">
-                <h2>Metagame Trends</h2>
-                <p>Track performance and popularity over time. See which cards are rising or falling in usage.</p>
-                <a id="link-trends-card" href="trends" class="btn-primary">View Trends</a>
-              </div>
-            </section>
           </div>
         </section>
       </main>
@@ -146,18 +171,5 @@
       document.body.insertAdjacentElement('beforeend', footer);
     </script>
     <script type="module" src="/assets/js/src/loaders/archetype-home.js"></script>
-    <script>
-      // Simple inline script to update the card links based on current URL
-      (function () {
-        const path = window.location.pathname;
-        const analysisLink = document.querySelector('#link-analysis-card');
-        const trendsLink = document.querySelector('#link-trends-card');
-
-        // Ensure trailing slash logic works or relative links work
-        // If we are at /archetype/Charizard, 'analysis' -> /archetype/Charizard/analysis
-        if (analysisLink) analysisLink.href = path.replace(/\/$/, '') + '/analysis';
-        if (trendsLink) trendsLink.href = path.replace(/\/$/, '') + '/trends';
-      })();
-    </script>
   </body>
 </html>

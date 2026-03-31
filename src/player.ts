@@ -7,12 +7,12 @@ import { logger } from './utils/logger.js';
 const numberFormatter = new Intl.NumberFormat('en-US');
 
 const elements = {
+  page: document.querySelector('.player-page') as HTMLElement | null,
   loading: document.getElementById('player-loading') as HTMLElement | null,
   error: document.getElementById('player-error') as HTMLElement | null,
   content: document.getElementById('player-content') as HTMLElement | null,
   name: document.getElementById('player-name') as HTMLElement | null,
   subtitle: document.getElementById('player-subtitle') as HTMLElement | null,
-  status: document.getElementById('player-status') as HTMLElement | null,
   statsEvents: document.getElementById('player-stat-events') as HTMLElement | null,
   statsEntries: document.getElementById('player-stat-entries') as HTMLElement | null,
   statsWins: document.getElementById('player-stat-wins') as HTMLElement | null,
@@ -25,13 +25,15 @@ const elements = {
   archetypeBody: document.getElementById('player-archetype-body') as HTMLTableSectionElement | null,
   historyBody: document.getElementById('player-history-body') as HTMLTableSectionElement | null,
   historyEmpty: document.getElementById('player-history-empty') as HTMLElement | null,
-  breadcrumbName: document.getElementById('player-breadcrumb-name') as HTMLElement | null,
   backToPlayers: document.getElementById('player-back-link') as HTMLAnchorElement | null
 };
 
 function setLoading(isLoading: boolean): void {
   if (elements.loading) {
     elements.loading.hidden = !isLoading;
+  }
+  if (elements.page) {
+    elements.page.dataset.state = isLoading ? 'loading' : 'ready';
   }
 }
 
@@ -42,13 +44,6 @@ function setError(isError: boolean): void {
   if (elements.content) {
     elements.content.hidden = isError;
   }
-}
-
-function setStatus(text: string): void {
-  if (!elements.status) {
-    return;
-  }
-  elements.status.textContent = text;
 }
 
 function formatNumber(value: number): string {
@@ -157,7 +152,9 @@ function renderInsights(player: PlayerProfile): void {
   }
 
   if (player.bestFinish !== null) {
-    insights.push(`Best finish: ${formatPlacement(player.bestFinish)}. Average finish: ${player.avgFinish?.toFixed(1) ?? '--'}.`);
+    insights.push(
+      `Best finish: ${formatPlacement(player.bestFinish)}. Average finish: ${player.avgFinish?.toFixed(1) ?? '--'}.`
+    );
   }
 
   elements.insightsList.innerHTML = '';
@@ -229,11 +226,7 @@ function renderPlayer(player: PlayerProfile): void {
 
   if (elements.subtitle) {
     const avg = player.avgFinish === null ? '--' : player.avgFinish.toFixed(1);
-    elements.subtitle.textContent = `${formatNumber(player.entries)} entries across ${formatNumber(player.events)} regionals | Top 16 ${formatRate(player.top16Rate)} | Top 8 ${formatRate(player.top8Rate)} | Avg finish ${avg}`;
-  }
-
-  if (elements.breadcrumbName) {
-    elements.breadcrumbName.textContent = player.name;
+    elements.subtitle.textContent = `${formatNumber(player.entries)} entries across ${formatNumber(player.events)} regionals · Top 16 ${formatRate(player.top16Rate)} · Top 8 ${formatRate(player.top8Rate)} · Avg finish ${avg}`;
   }
 
   renderStats(player);
@@ -290,7 +283,6 @@ async function init(): Promise<void> {
   if (!slug) {
     setLoading(false);
     setError(true);
-    setStatus('Missing player slug in URL.');
     return;
   }
 
@@ -299,19 +291,16 @@ async function init(): Promise<void> {
     const player = findPlayerBySlug(dataset, slug);
     if (!player) {
       setError(true);
-      setStatus('Player not found in the tracked regional dataset.');
       return;
     }
 
     renderPlayer(player);
-    setStatus(`Profile generated from ${formatNumber(dataset.regionals.length)} regionals and ${formatNumber(dataset.decksAnalyzed)} decklists.`);
   } catch (error) {
     logger.exception('Failed to initialize player profile', error);
     setError(true);
-    setStatus('Unable to load player profile right now.');
   } finally {
     setLoading(false);
   }
 }
 
-void init();
+init();

@@ -7,8 +7,8 @@ body::before {
   content: '';
   display: block;
   height: var(--header-height);
-  background: var(--panel);
-  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   flex-shrink: 0;
 }
 
@@ -28,8 +28,8 @@ body.no-header::before {
 body:not(.no-header) > .site-header,
 body:not(.no-header) > header {
   padding: var(--space-3) 0;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   display: block;
   width: 100%;
   max-width: none;
@@ -166,7 +166,7 @@ body::after {
   height: var(--footer-height);
   margin-top: auto;
   background: transparent;
-  border-top: 1px solid var(--border-primary);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
   flex-shrink: 0;
 }
 
@@ -178,7 +178,7 @@ body.has-footer::after {
 
 /* Footer styles */
 .site-footer {
-  border-top: 1px solid var(--border-primary);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
   padding: var(--space-3) var(--space-4);
   color: var(--muted);
   font-size: 13px;
@@ -202,16 +202,17 @@ body.has-footer::after {
 }
 
 .footer-left .credits a,
-.footer-right a {
-  color: var(--link);
+.footer-right a,
+.footer-links a {
+  color: var(--muted);
   text-decoration: none;
-  transition: var(--transition-fast);
+  transition: color var(--transition-fast);
 }
 
 .footer-left .credits a:hover,
-.footer-right a:hover {
-  color: var(--accent-2);
-  text-decoration: underline;
+.footer-right a:hover,
+.footer-links a:hover {
+  color: var(--text);
 }
 
 /* Mobile footer adjustments */

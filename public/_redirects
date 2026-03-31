@@ -19,3 +19,11 @@
 /tools/player-connections/ /tools/player-connections 301
 /tools/social-graphics.html /tools/social-graphics 301
 /tools/social-graphics/ /tools/social-graphics 301
+
+# Redirect /tools/ base paths to /toys/
+/tools /toys 301
+/tools/ /toys 301
+/tools/meta-binder /toys/meta-binder 301
+/tools/player-connections /toys/player-connections 301
+/tools/social-graphics /toys/social-graphics 301
+/tools/incidents /toys/incidents 301

@@ -1,0 +1,123 @@
+/* ==========================================================================
+   Feedback Page Styles
+   ========================================================================== */
+.feedback-page .container {
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--spacing-lg);
+}
+
+.feedback-form {
+  background: var(--panel);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-xl);
+}
+
+.form-group {
+  margin-bottom: var(--spacing-lg);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: var(--spacing-sm);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.form-group select,
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: var(--spacing-md);
+  background: var(--bg);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--border-radius);
+  color: var(--text);
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+}
+
+/* Form focus states - consolidated */
+.form-group select:focus,
+.form-group input:focus,
+.form-group textarea:focus,
+.select-wrapper select:focus,
+.archetype-count-filter input[type='number']:focus {
+  outline: none;
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.1);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.conditional-section,
+.conditional-subsection {
+  margin-left: var(--spacing-lg);
+  padding-left: var(--spacing-lg);
+  border-left: 2px solid rgba(255, 255, 255, 0.06);
+  margin-top: var(--spacing-md);
+}
+
+.submit-button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.submit-button:hover:not(:disabled) {
+  background: #ff5252;
+}
+
+.submit-button:disabled {
+  background: var(--muted);
+  cursor: not-allowed;
+}
+
+.status-message {
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  margin-top: var(--spacing-md);
+}
+
+.status-message.success {
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  color: #81c784;
+}
+
+.status-message.error {
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  color: #e57373;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 720px) {
+  .feedback-page {
+    padding: var(--spacing-lg);
+  }
+
+  .feedback-page .container {
+    padding: 0;
+  }
+
+  .feedback-form {
+    padding: var(--spacing-lg);
+  }
+
+  .conditional-section,
+  .conditional-subsection {
+    margin-left: var(--spacing-sm);
+    padding-left: var(--spacing-sm);
+  }
+}

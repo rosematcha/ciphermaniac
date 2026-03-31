@@ -49,7 +49,21 @@ export function renderCardsWithThreshold(threshold: number): void {
 
     syncGranularityOutput(currentThreshold);
     updateSkeletonSummary(sortedVisibleItems);
+    updateCardCountDisplay(sortedVisibleItems.length);
   });
+}
+
+/**
+ * Update the card count display in the panel header.
+ */
+function updateCardCountDisplay(count: number): void {
+  const display = document.getElementById('card-count-display');
+  const value = document.getElementById('card-count-value');
+  if (!display || !value) {
+    return;
+  }
+  value.textContent = String(count);
+  display.hidden = false;
 }
 
 /**
@@ -63,9 +77,7 @@ export function renderCards(): void {
 
   configureGranularity(state.items);
   const threshold =
-    typeof state.thresholdPercent === 'number' && Number.isFinite(state.thresholdPercent)
-      ? state.thresholdPercent
-      : 0;
+    typeof state.thresholdPercent === 'number' && Number.isFinite(state.thresholdPercent) ? state.thresholdPercent : 0;
   const visibleItems = filterItemsByThreshold(state.items, threshold);
   const sortedVisibleItems = sortItemsForDisplay(visibleItems);
 
@@ -76,4 +88,5 @@ export function renderCards(): void {
   lastRenderedThreshold = threshold;
   syncGranularityOutput(threshold);
   updateSkeletonSummary(sortedVisibleItems);
+  updateCardCountDisplay(sortedVisibleItems.length);
 }

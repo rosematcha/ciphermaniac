@@ -1,0 +1,126 @@
+/* ==========================================================================
+   Player Page Styles
+   ========================================================================== */
+
+/* Override trends-page centered header for player detail — needs left alignment */
+.player-detail-page .page-header {
+  text-align: left;
+  padding: var(--space-6) var(--space-1) var(--space-4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  margin-bottom: 0;
+}
+
+.player-detail-page .page-subtitle {
+  margin: 0;
+  max-width: none;
+}
+
+/* ==========================================================================
+   Intel Strip — status / metadata bar
+   ========================================================================== */
+
+.page-intel-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  background: var(--panel);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin: 0 var(--space-1);
+}
+
+.page-intel-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 120px;
+}
+
+.page-intel-item--wide {
+  flex: 1;
+  min-width: 220px;
+}
+
+.page-intel-item__label {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.page-intel-item__value {
+  font-size: var(--font-size-sm);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   Stats Grid
+   ========================================================================== */
+
+/* Tighter column minimum for player stats — more items than archetype summary */
+.player-detail-page .archetypes-summary {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  margin: 0 var(--space-1);
+}
+
+/* ==========================================================================
+   Archetype Usage Table
+   ========================================================================== */
+
+/* Full-width usage bar in the table share column */
+.player-detail-page #player-archetype-body .usagebar {
+  min-width: 120px;
+  margin-top: 0;
+}
+
+/* ==========================================================================
+   Event History Table
+   ========================================================================== */
+
+/* Date column — don't shrink on narrow screens */
+.player-detail-page #player-history-body td:first-child {
+  white-space: nowrap;
+}
+
+/* Placement column — numeric, right-aligned */
+.player-detail-page #player-history-body td:nth-child(3) {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent);
+}
+
+/* ==========================================================================
+   Profile Insights List
+   ========================================================================== */
+
+/* Styles handled in _archetypes.css via .player-detail-page #player-insights-list */
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .player-detail-page .page-header {
+    padding: var(--space-5) 0 var(--space-3);
+  }
+
+  .page-intel-strip {
+    padding: var(--space-3);
+    gap: var(--space-2) var(--space-4);
+  }
+
+  .player-detail-page .archetypes-summary {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: var(--space-2);
+  }
+
+  /* Hide field column on narrow screens — less important */
+  .player-detail-page #player-history-body td:nth-child(4),
+  .player-detail-page table thead th:nth-child(4) {
+    display: none;
+  }
+}
