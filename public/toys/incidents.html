@@ -19,14 +19,45 @@
     <meta property="og:title" content="Tournament Incidents - Ciphermaniac" />
     <meta property="og:description" content="View Pokemon TCG tournament data collection status." />
     <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="Ciphermaniac" />
+    <meta property="og:locale" content="en_US" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@ciphermaniac" />
     <meta name="twitter:url" content="https://ciphermaniac.com/toys/incidents" />
     <meta name="twitter:title" content="Tournament Incidents" />
     <meta name="twitter:description" content="View Pokemon TCG tournament data collection status." />
     <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "Tournament Incidents - Pokemon TCG Data",
+        "description": "View Pokemon TCG tournament data collection status and incidents.",
+        "url": "https://ciphermaniac.com/toys/incidents",
+        "isPartOf": {
+          "@type": "WebSite",
+          "name": "Ciphermaniac",
+          "url": "https://ciphermaniac.com"
+        }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://ciphermaniac.com/" },
+          { "@type": "ListItem", "position": 2, "name": "Toys", "item": "https://ciphermaniac.com/toys" },
+          { "@type": "ListItem", "position": 3, "name": "Incidents", "item": "https://ciphermaniac.com/toys/incidents" }
+        ]
+      }
+    </script>
 
     <!-- Favicon - PNG for Google compatibility -->
     <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
@@ -41,6 +72,9 @@
   </head>
   <body>
     <main id="main-content" class="incidents-page" tabindex="-1">
+      <nav class="incidents-breadcrumb" aria-label="Breadcrumb">
+        <a href="/toys" class="incidents-breadcrumb__link">&larr; Toys</a>
+      </nav>
       <h1 class="incidents-title">Incidents</h1>
       <section class="incidents-content">
         <ul class="incidents-list" id="incidentsList" aria-live="polite" aria-busy="true">

@@ -22,14 +22,44 @@
       content="Learn about Ciphermaniac, a free Pokemon TCG meta analysis tool for competitive players."
     />
     <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="Ciphermaniac" />
+    <meta property="og:locale" content="en_US" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@ciphermaniac" />
     <meta name="twitter:url" content="https://ciphermaniac.com/about" />
     <meta name="twitter:title" content="About Ciphermaniac" />
     <meta name="twitter:description" content="Learn about Ciphermaniac, a free Pokemon TCG meta analysis tool." />
     <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "AboutPage",
+        "name": "About Ciphermaniac",
+        "description": "Learn about Ciphermaniac, a free Pokemon TCG meta analysis tool created for the competitive Pokemon TCG community.",
+        "url": "https://ciphermaniac.com/about",
+        "isPartOf": {
+          "@type": "WebSite",
+          "name": "Ciphermaniac",
+          "url": "https://ciphermaniac.com"
+        }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://ciphermaniac.com/" },
+          { "@type": "ListItem", "position": 2, "name": "About", "item": "https://ciphermaniac.com/about" }
+        ]
+      }
+    </script>
 
     <!-- Favicon - PNG for Google compatibility -->
     <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />

@@ -19,14 +19,44 @@
     <meta property="og:title" content="Toys - Ciphermaniac" />
     <meta property="og:description" content="Explore Ciphermaniac's collection of Pokemon TCG tools and utilities." />
     <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="Ciphermaniac" />
+    <meta property="og:locale" content="en_US" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@ciphermaniac" />
     <meta name="twitter:url" content="https://ciphermaniac.com/toys" />
     <meta name="twitter:title" content="Toys - Ciphermaniac" />
     <meta name="twitter:description" content="Explore Ciphermaniac's collection of Pokemon TCG tools and utilities." />
     <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": "Toys - Pokemon TCG Tools",
+        "description": "Explore Ciphermaniac's collection of Pokemon TCG tools — social graphics, meta binders, player connections, and more.",
+        "url": "https://ciphermaniac.com/toys",
+        "isPartOf": {
+          "@type": "WebSite",
+          "name": "Ciphermaniac",
+          "url": "https://ciphermaniac.com"
+        }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://ciphermaniac.com/" },
+          { "@type": "ListItem", "position": 2, "name": "Toys", "item": "https://ciphermaniac.com/toys" }
+        ]
+      }
+    </script>
 
     <!-- Favicon - PNG for Google compatibility -->
     <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
@@ -39,92 +69,7 @@
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/assets/style-optimized.css?v=20260327b" />
 
-    <style>
-      .toys-page {
-        max-width: 800px;
-        margin: 0 auto;
-        padding: var(--gap-32) var(--gap-16);
-      }
-
-      .toys-heading {
-        font-family: 'Fraunces', serif;
-        font-size: 2rem;
-        color: var(--text);
-        margin-bottom: var(--gap-8);
-      }
-
-      .toys-subtitle {
-        color: var(--muted);
-        font-size: 0.95rem;
-        margin-bottom: var(--gap-32);
-        line-height: 1.5;
-      }
-
-      .toys-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: var(--gap-16);
-      }
-
-      .toy-card {
-        display: flex;
-        align-items: flex-start;
-        gap: var(--gap-16);
-        padding: var(--gap-20);
-        background: var(--panel);
-        border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
-        border-radius: var(--border-radius);
-        text-decoration: none;
-        color: var(--text);
-        transition: border-color 0.15s ease, background 0.15s ease;
-      }
-
-      .toy-card:hover,
-      .toy-card:focus-visible {
-        border-color: var(--accent);
-        background: color-mix(in srgb, var(--panel) 90%, var(--accent));
-      }
-
-      .toy-card:focus-visible {
-        outline: 2px solid var(--accent);
-        outline-offset: 2px;
-      }
-
-      .toy-icon {
-        flex-shrink: 0;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: var(--border-radius-sm, 8px);
-        background: color-mix(in srgb, var(--accent) 12%, transparent);
-        color: var(--accent);
-      }
-
-      .toy-copy h2 {
-        font-size: 1.05rem;
-        font-weight: 600;
-        margin-bottom: var(--gap-4);
-      }
-
-      .toy-copy p {
-        color: var(--muted);
-        font-size: 0.875rem;
-        line-height: 1.5;
-        margin: 0;
-      }
-
-      @media (min-width: 540px) {
-        .toys-grid {
-          grid-template-columns: repeat(2, 1fr);
-        }
-
-        .toy-card {
-          flex-direction: column;
-        }
-      }
-    </style>
+    <!-- Styles in _tools.css module -->
   </head>
   <body>
     <main id="main-content" class="toys-page" tabindex="-1">

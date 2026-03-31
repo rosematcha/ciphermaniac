@@ -19,9 +19,13 @@
       content="Explore shortest player-to-player match connection paths across offline tournaments."
     />
     <meta property="og:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="Ciphermaniac" />
+    <meta property="og:locale" content="en_US" />
 
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@ciphermaniac" />
     <meta name="twitter:url" content="https://ciphermaniac.com/toys/player-connections" />
     <meta name="twitter:title" content="Player Connections" />
     <meta
@@ -29,6 +33,33 @@
       content="Find degrees of separation between players from canonical tournament matches."
     />
     <meta name="twitter:image" content="https://ciphermaniac.com/assets/images/og-image.png" />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "Player Connections - Kevin Bacon Degrees",
+        "description": "Find Kevin Bacon-style degrees of separation between Pokemon TCG players using tournament match data.",
+        "url": "https://ciphermaniac.com/toys/player-connections",
+        "isPartOf": {
+          "@type": "WebSite",
+          "name": "Ciphermaniac",
+          "url": "https://ciphermaniac.com"
+        }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://ciphermaniac.com/" },
+          { "@type": "ListItem", "position": 2, "name": "Toys", "item": "https://ciphermaniac.com/toys" },
+          { "@type": "ListItem", "position": 3, "name": "Player Connections", "item": "https://ciphermaniac.com/toys/player-connections" }
+        ]
+      }
+    </script>
 
     <link rel="icon" type="image/png" sizes="48x48" href="/assets/images/favicon-48x48.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" />
@@ -43,21 +74,48 @@
       .connections-page {
         max-width: 1120px;
         margin: 0 auto;
-        padding: 24px 16px 64px;
+        padding: var(--space-6) var(--space-4) var(--space-16);
+      }
+
+      .connections-breadcrumb {
+        margin-bottom: var(--space-2);
+      }
+
+      .connections-breadcrumb a {
+        color: var(--muted);
+        text-decoration: none;
+        font-size: var(--font-size-sm);
+        transition: color var(--transition-fast);
+      }
+
+      .connections-breadcrumb a:hover {
+        color: var(--accent-2);
       }
 
       .connections-panel {
-        background: rgba(12, 18, 38, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        padding: 16px;
-        margin-bottom: 18px;
+        background: var(--surface-1);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--border-radius-lg);
+        padding: var(--space-4);
+        margin-bottom: var(--space-4);
+      }
+
+      .connections-panel h1 {
+        font-family: var(--font-family-serif);
+        font-weight: var(--font-weight-black);
+        font-variation-settings: 'SOFT' 100, 'WONK' 1;
+        letter-spacing: -0.03em;
+        margin: 0 0 var(--space-2);
+      }
+
+      .connections-panel h2 {
+        margin: 0 0 var(--space-2);
       }
 
       .connections-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
+        gap: var(--space-3);
       }
 
       .connections-field {
@@ -66,17 +124,26 @@
 
       .connections-field label {
         display: block;
-        font-weight: 600;
-        margin-bottom: 8px;
+        font-weight: var(--font-weight-semibold);
+        margin-bottom: var(--space-2);
+        font-size: var(--font-size-sm);
       }
 
       .connections-field input {
         width: 100%;
-        border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        background: rgba(6, 10, 22, 0.9);
-        color: #fff;
-        padding: 10px 12px;
+        border-radius: var(--border-radius);
+        border: 1px solid var(--border-default);
+        background: var(--bg);
+        color: var(--text);
+        padding: var(--space-3);
+        font-size: var(--font-size-base);
+        transition: border-color var(--transition-fast);
+      }
+
+      .connections-field input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(232, 168, 62, 0.1);
       }
 
       .connections-suggestions {
@@ -86,13 +153,13 @@
         top: 72px;
         list-style: none;
         margin: 0;
-        padding: 6px;
-        border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        background: #0d1733;
+        padding: var(--space-1);
+        border-radius: var(--border-radius);
+        border: 1px solid var(--border-default);
+        background: var(--surface-2);
         max-height: 260px;
         overflow: auto;
-        z-index: 15;
+        z-index: var(--z-dropdown);
       }
 
       .connections-suggestions[hidden] {
@@ -103,39 +170,47 @@
         width: 100%;
         text-align: left;
         border: 0;
-        border-radius: 8px;
+        border-radius: var(--border-radius-sm);
         background: transparent;
-        color: #ecf1ff;
-        padding: 9px 10px;
+        color: var(--text);
+        padding: var(--space-2) var(--space-3);
         cursor: pointer;
+        font-size: var(--font-size-base);
       }
 
       .connections-suggestions button:hover,
       .connections-suggestions button.is-active {
-        background: rgba(255, 255, 255, 0.12);
+        background: var(--bg-active);
       }
 
       .connections-actions {
-        margin-top: 14px;
+        margin-top: var(--space-3);
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: var(--space-3);
         flex-wrap: wrap;
       }
 
       .connections-actions button {
         border: 0;
-        border-radius: 10px;
-        background: linear-gradient(120deg, #56a6ff, #87d0ff);
-        color: #0a132d;
-        font-weight: 700;
-        padding: 9px 16px;
+        border-radius: var(--border-radius);
+        background: var(--accent);
+        color: var(--bg);
+        font-weight: var(--font-weight-bold);
+        padding: var(--space-2) var(--space-4);
         cursor: pointer;
+        font-size: var(--font-size-base);
+        transition: background var(--transition-fast);
+      }
+
+      .connections-actions button:hover {
+        background: #d4962f;
       }
 
       .connections-note {
-        color: rgba(223, 231, 255, 0.86);
+        color: var(--muted);
         margin: 0;
+        line-height: var(--line-height-relaxed);
       }
 
       .connections-loading-tip {
@@ -149,42 +224,43 @@
 
       .connections-result-list {
         list-style: none;
-        margin: 0;
+        margin: var(--space-3) 0 0;
         padding: 0;
         display: grid;
-        gap: 10px;
+        gap: var(--space-3);
       }
 
       .connections-result-item {
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
-        padding: 10px 12px;
-        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--border-radius);
+        padding: var(--space-3);
+        background: var(--bg-hover);
       }
 
       .connections-progress {
         width: 100%;
         height: 10px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.12);
+        border-radius: var(--border-radius-full);
+        background: var(--bar-bg);
         overflow: hidden;
-        margin: 10px 0 0;
+        margin: var(--space-3) 0 0;
       }
 
       .connections-progress__bar {
         height: 100%;
         width: 0;
-        background: linear-gradient(90deg, #6caeff, #9fd4ff);
+        background: var(--accent-2);
         transition: width 180ms ease;
       }
 
       .connections-stats {
-        color: rgba(223, 231, 255, 0.8);
-        font-size: 0.95rem;
+        color: var(--muted);
+        font-size: var(--font-size-sm);
+        margin-top: var(--space-2);
       }
 
       .connections-empty {
-        color: rgba(223, 231, 255, 0.8);
+        color: var(--muted);
         margin: 0;
       }
 
@@ -197,6 +273,9 @@
   </head>
   <body>
     <main id="main-content" class="connections-page" tabindex="-1">
+      <nav class="connections-breadcrumb" aria-label="Breadcrumb">
+        <a href="/toys">&larr; Toys</a>
+      </nav>
       <section class="connections-panel">
         <h1>Player Connections</h1>
         <p class="connections-note">
