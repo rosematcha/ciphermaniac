@@ -9,7 +9,7 @@ import { describeFilters, describeSuccessFilter, getFilterKey, updateFilterMessa
 /**
  * Reset filters and return to the baseline dataset.
  */
-export async function resetToDefaultData(): Promise<void> {
+async function resetToDefaultData(): Promise<void> {
   await applySuccessFilter();
   const state = getState();
   state.filterRows.forEach(row => {
@@ -144,7 +144,7 @@ export async function applyFilters(): Promise<void> {
 /**
  * Apply the current success filter baseline.
  */
-export async function applySuccessFilter(): Promise<void> {
+async function applySuccessFilter(): Promise<void> {
   try {
     const baseline = await loadSuccessBaseline();
     const state = getState();

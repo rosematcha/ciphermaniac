@@ -14,16 +14,6 @@ export function setPageState(status: string): void {
 }
 
 /**
- * Toggle loading state on the page.
- * @param isLoading - Whether the page is loading.
- */
-export function toggleLoading(isLoading: boolean): void {
-  if (elements.loading) {
-    elements.loading.hidden = !isLoading;
-  }
-}
-
-/**
  * Show an error message on the page.
  * @param message - Error message.
  */

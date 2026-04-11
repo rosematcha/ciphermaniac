@@ -5,7 +5,7 @@ import { logger } from '../../utils/logger.js';
  * Attempt to copy text using document.execCommand.
  * @param text - Text to copy.
  */
-export function attemptExecCommandCopy(text: string): boolean {
+function attemptExecCommandCopy(text: string): boolean {
   if (!globalThis.document || typeof globalThis.document.createElement !== 'function') {
     return false;
   }

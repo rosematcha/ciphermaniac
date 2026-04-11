@@ -7,7 +7,7 @@
 /**
  * Minimal card data needed for category inference.
  */
-export interface CardForCategory {
+interface CardForCategory {
   name?: string;
   uid?: string;
   category?: string;
@@ -26,7 +26,7 @@ export interface CardForCategory {
 /**
  * Known supporter names that should always be classified as supporters.
  */
-export const TRAINER_SUPPORTER_OVERRIDES = new Set([
+const TRAINER_SUPPORTER_OVERRIDES = new Set([
   'iono',
   'arven',
   'penny',
@@ -70,7 +70,7 @@ export const TRAINER_SUPPORTER_OVERRIDES = new Set([
 /**
  * Keywords that indicate a card is a Supporter.
  */
-export const TRAINER_SUPPORTER_KEYWORDS = [
+const TRAINER_SUPPORTER_KEYWORDS = [
   "professor'",
   'professor ',
   "boss's orders",
@@ -91,7 +91,7 @@ export const TRAINER_SUPPORTER_KEYWORDS = [
 /**
  * Keywords that indicate a card is a Stadium.
  */
-export const TRAINER_STADIUM_KEYWORDS = [
+const TRAINER_STADIUM_KEYWORDS = [
   ' stadium',
   ' arena',
   ' park',
@@ -135,7 +135,7 @@ export const TRAINER_STADIUM_KEYWORDS = [
 /**
  * Keywords that indicate a card is a Tool.
  */
-export const TRAINER_TOOL_KEYWORDS = [
+const TRAINER_TOOL_KEYWORDS = [
   ' belt',
   ' band',
   ' cape',
@@ -162,7 +162,7 @@ export const TRAINER_TOOL_KEYWORDS = [
 /**
  * Keywords that indicate a card is an Item.
  */
-export const TRAINER_ITEM_KEYWORDS = [
+const TRAINER_ITEM_KEYWORDS = [
   ' ball',
   ' switch',
   ' rope',
@@ -203,7 +203,7 @@ export const TRAINER_ITEM_KEYWORDS = [
 /**
  * Combined trainer hint keywords.
  */
-export const TRAINER_HINT_KEYWORDS = [
+const TRAINER_HINT_KEYWORDS = [
   ...TRAINER_SUPPORTER_KEYWORDS,
   ...TRAINER_STADIUM_KEYWORDS,
   ...TRAINER_TOOL_KEYWORDS,
@@ -216,7 +216,7 @@ export const TRAINER_HINT_KEYWORDS = [
 /**
  * Priority order for card categories when sorting.
  */
-export const CARD_CATEGORY_SORT_PRIORITY = new Map([
+const CARD_CATEGORY_SORT_PRIORITY = new Map([
   ['pokemon', 0],
   ['trainer/supporter', 1],
   ['trainer/item', 2],
@@ -252,7 +252,7 @@ export function toLower(value: unknown): string {
  * Normalize category values for comparison.
  * @param value - Input value.
  */
-export function normalizeCategoryValue(value: unknown): string {
+function normalizeCategoryValue(value: unknown): string {
   if (typeof value !== 'string' || !value.trim()) {
     return '';
   }
@@ -317,7 +317,7 @@ export function inferPrimaryCategory(card: CardForCategory | null | undefined): 
  * Infer the trainer subtype for a card.
  * @param card - Card data.
  */
-export function inferTrainerSubtype(card: CardForCategory | null | undefined): string {
+function inferTrainerSubtype(card: CardForCategory | null | undefined): string {
   const trainerType = toLower(card?.trainerType);
   if (trainerType) {
     return trainerType;
@@ -371,7 +371,7 @@ export function inferTrainerSubtype(card: CardForCategory | null | undefined): s
  * @param card - Card data.
  * @param baseCategory - Base category slug.
  */
-export function buildTrainerCategorySlug(card: CardForCategory | null | undefined, baseCategory: string): string {
+function buildTrainerCategorySlug(card: CardForCategory | null | undefined, baseCategory: string): string {
   if (baseCategory !== 'trainer') {
     return '';
   }
@@ -403,7 +403,7 @@ export function buildTrainerCategorySlug(card: CardForCategory | null | undefine
  * @param card - Card data.
  * @param baseCategory - Base category slug.
  */
-export function buildEnergyCategorySlug(card: CardForCategory | null | undefined, baseCategory: string): string {
+function buildEnergyCategorySlug(card: CardForCategory | null | undefined, baseCategory: string): string {
   if (baseCategory !== 'energy') {
     return '';
   }
@@ -497,7 +497,7 @@ export function getUsagePercent(card: CardForCategory | null | undefined): numbe
 /**
  * Known Ace Spec card names/keywords.
  */
-export const ACE_SPEC_KEYWORDS = [
+const ACE_SPEC_KEYWORDS = [
   'ace spec',
   'amulet of hope',
   'awakening drum',
