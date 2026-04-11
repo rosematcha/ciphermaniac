@@ -3,13 +3,13 @@
  * @module CardTypeHierarchy
  */
 
-export interface CardTypeOption {
+interface CardTypeOption {
   value: string;
   label: string;
   parent?: string;
 }
 
-export interface CardTypeParent {
+interface CardTypeParent {
   value: string;
   label: string;
   children: CardTypeOption[];
@@ -49,23 +49,6 @@ export const CARD_TYPE_HIERARCHY: CardTypeParent[] = [
 ];
 
 /**
- * Get all flat card type options (parents + children)
- */
-export function getAllCardTypeOptions(): CardTypeOption[] {
-  const options: CardTypeOption[] = [];
-
-  for (const parent of CARD_TYPE_HIERARCHY) {
-    options.push({
-      value: parent.value,
-      label: parent.label
-    });
-    options.push(...parent.children);
-  }
-
-  return options;
-}
-
-/**
  * Get children values for a parent card type
  */
 export function getChildrenForParent(parentValue: string): string[] {
@@ -84,52 +67,4 @@ export function getParentForChild(childValue: string): string | null {
     }
   }
   return null;
-}
-
-/**
- * Check if a value is a parent category
- */
-export function isParentCategory(value: string): boolean {
-  return CARD_TYPE_HIERARCHY.some(p => p.value === value);
-}
-
-/**
- * Expand selection to include parent if all children are selected
- */
-export function normalizeSelection(selected: string[]): string[] {
-  const normalized = new Set(selected);
-
-  // For each parent, check if all children are selected
-  for (const parent of CARD_TYPE_HIERARCHY) {
-    const allChildrenSelected = parent.children.every(child => normalized.has(child.value));
-
-    if (allChildrenSelected && parent.children.length > 0) {
-      // Remove all children and add parent instead
-      parent.children.forEach(child => normalized.delete(child.value));
-      normalized.add(parent.value);
-    }
-  }
-
-  return Array.from(normalized);
-}
-
-/**
- * Expand parent selections to their children
- * This is used when a parent is selected to select all its children
- */
-export function expandParentSelections(selected: string[]): string[] {
-  const expanded = new Set<string>();
-
-  for (const value of selected) {
-    if (isParentCategory(value)) {
-      // Add all children
-      const children = getChildrenForParent(value);
-      children.forEach(child => expanded.add(child));
-    } else {
-      // Add the value itself
-      expanded.add(value);
-    }
-  }
-
-  return Array.from(expanded);
 }

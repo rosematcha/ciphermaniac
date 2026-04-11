@@ -13,11 +13,11 @@ function readReleaseChannel(doc: Document | null): string {
     .toLowerCase();
 }
 
-export function getReleaseChannel(doc: Document | null = typeof document !== 'undefined' ? document : null): string {
+function getReleaseChannel(doc: Document | null = typeof document !== 'undefined' ? document : null): string {
   return readReleaseChannel(doc);
 }
 
-export function isCloudflarePagesProductionRelease(
+function isCloudflarePagesProductionRelease(
   doc: Document | null = typeof document !== 'undefined' ? document : null
 ): boolean {
   return getReleaseChannel(doc) === CLOUDFLARE_PRODUCTION_CHANNEL;

@@ -104,18 +104,6 @@ export function normalizeSetValues(selection: unknown): string[] {
   return selection.map(normalizeSetCode).filter(Boolean);
 }
 
-/**
- * Parse a comma-delimited list of set codes.
- * @param value
- * @returns
- */
-export function parseSetList(value: unknown): string[] {
-  if (!value || typeof value !== 'string') {
-    return [];
-  }
-  return value.split(',').map(normalizeSetCode).filter(Boolean);
-}
-
 interface WriteSelectedSetsOptions {
   hiddenId?: string;
 }
@@ -145,7 +133,7 @@ export function writeSelectedSets(
  * @param value
  * @returns
  */
-export function normalizeCardTypeValue(value: unknown): string {
+function normalizeCardTypeValue(value: unknown): string {
   return String(value || '')
     .trim()
     .toLowerCase();
@@ -182,18 +170,6 @@ export function readSelectedCardTypes({
 }: ReadSelectedCardTypesOptions = {}): string[] {
   const hiddenInput = document.getElementById(hiddenId) as HTMLInputElement | null;
   return readCardTypesFromHidden(hiddenInput);
-}
-
-/**
- * Normalize an arbitrary selection into sanitized card type values.
- * @param selection
- * @returns
- */
-export function normalizeCardTypeValues(selection: unknown): string[] {
-  if (!Array.isArray(selection)) {
-    return [];
-  }
-  return selection.map(normalizeCardTypeValue).filter(Boolean);
 }
 
 /**
@@ -243,7 +219,7 @@ const DEFAULT_REGMARK_HIDDEN_ID = 'regmark-filter-data';
  * @param value
  * @returns
  */
-export function normalizeRegulationMark(value: unknown): string {
+function normalizeRegulationMark(value: unknown): string {
   const str = String(value || '')
     .trim()
     .toUpperCase();

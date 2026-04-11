@@ -4,12 +4,12 @@
  * @module Logger
  */
 
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 /**
  * Lightweight logger tuned for browser environments with configurable levels.
  */
-export class Logger {
+class Logger {
   private _level: LogLevel;
   private _levels: Record<LogLevel, number>;
 

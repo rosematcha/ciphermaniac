@@ -4,7 +4,7 @@
  */
 
 import { logger } from './logger.js';
-export { logger, Logger } from './logger.js';
+export { logger } from './logger.js';
 
 /**
  * Error types for categorizing different failure modes
@@ -21,7 +21,7 @@ export const ErrorTypes = {
   PARSE: 'ParseError'
 } as const;
 
-export type ErrorType = (typeof ErrorTypes)[keyof typeof ErrorTypes];
+type ErrorType = (typeof ErrorTypes)[keyof typeof ErrorTypes];
 
 /**
  * Enhanced error class with user-friendly messages and context
@@ -222,7 +222,7 @@ export class ErrorBoundary {
   }
 }
 
-export type ExtendedRequestInit = RequestInit & { timeout?: number; retries?: number; retryDelay?: number };
+type ExtendedRequestInit = RequestInit & { timeout?: number; retries?: number; retryDelay?: number };
 
 /**
  * Enhanced safe fetch with comprehensive error handling and retry
@@ -366,7 +366,7 @@ export function validateType(value: any, expectedType: string, paramName = 'valu
 /**
  * Options for withRetry function
  */
-export interface RetryOptions {
+interface RetryOptions {
   /** Maximum number of attempts (default: 3) */
   maxAttempts?: number;
   /** Initial delay between attempts in milliseconds (default: 1000) */
@@ -531,7 +531,7 @@ export function setupGlobalErrorHandler(): void {
  * Show a global error notification
  * @param message - User-friendly error message
  */
-export function showGlobalError(message: string): void {
+function showGlobalError(message: string): void {
   // Create or update global error notification
   let errorNotification = document.getElementById('global-error-notification');
 
