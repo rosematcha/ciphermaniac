@@ -120,6 +120,10 @@ body:not(.no-header) > header {
     flex: 1;
   }
 
+  .nav-toggle {
+    display: flex;
+  }
+
   .main-nav {
     display: none;
     flex-direction: column;

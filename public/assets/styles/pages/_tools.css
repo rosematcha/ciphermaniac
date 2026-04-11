@@ -1,3 +1,101 @@
 /* ==========================================================================
-   Tools Page Styles
+   Toys Hub Page Styles
    ========================================================================== */
+.toys-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--space-10) var(--space-4) var(--space-16);
+}
+
+.toys-heading {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-black);
+  font-variation-settings: 'SOFT' 100, 'WONK' 1;
+  color: var(--text);
+  margin: 0 0 var(--space-2);
+  letter-spacing: -0.03em;
+}
+
+.toys-subtitle {
+  color: var(--muted);
+  font-size: var(--font-size-base);
+  margin: 0 0 var(--space-8);
+  line-height: var(--line-height-relaxed);
+}
+
+.toys-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+.toy-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--border-radius-lg);
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.toy-card:hover,
+.toy-card:focus-visible {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--surface-1) 90%, var(--accent));
+}
+
+.toy-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.toy-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+.toy-copy h2 {
+  font-size: 1.05rem;
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 var(--space-1);
+}
+
+.toy-copy p {
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  margin: 0;
+}
+
+/* ---------- Responsive ---------- */
+@media (min-width: 540px) {
+  .toys-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .toy-card {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 720px) {
+  .toys-page {
+    padding: var(--space-8) var(--space-3) var(--space-12);
+  }
+
+  .toys-heading {
+    font-size: var(--font-size-2xl);
+  }
+}
