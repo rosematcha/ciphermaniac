@@ -1,17 +1,17 @@
-export const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api';
+const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api';
 
-export interface LimitlessEnv {
+interface LimitlessEnv {
   LIMITLESS_API_KEY?: string;
   [key: string]: unknown;
 }
 
-export interface LimitlessOptions {
+interface LimitlessOptions {
   env?: LimitlessEnv;
   searchParams?: URLSearchParams | Record<string, string | number | undefined | null>;
   fetchOptions?: RequestInit;
 }
 
-export type LimitlessError = Error & { status?: number; body?: string };
+type LimitlessError = Error & { status?: number; body?: string };
 
 /**
  * Strips sensitive parameters (like API keys) from URLs for safe logging
@@ -134,5 +134,3 @@ export async function fetchLimitlessJson(pathname: string, options: LimitlessOpt
 
   return response.json();
 }
-
-export { buildLimitlessUrl, resolveLimitlessApiKey, safeUrlForLogging };

@@ -9,7 +9,6 @@
 export {
   normalizeCardNumber,
   canonicalizeVariant,
-  buildCardIdentifier,
   sanitizeForPath,
   sanitizeForFilename,
   normalizeArchetypeName

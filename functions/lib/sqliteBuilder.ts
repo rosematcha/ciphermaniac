@@ -16,7 +16,7 @@ import { SynonymDatabase } from '../../shared/synonyms.js';
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface DeckCard {
+interface DeckCard {
   name?: string;
   set?: string;
   number?: string | number;
@@ -28,7 +28,7 @@ export interface DeckCard {
   regulationMark?: string;
 }
 
-export interface Deck {
+interface Deck {
   id?: string;
   player?: string;
   playerId?: string;
@@ -39,7 +39,7 @@ export interface Deck {
   cards?: DeckCard[];
 }
 
-export interface BuildOptions {
+interface BuildOptions {
   synonymDb?: SynonymDatabase | null;
   tournamentId?: string;
   generatedAt?: string;
@@ -363,15 +363,4 @@ export async function buildTournamentDatabase(decks: Deck[], options: BuildOptio
   db.close();
 
   return data;
-}
-
-/**
- * Build a SQLite database and return as Node.js Buffer.
- * @param decks - Array of deck objects
- * @param options - Build options
- * @returns Promise<Buffer> - SQLite database as Buffer
- */
-export async function buildTournamentDatabaseBuffer(decks: Deck[], options: BuildOptions = {}): Promise<Buffer> {
-  const data = await buildTournamentDatabase(decks, options);
-  return Buffer.from(data);
 }

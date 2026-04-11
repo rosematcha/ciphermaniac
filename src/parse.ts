@@ -7,8 +7,6 @@ import { logger } from './utils/logger.js';
 import { AppError, ErrorTypes, validateType } from './utils/errorHandler.js';
 import type { CardDistributionEntry, CardItem, ParsedReport } from './types/index.js';
 
-export type { CardDistributionEntry, CardItem, ParsedReport };
-
 /**
  * Parse and validate tournament report data
  * @param data - Raw report data

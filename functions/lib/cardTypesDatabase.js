@@ -45,22 +45,6 @@ export async function loadCardTypesDatabase(env) {
 }
 
 /**
- * Get card type information for a specific card
- * @param {Object} database - Card types database
- * @param {string} setCode - Card set code
- * @param {string|number} number - Card number
- * @returns {Object|null}
- */
-export function getCardType(database, setCode, number) {
-  if (!database || !setCode || !number) {
-    return null;
-  }
-
-  const key = `${setCode}::${number}`;
-  return database[key] || null;
-}
-
-/**
  * Enrich a card object with type information from the database
  * Preserves existing type information but adds missing fields
  * @param {Object} card - Card object with set and number
@@ -129,7 +113,7 @@ export function enrichCardWithType(card, database) {
  * @param {Object} database - Card types database
  * @returns {Object} - Deck with enriched cards
  */
-export function enrichDeckCards(deck, database) {
+function enrichDeckCards(deck, database) {
   if (!deck || !Array.isArray(deck.cards) || !database) {
     return deck;
   }

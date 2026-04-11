@@ -11,12 +11,8 @@ import {
   EMPTY_DATABASE,
   getCanonicalCardFromData,
   getCardVariantsFromData,
-  hasCardSynonymsInData,
   type SynonymDatabase
 } from '../../shared/synonyms.js';
-
-// Re-export types for consumers
-export type { SynonymDatabase } from '../../shared/synonyms.js';
 
 // Lazy-loaded synonym data (browser-side cache)
 let synonymData: SynonymDatabase | null = null;
@@ -61,30 +57,6 @@ export async function getCanonicalCard(cardIdentifier: string): Promise<string> 
 }
 
 /**
- * Check if a card has reprints/synonyms
- * @param cardIdentifier - Card UID or name
- * @returns True if card has synonyms
- */
-export async function hasCardSynonyms(cardIdentifier: string): Promise<boolean> {
-  if (!cardIdentifier) {
-    return false;
-  }
-
-  const data = await loadSynonymData();
-  return hasCardSynonymsInData(data, cardIdentifier);
-}
-
-/**
- * Normalize card identifier for search/comparison
- * Always returns the canonical version
- * @param cardIdentifier - Card UID or name
- * @returns Normalized card identifier
- */
-export function normalizeCardIdentifier(cardIdentifier: string): Promise<string> {
-  return getCanonicalCard(cardIdentifier);
-}
-
-/**
  * Get all variant UIDs for a card by checking reverse mappings
  * @param cardIdentifier - Card UID or name
  * @returns Array of all variant UIDs including canonical
@@ -94,29 +66,6 @@ export async function getCardVariants(cardIdentifier: string): Promise<string[]>
   const canonical = getCanonicalCardFromData(data, cardIdentifier);
   return getCardVariantsFromData(data, canonical);
 }
-
-/**
- * Synchronous version for when synonym data is already loaded
- * Use with caution - prefer async versions
- */
-export const sync = {
-  /**
-   * Get canonical card (sync) - only works if data already loaded
-   * @param cardIdentifier
-   * @returns
-   */
-  getCanonicalCard(cardIdentifier: string): string {
-    return getCanonicalCardFromData(synonymData, cardIdentifier);
-  },
-
-  /**
-   * Check if synonyms are loaded
-   * @returns
-   */
-  isLoaded(): boolean {
-    return synonymData !== null;
-  }
-};
 
 /**
  * Get image candidates from card variants (for fallback when primary image fails)

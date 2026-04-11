@@ -8,14 +8,14 @@
 // - top8Bases: Optional array of base strings that made Top 8
 // Output: The chosen candidate object or null if none
 
-export interface ArchetypeCandidate {
+interface ArchetypeCandidate {
   base: string;
   pct?: number | null;
   found?: number | null;
   total?: number | null;
 }
 
-export interface PickArchetypeOptions {
+interface PickArchetypeOptions {
   minTotal?: number;
 }
 

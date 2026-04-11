@@ -4,45 +4,6 @@
  */
 
 /**
- * Safely set innerHTML with validation
- * @param element
- * @param content
- */
-export function safeSetHTML(element: Element | null, content: string): void {
-  if (!element || typeof content !== 'string') {
-    return;
-  }
-  element.innerHTML = content;
-}
-
-/**
- * Batch DOM operations using DocumentFragment for better performance
- * @param container
- * @param elements
- */
-export function batchAppend(container: Element | null, elements: Element[]): void {
-  if (!container || !Array.isArray(elements)) {
-    return;
-  }
-
-  const fragment = document.createDocumentFragment();
-  elements.forEach(el => el && fragment.appendChild(el));
-  container.appendChild(fragment);
-}
-
-/**
- * Safe property assignment avoiding parameter mutation
- * @param element
- * @param properties
- */
-export function setProperties(element: Element | null, properties: Record<string, any>): void {
-  if (!element || !properties) {
-    return;
-  }
-  Object.assign(element, properties);
-}
-
-/**
  * Safe style assignment avoiding parameter mutation
  * @param element
  * @param styles
