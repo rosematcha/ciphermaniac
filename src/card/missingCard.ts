@@ -20,7 +20,7 @@ import { buildCardPath, buildIdentifierLookup, describeSlug, extractSetAndNumber
 import { getCanonicalCard, getVariantImageCandidates } from '../utils/cardSynonyms.js';
 
 // Types
-export interface MissingCardPreview {
+interface MissingCardPreview {
   name: string;
   identifier: string;
   label: string;
@@ -35,7 +35,7 @@ const MISSING_CARD_TRENDS_SOURCE = 'Trends - Last 30 Days';
 /**
  * Format a usage percentage value for display
  */
-export function formatUsagePercent(value: number): string {
+function formatUsagePercent(value: number): string {
   if (!Number.isFinite(value)) {
     return '0%';
   }
@@ -47,7 +47,7 @@ export function formatUsagePercent(value: number): string {
 /**
  * Format a delta percentage value for display (with +/- sign)
  */
-export function formatDeltaPercent(value: number): string {
+function formatDeltaPercent(value: number): string {
   if (!Number.isFinite(value) || value === 0) {
     return '+0%';
   }
@@ -73,7 +73,7 @@ function titleCase(value: string): string {
 /**
  * Convert a card identifier to a human-readable display name
  */
-export function prettifyIdentifier(identifier: string): string {
+function prettifyIdentifier(identifier: string): string {
   if (!identifier) {
     return '';
   }
@@ -401,7 +401,7 @@ async function renderMissingCardTrendingCards(container: HTMLElement | null, car
 /**
  * Resolve a display name for a missing card by searching through reports
  */
-export async function resolveMissingCardDisplayName(cardIdentifier: string): Promise<string | null> {
+async function resolveMissingCardDisplayName(cardIdentifier: string): Promise<string | null> {
   const initial = getDisplayName(cardIdentifier);
   if (initial && initial !== cardIdentifier) {
     return initial;

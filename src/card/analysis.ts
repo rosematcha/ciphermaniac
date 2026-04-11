@@ -69,7 +69,7 @@ export function renderAnalysisSelector(events: string[], cardIdentifier: string 
  * @param tournament - Tournament name to analyze
  * @param cardIdentifier - The card identifier to analyze
  */
-export async function renderAnalysisTable(
+async function renderAnalysisTable(
   tournament: string,
   cardIdentifier: string | null,
   slice: ReportSlice = 'all'
@@ -501,7 +501,7 @@ function createAnalysisRow(rowData: any): HTMLTableRowElement {
  * CSS position: sticky is prevented by overflow/transform on ancestor elements.
  * @param table - The table element to enhance with floating header
  */
-export function enableFloatingTableHeader(table: HTMLTableElement): void {
+function enableFloatingTableHeader(table: HTMLTableElement): void {
   if (!table || !(table instanceof HTMLTableElement)) {
     return;
   }

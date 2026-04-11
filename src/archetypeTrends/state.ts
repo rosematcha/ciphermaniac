@@ -4,7 +4,7 @@ const state: AppState = {
   archetypeName: '',
   archetypeSlug: '',
   trendsData: null,
-  selectedTier: 'top8',
+  selectedTier: 'all',
   selectedCards: new Set(),
   categoryFilter: 'all',
   sortBy: 'playrate',
@@ -12,7 +12,8 @@ const state: AppState = {
   resizeTimer: null,
   activeCopyCard: null,
   chartLines: [],
-  showAllMatchups: false
+  showAllMatchups: false,
+  showAllCards: false
 };
 
 export function getState(): AppState {

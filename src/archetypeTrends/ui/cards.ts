@@ -1,22 +1,10 @@
-import { CATEGORY_LABELS, PALETTE } from '../constants.js';
+import { CATEGORY_LABELS } from '../constants.js';
 import { getState } from '../state.js';
-import type { AppState, EnhancedCardEntry } from '../types.js';
+import type { EnhancedCardEntry } from '../types.js';
 import { elements } from './elements.js';
 import { formatPercent } from '../utils/format.js';
 import { buildCardUrl } from '../utils/url.js';
 import { escapeHtml } from '../../utils/html.js';
-import { renderChart } from '../charts/trendsChart.js';
-
-const MAX_CHART_SELECTIONS = 10;
-
-function getCardColor(uid: string): string {
-  const state = getState();
-  if (!state.selectedCards.has(uid)) {
-    return '';
-  }
-  const index = Array.from(state.selectedCards).indexOf(uid);
-  return PALETTE[index % PALETTE.length];
-}
 
 function renderSparkline(card: EnhancedCardEntry): string {
   const state = getState();
@@ -79,6 +67,27 @@ function renderSparkline(card: EnhancedCardEntry): string {
   </svg>`;
 }
 
+const MAX_KEY_CARDS = 18;
+
+function cardInterestScore(card: EnhancedCardEntry): number {
+  const changeMagnitude = Math.abs(card.playrateChange);
+  const playrateWeight = Math.min(card.currentPlayrate / 100, 1);
+
+  let score = changeMagnitude * 2 + card.volatility;
+
+  if (card.category === 'flex' || card.category === 'emerging' || card.category === 'fading') {
+    score += 10;
+  } else if (card.category === 'staple') {
+    score += 3;
+  } else if (card.category === 'core') {
+    score += changeMagnitude > 1 ? 5 : 1;
+  }
+
+  score *= 0.5 + playrateWeight;
+
+  return score;
+}
+
 export function renderCardList(): void {
   const state = getState();
   if (!state.trendsData || !elements.cardListBody || !elements.cardListSection) {
@@ -87,9 +96,24 @@ export function renderCardList(): void {
 
   const { cards } = state.trendsData;
   let rows = Object.values(cards);
+  const totalCardCount = rows.length;
 
   if (state.categoryFilter !== 'all') {
     rows = rows.filter(c => c.category === state.categoryFilter);
+  }
+
+  let isShowingKeyOnly = false;
+  let hiddenCount = 0;
+
+  if (state.categoryFilter === 'all' && !state.showAllCards) {
+    const scored = rows.map(card => ({ card, score: cardInterestScore(card) })).sort((a, b) => b.score - a.score);
+
+    const keyCards = scored.slice(0, MAX_KEY_CARDS).map(s => s.card);
+    hiddenCount = rows.length - keyCards.length;
+    if (hiddenCount > 0) {
+      isShowingKeyOnly = true;
+      rows = keyCards;
+    }
   }
 
   rows.sort((a, b) => {
@@ -109,27 +133,24 @@ export function renderCardList(): void {
     }
   });
 
+  const heading = elements.cardListSection.querySelector('.card-list-header h2');
+  if (heading) {
+    if (state.categoryFilter === 'all') {
+      heading.textContent = isShowingKeyOnly ? 'Card Data' : 'All Cards';
+    } else {
+      heading.textContent = `${CATEGORY_LABELS[state.categoryFilter]} Cards`;
+    }
+  }
+
   elements.cardListBody.innerHTML = '';
 
   rows.forEach(card => {
-    const uid = Object.keys(cards).find(key => cards[key] === card) || card.name;
-    const isSelected = state.selectedCards.has(uid);
-    const color = getCardColor(uid);
     const cardUrl = buildCardUrl(card);
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td class="col-chart">
-        <label class="chart-checkbox">
-          <input type="checkbox" data-uid="${uid}" ${isSelected ? 'checked' : ''} aria-label="Toggle ${escapeHtml(card.name)}">
-          <span class="checkbox-indicator" ${color ? `style="background-color: ${color}"` : ''}></span>
-        </label>
-      </td>
       <td class="col-name">
         <a href="${cardUrl}">${escapeHtml(card.name)}</a>
-      </td>
-      <td class="col-category">
-        <span class="category-badge cat-${card.category}">${CATEGORY_LABELS[card.category]}</span>
       </td>
       <td class="col-playrate">${formatPercent(card.currentPlayrate)}</td>
       <td class="col-copies">${card.currentAvgCopies.toFixed(2)}</td>
@@ -141,28 +162,36 @@ export function renderCardList(): void {
       </td>
     `;
 
-    const checkbox = tr.querySelector('input');
-    checkbox?.addEventListener('change', event => {
-      const target = event.target as HTMLInputElement;
-      const { checked } = target;
-      if (checked) {
-        if (state.selectedCards.size < MAX_CHART_SELECTIONS) {
-          state.selectedCards.add(uid);
-        } else {
-          target.checked = false;
-          if (elements.metaInfo) {
-            elements.metaInfo.textContent = `You can compare up to ${MAX_CHART_SELECTIONS} cards at once.`;
-          }
-        }
-      } else {
-        state.selectedCards.delete(uid);
-      }
-      renderChart();
-      renderCardList();
-    });
-
     elements.cardListBody?.appendChild(tr);
   });
+
+  let showAllBtn = elements.cardListSection.querySelector('.show-all-cards-btn') as HTMLButtonElement | null;
+  if (state.categoryFilter === 'all' && (isShowingKeyOnly || state.showAllCards)) {
+    if (!showAllBtn) {
+      showAllBtn = document.createElement('button');
+      showAllBtn.type = 'button';
+      showAllBtn.className = 'show-all-cards-btn';
+      const tableWrapper = elements.cardListSection.querySelector('.card-list-table-wrapper');
+      if (tableWrapper) {
+        tableWrapper.insertAdjacentElement('afterend', showAllBtn);
+      }
+    }
+
+    if (isShowingKeyOnly) {
+      showAllBtn.textContent = `Show all ${totalCardCount} cards`;
+      showAllBtn.hidden = false;
+    } else {
+      showAllBtn.textContent = 'Show interesting cards only';
+      showAllBtn.hidden = false;
+    }
+
+    showAllBtn.onclick = () => {
+      state.showAllCards = !state.showAllCards;
+      renderCardList();
+    };
+  } else if (showAllBtn) {
+    showAllBtn.hidden = true;
+  }
 
   elements.cardListSection.hidden = false;
 }
@@ -206,7 +235,11 @@ export function setupCategoryTabs(): void {
     tab.addEventListener('click', () => {
       const { category } = (tab as HTMLElement).dataset;
       if (category) {
-        state.categoryFilter = category as AppState['categoryFilter'];
+        state.categoryFilter = category as typeof state.categoryFilter;
+
+        if (category !== 'all') {
+          state.showAllCards = false;
+        }
 
         tabs.forEach(t => {
           t.classList.remove('active');

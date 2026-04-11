@@ -127,12 +127,12 @@ export interface FurthestConnectionResult {
   reachableCount: number;
 }
 
-export interface PathSearchOptions {
+interface PathSearchOptions {
   randomizeNeighbors?: boolean;
   rng?: () => number;
 }
 
-export interface FurthestSearchOptions extends PathSearchOptions {
+interface FurthestSearchOptions extends PathSearchOptions {
   randomizeFarthestTie?: boolean;
 }
 
@@ -504,7 +504,7 @@ async function mapWithConcurrency<T>(
   await Promise.all(Array.from({ length: maxWorkers }, () => worker()));
 }
 
-export function isOfflineTournamentFolder(folder: string): boolean {
+function isOfflineTournamentFolder(folder: string): boolean {
   const normalized = normalizeWhitespace(String(folder || '')).toLowerCase();
   if (!normalized) {
     return false;

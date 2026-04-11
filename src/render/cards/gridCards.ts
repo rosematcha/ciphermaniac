@@ -72,7 +72,7 @@ export function buildCardRenderHash(cardData: CardItem, renderFlags: RenderOptio
  * @param overrides - Image override map.
  * @param cardData - Card data.
  */
-export function setupCardImage(
+function setupCardImage(
   img: HTMLImageElement | null,
   cardName: string,
   useSm: boolean,
@@ -438,7 +438,7 @@ export function setupCardAttributes(card: HTMLElement, cardData: CardItem): void
  * Resolve the usage percent for a card.
  * @param card - Card data.
  */
-export function getCardUsagePercent(card: CardItem): number {
+function getCardUsagePercent(card: CardItem): number {
   if (Number.isFinite(card.pct)) {
     return Number(card.pct);
   }

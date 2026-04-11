@@ -63,14 +63,3 @@ export function initGridResizeObserver(): void {
   observer.observe(grid);
   grid._resizeObserver = observer;
 }
-
-/**
- * Disconnect the grid ResizeObserver.
- */
-export function cleanupGridResizeObserver(): void {
-  const grid = getGridElement();
-  if (grid?._resizeObserver) {
-    grid._resizeObserver.disconnect();
-    grid._resizeObserver = null;
-  }
-}

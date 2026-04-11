@@ -25,14 +25,7 @@ import { getBaseName, getDisplayName, parseDisplayName } from './card/identifier
 import { findCard, renderCardPrice } from './card/data.js';
 import { renderChart, renderCopiesHistogram, renderEvents } from './card/charts.js';
 import { getCanonicalCard, getCardVariants, getVariantImageCandidates } from './utils/cardSynonyms.js';
-import {
-  buildCardPath,
-  buildIdentifierLookup,
-  describeSlug,
-  makeCardSlug,
-  parseCardRoute,
-  resolveCardSlug
-} from './card/routing.js';
+import { buildCardPath, describeSlug, makeCardSlug, parseCardRoute, resolveCardSlug } from './card/routing.js';
 import {
   buildLgUrlFromVariant,
   deriveLgUrlFromCandidate,
@@ -401,145 +394,6 @@ if (document.readyState === 'loading') {
   initCardSearch();
 }
 
-// buildIdentifierLookup moved to ./card/routing.js
-
-/**
- * Check if a card exists in the Ciphermaniac database
- * @param cardIdentifier - Card identifier to check
- * @returns Whether the card has a Ciphermaniac page
- */
-interface CardExistenceResult {
-  exists: boolean;
-  checked: boolean;
-  reason?: 'not-found' | 'empty';
-}
-
-async function checkCardExistsInDatabase(
-  cardIdentifier: string,
-  tournamentsPromise?: Promise<string[]>
-): Promise<CardExistenceResult> {
-  try {
-    const tournaments = tournamentsPromise ? await tournamentsPromise : await fetchTournamentsList();
-    const tournamentList = Array.isArray(tournaments) ? tournaments : [];
-    if (tournamentList.length === 0) {
-      return { exists: true, checked: false };
-    }
-    let canonicalIdentifier = cardIdentifier;
-    try {
-      const canonical = await getCanonicalCard(cardIdentifier);
-      if (canonical) {
-        canonicalIdentifier = canonical;
-      }
-    } catch (canonicalError: any) {
-      logger.debug('Canonical lookup failed during existence check', {
-        cardIdentifier,
-        error: canonicalError?.message || canonicalError
-      });
-    }
-    const { searchKeys } = buildIdentifierLookup(cardIdentifier);
-    if (canonicalIdentifier && canonicalIdentifier !== cardIdentifier) {
-      searchKeys.add(canonicalIdentifier.toLowerCase());
-    }
-    try {
-      const variants = await getCardVariants(cardIdentifier);
-      if (Array.isArray(variants) && variants.length > 0) {
-        for (const variantIdentifier of variants) {
-          searchKeys.add(variantIdentifier.trim().toLowerCase());
-        }
-      }
-    } catch (variantError: any) {
-      logger.debug('Failed to load card variants for fallback', {
-        cardIdentifier,
-        error: variantError?.message || variantError
-      });
-    }
-    const tournamentsToCheck = tournamentList.slice(0, 8);
-
-    // Check tournaments in parallel with early-exit on first match
-    const controller = new AbortController();
-    const results = await Promise.allSettled(
-      tournamentsToCheck.map(async tournament => {
-        if (controller.signal.aborted) {
-          return { status: 'skipped' as const };
-        }
-        try {
-          const report = await fetchReport(tournament);
-          if (controller.signal.aborted) {
-            return { status: 'skipped' as const };
-          }
-          const index = buildCardIndexFromMaster(report);
-          const cards = index?.cards;
-          if (!cards || typeof cards !== 'object') {
-            return { status: 'no-cards' as const };
-          }
-          const cardNames = Object.keys(cards);
-          if (cardNames.length === 0) {
-            return { status: 'empty-index' as const };
-          }
-          const available = new Set(cardNames.map(name => name.toLowerCase()));
-          for (const key of searchKeys) {
-            if (available.has(key)) {
-              controller.abort();
-              return { status: 'found' as const };
-            }
-          }
-          return { status: 'checked' as const };
-        } catch (error: any) {
-          if (typeof error?.message === 'string' && error.message.includes('HTTP 404')) {
-            return { status: '404' as const };
-          }
-          logger.debug('Card index unavailable during existence check', {
-            cardIdentifier,
-            tournament,
-            error: error?.message
-          });
-          return { status: 'error' as const };
-        }
-      })
-    );
-
-    let reportsChecked = 0;
-    let nonEmptyIndex = 0;
-    let notFoundReports = 0;
-    for (const result of results) {
-      if (result.status !== 'fulfilled') {
-        continue;
-      }
-      const val = result.value;
-      if (val.status === 'found') {
-        return { exists: true, checked: true };
-      }
-      if (val.status === 'checked') {
-        reportsChecked++;
-        nonEmptyIndex++;
-      }
-      if (val.status === 'empty-index') {
-        reportsChecked++;
-      }
-      if (val.status === '404') {
-        notFoundReports++;
-      }
-    }
-
-    if (reportsChecked === 0 && notFoundReports === 0) {
-      return { exists: true, checked: false };
-    }
-    if (nonEmptyIndex === 0 && reportsChecked > 0) {
-      return { exists: false, checked: true, reason: 'empty' };
-    }
-    if (reportsChecked === 0 && notFoundReports > 0) {
-      return { exists: false, checked: true, reason: 'not-found' };
-    }
-    return { exists: false, checked: true, reason: 'not-found' };
-  } catch (error: any) {
-    logger.warn('Failed to check card existence via card indices', {
-      cardIdentifier,
-      error: error.message
-    });
-    return { exists: true, checked: false };
-  }
-}
-
 // Missing card page functionality moved to ./card/missingCard.js
 
 async function load() {
@@ -566,14 +420,12 @@ async function load() {
 
   // Phase 2: Start all async operations in parallel
   const dataPromises = startParallelDataLoading();
-  const existencePromise = checkCardExistsInDatabase(cardIdentifier, dataPromises.tournaments);
 
   // Phase 3: Progressive rendering as data becomes available
   const hasData = await renderProgressively(dataPromises);
   markCardPerf('card:data-ready');
-  const existence = await existencePromise;
 
-  if (!existence.exists && existence.checked && !hasData) {
+  if (!hasData) {
     setCardPageState('missing');
     markCardPerf('card:missing');
     measureCardPerf('card:ttm-missing', 'card:load-start', 'card:missing');
@@ -855,7 +707,7 @@ async function loadAndRenderMainContent(
         if (!hasUID) {
           // Try cardIndex for base name lookups (trainers and base Pokemon names)
           try {
-            const report = await fetchReport(tournamentName);
+            const report = await fetchReport(tournamentName, 'all', { skipSqlite: true });
             const idx = buildCardIndexFromMaster(report);
             const baseName = getBaseName(cardIdentifier!) || '';
             const matchingKey =
@@ -892,7 +744,7 @@ async function loadAndRenderMainContent(
           // Get canonical card and all its variants for combined usage statistics
           const { canonical, variants } = await getSharedVariants();
 
-          const master = await fetchReport(tournamentName);
+          const master = await fetchReport(tournamentName, 'all', { skipSqlite: true });
           const parsed = parseReport(master);
 
           // Find data for all variants and combine
@@ -1157,7 +1009,7 @@ async function loadAndRenderMainContent(
         (async () => {
           try {
             const { variants } = await getSharedVariants();
-            const master = await fetchReport(latest.tournament);
+            const master = await fetchReport(latest.tournament, 'all', { skipSqlite: true });
             const parsed = parseReport(master);
 
             let combinedFound = 0;
