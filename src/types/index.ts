@@ -580,40 +580,6 @@ export interface PercentRule {
   minPlayers: number;
 }
 
-// =============================================================================
-// API Response Types
-// =============================================================================
-
-/**
- * Limitless API response wrapper.
- */
-export interface LimitlessResponse {
-  /** Whether the request was successful */
-  success: boolean;
-  /** Response data payload */
-  data: unknown[];
-}
-
-/**
- * Limitless tournament summary from API.
- */
-export interface LimitlessTournament {
-  /** Tournament ID */
-  id: string;
-  /** Tournament name */
-  name: string;
-  /** Game type (e.g., "PTCG") */
-  game: string | null;
-  /** Format (e.g., "STANDARD") */
-  format: string | null;
-  /** Tournament date (ISO string) */
-  date: string | null;
-  /** Number of players */
-  players: number | null;
-  /** Data source identifier */
-  source: 'limitless';
-}
-
 /**
  * Pricing data response.
  */

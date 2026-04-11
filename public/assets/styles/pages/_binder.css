@@ -5,24 +5,38 @@
   color: var(--text);
 }
 
+.binder-breadcrumb__link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  transition: color var(--transition-fast);
+}
+
+.binder-breadcrumb__link:hover {
+  color: var(--accent-2);
+}
+
 .binder-app {
   max-width: var(--container-max-width);
   margin: 0 auto;
-  padding: 32px 20px 48px;
+  padding: var(--space-8) var(--space-5) var(--space-12);
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: var(--space-8);
 }
 
 .binder-header {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .binder-title {
   margin: 0;
+  font-family: var(--font-family-serif);
   font-size: clamp(28px, 4vw, 36px);
-  font-weight: 600;
+  font-weight: var(--font-weight-black);
+  font-variation-settings: 'SOFT' 100, 'WONK' 1;
+  letter-spacing: -0.03em;
 }
 
 .binder-subtitle,

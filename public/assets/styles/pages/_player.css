@@ -1,91 +1,322 @@
 /* ==========================================================================
-   Player Page Styles
+   Player Detail Page
    ========================================================================== */
 
-/* Override trends-page centered header for player detail — needs left alignment */
-.player-detail-page .page-header {
-  text-align: left;
-  padding: var(--space-6) var(--space-1) var(--space-4);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  margin-bottom: 0;
+/* Ambient background glow */
+.player-detail-page {
+  position: relative;
+  isolation: isolate;
 }
 
-.player-detail-page .page-subtitle {
-  margin: 0;
-  max-width: none;
+.player-detail-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 700px 350px at 15% 10%, rgba(232, 168, 62, 0.06), transparent 70%),
+    radial-gradient(ellipse 500px 450px at 85% 50%, rgba(106, 163, 255, 0.04), transparent 70%);
 }
 
-/* ==========================================================================
-   Intel Strip — status / metadata bar
-   ========================================================================== */
-
-.page-intel-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3) var(--space-5);
-  padding: var(--space-3) var(--space-4);
-  background: var(--panel);
-  border: 1px solid var(--border-muted);
-  border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-sm);
-  margin: 0 var(--space-1);
+.player-detail-page::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.25;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
 }
 
-.page-intel-item {
+/* Page wrapper */
+.player-page {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-4) var(--space-12);
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 120px;
+  gap: var(--space-5);
 }
 
-.page-intel-item--wide {
-  flex: 1;
-  min-width: 220px;
-}
-
-.page-intel-item__label {
-  font-size: var(--font-size-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+/* Loading state */
+.player-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 320px;
   color: var(--muted);
+  font-size: var(--font-size-lg);
 }
 
-.page-intel-item__value {
+/* Hidden-attribute overrides — display:flex/block beats [hidden] in specificity */
+.player-loading[hidden],
+.player-error[hidden],
+.player-content[hidden] {
+  display: none !important;
+}
+
+/* Error state */
+.player-error {
+  text-align: center;
+  padding: var(--space-10) var(--space-4);
+}
+
+.player-error h1 {
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-black);
+  font-variation-settings: 'SOFT' 100, 'WONK' 1;
+  margin: 0 0 var(--space-2);
+}
+
+.player-error p {
+  color: var(--muted);
+  margin: 0 0 var(--space-4);
+}
+
+.player-error .btn-primary {
+  display: inline-block;
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: var(--font-weight-bold);
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--border-radius);
+  text-decoration: none;
+  transition: background var(--transition-fast);
+}
+
+.player-error .btn-primary:hover {
+  background: #d4962f;
+}
+
+/* ==========================================================================
+   Header Row
+   ========================================================================== */
+
+.player-header-row {
+  padding: var(--space-8) 0 var(--space-4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.player-breadcrumb {
+  margin-bottom: var(--space-3);
+}
+
+.player-breadcrumb__link {
+  color: var(--muted);
+  text-decoration: none;
   font-size: var(--font-size-sm);
+  transition: color var(--transition-fast);
+}
+
+.player-breadcrumb__link:hover {
+  color: var(--accent-2);
+}
+
+.player-title {
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-family-serif);
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: var(--font-weight-black);
+  font-variation-settings: 'SOFT' 100, 'WONK' 1;
+  letter-spacing: -0.03em;
   color: var(--text);
-  line-height: 1.5;
+}
+
+.player-tagline {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-relaxed);
 }
 
 /* ==========================================================================
-   Stats Grid
+   Stats Grid — bold, glanceable stat cards
    ========================================================================== */
 
-/* Tighter column minimum for player stats — more items than archetype summary */
-.player-detail-page .archetypes-summary {
+.player-stats {
+  padding: 0;
+}
+
+.stats-grid {
+  display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  margin: 0 var(--space-1);
+  gap: var(--space-3);
+}
+
+.stat-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-4) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-align: center;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.stat-card:hover {
+  border-color: rgba(106, 163, 255, 0.18);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.stat-value {
+  font-size: clamp(20px, 2.5vw, 28px);
+  font-weight: var(--font-weight-bold);
+  color: var(--text);
+  font-feature-settings: 'tnum';
+  line-height: 1.1;
+}
+
+.stat-label {
+  font-size: var(--font-size-xs);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: var(--font-weight-medium);
+}
+
+/* Accent specific stat cards */
+.stat-card:nth-child(3) .stat-value { color: var(--accent); }      /* Wins */
+.stat-card:nth-child(4) .stat-value { color: var(--accent-2); }     /* Top 8 */
+.stat-card:nth-child(6) .stat-value { color: var(--accent); }       /* Best Finish */
+.stat-card:nth-child(8) .stat-value { color: var(--accent-2); }     /* Consistency */
+
+/* ==========================================================================
+   Sections — shared pattern for Insights, Archetypes, History
+   ========================================================================== */
+
+.player-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.section-title {
+  margin: 0;
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  font-variation-settings: 'SOFT' 100, 'WONK' 1;
+  letter-spacing: -0.02em;
 }
 
 /* ==========================================================================
-   Archetype Usage Table
+   Profile Insights List
    ========================================================================== */
 
-/* Full-width usage bar in the table share column */
+.player-insights-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.player-insights-list li {
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-base);
+  color: var(--text);
+  line-height: var(--line-height-relaxed);
+  transition: border-color var(--transition-fast);
+}
+
+.player-insights-list li:hover {
+  border-color: var(--border-default);
+}
+
+.player-insights-list li strong {
+  color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ==========================================================================
+   Tables — Archetype Usage & Event History
+   ========================================================================== */
+
+.player-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--border-radius-lg);
+  background: var(--surface-1);
+}
+
+.player-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-base);
+}
+
+.player-table thead {
+  background: rgba(255, 255, 255, 0.025);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.player-table th {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.player-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  color: var(--text);
+}
+
+.player-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.player-table tbody tr {
+  transition: background var(--transition-fast);
+}
+
+.player-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+/* Archetype links inside tables */
+.player-table a {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+  transition: color var(--transition-fast);
+}
+
+.player-table a:hover {
+  color: var(--accent-2);
+}
+
+/* Usage bar in archetype table */
 .player-detail-page #player-archetype-body .usagebar {
   min-width: 120px;
   margin-top: 0;
 }
 
-/* ==========================================================================
-   Event History Table
-   ========================================================================== */
-
-/* Date column — don't shrink on narrow screens */
-.player-detail-page #player-history-body td:first-child {
-  white-space: nowrap;
-}
-
-/* Placement column — numeric, right-aligned */
+/* Placement column — numeric accent */
 .player-detail-page #player-history-body td:nth-child(3) {
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -93,32 +324,80 @@
   color: var(--accent);
 }
 
+/* Date column — don't wrap */
+.player-detail-page #player-history-body td:first-child {
+  white-space: nowrap;
+}
+
+/* Empty state inside player content */
+.player-empty {
+  color: var(--muted);
+  font-size: var(--font-size-base);
+  padding: var(--space-4);
+}
+
+.player-empty p {
+  margin: 0;
+}
+
 /* ==========================================================================
-   Profile Insights List
+   Player Insights List — moved from _archetypes.css
    ========================================================================== */
 
-/* Styles handled in _archetypes.css via .player-detail-page #player-insights-list */
+.player-detail-page #player-insights-list {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+  color: var(--text);
+}
+
+/* ==========================================================================
+   Intel Strip — reused component, scoped overrides
+   ========================================================================== */
+
+.player-detail-page .page-intel-strip {
+  margin: 0;
+}
+
+.player-detail-page .page-header {
+  display: none; /* player uses its own header-row */
+}
 
 /* ==========================================================================
    Responsive
    ========================================================================== */
 
 @media (max-width: 640px) {
-  .player-detail-page .page-header {
+  .player-page {
+    padding: 0 var(--space-3) var(--space-8);
+    gap: var(--space-4);
+  }
+
+  .player-header-row {
     padding: var(--space-5) 0 var(--space-3);
   }
 
-  .page-intel-strip {
-    padding: var(--space-3);
-    gap: var(--space-2) var(--space-4);
-  }
-
-  .player-detail-page .archetypes-summary {
+  .stats-grid {
     grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
     gap: var(--space-2);
   }
 
-  /* Hide field column on narrow screens — less important */
+  .stat-card {
+    padding: var(--space-3) var(--space-2);
+  }
+
+  .stat-value {
+    font-size: var(--font-size-xl);
+  }
+
+  .player-table th,
+  .player-table td {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-sm);
+  }
+
+  /* Hide field column on narrow screens */
   .player-detail-page #player-history-body td:nth-child(4),
   .player-detail-page table thead th:nth-child(4) {
     display: none;

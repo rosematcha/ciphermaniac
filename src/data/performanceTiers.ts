@@ -23,26 +23,3 @@ export const PERFORMANCE_TIER_LABELS: Record<string, string> = {
   top25: 'Top 25%',
   top50: 'Top 50%'
 };
-
-/**
- * Short labels for compact UI elements (dropdowns, badges, etc.)
- */
-const PERFORMANCE_TIER_SHORT_LABELS: Record<string, string> = {
-  all: 'All',
-  winner: 'Winners',
-  top2: 'Finals',
-  top4: 'Top 4',
-  top8: 'Top 8',
-  top16: 'Top 16',
-  top10: 'Top 10%',
-  top25: 'Top 25%',
-  top50: 'Top 50%'
-};
-
-/**
- * Get the label for a performance filter
- */
-export function getPerformanceLabel(filter: string, short = false): string {
-  const labels = short ? PERFORMANCE_TIER_SHORT_LABELS : PERFORMANCE_TIER_LABELS;
-  return labels[filter] || filter;
-}
