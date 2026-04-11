@@ -44,7 +44,7 @@ export interface PlayerDataset {
   players: PlayerProfile[];
 }
 
-export type PlayerSlice = 'all' | 'phase2' | 'topcut';
+type PlayerSlice = 'all' | 'phase2' | 'topcut';
 
 interface CacheEntry {
   timestamp: number;
@@ -123,7 +123,7 @@ function inferTournamentDate(tournament: string): string | null {
   return match?.[1] || null;
 }
 
-export function playerSlugFromName(name: string): string {
+function playerSlugFromName(name: string): string {
   return playerKeyFromName(name).replace(/\s+/g, '-');
 }
 
@@ -243,7 +243,7 @@ function computeConsistencyScore(params: {
   return Math.round(weighted * eventWeight * 1000) / 1000;
 }
 
-export async function buildPlayerDataset(slice: PlayerSlice = 'all'): Promise<PlayerDataset> {
+async function buildPlayerDataset(slice: PlayerSlice = 'all'): Promise<PlayerDataset> {
   const tournaments = await fetchJsonArray('tournaments.json');
   const regionals = (Array.isArray(tournaments) ? tournaments : []).filter(item => /regional/i.test(String(item)));
 

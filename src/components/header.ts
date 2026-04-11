@@ -3,7 +3,6 @@
  */
 
 import '../utils/buildVersion.js';
-import { shouldHideUnreadyFeatures } from '../utils/releaseChannel.js';
 
 interface HeaderOptions {
   currentPage?: string;
@@ -17,13 +16,13 @@ interface HeaderOptions {
 export function createHeader(options: HeaderOptions = {}): HTMLElement {
   const { currentPage = '' } = options;
   const toolsActive = ['tools', 'graphics', 'incidents', 'meta-binder'].includes(currentPage);
-  const hideUnreadyFeatures = shouldHideUnreadyFeatures();
-  const playersLink = hideUnreadyFeatures
-    ? ''
-    : `<a class="nav-link${currentPage === 'players' ? ' active' : ''}" href="/players"${currentPage === 'players' ? ' aria-current="page"' : ''}>Players</a>`;
-  const toolsLink = hideUnreadyFeatures
-    ? ''
-    : `<a class="nav-link${toolsActive ? ' active' : ''}" href="/toys"${toolsActive ? ' aria-current="page"' : ''}>Toys</a>`;
+  const isLocalhost = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  const playersLink = isLocalhost
+    ? `<a class="nav-link${currentPage === 'players' ? ' active' : ''}" href="/players"${currentPage === 'players' ? ' aria-current="page"' : ''}>Players</a>`
+    : '';
+  const toolsLink = isLocalhost
+    ? `<a class="nav-link${toolsActive ? ' active' : ''}" href="/toys"${toolsActive ? ' aria-current="page"' : ''}>Toys</a>`
+    : '';
 
   const header = document.createElement('header');
   header.className = 'site-header';
