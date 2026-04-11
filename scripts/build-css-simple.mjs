@@ -59,6 +59,7 @@ try {
     'pages/_incidents.css',
     'pages/_feedback.css',
     'pages/_player.css',
+    'pages/_players.css',
     'pages/_tools.css',
     'pages/_responsive.css',
     'main.css'

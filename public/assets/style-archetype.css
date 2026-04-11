@@ -1,6 +1,6 @@
 /* ==========================================================================
      Ciphermaniac - Archetype CSS Bundle
-     Generated: 2026-03-29T17:54:22.925Z
+     Generated: 2026-04-11T18:17:44.584Z
      ========================================================================== */
 
 
@@ -181,12 +181,12 @@
   margin-bottom: var(--space-2);
 }
 
-/* Breadcrumb */
-.archetype-simple .archetype-breadcrumb {
+/* Breadcrumb — scoped to any archetype page */
+.archetype-page .archetype-breadcrumb {
   flex-shrink: 0;
 }
 
-.archetype-simple .archetype-breadcrumb__link {
+.archetype-page .archetype-breadcrumb__link {
   color: var(--muted);
   text-decoration: none;
   font-size: var(--font-size-sm);
@@ -194,11 +194,12 @@
   white-space: nowrap;
 }
 
-.archetype-simple .archetype-breadcrumb__link:hover {
+.archetype-page .archetype-breadcrumb__link:hover {
   color: var(--accent);
 }
 
-.archetype-simple .archetype-title {
+/* Title — consistent across all archetype sub-pages */
+.archetype-page .archetype-title {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
   color: var(--text);
@@ -603,8 +604,8 @@
     gap: var(--space-2);
   }
 
-  .archetype-simple .archetype-title {
-    font-size: var(--font-size-xl);
+  .archetype-page .archetype-title {
+    font-size: var(--font-size-lg);
   }
 
   .archetype-controls-panel .filter-card-select,
