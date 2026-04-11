@@ -93,7 +93,7 @@ async function initSqlJs(): Promise<SqlJsStatic> {
   return sqlPromise;
 }
 
-export class TournamentDatabase {
+class TournamentDatabase {
   private db: SqlJsDatabase;
   private tournamentPath: string;
 

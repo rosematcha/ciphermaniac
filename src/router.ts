@@ -1,7 +1,7 @@
 // Lightweight router and URL state helpers for the grid page
 import { buildCardPath } from './card/routing.js';
 
-export interface AppState {
+interface AppState {
   query?: string;
   sort?: string;
   archetype?: string;
@@ -12,17 +12,17 @@ export interface AppState {
   advanced?: string;
 }
 
-export interface SetStateOptions {
+interface SetStateOptions {
   replace?: boolean;
   merge?: boolean;
 }
 
-export interface RoutePlan {
+interface RoutePlan {
   redirect: boolean;
   url?: string;
 }
 
-export interface RouteObject {
+interface RouteObject {
   route: 'card' | 'grid' | 'unknown';
   name?: string;
   raw?: string;
@@ -156,30 +156,6 @@ export function normalizeCardRouteOnLoad(): boolean {
     return true;
   }
   return false;
-}
-
-/**
- * Ensure index page has a valid hash. If the hash is present but not recognized
- * (not #grid and not #card/...), clear the hash to avoid leaving the app in an
- * unknown state. Returns true if the hash was cleared.
- *
- * This is intentionally conservative and only runs on index.html.
- */
-export function normalizeUnknownHashOnIndex(): boolean {
-  const hash = location.hash || '';
-  if (!hash) {
-    return false;
-  }
-  if (hash === '#grid') {
-    return false;
-  }
-  if (/^#card\/.+/.test(hash)) {
-    return false;
-  }
-  // Unknown hash -> clear it but preserve search params
-  const newUrl = `${location.pathname}${location.search}`;
-  history.replaceState(null, '', newUrl);
-  return true;
 }
 
 /**
