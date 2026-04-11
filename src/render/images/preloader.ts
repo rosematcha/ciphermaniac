@@ -1,7 +1,6 @@
 import { buildThumbCandidates } from '../../thumbs.js';
 import { normalizeCardNumber } from '../../../shared/cardUtils.js';
 import { parallelImageLoader } from '../../utils/parallelImageLoader.js';
-import { perf } from '../../utils/performance.js';
 import type { CardItem } from '../../types/index.js';
 import { getGridElement } from '../grid/elements.js';
 import { MOBILE_MAX_WIDTH } from '../constants.js';
@@ -114,28 +113,4 @@ export function preloadVisibleImagesParallel(items: CardItem[], overrides: Recor
       });
     }
   }
-}
-
-/**
- * Preload image candidates for the grid items.
- * @param items - Card items to preload.
- * @param overrides - Image override map.
- * @param useSm - Whether to prefer small images.
- */
-export function setupImagePreloading(items: CardItem[], overrides: Record<string, string> = {}, useSm = false): void {
-  perf.start('preloadImages');
-  if (!items || !items.length) {
-    return;
-  }
-
-  const candidatesList: string[][] = [];
-  items.forEach(item => {
-    const variant = item.set && item.number ? { set: item.set, number: item.number } : undefined;
-    candidatesList.push(buildThumbCandidates(item.name, useSm, overrides, variant));
-  });
-
-  const maxParallel = Math.min(6, items.length);
-  const batchId = parallelImageLoader.startPreloadBatch();
-  parallelImageLoader.preloadImages(candidatesList, maxParallel, batchId);
-  perf.end('preloadImages');
 }

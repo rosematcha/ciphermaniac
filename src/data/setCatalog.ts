@@ -1,4 +1,4 @@
-export const SET_CATALOG = [
+const SET_CATALOG = [
   { code: 'PFL', name: 'Phantasmal Flames' },
   { code: 'MEG', name: 'Mega Evolution' },
   { code: 'MEE', name: 'Mega Evolution Energy' },
@@ -153,14 +153,12 @@ export const SET_CATALOG = [
 const SET_RELEASE_INDEX = new Map(SET_CATALOG.map((entry, index) => [entry.code, index]));
 const SET_NAME_MAP = new Map(SET_CATALOG.map(entry => [entry.code, entry.name]));
 
-export const ALL_SET_CODES = SET_CATALOG.map(entry => entry.code);
-
 /**
  * Get the display name for a set code.
  * @param {string} code
  * @returns {string}
  */
-export function getSetFullName(code: string): string {
+function getSetFullName(code: string): string {
   if (!code) {
     return '';
   }

@@ -4,9 +4,9 @@
  * @module ActiveFilters
  */
 
-import { readSelectedSets, readSelectedCardTypes, readSelectedRegulationMarks } from '../utils/filterState.js';
+import { readSelectedCardTypes, readSelectedRegulationMarks, readSelectedSets } from '../utils/filterState.js';
 
-export interface ActiveFiltersCallbacks {
+interface ActiveFiltersCallbacks {
   onClearSets?: () => void;
   onClearCardTypes?: () => void;
   onClearRegulationMarks?: () => void;
@@ -30,7 +30,9 @@ export function initActiveFilters(cbs: ActiveFiltersCallbacks): void {
 }
 
 export function updateActiveFilters(): void {
-  if (!containerEl) return;
+  if (!containerEl) {
+    return;
+  }
 
   const filters: ActiveFilter[] = [];
 
