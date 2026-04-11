@@ -195,7 +195,7 @@ export function renderChart(): void {
   renderChartSummary();
 }
 
-export function renderLegend(): void {
+function renderLegend(): void {
   const state = getState();
   if (!elements.chartLegend || !state.chartLines) {
     return;
@@ -234,7 +234,7 @@ export function renderLegend(): void {
   });
 }
 
-export function renderChartSummary(): void {
+function renderChartSummary(): void {
   const state = getState();
   if (!elements.chartSummary || !state.chartLines || state.chartLines.length === 0) {
     if (elements.chartSummary) {

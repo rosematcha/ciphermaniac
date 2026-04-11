@@ -14,8 +14,6 @@ export const elements = {
   statTournaments: document.getElementById('stat-tournaments'),
   statCards: document.getElementById('stat-cards'),
   statRange: document.getElementById('stat-range'),
-  narrativeSection: document.getElementById('trends-narrative') as HTMLElement | null,
-  narrativeText: document.getElementById('narrative-text') as HTMLElement | null,
   insightsSection: document.getElementById('trends-insights') as HTMLElement | null,
   coreCount: document.getElementById('core-count'),
   coreList: document.getElementById('core-list'),
