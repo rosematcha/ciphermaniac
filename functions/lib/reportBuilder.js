@@ -138,4 +138,4 @@ function generateReportFromDecks(deckList, deckTotal, _unused, synonymDb) {
   };
 }
 
-export { composeCategoryPath, sanitizeForFilename, sanitizeForPath, normalizeArchetypeName, generateReportFromDecks };
+export { sanitizeForFilename, sanitizeForPath, normalizeArchetypeName, generateReportFromDecks };
