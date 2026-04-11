@@ -3,7 +3,7 @@
  * @module ParallelLoader
  */
 
-export interface ProgressIndicatorOptions {
+interface ProgressIndicatorOptions {
   position?: 'fixed' | 'relative';
   location?: string;
   autoRemove?: boolean;
@@ -11,7 +11,7 @@ export interface ProgressIndicatorOptions {
   container?: HTMLElement | null;
 }
 
-export interface ProgressController {
+interface ProgressController {
   container: HTMLElement;
   steps: any[]; // Using any[] for stepElements as they have custom properties attached
   updateStep: (
@@ -311,7 +311,7 @@ export function cleanupOrphanedProgressDisplay(): number {
   return cleaned;
 }
 
-export interface ProcessInParallelOptions<T, R> {
+interface ProcessInParallelOptions<T, R> {
   concurrency?: number;
   onProgress?: ((processed: number, total: number, item: T, result: R | null, error?: any) => void) | null;
   onError?: 'continue' | 'stop' | 'retry';
@@ -399,196 +399,4 @@ export async function processInParallel<T, R>(
   }
 
   return results;
-}
-
-export interface ProcessBatchedOptions<T, R> {
-  batchSize?: number;
-  batchDelay?: number;
-  onProgress?: ((processed: number, total: number, item: T, result: R | null, error?: any) => void) | null;
-  onBatchComplete?: ((batchIndex: number, totalBatches: number, results: (R | null)[]) => void) | null;
-}
-
-/**
- * Batched sequential processor with progress tracking
- * @param items - Items to process
- * @param processor - Function to process each item
- * @param options - Configuration options
- * @returns Results array
- */
-export async function processBatched<T, R>(
-  items: T[],
-  processor: (item: T, index: number) => Promise<R>,
-  options: ProcessBatchedOptions<T, R> = {}
-): Promise<(R | null)[]> {
-  const config = {
-    batchSize: 4,
-    batchDelay: 100,
-    onProgress: null,
-    onBatchComplete: null,
-    ...options
-  };
-
-  if (!Array.isArray(items) || items.length === 0) {
-    return [];
-  }
-
-  const results: (R | null)[] = [];
-  let processed = 0;
-
-  // Create batches
-  const batches: T[][] = [];
-  for (let i = 0; i < items.length; i += config.batchSize) {
-    batches.push(items.slice(i, i + config.batchSize));
-  }
-
-  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-    const batch = batches[batchIndex];
-    const batchResults: (R | null)[] = [];
-
-    for (let itemIndex = 0; itemIndex < batch.length; itemIndex++) {
-      const item = batch[itemIndex];
-      const globalIndex = batchIndex * config.batchSize + itemIndex;
-
-      try {
-        const result = await processor(item, globalIndex);
-        batchResults.push(result);
-        processed++;
-
-        if (config.onProgress) {
-          config.onProgress(processed, items.length, item, result);
-        }
-      } catch (error) {
-        batchResults.push(null);
-        processed++;
-
-        if (config.onProgress) {
-          config.onProgress(processed, items.length, item, null, error);
-        }
-      }
-    }
-
-    results.push(...batchResults);
-
-    if (config.onBatchComplete) {
-      config.onBatchComplete(batchIndex + 1, batches.length, batchResults);
-    }
-
-    // Delay between batches (except for the last one)
-    if (batchIndex < batches.length - 1 && config.batchDelay > 0) {
-      await new Promise(resolve => {
-        setTimeout(resolve, config.batchDelay);
-      });
-    }
-  }
-
-  return results;
-}
-
-export interface LoadWithCacheOptions<T, R> {
-  concurrency?: number;
-  onProgress?: ((processed: number, total: number, item: T, result: R | null, error?: any) => void) | null;
-  onCacheHit?: ((item: T, result: R) => void) | null;
-  onCacheMiss?: ((item: T, result: R) => void) | null;
-  saveCache?: (() => void) | null;
-}
-
-/**
- * Cache-aware parallel loader with progress tracking
- * @param items - Items to load
- * @param loader - Function to load each item
- * @param cache - Cache object
- * @param cacheKey - Function to generate cache key for item
- * @param options - Configuration options
- * @returns Results array
- */
-export async function loadWithCache<T, R>(
-  items: T[],
-  loader: (item: T, index: number) => Promise<R>,
-  cache: Record<string, R>,
-  cacheKey: (item: T) => string,
-  options: LoadWithCacheOptions<T, R> = {}
-): Promise<R[]> {
-  const config = {
-    concurrency: 6,
-    onProgress: null,
-    onCacheHit: null,
-    onCacheMiss: null,
-    saveCache: null,
-    ...options
-  };
-
-  const results: { item: T; result: R; fromCache: boolean }[] = [];
-  const uncachedItems: T[] = [];
-  const cacheHits: T[] = [];
-
-  // Check cache for all items first
-  for (const item of items) {
-    const key = cacheKey(item);
-    if (cache[key]) {
-      results.push({ item, result: cache[key], fromCache: true });
-      cacheHits.push(item);
-
-      if (config.onCacheHit) {
-        config.onCacheHit(item, cache[key]);
-      }
-    } else {
-      uncachedItems.push(item);
-    }
-  }
-
-  if (uncachedItems.length === 0) {
-    return results.map(result => result.result);
-  }
-
-  // Load uncached items in parallel
-  const uncachedResults = await processInParallel(
-    uncachedItems,
-    async (item, index) => {
-      try {
-        const result = await loader(item, index);
-        const key = cacheKey(item);
-        cache[key] = result;
-
-        if (config.onCacheMiss) {
-          config.onCacheMiss(item, result);
-        }
-
-        return { item, result, fromCache: false };
-      } catch (error) {
-        if (config.onProgress) {
-          config.onProgress(cacheHits.length + index + 1, items.length, item, null, error);
-        }
-        throw error;
-      }
-    },
-    {
-      concurrency: config.concurrency,
-      onProgress: config.onProgress
-        ? (processed, total, item, result) => {
-            config.onProgress!(cacheHits.length + processed, items.length, item, result as any);
-          }
-        : null
-    }
-  );
-
-  // Save cache if function provided
-  if (config.saveCache && uncachedResults.some(resultItem => resultItem !== null)) {
-    try {
-      config.saveCache();
-    } catch {
-      // Failed to save cache
-    }
-  }
-
-  // Merge results maintaining original order
-  const allResults = [
-    ...results,
-    ...(uncachedResults.filter(resultItem => resultItem !== null) as { item: T; result: R; fromCache: boolean }[])
-  ];
-
-  // Sort back to original order
-  const itemIndexMap = new Map(items.map((item, itemIndex) => [item, itemIndex]));
-  allResults.sort((resultA, resultB) => (itemIndexMap.get(resultA.item) || 0) - (itemIndexMap.get(resultB.item) || 0));
-
-  return allResults.map(resultItem => resultItem.result);
 }

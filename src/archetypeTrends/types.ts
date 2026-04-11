@@ -119,6 +119,7 @@ export interface AppState {
   activeCopyCard: string | null;
   chartLines: ChartLine[];
   showAllMatchups: boolean;
+  showAllCards: boolean;
 }
 
 export type MatchupSortMode = 'games' | 'winrate' | 'name';

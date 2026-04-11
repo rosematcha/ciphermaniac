@@ -382,10 +382,4 @@ function resolveArchetypeClassification(input, deckIndex) {
   };
 }
 
-export {
-  buildArchetypeDeckIndex,
-  canonicalizeArchetypeLabel,
-  extractDecklistCardNames,
-  isGenericArchetypeName,
-  resolveArchetypeClassification
-};
+export { buildArchetypeDeckIndex, resolveArchetypeClassification };

@@ -10,7 +10,7 @@ import { normalizeSetCode } from '../utils/filterState.js';
 // Types
 export type VariantInfo = { set?: string; number?: string | number };
 
-export interface CardImageModalOpenOptions {
+interface CardImageModalOpenOptions {
   src: string | null;
   fallback?: string | null;
   alt?: string | null;
@@ -18,7 +18,7 @@ export interface CardImageModalOpenOptions {
   trigger?: HTMLElement | null;
 }
 
-export interface CardImageModalController {
+interface CardImageModalController {
   open(options: CardImageModalOpenOptions): void;
   close(): void;
 }
@@ -76,7 +76,7 @@ export function buildLgUrlFromVariant(variant: VariantInfo | undefined): string 
  * Creates the modal DOM on first call (lazy initialization)
  * @returns The modal controller or null if creation failed
  */
-export function ensureCardImageModal(): CardImageModalController | null {
+function ensureCardImageModal(): CardImageModalController | null {
   if (cardImageModalController) {
     return cardImageModalController;
   }

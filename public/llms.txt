@@ -1,0 +1,23 @@
+# Ciphermaniac
+
+> Free Pokemon TCG meta analysis tool for tournament data, deck archetypes, card usage statistics, and competitive trends.
+
+Ciphermaniac analyzes Pokemon TCG Regional and other competitive tournament results to surface per-card usage rates, deck archetype breakdowns, meta trend shifts, and player performance data.
+
+## Core Features
+
+- **Card Database**: Browse every card seen in competitive play with usage percentages, copy-count distributions, and market prices. Filter by tournament, set, archetype, card type, regulation mark, and placement tier.
+- **Deck Archetypes**: View ranked archetypes by meta share with win rates, matchup data, core card lists, and deck skeleton breakdowns.
+- **Meta Trends**: Track the rise and fall of deck archetypes over time with configurable time windows and performance filters.
+- **Player Statistics**: Analyze recurring Regional players with consistency scores, top-finish conversion rates, and archetype specialization.
+
+## Pages
+
+- [Card Database](https://ciphermaniac.com/cards): Browse Pokemon TCG card usage stats, deck inclusion rates, and market prices
+- [Deck Archetypes](https://ciphermaniac.com/archetypes): Top deck archetypes with meta share, win rates, and matchup data
+- [Meta Trends](https://ciphermaniac.com/trends): Track which decks are rising and falling in the competitive meta
+- [Players](https://ciphermaniac.com/players): Regional player consistency and performance metrics
+- [Meta Binder](https://ciphermaniac.com/toys/meta-binder): Build a personal binder playset based on tournament usage
+- [Social Graphics](https://ciphermaniac.com/toys/social-graphics): Generate shareable tournament meta graphics
+- [Player Connections](https://ciphermaniac.com/toys/player-connections): Six degrees of separation between Pokemon TCG players
+- [About](https://ciphermaniac.com/about): Background on the project and credits

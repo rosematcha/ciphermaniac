@@ -131,93 +131,6 @@
           </div>
         </section>
 
-        <!-- Hero Stats Section -->
-        <section id="trends-stats" class="trends-hero-stats" hidden aria-label="Archetype statistics overview">
-          <div class="hero-stat-card">
-            <span id="stat-tournaments" class="hero-stat-value hero-stat-value--accent">-</span>
-            <span class="hero-stat-label">Tournaments</span>
-          </div>
-          <div class="hero-stat-card">
-            <span id="stat-weeks" class="hero-stat-value">-</span>
-            <span class="hero-stat-label">Weeks Tracked</span>
-          </div>
-          <div class="hero-stat-card">
-            <span id="stat-cards" class="hero-stat-value">-</span>
-            <span class="hero-stat-label">Cards Analyzed</span>
-          </div>
-          <div class="hero-stat-card">
-            <span id="stat-range" class="hero-stat-value" style="font-size: 1rem">-</span>
-            <span class="hero-stat-label">Date Range</span>
-          </div>
-        </section>
-
-        <!-- Key Insights Summary -->
-        <section id="trends-insights" class="trends-insights-panel" hidden aria-label="Key deck building insights">
-          <header class="insights-header">
-            <h2>What's Changing?</h2>
-          </header>
-          <div class="insights-grid-enhanced">
-            <!-- Core Cards -->
-            <div class="insight-card-enhanced" id="insight-core">
-              <div class="insight-card-header">
-                <div class="insight-icon insight-icon--core">🎯</div>
-                <div class="insight-title-group">
-                  <h3>Core Cards</h3>
-                  <span class="insight-subtitle">In nearly every build</span>
-                </div>
-                <span class="insight-count" id="core-count">0</span>
-              </div>
-              <div class="insight-card-body" id="core-cards-list"></div>
-            </div>
-
-            <!-- Flex Slots -->
-            <div class="insight-card-enhanced" id="insight-flex">
-              <div class="insight-card-header">
-                <div class="insight-icon insight-icon--flex">🔀</div>
-                <div class="insight-title-group">
-                  <h3>Flex Slots</h3>
-                  <span class="insight-subtitle">High variance in counts</span>
-                </div>
-                <span class="insight-count" id="flex-count">0</span>
-              </div>
-              <div class="insight-card-body" id="flex-cards-list"></div>
-            </div>
-
-            <!-- Rising Stars -->
-            <div class="insight-card-enhanced" id="insight-rising">
-              <div class="insight-card-header">
-                <div class="insight-icon insight-icon--rising">📈</div>
-                <div class="insight-title-group">
-                  <h3>Rising</h3>
-                  <span class="insight-subtitle">Gaining popularity</span>
-                </div>
-                <span class="insight-count" id="rising-count">0</span>
-              </div>
-              <div class="insight-card-body" id="rising-cards-list"></div>
-            </div>
-
-            <!-- Falling Stars -->
-            <div class="insight-card-enhanced" id="insight-falling">
-              <div class="insight-card-header">
-                <div class="insight-icon insight-icon--falling">📉</div>
-                <div class="insight-title-group">
-                  <h3>Falling</h3>
-                  <span class="insight-subtitle">Declining usage</span>
-                </div>
-                <span class="insight-count" id="falling-count">0</span>
-              </div>
-              <div class="insight-card-body" id="falling-cards-list"></div>
-            </div>
-          </div>
-
-          <!-- Substitution Patterns -->
-          <div id="substitutions-section" class="substitutions-section" hidden>
-            <h3 class="subsection-heading">Substitution Patterns</h3>
-            <p class="section-description">Cards that tend to replace each other in builds</p>
-            <div id="substitutions-list" class="substitutions-grid"></div>
-          </div>
-        </section>
-
         <!-- Main Playrate Timeline Chart -->
         <section id="trends-chart-container" class="trends-chart-container-v2" hidden>
           <div class="chart-header">
@@ -299,9 +212,7 @@
             <table class="card-list-table">
               <thead>
                 <tr>
-                  <th class="col-chart">Chart</th>
                   <th class="col-name">Card</th>
-                  <th class="col-category">Type</th>
                   <th class="col-playrate">Playrate</th>
                   <th class="col-copies">Copies</th>
                   <th class="col-change">Change</th>
@@ -312,11 +223,6 @@
             </table>
           </div>
         </section>
-
-        <!-- Narrative Summary (filled by JS) -->
-        <div id="trends-narrative" class="trends-narrative" hidden>
-          <p id="narrative-text">Loading trend analysis...</p>
-        </div>
 
         <!-- Matchup Spread -->
         <section id="trends-matchups" class="trends-matchups" hidden aria-label="Matchup win rates">
@@ -388,6 +294,10 @@
               <div class="chart-placeholder">Select a card to see copy count evolution</div>
             </div>
             <div class="copy-legend">
+              <div class="copy-legend-item">
+                <span class="copy-legend-swatch copy-color-0"></span>
+                <span>0 Copies</span>
+              </div>
               <div class="copy-legend-item">
                 <span class="copy-legend-swatch copy-color-1"></span>
                 <span>1 Copy</span>

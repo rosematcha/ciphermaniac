@@ -1,32 +1,61 @@
 /* ==========================================================================
    Incidents Page Styles
    ========================================================================== */
+
+@keyframes incidents-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .incidents-page {
   width: min(100%, 900px);
   margin: 0 auto;
-  padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-xl);
+  padding: var(--space-10) var(--space-4) var(--space-12);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: var(--space-4);
+}
+
+/* Breadcrumb back to Toys */
+.incidents-breadcrumb__link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  transition: color var(--transition-fast);
+}
+
+.incidents-breadcrumb__link:hover {
+  color: var(--accent-2);
 }
 
 .incidents-title {
   margin: 0;
-  font-size: var(--font-size-xl);
-  font-weight: 600;
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-black);
+  font-variation-settings: 'SOFT' 100, 'WONK' 1;
   color: var(--text);
+  letter-spacing: -0.03em;
+}
+
+.incidents-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-relaxed);
+  max-width: 60ch;
 }
 
 .incidents-content {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: var(--space-3);
 }
 
 .incidents-list {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: var(--space-3);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -35,10 +64,10 @@
 .incidents-placeholder,
 .incidents-empty,
 .incidents-error {
-  background: var(--panel);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--border-radius-lg);
-  padding: var(--spacing-lg);
+  padding: var(--space-4);
   color: var(--muted);
   font-size: var(--font-size-lg);
 }
@@ -47,33 +76,47 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-lg);
-  background: var(--panel);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  gap: var(--space-4);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--border-radius-lg);
-  padding: var(--spacing-lg);
+  padding: var(--space-4);
+  animation: incidents-fade-up 0.35s ease both;
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
 }
 
+/* Stagger rows for a subtle cascade effect */
+.incident-row:nth-child(1) { animation-delay: 0s; }
+.incident-row:nth-child(2) { animation-delay: 0.04s; }
+.incident-row:nth-child(3) { animation-delay: 0.08s; }
+.incident-row:nth-child(4) { animation-delay: 0.12s; }
+.incident-row:nth-child(5) { animation-delay: 0.16s; }
+.incident-row:nth-child(n+6) { animation-delay: 0.2s; }
+
 .incident-row:hover {
-  border-color: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .incident-info {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--space-1);
   min-width: 0;
 }
 
 .incident-name {
   font-size: var(--font-size-lg);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: var(--text);
   word-break: break-word;
+  font-family: var(--font-family-serif);
+  font-variation-settings: 'SOFT' 100, 'WONK' 1;
+  letter-spacing: -0.01em;
 }
 
 .incident-date {
@@ -85,17 +128,17 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--spacing-md);
+  gap: var(--space-3);
   min-width: 200px;
   text-align: right;
   flex-wrap: wrap;
 }
 
 .status-label {
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
-/* Status colors - consolidated */
+/* Status colors */
 .incident-status[data-status='yes'] .status-label,
 .incident-status[data-status='yes'] .status-icon {
   color: var(--status-yes);
@@ -114,7 +157,7 @@
 .incident-status .status-text {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: var(--space-1);
 }
 
 .incident-status .incident-evidence {
@@ -123,7 +166,7 @@
   gap: 6px;
   color: var(--link);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .incident-status .incident-evidence:hover,
@@ -159,6 +202,10 @@
   fill: rgba(58, 210, 122, 0.12);
 }
 
+.incident-status[data-status='yes'] .status-icon {
+  filter: drop-shadow(0 0 6px rgba(58, 210, 122, 0.3));
+}
+
 .incident-status[data-status='no'] .status-icon__circle {
   stroke: rgba(255, 107, 107, 0.8);
   fill: rgba(255, 107, 107, 0.1);
@@ -181,7 +228,7 @@
   fill: currentColor;
   stroke: none;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   dominant-baseline: middle;
 }
 
@@ -190,8 +237,8 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-md);
+  gap: var(--space-3);
+  margin-top: var(--space-3);
 }
 
 .incidents-pagination.is-hidden {
@@ -199,28 +246,27 @@
 }
 
 .pagination-btn {
-  background: var(--panel);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--surface-1);
+  border: 1px solid var(--border-default);
   color: var(--text);
   border-radius: var(--border-radius);
   padding: 6px 12px;
   font-size: var(--font-size-base);
   cursor: pointer;
   transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease;
+    background var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .pagination-btn:hover:not(:disabled),
 .pagination-btn:focus-visible:not(:disabled) {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.06);
+  background: var(--bg-hover);
+  border-color: rgba(255, 255, 255, 0.12);
   outline: none;
 }
 
 .pagination-btn:disabled {
-  opacity: 0.45;
+  opacity: var(--opacity-disabled);
   cursor: default;
 }
 
@@ -233,13 +279,13 @@
   margin: 0;
   color: var(--muted);
   font-size: var(--font-size-base);
-  line-height: 1.6;
+  line-height: var(--line-height-relaxed);
 }
 
 .incidents-note a {
   color: var(--link);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .incidents-note a:hover,
@@ -252,8 +298,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-md);
+  gap: var(--space-3);
+  margin-top: var(--space-3);
 }
 
 .incidents-footer .incidents-note {
@@ -267,6 +313,14 @@
 
 /* ---------- Responsive ---------- */
 @media (max-width: 720px) {
+  .incidents-page {
+    padding: var(--space-8) var(--space-3) var(--space-10);
+  }
+
+  .incidents-title {
+    font-size: var(--font-size-2xl);
+  }
+
   .incident-row {
     flex-direction: column;
     align-items: flex-start;
@@ -285,7 +339,7 @@
   .incidents-footer {
     flex-direction: column;
     align-items: stretch;
-    gap: var(--spacing-sm);
+    gap: var(--space-2);
   }
 
   .incidents-footer .incidents-pagination {

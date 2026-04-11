@@ -17,7 +17,7 @@ const state = getState();
 /**
  * Create a new filter row element.
  */
-export function createFilterRow(): HTMLDivElement {
+function createFilterRow(): HTMLDivElement {
   const filterId = state.nextFilterId++;
   const filterRow = document.createElement('div');
   filterRow.className = 'archetype-filter-group';
@@ -90,7 +90,7 @@ export function createFilterRow(): HTMLDivElement {
  * Remove a filter row by id.
  * @param filterId - Filter row id.
  */
-export function removeFilterRow(filterId: number): void {
+function removeFilterRow(filterId: number): void {
   const index = state.filterRows.findIndex(row => row.id === filterId);
   if (index === -1) {
     return;
@@ -176,7 +176,7 @@ export function addQuickFilterForCard(cardName: string): void {
  * Populate card options for the given filter row.
  * @param filterId - Filter row id.
  */
-export function populateFilterRowCards(filterId: number): void {
+function populateFilterRowCards(filterId: number): void {
   const row = state.filterRows.find(r => r.id === filterId);
   if (!row) {
     return;
@@ -215,7 +215,7 @@ export function populateFilterRowCards(filterId: number): void {
  * Apply logic when a filter row changes.
  * @param filterId - Filter row id.
  */
-export function handleFilterChange(filterId: number): void {
+function handleFilterChange(filterId: number): void {
   const row = state.filterRows.find(r => r.id === filterId);
   if (!row) {
     return;
@@ -291,7 +291,7 @@ export function handleFilterChange(filterId: number): void {
 /**
  * Toggle the add-filter button state based on current rows.
  */
-export function updateAddFilterButtonVisibility(): void {
+function updateAddFilterButtonVisibility(): void {
   if (!elements.addFilterButton) {
     return;
   }
@@ -309,7 +309,7 @@ export function updateAddFilterButtonVisibility(): void {
 /**
  * Initialize filter rows from stored state.
  */
-export function initializeFilterRows(): void {
+function initializeFilterRows(): void {
   const { filterRowsContainer } = elements;
   const { addFilterButton } = elements;
   if (!filterRowsContainer || !addFilterButton) {

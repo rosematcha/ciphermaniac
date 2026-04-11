@@ -163,13 +163,3 @@ function validateConfig(config: Config): void {
 
 // Validate configuration on load
 validateConfig(CONFIG);
-
-// Legacy exports for backwards compatibility
-export const { REPORTS_BASE } = CONFIG.API;
-
-// Layout constants for backwards compatibility
-export const { GAP } = CONFIG.LAYOUT;
-export const BASE = CONFIG.LAYOUT.BASE_CARD_WIDTH;
-export const MIN_BASE = CONFIG.LAYOUT.MIN_BASE_CARD_WIDTH;
-export const BIG_ROWS = CONFIG.LAYOUT.BIG_ROWS_COUNT;
-export const { MIN_SCALE } = CONFIG.LAYOUT;

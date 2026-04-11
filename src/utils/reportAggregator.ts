@@ -5,13 +5,13 @@
 
 import { logger } from './logger.js';
 
-export interface CardDistributionEntry {
+interface CardDistributionEntry {
   copies?: number;
   players?: number;
   percent?: number;
 }
 
-export interface CardItem {
+interface CardItem {
   rank?: number;
   name: string;
   uid?: string;
@@ -27,7 +27,7 @@ export interface CardItem {
   dist?: CardDistributionEntry[];
 }
 
-export interface ParsedReport {
+interface ParsedReport {
   deckTotal: number;
   items: CardItem[];
 }

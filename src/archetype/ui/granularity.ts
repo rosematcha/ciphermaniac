@@ -61,7 +61,7 @@ export function configureGranularity(items: ReturnType<typeof getState>['items']
  * Handle granularity input changes.
  * @param event - Input event.
  */
-export function handleGranularityInput(event: Event): void {
+function handleGranularityInput(event: Event): void {
   const state = getState();
   const target = (event.currentTarget || event.target) as HTMLInputElement | null;
   if (!target || !Array.isArray(state.items) || state.items.length === 0) {

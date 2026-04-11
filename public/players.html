@@ -68,9 +68,9 @@
   <link rel="modulepreload" href="/assets/js/src/loaders/players.js" />
 </head>
 
-<body class="archetypes-index-page players-index-page">
-  <div class="analysis-page archetypes-page">
-    <main id="main-content" class="analysis-main" tabindex="-1">
+<body class="players-index-page">
+  <div class="players-page">
+    <main id="main-content" tabindex="-1">
       <div class="page-header">
         <h1 class="page-title">Regional Players</h1>
         <p class="page-subtitle">Who keeps showing up and converting regional appearances into high finishes.</p>
@@ -83,56 +83,56 @@
         </div>
       </section>
 
-      <section class="archetypes-summary" aria-label="Regional player summary">
-        <div class="archetypes-summary__stat">
-          <span class="archetypes-summary__label">Regionals</span>
-          <span id="players-summary-regionals" class="archetypes-summary__value">--</span>
+      <section class="players-summary" aria-label="Regional player summary">
+        <div class="players-summary__stat">
+          <span class="players-summary__label">Regionals</span>
+          <span id="players-summary-regionals" class="players-summary__value">--</span>
         </div>
-        <div class="archetypes-summary__stat">
-          <span class="archetypes-summary__label">Decklists</span>
-          <span id="players-summary-decks" class="archetypes-summary__value">--</span>
+        <div class="players-summary__stat">
+          <span class="players-summary__label">Decklists</span>
+          <span id="players-summary-decks" class="players-summary__value">--</span>
         </div>
-        <div class="archetypes-summary__stat">
-          <span class="archetypes-summary__label">Tracked Players</span>
-          <span id="players-summary-players" class="archetypes-summary__value">--</span>
+        <div class="players-summary__stat">
+          <span class="players-summary__label">Tracked Players</span>
+          <span id="players-summary-players" class="players-summary__value">--</span>
         </div>
-        <div class="archetypes-summary__stat">
-          <span class="archetypes-summary__label">Repeat Players</span>
-          <span id="players-summary-repeat" class="archetypes-summary__value">--</span>
+        <div class="players-summary__stat">
+          <span class="players-summary__label">Repeat Players</span>
+          <span id="players-summary-repeat" class="players-summary__value">--</span>
         </div>
-        <div class="archetypes-summary__stat">
-          <span class="archetypes-summary__label">Last Updated</span>
-          <span id="players-summary-generated" class="archetypes-summary__value">--</span>
+        <div class="players-summary__stat">
+          <span class="players-summary__label">Last Updated</span>
+          <span id="players-summary-generated" class="players-summary__value">--</span>
         </div>
       </section>
 
-      <section class="card-sect" aria-labelledby="players-insights-title">
-        <h2 id="players-insights-title">Player Insights</h2>
-        <div class="analysis-list__items">
-          <section class="analysis-list-item">
-            <h3 class="analysis-list-item__name">Consistency Leaders</h3>
-            <p class="analysis-list-item__count">Best sustained regional performance over multiple events.</p>
+      <section class="players-insights" aria-labelledby="players-insights-title">
+        <h2 id="players-insights-title" class="players-insights__title">Player Insights</h2>
+        <div class="players-insights__grid">
+          <section class="players-insight-card">
+            <h3 class="players-insight-card__name">Consistency Leaders</h3>
+            <p class="players-insight-card__desc">Best sustained regional performance over multiple events.</p>
             <ul id="players-insight-consistency"></ul>
           </section>
-          <section class="analysis-list-item">
-            <h3 class="analysis-list-item__name">Top Conversion</h3>
-            <p class="analysis-list-item__count">Players converting appearances into top 16 and top 8 finishes.</p>
+          <section class="players-insight-card">
+            <h3 class="players-insight-card__name">Top Conversion</h3>
+            <p class="players-insight-card__desc">Players converting appearances into top 16 and top 8 finishes.</p>
             <ul id="players-insight-conversion"></ul>
           </section>
-          <section class="analysis-list-item">
-            <h3 class="analysis-list-item__name">Archetype Specialists</h3>
-            <p class="analysis-list-item__count">Players heavily concentrated on one archetype.</p>
+          <section class="players-insight-card">
+            <h3 class="players-insight-card__name">Archetype Specialists</h3>
+            <p class="players-insight-card__desc">Players heavily concentrated on one archetype.</p>
             <ul id="players-insight-specialists"></ul>
           </section>
         </div>
       </section>
 
-      <div class="toolbar archetypes-toolbar" role="search" aria-label="Player search and sorting">
+      <div class="toolbar players-toolbar" role="search" aria-label="Player search and sorting">
         <div class="toolbar-inner">
           <div class="controls">
             <input id="players-search" type="search" placeholder="Search players or archetypes..."
               aria-label="Search players by name or archetype" autocomplete="off" role="searchbox" />
-            <div class="archetypes-sort">
+            <div class="players-sort">
               <label class="filter-label" for="players-sort">Sort</label>
               <select id="players-sort" aria-label="Sort players">
                 <option value="consistency-desc" selected>Best consistency</option>
@@ -143,7 +143,7 @@
                 <option value="recent-desc">Most recent result</option>
               </select>
             </div>
-            <div class="archetypes-sort">
+            <div class="players-sort">
               <label class="filter-label" for="players-min-events">Min events</label>
               <select id="players-min-events" aria-label="Minimum regional appearances">
                 <option value="1">1+</option>
@@ -152,21 +152,24 @@
                 <option value="5">5+</option>
               </select>
             </div>
-            <div id="players-results" class="archetypes-results" aria-live="polite"></div>
+            <div id="players-results" class="players-results" aria-live="polite"></div>
           </div>
         </div>
       </div>
 
-      <div id="players-list-loading" class="analysis-loading" role="status">Loading players...</div>
-      <div id="players-list-empty" class="analysis-empty-state empty-state" hidden>
+      <div id="players-list-loading" class="players-loading" role="status">
+        <div class="loading-spinner"></div>
+        <p>Loading players...</p>
+      </div>
+      <div id="players-list-empty" class="players-empty-state" hidden>
         <h2>No players available</h2>
         <p>Regional deck data has not been loaded yet.</p>
       </div>
-      <div id="players-list-empty-results" class="analysis-empty-state empty-state" hidden>
+      <div id="players-list-empty-results" class="players-empty-state" hidden>
         <h2>No matches found</h2>
         <p>Try changing search text, sorting, or minimum events.</p>
       </div>
-      <ul id="players-list" class="analysis-list__items" hidden></ul>
+      <ul id="players-list" class="players-list" hidden></ul>
     </main>
   </div>
 

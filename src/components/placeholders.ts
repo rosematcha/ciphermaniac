@@ -9,7 +9,7 @@ import { computeLayout } from '../layoutHelper.js';
  * Create a skeleton card placeholder
  * @param isLarge
  */
-export function createCardSkeleton(isLarge: boolean = false): HTMLElement {
+function createCardSkeleton(isLarge: boolean = false): HTMLElement {
   const card = document.createElement('article');
   card.className = `card skeleton-card ${isLarge ? 'large' : 'small'}`;
   card.setAttribute('aria-hidden', 'true');
@@ -44,7 +44,7 @@ export function createCardSkeleton(isLarge: boolean = false): HTMLElement {
  * @param containerWidth
  * @param rowCount
  */
-export function createGridSkeleton(containerWidth: number = 1200, rowCount: number = 6): DocumentFragment {
+function createGridSkeleton(containerWidth: number = 1200, rowCount: number = 6): DocumentFragment {
   const layout = computeLayout(containerWidth);
   const frag = document.createDocumentFragment();
 
@@ -87,48 +87,6 @@ export function createGridSkeleton(containerWidth: number = 1200, rowCount: numb
 }
 
 /**
- * Create skeleton for dropdown/select elements
- * @param width
- */
-export function createSelectSkeleton(width: string = '200px'): HTMLElement {
-  const skeleton = document.createElement('div');
-  skeleton.className = 'skeleton-select';
-  skeleton.style.width = width;
-  skeleton.setAttribute('aria-hidden', 'true');
-
-  skeleton.innerHTML = `<div class="skeleton-text select-text"></div>`;
-
-  return skeleton;
-}
-
-/**
- * Create skeleton for network visualization
- */
-export function createNetworkSkeleton(): HTMLElement {
-  const skeleton = document.createElement('div');
-  skeleton.className = 'skeleton-network';
-  skeleton.setAttribute('aria-hidden', 'true');
-
-  skeleton.innerHTML = `
-        <div class="skeleton-nodes">
-            <div class="skeleton-node large"></div>
-            <div class="skeleton-node medium"></div>
-            <div class="skeleton-node small"></div>
-            <div class="skeleton-node medium"></div>
-            <div class="skeleton-node large"></div>
-            <div class="skeleton-node small"></div>
-        </div>
-        <div class="skeleton-edges">
-            <div class="skeleton-edge"></div>
-            <div class="skeleton-edge"></div>
-            <div class="skeleton-edge"></div>
-        </div>
-    `;
-
-  return skeleton;
-}
-
-/**
  * Create skeleton for charts/graphs
  * @param height
  */
@@ -154,31 +112,6 @@ export function createChartSkeleton(height: string = '300px'): HTMLElement {
                 <div class="skeleton-dot" style="left: 60%; top: 30%;"></div>
                 <div class="skeleton-dot" style="left: 75%; top: 10%;"></div>
                 <div class="skeleton-dot" style="left: 85%; top: 35%;"></div>
-            </div>
-        </div>
-    `;
-
-  return skeleton;
-}
-
-/**
- * Create skeleton for card details section
- */
-export function createCardDetailsSkeleton(): HTMLElement {
-  const skeleton = document.createElement('div');
-  skeleton.className = 'skeleton-card-details';
-  skeleton.setAttribute('aria-hidden', 'true');
-
-  skeleton.innerHTML = `
-        <div class="skeleton-text title large"></div>
-        <div class="skeleton-text sets"></div>
-        <div class="skeleton-hero"></div>
-        <div class="skeleton-chart" style="height: 200px;">
-            <div class="skeleton-bars">
-                <div class="skeleton-bar" style="height: 60%"></div>
-                <div class="skeleton-bar" style="height: 80%"></div>
-                <div class="skeleton-bar" style="height: 45%"></div>
-                <div class="skeleton-bar" style="height: 70%"></div>
             </div>
         </div>
     `;
@@ -367,17 +300,4 @@ export function hideGridSkeleton(newContent: string | Node | null = null): void 
 
   grid.removeAttribute('aria-busy');
   hideSkeleton(grid, newContent);
-}
-
-/**
- * Update skeleton layout when window resizes (if skeleton is currently shown)
- */
-export function updateSkeletonLayout(): void {
-  const grid = document.getElementById('grid') as ExtendedHTMLElement | null;
-  if (!grid || !grid.classList.contains('showing-skeleton')) {
-    return;
-  }
-
-  // Re-create skeleton with new dimensions
-  showGridSkeleton();
 }

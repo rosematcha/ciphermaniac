@@ -9,7 +9,6 @@ import {
   type TrendDataset
 } from './utils/trendAggregator.js';
 import { logger } from './utils/logger.js';
-import { getPerformanceLabel } from './data/performanceTiers.js';
 import { buildThumbCandidates } from './thumbs.js';
 import type { Deck, TrendReport } from './types/index.js';
 
@@ -115,10 +114,8 @@ const elements = {
   list: document.getElementById('trends-list'),
   loadingMeta: document.getElementById('trends-loading'),
   loadingArch: document.getElementById('trends-loading-arch'),
-  summary: document.getElementById('trend-summary'),
   minSlider: document.getElementById('trend-min-tournaments') as HTMLInputElement | null,
   minValue: document.getElementById('trend-min-value'),
-  status: document.getElementById('trend-status'),
   refresh: document.getElementById('trend-refresh'),
   metaChart: document.getElementById('trend-meta-chart'),
   metaPanel: document.getElementById('trend-meta'),
@@ -167,17 +164,6 @@ const state: TrendsState = {
   archetypeThumbnails: new Map(),
   thumbIndexLoading: false
 };
-
-function setStatus(message: string | null | undefined): void {
-  if (elements.status) {
-    elements.status.textContent = message || '';
-    // Ensure status updates are announced to screen readers
-    if (!elements.status.hasAttribute('role')) {
-      elements.status.setAttribute('role', 'status');
-      elements.status.setAttribute('aria-live', 'polite');
-    }
-  }
-}
 
 function setLoadingMeta(isLoading: boolean): void {
   if (!elements.loadingMeta) {
@@ -229,11 +215,7 @@ function normalizeLookupKey(value: string | null | undefined): string {
 }
 
 function buildFallbackLabel(value: string, maxWords = 2): string {
-  const parts = value
-    .replace(/_/g, ' ')
-    .split(/\s+/u)
-    .filter(Boolean)
-    .slice(0, maxWords);
+  const parts = value.replace(/_/g, ' ').split(/\s+/u).filter(Boolean).slice(0, maxWords);
   if (!parts.length) {
     return '?';
   }
@@ -257,9 +239,7 @@ function normalizeCardMover(item: CardTrendMover): NormalizedCardMover {
 
   // For cooling cards, absDrop is reported as positive; convert to negative for UI consistency.
   const delta =
-    item.absDrop !== undefined && item.absDrop !== null
-      ? -Math.abs(item.absDrop)
-      : (item.deltaAbs ?? item.delta ?? 0);
+    item.absDrop !== undefined && item.absDrop !== null ? -Math.abs(item.absDrop) : (item.deltaAbs ?? item.delta ?? 0);
 
   return {
     name: item.name,
@@ -760,7 +740,17 @@ function aggregateCardMoverDirection(
         variantCount: variants.length
       } satisfies DisplayCardMover;
     })
-    .filter(item => (direction === 'up' ? (includeZero ? item.delta >= 0 : item.delta > 0) : includeZero ? item.delta <= 0 : item.delta < 0))
+    .filter(item => {
+      const condition =
+        direction === 'up'
+          ? includeZero
+            ? item.delta >= 0
+            : item.delta > 0
+          : includeZero
+            ? item.delta <= 0
+            : item.delta < 0;
+      return condition;
+    })
     .sort((a, b) => (direction === 'up' ? b.delta - a.delta : a.delta - b.delta) || b.latest - a.latest)
     .slice(0, 8);
 
@@ -779,6 +769,7 @@ function renderCardMovers(cardTrends: CardTrendsState): void {
   // trigger a one-time deck hydration so card trends are recomputed from raw decklists.
   const hasZeroCooling = fallingList.some(item => (normalizeCardMover(item).latest || 0) <= 0.05);
   if (hasZeroCooling && !state.rawDecks && !state.isHydrating) {
+    // eslint-disable-next-line no-void
     void hydrateFromDecks();
   }
 
@@ -878,20 +869,6 @@ function deriveTournamentsFromDecks(decks: Deck[] | null | undefined): TrendTour
     }
   });
   return Array.from(map.values()).sort((a, b) => Date.parse(a.date || '') - Date.parse(b.date || ''));
-}
-
-function renderSummary(): void {
-  if (!elements.summary || !state.trendData) {
-    return;
-  }
-  const archetypes = state.trendData.series?.length || 0;
-  const tournaments = state.trendData.tournamentCount || 0;
-  const lastUpdated = state.trendData.generatedAt ? new Date(state.trendData.generatedAt).toLocaleString() : 'n/a';
-  const firstDate = state.trendData.windowStart;
-  const lastDate = state.trendData.windowEnd;
-  const windowLabel = firstDate && lastDate ? `${formatDate(firstDate)} - ${formatDate(lastDate)}` : 'recent events';
-
-  elements.summary.textContent = `Tracking ${archetypes} archetypes across ${tournaments} tournaments (${windowLabel}). Last updated ${lastUpdated}.`;
 }
 
 function updateMinSliderBounds(): void {
@@ -1492,7 +1469,6 @@ async function hydrateFromDecks() {
   }
   try {
     state.isHydrating = true;
-    setStatus('Recomputing from decks...');
     const decks = await fetchAllDecks(TRENDS_SOURCE);
     const tournaments = deriveTournamentsFromDecks(decks);
 
@@ -1510,14 +1486,11 @@ async function hydrateFromDecks() {
     state.trendData = { ...recomputed };
     state.cardTrends = cardTrends;
     updateMinSliderBounds();
-    setStatus('Recomputed from latest decks');
-    renderSummary();
     renderMetaChart();
     renderCardMovers(state.cardTrends);
     renderList();
   } catch (error) {
     logger.error('Failed to recompute trends from decks', { message: error?.message || error });
-    setStatus('Could not recompute from decks');
   } finally {
     state.isHydrating = false;
   }
@@ -1539,12 +1512,8 @@ function rebuildWithFilter() {
 
   state.trendData = { ...recomputed };
   updateMinSliderBounds();
-  renderSummary();
   renderMetaChart();
   renderList();
-
-  const filterLabel = getPerformanceLabel(state.performanceFilter);
-  setStatus(`Showing ${filterLabel.toLowerCase()} trends`);
 }
 
 function bindControls() {
@@ -1583,7 +1552,6 @@ function bindControls() {
 
       // If we don't have raw data yet, we need to fetch it first
       if (!state.rawDecks || !state.rawTournaments) {
-        setStatus('Loading deck data for filtering...');
         hydrateFromDecks();
       } else {
         rebuildWithFilter();
@@ -1633,16 +1601,13 @@ async function init() {
     state.trendData = trendReport;
     state.cardTrends = payload?.cardTrends || null;
     updateMinSliderBounds();
-    renderSummary();
     renderMetaChart();
     renderCardMovers(state.cardTrends);
     renderList();
-    setStatus(`Showing pre-generated trends for ${TRENDS_SOURCE}`);
   } catch (error) {
     logger.warn('Failed to load pre-generated trends, falling back to decks', {
       message: error?.message || error
     });
-    setStatus('Falling back to deck data...');
     try {
       const decks = await fetchAllDecks(TRENDS_SOURCE);
       const fallbackTournaments = deriveTournamentsFromDecks(decks);
@@ -1659,16 +1624,13 @@ async function init() {
       state.trendData = archetypeTrends;
       state.cardTrends = cardTrends;
       updateMinSliderBounds();
-      renderSummary();
       renderMetaChart();
       renderCardMovers(state.cardTrends);
       renderList();
-      setStatus('Using live deck data');
     } catch (fallbackError) {
       logger.error('Failed to load any trend data', {
         message: fallbackError?.message || fallbackError
       });
-      setStatus('Unable to load trend data right now.');
     }
   } finally {
     setLoading(false);

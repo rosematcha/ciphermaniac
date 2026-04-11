@@ -45,7 +45,7 @@ function buildAbsoluteUrl(path: string): string {
   return new URL(path, window.location.origin).toString();
 }
 
-export function buildBreadcrumbList(items: BreadcrumbItem[]): Record<string, unknown> {
+function buildBreadcrumbList(items: BreadcrumbItem[]): Record<string, unknown> {
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',

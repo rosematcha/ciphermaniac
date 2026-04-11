@@ -73,13 +73,6 @@ function buildLimitlessUrl(setCode: string, number: string | number, useSm: bool
   return url;
 }
 
-/**
- * Clear the thumbnail URL cache for memory management
- */
-export function clearThumbnailCache(): void {
-  urlCache.clear();
-}
-
 function resolveOverrideCandidate(raw: string | null | undefined, useSm: boolean): string | null {
   if (!raw) {
     return null;

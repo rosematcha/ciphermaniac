@@ -2,7 +2,7 @@
  * Runtime feature flags for staged rollouts.
  */
 
-export type FeatureFlagName = 'useSqliteManifestGate' | 'usePageCssSplit' | 'useArchetypeFilterApi';
+type FeatureFlagName = 'useSqliteManifestGate' | 'usePageCssSplit' | 'useArchetypeFilterApi';
 
 const FEATURE_FLAGS_META_NAME = 'ciphermaniac-feature-flags';
 const FEATURE_FLAGS_QUERY_PARAM = 'ff';
@@ -100,10 +100,6 @@ function getFlagFromStorage(flag: FeatureFlagName): boolean | null {
     return null;
   }
   return null;
-}
-
-export function getDefaultFeatureFlags(): Record<FeatureFlagName, boolean> {
-  return { ...DEFAULT_FLAGS };
 }
 
 export function isFeatureEnabled(flag: FeatureFlagName): boolean {

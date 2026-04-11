@@ -6,13 +6,91 @@ import { renderCardList, updateCategoryCounts } from './ui/cards.js';
 import { bindEvents } from './ui/controls.js';
 import { renderInsights } from './ui/insights.js';
 import { renderMatchups } from './ui/matchups.js';
-import { renderNarrative } from './ui/narrative.js';
 import { setPageState, updateTitle } from './ui/page.js';
 import { renderStats } from './ui/stats.js';
 import { elements } from './ui/elements.js';
 import { buildAnalysisUrl, buildHomeUrl, extractArchetypeFromUrl } from './utils/url.js';
 import { applyPageSeo, buildWebPageSchema } from '../utils/seo.js';
 import { shouldHideUnreadyFeatures } from '../utils/releaseChannel.js';
+import type { EnhancedCardEntry, TrendsData } from './types.js';
+
+const TIER_PREFERENCE = ['all', 'top50', 'top25', 'top16', 'top10', 'top8', 'top4', 'top2', 'winner'] as const;
+const MIN_LISTS_FOR_TIER = 30;
+
+function selectBestTier(data: TrendsData): string {
+  const tierTotals: Record<string, number> = {};
+
+  for (const tier of TIER_PREFERENCE) {
+    tierTotals[tier] = 0;
+    for (const day of data.days) {
+      tierTotals[tier] += day.totals[tier] || 0;
+    }
+  }
+
+  for (const tier of ['top8', 'top4', 'top2', 'winner'] as const) {
+    if (tierTotals[tier] >= MIN_LISTS_FOR_TIER) {
+      return tier;
+    }
+  }
+
+  for (const tier of ['top16', 'top25', 'top50'] as const) {
+    if (tierTotals[tier] >= MIN_LISTS_FOR_TIER) {
+      return tier;
+    }
+  }
+
+  return 'all';
+}
+
+function findBestCopyEvolutionCard(data: TrendsData): string | null {
+  let bestUid: string | null = null;
+  let bestScore = -1;
+
+  for (const [uid, card] of Object.entries(data.cards)) {
+    if (card.currentPlayrate < 10 || card.copyTrend.length < 2) {
+      continue;
+    }
+
+    const score = scoreCopyDebate(card);
+    if (score > bestScore) {
+      bestScore = score;
+      bestUid = uid;
+    }
+  }
+
+  return bestUid;
+}
+
+function scoreCopyDebate(card: EnhancedCardEntry): number {
+  const validWeeks = card.copyTrend.filter(wk => wk.dist.reduce((a, b) => a + b, 0) > 0);
+  if (validWeeks.length < 2) {
+    return 0;
+  }
+
+  let totalEntropy = 0;
+  for (const week of validWeeks) {
+    const total = week.dist.reduce((a, b) => a + b, 0);
+    if (total === 0) {
+      continue;
+    }
+    let entropy = 0;
+    for (const count of week.dist) {
+      if (count > 0) {
+        const p = count / total;
+        entropy -= p * Math.log2(p);
+      }
+    }
+    totalEntropy += entropy;
+  }
+
+  const avgEntropy = totalEntropy / validWeeks.length;
+
+  const avgs = validWeeks.map(wk => wk.avg);
+  const mean = avgs.reduce((a, b) => a + b, 0) / avgs.length;
+  const avgVariance = avgs.reduce((sum, val) => sum + (val - mean) ** 2, 0) / avgs.length;
+
+  return (avgEntropy * 3 + Math.sqrt(avgVariance)) * (card.currentPlayrate / 100);
+}
 
 async function initialize(): Promise<void> {
   const state = getState();
@@ -63,6 +141,12 @@ async function initialize(): Promise<void> {
 
   state.trendsData = data;
 
+  const bestTier = selectBestTier(data);
+  state.selectedTier = bestTier;
+  if (elements.performanceFilter) {
+    elements.performanceFilter.value = bestTier;
+  }
+
   const initialCards: string[] = [];
   const risingCards = data.insights.risers.slice(0, 2).map(r => r.uid);
   initialCards.push(...risingCards);
@@ -100,9 +184,8 @@ async function initialize(): Promise<void> {
 
   state.selectedCards = new Set(initialCards.slice(0, 5));
 
-  if (initialCards.length > 0) {
-    state.activeCopyCard = initialCards[0];
-  }
+  const bestCopyCard = findBestCopyEvolutionCard(data);
+  state.activeCopyCard = bestCopyCard || (initialCards.length > 0 ? initialCards[0] : null);
 
   setPageState('ready');
   if (elements.emptyState) {
@@ -110,7 +193,6 @@ async function initialize(): Promise<void> {
   }
 
   renderStats();
-  renderNarrative();
   renderInsights();
   renderMatchups();
   renderChart();

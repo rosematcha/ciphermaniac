@@ -6,7 +6,7 @@
 import { storage } from './storage.js';
 import { logger } from './logger.js';
 
-export const BUILD_VERSION = '2025-11-12T16:00Z';
+const BUILD_VERSION = '2025-11-12T16:00Z';
 
 const VERSION_STORAGE_KEY = 'cm:build-version';
 const CACHE_CLEANUP_FLAG = 'cm:build-cache-cleared';
@@ -18,7 +18,7 @@ let initialized = false;
  * Clears local caches when a new version is detected.
  * @returns The active build version
  */
-export function ensureBuildVersion(): string {
+function ensureBuildVersion(): string {
   if (initialized) {
     return BUILD_VERSION;
   }

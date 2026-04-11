@@ -15,9 +15,7 @@ import {
   readSelectedSets
 } from './utils/filterState.js';
 import { perf } from './utils/performance.js';
-import type { CardItem, SortOption } from './types/index.js';
-
-export type { SortOption };
+import type { CardItem } from './types/index.js';
 
 /**
  * Available sort options with their comparison functions
@@ -36,7 +34,7 @@ const SORT_COMPARATORS: Record<string, (a: CardItem, b: CardItem) => number> = {
  * @param {string} sortKey
  * @returns {(a: CardItem, b: CardItem) => number}
  */
-export function getComparator(sortKey: string): (a: CardItem, b: CardItem) => number {
+function getComparator(sortKey: string): (a: CardItem, b: CardItem) => number {
   const comparator = SORT_COMPARATORS[sortKey];
   if (!comparator) {
     logger.warn(`Unknown sort key: ${sortKey}, using default`);

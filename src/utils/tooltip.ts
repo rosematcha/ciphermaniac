@@ -1,10 +1,10 @@
-export interface TooltipManager {
+interface TooltipManager {
   show: (html: string, x: number, y: number) => void;
   hide: () => void;
   destroy: () => void;
 }
 
-export interface TooltipOptions {
+interface TooltipOptions {
   className?: string;
   id?: string;
   role?: 'tooltip' | 'status';

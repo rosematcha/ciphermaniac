@@ -9,7 +9,7 @@ import { logger } from './utils/logger.js';
 // Match the header CSS breakpoint where the hamburger menu appears
 const HAMBURGER_BREAKPOINT = 720;
 
-export interface LayoutMetrics {
+interface LayoutMetrics {
   gap: number;
   base: number;
   perRowBig: number;

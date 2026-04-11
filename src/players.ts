@@ -5,13 +5,7 @@ import { logger } from './utils/logger.js';
 
 const MAX_RENDERED_PLAYERS = 250;
 
-type SortMode =
-  | 'consistency-desc'
-  | 'top16-rate-desc'
-  | 'top8-rate-desc'
-  | 'events-desc'
-  | 'best-asc'
-  | 'recent-desc';
+type SortMode = 'consistency-desc' | 'top16-rate-desc' | 'top8-rate-desc' | 'events-desc' | 'best-asc' | 'recent-desc';
 
 interface PlayersState {
   dataset: PlayerDataset | null;
@@ -110,7 +104,9 @@ function formatScore(value: number): string {
 }
 
 function normalizeSortMode(value: string | null | undefined): SortMode {
-  const normalized = String(value || '').trim().toLowerCase();
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
   if (
     normalized === 'top16-rate-desc' ||
     normalized === 'top8-rate-desc' ||
@@ -249,72 +245,78 @@ function createArchetypeBadge(name: string, count: number): HTMLElement {
   return badge;
 }
 
-function createPlayerListItem(player: PlayerProfile): HTMLLIElement {
+function createPlayerListItem(player: PlayerProfile, rank: number): HTMLLIElement {
   const item = document.createElement('li');
-  item.className = 'analysis-list-item';
+  item.className = rank <= 3 ? `player-item player-item--rank-${rank}` : 'player-item';
 
   const link = document.createElement('a');
-  link.className = 'analysis-list-item__button';
+  link.className = 'player-item__link';
   link.href = `/players/${encodeURIComponent(player.slug)}`;
 
-  const preview = document.createElement('div');
-  preview.className = 'analysis-list-item__preview';
+  // Rank badge
+  const rankNode = document.createElement('div');
+  rankNode.className = 'player-item__rank';
+  rankNode.textContent = `${rank}`;
 
-  const main = document.createElement('div');
-  main.className = 'analysis-list-item__main';
-
-  const header = document.createElement('div');
-  header.className = 'analysis-list-item__header';
+  // Body
+  const body = document.createElement('div');
+  body.className = 'player-item__body';
 
   const nameNode = document.createElement('span');
-  nameNode.className = 'analysis-list-item__name';
+  nameNode.className = 'player-item__name';
   nameNode.textContent = player.name;
-  header.appendChild(nameNode);
 
-  const primaryArchetype = player.primaryArchetype
-    ? `${player.primaryArchetype.name} (${formatPercent(player.primaryArchetype.share)})`
-    : 'No archetype data';
+  const primaryArchetype = player.primaryArchetype ? `${player.primaryArchetype.name} main` : '';
+  const subtitle = document.createElement('span');
+  subtitle.className = 'player-item__subtitle';
+  subtitle.textContent = primaryArchetype
+    ? `${formatNumber(player.events)} events · ${primaryArchetype}`
+    : `${formatNumber(player.events)} events`;
 
-  const countNode = document.createElement('span');
-  countNode.className = 'analysis-list-item__count';
-  countNode.textContent = `${formatNumber(player.events)} events | Top 16 rate ${formatPercent(player.top16Rate)} | Best ${formatPlacement(player.bestFinish)} | ${primaryArchetype}`;
+  // Metric pills
+  const metrics = document.createElement('div');
+  metrics.className = 'player-item__metrics';
 
-  const signature = document.createElement('div');
-  signature.className = 'analysis-list-item__signature';
+  const t16Metric = document.createElement('span');
+  t16Metric.className = 'player-item__metric';
+  t16Metric.textContent = `T16: ${formatPercent(player.top16Rate)}`;
 
-  const signatureLabel = document.createElement('span');
-  signatureLabel.className = 'analysis-list-item__signature-label';
-  signatureLabel.textContent = 'Frequent archetypes';
+  const bestMetric = document.createElement('span');
+  bestMetric.className =
+    player.bestFinish !== null && player.bestFinish <= 8
+      ? 'player-item__metric player-item__metric--accent'
+      : 'player-item__metric';
+  bestMetric.textContent = `Best: ${formatPlacement(player.bestFinish)}`;
 
-  const signatureList = document.createElement('div');
-  signatureList.className = 'analysis-list-item__signature-list';
+  metrics.append(t16Metric, bestMetric);
+
+  // Archetype badges
+  const archetypes = document.createElement('div');
+  archetypes.className = 'player-item__archetypes';
   const topArchetypes = player.archetypes.slice(0, 3);
   if (topArchetypes.length > 0) {
     topArchetypes.forEach(archetype => {
-      signatureList.appendChild(createArchetypeBadge(archetype.name, archetype.count));
+      archetypes.appendChild(createArchetypeBadge(archetype.name, archetype.count));
     });
-  } else {
-    signatureList.textContent = 'No archetype data';
   }
 
-  signature.append(signatureLabel, signatureList);
-  main.append(header, countNode, signature);
-  preview.appendChild(main);
+  body.append(nameNode, subtitle, metrics, archetypes);
 
-  const stats = document.createElement('div');
-  stats.className = 'analysis-list-item__stats';
+  // Right-side score + chevron
+  const aside = document.createElement('div');
+  aside.className = 'player-item__aside';
 
   const scoreNode = document.createElement('span');
-  scoreNode.className = 'analysis-list-item__percent';
-  scoreNode.textContent = `C${formatScore(player.consistency)}`;
+  scoreNode.className = 'player-item__score';
+  scoreNode.textContent = formatScore(player.consistency);
 
   const chevron = document.createElement('span');
-  chevron.className = 'analysis-list-item__chevron';
+  chevron.className = 'player-item__chevron';
   chevron.setAttribute('aria-hidden', 'true');
   chevron.textContent = '→';
 
-  stats.append(scoreNode, chevron);
-  link.append(preview, stats);
+  aside.append(scoreNode, chevron);
+  link.append(rankNode, body, aside);
   item.appendChild(link);
 
   return item;
@@ -440,8 +442,8 @@ function renderList(): void {
 
   elements.list.innerHTML = '';
   const fragment = document.createDocumentFragment();
-  visible.forEach(player => {
-    fragment.appendChild(createPlayerListItem(player));
+  visible.forEach((player, index) => {
+    fragment.appendChild(createPlayerListItem(player, index + 1));
   });
   elements.list.appendChild(fragment);
 
@@ -532,4 +534,4 @@ async function init(): Promise<void> {
 }
 
 bindControls();
-void init();
+init();

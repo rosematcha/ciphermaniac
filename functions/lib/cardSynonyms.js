@@ -6,17 +6,10 @@
  * Core logic is shared with frontend via shared/synonyms.ts
  */
 
-import {
-  EMPTY_DATABASE,
-  getCanonicalCardFromData,
-  getCardVariantsFromData,
-  hasCardSynonymsInData
-} from '../../shared/synonyms.js';
+import { EMPTY_DATABASE, getCanonicalCardFromData } from '../../shared/synonyms.js';
 
 // Re-export core functions with original names for backwards compatibility
 export { getCanonicalCardFromData as getCanonicalCard };
-export { hasCardSynonymsInData as hasCardSynonyms };
-export { getCardVariantsFromData as getCardVariants };
 
 /**
  * Fetch and parse card synonyms database from R2/KV

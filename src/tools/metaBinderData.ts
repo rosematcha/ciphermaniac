@@ -696,13 +696,6 @@ export function buildBinderDataset(
   };
 }
 
-export const thresholds = {
-  MIN_DECKS_PER_EVENT,
-  HIGH_USAGE_RATIO,
-  MODERATE_USAGE_RATIO,
-  STAPLE_POKEMON_MIN_ARCHETYPES,
-  ARCHETYPE_CORE_RATIO
-};
 function getBaseCategory(category: string | null | undefined): string {
   const slug = typeof category === 'string' ? category.toLowerCase() : '';
   return slug.split('/')[0] || '';

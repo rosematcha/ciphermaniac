@@ -180,10 +180,10 @@
           // Check if primary is just a set ID pattern (e.g., "SVI 181" or "Svi~181")
           const setIdPattern = /^[A-Z]{2,4}[\s~]\d+[A-Za-z]?$/i;
           if (setIdPattern.test(primary)) {
-            // Can't resolve the actual name without async data, show as-is for now
-            // The module script will fix it with proper card data
+            // Can't resolve the actual name without async data, show set ID for now
+            // The module script will replace it with the full card name
             setInfo = primary.replace(/~/g, ' ');
-            primary = ''; // Will show loading state
+            primary = setInfo; // Show set ID immediately rather than "Loading..."
           }
 
           titleEl.innerHTML = '';
