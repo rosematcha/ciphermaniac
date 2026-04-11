@@ -4,26 +4,6 @@
  */
 
 /**
- * Get card name from current URL location
- * @returns Card identifier from URL
- */
-export function getCardNameFromLocation(): string | null {
-  const params = new URLSearchParams(location.search);
-  const query = params.get('name');
-  if (query) {
-    return query;
-  }
-
-  // Hash route: #card/<encoded name or UID>
-  const match = location.hash.match(/^#card\/(.+)$/);
-  if (match) {
-    return decodeURIComponent(match[1]);
-  }
-
-  return null;
-}
-
-/**
  * Get the canonical identifier for a card - prefer UID, fallback to name
  * @param cardItem - Card item object
  * @param cardItem.uid
