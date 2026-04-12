@@ -279,13 +279,20 @@ async function initializeCardPage() {
     cardIdentifier = routeInfo.identifier;
   } else if (routeInfo.slug) {
     let resolvedIdentifier: string | null = null;
-    try {
-      resolvedIdentifier = await resolveCardSlug(routeInfo.slug);
-    } catch (error: any) {
-      logger.warn('Failed to resolve card slug', {
-        slug: routeInfo.slug,
-        error: error?.message || error
-      });
+
+    // Check for edge-resolved data first (injected by the Cloudflare Pages Function)
+    const edgeData = (window as any).__CARD_EDGE_DATA;
+    if (edgeData?.resolvedIdentifier) {
+      ({ resolvedIdentifier } = edgeData);
+    } else {
+      try {
+        resolvedIdentifier = await resolveCardSlug(routeInfo.slug);
+      } catch (error: any) {
+        logger.warn('Failed to resolve card slug', {
+          slug: routeInfo.slug,
+          error: error?.message || error
+        });
+      }
     }
 
     if (resolvedIdentifier) {
