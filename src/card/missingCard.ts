@@ -700,6 +700,40 @@ const MISSING_CARD_STYLES = `
   margin: 0;
 }
 
+.card-missing-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 0;
+}
+
+.card-missing-inline .card-missing-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  color: var(--muted, #a3a8b7);
+  margin: 0;
+}
+
+.card-missing-inline .card-missing-meta {
+  margin: 0;
+  color: var(--muted, #a3a8b7);
+  line-height: 1.4;
+}
+
+.card-missing-inline .card-missing-meta span {
+  display: inline-block;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.card-missing-inline .card-missing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
 @media (max-width: 720px) {
   .card-missing-card {
     flex-direction: column;
@@ -742,7 +776,18 @@ function ensureMissingCardStyles(): void {
  * @param cardIdentifier - The card that was requested
  * @param metaSection - Reference to the meta section element for fallback error display
  */
-export async function renderMissingCardPage(cardIdentifier: string, metaSection: HTMLElement | null): Promise<void> {
+interface MissingCardOptions {
+  /** When true, morph existing layout instead of replacing main.innerHTML */
+  smooth?: boolean;
+  /** Existing hero image to preserve (avoids duplicate image loading) */
+  existingHeroImg?: HTMLImageElement | null;
+}
+
+export async function renderMissingCardPage(
+  cardIdentifier: string,
+  metaSection: HTMLElement | null,
+  options?: MissingCardOptions
+): Promise<void> {
   try {
     let canonicalIdentifier = cardIdentifier;
     try {
@@ -762,115 +807,38 @@ export async function renderMissingCardPage(cardIdentifier: string, metaSection:
       document.title = `Card Not Found - ${displayName} | Ciphermaniac`;
     }
 
-    const main = document.querySelector('main');
-    if (main) {
-      const baseName =
-        getBaseName(displaySource) || getBaseName(canonicalIdentifier) || getBaseName(cardIdentifier) || cardIdentifier;
-      const encodedSearch = encodeURIComponent(displayName);
-      const escapedDisplayName = escapeHtml(displayName);
-      main.innerHTML = `
-        <section class="card-missing">
-          <div class="card-missing-card">
-            <div class="card-missing-thumb" aria-hidden="true"></div>
-            <div class="card-missing-info">
-              <p class="card-missing-eyebrow">No tournament entries yet</p>
-              <h1>${escapedDisplayName}</h1>
-              <p class="card-missing-meta">This card has no Day 2 finishes, so no data can be shown.<br><span>Maybe you can get it its page?</span></p>
-            <div class="card-missing-actions">
-                <a href="/cards?q=${encodedSearch}" class="card-missing-button primary">Search for ${escapedDisplayName}</a>
-                <a href="/trends.html" class="card-missing-button">View meta trends</a>
-              </div>
-            </div>
-          </div>
-          <div class="card-missing-trending">
-            <div class="card-missing-trending-header">
-              <h2>Check these out!</h2>
-              <a class="card-missing-link" href="/trends.html">See full report</a>
-            </div>
-            <div class="card-missing-trending-grid" id="card-missing-trending"></div>
-          </div>
-        </section>
-      `;
+    ensureMissingCardStyles();
+    const baseName =
+      getBaseName(displaySource) || getBaseName(canonicalIdentifier) || getBaseName(cardIdentifier) || cardIdentifier;
+    const encodedSearch = encodeURIComponent(displayName);
+    const escapedDisplayName = escapeHtml(displayName);
 
-      ensureMissingCardStyles();
-
-      const trendingContainer = document.getElementById('card-missing-trending') as HTMLElement | null;
-      renderMissingCardTrendingCards(trendingContainer, canonicalIdentifier);
-
-      const imageContainer = main.querySelector('.card-missing-thumb');
-      if (imageContainer) {
-        const parsed = parseDisplayName(displaySource);
-        const variant: any = {};
-        if (parsed?.setId) {
-          const match = parsed.setId.match(/^([A-Z]+)\s+(\d+[A-Za-z]?)$/);
-          if (match) {
-            variant.set = match[1];
-            variant.number = match[2];
-          }
-        }
-        if (!variant.set && fallbackVariant.set) {
-          variant.set = fallbackVariant.set;
-        }
-        if (!variant.number && fallbackVariant.number) {
-          variant.number = fallbackVariant.number;
-        }
-
-        const candidateName = parsed?.name || baseName || displayName;
-        const candidates = buildThumbCandidates(candidateName, true, {}, variant);
-
-        if (candidates.length === 0) {
-          imageContainer.remove();
-        } else {
-          const img = document.createElement('img');
-          img.decoding = 'async';
-          img.loading = 'lazy';
-          img.alt = displayName;
-          img.style.width = '100%';
-          img.style.height = '100%';
-          img.style.objectFit = 'cover';
-          img.style.borderRadius = 'inherit';
-
-          let idx = 0;
-          let fallbackAttempted = false;
-
-          const tryNext = async () => {
-            // If we've exhausted all candidates and haven't tried fallback yet, try synonym variants
-            if (idx >= candidates.length && !fallbackAttempted) {
-              fallbackAttempted = true;
-              try {
-                const fallbackCandidates = await getVariantImageCandidates(canonicalIdentifier, false, {});
-                if (fallbackCandidates.length > 0) {
-                  candidates.push(...fallbackCandidates);
-                  if (idx < candidates.length) {
-                    img.src = candidates[idx++];
-                  } else {
-                    imageContainer.remove();
-                  }
-                } else {
-                  imageContainer.remove();
-                }
-              } catch {
-                imageContainer.remove();
-              }
-              return;
-            }
-
-            if (idx >= candidates.length) {
-              imageContainer.remove();
-              return;
-            }
-            img.src = candidates[idx++];
-          };
-
-          img.onerror = tryNext;
-          tryNext();
-
-          imageContainer.appendChild(img);
-        }
-      }
+    if (options?.smooth) {
+      // Smooth mode: morph existing layout in place instead of replacing main.innerHTML
+      await renderMissingCardSmooth(
+        canonicalIdentifier,
+        displayName,
+        escapedDisplayName,
+        encodedSearch,
+        baseName,
+        displaySource,
+        fallbackVariant,
+        options.existingHeroImg || null
+      );
+    } else {
+      // Classic mode: replace entire main content
+      await renderMissingCardClassic(
+        canonicalIdentifier,
+        displayName,
+        escapedDisplayName,
+        encodedSearch,
+        baseName,
+        displaySource,
+        fallbackVariant
+      );
     }
 
-    logger.info('Rendered missing card page', { cardIdentifier });
+    logger.info('Rendered missing card page', { cardIdentifier, smooth: Boolean(options?.smooth) });
   } catch (error: any) {
     logger.error('Failed to render missing card page', {
       cardIdentifier,
@@ -879,6 +847,191 @@ export async function renderMissingCardPage(cardIdentifier: string, metaSection:
     if (metaSection) {
       metaSection.innerHTML =
         '<div style="text-align: center; padding: 2rem; color: var(--text);">Card page not available. We do not have tournament data for this card yet.</div>';
+    }
+  }
+}
+
+/**
+ * Smooth mode: morph existing card page layout into missing card state.
+ * Preserves the hero image and page structure, avoids layout shift.
+ */
+async function renderMissingCardSmooth(
+  canonicalIdentifier: string,
+  _displayName: string,
+  escapedDisplayName: string,
+  encodedSearch: string,
+  _baseName: string,
+  _displaySource: string,
+  _fallbackVariant: { set: string | null; number: string | null },
+  existingHeroImg: HTMLImageElement | null
+): Promise<void> {
+  const cardCenter = document.getElementById('card-center');
+
+  // Build the info block that replaces chart + copies
+  if (cardCenter) {
+    cardCenter.innerHTML = '';
+    const infoBlock = document.createElement('div');
+    infoBlock.className = 'card-missing-inline';
+    infoBlock.innerHTML = `
+      <p class="card-missing-eyebrow">No tournament entries yet</p>
+      <p class="card-missing-meta">This card has no Day 2 finishes, so no data can be shown.<br><span>Maybe you can get it its page?</span></p>
+      <div class="card-missing-actions">
+        <a href="/cards?q=${encodedSearch}" class="card-missing-button primary">Search for ${escapedDisplayName}</a>
+        <a href="/trends" class="card-missing-button">View meta trends</a>
+      </div>
+    `;
+    infoBlock.style.opacity = '0';
+    infoBlock.style.transition = 'opacity 0.2s ease-out';
+    cardCenter.appendChild(infoBlock);
+    requestAnimationFrame(() => {
+      infoBlock.style.opacity = '1';
+    });
+  }
+
+  // Replace events area with trending cards
+  const eventsEl = document.getElementById('card-events');
+  if (eventsEl) {
+    eventsEl.innerHTML = '';
+    eventsEl.style.opacity = '1';
+    const trendingSection = document.createElement('div');
+    trendingSection.className = 'card-missing-trending';
+    trendingSection.innerHTML = `
+      <div class="card-missing-trending-header">
+        <h2>Check these out!</h2>
+        <a class="card-missing-link" href="/trends">See full report</a>
+      </div>
+      <div class="card-missing-trending-grid" id="card-missing-trending"></div>
+    `;
+    trendingSection.style.opacity = '0';
+    trendingSection.style.transition = 'opacity 0.2s ease-out';
+    eventsEl.appendChild(trendingSection);
+    requestAnimationFrame(() => {
+      trendingSection.style.opacity = '1';
+    });
+
+    const trendingContainer = document.getElementById('card-missing-trending') as HTMLElement | null;
+    renderMissingCardTrendingCards(trendingContainer, canonicalIdentifier);
+  }
+
+  // Ensure hero image is visible (it may have already loaded or be loading)
+  if (existingHeroImg) {
+    const heroImg = existingHeroImg;
+    heroImg.style.opacity = '1';
+  }
+}
+
+/**
+ * Classic mode: replace entire main innerHTML (original behavior)
+ */
+async function renderMissingCardClassic(
+  canonicalIdentifier: string,
+  displayName: string,
+  escapedDisplayName: string,
+  encodedSearch: string,
+  baseName: string,
+  displaySource: string,
+  fallbackVariant: { set: string | null; number: string | null }
+): Promise<void> {
+  const main = document.querySelector('main');
+  if (!main) {
+    return;
+  }
+
+  main.innerHTML = `
+    <section class="card-missing">
+      <div class="card-missing-card">
+        <div class="card-missing-thumb" aria-hidden="true"></div>
+        <div class="card-missing-info">
+          <p class="card-missing-eyebrow">No tournament entries yet</p>
+          <h1>${escapedDisplayName}</h1>
+          <p class="card-missing-meta">This card has no Day 2 finishes, so no data can be shown.<br><span>Maybe you can get it its page?</span></p>
+        <div class="card-missing-actions">
+            <a href="/cards?q=${encodedSearch}" class="card-missing-button primary">Search for ${escapedDisplayName}</a>
+            <a href="/trends" class="card-missing-button">View meta trends</a>
+          </div>
+        </div>
+      </div>
+      <div class="card-missing-trending">
+        <div class="card-missing-trending-header">
+          <h2>Check these out!</h2>
+          <a class="card-missing-link" href="/trends">See full report</a>
+        </div>
+        <div class="card-missing-trending-grid" id="card-missing-trending"></div>
+      </div>
+    </section>
+  `;
+
+  const trendingContainer = document.getElementById('card-missing-trending') as HTMLElement | null;
+  renderMissingCardTrendingCards(trendingContainer, canonicalIdentifier);
+
+  const imageContainer = main.querySelector('.card-missing-thumb');
+  if (imageContainer) {
+    const parsed = parseDisplayName(displaySource);
+    const variant: any = {};
+    if (parsed?.setId) {
+      const match = parsed.setId.match(/^([A-Z]+)\s+(\d+[A-Za-z]?)$/);
+      if (match) {
+        variant.set = match[1];
+        variant.number = match[2];
+      }
+    }
+    if (!variant.set && fallbackVariant.set) {
+      variant.set = fallbackVariant.set;
+    }
+    if (!variant.number && fallbackVariant.number) {
+      variant.number = fallbackVariant.number;
+    }
+
+    const candidateName = parsed?.name || baseName || displayName;
+    const candidates = buildThumbCandidates(candidateName, true, {}, variant);
+
+    if (candidates.length === 0) {
+      imageContainer.remove();
+    } else {
+      const img = document.createElement('img');
+      img.decoding = 'async';
+      img.loading = 'lazy';
+      img.alt = displayName;
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'cover';
+      img.style.borderRadius = 'inherit';
+
+      let idx = 0;
+      let fallbackAttempted = false;
+
+      const tryNext = async () => {
+        if (idx >= candidates.length && !fallbackAttempted) {
+          fallbackAttempted = true;
+          try {
+            const fallbackCandidates = await getVariantImageCandidates(canonicalIdentifier, false, {});
+            if (fallbackCandidates.length > 0) {
+              candidates.push(...fallbackCandidates);
+              if (idx < candidates.length) {
+                img.src = candidates[idx++];
+              } else {
+                imageContainer.remove();
+              }
+            } else {
+              imageContainer.remove();
+            }
+          } catch {
+            imageContainer.remove();
+          }
+          return;
+        }
+
+        if (idx >= candidates.length) {
+          imageContainer.remove();
+          return;
+        }
+        img.src = candidates[idx++];
+      };
+
+      img.onerror = tryNext;
+      tryNext();
+
+      imageContainer.appendChild(img);
     }
   }
 }

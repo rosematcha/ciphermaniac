@@ -6,7 +6,8 @@ import {
   fetchArchetypesList,
   fetchReport,
   fetchTop8ArchetypesList,
-  fetchTournamentsList
+  fetchTournamentsList,
+  ONLINE_META_NAME
 } from './api.js';
 import { parseReport } from './parse.js';
 import { buildThumbCandidates } from './thumbs.js';
@@ -22,8 +23,8 @@ import { logger, setupGlobalErrorHandler } from './utils/errorHandler.js';
 
 // Import card-specific modules
 import { getBaseName, getDisplayName, parseDisplayName } from './card/identifiers.js';
-import { findCard, renderCardPrice } from './card/data.js';
-import { renderChart, renderCopiesHistogram, renderEvents } from './card/charts.js';
+import { findCard, findCardInReport, renderCardPrice } from './card/data.js';
+import { renderChart, renderCopiesHistogram, renderEvents, renderOnlineStatCard } from './card/charts.js';
 import { getCanonicalCard, getCardVariants, getVariantImageCandidates } from './utils/cardSynonyms.js';
 import { buildCardPath, describeSlug, makeCardSlug, parseCardRoute, resolveCardSlug } from './card/routing.js';
 import {
@@ -35,6 +36,7 @@ import {
 import { renderMissingCardPage } from './card/missingCard.js';
 import { renderAnalysisSelector } from './card/analysis.js';
 import { applyPageSeo, buildCardSchema, buildWebPageSchema } from './utils/seo.js';
+import { processInParallel } from './utils/parallelLoader.js';
 import { extractCardMeta, renderExternalLinks } from './card/insights.js';
 
 // Set up global error handling
@@ -67,6 +69,8 @@ let metaSection: HTMLElement | null = null;
 let decksSection: HTMLElement | null = null;
 let eventsSection: HTMLElement | null = null;
 let copiesSection: HTMLElement | null = null;
+let chartSection: HTMLElement | null = null;
+let centerSection: HTMLElement | null = null;
 
 type CardPageState = 'idle' | 'loading' | 'ready' | 'missing' | 'error';
 let cardPageState: CardPageState = 'idle';
@@ -115,6 +119,8 @@ function refreshDomRefs() {
   decksSection = document.getElementById('card-decks');
   eventsSection = document.getElementById('card-events');
   copiesSection = document.getElementById('card-copies');
+  chartSection = document.getElementById('card-chart');
+  centerSection = document.getElementById('card-center');
   if (metaSection) {
     metaSection.setAttribute('data-card-state', cardPageState);
   }
@@ -429,21 +435,220 @@ async function load() {
   const dataPromises = startParallelDataLoading();
 
   // Phase 3: Progressive rendering as data becomes available
-  const hasData = await renderProgressively(dataPromises);
+  const dataResult = await renderProgressively(dataPromises);
   markCardPerf('card:data-ready');
 
-  if (!hasData) {
+  if (dataResult === false) {
+    // No data anywhere — smooth transition to missing card page
     setCardPageState('missing');
     markCardPerf('card:missing');
     measureCardPerf('card:ttm-missing', 'card:load-start', 'card:missing');
-    await renderMissingCardPage(cardIdentifier, metaSection);
+
+    // Fade out skeleton containers before replacing
+    const fadeTargets = [
+      document.getElementById('card-chart'),
+      document.getElementById('card-copies'),
+      document.getElementById('card-events')
+    ];
+    fadeTargets.forEach(el => {
+      if (el) {
+        el.style.transition = 'opacity 0.15s ease-out';
+        el.style.opacity = '0';
+      }
+    });
+
+    // Hide the analysis section
+    const analysisSection = document.getElementById('card-analysis');
+    if (analysisSection) {
+      analysisSection.style.display = 'none';
+    }
+
+    // Preserve existing hero image if it's already loading/loaded
+    const hero = document.getElementById('card-hero');
+    const existingHeroImg = hero?.querySelector('img') as HTMLImageElement | null;
+
+    // Wait for CSS transition to complete instead of fixed delay
+    const transitionTarget = fadeTargets.find(el => el != null);
+    if (transitionTarget) {
+      await Promise.race([
+        new Promise<void>(r => {
+          transitionTarget!.addEventListener('transitionend', () => r(), { once: true });
+        }),
+        new Promise<void>(r => {
+          setTimeout(r, 200); // safety fallback
+        })
+      ]);
+    }
+    await renderMissingCardPage(cardIdentifier, metaSection, { smooth: true, existingHeroImg });
     return;
+  }
+
+  if (dataResult === 'online') {
+    // Online-only data — show banner explaining the data source
+    renderOnlineOnlyBanner();
+    markCardPerf('card:online-only');
   }
 
   setCardPageState('ready');
   markCardPerf('card:ready');
   measureCardPerf('card:ttm-ready', 'card:load-start', 'card:ready');
   measureCardPerf('card:ttm-data', 'card:load-start', 'card:data-ready');
+}
+
+const ONLINE_BANNER_STYLES = `
+.online-only-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid rgba(106, 163, 255, 0.25);
+  background: rgba(106, 163, 255, 0.06);
+  margin-bottom: 0.75rem;
+  animation: fadeIn 0.25s ease-out;
+}
+.online-only-banner__icon {
+  flex-shrink: 0;
+  color: var(--accent-2, #6aa3ff);
+}
+.online-only-banner__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.online-only-banner__text strong {
+  color: var(--text, #eef1f7);
+  font-size: 0.9rem;
+}
+.online-only-banner__text span {
+  color: var(--muted, #a3a8b7);
+}
+.online-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 1.5rem 1rem;
+  text-align: center;
+}
+.online-stat-value {
+  font-size: 2.8rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--accent-2, #6aa3ff);
+  line-height: 1;
+}
+.online-stat-label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted, #a3a8b7);
+  margin-top: 0.25rem;
+}
+.online-stat-context {
+  font-size: 0.85rem;
+  color: var(--muted, #a3a8b7);
+}
+`;
+
+function ensureOnlineBannerStyles(): void {
+  if (!document.getElementById('online-banner-style')) {
+    const style = document.createElement('style');
+    style.id = 'online-banner-style';
+    style.textContent = ONLINE_BANNER_STYLES;
+    document.head.appendChild(style);
+  }
+}
+
+function renderOnlineOnlyBanner(): void {
+  ensureOnlineBannerStyles();
+
+  const cardCenter = document.getElementById('card-center');
+  if (!cardCenter) {
+    return;
+  }
+
+  // Don't duplicate the banner
+  if (cardCenter.querySelector('.online-only-banner')) {
+    return;
+  }
+
+  const banner = document.createElement('div');
+  banner.className = 'online-only-banner';
+  banner.innerHTML = `
+    <svg class="online-only-banner__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <div class="online-only-banner__text">
+      <strong>Online Usage Data</strong>
+      <span>This card has online tournament usage but hasn't appeared in Day 2 of a physical Regional or International yet.</span>
+    </div>
+  `;
+
+  const chart = document.getElementById('card-chart');
+  if (chart) {
+    cardCenter.insertBefore(banner, chart);
+  } else {
+    cardCenter.prepend(banner);
+  }
+}
+
+/**
+ * Retry loading the hero image with a newly resolved card name.
+ * Called when the online fallback resolves a slug like "POR~062" to "Meowth ex POR 062".
+ */
+function retryHeroImage(resolvedCardName: string) {
+  const hero = document.getElementById('card-hero');
+  const img = hero?.querySelector('img') as HTMLImageElement | null;
+  if (!hero || !img) {
+    return;
+  }
+
+  // If the image already loaded successfully, don't replace it
+  if (img.naturalWidth > 0 && img.style.opacity === '1') {
+    return;
+  }
+
+  const { name, setId } = parseDisplayName(resolvedCardName);
+  let variant: VariantInfo = {};
+  if (setId) {
+    const setMatch = setId.match(/^([A-Z]+)\s+(\d+[A-Za-z]?)$/);
+    if (setMatch) {
+      variant = { set: setMatch[1], number: setMatch[2] };
+    }
+  }
+
+  // Update alt text
+  img.alt = resolvedCardName;
+
+  // Build new candidates from the resolved name
+  const newCandidates = buildThumbCandidates(name, true, {}, variant);
+  if (newCandidates.length === 0) {
+    return;
+  }
+
+  // Update the modal's full-res URL
+  const variantLgUrl = buildLgUrlFromVariant(variant);
+  (img as any)._fullResUrl = variantLgUrl || null;
+
+  // Reset the loading state with new candidates
+  const state = (img as any)._loadingState;
+  if (state) {
+    state.candidates = newCandidates;
+    state.idx = 0;
+    state.loading = false;
+    state.fallbackAttempted = false;
+
+    // Re-enable the modal with the correct name
+    const wrap = img.closest('.thumb') as HTMLElement | null;
+    if (wrap) {
+      enableHeroImageModal(wrap, img, variantLgUrl, resolvedCardName);
+    }
+
+    // Start loading
+    img.src = state.candidates[state.idx++];
+  }
 }
 
 function setupImmediateUI() {
@@ -468,11 +673,12 @@ function setupImmediateUI() {
     const existingThumb = hero.querySelector('.thumb');
     const skeletonImage = existingThumb?.querySelector('.skeleton-image');
 
-    // Create image element and wrapper
+    // Create image element and wrapper — hero is likely LCP
     const img = document.createElement('img');
     img.alt = cardName;
     img.decoding = 'async';
     img.loading = 'eager';
+    img.fetchPriority = 'high';
     img.style.opacity = '0';
     img.style.transition = 'opacity .18s ease-out';
 
@@ -590,14 +796,21 @@ function startParallelDataLoading() {
   // Secondary data that doesn't block initial content
   const cardPricePromise = cardIdentifier ? renderCardPrice(cardIdentifier).catch(() => null) : Promise.resolve(null);
 
+  // Online meta report — fetched in parallel so it's ready as a fallback
+  // if the card has no physical tournament data
+  const onlineReportPromise = fetchReport(ONLINE_META_NAME, 'all', { skipSqlite: true }).catch(() => null);
+
   return {
     tournaments: tournamentsPromise,
     overrides: overridesPromise,
-    cardPrice: cardPricePromise
+    cardPrice: cardPricePromise,
+    onlineReport: onlineReportPromise
   };
 }
 
-async function renderProgressively(dataPromises: any): Promise<boolean> {
+type CardDataResult = boolean | 'online';
+
+async function renderProgressively(dataPromises: any): Promise<CardDataResult> {
   // Get tournaments data first (needed for most content)
   let tournaments: string[] = [];
   try {
@@ -647,6 +860,7 @@ async function renderProgressively(dataPromises: any): Promise<boolean> {
     });
   // Simple localStorage cache for All-archetypes stats: key by tournament+card
   const CACHE_KEY = 'metaCacheV1';
+  const META_CACHE_MAX = 200;
   const cache = (() => {
     try {
       return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
@@ -656,21 +870,29 @@ async function renderProgressively(dataPromises: any): Promise<boolean> {
   })();
   const saveCache = () => {
     try {
+      // Evict oldest half when exceeding max entries to prevent localStorage quota errors
+      const keys = Object.keys(cache);
+      if (keys.length > META_CACHE_MAX) {
+        for (const k of keys.slice(0, keys.length - META_CACHE_MAX)) {
+          delete cache[k];
+        }
+      }
       localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
     } catch {
-      // Ignore initialization errors
+      // Ignore quota errors
     }
   };
 
   // Load main chart data in parallel
-  return loadAndRenderMainContent(tournaments, cache, saveCache);
+  return loadAndRenderMainContent(tournaments, cache, saveCache, dataPromises.onlineReport);
 }
 
 async function loadAndRenderMainContent(
   tournaments: string[],
   cacheObject: any,
-  saveCache: () => void
-): Promise<boolean> {
+  saveCache: () => void,
+  onlineReportPromise?: Promise<any>
+): Promise<CardDataResult> {
   // Fixed window: only process the most recent 6 tournaments to minimize network calls
   const PROCESS_LIMIT = 6;
   const recentTournaments = tournaments.slice(0, PROCESS_LIMIT);
@@ -866,6 +1088,48 @@ async function loadAndRenderMainContent(
     }
   });
 
+  // If no physical tournament data, fall back to online meta
+  let isOnlineOnly = false;
+  if (timePoints.length === 0 && onlineReportPromise) {
+    try {
+      const onlineData = await onlineReportPromise;
+      if (onlineData) {
+        // Try with variants if already resolved, otherwise use empty array.
+        // findCardInReport will fall back to set+number scanning for unresolved
+        // slugs (e.g. "POR~062") that couldn't be resolved via physical tournaments.
+        const variants = sharedVariants || [cardIdentifier!];
+        const canonical = sharedCanonical || cardIdentifier!;
+        const result = findCardInReport(onlineData, cardIdentifier!, variants, canonical);
+        if (result) {
+          isOnlineOnly = true;
+          timePoints.push({ tournament: ONLINE_META_NAME, pct: result.pct });
+          eventsWithCard.push(ONLINE_META_NAME);
+          deckRows.push({
+            tournament: ONLINE_META_NAME,
+            archetype: null,
+            pct: result.pct,
+            found: result.found,
+            total: result.total,
+            dist: result.dist
+          });
+          if (!latestCardMeta && result.meta) {
+            latestCardMeta = result.meta;
+          }
+          // If the card name wasn't resolved from physical tournaments,
+          // update the title and retry hero image with the correct name
+          if (result.resolvedName && result.resolvedName !== cardIdentifier) {
+            cardName = result.resolvedName;
+            updateCardTitle(cardName);
+            updateSearchLink();
+            retryHeroImage(cardName);
+          }
+        }
+      }
+    } catch {
+      // Online meta unavailable — fall through to missing card page
+    }
+  }
+
   // Render external links (next to price, async)
   const refLinksSlot = document.getElementById('card-ref-links-slot');
   if (refLinksSlot && cardIdentifier && cardName) {
@@ -878,6 +1142,7 @@ async function loadAndRenderMainContent(
 
   // Cache for chosen archetype label per (tournament, card)
   const PICK_CACHE_KEY = 'archPickV2';
+  const PICK_CACHE_MAX = 300;
   const pickCache = (() => {
     try {
       return JSON.parse(localStorage.getItem(PICK_CACHE_KEY) || '{}');
@@ -887,9 +1152,16 @@ async function loadAndRenderMainContent(
   })();
   const savePickCache = () => {
     try {
+      // Evict oldest entries when exceeding max to prevent localStorage quota errors
+      const keys = Object.keys(pickCache);
+      if (keys.length > PICK_CACHE_MAX) {
+        for (const k of keys.slice(0, keys.length - PICK_CACHE_MAX)) {
+          delete pickCache[k];
+        }
+      }
       localStorage.setItem(PICK_CACHE_KEY, JSON.stringify(pickCache));
     } catch {
-      // Ignore initialization errors
+      // Ignore quota errors
     }
   };
 
@@ -907,8 +1179,9 @@ async function loadAndRenderMainContent(
       const candidates: any[] = [];
       const { variants } = await getSharedVariants();
 
-      for (const base of archetypeBases) {
-        try {
+      await processInParallel(
+        archetypeBases,
+        async base => {
           const arc = await fetchArchetypeReport(tournament, base);
           const parsedReport = parseReport(arc);
 
@@ -939,10 +1212,10 @@ async function loadAndRenderMainContent(
               total: combinedTotal
             });
           }
-        } catch {
-          /* missing archetype file */
-        }
-      }
+          return null;
+        },
+        { concurrency: 4, onError: 'continue', retryAttempts: 0 }
+      );
       // Dynamic minimum based on card usage: if card has high overall usage but low per-archetype,
       // use a lower threshold to capture distributed usage patterns
       const overallUsage = cacheObject[`${tournament}::${cardIdentifier}`]?.pct || 0;
@@ -985,9 +1258,9 @@ async function loadAndRenderMainContent(
     const pts = showAll ? ptsAll : ptsAll.slice(-LIMIT);
     const rows = showAll ? rowsAll : rowsAll.slice(-LIMIT);
 
-    let chartContainer = document.getElementById('card-chart');
+    let chartContainer = chartSection;
     if (!chartContainer) {
-      const cardCenter = document.getElementById('card-center') || metaSection;
+      const cardCenter = centerSection || metaSection;
       chartContainer = document.createElement('div');
       chartContainer.id = 'card-chart';
       chartContainer.className = 'card-chart skeleton-loading';
@@ -999,10 +1272,16 @@ async function loadAndRenderMainContent(
       refreshDomRefs();
     }
     if (chartContainer) {
-      renderChart(chartContainer, pts);
+      // Single online-only data point: show stat card instead of a meaningless single-dot chart
+      if (isOnlineOnly && pts.length === 1 && rows.length > 0) {
+        const row = rows[rows.length - 1];
+        renderOnlineStatCard(chartContainer, row.pct || 0, row.total || 0, row.found || 0);
+      } else {
+        renderChart(chartContainer, pts);
+      }
     }
 
-    const copiesTarget = document.getElementById('card-copies');
+    const copiesTarget = copiesSection;
     if (copiesTarget) {
       const latest = rows[rows.length - 1];
       if (latest && latest.dist && Array.isArray(latest.dist) && latest.dist.length > 0) {
@@ -1062,13 +1341,13 @@ async function loadAndRenderMainContent(
       }
     }
 
-    let eventsTarget = document.getElementById('card-events');
+    let eventsTarget = eventsSection;
     if (!eventsTarget && metaSection) {
       eventsTarget = document.createElement('div');
       eventsTarget.id = 'card-events';
       metaSection.appendChild(eventsTarget);
       refreshDomRefs();
-      eventsTarget = document.getElementById('card-events');
+      eventsTarget = eventsSection;
     }
 
     renderEvents(eventsTarget || decksSection || metaSection || document.body, rows);
@@ -1128,16 +1407,24 @@ async function loadAndRenderMainContent(
     resizeTimer = setTimeout(() => {
       resizeTimer = null;
       lastWidth = window.innerWidth;
-      const elementToRender = document.getElementById('card-chart') || metaSection;
+      const elementToRender = chartSection || metaSection;
       const pointsToRender = showAll ? [...timePoints].reverse() : [...timePoints].reverse().slice(-LIMIT);
       if (elementToRender) {
+        // Don't re-render chart for online-only stat cards (they aren't SVG charts)
+        if (isOnlineOnly && pointsToRender.length === 1) {
+          return;
+        }
         renderChart(elementToRender, pointsToRender);
       }
     }, 200); // Increased throttle to reduce flash frequency
   });
 
   // No min-decks selector in UI; default minTotal used in picker
-  return deckRows.length > 0 || timePoints.length > 0 || eventsWithCard.length > 0;
+  const hasData = deckRows.length > 0 || timePoints.length > 0 || eventsWithCard.length > 0;
+  if (!hasData) {
+    return false;
+  }
+  return isOnlineOnly ? 'online' : true;
 }
 
 // initializeCardPage handles load() after resolving the card identifier.
