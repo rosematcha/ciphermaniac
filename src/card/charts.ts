@@ -254,6 +254,32 @@ export function renderChart(container: HTMLElement, points: ChartPoint[]): void 
 }
 
 /**
+ * Render a stat card for online-only usage (single data point — a line chart is meaningless)
+ * @param container - Container element for the stat card
+ * @param pct - Usage percentage
+ * @param total - Total players in the sample
+ * @param found - Number of players running this card
+ */
+export function renderOnlineStatCard(container: HTMLElement, pct: number, total: number, found: number): void {
+  const stat = document.createElement('div');
+  stat.className = 'online-stat-card';
+
+  const pctDisplay = pct >= 10 ? pct.toFixed(0) : pct >= 1 ? pct.toFixed(1) : pct.toFixed(2);
+
+  stat.innerHTML = `
+    <div class="online-stat-value">${escapeHtml(pctDisplay)}%</div>
+    <div class="online-stat-label">Usage in Online Meta</div>
+    <div class="online-stat-context">${found} of ${total} decks</div>
+  `;
+
+  if (container.classList.contains('showing-skeleton')) {
+    hideSkeleton(container, stat);
+  } else {
+    smoothReplaceContent(container, stat);
+  }
+}
+
+/**
  * Render histogram showing copies distribution
  * @param container - Container element for the histogram
  * @param overall - Overall distribution data with dist and total properties

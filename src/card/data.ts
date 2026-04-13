@@ -3,9 +3,10 @@
  * @module card/data
  */
 
-import { fetchReport, fetchTournamentsList, getCardPrice } from '../api.js';
+import { buildCardIndexFromMaster, fetchReport, fetchTournamentsList, getCardPrice } from '../api.js';
 import { parseReport } from '../parse.js';
 import { getBaseName, getCanonicalId, getDisplayName, parseDisplayName } from './identifiers.js';
+import { extractSetAndNumber } from './routing.js';
 import { ErrorBoundary, logger, validators } from '../utils/errorHandler.js';
 
 interface CardItem {
@@ -215,9 +216,24 @@ export async function collectCardVariants(cardIdentifier: string): Promise<strin
 
   // Cache the results for future use
   try {
+    // Prune expired entries and enforce max size to prevent localStorage quota errors
+    const VARIANTS_CACHE_MAX = 200;
+    const now = Date.now();
+    const keys = Object.keys(variantsCache);
+    for (const k of keys) {
+      if (now - (variantsCache[k]?.timestamp || 0) >= CACHE_EXPIRY) {
+        delete variantsCache[k];
+      }
+    }
+    const remaining = Object.keys(variantsCache);
+    if (remaining.length >= VARIANTS_CACHE_MAX) {
+      for (const k of remaining.slice(0, remaining.length - VARIANTS_CACHE_MAX + 1)) {
+        delete variantsCache[k];
+      }
+    }
     variantsCache[cacheKey] = {
       variants: variantsList,
-      timestamp: Date.now()
+      timestamp: now
     };
     localStorage.setItem(VARIANTS_CACHE_KEY, JSON.stringify(variantsCache));
   } catch {
@@ -225,6 +241,196 @@ export async function collectCardVariants(cardIdentifier: string): Promise<strin
   }
 
   return variantsList.sort();
+}
+
+/**
+ * Result from searching for a card in a report
+ */
+export interface CardInReportResult {
+  pct: number;
+  found: number;
+  total: number;
+  dist: any[];
+  meta: any;
+  /** The card name resolved from the report (useful when identifier was an unresolved slug) */
+  resolvedName?: string;
+}
+
+/**
+ * Search for a card in a fetched report, combining data across all variants.
+ * Shared helper used by both physical tournament lookups and online meta lookups.
+ * @param reportData - Raw report data (from fetchReport)
+ * @param identifier - The card identifier to search for
+ * @param variants - Pre-resolved card variants (from getCardVariants)
+ * @param _canonicalName - Canonical card name (from getCanonicalCard) for display
+ * @returns CardInReportResult if found, null otherwise
+ */
+export function findCardInReport(
+  reportData: any,
+  identifier: string,
+  variants: string[],
+  _canonicalName: string | null
+): CardInReportResult | null {
+  const parsed = parseReport(reportData);
+  if (!parsed || !Array.isArray(parsed.items)) {
+    return null;
+  }
+
+  // 1) Try base-name index lookup first (works for trainers and base Pokemon names)
+  const hasUID = identifier.includes('::');
+  if (!hasUID) {
+    const idx = buildCardIndexFromMaster(reportData);
+    const baseName = getBaseName(identifier) || '';
+    if (baseName) {
+      const matchingKey = Object.keys(idx.cards || {}).find(k => k.toLowerCase() === baseName.toLowerCase()) || '';
+      const entry = idx.cards?.[baseName] || idx.cards?.[matchingKey];
+      if (entry) {
+        const card: any = {
+          name: baseName,
+          found: entry.found,
+          total: entry.total,
+          pct: entry.pct,
+          dist: entry.dist
+        };
+        // Enrich with metadata from raw items
+        const rawItem = parsed.items.find((it: any) => it.name?.toLowerCase() === baseName.toLowerCase());
+        if (rawItem) {
+          card.category = rawItem.category;
+          card.trainerType = rawItem.trainerType;
+          card.energyType = rawItem.energyType;
+          card.aceSpec = rawItem.aceSpec;
+          card.regulationMark = rawItem.regulationMark;
+          card.supertype = rawItem.supertype;
+          card.rank = rawItem.rank;
+        }
+        return {
+          pct: Number.isFinite(card.pct) ? card.pct : card.total ? (100 * card.found) / card.total : 0,
+          found: card.found,
+          total: card.total,
+          dist: card.dist || [],
+          meta: {
+            category: card.category,
+            trainerType: card.trainerType,
+            energyType: card.energyType,
+            aceSpec: card.aceSpec,
+            regulationMark: card.regulationMark,
+            supertype: card.supertype,
+            rank: card.rank
+          }
+        };
+      }
+    }
+  }
+
+  // 2) Variant-combining lookup
+  let combinedFound = 0;
+  let combinedTotal: number | null = null;
+  let hasAnyData = false;
+  const combinedDist: any[] = [];
+  let firstVariantCard: any = null;
+
+  for (const variant of variants) {
+    const variantCard = findCard(parsed.items, variant);
+    if (variantCard) {
+      hasAnyData = true;
+      if (!firstVariantCard) {
+        firstVariantCard = variantCard;
+      }
+      if (Number.isFinite(variantCard.found)) {
+        combinedFound += variantCard.found;
+      }
+      if (combinedTotal === null && Number.isFinite(variantCard.total)) {
+        combinedTotal = variantCard.total;
+      }
+      if (variantCard.dist && Array.isArray(variantCard.dist)) {
+        for (const distEntry of variantCard.dist) {
+          const existing = combinedDist.find(distItem => distItem.copies === distEntry.copies);
+          if (existing) {
+            existing.players += distEntry.players || 0;
+          } else {
+            combinedDist.push({ copies: distEntry.copies, players: distEntry.players || 0 });
+          }
+        }
+      }
+    }
+  }
+
+  if (hasAnyData && combinedTotal !== null) {
+    const pct = combinedTotal > 0 ? (100 * combinedFound) / combinedTotal : 0;
+    return {
+      pct,
+      found: combinedFound,
+      total: combinedTotal,
+      dist: combinedDist.sort((a: any, b: any) => a.copies - b.copies),
+      meta: firstVariantCard
+        ? {
+            category: firstVariantCard.category,
+            trainerType: firstVariantCard.trainerType,
+            energyType: firstVariantCard.energyType,
+            aceSpec: firstVariantCard.aceSpec,
+            regulationMark: firstVariantCard.regulationMark,
+            supertype: firstVariantCard.supertype,
+            rank: firstVariantCard.rank
+          }
+        : {}
+    };
+  }
+
+  // 3) Direct set+number scan — handles unresolved slugs like "POR~062"
+  //    that couldn't be resolved to a card name via physical tournaments
+  const { set: searchSet, number: searchNumber } = extractSetAndNumber(identifier);
+  if (searchSet && searchNumber) {
+    const normalizedSet = searchSet.toUpperCase();
+    const normalizedNumber = searchNumber.replace(/^0+/, ''); // strip leading zeros
+    const match = parsed.items.find((item: any) => {
+      const itemSet = (item.set || '').toUpperCase();
+      const itemNumber = String(item.number || '').replace(/^0+/, '');
+      // Check UID format (Name::SET::NUMBER)
+      if (item.uid) {
+        const parts = item.uid.split('::');
+        if (parts.length >= 3) {
+          const uidSet = (parts[1] || '').toUpperCase().trim();
+          const uidNum = (parts[2] || '').trim().replace(/^0+/, '');
+          if (uidSet === normalizedSet && uidNum === normalizedNumber) {
+            return true;
+          }
+        }
+      }
+      return itemSet === normalizedSet && itemNumber === normalizedNumber;
+    });
+
+    if (match) {
+      const matchPct = Number.isFinite(match.pct)
+        ? match.pct
+        : match.total
+          ? (100 * (match.found || 0)) / match.total
+          : 0;
+      // Build a display name from the matched item
+      const resolvedName = match.name
+        ? match.set && match.number
+          ? `${match.name} ${match.set} ${match.number}`
+          : match.name
+        : undefined;
+      return {
+        pct: matchPct,
+        found: match.found || 0,
+        total: match.total || 0,
+        dist: match.dist || [],
+        resolvedName,
+        meta: {
+          category: match.category,
+          trainerType: match.trainerType,
+          energyType: match.energyType,
+          aceSpec: match.aceSpec,
+          regulationMark: match.regulationMark,
+          supertype: match.supertype,
+          rank: match.rank
+        }
+      };
+    }
+  }
+
+  return null;
 }
 
 /**

@@ -166,8 +166,12 @@ async function resolveBySetAndNumber(
   const tournaments = await ensureTournamentsLoaded();
   const limit = Math.max(1, options.scanLimit || DEFAULT_SCAN_LIMIT);
 
-  for (const tournament of tournaments.slice(0, limit)) {
-    const parsed = await fetchParsedReport(tournament);
+  // Fetch all tournament reports in parallel, then check results in order
+  const reportsToScan = tournaments.slice(0, limit);
+  const reportPromises = reportsToScan.map(t => fetchParsedReport(t));
+  const reports = await Promise.all(reportPromises);
+
+  for (const parsed of reports) {
     if (!parsed) {
       continue;
     }
@@ -245,8 +249,12 @@ async function resolveByName(slugName: string, options: ResolveOptions = {}): Pr
   const tournaments = await ensureTournamentsLoaded();
   const limit = Math.max(1, options.scanLimit || DEFAULT_SCAN_LIMIT);
 
-  for (const tournament of tournaments.slice(0, limit)) {
-    const parsed = await fetchParsedReport(tournament);
+  // Fetch all tournament reports in parallel, then check results in order
+  const reportsToScan = tournaments.slice(0, limit);
+  const reportPromises = reportsToScan.map(t => fetchParsedReport(t));
+  const reports = await Promise.all(reportPromises);
+
+  for (const parsed of reports) {
     if (!parsed) {
       continue;
     }
