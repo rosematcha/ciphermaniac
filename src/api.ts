@@ -347,6 +347,22 @@ export async function fetchReportResource<T = any>(
  * Fetch the list of tournaments.
  */
 export function fetchTournamentsList(): Promise<string[]> {
+  // Use eagerly-prefetched tournaments list from inline script if available.
+  // This fires during HTML parse, well before modules finish loading.
+  const prefetched = (globalThis as any).__tournamentsPromise as Promise<string[] | null> | undefined;
+  if (prefetched) {
+    // Consume once to avoid stale reuse on subsequent calls
+    delete (globalThis as any).__tournamentsPromise;
+    return prefetched.then(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        return sortTournamentNamesByRecency(data);
+      }
+      // Prefetch failed or returned empty — fall through to normal fetch
+      return fetchReportResource<string[]>('tournaments.json', 'tournaments list', 'array', 'tournaments list', {
+        cache: true
+      }).then(tournaments => sortTournamentNamesByRecency(tournaments));
+    });
+  }
   return fetchReportResource<string[]>('tournaments.json', 'tournaments list', 'array', 'tournaments list', {
     cache: true
   }).then(tournaments => sortTournamentNamesByRecency(tournaments));

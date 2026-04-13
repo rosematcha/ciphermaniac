@@ -75,6 +75,12 @@
   <link rel="stylesheet" href="/assets/style-optimized.css?v=20260327b" />
   <!-- Preload critical JS modules for faster page load -->
   <link rel="modulepreload" href="/assets/js/src/loaders/card.js" />
+  <link rel="modulepreload" href="/assets/js/src/card.js" />
+  <link rel="modulepreload" href="/assets/js/src/api.js" />
+  <link rel="modulepreload" href="/assets/js/src/card/routing.js" />
+  <link rel="modulepreload" href="/assets/js/src/card/data.js" />
+  <link rel="modulepreload" href="/assets/js/src/card/charts.js" />
+  <link rel="modulepreload" href="/assets/js/src/components/placeholders.js" />
 </head>
 
 <body>
@@ -135,6 +141,13 @@
   </main>
   <!-- Modal will be injected by JS when needed -->
 
+  <script>
+    // Eagerly prefetch tournaments list while modules download.
+    // The module code reads window.__tournamentsPromise to avoid a duplicate fetch.
+    window.__tournamentsPromise = fetch('/reports/tournaments.json')
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .catch(function() { return null; });
+  </script>
   <script>
     // Fast synchronous title update - no module imports, immediate paint
     (function () {

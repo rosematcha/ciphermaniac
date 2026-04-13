@@ -67,6 +67,45 @@ export async function onRequest(context) {
               }
             }
           }
+
+          // Resolve card identifier at the edge to eliminate client-side slug resolution.
+          // Search canonicals for a UID matching this set:number (the card IS a canonical)
+          let resolvedUid = canonicalUid || null;
+          if (!resolvedUid) {
+            for (const [_uid, canonical] of Object.entries(synonymsData.canonicals || {})) {
+              if (typeof canonical === 'string' && canonical.includes('::')) {
+                const parts = canonical.split('::');
+                if (
+                  parts.length >= 3 &&
+                  parts[1].toUpperCase() === normalizedSet &&
+                  normalizeCardNumber(parts[2]) === normalizedNumber
+                ) {
+                  resolvedUid = canonical;
+                  break;
+                }
+              }
+            }
+          }
+          // Also check synonym UIDs themselves (key side) for set:number match
+          if (!resolvedUid) {
+            for (const [uid] of Object.entries(synonymsData.synonyms || {})) {
+              if (uid.includes('::')) {
+                const parts = uid.split('::');
+                if (
+                  parts.length >= 3 &&
+                  parts[1].toUpperCase() === normalizedSet &&
+                  normalizeCardNumber(parts[2]) === normalizedNumber
+                ) {
+                  resolvedUid = uid;
+                  break;
+                }
+              }
+            }
+          }
+
+          if (resolvedUid) {
+            return serveCardHtmlWithData(context, { resolvedIdentifier: resolvedUid });
+          }
         }
       } catch (error) {
         // If there's an error loading synonyms, just serve the page normally
@@ -77,4 +116,26 @@ export async function onRequest(context) {
 
   // Serve card.html for any /card/* path (default behavior)
   return context.env.ASSETS.fetch(new URL('/card.html', context.request.url));
+}
+
+/**
+ * Serve card.html with edge-resolved data injected as a script block.
+ * The client reads window.__CARD_EDGE_DATA to skip slug resolution.
+ */
+async function serveCardHtmlWithData(context, edgeData) {
+  const htmlResponse = await context.env.ASSETS.fetch(new URL('/card.html', context.request.url));
+  const html = await htmlResponse.text();
+
+  // Inject edge data right before the closing </head> tag so it's available
+  // before any module scripts execute.
+  const injection = `<script>window.__CARD_EDGE_DATA=${JSON.stringify(edgeData)};</script>`;
+  const injectedHtml = html.replace('</head>', `${injection}\n</head>`);
+
+  return new Response(injectedHtml, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html;charset=utf-8',
+      'Cache-Control': htmlResponse.headers.get('Cache-Control') || 'public, max-age=0, must-revalidate'
+    }
+  });
 }

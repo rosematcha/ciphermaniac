@@ -1,0 +1,86 @@
+{
+  "archetypes": [
+    {
+      "name": "Gardevoir",
+      "slug": "gardevoir",
+      "archetypeId": 255,
+      "listCount": 2749,
+      "thumbnail": "SVI/086",
+      "rotations": [
+        { "date": "2024-04-01", "label": "E block rotates" },
+        { "date": "2025-04-01", "label": "F block rotates" },
+        { "date": "2026-04-07", "label": "G block rotates" }
+      ]
+    },
+    {
+      "name": "Gholdengo",
+      "slug": "gholdengo",
+      "archetypeId": 267,
+      "listCount": 1975,
+      "thumbnail": "PAR/139",
+      "rotations": [
+        { "date": "2024-04-01", "label": "E block rotates" },
+        { "date": "2025-04-01", "label": "F block rotates" },
+        { "date": "2026-04-07", "label": "G block rotates" }
+      ]
+    },
+    {
+      "name": "Charizard",
+      "slug": "charizard",
+      "archetypeId": 264,
+      "listCount": 1939,
+      "thumbnail": "OBF/125",
+      "rotations": [
+        { "date": "2024-04-01", "label": "E block rotates" },
+        { "date": "2025-04-01", "label": "F block rotates" },
+        { "date": "2026-04-07", "label": "G block rotates" }
+      ]
+    },
+    {
+      "name": "Miraidon",
+      "slug": "miraidon",
+      "archetypeId": 257,
+      "listCount": 504,
+      "thumbnail": "SVI/081",
+      "rotations": [
+        { "date": "2024-04-01", "label": "E block rotates" },
+        { "date": "2025-04-01", "label": "F block rotates" },
+        { "date": "2026-04-07", "label": "G block rotates" }
+      ]
+    },
+    {
+      "name": "Roaring Moon",
+      "slug": "roaring-moon",
+      "archetypeId": 268,
+      "listCount": 402,
+      "thumbnail": "PAR/124",
+      "rotations": [
+        { "date": "2024-04-01", "label": "E block rotates" },
+        { "date": "2025-04-01", "label": "F block rotates" },
+        { "date": "2026-04-07", "label": "G block rotates" }
+      ]
+    },
+    {
+      "name": "Chien-Pao Baxcalibur",
+      "slug": "chien-pao-baxcalibur",
+      "archetypeId": 261,
+      "listCount": 346,
+      "thumbnail": "PAL/060",
+      "rotations": [
+        { "date": "2024-04-01", "label": "E block rotates" },
+        { "date": "2026-04-07", "label": "G block rotates" }
+      ]
+    },
+    {
+      "name": "Pidgeot Control",
+      "slug": "pidgeot-control",
+      "archetypeId": 276,
+      "listCount": 178,
+      "thumbnail": "OBF/164",
+      "rotations": [
+        { "date": "2025-04-01", "label": "F block rotates" },
+        { "date": "2026-04-07", "label": "G block rotates" }
+      ]
+    }
+  ]
+}

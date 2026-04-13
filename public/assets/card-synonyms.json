@@ -630,7 +630,10 @@
     "Fire Energy::MEE::002": "Fire Energy::MEE::002",
     "Grass Energy::MEE::001": "Grass Energy::MEE::001",
     "Water Energy::MEE::003": "Water Energy::MEE::003",
-    "Lightning Energy::MEE::004": "Lightning Energy::MEE::004"
+    "Lightning Energy::MEE::004": "Lightning Energy::MEE::004",
+    "Professor's Research::BRS::147": "Professor's Research::SVI::189",
+    "Professor's Research::JTG::155": "Professor's Research::SVI::189",
+    "Psychic Energy::BRS::00P": "Psychic Energy::MEE::005"
   },
   "canonicals": {
     "Munkidori": "Munkidori::PRE::044",
