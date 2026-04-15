@@ -8,7 +8,7 @@ import { logger } from './utils/logger.js';
 import { AppError, ErrorTypes, safeFetch, validateType, withRetry } from './utils/errorHandler.js';
 import { perf } from './utils/performance.js';
 import { clearDatabaseCache, loadDatabase } from './lib/database.js';
-import { isFeatureEnabled } from './utils/featureFlags.js';
+
 import { sortTournamentNamesByRecency } from './utils/tournamentRecency.js';
 import type {
   ArchetypeFilterRequest,
@@ -29,6 +29,8 @@ import type {
 
 let pricingData: PricingData | null = null;
 let pricingPromise: Promise<PricingData> | null = null;
+const priceResolutionCache = new Map<string, number | null>();
+const pricingEntryCache = new Map<string, any | null>();
 const jsonCache = new Map<string, CacheEntry>();
 const reportCache = new Map<string, CacheEntry<TournamentReport>>();
 const tournamentDbAvailabilityCache = new Map<string, boolean>();
@@ -96,6 +98,8 @@ export function clearApiCache() {
   jsonCache.clear();
   reportCache.clear();
   tournamentDbAvailabilityCache.clear();
+  priceResolutionCache.clear();
+  pricingEntryCache.clear();
   apiTestHooks = {};
   clearDatabaseCache();
 }
@@ -482,8 +486,7 @@ export async function fetchReport(
   perf.start(`fetchReport:${tournament}:${resolvedSlice}`);
   const loader = (async () => {
     if (resolvedSlice === 'all' && !options?.skipSqlite) {
-      const useManifestGate = isFeatureEnabled('useSqliteManifestGate');
-      const shouldAttemptSqlite = useManifestGate ? await hasTournamentDatabase(tournament) : true;
+      const shouldAttemptSqlite = await hasTournamentDatabase(tournament);
 
       if (shouldAttemptSqlite) {
         try {
@@ -1029,6 +1032,12 @@ function fetchPricingData(): Promise<PricingData> {
   return pricingPromise;
 }
 
+// Cache the dynamic synonym import to avoid repeated promise creation on every price lookup
+let _synonymModulePromise: Promise<typeof import('./utils/cardSynonyms.js')> | null = null;
+function getSynonymModule() {
+  return (_synonymModulePromise ??= import('./utils/cardSynonyms.js'));
+}
+
 /**
  * Resolve pricing entry for a card, optionally requiring a field on the entry
  * @param cardId
@@ -1041,6 +1050,12 @@ async function resolveCardPricingEntry(
   requiredField: string | null,
   logLabel: string
 ): Promise<any | null> {
+  // Check entry-level cache to skip synonym resolution for repeated lookups
+  const cacheKey = `${cardId}::${requiredField ?? ''}`;
+  if (pricingEntryCache.has(cacheKey)) {
+    return pricingEntryCache.get(cacheKey);
+  }
+
   const pricing = await fetchPricingData();
   const cardPrices = pricing.cardPrices || {};
 
@@ -1060,11 +1075,12 @@ async function resolveCardPricingEntry(
 
   let entry = getEntry(cardId);
   if (entry) {
+    pricingEntryCache.set(cacheKey, entry);
     return entry;
   }
 
   try {
-    const { getCanonicalCard, getCardVariants } = await import('./utils/cardSynonyms.js');
+    const { getCanonicalCard, getCardVariants } = await getSynonymModule();
 
     const canonical = await getCanonicalCard(cardId);
     if (canonical && canonical !== cardId) {
@@ -1073,6 +1089,7 @@ async function resolveCardPricingEntry(
         logger.debug(`Found ${logLabel} via canonical: ${canonical}`, {
           original: cardId
         });
+        pricingEntryCache.set(cacheKey, entry);
         return entry;
       }
     }
@@ -1088,6 +1105,7 @@ async function resolveCardPricingEntry(
         logger.debug(`Found ${logLabel} via variant: ${variant}`, {
           original: cardId
         });
+        pricingEntryCache.set(cacheKey, entry);
         return entry;
       }
     }
@@ -1097,6 +1115,7 @@ async function resolveCardPricingEntry(
   }
 
   logger.debug(`No ${logLabel} found for ${cardId} or its variants`);
+  pricingEntryCache.set(cacheKey, null);
   return null;
 }
 
@@ -1110,13 +1129,19 @@ async function resolveCardPricingEntry(
  * @param cardId - Card identifier.
  */
 export async function getCardPrice(cardId: string): Promise<number | null> {
+  if (priceResolutionCache.has(cardId)) {
+    return priceResolutionCache.get(cardId)!;
+  }
   try {
     const entry = await resolveCardPricingEntry(cardId, 'price', 'price');
-    return entry?.price ?? null;
+    const price = entry?.price ?? null;
+    priceResolutionCache.set(cardId, price);
+    return price;
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : String(error);
     logger.debug(`Failed to get price for ${cardId}`, errMessage);
     logger.error('Error in getCardPrice:', error);
+    priceResolutionCache.set(cardId, null);
     return null;
   }
 }
