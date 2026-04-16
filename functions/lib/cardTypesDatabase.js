@@ -3,17 +3,25 @@
  * @module lib/cardTypesDatabase
  */
 
+// Module-level cache: persists across requests within the same isolate,
+// avoiding re-fetch and re-parse of the card types JSON on every request.
+let cachedCardTypesData = null;
+
 /**
  * Fetch and parse card types database from R2/KV
  * @param {object} env - Cloudflare Workers environment
  * @returns {Promise<Object>}
  */
 export async function loadCardTypesDatabase(env) {
+  if (cachedCardTypesData) {
+    return cachedCardTypesData;
+  }
   try {
     // Try to get from KV first (faster)
     if (env.CARD_TYPES_KV) {
       const cached = await env.CARD_TYPES_KV.get('card-types-database', 'json');
       if (cached) {
+        cachedCardTypesData = cached;
         return cached;
       }
     }
@@ -32,6 +40,7 @@ export async function loadCardTypesDatabase(env) {
           });
         }
 
+        cachedCardTypesData = data;
         return data;
       }
     }
