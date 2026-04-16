@@ -1,5 +1,9 @@
 import { normalizeCardNumber } from '../lib/cardUtils.js';
 
+// Module-level cache: persists across requests within the same isolate,
+// avoiding re-fetch and re-parse of the ~1-2MB synonyms JSON on every request.
+let cachedSynonymsData = null;
+
 // Cloudflare Pages Function to serve card.html for all /card/* routes
 export async function onRequest(context) {
   const url = new URL(context.request.url);
@@ -18,13 +22,18 @@ export async function onRequest(context) {
       const [, setCode, number] = setNumberMatch;
 
       try {
-        // Fetch the synonyms data
-        const synonymsResponse = await context.env.ASSETS.fetch(
-          new URL('/assets/card-synonyms.json', context.request.url)
-        );
+        // Use module-level cache to avoid re-fetching/parsing on every request
+        if (!cachedSynonymsData) {
+          const synonymsResponse = await context.env.ASSETS.fetch(
+            new URL('/assets/card-synonyms.json', context.request.url)
+          );
+          if (synonymsResponse.ok) {
+            cachedSynonymsData = await synonymsResponse.json();
+          }
+        }
 
-        if (synonymsResponse.ok) {
-          const synonymsData = await synonymsResponse.json();
+        if (cachedSynonymsData) {
+          const synonymsData = cachedSynonymsData;
 
           // Normalize the set code and number for comparison
           const normalizedSet = setCode.toUpperCase();
@@ -115,7 +124,14 @@ export async function onRequest(context) {
   }
 
   // Serve card.html for any /card/* path (default behavior)
-  return context.env.ASSETS.fetch(new URL('/card.html', context.request.url));
+  const fallbackResponse = await context.env.ASSETS.fetch(new URL('/card.html', context.request.url));
+  return new Response(fallbackResponse.body, {
+    status: fallbackResponse.status,
+    headers: {
+      ...Object.fromEntries(fallbackResponse.headers.entries()),
+      'Cache-Control': 'public, max-age=300, stale-while-revalidate=86400'
+    }
+  });
 }
 
 /**
@@ -135,7 +151,7 @@ async function serveCardHtmlWithData(context, edgeData) {
     status: 200,
     headers: {
       'Content-Type': 'text/html;charset=utf-8',
-      'Cache-Control': htmlResponse.headers.get('Cache-Control') || 'public, max-age=0, must-revalidate'
+      'Cache-Control': 'public, max-age=300, stale-while-revalidate=86400'
     }
   });
 }
