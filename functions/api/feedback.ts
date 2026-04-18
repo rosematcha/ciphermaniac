@@ -11,10 +11,13 @@ const MAX_PAYLOAD_SIZE = 1024 * 1024;
 // Rate limiting configuration
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const RATE_LIMIT_MAX_REQUESTS = 5;
+const RATE_LIMIT_MAX_STORE_SIZE = 10_000;
+const RATE_LIMIT_CLEANUP_INTERVAL = 100; // clean every Nth request
 
 // In-memory rate limit store (acceptable for edge functions)
 // Map<IP, { count: number, windowStart: number }>
 const rateLimitStore = new Map<string, { count: number; windowStart: number }>();
+let rateLimitRequestCount = 0;
 
 /**
  * Reset rate limit store - exposed for testing only
@@ -43,9 +46,13 @@ function cleanupRateLimitStore(): void {
 function checkRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
   const now = Date.now();
 
-  // Periodic cleanup (run on ~1% of requests to avoid overhead)
-  if (Math.random() < 0.01) {
+  // Deterministic cleanup every N requests + hard cap to prevent OOM
+  rateLimitRequestCount++;
+  if (rateLimitRequestCount % RATE_LIMIT_CLEANUP_INTERVAL === 0) {
     cleanupRateLimitStore();
+  }
+  if (rateLimitStore.size > RATE_LIMIT_MAX_STORE_SIZE) {
+    rateLimitStore.clear();
   }
 
   const existing = rateLimitStore.get(ip);
@@ -276,12 +283,15 @@ async function sendEmail(env: Env, recipient: string, content: string, feedbackD
     text: content
   };
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10_000);
   return fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${resendApiKey}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify(emailPayload)
-  });
+    body: JSON.stringify(emailPayload),
+    signal: controller.signal
+  }).finally(() => clearTimeout(timeoutId));
 }
