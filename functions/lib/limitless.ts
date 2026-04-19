@@ -93,11 +93,26 @@ export async function fetchLimitlessJson(pathname: string, options: LimitlessOpt
     headers.set('Accept', 'application/json');
   }
 
-  const response = await fetch(url, {
-    method: 'GET',
-    ...fetchOptions,
-    headers
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10_000);
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      ...fetchOptions,
+      headers,
+      signal: controller.signal
+    });
+  } catch (err: unknown) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === 'AbortError') {
+      const error: LimitlessError = new Error('Limitless API request timed out');
+      error.status = undefined;
+      throw error;
+    }
+    throw err;
+  }
+  clearTimeout(timeoutId);
 
   const contentType = response.headers.get('content-type') || '';
   const isJson = contentType.includes('application/json') || contentType.includes('text/json');

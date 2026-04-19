@@ -4,8 +4,14 @@
  * @module lib/cardTypeFetcher
  */
 
-const RATE_LIMIT_DELAY_MS = 250;
+const RATE_LIMIT_DELAY_MS = 500;
+const BATCH_CONCURRENCY = 4;
 const DEFAULT_FETCH_TIMEOUT_MS = 10000; // 10 seconds
+
+// Pre-compiled regex patterns (avoid recreation per request)
+const NUMBER_VARIANT_RE = /^0*(\d+)([A-Z]*)$/;
+const CARD_TYPE_RE = /<(?:div|p)[^>]*class="card-text-type"[^>]*>([\s\S]*?)<\/(?:div|p)>/i;
+const REG_MARK_RE = /<div class="regulation-mark"[^>]*>\s*([A-Z])\s*Regulation\s*Mark/i;
 
 function delay(ms) {
   return new Promise(resolve => {
@@ -60,7 +66,7 @@ function buildNumberVariants(value) {
     return [];
   }
   const normalized = raw.toUpperCase();
-  const match = normalized.match(/^0*(\d+)([A-Z]*)$/);
+  const match = normalized.match(NUMBER_VARIANT_RE);
   if (!match) {
     return [normalized];
   }
@@ -119,7 +125,7 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
     const html = await response.text();
 
     // Parse the card-text-type element (can be div or p tag)
-    const typeMatch = html.match(/<(?:div|p)[^>]*class="card-text-type"[^>]*>([\s\S]*?)<\/(?:div|p)>/i);
+    const typeMatch = html.match(CARD_TYPE_RE);
     if (!typeMatch) {
       console.warn(`[CardTypeFetcher] Could not find type div for ${setCode}::${numberVariant}`);
       return null;
@@ -147,7 +153,7 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
 
     // Parse regulation mark from div.regulation-mark (scrape from full HTML, not just type div)
     // Format: "G Regulation Mark •" or "H Regulation Mark •" or "I Regulation Mark •"
-    const regMarkMatch = html.match(/<div class="regulation-mark"[^>]*>\s*([A-Z])\s*Regulation\s*Mark/i);
+    const regMarkMatch = html.match(REG_MARK_RE);
     if (regMarkMatch) {
       result.regulationMark = regMarkMatch[1].toUpperCase();
       console.log(`[CardTypeFetcher] Found regulation mark ${result.regulationMark} for ${setCode}::${numberVariant}`);
@@ -329,14 +335,19 @@ async function batchFetchAndCacheCardTypes(cards, database, env) {
   console.log(`[CardTypeFetcher] Batch fetching ${cardsNeedingFetch.length} missing card types...`);
 
   const pendingUpdates = {};
-  for (let index = 0; index < cardsNeedingFetch.length; index += 1) {
-    const card = cardsNeedingFetch[index];
-    await fetchAndCacheCardType(card, database, env, {
-      persist: false,
-      recordUpdates: pendingUpdates
-    });
+  // Process in batches of BATCH_CONCURRENCY concurrent requests with delay between batches
+  for (let i = 0; i < cardsNeedingFetch.length; i += BATCH_CONCURRENCY) {
+    const batch = cardsNeedingFetch.slice(i, i + BATCH_CONCURRENCY);
+    await Promise.allSettled(
+      batch.map(card =>
+        fetchAndCacheCardType(card, database, env, {
+          persist: false,
+          recordUpdates: pendingUpdates
+        })
+      )
+    );
 
-    if (index < cardsNeedingFetch.length - 1) {
+    if (i + BATCH_CONCURRENCY < cardsNeedingFetch.length) {
       await delay(RATE_LIMIT_DELAY_MS);
     }
   }
@@ -405,12 +416,22 @@ export async function refreshRegulationMarks(cards, database, env) {
   console.log(`[CardTypeFetcher] Refreshing regulation marks for ${cardsNeedingUpdate.length} cards...`);
 
   const pendingUpdates = {};
-  for (const card of cardsNeedingUpdate) {
-    await fetchAndCacheCardType(card, database, env, {
-      persist: false,
-      recordUpdates: pendingUpdates,
-      force: true
-    });
+  // Process in batches of BATCH_CONCURRENCY concurrent requests with delay between batches
+  for (let i = 0; i < cardsNeedingUpdate.length; i += BATCH_CONCURRENCY) {
+    const batch = cardsNeedingUpdate.slice(i, i + BATCH_CONCURRENCY);
+    await Promise.allSettled(
+      batch.map(card =>
+        fetchAndCacheCardType(card, database, env, {
+          persist: false,
+          recordUpdates: pendingUpdates,
+          force: true
+        })
+      )
+    );
+
+    if (i + BATCH_CONCURRENCY < cardsNeedingUpdate.length) {
+      await delay(RATE_LIMIT_DELAY_MS);
+    }
   }
 
   // Persist all updates at once

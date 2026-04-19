@@ -121,6 +121,14 @@ function buildSynonymExclusions(synonyms: Record<string, string> | undefined): S
 }
 
 export async function onRequest({ request, env }: RequestContext): Promise<Response> {
+  // Serve from Cloudflare Cache API to avoid re-generating on every request
+  const cacheKey = new URL(request.url);
+  const cache = caches.default;
+  const cachedResponse = await cache.match(cacheKey);
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
   const { origin } = new URL(request.url);
   const urls: UrlEntry[] = [];
   const seen = new Set<string>();
@@ -188,11 +196,20 @@ export async function onRequest({ request, env }: RequestContext): Promise<Respo
     '</urlset>'
   ].join('\n');
 
-  return new Response(xml, {
+  const response = new Response(xml, {
     status: 200,
     headers: {
       'Content-Type': 'application/xml; charset=UTF-8',
       'Cache-Control': 'public, max-age=3600'
     }
   });
+
+  // Store in Cache API for subsequent requests within the same PoP
+  try {
+    await cache.put(cacheKey, response.clone());
+  } catch {
+    // Cache store failure is non-fatal
+  }
+
+  return response;
 }

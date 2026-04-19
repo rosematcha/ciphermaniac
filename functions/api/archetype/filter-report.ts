@@ -93,11 +93,12 @@ async function fetchDecksFromPath(request: Request, path: string): Promise<any[]
 }
 
 async function loadDecks(request: Request, payload: ArchetypeFilterRequest): Promise<any[] | null> {
-  const archetypeSpecific = await fetchDecksFromPath(request, buildReportsPath(payload, true));
-  if (Array.isArray(archetypeSpecific)) {
-    return archetypeSpecific;
-  }
-  return fetchDecksFromPath(request, buildReportsPath(payload, false));
+  // Fire both requests in parallel; prefer archetype-specific result
+  const [specific, fallback] = await Promise.all([
+    fetchDecksFromPath(request, buildReportsPath(payload, true)),
+    fetchDecksFromPath(request, buildReportsPath(payload, false))
+  ]);
+  return Array.isArray(specific) ? specific : fallback;
 }
 
 function buildCachePayload(payload: ArchetypeFilterRequest): string {
