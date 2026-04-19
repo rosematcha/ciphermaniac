@@ -2,6 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import esbuild from 'esbuild';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,11 +12,14 @@ const outputFile = path.join(__dirname, '..', 'public', 'assets', 'style-optimiz
 const coreOutputFile = path.join(__dirname, '..', 'public', 'assets', 'style-core.css');
 const cardsOutputFile = path.join(__dirname, '..', 'public', 'assets', 'style-cards.css');
 const archetypeOutputFile = path.join(__dirname, '..', 'public', 'assets', 'style-archetype.css');
+const cardDetailOutputFile = path.join(__dirname, '..', 'public', 'assets', 'style-card-detail.css');
+const homeOutputFile = path.join(__dirname, '..', 'public', 'assets', 'style-home.css');
+const trendsOutputFile = path.join(__dirname, '..', 'public', 'assets', 'style-trends.css');
 
 console.log('🔨 Building optimized CSS...');
 
 try {
-  const buildBundle = (outputPath, files, title, suffix = '') => {
+  const buildBundle = async (outputPath, files, title, suffix = '') => {
     let combinedCSS = `/* ==========================================================================
      ${title}
      Generated: ${new Date().toISOString()}
@@ -32,10 +36,13 @@ try {
       }
     });
 
-    fs.writeFileSync(outputPath, `${combinedCSS}${suffix}`, 'utf8');
+    const raw = `${combinedCSS}${suffix}`;
+    const { code: minified } = await esbuild.transform(raw, { loader: 'css', minify: true });
+    fs.writeFileSync(outputPath, minified, 'utf8');
     const stats = fs.statSync(outputPath);
+    const savings = ((1 - stats.size / Buffer.byteLength(raw)) * 100).toFixed(1);
     console.log(`✅ Built CSS bundle: ${outputPath}`);
-    console.log(`📊 Size: ${stats.size} bytes`);
+    console.log(`📊 Size: ${stats.size} bytes (${savings}% minification savings)`);
   };
 
   const optimizedFiles = [
@@ -79,13 +86,19 @@ try {
 
   const cardsFiles = ['pages/_responsive.css'];
   const archetypeFiles = ['pages/_archetype.css', 'pages/_responsive.css'];
+  const cardDetailFiles = ['pages/_card-detail.css', 'pages/_responsive.css'];
+  const homeFiles = ['pages/_home.css', 'pages/_responsive.css'];
+  const trendsFiles = ['pages/_trends.css', 'pages/_responsive.css'];
 
   const lowEndMotionSuffix = `\n\n/* Motion defer for low-end devices during first meaningful paint */\n.motion-deferred .card-entering,\n.motion-deferred .grid .card,\n.motion-deferred .archetype-page,\n.motion-deferred .archetype-main {\n  animation: none !important;\n  transition: none !important;\n}\n`;
 
-  buildBundle(outputFile, optimizedFiles, 'Ciphermaniac - Optimized CSS Build');
-  buildBundle(coreOutputFile, coreFiles, 'Ciphermaniac - Core CSS Bundle', lowEndMotionSuffix);
-  buildBundle(cardsOutputFile, cardsFiles, 'Ciphermaniac - Cards CSS Bundle');
-  buildBundle(archetypeOutputFile, archetypeFiles, 'Ciphermaniac - Archetype CSS Bundle');
+  await buildBundle(outputFile, optimizedFiles, 'Ciphermaniac - Optimized CSS Build');
+  await buildBundle(coreOutputFile, coreFiles, 'Ciphermaniac - Core CSS Bundle', lowEndMotionSuffix);
+  await buildBundle(cardsOutputFile, cardsFiles, 'Ciphermaniac - Cards CSS Bundle');
+  await buildBundle(archetypeOutputFile, archetypeFiles, 'Ciphermaniac - Archetype CSS Bundle');
+  await buildBundle(cardDetailOutputFile, cardDetailFiles, 'Ciphermaniac - Card Detail CSS Bundle');
+  await buildBundle(homeOutputFile, homeFiles, 'Ciphermaniac - Home CSS Bundle');
+  await buildBundle(trendsOutputFile, trendsFiles, 'Ciphermaniac - Trends CSS Bundle');
 } catch (error) {
   console.error('❌ Build failed:', error.message);
   process.exit(1);
