@@ -68,11 +68,13 @@
   <link rel="manifest" href="/site.webmanifest" />
   <meta name="theme-color" content="#fee475" />
 
-  <!-- DNS prefetch for external resources -->
+  <!-- Preconnect + DNS prefetch for external image CDN (TCP + TLS handshake in advance) -->
+  <link rel="preconnect" href="https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com" crossorigin />
   <link rel="dns-prefetch" href="https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com" />
   <!-- Preload critical font to reduce layout shift -->
   <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="stylesheet" href="/assets/style-optimized.css?v=20260327b" />
+  <link rel="stylesheet" href="/assets/style-core.css?v=20260504a" />
+  <link rel="stylesheet" href="/assets/style-card-detail.css?v=20260504a" />
   <!-- Preload critical JS modules for faster page load -->
   <link rel="modulepreload" href="/assets/js/src/loaders/card.js" />
   <link rel="modulepreload" href="/assets/js/src/card.js" />
