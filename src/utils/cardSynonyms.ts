@@ -26,6 +26,17 @@ async function loadSynonymData(): Promise<SynonymDatabase> {
     return synonymData;
   }
 
+  // Try sessionStorage first to avoid re-fetching on page navigation within same session
+  try {
+    const cached = sessionStorage.getItem('cardSynonymsData');
+    if (cached) {
+      synonymData = JSON.parse(cached);
+      return synonymData ?? EMPTY_DATABASE;
+    }
+  } catch {
+    // sessionStorage unavailable or parse error — fall through to fetch
+  }
+
   try {
     const response = await fetch(CONFIG.API.SYNONYMS_URL);
     if (!response.ok) {
@@ -34,6 +45,12 @@ async function loadSynonymData(): Promise<SynonymDatabase> {
       return synonymData;
     }
     synonymData = await response.json();
+    // Cache in sessionStorage for subsequent page navigations
+    try {
+      sessionStorage.setItem('cardSynonymsData', JSON.stringify(synonymData));
+    } catch {
+      // Quota exceeded — still works from module-level variable
+    }
     return synonymData ?? EMPTY_DATABASE;
   } catch (error) {
     console.warn('Failed to load card synonyms:', error);
