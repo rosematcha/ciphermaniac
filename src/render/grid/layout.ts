@@ -2,60 +2,17 @@ import { computeLayout, syncControlsWidth } from '../../layoutHelper.js';
 import { perf } from '../../utils/performance.js';
 import { MOBILE_MAX_WIDTH } from '../constants.js';
 import { getGridElement } from './elements.js';
+import { getRowScale, type RowScaleMetrics } from './utils.js';
 
-function getExpectedCardsForRow(
-  rowIndex: number,
-  forceCompact: boolean,
-  effectiveBigRows: number,
-  effectiveMediumRows: number,
-  useSmallRows: boolean,
-  perRowBig: number,
-  targetMedium: number,
-  targetSmall: number
-): number {
-  if (forceCompact) {
-    return targetSmall;
-  }
-
-  const isLarge = rowIndex < effectiveBigRows;
-  const isMedium = !isLarge && rowIndex < effectiveBigRows + effectiveMediumRows;
-  const isSmall = !isLarge && !isMedium && useSmallRows;
-
-  if (isLarge) {
-    return perRowBig;
-  }
-  if (isMedium) {
-    return targetMedium;
-  }
-  if (isSmall) {
-    return targetSmall;
-  }
-  return targetMedium;
+function getExpectedCardsForRow(rowIndex: number, metrics: RowScaleMetrics): number {
+  return getRowScale(rowIndex, metrics).maxCount;
 }
 
-function computeTotalRows(
-  cardCount: number,
-  forceCompact: boolean,
-  effectiveBigRows: number,
-  effectiveMediumRows: number,
-  useSmallRows: boolean,
-  perRowBig: number,
-  targetMedium: number,
-  targetSmall: number
-): number {
+function computeTotalRows(cardCount: number, metrics: RowScaleMetrics): number {
   let cnt = 0;
   let idx = 0;
   while (idx < cardCount) {
-    const maxCount = getExpectedCardsForRow(
-      cnt,
-      forceCompact,
-      effectiveBigRows,
-      effectiveMediumRows,
-      useSmallRows,
-      perRowBig,
-      targetMedium,
-      targetSmall
-    );
+    const maxCount = getExpectedCardsForRow(cnt, metrics);
     idx += maxCount;
     cnt++;
   }
@@ -105,6 +62,18 @@ export function updateLayout(): void {
 
   const useSmallRows = forceCompact || (perRowBig >= 6 && targetSmall > targetMedium);
 
+  const layoutScaleMetrics: RowScaleMetrics = {
+    largeRows: effectiveBigRows,
+    mediumRows: effectiveMediumRows,
+    useSmallRows,
+    forceCompact,
+    perRowBig,
+    targetMedium,
+    targetSmall,
+    mediumScale,
+    smallScale
+  };
+
   const prev = grid._layoutMetrics;
   const groupingUnchanged =
     prev &&
@@ -117,23 +86,15 @@ export function updateLayout(): void {
     prev.useSmallRows === useSmallRows;
 
   let rowsHaveCorrectCounts = true;
+  // Cache querySelectorAll('.row') result to avoid duplicate DOM traversal
+  const cachedRows = groupingUnchanged ? (Array.from(grid.querySelectorAll('.row')) as HTMLElement[]) : [];
   if (groupingUnchanged) {
-    const existingRows = Array.from(grid.querySelectorAll('.row')) as HTMLElement[];
-    for (let rowIdx = 0; rowIdx < existingRows.length; rowIdx++) {
-      const row = existingRows[rowIdx];
+    for (let rowIdx = 0; rowIdx < cachedRows.length; rowIdx++) {
+      const row = cachedRows[rowIdx];
       const actualCardCount = row.querySelectorAll('.card').length;
-      const expectedCount = getExpectedCardsForRow(
-        rowIdx,
-        forceCompact,
-        effectiveBigRows,
-        effectiveMediumRows,
-        useSmallRows,
-        perRowBig,
-        targetMedium,
-        targetSmall
-      );
+      const expectedCount = getExpectedCardsForRow(rowIdx, layoutScaleMetrics);
 
-      const isLastRow = rowIdx === existingRows.length - 1;
+      const isLastRow = rowIdx === cachedRows.length - 1;
       const isValidCount = isLastRow ? actualCardCount <= expectedCount : actualCardCount === expectedCount;
 
       if (!isValidCount) {
@@ -144,25 +105,10 @@ export function updateLayout(): void {
   }
 
   if (groupingUnchanged && rowsHaveCorrectCounts) {
-    const rows = Array.from(grid.querySelectorAll('.row')) as HTMLElement[];
+    const rows = cachedRows;
     for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
       const row = rows[rowIndex];
-      const isLarge = !forceCompact && rowIndex < effectiveBigRows;
-      const isMedium = !forceCompact && !isLarge && rowIndex < effectiveBigRows + effectiveMediumRows;
-      const isSmall = forceCompact || (!isLarge && !isMedium && useSmallRows);
-
-      let scale;
-      if (forceCompact) {
-        scale = smallScale;
-      } else if (isLarge) {
-        scale = 1;
-      } else if (isMedium) {
-        scale = mediumScale;
-      } else if (isSmall) {
-        scale = smallScale;
-      } else {
-        scale = mediumScale;
-      }
+      const { scale } = getRowScale(rowIndex, layoutScaleMetrics);
 
       row.style.setProperty('--scale', String(scale));
       row.style.setProperty('--card-base', `${base}px`);
@@ -192,49 +138,14 @@ export function updateLayout(): void {
   let rowIndex = 0;
 
   const totalCards = Number.isInteger(grid._totalCards) ? grid._totalCards! : cards.length;
-  const newTotalRows = computeTotalRows(
-    totalCards,
-    forceCompact,
-    effectiveBigRows,
-    effectiveMediumRows,
-    useSmallRows,
-    perRowBig,
-    targetMedium,
-    targetSmall
-  );
+  const newTotalRows = computeTotalRows(totalCards, layoutScaleMetrics);
 
   while (i < cards.length) {
     const row = document.createElement('div');
     row.className = 'row';
     row.dataset.rowIndex = String(rowIndex);
 
-    const maxCount = getExpectedCardsForRow(
-      rowIndex,
-      forceCompact,
-      effectiveBigRows,
-      effectiveMediumRows,
-      useSmallRows,
-      perRowBig,
-      targetMedium,
-      targetSmall
-    );
-
-    const isLarge = !forceCompact && rowIndex < effectiveBigRows;
-    const isMedium = !forceCompact && !isLarge && rowIndex < effectiveBigRows + effectiveMediumRows;
-    const isSmall = forceCompact || (!isLarge && !isMedium && useSmallRows);
-
-    let scale;
-    if (forceCompact) {
-      scale = smallScale;
-    } else if (isLarge) {
-      scale = 1;
-    } else if (isMedium) {
-      scale = mediumScale;
-    } else if (isSmall) {
-      scale = smallScale;
-    } else {
-      scale = mediumScale;
-    }
+    const { scale, maxCount } = getRowScale(rowIndex, layoutScaleMetrics);
 
     row.style.setProperty('--scale', String(scale));
     row.style.setProperty('--card-base', `${base}px`);

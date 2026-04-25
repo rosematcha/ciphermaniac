@@ -1,22 +1,13 @@
 import { computeLayout } from '../../layoutHelper.js';
 import { CONFIG } from '../../config.js';
-import { normalizeCardNumber } from '../../../shared/cardUtils.js';
 import { MOBILE_MAX_WIDTH, NUM_LARGE_ROWS, NUM_MEDIUM_ROWS } from '../constants.js';
 import { getGridElement } from './elements.js';
+import { getCardIdentityKey, getRowScale, type RowScaleMetrics } from './utils.js';
 import type { CardItem } from '../../types/index.js';
 import type { RenderOptions } from '../types.js';
 import { makeCardElement } from '../cards/gridCards.js';
 import { renderSummary } from '../summary/summary.js';
 import { observeLoadMore } from './autoLoad.js';
-
-function getCardIdentityKey(item: CardItem): string | null {
-  const { uid } = item;
-  const setCode = item.set ? String(item.set).toUpperCase() : '';
-  const number = item.number ? normalizeCardNumber(item.number) : '';
-  const cardId = setCode && number ? `${setCode}~${number}` : null;
-  const name = item.name ? item.name.toLowerCase() : null;
-  return uid || cardId || name;
-}
 
 /**
  * Expand the grid with additional rows.
@@ -83,7 +74,20 @@ export function expandGridRows(
   const largeRowsLimit = forceCompact ? 0 : NUM_LARGE_ROWS;
   const mediumRowsLimit = forceCompact ? 0 : NUM_MEDIUM_ROWS;
 
-  const existingCards = grid.querySelectorAll('.card').length;
+  const rowScaleMetrics: RowScaleMetrics = {
+    largeRows: largeRowsLimit,
+    mediumRows: mediumRowsLimit,
+    useSmallRows,
+    forceCompact,
+    perRowBig,
+    targetMedium,
+    targetSmall,
+    mediumScale,
+    smallScale
+  };
+
+  // Reuse the existing querySelectorAll result from above instead of re-querying
+  const existingCards = existingCardEls.length;
   const existingRows = grid.querySelectorAll('.row').length;
 
   let cardIndex = existingCards;
@@ -99,28 +103,7 @@ export function expandGridRows(
     row.className = 'row';
     row.dataset.rowIndex = String(rowIndex);
 
-    const isLarge = !forceCompact && rowIndex < largeRowsLimit;
-    const isMedium = !forceCompact && !isLarge && rowIndex < largeRowsLimit + mediumRowsLimit;
-    const isSmall = forceCompact || (!isLarge && !isMedium && useSmallRows);
-
-    let scale;
-    let maxCount;
-    if (forceCompact) {
-      scale = smallScale;
-      maxCount = targetSmall;
-    } else if (isLarge) {
-      scale = 1;
-      maxCount = perRowBig;
-    } else if (isMedium) {
-      scale = mediumScale;
-      maxCount = targetMedium;
-    } else if (isSmall) {
-      scale = smallScale;
-      maxCount = targetSmall;
-    } else {
-      scale = mediumScale;
-      maxCount = targetMedium;
-    }
+    const { scale, maxCount } = getRowScale(rowIndex, rowScaleMetrics);
 
     row.style.setProperty('--scale', String(scale));
     row.style.setProperty('--card-base', `${base}px`);
@@ -130,7 +113,7 @@ export function expandGridRows(
     const count = Math.min(maxCount, items.length - cardIndex);
     for (let j = 0; j < count && cardIndex < items.length; j++, cardIndex++) {
       const item = items[cardIndex];
-      const useSm = isLarge || isMedium || !isSmall;
+      const useSm = scale !== smallScale;
       const cardEl = makeCardElement(item, useSm, overrides, { showPrice }, previousCardIds);
       cardEl.dataset.row = String(rowIndex);
       cardEl.dataset.col = String(j);
