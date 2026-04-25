@@ -56,19 +56,27 @@ async function loadFilterCombinationClientSide(filters: FilterDescriptor[]): Pro
     successFilter: state.successFilter
   });
 
+  // Fire both requests in parallel; prefer archetype-specific result
+  const [specificResult, fallbackResult] = await Promise.allSettled([
+    fetchAllDecks(state.tournament, state.archetypeBase),
+    fetchAllDecks(state.tournament)
+  ]);
+
   let decks;
-  try {
-    decks = await fetchAllDecks(state.tournament, state.archetypeBase);
+  if (specificResult.status === 'fulfilled') {
+    decks = specificResult.value;
     logger.debug('Using archetype-specific decks for filtering', {
       archetype: state.archetypeBase,
       deckCount: decks.length
     });
-  } catch {
-    decks = await fetchAllDecks(state.tournament);
+  } else if (fallbackResult.status === 'fulfilled') {
+    decks = fallbackResult.value;
     logger.debug('Falling back to main decks.json for filtering', {
       archetype: state.archetypeBase,
       deckCount: decks.length
     });
+  } else {
+    throw fallbackResult.reason;
   }
 
   const eligibleDecks = filterDecksBySuccess(decks, state.successFilter);

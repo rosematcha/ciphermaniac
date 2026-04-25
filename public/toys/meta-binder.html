@@ -107,6 +107,18 @@
               </div>
             </div>
             <div id="binder-tournaments" class="binder-checkbox-list" role="group" aria-label="Events to include"></div>
+            <div class="binder-placement-filter">
+              <label for="binder-placement-filter">Min. finish</label>
+              <select id="binder-placement-filter">
+                <option value="0">All finishes</option>
+                <option value="1">Winner only</option>
+                <option value="2">Top 2 (Finals)</option>
+                <option value="4">Top 4</option>
+                <option value="8">Top 8</option>
+                <option value="16">Top 16</option>
+                <option value="32">Top 32</option>
+              </select>
+            </div>
           </div>
 
           <div class="binder-control-group">
@@ -126,6 +138,57 @@
             ></div>
           </div>
 
+          <div class="binder-control-group">
+            <div class="binder-control-header">
+              <h3>Display Options</h3>
+            </div>
+
+            <div class="binder-display-section">
+              <div class="binder-control-header binder-control-header--sub">
+                <label for="binder-include-threshold" class="binder-threshold__label">Include Threshold</label>
+                <span id="binder-include-threshold-value" class="binder-threshold__value">0% — show all</span>
+              </div>
+              <div class="binder-threshold">
+                <input
+                  type="range"
+                  id="binder-include-threshold"
+                  class="binder-threshold__slider"
+                  min="0"
+                  max="100"
+                  value="0"
+                  aria-label="Include threshold percentage"
+                />
+              </div>
+              <p class="binder-threshold__hint">
+                Cards must clear the threshold both meta-wide and within the archetype. A card in 80% of one archetype
+                but only 1% of all decks will still be hidden from that archetype's section.
+              </p>
+            </div>
+
+            <div class="binder-display-section">
+              <div class="binder-control-header binder-control-header--sub">
+                <label for="binder-copy-threshold" class="binder-threshold__label">Copy Threshold</label>
+                <span id="binder-threshold-value" class="binder-threshold__value">0% — always show max</span>
+              </div>
+              <div class="binder-threshold">
+                <input
+                  type="range"
+                  id="binder-copy-threshold"
+                  class="binder-threshold__slider"
+                  min="0"
+                  max="100"
+                  value="0"
+                  aria-label="Copy threshold percentage"
+                />
+              </div>
+              <p class="binder-threshold__hint">
+                Sets how popular a copy count must be before it's suggested. At 0% the highest count seen in any deck is
+                used. Raise this to ignore outlier counts — e.g. at 10%, a count only one deck runs won't inflate the
+                suggestion.
+              </p>
+            </div>
+          </div>
+
           <div id="binder-stats" class="binder-stats" aria-live="polite"></div>
           <div class="binder-generate">
             <button type="button" id="binder-generate" class="binder-generate__button">Generate Binder</button>
@@ -137,6 +200,7 @@
               <h3>Export / Import</h3>
               <div class="binder-control-actions">
                 <button type="button" id="binder-export">Export Layout</button>
+                <button type="button" id="binder-export-ptcg-live">Export PTCG Live</button>
                 <button type="button" id="binder-import">Import Layout</button>
                 <input type="file" id="binder-import-file" accept=".json" hidden />
               </div>

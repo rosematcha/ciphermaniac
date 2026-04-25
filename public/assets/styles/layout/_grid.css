@@ -29,6 +29,8 @@
   align-items: stretch;
   --scale: 1;
   contain: layout style;
+  content-visibility: auto;
+  contain-intrinsic-block-size: 220px;
 }
 
 /* Add subtle top padding to first row */
