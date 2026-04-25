@@ -400,12 +400,27 @@ class TournamentDatabase {
 }
 
 const dbCache = new Map<string, Promise<TournamentDatabase>>();
+const MAX_CACHED_DATABASES = 3;
 
 export async function loadDatabase(tournamentPath: string): Promise<TournamentDatabase> {
   const existing = dbCache.get(tournamentPath);
   if (existing) {
+    // Move to end for LRU ordering
+    dbCache.delete(tournamentPath);
+    dbCache.set(tournamentPath, existing);
     return existing;
   }
+
+  // Evict oldest entry if at capacity
+  if (dbCache.size >= MAX_CACHED_DATABASES) {
+    const oldestKey = dbCache.keys().next().value;
+    if (oldestKey) {
+      const evicted = dbCache.get(oldestKey);
+      dbCache.delete(oldestKey);
+      evicted?.then(db => db.close()).catch(() => {});
+    }
+  }
+
   const dbPromise = TournamentDatabase.load(tournamentPath);
   dbCache.set(tournamentPath, dbPromise);
   try {

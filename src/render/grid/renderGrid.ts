@@ -1,13 +1,13 @@
 import { computeLayout, syncControlsWidth } from '../../layoutHelper.js';
 import { CONFIG } from '../../config.js';
 import { perf } from '../../utils/performance.js';
-import { normalizeCardNumber } from '../../../shared/cardUtils.js';
 import { escapeHtml } from '../../utils/html.js';
 import { saveGridScroll } from '../../utils/scrollRestore.js';
 import type { CardItem } from '../../types/index.js';
 import type { RenderOptions } from '../types.js';
 import { hideGridTooltip, showGridTooltip } from '../cardElement.js';
 import { MOBILE_MAX_WIDTH, NUM_LARGE_ROWS, NUM_MEDIUM_ROWS } from '../constants.js';
+import { getCardIdentityKey, getRowScale, type RowScaleMetrics } from './utils.js';
 import { getGridElement } from './elements.js';
 import {
   buildCardRenderHash,
@@ -21,15 +21,6 @@ import { preloadVisibleImagesParallel } from '../images/preloader.js';
 import { attachGridKeyboardNavigation } from '../navigation/keyboard.js';
 import { expandGridRows } from './expandRows.js';
 import { observeLoadMore } from './autoLoad.js';
-
-function getCardIdentityKey(item: CardItem): string | null {
-  const { uid } = item;
-  const setCode = item.set ? String(item.set).toUpperCase() : '';
-  const number = item.number ? normalizeCardNumber(item.number) : '';
-  const cardId = setCode && number ? `${setCode}~${number}` : null;
-  const name = item.name ? item.name.toLowerCase() : null;
-  return uid || cardId || name;
-}
 
 function setupCardNavigationDelegation(grid: HTMLElement & { _cardDelegationAttached?: boolean }): void {
   const hostGrid = grid;
@@ -140,6 +131,18 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
   const largeRowsLimit = forceCompact ? 0 : NUM_LARGE_ROWS;
   const mediumRowsLimit = forceCompact ? 0 : NUM_MEDIUM_ROWS;
 
+  const rowScaleMetrics: RowScaleMetrics = {
+    largeRows: largeRowsLimit,
+    mediumRows: mediumRowsLimit,
+    useSmallRows,
+    forceCompact,
+    perRowBig,
+    targetMedium,
+    targetSmall,
+    mediumScale,
+    smallScale
+  };
+
   const makeCard = (it: CardItem, useSm: boolean): HTMLElement => {
     const key = getCardIdentityKey(it);
 
@@ -182,6 +185,7 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
   const visibleRowsLimit = grid._visibleRows || CONFIG.UI.INITIAL_VISIBLE_ROWS;
 
   perf.start('render:create-cards');
+  const newRowsFragment = document.createDocumentFragment();
   while (i < items.length && rowIndex < visibleRowsLimit) {
     let row: HTMLElement;
     const isExistingRow = rowIndex < existingRows.length;
@@ -193,28 +197,7 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
     }
     row.dataset.rowIndex = String(rowIndex);
 
-    const isLarge = !forceCompact && rowIndex < largeRowsLimit;
-    const isMedium = !forceCompact && !isLarge && rowIndex < largeRowsLimit + mediumRowsLimit;
-    const isSmall = forceCompact || (!isLarge && !isMedium && useSmallRows);
-
-    let scale;
-    let maxCount;
-    if (forceCompact) {
-      scale = smallScale;
-      maxCount = targetSmall;
-    } else if (isLarge) {
-      scale = 1;
-      maxCount = perRowBig;
-    } else if (isMedium) {
-      scale = mediumScale;
-      maxCount = targetMedium;
-    } else if (isSmall) {
-      scale = smallScale;
-      maxCount = targetSmall;
-    } else {
-      scale = mediumScale;
-      maxCount = targetMedium;
-    }
+    const { scale, maxCount } = getRowScale(rowIndex, rowScaleMetrics);
 
     row.style.setProperty('--scale', String(scale));
     row.style.setProperty('--card-base', `${base}px`);
@@ -227,10 +210,17 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
     const cardsForRow: HTMLElement[] = [];
     const tempI = i;
     for (let j = 0; j < count && tempI + j < items.length; j++) {
-      const useSm = isLarge || isMedium || !isSmall;
+      const useSm = scale !== smallScale;
       const cardEl = makeCard(items[tempI + j], useSm);
       cardEl.dataset.row = String(rowIndex);
       cardEl.dataset.col = String(j);
+      // First row images are likely LCP — prioritize them
+      if (rowIndex === 0) {
+        const img = cardEl.querySelector('img');
+        if (img) {
+          img.fetchPriority = 'high';
+        }
+      }
       cardsForRow.push(cardEl);
     }
 
@@ -245,14 +235,18 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
     i += count;
 
     if (!isExistingRow) {
-      if (existingMoreWrap && existingMoreWrap.parentNode === grid) {
-        grid.insertBefore(row, existingMoreWrap);
-      } else {
-        grid.appendChild(row);
-      }
+      newRowsFragment.appendChild(row);
     }
 
     rowIndex++;
+  }
+  // Batch-insert all new rows in a single DOM operation
+  if (newRowsFragment.childNodes.length > 0) {
+    if (existingMoreWrap && existingMoreWrap.parentNode === grid) {
+      grid.insertBefore(newRowsFragment, existingMoreWrap);
+    } else {
+      grid.appendChild(newRowsFragment);
+    }
   }
   perf.end('render:create-cards');
 
@@ -275,32 +269,26 @@ export function render(items: CardItem[], overrides: Record<string, string> = {}
   }
   perf.end('render:preload-images');
 
+  // Closed-form row estimate: O(1) instead of O(n) item iteration
   const estimateTotalRows = (() => {
-    let cnt = 0;
-    let idx = 0;
-    while (idx < items.length) {
-      const rowIdx = cnt;
-      const isLargeLocal = !forceCompact && rowIdx < largeRowsLimit;
-      const isMediumLocal = !forceCompact && !isLargeLocal && rowIdx < largeRowsLimit + mediumRowsLimit;
-      const isSmallLocal = forceCompact || (!isLargeLocal && !isMediumLocal && useSmallRows);
-
-      let maxCount;
-      if (forceCompact) {
-        maxCount = targetSmall;
-      } else if (isLargeLocal) {
-        maxCount = perRowBig;
-      } else if (isMediumLocal) {
-        maxCount = targetMedium;
-      } else if (isSmallLocal) {
-        maxCount = targetSmall;
-      } else {
-        maxCount = targetMedium;
-      }
-
-      idx += maxCount;
-      cnt++;
+    if (items.length === 0) {
+      return 0;
     }
-    return cnt;
+    if (forceCompact) {
+      return Math.ceil(items.length / targetSmall);
+    }
+
+    const bigCapacity = largeRowsLimit * perRowBig;
+    const medCapacity = mediumRowsLimit * targetMedium;
+    const tailTarget = useSmallRows ? targetSmall : targetMedium;
+
+    if (items.length <= bigCapacity) {
+      return Math.ceil(items.length / perRowBig);
+    }
+    if (items.length <= bigCapacity + medCapacity) {
+      return largeRowsLimit + Math.ceil((items.length - bigCapacity) / targetMedium);
+    }
+    return largeRowsLimit + mediumRowsLimit + Math.ceil((items.length - bigCapacity - medCapacity) / tailTarget);
   })();
 
   grid._totalRows = estimateTotalRows;

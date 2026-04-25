@@ -81,6 +81,11 @@ function buildBaseName(normalized: string): string {
   return (normalized || 'unknown').replace(/ /g, '_').replace(/[^a-z0-9_]/g, '') || 'unknown';
 }
 
+// Memoization: cache sorted tournaments (filter-independent) and full results per filter
+let _lastTournamentIds: string | null = null;
+let _lastSortedTournaments: Tournament[] = [];
+const _trendResultCache = new Map<string, TrendDataset>();
+
 /**
  *
  * @param decks
@@ -99,10 +104,25 @@ export function buildTrendDataset(
   );
   const successFilter = options.successFilter || 'all';
 
-  const sortedTournaments = (Array.isArray(tournaments) ? tournaments : [])
-    .filter(tournament => tournament && tournament.id)
-    .map(tournament => ({ ...tournament }))
-    .sort((first, second) => Date.parse(first.date || '0') - Date.parse(second.date || '0'));
+  // Memoize sorted tournaments (filter-independent) and cache full results per filter
+  const tournamentIds = (Array.isArray(tournaments) ? tournaments : []).map(t => t?.id || '').join(',');
+  const cacheKey = `${decks.length}::${tournamentIds}::${successFilter}::${minAppearances}`;
+  const cached = _trendResultCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  let sortedTournaments: Tournament[];
+  if (tournamentIds === _lastTournamentIds) {
+    sortedTournaments = _lastSortedTournaments;
+  } else {
+    sortedTournaments = (Array.isArray(tournaments) ? tournaments : [])
+      .filter(tournament => tournament && tournament.id)
+      .map(tournament => ({ ...tournament }))
+      .sort((first, second) => Date.parse(first.date || '0') - Date.parse(second.date || '0'));
+    _lastTournamentIds = tournamentIds;
+    _lastSortedTournaments = sortedTournaments;
+  }
 
   const tournamentIndex = new Map<string, TournamentMeta>();
   sortedTournaments.forEach(tournament => {
@@ -255,7 +275,7 @@ export function buildTrendDataset(
     successFilter
   });
 
-  return {
+  const result: TrendDataset = {
     generatedAt: now.toISOString(),
     windowStart: options.windowStart || null,
     windowEnd: options.windowEnd || null,
@@ -267,6 +287,17 @@ export function buildTrendDataset(
     series,
     successFilter
   };
+
+  // Cache result, limit to 5 filter variants to prevent unbounded growth
+  if (_trendResultCache.size >= 5) {
+    const firstKey = _trendResultCache.keys().next().value;
+    if (firstKey) {
+      _trendResultCache.delete(firstKey);
+    }
+  }
+  _trendResultCache.set(cacheKey, result);
+
+  return result;
 }
 
 interface CardTrendEntry {
