@@ -73,6 +73,13 @@ class ParallelImageLoader {
       const result = await loadingPromise;
       if (result) {
         this.loadedImages.add(result);
+        // Evict oldest entries when exceeding size limit to prevent unbounded memory growth
+        if (this.loadedImages.size > 2000) {
+          const entries = Array.from(this.loadedImages);
+          for (let i = 0; i < entries.length - 1000; i++) {
+            this.loadedImages.delete(entries[i]);
+          }
+        }
       }
       return result;
     } finally {
