@@ -85,7 +85,7 @@ export const CONFIG: Config = Object.freeze({
     SYNONYMS_URL: 'https://r2.ciphermaniac.com/assets/card-synonyms.json',
     TIMEOUT_MS: 10000,
     RETRY_ATTEMPTS: 3,
-    RETRY_DELAY_MS: 1000,
+    RETRY_DELAY_MS: 500,
     JSON_CACHE_TTL_MS: 1000 * 60 * 5 // 5 minutes
   },
 
