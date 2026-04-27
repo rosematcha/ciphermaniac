@@ -31,6 +31,7 @@ export class DataCache {
   private cache: GridCache;
   private ttl: number;
   private masterMemory: Map<string, MasterCacheEntry>;
+  private persistTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     const persisted = (storage.get('gridCache') as GridCache | null) || {};
@@ -60,6 +61,16 @@ export class DataCache {
     storage.set('gridCache', this.cache);
   }
 
+  private schedulePersist(): void {
+    if (this.persistTimer) {
+      return;
+    }
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = null;
+      storage.set('gridCache', this.cache);
+    }, 500);
+  }
+
   /**
    * Check if a timestamp is expired
    * @param timestamp
@@ -81,7 +92,7 @@ export class DataCache {
       this.masterMemory.delete(tournament);
       if (this.cache.master?.[tournament]) {
         delete this.cache.master[tournament];
-        storage.set('gridCache', this.cache);
+        this.schedulePersist();
       }
       return null;
     }
@@ -109,7 +120,7 @@ export class DataCache {
       deckTotal: data.deckTotal,
       itemCount: Array.isArray(data.items) ? data.items.length : 0
     };
-    storage.set('gridCache', this.cache);
+    this.schedulePersist();
   }
 
   /**
@@ -135,6 +146,6 @@ export class DataCache {
       ts: Date.now(),
       list
     };
-    storage.set('gridCache', this.cache);
+    this.schedulePersist();
   }
 }
