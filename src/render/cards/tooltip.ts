@@ -1,4 +1,5 @@
 let gridTooltip: HTMLElement | null = null;
+let lastTooltipHtml = '';
 
 function ensureGridTooltip(): HTMLElement {
   if (gridTooltip) {
@@ -24,7 +25,10 @@ function ensureGridTooltip(): HTMLElement {
  */
 export function showGridTooltip(html: string, x: number, y: number): void {
   const tooltip = ensureGridTooltip();
-  tooltip.innerHTML = html;
+  if (lastTooltipHtml !== html) {
+    tooltip.innerHTML = html;
+    lastTooltipHtml = html;
+  }
   tooltip.classList.add('is-visible');
   const offsetX = 12;
   const offsetY = 12;
@@ -49,5 +53,6 @@ export function showGridTooltip(html: string, x: number, y: number): void {
 export function hideGridTooltip(): void {
   if (gridTooltip) {
     gridTooltip.classList.remove('is-visible');
+    lastTooltipHtml = '';
   }
 }

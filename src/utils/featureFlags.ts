@@ -2,7 +2,7 @@
  * Runtime feature flags for staged rollouts.
  */
 
-type FeatureFlagName = 'useSqliteManifestGate' | 'usePageCssSplit' | 'useArchetypeFilterApi';
+type FeatureFlagName = 'useArchetypeFilterApi';
 
 const FEATURE_FLAGS_META_NAME = 'ciphermaniac-feature-flags';
 const FEATURE_FLAGS_QUERY_PARAM = 'ff';
@@ -10,8 +10,6 @@ const FEATURE_FLAG_QUERY_PREFIX = 'ff_';
 const FEATURE_FLAGS_STORAGE_KEY = 'ciphermaniacFeatureFlags';
 
 const DEFAULT_FLAGS: Record<FeatureFlagName, boolean> = {
-  useSqliteManifestGate: true,
-  usePageCssSplit: true,
   useArchetypeFilterApi: false
 };
 
@@ -102,21 +100,37 @@ function getFlagFromStorage(flag: FeatureFlagName): boolean | null {
   return null;
 }
 
+const flagCache = new Map<FeatureFlagName, boolean>();
+
 export function isFeatureEnabled(flag: FeatureFlagName): boolean {
+  const cached = flagCache.get(flag);
+  if (cached !== undefined) {
+    return cached;
+  }
+
   const queryValue = getFlagFromQuery(flag);
   if (queryValue !== null) {
+    flagCache.set(flag, queryValue);
     return queryValue;
   }
 
   const storageValue = getFlagFromStorage(flag);
   if (storageValue !== null) {
+    flagCache.set(flag, storageValue);
     return storageValue;
   }
 
   const metaValue = getFlagFromMeta(flag);
   if (metaValue !== null) {
+    flagCache.set(flag, metaValue);
     return metaValue;
   }
 
-  return DEFAULT_FLAGS[flag];
+  const result = DEFAULT_FLAGS[flag];
+  flagCache.set(flag, result);
+  return result;
+}
+
+export function clearFeatureFlagCache(): void {
+  flagCache.clear();
 }

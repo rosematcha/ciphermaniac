@@ -70,6 +70,13 @@ function buildLimitlessUrl(setCode: string, number: string | number, useSm: bool
 
   const url = `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${normalizedSet}/${normalizedSet}_${paddedNumber}_R_EN_${size}.png`;
   urlCache.set(cacheKey, url);
+  // Safety limit to prevent unbounded memory growth in long sessions
+  if (urlCache.size > 5000) {
+    const keys = Array.from(urlCache.keys());
+    for (let i = 0; i < keys.length - 2500; i++) {
+      urlCache.delete(keys[i]);
+    }
+  }
   return url;
 }
 
