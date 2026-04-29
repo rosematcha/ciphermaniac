@@ -50,21 +50,31 @@ function createCardOption(item: CardOptionItem): HTMLOptionElement {
   return opt;
 }
 
-function updateCardDatalist(byExactName: Map<string, CardOptionItem>, cardNamesList: HTMLDataListElement) {
-  const allCards = Array.from(byExactName.values()).sort((cardA, cardB) => cardA.display.localeCompare(cardB.display));
+// Track which names are already in the datalist to enable incremental updates
+const datalistNames = new Set<string>();
+// Cached names array, invalidated on datalist changes
+let cachedNamesArray: string[] | null = null;
 
-  // Clear existing options without parameter reassignment
-  const listElement = cardNamesList;
-  while (listElement.firstChild) {
-    listElement.removeChild(listElement.firstChild);
+function updateCardDatalist(byExactName: Map<string, CardOptionItem>, cardNamesList: HTMLDataListElement) {
+  // Incremental update: only append options for new names
+  let added = 0;
+  for (const [, item] of byExactName) {
+    if (!datalistNames.has(item.display)) {
+      cardNamesList.appendChild(createCardOption(item));
+      datalistNames.add(item.display);
+      added++;
+    }
   }
 
-  allCards.forEach(item => {
-    listElement.appendChild(createCardOption(item));
-  });
+  // Invalidate cached names array if datalist changed
+  if (added > 0) {
+    cachedNamesArray = null;
+  }
 
-  // Update cache
-  const namesToCache = allCards.map(cardItem => cardItem.display);
+  // Update persisted cache
+  const namesToCache = Array.from(byExactName.values())
+    .sort((a, b) => a.display.localeCompare(b.display))
+    .map(item => item.display);
   saveCachedNames(namesToCache);
 }
 
@@ -263,7 +273,11 @@ function setupSearchHandlers(
   options: SearchOptions
 ) {
   function getAllNames(): string[] {
-    return Array.from(cardNamesList?.options || []).map(option => String(option.value || ''));
+    if (cachedNamesArray) {
+      return cachedNamesArray;
+    }
+    cachedNamesArray = Array.from(cardNamesList?.options || []).map(option => String(option.value || ''));
+    return cachedNamesArray;
   }
 
   function getUidForName(displayName: string): string {

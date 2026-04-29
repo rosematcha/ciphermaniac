@@ -6,6 +6,7 @@
 
 import { CARD_TYPE_HIERARCHY, getChildrenForParent, getParentForChild } from '../utils/cardTypeHierarchy.js';
 import { logger } from '../utils/logger.js';
+import { debounce } from '../utils/performance.js';
 
 interface AppState {
   cleanup: {
@@ -311,6 +312,43 @@ export function createHierarchicalCardTypeDropdown(
   }
 
   /**
+   * Fast filter: toggle visibility of existing DOM elements instead of rebuilding.
+   * Only handles filter text changes — selection/collapse changes still use renderOptions().
+   */
+  function applyFilterVisibility() {
+    if (!list) {
+      return;
+    }
+    const filter = hierarchicalState.filterText;
+    const { children } = list;
+    for (let i = 0; i < children.length; i++) {
+      const el = children[i] as HTMLElement;
+      if (el.classList.contains('filter-option--all')) {
+        // Always show the "All" option
+        (el as HTMLElement).hidden = false;
+        continue;
+      }
+      const parentVal = el.getAttribute('data-parent') || '';
+      const _childVal = el.getAttribute('data-child') || '';
+      if (!filter) {
+        el.hidden = false;
+        continue;
+      }
+      // Match against text content
+      const text = normalizeForSearch(el.textContent || '');
+      // Parents: show if their label matches or any child matches
+      if (el.classList.contains('filter-option--parent')) {
+        const parent = CARD_TYPE_HIERARCHY.find(p => p.value === parentVal);
+        const anyChildMatch = parent?.children.some(c => normalizeForSearch(c.label).includes(filter));
+        el.hidden = !text.includes(filter) && !anyChildMatch;
+      } else {
+        // Children: show if own text or parent text matches
+        el.hidden = !text.includes(filter) && !normalizeForSearch(parentVal).includes(filter);
+      }
+    }
+  }
+
+  /**
    * Render the hierarchical options list
    */
   function renderOptions() {
@@ -608,10 +646,19 @@ export function createHierarchicalCardTypeDropdown(
     }
   });
 
-  state.cleanup.addEventListener(search, 'input', () => {
-    hierarchicalState.filterText = normalizeForSearch(search.value.trim());
-    renderOptions();
-  });
+  state.cleanup.addEventListener(
+    search,
+    'input',
+    debounce(() => {
+      hierarchicalState.filterText = normalizeForSearch(search.value.trim());
+      // Fast path: toggle visibility on existing DOM if elements are already rendered
+      if (list && list.children.length > 0) {
+        applyFilterVisibility();
+      } else {
+        renderOptions();
+      }
+    }, 100)
+  );
 
   state.cleanup.addEventListener(menu, 'keydown', (event: Event) => {
     const e = event as KeyboardEvent;
