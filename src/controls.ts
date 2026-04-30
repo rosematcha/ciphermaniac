@@ -47,9 +47,12 @@ function getComparator(sortKey: string): (a: CardItem, b: CardItem) => number {
  * Get current filter and sort values from DOM
  * @returns {object} Current filter state
  */
+let _cachedSearchInput: HTMLInputElement | null = null;
+let _cachedSortSelect: HTMLSelectElement | null = null;
+
 function getCurrentFilters() {
-  const searchInput = document.getElementById('search') as HTMLInputElement | null;
-  const sortSelect = document.getElementById('sort') as HTMLSelectElement | null;
+  const searchInput = (_cachedSearchInput ??= document.getElementById('search') as HTMLInputElement | null);
+  const sortSelect = (_cachedSortSelect ??= document.getElementById('sort') as HTMLSelectElement | null);
   const selectedSets = readSelectedSets();
   const selectedRegulationMarks = readSelectedRegulationMarks();
 
@@ -67,6 +70,40 @@ function getCurrentFilters() {
   };
 }
 
+// Prefix cache for incremental search: when typing "pik" after "pi",
+// filter the "pi" result set instead of re-scanning all items.
+let _searchPrefixCache: { query: string; items: CardItem[]; results: CardItem[] } | null = null;
+
+/** Invalidate search prefix cache when the dataset changes. */
+export function invalidateSearchCache(): void {
+  _searchPrefixCache = null;
+}
+
+function matchesSearchQuery(item: CardItem, query: string): boolean {
+  if (!item.name) {
+    return false;
+  }
+  if (item.name.toLowerCase().includes(query)) {
+    return true;
+  }
+  if (item.uid && item.uid.toLowerCase().includes(query)) {
+    return true;
+  }
+  if (item.set && item.set.toLowerCase().includes(query)) {
+    return true;
+  }
+  if (item.number && String(item.number).toLowerCase().includes(query)) {
+    return true;
+  }
+  if (item.set && item.number) {
+    const combined = `${item.name} ${item.set} ${item.number}`.toLowerCase();
+    if (combined.includes(query)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Apply search filter to items
  * @param items - Array of card items
@@ -75,48 +112,27 @@ function getCurrentFilters() {
  */
 function applySearchFilter(items: CardItem[], query: string): CardItem[] {
   if (!query || query.length < CONFIG.UI.SEARCH_MIN_LENGTH) {
+    _searchPrefixCache = null;
     return items;
   }
 
-  const filtered = items.filter(item => {
-    if (!item.name) {
-      return false;
-    }
+  // Use prefix cache: if new query extends previous query on the same dataset,
+  // filter the previous results instead of rescanning all items.
+  let sourceItems = items;
+  if (
+    _searchPrefixCache &&
+    _searchPrefixCache.items === items &&
+    query.startsWith(_searchPrefixCache.query) &&
+    _searchPrefixCache.query.length >= CONFIG.UI.SEARCH_MIN_LENGTH
+  ) {
+    sourceItems = _searchPrefixCache.results;
+  }
 
-    // Search in card name
-    if (item.name.toLowerCase().includes(query)) {
-      return true;
-    }
+  const filtered = sourceItems.filter(item => matchesSearchQuery(item, query));
 
-    // Search in UID if it exists
-    if (item.uid && item.uid.toLowerCase().includes(query)) {
-      return true;
-    }
+  _searchPrefixCache = { query, items, results: filtered };
 
-    // Also search in set and number for cards that have them (trainers, energy, pokemon)
-    if (item.set && item.set.toLowerCase().includes(query)) {
-      return true;
-    }
-
-    if (item.number) {
-      const numStr = String(item.number).toLowerCase();
-      if (numStr.includes(query)) {
-        return true;
-      }
-    }
-
-    // Search in combined "name set number" format
-    if (item.set && item.number) {
-      const combinedSearch = `${item.name} ${item.set} ${item.number}`.toLowerCase();
-      if (combinedSearch.includes(query)) {
-        return true;
-      }
-    }
-
-    return false;
-  });
-
-  logger.debug(`Search filtered ${items.length} items to ${filtered.length}`, {
+  logger.debug(`Search filtered ${sourceItems.length} items to ${filtered.length}`, {
     query
   });
   return filtered;
