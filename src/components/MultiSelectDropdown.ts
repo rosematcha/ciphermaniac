@@ -334,13 +334,16 @@ export function createMultiSelectDropdown(state: AppState, config: DropdownConfi
     chipsContainer.replaceChildren(...fragment.childNodes);
   };
 
+  let cachedFont: string | null = null;
   const measureWidth = (textValue: string) => {
     if (!measureContext) {
       return textValue.length * 8;
     }
-    const computedStyle = window.getComputedStyle(trigger);
-    const font = `${computedStyle.fontWeight} ${computedStyle.fontSize} ${computedStyle.fontFamily}`;
-    measureContext.font = font;
+    if (!cachedFont) {
+      const computedStyle = window.getComputedStyle(trigger);
+      cachedFont = `${computedStyle.fontWeight} ${computedStyle.fontSize} ${computedStyle.fontFamily}`;
+    }
+    measureContext.font = cachedFont;
     return measureContext.measureText(textValue).width;
   };
 
