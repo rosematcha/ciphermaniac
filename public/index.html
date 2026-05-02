@@ -51,7 +51,12 @@
 
     <!-- Preload critical font to reduce layout shift -->
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="/assets/style-optimized.css?v=20260327b" />
+    <link rel="stylesheet" href="/assets/style-core.css?v=20260504a" />
+    <link rel="stylesheet" href="/assets/style-home.css?v=20260504a" />
+    <!-- Prefetch likely navigation targets for faster page transitions -->
+    <link rel="prefetch" href="/assets/style-cards.css?v=20260504a" as="style" />
+    <link rel="prefetch" href="/assets/js/src/loaders/cards.js" as="script" />
+    <link rel="prefetch" href="/assets/style-trends.css?v=20260504a" as="style" />
 
     <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
@@ -243,6 +248,13 @@
           }
         }
       });
+    </script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
     </script>
   </body>
 </html>
