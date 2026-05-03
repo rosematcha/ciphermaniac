@@ -75,60 +75,13 @@
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#fee475" />
 
+    <!-- Preconnect + DNS prefetch for external image CDN -->
+    <link rel="preconnect" href="https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com" crossorigin />
+    <link rel="dns-prefetch" href="https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com" />
     <!-- Preload critical font to reduce layout shift -->
     <link rel="preload" href="/assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin />
-    <script>
-      (() => {
-        const flagName = 'usePageCssSplit';
-        const parse = value => {
-          const normalized = String(value || '')
-            .trim()
-            .toLowerCase();
-          if (['1', 'true', 'yes', 'on', 'enabled'].includes(normalized)) return true;
-          if (['0', 'false', 'no', 'off', 'disabled'].includes(normalized)) return false;
-          return null;
-        };
-        let enabled = false;
-        try {
-          const params = new URLSearchParams(window.location.search || '');
-          const direct = parse(params.get(`ff_${flagName}`));
-          if (direct !== null) {
-            enabled = direct;
-          } else {
-            const flags = String(params.get('ff') || '')
-              .split(',')
-              .map(part => part.trim())
-              .filter(Boolean);
-            if (flags.includes(`-${flagName}`) || flags.includes(`!${flagName}`)) {
-              enabled = false;
-            } else if (flags.includes(flagName)) {
-              enabled = true;
-            } else {
-              const stored = localStorage.getItem('ciphermaniacFeatureFlags');
-              if (stored) {
-                const parsed = JSON.parse(stored);
-                if (typeof parsed?.[flagName] === 'boolean') {
-                  enabled = parsed[flagName];
-                }
-              }
-            }
-          }
-        } catch {}
-
-        const styles = enabled
-          ? ['/assets/style-core.css?v=20260327a', '/assets/style-cards.css?v=20260327a']
-          : ['/assets/style-optimized.css?v=20260327b'];
-        styles.forEach(href => {
-          const link = document.createElement('link');
-          link.rel = 'stylesheet';
-          link.href = href;
-          document.head.appendChild(link);
-        });
-      })();
-    </script>
-    <noscript>
-      <link rel="stylesheet" href="/assets/style-optimized.css?v=20260327b" />
-    </noscript>
+    <link rel="stylesheet" href="/assets/style-core.css?v=20260504a" />
+    <link rel="stylesheet" href="/assets/style-cards.css?v=20260504a" />
     <!-- Preload loader module for faster page load -->
     <link rel="modulepreload" href="/assets/js/src/loaders/cards.js" />
   </head>
@@ -546,5 +499,12 @@
       enhanceFooter(document.querySelector('.site-footer'));
     </script>
     <script src="/assets/js/src/loaders/cards.js" type="module"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
   </body>
 </html>

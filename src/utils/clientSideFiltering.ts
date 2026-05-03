@@ -463,6 +463,107 @@ function summarizeFilters(filters: Filter[]): string {
 
 export { aggregateDecks };
 
+const AGGREGATE_YIELD_CHUNK = 500;
+
+/**
+ * Async variant of aggregateDecks that yields to the event loop every
+ * AGGREGATE_YIELD_CHUNK decks, preventing main-thread blocking on large datasets.
+ * Use this path for user-triggered aggregation (success filter changes, etc.).
+ */
+export async function aggregateDecksAsync(decks: Deck[]): Promise<FilteredReport> {
+  if (decks.length <= AGGREGATE_YIELD_CHUNK) {
+    return aggregateDecks(decks);
+  }
+
+  const cardUsage = new Map<string, CardUsage>();
+
+  for (let i = 0; i < decks.length; i++) {
+    if (i > 0 && i % AGGREGATE_YIELD_CHUNK === 0) {
+      await new Promise<void>(resolve => {
+        setTimeout(resolve, 0);
+      });
+    }
+
+    const deck = decks[i];
+    const cards = getDeckCards(deck);
+    if (!cards.length) {
+      continue;
+    }
+    const deckId = deriveDeckId(deck, i);
+
+    for (const card of cards) {
+      const cardId = buildCardKeyFromCard(card);
+      if (!cardId) {
+        continue;
+      }
+
+      if (!cardUsage.has(cardId)) {
+        const normalizedNumber = normalizeCardNumber(card?.number);
+        cardUsage.set(cardId, {
+          cardId,
+          name: card?.name || 'Unknown Card',
+          set: card?.set,
+          number: card?.number || normalizedNumber,
+          normalizedNumber,
+          category: card?.category,
+          trainerType: card?.trainerType,
+          energyType: card?.energyType,
+          aceSpec: Boolean(card?.aceSpec),
+          supertype: card?.supertype,
+          uid:
+            card?.uid ||
+            (card?.name && card?.set && normalizedNumber
+              ? `${card.name}::${card.set}::${normalizedNumber}`
+              : undefined),
+          found: 0,
+          deckInstances: [],
+          histogram: new Map()
+        });
+      }
+
+      const usage = cardUsage.get(cardId)!;
+      const cardCount = Number(card?.count ?? card?.copies ?? 0);
+      usage.found += 1;
+      usage.deckInstances.push({ deckId, count: cardCount, archetype: deck?.archetype });
+      usage.histogram.set(cardCount, (usage.histogram.get(cardCount) || 0) + 1);
+    }
+  }
+
+  const deckTotal = decks.length;
+  const items = Array.from(cardUsage.values()).map(usage => {
+    const distEntries = createDistFromHistogram(usage.histogram, usage.found);
+    const dist: Distribution[] = distEntries.sort((left, right) => {
+      if (right.percent !== left.percent) {
+        return right.percent - left.percent;
+      }
+      return right.copies - left.copies;
+    });
+    const pct = calculatePercentage(usage.found, deckTotal);
+    return {
+      name: usage.name,
+      set: usage.set,
+      number: usage.number,
+      category: usage.category,
+      trainerType: usage.trainerType,
+      energyType: usage.energyType,
+      aceSpec: Boolean(usage.aceSpec),
+      supertype: usage.supertype,
+      uid: usage.uid,
+      cardId: usage.cardId,
+      found: usage.found,
+      total: deckTotal,
+      pct,
+      dist,
+      deckInstances: usage.deckInstances.slice(),
+      rank: 0
+    };
+  });
+
+  const sortedItems = sortReportItems(items);
+  const rankedItems = assignRanks(sortedItems);
+  return { deckTotal, items: rankedItems };
+}
+
 /**
  * Generate filtered report for multiple filters.
  * @param decks - Array of deck objects to filter
