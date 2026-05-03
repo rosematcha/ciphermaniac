@@ -151,7 +151,7 @@ async function buildDeckReport(
   successFilter: string = 'all',
   archetypeBase: string | string[] | null = null
 ): Promise<TournamentReport> {
-  const { aggregateDecks, filterDecksBySuccess } = await import('./utils/clientSideFiltering.js');
+  const { aggregateDecksAsync, filterDecksBySuccess } = await import('./utils/clientSideFiltering.js');
   const selection = Array.isArray(tournaments) ? tournaments : [tournaments];
   const deckLists = await Promise.all(selection.map(tournament => fetchTournamentDecks(tournament)));
   const allDecks = deckLists.flat();
@@ -167,7 +167,7 @@ async function buildDeckReport(
     ? successDecks.filter((deck: Deck) => archetypeFilter.has(normalizeArchetypeValue(deck?.archetype)))
     : successDecks;
 
-  return aggregateDecks(scopedDecks);
+  return aggregateDecksAsync(scopedDecks);
 }
 
 /**
@@ -1296,6 +1296,16 @@ async function init() {
       }
     });
 
+    // Initialize data-independent UI infrastructure before any async work
+    initBackToTop();
+    initGridResizeObserver();
+    window.addEventListener(
+      'resize',
+      debounce(() => {
+        updateLayout();
+      }, 100)
+    );
+
     // Determine initial tournament selection (fast, no network calls)
     const { selection: initialSelection, needsTournamentList } = getInitialTournamentSelection(appState);
     appState.selectedTournaments = initialSelection;
@@ -1327,33 +1337,13 @@ async function init() {
     renderSummary(document.getElementById('summary'), data.deckTotal, data.items.length);
     updateSetFilterOptions(data.items);
 
-    // Setup archetype selector with final selection
-    await setupArchetypeSelector(finalSelection, cache, appState);
-
-    // Apply initial filters
-    await applyCurrentFilters(appState);
+    // Archetype selector and initial filters can run in parallel:
+    // - setupArchetypeSelector populates the archetype dropdown (independent)
+    // - applyCurrentFilters renders the card grid (independent)
+    await Promise.all([setupArchetypeSelector(finalSelection, cache, appState), applyCurrentFilters(appState)]);
 
     // Restore scroll position if returning from card detail
     restoreGridScroll();
-
-    // Back-to-top floating button
-    initBackToTop();
-
-    // PRIORITY 3: Cards are now rendered in DOM
-    // The render.js/updateLayout handles image loading with intersection observer
-    // Images in viewport will load first automatically via browser's lazy loading
-
-    // Initialize ResizeObserver for container-based resize detection (more reliable)
-    initGridResizeObserver();
-
-    // Keep window resize as fallback for browsers with limited ResizeObserver support
-    // and for cases where viewport changes but grid container doesn't
-    window.addEventListener(
-      'resize',
-      debounce(() => {
-        updateLayout();
-      }, 100)
-    );
 
     // Handle filters redirect payload if present
     const redirectPayload = consumeFiltersRedirectFlag();
