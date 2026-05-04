@@ -181,17 +181,39 @@ function buildThumbnailUrl(setCode: string, number: string): string | null {
   return `https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/${set}/${set}_${num}_R_EN_SM.png`;
 }
 
-function getThumbnailUrls(thumbnails?: string[]): string[] {
-  if (!Array.isArray(thumbnails) || !thumbnails.length) {
-    return [];
+function getThumbnailUrls(thumbnails?: string[], signatureCards?: SignatureCard[]): string[] {
+  if (Array.isArray(thumbnails) && thumbnails.length) {
+    const urls = thumbnails
+      .slice(0, 2) // Max 2 thumbnails for split view
+      .map(entry => {
+        const [set, number] = entry.split('/');
+        return buildThumbnailUrl(set, number);
+      })
+      .filter((url): url is string => url !== null);
+    if (urls.length) {
+      return urls;
+    }
   }
-  return thumbnails
-    .slice(0, 2) // Max 2 thumbnails for split view
-    .map(entry => {
-      const [set, number] = entry.split('/');
-      return buildThumbnailUrl(set, number);
-    })
-    .filter((url): url is string => url !== null);
+
+  if (Array.isArray(signatureCards) && signatureCards.length) {
+    const ranked = [...signatureCards].sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0));
+    const urls: string[] = [];
+    for (const card of ranked) {
+      if (!card?.set || !card?.number) {
+        continue;
+      }
+      const url = buildThumbnailUrl(card.set, card.number);
+      if (url) {
+        urls.push(url);
+        if (urls.length >= 2) {
+          break;
+        }
+      }
+    }
+    return urls;
+  }
+
+  return [];
 }
 
 function buildFallbackText(name: string): string {
@@ -341,7 +363,7 @@ function createListItem(summary: ArchetypeSummary, index: number, maxPercent: nu
     const fallbackText = buildFallbackText(summary.label);
     thumbnailFallback.textContent = fallbackText;
 
-    const urls = getThumbnailUrls(summary.thumbnails);
+    const urls = getThumbnailUrls(summary.thumbnails, summary.signatureCards);
 
     if (urls.length === 0) {
       // No thumbnails - show fallback immediately
