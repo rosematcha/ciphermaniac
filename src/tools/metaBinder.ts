@@ -1,15 +1,16 @@
-import { fetchDecks, fetchTournamentsList, getCardPrice } from '../api.js';
-import { analyzeEvents, type BinderDataset, buildBinderDataset } from './metaBinderData.js';
+import { fetchDecks, fetchTournamentsList, fetchTournamentSummary, getCardPrice } from '../api.js';
+import { analyzeEvents, type BinderDataset, buildBinderDataset, computeThresholdCopies } from './metaBinderData.js';
 import { buildThumbCandidates } from '../thumbs.js';
 import { AppError, ErrorTypes } from '../utils/errorHandler.js';
 import { debounce } from '../utils/performance.js';
 import { storage } from '../utils/storage.js';
 import { logger } from '../utils/logger.js';
 import { escapeHtml } from '../utils/html.js';
-import { CONFIG } from '../config.js';
 
 const DEFAULT_RECENT_EVENTS = 6;
 const CARDS_PER_PAGE = 12;
+const TOURNAMENTS_DEFAULT_VISIBLE = 15;
+const ARCHETYPES_MIN_DECK_COUNT = 2;
 const STORAGE_KEY = 'binderSelections';
 const DEFAULT_ONLINE_META = 'Online - Last 14 Days';
 
@@ -58,8 +59,14 @@ interface BinderElements {
   cardTemplate: HTMLTemplateElement | null;
   placeholderTemplate: HTMLTemplateElement | null;
   exportButton: HTMLButtonElement | null;
+  exportPtcgLiveButton: HTMLButtonElement | null;
   importButton: HTMLButtonElement | null;
   importFile: HTMLInputElement | null;
+  thresholdSlider: HTMLInputElement | null;
+  thresholdValueLabel: HTMLElement | null;
+  includeThresholdSlider: HTMLInputElement | null;
+  includeThresholdValueLabel: HTMLElement | null;
+  placementFilterSelect: HTMLSelectElement | null;
 }
 
 const state: {
@@ -76,6 +83,11 @@ const state: {
   isBinderDirty: boolean;
   selectionDecks: number;
   metrics: BinderMetrics | null;
+  copyThreshold: number;
+  includeThreshold: number;
+  placementFilter: number;
+  showAllTournaments: boolean;
+  showAllArchetypes: boolean;
 } = {
   tournaments: [],
   selectedTournaments: new Set(),
@@ -89,7 +101,12 @@ const state: {
   isGenerating: false,
   isBinderDirty: true,
   selectionDecks: 0,
-  metrics: null
+  metrics: null,
+  copyThreshold: 0,
+  includeThreshold: 0,
+  placementFilter: 0,
+  showAllTournaments: false,
+  showAllArchetypes: false
 };
 
 let pendingArchetypeSelection: Set<string> | null = null;
@@ -114,8 +131,14 @@ const elements: BinderElements = {
   cardTemplate: document.getElementById('binder-card-template') as HTMLTemplateElement | null,
   placeholderTemplate: document.getElementById('binder-card-placeholder') as HTMLTemplateElement | null,
   exportButton: document.getElementById('binder-export') as HTMLButtonElement | null,
+  exportPtcgLiveButton: document.getElementById('binder-export-ptcg-live') as HTMLButtonElement | null,
   importButton: document.getElementById('binder-import') as HTMLButtonElement | null,
-  importFile: document.getElementById('binder-import-file') as HTMLInputElement | null
+  importFile: document.getElementById('binder-import-file') as HTMLInputElement | null,
+  thresholdSlider: document.getElementById('binder-copy-threshold') as HTMLInputElement | null,
+  thresholdValueLabel: document.getElementById('binder-threshold-value'),
+  includeThresholdSlider: document.getElementById('binder-include-threshold') as HTMLInputElement | null,
+  includeThresholdValueLabel: document.getElementById('binder-include-threshold-value'),
+  placementFilterSelect: document.getElementById('binder-placement-filter') as HTMLSelectElement | null
 };
 
 function setLoading(isLoading: boolean): void {
@@ -257,10 +280,26 @@ function ensurePlaceholderTemplate(): HTMLTemplateElement {
   return elements.placeholderTemplate;
 }
 
+function getEffectiveCopies(card: BinderCard): number {
+  if (state.copyThreshold <= 0 || !card.copyDistribution || Object.keys(card.copyDistribution).length === 0) {
+    return Math.max(1, card.maxCopies || 1);
+  }
+  return Math.max(1, computeThresholdCopies(card.copyDistribution, card.totalDecksWithCard, state.copyThreshold));
+}
+
+function getCardIncludeRatio(card: BinderCard, options: CardRenderOptions): number {
+  if (options.mode === 'archetype' && options.archetype) {
+    const usage = card.usageByArchetype.find(entry => entry.archetype === options.archetype);
+    const archetypeRatio = usage ? usage.ratio : 0;
+    return Math.min(archetypeRatio, card.deckShare);
+  }
+  return card.deckShare;
+}
+
 function inflateCards(cards: BinderCard[]): Array<BinderCard & { copyIndex: number; copyTotal: number }> {
   const expanded: Array<BinderCard & { copyIndex: number; copyTotal: number }> = [];
   for (const card of cards) {
-    const total = Math.max(1, Number(card.maxCopies) || 1);
+    const total = getEffectiveCopies(card);
     for (let copyIndex = 1; copyIndex <= total; copyIndex += 1) {
       expanded.push({
         ...card,
@@ -288,7 +327,7 @@ function createCardElement(
   const metaEl = clone.querySelector<HTMLElement>('.binder-card__meta');
 
   if (copies) {
-    const totalCopies = Math.max(1, Number(card.copyTotal) || Number(card.maxCopies) || 1);
+    const totalCopies = Math.max(1, Number(card.copyTotal) || getEffectiveCopies(card));
     const copyIndex = Math.max(1, Number(card.copyIndex) || 1);
     if (totalCopies > 1) {
       copies.textContent = `${copyIndex}/${totalCopies}`;
@@ -391,7 +430,10 @@ function buildMetaLine(card: BinderCard, options: CardRenderOptions): string {
 }
 
 function buildTooltip(card: BinderCard, options: CardRenderOptions): string {
-  const lines = [`Max copies: ${Math.max(1, Number(card.maxCopies) || 1)}`];
+  const effective = getEffectiveCopies(card);
+  const raw = Math.max(1, card.maxCopies || 1);
+  const copiesLabel = effective < raw ? `Copies: ${effective} (max seen: ${raw})` : `Copies: ${effective}`;
+  const lines = [copiesLabel];
   if (options.mode === 'archetype' && options.archetype) {
     const usage = card.usageByArchetype.find(entry => entry.archetype === options.archetype);
     if (usage) {
@@ -419,7 +461,11 @@ function buildTooltip(card: BinderCard, options: CardRenderOptions): string {
 function renderBinderPages(cards: BinderCard[], container: HTMLElement, options: CardRenderOptions = {}): void {
   const targetContainer = container;
   targetContainer.innerHTML = '';
-  const expandedCards = inflateCards(cards);
+  const visibleCards =
+    state.includeThreshold > 0
+      ? cards.filter(card => getCardIncludeRatio(card, options) >= state.includeThreshold)
+      : cards;
+  const expandedCards = inflateCards(visibleCards);
 
   if (!expandedCards.length) {
     const empty = document.createElement('p');
@@ -653,7 +699,11 @@ function renderTournamentsControls(): void {
 
   const fragment = document.createDocumentFragment();
 
-  for (const tournament of state.tournaments) {
+  const visible = state.showAllTournaments
+    ? state.tournaments
+    : state.tournaments.slice(0, TOURNAMENTS_DEFAULT_VISIBLE);
+
+  for (const tournament of visible) {
     const id = `tournament-${normalizeId(tournament)}`;
     const label = document.createElement('label');
     label.className = 'binder-checkbox';
@@ -675,6 +725,19 @@ function renderTournamentsControls(): void {
     label.appendChild(checkbox);
     label.appendChild(caption);
     fragment.appendChild(label);
+  }
+
+  const hiddenCount = state.tournaments.length - TOURNAMENTS_DEFAULT_VISIBLE;
+  if (!state.showAllTournaments && hiddenCount > 0) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'binder-show-more';
+    btn.textContent = `Show ${hiddenCount} more`;
+    btn.addEventListener('click', () => {
+      state.showAllTournaments = true;
+      renderTournamentsControls();
+    });
+    fragment.appendChild(btn);
   }
 
   elements.tournamentsList.appendChild(fragment);
@@ -704,12 +767,21 @@ function renderArchetypeControls(): void {
     });
 
   const filter = state.archetypeFilter.trim().toLowerCase();
+  const isSearchActive = filter.length > 0;
 
   elements.archetypesList.innerHTML = '';
   const fragment = document.createDocumentFragment();
 
+  let hiddenCount = 0;
+
   for (const archetype of archetypes) {
     if (filter && !archetype.displayName.toLowerCase().includes(filter)) {
+      continue;
+    }
+
+    // Hide low-usage archetypes when not expanded and not searching
+    if (!state.showAllArchetypes && !isSearchActive && archetype.deckCount < ARCHETYPES_MIN_DECK_COUNT) {
+      hiddenCount += 1;
       continue;
     }
 
@@ -737,12 +809,24 @@ function renderArchetypeControls(): void {
     fragment.appendChild(label);
   }
 
-  if (!fragment.childElementCount) {
+  if (!fragment.childElementCount && hiddenCount === 0) {
     const empty = document.createElement('p');
     empty.className = 'binder-empty';
-    empty.textContent = filter ? 'No archetypes match your search.' : 'No archetypes available.';
+    empty.textContent = isSearchActive ? 'No archetypes match your search.' : 'No archetypes available.';
     elements.archetypesList.appendChild(empty);
     return;
+  }
+
+  if (hiddenCount > 0) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'binder-show-more';
+    btn.textContent = `Show ${hiddenCount} more`;
+    btn.addEventListener('click', () => {
+      state.showAllArchetypes = true;
+      renderArchetypeControls();
+    });
+    fragment.appendChild(btn);
   }
 
   elements.archetypesList.appendChild(fragment);
@@ -891,15 +975,12 @@ function collectAllCards(sections: BinderDataset['sections']): BinderCard[] {
   return lists.flat();
 }
 
-async function computeBinderMetrics(
-  binderData: BinderDataset,
-  context: BinderMetricsContext
-): Promise<BinderMetrics> {
+async function computeBinderMetrics(binderData: BinderDataset, context: BinderMetricsContext): Promise<BinderMetrics> {
   const allCards = collectAllCards(binderData.sections);
   const unique = new Map<string, { card: BinderCard; quantity: number }>();
 
   for (const card of allCards) {
-    const quantity = Math.max(1, Number(card.maxCopies) || 1);
+    const quantity = getEffectiveCopies(card);
     const priceKey = card.priceKey || (card.set && card.number ? `${card.name}::${card.set}::${card.number}` : null);
     const mapKey = priceKey || card.name;
     if (!unique.has(mapKey)) {
@@ -989,7 +1070,9 @@ async function recomputeFromSelection() {
 
     const events: AnalysisEvent[] = tournaments.map(tournament => ({
       tournament,
-      decks: state.decksCache.get(tournament) || []
+      decks: (state.decksCache.get(tournament) || []).filter(
+        deck => state.placementFilter === 0 || (deck.placement !== null && deck.placement <= state.placementFilter)
+      )
     }));
 
     const analysis = analyzeEvents(events);
@@ -1020,6 +1103,7 @@ async function recomputeFromSelection() {
 
     state.analysis = analysis;
     state.selectedArchetypes = nextSelectedArchetypes;
+    state.showAllArchetypes = false;
     computeSelectionDecks();
     markBinderDirty();
     renderArchetypeControls();
@@ -1103,6 +1187,10 @@ function bindControlEvents() {
     handleExportLayout();
   });
 
+  elements.exportPtcgLiveButton?.addEventListener('click', () => {
+    handleExportPtcgLive();
+  });
+
   elements.importButton?.addEventListener('click', () => {
     elements.importFile?.click();
   });
@@ -1110,6 +1198,49 @@ function bindControlEvents() {
   elements.importFile?.addEventListener('change', event => {
     handleImportLayout(event);
   });
+
+  if (elements.placementFilterSelect) {
+    elements.placementFilterSelect.addEventListener('change', () => {
+      state.placementFilter = Number(elements.placementFilterSelect?.value ?? 0);
+      recomputeFromSelection();
+    });
+  }
+
+  if (elements.thresholdSlider) {
+    elements.thresholdSlider.addEventListener('input', () => {
+      const pct = Number(elements.thresholdSlider?.value ?? 0);
+      state.copyThreshold = pct / 100;
+      updateThresholdLabel(pct);
+      if (state.binderData && !state.isBinderDirty) {
+        renderBinderSections();
+      }
+    });
+  }
+
+  if (elements.includeThresholdSlider) {
+    elements.includeThresholdSlider.addEventListener('input', () => {
+      const pct = Number(elements.includeThresholdSlider?.value ?? 0);
+      state.includeThreshold = pct / 100;
+      updateIncludeThresholdLabel(pct);
+      if (state.binderData && !state.isBinderDirty) {
+        renderBinderSections();
+      }
+    });
+  }
+}
+
+function updateThresholdLabel(pct: number): void {
+  if (!elements.thresholdValueLabel) {
+    return;
+  }
+  elements.thresholdValueLabel.textContent = pct === 0 ? '0% — always show max' : `${pct}%`;
+}
+
+function updateIncludeThresholdLabel(pct: number): void {
+  if (!elements.includeThresholdValueLabel) {
+    return;
+  }
+  elements.includeThresholdValueLabel.textContent = pct === 0 ? '0% — show all' : `${pct}%`;
 }
 
 function handleExportLayout(): void {
@@ -1163,6 +1294,108 @@ function handleExportLayout(): void {
   }
 }
 
+function handleExportPtcgLive(): void {
+  if (!state.binderData) {
+    alert('Please generate a binder layout first before exporting.'); // eslint-disable-line no-alert
+    return;
+  }
+
+  try {
+    const { sections } = state.binderData;
+
+    type Entry = { card: BinderCard; copies: number };
+
+    const addCards = (
+      dest: Entry[],
+      cards: BinderCard[],
+      seen: Set<string>,
+      exportOptions: CardRenderOptions = {}
+    ): void => {
+      for (const card of cards) {
+        if (state.includeThreshold > 0 && getCardIncludeRatio(card, exportOptions) < state.includeThreshold) {
+          continue;
+        }
+        const key = card.set && card.number ? `${card.set}::${card.number}` : card.name;
+        if (!seen.has(key)) {
+          seen.add(key);
+          dest.push({ card, copies: getEffectiveCopies(card) });
+        }
+      }
+    };
+
+    const seen = new Set<string>();
+    const pokemon: Entry[] = [];
+    const trainers: Entry[] = [];
+    const energies: Entry[] = [];
+
+    addCards(pokemon, sections.staplePokemon, seen);
+    for (const group of sections.archetypePokemon) {
+      addCards(pokemon, group.cards, seen, { mode: 'archetype', archetype: group.canonical });
+    }
+    addCards(trainers, sections.aceSpecs, seen);
+    addCards(trainers, sections.frequentSupporters, seen);
+    addCards(trainers, sections.nicheSupporters, seen);
+    addCards(trainers, sections.stadiums, seen);
+    addCards(trainers, sections.tools, seen);
+    addCards(trainers, sections.frequentItems, seen);
+    addCards(trainers, sections.nicheItems, seen);
+    addCards(energies, sections.specialEnergy, seen);
+    addCards(energies, sections.basicEnergy, seen);
+
+    const formatLine = ({ card, copies }: Entry): string => {
+      const set = card.set ? String(card.set).toUpperCase() : '';
+      const num = card.number ? String(card.number) : '';
+      return set && num ? `${copies} ${card.name} ${set} ${num}` : `${copies} ${card.name}`;
+    };
+
+    const lines: string[] = [];
+
+    if (pokemon.length > 0) {
+      lines.push(`Pokémon: ${pokemon.length}`);
+      pokemon.forEach(e => lines.push(formatLine(e)));
+      lines.push('');
+    }
+    if (trainers.length > 0) {
+      lines.push(`Trainer: ${trainers.length}`);
+      trainers.forEach(e => lines.push(formatLine(e)));
+      lines.push('');
+    }
+    if (energies.length > 0) {
+      lines.push(`Energy: ${energies.length}`);
+      energies.forEach(e => lines.push(formatLine(e)));
+      lines.push('');
+    }
+
+    const totalCards = [...pokemon, ...trainers, ...energies].reduce((sum, e) => sum + e.copies, 0);
+    lines.push(`Total Cards: ${totalCards}`);
+
+    const text = lines.join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `meta-binder-ptcg-live-${new Date().toISOString().slice(0, 10)}.txt`;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 100);
+
+    logger.info('Exported PTCG Live list', {
+      pokemon: pokemon.length,
+      trainers: trainers.length,
+      energies: energies.length,
+      totalCards
+    });
+  } catch (error) {
+    logger.error('Failed to export PTCG Live list', error);
+    alert('Failed to export list. Check the console for details.'); // eslint-disable-line no-alert
+  }
+}
+
 async function handleImportLayout(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement | null;
   if (!input) {
@@ -1188,7 +1421,9 @@ async function handleImportLayout(event: Event): Promise<void> {
     }
 
     // Validate tournaments exist
-    const validTournaments = (importData.tournaments || []).filter(tournament => state.tournaments.includes(tournament));
+    const validTournaments = (importData.tournaments || []).filter(tournament =>
+      state.tournaments.includes(tournament)
+    );
     if (validTournaments.length === 0) {
       // eslint-disable-next-line no-alert
       alert(
@@ -1231,13 +1466,8 @@ async function handleImportLayout(event: Event): Promise<void> {
 
 async function checkOnlineMetaAvailability(): Promise<boolean> {
   try {
-    const response = await fetch(
-      `${CONFIG.API.R2_BASE}/reports/${encodeURIComponent(DEFAULT_ONLINE_META)}/master.json`,
-      {
-        method: 'HEAD'
-      }
-    );
-    return response.ok;
+    const summary = await fetchTournamentSummary(DEFAULT_ONLINE_META);
+    return (summary.deckTotal ?? 0) > 0;
   } catch (error) {
     logger.debug('Online meta availability check failed', error);
     return false;

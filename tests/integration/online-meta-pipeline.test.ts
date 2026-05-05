@@ -118,6 +118,11 @@ test('Online meta pipeline end-to-end (aggregation + trends + storage)', async (
 
   const cardTrends = buildCardTrendReport(decks as any, tournaments as any, { minAppearances: 1 });
   assert.ok(Array.isArray(cardTrends.rising), 'Card trend rising must be an array');
+  assert.ok(Array.isArray(cardTrends.falling), 'Card trend falling must be an array');
+  for (const card of [...cardTrends.rising, ...cardTrends.falling]) {
+    assert.ok(typeof card.recentAvg === 'number', `recentAvg missing on ${card.name}`);
+    assert.ok(typeof card.startAvg === 'number', `startAvg missing on ${card.name}`);
+  }
 
   // Test include/exclude filters: runOnlineMetaJob with a filter that excludes everything
   const fetchJsonExclude = async (pathUrl: string) => {

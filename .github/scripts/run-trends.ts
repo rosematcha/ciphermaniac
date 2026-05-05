@@ -21,6 +21,11 @@ import { fetchLimitlessJson } from '../../functions/lib/limitless.ts';
 const TRENDS_FOLDER = 'Trends - Last 30 Days';
 const LOOKBACK_DAYS = 30;
 const MAX_ARCHETYPES_IN_SERIES = 32;
+// If the default lookback yields too few tournaments, widen the window step-by-step
+// until we have enough events for the rising/falling chunked-average computation
+// to produce non-degenerate deltas. 4 events => chunk=2 on each side, no overlap.
+const MIN_TREND_TOURNAMENTS = 4;
+const LOOKBACK_FALLBACK_STEPS = [45, 60, 90];
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -168,7 +173,8 @@ function parseBoolean(value: string | undefined, fallback = false): boolean {
 async function main() {
   const cleanMonthCache = parseBoolean(process.env.CLEAN_MONTH_CACHE, false);
   const windowEnd = new Date();
-  const since = new Date(windowEnd.getTime() - (LOOKBACK_DAYS - 1) * 24 * 60 * 60 * 1000);
+  let lookbackDays = LOOKBACK_DAYS;
+  let since = new Date(windowEnd.getTime() - (lookbackDays - 1) * 24 * 60 * 60 * 1000);
   const now = windowEnd;
 
   const env = {
@@ -206,8 +212,26 @@ async function main() {
   console.log(`[trends] Card DB entries: ${Object.keys(cardTypesDb || {}).length}`);
 
   console.log(`[trends] Fetching tournaments since ${since.toISOString()}`);
-  const tournaments = await fetchRecentOnlineTournaments(env, since, { maxPages: 20, windowEnd, fetchJson });
+  let tournaments = await fetchRecentOnlineTournaments(env, since, { maxPages: 20, windowEnd, fetchJson });
   console.log(`[trends] Tournaments: ${tournaments.length}`);
+
+  // Auto-widen the lookback window if we have too few tournaments to compute
+  // meaningful chunked-average deltas. Without this, sparse windows produce
+  // identical Rising / Cooling lists with delta=0 across the board.
+  for (const widerLookback of LOOKBACK_FALLBACK_STEPS) {
+    if (tournaments.length >= MIN_TREND_TOURNAMENTS) {
+      break;
+    }
+    console.log(
+      `[trends] Only ${tournaments.length} tournament(s) in last ${lookbackDays}d; widening to ${widerLookback}d`
+    );
+    lookbackDays = widerLookback;
+    since = new Date(windowEnd.getTime() - (lookbackDays - 1) * 24 * 60 * 60 * 1000);
+    // eslint-disable-next-line no-await-in-loop
+    tournaments = await fetchRecentOnlineTournaments(env, since, { maxPages: 20, windowEnd, fetchJson });
+    console.log(`[trends] Tournaments after widening: ${tournaments.length}`);
+  }
+
   if (!tournaments.length) {
     throw new Error('No tournaments found for trends window');
   }
