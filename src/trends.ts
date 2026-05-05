@@ -64,6 +64,7 @@ interface CardTrendMover {
   currentShare?: number;
   endShare?: number;
   startShare?: number;
+  startAvg?: number;
   avgShare?: number;
   absDrop?: number;
   deltaAbs?: number;
@@ -80,6 +81,7 @@ interface NormalizedCardMover {
   set: string | null;
   number: string | null;
   latest: number;
+  start: number;
   delta: number;
 }
 
@@ -235,7 +237,8 @@ function buildCardHref(card: NormalizedCardMover): string {
 
 function normalizeCardMover(item: CardTrendMover): NormalizedCardMover {
   const latest =
-    item.recentAvg ?? item.latest ?? item.currentShare ?? item.endShare ?? item.startShare ?? item.avgShare ?? 0;
+    item.recentAvg ?? item.latest ?? item.endShare ?? item.currentShare ?? item.avgShare ?? item.startShare ?? 0;
+  const start = item.startAvg ?? item.startShare ?? 0;
 
   // For cooling cards, absDrop is reported as positive; convert to negative for UI consistency.
   const delta =
@@ -246,6 +249,7 @@ function normalizeCardMover(item: CardTrendMover): NormalizedCardMover {
     set: item.set || null,
     number: item.number || null,
     latest,
+    start,
     delta
   };
 }
@@ -691,6 +695,7 @@ function aggregateCardMoverDirection(
     {
       name: string;
       latest: number;
+      start: number;
       delta: number;
       variants: Map<string, NormalizedCardMover>;
     }
@@ -702,6 +707,7 @@ function aggregateCardMoverDirection(
       groups.set(nameKey, {
         name: item.name,
         latest: 0,
+        start: 0,
         delta: 0,
         variants: new Map()
       });
@@ -717,6 +723,7 @@ function aggregateCardMoverDirection(
     }
     group.variants.set(variantKey, item);
     group.latest += Math.max(0, item.latest || 0);
+    group.start += Math.max(0, item.start || 0);
     if (direction === 'up') {
       group.delta += Math.max(0, item.delta || 0);
     } else {
@@ -736,12 +743,13 @@ function aggregateCardMoverDirection(
         set: preferred?.set || null,
         number: preferred?.number || null,
         latest: Math.min(100, Math.max(0, group.latest)),
+        start: Math.min(100, Math.max(0, group.start)),
         delta: Math.round(group.delta * 10) / 10,
         variantCount: variants.length
       } satisfies DisplayCardMover;
     })
     .filter(item => {
-      const condition =
+      const passDelta =
         direction === 'up'
           ? includeZero
             ? item.delta >= 0
@@ -749,7 +757,14 @@ function aggregateCardMoverDirection(
           : includeZero
             ? item.delta <= 0
             : item.delta < 0;
-      return condition;
+      if (!passDelta) {
+        return false;
+      }
+      const MIN_VISIBLE_SHARE = 0.3;
+      if (direction === 'up') {
+        return item.latest >= MIN_VISIBLE_SHARE;
+      }
+      return item.start >= MIN_VISIBLE_SHARE;
     })
     .sort((a, b) => (direction === 'up' ? b.delta - a.delta : a.delta - b.delta) || b.latest - a.latest)
     .slice(0, 8);
@@ -765,14 +780,6 @@ function renderCardMovers(cardTrends: CardTrendsState): void {
   const risingList = (cardTrends && 'rising' in cardTrends ? cardTrends.rising : []) || [];
   const fallingList = (cardTrends && 'falling' in cardTrends ? cardTrends.falling : []) || [];
 
-  // Pre-generated payloads can lag behind set reprints; if cooling cards collapse to 0,
-  // trigger a one-time deck hydration so card trends are recomputed from raw decklists.
-  const hasZeroCooling = fallingList.some(item => (normalizeCardMover(item).latest || 0) <= 0.05);
-  if (hasZeroCooling && !state.rawDecks && !state.isHydrating) {
-    // eslint-disable-next-line no-void
-    void hydrateFromDecks();
-  }
-
   if (!risingList.length && !fallingList.length) {
     const empty = document.createElement('p');
     empty.className = 'muted';
@@ -785,13 +792,6 @@ function renderCardMovers(cardTrends: CardTrendsState): void {
     rising: aggregateCardMoverDirection(risingList, 'up'),
     falling: aggregateCardMoverDirection(fallingList, 'down')
   };
-
-  if (!merged.rising.length && risingList.length) {
-    merged.rising = aggregateCardMoverDirection(risingList, 'up', true);
-  }
-  if (!merged.falling.length && fallingList.length) {
-    merged.falling = aggregateCardMoverDirection(fallingList, 'down', true);
-  }
 
   const buildGroup = (title: string, list: DisplayCardMover[], direction: 'up' | 'down') => {
     const group = document.createElement('div');
@@ -828,7 +828,11 @@ function renderCardMovers(cardTrends: CardTrendsState): void {
       const share = document.createElement('span');
       share.className = 'perc';
       const printingsLabel = item.variantCount > 1 ? ` | ${item.variantCount} printings` : '';
-      share.textContent = `Seen in ${formatPercent(item.latest || 0)} of decks${printingsLabel}`;
+      if (direction === 'down') {
+        share.textContent = `Was ${formatPercent(item.start || 0)} → ${formatPercent(item.latest || 0)}${printingsLabel}`;
+      } else {
+        share.textContent = `Seen in ${formatPercent(item.latest || 0)} of decks${printingsLabel}`;
+      }
 
       copy.appendChild(name);
       copy.appendChild(share);

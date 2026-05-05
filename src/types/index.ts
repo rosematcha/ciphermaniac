@@ -447,8 +447,12 @@ export interface CardTrendEntry {
   endShare: number;
   /** Change in share (endShare - startShare) */
   delta: number;
-  /** Current/latest share percentage */
+  /** Current/latest share percentage (== recentAvg) */
   currentShare: number;
+  /** Average share over the most recent third of the window */
+  recentAvg?: number;
+  /** Average share over the earliest third of the window */
+  startAvg?: number;
 }
 
 /**

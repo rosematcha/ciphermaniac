@@ -76,5 +76,78 @@ describe('Trends Logic', () => {
       const risingNames = report.rising.map(card => card.name);
       assert.ok(!risingNames.includes('Card A'));
     });
+
+    it('should produce disjoint rising and falling lists', () => {
+      const tournaments = [
+        createTournament('t1', '2023-01-01', 20, 20),
+        createTournament('t2', '2023-01-15', 20, 20),
+        createTournament('t3', '2023-01-29', 20, 20)
+      ];
+      const decks = [
+        // Riser climbs t1=1 → t3=10
+        ...Array.from({ length: 1 }, () => ({
+          ...createDeck('t1', 'A'),
+          cards: [{ name: 'Riser', set: 'SVI', number: '1' }]
+        })),
+        ...Array.from({ length: 10 }, () => ({
+          ...createDeck('t3', 'A'),
+          cards: [{ name: 'Riser', set: 'SVI', number: '1' }]
+        })),
+        // Faller drops t1=10 → t3=1
+        ...Array.from({ length: 10 }, () => ({
+          ...createDeck('t1', 'B'),
+          cards: [{ name: 'Faller', set: 'SVI', number: '2' }]
+        })),
+        ...Array.from({ length: 1 }, () => ({
+          ...createDeck('t3', 'B'),
+          cards: [{ name: 'Faller', set: 'SVI', number: '2' }]
+        }))
+      ];
+
+      const report = buildCardTrendReport(decks, tournaments, { minAppearances: 1, topCount: 10 });
+
+      const risingKeys = new Set(report.rising.map(card => card.key));
+      const fallingKeys = new Set(report.falling.map(card => card.key));
+      for (const key of risingKeys) {
+        assert.ok(!fallingKeys.has(key), `${key} should not appear in both rising and falling`);
+      }
+    });
+
+    it('should emit recentAvg and startAvg fields on each card', () => {
+      const tournaments = [
+        createTournament('t1', '2023-01-01', 20, 20),
+        createTournament('t2', '2023-01-15', 20, 20),
+        createTournament('t3', '2023-01-29', 20, 20)
+      ];
+      const decks = [
+        ...Array.from({ length: 1 }, () => ({
+          ...createDeck('t1', 'A'),
+          cards: [{ name: 'Riser', set: 'SVI', number: '1' }]
+        })),
+        ...Array.from({ length: 10 }, () => ({
+          ...createDeck('t3', 'A'),
+          cards: [{ name: 'Riser', set: 'SVI', number: '1' }]
+        }))
+      ];
+      const report = buildCardTrendReport(decks, tournaments, { minAppearances: 1, topCount: 5 });
+      const all = [...report.rising, ...report.falling];
+      assert.ok(all.length > 0, 'expected at least one card');
+      for (const card of all) {
+        assert.ok(typeof card.recentAvg === 'number', `recentAvg missing for ${card.name}`);
+        assert.ok(typeof card.startAvg === 'number', `startAvg missing for ${card.name}`);
+      }
+    });
+
+    it('should drop delta=0 entries from both rising and falling lists', () => {
+      const tournaments = [createTournament('t1', '2023-01-01', 20, 20), createTournament('t2', '2023-01-02', 20, 20)];
+      // Flat card: same share both events
+      const decks = [
+        { ...createDeck('t1', 'A'), cards: [{ name: 'Flat', set: 'SVI', number: '1' }] },
+        { ...createDeck('t2', 'A'), cards: [{ name: 'Flat', set: 'SVI', number: '1' }] }
+      ];
+      const report = buildCardTrendReport(decks, tournaments, { minAppearances: 1, topCount: 5 });
+      assert.ok(!report.rising.some(card => card.name === 'Flat'));
+      assert.ok(!report.falling.some(card => card.name === 'Flat'));
+    });
   });
 });
