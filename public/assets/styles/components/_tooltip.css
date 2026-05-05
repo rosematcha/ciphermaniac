@@ -1,0 +1,24 @@
+/* Floating tooltip for charts and histograms */
+.graph-tooltip {
+  background: linear-gradient(180deg, rgba(26, 27, 34, 0.98), rgba(18, 19, 23, 0.98));
+  color: var(--text);
+  border: 1px solid rgba(60, 80, 140, 0.25);
+  padding: 8px 10px;
+  font-size: 13px;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+  min-width: 80px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.graph-tooltip.is-visible {
+  opacity: 1;
+}
+
+.graph-tooltip strong {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+}

@@ -232,6 +232,8 @@ interface CardTrendItem {
   endShare: number;
   delta: number;
   currentShare: number;
+  recentAvg: number;
+  startAvg: number;
 }
 
 const ARCHETYPE_THUMBNAILS: ThumbnailConfig = (archetypeThumbnails as ThumbnailConfig) || {};
@@ -1107,12 +1109,13 @@ function buildCardTrendReport(decks, tournaments, options: BuildCardTrendReportO
     }
 
     const chunk = Math.max(1, Math.ceil(timeline.length / 3));
+    const startSlice = timeline.slice(0, chunk);
+    const endSlice = timeline.slice(-chunk);
     const startAvg =
-      Math.round((timeline.slice(0, chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10) / 10;
+      Math.round((startSlice.reduce((sum, entry) => sum + (entry.share || 0), 0) / startSlice.length) * 10) / 10;
     const endAvg =
-      Math.round((timeline.slice(-chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10) / 10;
+      Math.round((endSlice.reduce((sum, entry) => sum + (entry.share || 0), 0) / endSlice.length) * 10) / 10;
     const delta = Math.round((endAvg - startAvg) * 10) / 10;
-    const latestShare = timeline.at(-1)?.share || 0;
 
     series.push({
       key,
@@ -1121,7 +1124,9 @@ function buildCardTrendReport(decks, tournaments, options: BuildCardTrendReportO
       startShare: startAvg,
       endShare: endAvg,
       delta,
-      currentShare: latestShare
+      currentShare: endAvg,
+      recentAvg: endAvg,
+      startAvg
     });
   });
 
@@ -1137,12 +1142,20 @@ function buildCardTrendReport(decks, tournaments, options: BuildCardTrendReportO
     'Water Energy'
   ]);
 
+  // Minimum recent share (%) for a card to be considered "currently played" enough
+  // to feature in the Rising list. For Falling, we instead require a meaningful
+  // historical share so we can show genuine drops (including drops to ~0).
+  const MIN_VISIBLE_SHARE = 0.3;
+
   const rising = [...series]
-    .filter(item => item.currentShare > 0)
+    .filter(item => item.delta > 0)
+    .filter(item => item.recentAvg >= MIN_VISIBLE_SHARE)
     .filter(item => !BASIC_ENERGY_NAMES.has(item.name))
     .sort((first, second) => second.delta - first.delta)
     .slice(0, topCount);
   const falling = [...series]
+    .filter(item => item.delta < 0)
+    .filter(item => item.startAvg >= MIN_VISIBLE_SHARE)
     .filter(item => !BASIC_ENERGY_NAMES.has(item.name))
     .sort((first, second) => first.delta - second.delta)
     .slice(0, topCount);

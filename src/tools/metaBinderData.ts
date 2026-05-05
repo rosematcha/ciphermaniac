@@ -59,6 +59,12 @@ const ACE_SPEC_KEYWORDS = [
   'brilliant blender'
 ].map(keyword => keyword.toLowerCase());
 
+// Pre-compile with word boundaries so "g spirit" doesn't match "iris' fighting spirit"
+const ACE_SPEC_KEYWORD_PATTERNS = ACE_SPEC_KEYWORDS.map(keyword => {
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\b${escaped}\\b`);
+});
+
 interface DeckCard {
   count: number;
   name: string;
@@ -94,6 +100,7 @@ interface BinderCard {
   trainerType: string | null;
   energyType: string | null;
   maxCopies: number;
+  copyDistribution: Record<number, number>;
   totalDecksWithCard: number;
   deckShare: number;
   usageByArchetype: ArchetypeUsage[];
@@ -163,6 +170,7 @@ interface CardAccumulator {
   energyType: string | null;
   variants: Map<string, CardVariant>;
   maxCopies: number;
+  copyBuckets: Map<number, number>;
   totalDecksWithCard: number;
   perArchetype: Map<string, ArchetypeUsageAccumulator>;
   perTournament: Map<string, TournamentUsageAccumulator>;
@@ -221,7 +229,7 @@ function isAceSpec(name: string, trainerType: string | null | undefined): boolea
     return true;
   }
   const normalized = normalizeCardKey(name);
-  return ACE_SPEC_KEYWORDS.some(keyword => normalized.includes(keyword));
+  return ACE_SPEC_KEYWORD_PATTERNS.some(pattern => pattern.test(normalized));
 }
 
 function ensureMapEntry<K, V>(map: Map<K, V>, key: K, factory: () => V): V {
@@ -241,6 +249,7 @@ function createCardAccumulator(card: DeckCard): CardAccumulator {
     energyType: card.energyType || null,
     variants: new Map(),
     maxCopies: 0,
+    copyBuckets: new Map(),
     totalDecksWithCard: 0,
     perArchetype: new Map(),
     perTournament: new Map()
@@ -450,7 +459,9 @@ export function buildBinderDataset(
         accumulator.energyType = accumulator.energyType || card.energyType || null;
 
         accumulator.totalDecksWithCard += 1;
-        accumulator.maxCopies = Math.max(accumulator.maxCopies, Number(card.count) || 0);
+        const copies = Number(card.count) || 1;
+        accumulator.maxCopies = Math.max(accumulator.maxCopies, copies);
+        accumulator.copyBuckets.set(copies, (accumulator.copyBuckets.get(copies) || 0) + 1);
 
         const setCode = card.set ? String(card.set).toUpperCase() : null;
         const numberCode = card.number ? String(card.number).toUpperCase() : null;
@@ -549,6 +560,7 @@ export function buildBinderDataset(
       trainerType: entry.trainerType,
       energyType: entry.energyType,
       maxCopies: entry.maxCopies || 0,
+      copyDistribution: Object.fromEntries(entry.copyBuckets),
       totalDecksWithCard: entry.totalDecksWithCard,
       deckShare,
       usageByArchetype,
@@ -572,16 +584,11 @@ export function buildBinderDataset(
         continue;
       }
 
-      // Include in any archetype where it appears in at least 50% of decks
-      let addedToArchetype = false;
-      for (const usage of usageByArchetype) {
-        if (usage.ratio >= ARCHETYPE_CORE_RATIO) {
-          const list = ensureMapEntry(archetypePokemonMap, usage.archetype, () => []);
-          list.push(card);
-          addedToArchetype = true;
-        }
-      }
-      if (addedToArchetype) {
+      // Add to the primary archetype only (highest ratio), preventing duplication across sections
+      const primaryUsage = usageByArchetype.find(usage => usage.ratio >= ARCHETYPE_CORE_RATIO);
+      if (primaryUsage) {
+        const list = ensureMapEntry(archetypePokemonMap, primaryUsage.archetype, () => []);
+        list.push(card);
         placedIds.add(card.id);
       }
       continue;
@@ -699,4 +706,33 @@ export function buildBinderDataset(
 function getBaseCategory(category: string | null | undefined): string {
   const slug = typeof category === 'string' ? category.toLowerCase() : '';
   return slug.split('/')[0] || '';
+}
+
+/**
+ * Given a copy-count distribution and a threshold (0–1), returns the highest
+ * copy count N such that at least `threshold` fraction of decks-with-card use
+ * >= N copies.  threshold = 0 returns the raw maximum (current behaviour).
+ */
+export function computeThresholdCopies(
+  distribution: Record<number, number>,
+  totalDecksWithCard: number,
+  threshold: number
+): number {
+  const counts = Object.keys(distribution).map(Number);
+  if (counts.length === 0 || totalDecksWithCard === 0) {
+    return 1;
+  }
+  const max = Math.max(...counts);
+  if (threshold <= 0) {
+    return max;
+  }
+  // Descending order — try the highest count first.
+  counts.sort((a, b) => b - a);
+  for (const threshold of counts) {
+    const decksAtOrAbove = counts.filter(c => c >= threshold).reduce((sum, c) => sum + (distribution[c] ?? 0), 0);
+    if (decksAtOrAbove / totalDecksWithCard >= threshold) {
+      return threshold;
+    }
+  }
+  return 1;
 }

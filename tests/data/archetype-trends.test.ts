@@ -110,7 +110,7 @@ test('buildCardTrendReport calculates deltas and handles filtering', () => {
     makeTournament('c', '2025-03-01T00:00:00Z', 20, 10)
   ];
 
-  // Decks include card occurrences across tournaments
+  // CardX rises (1/10 in 'a' -> 5/10 in 'c'); CardY appears once and stays flat.
   const decks = [
     { tournamentId: 'a', cards: [{ name: 'CardX', set: 'S1', number: '1' }] },
     {
@@ -120,15 +120,21 @@ test('buildCardTrendReport calculates deltas and handles filtering', () => {
         { name: 'CardY', set: 'S2', number: '2' }
       ]
     },
+    { tournamentId: 'b', cards: [{ name: 'CardX', set: 'S1', number: '1' }] },
+    { tournamentId: 'b', cards: [{ name: 'CardX', set: 'S1', number: '1' }] },
+    { tournamentId: 'c', cards: [{ name: 'CardX', set: 'S1', number: '1' }] },
+    { tournamentId: 'c', cards: [{ name: 'CardX', set: 'S1', number: '1' }] },
+    { tournamentId: 'c', cards: [{ name: 'CardX', set: 'S1', number: '1' }] },
+    { tournamentId: 'c', cards: [{ name: 'CardX', set: 'S1', number: '1' }] },
     { tournamentId: 'c', cards: [{ name: 'CardX', set: 'S1', number: '1' }] }
   ];
 
   const trends = buildCardTrendReport(decks as any, tournaments as any, { minAppearances: 1, topCount: 5 });
   assert.ok(Array.isArray(trends.rising));
   assert.ok(Array.isArray(trends.falling));
-  // CardX should appear in rising or falling lists
-  const foundX = trends.rising.concat(trends.falling).some((card: any) => card.name === 'CardX');
-  assert.ok(foundX);
+  // CardX rose from 10% to 50% — should appear in rising
+  const foundX = trends.rising.some((card: any) => card.name === 'CardX');
+  assert.ok(foundX, 'CardX should appear in rising');
 
   // Filter by minAppearances > actual should remove items
   const filtered = buildCardTrendReport(decks as any, tournaments as any, { minAppearances: 5 });

@@ -318,6 +318,8 @@ interface CardTrendSeries {
   endShare: number;
   delta: number;
   currentShare: number;
+  recentAvg: number;
+  startAvg: number;
 }
 
 interface CardTrendDatasetOptions {
@@ -416,12 +418,13 @@ export function buildCardTrendDataset(
     }
 
     const chunk = Math.max(1, Math.ceil(timeline.length / 3));
+    const startSlice = timeline.slice(0, chunk);
+    const endSlice = timeline.slice(-chunk);
     const startAvg =
-      Math.round((timeline.slice(0, chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10) / 10;
+      Math.round((startSlice.reduce((sum, entry) => sum + (entry.share || 0), 0) / startSlice.length) * 10) / 10;
     const endAvg =
-      Math.round((timeline.slice(-chunk).reduce((sum, entry) => sum + (entry.share || 0), 0) / chunk) * 10) / 10;
+      Math.round((endSlice.reduce((sum, entry) => sum + (entry.share || 0), 0) / endSlice.length) * 10) / 10;
     const delta = Math.round((endAvg - startAvg) * 10) / 10;
-    const latestShare = timeline.at(-1)?.share || 0;
 
     const meta = cardMeta.get(key)!;
     series.push({
@@ -433,12 +436,23 @@ export function buildCardTrendDataset(
       startShare: startAvg,
       endShare: endAvg,
       delta,
-      currentShare: latestShare
+      currentShare: endAvg,
+      recentAvg: endAvg,
+      startAvg
     });
   });
 
-  const rising = [...series].sort((a, b) => b.delta - a.delta).slice(0, topCount);
-  const falling = [...series].sort((a, b) => a.delta - b.delta).slice(0, topCount);
+  const MIN_VISIBLE_SHARE = 0.3;
+  const rising = series
+    .filter(item => item.delta > 0)
+    .filter(item => item.recentAvg >= MIN_VISIBLE_SHARE)
+    .sort((a, b) => b.delta - a.delta)
+    .slice(0, topCount);
+  const falling = series
+    .filter(item => item.delta < 0)
+    .filter(item => item.startAvg >= MIN_VISIBLE_SHARE)
+    .sort((a, b) => a.delta - b.delta)
+    .slice(0, topCount);
 
   logger.debug('Built card trend dataset', {
     cards: series.length,
