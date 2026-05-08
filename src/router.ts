@@ -1,5 +1,6 @@
 // Lightweight router and URL state helpers for the grid page
 import { buildCardPath } from './card/routing.js';
+import { QUERY_KEYS } from './lib/routing.js';
 
 interface AppState {
   query?: string;
@@ -35,14 +36,14 @@ interface RouteObject {
 export function getStateFromURL(loc: Location | URL = window.location): AppState {
   const params = new URLSearchParams(loc.search);
   return {
-    query: params.get('q') || '',
-    sort: params.get('sort') || '',
-    archetype: params.get('archetype') || '',
-    tour: params.get('tour') || '',
-    sets: params.get('sets') || '',
-    cardType: params.get('type') || '',
-    success: params.get('success') || '',
-    advanced: params.get('advanced') || ''
+    query: params.get(QUERY_KEYS.SEARCH) || '',
+    sort: params.get(QUERY_KEYS.SORT) || '',
+    archetype: params.get(QUERY_KEYS.ARCHETYPE) || '',
+    tour: params.get(QUERY_KEYS.TOURNAMENT) || '',
+    sets: params.get(QUERY_KEYS.SETS) || '',
+    cardType: params.get(QUERY_KEYS.CARD_TYPE) || '',
+    success: params.get(QUERY_KEYS.SUCCESS) || '',
+    advanced: params.get(QUERY_KEYS.ADVANCED) || ''
   };
 }
 
@@ -68,28 +69,28 @@ export function setStateInURL(state: AppState, opts: SetStateOptions = {}): void
 
   // Only update parameters that are explicitly provided in the state object
   if ('query' in state) {
-    setOrDelete('q', state.query);
+    setOrDelete(QUERY_KEYS.SEARCH, state.query);
   }
   if ('sort' in state) {
-    setOrDelete('sort', state.sort);
+    setOrDelete(QUERY_KEYS.SORT, state.sort);
   }
   if ('archetype' in state) {
-    setOrDelete('archetype', state.archetype);
+    setOrDelete(QUERY_KEYS.ARCHETYPE, state.archetype);
   }
   if ('tour' in state) {
-    setOrDelete('tour', state.tour);
+    setOrDelete(QUERY_KEYS.TOURNAMENT, state.tour);
   }
   if ('sets' in state) {
-    setOrDelete('sets', state.sets);
+    setOrDelete(QUERY_KEYS.SETS, state.sets);
   }
   if ('cardType' in state) {
-    setOrDelete('type', state.cardType);
+    setOrDelete(QUERY_KEYS.CARD_TYPE, state.cardType);
   }
   if ('success' in state) {
-    setOrDelete('success', state.success);
+    setOrDelete(QUERY_KEYS.SUCCESS, state.success);
   }
   if ('advanced' in state) {
-    setOrDelete('advanced', state.advanced);
+    setOrDelete(QUERY_KEYS.ADVANCED, state.advanced);
   }
 
   const search = params.toString();

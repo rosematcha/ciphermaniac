@@ -51,11 +51,11 @@ async function loadDatabase() {
  */
 async function extractCardsFromReport(filePath) {
   const cards = new Map();
-  
+
   try {
     const content = await fs.readFile(filePath, 'utf-8');
     const report = JSON.parse(content);
-    
+
     if (report.items && Array.isArray(report.items)) {
       for (const item of report.items) {
         if (item.set && item.number) {
@@ -79,7 +79,7 @@ async function extractCardsFromReport(filePath) {
   } catch (error) {
     console.error(`Error reading ${filePath}:`, error.message);
   }
-  
+
   return cards;
 }
 
@@ -90,13 +90,13 @@ async function extractCardsFromReport(filePath) {
  */
 async function findMasterReports(dir) {
   const files = [];
-  
+
   try {
     const entries = await fs.readdir(dir, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       const fullPath = join(dir, entry.name);
-      
+
       if (entry.isDirectory()) {
         const subFiles = await findMasterReports(fullPath);
         files.push(...subFiles);
@@ -109,7 +109,7 @@ async function findMasterReports(dir) {
       console.error(`Error reading directory ${dir}:`, error.message);
     }
   }
-  
+
   return files;
 }
 
@@ -120,7 +120,7 @@ async function findMasterReports(dir) {
 async function collectAllCards() {
   const allCards = new Map();
   const jsonFiles = await findMasterReports(REPORTS_BASE_PATH);
-  
+
   for (const file of jsonFiles) {
     const cards = await extractCardsFromReport(file);
     cards.forEach((meta, key) => {
@@ -138,7 +138,7 @@ async function collectAllCards() {
       }
     });
   }
-  
+
   return allCards;
 }
 
@@ -148,7 +148,9 @@ function determineExpectedEnergySubtype(meta = {}) {
     return null;
   }
   for (const rawName of names) {
-    const normalized = String(rawName || '').trim().toLowerCase();
+    const normalized = String(rawName || '')
+      .trim()
+      .toLowerCase();
     if (BASIC_ENERGY_NAMES.has(normalized)) {
       return 'basic';
     }
@@ -237,17 +239,17 @@ function evaluateClassification(entry, meta) {
  */
 async function main() {
   console.log('🔍 Card Types Database Check\n');
-  
+
   // Load database
   const database = await loadDatabase();
   const dbCardCount = Object.keys(database).length;
   console.log(`📚 Database contains ${dbCardCount} cards`);
-  
+
   // Collect all cards from reports
   console.log('📦 Scanning all tournament reports...');
   const allCards = await collectAllCards();
   console.log(`   Found ${allCards.size} unique cards in reports\n`);
-  
+
   const missingCards = [];
   const incompleteCards = [];
   for (const [cardKey, meta] of allCards.entries()) {
@@ -267,12 +269,12 @@ async function main() {
       });
     }
   }
-  
+
   if (missingCards.length === 0 && incompleteCards.length === 0) {
     console.log('[OK] All cards are in the database and fully classified.');
     process.exit(0);
   }
-  
+
   if (missingCards.length > 0) {
     console.log(`[WARN] ${missingCards.length} cards missing from database:\n`);
     const bySet = {};
@@ -293,17 +295,17 @@ async function main() {
       console.log(`  ${set}: ${numbers.join(', ')}`);
     }
   }
-  
+
   if (incompleteCards.length > 0) {
     console.log(`\n[WARN] ${incompleteCards.length} cards with incomplete classification:\n`);
-    const grouped = incompleteCards.reduce((acc, card) => {
+    const grouped = {};
+    for (const card of incompleteCards) {
       const reason = card.reason || 'unknown issue';
-      if (!acc[reason]) {
-        acc[reason] = [];
+      if (!grouped[reason]) {
+        grouped[reason] = [];
       }
-      acc[reason].push(card);
-      return acc;
-    }, {});
+      grouped[reason].push(card);
+    }
     Object.keys(grouped).forEach(reason => {
       const entries = grouped[reason];
       console.log(`  ${reason} (${entries.length} cards):`);
@@ -316,9 +318,9 @@ async function main() {
       });
     });
   }
-  
+
   console.log("\n[INFO] Run 'npm run build:card-types' to fetch missing cards or refresh incomplete entries");
-  
+
   process.exit(1);
 }
 

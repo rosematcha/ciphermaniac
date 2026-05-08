@@ -1,8 +1,52 @@
 import { getCanonicalCard } from './cardSynonyms.js';
-import { canonicalizeVariant, normalizeArchetypeName, sanitizeForFilename, sanitizeForPath } from './cardUtils.js';
-import { calculatePercentage, composeCategoryPath, createDistributionFromCounts } from '../../shared/reportUtils';
+import {
+  canonicalizeVariant,
+  normalizeArchetypeName,
+  sanitizeForFilename,
+  sanitizeForPath
+} from '../util/cardUtils.js';
+import { calculatePercentage, composeCategoryPath, createDistributionFromCounts } from '../../../shared/reportUtils';
 
-function generateReportFromDecks(deckList, deckTotal, _unused, synonymDb) {
+interface CardEntry {
+  name?: string;
+  count?: number;
+  set?: string;
+  number?: string | number;
+  category?: string;
+  trainerType?: string;
+  energyType?: string;
+  aceSpec?: boolean;
+  regulationMark?: string;
+}
+
+interface DeckEntry {
+  cards?: CardEntry[];
+  [key: string]: unknown;
+}
+
+interface ReportItem {
+  rank: number;
+  name: string;
+  found: number;
+  total: number;
+  pct: number;
+  dist: any[];
+  set?: string;
+  number?: string | number;
+  uid?: string;
+  trainerType?: string;
+  energyType?: string;
+  aceSpec?: boolean;
+  regulationMark?: string;
+  category?: string;
+}
+
+function generateReportFromDecks(
+  deckList: DeckEntry[],
+  deckTotal: number,
+  _unused: unknown,
+  synonymDb: any
+): { deckTotal: number; items: ReportItem[] } {
   const cardData = new Map();
   const nameCasing = new Map();
   const uidMeta = new Map();

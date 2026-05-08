@@ -1,7 +1,7 @@
-import { fetchLimitlessJson } from '../limitless.js';
-import { enrichCardWithType } from '../cardTypesDatabase.js';
-import { inferEnergyType, inferTrainerType, isAceSpecName } from '../cardTypeInference.js';
-import { buildArchetypeDeckIndex, resolveArchetypeClassification } from '../archetypeClassifier.js';
+import { fetchLimitlessJson } from '../api/limitless.js';
+import { enrichCardWithType } from '../data/cardTypesDatabase.js';
+import { inferEnergyType, inferTrainerType, isAceSpecName } from '../analysis/cardTypeInference.js';
+import { buildArchetypeDeckIndex, resolveArchetypeClassification } from '../analysis/archetypeClassifier.js';
 import type { CardEntry, FetchTournamentsOptions, GatherDecksOptions, TournamentDetailsResponse } from './types';
 
 const PAGE_SIZE = 100;

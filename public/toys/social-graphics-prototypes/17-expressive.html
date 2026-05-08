@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>17 — Expressive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=Big+Shoulders+Display:ital,wght@0,500;0,700;0,900;1,500;1,700;1,900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0c0d;
+    --bg2: #15151a;
+    --rule: #2a2a30;
+    --rule-soft: #1c1c22;
+    --ink: #f4f1e8;
+    --ink-mute: #88857d;
+    --amber: #ffb300;
+    --amber-deep: #aa7800;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #050505;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    min-height: 100vh;
+    display: flex; justify-content: center;
+    padding: 32px;
+  }
+
+  .canvas {
+    width: 1280px;
+    background: var(--bg);
+    color: var(--ink);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+    padding: 32px 40px 28px;
+    display: grid;
+    grid-template-rows: auto auto auto auto;
+    gap: 26px;
+  }
+
+  /* HEAD */
+  .head {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: end;
+    gap: 24px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .h-mark {
+    font-family: 'Bowlby One SC', sans-serif;
+    font-size: 22px;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    line-height: 0.9;
+    transform: skewX(-6deg);
+  }
+  .h-mark .amber { color: var(--amber); }
+  .h-tournament {
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.24em;
+    color: var(--ink-mute);
+    line-height: 1.4;
+  }
+  .h-tournament strong { color: var(--ink); display: block; font-size: 13px; font-weight: 600; }
+  .h-meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-align: right;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ink-mute);
+    line-height: 1.4;
+  }
+  .h-meta strong { color: var(--ink); display: block; font-size: 13px; font-weight: 600; }
+
+  /* HERO + TITLE TOGETHER — title overlaps hero card image */
+  .feature {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 28px;
+    align-items: stretch;
+  }
+
+  .hero {
+    position: relative;
+    background: var(--bg2);
+    overflow: hidden;
+    border: 1px solid var(--rule);
+    min-height: 540px;
+    display: grid;
+    grid-template-rows: 1fr auto;
+  }
+  .hero-img {
+    position: relative;
+    overflow: hidden;
+    background: #000;
+  }
+  .hero-img img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: 50% 28%;
+    transform: scale(1.4);
+    transform-origin: 50% 30%;
+    filter: contrast(1.04) saturate(1.05);
+  }
+  .hero-img::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 50%, rgba(12,12,13,0.85) 100%);
+    pointer-events: none;
+  }
+
+  /* Massive rank numeral OVER the card image — the moment */
+  .hero-numeral {
+    position: absolute;
+    bottom: -38px;
+    left: -16px;
+    font-family: 'Bowlby One SC', sans-serif;
+    font-size: 360px;
+    line-height: 0.78;
+    color: var(--amber);
+    letter-spacing: -0.06em;
+    transform: skewX(-8deg);
+    z-index: 3;
+    text-shadow:
+      8px 8px 0 var(--bg),
+      0 0 80px rgba(255,179,0,0.25);
+    pointer-events: none;
+  }
+
+  .hero-body {
+    position: relative;
+    z-index: 4;
+    padding: 16px 22px 22px 22px;
+    background: var(--bg2);
+    border-top: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 20px;
+    align-items: end;
+  }
+  .hero-name {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-style: italic;
+    font-weight: 900;
+    font-size: 56px;
+    line-height: 0.9;
+    color: var(--ink);
+    letter-spacing: -0.025em;
+    text-transform: uppercase;
+  }
+  .hero-decks {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-mute);
+    margin-top: 8px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .hero-decks strong { color: var(--ink); }
+  .hero-pct {
+    font-family: 'Bowlby One SC', sans-serif;
+    font-size: 96px;
+    line-height: 0.85;
+    color: var(--amber);
+    letter-spacing: -0.04em;
+    transform: skewX(-8deg);
+  }
+
+  /* Right side: title block + stack */
+  .right-col {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 18px;
+  }
+
+  .title {
+    font-family: 'Bowlby One SC', sans-serif;
+    line-height: 0.82;
+    color: var(--ink);
+    letter-spacing: -0.04em;
+    text-transform: uppercase;
+    transform: skewX(-8deg);
+  }
+  .title .row1 {
+    display: block;
+    font-size: 76px;
+    color: var(--ink);
+  }
+  .title .row2 {
+    display: block;
+    font-size: 76px;
+    color: var(--amber);
+    text-indent: 28px;
+  }
+
+  /* STACK 2-4 */
+  .stack {
+    display: grid;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 78px 1fr auto;
+    gap: 14px;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--bg2);
+    border: 1px solid var(--rule);
+    position: relative;
+  }
+  .row-rank-big {
+    position: absolute;
+    bottom: -6px; right: 8px;
+    font-family: 'Bowlby One SC', sans-serif;
+    font-size: 64px;
+    line-height: 0.85;
+    color: var(--rule);
+    letter-spacing: -0.04em;
+    transform: skewX(-8deg);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .row-img {
+    width: 78px; height: 78px;
+    background: #000;
+    overflow: hidden;
+    border: 1px solid var(--rule);
+    position: relative;
+    z-index: 1;
+  }
+  .row-img img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: 50% 30%;
+    transform: scale(1.55);
+    transform-origin: 50% 30%;
+  }
+  .row-meta {
+    min-width: 0;
+    z-index: 1;
+    position: relative;
+  }
+  .row-name {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-style: italic;
+    font-weight: 900;
+    font-size: 26px;
+    line-height: 0.95;
+    color: var(--ink);
+    letter-spacing: -0.015em;
+    text-transform: uppercase;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .row-decks {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-mute);
+    margin-top: 3px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .row-pct {
+    font-family: 'Bowlby One SC', sans-serif;
+    font-size: 38px;
+    line-height: 0.85;
+    color: var(--amber);
+    letter-spacing: -0.03em;
+    transform: skewX(-8deg);
+    z-index: 1;
+    position: relative;
+  }
+
+  /* GRID 5-12 — same pattern with big rank background numerals */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .cell {
+    background: var(--bg2);
+    border: 1px solid var(--rule);
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto auto;
+    position: relative;
+  }
+  .cell-img {
+    aspect-ratio: 16 / 9;
+    background: #000;
+    overflow: hidden;
+    position: relative;
+    border-bottom: 1px solid var(--rule);
+  }
+  .cell-img img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: 50% 28%;
+    transform: scale(1.4);
+    transform-origin: 50% 30%;
+  }
+  .cell-rank {
+    position: absolute;
+    top: -10px; right: -8px;
+    font-family: 'Bowlby One SC', sans-serif;
+    font-size: 90px;
+    line-height: 0.78;
+    color: var(--amber);
+    text-shadow: 0 2px 0 rgba(0,0,0,0.5);
+    letter-spacing: -0.05em;
+    transform: skewX(-8deg);
+    z-index: 2;
+    opacity: 0.95;
+  }
+  .cell-body {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: end;
+    padding: 12px 14px;
+  }
+  .cell-name {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 0.95;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cell-pct {
+    font-family: 'Bowlby One SC', sans-serif;
+    font-size: 26px;
+    line-height: 0.85;
+    color: var(--amber);
+    letter-spacing: -0.03em;
+    transform: skewX(-8deg);
+  }
+
+  /* FOOT */
+  .foot {
+    padding-top: 16px;
+    border-top: 1px solid var(--rule);
+    display: grid;
+    grid-template-rows: auto auto;
+    gap: 12px;
+  }
+  .tail {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 12px;
+  }
+  .tail-cell {
+    border-left: 1px solid var(--rule-soft);
+    padding-left: 10px;
+  }
+  .tail-cell:first-child { border-left: none; padding-left: 0; }
+  .tail-rank {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--amber);
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+  .tail-name {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 13px;
+    line-height: 1;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+    text-transform: uppercase;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 4px;
+    height: 14px;
+  }
+  .tail-pct {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    color: var(--ink);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .signoff {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--ink-mute);
+  }
+  .signoff strong { color: var(--ink); font-weight: 600; }
+  .signoff .src {
+    background: var(--amber);
+    color: var(--bg);
+    padding: 4px 10px 3px;
+    letter-spacing: 0.22em;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+  <div class="canvas">
+    <div class="head">
+      <div class="h-mark">CIPHER<span class="amber">/</span>MANIAC</div>
+      <div class="h-tournament">
+        Pokémon TCG · Standard
+        <strong>Regional Championship Prague</strong>
+      </div>
+      <div class="h-meta">
+        12 April 2026
+        <strong>1,367 decks</strong>
+      </div>
+    </div>
+
+    <div class="feature">
+      <div class="hero" id="hero"></div>
+      <div class="right-col">
+        <h1 class="title">
+          <span class="row1">MOST</span>
+          <span class="row2">PLAYED</span>
+        </h1>
+        <div class="stack" id="stack"></div>
+      </div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <div class="foot">
+      <div class="tail" id="tail"></div>
+      <div class="signoff">
+        <span><strong>Top 20</strong> by inclusion rate &middot; ranks 13–20 above</span>
+        <span class="src">CIPHERMANIAC.COM</span>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+  import { CARDS, imgUrl } from './data.js';
+
+  // HERO
+  const f = CARDS[0];
+  document.getElementById('hero').innerHTML = `
+    <div class="hero-img">
+      <img src="${imgUrl(f)}" alt="${f.name}" crossorigin="anonymous" />
+      <div class="hero-numeral">01</div>
+    </div>
+    <div class="hero-body">
+      <div>
+        <h2 class="hero-name">${f.name}</h2>
+        <div class="hero-decks">In <strong>${f.found.toLocaleString()}</strong> of <strong>${f.total.toLocaleString()}</strong> decks</div>
+      </div>
+      <div class="hero-pct">${f.pct}%</div>
+    </div>`;
+
+  // STACK 2-4
+  const stack = document.getElementById('stack');
+  for (let i = 1; i < 4; i++) {
+    const c = CARDS[i];
+    stack.insertAdjacentHTML('beforeend', `
+      <div class="row">
+        <div class="row-rank-big">${String(c.rank).padStart(2,'0')}</div>
+        <div class="row-img"><img src="${imgUrl(c)}" alt="${c.name}" crossorigin="anonymous" /></div>
+        <div class="row-meta">
+          <div class="row-name">${c.name}</div>
+          <div class="row-decks">${c.found.toLocaleString()} / ${c.total.toLocaleString()} decks</div>
+        </div>
+        <div class="row-pct">${c.pct}%</div>
+      </div>`);
+  }
+
+  // GRID 5-12
+  const grid = document.getElementById('grid');
+  for (let i = 4; i < 12; i++) {
+    const c = CARDS[i];
+    grid.insertAdjacentHTML('beforeend', `
+      <div class="cell">
+        <div class="cell-img">
+          <img src="${imgUrl(c)}" alt="${c.name}" crossorigin="anonymous" />
+          <div class="cell-rank">${String(c.rank).padStart(2,'0')}</div>
+        </div>
+        <div class="cell-body">
+          <div class="cell-name">${c.name}</div>
+          <div class="cell-pct">${c.pct}%</div>
+        </div>
+      </div>`);
+  }
+
+  // TAIL 13-20
+  const tail = document.getElementById('tail');
+  for (let i = 12; i < 20; i++) {
+    const c = CARDS[i];
+    tail.insertAdjacentHTML('beforeend', `
+      <div class="tail-cell">
+        <div class="tail-rank">№ ${String(c.rank).padStart(2,'0')}</div>
+        <div class="tail-name">${c.name}</div>
+        <div class="tail-pct">${c.pct}%</div>
+      </div>`);
+  }
+</script>
+</body>
+</html>

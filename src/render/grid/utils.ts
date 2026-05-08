@@ -1,4 +1,4 @@
-import { normalizeCardNumber } from '../../../shared/cardUtils';
+import { normalizeCardNumber } from '../../../shared/cardUtils.js';
 import type { CardItem } from '../../types/index.js';
 
 export function getCardIdentityKey(item: CardItem): string | null {

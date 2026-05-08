@@ -1,5 +1,5 @@
 import { handleLoaderFailure } from './fallback.js';
 
-import('../archetypeTrends.js').catch(error => {
+import('../archetype-trends.js').catch(error => {
   handleLoaderFailure('Archetype trends', error);
 });

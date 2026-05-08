@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Mockup C — Playmat · Cards Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Nunito:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg: #14110b;
+  --surface: #1f1a12;
+  --surface-2: #2a241a;
+  --rule: rgba(255, 220, 170, 0.10);
+  --rule-2: rgba(255, 220, 170, 0.20);
+  --ink: #f6efe2;
+  --ink-2: #c0b6a4;
+  --ink-3: #807866;
+  --gold: #f3c969;
+  --gold-2: #e8a83e;
+  --gold-soft: rgba(243, 201, 105, 0.16);
+  --cream: #fff3d6;
+  --pkmn: #ffb585;     /* warm peach */
+  --trn: #c8b5ff;      /* warm lavender */
+  --eng: #b9e9a3;      /* warm green */
+  --display: 'Nunito', system-ui, sans-serif;
+  --serif: 'Fraunces', Georgia, serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--display);
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(ellipse at 0% 0%, rgba(243, 201, 105, 0.08), transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(255, 181, 133, 0.05), transparent 60%);
+  background-attachment: fixed;
+}
+img { display: block; max-width: 100%; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; cursor: pointer; }
+
+.shell { max-width: 1340px; margin: 0 auto; padding: 0 28px; }
+
+/* ---- Header ---------------------------------------------------- */
+.bar {
+  position: sticky; top: 0; z-index: 30;
+  background: rgba(20, 17, 11, 0.82);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--rule);
+}
+.bar-inner {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 24px;
+  padding: 14px 0;
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.brand .mk {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-2));
+  border-radius: 12px;
+  display: grid; place-items: center;
+  font-family: var(--display); font-size: 14px; font-weight: 700;
+  color: var(--bg);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+}
+.nav { display: flex; gap: 6px; justify-self: center; }
+.nav a {
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-2);
+  border-radius: 999px;
+}
+.nav a:hover { background: var(--surface); color: var(--ink); }
+.nav a.active { background: var(--gold); color: var(--bg); }
+.bar .icon-row { display: flex; gap: 8px; }
+.bar .ic {
+  width: 36px; height: 36px;
+  display: grid; place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  color: var(--ink-2);
+  font-size: 16px;
+}
+.bar .ic:hover { color: var(--gold); border-color: var(--rule-2); }
+
+/* ---- Hello / hero ---------------------------------------------- */
+.hello {
+  padding: 40px 0 24px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: end;
+}
+.hello .greeting {
+  font-family: var(--serif);
+  font-size: 14px;
+  font-style: italic;
+  color: var(--ink-2);
+  margin-bottom: 8px;
+}
+.hello h1 {
+  font-family: var(--serif);
+  font-size: 44px;
+  font-weight: 500;
+  line-height: 1.0;
+  letter-spacing: -0.02em;
+}
+.hello h1 em { color: var(--gold); font-style: italic; }
+.hello .pills {
+  display: flex; gap: 10px;
+}
+.hello .pill {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 110px;
+}
+.hello .pill .lab {
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.hello .pill .val {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--cream);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Toolbar --------------------------------------------------- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 18px;
+  margin: 24px 0 28px;
+}
+.search {
+  position: relative;
+  flex: 1 1 280px;
+  min-width: 240px;
+}
+.search input {
+  width: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 11px 14px 11px 38px;
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+}
+.search input:focus { border-color: var(--gold); }
+.search input::placeholder { color: var(--ink-3); }
+.search::before {
+  content: "✦";
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  color: var(--gold); font-size: 13px;
+}
+.fbtn {
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.fbtn:hover { border-color: var(--rule-2); }
+.fbtn .lab { font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--ink-3); }
+.fbtn .v { font-weight: 600; }
+.fbtn .caret { color: var(--ink-3); font-size: 10px; }
+.fbtn.on { border-color: var(--gold); color: var(--gold); background: var(--gold-soft); }
+.fbtn.on .v { color: var(--gold); }
+
+.results-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 18px;
+  padding: 0 4px;
+}
+.results-row .left {
+  font-size: 14px; color: var(--ink-2);
+}
+.results-row .left b { color: var(--cream); font-weight: 700; }
+.sortbar {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 3px;
+}
+.sortbar button {
+  font-family: var(--display); font-size: 12px; font-weight: 600;
+  background: transparent; border: 0; color: var(--ink-2);
+  padding: 7px 13px; border-radius: 999px;
+}
+.sortbar button.active { background: var(--gold); color: var(--bg); }
+
+/* ---- Grid ----------------------------------------------------- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 18px 14px;
+  padding-bottom: 80px;
+}
+
+/* ---- Card (warm version, type accents) ------------------------ */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  min-width: 0;
+}
+.card .frame {
+  position: relative;
+  aspect-ratio: 200/278;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  transition: transform .25s cubic-bezier(.2, .9, .3, 1.2), border-color .2s, box-shadow .2s;
+}
+.card:hover .frame {
+  transform: translateY(-3px) rotate(-0.4deg);
+  border-color: rgba(243, 201, 105, 0.35);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.35);
+}
+.card .frame img {
+  width: 100%; height: 100%; object-fit: contain;
+}
+/* type chip (top-left, friendly) */
+.card .type-chip {
+  position: absolute;
+  top: 8px; left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  background: rgba(20, 17, 11, 0.78);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--rule-2);
+  border-radius: 999px;
+  padding: 3px 8px 3px 5px;
+  color: var(--ink);
+  z-index: 2;
+}
+.card .type-chip .dot { width: 6px; height: 6px; border-radius: 50%; }
+.card .type-chip.pkmn .dot { background: var(--pkmn); }
+.card .type-chip.trn .dot { background: var(--trn); }
+.card .type-chip.eng .dot { background: var(--eng); }
+/* histogram overlay (warm gold) */
+.card .hist {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 50%;
+  background: linear-gradient(180deg, transparent 0%, rgba(20, 17, 11, 0.0) 30%, rgba(20, 17, 11, 0.55) 65%, rgba(20, 17, 11, 0.85) 100%);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: end;
+  padding: 8px 8px 0;
+  pointer-events: none;
+}
+.card .hist .bars {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  align-items: end;
+  height: 100%;
+  padding-bottom: 4px;
+}
+.card .hist .bars .col { display: grid; grid-template-rows: 1fr 12px; gap: 2px; align-items: end; height: 100%; }
+.card .hist .bars .b {
+  width: 100%;
+  background: linear-gradient(180deg, var(--cream), var(--gold));
+  border-radius: 3px 3px 0 0;
+  align-self: end;
+  opacity: 0.95;
+}
+.card .hist .bars .l {
+  font-size: 9px; font-weight: 700;
+  color: rgba(255,255,255,0.7);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.card .usage {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 18px;
+  background: rgba(20, 17, 11, 0.82);
+  display: flex;
+  align-items: center;
+}
+.card .usage .fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: linear-gradient(90deg, var(--gold-2), var(--cream));
+  opacity: 0.95;
+}
+.card .usage .pct {
+  position: relative;
+  margin-left: auto;
+  margin-right: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--bg);
+  font-variant-numeric: tabular-nums;
+}
+.card .label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+  padding: 0 2px;
+  min-height: 18px;
+}
+.card .label .nm {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.card .label .meta {
+  font-size: 10px;
+  color: var(--ink-3);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+/* responsive */
+@media (max-width: 1280px) { .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (max-width: 1080px) {
+  .grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .nav a { padding: 8px 12px; font-size: 13px; }
+}
+@media (max-width: 720px) {
+  .nav { display: none; }
+  .shell { padding: 0 16px; }
+  .hello { grid-template-columns: 1fr; gap: 16px; }
+  .hello h1 { font-size: 28px; }
+  .hello .pills { flex-wrap: wrap; }
+  .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; }
+  .card .label .meta { display: none; }
+}
+@media (max-width: 480px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="shell">
+    <div class="bar-inner">
+      <a class="brand" href="/toys/cards-redesign/"><span class="mk">cm</span> ciphermaniac</a>
+      <nav class="nav">
+        <a class="active" href="#">Cards</a>
+        <a href="#">Trends</a>
+        <a href="#">Archetypes</a>
+        <a href="#">Players</a>
+      </nav>
+      <div class="icon-row">
+        <span class="ic" title="Watchlist">★</span>
+        <span class="ic" title="Compare">⇆</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+
+  <section class="hello">
+    <div>
+      <div class="greeting">Hey — looking at the meta from</div>
+      <h1>Online · Last <em>14 days</em>.</h1>
+    </div>
+    <div class="pills">
+      <div class="pill"><span class="lab">Cards</span><span class="val">933</span></div>
+      <div class="pill"><span class="lab">Decks</span><span class="val">8,640</span></div>
+    </div>
+  </section>
+
+  <div class="toolbar">
+    <div class="search"><input type="search" placeholder="Find a card…" /></div>
+    <button class="fbtn on"><span class="lab">Tournament</span><span class="v">Online — 14d</span><span class="caret">▾</span></button>
+    <button class="fbtn"><span class="lab">Set</span><span class="v">All</span><span class="caret">▾</span></button>
+    <button class="fbtn"><span class="lab">Archetype</span><span class="v">All</span><span class="caret">▾</span></button>
+    <button class="fbtn"><span class="lab">Type</span><span class="v">All</span><span class="caret">▾</span></button>
+    <button class="fbtn"><span class="lab">Reg</span><span class="v">G–J</span><span class="caret">▾</span></button>
+    <button class="fbtn"><span class="lab">Finish</span><span class="v">All decks</span><span class="caret">▾</span></button>
+  </div>
+
+  <div class="results-row">
+    <div class="left">Showing all <b>933</b> cards · sorted by inclusion</div>
+    <div class="sortbar">
+      <button class="active">Most used</button>
+      <button>A–Z</button>
+      <button>Price</button>
+    </div>
+  </div>
+
+  <section class="grid" id="grid"></section>
+</div>
+
+<script src="data.js"></script>
+<script>
+function histogram(dist) {
+  const max = Math.max(...dist.map(d => d.percent));
+  return dist.map(d => {
+    const h = Math.max(8, Math.round(72 * (d.percent / max)));
+    return `<div class="col"><div class="b" style="height:${h}%"></div><div class="l">${d.copies}</div></div>`;
+  }).join('');
+}
+function typeMeta(cat) {
+  if (cat.includes('pokemon')) return { cls: 'pkmn', label: 'Pkmn' };
+  if (cat.includes('energy')) return { cls: 'eng', label: 'Engy' };
+  const sub = cat.split('/')[1] || 'trainer';
+  const map = { item: 'Item', supporter: 'Suppt', tool: 'Tool', stadium: 'Stad' };
+  return { cls: 'trn', label: map[sub] || 'Trnr' };
+}
+
+const grid = document.getElementById('grid');
+window.SAMPLE_CARDS.forEach(c => {
+  const t = typeMeta(c.category);
+  const el = document.createElement('article');
+  el.className = 'card';
+  el.innerHTML = `
+    <div class="frame">
+      <span class="type-chip ${t.cls}"><span class="dot"></span>${t.label}</span>
+      <img src="${window.thumbUrl(c)}" alt="" loading="lazy" />
+      <div class="hist"><div class="bars">${histogram(c.dist)}</div></div>
+      <div class="usage">
+        <div class="fill" style="width:${Math.min(100, c.pct)}%"></div>
+        <span class="pct">${c.pct.toFixed(1)}%</span>
+      </div>
+    </div>
+    <div class="label">
+      <span class="nm">${c.name}</span>
+      <span class="meta">${c.set} ${c.number}</span>
+    </div>
+  `;
+  grid.appendChild(el);
+});
+</script>
+</body>
+</html>

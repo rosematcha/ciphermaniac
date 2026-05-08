@@ -1,8 +1,8 @@
-import { generateReportFromDecks } from '../reportBuilder.js';
-import { enrichAllDecks, loadCardTypesDatabase } from '../cardTypesDatabase.js';
-import { enrichDecksWithOnTheFlyFetch, refreshRegulationMarks } from '../cardTypeFetcher.js';
-import { loadCardSynonyms } from '../cardSynonyms.js';
-import { buildTournamentDatabase } from '../sqliteBuilder.js';
+import { generateReportFromDecks } from '../data/reportBuilder.js';
+import { enrichAllDecks, loadCardTypesDatabase } from '../data/cardTypesDatabase.js';
+import { enrichDecksWithOnTheFlyFetch, refreshRegulationMarks } from '../data/cardTypeFetcher.js';
+import { loadCardSynonyms } from '../data/cardSynonyms.js';
+import { buildTournamentDatabase } from '../data/sqliteBuilder.js';
 import { daysAgo, fetchRecentOnlineTournaments, gatherDecks } from './tournamentFetcher';
 import { ARCHETYPE_THUMBNAILS, buildArchetypeReports } from './reportGenerator';
 import { buildCardTrendReport, buildTrendReport } from './archetypeBuilder';

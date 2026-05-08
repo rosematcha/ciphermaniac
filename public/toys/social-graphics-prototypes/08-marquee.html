@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>08 — Capcom Cup Marquee</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=Big+Shoulders+Display:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0c0d;
+    --rule: #2c2c30;
+    --ink: #f6f3ea;
+    --mute: #8d8b85;
+    --amber: #ffb300;
+    --amber-deep: #c47e00;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #050505;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 32px;
+  }
+
+  .canvas {
+    width: 1200px;
+    height: 675px;
+    background:
+      radial-gradient(ellipse 90% 60% at 22% 50%, rgba(255,179,0,0.10), transparent 60%),
+      var(--bg);
+    color: var(--ink);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.7);
+    display: grid;
+    grid-template-columns: 460px 1fr;
+    grid-template-rows: 1fr auto;
+    gap: 0;
+  }
+
+  /* HERO column */
+  .hero {
+    position: relative;
+    grid-row: 1 / span 2;
+    background: #08080a;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(90deg, transparent 0%, transparent 86%, var(--bg) 100%),
+      linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.55) 100%);
+    pointer-events: none;
+  }
+  .hero img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: 50% 28%;
+    transform: scale(1.4);
+    transform-origin: 50% 30%;
+  }
+  .hero-num {
+    position: absolute;
+    top: 20px; left: 24px;
+    font-family: 'Bowlby One SC', sans-serif;
+    font-size: 84px;
+    line-height: 0.85;
+    color: var(--amber);
+    letter-spacing: -0.04em;
+    text-shadow:
+      0 4px 0 rgba(0,0,0,0.5),
+      0 0 24px rgba(255,179,0,0.2);
+    transform: skewX(-8deg);
+    z-index: 2;
+  }
+  .hero-num small {
+    display: block;
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.18em;
+    color: var(--ink);
+    margin-top: 4px;
+    text-transform: uppercase;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.6);
+    transform: skewX(8deg);
+  }
+  .hero-name {
+    position: absolute;
+    left: 24px; bottom: 88px;
+    z-index: 2;
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-style: italic;
+    font-weight: 900;
+    font-size: 38px;
+    line-height: 0.92;
+    color: var(--ink);
+    text-transform: uppercase;
+    letter-spacing: -0.015em;
+    max-width: 380px;
+    text-shadow: 0 2px 0 rgba(0,0,0,0.65);
+  }
+  .hero-pct {
+    position: absolute;
+    left: 24px; bottom: 22px;
+    z-index: 2;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    color: var(--mute);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .hero-pct strong {
+    color: var(--amber);
+    font-weight: 500;
+    font-size: 22px;
+    margin-right: 8px;
+    letter-spacing: -0.02em;
+  }
+
+  /* RIGHT column */
+  .right {
+    padding: 26px 32px 0 36px;
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    gap: 16px;
+    overflow: hidden;
+  }
+
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--mute);
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .meta-row strong { color: var(--ink); font-weight: 500; }
+  .meta-row .amber { color: var(--amber); }
+  .meta-row .src {
+    color: var(--bg);
+    background: var(--amber);
+    padding: 2px 6px 1px;
+    margin-left: 4px;
+    letter-spacing: 0.18em;
+    font-weight: 600;
+  }
+
+  /* TYPOGRAPHIC TITLE — the moment */
+  .title {
+    font-family: 'Bowlby One SC', sans-serif;
+    line-height: 0.82;
+    color: var(--ink);
+    letter-spacing: -0.04em;
+    text-transform: uppercase;
+    transform: skewX(-8deg);
+    position: relative;
+  }
+  .title .row {
+    display: block;
+  }
+  .title .row1 {
+    font-size: 92px;
+    color: var(--ink);
+  }
+  .title .row2 {
+    font-size: 92px;
+    color: var(--amber);
+    text-indent: 28px;
+    letter-spacing: -0.04em;
+  }
+  .title .row2 .slash {
+    color: var(--ink);
+    margin: 0 4px;
+  }
+
+  /* RUNNERS-UP LIST 2-8 */
+  .runners {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: min-content;
+    column-gap: 22px;
+    row-gap: 6px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+  }
+  .ru {
+    display: grid;
+    grid-template-columns: 22px 32px 1fr auto;
+    gap: 8px;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(44,44,48,0.5);
+  }
+  .ru-rank {
+    font-family: 'Bowlby One SC', sans-serif;
+    font-size: 14px;
+    color: var(--mute);
+    letter-spacing: -0.04em;
+  }
+  .ru-img {
+    width: 32px; height: 32px;
+    background: #000;
+    overflow: hidden;
+    border: 1px solid var(--rule);
+  }
+  .ru-img img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: 50% 24%;
+    transform: scale(1.5);
+    transform-origin: 50% 30%;
+    filter: grayscale(0.3) contrast(1.05);
+  }
+  .ru-name {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--ink);
+    line-height: 1.05;
+    text-transform: uppercase;
+    letter-spacing: -0.005em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ru-pct {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--amber);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  /* FOOTER 9-20 */
+  .foot {
+    grid-column: 1 / -1;
+    padding: 12px 36px 14px;
+    border-top: 1px solid var(--rule);
+    background: rgba(0,0,0,0.4);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--mute);
+    line-height: 1.4;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .foot .label {
+    color: var(--amber);
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-style: italic;
+    font-weight: 900;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-right: 10px;
+  }
+  .foot .num { color: var(--ink); }
+  .foot .sep { color: var(--amber); margin: 0 8px; opacity: 0.6; }
+</style>
+</head>
+<body>
+  <div class="canvas">
+    <div class="hero" id="hero"></div>
+
+    <div class="right">
+      <div class="meta-row">
+        <span><strong>PRAGUE REGIONAL</strong> · 12 APR 26 · CZ</span>
+        <span><strong class="amber">1,367</strong> DECKS · <span class="src">CIPHERMANIAC.COM</span></span>
+      </div>
+
+      <div class="title">
+        <span class="row row1">PRAGUE</span>
+        <span class="row row2">TOP<span class="slash">/</span>20</span>
+      </div>
+
+      <div class="runners" id="runners"></div>
+    </div>
+
+    <div class="foot" id="foot"></div>
+  </div>
+
+<script type="module">
+  import { CARDS, imgUrl } from './data.js';
+
+  const heroEl = document.getElementById('hero');
+  const top = CARDS[0];
+  heroEl.innerHTML = `
+    <img src="${imgUrl(top)}" alt="${top.name}" crossorigin="anonymous" />
+    <div class="hero-num">01<small>RANK</small></div>
+    <div class="hero-name">${top.name}</div>
+    <div class="hero-pct"><strong>${top.pct}%</strong>${top.found.toLocaleString()} of ${top.total.toLocaleString()} decks</div>
+  `;
+
+  const runnersEl = document.getElementById('runners');
+  for (let i = 1; i < 8; i++) {
+    const c = CARDS[i];
+    runnersEl.insertAdjacentHTML('beforeend', `
+      <div class="ru">
+        <div class="ru-rank">${String(c.rank).padStart(2,'0')}</div>
+        <div class="ru-img"><img src="${imgUrl(c)}" alt="${c.name}" crossorigin="anonymous" /></div>
+        <div class="ru-name">${c.name}</div>
+        <div class="ru-pct">${c.pct}%</div>
+      </div>`);
+  }
+
+  const footEl = document.getElementById('foot');
+  const tail = CARDS.slice(8, 20).map(c =>
+    `<span class="num">${String(c.rank).padStart(2,'0')} ${c.name.toUpperCase()}</span> ${c.pct}%`
+  ).join('<span class="sep">·</span>');
+  footEl.innerHTML = `<span class="label">UNDERCARD</span>${tail}`;
+</script>
+</body>
+</html>

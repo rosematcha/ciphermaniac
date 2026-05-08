@@ -420,7 +420,7 @@
         "tests/**/*.ts",
         "tests/**/*.js",
         "dev/tests/**/*.ts",
-        "tools/**/*.test.ts",
+        "scripts/**/*.test.ts",
         "**/*.test.ts",
         "**/*.test.js",
         "**/*.test.mjs"
@@ -461,7 +461,7 @@
     // Build/Config scripts: Node environment with relaxed rules
     // -------------------------------------------------------------------------
     {
-      "files": ["scripts/**/*.mjs", "scripts/**/*.js", "tools/**/*.mjs", "tools/**/*.js", ".github/scripts/**/*"],
+      "files": ["scripts/**/*.mjs", "scripts/**/*.js", ".github/scripts/**/*"],
       "env": {
         "browser": false,
         "node": true

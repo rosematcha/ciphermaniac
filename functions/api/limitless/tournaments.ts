@@ -1,4 +1,4 @@
-import { fetchLimitlessJson } from '../../lib/limitless.js';
+import { fetchLimitlessJson } from '../../lib/api/limitless.js';
 
 type AllowedQueryParam = 'game' | 'format' | 'organizerId' | 'limit' | 'page';
 

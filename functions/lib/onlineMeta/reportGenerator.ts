@@ -1,4 +1,4 @@
-import { generateReportFromDecks, normalizeArchetypeName, sanitizeForFilename } from '../reportBuilder.js';
+import { generateReportFromDecks, normalizeArchetypeName, sanitizeForFilename } from '../data/reportBuilder.js';
 import archetypeThumbnails from '../../../public/assets/data/archetype-thumbnails.json';
 import type { BuildArchetypeReportsOptions, ReportData, ThumbnailConfig } from './types';
 

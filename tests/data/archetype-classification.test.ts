@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildArchetypeDeckIndex, resolveArchetypeClassification } from '../../functions/lib/archetypeClassifier.js';
+import {
+  buildArchetypeDeckIndex,
+  resolveArchetypeClassification
+} from '../../functions/lib/analysis/archetypeClassifier.js';
 
 test('resolveArchetypeClassification prefers deck-id mapping when name is generic', () => {
   const deckRules = [

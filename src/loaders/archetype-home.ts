@@ -1,5 +1,5 @@
 import { handleLoaderFailure } from './fallback.js';
 
-import('../archetypeHome.js').catch(error => {
+import('../archetype-home.js').catch(error => {
   handleLoaderFailure('Archetype overview', error);
 });

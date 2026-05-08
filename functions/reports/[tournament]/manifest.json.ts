@@ -1,4 +1,4 @@
-import { jsonError } from '../../lib/responses.js';
+import { jsonError } from '../../lib/api/responses.js';
 
 interface RequestContext {
   request: Request;

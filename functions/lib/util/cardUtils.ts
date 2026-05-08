@@ -12,4 +12,4 @@ export {
   sanitizeForPath,
   sanitizeForFilename,
   normalizeArchetypeName
-} from '../../shared/cardUtils';
+} from '../../../shared/cardUtils';
