@@ -1,6 +1,6 @@
 /**
  * tests/shared/cardUtils.test.ts
- * Tests for shared/cardUtils.ts - card utility functions used across frontend and backend
+ * Tests for shared/cardUtils - card utility functions used across frontend and backend
  */
 
 import test from 'node:test';
@@ -13,7 +13,7 @@ import {
   normalizeCardNumber,
   sanitizeForFilename,
   sanitizeForPath
-} from '../../shared/cardUtils.js';
+} from '../../shared/cardUtils';
 
 // ============================================================================
 // normalizeCardNumber tests

@@ -5,8 +5,8 @@ import { getCanonicalCard } from '../utils/cardSynonyms.js';
 import { logger } from '../utils/logger.js';
 import { CONFIG } from '../config.js';
 // Re-export normalizeCardNumber from shared module for backwards compatibility
-export { normalizeCardNumber } from '../../shared/cardUtils.js';
-import { normalizeCardNumber } from '../../shared/cardUtils.js';
+export { normalizeCardNumber } from '../../shared/cardUtils';
+import { normalizeCardNumber } from '../../shared/cardUtils';
 
 const SLUG_CACHE_KEY = 'cardSlugCacheV2';
 const DEFAULT_SCAN_LIMIT = 12;

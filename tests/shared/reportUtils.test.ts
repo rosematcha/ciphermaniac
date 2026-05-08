@@ -1,6 +1,6 @@
 /**
  * tests/shared/reportUtils.test.ts
- * Tests for shared/reportUtils.ts - report generation utilities shared across frontend and backend
+ * Tests for shared/reportUtils - report generation utilities shared across frontend and backend
  */
 
 import test from 'node:test';
@@ -13,7 +13,7 @@ import {
   createDistFromHistogram,
   createDistributionFromCounts,
   sortReportItems
-} from '../../shared/reportUtils.js';
+} from '../../shared/reportUtils';
 
 // ============================================================================
 // calculatePercentage tests
