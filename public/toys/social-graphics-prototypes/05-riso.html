@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>05 — Riso Zine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Caveat+Brush&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f0e9d6;
+    --ink: #1a1a1a;
+    --red: #ff4632;       /* riso red/orange */
+    --blue: #2747ff;      /* riso blue */
+    --plum: #6b1bb5;      /* overprint result */
+    --mute: #6b6657;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #2a2722;
+    font-family: 'Space Mono', monospace;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 32px;
+  }
+
+  .canvas {
+    width: 1280px;
+    background: var(--paper);
+    color: var(--ink);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 50px 100px rgba(0,0,0,0.6);
+    padding: 44px 50px 40px;
+  }
+
+  /* paper grain + halftone */
+  .canvas::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.18 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    mix-blend-mode: multiply;
+    opacity: 0.55;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .canvas::after {
+    content:"";
+    position:absolute; inset:0;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(39,71,255,0.12) 1px, transparent 1px);
+    background-size: 6px 6px;
+    pointer-events: none;
+    mix-blend-mode: multiply;
+    z-index: 4;
+    opacity: 0.6;
+  }
+  .canvas > * { position: relative; z-index: 6; }
+
+  /* header — staple-bound zine */
+  .head {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 22px;
+    align-items: center;
+    padding-bottom: 20px;
+    border-bottom: 4px solid var(--ink);
+    margin-bottom: 4px;
+    position: relative;
+  }
+  .head::before, .head::after {
+    content: "✕";
+    position: absolute;
+    top: 50%; transform: translateY(-50%);
+    color: var(--red);
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .head::before { left: -28px; }
+  .head::after { right: -28px; }
+
+  .head-zine {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    line-height: 1;
+  }
+  .head-zine .stamp {
+    display: inline-block;
+    padding: 5px 10px;
+    background: var(--red);
+    color: var(--paper);
+    transform: rotate(-2deg);
+  }
+  .head-issue {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    text-align: center;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  .head-issue strong { display: block; font-size: 14px; }
+  .head-issue .red { color: var(--red); }
+  .head-meta {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink);
+    text-align: right;
+    line-height: 1.5;
+  }
+  .head-meta strong {
+    color: var(--blue);
+    font-size: 13px;
+  }
+
+  /* TITLE */
+  .title-wrap {
+    position: relative;
+    margin: 22px 0 28px;
+  }
+  .title {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 200px;
+    line-height: 0.82;
+    letter-spacing: -0.05em;
+    color: var(--ink);
+    text-transform: uppercase;
+    position: relative;
+    z-index: 2;
+  }
+  /* riso misregister — red shadow, blue shadow */
+  .title::before, .title::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    line-height: 0.82;
+    pointer-events: none;
+    mix-blend-mode: multiply;
+  }
+  .title::before {
+    color: var(--red);
+    transform: translate(-6px, 4px);
+    z-index: 1;
+    opacity: 0.85;
+  }
+  .title::after {
+    color: var(--blue);
+    transform: translate(7px, -3px);
+    z-index: 1;
+    opacity: 0.78;
+  }
+
+  .title-tag {
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: 'Caveat Brush', cursive;
+    color: var(--red);
+    font-size: 36px;
+    line-height: 1;
+    transform: rotate(-1.5deg);
+  }
+  .title-tag::before, .title-tag::after {
+    content: "";
+    flex: 1;
+    height: 4px;
+    background: var(--ink);
+  }
+
+  /* MAIN BLOCK: featured + side-stack */
+  .main {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 28px;
+    margin-bottom: 20px;
+  }
+
+  .feat {
+    background: var(--paper);
+    border: 4px solid var(--ink);
+    padding: 4px;
+    position: relative;
+    transform: rotate(-1deg);
+    box-shadow: 8px 8px 0 var(--red);
+  }
+  .feat::before {
+    content: "PULL";
+    position: absolute;
+    top: -22px; left: 24px;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 6px 10px;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 14px;
+    letter-spacing: 0.16em;
+    z-index: 3;
+  }
+  .feat-img {
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    background: var(--paper);
+    position: relative;
+  }
+  .feat-img img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: 50% 30%;
+    transform: scale(1.55);
+    transform-origin: center 32%;
+    filter: contrast(1.05) saturate(0.4);
+    mix-blend-mode: multiply;
+  }
+  .feat-img::after {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 1px 1px, var(--red) 1.2px, transparent 1.2px) 0 0/4px 4px,
+      radial-gradient(circle at 2px 2px, var(--blue) 0.8px, transparent 0.8px) 1px 1px/5px 5px;
+    mix-blend-mode: multiply;
+    opacity: 0.45;
+    pointer-events: none;
+  }
+  .feat-body {
+    padding: 14px 16px 14px;
+    border-top: 4px solid var(--ink);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+    background: var(--paper);
+  }
+  .feat-rank {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 64px;
+    line-height: 0.85;
+    color: var(--blue);
+    letter-spacing: -0.04em;
+  }
+  .feat-name {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 26px;
+    line-height: 1;
+    color: var(--ink);
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+  }
+  .feat-decks {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    margin-top: 6px;
+    color: var(--mute);
+    letter-spacing: 0.05em;
+  }
+  .feat-pct {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 56px;
+    color: var(--red);
+    line-height: 0.85;
+    letter-spacing: -0.04em;
+  }
+
+  /* side stack 2-4 */
+  .stack {
+    display: grid;
+    grid-template-rows: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 60px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 3px solid var(--ink);
+    background: var(--paper);
+    position: relative;
+  }
+  .row:nth-child(1) { transform: rotate(0.5deg); box-shadow: 4px 4px 0 var(--blue); }
+  .row:nth-child(2) { transform: rotate(-0.7deg); box-shadow: 4px 4px 0 var(--red); }
+  .row:nth-child(3) { transform: rotate(0.4deg); box-shadow: 4px 4px 0 var(--ink); }
+
+  .row-img {
+    width: 60px; height: 60px;
+    border: 2px solid var(--ink);
+    overflow: hidden;
+    background: var(--paper);
+    position: relative;
+  }
+  .row-img img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: 50% 30%;
+    transform: scale(1.5);
+    transform-origin: center 35%;
+    filter: contrast(1.1) saturate(0.3);
+    mix-blend-mode: multiply;
+  }
+  .row-img::after {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 1px 1px, var(--red) 0.9px, transparent 0.9px) 0 0/3px 3px;
+    mix-blend-mode: multiply;
+    opacity: 0.45;
+  }
+  .row-rank {
+    position: absolute;
+    top: -10px; left: -10px;
+    width: 30px; height: 30px;
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--paper);
+    display: grid; place-items: center;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 13px;
+    z-index: 2;
+  }
+  .row-name {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 16px;
+    line-height: 1.05;
+    color: var(--ink);
+    text-transform: uppercase;
+    letter-spacing: -0.005em;
+    overflow: hidden;
+  }
+  .row-decks {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--mute);
+    margin-top: 3px;
+    letter-spacing: 0.04em;
+  }
+  .row-pct {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 26px;
+    color: var(--red);
+    letter-spacing: -0.02em;
+  }
+
+  /* lower grid 5-12 */
+  .lower {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-top: 22px;
+    padding-top: 22px;
+    border-top: 4px dashed var(--ink);
+  }
+  .cell {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    padding: 8px;
+    position: relative;
+    transform: rotate(var(--rot, 0deg));
+  }
+  .cell-img {
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background: var(--paper);
+    border-bottom: 2px solid var(--ink);
+    position: relative;
+    margin-bottom: 6px;
+  }
+  .cell-img img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: 50% 30%;
+    transform: scale(1.5);
+    transform-origin: center 35%;
+    filter: contrast(1.1) saturate(0.4);
+    mix-blend-mode: multiply;
+  }
+  .cell-img::after {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 1px 1px, var(--blue) 1px, transparent 1px) 0 0/4px 4px;
+    mix-blend-mode: multiply;
+    opacity: 0.4;
+  }
+  .cell-rank {
+    position: absolute;
+    top: -8px; right: -8px;
+    background: var(--red);
+    color: var(--paper);
+    font-family: 'Archivo Black', sans-serif;
+    padding: 3px 8px;
+    font-size: 13px;
+    transform: rotate(4deg);
+    z-index: 2;
+  }
+  .cell-name {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 11px;
+    line-height: 1.05;
+    text-transform: uppercase;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+    margin-bottom: 3px;
+    height: 26px;
+    overflow: hidden;
+  }
+  .cell-pct {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 20px;
+    color: var(--blue);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  /* footer */
+  .foot {
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 4px solid var(--ink);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  .foot strong { color: var(--red); font-weight: 700; }
+  .foot .stamp {
+    display: inline-block;
+    padding: 4px 10px;
+    background: var(--ink);
+    color: var(--paper);
+    transform: rotate(-1deg);
+  }
+</style>
+</head>
+<body>
+  <div class="canvas">
+    <div class="head">
+      <div class="head-zine">
+        <span class="stamp">CIPHERZINE</span>
+        <span style="margin-left:10px;">№ 47</span>
+      </div>
+      <div class="head-issue">
+        <strong>Issue: Prague</strong>
+        <span>Top 20 — Most-Played</span>
+      </div>
+      <div class="head-meta">
+        12 Apr 2026<br />
+        <strong>1,367 DECKS</strong>
+      </div>
+    </div>
+
+    <div class="title-wrap">
+      <h1 class="title" data-text="MOST-PLAYED">MOST-PLAYED</h1>
+      <div class="title-tag">~ what they ALL stuffed in ~</div>
+    </div>
+
+    <div class="main">
+      <div class="feat" id="feat"></div>
+      <div class="stack" id="stack"></div>
+    </div>
+
+    <div class="lower" id="lower"></div>
+
+    <div class="foot">
+      <span><span class="stamp">CIPHERMANIAC.COM</span></span>
+      <span>cut · paste · play · win — <strong>standard format</strong></span>
+    </div>
+  </div>
+
+<script type="module">
+  import { CARDS, imgUrl } from './data.js';
+
+  const featEl = document.getElementById('feat');
+  const stackEl = document.getElementById('stack');
+  const lowerEl = document.getElementById('lower');
+
+  // featured
+  const f = CARDS[0];
+  featEl.innerHTML = `
+    <div class="feat-img"><img src="${imgUrl(f)}" alt="${f.name}" crossorigin="anonymous" /></div>
+    <div class="feat-body">
+      <div class="feat-rank">${String(f.rank).padStart(2,'0')}</div>
+      <div>
+        <div class="feat-name">${f.name}</div>
+        <div class="feat-decks">${f.found.toLocaleString()} of ${f.total.toLocaleString()} decks ran it</div>
+      </div>
+      <div class="feat-pct">${Math.round(f.pct)}%</div>
+    </div>`;
+
+  // stack 2-4
+  for (let i = 1; i < 4; i++) {
+    const c = CARDS[i];
+    stackEl.insertAdjacentHTML('beforeend', `
+      <div class="row">
+        <div class="row-img">
+          <div class="row-rank">${c.rank}</div>
+          <img src="${imgUrl(c)}" alt="${c.name}" crossorigin="anonymous" />
+        </div>
+        <div>
+          <div class="row-name">${c.name}</div>
+          <div class="row-decks">${c.found.toLocaleString()} / ${c.total.toLocaleString()}</div>
+        </div>
+        <div class="row-pct">${Math.round(c.pct)}%</div>
+      </div>`);
+  }
+
+  // lower 5-12 (8 cells in 4x2)
+  const tilts = [-2, 1.5, -1, 2, 1, -1.8, 0.6, -1.2];
+  for (let i = 4; i < 12; i++) {
+    const c = CARDS[i];
+    lowerEl.insertAdjacentHTML('beforeend', `
+      <div class="cell" style="--rot:${tilts[i-4]}deg">
+        <div class="cell-img">
+          <div class="cell-rank">№${c.rank}</div>
+          <img src="${imgUrl(c)}" alt="${c.name}" crossorigin="anonymous" />
+        </div>
+        <div class="cell-name">${c.name}</div>
+        <div class="cell-pct">${c.pct}%</div>
+      </div>`);
+  }
+</script>
+</body>
+</html>

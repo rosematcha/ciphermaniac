@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Social Graphics — Refined</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=Big+Shoulders+Display:ital,wght@0,500;0,700;0,900;1,500;1,700;1,900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #07070a;
+    color: #f4f1e8;
+    font-family: 'Big Shoulders Display', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    padding: 56px 40px 80px;
+    max-width: 1500px;
+    margin: 0 auto;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid #2a2a2e;
+  }
+  h1 {
+    font-family: 'Bowlby One SC', sans-serif;
+    font-size: 76px;
+    line-height: 0.85;
+    letter-spacing: -0.04em;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    transform: skewX(-8deg);
+    color: #f4f1e8;
+  }
+  h1 em {
+    font-style: normal;
+    color: #ffb300;
+  }
+  .lede {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: #88857d;
+    margin-top: 14px;
+  }
+  .lede strong { color: #ffb300; font-weight: 500; }
+
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 56px 0 22px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    color: #88857d;
+  }
+  .section-label::before, .section-label::after {
+    content: "";
+    flex: 1 1 auto;
+    height: 1px;
+    background: #2a2a2e;
+  }
+  .section-label .pop { color: #ffb300; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+  }
+  .grid.duo { grid-template-columns: 1fr 1fr; }
+
+  .card {
+    border: 1px solid #2a2a2e;
+    background: #131316;
+    border-radius: 6px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    display: flex;
+    flex-direction: column;
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: #ffb300;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,179,0,0.15);
+  }
+
+  .preview-tall {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1280 / 1700;
+    overflow: hidden;
+    background: #060609;
+  }
+  .preview-tall iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 1280px;
+    height: 1700px;
+    border: 0;
+    transform-origin: top left;
+    transform: scale(0.36);
+    pointer-events: none;
+  }
+
+  .preview-wide {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1264 / 739;
+    overflow: hidden;
+    background: #060609;
+  }
+  .preview-wide iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 1264px;
+    height: 739px;
+    border: 0;
+    transform-origin: top left;
+    transform: scale(0.5);
+    pointer-events: none;
+  }
+
+  .card-meta {
+    padding: 18px 22px 22px;
+    border-top: 1px solid #2a2a2e;
+    background: linear-gradient(180deg, #1a1a1f, #131316);
+  }
+  .card-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: #88857d;
+    margin-bottom: 4px;
+  }
+  .card-name {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-style: italic;
+    font-weight: 900;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .card-desc {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: #b8b3a8;
+    line-height: 1.45;
+    letter-spacing: 0.02em;
+  }
+  .open-link {
+    margin-top: 14px;
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #ffb300;
+  }
+
+  footer {
+    margin-top: 80px;
+    padding-top: 28px;
+    border-top: 1px solid #2a2a2e;
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #6a6a72;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Three <em>variants</em></h1>
+    <div class="lede">
+      Cipherzine layout · Marquee typography · scrubbed of theme copy · <strong>1280×tall</strong>
+    </div>
+  </header>
+
+  <div class="section-label">
+    <span class="pop">●</span> Refined Convergence
+  </div>
+
+  <div class="grid">
+    <a class="card" href="15-clean.html" target="_blank" rel="noopener">
+      <div class="preview-tall"><iframe src="15-clean.html" loading="lazy"></iframe></div>
+      <div class="card-meta">
+        <div class="card-num">15</div>
+        <div class="card-name">Clean</div>
+        <div class="card-desc">Most restrained. Big Shoulders Italic only — no Bowlby. Single amber accent. Tightest line-economy.</div>
+        <span class="open-link">Open full →</span>
+      </div>
+    </a>
+
+    <a class="card" href="16-balanced.html" target="_blank" rel="noopener">
+      <div class="preview-tall"><iframe src="16-balanced.html" loading="lazy"></iframe></div>
+      <div class="card-meta">
+        <div class="card-num">16</div>
+        <div class="card-name">Balanced</div>
+        <div class="card-desc">Marquee's skewed Bowlby title becomes the typographic moment. Same layout as 15 — expressive type without extra decoration.</div>
+        <span class="open-link">Open full →</span>
+      </div>
+    </a>
+
+    <a class="card" href="17-expressive.html" target="_blank" rel="noopener">
+      <div class="preview-tall"><iframe src="17-expressive.html" loading="lazy"></iframe></div>
+      <div class="card-meta">
+        <div class="card-num">17</div>
+        <div class="card-name">Expressive</div>
+        <div class="card-desc">The rank numerals become design elements. Massive "01" overlaps the hero card. Cell ranks bleed off corners. Title is smaller — the numbers carry it.</div>
+        <span class="open-link">Open full →</span>
+      </div>
+    </a>
+  </div>
+
+  <div class="section-label">
+    <span class="pop">●</span> References (kept from earlier rounds)
+  </div>
+
+  <div class="grid duo">
+    <a class="card" href="05-riso.html" target="_blank" rel="noopener">
+      <div class="preview-tall"><iframe src="05-riso.html" loading="lazy"></iframe></div>
+      <div class="card-meta">
+        <div class="card-num">05</div>
+        <div class="card-name">Cipherzine</div>
+        <div class="card-desc">Layout reference. Hero + stack 2-4 + grid 5-12 + footer.</div>
+        <span class="open-link">Open full →</span>
+      </div>
+    </a>
+
+    <a class="card" href="08-marquee.html" target="_blank" rel="noopener">
+      <div class="preview-wide"><iframe src="08-marquee.html" loading="lazy"></iframe></div>
+      <div class="card-meta">
+        <div class="card-num">08</div>
+        <div class="card-name">Capcom Cup Marquee</div>
+        <div class="card-desc">Typography reference. Skewed Bowlby + Big Shoulders Italic + IBM Plex Mono on black/amber.</div>
+        <span class="open-link">Open full →</span>
+      </div>
+    </a>
+  </div>
+
+  <footer>
+    Three variants of the same recipe — pick one or call out specific moves to mix between
+  </footer>
+</body>
+</html>
