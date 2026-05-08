@@ -2,7 +2,167 @@ import { getCanonicalCard } from '../data/cardSynonyms.js';
 import { canonicalizeVariant } from '../util/cardUtils.js';
 
 // All performance tiers - matches src/data/performanceTiers.ts
-const SUCCESS_TAGS = ['all', 'winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'];
+const SUCCESS_TAGS = ['all', 'winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'] as const;
+type SuccessTag = (typeof SUCCESS_TAGS)[number];
+
+type TierTotals = Record<SuccessTag, number>;
+
+interface DayEntry {
+  date: string;
+  tournamentIds: string[];
+  totals: TierTotals;
+}
+
+interface WeekEntry {
+  weekStart: string;
+  weekEnd: string;
+  tournamentIds: string[];
+  totals: TierTotals;
+}
+
+interface TierCounts {
+  counts: number[];
+  decksWithCard: number;
+}
+
+interface CardClassificationStats {
+  currentPlayrate: number;
+  playrateChange: number;
+  volatility: number;
+  avgPlayrate: number;
+  startPlayrate: number;
+}
+
+interface CardInterestStats {
+  maxShare: number;
+  startShare: number;
+  endShare: number;
+}
+
+interface MatchupRecord {
+  opponent: string;
+  wins: number;
+  losses: number;
+  ties: number;
+  total: number;
+  winRate: number;
+}
+
+interface PairingMatch {
+  player1: string;
+  player2?: string;
+  winner: number | string;
+}
+
+interface Standing {
+  player: string;
+  deck?: { name?: string };
+}
+
+interface PairingData {
+  tournamentId?: string;
+  pairings?: PairingMatch[];
+  standings?: Standing[];
+}
+
+interface DeckCard {
+  name: string;
+  set?: string;
+  number?: string;
+  count?: number;
+}
+
+interface Deck {
+  tournamentId: string;
+  successTags?: string[];
+  cards?: DeckCard[];
+}
+
+interface Tournament {
+  id: string;
+  date: string;
+}
+
+interface SynonymDb {
+  [key: string]: unknown;
+}
+
+interface TrendOptions {
+  pairingsData?: PairingData[];
+  archetypeName?: string | null;
+}
+
+interface CopyTrendEntry {
+  avg: number;
+  mode: number;
+  dist: number[];
+}
+
+interface TierData {
+  count: number;
+  avg: number;
+  mode: number;
+  dist: number[];
+}
+
+interface CardTrendData {
+  name: string;
+  set: string | null;
+  number: string | null;
+  category: string;
+  currentPlayrate: number;
+  currentAvgCopies: number;
+  currentModeCopies: number;
+  playrateChange: number;
+  copiesChange: number;
+  volatility: number;
+  timeline: Record<number, Record<string, TierData>>;
+  copyTrend: CopyTrendEntry[];
+}
+
+interface FlexSlot {
+  uid: string;
+  variance: number;
+  copyRange: [number, number];
+}
+
+interface RiserFaller {
+  uid: string;
+  delta: number;
+  from: number;
+  to: number;
+}
+
+interface Substitution {
+  cardA: string;
+  cardB: string;
+  correlation: number;
+}
+
+interface Insights {
+  coreCards: string[];
+  flexSlots: FlexSlot[];
+  risers: RiserFaller[];
+  fallers: RiserFaller[];
+  substitutions: Substitution[];
+}
+
+export interface TrendReport {
+  meta: {
+    generatedAt: string;
+    tournamentCount: number;
+    cardCount: number;
+    dayCount: number;
+    weekCount: number;
+    windowStart?: string;
+    windowEnd?: string;
+  };
+  days: Array<{ date: string; tournamentIds: string[]; totals: TierTotals }>;
+  weeks: Array<{ weekStart: string; weekEnd: string; tournamentIds: string[]; totals: TierTotals }>;
+  cards: Record<string, CardTrendData>;
+  insights: Insights;
+  matchups: Record<string, MatchupRecord>;
+}
 
 // Threshold for a card to be included in the trend report
 const MIN_PEAK_SHARE_PERCENT = 5.0;
@@ -31,7 +191,7 @@ const MIN_MATCHUP_GAMES = 3;
  * @param {Date} date
  * @returns {string} ISO date string
  */
-function getDateString(date) {
+function getDateString(date: Date | string | number): string {
   const dt = new Date(date);
   dt.setHours(0, 0, 0, 0);
   return dt.toISOString().split('T')[0];
@@ -42,7 +202,7 @@ function getDateString(date) {
  * @param {Date} date
  * @returns {string} ISO date string of Monday of that week
  */
-function getWeekStart(date) {
+function getWeekStart(date: Date | string | number): string {
   const weekDate = new Date(date);
   const day = weekDate.getDay();
   const diff = weekDate.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Sunday
@@ -56,7 +216,7 @@ function getWeekStart(date) {
  * @param {string} weekStart - ISO date string of Monday
  * @returns {string} ISO date string of Sunday
  */
-function getWeekEnd(weekStart) {
+function getWeekEnd(weekStart: string): string {
   const endDate = new Date(weekStart);
   endDate.setDate(endDate.getDate() + 6);
   return endDate.toISOString().split('T')[0];
@@ -67,11 +227,11 @@ function getWeekEnd(weekStart) {
  * @param {number[]} arr
  * @returns {number}
  */
-function calculateMode(arr) {
+function calculateMode(arr: number[]): number {
   if (!arr.length) {
     return 0;
   }
-  const freq = {};
+  const freq: Record<number, number> = {};
   let maxFreq = 0;
   let mode = arr[0];
   for (const val of arr) {
@@ -89,12 +249,12 @@ function calculateMode(arr) {
  * @param {number[]} arr
  * @returns {number}
  */
-function calculateStdDev(arr) {
+function calculateStdDev(arr: number[]): number {
   if (arr.length < 2) {
     return 0;
   }
   const mean = arr.reduce((acc, val) => acc + val, 0) / arr.length;
-  const squaredDiffs = arr.map(num => (num - mean) ** 2);
+  const squaredDiffs = arr.map((num: number) => (num - mean) ** 2);
   const variance = squaredDiffs.reduce((acc, val) => acc + val, 0) / arr.length;
   return Math.sqrt(variance);
 }
@@ -105,7 +265,7 @@ function calculateStdDev(arr) {
  * @param {number[]} y
  * @returns {number} Correlation coefficient (-1 to 1)
  */
-function calculateCorrelation(x, y) {
+function calculateCorrelation(x: number[], y: number[]): number {
   if (x.length !== y.length || x.length < 3) {
     return 0;
   }
@@ -139,7 +299,7 @@ function calculateCorrelation(x, y) {
  * @param {Object} stats - Card statistics
  * @returns {string} Category: "core" | "staple" | "flex" | "tech" | "emerging" | "fading"
  */
-function classifyCard(stats) {
+function classifyCard(stats: CardClassificationStats): string {
   const { currentPlayrate, playrateChange, volatility, avgPlayrate } = stats;
 
   // Rising significantly from low base
@@ -185,7 +345,7 @@ function classifyCard(stats) {
  * @param {Object} cardStats
  * @returns {boolean}
  */
-function isInterestingCard(cardStats) {
+function isInterestingCard(cardStats: CardInterestStats): boolean {
   const { maxShare, startShare, endShare } = cardStats;
 
   if (maxShare >= MIN_PEAK_SHARE_PERCENT) {
@@ -210,8 +370,8 @@ function isInterestingCard(cardStats) {
  * @param {Array} allPairings - Array of { tournamentId, pairings, standings } objects
  * @returns {Object} Matchup data keyed by opponent archetype
  */
-export function buildMatchupMatrix(targetArchetype, allPairings) {
-  const matchups = new Map();
+export function buildMatchupMatrix(targetArchetype: string, allPairings: PairingData[]): Record<string, MatchupRecord> {
+  const matchups = new Map<string, { opponent: string; wins: number; losses: number; ties: number; total: number }>();
 
   if (!allPairings || !allPairings.length) {
     return {};
@@ -225,7 +385,7 @@ export function buildMatchupMatrix(targetArchetype, allPairings) {
     }
 
     // Build player -> deck mapping from standings
-    const playerDecks = new Map();
+    const playerDecks = new Map<string, string>();
     for (const standing of standings) {
       if (standing.player && standing.deck?.name) {
         playerDecks.set(standing.player, standing.deck.name);
@@ -292,7 +452,7 @@ export function buildMatchupMatrix(targetArchetype, allPairings) {
   }
 
   // Convert to final format with win rates, filter low sample sizes
-  const result = {};
+  const result: Record<string, MatchupRecord> = {};
   for (const [opponent, data] of matchups.entries()) {
     if (data.total >= MIN_MATCHUP_GAMES) {
       result[opponent] = {
@@ -321,7 +481,12 @@ export function buildMatchupMatrix(targetArchetype, allPairings) {
  * @param {string} [options.archetypeName] - Name of the archetype for matchup matrix
  * @returns {Object} Enhanced trend report JSON structure with daily data and matchups
  */
-export function generateArchetypeTrends(decks, tournaments, synonymDb, options) {
+export function generateArchetypeTrends(
+  decks: Deck[],
+  tournaments: Tournament[],
+  synonymDb: SynonymDb | null,
+  options?: TrendOptions
+): TrendReport {
   const { pairingsData = [], archetypeName = null } = options || {};
 
   if (!decks || !decks.length) {
@@ -352,12 +517,12 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb, options) 
   );
 
   // 1. Group tournaments by DAY (new granular approach)
-  const dayMap = new Map(); // date -> { date, tournamentIds: [], totals: {...} }
-  const tournamentToDay = new Map(); // tournamentId -> date
+  const dayMap = new Map<string, DayEntry>();
+  const tournamentToDay = new Map<string, string>();
 
   // Also maintain week groupings for backward compatibility
-  const weekMap = new Map(); // weekStart -> { weekStart, weekEnd, tournamentIds: [], totals: {...} }
-  const tournamentToWeek = new Map(); // tournamentId -> weekStart
+  const weekMap = new Map<string, WeekEntry>();
+  const tournamentToWeek = new Map<string, string>();
 
   for (const tournament of sortedTournaments) {
     const tournamentDate = new Date(tournament.date);
@@ -411,8 +576,8 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb, options) 
 
   // 2. Process decks and aggregate by day
   // cardDayData: uid -> Map<date, { tier -> { counts: [], decksWithCard: 0 } }>
-  const cardDayData = new Map();
-  const cardMeta = new Map(); // uid -> { name, set, number }
+  const cardDayData = new Map<string, Map<string, Record<SuccessTag, TierCounts>>>();
+  const cardMeta = new Map<string, { name: string; set: string | null; number: string | null }>();
 
   for (const deck of decks) {
     const dateStr = tournamentToDay.get(deck.tournamentId);
@@ -471,8 +636,8 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb, options) 
         }
       }
 
-      const dayEntry = cardDays.get(dateStr);
-      const deckTags = new Set(['all', ...(deck.successTags || [])]);
+      const dayEntry = cardDays.get(dateStr)!;
+      const deckTags = new Set<string>(['all', ...(deck.successTags || [])]);
 
       for (const tag of SUCCESS_TAGS) {
         if (deckTags.has(tag)) {
@@ -527,19 +692,19 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb, options) 
   });
 
   // 3. Build final card data structure with BOTH daily and weekly granularity
-  const finalCards = {};
-  const cardPlayrateTimelines = new Map(); // For correlation analysis (daily)
+  const finalCards: Record<string, CardTrendData> = {};
+  const cardPlayrateTimelines = new Map<string, number[]>(); // For correlation analysis (daily)
 
   for (const [uid, daysData] of cardDayData.entries()) {
     const meta = cardMeta.get(uid);
     const dailyPlayrates = [];
     const dailyCopies = [];
-    const timeline = {}; // dayIndex -> tier data (DAILY)
-    const timelineWeeks = {}; // weekIndex -> tier data (WEEKLY aggregated)
-    const copyTrend = []; // daily copy distribution
+    const timeline: Record<number, Record<string, TierData>> = {};
+    const timelineWeeks: Record<number, Record<string, TierData>> = {};
+    const copyTrend: CopyTrendEntry[] = [];
 
     let maxShare = 0;
-    let firstPlayrate = null;
+    let firstPlayrate: number | null = null;
     let lastPlayrate = 0;
 
     // First pass: build daily timeline
@@ -579,7 +744,7 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb, options) 
         lastPlayrate = playrate;
 
         // Build timeline entry for each tier
-        const tierEntry = {};
+        const tierEntry: Record<string, TierData> = {};
         for (const tag of SUCCESS_TAGS) {
           if (entry[tag] && entry[tag].counts.length > 0) {
             const tierCounts = entry[tag].counts;
@@ -616,7 +781,7 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb, options) 
     // Second pass: aggregate daily data into weekly timeline
     for (const weekItem of activeWeeks) {
       const wkIdx = weekIndex.get(weekItem.weekStart);
-      const weekTierEntry = {};
+      const weekTierEntry: Record<string, TierData> = {};
 
       // Aggregate all days that fall within this week
       for (const tag of SUCCESS_TAGS) {
@@ -663,7 +828,7 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb, options) 
     }
 
     // Filter by interest threshold
-    const cardStats = {
+    const cardStats: CardInterestStats = {
       maxShare,
       startShare: firstPlayrate ?? 0,
       endShare: lastPlayrate
@@ -689,7 +854,7 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb, options) 
     const copiesChange = Math.round((lastCopies - firstCopies) * 100) / 100;
 
     // Classify the card
-    const classificationStats = {
+    const classificationStats: CardClassificationStats = {
       currentPlayrate: lastPlayrate,
       playrateChange,
       volatility,
@@ -724,7 +889,7 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb, options) 
   }
 
   // 4. Generate insights
-  const insights = {
+  const insights: Insights = {
     coreCards: [],
     flexSlots: [],
     risers: [],
@@ -743,7 +908,7 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb, options) 
 
     if (card.category === 'flex') {
       const modes = card.copyTrend.filter(copyEntry => copyEntry.avg > 0).map(copyEntry => copyEntry.mode);
-      const copyRange = [Math.min(...modes), Math.max(...modes)];
+      const copyRange: [number, number] = [Math.min(...modes), Math.max(...modes)];
       insights.flexSlots.push({
         uid,
         variance: card.volatility,
@@ -812,7 +977,7 @@ export function generateArchetypeTrends(decks, tournaments, synonymDb, options) 
   insights.substitutions = insights.substitutions.slice(0, 10);
 
   // 6. Build matchup matrix if pairings data is available
-  let matchups = {};
+  let matchups: Record<string, MatchupRecord> = {};
   if (pairingsData.length > 0 && archetypeName) {
     matchups = buildMatchupMatrix(archetypeName, pairingsData);
   }
