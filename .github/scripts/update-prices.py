@@ -65,10 +65,13 @@ def normalize_card_name(name):
     return name.lower().strip()
 
 
+TCGCSV_USER_AGENT = "ciphermaniac-price-updater/1.0 (+https://ciphermaniac.com)"
+
+
 def fetch_json(url):
     """Fetch JSON from a URL."""
     import requests
-    response = requests.get(url, timeout=30)
+    response = requests.get(url, timeout=30, headers={"User-Agent": TCGCSV_USER_AGENT})
     response.raise_for_status()
     return response.json()
 
@@ -76,7 +79,7 @@ def fetch_json(url):
 def fetch_csv(url):
     """Fetch CSV text from a URL."""
     import requests
-    response = requests.get(url, timeout=30)
+    response = requests.get(url, timeout=30, headers={"User-Agent": TCGCSV_USER_AGENT})
     response.raise_for_status()
     return response.text
 

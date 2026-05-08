@@ -1,5 +1,5 @@
 import { handleLoaderFailure } from './fallback.js';
 
-import('../trends.js').catch(error => {
+import('../trends/index.js').catch(error => {
   handleLoaderFailure('Trends page', error);
 });

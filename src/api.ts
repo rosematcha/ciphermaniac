@@ -8,6 +8,7 @@ import { logger } from './utils/logger.js';
 import { AppError, ErrorTypes, safeFetch, validateType, withRetry } from './utils/errorHandler.js';
 import { perf } from './utils/performance.js';
 import { clearDatabaseCache, loadDatabase } from './lib/database.js';
+import { TtlCache } from './utils/cache.js';
 
 import { sortTournamentNamesByRecency } from './utils/tournamentRecency.js';
 import type {
@@ -16,7 +17,6 @@ import type {
   ArchetypeIndexEntry,
   ArchetypeReport,
   ArchetypeSuccessSummaryByTag,
-  CacheEntry,
   CanonicalMatchRecord,
   MetaReport,
   PlayerMatchRecord,
@@ -31,8 +31,12 @@ let pricingData: PricingData | null = null;
 let pricingPromise: Promise<PricingData> | null = null;
 const priceResolutionCache = new Map<string, number | null>();
 const pricingEntryCache = new Map<string, any | null>();
-const jsonCache = new Map<string, CacheEntry>();
-const reportCache = new Map<string, CacheEntry<TournamentReport>>();
+const jsonCache = new TtlCache({
+  ttl: CONFIG.API.JSON_CACHE_TTL_MS,
+  maxEntries: CONFIG.CACHE.MAX_ENTRIES,
+  cleanupThreshold: CONFIG.CACHE.CLEANUP_THRESHOLD
+});
+const reportCache = new TtlCache<TournamentReport>({ ttl: CONFIG.API.JSON_CACHE_TTL_MS });
 const tournamentDbAvailabilityCache = new Map<string, boolean>();
 let apiTestHooks: {
   loadDatabase?: (tournament: string) => Promise<any>;
@@ -41,55 +45,6 @@ let apiTestHooks: {
 export const ONLINE_META_NAME = 'Online - Last 14 Days';
 export type ReportSlice = 'all' | 'phase2' | 'topcut';
 // const _ONLINE_META_SEGMENT = `/${encodeURIComponent(ONLINE_META_NAME)}`; // Reserved for future use
-
-function hasCachedData(entry: CacheEntry): entry is CacheEntry & { data: unknown } {
-  return 'data' in entry;
-}
-
-function pruneJsonCache() {
-  if (jsonCache.size <= CONFIG.CACHE.CLEANUP_THRESHOLD) {
-    return;
-  }
-
-  const now = Date.now();
-  for (const [key, entry] of Array.from(jsonCache.entries())) {
-    if (!entry.promise && entry.expiresAt <= now) {
-      jsonCache.delete(key);
-    }
-  }
-
-  if (jsonCache.size <= CONFIG.CACHE.MAX_ENTRIES) {
-    return;
-  }
-
-  const reclaimable = Array.from(jsonCache.entries())
-    .filter(([, entry]) => !entry.promise)
-    .sort((entryA, entryB) => (entryA[1].expiresAt || 0) - (entryB[1].expiresAt || 0));
-
-  for (const [key] of reclaimable) {
-    if (jsonCache.size <= CONFIG.CACHE.MAX_ENTRIES) {
-      break;
-    }
-    jsonCache.delete(key);
-  }
-}
-
-function cacheResolvedJson(cacheKey: string, data: any, ttl: number) {
-  jsonCache.set(cacheKey, { data, expiresAt: Date.now() + ttl });
-  pruneJsonCache();
-}
-
-function cachePendingJson(cacheKey: string, promise: Promise<any>, ttl: number) {
-  jsonCache.set(cacheKey, { promise, expiresAt: Date.now() + ttl });
-}
-
-function cacheResolvedReport(cacheKey: string, data: TournamentReport, ttl: number) {
-  reportCache.set(cacheKey, { data, expiresAt: Date.now() + ttl });
-}
-
-function cachePendingReport(cacheKey: string, promise: Promise<TournamentReport>, ttl: number) {
-  reportCache.set(cacheKey, { promise, expiresAt: Date.now() + ttl });
-}
 
 /**
  * Clear cached API data and reset database cache.
@@ -232,22 +187,15 @@ function fetchWithRetry<T>(
   const { cache = false, cacheKey = url, ttl = CONFIG.API.JSON_CACHE_TTL_MS } = options;
 
   if (cache) {
-    const entry = jsonCache.get(cacheKey);
-    const now = Date.now();
-    if (entry) {
-      if (hasCachedData(entry) && entry.expiresAt > now) {
-        logger.debug(`Cache hit for ${operation}`, { cacheKey });
-        return Promise.resolve(entry.data as T);
-      }
-      if (entry.promise) {
-        logger.debug(`Awaiting in-flight request for ${operation}`, {
-          cacheKey
-        });
-        return entry.promise as Promise<T>;
-      }
-      if (!entry.promise && entry.expiresAt <= now) {
-        jsonCache.delete(cacheKey);
-      }
+    const cached = jsonCache.get(cacheKey);
+    if (cached !== undefined) {
+      logger.debug(`Cache hit for ${operation}`, { cacheKey });
+      return Promise.resolve(cached as T);
+    }
+    const pending = jsonCache.getPromise(cacheKey);
+    if (pending) {
+      logger.debug(`Awaiting in-flight request for ${operation}`, { cacheKey });
+      return pending as Promise<T>;
     }
   }
 
@@ -282,18 +230,15 @@ function fetchWithRetry<T>(
 
   const trackedPromise = fetchPromise
     .then(data => {
-      cacheResolvedJson(cacheKey, data, ttl);
+      jsonCache.set(cacheKey, data, ttl);
       return data;
     })
     .catch(error => {
-      const entry = jsonCache.get(cacheKey);
-      if (entry && entry.promise === trackedPromise) {
-        jsonCache.delete(cacheKey);
-      }
+      jsonCache.delete(cacheKey);
       throw error;
     });
 
-  cachePendingJson(cacheKey, trackedPromise, ttl);
+  jsonCache.setPending(cacheKey, trackedPromise, ttl);
   return trackedPromise as Promise<T>;
 }
 
@@ -466,21 +411,16 @@ export async function fetchReport(
 ): Promise<TournamentReport> {
   const resolvedSlice = slice ?? 'all';
   const cacheKey = `report:${tournament}:${resolvedSlice}`;
-  const now = Date.now();
-  const existing = reportCache.get(cacheKey);
 
-  if (existing) {
-    if (existing.data && existing.expiresAt > now) {
-      logger.debug('Report cache hit', { tournament, slice: resolvedSlice });
-      return existing.data;
-    }
-    if (existing.promise) {
-      logger.debug('Awaiting in-flight report request', { tournament, slice: resolvedSlice });
-      return existing.promise;
-    }
-    if (!existing.promise && existing.expiresAt <= now) {
-      reportCache.delete(cacheKey);
-    }
+  const cached = reportCache.get(cacheKey);
+  if (cached !== undefined) {
+    logger.debug('Report cache hit', { tournament, slice: resolvedSlice });
+    return cached;
+  }
+  const pending = reportCache.getPromise(cacheKey);
+  if (pending) {
+    logger.debug('Awaiting in-flight report request', { tournament, slice: resolvedSlice });
+    return pending;
   }
 
   perf.start(`fetchReport:${tournament}:${resolvedSlice}`);
@@ -546,11 +486,11 @@ export async function fetchReport(
     );
   })();
 
-  cachePendingReport(cacheKey, loader, CONFIG.API.JSON_CACHE_TTL_MS);
+  reportCache.setPending(cacheKey, loader);
 
   try {
     const data = await loader;
-    cacheResolvedReport(cacheKey, data, CONFIG.API.JSON_CACHE_TTL_MS);
+    reportCache.set(cacheKey, data);
     return data;
   } finally {
     perf.end(`fetchReport:${tournament}:${resolvedSlice}`);
@@ -829,20 +769,15 @@ export function fetchDecks(tournament: string, slice: ReportSlice = 'all'): Prom
   const relativePath = `${basePath}/decks.json`;
   const urls = buildReportUrls(relativePath);
   const cacheKey = `decks:${relativePath}`;
-  const now = Date.now();
-  const existing = jsonCache.get(cacheKey);
 
-  if (existing) {
-    if (hasCachedData(existing) && existing.expiresAt > now) {
-      logger.debug('Cache hit for decks.json', { tournament, slice });
-      return Promise.resolve(existing.data as any[] | null);
-    }
-    if (existing.promise) {
-      return existing.promise as Promise<any[] | null>;
-    }
-    if (!existing.promise && existing.expiresAt <= now) {
-      jsonCache.delete(cacheKey);
-    }
+  const cached = jsonCache.get(cacheKey);
+  if (cached !== undefined) {
+    logger.debug('Cache hit for decks.json', { tournament, slice });
+    return Promise.resolve(cached as any[] | null);
+  }
+  const pendingDecks = jsonCache.getPromise(cacheKey);
+  if (pendingDecks) {
+    return pendingDecks as Promise<any[] | null>;
   }
 
   const loader = (async () => {
@@ -867,18 +802,15 @@ export function fetchDecks(tournament: string, slice: ReportSlice = 'all'): Prom
 
   const tracked = loader
     .then(data => {
-      cacheResolvedJson(cacheKey, data, CONFIG.API.JSON_CACHE_TTL_MS);
+      jsonCache.set(cacheKey, data);
       return data;
     })
     .catch(error => {
-      const entry = jsonCache.get(cacheKey);
-      if (entry && entry.promise === tracked) {
-        jsonCache.delete(cacheKey);
-      }
+      jsonCache.delete(cacheKey);
       throw error;
     });
 
-  cachePendingJson(cacheKey, tracked, CONFIG.API.JSON_CACHE_TTL_MS);
+  jsonCache.setPending(cacheKey, tracked);
   return tracked;
 }
 
@@ -938,20 +870,15 @@ export function fetchTop8ArchetypesList(tournament: string): Promise<string[] | 
   const relativePath = `${encodeURIComponent(tournament)}/archetypes/top8.json`;
   const urls = buildReportUrls(relativePath);
   const cacheKey = `top8:${relativePath}`;
-  const now = Date.now();
-  const existing = jsonCache.get(cacheKey);
 
-  if (existing) {
-    if (hasCachedData(existing) && existing.expiresAt > now) {
-      logger.debug('Cache hit for top8 archetypes', { tournament });
-      return Promise.resolve(existing.data as string[] | null);
-    }
-    if (existing.promise) {
-      return existing.promise as Promise<string[] | null>;
-    }
-    if (!existing.promise && existing.expiresAt <= now) {
-      jsonCache.delete(cacheKey);
-    }
+  const cachedTop8 = jsonCache.get(cacheKey);
+  if (cachedTop8 !== undefined) {
+    logger.debug('Cache hit for top8 archetypes', { tournament });
+    return Promise.resolve(cachedTop8 as string[] | null);
+  }
+  const pendingTop8 = jsonCache.getPromise(cacheKey);
+  if (pendingTop8) {
+    return pendingTop8 as Promise<string[] | null>;
   }
 
   const loader = (async () => {
@@ -976,18 +903,15 @@ export function fetchTop8ArchetypesList(tournament: string): Promise<string[] | 
 
   const tracked = loader
     .then(data => {
-      cacheResolvedJson(cacheKey, data, CONFIG.API.JSON_CACHE_TTL_MS);
+      jsonCache.set(cacheKey, data);
       return data;
     })
     .catch(error => {
-      const entry = jsonCache.get(cacheKey);
-      if (entry && entry.promise === tracked) {
-        jsonCache.delete(cacheKey);
-      }
+      jsonCache.delete(cacheKey);
       throw error;
     });
 
-  cachePendingJson(cacheKey, tracked, CONFIG.API.JSON_CACHE_TTL_MS);
+  jsonCache.setPending(cacheKey, tracked);
   return tracked;
 }
 

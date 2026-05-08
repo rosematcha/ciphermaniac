@@ -5,16 +5,11 @@
  * can generate the filtered report client-side using the raw deck data.
  */
 
-import { normalizeCardNumber } from '../../shared/cardUtils.js';
+import { normalizeCardNumber } from '../../shared/cardUtils';
 import { AppError, ErrorTypes } from './errorHandler.js';
 import { logger } from './logger.js';
 import { normalizeArchetypeName } from './format.js';
-import {
-  assignRanks,
-  calculatePercentage,
-  createDistFromHistogram,
-  sortReportItems
-} from '../../shared/reportUtils.js';
+import { assignRanks, calculatePercentage, createDistFromHistogram, sortReportItems } from '../../shared/reportUtils';
 import type { Deck, DeckCard, Filter, Operator, PercentRule, PlacementRule } from '../types/index.js';
 
 export type { Deck, DeckCard, Filter, Operator };

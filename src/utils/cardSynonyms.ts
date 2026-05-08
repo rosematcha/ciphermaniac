@@ -3,7 +3,7 @@
  * @module utils/cardSynonyms
  *
  * This module provides browser-side card synonym resolution.
- * Core logic is shared with backend via shared/synonyms.ts
+ * Core logic is shared with backend via shared/synonyms
  */
 
 import { CONFIG } from '../config.js';
@@ -12,7 +12,7 @@ import {
   getCanonicalCardFromData,
   getCardVariantsFromData,
   type SynonymDatabase
-} from '../../shared/synonyms.js';
+} from '../../shared/synonyms';
 
 // Lazy-loaded synonym data (browser-side cache)
 let synonymData: SynonymDatabase | null = null;
