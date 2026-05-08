@@ -3,7 +3,7 @@
  */
 
 // Re-export normalizeArchetypeName from shared module for backwards compatibility
-export { normalizeArchetypeName } from '../../shared/cardUtils';
+export { normalizeArchetypeName } from '../../shared/cardUtils.js';
 
 /**
  * Convert a tournament folder key like 'YYYY-MM-DD, Name' to display name 'Name'.

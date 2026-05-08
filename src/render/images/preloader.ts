@@ -1,5 +1,5 @@
 import { buildThumbCandidates } from '../../thumbs.js';
-import { normalizeCardNumber } from '../../../shared/cardUtils';
+import { normalizeCardNumber } from '../../../shared/cardUtils.js';
 import { parallelImageLoader } from '../../utils/parallelImageLoader.js';
 import type { CardItem } from '../../types/index.js';
 import { getGridElement } from '../grid/elements.js';

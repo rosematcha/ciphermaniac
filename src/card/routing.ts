@@ -6,8 +6,8 @@ import { logger } from '../utils/logger.js';
 import { CONFIG } from '../config.js';
 import { QUERY_KEYS } from '../lib/routing.js';
 // Re-export normalizeCardNumber from shared module for backwards compatibility
-export { normalizeCardNumber } from '../../shared/cardUtils';
-import { normalizeCardNumber } from '../../shared/cardUtils';
+export { normalizeCardNumber } from '../../shared/cardUtils.js';
+import { normalizeCardNumber } from '../../shared/cardUtils.js';
 
 const SLUG_CACHE_KEY = 'cardSlugCacheV2';
 const DEFAULT_SCAN_LIMIT = 12;
