@@ -1,4 +1,4 @@
-import { normalizeCardNumber } from '../../../shared/cardUtils.js';
+import { normalizeCardNumber } from '../../../shared/cardUtils';
 import { GRANULARITY_STEP_PERCENT, SUCCESS_FILTER_LABELS } from '../constants.js';
 import { buildCardId } from '../data/cards.js';
 import { elements } from '../ui/elements.js';

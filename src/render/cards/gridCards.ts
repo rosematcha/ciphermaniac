@@ -3,7 +3,7 @@ import { buildCardPath } from '../../card/routing.js';
 import { trackMissing } from '../../dev/missingThumbs.js';
 import { parallelImageLoader } from '../../utils/parallelImageLoader.js';
 import { createElement, setStyles } from '../../utils/dom.js';
-import { normalizeCardNumber } from '../../../shared/cardUtils.js';
+import { normalizeCardNumber } from '../../../shared/cardUtils';
 import type { CardItem } from '../../types/index.js';
 import type { RenderOptions } from '../types.js';
 import { formatCardPrice } from '../cardElement.js';
