@@ -36,10 +36,10 @@
     "clean": "echo 'No build artifacts to clean'",
     "pre-commit": "npm run validate:fix",
     "prepare": "husky",
-    "build:card-types": "node tools/build-card-types.mjs",
+    "build:card-types": "node scripts/build-card-types.mjs",
     "build:frontend": "tsc --project tsconfig.frontend.json",
     "build:shared": "tsc --project tsconfig.shared.json",
-    "check:card-types": "node tools/check-card-types.mjs",
+    "check:card-types": "node scripts/check-card-types.mjs",
     "check:bundle-size": "node scripts/check-bundle-size.mjs",
     "knip": "knip"
   },
