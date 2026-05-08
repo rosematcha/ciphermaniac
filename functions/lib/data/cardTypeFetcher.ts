@@ -4,16 +4,57 @@
  * @module lib/cardTypeFetcher
  */
 
+import type { CardTypesDatabase } from './cardTypesDatabase.js';
+
+interface FetcherEnv {
+  REPORTS?: R2Bucket;
+  CARD_TYPES_KV?: KVNamespace;
+}
+
+interface CardTypeResult {
+  fullType: string;
+  lastUpdated: string;
+  cardType?: string;
+  subType?: string;
+  evolutionInfo?: string;
+  regulationMark?: string;
+  aceSpec?: boolean;
+}
+
+interface CardRecord {
+  name?: string;
+  set?: string;
+  number?: string | number;
+  category?: string;
+  trainerType?: string;
+  energyType?: string;
+  aceSpec?: boolean;
+  regulationMark?: string;
+  evolutionInfo?: string;
+  fullType?: string;
+  [key: string]: unknown;
+}
+
+interface DeckWithCards {
+  cards?: CardRecord[];
+  [key: string]: unknown;
+}
+
+interface FetchOptions {
+  persist?: boolean;
+  recordUpdates?: Record<string, CardTypeResult>;
+  force?: boolean;
+}
+
 const RATE_LIMIT_DELAY_MS = 500;
 const BATCH_CONCURRENCY = 4;
-const DEFAULT_FETCH_TIMEOUT_MS = 10000; // 10 seconds
+const DEFAULT_FETCH_TIMEOUT_MS = 10000;
 
-// Pre-compiled regex patterns (avoid recreation per request)
 const NUMBER_VARIANT_RE = /^0*(\d+)([A-Z]*)$/;
 const CARD_TYPE_RE = /<(?:div|p)[^>]*class="card-text-type"[^>]*>([\s\S]*?)<\/(?:div|p)>/i;
 const REG_MARK_RE = /<div class="regulation-mark"[^>]*>\s*([A-Z])\s*Regulation\s*Mark/i;
 
-function delay(ms) {
+function delay(ms: number): Promise<void> {
   return new Promise(resolve => {
     setTimeout(resolve, ms);
   });
@@ -26,7 +67,11 @@ function delay(ms) {
  * @param {number} timeoutMs - Timeout in milliseconds (default: 10000)
  * @returns {Promise<Response>}
  */
-async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_FETCH_TIMEOUT_MS) {
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs = DEFAULT_FETCH_TIMEOUT_MS
+): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -41,7 +86,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_FETCH_TIM
   }
 }
 
-async function persistCardTypesDatabase(env, database) {
+async function persistCardTypesDatabase(env: FetcherEnv, database: CardTypesDatabase): Promise<void> {
   if (!env?.REPORTS?.put || !database) {
     return;
   }
@@ -57,7 +102,7 @@ async function persistCardTypesDatabase(env, database) {
   }
 }
 
-function buildNumberVariants(value) {
+function buildNumberVariants(value: string | number | null | undefined): string[] {
   if (value === undefined || value === null) {
     return [];
   }
@@ -87,7 +132,7 @@ function buildNumberVariants(value) {
  * @param {string|number} number - Card number
  * @returns {Promise<Object|null>}
  */
-async function fetchCardTypeFromLimitless(setCode, number) {
+async function fetchCardTypeFromLimitless(setCode: string, number: string | number): Promise<CardTypeResult | null> {
   const numberVariants = buildNumberVariants(number);
   if (numberVariants.length === 0) {
     return null;
@@ -103,7 +148,7 @@ async function fetchCardTypeFromLimitless(setCode, number) {
   return null;
 }
 
-async function fetchCardTypeVariant(setCode, numberVariant) {
+async function fetchCardTypeVariant(setCode: string, numberVariant: string): Promise<CardTypeResult | null> {
   try {
     const url = `https://limitlesstcg.com/cards/${setCode}/${numberVariant}`;
     const response = await fetchWithTimeout(url, {
@@ -146,7 +191,7 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
         .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase();
 
-    const result = {
+    const result: CardTypeResult = {
       fullType,
       lastUpdated: new Date().toISOString()
     };
@@ -199,7 +244,7 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
     }
 
     return result;
-  } catch (error) {
+  } catch (error: any) {
     console.error(`[CardTypeFetcher] Error fetching ${setCode}::${numberVariant}:`, error.message);
     return null;
   }
@@ -210,7 +255,7 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
  * @param {Object} card - Card object
  * @returns {boolean}
  */
-function needsTypeEnrichment(card) {
+function needsTypeEnrichment(card: CardRecord): boolean {
   // Card needs enrichment if it's missing category or subtype info
   if (!card.category) {
     return true;
@@ -241,7 +286,12 @@ function needsTypeEnrichment(card) {
  * @param {Object} env - Cloudflare Workers environment
  * @returns {Promise<Object>} - Enriched card with type info
  */
-async function fetchAndCacheCardType(card, database, env, options = {}) {
+async function fetchAndCacheCardType(
+  card: CardRecord,
+  database: CardTypesDatabase,
+  env: FetcherEnv,
+  options: FetchOptions = {}
+): Promise<CardRecord> {
   if (!card || !card.set || !card.number) {
     return card;
   }
@@ -265,7 +315,7 @@ async function fetchAndCacheCardType(card, database, env, options = {}) {
   }
 
   // eslint-disable-next-line no-param-reassign
-  database[key] = typeInfo;
+  (database as any)[key] = typeInfo;
   if (recordUpdates) {
     recordUpdates[key] = typeInfo;
   }
@@ -317,7 +367,11 @@ async function fetchAndCacheCardType(card, database, env, options = {}) {
  * @param {Object} env - Cloudflare Workers environment
  * @returns {Promise<Array<Object>>} - Array of enriched cards
  */
-async function batchFetchAndCacheCardTypes(cards, database, env) {
+async function batchFetchAndCacheCardTypes(
+  cards: CardRecord[],
+  database: CardTypesDatabase,
+  env: FetcherEnv
+): Promise<CardRecord[]> {
   if (!Array.isArray(cards) || cards.length === 0) {
     return cards;
   }
@@ -334,7 +388,7 @@ async function batchFetchAndCacheCardTypes(cards, database, env) {
 
   console.log(`[CardTypeFetcher] Batch fetching ${cardsNeedingFetch.length} missing card types...`);
 
-  const pendingUpdates = {};
+  const pendingUpdates: Record<string, CardTypeResult> = {};
   // Process in batches of BATCH_CONCURRENCY concurrent requests with delay between batches
   for (let i = 0; i < cardsNeedingFetch.length; i += BATCH_CONCURRENCY) {
     const batch = cardsNeedingFetch.slice(i, i + BATCH_CONCURRENCY);
@@ -368,7 +422,7 @@ async function batchFetchAndCacheCardTypes(cards, database, env) {
  * @param {Array<Object>} decks - Array of deck objects
  * @returns {Array<Object>} - Array of unique card objects
  */
-function extractUniqueCards(decks) {
+function extractUniqueCards(decks: DeckWithCards[]): CardRecord[] {
   const uniqueCardsMap = new Map();
 
   for (const deck of decks) {
@@ -398,7 +452,11 @@ function extractUniqueCards(decks) {
  * @param {Object} env - Cloudflare Workers environment
  * @returns {Promise<void>}
  */
-export async function refreshRegulationMarks(cards, database, env) {
+export async function refreshRegulationMarks(
+  cards: CardRecord[],
+  database: CardTypesDatabase,
+  env: FetcherEnv
+): Promise<void> {
   if (!Array.isArray(cards) || cards.length === 0 || !env) {
     return;
   }
@@ -415,7 +473,7 @@ export async function refreshRegulationMarks(cards, database, env) {
 
   console.log(`[CardTypeFetcher] Refreshing regulation marks for ${cardsNeedingUpdate.length} cards...`);
 
-  const pendingUpdates = {};
+  const pendingUpdates: Record<string, CardTypeResult> = {};
   // Process in batches of BATCH_CONCURRENCY concurrent requests with delay between batches
   for (let i = 0; i < cardsNeedingUpdate.length; i += BATCH_CONCURRENCY) {
     const batch = cardsNeedingUpdate.slice(i, i + BATCH_CONCURRENCY);
@@ -449,7 +507,11 @@ export async function refreshRegulationMarks(cards, database, env) {
  * @param {Object} env - Cloudflare Workers environment
  * @returns {Promise<Array<Object>>} - Array of decks with enriched cards
  */
-export async function enrichDecksWithOnTheFlyFetch(decks, database, env) {
+export async function enrichDecksWithOnTheFlyFetch(
+  decks: DeckWithCards[],
+  database: CardTypesDatabase,
+  env: FetcherEnv
+): Promise<DeckWithCards[]> {
   if (!Array.isArray(decks) || decks.length === 0 || !database || !env) {
     return decks;
   }

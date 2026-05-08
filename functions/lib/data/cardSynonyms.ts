@@ -16,7 +16,12 @@ export { getCanonicalCardFromData as getCanonicalCard };
  * @param {object} env - Cloudflare Workers environment
  * @returns {Promise<Object>}
  */
-export async function loadCardSynonyms(env) {
+interface WorkerEnv {
+  CARD_TYPES_KV?: KVNamespace;
+  REPORTS?: R2Bucket;
+}
+
+export async function loadCardSynonyms(env: WorkerEnv): Promise<Record<string, unknown>> {
   try {
     // Try to get from KV first (faster)
     if (env.CARD_TYPES_KV) {
@@ -46,7 +51,7 @@ export async function loadCardSynonyms(env) {
 
     console.warn('Card synonyms database not found');
     return EMPTY_DATABASE;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to load card synonyms database:', error.message);
     return EMPTY_DATABASE;
   }
