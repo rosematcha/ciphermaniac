@@ -7,6 +7,7 @@ import { logger } from '../utils/logger.js';
 import { debounce } from '../utils/performance.js';
 import { DataCache } from '../utils/DataCache.js';
 import { applyPageSeo, buildWebPageSchema } from '../utils/seo.js';
+import { matchesRoute, ROUTES } from '../lib/routing.js';
 import { appState, DEFAULT_ONLINE_META } from './state.js';
 import { getInitialTournamentSelection, loadSelectionData, loadTournamentList } from './data.js';
 import {
@@ -23,8 +24,7 @@ async function init() {
   try {
     logger.info('Initializing application...');
 
-    const path = window.location.pathname.replace(/\/$/, '');
-    if (path === '/cards' || path === '/cards.html') {
+    if (matchesRoute(window.location.pathname, ROUTES.CARDS)) {
       const title = 'Pokemon TCG Card Database - Usage Stats & Prices | Ciphermaniac';
       const description =
         'Browse Pokemon TCG card usage statistics, deck inclusion rates, and market prices. Filter by archetype, card type, set, and tournament performance.';

@@ -12,7 +12,7 @@ import {
   getCanonicalCardFromData,
   getCardVariantsFromData,
   type SynonymDatabase
-} from '../../shared/synonyms';
+} from '../../shared/synonyms.js';
 
 // Lazy-loaded synonym data (browser-side cache)
 let synonymData: SynonymDatabase | null = null;

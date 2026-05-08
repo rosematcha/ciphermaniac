@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Cards Redesign — Round 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg: #0e0f13;
+  --surface: #181a22;
+  --surface-2: #1f222d;
+  --rule: rgba(255, 255, 255, 0.06);
+  --rule-2: rgba(255, 255, 255, 0.12);
+  --ink: #ecedf2;
+  --ink-2: #a3a8b8;
+  --ink-3: #6a6f80;
+  --gold: #f3c969;
+  --gold-2: #e8a83e;
+  --serif: 'Fraunces', Georgia, serif;
+  --sans: 'Inter', system-ui, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+a { color: inherit; text-decoration: none; }
+
+.shell { max-width: 980px; margin: 0 auto; padding: 56px 28px 80px; }
+
+header.top { padding-bottom: 28px; border-bottom: 1px solid var(--rule); }
+header.top .label {
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 14px;
+}
+header.top h1 {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 52px;
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+}
+header.top h1 em { font-style: italic; color: var(--gold); }
+header.top .lede {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  max-width: 60ch;
+  margin-top: 18px;
+}
+
+.changes {
+  margin: 40px 0 56px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+.change {
+  padding: 16px 20px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.change b { color: var(--ink); font-weight: 600; }
+
+.mockups { display: grid; gap: 14px; margin-top: 8px; }
+.mock {
+  display: grid;
+  grid-template-columns: 50px 1fr auto;
+  gap: 24px;
+  align-items: center;
+  padding: 24px 26px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  transition: border-color .2s, transform .2s, background .2s;
+}
+.mock:hover { border-color: var(--rule-2); transform: translateX(4px); background: var(--surface-2); }
+.mock .n {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 30px;
+  color: var(--gold);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.mock .body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.mock h2 {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mock h2 .nick {
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.mock p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 64ch;
+}
+.mock .arrow {
+  font-size: 22px;
+  color: var(--ink-3);
+  transition: color .2s, transform .2s;
+}
+.mock:hover .arrow { color: var(--gold); transform: translateX(4px); }
+
+footer.foot {
+  margin-top: 64px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  display: flex;
+  justify-content: space-between;
+}
+
+@media (max-width: 720px) {
+  .shell { padding: 36px 18px 60px; }
+  header.top h1 { font-size: 36px; }
+  .changes { grid-template-columns: 1fr; }
+  .mock { grid-template-columns: 1fr; padding: 20px; gap: 10px; }
+  .mock .arrow { display: none; }
+  .mock h2 { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <div class="label">/cards · redesign · round 2</div>
+    <h1>Three <em>refinements</em>, all keeping the histogram.</h1>
+    <p class="lede">Round one was too varied — too many different card patterns. This round shares one card design across three pages and varies the <em>wrapper</em>. Smaller cards, histogram restored on the art (warmer / more refined), no chin tile, tournament selector as a dropdown.</p>
+  </header>
+
+  <section>
+    <div style="font-family:var(--sans);font-size:11px;letter-spacing:0.28em;text-transform:uppercase;color:var(--ink-3);margin-bottom:18px">What changed from round 1</div>
+    <div class="changes">
+      <div class="change"><b>Histogram is back.</b> Refined to gold instead of clinical blue, with softer gradient backing — keeps the visual identity without graffiti energy.</div>
+      <div class="change"><b>No chin.</b> Stat tiles below cards are gone. Just a single label line: name on the left, set·number on the right.</div>
+      <div class="change"><b>Smaller cards.</b> Grid is now 7 columns at desktop (was 5). Roughly twice as many cards visible per scroll.</div>
+      <div class="change"><b>Tournament = dropdown.</b> No horizontal pill strip — handles 50+ events without scrolling.</div>
+      <div class="change"><b>No 7-day Δ.</b> Trend indicators removed since per-day usage isn't wired up yet.</div>
+      <div class="change"><b>Sidebar gracefully degrades.</b> Mockup A's sidebar collapses into a slide-out drawer on mobile.</div>
+    </div>
+  </section>
+
+  <section>
+    <div style="font-family:var(--sans);font-size:11px;letter-spacing:0.28em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px">The three mockups</div>
+    <div class="mockups">
+
+      <a class="mock" href="01-binder.html">
+        <div class="n">A</div>
+        <div class="body">
+          <h2>The Binder <span class="nick">— sidebar gallery</span></h2>
+          <p>Persistent left rail with all filter controls visible at once: search, tournament dropdown, card type (with counts), set, archetype, regulation checkboxes, finish. Right side is just cards. Best for power users and repeat visitors who know what they're filtering by. On mobile the rail collapses into a drawer.</p>
+        </div>
+        <div class="arrow">→</div>
+      </a>
+
+      <a class="mock" href="02-fieldguide.html">
+        <div class="n">B</div>
+        <div class="body">
+          <h2>The Field Guide <span class="nick">— editorial wrapper</span></h2>
+          <p>A slim editorial intro: a serif headline, a lede, and a small "Defining the format" strip of the top five cards (rank badges, no extra chrome). Then the standard grid below with horizontal filter buttons. Best for newcomers and casual visitors — they get a story before the database.</p>
+        </div>
+        <div class="arrow">→</div>
+      </a>
+
+      <a class="mock" href="03-playmat.html">
+        <div class="n">C</div>
+        <div class="body">
+          <h2>The Playmat <span class="nick">— warm & friendly</span></h2>
+          <p>Same grid shape but with a warmer palette (deep brown/cream instead of grey/blue), rounded shapes, soft type chips in card corners (Pkmn / Item / Engy), and a personable "Hey — looking at the meta from…" greeting up top. Brand-forward without the tech-y feel.</p>
+        </div>
+        <div class="arrow">→</div>
+      </a>
+
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>Ciphermaniac · /cards · round 2</span>
+    <span>3 directions</span>
+  </footer>
+</div>
+</body>
+</html>
