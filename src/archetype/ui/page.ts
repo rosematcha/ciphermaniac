@@ -1,6 +1,6 @@
 import { elements } from './elements.js';
 import { getState } from '../state.js';
-import { formatEventName } from '../utils/format.js';
+import { formatEventName } from '../format.js';
 
 /**
  * Update the page status attribute.

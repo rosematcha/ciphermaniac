@@ -1,5 +1,5 @@
 import { inferPrimaryCategory } from '../cardCategories.js';
-import { formatTcgliveCardNumber } from '../utils/format.js';
+import { formatTcgliveCardNumber } from '../format.js';
 import type { CardItemData, SkeletonExportEntry } from '../types.js';
 
 /**
@@ -94,9 +94,7 @@ export function buildSkeletonExportEntries(items: CardItemData[]): SkeletonExpor
 
     const printInfo = resolveCardPrintInfo(item);
     const primaryCategory = inferPrimaryCategory(item);
-    const normalizedCategory = ['pokemon', 'trainer', 'energy'].includes(primaryCategory)
-      ? primaryCategory
-      : 'pokemon';
+    const normalizedCategory = ['pokemon', 'trainer', 'energy'].includes(primaryCategory) ? primaryCategory : 'pokemon';
 
     entries.push({
       name,

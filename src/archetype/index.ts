@@ -15,7 +15,7 @@ import { setupTabNavigation } from './ui/keyboard.js';
 import { setPageState, showError, updateHero } from './ui/page.js';
 import { renderCards } from './ui/render.js';
 import { setQuickFilterHandler, setupSkeletonExport } from './ui/skeleton.js';
-import { decodeArchetypeLabel } from './utils/format.js';
+import { decodeArchetypeLabel } from './format.js';
 import { applyPageSeo, buildWebPageSchema } from '../utils/seo.js';
 
 const state = getState();
