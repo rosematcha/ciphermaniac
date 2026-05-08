@@ -4,6 +4,7 @@ import { getDisplayName } from './identifiers.js';
 import { getCanonicalCard } from '../utils/cardSynonyms.js';
 import { logger } from '../utils/logger.js';
 import { CONFIG } from '../config.js';
+import { QUERY_KEYS } from '../lib/routing.js';
 // Re-export normalizeCardNumber from shared module for backwards compatibility
 export { normalizeCardNumber } from '../../shared/cardUtils';
 import { normalizeCardNumber } from '../../shared/cardUtils';
@@ -330,8 +331,8 @@ export function buildCardPath(identifier: string | null): string {
  */
 export function parseCardRoute(loc: Location = window.location): RouteInfo {
   const params = new URLSearchParams(loc.search || '');
-  if (params.has('name')) {
-    const identifier = params.get('name');
+  if (params.has(QUERY_KEYS.CARD_NAME)) {
+    const identifier = params.get(QUERY_KEYS.CARD_NAME);
     return { source: 'query', identifier, slug: null };
   }
 
