@@ -100,7 +100,7 @@
       "tests/**",
       "node_modules/**",
       "coverage/**",
-      "functions/lib/cardTypeFetcher.js",
+      "functions/lib/data/cardTypeFetcher.js",
       "functions/lib/onlineMetaIncludeExclude.js",
       "functions/lib/onlineMeta.ts",
       "shared/synonyms.ts",

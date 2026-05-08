@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { deepClone, mockFetch, restoreFetch } from '../__utils__/test-helpers';
 
-import { generateReportFromDecks } from '../../functions/lib/reportBuilder.js';
+import { generateReportFromDecks } from '../../functions/lib/data/reportBuilder.js';
 import { buildArchetypeReports, gatherDecks } from '../../functions/lib/onlineMeta.js';
 
 // Helpers

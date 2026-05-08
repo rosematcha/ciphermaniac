@@ -1,5 +1,5 @@
-import { loadCardSynonyms } from './lib/cardSynonyms.js';
-import { loadCardTypesDatabase } from './lib/cardTypesDatabase.js';
+import { loadCardSynonyms } from './lib/data/cardSynonyms.js';
+import { loadCardTypesDatabase } from './lib/data/cardTypesDatabase.js';
 
 interface Env {
   REPORTS?: { get: (key: string) => Promise<{ text(): Promise<string> } | null> };

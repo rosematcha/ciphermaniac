@@ -1,6 +1,11 @@
 import { getCanonicalCard } from './cardSynonyms.js';
-import { canonicalizeVariant, normalizeArchetypeName, sanitizeForFilename, sanitizeForPath } from './cardUtils.js';
-import { calculatePercentage, composeCategoryPath, createDistributionFromCounts } from '../../shared/reportUtils';
+import {
+  canonicalizeVariant,
+  normalizeArchetypeName,
+  sanitizeForFilename,
+  sanitizeForPath
+} from '../util/cardUtils.js';
+import { calculatePercentage, composeCategoryPath, createDistributionFromCounts } from '../../../shared/reportUtils';
 
 function generateReportFromDecks(deckList, deckTotal, _unused, synonymDb) {
   const cardData = new Map();

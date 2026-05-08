@@ -1,4 +1,4 @@
-import { normalizeCardNumber } from '../lib/cardUtils.js';
+import { normalizeCardNumber } from '../lib/util/cardUtils.js';
 
 // Module-level cache: persists across requests within the same isolate,
 // avoiding re-fetch and re-parse of the ~1-2MB synonyms JSON on every request.

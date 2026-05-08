@@ -15,8 +15,8 @@ import {
   buildTrendReport,
   buildCardTrendReport
 } from '../../functions/lib/onlineMeta.ts';
-import { loadCardTypesDatabase } from '../../functions/lib/cardTypesDatabase.js';
-import { fetchLimitlessJson } from '../../functions/lib/limitless.ts';
+import { loadCardTypesDatabase } from '../../functions/lib/data/cardTypesDatabase.js';
+import { fetchLimitlessJson } from '../../functions/lib/api/limitless.ts';
 
 const TRENDS_FOLDER = 'Trends - Last 30 Days';
 const LOOKBACK_DAYS = 30;

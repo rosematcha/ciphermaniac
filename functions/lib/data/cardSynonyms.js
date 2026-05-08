@@ -6,7 +6,7 @@
  * Core logic is shared with frontend via shared/synonyms
  */
 
-import { EMPTY_DATABASE, getCanonicalCardFromData } from '../../shared/synonyms';
+import { EMPTY_DATABASE, getCanonicalCardFromData } from '../../../shared/synonyms';
 
 // Re-export core functions with original names for backwards compatibility
 export { getCanonicalCardFromData as getCanonicalCard };

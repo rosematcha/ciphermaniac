@@ -6,7 +6,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { normalizeArchetypeName, sanitizeForFilename, sanitizeForPath } from '../../functions/lib/reportBuilder.js';
+import {
+  normalizeArchetypeName,
+  sanitizeForFilename,
+  sanitizeForPath
+} from '../../functions/lib/data/reportBuilder.js';
 
 import { validators } from '../../src/utils/errorHandler.ts';
 

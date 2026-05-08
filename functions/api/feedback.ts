@@ -3,7 +3,7 @@
  * Processes feedback and sends emails via Resend
  */
 
-import { jsonError, jsonSuccess } from '../lib/responses.js';
+import { jsonError, jsonSuccess } from '../lib/api/responses.js';
 
 // Maximum allowed payload size (1MB)
 const MAX_PAYLOAD_SIZE = 1024 * 1024;

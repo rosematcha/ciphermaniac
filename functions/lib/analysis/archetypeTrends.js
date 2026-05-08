@@ -1,5 +1,5 @@
-import { getCanonicalCard } from './cardSynonyms.js';
-import { canonicalizeVariant } from './cardUtils.js';
+import { getCanonicalCard } from '../data/cardSynonyms.js';
+import { canonicalizeVariant } from '../util/cardUtils.js';
 
 // All performance tiers - matches src/data/performanceTiers.ts
 const SUCCESS_TAGS = ['all', 'winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'];
