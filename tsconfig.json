@@ -21,18 +21,14 @@
     "isolatedModules": true,
     "noEmit": true,
     "experimentalDecorators": true,
-    "baseUrl": ".",
-    "paths": {
-      "*": ["public/assets/js/*"]
-    }
+    "baseUrl": "."
   },
   "include": [
-    "public/assets/js/**/*.{js,ts}",
     "functions/**/*.ts",
     "functions/**/*.js",
     "shared/**/*.ts",
     "types/**/*.d.ts",
     "global.d.ts"
   ],
-  "exclude": ["node_modules", "backend", "dev", "config"]
+  "exclude": ["node_modules", "backend", "dev", "config", "public/assets/js"]
 }

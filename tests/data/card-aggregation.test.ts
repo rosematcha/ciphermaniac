@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 
 import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
 
-import { enrichCardWithType, loadCardTypesDatabase } from '../../functions/lib/cardTypesDatabase.js';
-import { generateReportFromDecks } from '../../functions/lib/reportBuilder.js';
+import { enrichCardWithType, loadCardTypesDatabase } from '../../functions/lib/data/cardTypesDatabase.js';
+import { generateReportFromDecks } from '../../functions/lib/data/reportBuilder.js';
 import { gatherDecks } from '../../functions/lib/onlineMeta.js';
 
 // Variant merging and normalization in report generation

@@ -1,4 +1,4 @@
-import { normalizeArchetypeName, sanitizeForFilename } from '../reportBuilder.js';
+import { normalizeArchetypeName, sanitizeForFilename } from '../data/reportBuilder.js';
 import type {
   BuildCardTrendReportOptions,
   BuildTrendReportOptions,

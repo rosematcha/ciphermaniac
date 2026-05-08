@@ -1,4 +1,4 @@
-import { jsonError } from '../../lib/responses.js';
+import { jsonError } from '../../lib/api/responses.js';
 import { filterDecksBySuccess, generateReportForFilters } from '../../../src/utils/clientSideFiltering.js';
 import type { ArchetypeFilterRequest, Filter } from '../../../src/types/index.js';
 

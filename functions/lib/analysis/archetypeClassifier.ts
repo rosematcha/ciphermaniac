@@ -1,3 +1,50 @@
+interface DeckRule {
+  name?: string;
+  id?: string;
+  identifier?: string;
+  cards?: unknown;
+  descendants?: DeckRule[];
+  children?: DeckRule[];
+  variants?: DeckRule[];
+  [key: string]: unknown;
+}
+
+interface Matcher {
+  id: string | null;
+  name: string;
+  tokens: Set<string>;
+  cardNames: Set<string>;
+}
+
+interface MatchScore {
+  score: number;
+  matchedCards: number;
+  matchedTokens: number;
+}
+
+interface MatchScoreWithMatcher extends MatchScore {
+  matcher: Matcher;
+}
+
+export interface DeckIndex {
+  byId: Map<string, { id: string; name: string }>;
+  matchers: Matcher[];
+  ruleCount: number;
+}
+
+export interface ClassificationInput {
+  deckName?: string;
+  deckId?: string;
+  decklist?: Record<string, Array<{ name?: string; [key: string]: unknown }>>;
+}
+
+export interface ClassificationResult {
+  name: string;
+  id: string | null;
+  source: string;
+  confidence?: number;
+}
+
 const GENERIC_ARCHETYPE_NAMES = new Set([
   '',
   'other',
@@ -36,14 +83,14 @@ const RULE_CONTAINER_KEYS = [
   'energy'
 ];
 
-function canonicalizeArchetypeLabel(value) {
+function canonicalizeArchetypeLabel(value: unknown): string {
   return String(value || '')
     .replace(/_/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-function normalizeForLookup(value) {
+function normalizeForLookup(value: unknown): string {
   return canonicalizeArchetypeLabel(value)
     .toLowerCase()
     .replace(/['’]/g, '')
@@ -51,11 +98,11 @@ function normalizeForLookup(value) {
     .trim();
 }
 
-function tokenize(value) {
+function tokenize(value: unknown): string[] {
   return normalizeForLookup(value).split(/\s+/).filter(Boolean);
 }
 
-function normalizeCardName(value) {
+function normalizeCardName(value: unknown): string {
   return String(value || '')
     .trim()
     .toLowerCase()
@@ -63,12 +110,12 @@ function normalizeCardName(value) {
     .replace(/['’]/g, "'");
 }
 
-function isGenericArchetypeName(value) {
+function isGenericArchetypeName(value: unknown): boolean {
   const normalized = normalizeForLookup(value);
   return !normalized || GENERIC_ARCHETYPE_NAMES.has(normalized);
 }
 
-function isLikelyDeckRule(value) {
+function isLikelyDeckRule(value: unknown): value is DeckRule {
   if (!value || typeof value !== 'object') {
     return false;
   }
@@ -81,7 +128,7 @@ function isLikelyDeckRule(value) {
   return hasName && hasRuleShape;
 }
 
-function extractRuleItems(payload) {
+function extractRuleItems(payload: any): any[] {
   if (Array.isArray(payload)) {
     return payload;
   }
@@ -97,7 +144,7 @@ function extractRuleItems(payload) {
   return [];
 }
 
-function collectDeckRules(payload) {
+function collectDeckRules(payload: any): DeckRule[] {
   const initial = extractRuleItems(payload);
   if (!initial.length) {
     return [];
@@ -144,7 +191,7 @@ function collectDeckRules(payload) {
   return rules;
 }
 
-function collectCardNames(value, names, depth = 0) {
+function collectCardNames(value: any, names: Set<string>, depth = 0): void {
   if (depth > 5 || !value) {
     return;
   }
@@ -186,7 +233,7 @@ function collectCardNames(value, names, depth = 0) {
   });
 }
 
-function collectRuleCardNames(rule) {
+function collectRuleCardNames(rule: DeckRule): Set<string> {
   const names = new Set();
   if (!rule || typeof rule !== 'object') {
     return names;
@@ -205,7 +252,7 @@ function collectRuleCardNames(rule) {
   return names;
 }
 
-function extractDecklistCardNames(decklist) {
+function extractDecklistCardNames(decklist: any): Set<string> {
   const names = new Set();
   if (!decklist || typeof decklist !== 'object') {
     return names;
@@ -229,7 +276,7 @@ function extractDecklistCardNames(decklist) {
   return names;
 }
 
-function buildDeckTokenSet(cardNames) {
+function buildDeckTokenSet(cardNames: Set<string>): Set<string> {
   const tokens = new Set();
   cardNames.forEach(name => {
     tokenize(name).forEach(token => tokens.add(token));
@@ -237,7 +284,7 @@ function buildDeckTokenSet(cardNames) {
   return tokens;
 }
 
-function scoreRuleMatch(deckCardNames, deckTokens, matcher) {
+function scoreRuleMatch(deckCardNames: Set<string>, deckTokens: Set<string>, matcher: Matcher): MatchScore {
   let matchedCards = 0;
   matcher.cardNames.forEach(cardName => {
     if (deckCardNames.has(cardName)) {
@@ -264,7 +311,7 @@ function scoreRuleMatch(deckCardNames, deckTokens, matcher) {
   };
 }
 
-function toMatcher(rule) {
+function toMatcher(rule: DeckRule): Matcher | null {
   const name = canonicalizeArchetypeLabel(rule?.name);
   if (!name) {
     return null;
@@ -285,10 +332,10 @@ function toMatcher(rule) {
   };
 }
 
-function buildArchetypeDeckIndex(payload) {
+function buildArchetypeDeckIndex(payload: any): DeckIndex {
   const rules = collectDeckRules(payload);
-  const byId = new Map();
-  const matchers = [];
+  const byId = new Map<string, { id: string; name: string }>();
+  const matchers: Matcher[] = [];
 
   rules.forEach(rule => {
     const name = canonicalizeArchetypeLabel(rule?.name);
@@ -311,7 +358,7 @@ function buildArchetypeDeckIndex(payload) {
   };
 }
 
-function resolveArchetypeClassification(input, deckIndex) {
+function resolveArchetypeClassification(input: ClassificationInput, deckIndex: DeckIndex | null): ClassificationResult {
   const deckName = canonicalizeArchetypeLabel(input?.deckName);
   const deckId = String(input?.deckId || '').trim();
   const idMatch = deckId && deckIndex?.byId ? deckIndex.byId.get(deckId.toLowerCase()) : null;
@@ -335,8 +382,8 @@ function resolveArchetypeClassification(input, deckIndex) {
   const deckCardNames = extractDecklistCardNames(input?.decklist);
   if (deckCardNames.size && Array.isArray(deckIndex?.matchers) && deckIndex.matchers.length) {
     const deckTokens = buildDeckTokenSet(deckCardNames);
-    let best = null;
-    let secondBest = null;
+    let best: MatchScoreWithMatcher | null = null;
+    let secondBest: MatchScore | null = null;
 
     deckIndex.matchers.forEach(matcher => {
       const score = scoreRuleMatch(deckCardNames, deckTokens, matcher);

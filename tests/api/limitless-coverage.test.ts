@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
 
-import { fetchLimitlessJson } from '../../functions/lib/limitless.ts';
+import { fetchLimitlessJson } from '../../functions/lib/api/limitless.ts';
 
 // ---------------------------------------------------------------------------
 // fetchLimitlessJson – URL building with various searchParams

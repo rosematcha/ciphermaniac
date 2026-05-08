@@ -7,10 +7,11 @@
  */
 
 import initSqlJs, { Database, Statement } from 'sql.js';
-import { calculatePercentage, composeCategoryPath, createDistributionFromCounts } from '../../shared/reportUtils';
-import { canonicalizeVariant, sanitizeForPath } from './cardUtils.js';
+import { calculatePercentage, composeCategoryPath, createDistributionFromCounts } from '../../../shared/reportUtils';
+import { canonicalizeVariant, sanitizeForPath } from '../util/cardUtils.js';
 import { getCanonicalCard } from './cardSynonyms.js';
-import { SynonymDatabase } from '../../shared/synonyms';
+
+import { SynonymDatabase } from '../../../shared/synonyms';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

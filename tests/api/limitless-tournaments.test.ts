@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
 
 import { onRequestOptions, onRequestGet as tournamentsHandler } from '../../functions/api/limitless/tournaments.js';
-import { fetchLimitlessJson } from '../../functions/lib/limitless.js';
+import { fetchLimitlessJson } from '../../functions/lib/api/limitless.js';
 
 // Fixed test date for deterministic tests
 const FIXED_TEST_DATE = '2025-01-15T12:00:00.000Z';

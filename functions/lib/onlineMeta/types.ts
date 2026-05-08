@@ -1,4 +1,4 @@
-import type { fetchLimitlessJson } from '../limitless.js';
+import type { fetchLimitlessJson } from '../api/limitless.js';
 
 /** Configuration for archetype thumbnail mappings */
 export type ThumbnailConfig = Record<string, string[]>;

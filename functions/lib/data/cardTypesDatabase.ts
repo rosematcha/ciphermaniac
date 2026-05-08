@@ -3,40 +3,69 @@
  * @module lib/cardTypesDatabase
  */
 
+interface WorkerEnv {
+  CARD_TYPES_KV?: KVNamespace;
+  REPORTS?: R2Bucket;
+}
+
+interface CardTypeInfo {
+  cardType?: string;
+  subType?: string;
+  fullType?: string;
+  evolutionInfo?: string;
+  regulationMark?: string;
+  aceSpec?: boolean;
+  lastUpdated?: string;
+}
+
+export type CardTypesDatabase = Record<string, CardTypeInfo>;
+
+interface CardRecord {
+  name?: string;
+  set?: string;
+  number?: string | number;
+  count?: number;
+  category?: string;
+  trainerType?: string;
+  energyType?: string;
+  aceSpec?: boolean;
+  regulationMark?: string;
+  evolutionInfo?: string;
+  fullType?: string;
+  [key: string]: unknown;
+}
+
+interface DeckRecord {
+  cards?: CardRecord[];
+  [key: string]: unknown;
+}
+
 // Module-level cache: persists across requests within the same isolate,
 // avoiding re-fetch and re-parse of the card types JSON on every request.
-let cachedCardTypesData = null;
+let cachedCardTypesData: CardTypesDatabase | null = null;
 
-/**
- * Fetch and parse card types database from R2/KV
- * @param {object} env - Cloudflare Workers environment
- * @returns {Promise<Object>}
- */
-export async function loadCardTypesDatabase(env) {
+export async function loadCardTypesDatabase(env: WorkerEnv): Promise<CardTypesDatabase> {
   if (cachedCardTypesData) {
     return cachedCardTypesData;
   }
   try {
-    // Try to get from KV first (faster)
     if (env.CARD_TYPES_KV) {
       const cached = await env.CARD_TYPES_KV.get('card-types-database', 'json');
       if (cached) {
-        cachedCardTypesData = cached;
-        return cached;
+        cachedCardTypesData = cached as CardTypesDatabase;
+        return cachedCardTypesData;
       }
     }
 
-    // Fall back to R2 bucket
     if (env.REPORTS) {
       const object = await env.REPORTS.get('assets/data/card-types.json');
       if (object) {
         const text = await object.text();
-        const data = JSON.parse(text);
+        const data = JSON.parse(text) as CardTypesDatabase;
 
-        // Cache in KV if available
         if (env.CARD_TYPES_KV) {
           await env.CARD_TYPES_KV.put('card-types-database', JSON.stringify(data), {
-            expirationTtl: 86400 // Cache for 24 hours
+            expirationTtl: 86400
           });
         }
 
@@ -47,25 +76,17 @@ export async function loadCardTypesDatabase(env) {
 
     console.warn('Card types database not found');
     return {};
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to load card types database:', error.message);
     return {};
   }
 }
 
-/**
- * Enrich a card object with type information from the database
- * Preserves existing type information but adds missing fields
- * @param {Object} card - Card object with set and number
- * @param {Object} database - Card types database
- * @returns {Object} - Enriched card object
- */
-export function enrichCardWithType(card, database) {
+export function enrichCardWithType(card: CardRecord, database: CardTypesDatabase): CardRecord {
   if (!card) {
     return card;
   }
 
-  // Database keys are SET::NUMBER format, not NAME::SET::NUMBER (uid format)
   const key = card?.set && card?.number ? `${card.set}::${card.number}` : null;
 
   if (!key) {
@@ -79,32 +100,26 @@ export function enrichCardWithType(card, database) {
     return enriched;
   }
 
-  // Set category from cardType if not already present
   if (typeInfo.cardType && !enriched.category) {
     enriched.category = typeInfo.cardType;
   }
 
-  // Only set trainer subtype if not already present
   if (typeInfo.cardType === 'trainer' && typeInfo.subType && !enriched.trainerType) {
     enriched.trainerType = typeInfo.subType;
   }
 
-  // Only set energy subtype if not already present
   if (typeInfo.cardType === 'energy' && typeInfo.subType && !enriched.energyType) {
     enriched.energyType = typeInfo.subType;
   }
 
-  // Add evolution info if this is a Pokemon
   if (typeInfo.cardType === 'pokemon' && typeInfo.evolutionInfo && !enriched.evolutionInfo) {
     enriched.evolutionInfo = typeInfo.evolutionInfo;
   }
 
-  // Add full type string for reference
   if (typeInfo.fullType && !enriched.fullType) {
     enriched.fullType = typeInfo.fullType;
   }
 
-  // Add regulation mark if present (overwrites if missing to update from DB)
   if (typeInfo.regulationMark) {
     enriched.regulationMark = typeInfo.regulationMark;
   }
@@ -116,13 +131,7 @@ export function enrichCardWithType(card, database) {
   return enriched;
 }
 
-/**
- * Enrich all cards in a deck with type information
- * @param {Object} deck - Deck object with cards array
- * @param {Object} database - Card types database
- * @returns {Object} - Deck with enriched cards
- */
-function enrichDeckCards(deck, database) {
+function enrichDeckCards(deck: DeckRecord, database: CardTypesDatabase): DeckRecord {
   if (!deck || !Array.isArray(deck.cards) || !database) {
     return deck;
   }
@@ -133,13 +142,7 @@ function enrichDeckCards(deck, database) {
   };
 }
 
-/**
- * Enrich all decks with type information
- * @param {Array<Object>} decks - Array of deck objects
- * @param {Object} database - Card types database
- * @returns {Array<Object>} - Array of enriched decks
- */
-export function enrichAllDecks(decks, database) {
+export function enrichAllDecks(decks: DeckRecord[], database: CardTypesDatabase): DeckRecord[] {
   if (!Array.isArray(decks) || !database) {
     return decks;
   }
