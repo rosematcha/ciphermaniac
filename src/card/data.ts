@@ -8,6 +8,7 @@ import { parseReport } from '../parse.js';
 import { getBaseName, getCanonicalId, getDisplayName, parseDisplayName } from './identifiers.js';
 import { extractSetAndNumber } from './routing.js';
 import { ErrorBoundary, logger, validators } from '../utils/errorHandler.js';
+import { TtlCache } from '../utils/cache.js';
 
 interface CardItem {
   set?: string;
@@ -31,6 +32,15 @@ interface VariantsCacheEntry {
 interface VariantsCache {
   [key: string]: VariantsCacheEntry;
 }
+
+const VARIANTS_CACHE_KEY = 'cardVariantsV2';
+const VARIANTS_TTL = 1000 * 60 * 60 * 24; // 24 hours
+const VARIANTS_MAX_ENTRIES = 200;
+
+const variantsCache = new TtlCache<string[]>({
+  ttl: VARIANTS_TTL,
+  maxEntries: VARIANTS_MAX_ENTRIES
+});
 
 /**
  * Find a card in items array by identifier
@@ -138,23 +148,24 @@ export async function collectCardVariants(cardIdentifier: string): Promise<strin
     return [];
   }
 
-  // Use aggressive caching for variants to avoid repeated network calls
-  const VARIANTS_CACHE_KEY = 'cardVariantsV2';
-  const CACHE_EXPIRY = 1000 * 60 * 60 * 24; // 24 hours
+  const cacheKey = searchBaseName.toLowerCase();
 
-  let variantsCache: VariantsCache;
-  try {
-    variantsCache = JSON.parse(localStorage.getItem(VARIANTS_CACHE_KEY) || '{}');
-  } catch {
-    variantsCache = {};
+  // Check in-memory TtlCache first
+  const memCached = variantsCache.get(cacheKey);
+  if (memCached) {
+    return memCached.sort();
   }
 
-  const cacheKey = searchBaseName.toLowerCase();
-  const cachedEntry = variantsCache[cacheKey];
-
-  // Return cached data if fresh
-  if (cachedEntry && Date.now() - cachedEntry.timestamp < CACHE_EXPIRY) {
-    return cachedEntry.variants.sort();
+  // Fall back to localStorage for cross-session persistence
+  try {
+    const stored: VariantsCache = JSON.parse(localStorage.getItem(VARIANTS_CACHE_KEY) || '{}');
+    const entry = stored[cacheKey];
+    if (entry && Date.now() - entry.timestamp < VARIANTS_TTL) {
+      variantsCache.set(cacheKey, entry.variants);
+      return entry.variants.sort();
+    }
+  } catch {
+    /* ignore corrupt localStorage */
   }
 
   const variants = new Set<string>();
@@ -214,30 +225,35 @@ export async function collectCardVariants(cardIdentifier: string): Promise<strin
 
   const variantsList = Array.from(variants);
 
-  // Cache the results for future use
+  // Store in in-memory cache
+  variantsCache.set(cacheKey, variantsList);
+
+  // Persist to localStorage for cross-session reuse
   try {
-    // Prune expired entries and enforce max size to prevent localStorage quota errors
-    const VARIANTS_CACHE_MAX = 200;
     const now = Date.now();
-    const keys = Object.keys(variantsCache);
-    for (const k of keys) {
-      if (now - (variantsCache[k]?.timestamp || 0) >= CACHE_EXPIRY) {
-        delete variantsCache[k];
+    let stored: VariantsCache = {};
+    try {
+      stored = JSON.parse(localStorage.getItem(VARIANTS_CACHE_KEY) || '{}');
+    } catch {
+      /* ignore */
+    }
+    // Prune expired entries
+    for (const k of Object.keys(stored)) {
+      if (now - (stored[k]?.timestamp || 0) >= VARIANTS_TTL) {
+        delete stored[k];
       }
     }
-    const remaining = Object.keys(variantsCache);
-    if (remaining.length >= VARIANTS_CACHE_MAX) {
-      for (const k of remaining.slice(0, remaining.length - VARIANTS_CACHE_MAX + 1)) {
-        delete variantsCache[k];
+    // Enforce max size
+    const keys = Object.keys(stored);
+    if (keys.length >= VARIANTS_MAX_ENTRIES) {
+      for (const k of keys.slice(0, keys.length - VARIANTS_MAX_ENTRIES + 1)) {
+        delete stored[k];
       }
     }
-    variantsCache[cacheKey] = {
-      variants: variantsList,
-      timestamp: now
-    };
-    localStorage.setItem(VARIANTS_CACHE_KEY, JSON.stringify(variantsCache));
+    stored[cacheKey] = { variants: variantsList, timestamp: now };
+    localStorage.setItem(VARIANTS_CACHE_KEY, JSON.stringify(stored));
   } catch {
-    // Ignore cache storage errors
+    /* ignore storage errors */
   }
 
   return variantsList.sort();

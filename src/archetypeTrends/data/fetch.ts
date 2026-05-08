@@ -1,9 +1,12 @@
 import { AppError, ErrorTypes } from '../../utils/errorHandler.js';
+import { TtlCache, withCachedFetch } from '../../utils/cache.js';
 import { logger } from '../../utils/logger.js';
 import { R2_BASE_URL } from '../constants.js';
 import type { TrendsData } from '../types.js';
 
-export async function fetchTrendsData(archetypeName: string): Promise<TrendsData | null> {
+const trendsCache = new TtlCache<TrendsData | null>({ ttl: 5 * 60 * 1000 });
+
+const cachedFetchTrends = withCachedFetch<TrendsData | null>(trendsCache, async (archetypeName: string) => {
   const encodedName = encodeURIComponent(archetypeName);
   const url = `${R2_BASE_URL}/reports/Online%20-%20Last%2014%20Days/archetypes/${encodedName}/trends.json`;
 
@@ -21,4 +24,8 @@ export async function fetchTrendsData(archetypeName: string): Promise<TrendsData
     logger.error('Failed to fetch trends data', { archetypeName, error });
     return null;
   }
+});
+
+export async function fetchTrendsData(archetypeName: string): Promise<TrendsData | null> {
+  return cachedFetchTrends(archetypeName);
 }
