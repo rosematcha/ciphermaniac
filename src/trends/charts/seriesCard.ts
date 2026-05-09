@@ -1,5 +1,5 @@
-import { elements, state } from '../state';
-import { formatDate, formatPercent } from '../aggregator';
+import { elements, state } from '../state.js';
+import { formatDate, formatPercent } from '../aggregator.js';
 import type { TrendSeries, TrendTimelineEntry } from '../types';
 
 function buildSparkline(timeline: TrendTimelineEntry[]): string {

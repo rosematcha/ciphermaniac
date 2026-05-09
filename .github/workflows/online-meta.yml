@@ -99,7 +99,7 @@ jobs:
           REFRESH_DELETE_EXISTING: 'true'
 
       - name: Generate online meta report
-        run: node .github/scripts/run-online-meta.mjs
+        run: npx tsx .github/scripts/run-online-meta.mjs
         env:
           LIMITLESS_API_KEY: ${{ secrets.LIMITLESS_API_KEY }}
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}

@@ -1,4 +1,4 @@
-import { elements } from '../state';
+import { elements } from '../state.js';
 import {
   aggregateCardMoverDirection,
   buildArchetypeHref,
@@ -8,7 +8,7 @@ import {
   formatSignedPercent,
   getArchetypeThumbUrl,
   getCardThumbUrl
-} from '../aggregator';
+} from '../aggregator.js';
 import type { CardTrendsState, DisplayCardMover, MetaLine } from '../types';
 
 export function renderLegend(lines: MetaLine[]): void {

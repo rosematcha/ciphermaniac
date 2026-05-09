@@ -1,9 +1,8 @@
 import { fetchReport, fetchTournamentsList } from '../api.js';
 import { parseReport } from '../parse.js';
 import { getDisplayName } from './identifiers.js';
-import { getCanonicalCard } from '../utils/cardSynonyms.js';
+import { getCanonicalCard, getSynonymDatabase } from '../utils/cardSynonyms.js';
 import { logger } from '../utils/logger.js';
-import { CONFIG } from '../config.js';
 import { QUERY_KEYS } from '../lib/routing.js';
 // Re-export normalizeCardNumber from shared module for backwards compatibility
 export { normalizeCardNumber } from '../../shared/cardUtils.js';
@@ -153,6 +152,40 @@ function matchesSanitizedName(item: CardItem, targetName: string): boolean | nul
   return sanitizedTarget ? sanitizedTarget === byUid || sanitizedTarget === byName : null;
 }
 
+async function resolveSetAndNumberFromSynonyms(setCode: string, number: string): Promise<string | null> {
+  try {
+    const data = await getSynonymDatabase();
+    const normalizedNumber = normalizeCardNumber(number);
+    const upperSet = setCode.toUpperCase();
+    const matches = (uid: string): boolean => {
+      if (!uid.includes('::')) {
+        return false;
+      }
+      const parts = uid.split('::');
+      return (
+        parts.length >= 3 && parts[1].toUpperCase() === upperSet && normalizeCardNumber(parts[2]) === normalizedNumber
+      );
+    };
+    for (const [uid, canonicalUid] of Object.entries(data.synonyms || {})) {
+      if (matches(uid)) {
+        return canonicalUid;
+      }
+    }
+    for (const canonicalUid of Object.values(data.canonicals || {})) {
+      if (matches(canonicalUid)) {
+        return canonicalUid;
+      }
+    }
+  } catch (error: any) {
+    logger.debug('Synonym lookup failed for set:number resolution', {
+      setCode,
+      number,
+      error: error?.message || error
+    });
+  }
+  return null;
+}
+
 async function resolveBySetAndNumber(
   setCode: string,
   number: string,
@@ -162,6 +195,15 @@ async function resolveBySetAndNumber(
   const normalizedKey = `${setCode}:${number}`;
   if (cache[normalizedKey]) {
     return cache[normalizedKey];
+  }
+
+  // Fast path: resolve via the synonyms DB (one cached JSON) before
+  // pulling 12 master.json reports just to find a single UID.
+  const fromSynonyms = await resolveSetAndNumberFromSynonyms(setCode, number);
+  if (fromSynonyms) {
+    cache[normalizedKey] = fromSynonyms;
+    saveSlugCache(cache);
+    return fromSynonyms;
   }
 
   const tournaments = await ensureTournamentsLoaded();
@@ -186,56 +228,6 @@ async function resolveBySetAndNumber(
         return canonical;
       }
     }
-  }
-
-  // Fallback: Try synonym resolution if exact match wasn't found in tournaments
-  try {
-    const response = await fetch(CONFIG.API.SYNONYMS_URL);
-    if (response.ok) {
-      const synonymData = await response.json();
-      const normalizedNumber = normalizeCardNumber(number);
-
-      // Search for any UID that has this set:number combination
-      // Check both synonyms (variants) and their canonical values
-      for (const [uid, canonicalUid] of Object.entries(synonymData.synonyms || {})) {
-        if (uid.includes('::')) {
-          const parts = uid.split('::');
-          if (
-            parts.length >= 3 &&
-            parts[1].toUpperCase() === setCode.toUpperCase() &&
-            normalizeCardNumber(parts[2]) === normalizedNumber
-          ) {
-            // Found a matching variant, return its canonical
-            cache[normalizedKey] = canonicalUid as string;
-            saveSlugCache(cache);
-            return canonicalUid as string;
-          }
-        }
-      }
-
-      // Also check if this set:number IS a canonical by checking all canonical values
-      for (const canonicalUid of Object.values(synonymData.canonicals || {})) {
-        if ((canonicalUid as string).includes('::')) {
-          const parts = (canonicalUid as string).split('::');
-          if (
-            parts.length >= 3 &&
-            parts[1].toUpperCase() === setCode.toUpperCase() &&
-            normalizeCardNumber(parts[2]) === normalizedNumber
-          ) {
-            // This set:number is itself a canonical
-            cache[normalizedKey] = canonicalUid as string;
-            saveSlugCache(cache);
-            return canonicalUid as string;
-          }
-        }
-      }
-    }
-  } catch (error: any) {
-    logger.debug('Synonym fallback failed for set:number resolution', {
-      setCode,
-      number,
-      error: error?.message || error
-    });
   }
 
   return null;
