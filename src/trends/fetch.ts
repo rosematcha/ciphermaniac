@@ -3,11 +3,11 @@ import { fetchAllDecks } from '../utils/clientSideFiltering.js';
 import { buildCardTrendDataset, buildTrendDataset, type TrendDataset } from '../utils/trendAggregator.js';
 import { logger } from '../utils/logger.js';
 import type { Deck, TrendReport } from '../types/index.js';
-import { elements, state, TRENDS_SOURCE } from './state';
-import { normalizeLookupKey } from './aggregator';
-import { renderMetaChart } from './charts/metaChart';
-import { renderCardMovers } from './charts/movers';
-import { renderList } from './charts/seriesCard';
+import { elements, state, TRENDS_SOURCE } from './state.js';
+import { normalizeLookupKey } from './aggregator.js';
+import { renderMetaChart } from './charts/metaChart.js';
+import { renderCardMovers } from './charts/movers.js';
+import { renderList } from './charts/seriesCard.js';
 import type { TrendTournament } from './types';
 
 function normalizeTrendReport(report: TrendReport): TrendDataset {

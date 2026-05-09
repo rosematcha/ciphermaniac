@@ -1,5 +1,5 @@
 import { buildThumbCandidates } from '../thumbs.js';
-import { palette, state } from './state';
+import { palette, state } from './state.js';
 import type {
   CardTrendMover,
   DisplayCardMover,

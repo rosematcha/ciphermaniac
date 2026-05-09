@@ -1,9 +1,9 @@
 /* eslint-disable id-length, no-param-reassign, no-unused-vars */
 import '../utils/buildVersion.js';
-import { elements, state } from './state';
-import { renderMetaChart } from './charts/metaChart';
+import { elements, state } from './state.js';
+import { renderMetaChart } from './charts/metaChart.js';
 import type { TrendsMode } from './types';
-import { hydrateFromDecks, init, rebuildWithFilter } from './fetch';
+import { hydrateFromDecks, init, rebuildWithFilter } from './fetch.js';
 
 function setMode(mode: TrendsMode): void {
   state.mode = mode;

@@ -1,8 +1,8 @@
 /* eslint-disable id-length, no-param-reassign */
-import { elements, state } from '../state';
-import { buildMetaLines, formatDate, formatPercent } from '../aggregator';
+import { elements, state } from '../state.js';
+import { buildMetaLines, formatDate, formatPercent } from '../aggregator.js';
 import type { MetaLine } from '../types';
-import { renderLegend, renderMovers } from './movers';
+import { renderLegend, renderMovers } from './movers.js';
 
 const formatAxisValue = (value: number) => (value % 1 === 0 ? `${value}%` : `${value.toFixed(1)}%`);
 
