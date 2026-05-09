@@ -42,6 +42,15 @@ shared/*.js
 # Production build output (minified, stripped debug code)
 public/assets/js-prod/
 
+# Generated CSS bundles (built by scripts/build-css-simple.mjs)
+public/assets/style-optimized.css
+public/assets/style-core.css
+public/assets/style-cards.css
+public/assets/style-archetype.css
+public/assets/style-card-detail.css
+public/assets/style-home.css
+public/assets/style-trends.css
+
 # HTML backups created during production deployment
 .html-backup/
 
