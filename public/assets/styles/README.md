@@ -269,34 +269,6 @@ For production, you can add:
 3. **PurgeCSS** - Remove unused styles
 4. **GZIP** - Compress final file
 
-## Migration Guide
-
-### Switching from Old to New CSS
-
-1. **Backup** - Original CSS is saved as `style.css.backup-[date]`
-
-2. **Update HTML** - Change CSS reference:
-
-   ```html
-   <!-- Old -->
-   <link rel="stylesheet" href="/assets/style.css" />
-
-   <!-- New -->
-   <link rel="stylesheet" href="/assets/style-optimized.css" />
-   ```
-
-3. **Test** - Verify all pages render correctly
-
-4. **Report Issues** - If styling breaks, check browser console
-
-### Rollback Plan
-
-If issues occur, rollback is simple:
-
-```html
-<link rel="stylesheet" href="/assets/style.css" />
-```
-
 ## Maintenance Guide
 
 ### Adding New Styles

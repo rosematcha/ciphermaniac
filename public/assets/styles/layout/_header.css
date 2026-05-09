@@ -2,6 +2,8 @@
    Header Component System
    ========================================================================== */
 
+@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:ital,wght@0,700;0,900;1,700;1,900&display=swap');
+
 /* Header layout shift prevention */
 body::before {
   content: '';
@@ -56,31 +58,47 @@ body:not(.no-header) > header {
 }
 
 /* Site title and logo */
-.site-title {
-  font-family: var(--font-family-serif);
-  font-optical-sizing: auto;
-  font-weight: var(--font-weight-black);
-  font-style: normal;
-  font-variation-settings:
-    'SOFT' 100,
-    'WONK' 1;
-  font-size: var(--font-size-xl);
-  color: var(--text);
-  letter-spacing: 0.6px;
-}
-
 .logo {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: var(--space-2);
+  row-gap: 4px;
   align-items: center;
   text-decoration: none;
 }
 
 .site-logo {
+  grid-row: 1;
+  grid-column: 1;
   width: 28px;
   height: 28px;
-  margin-right: var(--space-2);
   display: block;
   flex-shrink: 0;
+}
+
+.site-title {
+  grid-row: 1;
+  grid-column: 2;
+  align-self: center;
+  font-family: 'Big Shoulders Display', system-ui, sans-serif;
+  font-weight: 900;
+  font-style: italic;
+  font-size: 26px;
+  color: var(--text);
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.site-title__underbar {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  display: block;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent) 60%, transparent 100%);
+  width: 100%;
+  border-radius: 1px;
 }
 
 /* Navigation system */
@@ -108,7 +126,7 @@ body:not(.no-header) > header {
 @media (max-width: 720px) {
   .site-title {
     margin-bottom: 0;
-    font-size: var(--font-size-lg);
+    font-size: 22px;
   }
 
   .header-inner {

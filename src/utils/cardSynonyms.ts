@@ -153,4 +153,13 @@ export async function getVariantImageCandidates(
   }
 }
 
+/**
+ * Get the cached synonym database, loading it on first call.
+ * Shares the module-level / sessionStorage cache used by other helpers,
+ * so callers don't trigger duplicate /synonyms.json fetches.
+ */
+export async function getSynonymDatabase(): Promise<SynonymDatabase> {
+  return loadSynonymData();
+}
+
 // Pre-load synonym data on module import for better performance

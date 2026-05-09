@@ -30,8 +30,9 @@ export function createHeader(options: HeaderOptions = {}): HTMLElement {
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="header-inner">
       <a class="logo" href="/" aria-label="Ciphermaniac home">
-        <img src="/assets/images/logo.svg" alt="" class="site-logo" width="28" height="28" />
+        <img src="/assets/images/logo-amber.svg" alt="" class="site-logo" width="28" height="28" />
         <div class="site-title">Ciphermaniac</div>
+        <span class="site-title__underbar" aria-hidden="true"></span>
       </a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mainNav" aria-label="Toggle navigation menu">
         <span class="nav-toggle__icon" aria-hidden="true"></span>
