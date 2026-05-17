@@ -1,6 +1,0 @@
-import { logger } from '../utils/logger.js';
-
-export function trackMissing(cardName: string, useSm: boolean, _overrides: any) {
-  // no-op or simple log
-  logger.debug(`Missing thumb: ${cardName} (${useSm ? 'sm' : 'lg'})`);
-}
