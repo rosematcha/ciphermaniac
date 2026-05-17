@@ -63,6 +63,7 @@ public/assets/style-trends.css
 # Dev stuff - keep organized in dev/ directory
 *.md
 !README.md
+!REDO.md
 config/*.md
 dev/*test*.html
 reports/that_day2d_candidates.json
