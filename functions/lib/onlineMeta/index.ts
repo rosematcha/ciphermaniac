@@ -7,6 +7,7 @@ import { daysAgo, fetchRecentOnlineTournaments, gatherDecks } from './tournament
 import { ARCHETYPE_THUMBNAILS, buildArchetypeReports } from './reportGenerator';
 import { buildCardTrendReport, buildTrendReport } from './archetypeBuilder';
 import { batchPutJson, putBinary } from './storageWriter';
+import { buildPlayerAggregates } from './playerAggregator';
 import type { OnlineMetaJobOptions } from './types';
 
 const WINDOW_DAYS = 30;
@@ -118,7 +119,8 @@ export async function runOnlineMetaJob(env, options: OnlineMetaJobOptions = {}) 
     Array.isArray(trendReport?.tournaments) && trendReport.tournaments.length ? trendReport.tournaments : tournaments;
   const cardTrends = buildCardTrendReport(enrichedDecks, trendTournaments, {
     windowStart: since,
-    windowEnd: now
+    windowEnd: now,
+    synonymDb
   });
   trendReport.cardTrends = cardTrends;
 
@@ -161,7 +163,8 @@ export async function runOnlineMetaJob(env, options: OnlineMetaJobOptions = {}) 
   try {
     const sqliteData = await buildTournamentDatabase(decks, {
       tournamentId: TARGET_FOLDER,
-      generatedAt: new Date().toISOString()
+      generatedAt: new Date().toISOString(),
+      synonymDb
     });
     await putBinary(env, `${REPORT_BASE_KEY}/tournament.db`, sqliteData, 'application/x-sqlite3');
     console.info('[OnlineMeta] SQLite database uploaded', { size: sqliteData.length });
@@ -179,6 +182,17 @@ export async function runOnlineMetaJob(env, options: OnlineMetaJobOptions = {}) 
     trendArchetypes: trendReport.archetypeCount
   });
 
+  // Additive: build career-wide player aggregates. Failures here must not break
+  // the meta build, so we swallow errors and report them in the result.
+  let playerAggregates: Awaited<ReturnType<typeof buildPlayerAggregates>> | null = null;
+  let playerAggregatesError: string | null = null;
+  try {
+    playerAggregates = await buildPlayerAggregates(env, { r2Concurrency });
+  } catch (err) {
+    playerAggregatesError = err instanceof Error ? err.message : String(err);
+    console.error('[OnlineMeta] Player aggregation failed (non-fatal)', err);
+  }
+
   return {
     success: true,
     decks: deckTotal,
@@ -186,7 +200,17 @@ export async function runOnlineMetaJob(env, options: OnlineMetaJobOptions = {}) 
     archetypes: archetypeFiles.length,
     trendArchetypes: trendReport.archetypeCount,
     folder: TARGET_FOLDER,
-    diagnostics
+    diagnostics,
+    playerAggregates: playerAggregates
+      ? {
+          profiles: playerAggregates.profileCount,
+          profilesWritten: playerAggregates.profilesWritten,
+          tournamentsScanned: playerAggregates.tournamentsScanned,
+          tournamentsSkipped: playerAggregates.tournamentsSkipped,
+          skippedNoChanges: playerAggregates.skippedNoChanges
+        }
+      : null,
+    playerAggregatesError
   };
 }
 

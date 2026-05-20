@@ -179,8 +179,7 @@ export async function onRequest({ request, env }: RequestContext): Promise<Respo
         continue;
       }
 
-      const slug = `${encodeURIComponent(set)}~${encodeURIComponent(number)}`;
-      const loc = buildUrl(origin, `/card/${slug}`);
+      const loc = buildUrl(origin, `/cards/${encodeURIComponent(set)}/${encodeURIComponent(number)}`);
       if (seen.has(loc)) {
         continue;
       }

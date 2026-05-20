@@ -85,72 +85,24 @@ export async function getCardVariants(cardIdentifier: string): Promise<string[]>
 }
 
 /**
- * Get image candidates from card variants (for fallback when primary image fails)
- * Returns candidates from all variants (newest to oldest, excluding the current identifier)
- * @param cardIdentifier - Card UID or name
- * @param useSm - Whether to use small (true) or extra-small (false) thumbnails
- * @param overrides - Image filename overrides
- * @returns Array of image URL candidates from variants
+ * Get image candidates from card variants (for fallback when primary image fails).
+ *
+ * STUBBED: the original implementation depended on `../thumbs.js` and
+ * `../card/identifiers.js`, both of which were UI modules deleted during the
+ * frontend scrap. This function is reachable from nothing in the new SPA, so
+ * it now returns an empty list. Reinstate the original (see git history of
+ * `src/utils/cardSynonyms.ts`) when card thumbnail handling is reintroduced.
  */
 export async function getVariantImageCandidates(
   cardIdentifier: string,
-  useSm: boolean = false,
-  overrides: Record<string, string> = {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _useSm: boolean = false,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _overrides: Record<string, string> = {}
 ): Promise<string[]> {
-  try {
-    const variants = await getCardVariants(cardIdentifier);
-    if (!variants || variants.length <= 1) {
-      return [];
-    }
-
-    // Import dependencies dynamically to avoid circular dependency
-    const { buildThumbCandidates } = await import('../thumbs.js');
-    const { getDisplayName, parseDisplayName } = await import('../card/identifiers.js');
-
-    const candidates: string[] = [];
-
-    // Iterate variants from end to start (newest to oldest)
-    // Try all variants EXCEPT the current cardIdentifier
-    for (let i = variants.length - 1; i >= 0; i--) {
-      const variantUid = variants[i];
-
-      // Skip only the exact identifier we're currently displaying
-      // This allows us to try the canonical even if we're showing a newer variant,
-      // and vice versa - try newer variants even if we're showing the canonical
-      if (variantUid === cardIdentifier) {
-        continue;
-      }
-
-      // Convert UID to display format first ("Ultra Ball::DEX::102" -> "Ultra Ball DEX 102")
-      const displayName = getDisplayName(variantUid);
-      if (!displayName) {
-        continue;
-      }
-
-      // Parse display name to get name, set, and number
-      const parsed = parseDisplayName(displayName);
-      if (!parsed || !parsed.name) {
-        continue;
-      }
-
-      let variant: { set?: string; number?: string } = {};
-      if (parsed.setId) {
-        const setMatch = parsed.setId.match(/^([A-Z]+)\s+(\d+[A-Za-z]?)$/);
-        if (setMatch) {
-          variant = { set: setMatch[1], number: setMatch[2] };
-        }
-      }
-
-      // Get candidates for this variant
-      const variantCandidates = buildThumbCandidates(parsed.name, useSm, overrides, variant);
-      candidates.push(...variantCandidates);
-    }
-
-    return candidates;
-  } catch (error) {
-    console.warn('Failed to get variant image candidates:', error);
-    return [];
-  }
+  // Touch `cardIdentifier` so the parameter isn't unused.
+  void cardIdentifier;
+  return [];
 }
 
 /**

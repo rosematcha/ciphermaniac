@@ -179,6 +179,24 @@ export interface TournamentParticipant {
   late?: boolean;
 }
 
+// =============================================================================
+// Cross-tournament Player Profile Types
+// =============================================================================
+
+// Player-aggregate types live in `shared/playerTypes.ts` so the cron-side
+// writer (functions/lib/onlineMeta/playerAggregator.ts) and the SPA-side
+// reader can't drift. Re-exported here so existing `from '../types'` imports
+// keep working without churn.
+export type {
+  PlayerArchetypeBreakdown,
+  PlayerDeckCard,
+  PlayerDecks,
+  PlayerIndexEntry,
+  PlayerProfile,
+  PlayerProfileSummary,
+  PlayerTournamentEntry
+} from '../../shared/playerTypes.js';
+
 /**
  * Round-by-round player perspective match record.
  */
@@ -379,144 +397,6 @@ export interface MetaReport {
   archetypeMinDecks?: number;
   /** Tournaments in this report */
   tournaments: MetaTournamentEntry[];
-}
-
-// =============================================================================
-// Trend Report Types
-// =============================================================================
-
-/**
- * Single data point in a trend timeline.
- */
-export interface TrendDataPoint {
-  /** Date string (ISO format or YYYY-MM-DD) */
-  date: string;
-  /** Usage share percentage */
-  share: number;
-  /** Number of decks */
-  decks?: number;
-  /** Total decks in the sample */
-  totalDecks?: number;
-  /** Success counts by tag */
-  success?: Record<string, number>;
-}
-
-/**
- * Archetype trend series for time-series visualization.
- */
-export interface TrendSeries {
-  /** Base archetype name (URL-safe) */
-  base: string;
-  /** Human-readable display name */
-  displayName: string;
-  /** Total decks across all time points */
-  totalDecks: number;
-  /** Number of tournaments where archetype appeared */
-  appearances: number;
-  /** Average meta share percentage */
-  avgShare: number;
-  /** Maximum meta share percentage */
-  maxShare: number;
-  /** Peak share (alias for maxShare) */
-  peakShare?: number;
-  /** Minimum meta share percentage */
-  minShare: number;
-  /** Aggregate success counts by tag */
-  successTotals: Record<string, number>;
-  /** Timeline of data points */
-  timeline: TrendDataPoint[];
-}
-
-/**
- * Card trend data for rising/falling analysis.
- */
-export interface CardTrendEntry {
-  /** Card identifier key */
-  key: string;
-  /** Card name */
-  name: string;
-  /** Set code */
-  set: string | null;
-  /** Collector number */
-  number: string | null;
-  /** Number of tournament appearances */
-  appearances: number;
-  /** Starting share percentage */
-  startShare: number;
-  /** Ending share percentage */
-  endShare: number;
-  /** Change in share (endShare - startShare) */
-  delta: number;
-  /** Current/latest share percentage (== recentAvg) */
-  currentShare: number;
-  /** Average share over the most recent third of the window */
-  recentAvg?: number;
-  /** Average share over the earliest third of the window */
-  startAvg?: number;
-}
-
-/**
- * Card trends report with rising and falling cards.
- */
-export interface CardTrendsReport {
-  /** Generation timestamp */
-  generatedAt: string;
-  /** Start of analysis window */
-  windowStart: string | null;
-  /** End of analysis window */
-  windowEnd: string | null;
-  /** Number of cards analyzed */
-  cardsAnalyzed: number;
-  /** Cards with increasing usage */
-  rising: CardTrendEntry[];
-  /** Cards with decreasing usage */
-  falling: CardTrendEntry[];
-}
-
-/**
- * Complete trend report for a tournament group.
- */
-export interface TrendReport {
-  /** Generation timestamp */
-  generatedAt: string;
-  /** Start of analysis window */
-  windowStart: string | null;
-  /** End of analysis window */
-  windowEnd: string | null;
-  /** Total decks analyzed */
-  deckTotal: number;
-  /** Number of tournaments in the window */
-  tournamentCount: number;
-  /** Minimum appearances for inclusion */
-  minAppearances: number;
-  /** Number of archetypes included */
-  archetypeCount: number;
-  /** Archetype trend series */
-  series: TrendSeries[];
-  /** Tournament list with deck counts */
-  tournaments: Array<{
-    id: string;
-    name: string;
-    date: string;
-    deckTotal?: number;
-    players?: number;
-    format?: string;
-  }>;
-  /** Total archetypes before filtering (if limited) */
-  totalArchetypes?: number;
-  /** Card-level trends */
-  cardTrends?: CardTrendsReport;
-}
-
-/**
- * Full payload returned by trends.json endpoint.
- * Contains the trend report and card trends.
- */
-export interface TrendReportPayload {
-  /** Archetype trend report */
-  trendReport: TrendReport;
-  /** Card-level trends */
-  cardTrends: CardTrendsReport | null;
 }
 
 // =============================================================================

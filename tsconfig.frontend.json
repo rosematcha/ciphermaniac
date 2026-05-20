@@ -1,12 +1,34 @@
 {
-  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "noEmit": false,
-    "outDir": "public/assets/js",
-    "rootDirs": ["src", "shared", "types"],
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
     "allowJs": false,
-    "checkJs": false
+    "checkJs": false,
+    "baseUrl": ".",
+    "paths": {
+      "~/*": ["src/*"]
+    },
+    "types": ["vite/client"]
   },
-  "include": ["src/**/*.ts", "shared/**/*.ts", "types/**/*.d.ts", "global.d.ts"],
-  "exclude": ["node_modules", "backend", "config", "functions"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "shared/**/*.ts",
+    "types/**/*.d.ts",
+    "global.d.ts",
+    "vite.config.ts"
+  ],
+  "exclude": ["node_modules", "dist", "functions", "config", "archive"]
 }

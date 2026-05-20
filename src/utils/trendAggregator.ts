@@ -1,6 +1,6 @@
 import { logger } from './logger.js';
 import { SUCCESS_TAGS } from '../data/performanceTiers.js';
-import { normalizeArchetypeName } from './format.js';
+import { normalizeArchetypeName } from '../../shared/cardUtils.js';
 
 const DEFAULT_MIN_APPEARANCES = 3;
 

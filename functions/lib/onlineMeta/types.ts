@@ -104,6 +104,12 @@ export interface BuildCardTrendReportOptions {
   windowEnd?: string | Date;
   minAppearances?: number;
   topCount?: number;
+  /**
+   * Synonym database used to collapse reprints / variant printings into a
+   * single trend entry. When omitted, card keys are kept raw and reprints
+   * appear as separate rows.
+   */
+  synonymDb?: import('../../../shared/synonyms').SynonymDatabase | null;
 }
 
 /** Options for runOnlineMetaJob */
@@ -172,6 +178,21 @@ export interface CardTrendsResult {
   rising: CardTrendItem[];
   falling: CardTrendItem[];
 }
+
+// Player-aggregate types live in `shared/playerTypes.ts` so the cron-side
+// writer (functions/lib/onlineMeta/playerAggregator.ts) and the SPA-side
+// reader (src/pages/PlayerProfilePage.tsx, src/pages/PlayersPage.tsx) can't
+// drift. Re-exported here for the existing in-folder imports.
+export type {
+  PlayerAggregateManifest,
+  PlayerArchetypeBreakdown,
+  PlayerDeckCard,
+  PlayerDecks,
+  PlayerIndexEntry,
+  PlayerProfile,
+  PlayerProfileSummary,
+  PlayerTournamentEntry
+} from '../../../shared/playerTypes';
 
 /** Individual card trend item */
 export interface CardTrendItem {
