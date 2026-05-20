@@ -1,4 +1,5 @@
 import { normalizeArchetypeName, sanitizeForFilename } from '../data/reportBuilder.js';
+import { getCanonicalCard } from '../data/cardSynonyms.js';
 import type {
   BuildCardTrendReportOptions,
   BuildTrendReportOptions,
@@ -219,6 +220,7 @@ export function buildTrendReport(decks, tournaments, options: BuildTrendReportOp
 }
 
 export function buildCardTrendReport(decks, tournaments, options: BuildCardTrendReportOptions = {}): CardTrendsResult {
+  const synonymDb = options.synonymDb ?? null;
   const now = options.now ? new Date(options.now) : new Date();
   const windowStart = options.windowStart ? new Date(options.windowStart) : null;
   const windowEnd = options.windowEnd ? new Date(options.windowEnd) : now;
@@ -253,10 +255,23 @@ export function buildCardTrendReport(decks, tournaments, options: BuildCardTrend
       const name = card?.name || 'Unknown Card';
       const set = (card?.set || '').toString().toUpperCase();
       const number = card?.number || '';
-      const key = set && number ? `${name}::${set}::${number}` : name;
+      let key = set && number ? `${name}::${set}::${number}` : name;
+      // Canonicalize so reprints (e.g. same card in two sets) collapse into
+      // a single trend entry instead of splitting appearances + share.
+      if (synonymDb) {
+        key = getCanonicalCard(synonymDb, key);
+      }
       uniqueCards.add(key);
       if (!cardMeta.has(key)) {
-        cardMeta.set(key, { name, set: set || null, number: number || null });
+        // Use the canonical UID's set/number for display when the key was
+        // rewritten by the synonym DB; this keeps the UI link pointing at
+        // the canonical card page.
+        const parts = key.includes('::') ? key.split('::') : null;
+        if (parts && parts.length >= 3) {
+          cardMeta.set(key, { name: parts[0], set: parts[1] || null, number: parts[2] || null });
+        } else {
+          cardMeta.set(key, { name, set: set || null, number: number || null });
+        }
       }
     }
     uniqueCards.forEach(key => {

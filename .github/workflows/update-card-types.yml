@@ -109,9 +109,9 @@ jobs:
           echo "Building card types database..."
           if [ "${{ github.event.inputs.force_refresh }}" == "true" ]; then
             echo "Force refresh mode enabled - re-fetching ALL cards"
-            node tools/build-card-types.mjs --force-refresh
+            node scripts/build-card-types.mjs --force-refresh
           else
-            node tools/build-card-types.mjs
+            node scripts/build-card-types.mjs
           fi
 
       - name: Upload card types database to R2

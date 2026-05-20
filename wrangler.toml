@@ -3,8 +3,8 @@ name = "ciphermaniac"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
-# Pages build output directory (required by Wrangler/Pages)
-pages_build_output_dir = "public"
+# Pages build output directory — Vite outputs the SPA shell + assets here.
+pages_build_output_dir = "dist"
 
 # KV namespace binding for price data storage
 [[kv_namespaces]]

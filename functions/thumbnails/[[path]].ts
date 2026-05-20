@@ -79,8 +79,8 @@ export async function onRequest(context: Context): Promise<Response> {
 
   // Validate size
   const sizeUpper = size.toUpperCase();
-  if (sizeUpper !== 'SM' && sizeUpper !== 'XS') {
-    return new Response('Invalid size. Must be "sm" or "xs"', {
+  if (sizeUpper !== 'SM' && sizeUpper !== 'XS' && sizeUpper !== 'LG') {
+    return new Response('Invalid size. Must be "sm", "xs", or "lg"', {
       status: 400,
       headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' }
     });

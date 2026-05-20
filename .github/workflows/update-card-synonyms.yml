@@ -5,19 +5,19 @@
 # Maps alternate names, abbreviations, and common misspellings to canonical names.
 #
 # Triggers:
-#   - Weekly on Sunday at 6:00 AM UTC (weekly refresh)
+#   - Daily at 6:00 AM UTC (captures new tournament ingestions within 24h)
 #   - Manual dispatch with optional commit toggle
 # =============================================================================
 
 name: (Card Metadata) Synonyms
 
 run-name: >-
-  ${{ github.event_name == 'schedule' && 'Weekly Synonyms Update' ||
+  ${{ github.event_name == 'schedule' && 'Daily Synonyms Update' ||
       format('Synonyms Update (commit={0}, full_rewrite={1})', inputs.commit_to_repo, inputs.full_rewrite) }}
 
 on:
   schedule:
-    - cron: '0 6 * * 0' # Weekly on Sunday at 6:00 AM UTC
+    - cron: '0 6 * * *' # Daily at 6:00 AM UTC
   workflow_dispatch:
     inputs:
       commit_to_repo:

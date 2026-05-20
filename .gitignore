@@ -17,6 +17,9 @@ Thumbs.db
 /build/
 /dev/_worker.bundle
 
+# Local-only player aggregator output (huge; rebuilt via `npx tsx scripts/build-players-local.ts`)
+static/players/
+
 # Logs
 *.log
 
@@ -88,3 +91,5 @@ trends.json
 /.npm-cache
 /.playwright-cli
 /output
+/archive
+/static

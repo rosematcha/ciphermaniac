@@ -255,7 +255,22 @@ async function requestWithRetries(url, retries = 3) {
     return null;
 }
 
+// Per-run dedupe for Limitless scrapes. A single (set, number) lookup returns
+// the full print-versions table, so multiple cards routed to the same page
+// share one fetch. Keyed by `SET::NUMBER` (uppercased, normalized).
+const SCRAPE_CACHE = new Map();
+
 async function scrapeCardPrintVariations(setCode, number) {
+    const cacheKey = `${(setCode || '').toUpperCase()}::${number}`;
+    if (SCRAPE_CACHE.has(cacheKey)) {
+        return SCRAPE_CACHE.get(cacheKey);
+    }
+    const result = await _scrapeCardPrintVariations(setCode, number);
+    SCRAPE_CACHE.set(cacheKey, result);
+    return result;
+}
+
+async function _scrapeCardPrintVariations(setCode, number) {
     const numberVariants = buildNumberVariants(number);
     if (!numberVariants.length) return [];
 
@@ -508,6 +523,8 @@ async function generateSynonyms(cardsByName) {
     const totalCards = cardsByName.size;
     let current = 0;
     let processedCount = 0;
+    let noClusterWithMultiSample = 0;
+    let noClusterSingleSample = 0;
 
     for (const [cardName, printSet] of cardsByName.entries()) {
         current++;
@@ -515,12 +532,18 @@ async function generateSynonyms(cardsByName) {
             log(`  Progress: ${current}/${totalCards} cards (${processedCount} with multiple prints)`);
         }
 
-        // Skip if only one print exists in our data
-        if (printSet.size < 2) continue;
-
-        // Build synonym clusters strictly from Limitless print tables (avoid fallback to prevent false merges)
+        // Always consult Limitless, even when only one printing has been
+        // observed in deck data — otherwise cards like Team Rocket's
+        // Watchtower (DRI 180 in decks, ASC 210 only in Limitless's print
+        // table) never get a synonym entry and split into two pages.
         const clusters = await buildClustersFromLimitless(printSet);
         if (!clusters.length) {
+            if (printSet.size >= 2) {
+                noClusterWithMultiSample++;
+                log(`  ⚠ No Limitless cluster for "${cardName}" despite ${printSet.size} observed printings: ${[...printSet].sort().join(', ')}`);
+            } else {
+                noClusterSingleSample++;
+            }
             continue;
         }
 
@@ -547,6 +570,8 @@ async function generateSynonyms(cardsByName) {
     log(`  Completed: ${processedCount} cards with multiple prints`);
     log(`  Generated ${Object.keys(synonymsDict).length} synonym mappings`);
     log(`  Generated ${Object.keys(canonicalsDict).length} canonical mappings`);
+    log(`  No-cluster cards: ${noClusterSingleSample} single-print (expected), ${noClusterWithMultiSample} multi-print (anomalies — see warnings above)`);
+    log(`  Limitless scrape cache hits saved ${SCRAPE_CACHE.size > 0 ? '(' + SCRAPE_CACHE.size + ' unique URLs)' : ''}`);
 
     // Ensure basic energies from MEE are present even if upstream data lacks print tables
     ensureMeeBasicEnergySynonyms(synonymsDict, canonicalsDict);

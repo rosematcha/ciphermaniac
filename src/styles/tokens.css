@@ -1,0 +1,100 @@
+/* ============================================================
+   STAMP — design tokens
+   The canonical source of truth for the Ciphermaniac design system.
+   Light is the default; `body[data-mode="dark"]` swaps to dark mode.
+   ============================================================ */
+
+:root,
+body[data-mode="light"] {
+  /* Palette */
+  --bg: #f4ecdb;
+  --surface: #fbf5e6;
+  --surface-2: #ebe0c8;
+  --border: #2f2a22;
+  --rule: #d8ccab;
+  --fg: #1f1a13;
+  --muted: #6e6450;
+  --accent: #e07b4a;
+  --accent-fg: #ffffff;
+  --accent-hover: #c66339;
+  --positive: #3a6a52;
+  --negative: #c44e3a;
+
+  /* Chart palette — decoupled from system accent */
+  --chart-1: #c2532e;
+  --chart-2: #2e4f8a;
+  --chart-3: #5a7a2e;
+
+  /* Shape */
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --border-width: 1px;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 18px;
+  --space-5: 28px;
+  --space-6: 44px;
+  --section-gap: 42px;
+
+  /* Density */
+  --row-height: 38px;
+
+  /* Motion */
+  --ms-fast: 130ms;
+  --ms-base: 180ms;
+  --ms-slow: 260ms;
+  --ease-base: cubic-bezier(0.2, 0, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --press-scale: 0.96;
+
+  /* Signature: 1px ink border + 3px flat-offset shadow in same ink */
+  --shadow-1: 3px 3px 0 0 var(--border);
+}
+
+body[data-mode="dark"] {
+  --bg: #1a1816;
+  --surface: #25221f;
+  --surface-2: #2f2c28;
+  --border: #3a3733;
+  --rule: #2c2925;
+  --fg: #f1e7d3;
+  --muted: #a4998a;
+  --accent: #f08a55;
+  --accent-fg: #1a1816;
+  --accent-hover: #d4724a;
+  --positive: #84c479;
+  --negative: #e07a5e;
+
+  /* Dark-mode chart palette */
+  --chart-1: #ff9c4a;
+  --chart-2: #6bb6ff;
+  --chart-3: #7ed68a;
+
+  /* In dark mode the offset shadow lands on the next surface tier, not on ink */
+  --shadow-1: 3px 3px 0 0 var(--surface-2);
+}
+
+@media (prefers-color-scheme: dark) {
+  /* Only auto-dark when the user hasn't pinned a mode */
+  body:not([data-mode]) {
+    --bg: #1a1816;
+    --surface: #25221f;
+    --surface-2: #2f2c28;
+    --border: #3a3733;
+    --rule: #2c2925;
+    --fg: #f1e7d3;
+    --muted: #a4998a;
+    --accent: #f08a55;
+    --accent-fg: #1a1816;
+    --accent-hover: #d4724a;
+    --positive: #84c479;
+    --negative: #e07a5e;
+    --chart-1: #ff9c4a;
+    --chart-2: #6bb6ff;
+    --chart-3: #7ed68a;
+    --shadow-1: 3px 3px 0 0 var(--surface-2);
+  }
+}

@@ -9,10 +9,9 @@
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
-    "plugin:jsdoc/recommended",
     "plugin:prettier/recommended"
   ],
-  "plugins": ["@typescript-eslint", "jsdoc", "prettier"],
+  "plugins": ["@typescript-eslint", "prettier"],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "ecmaVersion": 2022,
@@ -130,6 +129,8 @@
           "state",
           "row",
           "r",
+          "item",
+          "entry",
           "suggestionsBox",
           "cardSearchInput"
         ]
@@ -197,7 +198,9 @@
     "no-useless-call": "error",
     "no-useless-concat": "error",
     "no-useless-return": "error",
-    "no-void": "error",
+    // `void expr` is an idiomatic TypeScript way to mark a parameter as
+    // intentionally unused without an underscore rename. Keep it available.
+    "no-void": "off",
     "no-with": "error",
     "no-delete-var": "error",
     "block-scoped-var": "error",
@@ -234,35 +237,10 @@
 
     // Naming conventions
     "camelcase": ["error", { "properties": "always", "ignoreDestructuring": false, "ignoreImports": false }],
-    "id-length": [
-      "error",
-      {
-        "min": 2,
-        "max": 40,
-        "exceptions": [
-          "i",
-          "j",
-          "k",
-          "x",
-          "y",
-          "z",
-          "e",
-          "f",
-          "n",
-          "r",
-          "d",
-          "a",
-          "b",
-          "c",
-          "h",
-          "l",
-          "p",
-          "s",
-          "t",
-          "_"
-        ]
-      }
-    ],
+    // `id-length` is off: Solid idioms lean on short callback params
+    // (`(e) => …`, `s => …`, `i()`), and TypeScript inference makes single-letter
+    // names safer than they were in plain-JS days. Reinstate if drift starts.
+    "id-length": "off",
     "new-cap": ["error", { "newIsCap": true, "capIsNew": false }],
 
     // Class-related
@@ -284,7 +262,9 @@
     // =========================================================================
     "constructor-super": "error",
     "no-class-assign": "error",
-    "no-confusing-arrow": ["error", { "allowParens": true }],
+    // `no-confusing-arrow` fights with prettier's arrow formatting — `allowParens`
+    // wants parens that prettier then strips. Defer to prettier.
+    "no-confusing-arrow": "off",
     "no-const-assign": "error",
     "no-dupe-class-members": "error",
     "no-duplicate-imports": "error",
@@ -350,57 +330,6 @@
     "@typescript-eslint/no-explicit-any": "off",
 
     // =========================================================================
-    // JSDOC RULES
-    // =========================================================================
-
-    // Structure validation
-    "jsdoc/check-access": "error",
-    "jsdoc/check-alignment": "error",
-    "jsdoc/check-examples": "off",
-    "jsdoc/check-indentation": "error",
-    "jsdoc/check-line-alignment": "off",
-    "jsdoc/check-param-names": "error",
-    "jsdoc/check-property-names": "error",
-    "jsdoc/check-syntax": "error",
-    "jsdoc/check-tag-names": "error",
-    "jsdoc/check-types": "off",
-    "jsdoc/check-values": "error",
-    "jsdoc/empty-tags": "error",
-    "jsdoc/implements-on-classes": "error",
-    "jsdoc/no-bad-blocks": "error",
-    "jsdoc/no-defaults": "error",
-    "jsdoc/no-types": "off",
-    "jsdoc/no-undefined-types": "off",
-    "jsdoc/valid-types": "warn",
-
-    // Description requirements (relaxed)
-    "jsdoc/match-description": "off",
-    "jsdoc/newline-after-description": "off",
-    "jsdoc/require-description": "off",
-    "jsdoc/require-description-complete-sentence": "off",
-    "jsdoc/require-example": "off",
-    "jsdoc/require-file-overview": "off",
-    "jsdoc/require-hyphen-before-param-description": "off",
-
-    // JSDoc requirements (relaxed for TypeScript which has type inference)
-    "jsdoc/require-jsdoc": "off",
-    "jsdoc/require-param": "off",
-    "jsdoc/require-param-description": "off",
-    "jsdoc/require-param-name": "error",
-    "jsdoc/require-param-type": "off",
-    "jsdoc/require-property": "warn",
-    "jsdoc/require-property-description": "off",
-    "jsdoc/require-property-name": "error",
-    "jsdoc/require-property-type": "warn",
-    "jsdoc/require-returns": "off",
-    "jsdoc/require-returns-check": "off",
-    "jsdoc/require-returns-description": "off",
-    "jsdoc/require-returns-type": "off",
-    "jsdoc/require-throws": "off",
-    "jsdoc/require-yields": "warn",
-    "jsdoc/require-yields-check": "warn",
-
-    // =========================================================================
     // PRETTIER INTEGRATION
     // =========================================================================
     "prettier/prettier": "error"
@@ -436,10 +365,7 @@
         "@typescript-eslint/no-unused-vars": "off",
         "no-unused-vars": "off",
         "no-console": "off",
-        "id-length": "off",
-        "jsdoc/require-jsdoc": "off",
-        "jsdoc/require-param": "off",
-        "jsdoc/require-returns": "off"
+        "id-length": "off"
       }
     },
 
@@ -467,8 +393,7 @@
         "node": true
       },
       "rules": {
-        "no-console": "off",
-        "jsdoc/require-jsdoc": "off"
+        "no-console": "off"
       }
     },
 
