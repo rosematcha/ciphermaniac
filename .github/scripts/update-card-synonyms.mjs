@@ -7,7 +7,7 @@
 
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { dirname, join } from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
+import { fileURLToPath } from 'url';
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import * as cheerio from 'cheerio';
 
@@ -15,25 +15,31 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 async function loadSetCatalog() {
-    const candidates = [
-        join(__dirname, '../../public/assets/js/data/setCatalog.js'),
-        join(__dirname, '../../public/assets/js/src/data/setCatalog.js')
-    ];
-
-    for (const candidate of candidates) {
-        try {
-            const module = await import(pathToFileURL(candidate));
-            if (module?.SET_CATALOG) {
-                return module.SET_CATALOG;
-            }
-        } catch (error) {
-            if (error?.code !== 'ERR_MODULE_NOT_FOUND') {
-                throw error;
-            }
-        }
+    const source = join(__dirname, '../../src/data/setCatalog.ts');
+    let text;
+    try {
+        text = await readFile(source, 'utf-8');
+    } catch (error) {
+        throw new Error(`Unable to read setCatalog from ${source}: ${error.message}`);
     }
 
-    throw new Error('Unable to load setCatalog.js from public assets');
+    const match = text.match(/const\s+SET_CATALOG\s*=\s*\[([\s\S]*?)\];/);
+    if (!match) {
+        throw new Error('Unable to locate SET_CATALOG array in setCatalog.ts');
+    }
+
+    const entries = [];
+    const entryRegex = /\{\s*code:\s*'([^']+)'\s*,\s*name:\s*'([^']*)'\s*\}/g;
+    let m;
+    while ((m = entryRegex.exec(match[1])) !== null) {
+        entries.push({ code: m[1], name: m[2] });
+    }
+
+    if (!entries.length) {
+        throw new Error('SET_CATALOG parsed as empty from setCatalog.ts');
+    }
+
+    return entries;
 }
 
 const SET_CATALOG = await loadSetCatalog();
