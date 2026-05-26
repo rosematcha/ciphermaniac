@@ -74,9 +74,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build shared utilities
-        run: npm run build:shared
-
       - name: Setup Python (clean refresh mode)
         if: github.event.inputs.clean_month_cache == 'true'
         uses: actions/setup-python@v5
