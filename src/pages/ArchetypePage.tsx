@@ -1,4 +1,4 @@
-import { A, useParams } from '@solidjs/router';
+import { A, useNavigate, useParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, onMount, Show } from 'solid-js';
 import {
   fetchArchetype,
@@ -40,12 +40,30 @@ const TECH_THRESHOLD = 30;
 
 export function ArchetypePage() {
   const params = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const { tournament } = useTournament();
   const [report] = createResource(
     () => ({ t: tournament(), slug: params.slug }),
     ({ t, slug }) => fetchArchetype(t, slug)
   );
   const [index] = createResource(tournament, fetchArchetypes);
+
+  // Case-insensitive slug redirect: if the URL slug doesn't exist verbatim but
+  // matches an index entry under a different casing, hop to the canonical URL.
+  createEffect(() => {
+    if (!report.error) {
+      return;
+    }
+    const entries = index();
+    if (!entries) {
+      return;
+    }
+    const lower = params.slug.toLowerCase();
+    const match = entries.find(a => a.name.toLowerCase() === lower);
+    if (match && match.name !== params.slug) {
+      navigate(`/archetypes/${match.name}`, { replace: true });
+    }
+  });
   const [rotationIndex] = createResource(fetchRotationIndex);
   const [tab, setTab] = createSignal<ArchTab>('core');
   const [viewMode, setViewMode] = createPersistentViewMode('cm:cardsView');

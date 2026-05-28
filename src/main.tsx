@@ -19,6 +19,8 @@ import { PlayerPage } from './pages/PlayerPage';
 import { PlayersPage } from './pages/PlayersPage';
 import { PlayerProfilePage } from './pages/PlayerProfilePage';
 import { ToysPage } from './pages/ToysPage';
+import { SocialGraphicsPage } from './pages/SocialGraphicsPage';
+import { InLovingMemoryPage } from './pages/InLovingMemoryPage';
 import { AboutPage } from './pages/AboutPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
@@ -46,6 +48,8 @@ render(
       <Route path='/standings' component={PlayersIndexPage} />
       <Route path='/standings/:id' component={PlayerPage} />
       <Route path='/toys' component={ToysPage} />
+      <Route path='/toys/social-graphics' component={SocialGraphicsPage} />
+      <Route path='/toys/in-loving-memory' component={InLovingMemoryPage} />
       <Route path='/about' component={AboutPage} />
       <Route path='*' component={NotFoundPage} />
     </Router>

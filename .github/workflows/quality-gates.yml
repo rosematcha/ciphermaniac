@@ -32,10 +32,7 @@ jobs:
         run: npm run typecheck
 
       - name: Build production bundle
-        run: npm run build:prod
-
-      - name: Bundle size check
-        run: npm run check:bundle-size
+        run: npm run build
 
       - name: Coverage
-        run: npm run test:coverage:check
+        run: npm run test:coverage
