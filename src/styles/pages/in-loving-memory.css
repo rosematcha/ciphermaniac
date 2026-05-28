@@ -1,0 +1,252 @@
+/* ============================================================
+   In Loving Memory — /toys/in-loving-memory
+   Browses rotated archetypes and every Day-2 decklist that ever
+   ran them. Static JSON under /toys/in-loving-memory/data/.
+   ============================================================ */
+
+.ilm-page {
+  display: grid;
+  gap: var(--space-5);
+}
+
+/* ---- Archetype picker row ---- */
+
+.ilm-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.ilm-arche {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px 10px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font: inherit;
+  color: var(--fg);
+  text-align: left;
+  transition:
+    transform var(--ms-fast) var(--ease-base),
+    box-shadow var(--ms-fast) var(--ease-base),
+    background var(--ms-fast) var(--ease-base);
+}
+.ilm-arche:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-1);
+}
+.ilm-arche[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-1);
+}
+.ilm-arche-thumb {
+  width: 56px;
+  height: 56px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+}
+.ilm-arche-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 22%;
+}
+.ilm-arche-name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+}
+.ilm-arche-count {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+}
+.ilm-arche[aria-pressed='true'] .ilm-arche-count {
+  color: color-mix(in srgb, var(--accent-fg) 70%, transparent);
+}
+
+/* ---- Header strip for the selected archetype ---- */
+
+.ilm-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: baseline;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+.ilm-summary-headline {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  color: var(--fg);
+}
+.ilm-summary-headline em {
+  color: var(--accent);
+  font-style: italic;
+  font-weight: 800;
+}
+.ilm-summary-stat {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+.ilm-summary-stat b {
+  color: var(--fg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-right: 4px;
+}
+.ilm-rotations {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ilm-rotation {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Toolbar (tabs + sort) ---- */
+
+.ilm-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.ilm-sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+.ilm-sort select {
+  font: inherit;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  font-weight: 500;
+}
+
+/* ---- Card grid ---- */
+
+.ilm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+.ilm-card {
+  display: grid;
+  grid-template-rows: auto auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  transition:
+    transform var(--ms-fast) var(--ease-base),
+    box-shadow var(--ms-fast) var(--ease-base);
+}
+.ilm-card:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-1);
+}
+.ilm-card-img {
+  aspect-ratio: 2.5 / 3.5;
+  background: var(--surface-2);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.ilm-card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ilm-card-img .ph {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ilm-card-meta {
+  padding: 8px 10px 10px;
+  display: grid;
+  gap: 4px;
+}
+.ilm-card-bar {
+  height: 4px;
+  background: var(--surface-2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.ilm-card-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.ilm-card-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.ilm-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ilm-card-pct {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  letter-spacing: -0.015em;
+}
+
+/* ---- Loading / empty ---- */
+
+.ilm-empty {
+  text-align: center;
+  padding: var(--space-6);
+  color: var(--muted);
+  font-size: 13px;
+}

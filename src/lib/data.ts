@@ -285,6 +285,70 @@ export function fetchMeta(tournament: string = ONLINE): Promise<MetaReport> {
   return fetchJson<MetaReport>(`${tournamentPath(tournament)}/meta.json`);
 }
 
+/**
+ * Maps `"SET::NUMBER"` → the lowercase name of the Pokémon this card evolves from.
+ * Sourced from the same `card-types.json` the workers use to enrich decks; loaded
+ * once per session. Returns an empty map if the asset can't be fetched (callers
+ * should treat evolution data as optional decoration, not load-bearing).
+ */
+let evolutionMapPromise: Promise<Map<string, string>> | null = null;
+export function fetchEvolutionMap(): Promise<Map<string, string>> {
+  if (evolutionMapPromise) {
+    return evolutionMapPromise;
+  }
+  evolutionMapPromise = (async () => {
+    try {
+      const response = await fetch(`${R2_BASE}/assets/data/card-types.json`, { mode: 'cors' });
+      if (!response.ok) {
+        return new Map<string, string>();
+      }
+      const db = (await response.json()) as Record<string, { evolutionInfo?: string }>;
+      const map = new Map<string, string>();
+      for (const [key, info] of Object.entries(db)) {
+        const parent = parseEvolvesFrom(info?.evolutionInfo);
+        if (parent) {
+          map.set(key, parent.toLowerCase());
+        }
+      }
+      return map;
+    } catch {
+      return new Map<string, string>();
+    }
+  })();
+  // Don't cache failures forever — a transient network blip shouldn't permanently
+  // disable evolution collapsing for the session.
+  evolutionMapPromise.catch(() => {
+    evolutionMapPromise = null;
+  });
+  return evolutionMapPromise;
+}
+
+function parseEvolvesFrom(info: string | undefined): string | null {
+  if (!info) {
+    return null;
+  }
+  const m = info.match(/Evolves from\s+(.+?)\s*$/i);
+  if (!m) {
+    return null;
+  }
+  return decodeHtmlEntities(m[1]).trim();
+}
+
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: ' '
+};
+function decodeHtmlEntities(s: string): string {
+  return s
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
+    .replace(/&([a-zA-Z]+);/g, (m, name) => NAMED_ENTITIES[name] ?? m);
+}
+
 export async function fetchMaster(tournament: string = ONLINE): Promise<MasterPayload> {
   const [raw, db] = await Promise.all([
     fetchJson<MasterPayload>(`${tournamentPath(tournament)}/master.json`),
@@ -403,10 +467,125 @@ export interface DeckRecord {
   archetype: string;
   archetypeId: string;
   cards: DeckCardRecord[];
+  /** Whether this deck's pilot made the Day 2 cut (Phase 2). */
+  madePhase2?: boolean;
 }
 
 export function fetchDecks(tournament: string): Promise<DeckRecord[] | null> {
   return fetchJsonOptional<DeckRecord[]>(`${tournamentPath(tournament)}/decks.json`);
+}
+
+export interface Day2CardStat {
+  uid: string;
+  name: string;
+  set: string;
+  number: string;
+  /** Decks playing this card on Day 1 */
+  day1Count: number;
+  /** Of those, how many were piloted by a player who made Day 2 */
+  day2Count: number;
+  /** day2Count / day1Count * 100 */
+  conversion: number;
+}
+
+/**
+ * Compute per-card Day 1 → Day 2 conversion for a single tournament.
+ *
+ * Each entry in `decks.json` carries its own `madePhase2` flag, so we just
+ * iterate decks and bucket by card UID. Cards are keyed by canonical UID so
+ * reprints/variants collapse the same way they do in master.json. Returns null
+ * when the tournament has no decks.json or no Day 2 decks at all — Online
+ * Meta in particular has no single Day 2 cut, so callers should not invoke
+ * this for that key.
+ */
+export async function fetchDay2CardStats(tournament: string): Promise<Day2CardStat[] | null> {
+  const [decks, master, db] = await Promise.all([
+    fetchDecks(tournament),
+    fetchMaster(tournament),
+    getSynonymDatabase()
+  ]);
+  if (!decks || decks.length === 0) {
+    return null;
+  }
+  // If no deck claims madePhase2, the tournament probably never reached a cut
+  // (or the flag isn't populated yet) — nothing meaningful to render.
+  if (!decks.some(d => d.madePhase2)) {
+    return null;
+  }
+
+  // master.json items are already canonicalized — use them as the source of
+  // truth for display name/set/number so the graphic matches the rest of the
+  // site.
+  const display = new Map<string, { name: string; set: string; number: string }>();
+  for (const item of master.items) {
+    const uid = item.uid ?? (item.set && item.number != null ? `${item.name}::${item.set}::${item.number}` : item.name);
+    display.set(uid, {
+      name: item.name,
+      set: item.set ?? '',
+      number: String(item.number ?? '')
+    });
+  }
+
+  const counts = new Map<string, { day1: number; day2: number }>();
+  for (const deck of decks) {
+    const isDay2 = deck.madePhase2 === true;
+    const seenInDeck = new Set<string>();
+    for (const card of deck.cards) {
+      if (!card.set || card.number === undefined || card.number === null || card.number === '') {
+        continue;
+      }
+      const rawUid = `${card.name}::${card.set}::${card.number}`;
+      const uid = db ? getCanonicalCardFromData(db, rawUid) : rawUid;
+      // A deck listing the same canonical card under two variant printings
+      // should still only count once toward inclusion.
+      if (seenInDeck.has(uid)) {
+        continue;
+      }
+      seenInDeck.add(uid);
+      let entry = counts.get(uid);
+      if (!entry) {
+        entry = { day1: 0, day2: 0 };
+        counts.set(uid, entry);
+      }
+      entry.day1 += 1;
+      if (isDay2) {
+        entry.day2 += 1;
+      }
+    }
+  }
+
+  const out: Day2CardStat[] = [];
+  for (const [uid, c] of counts) {
+    const d = display.get(uid);
+    if (!d) {
+      // Card present in decks but not in master (rare — typically dropped by
+      // canonicalization). Fall back to parsing the UID.
+      const parts = uid.split('::');
+      if (parts.length < 3) {
+        continue;
+      }
+      out.push({
+        uid,
+        name: parts[0],
+        set: parts[1],
+        number: parts[2],
+        day1Count: c.day1,
+        day2Count: c.day2,
+        conversion: c.day1 > 0 ? (c.day2 / c.day1) * 100 : 0
+      });
+      continue;
+    }
+    out.push({
+      uid,
+      name: d.name,
+      set: d.set,
+      number: d.number,
+      day1Count: c.day1,
+      day2Count: c.day2,
+      conversion: c.day1 > 0 ? (c.day2 / c.day1) * 100 : 0
+    });
+  }
+  return out;
 }
 
 /**

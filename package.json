@@ -45,13 +45,20 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "keywords": ["pokemon", "tcg", "tournament", "data-visualization", "frontend"],
+  "keywords": [
+    "pokemon",
+    "tcg",
+    "tournament",
+    "data-visualization",
+    "frontend"
+  ],
   "author": "Ciphermaniac",
   "license": "MIT",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.928.0",
     "@solidjs/router": "^0.15.0",
     "cheerio": "^1.0.0",
+    "modern-screenshot": "^4.7.0",
     "solid-js": "^1.9.3",
     "sql.js": "^1.13.0"
   },
@@ -59,6 +66,8 @@
     "fast-xml-parser": "^5.4.1"
   },
   "lint-staged": {
-    "*.{ts,tsx}": ["eslint --fix"]
+    "*.{ts,tsx}": [
+      "eslint --fix"
+    ]
   }
 }
