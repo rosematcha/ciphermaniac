@@ -15,6 +15,8 @@ interface CardTypeInfo {
   evolutionInfo?: string;
   regulationMark?: string;
   aceSpec?: boolean;
+  abilities?: string[];
+  attacks?: string[];
   lastUpdated?: string;
 }
 

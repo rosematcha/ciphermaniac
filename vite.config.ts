@@ -45,9 +45,17 @@ export default defineConfig({
         target: 'http://localhost:8788',
         changeOrigin: true,
         secure: false
+      },
+      // SocialGraphicsPage loads thumbnails through the /thumbnails Pages Function
+      // (same-origin so the canvas export isn't CORS-tainted). Vite doesn't run
+      // Functions, so proxy to production to avoid a local wrangler dependency.
+      '/thumbnails': {
+        target: 'https://ciphermaniac.com',
+        changeOrigin: true,
+        secure: true
       }
     }
-    // Card images are fetched directly from limitlesstcg.nyc3.cdn.digitaloceanspaces.com
+    // Other card images are fetched directly from limitlesstcg.nyc3.cdn.digitaloceanspaces.com
     // by the browser (see src/components/CardImage.tsx). No proxy needed.
   }
 });

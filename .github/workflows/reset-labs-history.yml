@@ -5,7 +5,9 @@
 #   - reports/Online - Last 14 Days/**
 #   - reports/Trends - Last 30 Days/**
 #   - reports/prices.json
-# Then rebuilds Labs Masters tournaments sequentially for a configurable ID range.
+# Then rebuilds Labs Masters tournaments sequentially for a configurable ID range,
+# and finally force-rebuilds player profiles to resync them against the fresh
+# reports (the incremental aggregator would otherwise skip the unchanged keys).
 # =============================================================================
 
 name: Reset Labs History
@@ -63,8 +65,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Python dependencies
         run: pip install requests beautifulsoup4 boto3
+
+      - name: Install Node dependencies
+        run: npm ci
 
       - name: Run destructive reset + sequential rebuild
         env:
@@ -78,6 +89,20 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
         run: python .github/scripts/reset-labs-history.py
+
+      # The rebuilt reports keep the same tournament keys, so the player
+      # aggregator's incremental fast path would skip them and leave stale
+      # profiles. Force a full rebuild to resync against the fresh reports.
+      # Skipped on dry runs (no data actually changed).
+      - name: Resync player profiles
+        if: ${{ inputs.dry_run != true }}
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
+          FORCE_FULL_REBUILD: 'true'
+        run: npx tsx .github/scripts/run-player-aggregator.ts
 
       - name: Summary
         run: |

@@ -453,7 +453,14 @@ function normalizeDeckLabel(label) {
 
 // --- Thumbnail inference logic (auto-infer from report data) ---
 const AUTO_THUMB_MAX = 2;
-const AUTO_THUMB_REQUIRED_PCT = 99.9;
+// Stage 1 (name-based) gate. The title Pokemon often sits just under 100% (e.g.
+// Dragapult ex at ~99.3%), so a near-100 gate produced empty thumbnails and the
+// trainer-laden signatureCards fallback. The coverage algorithm + early-break
+// already keep low-pct noise out, so a low floor is safe.
+const AUTO_THUMB_REQUIRED_PCT = 30;
+// Floor for Stage 2 (ability/attack) and Stage 3 (distinctiveness) candidates so
+// tech/splash cards don't surface as the archetype face.
+const AUTO_THUMB_STRATEGY_MIN_PCT = 20;
 const ARCHETYPE_DESCRIPTOR_TOKENS = new Set(['box', 'control', 'festival', 'lead', 'toolbox', 'turbo']);
 
 // --- Signature cards configuration ---
@@ -503,15 +510,41 @@ function buildThumbnailId(setCode, number) {
   return `${set}/${formattedNumber}`;
 }
 
-function inferArchetypeThumbnails(displayName, reportData) {
-  const keywords = extractArchetypeKeywords(displayName);
-  if (!keywords.length || !reportData || !Array.isArray(reportData.items)) {
-    return [];
+/**
+ * Map normalized thumbnail id (`SET/NNN`) → {abilities, attacks} from the
+ * card-types DB so the thumbnail engine can match an archetype title against a
+ * card's ability/attack names (Stage 2).
+ * @param {object} cardTypesDb
+ * @returns {Map<string, {abilities: string[], attacks: string[]}>}
+ */
+function buildCardMetaLookup(cardTypesDb) {
+  const lookup = new Map();
+  for (const [key, info] of Object.entries(cardTypesDb || {})) {
+    if (!info || typeof info !== 'object') {
+      continue;
+    }
+    const abilities = info.abilities || [];
+    const attacks = info.attacks || [];
+    if (!abilities.length && !attacks.length) {
+      continue;
+    }
+    const [setCode, number] = String(key).split('::');
+    const thumbId = buildThumbnailId(setCode, number);
+    if (!thumbId) {
+      continue;
+    }
+    lookup.set(thumbId, { abilities: [...abilities], attacks: [...attacks] });
   }
-  const keywordSet = new Set(keywords);
-  const candidates = [];
+  return lookup;
+}
 
-  reportData.items.forEach((item, index) => {
+function normalizePhrase(text) {
+  return tokenizeForMatching(text).join(' ');
+}
+
+function inferNameThumbnails(items, keywordSet) {
+  const candidates = [];
+  items.forEach((item, index) => {
     const pct = Number(item?.pct);
     if (!Number.isFinite(pct) || pct < AUTO_THUMB_REQUIRED_PCT) {
       return;
@@ -529,13 +562,7 @@ function inferArchetypeThumbnails(displayName, reportData) {
     if (matchCount === 0) {
       return;
     }
-    candidates.push({
-      id: thumbnailId,
-      matchCount,
-      pct,
-      index,
-      tokens: cardTokens
-    });
+    candidates.push({ id: thumbnailId, matchCount, pct, index, tokens: cardTokens });
   });
 
   if (!candidates.length) {
@@ -568,26 +595,148 @@ function inferArchetypeThumbnails(displayName, reportData) {
   return selected;
 }
 
-function resolveArchetypeThumbnails(baseName, displayName, reportData) {
+/**
+ * Stage 2: strategy decks named after a shared ability/attack (e.g. "Festival
+ * Lead" → Dipplin's ability, historically "Night March" → an attack). Match the
+ * raw title against each Pokemon's ability/attack names, ranked by usage.
+ */
+function inferAbilityThumbnails(items, rawTitle, cardMetaLookup) {
+  const titlePhrase = normalizePhrase(rawTitle);
+  if (!titlePhrase || !cardMetaLookup || cardMetaLookup.size === 0) {
+    return [];
+  }
+  const titleTokens = new Set(titlePhrase.split(' '));
+
+  const phraseMatches = [];
+  const tokenMatches = [];
+  items.forEach((item, index) => {
+    const category = String(item?.category || '').toLowerCase();
+    if (category && !category.includes('pokemon')) {
+      return;
+    }
+    const pct = Number(item?.pct);
+    if (!Number.isFinite(pct) || pct < AUTO_THUMB_STRATEGY_MIN_PCT) {
+      return;
+    }
+    const thumbnailId = buildThumbnailId(item?.set, item?.number);
+    if (!thumbnailId) {
+      return;
+    }
+    const meta = cardMetaLookup.get(thumbnailId);
+    if (!meta) {
+      return;
+    }
+    const names = [...(meta.abilities || []), ...(meta.attacks || [])].map(normalizePhrase).filter(Boolean);
+    if (names.some(name => name.includes(titlePhrase))) {
+      phraseMatches.push({ pct, index, id: thumbnailId });
+    } else if (names.some(name => [...titleTokens].every(t => name.split(' ').includes(t)))) {
+      tokenMatches.push({ pct, index, id: thumbnailId });
+    }
+  });
+
+  const ordered = [
+    ...phraseMatches.sort((a, b) => b.pct - a.pct || a.index - b.index),
+    ...tokenMatches.sort((a, b) => b.pct - a.pct || a.index - b.index)
+  ];
+  const selected = [];
+  for (const { id } of ordered) {
+    if (!selected.includes(id)) {
+      selected.push(id);
+    }
+    if (selected.length >= AUTO_THUMB_MAX) {
+      break;
+    }
+  }
+  return selected;
+}
+
+/**
+ * Stage 3 last resort: rank Pokemon by distinctiveness (archetype_pct −
+ * meta_pct), never Trainers/Energy, so every deck gets a sensible image.
+ */
+function inferDistinctiveThumbnails(items, metaUsage) {
+  const candidates = [];
+  items.forEach((item, index) => {
+    if (!isPokemon(item)) {
+      return;
+    }
+    const pct = Number(item?.pct);
+    if (!Number.isFinite(pct) || pct < AUTO_THUMB_STRATEGY_MIN_PCT) {
+      return;
+    }
+    const thumbnailId = buildThumbnailId(item?.set, item?.number);
+    if (!thumbnailId) {
+      return;
+    }
+    const metaPct = (metaUsage && metaUsage.get(item?.name)) || 0;
+    candidates.push({ distinct: pct - metaPct, pct, index, id: thumbnailId, species: speciesKey(item?.name) });
+  });
+
+  candidates.sort((a, b) => b.distinct - a.distinct || b.pct - a.pct || a.index - b.index);
+  const selected = [];
+  const seenSpecies = new Set();
+  for (const { id, species } of candidates) {
+    // Avoid two cards of the same Pokemon (e.g. Teal Mask + Wellspring Mask
+    // Ogerpon ex) eating both slots — prefer variety.
+    if (species && seenSpecies.has(species)) {
+      continue;
+    }
+    if (!selected.includes(id)) {
+      selected.push(id);
+      if (species) {
+        seenSpecies.add(species);
+      }
+    }
+    if (selected.length >= AUTO_THUMB_MAX) {
+      break;
+    }
+  }
+  return selected;
+}
+
+function inferArchetypeThumbnails(displayName, reportData, cardMetaLookup = null, metaUsage = null) {
+  const items = reportData && Array.isArray(reportData.items) ? reportData.items : null;
+  if (!items || items.length === 0) {
+    return [];
+  }
+
+  // Stage 1: name-based coverage match (the common case).
+  const keywordSet = new Set(extractArchetypeKeywords(displayName));
+  if (keywordSet.size > 0) {
+    const nameThumbs = inferNameThumbnails(items, keywordSet);
+    if (nameThumbs.length) {
+      return nameThumbs;
+    }
+  }
+
+  // Stage 2: strategy decks named after a shared ability/attack.
+  const abilityThumbs = inferAbilityThumbnails(items, displayName, cardMetaLookup);
+  if (abilityThumbs.length) {
+    return abilityThumbs;
+  }
+
+  // Stage 3: distinctiveness-ranked Pokemon-only last resort.
+  return inferDistinctiveThumbnails(items, metaUsage);
+}
+
+function resolveArchetypeThumbnails(baseName, displayName, reportData, cardMetaLookup = null, metaUsage = null) {
   const attempts = [displayName, displayName?.replace(/_/g, ' '), baseName];
   for (const key of attempts) {
-    if (key && Array.isArray(ARCHETYPE_THUMBNAILS[key])) {
+    if (key && Array.isArray(ARCHETYPE_THUMBNAILS[key]) && ARCHETYPE_THUMBNAILS[key].length) {
       return ARCHETYPE_THUMBNAILS[key];
     }
   }
 
   const target = normalizeDeckLabel(displayName || baseName || '');
-  if (!target) {
-    return inferArchetypeThumbnails(displayName || baseName || '', reportData);
-  }
-
-  for (const [candidate, ids] of Object.entries(ARCHETYPE_THUMBNAILS)) {
-    if (normalizeDeckLabel(candidate) === target) {
-      return ids;
+  if (target) {
+    for (const [candidate, ids] of Object.entries(ARCHETYPE_THUMBNAILS)) {
+      if (normalizeDeckLabel(candidate) === target && Array.isArray(ids) && ids.length) {
+        return ids;
+      }
     }
   }
 
-  return inferArchetypeThumbnails(displayName || baseName || '', reportData);
+  return inferArchetypeThumbnails(displayName || baseName || '', reportData, cardMetaLookup, metaUsage);
 }
 
 // --- Signature Cards Generation ---
@@ -623,6 +772,15 @@ function cardMatchesArchetypeKeyword(cardName, archetypeKeywords) {
     }
   }
   return false;
+}
+
+/**
+ * Coarse species identity (last name token after stripping ex/V suffixes) so
+ * Stage 3 doesn't pick two cards of the same Pokemon.
+ */
+function speciesKey(cardName) {
+  const tokens = tokenizeForMatching(normalizeForPokemonMatch(cardName));
+  return tokens.length ? tokens[tokens.length - 1] : '';
 }
 
 /**
@@ -969,7 +1127,14 @@ function generateReportFromDecks(deckList, deckTotal, synonymDb) {
   };
 }
 
-function buildArchetypeReports(decks, synonymDb, masterReport = null) {
+function buildArchetypeReports(decks, synonymDb, masterReport = null, cardTypesDb = null) {
+  const cardMetaLookup = buildCardMetaLookup(cardTypesDb);
+  const metaUsage = new Map();
+  for (const item of masterReport?.items || []) {
+    if (item?.name) {
+      metaUsage.set(item.name, item.pct || 0);
+    }
+  }
   const groups = new Map();
   const deckTotal = decks.length || 0;
   const minDecks = Math.max(1, Math.ceil(deckTotal * 0.005));
@@ -1009,7 +1174,7 @@ function buildArchetypeReports(decks, synonymDb, masterReport = null) {
 
   files.sort((a, b) => b.deckCount - a.deckCount);
   const index = files.map(file => {
-    const thumbnails = resolveArchetypeThumbnails(file.base, file.displayName, file.data);
+    const thumbnails = resolveArchetypeThumbnails(file.base, file.displayName, file.data, cardMetaLookup, metaUsage);
     const signatureCards = masterReport
       ? generateSignatureCards(file.displayName, file.data, masterReport, thumbnails)
       : [];
@@ -1705,7 +1870,7 @@ async function main() {
     index: archetypeIndex,
     minDecks,
     decksByArchetype
-  } = buildArchetypeReports(reportDecks, synonymDb, masterReport);
+  } = buildArchetypeReports(reportDecks, synonymDb, masterReport, cardTypesDb);
 
   const meta = {
     name: TARGET_FOLDER,

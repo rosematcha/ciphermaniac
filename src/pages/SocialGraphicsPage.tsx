@@ -11,6 +11,7 @@ import type { CardItem } from '../types';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
 import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
+import { interEmbedCss } from '../utils/fontEmbed';
 import '../styles/pages/social-graphics.css';
 
 type Mode = 'standard' | 'rising' | 'converting';
@@ -151,6 +152,13 @@ export function SocialGraphicsPage() {
   const [minDecks, setMinDecks] = createSignal<MinDecks>(10);
   const [busy, setBusy] = createSignal<null | 'png' | 'jpg'>(null);
   const [error, setError] = createSignal<string | null>(null);
+
+  // The PNG/JPG export rasterizes the canvas through an SVG <foreignObject>
+  // (via modern-screenshot). Firefox serializes that clone differently than
+  // Chromium — it drops the #1 hero's "In X of Y decks" subtitle and misrenders
+  // the hero image. The bug is Firefox-specific and not worth fighting for an
+  // internal tool, so we just steer Firefox users to a Chromium-based browser.
+  const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent);
 
   // The Day 1 → Day 2 cut only exists for individual tournaments, so the
   // Converting mode is meaningless against the rolling Online Meta window.
@@ -308,12 +316,13 @@ export function SocialGraphicsPage() {
               })
         )
       );
-      const { domToPng, domToJpeg } = await import('modern-screenshot');
+      const [{ domToPng, domToJpeg }, fontCssText] = await Promise.all([import('modern-screenshot'), interEmbedCss()]);
       const renderer = format === 'png' ? domToPng : domToJpeg;
       const dataUrl = await renderer(node, {
         scale: 1,
         backgroundColor: theme() === 'dark' ? '#1a1816' : '#f4ecdb',
-        quality: format === 'jpg' ? 0.92 : undefined
+        quality: format === 'jpg' ? 0.92 : undefined,
+        font: { cssText: fontCssText }
       });
       const a = document.createElement('a');
       const slug = shortTournament(tournament())
@@ -344,6 +353,17 @@ export function SocialGraphicsPage() {
           <span>Build a shareable top-cards graphic from any tournament report</span>
         </div>
       </section>
+
+      <Show when={isFirefox}>
+        <div class='sg-warning' role='alert'>
+          <strong>Heads up — exports misrender in Firefox.</strong>
+          <span>
+            The PNG/JPG export drops the #1 card&apos;s deck-count line and warps the hero image in Firefox, because of
+            how it rasterizes the graphic. Open this page in a Chromium-based browser (Chrome, Edge, Helium, Brave) to
+            export cleanly.
+          </span>
+        </div>
+      </Show>
 
       <div class='sg-controls'>
         <div class='sg-row'>
@@ -514,6 +534,41 @@ function SocialCanvas(props: CanvasProps) {
     return String(n).padStart(2, '0');
   }
 
+  // Element-only children (no bare text nodes) so DOM-to-image export can't drop
+  // text segments — the loose "In … of … decks" text nodes were vanishing in some
+  // export environments while element children survived.
+  function heroDecks() {
+    const h = hero()!;
+    if (props.mode === 'converting') {
+      return (
+        <>
+          <strong>{h.day2Count?.toLocaleString()}</strong>
+          <span> of </span>
+          <strong>{h.day1Count?.toLocaleString()}</strong>
+          <span> decks made Day 2</span>
+        </>
+      );
+    }
+    if (props.mode === 'rising' && h.delta !== undefined) {
+      return (
+        <>
+          <span>Now in </span>
+          <strong>{h.pct.toFixed(1)}%</strong>
+          <span> of decks</span>
+        </>
+      );
+    }
+    return (
+      <>
+        <span>In </span>
+        <strong>{h.found.toLocaleString()}</strong>
+        <span> of </span>
+        <strong>{h.total.toLocaleString()}</strong>
+        <span> decks</span>
+      </>
+    );
+  }
+
   return (
     <div id='sg-canvas' class='sg-canvas' data-mode={props.theme}>
       <div class='sg-head'>
@@ -536,27 +591,7 @@ function SocialCanvas(props: CanvasProps) {
             <div class='sg-hero-body'>
               <div>
                 <h2 class='sg-hero-name'>{hero()!.name}</h2>
-                <div class='sg-hero-decks'>
-                  <Show
-                    when={props.mode === 'converting'}
-                    fallback={
-                      <Show
-                        when={props.mode === 'rising' && hero()!.delta !== undefined}
-                        fallback={
-                          <>
-                            In <strong>{hero()!.found.toLocaleString()}</strong> of{' '}
-                            <strong>{hero()!.total.toLocaleString()}</strong> decks
-                          </>
-                        }
-                      >
-                        Now in <strong>{hero()!.pct.toFixed(1)}%</strong> of decks
-                      </Show>
-                    }
-                  >
-                    <strong>{hero()!.day2Count?.toLocaleString()}</strong> of{' '}
-                    <strong>{hero()!.day1Count?.toLocaleString()}</strong> decks made Day 2
-                  </Show>
-                </div>
+                <div class='sg-hero-decks'>{heroDecks()}</div>
               </div>
               <div>
                 <div class='sg-hero-pct'>{pctLabel(hero()!)}</div>
@@ -572,8 +607,7 @@ function SocialCanvas(props: CanvasProps) {
 
           <div class='sg-right'>
             <h1 class='sg-title'>
-              {titleRow1()}
-              <span class='accent'>{titleRow2()}</span>
+              {titleRow1()} <span class='accent'>{titleRow2()}</span>
             </h1>
             <div class='sg-stack'>
               <For each={stack()}>

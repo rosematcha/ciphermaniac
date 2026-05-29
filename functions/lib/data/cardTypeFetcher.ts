@@ -19,6 +19,8 @@ interface CardTypeResult {
   evolutionInfo?: string;
   regulationMark?: string;
   aceSpec?: boolean;
+  abilities?: string[];
+  attacks?: string[];
 }
 
 interface CardRecord {
@@ -53,6 +55,46 @@ const DEFAULT_FETCH_TIMEOUT_MS = 10000;
 const NUMBER_VARIANT_RE = /^0*(\d+)([A-Z]*)$/;
 const CARD_TYPE_RE = /<(?:div|p)[^>]*class="card-text-type"[^>]*>([\s\S]*?)<\/(?:div|p)>/i;
 const REG_MARK_RE = /<div class="regulation-mark"[^>]*>\s*([A-Z])\s*Regulation\s*Mark/i;
+const ABILITY_INFO_RE = /class="card-text-ability-info"[^>]*>([\s\S]*?)<\/p>/gi;
+const ATTACK_INFO_RE = /class="card-text-attack-info"[^>]*>([\s\S]*?)<\/p>/gi;
+const PTCG_SYMBOL_RE = /<span class="ptcg-symbol"[^>]*>[\s\S]*?<\/span>/gi;
+
+/**
+ * Extract ability and attack names from a Limitless card page so archetype
+ * titles ("Festival Lead", "Night March") can be matched against them.
+ */
+function extractCardTextNames(html: string): { abilities: string[]; attacks: string[] } {
+  const abilities: string[] = [];
+  const attacks: string[] = [];
+
+  let match: RegExpExecArray | null;
+  ABILITY_INFO_RE.lastIndex = 0;
+  while ((match = ABILITY_INFO_RE.exec(html)) !== null) {
+    const name = match[1]
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/^\s*ability\s*:\s*/i, '')
+      .trim();
+    if (name) {
+      abilities.push(name);
+    }
+  }
+
+  ATTACK_INFO_RE.lastIndex = 0;
+  while ((match = ATTACK_INFO_RE.exec(html)) !== null) {
+    const name = match[1]
+      .replace(PTCG_SYMBOL_RE, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/\s+\d+[+x×]?\s*$/i, '')
+      .trim();
+    if (name) {
+      attacks.push(name);
+    }
+  }
+
+  return { abilities, attacks };
+}
 
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => {
@@ -195,6 +237,14 @@ async function fetchCardTypeVariant(setCode: string, numberVariant: string): Pro
       fullType,
       lastUpdated: new Date().toISOString()
     };
+
+    const { abilities, attacks } = extractCardTextNames(html);
+    if (abilities.length > 0) {
+      result.abilities = abilities;
+    }
+    if (attacks.length > 0) {
+      result.attacks = attacks;
+    }
 
     // Parse regulation mark from div.regulation-mark (scrape from full HTML, not just type div)
     // Format: "G Regulation Mark •" or "H Regulation Mark •" or "I Regulation Mark •"
