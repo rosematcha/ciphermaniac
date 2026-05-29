@@ -38,6 +38,16 @@ CARD_TYPES_KEY = "assets/data/card-types.json"
 LOCAL_CARD_TYPES_PATH = Path("public") / "assets" / "data" / "card-types.json"
 CARD_SYNONYMS_KEY = "assets/card-synonyms.json"
 LOCAL_CARD_SYNONYMS_PATH = Path("public") / "assets" / "card-synonyms.json"
+ARCHETYPE_THUMBNAILS_PATH = Path("public") / "assets" / "data" / "archetype-thumbnails.json"
+
+# --- Archetype thumbnail/signature card inference ---
+# Ported from .github/scripts/run-online-meta.mjs so event reports populate the
+# same thumbnails/signatureCards that the online-meta pipeline produces.
+AUTO_THUMB_MAX = 2
+AUTO_THUMB_REQUIRED_PCT = 99.9
+SIGNATURE_CARDS_COUNT = 5
+SIGNATURE_MIN_ARCHETYPE_PCT = 20  # Minimum usage in archetype to consider
+ARCHETYPE_DESCRIPTOR_TOKENS = {"box", "control", "festival", "lead", "toolbox", "turbo"}
 
 FETCH_CONCURRENCY = int(os.environ.get("LABS_FETCH_CONCURRENCY", "20"))
 HTTP_TIMEOUT = int(os.environ.get("LABS_HTTP_TIMEOUT", "20"))
@@ -1401,7 +1411,256 @@ def aggregate_matchups(
     return profiles
 
 
-def build_archetype_reports(decks: List[Dict[str, Any]]):
+def _load_archetype_thumbnail_config() -> Dict[str, List[str]]:
+    try:
+        with ARCHETYPE_THUMBNAILS_PATH.open(encoding="utf-8") as handle:
+            data = json.load(handle)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def normalize_deck_label(label: Any) -> str:
+    text = re.sub(r"[‘’']", "", str(label or ""))
+    text = re.sub(r"[^a-zA-Z0-9]+", "_", text)
+    text = text.strip("_")
+    return text.lower()
+
+
+def tokenize_for_matching(text: Any) -> List[str]:
+    normalized = re.sub(r"[‘’']s\b", "s", str(text or ""), flags=re.IGNORECASE)
+    normalized = normalized.replace("_", " ").lower()
+    return [token for token in re.split(r"[^a-z0-9]+", normalized) if token]
+
+
+def extract_archetype_keywords(name: Any) -> List[str]:
+    return [token for token in tokenize_for_matching(name) if token not in ARCHETYPE_DESCRIPTOR_TOKENS]
+
+
+def format_card_number(raw: Any) -> Optional[str]:
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    match = re.match(r"^(\d+)([A-Za-z]*)$", text)
+    if not match:
+        return text.upper()
+    digits, suffix = match.group(1), match.group(2) or ""
+    return f"{digits.zfill(3)}{suffix.upper()}"
+
+
+def build_thumbnail_id(set_code: Any, number: Any) -> Optional[str]:
+    formatted_number = format_card_number(number)
+    set_value = str(set_code or "").upper().strip()
+    if not formatted_number or not set_value:
+        return None
+    return f"{set_value}/{formatted_number}"
+
+
+def infer_archetype_thumbnails(display_name: str, report_data: Optional[Dict[str, Any]]) -> List[str]:
+    keywords = extract_archetype_keywords(display_name)
+    items = (report_data or {}).get("items")
+    if not keywords or not isinstance(items, list):
+        return []
+    keyword_set = set(keywords)
+    candidates = []
+
+    for index, item in enumerate(items):
+        try:
+            pct = float(item.get("pct"))
+        except (TypeError, ValueError):
+            continue
+        if pct < AUTO_THUMB_REQUIRED_PCT:
+            continue
+        category = str(item.get("category") or "").lower()
+        if category and "pokemon" not in category:
+            continue
+        thumbnail_id = build_thumbnail_id(item.get("set"), item.get("number"))
+        if not thumbnail_id:
+            continue
+        card_tokens = extract_archetype_keywords(item.get("name") or "")
+        match_count = sum(1 for token in card_tokens if token in keyword_set)
+        if match_count == 0:
+            continue
+        candidates.append(
+            {"id": thumbnail_id, "matchCount": match_count, "pct": pct, "index": index, "tokens": card_tokens}
+        )
+
+    if not candidates:
+        return []
+
+    candidates.sort(key=lambda c: (-c["matchCount"], -c["pct"], c["index"]))
+
+    selected: List[str] = []
+    covered: set = set()
+    for candidate in candidates:
+        covers_new = any(token in keyword_set and token not in covered for token in candidate["tokens"])
+        if not covers_new and selected:
+            continue
+        if candidate["id"] in selected:
+            continue
+        selected.append(candidate["id"])
+        for token in candidate["tokens"]:
+            if token in keyword_set:
+                covered.add(token)
+        if len(selected) >= AUTO_THUMB_MAX or len(covered) >= len(keyword_set):
+            break
+
+    return selected
+
+
+def resolve_archetype_thumbnails(
+    base_name: str, display_name: str, report_data: Optional[Dict[str, Any]], config: Dict[str, List[str]]
+) -> List[str]:
+    attempts = [display_name, display_name.replace("_", " ") if display_name else display_name, base_name]
+    for key in attempts:
+        if key and isinstance(config.get(key), list) and config[key]:
+            return config[key]
+
+    target = normalize_deck_label(display_name or base_name or "")
+    if not target:
+        return infer_archetype_thumbnails(display_name or base_name or "", report_data)
+
+    for key, ids in config.items():
+        if normalize_deck_label(key) == target and ids:
+            return ids
+
+    return infer_archetype_thumbnails(display_name or base_name or "", report_data)
+
+
+def normalize_for_pokemon_match(name: Any) -> str:
+    text = str(name or "").lower()
+    text = re.sub(r"\s+(ex|v|vmax|vstar|gx|break|radiant|prism star)$", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"[‘’]", "'", text)
+    return text.strip()
+
+
+def card_matches_archetype_keyword(card_name: Any, archetype_keywords: set) -> bool:
+    card_tokens = tokenize_for_matching(normalize_for_pokemon_match(card_name))
+    return any(token in archetype_keywords for token in card_tokens)
+
+
+def _strip_leading_zeros_in_id(thumb_id: str) -> str:
+    return re.sub(r"/0*(\d)", r"/\1", thumb_id.upper())
+
+
+def card_in_thumbnails(card: Dict[str, Any], thumbnails: List[str]) -> bool:
+    if not thumbnails:
+        return False
+    card_thumb_id = build_thumbnail_id(card.get("set"), card.get("number"))
+    if not card_thumb_id:
+        return False
+    normalized_card = _strip_leading_zeros_in_id(card_thumb_id)
+    return any(_strip_leading_zeros_in_id(thumb) == normalized_card for thumb in thumbnails)
+
+
+_BASIC_ENERGY_NAMES = {
+    "grass energy",
+    "fire energy",
+    "water energy",
+    "lightning energy",
+    "psychic energy",
+    "fighting energy",
+    "darkness energy",
+    "metal energy",
+    "fairy energy",
+    "dragon energy",
+}
+
+
+def is_basic_energy(card: Dict[str, Any]) -> bool:
+    category = str(card.get("category") or "").lower()
+    energy_type = str(card.get("energyType") or "").lower()
+    if "energy/basic" in category:
+        return True
+    if energy_type == "basic":
+        return True
+    return str(card.get("name") or "").lower() in _BASIC_ENERGY_NAMES
+
+
+def is_pokemon(card: Dict[str, Any]) -> bool:
+    category = str(card.get("category") or "").lower()
+    return category == "pokemon" or category.startswith("pokemon/")
+
+
+def is_trainer(card: Dict[str, Any]) -> bool:
+    category = str(card.get("category") or "").lower()
+    return category == "trainer" or category.startswith("trainer/")
+
+
+def is_special_energy(card: Dict[str, Any]) -> bool:
+    category = str(card.get("category") or "").lower()
+    energy_type = str(card.get("energyType") or "").lower()
+    if "energy/special" in category:
+        return True
+    if energy_type == "special":
+        return True
+    if (category == "energy" or category.startswith("energy")) and not is_basic_energy(card):
+        return True
+    return False
+
+
+def generate_signature_cards(
+    display_name: str,
+    archetype_report: Optional[Dict[str, Any]],
+    master_report: Optional[Dict[str, Any]],
+    thumbnails: List[str],
+) -> List[Dict[str, Any]]:
+    items = (archetype_report or {}).get("items") or []
+    if not items:
+        return []
+
+    archetype_keywords = set(extract_archetype_keywords(display_name))
+    meta_usage = {}
+    for item in (master_report or {}).get("items") or []:
+        name = item.get("name")
+        if name:
+            meta_usage[name] = item.get("pct") or 0
+
+    candidates = []
+    for card in items:
+        archetype_pct = card.get("pct") or 0
+        if archetype_pct < SIGNATURE_MIN_ARCHETYPE_PCT:
+            continue
+        if is_basic_energy(card):
+            continue
+        meta_pct = meta_usage.get(card.get("name")) or 0
+
+        if is_pokemon(card):
+            if card_matches_archetype_keyword(card.get("name"), archetype_keywords) or card_in_thumbnails(
+                card, thumbnails
+            ):
+                candidates.append(
+                    {
+                        "name": card.get("name"),
+                        "set": card.get("set") or None,
+                        "number": card.get("number") or None,
+                        "pct": archetype_pct,
+                        "score": 1000 + archetype_pct,
+                    }
+                )
+        elif is_trainer(card) or is_special_energy(card):
+            distinctiveness = archetype_pct - meta_pct
+            if distinctiveness > 5:
+                candidates.append(
+                    {
+                        "name": card.get("name"),
+                        "set": card.get("set") or None,
+                        "number": card.get("number") or None,
+                        "pct": archetype_pct,
+                        "score": distinctiveness,
+                    }
+                )
+
+    candidates.sort(key=lambda c: -c["score"])
+    return [
+        {"name": c["name"], "set": c["set"], "number": c["number"], "pct": c["pct"]}
+        for c in candidates[:SIGNATURE_CARDS_COUNT]
+    ]
+
+
+def build_archetype_reports(decks: List[Dict[str, Any]], master_report: Optional[Dict[str, Any]] = None):
     archetype_groups = defaultdict(list)
     archetype_casing = {}
 
@@ -1411,6 +1670,7 @@ def build_archetype_reports(decks: List[Dict[str, Any]]):
         if norm_name not in archetype_casing:
             archetype_casing[norm_name] = ensure_archetype(deck.get("archetype"))
 
+    thumbnail_config = _load_archetype_thumbnail_config()
     deck_total = len(decks)
     archetype_data_map = {}
     archetype_index_list = []
@@ -1420,13 +1680,16 @@ def build_archetype_reports(decks: List[Dict[str, Any]]):
         base_name = sanitize_for_filename(proper_name)
         cards_report = generate_report_json(deck_list, len(deck_list), decks)
         archetype_data_map[base_name] = {"cards": cards_report, "decks": deck_list}
+        thumbnails = resolve_archetype_thumbnails(base_name, proper_name, cards_report, thumbnail_config)
+        signature_cards = generate_signature_cards(proper_name, cards_report, master_report, thumbnails)
         archetype_index_list.append(
             {
                 "name": base_name,
                 "label": proper_name,
                 "deckCount": len(deck_list),
                 "percent": round((len(deck_list) / deck_total) * 100, 4) if deck_total else 0,
-                "thumbnails": [],
+                "thumbnails": thumbnails,
+                "signatureCards": signature_cards,
             }
         )
 
@@ -1508,7 +1771,7 @@ def build_slice_payloads(base_path: str, slice_name: str, decks: List[Dict[str, 
     slice_path = f"{base_path}/slices/{slice_name}"
     master = generate_report_json(decks, len(decks), decks)
     card_index = generate_card_index(decks)
-    archetype_data_map, archetype_index = build_archetype_reports(decks)
+    archetype_data_map, archetype_index = build_archetype_reports(decks, master)
 
     upload_to_r2(r2_client, bucket_name, f"{slice_path}/decks.json", decks)
     upload_to_r2(r2_client, bucket_name, f"{slice_path}/master.json", master)
@@ -2375,7 +2638,7 @@ def main():
     if generate_tournament_synonyms:
         synonyms_data = generate_card_synonyms(all_decks, session, existing_synonyms, existing_canonicals)
 
-    archetype_data_map, archetype_index = build_archetype_reports(all_decks)
+    archetype_data_map, archetype_index = build_archetype_reports(all_decks, master_report)
 
     phase2_decks = [deck for deck in all_decks if deck.get("madePhase2")]
     topcut_decks = [deck for deck in all_decks if deck.get("madeTopCut")]
