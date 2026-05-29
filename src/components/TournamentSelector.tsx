@@ -1,5 +1,5 @@
 import { createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
-import { classifyTournament, fetchTournamentsList, prettyTournamentName } from '../lib/data';
+import { fetchTournamentsList, prettyTournamentName } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
 
@@ -22,29 +22,11 @@ export function TournamentSelector() {
     return all.filter(t => t.toLowerCase().includes(q));
   });
 
-  const grouped = createMemo(() => {
-    const groups: Record<string, string[]> = {
-      Online: [],
-      'International Championships': [],
-      'Regional Championships': [],
-      'Special Events': [],
-      Other: []
-    };
-    filtered().forEach(t => {
-      const c = classifyTournament(t);
-      if (c === 'online') {
-        groups.Online.push(t);
-      } else if (c === 'international') {
-        groups['International Championships'].push(t);
-      } else if (c === 'regional') {
-        groups['Regional Championships'].push(t);
-      } else if (c === 'special') {
-        groups['Special Events'].push(t);
-      } else {
-        groups.Other.push(t);
-      }
-    });
-    return Object.entries(groups).filter(([, list]) => list.length > 0);
+  const sorted = createMemo(() => {
+    const all = filtered();
+    const online = all.filter(t => t === ONLINE_META_NAME);
+    const rest = all.filter(t => t !== ONLINE_META_NAME).sort((a, b) => b.localeCompare(a)); // newest first by date prefix
+    return [...online, ...rest];
   });
 
   function close() {
@@ -107,26 +89,19 @@ export function TournamentSelector() {
             autofocus
           />
           <div class='t-selector-list'>
-            <For each={grouped()}>
-              {([groupLabel, list]) => (
-                <div class='t-selector-group'>
-                  <div class='t-selector-group-head'>{groupLabel}</div>
-                  <For each={list}>
-                    {t => (
-                      <button
-                        type='button'
-                        class='t-selector-item'
-                        classList={{ active: t === tournament() }}
-                        onClick={() => pick(t)}
-                      >
-                        <span class='primary'>{shortLabel(t)}</span>
-                        <Show when={t !== ONLINE_META_NAME}>
-                          <span class='secondary'>{datePart(t)}</span>
-                        </Show>
-                      </button>
-                    )}
-                  </For>
-                </div>
+            <For each={sorted()}>
+              {t => (
+                <button
+                  type='button'
+                  class='t-selector-item'
+                  classList={{ active: t === tournament() }}
+                  onClick={() => pick(t)}
+                >
+                  <span class='primary'>{shortLabel(t)}</span>
+                  <Show when={t !== ONLINE_META_NAME}>
+                    <span class='secondary'>{datePart(t)}</span>
+                  </Show>
+                </button>
               )}
             </For>
           </div>

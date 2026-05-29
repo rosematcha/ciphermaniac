@@ -22,6 +22,19 @@ const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
 export function ArchetypesIndexPage() {
   const { tournament } = useTournament();
   const [archetypes] = createResource(tournament, fetchArchetypes);
+  // For event views, fetch the online-meta archetypes as an image fallback when
+  // the event index ships without thumbnails/signature cards.
+  const [onlineArchetypes] = createResource(
+    () => tournament() !== ONLINE_META_NAME,
+    needFallback => (needFallback ? fetchArchetypes(ONLINE_META_NAME) : [])
+  );
+  const onlineByName = createMemo(() => {
+    const map = new Map<string, ArchetypeIndexEntry>();
+    for (const a of onlineArchetypes() ?? []) {
+      map.set(a.name, a);
+    }
+    return map;
+  });
   const [query, setQuery] = createSignal('');
   const [viewMode, setViewMode] = createPersistentViewMode('cm:archetypesView');
   const navigate = useNavigate();
@@ -103,7 +116,7 @@ export function ArchetypesIndexPage() {
               }
             >
               <div class='gallery-grid'>
-                <For each={filtered()}>{a => <ArchetypeCard entry={a} />}</For>
+                <For each={filtered()}>{a => <ArchetypeCard entry={a} online={onlineByName().get(a.name)} />}</For>
               </div>
             </Show>
           </Show>

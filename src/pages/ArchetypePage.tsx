@@ -213,16 +213,6 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
             <span class='dot'>·</span>
           </Show>
           <span>{props.report.deckTotal.toLocaleString()} decks</span>
-          <Show when={props.indexEntry?.signatureCards && props.indexEntry.signatureCards.length > 0}>
-            <span class='dot'>·</span>
-            <span>
-              signature:{' '}
-              {props
-                .indexEntry!.signatureCards!.slice(0, 2)
-                .map(s => s.name)
-                .join(', ')}
-            </span>
-          </Show>
         </div>
       </section>
 
