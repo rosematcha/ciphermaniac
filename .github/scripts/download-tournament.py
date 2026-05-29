@@ -44,7 +44,14 @@ ARCHETYPE_THUMBNAILS_PATH = Path("public") / "assets" / "data" / "archetype-thum
 # Ported from .github/scripts/run-online-meta.mjs so event reports populate the
 # same thumbnails/signatureCards that the online-meta pipeline produces.
 AUTO_THUMB_MAX = 2
-AUTO_THUMB_REQUIRED_PCT = 99.9
+# Stage 1 (name-based) gate. The title Pokemon often sits just under 100% (e.g.
+# Dragapult ex at ~99.3%), so a near-100 gate produced empty thumbnails and the
+# trainer-laden signatureCards fallback. The coverage algorithm + early-break
+# already keep low-pct noise out, so a low floor is safe.
+AUTO_THUMB_REQUIRED_PCT = 30
+# Floor for Stage 2 (ability/attack) and Stage 3 (distinctiveness) candidates so
+# tech/splash cards don't surface as the archetype face.
+AUTO_THUMB_STRATEGY_MIN_PCT = 20
 SIGNATURE_CARDS_COUNT = 5
 SIGNATURE_MIN_ARCHETYPE_PCT = 20  # Minimum usage in archetype to consider
 ARCHETYPE_DESCRIPTOR_TOKENS = {"box", "control", "festival", "lead", "toolbox", "turbo"}
@@ -1458,14 +1465,32 @@ def build_thumbnail_id(set_code: Any, number: Any) -> Optional[str]:
     return f"{set_value}/{formatted_number}"
 
 
-def infer_archetype_thumbnails(display_name: str, report_data: Optional[Dict[str, Any]]) -> List[str]:
-    keywords = extract_archetype_keywords(display_name)
-    items = (report_data or {}).get("items")
-    if not keywords or not isinstance(items, list):
-        return []
-    keyword_set = set(keywords)
-    candidates = []
+def build_card_meta_lookup(card_types_db: Optional[Dict[str, Any]]) -> Dict[str, Dict[str, List[str]]]:
+    """Map normalized thumbnail id (``SET/NNN``) → {abilities, attacks} from the
+    card-types DB so the thumbnail engine can match an archetype title against a
+    card's ability/attack names (Stage 2)."""
+    lookup: Dict[str, Dict[str, List[str]]] = {}
+    for key, info in (card_types_db or {}).items():
+        if not isinstance(info, dict):
+            continue
+        abilities = info.get("abilities") or []
+        attacks = info.get("attacks") or []
+        if not abilities and not attacks:
+            continue
+        set_code, _, number = str(key).partition("::")
+        thumb_id = build_thumbnail_id(set_code, number)
+        if not thumb_id:
+            continue
+        lookup[thumb_id] = {"abilities": list(abilities), "attacks": list(attacks)}
+    return lookup
 
+
+def _normalize_phrase(text: Any) -> str:
+    return " ".join(tokenize_for_matching(text))
+
+
+def _infer_name_thumbnails(items: List[Dict[str, Any]], keyword_set: set) -> List[str]:
+    candidates = []
     for index, item in enumerate(items):
         try:
             pct = float(item.get("pct"))
@@ -1510,8 +1535,120 @@ def infer_archetype_thumbnails(display_name: str, report_data: Optional[Dict[str
     return selected
 
 
+def _infer_ability_thumbnails(
+    items: List[Dict[str, Any]], raw_title: str, card_meta_lookup: Dict[str, Dict[str, List[str]]]
+) -> List[str]:
+    """Stage 2: strategy decks named after a shared ability/attack (e.g. "Festival
+    Lead" → Dipplin's ability, historically "Night March" → an attack). Match the
+    raw title against each Pokemon's ability/attack names, ranked by usage."""
+    title_phrase = _normalize_phrase(raw_title)
+    if not title_phrase or not card_meta_lookup:
+        return []
+    title_tokens = set(title_phrase.split())
+
+    phrase_matches = []
+    token_matches = []
+    for index, item in enumerate(items):
+        category = str(item.get("category") or "").lower()
+        if category and "pokemon" not in category:
+            continue
+        try:
+            pct = float(item.get("pct"))
+        except (TypeError, ValueError):
+            continue
+        if pct < AUTO_THUMB_STRATEGY_MIN_PCT:
+            continue
+        thumbnail_id = build_thumbnail_id(item.get("set"), item.get("number"))
+        if not thumbnail_id:
+            continue
+        meta = card_meta_lookup.get(thumbnail_id)
+        if not meta:
+            continue
+        names = [_normalize_phrase(n) for n in (meta.get("abilities") or []) + (meta.get("attacks") or [])]
+        if any(title_phrase in name for name in names if name):
+            phrase_matches.append((pct, index, thumbnail_id))
+        elif any(title_tokens and title_tokens.issubset(set(name.split())) for name in names if name):
+            token_matches.append((pct, index, thumbnail_id))
+
+    ordered = sorted(phrase_matches, key=lambda c: (-c[0], c[1])) + sorted(token_matches, key=lambda c: (-c[0], c[1]))
+    selected: List[str] = []
+    for _, _, thumb_id in ordered:
+        if thumb_id not in selected:
+            selected.append(thumb_id)
+        if len(selected) >= AUTO_THUMB_MAX:
+            break
+    return selected
+
+
+def _infer_distinctive_thumbnails(items: List[Dict[str, Any]], meta_usage: Dict[str, float]) -> List[str]:
+    """Stage 3 last resort: rank Pokemon by distinctiveness (archetype_pct −
+    meta_pct), never Trainers/Energy, so every deck gets a sensible image."""
+    candidates = []
+    for index, item in enumerate(items):
+        if not is_pokemon(item):
+            continue
+        try:
+            pct = float(item.get("pct"))
+        except (TypeError, ValueError):
+            continue
+        if pct < AUTO_THUMB_STRATEGY_MIN_PCT:
+            continue
+        thumbnail_id = build_thumbnail_id(item.get("set"), item.get("number"))
+        if not thumbnail_id:
+            continue
+        meta_pct = meta_usage.get(item.get("name")) or 0
+        candidates.append((pct - meta_pct, pct, index, thumbnail_id, _species_key(item.get("name"))))
+
+    candidates.sort(key=lambda c: (-c[0], -c[1], c[2]))
+    selected: List[str] = []
+    seen_species: set = set()
+    for _, _, _, thumb_id, species in candidates:
+        # Avoid two cards of the same Pokemon (e.g. Teal Mask + Wellspring Mask
+        # Ogerpon ex) eating both slots — prefer variety.
+        if species and species in seen_species:
+            continue
+        if thumb_id not in selected:
+            selected.append(thumb_id)
+            if species:
+                seen_species.add(species)
+        if len(selected) >= AUTO_THUMB_MAX:
+            break
+    return selected
+
+
+def infer_archetype_thumbnails(
+    display_name: str,
+    report_data: Optional[Dict[str, Any]],
+    card_meta_lookup: Optional[Dict[str, Dict[str, List[str]]]] = None,
+    meta_usage: Optional[Dict[str, float]] = None,
+) -> List[str]:
+    items = (report_data or {}).get("items")
+    if not isinstance(items, list) or not items:
+        return []
+
+    # Stage 1: name-based coverage match (the common case).
+    keyword_set = set(extract_archetype_keywords(display_name))
+    if keyword_set:
+        name_thumbs = _infer_name_thumbnails(items, keyword_set)
+        if name_thumbs:
+            return name_thumbs
+
+    # Stage 2: strategy decks named after a shared ability/attack.
+    ability_thumbs = _infer_ability_thumbnails(items, display_name, card_meta_lookup or {})
+    if ability_thumbs:
+        return ability_thumbs
+
+    # Stage 3: distinctiveness-ranked Pokemon-only last resort.
+    return _infer_distinctive_thumbnails(items, meta_usage or {})
+
+
 def resolve_archetype_thumbnails(
-    base_name: str, display_name: str, report_data: Optional[Dict[str, Any]], config: Dict[str, List[str]]
+    base_name: str,
+    display_name: str,
+    report_data: Optional[Dict[str, Any]],
+    config: Dict[str, List[str]],
+    card_meta_lookup: Optional[Dict[str, Dict[str, List[str]]]] = None,
+    meta_usage: Optional[Dict[str, float]] = None,
 ) -> List[str]:
     attempts = [display_name, display_name.replace("_", " ") if display_name else display_name, base_name]
     for key in attempts:
@@ -1519,14 +1656,12 @@ def resolve_archetype_thumbnails(
             return config[key]
 
     target = normalize_deck_label(display_name or base_name or "")
-    if not target:
-        return infer_archetype_thumbnails(display_name or base_name or "", report_data)
+    if target:
+        for key, ids in config.items():
+            if normalize_deck_label(key) == target and ids:
+                return ids
 
-    for key, ids in config.items():
-        if normalize_deck_label(key) == target and ids:
-            return ids
-
-    return infer_archetype_thumbnails(display_name or base_name or "", report_data)
+    return infer_archetype_thumbnails(display_name or base_name or "", report_data, card_meta_lookup, meta_usage)
 
 
 def normalize_for_pokemon_match(name: Any) -> str:
@@ -1539,6 +1674,13 @@ def normalize_for_pokemon_match(name: Any) -> str:
 def card_matches_archetype_keyword(card_name: Any, archetype_keywords: set) -> bool:
     card_tokens = tokenize_for_matching(normalize_for_pokemon_match(card_name))
     return any(token in archetype_keywords for token in card_tokens)
+
+
+def _species_key(card_name: Any) -> str:
+    """Coarse species identity (last name token after stripping ex/V suffixes) so
+    Stage 3 doesn't pick two cards of the same Pokemon."""
+    tokens = tokenize_for_matching(normalize_for_pokemon_match(card_name))
+    return tokens[-1] if tokens else ""
 
 
 def _strip_leading_zeros_in_id(thumb_id: str) -> str:
@@ -1660,7 +1802,11 @@ def generate_signature_cards(
     ]
 
 
-def build_archetype_reports(decks: List[Dict[str, Any]], master_report: Optional[Dict[str, Any]] = None):
+def build_archetype_reports(
+    decks: List[Dict[str, Any]],
+    master_report: Optional[Dict[str, Any]] = None,
+    card_types_db: Optional[Dict[str, Any]] = None,
+):
     archetype_groups = defaultdict(list)
     archetype_casing = {}
 
@@ -1671,6 +1817,12 @@ def build_archetype_reports(decks: List[Dict[str, Any]], master_report: Optional
             archetype_casing[norm_name] = ensure_archetype(deck.get("archetype"))
 
     thumbnail_config = _load_archetype_thumbnail_config()
+    card_meta_lookup = build_card_meta_lookup(card_types_db)
+    meta_usage: Dict[str, float] = {}
+    for item in (master_report or {}).get("items") or []:
+        name = item.get("name")
+        if name:
+            meta_usage[name] = item.get("pct") or 0
     deck_total = len(decks)
     archetype_data_map = {}
     archetype_index_list = []
@@ -1680,14 +1832,16 @@ def build_archetype_reports(decks: List[Dict[str, Any]], master_report: Optional
         base_name = sanitize_for_filename(proper_name)
         cards_report = generate_report_json(deck_list, len(deck_list), decks)
         archetype_data_map[base_name] = {"cards": cards_report, "decks": deck_list}
-        thumbnails = resolve_archetype_thumbnails(base_name, proper_name, cards_report, thumbnail_config)
+        thumbnails = resolve_archetype_thumbnails(
+            base_name, proper_name, cards_report, thumbnail_config, card_meta_lookup, meta_usage
+        )
         signature_cards = generate_signature_cards(proper_name, cards_report, master_report, thumbnails)
         archetype_index_list.append(
             {
                 "name": base_name,
                 "label": proper_name,
                 "deckCount": len(deck_list),
-                "percent": round((len(deck_list) / deck_total) * 100, 4) if deck_total else 0,
+                "percent": round(len(deck_list) / deck_total, 6) if deck_total else 0,
                 "thumbnails": thumbnails,
                 "signatureCards": signature_cards,
             }
@@ -1767,11 +1921,13 @@ def update_tournaments_json(r2_client, bucket_name, tournament_name):
     print(f"  ✓ Added '{tournament_name}' to tournaments.json")
 
 
-def build_slice_payloads(base_path: str, slice_name: str, decks: List[Dict[str, Any]], r2_client, bucket_name):
+def build_slice_payloads(
+    base_path: str, slice_name: str, decks: List[Dict[str, Any]], r2_client, bucket_name, card_types_db=None
+):
     slice_path = f"{base_path}/slices/{slice_name}"
     master = generate_report_json(decks, len(decks), decks)
     card_index = generate_card_index(decks)
-    archetype_data_map, archetype_index = build_archetype_reports(decks, master)
+    archetype_data_map, archetype_index = build_archetype_reports(decks, master, card_types_db)
 
     upload_to_r2(r2_client, bucket_name, f"{slice_path}/decks.json", decks)
     upload_to_r2(r2_client, bucket_name, f"{slice_path}/master.json", master)
@@ -2638,7 +2794,7 @@ def main():
     if generate_tournament_synonyms:
         synonyms_data = generate_card_synonyms(all_decks, session, existing_synonyms, existing_canonicals)
 
-    archetype_data_map, archetype_index = build_archetype_reports(all_decks, master_report)
+    archetype_data_map, archetype_index = build_archetype_reports(all_decks, master_report, card_types_db)
 
     phase2_decks = [deck for deck in all_decks if deck.get("madePhase2")]
     topcut_decks = [deck for deck in all_decks if deck.get("madeTopCut")]
@@ -2712,8 +2868,8 @@ def main():
         upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/archetypes/{archetype_base}/decks.json", payload["decks"])
 
     print("\nUploading slices...")
-    build_slice_payloads(base_path, "phase2", phase2_decks, r2_client, r2_bucket_name)
-    build_slice_payloads(base_path, "topcut", topcut_decks, r2_client, r2_bucket_name)
+    build_slice_payloads(base_path, "phase2", phase2_decks, r2_client, r2_bucket_name, card_types_db)
+    build_slice_payloads(base_path, "topcut", topcut_decks, r2_client, r2_bucket_name, card_types_db)
 
     print("\nUpdating tournaments.json...")
     update_tournaments_json(r2_client, r2_bucket_name, folder_name)

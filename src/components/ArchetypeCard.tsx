@@ -14,23 +14,13 @@ interface ArchetypeCardProps {
 }
 
 function entryThumbnails(entry: ArchetypeIndexEntry | undefined): string[] {
-  if (!entry) {
-    return [];
-  }
-  if (entry.thumbnails && entry.thumbnails.length > 0) {
-    return entry.thumbnails;
-  }
-  // Fallback: use signatureCards (set/number pairs) as a substitute for thumbnails.
-  return (entry.signatureCards ?? [])
-    .filter(s => s.set && s.number)
-    .slice(0, 3)
-    .map(s => `${s.set}/${s.number}`);
+  return entry?.thumbnails ?? [];
 }
 
 /**
  * Archetype gallery card. Click → /archetypes/[slug].
- * Uses real card images via CardStack when the index gives us a thumbnails list;
- * otherwise falls back to the index's signature cards, then the online entry.
+ * Uses real card images via CardStack from the index's thumbnails list, falling
+ * back to the online entry's thumbnails for event views that ship without them.
  */
 export function ArchetypeCard(props: ArchetypeCardProps) {
   const slug = () => props.entry.name;

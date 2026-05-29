@@ -133,11 +133,8 @@ export function classifyArc(row: FieldRow): ArcTag {
 /**
  * Resolve a renderable CardStack thumbnail list ["SET/NUM", ...] for an
  * archetype across two source indexes. Per-tournament reports often ship with
- * `thumbnails: []`, so we walk both indexes in priority order:
- *   1. online entry's `thumbnails` (the rolling meta is canonical for art)
- *   2. tournament entry's `thumbnails`
- *   3. online entry's `signatureCards`
- *   4. tournament entry's `signatureCards`
+ * `thumbnails: []`, so we prefer the rolling-meta (online) index, which is
+ * canonical for art, then fall back to the tournament entry's thumbnails.
  *
  * Returns [] when nothing's available — callers should render an empty
  * thumbnail panel rather than collapsing the slot.
@@ -151,12 +148,6 @@ export function resolveArchetypeThumbnails(
   }
   if (tournament?.thumbnails?.length) {
     return tournament.thumbnails;
-  }
-  for (const entry of [online, tournament]) {
-    const sigs = (entry?.signatureCards ?? []).filter(s => s.set && s.number);
-    if (sigs.length > 0) {
-      return sigs.slice(0, 3).map(s => `${s.set}/${s.number}`);
-    }
   }
   return [];
 }
@@ -247,15 +238,40 @@ export function buildStories(input: BuildStoriesInput, limit: number = 3): Story
   return pickStories(candidates, limit);
 }
 
+/**
+ * Archetype a candidate is "about", for cross-domain dedup. Player-centered
+ * stories (e.g. "Hiromu Sasaki ran the table") carry their deck's archetype on
+ * the stub row, so without this an archetype could surface twice — once via a
+ * player story and once via an archetype story (e.g. two Dragapult cards). We
+ * collapse to one story per archetype regardless of the subject domain.
+ * Returns null when the archetype is unknown so unrelated rogue decks aren't
+ * all merged under one placeholder.
+ */
+function archetypeKeyOf(c: StoryCandidate): string | null {
+  const name = c.row.archetype?.name ?? c.row.label;
+  if (!name || name === '—' || isOtherArchetype(name)) {
+    return null;
+  }
+  return name.trim().toLowerCase();
+}
+
 function pickStories(candidates: StoryCandidate[], limit: number): Story[] {
   const sorted = [...candidates].sort((a, b) => b.weight - a.weight);
-  const seen = new Set<string>();
+  const seenSubject = new Set<string>();
+  const seenArchetype = new Set<string>();
   const out: Story[] = [];
   for (const c of sorted) {
-    if (seen.has(c.subjectKey)) {
+    if (seenSubject.has(c.subjectKey)) {
       continue;
     }
-    seen.add(c.subjectKey);
+    const archKey = archetypeKeyOf(c);
+    if (archKey !== null && seenArchetype.has(archKey)) {
+      continue;
+    }
+    seenSubject.add(c.subjectKey);
+    if (archKey !== null) {
+      seenArchetype.add(archKey);
+    }
     out.push(c);
     if (out.length === limit) {
       break;
@@ -349,6 +365,10 @@ const genDisappointment: StoryGenerator = ctx => {
   if (!worst || (worst.day2Conversion ?? 100) >= 25) {
     return null;
   }
+  // The deck's own conversion is near-zero by definition, so a bar of just that
+  // reads as empty/broken. Show the field's average conversion as the benchmark
+  // — the bar this deck failed to clear — with its own rate alongside.
+  const fieldAvgConversion = computeFieldAvgConversion(ctx.rows);
   return {
     ...makeConversionStory({
       row: worst,
@@ -357,6 +377,15 @@ const genDisappointment: StoryGenerator = ctx => {
       tagLabel: 'Disappointment',
       body: buildFadeLine(worst)
     }),
+    statBar:
+      fieldAvgConversion !== null
+        ? {
+            label: 'Field Day 2 conversion',
+            fillPct: fieldAvgConversion,
+            left: `${fmtPct(worst.day2Conversion!)} this deck`,
+            right: `${fmtPct(fieldAvgConversion)} field avg`
+          }
+        : undefined,
     // Bigger fields with worse conversion are more newsworthy.
     weight: Math.min(100, (25 - worst.day2Conversion!) * 2 + worst.fieldDecks / 2),
     subjectKey: `archetype:${worst.archetype?.name ?? worst.label}`
@@ -513,27 +542,38 @@ const genUnbrokenWinner: StoryGenerator = ctx => {
     return null;
   }
   const entry = ctx.lookupArchetype(ctx.winner.deckName);
-  const stubRow = makeStubRow(ctx.winner.deckName ?? '—', entry, 1);
+  // Prefer the real field row (carries Day-2 conversion) over a bare stub.
+  const archetypeRow = entry ? ctx.rows.find(r => r.archetype === entry) : undefined;
+  const row = archetypeRow ?? makeStubRow(ctx.winner.deckName ?? '—', entry, 1);
   return {
     tag: 'surged',
     tagLabel: 'Unbeaten',
-    row: stubRow,
+    row,
     headline: `${ctx.winner.name} ran the table`,
     body: `${w}-0${ctx.winner.ties ? `-${ctx.winner.ties}` : ''} through Swiss${ctx.winner.deckName ? ` on ${ctx.winner.deckName}` : ''}.`,
     href: entry ? `/archetypes/${encodeURIComponent(entry.name)}` : undefined,
+    statBar:
+      row.day2Conversion !== null
+        ? {
+            label: 'Day 2 conversion',
+            fillPct: row.day2Conversion,
+            left: `${row.day2Count} of ${row.fieldDecks}`,
+            right: fmtPct(row.day2Conversion)
+          }
+        : undefined,
     weight: 85,
     subjectKey: `player:${ctx.winner.name}#1`
   };
 };
 
-/** Mirror in the upper bracket — same archetype claiming ≥2 of top 4 placements. */
+/** Mirror in the cut — same archetype claiming ≥2 of the top-cut spots. */
 const genMirrorCut: StoryGenerator = ctx => {
-  const topFour = ctx.topCutParticipants.filter(p => (p.placement ?? 99) <= 4);
-  if (topFour.length < 4) {
+  const cut = ctx.topCutParticipants;
+  if (cut.length < 4) {
     return null;
   }
   const counts = new Map<string, { count: number; entry: ArchetypeIndexEntry | undefined; label: string }>();
-  for (const p of topFour) {
+  for (const p of cut) {
     const entry = ctx.lookupArchetype(p.deckName);
     const key = entry?.name ?? p.deckName ?? '—';
     if (!counts.has(key)) {
@@ -549,10 +589,10 @@ const genMirrorCut: StoryGenerator = ctx => {
   const row = ctx.rows.find(r => r.archetype === entry) ?? makeStubRow(label, entry, null);
   return {
     tag: 'climbed',
-    tagLabel: 'Top-4 mirror',
+    tagLabel: 'Cut mirror',
     row,
-    headline: `${label} owned the upper bracket`,
-    body: `${count} of the top 4 placements went to the same archetype.`,
+    headline: `${label} owned the cut`,
+    body: `${count} of the ${cut.length} top-cut spots went to the same archetype.`,
     weight: 60 + count * 8,
     subjectKey: `archetype:${entry?.name ?? label}`
   };
@@ -650,11 +690,33 @@ function buildPerformanceLine(r: FieldRow): string {
   return `${capitalize(parts.join(' · '))}.`;
 }
 
+/**
+ * Field-wide Day-2 conversion (%, 0..100): total pilots who reached Day 2
+ * divided by total pilots, across every archetype with conversion data. This
+ * is the benchmark a single deck's conversion is measured against. Returns
+ * null when no row carries conversion data.
+ */
+function computeFieldAvgConversion(rows: FieldRow[]): number | null {
+  let day2 = 0;
+  let total = 0;
+  for (const r of rows) {
+    if (r.day2Conversion !== null && r.fieldDecks > 0) {
+      day2 += r.day2Count;
+      total += r.fieldDecks;
+    }
+  }
+  return total > 0 ? (day2 / total) * 100 : null;
+}
+
 function buildFadeLine(r: FieldRow): string {
   const parts: string[] = [];
-  parts.push(`${r.fieldDecks} brought it, only ${r.day2Count} made Day 2 (${fmtPct(r.day2Conversion!)} conversion)`);
-  if (r.avgWins !== null) {
-    parts.push(`avg ${r.avgWins.toFixed(1)} wins`);
+  parts.push(
+    r.day2Count === 0
+      ? `${r.fieldDecks} brought it, not one made Day 2`
+      : `${r.fieldDecks} brought it, only ${r.day2Count} made Day 2 (${fmtPct(r.day2Conversion!)} conversion)`
+  );
+  if (r.bestPlacement !== null) {
+    parts.push(`best finish #${r.bestPlacement}`);
   }
   return `${capitalize(parts.join(' · '))}.`;
 }

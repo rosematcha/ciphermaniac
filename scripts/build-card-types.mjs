@@ -49,6 +49,48 @@ function buildNumberVariants(value) {
 const MASTER_FILE_NAME = 'master.json';
 
 /**
+ * Extract ability and attack names from a Limitless card page.
+ * Abilities live in `.card-text-ability-info` ("Ability: <name>"); attacks in
+ * `.card-text-attack-info` (energy-cost symbols + "<name> <damage>"). We keep
+ * only the names so archetype titles ("Festival Lead", "Night March") can be
+ * matched against them.
+ * @param {string} html
+ * @returns {{abilities: string[], attacks: string[]}}
+ */
+function extractCardTextNames(html) {
+  const abilities = [];
+  const attacks = [];
+
+  const abilityRe = /class="card-text-ability-info"[^>]*>([\s\S]*?)<\/p>/gi;
+  let match;
+  while ((match = abilityRe.exec(html)) !== null) {
+    const name = match[1]
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/^\s*ability\s*:\s*/i, '')
+      .trim();
+    if (name) {
+      abilities.push(name);
+    }
+  }
+
+  const attackRe = /class="card-text-attack-info"[^>]*>([\s\S]*?)<\/p>/gi;
+  while ((match = attackRe.exec(html)) !== null) {
+    const name = match[1]
+      .replace(/<span class="ptcg-symbol"[^>]*>[\s\S]*?<\/span>/gi, ' ') // drop energy cost
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/\s+\d+[+x×]?\s*$/i, '') // drop trailing damage (e.g. "20×", "30+")
+      .trim();
+    if (name) {
+      attacks.push(name);
+    }
+  }
+
+  return { abilities, attacks };
+}
+
+/**
  * Sleep for a given number of milliseconds
  * @param {number} ms
  * @returns {Promise<void>}
@@ -167,13 +209,17 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
         }
       }
 
+      const { abilities, attacks } = extractCardTextNames(html);
+
       return {
         cardType,
         subType,
         evolutionInfo,
         fullType,
         ...(aceSpec ? { aceSpec: true } : {}),
-        ...(regulationMark ? { regulationMark } : {})
+        ...(regulationMark ? { regulationMark } : {}),
+        ...(abilities.length ? { abilities } : {}),
+        ...(attacks.length ? { attacks } : {})
       };
     } catch (error) {
       if (attempt < MAX_RETRIES - 1) {
@@ -381,6 +427,8 @@ async function main() {
         ...(typeInfo.evolutionInfo ? { evolutionInfo: typeInfo.evolutionInfo } : {}),
         ...(typeInfo.aceSpec ? { aceSpec: true } : {}),
         ...(typeInfo.regulationMark ? { regulationMark: typeInfo.regulationMark } : {}),
+        ...(typeInfo.abilities ? { abilities: typeInfo.abilities } : {}),
+        ...(typeInfo.attacks ? { attacks: typeInfo.attacks } : {}),
         fullType: typeInfo.fullType,
         lastUpdated: new Date().toISOString()
       };
