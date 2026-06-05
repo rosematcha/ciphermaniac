@@ -1,16 +1,20 @@
 import { A, useNavigate, useParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
 import {
+  type Day2CardStat,
   fetchArchetype,
   fetchArchetypes,
+  fetchDay2CardStats,
   fetchMaster,
   fetchPrices,
   fetchRotationIndex,
   findCardBySetNumber,
+  isSnapshotSource,
   resolveCanonicalSetNumber,
   snapshotDateForCard,
   snapshotSourceKey
 } from '../lib/data';
+import { ONLINE_META_NAME } from '../lib/constants';
 import { useTournament } from '../lib/tournamentContext';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../types';
 import { Breadcrumb } from '../components/Breadcrumb';
@@ -18,6 +22,7 @@ import { Badge } from '../components/Badge';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CardImage } from '../components/CardImage';
+import { InfoTip } from '../components/InfoTip';
 
 /**
  * /cards/[set]/[number] — full page detail for a single card.
@@ -159,6 +164,39 @@ export function CardPage() {
     }
   );
 
+  // Day 1 → Day 2 conversion for the card, scoped to the active tournament.
+  // Skipped for sources with no single Day 2 cut: Online Meta (rolling 14-day
+  // window) and pre-rotation snapshots (frozen meta reports, no decks.json with
+  // a `madePhase2` flag). For those `fetchDay2CardStats` has nothing to read, so
+  // we don't even fire the request — the row is simply hidden.
+  const [day2Stats] = createResource(
+    () => {
+      const t = effectiveTournament();
+      return t && t !== ONLINE_META_NAME && !isSnapshotSource(t) ? t : null;
+    },
+    t => fetchDay2CardStats(t)
+  );
+  const conversionStat = createMemo<Day2CardStat | undefined>(() => {
+    const c = card();
+    const stats = day2Stats();
+    if (!c || !stats) {
+      return undefined;
+    }
+    const uid = c.uid ?? (c.set && c.number != null ? `${c.name}::${c.set}::${c.number}` : c.name);
+    const byUid = stats.find(s => s.uid === uid);
+    if (byUid) {
+      return byUid;
+    }
+    // Fallback: match on set + number with leading zeros stripped, mirroring
+    // the archetype-report lookup above.
+    if (c.set && c.number != null) {
+      const setU = c.set.toUpperCase();
+      const numTrim = String(c.number).replace(/^0+/, '') || '0';
+      return stats.find(s => s.set?.toUpperCase() === setU && (String(s.number).replace(/^0+/, '') || '0') === numTrim);
+    }
+    return undefined;
+  });
+
   const setNumber = () => `${params.set.toUpperCase()}/${params.number}`;
 
   onMount(() => {
@@ -205,6 +243,7 @@ export function CardPage() {
           card={card()!}
           setNumber={setNumber()}
           priceEntry={priceEntry()}
+          conversion={conversionStat()}
           archetypeUsage={archetypeUsage()}
           archetypeUsageLoading={archetypeUsage.loading || archetypeIndex.loading}
         />
@@ -223,9 +262,32 @@ function CardPageBody(props: {
   card: CardItem;
   setNumber: string;
   priceEntry: { price?: number; tcgPlayerId?: string } | null;
+  conversion: Day2CardStat | undefined;
   archetypeUsage: ArchetypeUsageRow[] | null | undefined;
   archetypeUsageLoading: boolean;
 }) {
+  // Caveats that make the conversion rate less trustworthy. A card played by
+  // nearly the whole field just tracks the field's overall Day 2 rate, and a
+  // card seen in a handful of decks is too small a sample to read into.
+  const conversionCaveats = createMemo<string[]>(() => {
+    const cv = props.conversion;
+    if (!cv) {
+      return [];
+    }
+    const out: string[] = [];
+    if (props.card.pct >= 60) {
+      out.push(
+        `${props.card.pct.toFixed(0)}% of decks play this card. At that usage, conversion mirrors the field's Day 2 rate instead of telling you anything about the card.`
+      );
+    }
+    if (cv.day1Count <= 15) {
+      out.push(
+        `Only ${cv.day1Count.toLocaleString()} deck${cv.day1Count === 1 ? '' : 's'} in this event played this card. That's too small a sample for a reliable conversion rate.`
+      );
+    }
+    return out;
+  });
+
   const totalCopies = createMemo(() => {
     const dist = props.card.dist ?? [];
     return dist.reduce((acc, d) => acc + (d.copies ?? 0) * (d.players ?? 0), 0);
@@ -300,6 +362,19 @@ function CardPageBody(props: {
               <span class='stat-label'>Decks total</span>
               <span class='stat-value'>{props.card.total.toLocaleString()}</span>
             </div>
+            <Show when={props.conversion}>
+              <div class='stat-row'>
+                <span class='stat-label'>Day 1→2 conversion</span>
+                <span class='stat-value'>
+                  {props.conversion!.conversion.toFixed(1)}%
+                  <Show when={conversionCaveats().length > 0}>
+                    <InfoTip label={conversionCaveats().join(' ')}>
+                      <For each={conversionCaveats()}>{note => <p>{note}</p>}</For>
+                    </InfoTip>
+                  </Show>
+                </span>
+              </div>
+            </Show>
             <Show when={avgCopies() !== null}>
               <div class='stat-row'>
                 <span class='stat-label'>Avg copies</span>

@@ -2051,6 +2051,79 @@ a.callout-arc-row:hover .arc-name-cell { color: var(--accent); }
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+.stats-panel .stat-label,
+.stats-panel .stat-value { display: inline-flex; align-items: baseline; gap: 4px; }
+
+/* Inline hoverable note: an asterisk (or other marker) that reveals a styled
+   bubble on hover/focus. See InfoTip.tsx. */
+.info-tip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+  outline: none;
+  /* Pad out the hit area so the small marker is easy to hover/tap, then pull
+     the surrounding layout back with a matching negative margin. */
+  padding: 4px 7px;
+  margin: -4px -4px;
+}
+.info-tip-marker {
+  color: var(--accent);
+  font-weight: 700;
+  line-height: 1;
+  font-size: 1.05em;
+}
+.info-tip-bubble {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%) translateY(2px);
+  width: max-content;
+  max-width: 240px;
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  box-shadow: var(--shadow-1);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  letter-spacing: normal;
+  text-transform: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 30;
+  /* Hidden by default, but hoverable once shown so the cursor can move onto it. */
+  pointer-events: none;
+}
+/* Transparent bridge spanning the gap below the bubble, so moving the cursor
+   from the marker up to the bubble never drops the hover. */
+.info-tip-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 11px;
+}
+.info-tip:hover .info-tip-bubble,
+.info-tip:focus-visible .info-tip-bubble {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+/* Keep the bubble on-screen near the right edge of the panel. */
+.stats-panel .stat-value .info-tip-bubble { left: auto; right: 0; transform: translateY(2px); }
+.stats-panel .stat-value .info-tip:hover .info-tip-bubble,
+.stats-panel .stat-value .info-tip:focus-visible .info-tip-bubble { transform: translateY(0); }
+.info-tip-bubble p { margin: 0; }
+.info-tip-bubble p + p { margin-top: 6px; }
 
 .card-page-right { display: grid; gap: 32px; }
 .card-section h3 {
