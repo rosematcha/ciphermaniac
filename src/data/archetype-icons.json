@@ -1,0 +1,984 @@
+{
+  "Aegislash": [
+    "aegislash"
+  ],
+  "Alakazam": [
+    "alakazam"
+  ],
+  "Alakazam Dudunsparce": [
+    "alakazam",
+    "dudunsparce"
+  ],
+  "Alolan Exeggutor ex": [
+    "exeggutor-alola"
+  ],
+  "Alolan Vulpix": [
+    "vulpix-alola"
+  ],
+  "Ancient Box": [
+    "roaring-moon",
+    "flutter-mane"
+  ],
+  "Arcanine": [
+    "arcanine"
+  ],
+  "Arceus": [
+    "arceus"
+  ],
+  "Arceus Aggron": [
+    "arceus",
+    "aggron"
+  ],
+  "Arceus Armarouge": [
+    "arceus",
+    "armarouge"
+  ],
+  "Arceus Charizard": [
+    "arceus",
+    "charizard"
+  ],
+  "Arceus Decidueye": [
+    "arceus",
+    "decidueye-hisui"
+  ],
+  "Arceus Dusknoir": [
+    "arceus",
+    "dusknoir"
+  ],
+  "Arceus Giratina": [
+    "arceus",
+    "giratina-origin"
+  ],
+  "Arceus Goodra": [
+    "arceus",
+    "goodra-hisui"
+  ],
+  "Arceus Regidrago": [
+    "arceus",
+    "regidrago"
+  ],
+  "Arceus Vulpix": [
+    "arceus",
+    "vulpix-alola"
+  ],
+  "Archaludon": [
+    "archaludon"
+  ],
+  "Archaludon Dialga": [
+    "archaludon",
+    "dialga-origin"
+  ],
+  "Archaludon Dudunsparce": [
+    "archaludon",
+    "dudunsparce"
+  ],
+  "Archaludon Zoroark": [
+    "archaludon",
+    "zoroark"
+  ],
+  "Articuno Munkidori": [
+    "articuno",
+    "munkidori"
+  ],
+  "Azumarill": [
+    "azumarill"
+  ],
+  "Banette": [
+    "banette"
+  ],
+  "Banette Dusknoir": [
+    "banette",
+    "dusknoir"
+  ],
+  "Banette Gardevoir": [
+    "banette",
+    "gardevoir"
+  ],
+  "Basic Box": [
+    "ogerpon",
+    "clefairy"
+  ],
+  "Beedrill": [
+    "beedrill"
+  ],
+  "Blastoise": [
+    "blastoise"
+  ],
+  "Blaziken": [
+    "blaziken"
+  ],
+  "Blaziken Zoroark": [
+    "blaziken",
+    "zoroark"
+  ],
+  "Blissey": [
+    "blissey"
+  ],
+  "Bloodmoon Ursaluna": [
+    "ursaluna-bloodmoon"
+  ],
+  "Bronzong": [
+    "bronzong"
+  ],
+  "Ceruledge": [
+    "ceruledge"
+  ],
+  "Charizard": [
+    "charizard"
+  ],
+  "Charizard Arceus": [
+    "charizard",
+    "arceus"
+  ],
+  "Charizard Dragapult": [
+    "charizard",
+    "dragapult"
+  ],
+  "Charizard Dusknoir": [
+    "charizard",
+    "dusknoir"
+  ],
+  "Charizard Greninja": [
+    "charizard",
+    "greninja"
+  ],
+  "Charizard LZ Box": [
+    "charizard",
+    "comfey"
+  ],
+  "Charizard Noctowl": [
+    "charizard",
+    "noctowl"
+  ],
+  "Charizard Pidgeot": [
+    "charizard",
+    "pidgeot"
+  ],
+  "Chien-Pao Baxcalibur": [
+    "chien-pao",
+    "baxcalibur"
+  ],
+  "Chien-Pao Noctowl": [
+    "chien-pao",
+    "noctowl"
+  ],
+  "Cinderace": [
+    "cinderace"
+  ],
+  "Clefable": [
+    "clefable"
+  ],
+  "Clefairy": [
+    "clefairy"
+  ],
+  "Clefairy Ogerpon": [
+    "clefairy",
+    "ogerpon"
+  ],
+  "Clefairy Wyrdeer": [
+    "clefairy",
+    "wyrdeer"
+  ],
+  "Cofagrigus": [
+    "cofagrigus"
+  ],
+  "Conkeldurr": [
+    "conkeldurr"
+  ],
+  "Copperajah": [
+    "copperajah"
+  ],
+  "Cornerstone Mask Ogerpon": [
+    "ogerpon-cornerstone"
+  ],
+  "Cramorant": [
+    "cramorant",
+    "articuno"
+  ],
+  "Crustle": [
+    "crustle"
+  ],
+  "Cynthia's Garchomp": [
+    "garchomp"
+  ],
+  "Darkrai": [
+    "darkrai"
+  ],
+  "Darkrai Dusknoir": [
+    "darkrai",
+    "dusknoir"
+  ],
+  "Decidueye": [
+    "decidueye"
+  ],
+  "Dialga": [
+    "dialga-origin"
+  ],
+  "Dialga LZ": [
+    "dialga-origin",
+    "comfey"
+  ],
+  "Dialga Magnezone": [
+    "dialga-origin",
+    "magnezone"
+  ],
+  "Dialga Metang": [
+    "dialga-origin",
+    "metang"
+  ],
+  "Diancie Dusknoir": [
+    "diancie-mega",
+    "dusknoir"
+  ],
+  "Dondozo": [
+    "dondozo",
+    "tatsugiri"
+  ],
+  "Doublade": [
+    "doublade"
+  ],
+  "Dragapult": [
+    "dragapult"
+  ],
+  "Dragapult Blaziken": [
+    "dragapult",
+    "blaziken"
+  ],
+  "Dragapult Charizard": [
+    "dragapult",
+    "charizard"
+  ],
+  "Dragapult Dudunsparce": [
+    "dragapult",
+    "dudunsparce"
+  ],
+  "Dragapult Dusknoir": [
+    "dragapult",
+    "dusknoir"
+  ],
+  "Dragapult Froslass": [
+    "dragapult",
+    "froslass"
+  ],
+  "Dragapult Iron Thorns": [
+    "dragapult",
+    "iron-thorns"
+  ],
+  "Dragapult LZ Box": [
+    "dragapult",
+    "comfey"
+  ],
+  "Dragapult Pidgeot": [
+    "dragapult",
+    "pidgeot"
+  ],
+  "Dragapult Zoroark": [
+    "dragapult",
+    "zoroark"
+  ],
+  "Dragonite": [
+    "dragonite"
+  ],
+  "Dragonite Eelektrik": [
+    "dragonite-mega",
+    "eelektrik"
+  ],
+  "Dudunsparce Control": [
+    "dudunsparce",
+    "elgyem"
+  ],
+  "Eelektrik": [
+    "eelektrik"
+  ],
+  "Entei": [
+    "entei"
+  ],
+  "Entei Iron Valiant": [
+    "entei",
+    "iron-valiant"
+  ],
+  "Erika's Victreebel": [
+    "victreebel",
+    "tangela"
+  ],
+  "Espathra": [
+    "espathra"
+  ],
+  "Espathra Froslass": [
+    "espathra",
+    "froslass"
+  ],
+  "Espathra Xatu": [
+    "espathra",
+    "xatu"
+  ],
+  "Ethan's Magcargo": [
+    "magcargo",
+    "ho-oh"
+  ],
+  "Ethan's Typhlosion": [
+    "typhlosion"
+  ],
+  "Farigiraf": [
+    "farigiraf"
+  ],
+  "Farigiraf Crustle": [
+    "farigiraf",
+    "crustle"
+  ],
+  "Farigiraf Milotic": [
+    "farigiraf",
+    "milotic"
+  ],
+  "Feraligatr": [
+    "feraligatr"
+  ],
+  "Festival Lead": [
+    "dipplin",
+    "thwackey"
+  ],
+  "Flareon": [
+    "flareon"
+  ],
+  "Flareon Noctowl": [
+    "flareon",
+    "noctowl"
+  ],
+  "Flygon": [
+    "flygon"
+  ],
+  "Forretress": [
+    "forretress"
+  ],
+  "Froslass Dudunsparce": [
+    "froslass-mega",
+    "dudunsparce"
+  ],
+  "Froslass Munkidori": [
+    "froslass",
+    "munkidori"
+  ],
+  "Future Box": [
+    "miraidon",
+    "iron-crown"
+  ],
+  "Future Hands": [
+    "iron-hands",
+    "iron-crown"
+  ],
+  "Future Thorns": [
+    "iron-thorns",
+    "iron-crown"
+  ],
+  "Galvantula": [
+    "galvantula"
+  ],
+  "Garchomp": [
+    "garchomp"
+  ],
+  "Gardevoir": [
+    "gardevoir"
+  ],
+  "Gardevoir Jellicent": [
+    "gardevoir",
+    "jellicent"
+  ],
+  "Gengar": [
+    "gengar"
+  ],
+  "Gholdengo": [
+    "gholdengo"
+  ],
+  "Gholdengo Dragapult": [
+    "gholdengo",
+    "dragapult"
+  ],
+  "Gholdengo Dudunsparce": [
+    "gholdengo",
+    "dudunsparce"
+  ],
+  "Gholdengo Joltik Box": [
+    "gholdengo",
+    "joltik"
+  ],
+  "Gholdengo Lunatone": [
+    "gholdengo",
+    "lunatone"
+  ],
+  "Gholdengo Typhlosion": [
+    "gholdengo",
+    "typhlosion"
+  ],
+  "Giratina": [
+    "giratina-origin"
+  ],
+  "Giratina LZ Box": [
+    "giratina-origin",
+    "comfey"
+  ],
+  "Glimmora": [
+    "glimmora"
+  ],
+  "Goodra LZ Box": [
+    "goodra-hisui",
+    "comfey"
+  ],
+  "Gothitelle": [
+    "gothitelle"
+  ],
+  "Gouging Fire": [
+    "gouging-fire"
+  ],
+  "Great Tusk Mill": [
+    "great-tusk"
+  ],
+  "Greninja": [
+    "greninja"
+  ],
+  "Greninja Blaziken": [
+    "greninja",
+    "blaziken"
+  ],
+  "Greninja Froslass": [
+    "greninja",
+    "froslass"
+  ],
+  "Grimmsnarl Froslass": [
+    "grimmsnarl",
+    "froslass"
+  ],
+  "Heatran Metang": [
+    "heatran",
+    "metang"
+  ],
+  "Hisuian Arcanine": [
+    "arcanine-hisui"
+  ],
+  "Hisuian Goodra": [
+    "goodra-hisui"
+  ],
+  "Hisuian Lilligant": [
+    "lilligant-hisui"
+  ],
+  "Hisuian Samurott": [
+    "samurott-hisui"
+  ],
+  "Hisuian Zoroark": [
+    "zoroark-hisui"
+  ],
+  "Ho-Oh Armarouge": [
+    "ho-oh",
+    "armarouge"
+  ],
+  "Hop's Trevenant": [
+    "trevenant"
+  ],
+  "Hop's Zacian": [
+    "zacian-crowned",
+    "snorlax"
+  ],
+  "Hydrapple": [
+    "hydrapple"
+  ],
+  "Hydrapple Ogerpon": [
+    "hydrapple",
+    "ogerpon"
+  ],
+  "Hydreigon": [
+    "hydreigon"
+  ],
+  "Incineroar": [
+    "incineroar"
+  ],
+  "Iono's Bellibolt": [
+    "bellibolt",
+    "voltorb"
+  ],
+  "Iron Hands Magneton": [
+    "iron-hands",
+    "magneton"
+  ],
+  "Iron Thorns": [
+    "iron-thorns"
+  ],
+  "Iron Thorns Crustle": [
+    "iron-thorns",
+    "crustle"
+  ],
+  "Iron Valiant": [
+    "iron-valiant"
+  ],
+  "Iron Valiant Xatu": [
+    "iron-valiant",
+    "xatu"
+  ],
+  "Jellicent Dusknoir": [
+    "jellicent",
+    "dusknoir"
+  ],
+  "Joltik Box": [
+    "joltik",
+    "pikachu"
+  ],
+  "Kangaskhan Bouffalant": [
+    "kangaskhan-mega",
+    "bouffalant"
+  ],
+  "Kangaskhan Forretress": [
+    "kangaskhan-mega",
+    "forretress"
+  ],
+  "Klawf": [
+    "klawf",
+    "brute-bonnet"
+  ],
+  "Koraidon": [
+    "koraidon"
+  ],
+  "Kyurem": [
+    "kyurem"
+  ],
+  "Kyurem Palkia": [
+    "kyurem",
+    "palkia-origin"
+  ],
+  "Lillie's Clefairy": [
+    "clefairy"
+  ],
+  "Lopunny Dudunsparce": [
+    "lopunny-mega",
+    "dudunsparce"
+  ],
+  "Lopunny Dusknoir": [
+    "lopunny-mega",
+    "dusknoir"
+  ],
+  "Lost Box Charizard": [
+    "comfey",
+    "charizard"
+  ],
+  "Lost Zone Box": [
+    "comfey",
+    "cramorant"
+  ],
+  "Lucario": [
+    "lucario"
+  ],
+  "Lucario Hariyama": [
+    "lucario-mega",
+    "hariyama"
+  ],
+  "Lugia Archeops": [
+    "lugia",
+    "archeops"
+  ],
+  "Lunatone Solrock": [
+    "lunatone",
+    "solrock"
+  ],
+  "Luxray": [
+    "luxray"
+  ],
+  "Luxray Control": [
+    "pidgeot",
+    "luxray"
+  ],
+  "Magnezone": [
+    "magnezone"
+  ],
+  "Mamoswine": [
+    "mamoswine"
+  ],
+  "Manectric Eelektrik": [
+    "manectric-mega",
+    "eelektrik"
+  ],
+  "Marnie's Grimmsnarl": [
+    "grimmsnarl"
+  ],
+  "Mega Abomasnow": [
+    "abomasnow-mega"
+  ],
+  "Mega Absol Box": [
+    "absol-mega",
+    "kangaskhan-mega"
+  ],
+  "Mega Camerupt": [
+    "camerupt-mega"
+  ],
+  "Mega Charizard X": [
+    "charizard-mega-x"
+  ],
+  "Mega Diancie": [
+    "diancie-mega"
+  ],
+  "Mega Dragonite": [
+    "dragonite-mega"
+  ],
+  "Mega Feraligatr": [
+    "feraligatr-mega"
+  ],
+  "Mega Froslass": [
+    "froslass-mega"
+  ],
+  "Mega Gengar": [
+    "gengar-mega"
+  ],
+  "Mega Greninja": [
+    "greninja-mega"
+  ],
+  "Mega Latias": [
+    "latias-mega"
+  ],
+  "Mega Lopunny": [
+    "lopunny-mega"
+  ],
+  "Mega Lucario": [
+    "lucario-mega"
+  ],
+  "Mega Manectric": [
+    "manectric-mega"
+  ],
+  "Mega Sharpedo": [
+    "sharpedo-mega"
+  ],
+  "Mega Starmie": [
+    "starmie-mega"
+  ],
+  "Mega Venusaur": [
+    "venusaur-mega"
+  ],
+  "Mega Zygarde": [
+    "zygarde-mega"
+  ],
+  "Meowscarada": [
+    "meowscarada"
+  ],
+  "Metagross": [
+    "metagross"
+  ],
+  "Mewtwo": [
+    "mewtwo"
+  ],
+  "Milotic": [
+    "milotic"
+  ],
+  "Milotic Farigiraf": [
+    "milotic",
+    "farigiraf"
+  ],
+  "Mimikyu Ogerpon": [
+    "mimikyu",
+    "ogerpon-cornerstone"
+  ],
+  "Miraidon": [
+    "miraidon"
+  ],
+  "Miraidon Eelektrik": [
+    "miraidon",
+    "eelektrik"
+  ],
+  "Miraidon Regieleki": [
+    "miraidon",
+    "regieleki"
+  ],
+  "Misty's Gyarados": [
+    "gyarados",
+    "psyduck"
+  ],
+  "N's Zoroark": [
+    "zoroark"
+  ],
+  "Noivern": [
+    "noivern"
+  ],
+  "Ogerpon": [
+    "ogerpon",
+    "ogerpon-wellspring"
+  ],
+  "Ogerpon Meganium": [
+    "ogerpon",
+    "meganium"
+  ],
+  "Ogerpon Meganium Arboliva": [
+    "ogerpon",
+    "arboliva"
+  ],
+  "Ogerpon Meganium Hydrapple": [
+    "ogerpon",
+    "hydrapple"
+  ],
+  "Ogerpon Noivern": [
+    "ogerpon-cornerstone",
+    "noivern"
+  ],
+  "Oinkologne": [
+    "oinkologne"
+  ],
+  "Okidogi": [
+    "okidogi"
+  ],
+  "Okidogi Barbaracle": [
+    "okidogi",
+    "barbaracle"
+  ],
+  "Okidogi Garchomp": [
+    "okidogi",
+    "garchomp"
+  ],
+  "Omastar Archeops": [
+    "omastar",
+    "archeops"
+  ],
+  "Pachirisu": [
+    "pachirisu"
+  ],
+  "Pachirisu Honchkrow": [
+    "pachirisu",
+    "honchkrow"
+  ],
+  "Palafin": [
+    "palafin-hero"
+  ],
+  "Paldean Tauros": [
+    "tauros-paldea"
+  ],
+  "Palkia": [
+    "palkia-origin"
+  ],
+  "Palkia Chien-Pao": [
+    "palkia-origin",
+    "chien-pao"
+  ],
+  "Palkia Dusknoir": [
+    "palkia-origin",
+    "dusknoir"
+  ],
+  "Palkia Noctowl": [
+    "palkia-origin",
+    "noctowl"
+  ],
+  "Pidgeot Control": [
+    "pidgeot"
+  ],
+  "Pikachu": [
+    "pikachu-gmax"
+  ],
+  "Pikachu Regis": [
+    "regigigas",
+    "pikachu"
+  ],
+  "Poison Archaludon": [
+    "archaludon",
+    "brute-bonnet"
+  ],
+  "Poison Latias": [
+    "latias-mega",
+    "brute-bonnet"
+  ],
+  "Poison Terapagos": [
+    "terapagos",
+    "brute-bonnet"
+  ],
+  "Raging Bolt": [
+    "raging-bolt"
+  ],
+  "Raging Bolt Bellibolt": [
+    "raging-bolt",
+    "bellibolt"
+  ],
+  "Raging Bolt LZ Box": [
+    "raging-bolt",
+    "comfey"
+  ],
+  "Raging Bolt Ogerpon": [
+    "raging-bolt",
+    "ogerpon"
+  ],
+  "Raging Bolt Sandy Shocks": [
+    "raging-bolt",
+    "sandy-shocks"
+  ],
+  "Regidrago": [
+    "regidrago"
+  ],
+  "Regigigas": [
+    "regigigas"
+  ],
+  "Regis": [
+    "regigigas"
+  ],
+  "Roaring Moon": [
+    "roaring-moon"
+  ],
+  "Roaring Moon Dudunsparce": [
+    "roaring-moon",
+    "dudunsparce"
+  ],
+  "Rocket's Honchkrow": [
+    "honchkrow",
+    "porygon2"
+  ],
+  "Rocket's Mewtwo": [
+    "mewtwo",
+    "spidops"
+  ],
+  "Rocket's Nidoking": [
+    "nidoking"
+  ],
+  "Rocket's Porygon-Z": [
+    "porygon-z"
+  ],
+  "Rocket's Spidops": [
+    "spidops"
+  ],
+  "Rotom": [
+    "rotom"
+  ],
+  "Salamence": [
+    "salamence"
+  ],
+  "Scizor": [
+    "scizor"
+  ],
+  "Scovillain": [
+    "scovillain"
+  ],
+  "Seaking Festival Lead": [
+    "seaking",
+    "thwackey"
+  ],
+  "Serperior": [
+    "serperior"
+  ],
+  "Sharpedo Toxtricity": [
+    "sharpedo-mega",
+    "toxtricity"
+  ],
+  "Sinistcha Ogerpon": [
+    "sinistcha",
+    "ogerpon"
+  ],
+  "Slaking": [
+    "slaking"
+  ],
+  "Slowking": [
+    "slowking"
+  ],
+  "Snorlax": [
+    "snorlax"
+  ],
+  "Snorlax Pidgeot": [
+    "snorlax",
+    "pidgeot"
+  ],
+  "Snorlax Stall": [
+    "snorlax"
+  ],
+  "Spidops": [
+    "spidops"
+  ],
+  "Spidops Venomoth": [
+    "spidops",
+    "venomoth"
+  ],
+  "Starmie Dusknoir": [
+    "starmie-mega",
+    "dusknoir"
+  ],
+  "Starmie Froslass": [
+    "starmie-mega",
+    "froslass"
+  ],
+  "Steelix": [
+    "steelix"
+  ],
+  "Steelix Dodrio": [
+    "steelix",
+    "dodrio"
+  ],
+  "Steven's Metagross": [
+    "metagross"
+  ],
+  "Tera Box": [
+    "noctowl",
+    "ogerpon-wellspring"
+  ],
+  "Terapagos Noctowl": [
+    "terapagos",
+    "noctowl"
+  ],
+  "Ting-Lu": [
+    "ting-lu"
+  ],
+  "Tinkaton": [
+    "tinkaton"
+  ],
+  "Toedscruel Ogerpon": [
+    "toedscruel",
+    "ogerpon"
+  ],
+  "Torterra": [
+    "torterra"
+  ],
+  "Toxtricity": [
+    "toxtricity"
+  ],
+  "Toxtricity Box": [
+    "toxtricity",
+    "absol-mega"
+  ],
+  "Toxtricity Brute Bonnet": [
+    "toxtricity",
+    "brute-bonnet"
+  ],
+  "Tsareena": [
+    "tsareena"
+  ],
+  "Tyranitar": [
+    "tyranitar"
+  ],
+  "United Wings": [
+    "murkrow",
+    "flamigo"
+  ],
+  "Ursaluna Iron Valiant": [
+    "ursaluna-bloodmoon",
+    "iron-valiant"
+  ],
+  "Ursaluna Lunatone": [
+    "ursaluna-bloodmoon",
+    "lunatone"
+  ],
+  "Venomoth": [
+    "venomoth"
+  ],
+  "Venomoth Froslass": [
+    "venomoth",
+    "froslass"
+  ],
+  "Walking Wake": [
+    "walking-wake"
+  ],
+  "Wugtrio Mill": [
+    "wugtrio"
+  ],
+  "Yanmega": [
+    "yanmega"
+  ],
+  "Zeraora": [
+    "zeraora"
+  ],
+  "Zoroark Crustle": [
+    "zoroark",
+    "crustle"
+  ],
+  "Zoroark Lucario": [
+    "zoroark",
+    "lucario-mega"
+  ],
+  "Zygarde Barbaracle": [
+    "zygarde-mega",
+    "barbaracle"
+  ]
+}

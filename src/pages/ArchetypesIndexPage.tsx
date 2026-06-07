@@ -1,6 +1,6 @@
 import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
-import { fetchArchetypes, prettyTournamentName } from '../lib/data';
+import { fetchArchetypes, getArchetypeIconMap, prettyTournamentName, resolveArchetypeIcons } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
 import type { ArchetypeIndexEntry } from '../types';
@@ -10,6 +10,7 @@ import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { ArchetypeCard } from '../components/ArchetypeCard';
+import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { createPersistentViewMode } from '../lib/persistentSignal';
 import { formatPercent } from '../lib/format';
 
@@ -35,6 +36,7 @@ export function ArchetypesIndexPage() {
     }
     return map;
   });
+  const iconMap = getArchetypeIconMap();
   const [query, setQuery] = createSignal('');
   const [viewMode, setViewMode] = createPersistentViewMode('cm:archetypesView');
   const navigate = useNavigate();
@@ -111,6 +113,7 @@ export function ArchetypesIndexPage() {
               fallback={
                 <ArchetypesListView
                   items={filtered()}
+                  iconMap={iconMap}
                   onSelect={slug => navigate(`/archetypes/${encodeURIComponent(slug)}`)}
                 />
               }
@@ -126,7 +129,11 @@ export function ArchetypesIndexPage() {
   );
 }
 
-function ArchetypesListView(props: { items: ArchetypeIndexEntry[]; onSelect: (slug: string) => void }) {
+function ArchetypesListView(props: {
+  items: ArchetypeIndexEntry[];
+  iconMap?: Map<string, string[]>;
+  onSelect: (slug: string) => void;
+}) {
   return (
     <div class='table-wrap'>
       <table class='data'>
@@ -136,7 +143,6 @@ function ArchetypesListView(props: { items: ArchetypeIndexEntry[]; onSelect: (sl
             <th>Archetype</th>
             <th class='num'>Meta share</th>
             <th class='num'>Decks</th>
-            <th>Signature cards</th>
           </tr>
         </thead>
         <tbody>
@@ -154,11 +160,13 @@ function ArchetypesListView(props: { items: ArchetypeIndexEntry[]; onSelect: (sl
               >
                 <td class='num muted-cell'>{i() + 1}</td>
                 <td>
-                  <span class='cardname'>{entry.label || entry.name}</span>
+                  <span class='arche-name-cell'>
+                    <ArchetypeIcons slugs={resolveArchetypeIcons(entry, props.iconMap)} />
+                    <span class='cardname'>{entry.label || entry.name}</span>
+                  </span>
                 </td>
                 <td class='num'>{formatPercent(entry.percent)}</td>
                 <td class='num muted-cell'>{entry.deckCount?.toLocaleString() ?? '—'}</td>
-                <td class='muted-cell'>{formatSignatures(entry)}</td>
               </tr>
             )}
           </For>
@@ -166,17 +174,6 @@ function ArchetypesListView(props: { items: ArchetypeIndexEntry[]; onSelect: (sl
       </table>
     </div>
   );
-}
-
-function formatSignatures(entry: ArchetypeIndexEntry): string {
-  const sigs = entry.signatureCards ?? [];
-  if (sigs.length === 0) {
-    return '—';
-  }
-  return sigs
-    .slice(0, 3)
-    .map(s => s.name)
-    .join(' · ');
 }
 
 function ListSkeleton() {
@@ -189,7 +186,6 @@ function ListSkeleton() {
             <th>Archetype</th>
             <th class='num'>Meta share</th>
             <th class='num'>Decks</th>
-            <th>Signature cards</th>
           </tr>
         </thead>
         <tbody>
@@ -207,9 +203,6 @@ function ListSkeleton() {
                 </td>
                 <td class='num'>
                   <Skeleton width='48px' />
-                </td>
-                <td>
-                  <Skeleton width='80%' />
                 </td>
               </tr>
             )}

@@ -351,6 +351,11 @@ export interface ArchetypeIndexEntry {
   thumbnails: string[];
   /** Signature cards that exemplify this archetype */
   signatureCards?: SignatureCardEntry[];
+  /**
+   * Representative Pokémon icon slugs (Limitless sprites), e.g. ["dragapult", "dusknoir"].
+   * Up to two. Rendered via `${ICON_BASE}/{slug}.png`. See ArchetypeIcons component.
+   */
+  icons?: string[];
 }
 
 /**

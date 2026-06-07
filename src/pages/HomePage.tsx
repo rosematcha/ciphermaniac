@@ -642,18 +642,6 @@ function StoryCard(props: { story: Story; hasDay2: boolean }) {
       </div>
       <h4 class='story-card-headline'>{props.story.headline}</h4>
       <p class='story-card-body'>{props.story.body}</p>
-      <Show when={props.story.statBar}>
-        <div class='story-card-conv' aria-hidden='true'>
-          <div class='conv-label'>{props.story.statBar!.label}</div>
-          <div class='conv-track'>
-            <div class='conv-fill' style={{ width: `${Math.min(100, props.story.statBar!.fillPct)}%` }} />
-          </div>
-          <div class='conv-stats'>
-            <span>{props.story.statBar!.left}</span>
-            <span class='conv-pct'>{props.story.statBar!.right}</span>
-          </div>
-        </div>
-      </Show>
     </A>
   );
 }

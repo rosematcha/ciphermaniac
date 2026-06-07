@@ -2414,6 +2414,29 @@ a.callout-arc-row:hover .arc-name-cell { color: var(--accent); }
   border-radius: 1px;
 }
 
+/* ---------- Archetype Pokémon icons ----------
+   Compact Limitless sprite(s) shown beside an archetype name (list view,
+   trends legend, etc.). Up to two; paired icons overlap slightly. */
+.arche-icons {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+.arche-icons .arche-icon + .arche-icon {
+  margin-left: -6px;
+}
+.arche-icon {
+  display: block;
+  object-fit: contain;
+}
+/* List-view archetype cell: icon(s) then name on one baseline. */
+.arche-name-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 /* ---------- Cards grid (/cards page) ----------
    Histogram + total-usage bar are overlaid on the card image. Every card
    image is `object-fit: contain` so its full frame is preserved (no cropping
