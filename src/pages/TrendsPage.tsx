@@ -5,10 +5,13 @@ import {
   fetchMaster,
   fetchOnlineTrendReport,
   fetchTournamentsList,
+  getArchetypeIconMap,
   majorTournaments,
+  resolveArchetypeIcons,
   tournamentDate
 } from '../lib/data';
 import type { ArchetypeIndexEntry, CardItem } from '../types';
+import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { Section } from '../components/Section';
 import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
@@ -570,6 +573,7 @@ interface DayBin {
 }
 
 function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[]; windowDays: number }) {
+  const iconMap = getArchetypeIconMap();
   const PADDING = { top: 16, right: 16, bottom: 32, left: 38 };
   const HEIGHT = 320;
   // Width is measured from the container so the SVG fills horizontally without
@@ -870,6 +874,7 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
         <For each={props.series}>
           {(s, i) => (
             <span class='leg' style={{ '--leg-color': ARCHETYPE_LINE_COLORS[i() % ARCHETYPE_LINE_COLORS.length] }}>
+              <ArchetypeIcons slugs={resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap)} size={16} />
               {s.label}
               <span class='muted-cell'> · {s.avg.toFixed(1)}% avg</span>
             </span>

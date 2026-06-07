@@ -39,6 +39,7 @@ LOCAL_CARD_TYPES_PATH = Path("public") / "assets" / "data" / "card-types.json"
 CARD_SYNONYMS_KEY = "assets/card-synonyms.json"
 LOCAL_CARD_SYNONYMS_PATH = Path("public") / "assets" / "card-synonyms.json"
 ARCHETYPE_THUMBNAILS_PATH = Path("public") / "assets" / "data" / "archetype-thumbnails.json"
+ARCHETYPE_ICONS_PATH = Path("src") / "data" / "archetype-icons.json"
 
 # --- Archetype thumbnail/signature card inference ---
 # Ported from .github/scripts/run-online-meta.mjs so event reports populate the
@@ -1427,6 +1428,15 @@ def _load_archetype_thumbnail_config() -> Dict[str, List[str]]:
         return {}
 
 
+def _load_archetype_icon_config() -> Dict[str, List[str]]:
+    try:
+        with ARCHETYPE_ICONS_PATH.open(encoding="utf-8") as handle:
+            data = json.load(handle)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
 def normalize_deck_label(label: Any) -> str:
     text = re.sub(r"[‘’']", "", str(label or ""))
     text = re.sub(r"[^a-zA-Z0-9]+", "_", text)
@@ -1664,6 +1674,74 @@ def resolve_archetype_thumbnails(
     return infer_archetype_thumbnails(display_name or base_name or "", report_data, card_meta_lookup, meta_usage)
 
 
+def slugify_pokemon_icon(name: Any) -> str:
+    """Pokémon card name → Limitless icon slug (lowercase, hyphenated, ex/V/…
+    suffix stripped). e.g. "Raging Bolt ex" → "raging-bolt", "Dragapult ex" →
+    "dragapult". Form variants (greninja-mega, lucario-mega) can't be recovered
+    from the card name — those live in the override config (archetype-icons.json)."""
+    text = normalize_for_pokemon_match(name)
+    text = re.sub(r"['’]", "", text)
+    text = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    return text
+
+
+def _derive_icons_from_thumbnails(thumbnails: List[str], report_data: Optional[Dict[str, Any]]) -> List[str]:
+    """Map the archetype's representative thumbnail cards back to their Pokémon
+    names and slugify them. The thumbnail engine already picked the deck's face
+    Pokémon (Stage 1-3), so this reuses that work rather than re-tokenizing the
+    archetype name (which can't tell "Raging Bolt" is one Pokémon, not two)."""
+    if not thumbnails:
+        return []
+    name_by_id: Dict[str, str] = {}
+    for item in (report_data or {}).get("items") or []:
+        if not is_pokemon(item):
+            continue
+        thumb_id = build_thumbnail_id(item.get("set"), item.get("number"))
+        if thumb_id:
+            name_by_id[_strip_leading_zeros_in_id(thumb_id)] = item.get("name") or ""
+
+    slugs: List[str] = []
+    seen_species: set = set()
+    for thumb in thumbnails:
+        name = name_by_id.get(_strip_leading_zeros_in_id(thumb))
+        if not name:
+            continue
+        slug = slugify_pokemon_icon(name)
+        species = _species_key(name)
+        if not slug or (species and species in seen_species) or slug in slugs:
+            continue
+        slugs.append(slug)
+        if species:
+            seen_species.add(species)
+        if len(slugs) >= AUTO_THUMB_MAX:
+            break
+    return slugs
+
+
+def resolve_archetype_icons(
+    base_name: str,
+    display_name: str,
+    thumbnails: List[str],
+    report_data: Optional[Dict[str, Any]],
+    config: Dict[str, List[str]],
+) -> List[str]:
+    """Prefer the hand-maintained override map (carries form info), else derive
+    slugs from the chosen thumbnail Pokémon. Mirrors resolve_archetype_thumbnails'
+    name-reconciliation so Labs deck names match Limitless decks-page labels."""
+    attempts = [display_name, display_name.replace("_", " ") if display_name else display_name, base_name]
+    for key in attempts:
+        if key and isinstance(config.get(key), list) and config[key]:
+            return list(config[key])[:AUTO_THUMB_MAX]
+
+    target = normalize_deck_label(display_name or base_name or "")
+    if target:
+        for key, slugs in config.items():
+            if normalize_deck_label(key) == target and slugs:
+                return list(slugs)[:AUTO_THUMB_MAX]
+
+    return _derive_icons_from_thumbnails(thumbnails, report_data)
+
+
 def normalize_for_pokemon_match(name: Any) -> str:
     text = str(name or "").lower()
     text = re.sub(r"\s+(ex|v|vmax|vstar|gx|break|radiant|prism star)$", "", text, flags=re.IGNORECASE)
@@ -1817,6 +1895,7 @@ def build_archetype_reports(
             archetype_casing[norm_name] = ensure_archetype(deck.get("archetype"))
 
     thumbnail_config = _load_archetype_thumbnail_config()
+    icon_config = _load_archetype_icon_config()
     card_meta_lookup = build_card_meta_lookup(card_types_db)
     meta_usage: Dict[str, float] = {}
     for item in (master_report or {}).get("items") or []:
@@ -1836,6 +1915,7 @@ def build_archetype_reports(
             base_name, proper_name, cards_report, thumbnail_config, card_meta_lookup, meta_usage
         )
         signature_cards = generate_signature_cards(proper_name, cards_report, master_report, thumbnails)
+        icons = resolve_archetype_icons(base_name, proper_name, thumbnails, cards_report, icon_config)
         archetype_index_list.append(
             {
                 "name": base_name,
@@ -1844,6 +1924,7 @@ def build_archetype_reports(
                 "percent": round(len(deck_list) / deck_total, 6) if deck_total else 0,
                 "thumbnails": thumbnails,
                 "signatureCards": signature_cards,
+                "icons": icons,
             }
         )
 
