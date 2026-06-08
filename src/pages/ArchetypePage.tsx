@@ -1,4 +1,4 @@
-import { A, useNavigate, useParams } from '@solidjs/router';
+import { A, useNavigate, useParams, useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, onMount, Show } from 'solid-js';
 import {
   fetchArchetype,
@@ -16,16 +16,18 @@ import { EmptyState } from '../components/EmptyState';
 import { Skeleton } from '../components/Skeleton';
 import { CardList, type ViewMode } from '../components/CardList';
 import { AdvancedPanel } from '../components/AdvancedPanel';
+import { MatchupsPanel } from '../components/MatchupsPanel';
 import { createPersistentViewMode } from '../lib/persistentSignal';
 import { normalizePercent } from '../lib/format';
 
-type ArchTab = 'core' | 'tech' | 'cards' | 'advanced';
+type ArchTab = 'core' | 'tech' | 'cards' | 'matchups' | 'advanced';
 
 const TAB_OPTIONS: { value: ArchTab; label: string }[] = [
   { value: 'core', label: 'Core list' },
   { value: 'tech', label: 'Tech choices' },
   { value: 'cards', label: 'All cards' },
-  { value: 'advanced', label: 'Advanced' }
+  { value: 'matchups', label: 'Matchups' },
+  { value: 'advanced', label: 'Filters' }
 ];
 const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
   { value: 'grid', label: 'Grid' },
@@ -41,7 +43,22 @@ const TECH_THRESHOLD = 30;
 export function ArchetypePage() {
   const params = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { tournament } = useTournament();
+  const { tournament, setTournament } = useTournament();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // A shared link carries the tournament as `tour`. Adopt it *before* the report
+  // resource first reads tournament(), so data loads in the right scope, then
+  // strip it on mount so it can't override a later manual switch on reload.
+  const sharedTour = typeof searchParams.tour === 'string' ? searchParams.tour.trim() : '';
+  if (sharedTour && sharedTour !== tournament()) {
+    setTournament(sharedTour);
+  }
+  onMount(() => {
+    if (searchParams.tour) {
+      setSearchParams({ tour: undefined }, { replace: true });
+    }
+  });
+
   const [report] = createResource(
     () => ({ t: tournament(), slug: params.slug }),
     ({ t, slug }) => fetchArchetype(t, slug)
@@ -65,7 +82,9 @@ export function ArchetypePage() {
     }
   });
   const [rotationIndex] = createResource(fetchRotationIndex);
-  const [tab, setTab] = createSignal<ArchTab>('core');
+  // Land a shared filter link straight on the Filters tab.
+  const sharedFilters = Boolean(searchParams.b || searchParams.s || searchParams.t);
+  const [tab, setTab] = createSignal<ArchTab>(sharedFilters ? 'advanced' : 'core');
   const [viewMode, setViewMode] = createPersistentViewMode('cm:cardsView');
 
   // Pre-rotation snapshot fallback. Fires when the live archetype lookup has
@@ -164,6 +183,7 @@ export function ArchetypePage() {
           tournament={effectiveTournament()}
           report={effectiveReport()!}
           indexEntry={indexEntry()}
+          indexEntries={effectiveIndex()}
           tab={tab()}
           onTabChange={setTab}
           viewMode={viewMode()}
@@ -180,6 +200,7 @@ interface ArchetypeBodyProps {
   tournament: string;
   report: ArchetypeReport;
   indexEntry: ArchetypeIndexEntry | undefined;
+  indexEntries: ArchetypeIndexEntry[] | undefined;
   tab: ArchTab;
   onTabChange: (t: ArchTab) => void;
   viewMode: ViewMode;
@@ -219,12 +240,15 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
       <section>
         <div class='arche-toolbar'>
           <Tabs options={TAB_OPTIONS} selected={props.tab} onSelect={props.onTabChange} />
-          <Segmented<ViewMode>
-            options={VIEW_OPTIONS}
-            selected={props.viewMode}
-            onSelect={props.onViewChange}
-            ariaLabel='View mode'
-          />
+          {/* Grid/List only affects the card views; the Matchups tab has its own layout. */}
+          <Show when={props.tab !== 'matchups'}>
+            <Segmented<ViewMode>
+              options={VIEW_OPTIONS}
+              selected={props.viewMode}
+              onSelect={props.onViewChange}
+              ariaLabel='View mode'
+            />
+          </Show>
         </div>
 
         <Show when={props.tab === 'core'}>
@@ -251,6 +275,16 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
             items={sortedByPct()}
             viewMode={props.viewMode}
             emptyMessage='No cards in this report.'
+          />
+        </Show>
+
+        <Show when={props.tab === 'matchups'}>
+          <MatchupsPanel
+            slug={props.slug}
+            label={props.label}
+            tournament={props.tournament}
+            indexEntries={props.indexEntries}
+            report={props.report}
           />
         </Show>
 

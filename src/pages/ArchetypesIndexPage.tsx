@@ -161,7 +161,7 @@ function ArchetypesListView(props: {
                 <td class='num muted-cell'>{i() + 1}</td>
                 <td>
                   <span class='arche-name-cell'>
-                    <ArchetypeIcons slugs={resolveArchetypeIcons(entry, props.iconMap)} />
+                    <ArchetypeIcons slugs={resolveArchetypeIcons(entry, props.iconMap)} size={28} reserveSlot />
                     <span class='cardname'>{entry.label || entry.name}</span>
                   </span>
                 </td>

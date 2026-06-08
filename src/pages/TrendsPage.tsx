@@ -412,6 +412,17 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
     const byArche = new Map<string, { label: string; shares: (number | null)[] }>();
     days.forEach((day, dayIdx) => {
       for (const snap of day.snaps!) {
+        // Per-event archetype reports store `percent` as either a 0..1 fraction
+        // (post-3939e71) or a 0..100 value (older files). The scale is uniform
+        // within a file, so detect it once per snapshot: a fractional file's max
+        // is ≤1, while a 0..100 file always has a dominant deck >1. Detecting
+        // per-value instead would wrongly inflate sub-1% niche decks (e.g. a deck
+        // at 0.84% in a 0..100 file) into 84%.
+        const maxPercent = snap.archetypes!.reduce(
+          (m, a) => (Number.isFinite(a.percent) && (a.percent as number) > m ? (a.percent as number) : m),
+          0
+        );
+        const scale = maxPercent > 0 && maxPercent <= 1 ? 100 : 1;
         for (const a of snap.archetypes!) {
           const key = a.name;
           if (!byArche.has(key)) {
@@ -420,11 +431,10 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
               shares: Array.from({ length: days.length }, () => null)
             });
           }
-          // Per-tournament reports store percent in 0..100 already.
-          const raw = a.percent;
-          if (raw === null || raw === undefined || !Number.isFinite(raw)) {
+          if (a.percent === null || a.percent === undefined || !Number.isFinite(a.percent)) {
             continue;
           }
+          const raw = a.percent * scale;
           const existing = byArche.get(key)!.shares[dayIdx];
           byArche.get(key)!.shares[dayIdx] = existing === null ? raw : (existing + raw) / 2;
         }
@@ -758,10 +768,11 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
     const entries = props.series
       .map((s, idx) => ({
         label: s.label,
+        slugs: resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap),
         color: ARCHETYPE_LINE_COLORS[idx % ARCHETYPE_LINE_COLORS.length],
         value: s.points[i]
       }))
-      .filter((e): e is { label: string; color: string; value: number } => e.value !== null);
+      .filter((e): e is { label: string; slugs: string[]; color: string; value: number } => e.value !== null);
     return { day, entries, xPx: x(day.date) };
   });
 
@@ -858,6 +869,7 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
                     {e => (
                       <li>
                         <span class='dot' style={{ background: e.color }} />
+                        <ArchetypeIcons slugs={e.slugs} size={16} reserveSlot />
                         <span class='label'>{e.label}</span>
                         <span class='value'>{e.value.toFixed(1)}%</span>
                       </li>

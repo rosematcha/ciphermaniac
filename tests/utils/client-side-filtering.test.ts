@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   type Deck,
+  filterDecks,
   filterDecksBySuccess,
   generateFilteredReport,
   generateReportForFilters
@@ -44,6 +45,36 @@ test('generateReportForFilters narrows decks by archetype and quantity', () => {
   assert.equal(report.deckTotal, 1);
   assert.ok(report.items.length > 0);
   assert.equal(report.raw?.generatedClientSide, true);
+});
+
+test('filterDecks returns the same subset generateReportForFilters aggregates', () => {
+  const decks: Deck[] = [
+    makeDeck({ id: 'd1', archetype: 'Mew', cards: [{ name: 'Pikachu', set: 'SVI', number: '7', count: 2 }] }),
+    makeDeck({ id: 'd2', archetype: 'Mew', cards: [{ name: 'Pikachu', set: 'SVI', number: '7', count: 1 }] }),
+    makeDeck({ id: 'd3', archetype: 'Gardevoir', cards: [{ name: 'Pikachu', set: 'SVI', number: '7', count: 4 }] })
+  ];
+  const filters = [{ cardId: 'SVI~007', operator: '>=', count: 2 }];
+
+  const matched = filterDecks(decks, 'Mew', filters);
+  const report = generateReportForFilters(decks, 'Mew', filters);
+
+  assert.deepEqual(
+    matched.map(d => d.id),
+    ['d1']
+  );
+  assert.equal(matched.length, report.deckTotal);
+});
+
+test('filterDecks with no filters returns every archetype deck', () => {
+  const decks: Deck[] = [
+    makeDeck({ id: 'd1', archetype: 'Mew' }),
+    makeDeck({ id: 'd2', archetype: 'Mew' }),
+    makeDeck({ id: 'd3', archetype: 'Gardevoir' })
+  ];
+  assert.deepEqual(
+    filterDecks(decks, 'Mew', []).map(d => d.id),
+    ['d1', 'd2']
+  );
 });
 
 test('filterDecksBySuccess derives success tags from placement data', () => {
