@@ -2345,8 +2345,9 @@ a.callout-arc-row:hover .arc-name-cell { color: var(--accent); }
   padding: 8px 10px;
   font-size: 12px;
   pointer-events: none;
-  min-width: 180px;
-  max-width: 240px;
+  width: max-content;
+  min-width: 200px;
+  max-width: 300px;
   z-index: 2;
 }
 .chart-tooltip.is-right {
@@ -2368,9 +2369,9 @@ a.callout-arc-row:hover .arc-name-cell { color: var(--accent); }
 }
 .chart-tooltip-list li {
   display: grid;
-  grid-template-columns: 10px 1fr auto;
+  grid-template-columns: 8px auto 1fr auto;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   color: var(--fg);
   font-variant-numeric: tabular-nums;
 }
@@ -2433,7 +2434,7 @@ a.callout-arc-row:hover .arc-name-cell { color: var(--accent); }
 .arche-name-cell {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 11px;
   min-width: 0;
 }
 
@@ -2804,15 +2805,6 @@ body[data-mode="dark"] .card-tile:hover .card-tile-card { box-shadow: 4px 4px 0 
   box-shadow: var(--shadow-1);
   padding: 18px 20px 16px;
 }
-.fb-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: 600;
-  color: var(--muted);
-  margin-bottom: 14px;
-}
-
 .fb-controls {
   display: grid;
   grid-template-columns: 1fr;
@@ -3093,6 +3085,137 @@ body[data-mode="dark"] .card-tile:hover .card-tile-card { box-shadow: 4px 4px 0 
 .fb-actions { display: flex; gap: 6px; }
 
 /* ============================================================
+   Filters → "build toward 60" tooling: pool meter, PTCGL export,
+   the prefer-this-or-that questionnaire, and co-occurrence chips.
+   ============================================================ */
+.fb-build { display: grid; gap: 12px; }
+
+/* Compact pool + export toolbar — one quiet row above the card list. */
+.fb-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.fb-bar-meter { display: flex; align-items: center; gap: 10px; flex: 1 1 220px; min-width: 180px; }
+.fb-bar-count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fb-bar-count b { color: var(--fg); font-weight: 700; font-size: 15px; }
+.fb-bar-track {
+  flex: 1;
+  height: 4px;
+  min-width: 60px;
+  background: var(--surface-2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.fb-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width var(--ms-fast); }
+.fb-bar-track.is-complete .fb-bar-fill { background: var(--positive); }
+.fb-bar-track.is-over .fb-bar-fill { background: var(--negative); }
+.fb-bar-over { font-size: 12px; color: var(--negative); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fb-bar-actions { display: flex; align-items: center; gap: 2px; }
+.fb-bar-msg { font-size: 12px; color: var(--positive); font-weight: 600; margin-right: 6px; }
+.fb-bar-btn {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color var(--ms-fast), background var(--ms-fast);
+}
+.fb-bar-btn:hover:not(:disabled) { color: var(--fg); background: var(--surface-2); }
+.fb-bar-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* Questionnaire — quiet text trigger, then a tight card. */
+.fb-narrow {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--ms-fast), border-color var(--ms-fast);
+}
+.fb-narrow:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: var(--accent);
+}
+/* Questionnaire lives inside the filter box, set off by a rule like the foot. */
+.fb-quiz-section {
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  margin-top: 14px;
+  border-top: 1px solid var(--rule);
+}
+.fb-quiz { display: grid; gap: 12px; }
+.fb-quiz-head { font-size: 13px; font-weight: 600; color: var(--fg); }
+.fb-quiz-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.fb-quiz-opt {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--ms-fast), background var(--ms-fast);
+}
+.fb-quiz-opt:hover { border-color: var(--accent); background: var(--surface-2); }
+.fb-quiz-opt .name { font-weight: 600; font-size: 13px; color: var(--fg); }
+.fb-quiz-opt .pct { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fb-quiz-foot { display: flex; gap: 2px; }
+.fb-quiz-foot button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color var(--ms-fast), background var(--ms-fast);
+}
+.fb-quiz-foot button:hover { color: var(--fg); background: var(--surface-2); }
+
+/* Co-occurrence suggestions — inline chips. */
+.fb-suggest { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.fb-suggest-label { font-size: 12px; color: var(--muted); }
+.fb-suggest-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--positive) 40%, var(--border));
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--fg);
+  cursor: pointer;
+  transition: border-color var(--ms-fast), background var(--ms-fast);
+}
+.fb-suggest-chip:hover { background: var(--surface-2); border-color: var(--positive); }
+.fb-suggest-chip .pct { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.fb-suggest-chip .plus { color: var(--positive); font-weight: 700; }
+
+@media (max-width: 640px) {
+  .fb-quiz-options { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
    Touch devices: suppress hover-elevation transforms.
    On (hover: none) devices, :hover still latches briefly after a tap
    and can leave cards stuck in their hover transform. We override the
@@ -3139,4 +3262,284 @@ body[data-mode="dark"] .card-tile:hover .card-tile-card { box-shadow: 4px 4px 0 
   :is(.arche, .story-card):hover .card-stack-3 .card-stack-slot:nth-child(3) {
     transform: translate(22%, 4%) rotate(8deg);
   }
+}
+
+/* =====================================================================
+   Matchups tab — diverging win-rate bars + inline card lens
+   ===================================================================== */
+
+/* Controls row: weighting + methodology on the left, card lens on the right. */
+.mu-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.mu-controls-start,
+.mu-controls-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.mu-ctl-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* "Compare a card" trigger */
+.mu-lens-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 13px;
+  cursor: pointer;
+  transition: border-color var(--ms-fast), background var(--ms-fast);
+}
+.mu-lens-add:hover { background: var(--surface-2); border-color: var(--accent); }
+.mu-lens-plus { color: var(--accent); font-weight: 700; font-size: 14px; line-height: 1; }
+
+/* Active lens chip */
+.mu-lens-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 5px 3px 13px;
+}
+.mu-lens-name {
+  font-weight: 600;
+  color: var(--fg);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mu-copies {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.mu-copies input {
+  width: 34px;
+  padding: 2px 2px;
+  text-align: center;
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  font: inherit;
+  font-size: 12px;
+}
+.mu-lens-clear {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 5px;
+  border-radius: 50%;
+}
+.mu-lens-clear:hover { color: var(--negative); background: var(--surface); }
+
+/* Card search */
+.mu-search { position: relative; margin-bottom: 16px; max-width: 420px; }
+.mu-search input {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  transition: border-color var(--ms-fast), box-shadow var(--ms-fast);
+}
+.mu-search input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+/* Lens summary line */
+.mu-summary {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin: 0 0 16px;
+  font-variant-numeric: tabular-nums;
+}
+.mu-summary b { color: var(--fg); font-weight: 700; }
+.mu-summary-delta { font-weight: 700; }
+.mu-summary-delta.mu-pos { color: var(--positive); }
+.mu-summary-delta.mu-neg { color: var(--negative); }
+.mu-summary-delta.mu-flat { color: var(--muted); }
+.mu-summary-sub { color: var(--muted); }
+.mu-summary .info-tip { margin-left: 6px; }
+
+/* Legend for the lens markers */
+.mu-legend {
+  display: flex;
+  gap: 16px;
+  margin: 0 0 8px;
+  padding: 0 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.mu-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+
+/* List + rows */
+.mu-list { display: flex; flex-direction: column; }
+.mu-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.35fr) minmax(88px, 1.7fr) minmax(104px, max-content);
+  align-items: center;
+  gap: 16px;
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+}
+.mu-row:last-of-type { border-bottom: 0; }
+.mu-row.is-link { cursor: pointer; }
+.mu-row.is-link:hover { background: var(--surface-2); }
+.mu-row.is-link:hover .cardname { color: var(--accent); }
+.mu-row.is-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--surface-2);
+}
+.mu-row.mu-low { opacity: 0.5; }
+.mu-row.mu-low:hover { opacity: 0.9; }
+
+/* Name cell: opponent (truncates) + optional field-share, in one row */
+.mu-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.mu-opp { display: inline-flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.mu-opp .cardname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  transition: color var(--ms-fast);
+}
+.mu-meta {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The bar */
+.mu-bar {
+  position: relative;
+  height: 20px;
+  background: var(--surface-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.mu-bar-axis {
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  bottom: 2px;
+  width: 1px;
+  background: var(--border);
+  opacity: 0.4;
+}
+.mu-bar-fill {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 1px;
+  transition: left var(--ms-slow) var(--ease-base), width var(--ms-slow) var(--ease-base);
+}
+.mu-bar-fill.mu-pos { background: var(--positive); }
+.mu-bar-fill.mu-neg { background: var(--negative); }
+.mu-bar-fill.mu-flat { background: var(--muted); }
+
+/* Lens markers + connector */
+.mu-bar-line {
+  position: absolute;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  transition: left var(--ms-slow) var(--ease-base), width var(--ms-slow) var(--ease-base);
+  z-index: 1;
+}
+.mu-bar-line.mu-pos { background: var(--positive); }
+.mu-bar-line.mu-neg { background: var(--negative); }
+.mu-bar-line.mu-flat { background: var(--muted); }
+.mu-mk {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+.mu-mk-in { background: var(--fg); }
+.mu-mk-out { background: var(--surface); border: 1.5px solid var(--muted); }
+.mu-bar .mu-mk {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transition: left var(--ms-slow) var(--ease-base);
+  z-index: 2;
+}
+
+/* Right-aligned stats */
+.mu-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  text-align: right;
+}
+.mu-wr { font-weight: 700; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.mu-rec { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mu-pos { color: var(--positive); }
+.mu-neg { color: var(--negative); }
+.mu-flat { color: var(--muted); }
+
+/* Expander */
+.mu-more {
+  align-self: flex-start;
+  margin-top: 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 6px 8px;
+}
+.mu-more:hover { text-decoration: underline; }
+
+@media (max-width: 560px) {
+  /* Name takes priority on small screens; the bar shrinks to a hint of direction. */
+  .mu-row {
+    grid-template-columns: minmax(118px, 1.6fr) minmax(40px, 0.7fr) max-content;
+    gap: 9px;
+    padding: 7px 4px;
+  }
+  .mu-controls { margin-bottom: 14px; }
+  .mu-controls,
+  .mu-controls-start,
+  .mu-controls-end { gap: 8px; }
 }

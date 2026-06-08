@@ -7,6 +7,9 @@ import { createSignal, For, Show } from 'solid-js';
  */
 const ICON_BASE = 'https://r2.limitlesstcg.net/pokemon/gen9';
 
+/** Paired icons overlap by this many px (kept in sync with `.arche-icons` CSS). */
+const ICON_OVERLAP = 6;
+
 interface ArchetypeIconsProps {
   /** Representative Pokémon icon slugs (up to two are rendered). */
   slugs: string[];
@@ -14,20 +17,32 @@ interface ArchetypeIconsProps {
   size?: number;
   /** Optional class added to the wrapper. */
   class?: string;
+  /**
+   * Reserve a fixed two-icon-wide slot — and render the wrapper even with no
+   * icons — so labels in a vertical list line up in a column regardless of
+   * whether an archetype has one, two, or zero icons.
+   */
+  reserveSlot?: boolean;
 }
 
 /**
  * Renders an archetype's representative Pokémon icon(s) inline. A broken icon
  * hides itself rather than showing a placeholder, so a bad slug degrades to "no
- * icon" instead of visual noise. Renders nothing when `slugs` is empty, so it can
- * be dropped into any archetype-name cell unconditionally.
+ * icon" instead of visual noise. Renders nothing when `slugs` is empty (unless
+ * `reserveSlot` is set), so it can be dropped into any archetype-name cell
+ * unconditionally.
  */
 export function ArchetypeIcons(props: ArchetypeIconsProps) {
   const size = () => props.size ?? 22;
   const shown = () => props.slugs.slice(0, 2);
+  const slotWidth = () => size() * 2 - ICON_OVERLAP;
   return (
-    <Show when={shown().length > 0}>
-      <span class={`arche-icons ${props.class ?? ''}`} aria-hidden='true'>
+    <Show when={props.reserveSlot || shown().length > 0}>
+      <span
+        class={`arche-icons ${props.class ?? ''}`}
+        style={props.reserveSlot ? { 'min-width': `${slotWidth()}px` } : undefined}
+        aria-hidden='true'
+      >
         <For each={shown()}>{slug => <ArchetypeIcon slug={slug} size={size()} />}</For>
       </span>
     </Show>

@@ -106,7 +106,7 @@ export interface FilteredReport {
  * @param number
  * @returns
  */
-function buildCardId(set: string, number: string | number | null | undefined): string {
+export function buildCardId(set: string, number: string | number | null | undefined): string {
   if (number === undefined || number === null) {
     return `${set}~`;
   }
@@ -570,17 +570,31 @@ export async function aggregateDecksAsync(decks: Deck[]): Promise<FilteredReport
  * @param filters - Array of filter objects with cardId, operator, expectedCount
  * @returns Filtered report with cards array
  */
-export function generateReportForFilters(decks: Deck[], archetypeBase: string, filters: any[]): FilteredReport {
+/**
+ * Return the decks matching an archetype + filter set, without aggregating into
+ * a report. Shares the exact matching logic `generateReportForFilters` uses, so
+ * callers that need the matching deck subset (e.g. co-occurrence analysis) see
+ * the same decks the report was built from.
+ * @param decks - Array of deck objects to filter
+ * @param archetypeBase - Base archetype name
+ * @param filters - Array of filter objects with cardId, operator, count
+ * @returns The matching decks
+ */
+export function filterDecks(decks: Deck[], archetypeBase: string, filters: any[]): Deck[] {
   const normalizedFilters = normalizeFilters(filters);
   const archetypeDecks = decks.filter(deck => deckMatchesArchetype(deck, archetypeBase));
-  const matchingDecks = normalizedFilters.length
+  return normalizedFilters.length
     ? archetypeDecks.filter(deck => deckMatchesFilters(deck, normalizedFilters))
     : archetypeDecks;
+}
+
+export function generateReportForFilters(decks: Deck[], archetypeBase: string, filters: any[]): FilteredReport {
+  const normalizedFilters = normalizeFilters(filters);
+  const matchingDecks = filterDecks(decks, archetypeBase, filters);
 
   logger.info('Generated client-side report for filters', {
     archetypeBase,
     totalDecks: decks.length,
-    archetypeDeckCount: archetypeDecks.length,
     matchingDeckCount: matchingDecks.length,
     filters: summarizeFilters(normalizedFilters)
   });
