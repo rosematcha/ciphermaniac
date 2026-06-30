@@ -4,7 +4,6 @@ import {
   fetchArchetypes,
   fetchMeta,
   fetchOnlineArchetypes,
-  fetchOnlineMeta,
   fetchParticipants,
   fetchTournamentsList,
   fetchUpcomingTournaments,
@@ -23,13 +22,12 @@ import {
   type Story
 } from '../lib/storylines';
 import type { ArchetypeIndexEntry, TournamentParticipant } from '../types';
-import { KpiTile } from '../components/KpiTile';
-import { KpiSkeleton, Skeleton } from '../components/Skeleton';
+import { Skeleton } from '../components/Skeleton';
 import { Section } from '../components/Section';
 import { ArchetypeCard } from '../components/ArchetypeCard';
 import { CardStack } from '../components/CardImage';
 import { EmptyState } from '../components/EmptyState';
-import { formatPercent, nameFromTournamentKey, normalizePercent, parseISODate, shortDate } from '../lib/format';
+import { nameFromTournamentKey, normalizePercent, parseISODate, shortDate } from '../lib/format';
 
 const LATEST_EVENT_WINDOW_DAYS = 14;
 // Majors whose dates fall within this many days of each other count as the
@@ -48,14 +46,11 @@ const UPCOMING_COUNT = 6;
  * Sections:
  *   1. Latest major-event callout (only if a regional/international finished
  *      within the last 14 days)
- *   2. KPIs of the rolling online meta (meta leader / active archetypes /
- *      decks analyzed)
- *   3. Top archetypes gallery (online meta)
- *   4. Recent major tournaments (regional + international + special)
- *   5. Upcoming tournaments (scraped from Limitless)
+ *   2. Top archetypes gallery (online meta)
+ *   3. Recent major tournaments (regional + international + special)
+ *   4. Upcoming tournaments (scraped from Limitless)
  */
 export function HomePage() {
-  const [meta] = createResource(fetchOnlineMeta);
   const [archetypes] = createResource(fetchOnlineArchetypes);
   const [tournamentsList] = createResource(fetchTournamentsList);
   const [upcoming] = createResource(fetchUpcomingTournaments);
@@ -108,7 +103,6 @@ export function HomePage() {
   });
 
   const topArchetypes = () => archetypes()?.slice(0, 8) ?? [];
-  const leader = () => archetypes()?.[0];
 
   const recentMajors = () => {
     const list = tournamentsList();
@@ -125,36 +119,6 @@ export function HomePage() {
           <LatestEventCallout tournamentKey={latestMajor()!} onlineArchetypes={archetypes()} />
         </section>
       </Show>
-
-      <section class='kpis'>
-        <Show
-          when={meta() && archetypes()}
-          fallback={
-            <>
-              <KpiSkeleton />
-              <KpiSkeleton />
-              <KpiSkeleton />
-            </>
-          }
-        >
-          <KpiTile
-            label='Meta leader'
-            value={leader()?.label || leader()?.name || '—'}
-            leader
-            foot={<span>{leader() ? `${formatPercent(leader()!.percent)} share online` : '—'}</span>}
-          />
-          <KpiTile
-            label='Active archetypes'
-            value={archetypes()!.length.toLocaleString()}
-            foot={<span>tracked across {meta()!.tournamentCount.toLocaleString()} online events</span>}
-          />
-          <KpiTile
-            label='Decks analyzed'
-            value={meta()!.deckTotal.toLocaleString()}
-            foot={<span>rolling 14-day online window</span>}
-          />
-        </Show>
-      </section>
 
       <Section title='Top archetypes' right={<A href='/archetypes'>View all →</A>}>
         <Show
