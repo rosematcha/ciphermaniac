@@ -1,4 +1,4 @@
-import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
+import { createMemo, createResource, For, onMount, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { fetchMaster, fetchPrices, prettyTournamentName, type PricingEntry } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
@@ -13,7 +13,11 @@ import { EmptyState } from '../components/EmptyState';
 import { CardTile } from '../components/CardTile';
 import { createPagination } from '../lib/pagination';
 import { averageCopies, categoryLabel } from '../lib/cardStats';
-import { createPersistentViewMode } from '../lib/persistentSignal';
+import {
+  createPersistentNumberSignal,
+  createPersistentSignal,
+  createPersistentViewMode
+} from '../lib/persistentSignal';
 
 type SortKey = 'rank' | 'name' | 'price';
 type TypeFilter = 'all' | 'pokemon' | 'trainer' | 'energy';
@@ -34,10 +38,21 @@ export function CardsIndexPage() {
   const { tournament } = useTournament();
   const [master] = createResource(tournament, fetchMaster);
   const [prices] = createResource(fetchPrices);
-  const [query, setQuery] = createSignal('');
-  const [typeFilter, setTypeFilter] = createSignal<TypeFilter>('all');
-  const [sortKey, setSortKey] = createSignal<SortKey>('rank');
+  const [query, setQuery] = createPersistentSignal<string>('cm:cardsQuery', '', v => v, sessionStorage);
+  const [typeFilter, setTypeFilter] = createPersistentSignal<TypeFilter>(
+    'cm:cardsType',
+    'all',
+    v => (v === 'all' || v === 'pokemon' || v === 'trainer' || v === 'energy' ? v : null),
+    sessionStorage
+  );
+  const [sortKey, setSortKey] = createPersistentSignal<SortKey>(
+    'cm:cardsSort',
+    'rank',
+    v => (v === 'rank' || v === 'name' || v === 'price' ? v : null),
+    sessionStorage
+  );
   const [viewMode, setViewMode] = createPersistentViewMode('cm:cardsView');
+  const pageSignal = createPersistentNumberSignal('cm:cardsPage', 1, sessionStorage);
   const navigate = useNavigate();
 
   onMount(() => {
@@ -117,12 +132,12 @@ export function CardsIndexPage() {
     return list;
   });
 
-  const { page, totalPages, pageItems, setPage } = createPagination(sorted, PAGE_SIZE, [
-    query,
-    typeFilter,
-    sortKey,
-    tournament
-  ]);
+  const { page, totalPages, pageItems, setPage } = createPagination(
+    sorted,
+    PAGE_SIZE,
+    [query, typeFilter, sortKey, tournament],
+    pageSignal
+  );
 
   function gotoCard(item: CardItem) {
     if (!item.set || item.number === undefined) {

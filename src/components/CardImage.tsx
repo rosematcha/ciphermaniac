@@ -13,7 +13,17 @@ interface CardImageProps {
   style?: string;
   /** Whether to lazy-load (default true). Set false for above-the-fold images. */
   lazy?: boolean;
+  /**
+   * Rendered-width hint (standard img `sizes` syntax). When set, the browser
+   * picks the cheapest sufficient tier from a srcset capped at the preferred
+   * `size` — so a phone grid never downloads LG, and 1x screens drop to XS.
+   * Tier widths: xs 136w (~17KB), sm 274w (~52KB), lg 460w (~118KB).
+   */
+  sizes?: string;
 }
+
+/** Natural pixel width of each CDN tier, for srcset w-descriptors. */
+const TIER_WIDTH: Record<CardImageSize, number> = { xs: 136, sm: 274, lg: 460 };
 
 /**
  * Renders a Pokémon TCG card image directly from the LimitlessTCG CDN.
@@ -28,6 +38,24 @@ interface CardImageProps {
  * (as-given → zero-padded) before finally rendering a styled placeholder.
  */
 const LIMITLESS_CDN = 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci';
+
+function tierUrl(setU: string, num: string, size: CardImageSize): string {
+  return `${LIMITLESS_CDN}/${setU}/${setU}_${num}_R_EN_${size.toUpperCase()}.png`;
+}
+
+/**
+ * srcset over every tier up to (and including) the preferred size, using the
+ * padded number form. Only used for the first attempt — if anything 404s we
+ * fall back to the plain single-src retry chain, which stays authoritative.
+ */
+function buildSrcset(set: string, number: string | number, preferredSize: CardImageSize): string {
+  const setU = String(set).toUpperCase();
+  const stripped = String(number).replace(/^0+/, '') || '0';
+  const parts = stripped.match(/^(\d+)([A-Za-z]*)$/);
+  const num = parts ? `${parts[1].padStart(3, '0')}${parts[2] ?? ''}` : stripped;
+  const tiers: CardImageSize[] = preferredSize === 'lg' ? ['xs', 'sm', 'lg'] : ['xs', 'sm'];
+  return tiers.map(t => `${tierUrl(setU, num, t)} ${TIER_WIDTH[t]}w`).join(', ');
+}
 
 function buildAttempts(set: string, number: string | number, preferredSize: CardImageSize): string[] {
   const setU = String(set).toUpperCase();
@@ -62,7 +90,7 @@ function buildAttempts(set: string, number: string | number, preferredSize: Card
   const urls: string[] = [];
   for (const size of sizeChain) {
     for (const num of numberForms) {
-      const url = `${LIMITLESS_CDN}/${setU}/${setU}_${num}_R_EN_${size.toUpperCase()}.png`;
+      const url = tierUrl(setU, num, size);
       if (!seen.has(url)) {
         seen.add(url);
         urls.push(url);
@@ -102,6 +130,10 @@ export function CardImage(props: CardImageProps) {
     >
       <img
         src={src()}
+        srcset={
+          props.sizes && attemptIndex() === 0 ? buildSrcset(props.set, props.number, props.size ?? 'sm') : undefined
+        }
+        sizes={props.sizes && attemptIndex() === 0 ? props.sizes : undefined}
         alt={alt()}
         width='274'
         height='381'

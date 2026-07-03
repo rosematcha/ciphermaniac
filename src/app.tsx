@@ -1,4 +1,5 @@
-import { ErrorBoundary, type ParentComponent } from 'solid-js';
+import { ErrorBoundary, type ParentComponent, Suspense } from 'solid-js';
+import { SurveyBanner } from './components/SurveyBanner';
 import { TopNav } from './components/TopNav';
 import { TournamentProvider } from './lib/tournamentContext';
 
@@ -11,6 +12,7 @@ import { TournamentProvider } from './lib/tournamentContext';
 export const App: ParentComponent = props => {
   return (
     <TournamentProvider>
+      <SurveyBanner />
       <TopNav />
       <main class='page'>
         <ErrorBoundary
@@ -25,7 +27,10 @@ export const App: ParentComponent = props => {
             </section>
           )}
         >
-          {props.children}
+          {/* Routes are code-split (lazy()) — Suspense holds the shell while a
+              route chunk loads. No spinner: chunks are small and a flash of
+              spinner on every nav feels worse than a beat of empty page. */}
+          <Suspense>{props.children}</Suspense>
         </ErrorBoundary>
       </main>
     </TournamentProvider>

@@ -4,6 +4,7 @@
  */
 
 import { jsonError, jsonSuccess } from '../lib/api/responses.js';
+import { sendResendEmail } from '../lib/api/email.js';
 
 // Maximum allowed payload size (1MB)
 const MAX_PAYLOAD_SIZE = 1024 * 1024;
@@ -268,30 +269,11 @@ function buildEmailContent(data: FeedbackData): string {
 }
 
 async function sendEmail(env: Env, recipient: string, content: string, feedbackData: FeedbackData): Promise<Response> {
-  const resendApiKey = env.RESEND_API_KEY;
-
-  if (!resendApiKey) {
-    throw new Error('RESEND_API_KEY environment variable not set');
-  }
-
   const subject = `[Ciphermaniac] ${feedbackData.feedbackType === 'bug' ? 'Bug Report' : 'Feature Request'}`;
-
-  const emailPayload = {
+  return sendResendEmail(env, {
     from: 'Ciphermaniac Feedback <onboarding@resend.dev>',
     to: recipient,
     subject,
     text: content
-  };
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10_000);
-  return fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${resendApiKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(emailPayload),
-    signal: controller.signal
-  }).finally(() => clearTimeout(timeoutId));
+  });
 }

@@ -7,6 +7,9 @@
 html, body {
   margin: 0;
   padding: 0;
+  /* Prevent mobile pull-to-refresh: an upward overscroll at the top of a long
+     list was reloading the whole SPA and wiping state. */
+  overscroll-behavior-y: contain;
 }
 
 body {

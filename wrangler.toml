@@ -16,6 +16,12 @@ id = "c43f84feaa1049488390313c619610d8"
 bucket_name = "ciphermaniac-reports"
 binding = "REPORTS"
 
+# D1 database binding for survey responses
+[[d1_databases]]
+binding = "SURVEY_DB"
+database_name = "ciphermaniac-survey"
+database_id = "48f53bc8-be11-48f6-beaf-c27538c915d9"
+
 # Production environment configuration
 [env.production]
 
@@ -28,6 +34,12 @@ id = "c43f84feaa1049488390313c619610d8"
 [[env.production.r2_buckets]]
 bucket_name = "ciphermaniac-reports"
 binding = "REPORTS"
+
+# D1 database binding for production
+[[env.production.d1_databases]]
+binding = "SURVEY_DB"
+database_name = "ciphermaniac-survey"
+database_id = "48f53bc8-be11-48f6-beaf-c27538c915d9"
 
 # Environment variables (set these in Cloudflare dashboard)
 [env.production.vars]
@@ -64,6 +76,12 @@ id = "preview-price-data-kv-id"
 [[env.preview.r2_buckets]]
 bucket_name = "ciphermaniac-reports-preview"
 binding = "REPORTS"
+
+# D1 database binding for preview (shares the production survey DB)
+[[env.preview.d1_databases]]
+binding = "SURVEY_DB"
+database_name = "ciphermaniac-survey"
+database_id = "48f53bc8-be11-48f6-beaf-c27538c915d9"
 
 # Preview environment variables
 [env.preview.vars]

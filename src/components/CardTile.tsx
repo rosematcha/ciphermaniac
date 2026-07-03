@@ -81,6 +81,7 @@ export function CardTile(props: { card: CardItem; hideEmptyBuckets?: boolean }) 
           set={props.card.set ?? '?'}
           number={props.card.number ?? '?'}
           size='sm'
+          sizes='(max-width: 640px) 30vw, 164px'
           alt={`${props.card.name} card`}
         />
         <div class='card-tile-shade' aria-hidden='true' />
