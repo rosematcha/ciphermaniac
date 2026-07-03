@@ -2,6 +2,15 @@ import { runWithConcurrency } from './tournamentFetcher';
 
 const DEFAULT_R2_CONCURRENCY = 6;
 
+/**
+ * Default browser/edge cache for live report JSON (P3.1, owner-approved):
+ * data regenerates roughly daily, so a 6-hour client cache means repeat
+ * visitors load instantly while staying same-day fresh. Dated snapshot
+ * paths are immutable by construction and get a year (see SNAPSHOT_CACHE_CONTROL).
+ */
+export const LIVE_JSON_CACHE_CONTROL = 'public, max-age=21600';
+export const SNAPSHOT_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+
 interface R2PutOptions {
   httpMetadata?: { contentType?: string; cacheControl?: string };
 }
@@ -56,10 +65,16 @@ export async function putJson(env: unknown, key: string, data: unknown, options:
     throw new Error('REPORTS bucket not configured');
   }
   const payload = options.pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data);
+  // Objects under a dated snapshot dir never change after being written;
+  // everything else — including Snapshots/index.json, which is rebuilt on
+  // each rotation — is live data on the 6-hour policy.
+  const defaultCache = /^reports\/Snapshots\/\d{4}-\d{2}-\d{2}\//.test(key)
+    ? SNAPSHOT_CACHE_CONTROL
+    : LIVE_JSON_CACHE_CONTROL;
   await bucket.put(key, payload, {
     httpMetadata: {
       contentType: 'application/json',
-      ...(options.cacheControl ? { cacheControl: options.cacheControl } : {})
+      cacheControl: options.cacheControl ?? defaultCache
     }
   });
 }

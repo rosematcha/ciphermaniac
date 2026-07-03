@@ -1,0 +1,4 @@
+# Cloudflare Pages SPA fallback — any non-asset, non-API route serves index.html
+# so the Solid Router can take over and render the correct page.
+# Real Functions in /functions are matched FIRST by Pages, so /api/* etc. still work.
+/*    /index.html    200

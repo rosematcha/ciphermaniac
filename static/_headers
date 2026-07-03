@@ -1,0 +1,32 @@
+# Cloudflare Pages cache policy (mobile plan P3.1).
+# Live data updates roughly daily -> 6-hour client cache (owner-approved).
+# Hashed/dated/immutable things get a year.
+# NOTE: when several rules match a path and set the same header, the later
+# rule wins — so general rules come first and specific overrides after.
+
+# Vite bundles: content-hashed filenames, safe to cache forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Self-hosted Inter woff2 (P1.2): versionless filenames but the files are
+# effectively frozen; if we ever swap fonts we'll rename them.
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Live report JSON and player data (also served from Pages in local/preview
+# builds; production reads the same keys from R2, which sets matching
+# metadata via storageWriter.ts).
+/reports/*
+  Cache-Control: public, max-age=21600
+
+/players/*
+  Cache-Control: public, max-age=21600
+
+/toys/*
+  Cache-Control: public, max-age=21600
+
+# Dated rotation snapshots never change after being written — override the
+# general /reports/* rule above. The snapshot index (rebuilt each rotation)
+# deliberately stays on the 6-hour live policy via /reports/*.
+/reports/Snapshots/2*
+  Cache-Control: public, max-age=31536000, immutable

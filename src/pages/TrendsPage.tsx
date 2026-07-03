@@ -585,7 +585,6 @@ interface DayBin {
 function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[]; windowDays: number }) {
   const iconMap = getArchetypeIconMap();
   const PADDING = { top: 16, right: 16, bottom: 32, left: 38 };
-  const HEIGHT = 320;
   // Width is measured from the container so the SVG fills horizontally without
   // ever stretching its coordinates. Text and dots stay at a constant size.
   let containerRef: HTMLDivElement | undefined;
@@ -606,7 +605,10 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
     onCleanup(() => ro.disconnect());
   });
   const innerW = () => width() - PADDING.left - PADDING.right;
-  const innerH = () => HEIGHT - PADDING.top - PADDING.bottom;
+  // Shorter chart on phones: at 320px tall the chart plus legend ate most of
+  // the first screen (F5). Width is the container width, so <560 ≈ phone.
+  const height = () => (width() < 560 ? 240 : 320);
+  const innerH = () => height() - PADDING.top - PADDING.bottom;
 
   // X domain spans the actual data range so the line fills the chart width,
   // regardless of how wide the user's window selector is.
@@ -739,11 +741,21 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
     return best;
   }
 
+  // On touch, a horizontal drag scrubs the crosshair day-by-day (touch-action:
+  // pan-y on the svg leaves vertical scrolling to the browser).
+  let scrubbing = false;
+
   function handlePointerMove(e: PointerEvent) {
-    if (e.pointerType !== 'mouse') {
+    if (e.pointerType === 'mouse') {
+      setHoverIdx(indexFromPointer(e));
       return;
     }
-    setHoverIdx(indexFromPointer(e));
+    if (scrubbing) {
+      const idx = indexFromPointer(e);
+      if (idx !== null && idx !== pinIdx()) {
+        setPinIdx(idx);
+      }
+    }
   }
   function handlePointerLeave() {
     setHoverIdx(null);
@@ -752,11 +764,16 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
     if (e.pointerType === 'mouse') {
       return;
     }
+    scrubbing = true;
+    svgRef?.setPointerCapture(e.pointerId);
     const idx = indexFromPointer(e);
     if (idx === null) {
       return;
     }
     setPinIdx(prev => (prev === idx ? null : idx));
+  }
+  function handlePointerUp() {
+    scrubbing = false;
   }
 
   const hoverData = createMemo(() => {
@@ -783,11 +800,13 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
           class='chart trend-chart'
           ref={svgRef}
           width={width()}
-          height={HEIGHT}
-          viewBox={`0 0 ${width()} ${HEIGHT}`}
+          height={height()}
+          viewBox={`0 0 ${width()} ${height()}`}
           onPointerMove={handlePointerMove}
           onPointerLeave={handlePointerLeave}
           onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
         >
           <g class='grid'>
             <For each={yTicks()}>
@@ -805,7 +824,7 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
           <g>
             <For each={xTicks()}>
               {tick => (
-                <text x={tick.xPx} y={HEIGHT - PADDING.bottom + 18} class='axis-label' text-anchor='middle'>
+                <text x={tick.xPx} y={height() - PADDING.bottom + 18} class='axis-label' text-anchor='middle'>
                   {tick.label}
                 </text>
               )}
@@ -842,7 +861,7 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
           <Show when={hoverData()}>
             {h => (
               <g class='hover-layer' pointer-events='none'>
-                <line x1={h().xPx} x2={h().xPx} y1={PADDING.top} y2={HEIGHT - PADDING.bottom} class='hover-line' />
+                <line x1={h().xPx} x2={h().xPx} y1={PADDING.top} y2={height() - PADDING.bottom} class='hover-line' />
                 <For each={h().entries}>
                   {e => <circle cx={h().xPx} cy={y(e.value)} r='4.5' fill={e.color} class='hover-dot' />}
                 </For>

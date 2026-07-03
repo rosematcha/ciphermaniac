@@ -15,7 +15,11 @@
 }
 @media (max-width: 640px) {
   .page {
-    padding: var(--space-5) var(--space-3) var(--space-6);
+    /* env(safe-area-inset-*) keeps content clear of the Dynamic Island /
+       rounded corners in landscape and the home-indicator bar at the bottom
+       (viewport-fit=cover is set in index.html). */
+    padding: var(--space-5) max(var(--space-3), env(safe-area-inset-left)) max(var(--space-6), env(safe-area-inset-bottom));
+    padding-right: max(var(--space-3), env(safe-area-inset-right));
   }
   .page > section + section {
     margin-top: var(--space-5);
@@ -141,7 +145,8 @@
       'links links';
     column-gap: var(--space-3);
     row-gap: var(--space-2);
-    padding: 10px var(--space-3);
+    padding: 10px max(var(--space-3), env(safe-area-inset-left)) 10px max(var(--space-3), env(safe-area-inset-left));
+    padding-right: max(var(--space-3), env(safe-area-inset-right));
   }
   .topnav-word {
     grid-area: word;
@@ -2559,10 +2564,13 @@ a.callout-arc-row:hover .arc-name-cell {
   height: 11px;
 }
 .info-tip:hover .info-tip-bubble,
-.info-tip:focus-visible .info-tip-bubble {
+.info-tip:focus-visible .info-tip-bubble,
+.info-tip.open .info-tip-bubble {
   opacity: 1;
   visibility: visible;
-  transform: translateX(-50%) translateY(0);
+  /* --tip-shift is set by InfoTip.tsx when the bubble would clip the viewport
+     edge (tap-to-open on touch devices); zero everywhere else. */
+  transform: translateX(calc(-50% + var(--tip-shift, 0px))) translateY(0);
   pointer-events: auto;
 }
 /* Keep the bubble on-screen near the right edge of the panel. */
@@ -2572,7 +2580,8 @@ a.callout-arc-row:hover .arc-name-cell {
   transform: translateY(2px);
 }
 .stats-panel .stat-value .info-tip:hover .info-tip-bubble,
-.stats-panel .stat-value .info-tip:focus-visible .info-tip-bubble {
+.stats-panel .stat-value .info-tip:focus-visible .info-tip-bubble,
+.stats-panel .stat-value .info-tip.open .info-tip-bubble {
   transform: translateY(0);
 }
 .info-tip-bubble p {
@@ -2795,7 +2804,12 @@ a.callout-arc-row:hover .arc-name-cell {
 /* ---------- Archetype trend chart (Trends page) ---------- */
 .trend-chart {
   width: 100%;
-  height: 320px;
+  /* Height comes from the svg height attribute — TrendsPage renders 240px on
+     phone-width containers, 320px otherwise (F5). */
+  height: auto;
+  /* Horizontal drags scrub the crosshair (see TrendsPage pointer handlers);
+     vertical pans stay with the browser so the page still scrolls. */
+  touch-action: pan-y;
 }
 .trend-chart .grid line {
   stroke: var(--rule);
@@ -4378,4 +4392,48 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   .mu-controls-end {
     gap: 8px;
   }
+}
+
+/* =====================================================================
+   Mobile touch targets (P2.2 / F2)
+   Interactive controls measured 26-38px tall on phones — below the 44px
+   minimum (WCAG 2.5.5 / Apple HIG / Material). Applies on narrow
+   viewports and on any device whose primary pointer is a finger.
+   ===================================================================== */
+@media (max-width: 640px), (pointer: coarse) {
+  /* body[data-mode] matches the specificity of the tokens.css theme blocks
+     (which re-declare --row-height on body); this file loads later, so it wins. */
+  :root,
+  body[data-mode] { --row-height: 44px; }
+
+  .topnav-mode-toggle,
+  .t-selector-trigger {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .chip {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .pagination button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .segmented button {
+    min-height: 40px; /* inside a bordered group; the group itself clears 44px */
+  }
+
+  .tabs button { min-height: 44px; }
+
+  /* Expand caret column on player tables: the whole row is the tap target
+     (44px via --row-height); widen the column so the caret reads as tappable. */
+  .data th.expand-col, .data td.expand-col { width: 36px; }
+  .row-caret { font-size: 13px; }
 }
