@@ -34,8 +34,6 @@ export function CardPage() {
   const { tournament } = useTournament();
   const [master] = createResource(tournament, fetchMaster);
   const [prices] = createResource(fetchPrices);
-  const [rotationIndex] = createResource(fetchRotationIndex);
-
   const liveCard = createMemo<CardItem | undefined>(() => {
     const items = master()?.items;
     if (!items) {
@@ -43,6 +41,14 @@ export function CardPage() {
     }
     return findCardBySetNumber(items, params.set, params.number);
   });
+
+  // Deferred: the 49KB Snapshots index only matters for the historical
+  // fallback, so fetch it only once the live report has loaded without this
+  // card (P3.2). A falsy source keeps createResource idle.
+  const [rotationIndex] = createResource(
+    () => (master() && !liveCard() ? 'fallback' : undefined),
+    () => fetchRotationIndex()
+  );
 
   // If the URL points at a non-canonical printing (reprint) and the master
   // lookup misses, resolve via the synonym DB and redirect to the canonical

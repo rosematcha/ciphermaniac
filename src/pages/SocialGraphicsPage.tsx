@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { A } from '@solidjs/router';
 import {
   fetchDay2CardStats,
@@ -159,6 +159,17 @@ export function SocialGraphicsPage() {
   // the hero image. The bug is Firefox-specific and not worth fighting for an
   // internal tool, so we just steer Firefox users to a Chromium-based browser.
   const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent);
+
+  // Internal desktop export tool with a fixed 1280px canvas — on phones we
+  // show an honest "built for desktop" note instead of a broken horizontal
+  // scroll (P2.4, decided in the mobile plan review).
+  const narrowQuery = typeof window !== 'undefined' ? window.matchMedia('(max-width: 899px)') : null;
+  const [isNarrow, setIsNarrow] = createSignal(narrowQuery?.matches ?? false);
+  onMount(() => {
+    const onChange = (e: MediaQueryListEvent) => setIsNarrow(e.matches);
+    narrowQuery?.addEventListener('change', onChange);
+    onCleanup(() => narrowQuery?.removeEventListener('change', onChange));
+  });
 
   // The Day 1 → Day 2 cut only exists for individual tournaments, so the
   // Converting mode is meaningless against the rolling Online Meta window.
@@ -354,134 +365,147 @@ export function SocialGraphicsPage() {
         </div>
       </section>
 
-      <Show when={isFirefox}>
-        <div class='sg-warning' role='alert'>
-          <strong>Heads up — exports misrender in Firefox.</strong>
-          <span>
-            The PNG/JPG export drops the #1 card&apos;s deck-count line and warps the hero image in Firefox, because of
-            how it rasterizes the graphic. Open this page in a Chromium-based browser (Chrome, Edge, Helium, Brave) to
-            export cleanly.
-          </span>
-        </div>
-      </Show>
+      <Show
+        when={!isNarrow()}
+        fallback={
+          <div class='sg-warning' role='note'>
+            <strong>This tool is built for desktop.</strong>
+            <span>
+              Social Graphics composes a fixed 1280px export canvas for sharing on social media — it needs a larger
+              screen to be usable. Open this page on a desktop browser to build and export a graphic.
+            </span>
+          </div>
+        }
+      >
+        <Show when={isFirefox}>
+          <div class='sg-warning' role='alert'>
+            <strong>Heads up — exports misrender in Firefox.</strong>
+            <span>
+              The PNG/JPG export drops the #1 card&apos;s deck-count line and warps the hero image in Firefox, because
+              of how it rasterizes the graphic. Open this page in a Chromium-based browser (Chrome, Edge, Helium, Brave)
+              to export cleanly.
+            </span>
+          </div>
+        </Show>
 
-      <div class='sg-controls'>
-        <div class='sg-row'>
-          <label>
-            Tournament
-            <select value={tournament()} onChange={e => setTournament(e.currentTarget.value)}>
-              <For each={tournaments() ?? [ONLINE_META_NAME]}>
-                {t => <option value={t}>{prettyTournamentName(t)}</option>}
-              </For>
-            </select>
-          </label>
-
-          <Show when={mode() === 'rising'}>
+        <div class='sg-controls'>
+          <div class='sg-row'>
             <label>
-              Compare against
-              <select value={comparison()} onChange={e => setComparison(e.currentTarget.value)}>
-                <option value=''>Previous ({prettyTournamentName(defaultComparison())})</option>
-                <For each={(tournaments() ?? []).filter(t => t !== tournament())}>
+              Tournament
+              <select value={tournament()} onChange={e => setTournament(e.currentTarget.value)}>
+                <For each={tournaments() ?? [ONLINE_META_NAME]}>
                   {t => <option value={t}>{prettyTournamentName(t)}</option>}
                 </For>
               </select>
             </label>
-          </Show>
-        </div>
 
-        <div class='sg-row'>
-          <label>
-            Mode
-            <Segmented<Mode>
-              options={
-                tournament() === ONLINE_META_NAME ? MODE_OPTIONS.filter(o => o.value !== 'converting') : MODE_OPTIONS
-              }
-              selected={mode()}
-              onSelect={setMode}
-              ariaLabel='Display mode'
-            />
-          </label>
-          <label>
-            Size
-            <Segmented
-              options={SIZE_OPTIONS}
-              selected={String(size())}
-              onSelect={v => setSize(Number(v) as Size)}
-              ariaLabel='Layout size'
-            />
-          </label>
-          <Show when={mode() === 'converting'}>
+            <Show when={mode() === 'rising'}>
+              <label>
+                Compare against
+                <select value={comparison()} onChange={e => setComparison(e.currentTarget.value)}>
+                  <option value=''>Previous ({prettyTournamentName(defaultComparison())})</option>
+                  <For each={(tournaments() ?? []).filter(t => t !== tournament())}>
+                    {t => <option value={t}>{prettyTournamentName(t)}</option>}
+                  </For>
+                </select>
+              </label>
+            </Show>
+          </div>
+
+          <div class='sg-row'>
             <label>
-              Min decks
-              <Segmented
-                options={MIN_DECKS_OPTIONS}
-                selected={String(minDecks())}
-                onSelect={v => setMinDecks(Number(v) as MinDecks)}
-                ariaLabel='Minimum Day 1 deck count'
+              Mode
+              <Segmented<Mode>
+                options={
+                  tournament() === ONLINE_META_NAME ? MODE_OPTIONS.filter(o => o.value !== 'converting') : MODE_OPTIONS
+                }
+                selected={mode()}
+                onSelect={setMode}
+                ariaLabel='Display mode'
               />
             </label>
-          </Show>
-          <label>
-            Theme
-            <Segmented<Theme> options={THEME_OPTIONS} selected={theme()} onSelect={setTheme} ariaLabel='Theme' />
-          </label>
-        </div>
-
-        <div class='sg-actions'>
-          <button
-            class='sg-btn primary'
-            type='button'
-            disabled={busy() !== null || master.loading}
-            onClick={() => exportImage('png')}
-          >
-            {busy() === 'png' ? 'Exporting…' : 'Export PNG'}
-          </button>
-          <button
-            class='sg-btn'
-            type='button'
-            disabled={busy() !== null || master.loading}
-            onClick={() => exportImage('jpg')}
-          >
-            {busy() === 'jpg' ? 'Exporting…' : 'Export JPG'}
-          </button>
-          <Show when={error()}>
-            <span class='sg-status error'>{error()}</span>
-          </Show>
-        </div>
-      </div>
-
-      <div class='sg-stage'>
-        <Show
-          when={!master.loading && items().length > 0}
-          fallback={
-            <Show
-              when={
-                master.loading ||
-                (mode() === 'rising' && comparisonMaster.loading) ||
-                (mode() === 'converting' && day2Stats.loading)
-              }
-              fallback={
-                <div class='sg-stage-empty'>
-                  {mode() === 'converting'
-                    ? 'No Day 2 data for this tournament (or no cards clear the min-decks filter).'
-                    : 'No data yet for this selection.'}
-                </div>
-              }
-            >
-              <Skeleton height='540px' />
+            <label>
+              Size
+              <Segmented
+                options={SIZE_OPTIONS}
+                selected={String(size())}
+                onSelect={v => setSize(Number(v) as Size)}
+                ariaLabel='Layout size'
+              />
+            </label>
+            <Show when={mode() === 'converting'}>
+              <label>
+                Min decks
+                <Segmented
+                  options={MIN_DECKS_OPTIONS}
+                  selected={String(minDecks())}
+                  onSelect={v => setMinDecks(Number(v) as MinDecks)}
+                  ariaLabel='Minimum Day 1 deck count'
+                />
+              </label>
             </Show>
-          }
-        >
-          <SocialCanvas
-            theme={theme()}
-            mode={mode()}
-            tournamentLabel={shortTournament(tournament())}
-            deckTotal={master()?.deckTotal ?? 0}
-            items={items()}
-            minDecks={minDecks()}
-          />
-        </Show>
-      </div>
+            <label>
+              Theme
+              <Segmented<Theme> options={THEME_OPTIONS} selected={theme()} onSelect={setTheme} ariaLabel='Theme' />
+            </label>
+          </div>
+
+          <div class='sg-actions'>
+            <button
+              class='sg-btn primary'
+              type='button'
+              disabled={busy() !== null || master.loading}
+              onClick={() => exportImage('png')}
+            >
+              {busy() === 'png' ? 'Exporting…' : 'Export PNG'}
+            </button>
+            <button
+              class='sg-btn'
+              type='button'
+              disabled={busy() !== null || master.loading}
+              onClick={() => exportImage('jpg')}
+            >
+              {busy() === 'jpg' ? 'Exporting…' : 'Export JPG'}
+            </button>
+            <Show when={error()}>
+              <span class='sg-status error'>{error()}</span>
+            </Show>
+          </div>
+        </div>
+
+        <div class='sg-stage'>
+          <Show
+            when={!master.loading && items().length > 0}
+            fallback={
+              <Show
+                when={
+                  master.loading ||
+                  (mode() === 'rising' && comparisonMaster.loading) ||
+                  (mode() === 'converting' && day2Stats.loading)
+                }
+                fallback={
+                  <div class='sg-stage-empty'>
+                    {mode() === 'converting'
+                      ? 'No Day 2 data for this tournament (or no cards clear the min-decks filter).'
+                      : 'No data yet for this selection.'}
+                  </div>
+                }
+              >
+                <Skeleton height='540px' />
+              </Show>
+            }
+          >
+            <SocialCanvas
+              theme={theme()}
+              mode={mode()}
+              tournamentLabel={shortTournament(tournament())}
+              deckTotal={master()?.deckTotal ?? 0}
+              items={items()}
+              minDecks={minDecks()}
+            />
+          </Show>
+        </div>
+      </Show>
     </div>
   );
 }

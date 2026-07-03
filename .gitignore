@@ -92,4 +92,9 @@ trends.json
 /.playwright-cli
 /output
 /archive
-/static
+/static/*
+!/static/_headers
+!/static/_redirects
+!/static/robots.txt
+!/static/fonts/
+!/static/sw.js

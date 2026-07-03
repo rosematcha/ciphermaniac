@@ -81,7 +81,13 @@ export function ArchetypePage() {
       navigate(`/archetypes/${match.name}`, { replace: true });
     }
   });
-  const [rotationIndex] = createResource(fetchRotationIndex);
+  // Deferred: the 49KB Snapshots index is only needed for the historical
+  // fallback, so don't fetch it until the live lookup has actually failed
+  // (P3.2). A falsy source keeps createResource idle.
+  const [rotationIndex] = createResource(
+    () => (report.error ? 'fallback' : undefined),
+    () => fetchRotationIndex()
+  );
   // Land a shared filter link straight on the Filters tab.
   const sharedFilters = Boolean(searchParams.b || searchParams.s || searchParams.t);
   const [tab, setTab] = createSignal<ArchTab>(sharedFilters ? 'advanced' : 'core');

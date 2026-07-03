@@ -38,9 +38,49 @@ const TIER_WIDTH: Record<CardImageSize, number> = { xs: 136, sm: 274, lg: 460 };
  * (as-given → zero-padded) before finally rendering a styled placeholder.
  */
 const LIMITLESS_CDN = 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci';
+const R2_CARD_IMAGES = 'https://r2.ciphermaniac.com/card-images';
+
+/**
+ * Our R2 bucket serves the same art re-encoded as WebP at ~25% of the PNG
+ * weight (scripts/convert-card-images.ts). Gated on a `_ready` marker the
+ * pipeline writes after its first successful run, so an empty or stale bucket
+ * never 404-storms — until then everything goes straight to limitless.
+ * The probe result is cached per session.
+ */
+const [r2Ready, setR2Ready] = createSignal(false);
+if (typeof window !== 'undefined') {
+  let cached: string | null = null;
+  try {
+    cached = sessionStorage.getItem('cm:r2CardImages');
+  } catch {
+    /* storage unavailable */
+  }
+  if (cached === '1') {
+    setR2Ready(true);
+  } else if (cached === null) {
+    fetch(`${R2_CARD_IMAGES}/_ready`)
+      .then(res => {
+        try {
+          sessionStorage.setItem('cm:r2CardImages', res.ok ? '1' : '0');
+        } catch {
+          /* storage unavailable */
+        }
+        if (res.ok) {
+          setR2Ready(true);
+        }
+      })
+      .catch(() => {
+        /* leave limitless as the source this session */
+      });
+  }
+}
 
 function tierUrl(setU: string, num: string, size: CardImageSize): string {
   return `${LIMITLESS_CDN}/${setU}/${setU}_${num}_R_EN_${size.toUpperCase()}.png`;
+}
+
+function r2TierUrl(setU: string, num: string, size: CardImageSize): string {
+  return `${R2_CARD_IMAGES}/${setU}/${setU}_${num}_R_EN_${size.toUpperCase()}.webp`;
 }
 
 /**
@@ -48,16 +88,16 @@ function tierUrl(setU: string, num: string, size: CardImageSize): string {
  * padded number form. Only used for the first attempt — if anything 404s we
  * fall back to the plain single-src retry chain, which stays authoritative.
  */
-function buildSrcset(set: string, number: string | number, preferredSize: CardImageSize): string {
+function buildSrcset(set: string, number: string | number, preferredSize: CardImageSize, useR2: boolean): string {
   const setU = String(set).toUpperCase();
   const stripped = String(number).replace(/^0+/, '') || '0';
   const parts = stripped.match(/^(\d+)([A-Za-z]*)$/);
   const num = parts ? `${parts[1].padStart(3, '0')}${parts[2] ?? ''}` : stripped;
   const tiers: CardImageSize[] = preferredSize === 'lg' ? ['xs', 'sm', 'lg'] : ['xs', 'sm'];
-  return tiers.map(t => `${tierUrl(setU, num, t)} ${TIER_WIDTH[t]}w`).join(', ');
+  return tiers.map(t => `${(useR2 ? r2TierUrl : tierUrl)(setU, num, t)} ${TIER_WIDTH[t]}w`).join(', ');
 }
 
-function buildAttempts(set: string, number: string | number, preferredSize: CardImageSize): string[] {
+function buildAttempts(set: string, number: string | number, preferredSize: CardImageSize, useR2: boolean): string[] {
   const setU = String(set).toUpperCase();
   const numStr = String(number);
   const stripped = numStr.replace(/^0+/, '') || '0';
@@ -88,6 +128,12 @@ function buildAttempts(set: string, number: string | number, preferredSize: Card
   // for the rare card whose ID needs zero-padding.
   const seen = new Set<string>();
   const urls: string[] = [];
+  // R2 WebP first (75% lighter); any 404 — e.g. a card the pipeline hasn't
+  // converted yet — falls straight through to the limitless PNG chain below.
+  if (useR2 && parts) {
+    urls.push(r2TierUrl(setU, `${parts[1].padStart(3, '0')}${parts[2] ?? ''}`, preferredSize));
+    seen.add(urls[0]);
+  }
   for (const size of sizeChain) {
     for (const num of numberForms) {
       const url = tierUrl(setU, num, size);
@@ -101,7 +147,7 @@ function buildAttempts(set: string, number: string | number, preferredSize: Card
 }
 
 export function CardImage(props: CardImageProps) {
-  const attempts = createMemo(() => buildAttempts(props.set, props.number, props.size ?? 'sm'));
+  const attempts = createMemo(() => buildAttempts(props.set, props.number, props.size ?? 'sm', r2Ready()));
   const [attemptIndex, setAttemptIndex] = createSignal(0);
   const [errored, setErrored] = createSignal(false);
 
@@ -131,7 +177,9 @@ export function CardImage(props: CardImageProps) {
       <img
         src={src()}
         srcset={
-          props.sizes && attemptIndex() === 0 ? buildSrcset(props.set, props.number, props.size ?? 'sm') : undefined
+          props.sizes && attemptIndex() === 0
+            ? buildSrcset(props.set, props.number, props.size ?? 'sm', r2Ready())
+            : undefined
         }
         sizes={props.sizes && attemptIndex() === 0 ? props.sizes : undefined}
         alt={alt()}

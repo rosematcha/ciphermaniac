@@ -168,6 +168,14 @@
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: var(--space-3);
 }
+@media (max-width: 560px) {
+  /* Two 160px-min columns plus gap need ~424px — too tight for 384-412px
+     phones. A narrower minimum keeps two comfortable columns. */
+  .ilm-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--space-2);
+  }
+}
 .ilm-card {
   display: grid;
   grid-template-rows: auto auto;

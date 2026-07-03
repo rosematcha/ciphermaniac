@@ -92,12 +92,18 @@ async function writeToR2(key: string, body: string | Uint8Array, contentType: st
   if (!s3Client || !r2Bucket) {
     return;
   }
+  // Same policy as functions/lib/onlineMeta/storageWriter.ts (P3.1): dated
+  // snapshot dirs are immutable; the rebuilt-on-rotation index gets 6 hours.
+  const cacheControl = /^reports\/Snapshots\/\d{4}-\d{2}-\d{2}\//.test(key)
+    ? 'public, max-age=31536000, immutable'
+    : 'public, max-age=21600';
   await s3Client.send(
     new PutObjectCommand({
       Bucket: r2Bucket,
       Key: key,
       Body: typeof body === 'string' ? body : Buffer.from(body),
-      ContentType: contentType
+      ContentType: contentType,
+      CacheControl: cacheControl
     })
   );
 }

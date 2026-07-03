@@ -46,6 +46,17 @@ if (!rootEl) {
   throw new Error('Missing #root element in index.html');
 }
 
+// Service worker (P3.3): stale-while-revalidate for report JSON, cache-first
+// for hashed assets/fonts, offline shell fallback. Production only — in dev it
+// would mask HMR and serve stale modules.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      /* SW is a progressive enhancement; the site works fine without it */
+    });
+  });
+}
+
 // Default to light unless the user has previously picked dark.
 const savedMode = (typeof localStorage !== 'undefined' && localStorage.getItem('cm:mode')) as 'light' | 'dark' | null;
 document.body.dataset.mode = savedMode ?? 'light';
