@@ -1,5 +1,5 @@
 import { A, useLocation } from '@solidjs/router';
-import { createSignal } from 'solid-js';
+// import { createSignal } from 'solid-js'; // re-enable with the mode toggle below
 import { TournamentSelector } from './TournamentSelector';
 
 const links: { href: string; label: string }[] = [
@@ -11,21 +11,24 @@ const links: { href: string; label: string }[] = [
 
 export function TopNav() {
   const location = useLocation();
+
+  // --- Light/dark mode toggle: temporarily hidden site-wide. To restore, also
+  // uncomment the `createSignal` import above and the button in the markup below.
   // `main.tsx` sets `document.body.dataset.mode` synchronously before render
   // from localStorage; read that here rather than hitting localStorage again.
-  const initialMode = ((document.body.dataset.mode as 'light' | 'dark' | undefined) ?? 'light') as 'light' | 'dark';
-  const [mode, setMode] = createSignal<'light' | 'dark'>(initialMode);
-
-  function toggleMode() {
-    const next = mode() === 'light' ? 'dark' : 'light';
-    setMode(next);
-    document.body.dataset.mode = next;
-    try {
-      localStorage.setItem('cm:mode', next);
-    } catch {
-      /* localStorage may be unavailable */
-    }
-  }
+  // const initialMode = ((document.body.dataset.mode as 'light' | 'dark' | undefined) ?? 'light') as 'light' | 'dark';
+  // const [mode, setMode] = createSignal<'light' | 'dark'>(initialMode);
+  //
+  // function toggleMode() {
+  //   const next = mode() === 'light' ? 'dark' : 'light';
+  //   setMode(next);
+  //   document.body.dataset.mode = next;
+  //   try {
+  //     localStorage.setItem('cm:mode', next);
+  //   } catch {
+  //     /* localStorage may be unavailable */
+  //   }
+  // }
 
   const isActive = (href: string) => {
     const path = location.pathname;
@@ -51,6 +54,7 @@ export function TopNav() {
       </nav>
       <div class='topnav-actions'>
         <TournamentSelector />
+        {/* Light/dark mode toggle — temporarily hidden site-wide.
         <button
           class='topnav-mode-toggle'
           type='button'
@@ -59,6 +63,7 @@ export function TopNav() {
         >
           {mode() === 'light' ? 'Dark' : 'Light'}
         </button>
+        */}
       </div>
     </header>
   );

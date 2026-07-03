@@ -343,6 +343,7 @@ function CardPageBody(props: {
                 set={props.card.set!}
                 number={props.card.number!}
                 size='lg'
+                sizes='(max-width: 760px) 240px, 300px'
                 lazy={false}
                 alt={`${props.card.name} card`}
               />

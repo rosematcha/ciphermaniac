@@ -1,0 +1,411 @@
+/* ============================================================
+   Survey — sample "what do you want next" questionnaire
+   Scoped styles; relies on STAMP design tokens.
+   ============================================================ */
+
+.survey-hero {
+  text-align: center;
+}
+
+/* Pull the intro up under the title — the default 42px section gap leaves the
+   lone title floating now that the subheading is gone. */
+.page > .survey-hero + section {
+  margin-top: var(--space-4);
+}
+
+.survey {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.survey .q {
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.survey .q-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.survey .q-help {
+  margin: 4px 0 var(--space-3) 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Space the answer controls off the title. When a q-help subheading sits
+   between them it already provides the gap; otherwise the title needs its own. */
+.survey .q-title + .choices,
+.survey .q-title + .grid-rows,
+.survey .q-title + .dots,
+.survey .q-title + .q-empty,
+.survey .q-title + .contact-row,
+.survey .q-title + textarea {
+  margin-top: var(--space-3);
+}
+
+.survey .choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Form fields — styled to the STAMP look so they read correctly in dark mode */
+.survey textarea,
+.survey input[type='text'] {
+  width: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  transition:
+    border-color var(--ms-fast) var(--ease-base),
+    box-shadow var(--ms-fast) var(--ease-base);
+}
+.survey textarea::placeholder,
+.survey input[type='text']::placeholder {
+  color: var(--muted);
+}
+.survey textarea:focus,
+.survey input[type='text']:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.survey .other-input {
+  margin-top: 10px;
+}
+
+/* Rating grid */
+.survey .grid-rows {
+  display: grid;
+  gap: 10px;
+}
+.survey .grid-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.survey .grid-row .label {
+  font-weight: 600;
+  font-size: 14px;
+}
+.survey .dots {
+  display: flex;
+  gap: 6px;
+}
+.survey .dots.wrap {
+  flex-wrap: wrap;
+}
+.survey .dot {
+  width: 30px;
+  height: 30px;
+  border: var(--border-width) solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    transform var(--ms-fast) var(--ease-base),
+    background var(--ms-fast) var(--ease-base);
+}
+.survey .dot:hover {
+  background: var(--surface-2);
+}
+.survey .dot:active {
+  transform: scale(var(--press-scale));
+}
+.survey .dot[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--border);
+}
+
+/* Empty state for conditional (Q1-driven) questions */
+.survey .q-empty {
+  border: var(--border-width) dashed var(--rule);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 13px;
+  padding: 14px;
+  text-align: center;
+}
+
+/* MaxDiff / top-picks list */
+.survey .picks {
+  display: grid;
+  gap: 8px;
+}
+.survey .pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background var(--ms-fast) var(--ease-base);
+}
+.survey .pick:hover {
+  background: var(--surface-2);
+}
+.survey .pick[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--border);
+  box-shadow: var(--shadow-1);
+}
+.survey .pick .box {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border: var(--border-width) solid currentColor;
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+.survey .pick .pick-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+.survey .pick .pick-sub {
+  color: var(--muted);
+  font-size: 12px;
+}
+.survey .pick[aria-pressed='true'] .pick-sub {
+  color: var(--accent-fg);
+  opacity: 0.85;
+}
+.survey .pick[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.survey .pick-counter {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.survey textarea {
+  width: 100%;
+  min-height: 84px;
+  resize: vertical;
+  font: inherit;
+}
+
+.survey .contact-row {
+  display: grid;
+  gap: 10px;
+}
+.survey .contact-row input[type='text'] {
+  width: 100%;
+}
+.survey .check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+/* Honeypot — off-screen, non-interactive; catches naive bots. */
+.survey .hp-field {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.survey-done-gif {
+  display: block;
+  max-width: 100%;
+  width: 360px;
+  height: auto;
+  margin: 0 auto var(--space-4) auto;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+/* Closed-survey message */
+.survey-closed {
+  max-width: 620px;
+}
+.survey-closed p {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--fg);
+  max-width: none;
+}
+
+/* ---- Results view ---- */
+.results-login {
+  max-width: 420px;
+}
+.results-login input[type='password'] {
+  width: 100%;
+}
+.results .results-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: var(--space-4);
+  font-size: 13px;
+}
+.results .results-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+@media (max-width: 640px) {
+  .results .results-tiles {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.results .tile {
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-3);
+  text-align: center;
+}
+.results .tile-num {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.results .tile-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.results .bars {
+  display: grid;
+  gap: 8px;
+}
+.results .bar-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 40%) 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.results .bar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.results .bar-track {
+  height: 12px;
+  background: var(--surface-2);
+  border: var(--border-width) solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.results .bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.results .bar-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  min-width: 2ch;
+  text-align: right;
+}
+.results .text-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.results .text-list li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.results .text-date {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.results-empty {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.survey .survey-error {
+  margin-top: var(--space-3);
+  color: var(--negative);
+  font-size: 13px;
+}
+
+.survey .actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: var(--space-2);
+}
+.survey .privacy {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Thank-you state */
+.survey-done {
+  text-align: center;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-6) var(--space-4);
+  max-width: 560px;
+  margin: 0 auto;
+}
+.survey-done .big {
+  font-size: 40px;
+  margin-bottom: var(--space-2);
+}
+.survey-done h2 {
+  margin: 0 0 var(--space-2) 0;
+}
+.survey-done p {
+  color: var(--muted);
+  margin: 0 auto var(--space-4) auto;
+  max-width: 42ch;
+}
+
+.survey .survey-intro {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+  text-align: center;
+  max-width: 56ch;
+  margin: 0 auto var(--space-6) auto;
+}
