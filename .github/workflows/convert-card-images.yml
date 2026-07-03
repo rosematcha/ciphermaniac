@@ -1,0 +1,53 @@
+# =============================================================================
+# Convert Card Images to WebP (mobile plan P1.1)
+# =============================================================================
+# Re-encodes LimitlessTCG card art to WebP (~61% smaller) and uploads it to the
+# R2 bucket under card-images/, so the site serves lightweight images from our
+# own domain instead of hotlinking the CDN. Idempotent: cards already in R2 are
+# skipped, so re-runs only convert newly-seen cards. Writes a card-images/_ready
+# marker on success, which flips CardImage over to preferring R2 WebP.
+#
+# Triggers:
+#   - Manual dispatch (run it on demand)
+#   - Weekly, to pick up cards from newly-scraped tournaments
+# =============================================================================
+
+name: (Card Images) WebP Conversion
+
+run-name: >-
+  ${{ github.event_name == 'schedule' && 'Weekly card image conversion' || 'Card image conversion (manual)' }}
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 4 * * 1' # Mondays at 04:30 UTC
+
+concurrency:
+  group: convert-card-images
+  cancel-in-progress: false
+
+jobs:
+  convert-card-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Convert and upload card images
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
+        run: npm run images:convert

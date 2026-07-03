@@ -1,0 +1,36 @@
+name: Lighthouse Budget
+
+# Mobile performance budget (mobile plan P4.2). Lighthouse's default mobile
+# profile simulates slow 4G (1.6 Mbps / 150ms RTT) — the same network model
+# the July 2026 mobile audit used. Budgets live in .lighthouserc.json:
+# LCP <= 3s (error), script transfer <= 90KB (error), CLS <= 0.1 (error),
+# image weight and perf score as warnings until the WebP pipeline (P1.1)
+# has run in production.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Run Lighthouse CI
+        run: npx --yes @lhci/cli@0.14.x autorun

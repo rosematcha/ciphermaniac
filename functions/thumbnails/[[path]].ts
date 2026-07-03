@@ -122,8 +122,18 @@ export async function onRequest(context: Context): Promise<Response> {
   try {
     const response = await fetchWithFallback(candidateUrls);
 
-    // Clone the response to add CORS headers
+    // Clone the response to add CORS headers.
     const headers = new Headers(response.headers);
+    // Drop Limitless/Cloudflare's `__cf_bm` bot-management cookie. Its Domain is
+    // set to the public suffix `digitaloceanspaces.com`, which browsers reject
+    // ("invalid domain") — and once rejected, concurrent direct-to-CDN image
+    // loads get 403-challenged, which is why hotlinking broke in the browser.
+    // Passing it through here is both useless (wrong domain for our origin) and
+    // harmful: Cloudflare will not edge-cache any response carrying Set-Cookie,
+    // so leaving it in would invoke this Function on every single image view.
+    // Stripping it makes the response cacheable, so repeat views are free.
+    headers.delete('Set-Cookie');
+    headers.delete('Vary');
     headers.set('Access-Control-Allow-Origin', '*');
     headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
     headers.set('Cache-Control', `public, max-age=${CACHE_TTL}`);

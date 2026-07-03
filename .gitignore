@@ -98,3 +98,4 @@ trends.json
 !/static/robots.txt
 !/static/fonts/
 !/static/sw.js
+.lighthouseci/

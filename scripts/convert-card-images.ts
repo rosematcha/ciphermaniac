@@ -25,7 +25,13 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  GetObjectCommand,
+  HeadObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client
+} from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -125,10 +131,69 @@ async function fetchJson(url: string): Promise<unknown | null> {
   }
 }
 
-async function discoverCards(): Promise<CardRef[]> {
-  const cards = new Map<string, CardRef>();
+/** Every `reports/…/` folder prefix in the bucket, via the authenticated S3 API. */
+async function listReportPrefixes(): Promise<string[]> {
+  if (!s3Client || !r2Bucket) {
+    return [];
+  }
+  const prefixes: string[] = [];
+  let token: string | undefined;
+  do {
+    const res = await s3Client.send(
+      new ListObjectsV2Command({
+        Bucket: r2Bucket,
+        Prefix: 'reports/',
+        Delimiter: '/',
+        ContinuationToken: token
+      })
+    );
+    for (const cp of res.CommonPrefixes ?? []) {
+      if (cp.Prefix) {
+        prefixes.push(cp.Prefix);
+      }
+    }
+    token = res.IsTruncated ? res.NextContinuationToken : undefined;
+  } while (token);
+  return prefixes;
+}
 
-  // Live tournaments (R2 is the production source of truth).
+async function getJsonFromR2(key: string): Promise<unknown | null> {
+  if (!s3Client || !r2Bucket) {
+    return null;
+  }
+  try {
+    const res = await s3Client.send(new GetObjectCommand({ Bucket: r2Bucket, Key: key }));
+    const body = await res.Body?.transformToString();
+    return body ? JSON.parse(body) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Discover cards via the S3 API. CI runners can't read the public
+ * r2.ciphermaniac.com edge (Cloudflare bot-management blocks datacenter IPs),
+ * but the authenticated S3 endpoint is always reachable — and we already hold
+ * the credentials. Every tournament folder's master.json carries set/number.
+ */
+async function discoverViaS3(cards: Map<string, CardRef>): Promise<void> {
+  const prefixes = await listReportPrefixes();
+  for (const prefix of prefixes) {
+    const master = (await getJsonFromR2(`${prefix}master.json`)) as { items?: unknown } | null;
+    collectFromItems(master?.items, cards);
+    const archeIndex = (await getJsonFromR2(`${prefix}archetypes/index.json`)) as
+      | { archetypes?: { thumbnails?: unknown }[] }
+      | { thumbnails?: unknown }[]
+      | null;
+    const list = Array.isArray(archeIndex) ? archeIndex : (archeIndex?.archetypes ?? []);
+    for (const entry of list) {
+      collectFromThumbnails((entry as { thumbnails?: unknown }).thumbnails, cards);
+    }
+  }
+}
+
+/** Discover via the public HTTP edge — the fallback for `--dry-run` with no creds. */
+async function discoverViaHttp(cards: Map<string, CardRef>): Promise<void> {
   const tournaments = (await fetchJson(`${R2_BASE}/reports/tournaments.json`)) as string[] | null;
   const liveNames = [...(tournaments ?? []), 'Online - Last 14 Days'];
   for (const name of liveNames) {
@@ -145,8 +210,20 @@ async function discoverCards(): Promise<CardRef[]> {
       collectFromThumbnails((entry as { thumbnails?: unknown }).thumbnails, cards);
     }
   }
+}
 
-  // Local rotation snapshots (immutable historical reports).
+async function discoverCards(): Promise<CardRef[]> {
+  const cards = new Map<string, CardRef>();
+
+  // Authenticated S3 discovery when credentials are present (the CI path);
+  // the public HTTP edge only as a fallback for credential-less dry runs.
+  if (s3Client && r2Bucket) {
+    await discoverViaS3(cards);
+  } else {
+    await discoverViaHttp(cards);
+  }
+
+  // Local rotation snapshots (immutable historical reports), if checked out.
   try {
     const snapshotsDir = join(STATIC_BASE, 'reports', 'Snapshots');
     for (const snapshot of await readdir(snapshotsDir)) {
@@ -226,11 +303,15 @@ async function convertCard(ref: CardRef): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  console.log(`Discovering cards${DRY_RUN ? ' (dry run)' : ''}...`);
+  console.log(`Discovering cards${DRY_RUN ? ' (dry run)' : ''} via ${s3Client ? 'S3 API' : 'public HTTP'}...`);
   const cards = await discoverCards();
   console.log(`Found ${cards.length} unique cards (${cards.length * TIERS.length} tier objects).`);
   if (cards.length === 0) {
-    console.error('No cards discovered — check network access to r2.ciphermaniac.com.');
+    console.error(
+      s3Client
+        ? 'No cards discovered from the R2 bucket — check the reports/ prefix and credentials.'
+        : 'No cards discovered — check network access to r2.ciphermaniac.com.'
+    );
     process.exit(1);
   }
 
