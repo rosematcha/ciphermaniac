@@ -5,7 +5,8 @@
 
 interface WorkerEnv {
   CARD_TYPES_KV?: KVNamespace;
-  REPORTS?: R2Bucket;
+  /** Only `get` is needed here; accepts an R2 bucket or any structural equivalent (e.g. the CI S3 shim). */
+  REPORTS?: { get(key: string): Promise<{ text(): Promise<string> } | null> };
 }
 
 interface CardTypeInfo {
@@ -24,8 +25,8 @@ export type CardTypesDatabase = Record<string, CardTypeInfo>;
 
 interface CardRecord {
   name?: string;
-  set?: string;
-  number?: string | number;
+  set?: string | null;
+  number?: string | number | null;
   count?: number;
   category?: string;
   trainerType?: string;
@@ -34,7 +35,6 @@ interface CardRecord {
   regulationMark?: string;
   evolutionInfo?: string;
   fullType?: string;
-  [key: string]: unknown;
 }
 
 interface DeckRecord {
@@ -84,7 +84,7 @@ export async function loadCardTypesDatabase(env: WorkerEnv): Promise<CardTypesDa
   }
 }
 
-export function enrichCardWithType(card: CardRecord, database: CardTypesDatabase): CardRecord {
+export function enrichCardWithType<T extends CardRecord>(card: T, database: CardTypesDatabase): T {
   if (!card) {
     return card;
   }
@@ -99,7 +99,7 @@ export function enrichCardWithType(card: CardRecord, database: CardTypesDatabase
   const typeInfo = database[key];
 
   if (!typeInfo) {
-    return enriched;
+    return enriched as T;
   }
 
   if (typeInfo.cardType && !enriched.category) {
@@ -130,7 +130,7 @@ export function enrichCardWithType(card: CardRecord, database: CardTypesDatabase
     enriched.aceSpec = true;
   }
 
-  return enriched;
+  return enriched as T;
 }
 
 function enrichDeckCards(deck: DeckRecord, database: CardTypesDatabase): DeckRecord {

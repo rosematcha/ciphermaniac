@@ -1,6 +1,6 @@
 /**
  * tests/security/api-security.test.ts
- * Security-focused tests for API endpoints including feedback, cron auth, and thumbnails.
+ * Security-focused tests for API endpoints including feedback and thumbnails.
  */
 
 import test, { beforeEach } from 'node:test';
@@ -12,9 +12,6 @@ import { mockFetch, restoreFetch } from '../__utils__/test-helpers.js';
 
 // Import the feedback handler under test
 import * as FeedbackModule from '../../functions/api/feedback.ts';
-
-// Import cron handler for authentication tests
-import * as CronModule from '../../functions/_cron/online-meta.ts';
 
 // Import thumbnail handler for path validation tests
 import * as ThumbnailModule from '../../functions/thumbnails/[[path]].ts';
@@ -88,7 +85,7 @@ test('Feedback API: rejects malformed JSON and invalid Content-Type', async () =
  */
 test('Feedback API: neutralizes XSS and script tags in outgoing email payload', async () => {
   const malicious = generateMaliciousInput('xss').payload as string;
-  let capturedBodyText: string | null = null;
+  let capturedBodyText = null as string | null;
 
   mockFetch([
     {
@@ -138,7 +135,7 @@ test('Feedback API: neutralizes XSS and script tags in outgoing email payload', 
  * Email header injection should be prevented: contactInfo must not inject additional headers
  */
 test('Feedback API: prevents email header injection via contactInfo', async () => {
-  let capturedBodyText: string | null = null;
+  let capturedBodyText = null as string | null;
   mockFetch([
     {
       predicate: (_input, init) => {
@@ -213,7 +210,7 @@ test('Feedback API: does not expose API keys from downstream errors', async () =
  * Unicode handling and size tests: ensure unicode payloads are preserved and very large bodies handled safely
  */
 test('Feedback API: handles unicode characters and enforces size limits', async () => {
-  let captured: string | null = null;
+  let captured = null as string | null;
   mockFetch([
     {
       predicate: (_i, init) => {
@@ -252,83 +249,6 @@ test('Feedback API: handles unicode characters and enforces size limits', async 
   assert.ok([413, 400].includes(largeResp.status), `Large payload should be rejected; got ${largeResp.status}`);
 
   restoreFetch();
-});
-
-// ============================================================================
-// Cron Authentication Tests (X-Cron-Secret header validation)
-// ============================================================================
-
-/**
- * Test: Cron endpoint rejects requests without X-Cron-Secret header
- */
-test('Cron API: rejects request without X-Cron-Secret header', async () => {
-  const request = new Request('https://ciphermaniac.test/_cron/online-meta', {
-    method: 'GET'
-  });
-
-  const env = { CRON_SECRET: 'secret-key-123' } as any;
-
-  const response = await CronModule.onRequestGet({ request, env });
-  assert.strictEqual(response.status, 401, 'Should reject missing auth header');
-
-  const body = JSON.parse(await response.text());
-  assert.ok(body.error, 'Should have error message');
-  assert.ok(body.error.toLowerCase().includes('unauthorized'), 'Error should indicate unauthorized');
-});
-
-/**
- * Test: Cron endpoint rejects requests with incorrect X-Cron-Secret
- */
-test('Cron API: rejects request with incorrect X-Cron-Secret', async () => {
-  const request = new Request('https://ciphermaniac.test/_cron/online-meta', {
-    method: 'GET',
-    headers: {
-      'X-Cron-Secret': 'wrong-secret'
-    }
-  });
-
-  const env = { CRON_SECRET: 'correct-secret-456' } as any;
-
-  const response = await CronModule.onRequestGet({ request, env });
-  assert.strictEqual(response.status, 401, 'Should reject incorrect secret');
-});
-
-/**
- * Test: Cron endpoint rejects requests when CRON_SECRET is not configured (fail secure)
- */
-test('Cron API: rejects request when CRON_SECRET env var not configured', async () => {
-  const request = new Request('https://ciphermaniac.test/_cron/online-meta', {
-    method: 'GET',
-    headers: {
-      'X-Cron-Secret': 'any-secret'
-    }
-  });
-
-  // No CRON_SECRET in env - should fail secure
-  const env = {} as any;
-
-  const response = await CronModule.onRequestGet({ request, env });
-  assert.strictEqual(response.status, 401, 'Should deny when secret not configured');
-
-  const body = JSON.parse(await response.text());
-  assert.ok(body.error.includes('not configured'), 'Should indicate secret not configured');
-});
-
-/**
- * Test: Cron endpoint rejects empty X-Cron-Secret header
- */
-test('Cron API: rejects empty X-Cron-Secret header', async () => {
-  const request = new Request('https://ciphermaniac.test/_cron/online-meta', {
-    method: 'GET',
-    headers: {
-      'X-Cron-Secret': ''
-    }
-  });
-
-  const env = { CRON_SECRET: 'valid-secret' } as any;
-
-  const response = await CronModule.onRequestGet({ request, env });
-  assert.strictEqual(response.status, 401, 'Should reject empty secret');
 });
 
 // ============================================================================

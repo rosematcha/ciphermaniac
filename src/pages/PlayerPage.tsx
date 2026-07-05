@@ -11,6 +11,7 @@ import { EmptyState } from '../components/EmptyState';
 import { CardImage } from '../components/CardImage';
 import { capitalize, formatRecord } from '../lib/format';
 import { groupDeckByCategory } from '../lib/deckGrouping';
+import { resolved } from '../lib/resource';
 
 export function PlayerPage() {
   const params = useParams<{ id: string }>();
@@ -18,13 +19,19 @@ export function PlayerPage() {
   const [participants] = createResource(tournament, fetchParticipants);
   const [decks] = createResource(tournament, fetchDecks);
 
+  // Non-suspending reads (see lib/resource.ts). `resolved`, not `latestValue`:
+  // on a tournament switch we'd rather show the skeleton than the previous
+  // tournament's player under this URL.
+  const participantsData = () => resolved(participants);
+  const decksData = () => resolved(decks);
+
   const player = createMemo<TournamentParticipant | undefined>(() => {
-    const list = participants() ?? [];
+    const list = participantsData() ?? [];
     return list.find(p => String(p.tpId) === params.id);
   });
 
   const deck = createMemo<DeckRecord | undefined>(() => {
-    const list = decks() ?? [];
+    const list = decksData() ?? [];
     const p = player();
     if (!p) {
       return undefined;
@@ -63,15 +70,32 @@ export function PlayerPage() {
 
       <Show when={!isOnline()}>
         <Show
-          when={participants() && player()}
+          when={participantsData() && player()}
           fallback={
-            <Show when={participants() && !player()} fallback={<PlayerSkeleton />}>
+            // participants() resolves null (not undefined) when players.json is
+            // missing — without this branch the skeleton spins forever.
+            <Show
+              when={participantsData() === null}
+              fallback={
+                <Show when={participantsData() && !player()} fallback={<PlayerSkeleton />}>
+                  <EmptyState
+                    title='Player not found.'
+                    description="That player isn't listed in the active tournament's records."
+                    actions={
+                      <A href='/standings' class='btn btn-secondary'>
+                        Back to standings
+                      </A>
+                    }
+                  />
+                </Show>
+              }
+            >
               <EmptyState
-                title='Player not found.'
-                description="That player isn't listed in the active tournament's records."
+                title='No player data for this tournament.'
+                description="players.json isn't published for this tournament yet. It might be a special event with limited reporting."
                 actions={
-                  <A href='/standings' class='btn btn-secondary'>
-                    Back to standings
+                  <A href='/tournaments' class='btn btn-primary'>
+                    Browse tournaments
                   </A>
                 }
               />

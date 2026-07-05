@@ -17,6 +17,7 @@ import {
 } from '../../functions/lib/onlineMeta.ts';
 import { loadCardTypesDatabase } from '../../functions/lib/data/cardTypesDatabase.js';
 import { fetchLimitlessJson } from '../../functions/lib/api/limitless.ts';
+import type { DiagnosticsCollector, TrendSeriesEntry } from '../../functions/lib/onlineMeta/types.ts';
 
 const TRENDS_FOLDER = 'Trends - Last 30 Days';
 const LOOKBACK_DAYS = 30;
@@ -27,7 +28,7 @@ const MAX_ARCHETYPES_IN_SERIES = 32;
 const MIN_TREND_TOURNAMENTS = 4;
 const LOOKBACK_FALLBACK_STEPS = [45, 60, 90];
 
-function requireEnv(name) {
+function requireEnv(name: string) {
   const value = process.env[name];
   if (!value) {
     throw new Error(`Missing environment variable: ${name}`);
@@ -51,15 +52,17 @@ const s3Client = new S3Client({
 });
 
 class R2Binding {
+  private readonly prefix: string;
+
   constructor(prefix = '') {
     this.prefix = prefix.replace(/\/+$/, '');
   }
 
-  withPrefix(key) {
+  withPrefix(key: string) {
     return this.prefix ? `${this.prefix}/${key}` : key;
   }
 
-  async put(key, data) {
+  async put(key: string, data: unknown) {
     const body = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
     await s3Client.send(
       new PutObjectCommand({
@@ -71,7 +74,7 @@ class R2Binding {
     );
   }
 
-  async get(key) {
+  async get(key: string) {
     try {
       const response = await s3Client.send(
         new GetObjectCommand({
@@ -81,15 +84,15 @@ class R2Binding {
       );
       return {
         async text() {
-          const chunks = [];
-          for await (const chunk of response.Body) {
+          const chunks: Uint8Array[] = [];
+          for await (const chunk of response.Body as unknown as AsyncIterable<Uint8Array>) {
             chunks.push(chunk);
           }
           return Buffer.concat(chunks).toString('utf-8');
         }
       };
     } catch (error) {
-      if (error?.$metadata?.httpStatusCode === 404) {
+      if ((error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode === 404) {
         return null;
       }
       throw error;
@@ -147,7 +150,7 @@ class R2Binding {
   }
 }
 
-function trimTrendSeries(series = [], limit = MAX_ARCHETYPES_IN_SERIES) {
+function trimTrendSeries(series: TrendSeriesEntry[] = [], limit = MAX_ARCHETYPES_IN_SERIES) {
   const max = Math.max(0, Number(limit) || 0);
   if (!Array.isArray(series) || !series.length || max === 0) {
     return [];
@@ -188,7 +191,7 @@ async function main() {
     console.log(`[trends] Deleted ${deleted.deleted}/${deleted.keys} objects from ${TRENDS_FOLDER}/`);
   }
 
-  const fetchJson = async (pathname, options = {}) => {
+  const fetchJson = async (pathname: string, options: Parameters<typeof fetchLimitlessJson>[1] = {}) => {
     const baseFetchOptions = options?.fetchOptions || {};
     const headers = new Headers(baseFetchOptions.headers || undefined);
     if (cleanMonthCache) {
@@ -237,7 +240,7 @@ async function main() {
   }
 
   console.log('[trends] Gathering decks...');
-  const diagnostics = {};
+  const diagnostics: DiagnosticsCollector = {};
   const decks = await gatherDecks(env, tournaments, diagnostics, cardTypesDb, { fetchJson });
   console.log(`[trends] Decks: ${decks.length}`);
   if (diagnostics?.archetypeClassification) {
@@ -316,7 +319,10 @@ async function main() {
     id: t.id,
     name: t.name,
     date: t.date,
-    deckTotal: t.deckTotal || 0
+    // NOTE: raw tournament summaries never carry deckTotal, so this has always
+    // been 0 at runtime; kept as-is (types-only change) rather than switching
+    // to deckCountByTournament.get(t.id).
+    deckTotal: (t as { deckTotal?: number }).deckTotal || 0
   }));
   await env.REPORTS.put(`${baseKey}/tournaments.json`, tournamentsForFiltering);
 

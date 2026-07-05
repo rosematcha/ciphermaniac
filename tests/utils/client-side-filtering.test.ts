@@ -5,7 +5,6 @@ import {
   type Deck,
   filterDecks,
   filterDecksBySuccess,
-  generateFilteredReport,
   generateReportForFilters
 } from '../../src/utils/clientSideFiltering.ts';
 
@@ -93,17 +92,4 @@ test('filterDecksBySuccess returns input for unknown tags', () => {
   const decks: Deck[] = [makeDeck({ id: 'd1' }), makeDeck({ id: 'd2' })];
   const filtered = filterDecksBySuccess(decks, 'unknown');
   assert.equal(filtered.length, decks.length);
-});
-
-test('generateFilteredReport flags client-side generation', () => {
-  const decks: Deck[] = [
-    makeDeck({
-      id: 'd1',
-      archetype: 'Mew',
-      cards: [{ name: 'Pikachu', set: 'SVI', number: '7', count: 2 }]
-    })
-  ];
-
-  const report = generateFilteredReport(decks, 'Mew', 'SVI~007', null, '>=', 2);
-  assert.equal(report.generatedClientSide, true);
 });

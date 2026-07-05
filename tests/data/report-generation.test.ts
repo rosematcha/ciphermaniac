@@ -48,7 +48,7 @@ test('Generate report from valid deck list and calculate distributions', () => {
     { cards: [makeCard('Charizard', 1, 'SWSH', '12'), makeCard('Pikachu', 1, 'SVI', '1')] }
   ];
 
-  const report = generateReportFromDecks(decks, decks.length, decks, null);
+  const report = generateReportFromDecks(decks, decks.length, null);
   assert.strictEqual(report.deckTotal, 3);
 
   const pik = report.items.find((i: any) => String(i.name).toLowerCase().includes('pikachu'));
@@ -70,12 +70,12 @@ test('Generate report from valid deck list and calculate distributions', () => {
 });
 
 test('Handle empty tournament and tournament with no decks', () => {
-  const emptyReport = generateReportFromDecks([], 0, [], null);
+  const emptyReport = generateReportFromDecks([], 0, null);
   assert.strictEqual(emptyReport.deckTotal, 0);
   assert.ok(Array.isArray(emptyReport.items));
   assert.strictEqual(emptyReport.items.length, 0);
 
-  const noDecksReport = generateReportFromDecks(null as any, 0, null as any, null);
+  const noDecksReport = generateReportFromDecks(null as any, 0, null);
   assert.strictEqual(noDecksReport.deckTotal, 0);
   assert.strictEqual(noDecksReport.items.length, 0);
 });
@@ -83,7 +83,7 @@ test('Handle empty tournament and tournament with no decks', () => {
 test('Handle malformed deck lists and validate deck totals', () => {
   const malformed = [{ cards: null }, {}, { cards: [{ name: 'Bad Card', count: 'not-a-number' } as any] }];
 
-  const report = generateReportFromDecks(malformed as any, malformed.length, malformed as any, null);
+  const report = generateReportFromDecks(malformed as any, malformed.length, null);
   assert.strictEqual(Array.isArray(report.items), true);
   assert.strictEqual(report.items.length, 0);
   assert.strictEqual(report.deckTotal, 3);
@@ -93,7 +93,7 @@ test('Detect duplicate decks and aggregate across multiple tournaments', () => {
   const deckA = { cards: [makeCard('Zubat', 4, 'SWSH', '010')] };
   const deckB = deepClone(deckA);
   const decks = [deckA, deckB];
-  const report = generateReportFromDecks(decks, decks.length, decks, null);
+  const report = generateReportFromDecks(decks, decks.length, null);
   const zubat = report.items.find((i: any) => String(i.name).toLowerCase().includes('zubat'));
   assert.ok(zubat);
   assert.strictEqual(zubat.found, 2);
@@ -105,7 +105,7 @@ test('Detect duplicate decks and aggregate across multiple tournaments', () => {
 
 test('Handle cards appearing in 100% and 0% of decks', () => {
   const decks = [{ cards: [makeCard('Always', 1)] }, { cards: [makeCard('Always', 2)] }];
-  const report = generateReportFromDecks(decks, decks.length, decks, null);
+  const report = generateReportFromDecks(decks, decks.length, null);
   const always = report.items.find((i: any) => String(i.name).toLowerCase().includes('always'));
   assert.ok(always);
   assert.strictEqual(always.pct, 100);

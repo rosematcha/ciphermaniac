@@ -4,9 +4,11 @@
  * Hits `https://r2.ciphermaniac.com/reports/...` directly from the browser
  * (CORS allowed). No Functions on the page-render critical path.
  *
- * Solid resources handle their own caching; this module is intentionally
- * stateless beyond a tiny in-memory dedupe map so two parallel calls for the
- * same URL share a single fetch.
+ * Solid resources handle their own caching; this module keeps only a small
+ * TTL'd dedupe map so parallel calls for the same URL share a single fetch and
+ * page-to-page fan-outs (CardPage requests every archetype report) don't
+ * re-download within a navigation burst — while a tab left open across the
+ * daily data update still picks up fresh reports within minutes.
  */
 
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from './constants';
@@ -29,7 +31,47 @@ import archetypeIconsRaw from '../data/archetype-icons.json';
 
 const R2_BASE = 'https://r2.ciphermaniac.com';
 
-const inflight = new Map<string, Promise<unknown>>();
+/**
+ * Fetch dedupe/short cache. `expires` is Infinity while the request is in
+ * flight, then a short TTL once resolved; rejected entries are removed
+ * immediately so a user-triggered retry gets a fresh fetch. Expired entries
+ * are swept on insert so multi-MB payloads don't accumulate for the session.
+ */
+const FETCH_TTL_MS = 5 * 60 * 1000;
+const inflight = new Map<string, { promise: Promise<unknown>; expires: number }>();
+
+function cachedFetch(url: string): Promise<unknown> | null {
+  const entry = inflight.get(url);
+  if (!entry) {
+    return null;
+  }
+  if (Date.now() > entry.expires) {
+    inflight.delete(url);
+    return null;
+  }
+  return entry.promise;
+}
+
+function rememberFetch(url: string, promise: Promise<unknown>): void {
+  const now = Date.now();
+  for (const [key, entry] of inflight) {
+    if (now > entry.expires) {
+      inflight.delete(key);
+    }
+  }
+  const entry = { promise, expires: Infinity };
+  inflight.set(url, entry);
+  promise.then(
+    () => {
+      entry.expires = Date.now() + FETCH_TTL_MS;
+    },
+    () => {
+      if (inflight.get(url) === entry) {
+        inflight.delete(url);
+      }
+    }
+  );
+}
 
 /**
  * Snapshot data (frozen pre-rotation reports) lives at /reports/Snapshots/{date}/.
@@ -44,12 +86,10 @@ function shouldUseLocalForPath(path: string): boolean {
 
 async function fetchJson<T>(path: string): Promise<T> {
   const url = shouldUseLocalForPath(path) ? path : `${R2_BASE}${path}`;
-  if (inflight.has(url)) {
-    return inflight.get(url) as Promise<T>;
+  const cached = cachedFetch(url);
+  if (cached) {
+    return cached as Promise<T>;
   }
-  // Only the in-flight dedupe is cached; a rejected promise is removed
-  // synchronously so the next caller (e.g. a user-triggered retry) gets a
-  // fresh fetch instead of being handed back the cached failure.
   const promise = (async () => {
     const response = await fetch(url, { mode: 'cors' });
     if (!response.ok) {
@@ -57,12 +97,8 @@ async function fetchJson<T>(path: string): Promise<T> {
     }
     return (await response.json()) as T;
   })();
-  promise.then(
-    () => undefined,
-    () => inflight.delete(url)
-  );
-  inflight.set(url, promise);
-  return promise as Promise<T>;
+  rememberFetch(url, promise);
+  return promise;
 }
 
 /**
@@ -70,8 +106,9 @@ async function fetchJson<T>(path: string): Promise<T> {
  */
 async function fetchJsonOptional<T>(path: string): Promise<T | null> {
   const url = shouldUseLocalForPath(path) ? path : `${R2_BASE}${path}`;
-  if (inflight.has(url)) {
-    return inflight.get(url) as Promise<T | null>;
+  const cached = cachedFetch(url);
+  if (cached) {
+    return cached as Promise<T | null>;
   }
   const promise = (async () => {
     const response = await fetch(url, { mode: 'cors' });
@@ -83,12 +120,8 @@ async function fetchJsonOptional<T>(path: string): Promise<T | null> {
     }
     return (await response.json()) as T;
   })();
-  promise.then(
-    () => undefined,
-    () => inflight.delete(url)
-  );
-  inflight.set(url, promise);
-  return promise as Promise<T | null>;
+  rememberFetch(url, promise);
+  return promise;
 }
 
 // --- Tournament-scoped reports ---
@@ -115,10 +148,6 @@ export function isSnapshotSource(source: string): boolean {
 
 export function snapshotSourceKey(rotationDate: string): string {
   return `${SNAPSHOT_SOURCE_PREFIX}${rotationDate}`;
-}
-
-export function snapshotDateFromSource(source: string): string | null {
-  return isSnapshotSource(source) ? source.slice(SNAPSHOT_SOURCE_PREFIX.length) : null;
 }
 
 function tournamentPath(name: string): string {
@@ -298,10 +327,14 @@ export function fetchEvolutionMap(): Promise<Map<string, string>> {
   if (evolutionMapPromise) {
     return evolutionMapPromise;
   }
+  // Don't cache failures forever — a transient network blip shouldn't
+  // permanently disable evolution collapsing for the session, so the pinned
+  // promise is dropped before resolving the fallback empty map.
   evolutionMapPromise = (async () => {
     try {
       const response = await fetch(`${R2_BASE}/assets/data/card-types.json`, { mode: 'cors' });
       if (!response.ok) {
+        evolutionMapPromise = null;
         return new Map<string, string>();
       }
       const db = (await response.json()) as Record<string, { evolutionInfo?: string }>;
@@ -314,14 +347,10 @@ export function fetchEvolutionMap(): Promise<Map<string, string>> {
       }
       return map;
     } catch {
+      evolutionMapPromise = null;
       return new Map<string, string>();
     }
   })();
-  // Don't cache failures forever — a transient network blip shouldn't permanently
-  // disable evolution collapsing for the session.
-  evolutionMapPromise.catch(() => {
-    evolutionMapPromise = null;
-  });
   return evolutionMapPromise;
 }
 
@@ -351,12 +380,36 @@ function decodeHtmlEntities(s: string): string {
     .replace(/&([a-zA-Z]+);/g, (m, name) => NAMED_ENTITIES[name] ?? m);
 }
 
+/**
+ * Canonicalization is a full group/merge/re-sort over every item, and CardPage
+ * fans `fetchArchetype` out over every archetype — so cache the result per raw
+ * payload object (payloads are shared within the fetch TTL window) instead of
+ * redoing the merge on every call.
+ */
+const canonicalizedReports = new WeakMap<object, unknown>();
+
+function canonicalizeReportCached<T extends { deckTotal: number; items: AnyCardItem[] }>(
+  raw: T,
+  db: SynonymDatabase | null
+): T {
+  if (!db || !raw?.items?.length) {
+    return raw;
+  }
+  const hit = canonicalizedReports.get(raw);
+  if (hit) {
+    return hit as T;
+  }
+  const out = canonicalizeReport(raw, db);
+  canonicalizedReports.set(raw, out);
+  return out;
+}
+
 export async function fetchMaster(tournament: string = ONLINE): Promise<MasterPayload> {
   const [raw, db] = await Promise.all([
     fetchJson<MasterPayload>(`${tournamentPath(tournament)}/master.json`),
     getSynonymDatabase()
   ]);
-  return canonicalizeReport(raw, db);
+  return canonicalizeReportCached(raw, db);
 }
 
 export function fetchArchetypes(tournament: string = ONLINE): Promise<ArchetypeIndexEntry[]> {
@@ -428,14 +481,11 @@ export async function fetchArchetype(tournament: string, archetypeBase: string):
     ),
     getSynonymDatabase()
   ]);
-  return canonicalizeReport(raw, db);
+  return canonicalizeReportCached(raw, db);
 }
 
-// Backwards-compatible aliases (always online meta)
-export const fetchOnlineMeta = (): Promise<MetaReport> => fetchMeta(ONLINE);
-export const fetchOnlineMaster = (): Promise<MasterPayload> => fetchMaster(ONLINE);
+// Backwards-compatible alias (always online meta)
 export const fetchOnlineArchetypes = (): Promise<ArchetypeIndexEntry[]> => fetchArchetypes(ONLINE);
-export const fetchOnlineArchetype = (slug: string): Promise<ArchetypeReport> => fetchArchetype(ONLINE, slug);
 
 // --- Rotation snapshots ---
 
@@ -752,9 +802,9 @@ export async function fetchArchetypeMatchupsOnline(
  * tournament-scoped id (= `tpId` in players.json, = the id in labs URLs), which joins
  * to `DeckRecord.playerId` (a string — coerce). Used by the card-impact analyzer.
  *
- * The file is ~7MB, so it's cached per tournament for the page session: the in-flight
- * dedupe in `fetchJson*` only coalesces concurrent calls (it drops the entry on
- * resolve), which would re-download on each tool open without this cache.
+ * The file is ~7MB, so it's cached per tournament for the page session: the
+ * dedupe in `fetchJson*` only holds entries for a short TTL, which would
+ * re-download on each tool open without this cache.
  */
 const playerMatchesCache = new Map<string, Promise<PlayerMatchRecord[] | null>>();
 
@@ -920,17 +970,6 @@ function getSetNumberCanonicalIndex(db: { synonyms: Record<string, string> }) {
   return index;
 }
 
-/**
- * Slugify a card name for URL fallback (the canonical URL is set+number).
- */
-export function slugifyName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/'/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-+|-+$)/g, '');
-}
-
 // --- Tournament name helpers ---
 
 /**
@@ -989,17 +1028,6 @@ export function tournamentSlug(key: string): string {
     .replace(/,/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-+|-+$)/g, '');
-}
-
-/**
- * Resolve a tournament slug back to its full key. Used when reading slug from URL.
- */
-export async function tournamentFromSlug(slug: string): Promise<string | null> {
-  if (slug === 'online') {
-    return ONLINE;
-  }
-  const list = await fetchTournamentsList();
-  return list.find(t => tournamentSlug(t) === slug) ?? null;
 }
 
 // --- Upcoming tournaments (Limitless scraper Function) ---

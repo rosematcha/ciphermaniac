@@ -13,6 +13,7 @@ import { ArchetypeCard } from '../components/ArchetypeCard';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { createPersistentViewMode } from '../lib/persistentSignal';
 import { formatPercent } from '../lib/format';
+import { latestValue } from '../lib/resource';
 
 type ViewMode = 'grid' | 'list';
 const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
@@ -29,9 +30,13 @@ export function ArchetypesIndexPage() {
     () => tournament() !== ONLINE_META_NAME,
     needFallback => (needFallback ? fetchArchetypes(ONLINE_META_NAME) : [])
   );
+  // Non-suspending reads: tournament-scoped, so keep the old grid in place
+  // while a tournament switch refetches (see lib/resource.ts).
+  const archetypesData = () => latestValue(archetypes);
+  const onlineArchetypesData = () => latestValue(onlineArchetypes);
   const onlineByName = createMemo(() => {
     const map = new Map<string, ArchetypeIndexEntry>();
-    for (const a of onlineArchetypes() ?? []) {
+    for (const a of onlineArchetypesData() ?? []) {
       map.set(a.name, a);
     }
     return map;
@@ -46,7 +51,7 @@ export function ArchetypesIndexPage() {
   });
 
   const filtered = createMemo(() => {
-    const list = archetypes() ?? [];
+    const list = archetypesData() ?? [];
     const q = query().trim().toLowerCase();
     if (!q) {
       return list;
@@ -61,8 +66,8 @@ export function ArchetypesIndexPage() {
       <section class='hero'>
         <h1>Archetypes</h1>
         <div class='hero-meta'>
-          <Show when={archetypes()} fallback={<Skeleton width='200px' height='13px' />}>
-            <span>{archetypes()!.length.toLocaleString()} active archetypes</span>
+          <Show when={archetypesData()} fallback={<Skeleton width='200px' height='13px' />}>
+            <span>{archetypesData()!.length.toLocaleString()} active archetypes</span>
             <span class='dot'>·</span>
             <span>{scopeLabel()}</span>
           </Show>
@@ -85,7 +90,7 @@ export function ArchetypesIndexPage() {
 
       <Section right={`${filtered().length.toLocaleString()} matching`}>
         <Show
-          when={archetypes()}
+          when={archetypesData()}
           fallback={
             <Show when={viewMode() === 'grid'} fallback={<ListSkeleton />}>
               <div class='gallery-grid'>

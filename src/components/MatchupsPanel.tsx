@@ -374,7 +374,7 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
                         onInput={e => {
                           const v = Number.parseInt(e.currentTarget.value, 10);
                           if (Number.isFinite(v) && v >= 1) {
-                            setMinCopies(v);
+                            setMinCopies(Math.min(4, v));
                           }
                         }}
                       />

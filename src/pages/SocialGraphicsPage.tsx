@@ -12,6 +12,7 @@ import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
 import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
 import { interEmbedCss } from '../utils/fontEmbed';
+import { latestValue } from '../lib/resource';
 import '../styles/pages/social-graphics.css';
 
 type Mode = 'standard' | 'rising' | 'converting';
@@ -144,6 +145,9 @@ function shortTournament(key: string): string {
 
 export function SocialGraphicsPage() {
   const [tournaments] = createResource(fetchTournamentsList);
+  // Non-suspending reads (see lib/resource.ts). All selector-keyed, so keep
+  // the previous canvas while a new selection refetches.
+  const tournamentsData = () => latestValue(tournaments);
   const [tournament, setTournament] = createSignal<string>(ONLINE_META_NAME);
   const [comparison, setComparison] = createSignal<string>('');
   const [mode, setMode] = createSignal<Mode>('standard');
@@ -188,7 +192,7 @@ export function SocialGraphicsPage() {
   // Auto-default the comparison tournament to the next-most-recent regional/IC
   // once tournaments are loaded — only relevant in rising mode.
   const defaultComparison = createMemo(() => {
-    const list = tournaments();
+    const list = tournamentsData();
     if (!list || list.length < 2) {
       return '';
     }
@@ -213,9 +217,13 @@ export function SocialGraphicsPage() {
     key => (key ? fetchDay2CardStats(key) : Promise.resolve(null))
   );
   const [evolutionMap] = createResource(fetchEvolutionMap);
+  const masterData = () => latestValue(master);
+  const comparisonMasterData = () => latestValue(comparisonMaster);
+  const day2StatsData = () => latestValue(day2Stats);
+  const evolutionMapData = () => latestValue(evolutionMap);
 
   const items = createMemo<RenderItem[]>(() => {
-    const m = master();
+    const m = masterData();
     if (!m) {
       return [];
     }
@@ -227,7 +235,7 @@ export function SocialGraphicsPage() {
     let candidates: RenderItem[];
 
     if (mode() === 'converting') {
-      const stats = day2Stats();
+      const stats = day2StatsData();
       if (!stats) {
         return [];
       }
@@ -261,7 +269,7 @@ export function SocialGraphicsPage() {
         day2Count: s.day2Count
       }));
     } else if (mode() === 'rising') {
-      const cmp = comparisonMaster();
+      const cmp = comparisonMasterData();
       if (!cmp) {
         return [];
       }
@@ -300,7 +308,7 @@ export function SocialGraphicsPage() {
       }));
     }
 
-    const collapsed = collapseEvolutions(candidates, evolutionMap(), mode());
+    const collapsed = collapseEvolutions(candidates, evolutionMapData(), mode());
     return collapsed.slice(0, size()).map((c, idx) => ({ ...c, rank: idx + 1 }));
   });
 
@@ -393,7 +401,7 @@ export function SocialGraphicsPage() {
             <label>
               Tournament
               <select value={tournament()} onChange={e => setTournament(e.currentTarget.value)}>
-                <For each={tournaments() ?? [ONLINE_META_NAME]}>
+                <For each={tournamentsData() ?? [ONLINE_META_NAME]}>
                   {t => <option value={t}>{prettyTournamentName(t)}</option>}
                 </For>
               </select>
@@ -404,7 +412,7 @@ export function SocialGraphicsPage() {
                 Compare against
                 <select value={comparison()} onChange={e => setComparison(e.currentTarget.value)}>
                   <option value=''>Previous ({prettyTournamentName(defaultComparison())})</option>
-                  <For each={(tournaments() ?? []).filter(t => t !== tournament())}>
+                  <For each={(tournamentsData() ?? []).filter(t => t !== tournament())}>
                     {t => <option value={t}>{prettyTournamentName(t)}</option>}
                   </For>
                 </select>
@@ -499,7 +507,7 @@ export function SocialGraphicsPage() {
               theme={theme()}
               mode={mode()}
               tournamentLabel={shortTournament(tournament())}
-              deckTotal={master()?.deckTotal ?? 0}
+              deckTotal={masterData()?.deckTotal ?? 0}
               items={items()}
               minDecks={minDecks()}
             />
@@ -551,7 +559,7 @@ function SocialCanvas(props: CanvasProps) {
     if (props.mode === 'converting') {
       return `${Math.round(c.pct)}%`;
     }
-    return `${c.pct}%`;
+    return `${c.pct.toFixed(1)}%`;
   }
 
   function rankStr(n: number) {

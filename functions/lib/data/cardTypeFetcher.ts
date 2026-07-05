@@ -160,7 +160,7 @@ function buildNumberVariants(value: string | number | null | undefined): string[
   const [, digits, suffix = ''] = match;
   const trimmedDigits = digits.replace(/^0+/, '') || '0';
   const withoutLeadingZeros = `${trimmedDigits}${suffix}`;
-  const variants = [];
+  const variants: string[] = [];
   variants.push(withoutLeadingZeros);
   if (withoutLeadingZeros !== normalized) {
     variants.push(normalized);
@@ -227,7 +227,7 @@ async function fetchCardTypeVariant(setCode: string, numberVariant: string): Pro
       .split(/\s*-\s*/)
       .map(part => part.trim())
       .filter(Boolean);
-    const normalize = value =>
+    const normalize = (value: string) =>
       value
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
@@ -303,9 +303,10 @@ async function fetchCardTypeVariant(setCode: string, numberVariant: string): Pro
 /**
  * Check if a card needs type enrichment
  * @param {Object} card - Card object
+ * @param {Object} database - Current card types database
  * @returns {boolean}
  */
-function needsTypeEnrichment(card: CardRecord): boolean {
+function needsTypeEnrichment(card: CardRecord, database: CardTypesDatabase): boolean {
   // Card needs enrichment if it's missing category or subtype info
   if (!card.category) {
     return true;
@@ -319,13 +320,16 @@ function needsTypeEnrichment(card: CardRecord): boolean {
     return true;
   }
 
-  // Check database entry if available
-  const key = `${card?.set}::${card?.number}`;
-  if (!key) {
-    return false;
+  // Cards absent from the database still need a fetch even when the decklist
+  // section already gave them a category (e.g. Pokemon), so they pick up
+  // regulation marks, evolution info, abilities, and attacks.
+  if (card.set && card.number) {
+    const key = `${card.set}::${card.number}`;
+    if (!database?.[key]) {
+      return true;
+    }
   }
 
-  // Return false if card not in database yet (will be handled elsewhere)
   return false;
 }
 
@@ -350,7 +354,7 @@ async function fetchAndCacheCardType(
   const key = `${card.set}::${card.number}`;
 
   // Check if already in database (skip if force is true, used for regulation mark refresh)
-  if (!force && database[key] && !needsTypeEnrichment(card)) {
+  if (!force && database[key] && !needsTypeEnrichment(card, database)) {
     return card;
   }
 
@@ -426,10 +430,10 @@ async function batchFetchAndCacheCardTypes(
     return cards;
   }
 
-  // Find cards that need fetching
+  // Find cards that need fetching (anything not already in the database)
   const cardsNeedingFetch = cards.filter(card => {
     const key = `${card.set}::${card.number}`;
-    return !database[key] && needsTypeEnrichment(card);
+    return !database[key] && needsTypeEnrichment(card, database);
   });
 
   if (cardsNeedingFetch.length === 0) {

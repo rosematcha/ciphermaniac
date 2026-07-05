@@ -9,6 +9,9 @@ import { sendResendEmail } from '../lib/api/email.js';
 // Maximum allowed payload size (1MB)
 const MAX_PAYLOAD_SIZE = 1024 * 1024;
 
+// Maximum allowed feedback text length in characters (in addition to the byte cap)
+const MAX_FEEDBACK_TEXT_LENGTH = 10_000;
+
 // Rate limiting configuration
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const RATE_LIMIT_MAX_REQUESTS = 5;
@@ -81,8 +84,13 @@ function checkRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
 }
 
 /**
- * Sanitize text to prevent XSS and remove dangerous characters
- * Escapes HTML entities and removes script tags
+ * Sanitize user text for the plain-text email body.
+ *
+ * The email is sent as a plain-text (`text`) payload via the Resend JSON API,
+ * so HTML entity escaping is NOT applied — it would corrupt legitimate input
+ * like "R&D" or "x < 5". As defense-in-depth (in case a mail client ever
+ * renders the content as HTML), script tag blocks are removed and any stray
+ * script tags are stripped.
  */
 function sanitizeText(text: string): string {
   if (typeof text !== 'string') {
@@ -90,15 +98,22 @@ function sanitizeText(text: string): string {
   }
   // Remove script tags and their contents
   let sanitized = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '[script removed]');
-  // Escape remaining HTML entities
-  sanitized = sanitized
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;');
-  // Remove newlines from single-line fields to prevent header injection
+  // Strip any leftover unpaired script tags
+  sanitized = sanitized.replace(/<\/?script[^>]*>/gi, '[script removed]');
+  // Drop control characters except newline and tab (keeps multi-line feedback readable)
+  // eslint-disable-next-line no-control-regex
+  sanitized = sanitized.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
   return sanitized;
+}
+
+/**
+ * Sanitize a single-line field: same as sanitizeText, plus newlines are
+ * collapsed to spaces so labels like "Platform: ..." stay on one line.
+ */
+function sanitizeSingleLine(text: string): string {
+  return sanitizeText(text)
+    .replace(/[\r\n]+/g, ' ')
+    .trim();
 }
 
 /**
@@ -115,6 +130,8 @@ function sanitizeContactInfo(text: string): string {
 interface FeedbackData {
   feedbackType: string;
   feedbackText: string;
+  /** Honeypot field — hidden in the UI, real users never fill it. */
+  hp?: string;
   platform?: 'desktop' | 'mobile' | string;
   desktopOS?: string;
   desktopBrowser?: string;
@@ -184,6 +201,16 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
     }
     const feedbackData = parsedBody;
 
+    // Honeypot: real users never fill this hidden field. Pretend success (same
+    // pattern as the survey endpoint) so bots don't learn they were caught.
+    if (typeof feedbackData.hp === 'string' && feedbackData.hp.trim()) {
+      return jsonSuccess({ success: true });
+    }
+
+    if (feedbackData.feedbackText.length > MAX_FEEDBACK_TEXT_LENGTH) {
+      return jsonError('Feedback text too long', 400, { 'Access-Control-Allow-Origin': '*' });
+    }
+
     const recipient = env.FEEDBACK_RECIPIENT || 'reese@ciphermaniac.com';
     const emailContent = buildEmailContent(feedbackData);
 
@@ -215,14 +242,14 @@ export function onRequestOptions(): Response {
 }
 
 function buildEmailContent(data: FeedbackData): string {
-  // Sanitize all user-provided fields
-  const sanitizedType = sanitizeText(data.feedbackType);
+  // Sanitize all user-provided fields (single-line fields also lose newlines)
+  const sanitizedType = sanitizeSingleLine(data.feedbackType);
   const sanitizedText = sanitizeText(data.feedbackText);
-  const sanitizedPlatform = data.platform ? sanitizeText(data.platform) : '';
-  const sanitizedDesktopOS = data.desktopOS ? sanitizeText(data.desktopOS) : '';
-  const sanitizedDesktopBrowser = data.desktopBrowser ? sanitizeText(data.desktopBrowser) : '';
-  const sanitizedMobileOS = data.mobileOS ? sanitizeText(data.mobileOS) : '';
-  const sanitizedMobileBrowser = data.mobileBrowser ? sanitizeText(data.mobileBrowser) : '';
+  const sanitizedPlatform = data.platform ? sanitizeSingleLine(data.platform) : '';
+  const sanitizedDesktopOS = data.desktopOS ? sanitizeSingleLine(data.desktopOS) : '';
+  const sanitizedDesktopBrowser = data.desktopBrowser ? sanitizeSingleLine(data.desktopBrowser) : '';
+  const sanitizedMobileOS = data.mobileOS ? sanitizeSingleLine(data.mobileOS) : '';
+  const sanitizedMobileBrowser = data.mobileBrowser ? sanitizeSingleLine(data.mobileBrowser) : '';
 
   const lines = [`New ${sanitizedType} submission from Ciphermaniac`, '', `Feedback Type: ${sanitizedType}`, ''];
 
@@ -256,7 +283,7 @@ function buildEmailContent(data: FeedbackData): string {
 
   if (data.followUp === 'yes' && data.contactMethod && data.contactInfo) {
     lines.push('Contact Information:');
-    lines.push(`Method: ${sanitizeText(data.contactMethod)}`);
+    lines.push(`Method: ${sanitizeSingleLine(data.contactMethod)}`);
     lines.push(`Contact: ${sanitizeContactInfo(data.contactInfo)}`);
   } else {
     lines.push('No follow-up requested');

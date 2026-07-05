@@ -13,6 +13,7 @@ export function createPagination<T>(
   resetOn?: Array<() => unknown>,
   pageSignal?: Signal<number>
 ): Pagination<T> {
+  // eslint-disable-next-line solid/reactivity -- signal tuple, not a reactive read; the `??` just confuses the analyzer
   const [rawPage, setRawPage] = pageSignal ?? createSignal(1);
   const totalPages = createMemo(() => Math.max(1, Math.ceil(source().length / pageSize)));
   const page = createMemo(() => Math.min(Math.max(1, rawPage()), totalPages()));

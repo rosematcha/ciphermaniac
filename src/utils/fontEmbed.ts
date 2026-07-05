@@ -39,7 +39,7 @@ async function woff2DataUri(url: string): Promise<string> {
  */
 export function interEmbedCss(): Promise<string> {
   if (!cached) {
-    cached = (async () => {
+    const attempt = (async () => {
       const rules = await Promise.all(
         SUBSETS.flatMap(subset =>
           WEIGHTS.map(async weight => {
@@ -50,6 +50,14 @@ export function interEmbedCss(): Promise<string> {
       );
       return rules.join('');
     })();
+    // Don't pin a failed load — one transient fetch error would otherwise
+    // break image export for the rest of the session.
+    attempt.catch(() => {
+      if (cached === attempt) {
+        cached = null;
+      }
+    });
+    cached = attempt;
   }
   return cached;
 }

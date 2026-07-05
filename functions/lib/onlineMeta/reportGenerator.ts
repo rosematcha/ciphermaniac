@@ -1,6 +1,15 @@
 import { generateReportFromDecks, normalizeArchetypeName, sanitizeForFilename } from '../data/reportBuilder.js';
 import archetypeThumbnails from '../../../public/assets/data/archetype-thumbnails.json';
-import type { BuildArchetypeReportsOptions, ReportData, ThumbnailConfig } from './types';
+import type { BuildArchetypeReportsOptions, CardEntryInput, ReportData, ThumbnailConfig } from './types';
+
+/**
+ * Loose deck input accepted by buildArchetypeReports. Production decks are
+ * `GatheredDeck`, but test fixtures may provide only a subset of fields.
+ */
+interface ArchetypeDeckInput {
+  archetype?: string;
+  cards?: CardEntryInput[];
+}
 
 const ARCHETYPE_THUMBNAILS: ThumbnailConfig = (archetypeThumbnails as ThumbnailConfig) || {};
 const AUTO_THUMB_MAX = 2;
@@ -67,7 +76,7 @@ function inferArchetypeThumbnails(displayName: string, reportData: ReportData | 
     return [];
   }
   const keywordSet = new Set(keywords);
-  const candidates = [];
+  const candidates: Array<{ id: string; matchCount: number; pct: number; index: number; tokens: string[] }> = [];
 
   reportData.items.forEach((item, index) => {
     const pct = Number(item?.pct);
@@ -155,7 +164,12 @@ function resolveArchetypeThumbnails(
   return inferArchetypeThumbnails(displayName || baseName || '', reportData);
 }
 
-export function buildArchetypeReports(decks, minPercent, synonymDb, options: BuildArchetypeReportsOptions = {}) {
+export function buildArchetypeReports(
+  decks: ArchetypeDeckInput[],
+  minPercent: number,
+  synonymDb: unknown,
+  options: BuildArchetypeReportsOptions = {}
+) {
   const groups = new Map();
   const thumbnailConfig: ThumbnailConfig = options.thumbnailConfig || {};
 
@@ -175,7 +189,13 @@ export function buildArchetypeReports(decks, minPercent, synonymDb, options: Bui
 
   const deckTotal = decks.length || 0;
   const minDecks = Math.max(1, Math.ceil(deckTotal * (minPercent / 100)));
-  const archetypeFiles = [];
+  const archetypeFiles: Array<{
+    filename: string;
+    base: string;
+    displayName: string;
+    data: ReturnType<typeof generateReportFromDecks>;
+    deckCount: number;
+  }> = [];
   const deckMap = new Map();
 
   groups.forEach(group => {
@@ -183,7 +203,7 @@ export function buildArchetypeReports(decks, minPercent, synonymDb, options: Bui
       return;
     }
     const filename = `${group.filenameBase}.json`;
-    const data = generateReportFromDecks(group.decks, group.decks.length, decks, synonymDb);
+    const data = generateReportFromDecks(group.decks, group.decks.length, synonymDb);
     archetypeFiles.push({
       filename,
       base: group.filenameBase,

@@ -15,7 +15,7 @@ test('Merge variant counts correctly across set/code variations', () => {
     { cards: [{ name: 'Multi', count: 1, set: 'S1', number: '01' }] }
   ];
 
-  const report = generateReportFromDecks(decks as any, decks.length, decks as any, null);
+  const report = generateReportFromDecks(decks as any, decks.length, null);
   const multi = report.items.find((i: any) => String(i.name).toLowerCase().includes('multi'));
   assert.ok(multi, 'Multi should be present');
   // found should be 3 (present in 3 decks)

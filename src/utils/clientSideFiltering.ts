@@ -6,7 +6,6 @@
  */
 
 import { normalizeArchetypeName, normalizeCardNumber } from '../../shared/cardUtils.js';
-import { AppError, ErrorTypes } from './errorHandler.js';
 import { logger } from './logger.js';
 import {
   assignRanks,
@@ -17,9 +16,7 @@ import {
 import type { Deck, DeckCard, Filter, Operator, PercentRule, PlacementRule } from '../types/index.js';
 
 export type { Deck, DeckCard, Filter, Operator };
-export type ReportSlice = 'all' | 'phase2' | 'topcut';
 
-const DECK_FETCH_TIMEOUT_MS = 30000;
 const SUCCESS_TAG_HIERARCHY = ['winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'];
 
 const PLACEMENT_TAG_RULES: PlacementRule[] = [
@@ -460,109 +457,6 @@ function summarizeFilters(filters: Filter[]): string {
     .join(', ');
 }
 
-export { aggregateDecks };
-
-const AGGREGATE_YIELD_CHUNK = 500;
-
-/**
- * Async variant of aggregateDecks that yields to the event loop every
- * AGGREGATE_YIELD_CHUNK decks, preventing main-thread blocking on large datasets.
- * Use this path for user-triggered aggregation (success filter changes, etc.).
- */
-export async function aggregateDecksAsync(decks: Deck[]): Promise<FilteredReport> {
-  if (decks.length <= AGGREGATE_YIELD_CHUNK) {
-    return aggregateDecks(decks);
-  }
-
-  const cardUsage = new Map<string, CardUsage>();
-
-  for (let i = 0; i < decks.length; i++) {
-    if (i > 0 && i % AGGREGATE_YIELD_CHUNK === 0) {
-      await new Promise<void>(resolve => {
-        setTimeout(resolve, 0);
-      });
-    }
-
-    const deck = decks[i];
-    const cards = getDeckCards(deck);
-    if (!cards.length) {
-      continue;
-    }
-    const deckId = deriveDeckId(deck, i);
-
-    for (const card of cards) {
-      const cardId = buildCardKeyFromCard(card);
-      if (!cardId) {
-        continue;
-      }
-
-      if (!cardUsage.has(cardId)) {
-        const normalizedNumber = normalizeCardNumber(card?.number);
-        cardUsage.set(cardId, {
-          cardId,
-          name: card?.name || 'Unknown Card',
-          set: card?.set,
-          number: card?.number || normalizedNumber,
-          normalizedNumber,
-          category: card?.category,
-          trainerType: card?.trainerType,
-          energyType: card?.energyType,
-          aceSpec: Boolean(card?.aceSpec),
-          supertype: card?.supertype,
-          uid:
-            card?.uid ||
-            (card?.name && card?.set && normalizedNumber
-              ? `${card.name}::${card.set}::${normalizedNumber}`
-              : undefined),
-          found: 0,
-          deckInstances: [],
-          histogram: new Map()
-        });
-      }
-
-      const usage = cardUsage.get(cardId)!;
-      const cardCount = Number(card?.count ?? card?.copies ?? 0);
-      usage.found += 1;
-      usage.deckInstances.push({ deckId, count: cardCount, archetype: deck?.archetype });
-      usage.histogram.set(cardCount, (usage.histogram.get(cardCount) || 0) + 1);
-    }
-  }
-
-  const deckTotal = decks.length;
-  const items = Array.from(cardUsage.values()).map(usage => {
-    const distEntries = createDistFromHistogram(usage.histogram, usage.found);
-    const dist: Distribution[] = distEntries.sort((left, right) => {
-      if (right.percent !== left.percent) {
-        return right.percent - left.percent;
-      }
-      return right.copies - left.copies;
-    });
-    const pct = calculatePercentage(usage.found, deckTotal);
-    return {
-      name: usage.name,
-      set: usage.set,
-      number: usage.number,
-      category: usage.category,
-      trainerType: usage.trainerType,
-      energyType: usage.energyType,
-      aceSpec: Boolean(usage.aceSpec),
-      supertype: usage.supertype,
-      uid: usage.uid,
-      cardId: usage.cardId,
-      found: usage.found,
-      total: deckTotal,
-      pct,
-      dist,
-      deckInstances: usage.deckInstances.slice(),
-      rank: 0
-    };
-  });
-
-  const sortedItems = sortReportItems(items);
-  const rankedItems = assignRanks(sortedItems);
-  return { deckTotal, items: rankedItems };
-}
-
 /**
  * Generate filtered report for multiple filters.
  * @param decks - Array of deck objects to filter
@@ -607,125 +501,4 @@ export function generateReportForFilters(decks: Deck[], archetypeBase: string, f
       filterCount: normalizedFilters.length
     }
   };
-}
-
-/**
- * Backward-compatible single-filter interface.
- * @param decks - Array of deck objects
- * @param archetypeBase - Base archetype name
- * @param includeId - Card ID to include
- * @param excludeId - Card ID to exclude
- * @param includeOperator - Operator for include filter
- * @param includeCount - Expected count for include filter
- * @returns Filtered report
- */
-export function generateFilteredReport(
-  decks: Deck[],
-  archetypeBase: string,
-  includeId: string | null,
-  excludeId: string | null,
-  includeOperator: Operator | null = null,
-  includeCount: number | null = null
-): FilteredReport {
-  const filters: Filter[] = [];
-  if (includeId) {
-    filters.push({
-      cardId: includeId,
-      operator: includeOperator,
-      count: includeCount
-    });
-  }
-  if (excludeId) {
-    filters.push({ cardId: excludeId, operator: '=', count: 0 });
-  }
-
-  const report = generateReportForFilters(decks, archetypeBase, filters);
-  return {
-    ...report,
-    generatedClientSide: true
-  };
-}
-
-/**
- * Fetch all decks for a tournament.
- * @param tournament - Tournament identifier
- * @param archetype - Optional archetype name to fetch archetype-specific decks
- * @returns Array of deck objects
- */
-export async function fetchAllDecks(
-  tournament: string,
-  archetype?: string,
-  slice: ReportSlice = 'all'
-): Promise<Deck[]> {
-  const tournamentEncoded = encodeURIComponent(tournament);
-  const slicePrefix = slice === 'all' ? '' : `/slices/${slice}`;
-
-  // Build URL based on whether archetype is specified
-  let url: string;
-  if (archetype) {
-    // New folder structure: /archetypes/Gardevoir/decks.json
-    url = `https://r2.ciphermaniac.com/reports/${tournamentEncoded}${slicePrefix}/archetypes/${encodeURIComponent(archetype)}/decks.json`;
-  } else {
-    // Full tournament decks: /decks.json
-    url = `https://r2.ciphermaniac.com/reports/${tournamentEncoded}${slicePrefix}/decks.json`;
-  }
-
-  logger.debug('Fetching decks data', { url, archetype, slice });
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DECK_FETCH_TIMEOUT_MS);
-
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new AppError(ErrorTypes.API, `HTTP ${response.status}`, null, { status: response.status, url });
-    }
-    const data = await response.json();
-
-    logger.info(archetype ? `Fetched archetype-specific decks for ${archetype}` : 'Fetched all decks', {
-      url,
-      deckCount: data?.length || 0
-    });
-
-    return data || [];
-  } catch (error: any) {
-    if (error.name === 'AbortError') {
-      logger.error('Fetch timeout: Could not fetch decks for client-side filtering', {
-        url,
-        error: `Request timed out after ${DECK_FETCH_TIMEOUT_MS}ms`
-      });
-      throw new AppError(ErrorTypes.TIMEOUT, 'Request timed out while fetching deck data', null, { url });
-    }
-
-    logger.warn('Could not fetch decks for client-side filtering', {
-      url,
-      error: error.message
-    });
-    throw error;
-  }
-}
-
-/**
- * Fetch archetype-specific decks with fallback to main decks.json.
- * @param tournament - Tournament identifier
- * @param archetype - Archetype name
- * @returns Array of deck objects (may be filtered by archetype or full list)
- */
-export async function fetchArchetypeDecksLocal(
-  tournament: string,
-  archetype: string,
-  slice: ReportSlice = 'all'
-): Promise<{ decks: Deck[]; isFiltered: boolean }> {
-  try {
-    // Try archetype-specific decks first
-    const decks = await fetchAllDecks(tournament, archetype, slice);
-    return { decks, isFiltered: false }; // Already contains only this archetype's decks
-  } catch {
-    // Fall back to main decks.json
-    logger.debug(`Archetype-specific decks not found for ${archetype}, falling back to main decks.json`);
-    const decks = await fetchAllDecks(tournament, undefined, slice);
-    return { decks, isFiltered: true }; // Will need to filter by archetype
-  }
 }

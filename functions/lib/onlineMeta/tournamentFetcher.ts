@@ -1,8 +1,20 @@
-import { fetchLimitlessJson } from '../api/limitless.js';
-import { enrichCardWithType } from '../data/cardTypesDatabase.js';
+import { fetchLimitlessJson, type LimitlessEnv } from '../api/limitless.js';
+import { type CardTypesDatabase, enrichCardWithType } from '../data/cardTypesDatabase.js';
 import { inferEnergyType, inferTrainerType, isAceSpecName } from '../analysis/cardTypeInference.js';
-import { buildArchetypeDeckIndex, resolveArchetypeClassification } from '../analysis/archetypeClassifier.js';
-import type { CardEntry, FetchTournamentsOptions, GatherDecksOptions, TournamentDetailsResponse } from './types';
+import {
+  buildArchetypeDeckIndex,
+  type DeckIndex,
+  resolveArchetypeClassification
+} from '../analysis/archetypeClassifier.js';
+import type {
+  CardEntry,
+  DiagnosticsCollector,
+  FetchTournamentsOptions,
+  GatherDecksOptions,
+  GatheredDeck,
+  OnlineTournamentSummary,
+  TournamentDetailsResponse
+} from './types';
 
 const PAGE_SIZE = 100;
 const MAX_TOURNAMENT_PAGES = 10;
@@ -10,13 +22,17 @@ const SUPPORTED_FORMATS = new Set(['STANDARD']);
 const DEFAULT_DETAILS_CONCURRENCY = 5;
 const DEFAULT_STANDINGS_CONCURRENCY = 4;
 
-export async function runWithConcurrency(items, limit, handler) {
+export async function runWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  handler: (item: T, index: number) => R | Promise<R>
+): Promise<R[]> {
   if (!Array.isArray(items) || items.length === 0) {
     return [];
   }
 
   const maxConcurrency = Math.max(1, Math.min(Number(limit) || 1, items.length));
-  const results = new Array(items.length);
+  const results: R[] = new Array(items.length);
   let nextIndex = 0;
 
   async function worker() {
@@ -35,11 +51,15 @@ export async function runWithConcurrency(items, limit, handler) {
   return results;
 }
 
-export function daysAgo(count) {
+export function daysAgo(count: number) {
   return new Date(Date.now() - count * 24 * 60 * 60 * 1000);
 }
 
-export async function fetchRecentOnlineTournaments(env, since, options: FetchTournamentsOptions = {}) {
+export async function fetchRecentOnlineTournaments(
+  env: LimitlessEnv | undefined,
+  since: Date,
+  options: FetchTournamentsOptions = {}
+) {
   const sinceMs = since.getTime();
   const windowEndMs = options.windowEnd ? new Date(options.windowEnd).getTime() : null;
   const pageSize = options.pageSize || PAGE_SIZE;
@@ -86,60 +106,70 @@ export async function fetchRecentOnlineTournaments(env, since, options: FetchTou
   }
 
   const summaries = Array.from(unique.values());
-  const detailed = await runWithConcurrency(summaries, detailsConcurrency, async summary => {
-    try {
-      const details = (await fetchJson(`/tournaments/${summary.id}/details`, { env })) as TournamentDetailsResponse;
-      if (details.decklists === false) {
-        diagnostics?.detailsWithoutDecklists.push({
-          tournamentId: summary.id,
-          name: summary.name
-        });
-        return null;
-      }
-      if (details.isOnline === false) {
-        diagnostics?.detailsOffline.push({
-          tournamentId: summary.id,
-          name: summary.name
-        });
-        return null;
-      }
+  const detailed = await runWithConcurrency(
+    summaries,
+    detailsConcurrency,
+    async (summary): Promise<OnlineTournamentSummary | null> => {
+      try {
+        const details = (await fetchJson(`/tournaments/${summary.id}/details`, { env })) as TournamentDetailsResponse;
+        if (details.decklists === false) {
+          diagnostics?.detailsWithoutDecklists?.push({
+            tournamentId: summary.id,
+            name: summary.name
+          });
+          return null;
+        }
+        if (details.isOnline === false) {
+          diagnostics?.detailsOffline?.push({
+            tournamentId: summary.id,
+            name: summary.name
+          });
+          return null;
+        }
 
-      const formatId = (details.format || summary.format || '').toUpperCase();
-      if (formatId && !SUPPORTED_FORMATS.has(formatId)) {
-        diagnostics?.detailsUnsupportedFormat.push({
-          tournamentId: summary.id,
+        const formatId = (details.format || summary.format || '').toUpperCase();
+        if (formatId && !SUPPORTED_FORMATS.has(formatId)) {
+          diagnostics?.detailsUnsupportedFormat?.push({
+            tournamentId: summary.id,
+            name: summary.name,
+            format: formatId
+          });
+          return null;
+        }
+        return {
+          id: summary.id,
           name: summary.name,
-          format: formatId
-        });
+          date: summary.date,
+          format: details.format || summary.format || null,
+          platform: details.platform || null,
+          game: summary.game,
+          players: summary.players,
+          organizer: details.organizer?.name || null,
+          organizerId: details.organizer?.id || null
+        };
+      } catch (error) {
+        console.warn(
+          'Failed to fetch tournament details',
+          summary?.id,
+          (error as { message?: string })?.message || error
+        );
         return null;
       }
-      return {
-        id: summary.id,
-        name: summary.name,
-        date: summary.date,
-        format: details.format || summary.format || null,
-        platform: details.platform || null,
-        game: summary.game,
-        players: summary.players,
-        organizer: details.organizer?.name || null,
-        organizerId: details.organizer?.id || null
-      };
-    } catch (error) {
-      console.warn('Failed to fetch tournament details', summary?.id, error?.message || error);
-      return null;
     }
-  });
+  );
 
-  return detailed.filter(Boolean).sort((first, second) => Date.parse(second.date) - Date.parse(first.date));
+  return detailed
+    .filter((entry): entry is OnlineTournamentSummary => Boolean(entry))
+    .sort((first, second) => Date.parse(second.date) - Date.parse(first.date));
 }
 
-export function toCardEntries(decklist, cardTypesDb = null) {
+export function toCardEntries(decklist: unknown, cardTypesDb: CardTypesDatabase | null = null) {
   if (!decklist || typeof decklist !== 'object') {
     return [];
   }
 
   const sections = Object.entries(decklist);
-  const cards = [];
+  const cards: CardEntry[] = [];
 
   for (const [sectionName, entries] of sections) {
     if (!Array.isArray(entries)) {
@@ -202,7 +232,7 @@ export function toCardEntries(decklist, cardTypesDb = null) {
   return cards;
 }
 
-export async function hashDeck(cards, fallbackKey = '') {
+export async function hashDeck(cards: CardEntry[], fallbackKey = '') {
   const cryptoImpl = globalThis.crypto;
   if (!cryptoImpl?.subtle) {
     throw new Error('Web Crypto API not available for hashing decks');
@@ -233,14 +263,14 @@ const PERCENT_TAG_RULES = [
   { tag: 'top50', fraction: 0.5, minPlayers: 8 }
 ];
 
-export function determinePlacementTags(placing, players) {
+export function determinePlacementTags(placing: number | null | undefined, players: number | null | undefined) {
   const place = Number.isFinite(placing) ? placing : null;
   const fieldSize = Number.isFinite(players) ? players : null;
   if (!place || !fieldSize || place <= 0 || fieldSize <= 1) {
     return [];
   }
 
-  const tags = [];
+  const tags: string[] = [];
 
   for (const rule of PLACEMENT_TAG_RULES) {
     if (fieldSize >= rule.minPlayers && place <= rule.maxPlacing) {
@@ -261,7 +291,7 @@ export function determinePlacementTags(placing, players) {
   return tags;
 }
 
-export function determinePlacementLimit(players) {
+export function determinePlacementLimit(players: number | null | undefined) {
   const count = Number(players) || 0;
   // Drop ultra-tiny events
   if (count > 0 && count <= 3) {
@@ -271,12 +301,20 @@ export function determinePlacementLimit(players) {
   return Number.POSITIVE_INFINITY;
 }
 
-export async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = null, options: GatherDecksOptions = {}) {
+export async function gatherDecks(
+  env: LimitlessEnv | undefined,
+  tournaments: OnlineTournamentSummary[],
+  diagnostics: DiagnosticsCollector | null | undefined,
+  cardTypesDb: CardTypesDatabase | null = null,
+  options: GatherDecksOptions = {}
+) {
   if (!Array.isArray(tournaments) || tournaments.length === 0) {
     return [];
   }
 
-  const diag = diagnostics || {};
+  // Mutates the caller-provided diagnostics object in place; the cast reflects
+  // that every optional field is initialized below.
+  const diag = (diagnostics || {}) as Required<DiagnosticsCollector>;
   diag.detailsWithoutDecklists = diag.detailsWithoutDecklists || [];
   diag.detailsOffline = diag.detailsOffline || [];
   diag.detailsUnsupportedFormat = diag.detailsUnsupportedFormat || [];
@@ -296,14 +334,17 @@ export async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = n
 
   const fetchJson = options.fetchJson || fetchLimitlessJson;
   const standingsConcurrency = options.standingsConcurrency || DEFAULT_STANDINGS_CONCURRENCY;
-  let deckIndex = null;
+  let deckIndex: DeckIndex | null = null;
 
   try {
     const deckRulesPayload = await fetchJson('/games/PTCG/decks', { env });
     deckIndex = buildArchetypeDeckIndex(deckRulesPayload);
     diag.archetypeClassification.deckRulesLoaded = Number(deckIndex?.ruleCount) || 0;
   } catch (error) {
-    console.warn('Failed to fetch deck rules for archetype classification', error?.message || error);
+    console.warn(
+      'Failed to fetch deck rules for archetype classification',
+      (error as { message?: string })?.message || error
+    );
     deckIndex = null;
   }
 
@@ -322,11 +363,11 @@ export async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = n
     try {
       standings = await fetchJson(`/tournaments/${tournament.id}/standings`, { env });
     } catch (error) {
-      console.warn('Failed to fetch standings', tournament.id, error?.message || error);
+      console.warn('Failed to fetch standings', tournament.id, (error as { message?: string })?.message || error);
       diag.standingsFetchFailures.push({
         tournamentId: tournament.id,
         name: tournament.name,
-        message: error?.message || 'Unknown standings fetch error'
+        message: (error as { message?: string })?.message || 'Unknown standings fetch error'
       });
       return [];
     }
@@ -352,7 +393,7 @@ export async function gatherDecks(env, tournaments, diagnostics, cardTypesDb = n
     const derivedPlayers = Number(tournament?.players) || Math.max(sortedStandings.length, maxReportedPlacing);
 
     const cappedStandings = sortedStandings.slice(0, limit);
-    const decks = [];
+    const decks: GatheredDeck[] = [];
 
     for (const entry of cappedStandings) {
       if (!Number.isFinite(entry?.placing)) {

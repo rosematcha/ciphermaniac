@@ -87,18 +87,17 @@ export function SurveyPage() {
       return next.filter(x => x !== FORMATS_NONE);
     });
 
-  if (closed) {
-    return (
-      <section>
-        <div class='survey-done survey-closed'>
-          <p>{SURVEY_CLOSED_MESSAGE}</p>
-        </div>
-      </section>
-    );
-  }
-
   return (
-    <>
+    <Show
+      when={!closed}
+      fallback={
+        <section>
+          <div class='survey-done survey-closed'>
+            <p>{SURVEY_CLOSED_MESSAGE}</p>
+          </div>
+        </section>
+      }
+    >
       <section class='hero survey-hero'>
         <h1>Ciphermaniac user survey</h1>
       </section>
@@ -522,6 +521,6 @@ export function SurveyPage() {
           </form>
         </section>
       </Show>
-    </>
+    </Show>
   );
 }

@@ -3,8 +3,12 @@ import { getCanonicalCard } from '../data/cardSynonyms.js';
 import type {
   BuildCardTrendReportOptions,
   BuildTrendReportOptions,
+  CardTrendItem,
   CardTrendsResult,
-  TrendReportResult
+  TrendDeckInput,
+  TrendReportResult,
+  TrendSeriesEntry,
+  TrendTournamentInput
 } from './types';
 
 const MIN_TREND_PLAYERS = 0;
@@ -30,7 +34,11 @@ const SUCCESS_TAGS = Array.from(
   new Set([...PLACEMENT_TAG_RULES.map(rule => rule.tag), ...PERCENT_TAG_RULES.map(rule => rule.tag)])
 );
 
-export function buildTrendReport(decks, tournaments, options: BuildTrendReportOptions = {}): TrendReportResult {
+export function buildTrendReport(
+  decks: TrendDeckInput[],
+  tournaments: TrendTournamentInput[],
+  options: BuildTrendReportOptions = {}
+): TrendReportResult {
   const now = options.now ? new Date(options.now) : new Date();
   const windowStart = options.windowStart ? new Date(options.windowStart) : null;
   const windowEnd = options.windowEnd ? new Date(options.windowEnd) : now;
@@ -47,7 +55,7 @@ export function buildTrendReport(decks, tournaments, options: BuildTrendReportOp
       ...tournament,
       date: tournament.date || null
     }))
-    .sort((first, second) => Date.parse(first.date || 0) - Date.parse(second.date || 0));
+    .sort((first, second) => Date.parse(String(first.date || 0)) - Date.parse(String(second.date || 0)));
 
   sortedTournaments.forEach(tournament => {
     tournamentIndex.set(tournament.id, {
@@ -102,7 +110,7 @@ export function buildTrendReport(decks, tournaments, options: BuildTrendReportOp
     archetypes.set(base, archetype);
   }
 
-  const series = [];
+  const series: TrendSeriesEntry[] = [];
   archetypes.forEach(archetype => {
     const timeline = sortedTournaments.map(tournament => {
       const entry = archetype.timeline.get(tournament.id);
@@ -136,7 +144,7 @@ export function buildTrendReport(decks, tournaments, options: BuildTrendReportOp
       return;
     }
 
-    const aggregateSuccess = {};
+    const aggregateSuccess: Record<string, number> = {};
     for (const entry of timeline) {
       Object.entries(entry.success || {}).forEach(([tag, count]) => {
         aggregateSuccess[tag] = (aggregateSuccess[tag] || 0) + (Number(count) || 0);
@@ -219,7 +227,11 @@ export function buildTrendReport(decks, tournaments, options: BuildTrendReportOp
   return result;
 }
 
-export function buildCardTrendReport(decks, tournaments, options: BuildCardTrendReportOptions = {}): CardTrendsResult {
+export function buildCardTrendReport(
+  decks: TrendDeckInput[],
+  tournaments: TrendTournamentInput[],
+  options: BuildCardTrendReportOptions = {}
+): CardTrendsResult {
   const synonymDb = options.synonymDb ?? null;
   const now = options.now ? new Date(options.now) : new Date();
   const windowStart = options.windowStart ? new Date(options.windowStart) : null;
@@ -283,7 +295,7 @@ export function buildCardTrendReport(decks, tournaments, options: BuildCardTrend
     });
   }
 
-  const series = [];
+  const series: CardTrendItem[] = [];
   cardPresence.forEach((presenceMap, key) => {
     const timeline = Array.from(tournamentsMap.values())
       .sort((first, second) => Date.parse(first.date || 0) - Date.parse(second.date || 0))

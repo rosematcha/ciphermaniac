@@ -160,7 +160,7 @@ export async function runRotationSnapshot(
   // (this is literally what gatherDecks wrote to R2 originally). Cast at the
   // boundary to satisfy reportBuilder's narrower DeckEntry/CardEntry types.
   const typedDecks = decks as unknown as Parameters<typeof generateReportFromDecks>[0];
-  const masterReport = generateReportFromDecks(typedDecks, deckTotal, typedDecks, synonymDb);
+  const masterReport = generateReportFromDecks(typedDecks, deckTotal, synonymDb);
   const { archetypeFiles, archetypeIndex, minDecks, deckMap } = buildArchetypeReports(
     typedDecks,
     MIN_USAGE_PERCENT,

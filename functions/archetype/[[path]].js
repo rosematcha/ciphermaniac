@@ -1,5 +1,6 @@
 /**
  * Redirects /archetype/* to root /*
+ * @param {{ request: Request }} context
  */
 export async function onRequest(context) {
   const url = new URL(context.request.url);

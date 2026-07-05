@@ -33,9 +33,9 @@ export interface DeckIndex {
 }
 
 export interface ClassificationInput {
-  deckName?: string;
-  deckId?: string;
-  decklist?: Record<string, Array<{ name?: string; [key: string]: unknown }>>;
+  deckName?: string | null;
+  deckId?: string | null;
+  decklist?: Record<string, Array<{ name?: string; [key: string]: unknown }>> | null;
 }
 
 export interface ClassificationResult {
@@ -119,12 +119,13 @@ function isLikelyDeckRule(value: unknown): value is DeckRule {
   if (!value || typeof value !== 'object') {
     return false;
   }
-  const hasName = typeof value.name === 'string' && value.name.trim().length > 0;
+  const candidate = value as DeckRule;
+  const hasName = typeof candidate.name === 'string' && candidate.name.trim().length > 0;
   const hasRuleShape =
-    typeof value.id === 'string' ||
-    Object.hasOwn(value, 'cards') ||
-    Array.isArray(value.descendants) ||
-    Array.isArray(value.children);
+    typeof candidate.id === 'string' ||
+    Object.hasOwn(candidate, 'cards') ||
+    Array.isArray(candidate.descendants) ||
+    Array.isArray(candidate.children);
   return hasName && hasRuleShape;
 }
 
@@ -151,8 +152,8 @@ function collectDeckRules(payload: any): DeckRule[] {
   }
 
   const queue = [...initial];
-  const rules = [];
-  const seen = new Set();
+  const rules: DeckRule[] = [];
+  const seen = new Set<object>();
 
   while (queue.length) {
     const current = queue.shift();
@@ -170,7 +171,7 @@ function collectDeckRules(payload: any): DeckRule[] {
       rules.push(current);
     }
 
-    const children = [];
+    const children: unknown[] = [];
     if (Array.isArray(current.descendants)) {
       children.push(...current.descendants);
     }
@@ -234,7 +235,7 @@ function collectCardNames(value: any, names: Set<string>, depth = 0): void {
 }
 
 function collectRuleCardNames(rule: DeckRule): Set<string> {
-  const names = new Set();
+  const names = new Set<string>();
   if (!rule || typeof rule !== 'object') {
     return names;
   }
@@ -253,7 +254,7 @@ function collectRuleCardNames(rule: DeckRule): Set<string> {
 }
 
 function extractDecklistCardNames(decklist: any): Set<string> {
-  const names = new Set();
+  const names = new Set<string>();
   if (!decklist || typeof decklist !== 'object') {
     return names;
   }
@@ -277,7 +278,7 @@ function extractDecklistCardNames(decklist: any): Set<string> {
 }
 
 function buildDeckTokenSet(cardNames: Set<string>): Set<string> {
-  const tokens = new Set();
+  const tokens = new Set<string>();
   cardNames.forEach(name => {
     tokenize(name).forEach(token => tokens.add(token));
   });
@@ -385,7 +386,7 @@ function resolveArchetypeClassification(input: ClassificationInput, deckIndex: D
     let best: MatchScoreWithMatcher | null = null;
     let secondBest: MatchScore | null = null;
 
-    deckIndex.matchers.forEach(matcher => {
+    for (const matcher of deckIndex.matchers) {
       const score = scoreRuleMatch(deckCardNames, deckTokens, matcher);
       if (!best || score.score > best.score) {
         secondBest = best;
@@ -396,7 +397,7 @@ function resolveArchetypeClassification(input: ClassificationInput, deckIndex: D
       } else if (!secondBest || score.score > secondBest.score) {
         secondBest = score;
       }
-    });
+    }
 
     const bestScore = best?.score || 0;
     const secondScore = secondBest?.score || 0;

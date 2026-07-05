@@ -79,21 +79,6 @@ export async function putJson(env: unknown, key: string, data: unknown, options:
   });
 }
 
-export async function putBinary(
-  env: unknown,
-  key: string,
-  data: Uint8Array | ArrayBuffer,
-  contentType = 'application/octet-stream'
-): Promise<void> {
-  const bucket = (env as EnvWithReports)?.REPORTS;
-  if (!bucket?.put) {
-    throw new Error('REPORTS bucket not configured');
-  }
-  await bucket.put(key, data, {
-    httpMetadata: { contentType }
-  });
-}
-
 export interface BatchPutEntry {
   key: string;
   data: unknown;

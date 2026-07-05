@@ -31,6 +31,12 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Typecheck backend
+        run: npm run typecheck:backend
+
+      - name: Typecheck node scripts and tests
+        run: npm run typecheck:node
+
       - name: Build production bundle
         run: npm run build
 

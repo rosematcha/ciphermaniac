@@ -16,6 +16,42 @@ export interface CardEntry {
   regulationMark?: string;
 }
 
+/** Tournament summary returned by fetchRecentOnlineTournaments */
+export interface OnlineTournamentSummary {
+  id: string;
+  name: string;
+  date: string;
+  format: string | null;
+  platform: string | null;
+  game?: string;
+  players?: number | null;
+  organizer?: string | null;
+  organizerId?: string | null;
+}
+
+/** Deck record produced by gatherDecks from tournament standings */
+export interface GatheredDeck {
+  id: string;
+  player: string;
+  playerId: string | null;
+  country: string | null;
+  placement: number | null;
+  archetype: string;
+  archetypeId: string | null;
+  archetypeSource: string;
+  cards: CardEntry[];
+  hasDecklist: boolean;
+  tournamentId: string;
+  tournamentName: string;
+  tournamentDate: string;
+  tournamentPlayers: number | null;
+  tournamentFormat: string | null;
+  tournamentPlatform: string | null;
+  tournamentOrganizer?: string | null;
+  deckSource: string;
+  successTags: string[];
+}
+
 /** Report item for thumbnail inference (subset of CardItem) */
 export interface ReportItem {
   name?: string;
@@ -66,7 +102,7 @@ export interface DiagnosticsCollector {
   invalidStandingsPayload?: Array<{ tournamentId: string; name: string }>;
   entriesWithoutDecklists?: Array<{ tournamentId: string; player: string }>;
   entriesWithoutPlacing?: Array<{ tournamentId: string; name: string; player: string }>;
-  tournamentsBelowMinimum?: Array<{ tournamentId: string; name: string; players: number }>;
+  tournamentsBelowMinimum?: Array<{ tournamentId: string; name: string; players?: number | null }>;
   archetypeClassification?: ArchetypeClassificationDiagnostics;
 }
 
@@ -112,15 +148,6 @@ export interface BuildCardTrendReportOptions {
   synonymDb?: import('../../../shared/synonyms').SynonymDatabase | null;
 }
 
-/** Options for runOnlineMetaJob */
-export interface OnlineMetaJobOptions extends FetchTournamentsOptions, GatherDecksOptions {
-  now?: string | Date;
-  since?: string | Date;
-  seriesLimit?: number;
-  minTrendAppearances?: number;
-  r2Concurrency?: number;
-}
-
 /** Trend report result structure */
 export interface TrendReportResult {
   generatedAt: string;
@@ -161,12 +188,50 @@ export interface DailyTimelineEntry {
 /** Tournament with deck count for trend reports */
 export interface TournamentWithDeckCount {
   id: string;
-  name: string;
-  date: string;
+  name?: string;
+  date?: string | null;
   deckTotal: number;
-  players?: number;
+  players?: number | null;
   format?: string | null;
   platform?: string | null;
+}
+
+/** Loose card input: a partial CardEntry as found in snapshots and fixtures */
+export interface CardEntryInput {
+  count?: number;
+  name?: string;
+  set?: string | null;
+  number?: string | number | null;
+  category?: string;
+  trainerType?: string;
+  energyType?: string;
+  aceSpec?: boolean;
+  regulationMark?: string;
+}
+
+/**
+ * Loose deck input accepted by the trend builders. Production decks are
+ * `GatheredDeck`, but persisted snapshots and test fixtures may omit fields;
+ * the builders access everything defensively.
+ */
+export interface TrendDeckInput {
+  tournamentId?: string;
+  archetype?: string;
+  successTags?: string[];
+  cards?: CardEntryInput[];
+  tournamentName?: string;
+  tournamentDate?: string;
+}
+
+/** Loose tournament input accepted by the trend builders */
+export interface TrendTournamentInput {
+  id: string;
+  name?: string;
+  date?: string | null;
+  players?: number | null;
+  format?: string | null;
+  platform?: string | null;
+  deckTotal?: number;
 }
 
 /** Card trends result structure */

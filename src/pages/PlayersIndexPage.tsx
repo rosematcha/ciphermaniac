@@ -11,6 +11,7 @@ import { EmptyState } from '../components/EmptyState';
 import { createPagination } from '../lib/pagination';
 import type { TournamentParticipant } from '../types';
 import { formatRecord } from '../lib/format';
+import { latestValue } from '../lib/resource';
 
 type Filter = 'all' | 'topCut' | 'phase2';
 const PAGE_SIZE = 50;
@@ -28,8 +29,12 @@ export function PlayersIndexPage() {
 
   const isOnline = () => tournament() === ONLINE_META_NAME;
 
+  // Non-suspending read (see lib/resource.ts). Tournament-scoped, so keep the
+  // old table while a tournament switch refetches.
+  const participantsData = () => latestValue(participants);
+
   const filtered = createMemo<TournamentParticipant[]>(() => {
-    const list = participants() ?? [];
+    const list = participantsData() ?? [];
     const q = query().trim().toLowerCase();
     const f = filter();
     return list.filter(p => {
@@ -50,12 +55,9 @@ export function PlayersIndexPage() {
     return [...filtered()].sort((a, b) => (a.placement ?? 9999) - (b.placement ?? 9999));
   });
 
-  const {
-    page,
-    totalPages,
-    pageItems: pageRows,
-    setPage
-  } = createPagination(sorted, PAGE_SIZE, [query, filter, tournament]);
+  const { page, totalPages, pageItems: pageRows, setPage } =
+    // eslint-disable-next-line solid/reactivity -- createPagination reads `sorted` inside its own createMemo (a tracked scope); the analyzer can't see through the helper
+    createPagination(sorted, PAGE_SIZE, [query, filter, tournament]);
 
   return (
     <>
@@ -63,8 +65,8 @@ export function PlayersIndexPage() {
         <h1>Players</h1>
         <div class='hero-meta'>
           <Show when={!isOnline()} fallback={<span>Pick a tournament from the selector to see participants.</span>}>
-            <Show when={participants()} fallback={<Skeleton width='240px' height='13px' />}>
-              <span>{(participants() ?? []).length.toLocaleString()} participants</span>
+            <Show when={participantsData()} fallback={<Skeleton width='240px' height='13px' />}>
+              <span>{(participantsData() ?? []).length.toLocaleString()} participants</span>
               <span class='dot'>·</span>
               <span>{prettyTournamentName(tournament())}</span>
             </Show>
@@ -108,9 +110,9 @@ export function PlayersIndexPage() {
 
         <Section right={`${filtered().length.toLocaleString()} matching`}>
           <Show
-            when={participants() && !participants.error}
+            when={participantsData()}
             fallback={
-              <Show when={participants.error || participants() === null} fallback={<TableSkeleton />}>
+              <Show when={participants.error || participantsData() === null} fallback={<TableSkeleton />}>
                 <EmptyState
                   title='No player data for this tournament.'
                   description="players.json isn't published for this tournament yet. It might be a special event with limited reporting."

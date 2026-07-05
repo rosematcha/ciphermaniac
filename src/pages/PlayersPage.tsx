@@ -1,6 +1,7 @@
 import { createMemo, createResource, createSignal, For, type JSX, onMount, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { fetchPlayerIndex } from '../lib/data';
+import { resolved } from '../lib/resource';
 import { Section } from '../components/Section';
 import { SearchInput } from '../components/Chip';
 import { Pagination } from '../components/Pagination';
@@ -23,8 +24,12 @@ export function PlayersPage() {
     document.title = 'Players — Ciphermaniac';
   });
 
+  // Non-suspending read: keeps navigation instant and lets the skeleton /
+  // error fallbacks below actually render (see lib/resource.ts).
+  const indexData = () => resolved(index);
+
   const filtered = createMemo<PlayerIndexEntry[]>(() => {
-    const list = index() ?? [];
+    const list = indexData() ?? [];
     const q = query().trim().toLowerCase();
     if (!q) {
       return list;
@@ -51,6 +56,7 @@ export function PlayersPage() {
     return list.sort(cmp);
   });
 
+  // eslint-disable-next-line solid/reactivity -- createPagination reads `sorted` inside its own createMemo (a tracked scope); the analyzer can't see through the helper
   const { page, totalPages, pageItems: pageRows, setPage } = createPagination(sorted, PAGE_SIZE, [query, sortKey]);
 
   function setSort(next: SortKey) {
@@ -62,8 +68,8 @@ export function PlayersPage() {
       <section class='hero'>
         <h1>Players</h1>
         <div class='hero-meta'>
-          <Show when={index()} fallback={<Skeleton width='240px' height='13px' />}>
-            <span>{(index() ?? []).length.toLocaleString()} players across all tournaments</span>
+          <Show when={indexData()} fallback={<Skeleton width='240px' height='13px' />}>
+            <span>{(indexData() ?? []).length.toLocaleString()} players across all tournaments</span>
           </Show>
         </div>
       </section>
@@ -78,9 +84,9 @@ export function PlayersPage() {
 
       <Section right={`${filtered().length.toLocaleString()} matching`}>
         <Show
-          when={index() && !index.error}
+          when={indexData()}
           fallback={
-            <Show when={index.error || index() === null} fallback={<TableSkeleton />}>
+            <Show when={index.error || indexData() === null} fallback={<TableSkeleton />}>
               <EmptyState
                 title="Player index isn't available yet."
                 description="`players/index.json` hasn't been written. Run the meta builder to generate it."
@@ -164,7 +170,7 @@ function SortableTh(props: { active: boolean; onSort: () => void; num?: boolean;
     <th
       class='sortable'
       classList={{ num: props.num }}
-      onClick={props.onSort}
+      onClick={() => props.onSort()}
       tabIndex={0}
       onKeyDown={e => {
         if (e.key === 'Enter' || e.key === ' ') {

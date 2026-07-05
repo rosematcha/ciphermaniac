@@ -9,6 +9,7 @@ import { EmptyState } from '../components/EmptyState';
 import type { PlayerDeckCard, PlayerProfile, PlayerTournamentEntry } from '../types';
 import { capitalize } from '../lib/format';
 import { groupDeckByCategory } from '../lib/deckGrouping';
+import { resolved } from '../lib/resource';
 
 const ARCHETYPE_PREVIEW_COUNT = 5;
 
@@ -16,12 +17,16 @@ export function PlayerProfilePage() {
   const params = useParams<{ id: string }>();
   const [profile] = createResource(() => params.id, fetchPlayerProfile);
 
+  // Non-suspending read (see lib/resource.ts). Param-keyed: show the skeleton
+  // on player change, not the previous player's profile.
+  const profileData = () => resolved(profile);
+
   onMount(() => {
     document.title = 'Player — Ciphermaniac';
   });
 
   createEffect(() => {
-    const p = profile();
+    const p = profileData();
     if (p) {
       document.title = `${p.name} — Ciphermaniac`;
     }
@@ -29,12 +34,14 @@ export function PlayerProfilePage() {
 
   return (
     <>
-      <Breadcrumb crumbs={[{ label: 'Players', href: '/players' }, { label: profile()?.name ?? `#${params.id}` }]} />
+      <Breadcrumb
+        crumbs={[{ label: 'Players', href: '/players' }, { label: profileData()?.name ?? `#${params.id}` }]}
+      />
 
       <Show
-        when={profile()}
+        when={profileData()}
         fallback={
-          <Show when={profile.error || profile() === null} fallback={<ProfileSkeleton />}>
+          <Show when={profile.error || profileData() === null} fallback={<ProfileSkeleton />}>
             <EmptyState
               title='Player not found.'
               description="No career profile exists for this player ID. They may not have a Limitless Labs ID, or the index hasn't been rebuilt."
@@ -47,7 +54,7 @@ export function PlayerProfilePage() {
           </Show>
         }
       >
-        <ProfileBody profile={profile()!} playerId={params.id} />
+        <ProfileBody profile={profileData()!} playerId={params.id} />
       </Show>
     </>
   );
@@ -74,9 +81,11 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
   // reactive owner) — gate via signal instead.
   const [decksRequested, setDecksRequested] = createSignal(false);
   const [decks] = createResource(() => (decksRequested() ? props.playerId : null), fetchPlayerDecks);
+  // Non-suspending read: cardsFor is called from row-expansion JSX.
+  const decksData = () => resolved(decks);
   const ensureDecks = () => setDecksRequested(true);
   const cardsFor = (tournamentId: string): PlayerDeckCard[] | undefined => {
-    return decks()?.decks?.[tournamentId];
+    return decksData()?.decks?.[tournamentId];
   };
   const decksLoading = () => decksRequested() && decks.loading;
 
