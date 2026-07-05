@@ -1,5 +1,5 @@
 import { A, useNavigate, useParams } from '@solidjs/router';
-import { createEffect, createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js';
 import {
   type Day2CardStat,
   fetchArchetype,
@@ -16,6 +16,7 @@ import {
 } from '../lib/data';
 import { ONLINE_META_NAME } from '../lib/constants';
 import { useTournament } from '../lib/tournamentContext';
+import { latestValue, resolved } from '../lib/resource';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../types';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { Badge } from '../components/Badge';
@@ -34,8 +35,14 @@ export function CardPage() {
   const { tournament } = useTournament();
   const [master] = createResource(tournament, fetchMaster);
   const [prices] = createResource(fetchPrices);
+  // Non-suspending reads (see lib/resource.ts). Master/prices are
+  // tournament-scoped, so keep the last value while a refetch is in flight;
+  // the per-card fan-out below uses `resolved` so a param change shows the
+  // skeleton instead of the previous card's data.
+  const masterData = () => latestValue(master);
+  const pricesData = () => latestValue(prices);
   const liveCard = createMemo<CardItem | undefined>(() => {
-    const items = master()?.items;
+    const items = masterData()?.items;
     if (!items) {
       return undefined;
     }
@@ -46,9 +53,10 @@ export function CardPage() {
   // fallback, so fetch it only once the live report has loaded without this
   // card (P3.2). A falsy source keeps createResource idle.
   const [rotationIndex] = createResource(
-    () => (master() && !liveCard() ? 'fallback' : undefined),
+    () => (masterData() && !liveCard() ? 'fallback' : undefined),
     () => fetchRotationIndex()
   );
+  const rotationIndexData = () => resolved(rotationIndex);
 
   // If the URL points at a non-canonical printing (reprint) and the master
   // lookup misses, resolve via the synonym DB and redirect to the canonical
@@ -58,7 +66,7 @@ export function CardPage() {
   // empty state.
   const [canonicalPending, setCanonicalPending] = createSignal(false);
   createEffect(() => {
-    const items = master()?.items;
+    const items = masterData()?.items;
     const reqSet = params.set;
     const reqNumber = params.number;
     if (!items) {
@@ -97,7 +105,7 @@ export function CardPage() {
     if (canonicalPending()) {
       return null;
     }
-    const idx = rotationIndex();
+    const idx = rotationIndexData();
     if (idx === undefined) {
       return null;
     } // still loading
@@ -107,8 +115,9 @@ export function CardPage() {
     () => snapshotDate(),
     date => fetchMaster(snapshotSourceKey(date))
   );
+  const snapshotMasterData = () => resolved(snapshotMaster);
   const snapshotCard = createMemo<CardItem | undefined>(() => {
-    const items = snapshotMaster()?.items;
+    const items = snapshotMasterData()?.items;
     if (!items) {
       return undefined;
     }
@@ -132,7 +141,7 @@ export function CardPage() {
 
   const priceEntry = createMemo(() => {
     const c = card();
-    const p = prices();
+    const p = pricesData();
     if (!c || !p) {
       return null;
     }
@@ -144,10 +153,11 @@ export function CardPage() {
   // (these are small JSON files that R2 serves cached); the deduping in
   // `fetchJson` means revisiting the same card during a session is free.
   const [archetypeIndex] = createResource(effectiveTournament, fetchArchetypes);
+  const archetypeIndexData = () => latestValue(archetypeIndex);
   const [archetypeUsage] = createResource(
     () => {
       const c = card();
-      const list = archetypeIndex();
+      const list = archetypeIndexData();
       const t = effectiveTournament();
       return c && list ? { card: c, list, tournament: t } : null;
     },
@@ -169,6 +179,7 @@ export function CardPage() {
       return results.filter((r): r is ArchetypeUsageRow => r !== null);
     }
   );
+  const archetypeUsageData = () => resolved(archetypeUsage);
 
   // Day 1 → Day 2 conversion for the card, scoped to the active tournament.
   // Skipped for sources with no single Day 2 cut: Online Meta (rolling 14-day
@@ -182,9 +193,10 @@ export function CardPage() {
     },
     t => fetchDay2CardStats(t)
   );
+  const day2StatsData = () => resolved(day2Stats);
   const conversionStat = createMemo<Day2CardStat | undefined>(() => {
     const c = card();
-    const stats = day2Stats();
+    const stats = day2StatsData();
     if (!c || !stats) {
       return undefined;
     }
@@ -205,15 +217,11 @@ export function CardPage() {
 
   const setNumber = () => `${params.set.toUpperCase()}/${params.number}`;
 
-  onMount(() => {
-    document.title = `${setNumber()} — Ciphermaniac`;
-  });
-
+  // Reacts to route changes too — a run-once title would leave card A's name
+  // up after navigating to a loading/missing card B.
   createEffect(() => {
     const c = card();
-    if (c) {
-      document.title = `${c.name} — Ciphermaniac`;
-    }
+    document.title = `${c ? c.name : setNumber()} — Ciphermaniac`;
   });
 
   return (
@@ -225,7 +233,7 @@ export function CardPage() {
         fallback={
           <Show
             when={
-              master() &&
+              masterData() &&
               !liveCard() &&
               !canonicalPending() &&
               !rotationIndex.loading &&
@@ -250,7 +258,7 @@ export function CardPage() {
           setNumber={setNumber()}
           priceEntry={priceEntry()}
           conversion={conversionStat()}
-          archetypeUsage={archetypeUsage()}
+          archetypeUsage={archetypeUsageData()}
           archetypeUsageLoading={archetypeUsage.loading || archetypeIndex.loading}
         />
       </Show>
@@ -294,10 +302,6 @@ function CardPageBody(props: {
     return out;
   });
 
-  const totalCopies = createMemo(() => {
-    const dist = props.card.dist ?? [];
-    return dist.reduce((acc, d) => acc + (d.copies ?? 0) * (d.players ?? 0), 0);
-  });
   const avgCopies = createMemo(() => {
     const dist = props.card.dist ?? [];
     const players = dist.reduce((acc, d) => acc + (d.players ?? 0), 0);
@@ -357,21 +361,13 @@ function CardPageBody(props: {
           </div>
 
           <div class='stats-panel'>
-            <div class='stat-row'>
+            <div class='stat-row stat-row--lead'>
               <span class='stat-label'>Inclusion</span>
               <span class='stat-value'>{props.card.pct.toFixed(1)}%</span>
             </div>
-            <div class='stat-row'>
-              <span class='stat-label'>Decks found</span>
-              <span class='stat-value'>{props.card.found.toLocaleString()}</span>
-            </div>
-            <div class='stat-row'>
-              <span class='stat-label'>Decks total</span>
-              <span class='stat-value'>{props.card.total.toLocaleString()}</span>
-            </div>
             <Show when={props.conversion}>
               <div class='stat-row'>
-                <span class='stat-label'>Day 1→2 conversion</span>
+                <span class='stat-label'>Conversion</span>
                 <span class='stat-value'>
                   {props.conversion!.conversion.toFixed(1)}%
                   <Show when={conversionCaveats().length > 0}>
@@ -388,35 +384,30 @@ function CardPageBody(props: {
                 <span class='stat-value'>{avgCopies()!.toFixed(2)}</span>
               </div>
             </Show>
-            <div class='stat-row'>
-              <span class='stat-label'>Total seen</span>
-              <span class='stat-value'>{totalCopies().toLocaleString()}</span>
-            </div>
             <Show when={props.card.rank}>
               <div class='stat-row'>
                 <span class='stat-label'>Rank</span>
                 <span class='stat-value'>#{props.card.rank}</span>
               </div>
             </Show>
-          </div>
-
-          <Show when={props.priceEntry?.price !== undefined && props.priceEntry?.price !== null}>
-            <div class='price-panel'>
-              <div class='price-label'>Market price</div>
-              <div class='price-value'>${props.priceEntry!.price!.toFixed(2)}</div>
-              <div class='price-note'>
-                <Show when={props.priceEntry?.tcgPlayerId} fallback={<>via TCGCSV</>}>
-                  <a
-                    href={`https://www.tcgplayer.com/product/${props.priceEntry!.tcgPlayerId}`}
-                    target='_blank'
-                    rel='noopener'
-                  >
-                    View on TCGPlayer →
-                  </a>
-                </Show>
+            <Show when={props.priceEntry?.price !== undefined && props.priceEntry?.price !== null}>
+              <div class='stat-row'>
+                <span class='stat-label'>Market price</span>
+                <span class='stat-value'>
+                  <Show when={props.priceEntry?.tcgPlayerId} fallback={<>${props.priceEntry!.price!.toFixed(2)}</>}>
+                    <a
+                      class='price-link'
+                      href={`https://www.tcgplayer.com/product/${props.priceEntry!.tcgPlayerId}`}
+                      target='_blank'
+                      rel='noopener'
+                    >
+                      ${props.priceEntry!.price!.toFixed(2)} →
+                    </a>
+                  </Show>
+                </span>
               </div>
-            </div>
-          </Show>
+            </Show>
+          </div>
         </div>
 
         <div class='card-page-right'>

@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import { buildCardTrendReport, buildTrendReport } from '../functions/lib/onlineMeta.ts';
 
 // Mock data helpers
-const createTournament = (id, date, players, deckTotal) => ({
+const createTournament = (id: string, date: string, players: number, deckTotal: number) => ({
   id,
   name: `Tournament ${id}`,
   date,
@@ -12,7 +12,7 @@ const createTournament = (id, date, players, deckTotal) => ({
   format: 'STANDARD'
 });
 
-const createDeck = (tournamentId, archetype, successTags = []) => ({
+const createDeck = (tournamentId: string, archetype: string, successTags: string[] = []) => ({
   tournamentId,
   archetype,
   successTags
@@ -20,7 +20,7 @@ const createDeck = (tournamentId, archetype, successTags = []) => ({
 
 describe('Trends Logic', () => {
   describe('buildTrendReport', () => {
-    it('should filter out small tournaments (< 16 players)', () => {
+    it('should include small tournaments (MIN_TREND_PLAYERS is 0)', () => {
       const tournaments = [
         createTournament('t1', '2023-01-01', 20, 20),
         createTournament('t2', '2023-01-02', 8, 8), // Small
@@ -31,16 +31,14 @@ describe('Trends Logic', () => {
 
       const report = buildTrendReport(decks, tournaments, { minAppearances: 1 });
 
-      // Should only have 2 tournaments in the report
-      assert.strictEqual(report.tournamentCount, 2);
-      assert.strictEqual(
-        report.tournaments.find(tournament => tournament.id === 't2'),
-        undefined
-      );
+      // All tournaments count: archetype shares represent what was actually played
+      assert.strictEqual(report.tournamentCount, 3);
+      assert.ok(report.tournaments.find(tournament => tournament.id === 't2'));
 
-      // Deck A should only have 2 appearances tracked
+      // Deck A appears in all 3 tournaments
       const series = report.series.find(ser => ser.displayName === 'Deck A');
-      assert.strictEqual(series.appearances, 2);
+      assert.ok(series, 'Deck A series should exist');
+      assert.strictEqual(series.appearances, 3);
     });
 
     it('should backfill missing tournaments with 0 share', () => {
@@ -51,12 +49,15 @@ describe('Trends Logic', () => {
 
       const report = buildTrendReport(decks, tournaments, { minAppearances: 1 });
       const series = report.series.find(ser => ser.displayName === 'Deck A');
+      assert.ok(series, 'Deck A series should exist');
 
-      // Should have entries for both tournaments
+      // Timeline is aggregated by day; should have entries for both dates
       assert.strictEqual(series.timeline.length, 2);
 
-      const t1Entry = series.timeline.find(tournament => tournament.tournamentId === 't1');
-      const t2Entry = series.timeline.find(tournament => tournament.tournamentId === 't2');
+      const t1Entry = series.timeline.find(entry => entry.date === '2023-01-01');
+      const t2Entry = series.timeline.find(entry => entry.date === '2023-01-02');
+      assert.ok(t1Entry, 'day 1 entry should exist');
+      assert.ok(t2Entry, 'day 2 entry should exist');
 
       assert.ok(t1Entry.share > 0, 'T1 should have share > 0');
       assert.strictEqual(t2Entry.share, 0, 'T2 should have share 0');

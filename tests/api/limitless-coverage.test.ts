@@ -4,6 +4,12 @@ import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
 
 import { fetchLimitlessJson } from '../../functions/lib/api/limitless.ts';
 
+// Test-only global used by limitless key resolution fallbacks.
+declare global {
+  // eslint-disable-next-line no-var, vars-on-top
+  var __LIMITLESS_API_KEY__: string | undefined;
+}
+
 // ---------------------------------------------------------------------------
 // fetchLimitlessJson – URL building with various searchParams
 // ---------------------------------------------------------------------------

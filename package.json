@@ -9,9 +9,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit --project tsconfig.frontend.json",
+    "typecheck:backend": "tsc --noEmit --project tsconfig.json",
+    "typecheck:node": "tsc --noEmit --project tsconfig.node.json",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
-    "validate": "npm run typecheck && npm run lint",
+    "validate": "npm run typecheck && npm run typecheck:backend && npm run typecheck:node && npm run lint",
     "validate:fix": "npm run lint:fix && npm run typecheck",
     "test": "npm run test:unit",
     "test:all": "npm run test:unit",
@@ -61,8 +63,7 @@
     "@solidjs/router": "^0.15.0",
     "cheerio": "^1.0.0",
     "modern-screenshot": "^4.7.0",
-    "solid-js": "^1.9.3",
-    "sql.js": "^1.13.0"
+    "solid-js": "^1.9.3"
   },
   "overrides": {
     "fast-xml-parser": "^5.4.1"

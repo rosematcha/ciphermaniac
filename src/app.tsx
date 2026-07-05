@@ -1,7 +1,26 @@
 import { ErrorBoundary, type ParentComponent, Suspense } from 'solid-js';
+import { useIsRouting } from '@solidjs/router';
 import { SurveyBanner } from './components/SurveyBanner';
+import { Skeleton } from './components/Skeleton';
 import { TopNav } from './components/TopNav';
 import { TournamentProvider } from './lib/tournamentContext';
+
+/**
+ * Fallback while a lazy route chunk downloads on a cold load (page data never
+ * suspends — pages read resources via lib/resource.ts and render their own
+ * skeletons). Generic on purpose: it only shows for the beat before the
+ * page's real skeleton takes over.
+ */
+function ChunkFallback() {
+  return (
+    <section class='hero' aria-hidden='true'>
+      <Skeleton width='220px' height='28px' />
+      <div class='hero-meta'>
+        <Skeleton width='320px' height='13px' />
+      </div>
+    </section>
+  );
+}
 
 /**
  * Root layout. Every route renders inside this — TopNav always shows,
@@ -10,8 +29,12 @@ import { TournamentProvider } from './lib/tournamentContext';
  * page doesn't take down the whole SPA.
  */
 export const App: ParentComponent = props => {
+  const isRouting = useIsRouting();
   return (
     <TournamentProvider>
+      {/* Slim pending bar: instant feedback the moment a nav starts, for the
+          cases that still take time (lazy chunk download on slow networks). */}
+      <div class='route-progress' classList={{ active: isRouting() }} aria-hidden='true' />
       <SurveyBanner />
       <TopNav />
       <main class='page'>
@@ -27,10 +50,11 @@ export const App: ParentComponent = props => {
             </section>
           )}
         >
-          {/* Routes are code-split (lazy()) — Suspense holds the shell while a
-              route chunk loads. No spinner: chunks are small and a flash of
-              spinner on every nav feels worse than a beat of empty page. */}
-          <Suspense>{props.children}</Suspense>
+          {/* Routes are code-split (lazy()) — this boundary only covers route
+              chunk loading. Page DATA must never suspend (see lib/resource.ts):
+              a suspending read during nav freezes the old page for the whole
+              fetch, and on cold load would blank the main area. */}
+          <Suspense fallback={<ChunkFallback />}>{props.children}</Suspense>
         </ErrorBoundary>
       </main>
     </TournamentProvider>

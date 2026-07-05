@@ -19,6 +19,7 @@ import { AdvancedPanel } from '../components/AdvancedPanel';
 import { MatchupsPanel } from '../components/MatchupsPanel';
 import { createPersistentViewMode } from '../lib/persistentSignal';
 import { normalizePercent } from '../lib/format';
+import { latestValue, resolved } from '../lib/resource';
 
 type ArchTab = 'core' | 'tech' | 'cards' | 'matchups' | 'advanced';
 
@@ -65,13 +66,18 @@ export function ArchetypePage() {
   );
   const [index] = createResource(tournament, fetchArchetypes);
 
+  // Non-suspending reads (see lib/resource.ts): the report is param-keyed
+  // (`resolved` — show the skeleton on slug change, not the previous
+  // archetype's cards), the index is tournament-scoped (`latestValue`).
+  const indexData = () => latestValue(index);
+
   // Case-insensitive slug redirect: if the URL slug doesn't exist verbatim but
   // matches an index entry under a different casing, hop to the canonical URL.
   createEffect(() => {
     if (!report.error) {
       return;
     }
-    const entries = index();
+    const entries = indexData();
     if (!entries) {
       return;
     }
@@ -97,7 +103,8 @@ export function ArchetypePage() {
   // settled with an error (404 from R2) and the rotation index knows where
   // this slug last appeared. The same archetype page renders, just sourced
   // from `/reports/Snapshots/{date}/` instead of the live folder.
-  const liveReport = () => (report.error ? null : report());
+  const liveReport = () => resolved(report) ?? null;
+  const rotationIndexData = () => resolved(rotationIndex);
   const snapshotDate = createMemo<string | null>(() => {
     if (liveReport()) {
       return null;
@@ -105,7 +112,7 @@ export function ArchetypePage() {
     if (report.loading) {
       return null;
     }
-    const idx = rotationIndex();
+    const idx = rotationIndexData();
     if (idx === undefined) {
       return null;
     }
@@ -120,9 +127,11 @@ export function ArchetypePage() {
     date => fetchArchetypes(snapshotSourceKey(date))
   );
 
-  const effectiveReport = createMemo<ArchetypeReport | null | undefined>(() => liveReport() ?? snapshotReport());
+  const snapshotReportData = () => resolved(snapshotReport);
+  const snapshotIndexData = () => resolved(snapshotIndex);
+  const effectiveReport = createMemo<ArchetypeReport | null | undefined>(() => liveReport() ?? snapshotReportData());
   const effectiveIndex = createMemo<ArchetypeIndexEntry[] | undefined>(() =>
-    liveReport() ? index() : snapshotIndex()
+    liveReport() ? indexData() : snapshotIndexData()
   );
   const effectiveTournament = createMemo<string>(() => {
     if (liveReport()) {

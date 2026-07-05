@@ -21,7 +21,6 @@ interface CardEntry {
 
 interface DeckEntry {
   cards?: CardEntry[];
-  [key: string]: unknown;
 }
 
 interface ReportItem {
@@ -44,7 +43,6 @@ interface ReportItem {
 function generateReportFromDecks(
   deckList: DeckEntry[],
   deckTotal: number,
-  _unused: unknown,
   synonymDb: any
 ): { deckTotal: number; items: ReportItem[] } {
   const cardData = new Map();
@@ -126,7 +124,7 @@ function generateReportFromDecks(
     // Sanitize the name to prevent path traversal in reports
     const rawName = nameCasing.get(uid) || uid;
     const safeName = sanitizeForPath(rawName);
-    const item = {
+    const item: ReportItem = {
       rank: index + 1,
       name: safeName,
       found: foundCount,

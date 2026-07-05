@@ -14,7 +14,7 @@ export const Chip: ParentComponent<ChipProps> = props => {
       class='chip'
       aria-pressed={props.pressed ? 'true' : 'false'}
       aria-label={props.ariaLabel}
-      onClick={props.onClick}
+      onClick={() => props.onClick?.()}
     >
       {props.children ?? props.label}
     </button>

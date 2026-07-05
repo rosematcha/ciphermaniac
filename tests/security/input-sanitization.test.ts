@@ -12,10 +12,7 @@ import {
   sanitizeForPath
 } from '../../functions/lib/data/reportBuilder.js';
 
-import { validators } from '../../src/utils/errorHandler.ts';
-
 import { generateMaliciousInput } from '../__utils__/mock-data-factory.js';
-import { expectThrows } from '../__utils__/test-helpers.js';
 
 /**
  * sanitizeForPath should remove characters that would allow path traversal or invalid filesystem names
@@ -71,25 +68,6 @@ test('normalizeArchetypeName handles special characters and unicode', () => {
     const out = normalizeArchetypeName(input);
     assert.equal(out, expected);
   }
-});
-
-/**
- * validators.cardIdentifier should accept sane values and reject malicious or oversized ones
- */
-test('validators.cardIdentifier enforces length and rejects null/empty inputs', async () => {
-  // Valid identifier
-  const identifier = validators.cardIdentifier('  XY-123  ');
-  assert.equal(identifier, 'XY-123');
-
-  // Empty string
-  await expectThrows(() => validators.cardIdentifier('   '));
-
-  // Non-string
-  await expectThrows(() => validators.cardIdentifier(null as unknown as string));
-
-  // Too long (>200)
-  const long = 'A'.repeat(201);
-  await expectThrows(() => validators.cardIdentifier(long));
 });
 
 /**

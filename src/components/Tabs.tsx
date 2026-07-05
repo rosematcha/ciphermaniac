@@ -41,11 +41,10 @@ export function Tabs<T extends string>(props: TabsProps<T>) {
   });
 
   createEffect(() => {
-    const { selected } = props;
     if (!nav) {
       return;
     }
-    const active = nav.querySelector<HTMLElement>(`[data-value="${selected}"]`);
+    const active = nav.querySelector<HTMLElement>(`[data-value="${props.selected}"]`);
     active?.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
   });
 

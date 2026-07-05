@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js';
 
 type CardImageSize = 'xs' | 'sm' | 'lg';
 
@@ -31,7 +31,6 @@ const TIER_WIDTH: Record<CardImageSize, number> = { xs: 136, sm: 274, lg: 460 };
  *      ~25% of the PNG weight.
  *   2. The same-origin `/thumbnails/{size}/{set}/{number}` Pages Function, which
  *      proxies the LimitlessTCG CDN server-side.
- *   3. Direct LimitlessTCG CDN — last-resort only.
  *
  * Why not hotlink the CDN directly: LimitlessTCG's CDN sits behind Cloudflare
  * bot-management, which sets a `__cf_bm` cookie scoped to the public suffix
@@ -39,12 +38,12 @@ const TIER_WIDTH: Record<CardImageSize, number> = { xs: 136, sm: 274, lg: 460 };
  * session it establishes, concurrent image loads get 403-challenged — so a
  * page full of card art shows placeholders. The same-origin proxy sidesteps it
  * entirely (the browser talks to us; we fetch the CDN), and its responses are
- * edge-cached so it isn't a per-view Function cost.
+ * edge-cached so it isn't a per-view Function cost. There is deliberately no
+ * direct-CDN fallback tier — those requests are doomed in real browsers.
  *
- * Falls through the size tiers (lg → sm → xs) and number formats
- * (zero-padded → as-given) before finally rendering a styled placeholder.
+ * Falls through the size tiers (lg → sm → xs) before finally rendering a
+ * styled placeholder.
  */
-const LIMITLESS_CDN = 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci';
 const R2_CARD_IMAGES = 'https://r2.ciphermaniac.com/card-images';
 const THUMBNAILS_PROXY = '/thumbnails';
 
@@ -81,10 +80,6 @@ if (typeof window !== 'undefined') {
         /* leave limitless as the source this session */
       });
   }
-}
-
-function tierUrl(setU: string, num: string, size: CardImageSize): string {
-  return `${LIMITLESS_CDN}/${setU}/${setU}_${num}_R_EN_${size.toUpperCase()}.png`;
 }
 
 function r2TierUrl(setU: string, num: string, size: CardImageSize): string {
@@ -140,25 +135,35 @@ function buildAttempts(set: string, number: string | number, preferredSize: Card
   }
   // 2. Same-origin proxy for each tier. This is the reliable browser-facing
   //    source: it dodges the CDN's browser-rejected bot cookie, and the proxy
-  //    normalizes the number itself, so one URL per tier suffices.
+  //    normalizes the number itself, so one URL per tier suffices. No direct-CDN
+  //    tail after this — those hotlinks are bot-blocked in real browsers, so the
+  //    chain ends here and falls to the placeholder.
   for (const size of sizeChain) {
     push(thumbTierUrl(setU, padded, size));
-  }
-  // 3. Direct CDN as a last resort (padded then unpadded), in case the proxy
-  //    Function is unavailable.
-  for (const size of sizeChain) {
-    push(tierUrl(setU, padded, size));
-    if (stripped !== padded) {
-      push(tierUrl(setU, stripped, size));
-    }
   }
   return urls;
 }
 
 export function CardImage(props: CardImageProps) {
-  const attempts = createMemo(() => buildAttempts(props.set, props.number, props.size ?? 'sm', r2Ready()));
+  // Capture the R2 decision once per instance: an async probe flipping the
+  // global signal mid-session must not re-source already-rendered images
+  // (double download + flicker). Future mounts pick up the new value.
+  const useR2 = r2Ready();
+  const attempts = createMemo(() => buildAttempts(props.set, props.number, props.size ?? 'sm', useR2));
   const [attemptIndex, setAttemptIndex] = createSignal(0);
   const [errored, setErrored] = createSignal(false);
+
+  // A reused instance must not carry card A's retry/error state over to card B.
+  createEffect(
+    on(
+      () => [props.set, props.number],
+      () => {
+        setAttemptIndex(0);
+        setErrored(false);
+      },
+      { defer: true }
+    )
+  );
 
   const src = () => attempts()[attemptIndex()];
   const alt = () => props.alt ?? `${props.set}/${props.number} card image`;
@@ -175,7 +180,7 @@ export function CardImage(props: CardImageProps) {
     <Show
       when={!errored()}
       fallback={
-        <div class={`card-image-fallback ${props.class ?? ''}`} style={props.style} aria-label={alt()}>
+        <div class={`card-image-fallback ${props.class ?? ''}`} style={props.style} role='img' aria-label={alt()}>
           <div class='card-image-fallback-inner'>
             <div class='set'>{String(props.set).toUpperCase()}</div>
             <div class='number'>#{String(props.number)}</div>
@@ -187,7 +192,7 @@ export function CardImage(props: CardImageProps) {
         src={src()}
         srcset={
           props.sizes && attemptIndex() === 0
-            ? buildSrcset(props.set, props.number, props.size ?? 'sm', r2Ready())
+            ? buildSrcset(props.set, props.number, props.size ?? 'sm', useR2)
             : undefined
         }
         sizes={props.sizes && attemptIndex() === 0 ? props.sizes : undefined}
@@ -236,8 +241,8 @@ export function CardStack(props: { thumbnails: string[]; size?: CardImageSize })
         <div class='card-stack-empty'>—</div>
       </Show>
       <For each={cards()}>
-        {(c, i) => (
-          <div class='card-stack-slot' style={{ '--i': i() }}>
+        {c => (
+          <div class='card-stack-slot'>
             <CardImage set={c.set} number={c.number} size={props.size ?? 'xs'} />
           </div>
         )}

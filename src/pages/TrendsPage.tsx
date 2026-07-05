@@ -17,6 +17,7 @@ import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { createPersistentSignal } from '../lib/persistentSignal';
+import { latestValue } from '../lib/resource';
 
 type Source = 'online' | 'majors';
 type OnlineWindow = '7d' | '14d' | '30d';
@@ -137,12 +138,16 @@ export function TrendsPage() {
 function OnlineView(props: { windowKey: OnlineWindow }) {
   const [trends] = createResource(fetchOnlineTrendReport);
 
+  // Non-suspending read: keeps navigation instant and lets the skeleton
+  // fallbacks below actually render (see lib/resource.ts).
+  const trendsData = () => latestValue(trends);
+
   /**
    * Pick the top-N archetypes by avgShare across the full file, then slice
    * each archetype's timeline to the selected window.
    */
   const chart = createMemo<{ series: ArchetypeSeries[]; days: DayBin[] }>(() => {
-    const data = trends();
+    const data = trendsData();
     if (!data) {
       return { series: [], days: [] };
     }
@@ -210,7 +215,7 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
 
   /** Card-level movers from the cron's pre-computed lists, sliced (top 12 each). */
   const cardMovers = createMemo(() => {
-    const data = trends();
+    const data = trendsData();
     if (!data?.cardTrends) {
       return { rising: [] as CardTrendLike[], falling: [] as CardTrendLike[] };
     }
@@ -222,7 +227,7 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
 
   /** Window meta for the right-side caption. */
   const sourceCaption = createMemo(() => {
-    const data = trends();
+    const data = trendsData();
     if (!data) {
       return null;
     }
@@ -235,14 +240,14 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
       <Section
         title='Archetype share over time'
         right={
-          <Show when={trends() !== undefined} fallback='—'>
+          <Show when={trendsData() !== undefined} fallback='—'>
             {chart().days.length} daily snapshots · {sourceCaption()}
           </Show>
         }
       >
-        <Show when={trends() !== undefined} fallback={<Skeleton height='360px' />}>
+        <Show when={trendsData() !== undefined} fallback={<Skeleton height='360px' />}>
           <Show
-            when={trends() && chart().series.length > 0}
+            when={trendsData() && chart().series.length > 0}
             fallback={
               <EmptyState
                 title='No online trend data yet.'
@@ -302,8 +307,11 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
 function MajorsView(props: { windowKey: MajorsWindow }) {
   const [tournaments] = createResource(fetchTournamentsList);
 
+  // Non-suspending read (see lib/resource.ts).
+  const tournamentsData = () => latestValue(tournaments);
+
   const sample = createMemo<string[]>(() => {
-    const list = tournaments() ?? [];
+    const list = tournamentsData() ?? [];
     return majorTournaments(list).slice(0, MAJORS_WINDOW_COUNT[props.windowKey]);
   });
 
@@ -324,9 +332,12 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
     );
     return results;
   });
+  // `latestValue`: window-size switches refetch the snapshots — keep the old
+  // chart in place instead of flashing a skeleton.
+  const snapshotsData = () => latestValue(snapshots);
 
   const movers = createMemo(() => {
-    const reps = (snapshots() ?? []).filter(r => r.master !== null);
+    const reps = (snapshotsData() ?? []).filter(r => r.master !== null);
     if (reps.length < 2) {
       return { rising: [] as Mover[], falling: [] as Mover[], newcomers: [] as Mover[] };
     }
@@ -393,7 +404,7 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
   });
 
   const archetypeSeries = createMemo<{ series: ArchetypeSeries[]; days: DayBin[]; windowDays: number }>(() => {
-    const reps = (snapshots() ?? []).filter(r => r.archetypes !== null);
+    const reps = (snapshotsData() ?? []).filter(r => r.archetypes !== null);
     if (reps.length === 0) {
       return { series: [], days: [], windowDays: 30 };
     }
@@ -466,7 +477,7 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
         right={`${archetypeSeries().days.length} days · ${sample().length} events`}
       >
         <Show
-          when={snapshots() && archetypeSeries().series.length > 0}
+          when={snapshotsData() && archetypeSeries().series.length > 0}
           fallback={
             <Show
               when={snapshots.loading}
@@ -491,7 +502,7 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
 
       <Section title='Top card movers' right={`Across ${sample().length} tournaments`}>
         <Show
-          when={snapshots() && (movers().rising.length > 0 || movers().falling.length > 0)}
+          when={snapshotsData() && (movers().rising.length > 0 || movers().falling.length > 0)}
           fallback={
             <Show when={snapshots.loading}>
               <div class='movers'>
@@ -833,13 +844,13 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
 
           <For each={props.series}>
             {(series, i) => {
-              const color = ARCHETYPE_LINE_COLORS[i() % ARCHETYPE_LINE_COLORS.length];
+              const color = () => ARCHETYPE_LINE_COLORS[i() % ARCHETYPE_LINE_COLORS.length];
               return (
                 <>
                   <path
                     d={pathFor(series.points)}
                     fill='none'
-                    stroke={color}
+                    stroke={color()}
                     stroke-width='2'
                     stroke-linecap='round'
                     stroke-linejoin='round'
@@ -848,7 +859,7 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
                     <For each={series.points}>
                       {(v, j) =>
                         v === null ? null : (
-                          <circle cx={x(props.days[j()].date)} cy={y(v as number)} r='3' fill={color} />
+                          <circle cx={x(props.days[j()].date)} cy={y(v as number)} r='3' fill={color()} />
                         )
                       }
                     </For>

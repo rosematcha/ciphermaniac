@@ -55,7 +55,8 @@ export default defineConfig({
         secure: true
       }
     }
-    // Other card images are fetched directly from limitlesstcg.nyc3.cdn.digitaloceanspaces.com
-    // by the browser (see src/components/CardImage.tsx). No proxy needed.
+    // Card art must also load same-origin via the /thumbnails proxy (or R2) —
+    // hotlinking the LimitlessTCG CDN directly breaks in browsers (its __cf_bm
+    // cookie is rejected as a public-suffix cookie). See src/components/CardImage.tsx.
   }
 });

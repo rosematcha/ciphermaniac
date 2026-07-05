@@ -1,6 +1,6 @@
 const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api';
 
-interface LimitlessEnv {
+export interface LimitlessEnv {
   LIMITLESS_API_KEY?: string;
   [key: string]: unknown;
 }

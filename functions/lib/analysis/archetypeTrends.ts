@@ -1,7 +1,9 @@
 import { getCanonicalCard } from '../data/cardSynonyms.js';
 import { canonicalizeVariant } from '../util/cardUtils.js';
+import type { SynonymDatabase } from '../../../shared/synonyms';
 
-// All performance tiers - matches src/data/performanceTiers.ts
+// All performance tiers — must match the success-tag taxonomy the report
+// pipeline assigns (determinePlacementTags in onlineMeta/tournamentFetcher.ts)
 const SUCCESS_TAGS = ['all', 'winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'] as const;
 type SuccessTag = (typeof SUCCESS_TAGS)[number];
 
@@ -50,7 +52,7 @@ interface MatchupRecord {
 
 interface PairingMatch {
   player1: string;
-  player2?: string;
+  player2?: string | null;
   winner: number | string;
 }
 
@@ -83,9 +85,7 @@ interface Tournament {
   date: string;
 }
 
-interface SynonymDb {
-  [key: string]: unknown;
-}
+type SynonymDb = SynonymDatabase;
 
 interface TrendOptions {
   pairingsData?: PairingData[];
@@ -428,7 +428,7 @@ export function buildMatchupMatrix(targetArchetype: string, allPairings: Pairing
         });
       }
 
-      const matchupData = matchups.get(opponentArchetype);
+      const matchupData = matchups.get(opponentArchetype)!;
       matchupData.total += 1;
 
       // Determine result
@@ -513,7 +513,7 @@ export function generateArchetypeTrends(
   }
 
   const sortedTournaments = [...tournaments].sort(
-    (first, second) => Date.parse(first.date || 0) - Date.parse(second.date || 0)
+    (first, second) => Date.parse(String(first.date || 0)) - Date.parse(String(second.date || 0))
   );
 
   // 1. Group tournaments by DAY (new granular approach)
@@ -550,7 +550,7 @@ export function generateArchetypeTrends(
         }
       });
     }
-    dayMap.get(dateStr).tournamentIds.push(tournament.id);
+    dayMap.get(dateStr)!.tournamentIds.push(tournament.id);
 
     // Initialize week entry (for backward compatibility)
     if (!weekMap.has(weekStart)) {
@@ -571,7 +571,7 @@ export function generateArchetypeTrends(
         }
       });
     }
-    weekMap.get(weekStart).tournamentIds.push(tournament.id);
+    weekMap.get(weekStart)!.tournamentIds.push(tournament.id);
   }
 
   // 2. Process decks and aggregate by day
@@ -582,12 +582,12 @@ export function generateArchetypeTrends(
   for (const deck of decks) {
     const dateStr = tournamentToDay.get(deck.tournamentId);
     const weekStart = tournamentToWeek.get(deck.tournamentId);
-    if (!dateStr) {
+    if (!dateStr || !weekStart) {
       continue;
     }
 
-    const dayData = dayMap.get(dateStr);
-    const weekData = weekMap.get(weekStart);
+    const dayData = dayMap.get(dateStr)!;
+    const weekData = weekMap.get(weekStart)!;
 
     dayData.totals.all += 1;
     weekData.totals.all += 1;
@@ -628,11 +628,12 @@ export function generateArchetypeTrends(
         cardDayData.set(uid, new Map());
       }
 
-      const cardDays = cardDayData.get(uid);
+      const cardDays = cardDayData.get(uid)!;
       if (!cardDays.has(dateStr)) {
-        cardDays.set(dateStr, {});
+        const freshEntry = {} as Record<SuccessTag, TierCounts>;
+        cardDays.set(dateStr, freshEntry);
         for (const tag of SUCCESS_TAGS) {
-          cardDays.get(dateStr)[tag] = { counts: [], decksWithCard: 0 };
+          freshEntry[tag] = { counts: [], decksWithCard: 0 };
         }
       }
 
@@ -696,9 +697,9 @@ export function generateArchetypeTrends(
   const cardPlayrateTimelines = new Map<string, number[]>(); // For correlation analysis (daily)
 
   for (const [uid, daysData] of cardDayData.entries()) {
-    const meta = cardMeta.get(uid);
-    const dailyPlayrates = [];
-    const dailyCopies = [];
+    const meta = cardMeta.get(uid)!;
+    const dailyPlayrates: number[] = [];
+    const dailyCopies: number[] = [];
     const timeline: Record<number, Record<string, TierData>> = {};
     const timelineWeeks: Record<number, Record<string, TierData>> = {};
     const copyTrend: CopyTrendEntry[] = [];
@@ -787,7 +788,7 @@ export function generateArchetypeTrends(
       for (const tag of SUCCESS_TAGS) {
         let totalCount = 0;
         let totalDecks = 0;
-        const allCounts = [];
+        const allCounts: number[] = [];
 
         for (const dayItem of activeDays) {
           // Check if this day falls within the week

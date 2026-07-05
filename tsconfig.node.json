@@ -4,8 +4,6 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "jsx": "preserve",
-    "jsxImportSource": "solid-js",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -16,18 +14,20 @@
     "noEmit": true,
     "allowJs": false,
     "checkJs": false,
+    "allowImportingTsExtensions": true,
     "baseUrl": ".",
     "paths": {
       "~/*": ["src/*"]
     },
-    "types": ["vite/client"]
+    "types": ["node", "vite/client"]
   },
   "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "shared/**/*.ts",
-    "types/**/*.d.ts",
-    "vite.config.ts"
+    "scripts/**/*.ts",
+    ".github/scripts/**/*.ts",
+    "tests/**/*.ts",
+    "playwright.config.ts",
+    "knip.config.ts",
+    "types/**/*.d.ts"
   ],
-  "exclude": ["node_modules", "dist", "functions", "config", "archive"]
+  "exclude": ["node_modules", "dist"]
 }

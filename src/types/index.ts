@@ -188,12 +188,10 @@ export interface TournamentParticipant {
 // reader can't drift. Re-exported here so existing `from '../types'` imports
 // keep working without churn.
 export type {
-  PlayerArchetypeBreakdown,
   PlayerDeckCard,
   PlayerDecks,
   PlayerIndexEntry,
   PlayerProfile,
-  PlayerProfileSummary,
   PlayerTournamentEntry
 } from '../../shared/playerTypes.js';
 
@@ -217,35 +215,6 @@ export interface PlayerMatchRecord {
   outcome?: 'win' | 'loss' | 'tie' | 'double_loss' | 'bye' | 'unpaired' | 'unknown';
   madePhase2?: boolean;
   madeTopCut?: boolean;
-}
-
-/**
- * Canonical deduped match record.
- */
-export interface CanonicalMatchRecord {
-  id: string;
-  key: string;
-  round: number;
-  phase?: number | null;
-  table?: number | null;
-  completed?: boolean;
-  player1Id?: number | null;
-  player2Id?: number | null;
-  winner?: number | null;
-  winnerCode?: number | null;
-  player1Name?: string | null;
-  player2Name?: string | null;
-  player1Country?: string | null;
-  player2Country?: string | null;
-  player1Archetype?: string | null;
-  player2Archetype?: string | null;
-  outcomeType?: 'decided' | 'tie' | 'double_loss' | 'bye' | 'unpaired' | 'unknown';
-  player1Result?: 'win' | 'loss' | 'tie' | 'double_loss' | 'bye' | 'unpaired' | 'unknown' | null;
-  player2Result?: 'win' | 'loss' | 'tie' | 'double_loss' | 'bye' | 'unpaired' | 'unknown' | null;
-  player1MadePhase2?: boolean | null;
-  player1MadeTopCut?: boolean | null;
-  player2MadePhase2?: boolean | null;
-  player2MadeTopCut?: boolean | null;
 }
 
 // =============================================================================
@@ -280,44 +249,6 @@ export interface ArchetypeReport extends TournamentReport {
     /** Deck instances where this card appears */
     deckInstances?: Array<{ deckId: string; count: number; archetype?: string }>;
   })[];
-}
-
-/**
- * Tournament manifest used to advertise optional assets.
- */
-export interface TournamentManifest {
-  /** Whether a SQLite tournament.db exists for this report. */
-  hasTournamentDb: boolean;
-  assets: {
-    /** Size of master.json payload in bytes. */
-    masterBytes: number;
-    /** Last updated timestamp (ISO string). */
-    updatedAt: string;
-    /** Optional SQLite database size in bytes. */
-    dbBytes?: number;
-  };
-}
-
-/**
- * Optional archetype summary buckets keyed by success filter tag.
- */
-export type ArchetypeSuccessSummaryByTag = Record<
-  string,
-  {
-    deckTotal: number;
-    items?: CardItem[];
-    updatedAt?: string;
-  }
->;
-
-/**
- * Parsed report after validation and cleaning.
- */
-export interface ParsedReport {
-  /** Total number of decks */
-  deckTotal: number;
-  /** Validated and cleaned card items */
-  items: CardItem[];
 }
 
 /**
@@ -437,15 +368,6 @@ export interface ArchetypeFilterRequest {
 }
 
 /**
- * API response for server-side archetype filter reports.
- */
-export interface ArchetypeFilterResponse {
-  deckTotal: number;
-  items: CardItem[];
-  raw?: unknown;
-}
-
-/**
  * Placement rule for determining success tags.
  */
 export interface PlacementRule {
@@ -467,28 +389,4 @@ export interface PercentRule {
   fraction: number;
   /** Minimum tournament size to apply this rule */
   minPlayers: number;
-}
-
-/**
- * Pricing data response.
- */
-export interface PricingData {
-  /** Map of card IDs to pricing info */
-  cardPrices: Record<string, { price?: number; tcgPlayerId?: string }>;
-}
-
-// =============================================================================
-// App State Types
-// =============================================================================
-
-/**
- * Cache entry for API responses.
- */
-export interface CacheEntry<T = unknown> {
-  /** Cached data (if resolved) */
-  data?: T;
-  /** Pending promise (if in-flight) */
-  promise?: Promise<T>;
-  /** Expiration timestamp */
-  expiresAt: number;
 }

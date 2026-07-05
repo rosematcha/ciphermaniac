@@ -41,7 +41,7 @@ test('Report generation sanitizes card names and prevents UID traversal', () => 
     cards: [{ id: 'c1', name: 'EvilCard/..\\secret', count: 3, category: 'Other' }]
   } as any);
 
-  const report = generateReportFromDecks([deck], 1, null, null);
+  const report = generateReportFromDecks([deck], 1, null);
   // Ensure item names or uids do not contain path traversal pieces
   for (const item of report.items) {
     const name = (item.name || '').toString();

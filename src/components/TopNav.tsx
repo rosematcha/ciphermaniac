@@ -1,5 +1,5 @@
 import { A, useLocation } from '@solidjs/router';
-// import { createSignal } from 'solid-js'; // re-enable with the mode toggle below
+import { For } from 'solid-js';
 import { TournamentSelector } from './TournamentSelector';
 
 const links: { href: string; label: string }[] = [
@@ -46,11 +46,13 @@ export function TopNav() {
         Ciphermaniac
       </A>
       <nav class='topnav-links' aria-label='Primary'>
-        {links.map(l => (
-          <A href={l.href} class='topnav-link' classList={{ active: isActive(l.href) }}>
-            {l.label}
-          </A>
-        ))}
+        <For each={links}>
+          {l => (
+            <A href={l.href} class='topnav-link' classList={{ active: isActive(l.href) }}>
+              {l.label}
+            </A>
+          )}
+        </For>
       </nav>
       <div class='topnav-actions'>
         <TournamentSelector />

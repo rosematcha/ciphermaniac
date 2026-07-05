@@ -154,6 +154,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
     s: firstParam(searchParams.s),
     t: firstParam(searchParams.t)
   });
+  // eslint-disable-next-line solid/reactivity -- intentional one-shot hydration of the initial build from the URL; later URL changes flow through setSearchParams, not back into this seed
   const initialRules = rulesFromPersisted(initial.rules);
   const initialSuccess = initial.successFilter ?? DEFAULT_SUCCESS;
   const initialThreshold = initial.threshold ?? DEFAULT_THRESHOLD;

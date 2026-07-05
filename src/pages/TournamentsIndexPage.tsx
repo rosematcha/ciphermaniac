@@ -7,6 +7,7 @@ import { ChipGroup, SearchInput } from '../components/Chip';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { nameFromTournamentKey } from '../lib/format';
+import { latestValue } from '../lib/resource';
 
 type Filter = 'all' | 'regional' | 'international' | 'special';
 
@@ -20,13 +21,17 @@ export function TournamentsIndexPage() {
     document.title = 'Tournaments — Ciphermaniac';
   });
 
+  // Non-suspending read: keeps navigation instant and lets the skeleton
+  // fallbacks below actually render (see lib/resource.ts).
+  const listData = () => latestValue(list);
+
   const tournaments = createMemo(() => {
-    const all = list() ?? [];
+    const all = listData() ?? [];
     const q = query().trim().toLowerCase();
     const f = filter();
     return all.filter(t => {
       if (t === ONLINE_META_NAME) {
-        return f === 'all';
+        return f === 'all' && (!q || t.toLowerCase().includes(q));
       }
       const cls = classifyTournament(t);
       if (f !== 'all' && cls !== f) {
@@ -44,8 +49,8 @@ export function TournamentsIndexPage() {
       <section class='hero'>
         <h1>Tournaments</h1>
         <div class='hero-meta'>
-          <Show when={list()} fallback={<Skeleton width='200px' height='13px' />}>
-            <span>{(list()!.length - 1).toLocaleString()} historical tournaments</span>
+          <Show when={listData()} fallback={<Skeleton width='200px' height='13px' />}>
+            <span>{(listData()!.length - 1).toLocaleString()} historical tournaments</span>
             <span class='dot'>·</span>
             <span>1 rolling online window</span>
           </Show>
@@ -74,7 +79,7 @@ export function TournamentsIndexPage() {
 
       <Section right={`${tournaments().length.toLocaleString()} matching`}>
         <Show
-          when={list()}
+          when={listData()}
           fallback={
             <div class='tournament-list'>
               <For each={Array.from({ length: 8 })}>{() => <Skeleton height='44px' />}</For>

@@ -12,6 +12,7 @@ import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CardTile } from '../components/CardTile';
 import { createPagination } from '../lib/pagination';
+import { latestValue } from '../lib/resource';
 import { averageCopies, categoryLabel } from '../lib/cardStats';
 import {
   createPersistentNumberSignal,
@@ -61,8 +62,14 @@ export function CardsIndexPage() {
 
   const scopeLabel = () => (tournament() === ONLINE_META_NAME ? ONLINE_META_LABEL : prettyTournamentName(tournament()));
 
+  // Non-suspending reads (see lib/resource.ts). `latestValue` keeps the old
+  // table in place while a tournament switch refetches — better than a
+  // skeleton flash for context-keyed data.
+  const masterData = () => latestValue(master);
+  const pricesData = () => latestValue(prices);
+
   const filtered = createMemo(() => {
-    const items = master()?.items ?? [];
+    const items = masterData()?.items ?? [];
     const q = query().trim().toLowerCase();
     const filter = typeFilter();
     return items.filter(item => {
@@ -89,7 +96,7 @@ export function CardsIndexPage() {
   });
 
   const priceFor = (item: CardItem): number | null => {
-    const map = prices();
+    const map = pricesData();
     if (!map) {
       return null;
     }
@@ -132,6 +139,7 @@ export function CardsIndexPage() {
     return list;
   });
 
+  // eslint-disable-next-line solid/reactivity -- createPagination reads `sorted` inside its own createMemo (a tracked scope); the analyzer can't see through the helper
   const { page, totalPages, pageItems, setPage } = createPagination(
     sorted,
     PAGE_SIZE,
@@ -151,10 +159,10 @@ export function CardsIndexPage() {
       <section class='hero'>
         <h1>Cards</h1>
         <div class='hero-meta'>
-          <Show when={master()} fallback={<Skeleton width='240px' height='13px' />}>
-            <span>{master()!.items.length.toLocaleString()} cards observed</span>
+          <Show when={masterData()} fallback={<Skeleton width='240px' height='13px' />}>
+            <span>{masterData()!.items.length.toLocaleString()} cards observed</span>
             <span class='dot'>·</span>
-            <span>{master()!.deckTotal.toLocaleString()} decks analyzed</span>
+            <span>{masterData()!.deckTotal.toLocaleString()} decks analyzed</span>
             <span class='dot'>·</span>
             <span>{scopeLabel()}</span>
           </Show>
@@ -190,7 +198,7 @@ export function CardsIndexPage() {
 
       <Section right={`${filtered().length.toLocaleString()} matching`}>
         <Show
-          when={master() && !master.error}
+          when={masterData()}
           fallback={
             <Show when={master.error} fallback={<ViewSkeleton mode={viewMode()} />}>
               <EmptyState title="Couldn't load cards." description={String(master.error)} />
@@ -295,8 +303,23 @@ function ListView(props: {
 }
 
 function ViewSkeleton(props: { mode: ViewMode }) {
-  if (props.mode === 'list') {
-    return (
+  return (
+    <Show
+      when={props.mode === 'list'}
+      fallback={
+        <div class='cards-grid'>
+          <For each={Array.from({ length: 14 })}>
+            {() => (
+              <div>
+                <Skeleton height='180px' rounded='10px' />
+                <Skeleton height='14px' style={{ 'margin-top': '8px' }} />
+                <Skeleton height='11px' style={{ 'margin-top': '4px' }} />
+              </div>
+            )}
+          </For>
+        </div>
+      }
+    >
       <div class='table-wrap'>
         <table class='data'>
           <thead>
@@ -341,19 +364,6 @@ function ViewSkeleton(props: { mode: ViewMode }) {
           </tbody>
         </table>
       </div>
-    );
-  }
-  return (
-    <div class='cards-grid'>
-      <For each={Array.from({ length: 14 })}>
-        {() => (
-          <div>
-            <Skeleton height='180px' rounded='10px' />
-            <Skeleton height='14px' style={{ 'margin-top': '8px' }} />
-            <Skeleton height='11px' style={{ 'margin-top': '4px' }} />
-          </div>
-        )}
-      </For>
-    </div>
+    </Show>
   );
 }

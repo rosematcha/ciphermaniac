@@ -28,6 +28,7 @@ import { ArchetypeCard } from '../components/ArchetypeCard';
 import { CardStack } from '../components/CardImage';
 import { EmptyState } from '../components/EmptyState';
 import { nameFromTournamentKey, normalizePercent, parseISODate, shortDate } from '../lib/format';
+import { resolved } from '../lib/resource';
 
 const LATEST_EVENT_WINDOW_DAYS = 14;
 // Majors whose dates fall within this many days of each other count as the
@@ -55,13 +56,19 @@ export function HomePage() {
   const [tournamentsList] = createResource(fetchTournamentsList);
   const [upcoming] = createResource(fetchUpcomingTournaments);
 
+  // Non-suspending reads: keep navigation instant and let the skeleton /
+  // error fallbacks below actually render (see lib/resource.ts).
+  const archetypesData = () => resolved(archetypes);
+  const tournamentsListData = () => resolved(tournamentsList);
+  const upcomingData = () => resolved(upcoming);
+
   // Find the headline major tournament for the callout. We start from majors
   // in the latest-event window, then within the most recent "weekend cluster"
   // (events dated within LATEST_EVENT_CLUSTER_DAYS of each other) we prefer
   // the one with the most players. This avoids surfacing a smaller late-ID
   // event over a larger same-weekend event purely because of tournament-ID
   // ordering — e.g. Campinas (1,725) shouldn't outrank Utrecht (2,150).
-  const [latestMajor] = createResource(tournamentsList, async list => {
+  const [latestMajor] = createResource(tournamentsListData, async list => {
     if (!list) {
       return null;
     }
@@ -102,10 +109,12 @@ export function HomePage() {
     document.title = 'Ciphermaniac — Pokémon TCG meta analysis';
   });
 
-  const topArchetypes = () => archetypes()?.slice(0, 8) ?? [];
+  const latestMajorData = () => resolved(latestMajor);
+
+  const topArchetypes = () => archetypesData()?.slice(0, 8) ?? [];
 
   const recentMajors = () => {
-    const list = tournamentsList();
+    const list = tournamentsListData();
     if (!list) {
       return [];
     }
@@ -114,15 +123,15 @@ export function HomePage() {
 
   return (
     <>
-      <Show when={latestMajor()}>
+      <Show when={latestMajorData()}>
         <section class='home-callout-wrap'>
-          <LatestEventCallout tournamentKey={latestMajor()!} onlineArchetypes={archetypes()} />
+          <LatestEventCallout tournamentKey={latestMajorData()!} onlineArchetypes={archetypesData()} />
         </section>
       </Show>
 
       <Section title='Top archetypes' right={<A href='/archetypes'>View all →</A>}>
         <Show
-          when={archetypes()}
+          when={archetypesData()}
           fallback={
             <div class='gallery-grid'>
               <For each={Array.from({ length: 8 })}>{() => <Skeleton height='220px' />}</For>
@@ -147,7 +156,7 @@ export function HomePage() {
 
       <Section title='Recent major tournaments' right={<A href='/tournaments'>View all →</A>}>
         <Show
-          when={tournamentsList()}
+          when={tournamentsListData()}
           fallback={
             <div class='tournament-list'>
               <For each={Array.from({ length: 4 })}>{() => <Skeleton height='44px' />}</For>
@@ -164,7 +173,7 @@ export function HomePage() {
 
       <Section title='Upcoming tournaments' right='from Limitless'>
         <Show
-          when={upcoming()}
+          when={upcomingData()}
           fallback={
             <Show
               when={upcoming.loading}
@@ -182,11 +191,11 @@ export function HomePage() {
           }
         >
           <Show
-            when={(upcoming()!.events ?? []).length > 0}
+            when={(upcomingData()!.events ?? []).length > 0}
             fallback={<EmptyState title='No upcoming tournaments listed.' />}
           >
             <div class='tournament-list'>
-              <For each={upcoming()!.events.slice(0, UPCOMING_COUNT)}>
+              <For each={upcomingData()!.events.slice(0, UPCOMING_COUNT)}>
                 {e => (
                   <a
                     class='tournament-row tournament-row-link'
@@ -217,43 +226,85 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
   const [participants] = createResource(() => props.tournamentKey, fetchParticipants);
   const [tournamentArchetypes] = createResource(() => props.tournamentKey, fetchArchetypes);
 
+  // Non-suspending reads (see lib/resource.ts): keyed on the headline event,
+  // so on a key change show the loading gate rather than stale event data.
+  const metaData = () => resolved(meta);
+  const participantsData = () => resolved(participants);
+  const tournamentArchetypesData = () => resolved(tournamentArchetypes);
+
   const winner = createMemo<TournamentParticipant | undefined>(() => {
-    const list = participants() ?? [];
+    const list = participantsData() ?? [];
     return list.find(p => p.placement === 1);
   });
 
   /**
+   * Lookup tiers for one archetype index, mirroring the original fallback
+   * priority: exact label → exact name → normalized label → normalized name.
+   * First entry in list order wins within each tier, matching `.find`.
+   */
+  function buildArchetypeLookup(list: ArchetypeIndexEntry[]) {
+    const byLabel = new Map<string, ArchetypeIndexEntry>();
+    const byName = new Map<string, ArchetypeIndexEntry>();
+    const byNormLabel = new Map<string, ArchetypeIndexEntry>();
+    const byNormName = new Map<string, ArchetypeIndexEntry>();
+    for (const a of list) {
+      if (!byLabel.has(a.label)) {
+        byLabel.set(a.label, a);
+      }
+      if (!byName.has(a.name)) {
+        byName.set(a.name, a);
+      }
+      const normLabel = normalize(a.label);
+      if (!byNormLabel.has(normLabel)) {
+        byNormLabel.set(normLabel, a);
+      }
+      const normName = normalize(a.name);
+      if (!byNormName.has(normName)) {
+        byNormName.set(normName, a);
+      }
+    }
+    return { byLabel, byName, byNormLabel, byNormName };
+  }
+
+  const onlineLookup = createMemo(() => buildArchetypeLookup(props.onlineArchetypes ?? []));
+  const tournamentLookup = createMemo(() => buildArchetypeLookup(tournamentArchetypesData() ?? []));
+
+  /**
    * Find an archetype entry by name across either the per-tournament index
    * or the online-meta index, preferring whichever has thumbnails populated.
+   * Called per participant, so it reads precomputed maps instead of doing
+   * linear `.find`s with regex normalization on every call.
    */
   function lookupArchetype(deckName: string | null | undefined): ArchetypeIndexEntry | undefined {
     if (!deckName) {
       return undefined;
     }
     const target = normalize(deckName);
-    const tournament = tournamentArchetypes() ?? [];
-    const online = props.onlineArchetypes ?? [];
+    const online = onlineLookup();
     const onlineHit =
-      online.find(a => a.label === deckName) ??
-      online.find(a => a.name === deckName) ??
-      online.find(a => normalize(a.label) === target) ??
-      online.find(a => normalize(a.name) === target);
+      online.byLabel.get(deckName) ??
+      online.byName.get(deckName) ??
+      online.byNormLabel.get(target) ??
+      online.byNormName.get(target);
     if (onlineHit) {
       return onlineHit;
     }
+    const tournament = tournamentLookup();
     return (
-      tournament.find(a => a.label === deckName) ??
-      tournament.find(a => a.name === deckName) ??
-      tournament.find(a => normalize(a.label) === target) ??
-      tournament.find(a => normalize(a.name) === target)
+      tournament.byLabel.get(deckName) ??
+      tournament.byName.get(deckName) ??
+      tournament.byNormLabel.get(target) ??
+      tournament.byNormName.get(target)
     );
   }
 
   const topCutParticipants = createMemo<TournamentParticipant[]>(() =>
-    (participants() ?? []).filter(p => p.madeTopCut)
+    (participantsData() ?? []).filter(p => p.madeTopCut)
   );
 
-  const day2Participants = createMemo<TournamentParticipant[]>(() => (participants() ?? []).filter(p => p.madePhase2));
+  const day2Participants = createMemo<TournamentParticipant[]>(() =>
+    (participantsData() ?? []).filter(p => p.madePhase2)
+  );
 
   // Winner's archetype is still used as an exclusion subject for the story
   // generators (we don't want the winner's deck to dominate every storyline)
@@ -261,7 +312,7 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
   const winnerArchetype = createMemo<ArchetypeIndexEntry | undefined>(() => lookupArchetype(winner()?.deckName));
 
   const eventMeta = createMemo(() => {
-    return meta() as unknown as
+    return metaData() as unknown as
       | {
           name?: string;
           date?: string;
@@ -283,7 +334,7 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
   const totalDay2 = createMemo(() => day2Participants().length);
 
   const fieldRows = createMemo<FieldRow[]>(() => {
-    const tournamentList = tournamentArchetypes() ?? [];
+    const tournamentList = tournamentArchetypesData() ?? [];
     if (tournamentList.length === 0) {
       return [];
     }
@@ -310,7 +361,7 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
     /** Per-archetype perf aggregates over every participant with a placement. */
     type PerfAgg = { count: number; sumWins: number; sumPlace: number; best: number };
     const perfByArch = new Map<string, PerfAgg>();
-    for (const p of participants() ?? []) {
+    for (const p of participantsData() ?? []) {
       const a = lookupArchetype(p.deckName);
       const key = a ? normalize(a.label || a.name) : normalize(p.deckName ?? '—');
       if (!perfByArch.has(key)) {
@@ -376,16 +427,19 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
       .sort((a, b) => b.fieldPct - a.fieldPct);
   });
 
+  /** Placement-ordered standings, unsliced — story computation needs the whole
+   * cut (32-player cuts would be truncated by the display slice below). */
+  const fullStandings = createMemo<TournamentParticipant[]>(() => {
+    return (participantsData() ?? [])
+      .filter(p => typeof p.placement === 'number')
+      .sort((a, b) => (a.placement ?? 9999) - (b.placement ?? 9999));
+  });
+
   /**
    * Placement-ordered standings, near and around the cut line. Covers the
    * top ~20 finishers and the cut line so we can show "what was #11."
    */
-  const standingsList = createMemo<TournamentParticipant[]>(() => {
-    return (participants() ?? [])
-      .filter(p => typeof p.placement === 'number')
-      .sort((a, b) => (a.placement ?? 9999) - (b.placement ?? 9999))
-      .slice(0, 24);
-  });
+  const standingsList = createMemo<TournamentParticipant[]>(() => fullStandings().slice(0, 24));
 
   const cutLine = createMemo<number | null>(() => {
     const cut = topCutParticipants();
@@ -430,9 +484,9 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
 
   /** Field summary for the header line: players, decklists, drops, diversity. */
   const fieldSummary = createMemo(() => {
-    const players = eventMeta()?.players ?? participants()?.length ?? 0;
+    const players = eventMeta()?.players ?? participantsData()?.length ?? 0;
     const decklists = eventMeta()?.deckTotal ?? fieldRows().reduce((acc, r) => acc + r.fieldDecks, 0);
-    const drops = (participants() ?? []).filter(p => p.dropped).length;
+    const drops = (participantsData() ?? []).filter(p => p.dropped).length;
     const cutDiversity = new Set(topCutParticipants().map(p => normalize(p.deckName ?? '—'))).size;
     return {
       players,
@@ -486,8 +540,10 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
         </div>
       </header>
 
+      {/* Gate on loading, not on winner() — players.json can be absent or
+          carry no placement===1, and that must not leave an eternal skeleton. */}
       <Show
-        when={winner()}
+        when={!participants.loading}
         fallback={
           <div class='callout-body'>
             <Skeleton height='240px' />
@@ -495,13 +551,14 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
         }
       >
         <StoryBody
-          winner={winner()!}
+          winner={winner()}
           winnerArchetype={winnerArchetype()}
           totalTopCut={totalTopCut()}
           totalDay2={totalDay2()}
           fieldRows={fieldRows()}
           funnelRows={funnelRows()}
           standings={standingsList()}
+          topCutParticipants={fullStandings().filter(p => p.madeTopCut)}
           cutLine={cutLine()}
           lookupArchetype={lookupArchetype}
           hasDay2={totalDay2() > 0}
@@ -544,13 +601,14 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
 /* ---------- Story body (the locked-in callout layout) ---------- */
 
 function StoryBody(props: {
-  winner: TournamentParticipant;
+  winner: TournamentParticipant | undefined;
   winnerArchetype: ArchetypeIndexEntry | undefined;
   totalTopCut: number;
   totalDay2: number;
   fieldRows: FieldRow[];
   funnelRows: FieldRow[];
   standings: TournamentParticipant[];
+  topCutParticipants: TournamentParticipant[];
   cutLine: number | null;
   lookupArchetype: (name: string | null | undefined) => ArchetypeIndexEntry | undefined;
   hasDay2: boolean;
@@ -562,7 +620,7 @@ function StoryBody(props: {
       hasDay2: props.hasDay2,
       winner: props.winner,
       standings: props.standings,
-      topCutParticipants: props.standings.filter(p => p.madeTopCut),
+      topCutParticipants: props.topCutParticipants,
       cutLine: props.cutLine,
       totalTopCut: props.totalTopCut,
       lookupArchetype: props.lookupArchetype
@@ -582,17 +640,18 @@ function StoryBody(props: {
 }
 
 function StoryCard(props: { story: Story; hasDay2: boolean }) {
-  const r = props.story.row;
-  const meta = ARC_TAG_META[props.story.tag];
-  const href = props.story.href ?? (r.archetype ? `/archetypes/${encodeURIComponent(r.archetype.name)}` : '#');
+  const r = () => props.story.row;
+  const meta = () => ARC_TAG_META[props.story.tag];
+  const href = () =>
+    props.story.href ?? (r().archetype ? `/archetypes/${encodeURIComponent(r().archetype!.name)}` : '#');
   const thumbnails = createMemo<string[]>(() => {
     if (props.story.thumbnails && props.story.thumbnails.length > 0) {
       return props.story.thumbnails;
     }
-    return r.thumbnails ?? [];
+    return r().thumbnails ?? [];
   });
   return (
-    <A class={`story-card story-card-${props.story.tag}`} href={href}>
+    <A class={`story-card story-card-${props.story.tag}`} href={href()}>
       <div class='story-card-art'>
         <Show when={thumbnails().length > 0}>
           <CardStack thumbnails={thumbnails()} size='sm' />
@@ -600,9 +659,9 @@ function StoryCard(props: { story: Story; hasDay2: boolean }) {
       </div>
       <div class='story-card-tag'>
         <span class='story-card-symbol' aria-hidden='true'>
-          {meta.symbol}
+          {meta().symbol}
         </span>
-        <span>{props.story.tagLabel ?? meta.label}</span>
+        <span>{props.story.tagLabel ?? meta().label}</span>
       </div>
       <h4 class='story-card-headline'>{props.story.headline}</h4>
       <p class='story-card-body'>{props.story.body}</p>
@@ -617,10 +676,10 @@ function normalize(s: string): string {
 /* ---------- Recent major row ---------- */
 
 function RecentMajorRow(props: { tournamentKey: string }) {
-  const date = tournamentDate(props.tournamentKey);
+  const date = () => tournamentDate(props.tournamentKey);
   return (
     <div class='tournament-row'>
-      <span class='date'>{date ? shortDate(date) : '—'}</span>
+      <span class='date'>{date() ? shortDate(date()!) : '—'}</span>
       <span class='name'>{nameFromTournamentKey(props.tournamentKey)}</span>
       <span class='players'>{classifyByName(props.tournamentKey)}</span>
     </div>

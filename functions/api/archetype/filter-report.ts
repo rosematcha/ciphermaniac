@@ -9,6 +9,10 @@ const JSON_HEADERS = {
 
 const RESPONSE_CACHE_CONTROL = 'public, max-age=60, s-maxage=180';
 
+// Cap the number of filters per request — each filter costs a pass over the
+// deck list, so an unbounded array is an easy CPU-exhaustion vector.
+const MAX_FILTERS = 50;
+
 interface RequestContext {
   request: Request;
 }
@@ -54,6 +58,10 @@ function normalizePayload(raw: unknown): ArchetypeFilterRequest | null {
   const successFilter = normalizeString(record.successFilter || 'all') || 'all';
 
   if (!tournament || !archetype) {
+    return null;
+  }
+
+  if (Array.isArray(record.filters) && record.filters.length > MAX_FILTERS) {
     return null;
   }
 

@@ -17,7 +17,11 @@ class Logger {
    * Constructor initializes logger with default settings
    */
   constructor() {
-    this._level = 'info';
+    // Quiet by default in production; the ?debug= URL param below can lower
+    // the threshold at runtime when diagnosing a live issue. Optional chaining
+    // because this module is also imported by Node-based tests, where
+    // import.meta.env doesn't exist.
+    this._level = import.meta.env?.DEV ? 'info' : 'warn';
     this._levels = {
       debug: 0,
       info: 1,
@@ -97,7 +101,9 @@ class Logger {
    * @param args
    */
   info(message: string, ...args: any[]): void {
-    console.log(...Logger.format('info', message, args));
+    if (this._shouldLog('info')) {
+      console.log(...Logger.format('info', message, args));
+    }
   }
 
   /**
@@ -106,7 +112,9 @@ class Logger {
    * @param args
    */
   warn(message: string, ...args: any[]): void {
-    console.warn(...Logger.format('warn', message, args));
+    if (this._shouldLog('warn')) {
+      console.warn(...Logger.format('warn', message, args));
+    }
   }
 
   /**
