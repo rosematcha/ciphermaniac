@@ -27,7 +27,7 @@ import { Section } from '../components/Section';
 import { ArchetypeCard } from '../components/ArchetypeCard';
 import { CardStack } from '../components/CardImage';
 import { EmptyState } from '../components/EmptyState';
-import { nameFromTournamentKey, normalizePercent, parseISODate, shortDate } from '../lib/format';
+import { nameFromTournamentKey, parseISODate, shortDate } from '../lib/format';
 import { resolved } from '../lib/resource';
 
 const LATEST_EVENT_WINDOW_DAYS = 14;
@@ -396,7 +396,10 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
         const fieldPct = totalDecklists > 0 ? (fieldDecks / totalDecklists) * 100 : 0;
         const topCutCount = topCounts.get(key) ?? 0;
         const day2Count = d2Counts.get(key) ?? 0;
-        const onlinePct = onlineHit ? normalizePercent(onlineHit.percent) : null;
+        const onlinePct =
+          onlineHit && typeof onlineHit.percent === 'number' && Number.isFinite(onlineHit.percent)
+            ? onlineHit.percent
+            : null;
         const delta = onlinePct === null ? null : fieldPct - onlinePct;
         const conversionPct = fieldDecks > 0 ? (topCutCount / fieldDecks) * 100 : null;
         const day2Pct = totalD2 > 0 ? (day2Count / totalD2) * 100 : null;

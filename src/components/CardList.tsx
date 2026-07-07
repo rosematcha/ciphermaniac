@@ -72,7 +72,12 @@ function CardsTable(props: { items: CardListItem[] }) {
                 </td>
                 <td class='muted-cell'>{item.set ? `${item.set}/${item.number}` : '—'}</td>
                 <td class='muted-cell'>{categoryLabel(item)}</td>
-                <td class='num'>{item.pct.toFixed(1)}%</td>
+                <td class='num'>
+                  {item.pct.toFixed(1)}%{' '}
+                  <span class='muted-cell'>
+                    {item.found.toLocaleString()}/{item.total.toLocaleString()}
+                  </span>
+                </td>
                 <td class='num'>{averageCopies(item)}</td>
               </tr>
             )}

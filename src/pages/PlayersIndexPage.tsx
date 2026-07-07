@@ -12,15 +12,32 @@ import { createPagination } from '../lib/pagination';
 import type { TournamentParticipant } from '../types';
 import { formatRecord } from '../lib/format';
 import { latestValue } from '../lib/resource';
+import '../styles/pages/players-tables.css';
 
 type Filter = 'all' | 'topCut' | 'phase2';
+type SortKey = 'placement' | 'record' | 'points';
+type SortDir = 'asc' | 'desc';
 const PAGE_SIZE = 50;
+
+function participantSortValue(p: TournamentParticipant, key: SortKey): number {
+  switch (key) {
+    case 'record':
+      return p.wins ?? 0;
+    case 'points':
+      return p.points ?? 0;
+    case 'placement':
+    default:
+      return p.placement ?? 9999;
+  }
+}
 
 export function PlayersIndexPage() {
   const { tournament } = useTournament();
   const [participants] = createResource(tournament, fetchParticipants);
   const [query, setQuery] = createSignal('');
   const [filter, setFilter] = createSignal<Filter>('all');
+  const [sortKey, setSortKey] = createSignal<SortKey>('placement');
+  const [sortDir, setSortDir] = createSignal<SortDir>('asc');
   const navigate = useNavigate();
 
   onMount(() => {
@@ -52,12 +69,26 @@ export function PlayersIndexPage() {
   });
 
   const sorted = createMemo(() => {
-    return [...filtered()].sort((a, b) => (a.placement ?? 9999) - (b.placement ?? 9999));
+    const key = sortKey();
+    const factor = sortDir() === 'asc' ? 1 : -1;
+    return [...filtered()].sort((a, b) => (participantSortValue(a, key) - participantSortValue(b, key)) * factor);
   });
 
   const { page, totalPages, pageItems: pageRows, setPage } =
     // eslint-disable-next-line solid/reactivity -- createPagination reads `sorted` inside its own createMemo (a tracked scope); the analyzer can't see through the helper
-    createPagination(sorted, PAGE_SIZE, [query, filter, tournament]);
+    createPagination(sorted, PAGE_SIZE, [query, filter, tournament, sortKey, sortDir]);
+
+  function setSort(next: SortKey, defaultDir: SortDir) {
+    if (sortKey() === next) {
+      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(next);
+      setSortDir(defaultDir);
+    }
+  }
+
+  const ariaSort = (key: SortKey): 'ascending' | 'descending' | 'none' =>
+    sortKey() === key ? (sortDir() === 'asc' ? 'ascending' : 'descending') : 'none';
 
   return (
     <>
@@ -115,7 +146,7 @@ export function PlayersIndexPage() {
               <Show when={participants.error || participantsData() === null} fallback={<TableSkeleton />}>
                 <EmptyState
                   title='No player data for this tournament.'
-                  description="players.json isn't published for this tournament yet. It might be a special event with limited reporting."
+                  description="Player data for this event isn't available yet. Check back after the next data update."
                 />
               </Show>
             }
@@ -149,8 +180,16 @@ export function PlayersIndexPage() {
                       <th>Player</th>
                       <th>Country</th>
                       <th>Archetype</th>
-                      <th class='num'>Record</th>
-                      <th class='num'>Points</th>
+                      <th aria-sort={ariaSort('record')} class='sortable num'>
+                        <button type='button' class='th-sort' onClick={() => setSort('record', 'desc')}>
+                          Record
+                        </button>
+                      </th>
+                      <th aria-sort={ariaSort('points')} class='sortable num'>
+                        <button type='button' class='th-sort' onClick={() => setSort('points', 'desc')}>
+                          Points
+                        </button>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -173,7 +212,7 @@ export function PlayersIndexPage() {
                           <td class='muted-cell'>{p.country ?? '—'}</td>
                           <td class='muted-cell'>{p.deckName ?? '—'}</td>
                           <td class='num'>{formatRecord(p)}</td>
-                          <td class='num'>{p.points ?? '—'}</td>
+                          <td class='num'>{p.points != null ? p.points.toLocaleString() : '—'}</td>
                         </tr>
                       )}
                     </For>
@@ -181,7 +220,13 @@ export function PlayersIndexPage() {
                 </table>
               </div>
               <Show when={totalPages() > 1}>
-                <Pagination page={page()} totalPages={totalPages()} onChange={setPage} />
+                <Pagination
+                  page={page()}
+                  totalPages={totalPages()}
+                  onChange={setPage}
+                  pageSize={PAGE_SIZE}
+                  totalItems={filtered().length}
+                />
               </Show>
             </Show>
           </Show>

@@ -1,6 +1,7 @@
 import { A, useLocation } from '@solidjs/router';
 import { For } from 'solid-js';
 import { TournamentSelector } from './TournamentSelector';
+import { prefetchRoute } from '../lib/prefetch';
 
 const links: { href: string; label: string }[] = [
   { href: '/cards', label: 'Cards' },
@@ -48,7 +49,13 @@ export function TopNav() {
       <nav class='topnav-links' aria-label='Primary'>
         <For each={links}>
           {l => (
-            <A href={l.href} class='topnav-link' classList={{ active: isActive(l.href) }}>
+            <A
+              href={l.href}
+              class='topnav-link'
+              classList={{ active: isActive(l.href) }}
+              onMouseEnter={() => prefetchRoute(l.href)}
+              onFocus={() => prefetchRoute(l.href)}
+            >
               {l.label}
             </A>
           )}

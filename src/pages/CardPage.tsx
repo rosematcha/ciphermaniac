@@ -15,7 +15,9 @@ import {
   snapshotSourceKey
 } from '../lib/data';
 import { ONLINE_META_NAME } from '../lib/constants';
+import { nameFromTournamentKey } from '../lib/format';
 import { useTournament } from '../lib/tournamentContext';
+import '../styles/pages/cards.css';
 import { latestValue, resolved } from '../lib/resource';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../types';
 import { Breadcrumb } from '../components/Breadcrumb';
@@ -24,6 +26,8 @@ import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CardImage } from '../components/CardImage';
 import { InfoTip } from '../components/InfoTip';
+
+const CONVERSION_INTRO = 'Share of the Day 1 decks playing this card that advanced to Day 2.';
 
 /**
  * /cards/[set]/[number] — full page detail for a single card.
@@ -127,6 +131,43 @@ export function CardPage() {
   // The card actually rendered: live wins; snapshot fills in when there is no
   // live entry for this canonical set/number.
   const card = createMemo<CardItem | undefined>(() => liveCard() ?? snapshotCard());
+
+  // True when the rendered card came from a frozen pre-rotation snapshot rather
+  // than the live report — drives the banner and the "current price" annotation.
+  const isSnapshot = createMemo<boolean>(() => !liveCard() && Boolean(snapshotCard()));
+
+  // Population behind the card's rank, taken from the same report the card came
+  // from so "#30 of 944" stays internally consistent. Null in either report's
+  // loading gap, which falls the rank display back to a bare "#30".
+  const rankTotal = createMemo<number | null>(() => {
+    const items = liveCard() ? masterData()?.items : snapshotMasterData()?.items;
+    return items ? items.length : null;
+  });
+
+  // Human-readable snapshot date for the banner (snapshotDate() is YYYY-MM-DD).
+  const snapshotDateLabel = createMemo<string>(() => {
+    const raw = snapshotDate();
+    if (!raw) {
+      return '';
+    }
+    const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) {
+      return raw;
+    }
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return Number.isNaN(d.getTime())
+      ? raw
+      : d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+  });
+
+  // Empty-state copy reflects the active scope: the online meta has its rolling
+  // 14-day caveat, but a specific event should name that event instead.
+  const emptyDescription = createMemo<string>(() => {
+    if (tournament() === ONLINE_META_NAME) {
+      return "That set/number combination doesn't appear in the current online meta report. The card may not have been played in the rolling 14-day window.";
+    }
+    return `That set/number combination doesn't appear in the ${nameFromTournamentKey(tournament())} report.`;
+  });
 
   // Tournament key threaded into the archetype fan-out below. When the page is
   // rendering snapshot data, point downstream fetches at the same snapshot so
@@ -243,7 +284,7 @@ export function CardPage() {
           >
             <EmptyState
               title={`No card found at ${setNumber()}.`}
-              description="That set/number combination doesn't appear in the current online meta report. The card may not have been played in the rolling 14-day window."
+              description={emptyDescription()}
               actions={
                 <A href='/cards' class='btn btn-secondary'>
                   Back to all cards
@@ -260,6 +301,9 @@ export function CardPage() {
           conversion={conversionStat()}
           archetypeUsage={archetypeUsageData()}
           archetypeUsageLoading={archetypeUsage.loading || archetypeIndex.loading}
+          isSnapshot={isSnapshot()}
+          snapshotDateLabel={snapshotDateLabel()}
+          rankTotal={rankTotal()}
         />
       </Show>
     </>
@@ -279,6 +323,9 @@ function CardPageBody(props: {
   conversion: Day2CardStat | undefined;
   archetypeUsage: ArchetypeUsageRow[] | null | undefined;
   archetypeUsageLoading: boolean;
+  isSnapshot: boolean;
+  snapshotDateLabel: string;
+  rankTotal: number | null;
 }) {
   // Caveats that make the conversion rate less trustworthy. A card played by
   // nearly the whole field just tracks the field's overall Day 2 rate, and a
@@ -335,6 +382,16 @@ function CardPageBody(props: {
         </div>
       </div>
 
+      <Show when={props.isSnapshot}>
+        <div class='snapshot-banner' role='status'>
+          <span class='snapshot-banner-label'>Rotated out</span>
+          <span>
+            This card rotated out of Standard. You're looking at the final pre-rotation report from{' '}
+            {props.snapshotDateLabel}.
+          </span>
+        </div>
+      </Show>
+
       <div class='card-page-grid'>
         <div class='card-page-left'>
           <div class='card-image-real'>
@@ -362,19 +419,28 @@ function CardPageBody(props: {
 
           <div class='stats-panel'>
             <div class='stat-row stat-row--lead'>
-              <span class='stat-label'>Inclusion</span>
-              <span class='stat-value'>{props.card.pct.toFixed(1)}%</span>
+              <span class='stat-label'>
+                Inclusion
+                <InfoTip label='Share of decks playing at least one copy of this card.'>
+                  <p>Share of decks playing at least one copy of this card.</p>
+                </InfoTip>
+              </span>
+              <span class='stat-lead-value'>
+                <span class='stat-value'>{props.card.pct.toFixed(1)}%</span>
+                <span class='stat-subline'>
+                  {props.card.found.toLocaleString()} of {props.card.total.toLocaleString()} decks
+                </span>
+              </span>
             </div>
             <Show when={props.conversion}>
               <div class='stat-row'>
                 <span class='stat-label'>Conversion</span>
                 <span class='stat-value'>
                   {props.conversion!.conversion.toFixed(1)}%
-                  <Show when={conversionCaveats().length > 0}>
-                    <InfoTip label={conversionCaveats().join(' ')}>
-                      <For each={conversionCaveats()}>{note => <p>{note}</p>}</For>
-                    </InfoTip>
-                  </Show>
+                  <InfoTip label={[CONVERSION_INTRO, ...conversionCaveats()].join(' ')}>
+                    <p>{CONVERSION_INTRO}</p>
+                    <For each={conversionCaveats()}>{note => <p>{note}</p>}</For>
+                  </InfoTip>
                 </span>
               </div>
             </Show>
@@ -387,12 +453,22 @@ function CardPageBody(props: {
             <Show when={props.card.rank}>
               <div class='stat-row'>
                 <span class='stat-label'>Rank</span>
-                <span class='stat-value'>#{props.card.rank}</span>
+                <span class='stat-value'>
+                  #{props.card.rank}
+                  <Show when={props.rankTotal}>
+                    <span class='stat-rank-total'>of {props.rankTotal!.toLocaleString()}</span>
+                  </Show>
+                </span>
               </div>
             </Show>
             <Show when={props.priceEntry?.price !== undefined && props.priceEntry?.price !== null}>
               <div class='stat-row'>
-                <span class='stat-label'>Market price</span>
+                <span class='stat-label'>
+                  Market price
+                  <Show when={props.isSnapshot}>
+                    <span class='stat-note'>current</span>
+                  </Show>
+                </span>
                 <span class='stat-value'>
                   <Show when={props.priceEntry?.tcgPlayerId} fallback={<>${props.priceEntry!.price!.toFixed(2)}</>}>
                     <a
@@ -414,6 +490,7 @@ function CardPageBody(props: {
           <Show when={props.card.dist && props.card.dist.length > 0}>
             <div class='card-section'>
               <h3>Copy count distribution</h3>
+              <p class='dist-caption'>Of the {props.card.found.toLocaleString()} decks running it</p>
               <div class='dist-block'>
                 <For each={props.card.dist}>
                   {d => (

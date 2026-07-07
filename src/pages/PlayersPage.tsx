@@ -9,15 +9,39 @@ import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { createPagination } from '../lib/pagination';
 import type { PlayerIndexEntry } from '../types';
+import '../styles/pages/players-tables.css';
 
-type SortKey = 'events' | 'day2s' | 'topCuts' | 'wins';
+type SortKey = 'events' | 'day2s' | 'topCuts' | 'titles' | 'day2Rate';
+type SortDir = 'asc' | 'desc';
 
 const PAGE_SIZE = 50;
+const DAY2_RATE_MIN_EVENTS = 5;
+
+function day2Rate(p: PlayerIndexEntry): number {
+  return p.eventCount > 0 ? p.day2s / p.eventCount : 0;
+}
+
+function sortValue(p: PlayerIndexEntry, key: SortKey): number {
+  switch (key) {
+    case 'day2s':
+      return p.day2s;
+    case 'topCuts':
+      return p.topCuts;
+    case 'titles':
+      return p.tournamentWins;
+    case 'day2Rate':
+      return day2Rate(p);
+    case 'events':
+    default:
+      return p.eventCount;
+  }
+}
 
 export function PlayersPage() {
   const [index] = createResource(fetchPlayerIndex);
   const [query, setQuery] = createSignal('');
-  const [sortKey, setSortKey] = createSignal<SortKey>('events');
+  const [sortKey, setSortKey] = createSignal<SortKey>('day2s');
+  const [sortDir, setSortDir] = createSignal<SortDir>('desc');
   const navigate = useNavigate();
 
   onMount(() => {
@@ -40,28 +64,25 @@ export function PlayersPage() {
   const sorted = createMemo(() => {
     const list = [...filtered()];
     const key = sortKey();
-    const cmp = (a: PlayerIndexEntry, b: PlayerIndexEntry): number => {
-      switch (key) {
-        case 'day2s':
-          return b.day2s - a.day2s;
-        case 'topCuts':
-          return b.topCuts - a.topCuts;
-        case 'wins':
-          return b.tournamentWins - a.tournamentWins;
-        case 'events':
-        default:
-          return b.eventCount - a.eventCount;
-      }
-    };
-    return list.sort(cmp);
+    const factor = sortDir() === 'asc' ? 1 : -1;
+    return list.sort((a, b) => (sortValue(a, key) - sortValue(b, key)) * factor);
   });
 
-  // eslint-disable-next-line solid/reactivity -- createPagination reads `sorted` inside its own createMemo (a tracked scope); the analyzer can't see through the helper
-  const { page, totalPages, pageItems: pageRows, setPage } = createPagination(sorted, PAGE_SIZE, [query, sortKey]);
+  const { page, totalPages, pageItems: pageRows, setPage } =
+    // eslint-disable-next-line solid/reactivity -- createPagination reads `sorted` inside its own createMemo (a tracked scope); the analyzer can't see through the helper
+    createPagination(sorted, PAGE_SIZE, [query, sortKey, sortDir]);
 
   function setSort(next: SortKey) {
-    setSortKey(next);
+    if (sortKey() === next) {
+      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(next);
+      setSortDir('desc');
+    }
   }
+
+  const ariaSort = (key: SortKey): 'ascending' | 'descending' | 'none' =>
+    sortKey() === key ? (sortDir() === 'asc' ? 'ascending' : 'descending') : 'none';
 
   return (
     <>
@@ -88,8 +109,8 @@ export function PlayersPage() {
           fallback={
             <Show when={index.error || indexData() === null} fallback={<TableSkeleton />}>
               <EmptyState
-                title="Player index isn't available yet."
-                description="`players/index.json` hasn't been written. Run the meta builder to generate it."
+                title='Player data unavailable'
+                description="Player data for this event isn't available yet. Check back after the next data update."
               />
             </Show>
           }
@@ -114,17 +135,20 @@ export function PlayersPage() {
                   <tr>
                     <th>Player</th>
                     <th>Country</th>
-                    <SortableTh active={sortKey() === 'events'} onSort={() => setSort('events')} num>
+                    <SortableTh ariaSort={ariaSort('events')} onSort={() => setSort('events')}>
                       Events
                     </SortableTh>
-                    <SortableTh active={sortKey() === 'day2s'} onSort={() => setSort('day2s')} num>
+                    <SortableTh ariaSort={ariaSort('day2s')} onSort={() => setSort('day2s')}>
                       Day 2s
                     </SortableTh>
-                    <SortableTh active={sortKey() === 'topCuts'} onSort={() => setSort('topCuts')} num>
+                    <SortableTh ariaSort={ariaSort('day2Rate')} onSort={() => setSort('day2Rate')}>
+                      Day 2 rate
+                    </SortableTh>
+                    <SortableTh ariaSort={ariaSort('topCuts')} onSort={() => setSort('topCuts')}>
                       Top cuts
                     </SortableTh>
-                    <SortableTh active={sortKey() === 'wins'} onSort={() => setSort('wins')} num>
-                      Wins
+                    <SortableTh ariaSort={ariaSort('titles')} onSort={() => setSort('titles')}>
+                      Titles
                     </SortableTh>
                   </tr>
                 </thead>
@@ -145,10 +169,13 @@ export function PlayersPage() {
                           <span class='cardname'>{p.name}</span>
                         </td>
                         <td class='muted-cell'>{p.country ?? '—'}</td>
-                        <td class='num'>{p.eventCount}</td>
-                        <td class='num'>{p.day2s}</td>
-                        <td class='num'>{p.topCuts}</td>
-                        <td class='num'>{p.tournamentWins}</td>
+                        <td class='num'>{p.eventCount.toLocaleString()}</td>
+                        <td class='num'>{p.day2s.toLocaleString()}</td>
+                        <td class='num' classList={{ 'stat-dim': p.eventCount < DAY2_RATE_MIN_EVENTS }}>
+                          {p.eventCount > 0 ? `${(day2Rate(p) * 100).toFixed(1)}%` : '—'}
+                        </td>
+                        <td class='num'>{p.topCuts.toLocaleString()}</td>
+                        <td class='num'>{p.tournamentWins.toLocaleString()}</td>
                       </tr>
                     )}
                   </For>
@@ -156,7 +183,13 @@ export function PlayersPage() {
               </table>
             </div>
             <Show when={totalPages() > 1}>
-              <Pagination page={page()} totalPages={totalPages()} onChange={setPage} />
+              <Pagination
+                page={page()}
+                totalPages={totalPages()}
+                onChange={setPage}
+                pageSize={PAGE_SIZE}
+                totalItems={filtered().length}
+              />
             </Show>
           </Show>
         </Show>
@@ -165,24 +198,16 @@ export function PlayersPage() {
   );
 }
 
-function SortableTh(props: { active: boolean; onSort: () => void; num?: boolean; children: JSX.Element }) {
+function SortableTh(props: {
+  ariaSort: 'ascending' | 'descending' | 'none';
+  onSort: () => void;
+  children: JSX.Element;
+}) {
   return (
-    <th
-      class='sortable'
-      classList={{ num: props.num }}
-      onClick={() => props.onSort()}
-      tabIndex={0}
-      onKeyDown={e => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          props.onSort();
-        }
-      }}
-    >
-      {props.children}
-      <Show when={props.active}>
-        <span class='sort-mark'>↓</span>
-      </Show>
+    <th aria-sort={props.ariaSort} class='sortable num'>
+      <button type='button' class='th-sort' onClick={() => props.onSort()}>
+        {props.children}
+      </button>
     </th>
   );
 }
@@ -197,8 +222,9 @@ function TableSkeleton() {
             <th>Country</th>
             <th class='num'>Events</th>
             <th class='num'>Day 2s</th>
+            <th class='num'>Day 2 rate</th>
             <th class='num'>Top cuts</th>
-            <th class='num'>Wins</th>
+            <th class='num'>Titles</th>
           </tr>
         </thead>
         <tbody>
@@ -216,6 +242,9 @@ function TableSkeleton() {
                 </td>
                 <td class='num'>
                   <Skeleton width='32px' />
+                </td>
+                <td class='num'>
+                  <Skeleton width='40px' />
                 </td>
                 <td class='num'>
                   <Skeleton width='32px' />

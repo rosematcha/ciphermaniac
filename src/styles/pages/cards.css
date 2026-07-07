@@ -1,0 +1,85 @@
+/* Cards pages (CardPage + CardsIndexPage) — data-legibility additions.
+   These styles layer onto the shared component styles in components.css; only
+   the new surfaces introduced by the legibility pass live here. */
+
+/* ---------- Snapshot banner (CardPage) ----------
+   A calm, full-width tinted panel that appears when the page is rendering a
+   frozen pre-rotation snapshot instead of live data. No border-left stripe, no
+   gradient — a flat surface-2 fill tinted toward the accent, per spec. */
+.snapshot-banner {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
+  color: var(--fg);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.snapshot-banner .snapshot-banner-label {
+  color: var(--accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ---------- Inclusion denominator sub-line (CardPage stat rail) ----------
+   The lead stat stacks its value over a muted "found of total decks" line so
+   the headline percentage carries its denominator. */
+.stats-panel .stat-lead-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+.stats-panel .stat-subline {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
+}
+
+/* Rank denominator ("of 944") and small inline notes (e.g. snapshot price). */
+.stats-panel .stat-rank-total,
+.stats-panel .stat-note {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 11px;
+}
+
+/* ---------- Copy-count distribution caption (CardPage) ---------- */
+.dist-caption {
+  margin: -4px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* ---------- Sortable table headers (CardsIndexPage list view) ----------
+   Markup contract: <th class='sortable'><button class='th-sort'>Label</button></th>.
+   The button is a transparent trigger that inherits the header's typography; the
+   active column shows a ▲/▼ affordance via the shared .sort-mark span. */
+.data th.sortable .th-sort {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  background: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.data th.num.sortable .th-sort {
+  justify-content: flex-end;
+  width: 100%;
+}
+.data th.sortable .th-sort:hover {
+  color: var(--fg);
+}

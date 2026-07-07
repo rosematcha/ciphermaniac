@@ -18,6 +18,7 @@ import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { createPersistentSignal } from '../lib/persistentSignal';
 import { latestValue } from '../lib/resource';
+import '../styles/pages/trends.css';
 
 type Source = 'online' | 'majors';
 type OnlineWindow = '7d' | '14d' | '30d';
@@ -51,7 +52,65 @@ const MAJORS_WINDOW_COUNT: Record<MajorsWindow, number> = {
 const ARCHETYPE_LINE_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', '#9c5fd0', '#d4a043', '#3eb9c5'];
 
 const TOP_ARCHETYPES_FOR_CHART = 6;
+/** Never draw more than this many lines at once — the chart stays readable. */
+const MAX_VISIBLE_SERIES = 8;
+/** A newcomer must hold at least this share (%) in the recent half to be listed. */
+const NEWCOMER_MIN_SHARE = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Stable line color for a series by its rank index (cycles the palette). */
+function lineColor(index: number): string {
+  return ARCHETYPE_LINE_COLORS[index % ARCHETYPE_LINE_COLORS.length];
+}
+
+/** "3 hours ago" from an ISO timestamp, or null if unparseable. Plain words, no em dashes. */
+function relativeTimeFrom(iso: string | undefined): string | null {
+  if (!iso) {
+    return null;
+  }
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) {
+    return null;
+  }
+  const mins = Math.round((Date.now() - t) / 60000);
+  if (mins < 1) {
+    return 'just now';
+  }
+  if (mins < 60) {
+    return `${mins} minute${mins === 1 ? '' : 's'} ago`;
+  }
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) {
+    return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+  }
+  const days = Math.round(hrs / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
+/** "Jun 6 to Jul 6" from two YYYY-MM-DD strings, or null if either is unparseable. */
+function formatDateWindow(start: string | undefined, end: string | undefined): string | null {
+  const fmt = (d: string | undefined): string | null => {
+    if (!d) {
+      return null;
+    }
+    const t = Date.parse(`${d}T12:00:00Z`);
+    if (!Number.isFinite(t)) {
+      return null;
+    }
+    return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  };
+  const s = fmt(start);
+  const e = fmt(end);
+  if (!s || !e) {
+    return null;
+  }
+  return `${s} to ${e}`;
+}
+
+/** Short date label for an event date, used in the movers half-coverage caption. */
+function shortDate(d: Date): string {
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
 
 interface EventSnapshot {
   tournament: string;
@@ -157,7 +216,13 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
     }
 
     const windowDays = ONLINE_WINDOW_DAYS[props.windowKey];
-    const cutoffMs = Date.now() - windowDays * DAY_MS;
+    // Anchor the window to the payload's own end date, not Date.now(). If the
+    // cron lags, wall-clock "now" drifts past the newest data and a 7-day window
+    // would slide off the end; anchoring to windowEnd keeps the window aligned
+    // with what the file actually contains.
+    const windowEndMs = Date.parse(`${report.windowEnd}T12:00:00Z`);
+    const anchorMs = Number.isFinite(windowEndMs) ? windowEndMs : Date.now();
+    const cutoffMs = anchorMs - windowDays * DAY_MS;
 
     // Union of all dates across archetypes that fall in window (some archetypes
     // may skip days). Sorted ascending.
@@ -182,13 +247,14 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
       count: 1
     }));
 
-    // Pick top-N by avgShare across the file (this is the cron's avg, computed
-    // over the full 30-day window — close enough to a "popularity ranking"
-    // for picking which lines to show).
+    // Rank every archetype by avgShare across the file (the cron's avg over the
+    // full 30-day window — a stable "popularity ranking"). The full ranked list
+    // is handed to the chart, which draws the top-N by default and lets the user
+    // toggle series or add their own deck. Ranking order is stable, so each
+    // series keeps its color regardless of what's toggled.
     const ranked = [...report.series].sort((a, b) => b.avgShare - a.avgShare);
-    const top = ranked.slice(0, TOP_ARCHETYPES_FOR_CHART);
 
-    const series: ArchetypeSeries[] = top.map(s => {
+    const series: ArchetypeSeries[] = ranked.map(s => {
       const points: (number | null)[] = Array.from({ length: dates.length }, () => null);
       for (const p of s.timeline ?? []) {
         const idx = dateIdx.get(p.date);
@@ -210,8 +276,6 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
 
     return { series, days };
   });
-
-  const windowDays = () => ONLINE_WINDOW_DAYS[props.windowKey];
 
   /** Card-level movers from the cron's pre-computed lists, sliced (top 12 each). */
   const cardMovers = createMemo(() => {
@@ -235,6 +299,24 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
     return `${tc.toLocaleString()} online events aggregated`;
   });
 
+  /**
+   * Freshness + window straight from the payload (not Date.now), so the label
+   * never silently disagrees with the data when the cron lags.
+   */
+  const dataStamp = createMemo(() => {
+    const data = trendsData();
+    if (!data) {
+      return null;
+    }
+    const report = data.trendReport;
+    const updated = relativeTimeFrom(report.generatedAt);
+    const window = formatDateWindow(report.windowStart, report.windowEnd);
+    if (!updated && !window) {
+      return null;
+    }
+    return { updated, window };
+  });
+
   return (
     <>
       <Section
@@ -245,6 +327,14 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
           </Show>
         }
       >
+        <Show when={dataStamp()}>
+          {stamp => (
+            <p class='trends-stamp'>
+              <Show when={stamp().window}>{w => <span>Window {w()}.</span>}</Show>{' '}
+              <Show when={stamp().updated}>{u => <span>Updated {u()}.</span>}</Show>
+            </p>
+          )}
+        </Show>
         <Show when={trendsData() !== undefined} fallback={<Skeleton height='360px' />}>
           <Show
             when={trendsData() && chart().series.length > 0}
@@ -255,7 +345,7 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
               />
             }
           >
-            <ArchetypeTrendChart series={chart().series} days={chart().days} windowDays={windowDays()} />
+            <ArchetypeTrendChart series={chart().series} days={chart().days} />
           </Show>
         </Show>
       </Section>
@@ -264,7 +354,7 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
         <Section title='Top card movers' right='Rising and falling cards across the window'>
           <div class='movers'>
             <div class='mover-col'>
-              <h3 class='up'>Rising — biggest gainers</h3>
+              <h3 class='up'>Rising: biggest gainers</h3>
               <For each={cardMovers().rising}>
                 {(m, idx) => (
                   <A href={m.set && m.number ? `/cards/${m.set}/${m.number}` : '#'} class='mover-row'>
@@ -273,13 +363,18 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
                     <span class='set'>
                       {m.set ?? ''}/{m.number ?? ''}
                     </span>
-                    <span class='delta up'>↑ {Math.abs(m.delta).toFixed(1)}%</span>
+                    <span class='delta up'>
+                      <span class='delta-pp'>↑ {Math.abs(m.delta).toFixed(1)} pp</span>
+                      <span class='delta-base'>
+                        {m.startShare.toFixed(1)} → {m.endShare.toFixed(1)}%
+                      </span>
+                    </span>
                   </A>
                 )}
               </For>
             </div>
             <div class='mover-col'>
-              <h3 class='down'>Falling — biggest losers</h3>
+              <h3 class='down'>Falling: biggest losers</h3>
               <For each={cardMovers().falling}>
                 {(m, idx) => (
                   <A href={m.set && m.number ? `/cards/${m.set}/${m.number}` : '#'} class='mover-row'>
@@ -288,7 +383,12 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
                     <span class='set'>
                       {m.set ?? ''}/{m.number ?? ''}
                     </span>
-                    <span class='delta down'>↓ {Math.abs(m.delta).toFixed(1)}%</span>
+                    <span class='delta down'>
+                      <span class='delta-pp'>↓ {Math.abs(m.delta).toFixed(1)} pp</span>
+                      <span class='delta-base'>
+                        {m.startShare.toFixed(1)} → {m.endShare.toFixed(1)}%
+                      </span>
+                    </span>
                   </A>
                 )}
               </For>
@@ -336,12 +436,37 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
   // chart in place instead of flashing a skeleton.
   const snapshotsData = () => latestValue(snapshots);
 
-  const movers = createMemo(() => {
+  const movers = createMemo<MoversResult>(() => {
+    const empty = (enough: boolean, coverage: HalfCoverage | null): MoversResult => ({
+      rising: [],
+      falling: [],
+      newcomers: [],
+      enoughForMovers: enough,
+      coverage,
+      newcomerMin: NEWCOMER_MIN_SHARE
+    });
+
     const reps = (snapshotsData() ?? []).filter(r => r.master !== null);
     if (reps.length < 2) {
-      return { rising: [] as Mover[], falling: [] as Mover[], newcomers: [] as Mover[] };
+      return empty(false, null);
     }
+    // reps arrive most-recent first. Split into a recent half and an older half.
     const mid = Math.ceil(reps.length / 2);
+    const recentReps = reps.slice(0, mid);
+    const olderReps = reps.slice(mid);
+    const coverage: HalfCoverage = {
+      recent: eventDateRange(recentReps),
+      older: eventDateRange(olderReps),
+      recentCount: recentReps.length,
+      olderCount: olderReps.length
+    };
+    // A trend needs at least two events on each side. At "Last 3 events" the
+    // older half is a single tournament, so one event's local meta would read as
+    // a movement. Below that, disable the list rather than mislead.
+    if (recentReps.length < 2 || olderReps.length < 2) {
+      return empty(false, coverage);
+    }
+
     // Build a key→item map for each report once; previously avgPctIn/appearancesIn
     // ran .find() per key per report (O(reports × keys × items)).
     const repMaps = reps.map(r => {
@@ -354,8 +479,16 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
       }
       return m;
     });
+    // Weight each event by its deck total, so a 3,752-player IC counts for more
+    // than a 300-player special instead of one-event-one-vote.
+    const repWeights = reps.map(r => {
+      const dt = r.master!.deckTotal;
+      return Number.isFinite(dt) && dt > 0 ? dt : 1;
+    });
     const recentMaps = repMaps.slice(0, mid);
     const olderMaps = repMaps.slice(mid);
+    const recentWeights = repWeights.slice(0, mid);
+    const olderWeights = repWeights.slice(mid);
 
     const allKeys = new Map<string, CardItem>();
     for (let i = 0; i < reps.length; i++) {
@@ -366,25 +499,25 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
       }
     }
 
-    const avgFor = (maps: Map<string, CardItem>[], key: string): number | null => {
+    const avgFor = (maps: Map<string, CardItem>[], weights: number[], key: string): number | null => {
       let sum = 0;
-      let count = 0;
-      for (const m of maps) {
-        const item = m.get(key);
+      let weight = 0;
+      for (let i = 0; i < maps.length; i++) {
+        const item = maps[i].get(key);
         if (item && Number.isFinite(item.pct)) {
-          sum += item.pct;
-          count += 1;
+          sum += item.pct * weights[i];
+          weight += weights[i];
         }
       }
-      return count === 0 ? null : sum / count;
+      return weight === 0 ? null : sum / weight;
     };
     const appearancesFor = (maps: Map<string, CardItem>[], key: string): number =>
       maps.reduce((n, m) => (m.has(key) ? n + 1 : n), 0);
 
     const all: Mover[] = [];
     for (const [key, item] of allKeys) {
-      const recentAvg = avgFor(recentMaps, key);
-      const olderAvg = avgFor(olderMaps, key);
+      const recentAvg = avgFor(recentMaps, recentWeights, key);
+      const olderAvg = avgFor(olderMaps, olderWeights, key);
       const appearancesRecent = appearancesFor(recentMaps, key);
       if (appearancesRecent < Math.max(1, Math.ceil(recentMaps.length / 2))) {
         continue;
@@ -397,16 +530,16 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
     const rising = [...present].sort((a, b) => b.delta - a.delta).slice(0, 12);
     const falling = [...present].sort((a, b) => a.delta - b.delta).slice(0, 12);
     const newcomers = all
-      .filter(m => m.olderAvg === null && m.recentAvg !== null && m.recentAvg >= 10)
+      .filter(m => m.olderAvg === null && m.recentAvg !== null && m.recentAvg >= NEWCOMER_MIN_SHARE)
       .sort((a, b) => (b.recentAvg ?? 0) - (a.recentAvg ?? 0))
       .slice(0, 8);
-    return { rising, falling, newcomers };
+    return { rising, falling, newcomers, enoughForMovers: true, coverage, newcomerMin: NEWCOMER_MIN_SHARE };
   });
 
-  const archetypeSeries = createMemo<{ series: ArchetypeSeries[]; days: DayBin[]; windowDays: number }>(() => {
+  const archetypeSeries = createMemo<{ series: ArchetypeSeries[]; days: DayBin[] }>(() => {
     const reps = (snapshotsData() ?? []).filter(r => r.archetypes !== null);
     if (reps.length === 0) {
-      return { series: [], days: [], windowDays: 30 };
+      return { series: [], days: [] };
     }
     const byDay = new Map<string, EventSnapshot[]>();
     for (const r of reps) {
@@ -420,7 +553,12 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
       .map(([key, snaps]) => ({ key, date: snaps[0].date, count: snaps.length, snaps }))
       .sort((a, b) => a.date.getTime() - b.date.getTime());
 
-    const byArche = new Map<string, { label: string; shares: (number | null)[] }>();
+    // Per (archetype, day): a deck-total-weighted share. `num` accumulates
+    // Σ(share × eventDeckTotal) and `den` accumulates Σ(eventDeckTotal), so a
+    // day's value is the true pooled share. The old (existing + raw) / 2 merge
+    // was order-dependent — a third same-day event got weight 1/2 while the
+    // first two got 1/4 — and every event counted equally regardless of size.
+    const byArche = new Map<string, { label: string; num: number[]; den: number[] }>();
     days.forEach((day, dayIdx) => {
       for (const snap of day.snaps!) {
         // Per-event archetype reports store `percent` as either a 0..1 fraction
@@ -434,40 +572,49 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
           0
         );
         const scale = maxPercent > 0 && maxPercent <= 1 ? 100 : 1;
+        // Event weight: master deck total when present, else summed archetype
+        // deck counts, else 1.
+        const masterTotal = snap.master?.deckTotal;
+        const archTotal = snap.archetypes!.reduce((s, a) => s + (a.deckCount ?? 0), 0);
+        const weight =
+          Number.isFinite(masterTotal) && (masterTotal as number) > 0
+            ? (masterTotal as number)
+            : archTotal > 0
+              ? archTotal
+              : 1;
         for (const a of snap.archetypes!) {
           const key = a.name;
           if (!byArche.has(key)) {
             byArche.set(key, {
               label: a.label || a.name,
-              shares: Array.from({ length: days.length }, () => null)
+              num: Array.from({ length: days.length }, () => 0),
+              den: Array.from({ length: days.length }, () => 0)
             });
           }
           if (a.percent === null || a.percent === undefined || !Number.isFinite(a.percent)) {
             continue;
           }
           const raw = a.percent * scale;
-          const existing = byArche.get(key)!.shares[dayIdx];
-          byArche.get(key)!.shares[dayIdx] = existing === null ? raw : (existing + raw) / 2;
+          const acc = byArche.get(key)!;
+          acc.num[dayIdx] += raw * weight;
+          acc.den[dayIdx] += weight;
         }
       }
     });
 
     const allSeries: ArchetypeSeries[] = [];
     for (const [name, info] of byArche.entries()) {
-      const present = info.shares.filter((s): s is number => s !== null);
+      const shares: (number | null)[] = info.num.map((n, i) => (info.den[i] > 0 ? n / info.den[i] : null));
+      const present = shares.filter((s): s is number => s !== null);
       if (present.length === 0) {
         continue;
       }
       const avg = present.reduce((a, b) => a + b, 0) / present.length;
-      allSeries.push({ name, label: info.label, avg, points: info.shares });
+      allSeries.push({ name, label: info.label, avg, points: shares });
     }
     allSeries.sort((a, b) => b.avg - a.avg);
 
-    // Window-days for chart X-axis spans from the earliest event to today.
-    const earliest = days[0].date.getTime();
-    const windowDays = Math.max(7, Math.ceil((Date.now() - earliest) / DAY_MS) + 2);
-
-    return { series: allSeries.slice(0, TOP_ARCHETYPES_FOR_CHART), days, windowDays };
+    return { series: allSeries, days };
   });
 
   return (
@@ -492,19 +639,23 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
             </Show>
           }
         >
-          <ArchetypeTrendChart
-            series={archetypeSeries().series}
-            days={archetypeSeries().days}
-            windowDays={archetypeSeries().windowDays}
-          />
+          <ArchetypeTrendChart series={archetypeSeries().series} days={archetypeSeries().days} />
         </Show>
       </Section>
 
       <Section title='Top card movers' right={`Across ${sample().length} tournaments`}>
         <Show
-          when={snapshotsData() && (movers().rising.length > 0 || movers().falling.length > 0)}
+          when={snapshotsData() && movers().enoughForMovers}
           fallback={
-            <Show when={snapshots.loading}>
+            <Show
+              when={snapshots.loading}
+              fallback={
+                <EmptyState
+                  title='Not enough events to compare'
+                  description='Card movers compare the recent half of the window against the older half, and each half needs at least two events so a single tournament does not read as a trend. Widen the window to Last 5 or Last 10 events.'
+                />
+              }
+            >
               <div class='movers'>
                 <Skeleton height='320px' />
                 <Skeleton height='320px' />
@@ -512,9 +663,17 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
             </Show>
           }
         >
+          <Show when={movers().coverage}>
+            {c => (
+              <p class='movers-note'>
+                Recent half: {c().recentCount} events, {c().recent}. Earlier half: {c().olderCount} events, {c().older}.
+                Shares are weighted by each event's deck total.
+              </p>
+            )}
+          </Show>
           <div class='movers'>
             <div class='mover-col'>
-              <h3 class='up'>Rising — biggest gainers</h3>
+              <h3 class='up'>Rising: biggest gainers</h3>
               <For each={movers().rising}>
                 {(m, idx) => (
                   <A
@@ -526,13 +685,18 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
                     <span class='set'>
                       {m.item.set}/{m.item.number}
                     </span>
-                    <span class='delta up'>↑ {m.delta.toFixed(1)}%</span>
+                    <span class='delta up'>
+                      <span class='delta-pp'>↑ {m.delta.toFixed(1)} pp</span>
+                      <span class='delta-base'>
+                        {(m.olderAvg ?? 0).toFixed(1)} → {(m.recentAvg ?? 0).toFixed(1)}%
+                      </span>
+                    </span>
                   </A>
                 )}
               </For>
             </div>
             <div class='mover-col'>
-              <h3 class='down'>Falling — biggest losers</h3>
+              <h3 class='down'>Falling: biggest losers</h3>
               <For each={movers().falling}>
                 {(m, idx) => (
                   <A
@@ -544,7 +708,12 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
                     <span class='set'>
                       {m.item.set}/{m.item.number}
                     </span>
-                    <span class='delta down'>↓ {Math.abs(m.delta).toFixed(1)}%</span>
+                    <span class='delta down'>
+                      <span class='delta-pp'>↓ {Math.abs(m.delta).toFixed(1)} pp</span>
+                      <span class='delta-base'>
+                        {(m.olderAvg ?? 0).toFixed(1)} → {(m.recentAvg ?? 0).toFixed(1)}%
+                      </span>
+                    </span>
                   </A>
                 )}
               </For>
@@ -556,6 +725,14 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
       <Show when={movers().newcomers.length > 0}>
         <Section title='Newcomers' right='Appeared only in recent events'>
           <div class='mover-col'>
+            <Show when={movers().coverage}>
+              {c => (
+                <p class='movers-note'>
+                  Held at least {movers().newcomerMin}% share in the recent half ({c().recent}) and absent from the
+                  older half.
+                </p>
+              )}
+            </Show>
             <For each={movers().newcomers}>
               {(m, idx) => (
                 <A href={m.item.set && m.item.number ? `/cards/${m.item.set}/${m.item.number}` : '#'} class='mover-row'>
@@ -564,7 +741,7 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
                   <span class='set'>
                     {m.item.set}/{m.item.number}
                   </span>
-                  <span class='delta up'>{(m.recentAvg ?? 0).toFixed(1)}%</span>
+                  <span class='share-neutral'>{(m.recentAvg ?? 0).toFixed(1)}% of decks</span>
                 </A>
               )}
             </For>
@@ -593,9 +770,69 @@ interface DayBin {
   snaps?: EventSnapshot[];
 }
 
-function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[]; windowDays: number }) {
+function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[] }) {
   const iconMap = getArchetypeIconMap();
-  const PADDING = { top: 16, right: 16, bottom: 32, left: 38 };
+  const PADDING = { top: 16, right: 16, bottom: 32, left: 46 };
+
+  // ---- Series visibility ----
+  // `props.series` is the full ranked list. We draw the top-N by default; the
+  // user can hide any line (click the legend) or add any archetype (the select).
+  // Colors are keyed by rank index in the full list, so they never shift as
+  // series are toggled or added.
+  const [hidden, setHidden] = createSignal<ReadonlySet<string>>(new Set());
+  const [added, setAdded] = createSignal<string[]>([]);
+  const [legendHover, setLegendHover] = createSignal<string | null>(null);
+
+  const colorByName = createMemo(() => {
+    const m = new Map<string, string>();
+    props.series.forEach((s, i) => m.set(s.name, lineColor(i)));
+    return m;
+  });
+  const colorOf = (name: string): string => colorByName().get(name) ?? lineColor(0);
+
+  const legendList = createMemo<ArchetypeSeries[]>(() => {
+    const base = props.series.slice(0, TOP_ARCHETYPES_FOR_CHART);
+    const extra = added()
+      .map(n => props.series.find(s => s.name === n))
+      .filter((s): s is ArchetypeSeries => s !== undefined);
+    return [...base, ...extra];
+  });
+  const visibleSeries = createMemo<ArchetypeSeries[]>(() =>
+    legendList()
+      .filter(s => !hidden().has(s.name))
+      .slice(0, MAX_VISIBLE_SERIES)
+  );
+  const atCap = () => visibleSeries().length >= MAX_VISIBLE_SERIES;
+  const addable = createMemo<ArchetypeSeries[]>(() => {
+    const shown = new Set(legendList().map(s => s.name));
+    return props.series.filter(s => !shown.has(s.name));
+  });
+
+  function toggleSeries(name: string) {
+    setHidden(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        // Re-showing: respect the visible cap.
+        if (visibleSeries().length >= MAX_VISIBLE_SERIES) {
+          return prev;
+        }
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  }
+  function onAddSeries(e: Event & { currentTarget: HTMLSelectElement }) {
+    const select = e.currentTarget;
+    const name = select.value;
+    select.value = '';
+    if (!name || atCap()) {
+      return;
+    }
+    setAdded(prev => (prev.includes(name) ? prev : [...prev, name]));
+  }
+
   // Width is measured from the container so the SVG fills horizontally without
   // ever stretching its coordinates. Text and dots stay at a constant size.
   let containerRef: HTMLDivElement | undefined;
@@ -645,7 +882,7 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
   const yDomain = createMemo(() => {
     let max = -Infinity;
     let min = Infinity;
-    for (const s of props.series) {
+    for (const s of visibleSeries()) {
       for (const p of s.points) {
         if (p === null || !Number.isFinite(p)) {
           continue;
@@ -686,35 +923,59 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
     return Array.from(set).sort((a, b) => a - b);
   };
 
-  function pathFor(points: (number | null)[]): string {
+  // Break the path at gaps: each run of consecutive present points is its own
+  // `M…L` subpath, so a missing day leaves a gap instead of a fabricated straight
+  // line. A run of one point has no line to draw, so it's emitted as a dot.
+  function segmentsFor(points: (number | null)[]): { d: string; isolated: { x: number; y: number }[] } {
     let d = '';
-    let started = false;
-    for (let i = 0; i < points.length; i++) {
+    const isolated: { x: number; y: number }[] = [];
+    let i = 0;
+    while (i < points.length) {
       const v = points[i];
-      if (v === null) {
+      if (v === null || !Number.isFinite(v)) {
+        i++;
         continue;
       }
-      const cmd = started ? 'L' : 'M';
-      d += `${cmd} ${x(props.days[i].date).toFixed(1)} ${y(v).toFixed(1)} `;
-      started = true;
+      let j = i;
+      while (j < points.length) {
+        const w = points[j];
+        if (w === null || !Number.isFinite(w)) {
+          break;
+        }
+        j++;
+      }
+      if (j - i === 1) {
+        isolated.push({ x: x(props.days[i].date), y: y(points[i] as number) });
+      } else {
+        for (let k = i; k < j; k++) {
+          const cmd = k === i ? 'M' : 'L';
+          d += `${cmd} ${x(props.days[k].date).toFixed(1)} ${y(points[k] as number).toFixed(1)} `;
+        }
+      }
+      i = j;
     }
-    return d.trim();
+    return { d: d.trim(), isolated };
   }
 
+  // Snap ticks to real data dates so a label never lands on a day with no data.
   const xTicks = () => {
-    const { start, end } = xDomain();
-    const span = end - start;
-    const days = Math.max(1, Math.round(span / DAY_MS));
-    // Aim for ~6 ticks but never more than one per day, and at least 2.
-    const COUNT = Math.min(7, Math.max(2, days + 1));
+    const count = props.days.length;
+    if (count === 0) {
+      return [] as { label: string; xPx: number }[];
+    }
+    const tickCount = Math.min(7, count);
+    const seen = new Set<number>();
     const ticks: { label: string; xPx: number }[] = [];
-    for (let i = 0; i < COUNT; i++) {
-      const frac = COUNT === 1 ? 0 : i / (COUNT - 1);
-      const tMs = start + frac * span;
-      const d = new Date(tMs);
+    for (let i = 0; i < tickCount; i++) {
+      const idx = tickCount === 1 ? 0 : Math.round((i / (tickCount - 1)) * (count - 1));
+      if (seen.has(idx)) {
+        continue;
+      }
+      seen.add(idx);
+      const d = props.days[idx].date;
       ticks.push({
         label: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-        xPx: PADDING.left + frac * innerW()
+        xPx: x(d)
       });
     }
     return ticks;
@@ -793,11 +1054,11 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
       return null;
     }
     const day = props.days[i];
-    const entries = props.series
-      .map((s, idx) => ({
+    const entries = visibleSeries()
+      .map(s => ({
         label: s.label,
         slugs: resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap),
-        color: ARCHETYPE_LINE_COLORS[idx % ARCHETYPE_LINE_COLORS.length],
+        color: colorOf(s.name),
         value: s.points[i]
       }))
       .filter((e): e is { label: string; slugs: string[]; color: string; value: number } => e.value !== null);
@@ -832,6 +1093,16 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
             </For>
           </g>
 
+          <text
+            class='axis-title'
+            x={12}
+            y={PADDING.top + innerH() / 2}
+            transform={`rotate(-90 12 ${PADDING.top + innerH() / 2})`}
+            text-anchor='middle'
+          >
+            Meta share (%)
+          </text>
+
           <g>
             <For each={xTicks()}>
               {tick => (
@@ -842,29 +1113,36 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
             </For>
           </g>
 
-          <For each={props.series}>
-            {(series, i) => {
-              const color = () => ARCHETYPE_LINE_COLORS[i() % ARCHETYPE_LINE_COLORS.length];
+          <For each={visibleSeries()}>
+            {series => {
+              const color = colorOf(series.name);
+              const seg = () => segmentsFor(series.points);
+              const dim = () => legendHover() !== null && legendHover() !== series.name;
               return (
-                <>
+                <g style={{ opacity: dim() ? 0.22 : 1 }}>
                   <path
-                    d={pathFor(series.points)}
+                    d={seg().d}
                     fill='none'
-                    stroke={color()}
+                    stroke={color}
                     stroke-width='2'
                     stroke-linecap='round'
                     stroke-linejoin='round'
                   />
-                  <Show when={showDots()}>
+                  <Show
+                    when={showDots()}
+                    fallback={
+                      <For each={seg().isolated}>{pt => <circle cx={pt.x} cy={pt.y} r='3' fill={color} />}</For>
+                    }
+                  >
                     <For each={series.points}>
                       {(v, j) =>
                         v === null ? null : (
-                          <circle cx={x(props.days[j()].date)} cy={y(v as number)} r='3' fill={color()} />
+                          <circle cx={x(props.days[j()].date)} cy={y(v as number)} r='3' fill={color} />
                         )
                       }
                     </For>
                   </Show>
-                </>
+                </g>
               );
             }}
           </For>
@@ -912,16 +1190,45 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[];
         </Show>
       </div>
 
-      <div class='chart-legend trend-legend'>
-        <For each={props.series}>
-          {(s, i) => (
-            <span class='leg' style={{ '--leg-color': ARCHETYPE_LINE_COLORS[i() % ARCHETYPE_LINE_COLORS.length] }}>
-              <ArchetypeIcons slugs={resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap)} size={16} />
-              {s.label}
-              <span class='muted-cell'> · {s.avg.toFixed(1)}% avg</span>
-            </span>
-          )}
-        </For>
+      <div class='trend-controls'>
+        <div class='chart-legend trend-legend'>
+          <For each={legendList()}>
+            {s => {
+              const isHidden = () => hidden().has(s.name);
+              return (
+                <button
+                  type='button'
+                  class='leg'
+                  classList={{
+                    'is-hidden': isHidden(),
+                    'is-dim': legendHover() !== null && legendHover() !== s.name && !isHidden()
+                  }}
+                  style={{ '--leg-color': colorOf(s.name) }}
+                  aria-pressed={!isHidden()}
+                  title={isHidden() ? 'Click to show' : 'Click to hide'}
+                  onClick={() => toggleSeries(s.name)}
+                  onMouseEnter={() => setLegendHover(s.name)}
+                  onMouseLeave={() => setLegendHover(null)}
+                >
+                  <ArchetypeIcons slugs={resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap)} size={16} />
+                  {s.label}
+                  <span class='muted-cell'> · {s.avg.toFixed(1)}% avg</span>
+                </button>
+              );
+            }}
+          </For>
+        </div>
+        <Show when={addable().length > 0}>
+          <select
+            class='trend-add'
+            aria-label='Add an archetype to the chart'
+            disabled={atCap()}
+            onChange={onAddSeries}
+          >
+            <option value=''>{atCap() ? `Showing max ${MAX_VISIBLE_SERIES}` : 'Add archetype'}</option>
+            <For each={addable()}>{s => <option value={s.name}>{s.label}</option>}</For>
+          </select>
+        </Show>
       </div>
     </div>
   );
@@ -943,9 +1250,47 @@ interface Mover {
   delta: number;
 }
 
+interface HalfCoverage {
+  /** Date range covered by the recent half, e.g. "Jun 6 to Jul 6". */
+  recent: string;
+  /** Date range covered by the older half. */
+  older: string;
+  recentCount: number;
+  olderCount: number;
+}
+
+interface MoversResult {
+  rising: Mover[];
+  falling: Mover[];
+  newcomers: Mover[];
+  /** False when a half has fewer than two events, so the list stays hidden. */
+  enoughForMovers: boolean;
+  coverage: HalfCoverage | null;
+  newcomerMin: number;
+}
+
+/** Min-to-max date label for a set of events, e.g. "Jun 6 to Jul 6" (or a single date). */
+function eventDateRange(reps: EventSnapshot[]): string {
+  const times = reps
+    .map(r => r.date.getTime())
+    .filter(t => t > 0)
+    .sort((a, b) => a - b);
+  if (times.length === 0) {
+    return '';
+  }
+  const first = shortDate(new Date(times[0]));
+  const last = shortDate(new Date(times[times.length - 1]));
+  return first === last ? first : `${first} to ${last}`;
+}
+
 interface CardTrendLike {
   name: string;
   set: string | null;
   number: string | null;
+  /** Share-point change over the window (endShare - startShare), in pp. */
   delta: number;
+  /** Share at the start of the window, 0..100. */
+  startShare: number;
+  /** Share at the end of the window, 0..100. */
+  endShare: number;
 }

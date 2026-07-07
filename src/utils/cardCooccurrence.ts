@@ -23,7 +23,7 @@ export interface CardRef {
   category?: string;
 }
 
-interface CardPresence {
+export interface CardPresence {
   ref: CardRef;
   deckIds: Set<string>;
   count: number;

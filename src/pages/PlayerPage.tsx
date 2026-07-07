@@ -12,6 +12,16 @@ import { CardImage } from '../components/CardImage';
 import { capitalize, formatRecord } from '../lib/format';
 import { groupDeckByCategory } from '../lib/deckGrouping';
 import { resolved } from '../lib/resource';
+import '../styles/pages/players-tables.css';
+
+/** Match win rate excluding ties. Returns null when there are no decisive games. */
+function winPercent(wins: number, losses: number): number | null {
+  const denom = wins + losses;
+  if (!denom) {
+    return null;
+  }
+  return Math.round((wins / denom) * 1000) / 10;
+}
 
 export function PlayerPage() {
   const params = useParams<{ id: string }>();
@@ -111,6 +121,7 @@ export function PlayerPage() {
 
 function PlayerBody(props: { player: TournamentParticipant; deck: DeckRecord | undefined; tournament: string }) {
   const grouped = createMemo(() => groupDeckByCategory(props.deck?.cards));
+  const winPct = () => winPercent(props.player.wins ?? 0, props.player.losses ?? 0);
 
   return (
     <>
@@ -158,6 +169,11 @@ function PlayerBody(props: { player: TournamentParticipant; deck: DeckRecord | u
         <div class='kpi'>
           <div class='kpi-label'>Ties</div>
           <div class='kpi-value'>{props.player.ties ?? '—'}</div>
+        </div>
+        <div class='kpi'>
+          <div class='kpi-label'>Win %</div>
+          <div class='kpi-value'>{winPct() != null ? `${winPct()!.toFixed(1)}%` : '—'}</div>
+          <div class='kpi-foot'>ties excluded</div>
         </div>
       </section>
 

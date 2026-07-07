@@ -19,17 +19,37 @@ import {
   createPersistentSignal,
   createPersistentViewMode
 } from '../lib/persistentSignal';
+import '../styles/pages/cards.css';
 
-type SortKey = 'rank' | 'name' | 'price';
+type SortKey = 'rank' | 'name' | 'price' | 'inclusion' | 'avgCopies';
+type SortDir = 'asc' | 'desc';
 type TypeFilter = 'all' | 'pokemon' | 'trainer' | 'energy';
 type ViewMode = 'grid' | 'list';
 
 const PAGE_SIZE = 60;
+// The Segmented control keeps the three headline sorts; the list-view table
+// headers (see ListView) drive the full set including inclusion and avg copies.
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'rank', label: 'Rank' },
   { value: 'price', label: 'Price' },
   { value: 'name', label: 'Name' }
 ];
+
+// Default sort direction when switching to a column, so each metric opens in
+// the order people expect (best-first) rather than a blanket ascending.
+function defaultDir(key: SortKey): SortDir {
+  return key === 'rank' || key === 'name' ? 'asc' : 'desc';
+}
+
+function avgCopiesValue(item: CardItem): number {
+  const dist = item.dist ?? [];
+  const players = dist.reduce((acc, d) => acc + (d.players ?? 0), 0);
+  if (!players) {
+    return 0;
+  }
+  const copies = dist.reduce((acc, d) => acc + (d.copies ?? 0) * (d.players ?? 0), 0);
+  return copies / players;
+}
 const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
   { value: 'grid', label: 'Grid' },
   { value: 'list', label: 'List' }
@@ -37,7 +57,7 @@ const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
 
 export function CardsIndexPage() {
   const { tournament } = useTournament();
-  const [master] = createResource(tournament, fetchMaster);
+  const [master, { refetch: refetchMaster }] = createResource(tournament, fetchMaster);
   const [prices] = createResource(fetchPrices);
   const [query, setQuery] = createPersistentSignal<string>('cm:cardsQuery', '', v => v, sessionStorage);
   const [typeFilter, setTypeFilter] = createPersistentSignal<TypeFilter>(
@@ -49,7 +69,13 @@ export function CardsIndexPage() {
   const [sortKey, setSortKey] = createPersistentSignal<SortKey>(
     'cm:cardsSort',
     'rank',
-    v => (v === 'rank' || v === 'name' || v === 'price' ? v : null),
+    v => (v === 'rank' || v === 'name' || v === 'price' || v === 'inclusion' || v === 'avgCopies' ? v : null),
+    sessionStorage
+  );
+  const [sortDir, setSortDir] = createPersistentSignal<SortDir>(
+    'cm:cardsSortDir',
+    'asc',
+    v => (v === 'asc' || v === 'desc' ? v : null),
     sessionStorage
   );
   const [viewMode, setViewMode] = createPersistentViewMode('cm:cardsView');
@@ -112,13 +138,19 @@ export function CardsIndexPage() {
   const sorted = createMemo(() => {
     const list = [...filtered()];
     const key = sortKey();
+    const mul = sortDir() === 'asc' ? 1 : -1;
     list.sort((a, b) => {
       switch (key) {
         case 'rank':
-          return (a.rank ?? 9e9) - (b.rank ?? 9e9);
+          return mul * ((a.rank ?? 9e9) - (b.rank ?? 9e9));
         case 'name':
-          return a.name.localeCompare(b.name);
+          return mul * a.name.localeCompare(b.name);
+        case 'inclusion':
+          return mul * ((a.pct ?? 0) - (b.pct ?? 0));
+        case 'avgCopies':
+          return mul * (avgCopiesValue(a) - avgCopiesValue(b));
         case 'price': {
+          // Missing prices always sort last, regardless of direction.
           const pa = priceFor(a);
           const pb = priceFor(b);
           if (pa === null && pb === null) {
@@ -130,7 +162,7 @@ export function CardsIndexPage() {
           if (pb === null) {
             return -1;
           }
-          return pb - pa;
+          return mul * (pa - pb);
         }
         default:
           return 0;
@@ -138,6 +170,17 @@ export function CardsIndexPage() {
     });
     return list;
   });
+
+  // Header clicks toggle direction on the active column and reset to the
+  // metric's natural direction when moving to a new one.
+  function changeSort(key: SortKey) {
+    if (sortKey() === key) {
+      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir(defaultDir(key));
+    }
+  }
 
   // eslint-disable-next-line solid/reactivity -- createPagination reads `sorted` inside its own createMemo (a tracked scope); the analyzer can't see through the helper
   const { page, totalPages, pageItems, setPage } = createPagination(
@@ -179,7 +222,15 @@ export function CardsIndexPage() {
               onSelect={setViewMode}
               ariaLabel='View mode'
             />
-            <Segmented<SortKey> options={SORT_OPTIONS} selected={sortKey()} onSelect={setSortKey} ariaLabel='Sort by' />
+            <Segmented<SortKey>
+              options={SORT_OPTIONS}
+              selected={sortKey()}
+              onSelect={k => {
+                setSortKey(k);
+                setSortDir(defaultDir(k));
+              }}
+              ariaLabel='Sort by'
+            />
           </div>
           <div class='filter-row'>
             <ChipGroup
@@ -201,7 +252,15 @@ export function CardsIndexPage() {
           when={masterData()}
           fallback={
             <Show when={master.error} fallback={<ViewSkeleton mode={viewMode()} />}>
-              <EmptyState title="Couldn't load cards." description={String(master.error)} />
+              <EmptyState
+                title="Couldn't load card data."
+                description='Refresh to try again.'
+                actions={
+                  <button class='btn btn-secondary' type='button' onClick={() => void refetchMaster()}>
+                    Retry
+                  </button>
+                }
+              />
             </Show>
           }
         >
@@ -229,10 +288,19 @@ export function CardsIndexPage() {
           >
             <Show
               when={viewMode() === 'grid'}
-              fallback={<ListView items={pageItems()} priceFor={priceFor} onCardClick={gotoCard} />}
+              fallback={
+                <ListView
+                  items={pageItems()}
+                  priceFor={priceFor}
+                  onCardClick={gotoCard}
+                  sortKey={sortKey()}
+                  sortDir={sortDir()}
+                  onSort={changeSort}
+                />
+              }
             >
               <div class='cards-grid'>
-                <For each={pageItems()}>{item => <CardTile card={item} />}</For>
+                <For each={pageItems()}>{(item, i) => <CardTile card={item} eagerImage={i() < 8} />}</For>
               </div>
             </Show>
 
@@ -248,10 +316,40 @@ export function CardsIndexPage() {
 
 /* ---------- List view ---------- */
 
+function SortableTh(props: {
+  label: string;
+  sortKey: SortKey;
+  activeKey: SortKey;
+  dir: SortDir;
+  onSort: (key: SortKey) => void;
+  num?: boolean;
+}) {
+  const active = () => props.activeKey === props.sortKey;
+  return (
+    <th
+      class='sortable'
+      classList={{ num: props.num }}
+      aria-sort={active() ? (props.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+    >
+      <button class='th-sort' type='button' onClick={() => props.onSort(props.sortKey)}>
+        {props.label}
+        <Show when={active()}>
+          <span class='sort-mark' aria-hidden='true'>
+            {props.dir === 'asc' ? '▲' : '▼'}
+          </span>
+        </Show>
+      </button>
+    </th>
+  );
+}
+
 function ListView(props: {
   items: CardItem[];
   priceFor: (item: CardItem) => number | null;
   onCardClick: (item: CardItem) => void;
+  sortKey: SortKey;
+  sortDir: SortDir;
+  onSort: (key: SortKey) => void;
 }) {
   return (
     <div class='table-wrap'>
@@ -259,12 +357,39 @@ function ListView(props: {
         <thead>
           <tr>
             <th class='num'>#</th>
-            <th>Card</th>
+            <SortableTh
+              label='Card'
+              sortKey='name'
+              activeKey={props.sortKey}
+              dir={props.sortDir}
+              onSort={props.onSort}
+            />
             <th>Set</th>
             <th>Type</th>
-            <th class='num'>Inclusion</th>
-            <th class='num'>Avg copies</th>
-            <th class='num'>Price</th>
+            <SortableTh
+              label='Inclusion'
+              sortKey='inclusion'
+              activeKey={props.sortKey}
+              dir={props.sortDir}
+              onSort={props.onSort}
+              num
+            />
+            <SortableTh
+              label='Avg copies'
+              sortKey='avgCopies'
+              activeKey={props.sortKey}
+              dir={props.sortDir}
+              onSort={props.onSort}
+              num
+            />
+            <SortableTh
+              label='Price'
+              sortKey='price'
+              activeKey={props.sortKey}
+              dir={props.sortDir}
+              onSort={props.onSort}
+              num
+            />
           </tr>
         </thead>
         <tbody>

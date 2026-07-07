@@ -1,14 +1,21 @@
 import { For, Show } from 'solid-js';
+import '../styles/pages/players-tables.css';
 
 interface PaginationProps {
   page: number;
   totalPages: number;
   onChange: (page: number) => void;
+  /** Rows per page. Provide with `totalItems` to render a "Showing X–Y of Z" summary. */
+  pageSize?: number;
+  /** Total row count across all pages. Provide with `pageSize` to render the summary. */
+  totalItems?: number;
 }
 
 /**
  * Numbered pagination (locked Pagination A).
  * Renders: ← 1 2 3 … N →
+ * When `pageSize` and `totalItems` are both supplied, also renders a
+ * "Showing 1–50 of 944" summary alongside the controls.
  */
 export function Pagination(props: PaginationProps) {
   const pages = () => buildRange(props.page, props.totalPages);
@@ -21,8 +28,25 @@ export function Pagination(props: PaginationProps) {
     props.onChange(clamped);
   };
 
+  const summary = () => {
+    const size = props.pageSize;
+    const total = props.totalItems;
+    if (size == null || total == null) {
+      return null;
+    }
+    if (total === 0) {
+      return 'No results';
+    }
+    const start = (props.page - 1) * size + 1;
+    const end = Math.min(props.page * size, total);
+    return `Showing ${start.toLocaleString()}–${end.toLocaleString()} of ${total.toLocaleString()}`;
+  };
+
   return (
     <nav class='pagination' aria-label='Pagination'>
+      <Show when={summary()}>
+        <span class='pagination-summary'>{summary()}</span>
+      </Show>
       <button type='button' onClick={() => goto(props.page - 1)} aria-label='Previous page' disabled={props.page <= 1}>
         ←
       </button>
