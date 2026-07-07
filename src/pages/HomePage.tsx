@@ -27,7 +27,7 @@ import { Section } from '../components/Section';
 import { ArchetypeCard } from '../components/ArchetypeCard';
 import { CardStack } from '../components/CardImage';
 import { EmptyState } from '../components/EmptyState';
-import { nameFromTournamentKey, parseISODate, shortDate } from '../lib/format';
+import { formatPercent, nameFromTournamentKey, parseISODate, shortDate } from '../lib/format';
 import { resolved } from '../lib/resource';
 
 const LATEST_EVENT_WINDOW_DAYS = 14;
@@ -111,7 +111,12 @@ export function HomePage() {
 
   const latestMajorData = () => resolved(latestMajor);
 
-  const topArchetypes = () => archetypesData()?.slice(0, 8) ?? [];
+  // The residual "Other" bucket is not a real archetype and must not rank
+  // inline among named decks. Pull it out of the grid and surface it as a
+  // footnote line below (see the gallery-other paragraph).
+  const rankedArchetypes = () => (archetypesData() ?? []).filter(a => !isOtherEntry(a));
+  const otherEntry = () => (archetypesData() ?? []).find(isOtherEntry);
+  const topArchetypes = () => rankedArchetypes().slice(0, 8);
 
   const recentMajors = () => {
     const list = tournamentsListData();
@@ -150,6 +155,11 @@ export function HomePage() {
             <div class='gallery-grid'>
               <For each={topArchetypes()}>{a => <ArchetypeCard entry={a} />}</For>
             </div>
+            <Show when={otherEntry()}>
+              <p class='gallery-other'>
+                + Other: {(otherEntry()!.deckCount ?? 0).toLocaleString()} decks, {formatPercent(otherEntry()!.percent)}
+              </p>
+            </Show>
           </Show>
         </Show>
       </Section>
@@ -597,7 +607,68 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
           </ul>
         </div>
       </Show>
+
+      <Show when={fieldRows().length > 0 && (totalDay2() > 0 || totalTopCut() > 0)}>
+        <ConversionTable rows={fieldRows()} />
+      </Show>
     </article>
+  );
+}
+
+/* ---------- Conversion table (Field → Day 2 → top cut) ---------- */
+
+/**
+ * Compact funnel table for major-event scopes, collapsed behind a disclosure to
+ * keep the callout calm. Each share column carries a title naming its
+ * denominator, matching how the rows are computed in `fieldRows`:
+ *   Field  = deck count / total decklists
+ *   Day 2  = this deck's Day 2 count / all Day 2 decks
+ *   Top cut = this deck's cut count / all top-cut slots
+ */
+function ConversionTable(props: { rows: FieldRow[] }) {
+  const rows = () => props.rows.filter(r => r.fieldDecks > 0);
+  return (
+    <Show when={rows().length > 0}>
+      <details class='conversion-disclosure'>
+        <summary class='conversion-summary'>Show conversion table</summary>
+        <div class='table-wrap conversion-table-wrap'>
+          <table class='data conversion-table'>
+            <thead>
+              <tr>
+                <th>Archetype</th>
+                <th class='num' title='Share of all decklists in the field.'>
+                  Field
+                </th>
+                <th class='num' title='Share of all decks that reached Day 2.'>
+                  Day 2
+                </th>
+                <th class='num' title='Share of all top-cut slots.'>
+                  Top cut
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <For each={rows()}>
+                {r => (
+                  <tr>
+                    <td>{r.label}</td>
+                    <td class='num'>
+                      {formatPercent(r.fieldPct)} <span class='conv-count'>{r.fieldDecks}</span>
+                    </td>
+                    <td class='num'>
+                      {formatPercent(r.day2Pct)} <span class='conv-count'>{r.day2Count}</span>
+                    </td>
+                    <td class='num'>
+                      {formatPercent(r.cutPct)} <span class='conv-count'>{r.topCutCount}</span>
+                    </td>
+                  </tr>
+                )}
+              </For>
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </Show>
   );
 }
 
@@ -660,7 +731,7 @@ function StoryCard(props: { story: Story; hasDay2: boolean }) {
           <CardStack thumbnails={thumbnails()} size='sm' />
         </Show>
       </div>
-      <div class='story-card-tag'>
+      <div class='story-card-tag' title={ARC_TAG_TITLES[props.story.tag]}>
         <span class='story-card-symbol' aria-hidden='true'>
           {meta().symbol}
         </span>
@@ -675,6 +746,23 @@ function StoryCard(props: { story: Story; hasDay2: boolean }) {
 function normalize(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
+
+/** Normalize-safe match for the residual "Other" bucket. */
+function isOtherEntry(a: ArchetypeIndexEntry): boolean {
+  return normalize(a.label || a.name) === 'other';
+}
+
+/**
+ * Concrete scale for each story tag, taken verbatim from the thresholds in
+ * `classifyArc` (src/lib/storylines.ts). Surfaced as a `title` on the tag so a
+ * bare "surged"/"faded" chip states what it actually measures.
+ */
+const ARC_TAG_TITLES: Record<ArcTag, string> = {
+  surged: 'Share climbed at least 1 pp at both the Day 2 and top-cut steps.',
+  climbed: 'Share climbed at least 1 pp at either the Day 2 or top-cut step.',
+  faded: 'At least 5% of the field, but none of the top cut.',
+  steady: 'No move of at least 1 pp through the Day 2 and top-cut steps.'
+};
 
 /* ---------- Recent major row ---------- */
 

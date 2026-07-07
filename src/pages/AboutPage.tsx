@@ -49,6 +49,33 @@ export function AboutPage() {
             <A href='/archetypes/Dragapult'>/archetypes/Dragapult</A>.
           </p>
 
+          <h2 id='glossary'>Reading the numbers</h2>
+          <p>What each metric on the site means:</p>
+          <dl class='glossary'>
+            <dt>Inclusion</dt>
+            <dd>Share of decks playing at least one copy of this card.</dd>
+            <dt>Meta share</dt>
+            <dd>This archetype's share of all decks in the report.</dd>
+            <dt>Conversion</dt>
+            <dd>Share of the Day 1 decks playing this card that advanced to Day 2.</dd>
+            <dt>Prevalence</dt>
+            <dd>This opponent's share of the field.</dd>
+            <dt>Day 2</dt>
+            <dd>Players whose Day 1 record kept them in the tournament.</dd>
+            <dt>Top cut</dt>
+            <dd>The single-elimination bracket that ends the event.</dd>
+            <dt>Newcomers</dt>
+            <dd>Archetypes appearing in this window for the first time.</dd>
+          </dl>
+          <p>Two conventions worth knowing:</p>
+          <ul>
+            <li>
+              Matchup win rates count a tie as one third of a win. Player-page win rates exclude ties and say so where
+              shown.
+            </li>
+            <li>pp means percentage points: the difference between two shares.</li>
+          </ul>
+
           <h2>Credits</h2>
           <ul>
             <li>

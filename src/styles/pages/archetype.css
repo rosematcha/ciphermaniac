@@ -116,3 +116,73 @@
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- Snapshot banner (rotated archetype) ----------
+   Matches CardPage's banner: a flat surface-2 fill tinted toward the accent,
+   no side stripe, no gradient. */
+.snapshot-banner {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
+  color: var(--fg);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.snapshot-banner .snapshot-banner-label {
+  color: var(--accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ---------- Usage sparkline (archetype hero) ----------
+   30-day meta-share trajectory with a start-to-end delta chip. Sits under the
+   hero stat row; the line uses the chart-1 token so it reads as data, not chrome. */
+.arche-spark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.arche-spark-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.arche-spark-svg {
+  display: block;
+  overflow: visible;
+}
+.arche-spark-line {
+  stroke: var(--chart-1);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.arche-spark-dot {
+  fill: var(--chart-1);
+}
+.arche-spark-delta {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.arche-spark-chip {
+  font-weight: 700;
+  padding: 0 6px;
+  border-radius: 3px;
+  background: var(--surface-2);
+}
+.arche-spark-delta.up .arche-spark-chip {
+  color: var(--positive);
+}
+.arche-spark-delta.down .arche-spark-chip {
+  color: var(--negative);
+}

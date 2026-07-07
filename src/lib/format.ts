@@ -6,6 +6,9 @@ export function capitalize(s: string): string {
 }
 
 export function formatRecord(p: TournamentParticipant): string {
+  if (p.wins == null && p.losses == null && p.ties == null) {
+    return '—';
+  }
   return `${p.wins ?? 0}-${p.losses ?? 0}-${p.ties ?? 0}`;
 }
 

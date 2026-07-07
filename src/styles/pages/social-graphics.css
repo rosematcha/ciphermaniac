@@ -26,7 +26,6 @@
   gap: 4px;
   padding: var(--space-3) var(--space-4);
   border: var(--border-width) solid #b3541e;
-  border-left-width: 4px;
   border-radius: var(--radius-md);
   background: color-mix(in srgb, #e07b4a 12%, var(--surface));
   color: var(--fg);

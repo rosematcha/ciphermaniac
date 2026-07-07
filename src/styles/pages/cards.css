@@ -83,3 +83,175 @@
 .data th.sortable .th-sort:hover {
   color: var(--fg);
 }
+
+/* ---------- Per-archetype usage rows (CardPage "Where it's played") ----------
+   Expandable rows: collapsed = icons + name + inclusion bar + counts + modal
+   copy-count chip; expanded = full copy distribution with filter deep links.
+   Replaces the old flat .archetype-usage-row (rule retired from components.css). */
+.au-block {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 4px 16px;
+  box-shadow: var(--shadow-1);
+}
+.au-row {
+  border-bottom: 1px solid var(--rule);
+}
+.au-row:last-child {
+  border-bottom: 0;
+}
+.au-head {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 96px 44px 96px 92px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  cursor: pointer;
+  user-select: none;
+}
+.au-head:hover .au-name a {
+  color: var(--accent-hover);
+}
+.au-chevron {
+  font: inherit;
+  font-size: 9px;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 2px;
+  cursor: pointer;
+  transition: transform var(--ms-fast) var(--ease-base);
+}
+.au-row.is-open .au-chevron {
+  transform: rotate(90deg);
+}
+.au-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.au-name a {
+  color: var(--fg);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.au-bar {
+  height: 8px;
+  background: var(--surface-2);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+.au-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+  border-radius: 3px;
+}
+.au-pct {
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.au-decks {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.au-modal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  white-space: nowrap;
+}
+.au-chip {
+  border: 1px solid var(--border);
+  box-shadow: 2px 2px 0 0 var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  padding: 0 7px;
+  font-weight: 700;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+.au-modal-share {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.au-detail {
+  padding: 2px 0 12px 28px;
+}
+.au-dist-line {
+  display: grid;
+  grid-template-columns: 68px minmax(80px, 200px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  font-size: 12.5px;
+  padding: 2px 0;
+}
+.au-dist-copies {
+  color: var(--muted);
+}
+.au-dist-line.is-modal .au-dist-copies {
+  color: var(--fg);
+  font-weight: 700;
+}
+.au-dist-bar {
+  height: 9px;
+  background: var(--surface-2);
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+}
+.au-dist-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+  border-radius: 2px;
+  opacity: 0.45;
+}
+.au-dist-line.is-modal .au-dist-fill {
+  opacity: 1;
+}
+.au-dist-stat {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.au-dist-link {
+  color: var(--accent-hover);
+  text-decoration: none;
+}
+.au-dist-link:hover {
+  text-decoration: underline;
+}
+@media (max-width: 640px) {
+  .au-head {
+    grid-template-columns: 18px minmax(0, 1fr) 44px 92px;
+  }
+  .au-bar,
+  .au-decks {
+    display: none;
+  }
+  .au-dist-line {
+    grid-template-columns: 60px minmax(60px, 1fr);
+  }
+  .au-dist-stat {
+    grid-column: 2;
+  }
+}

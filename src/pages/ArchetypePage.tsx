@@ -1,13 +1,16 @@
 import { A, useNavigate, useParams, useSearchParams } from '@solidjs/router';
-import { createEffect, createMemo, createResource, createSignal, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
 import {
   fetchArchetype,
   fetchArchetypes,
+  fetchOnlineTrendReport,
   fetchPrices,
   fetchRotationIndex,
+  normalizeArchetypeKey,
   prettyTournamentName,
   snapshotDateForArchetype,
-  snapshotSourceKey
+  snapshotSourceKey,
+  type TrendTimelinePoint
 } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
@@ -205,6 +208,7 @@ export function ArchetypePage() {
           report={effectiveReport()!}
           indexEntry={indexEntry()}
           indexEntries={effectiveIndex()}
+          snapshotDate={snapshotDate()}
           tab={tab()}
           onTabChange={setTab}
           viewMode={viewMode()}
@@ -222,6 +226,8 @@ interface ArchetypeBodyProps {
   report: ArchetypeReport;
   indexEntry: ArchetypeIndexEntry | undefined;
   indexEntries: ArchetypeIndexEntry[] | undefined;
+  /** When set (YYYY-MM-DD), the report is a frozen pre-rotation snapshot. */
+  snapshotDate: string | null;
   tab: ArchTab;
   onTabChange: (t: ArchTab) => void;
   viewMode: ViewMode;
@@ -275,8 +281,39 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
     return p ? estimateDeckCost(props.report.items as CardItem[], p) : null;
   });
 
+  // Human-readable snapshot date for the banner (props.snapshotDate is YYYY-MM-DD).
+  const snapshotDateLabel = createMemo<string>(() => formatSnapshotDate(props.snapshotDate));
+
+  // 30-day usage sparkline. The online trend file carries a daily share timeline
+  // per archetype; match this archetype's slug and hand its points to the
+  // sparkline. Only fetched on the online scope (the only one with a trend
+  // file) and never on a snapshot — a frozen report has no live trajectory.
+  const trendEligible = () => props.tournament === ONLINE_META_NAME && !props.snapshotDate;
+  const [trendReport] = createResource(trendEligible, fetchOnlineTrendReport);
+  const trendTimeline = createMemo<TrendTimelinePoint[] | null>(() => {
+    const payload = resolved(trendReport);
+    if (!payload) {
+      return null;
+    }
+    const key = normalizeArchetypeKey(props.slug);
+    const series =
+      payload.trendReport.series.find(s => s.base === props.slug) ??
+      payload.trendReport.series.find(s => normalizeArchetypeKey(s.base) === key);
+    const points = series?.timeline ?? [];
+    return points.length >= 2 ? points : null;
+  });
+
   return (
     <>
+      <Show when={props.snapshotDate}>
+        <div class='snapshot-banner' role='status'>
+          <span class='snapshot-banner-label'>Historical</span>
+          <span>
+            This archetype rotated out of the tracked format. You're looking at the final pre-rotation report from{' '}
+            {snapshotDateLabel()}.
+          </span>
+        </div>
+      </Show>
       <section class='hero'>
         <h1>{props.label}</h1>
         <div class='hero-meta'>
@@ -324,6 +361,9 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
             )}
           </Show>
         </div>
+        <Show when={trendTimeline()} keyed>
+          {points => <UsageSparkline points={points} />}
+        </Show>
       </section>
 
       <section>
@@ -400,6 +440,86 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
         </Show>
       </section>
     </>
+  );
+}
+
+/** Format a YYYY-MM-DD snapshot date as "Month D, YYYY"; empty string when absent. */
+function formatSnapshotDate(raw: string | null): string {
+  if (!raw) {
+    return '';
+  }
+  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) {
+    return raw;
+  }
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return Number.isNaN(d.getTime())
+    ? raw
+    : d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+/**
+ * Inline 30-day usage sparkline for the archetype hero: the archetype's daily
+ * meta-share trajectory with a start-to-end delta chip. The line breaks at any
+ * day the archetype dropped out of the report (no interpolation across gaps),
+ * mirroring the Trends chart. Purely presentational, so the SVG is aria-hidden
+ * and the delta is restated as text for screen readers.
+ */
+function UsageSparkline(props: { points: TrendTimelinePoint[] }) {
+  const W = 132;
+  const H = 30;
+  const PAD = 3;
+  const shares = () => props.points.map(p => p.share);
+  const start = () => shares()[0];
+  const end = () => shares()[shares().length - 1];
+  const deltaPp = () => end() - start();
+  // Scale y to the series' own min/max with a little headroom, so a small deck's
+  // 1–3% movement is still legible rather than pinned flat against a 0–100 axis.
+  const bounds = createMemo(() => {
+    const ys = shares();
+    const lo = Math.min(...ys);
+    const hi = Math.max(...ys);
+    const pad = Math.max(0.25, (hi - lo) * 0.15);
+    return { lo: lo - pad, hi: hi + pad };
+  });
+  const x = (i: number) => PAD + (i / (props.points.length - 1)) * (W - 2 * PAD);
+  const y = (share: number) => {
+    const { lo, hi } = bounds();
+    const t = hi === lo ? 0.5 : (share - lo) / (hi - lo);
+    return H - PAD - t * (H - 2 * PAD);
+  };
+  // Break the path into segments at missing days so a gap never draws a
+  // straight interpolated line. A day counts as present when it has decks.
+  const segments = createMemo(() => {
+    const segs: string[] = [];
+    let cur: string[] = [];
+    props.points.forEach((p, i) => {
+      if (p.decks > 0) {
+        cur.push(`${cur.length === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(p.share).toFixed(1)}`);
+      } else if (cur.length) {
+        segs.push(cur.join(' '));
+        cur = [];
+      }
+    });
+    if (cur.length) {
+      segs.push(cur.join(' '));
+    }
+    return segs;
+  });
+  const deltaClass = () => (Math.abs(deltaPp()) < 0.1 ? 'flat' : deltaPp() > 0 ? 'up' : 'down');
+  const deltaText = () => `${deltaPp() > 0 ? '+' : deltaPp() < 0 ? '' : '±'}${deltaPp().toFixed(1)} pp`;
+
+  return (
+    <div class='arche-spark'>
+      <span class='arche-spark-label'>Usage, last 30 days</span>
+      <svg class='arche-spark-svg' width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden='true'>
+        <For each={segments()}>{d => <path class='arche-spark-line' d={d} fill='none' />}</For>
+        <circle class='arche-spark-dot' cx={x(props.points.length - 1)} cy={y(end())} r='2.4' />
+      </svg>
+      <span class='arche-spark-delta' classList={{ [deltaClass()]: true }}>
+        {start().toFixed(1)}% → {end().toFixed(1)}%<span class='arche-spark-chip'>{deltaText()}</span>
+      </span>
+    </div>
   );
 }
 

@@ -1,3 +1,9 @@
+# A missing hashed asset must 404 — never fall through to the SPA shell below.
+# Otherwise a request during a deploy propagation gap serves index.html with a
+# 200, and because _headers marks /assets/* immutable-for-a-year by path, the
+# edge caches that HTML under the asset URL and poisons it for a year.
+/assets/*    /404.html    404
+
 # Cloudflare Pages SPA fallback — any non-asset, non-API route serves index.html
 # so the Solid Router can take over and render the correct page.
 # Real Functions in /functions are matched FIRST by Pages, so /api/* etc. still work.
