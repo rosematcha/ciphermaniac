@@ -13,7 +13,7 @@
  */
 
 import { loadCardSynonyms } from '../../lib/data/cardSynonyms';
-import { normalizeCardNumber } from '../../lib/util/cardUtils';
+import { normalizeCardNumber } from '../../../shared/cardUtils';
 import type { SynonymDatabase } from '../../../shared/synonyms';
 
 interface Env {

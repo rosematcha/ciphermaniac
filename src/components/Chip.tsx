@@ -7,7 +7,7 @@ interface ChipProps {
   ariaLabel?: string;
 }
 
-export const Chip: ParentComponent<ChipProps> = props => {
+const Chip: ParentComponent<ChipProps> = props => {
   return (
     <button
       type='button'

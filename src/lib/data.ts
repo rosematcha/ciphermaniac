@@ -27,10 +27,10 @@ import type {
 import { getCanonicalCardFromData, type SynonymDatabase } from '../../shared/synonyms.js';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { calculatePercentage } from '../../shared/reportUtils.js';
-import type { UpcomingEvent, UpcomingPayload } from '../../shared/upcomingTypes.js';
+import type { UpcomingPayload } from '../../shared/upcomingTypes.js';
 import archetypeIconsRaw from '../data/archetype-icons.json';
 
-export type { UpcomingEvent, UpcomingPayload };
+export type { UpcomingPayload };
 
 const R2_BASE = 'https://r2.ciphermaniac.com';
 
@@ -626,7 +626,7 @@ export function fetchParticipants(tournament: string): Promise<TournamentPartici
   return fetchJsonOptional<TournamentParticipant[]>(`${tournamentPath(tournament)}/players.json`);
 }
 
-export interface DeckCardRecord {
+interface DeckCardRecord {
   count: number;
   name: string;
   set?: string;
@@ -649,7 +649,7 @@ export interface DeckRecord {
   madePhase2?: boolean;
 }
 
-export function fetchDecks(tournament: string): Promise<DeckRecord[] | null> {
+function fetchDecks(tournament: string): Promise<DeckRecord[] | null> {
   return fetchJsonOptional<DeckRecord[]>(`${tournamentPath(tournament)}/decks.json`);
 }
 
@@ -844,7 +844,7 @@ export function fetchArchetypeDecks(tournament: string, archetypeBase: string): 
 // 'phaseWeighted' is no longer generated (the frontend only ever read
 // qualityWeighted with fallback to 'all'), but it's kept in the union so old
 // matchupProfiles.json files that still have it continue to parse.
-export type MatchupWeighting = 'all' | 'phaseWeighted' | 'qualityWeighted';
+type MatchupWeighting = 'all' | 'phaseWeighted' | 'qualityWeighted';
 
 /**
  * One archetype-vs-archetype cell from `matchupProfiles.json`. `archetypeA`/`archetypeB`
@@ -1025,7 +1025,7 @@ export interface PricingEntry {
   price?: number;
   tcgPlayerId?: string;
 }
-export interface PricingPayload {
+interface PricingPayload {
   /** Map of `Name::SET::NUMBER` → entry */
   cardPrices: Record<string, PricingEntry>;
 }
@@ -1176,21 +1176,6 @@ export function classifyTournament(key: string): 'online' | 'regional' | 'intern
   return 'other';
 }
 
-/**
- * Slugify a tournament key for URLs.
- * "2026-05-08, Regional Championship Los Angeles" → "2026-05-08-regional-championship-los-angeles"
- */
-export function tournamentSlug(key: string): string {
-  if (key === ONLINE) {
-    return 'online';
-  }
-  return key
-    .toLowerCase()
-    .replace(/,/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-+|-+$)/g, '');
-}
-
 // --- Upcoming tournaments (Limitless scraper Function) ---
 // Types live in shared/upcomingTypes.ts so the producing Pages Function
 // (functions/api/limitless/upcoming.ts — owned separately) can share them.
@@ -1209,7 +1194,7 @@ export interface TrendTimelinePoint {
   share: number;
 }
 
-export interface TrendSeries {
+interface TrendSeries {
   /** Archetype slug, matches archetypes/index.json `name` */
   base: string;
   /** Human-readable name */
@@ -1224,7 +1209,7 @@ export interface TrendSeries {
   timeline: TrendTimelinePoint[];
 }
 
-export interface CardTrendEntry {
+interface CardTrendEntry {
   key: string;
   name: string;
   set: string | null;

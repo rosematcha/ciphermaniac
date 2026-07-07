@@ -41,12 +41,12 @@ export interface Tally {
   n: number;
 }
 
-export function emptyTally(): Tally {
+function emptyTally(): Tally {
   return { w: 0, l: 0, t: 0, n: 0 };
 }
 
 /** Map a per-player outcome to a win/loss/tie bucket, or null for non-games (byes). */
-export function classify(outcome: PlayerMatchRecord['outcome']): 'w' | 'l' | 't' | null {
+function classify(outcome: PlayerMatchRecord['outcome']): 'w' | 'l' | 't' | null {
   if (outcome === 'win') {
     return 'w';
   }

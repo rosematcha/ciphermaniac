@@ -8,7 +8,7 @@
  * is acceptable for the low-stakes endpoints that use it.
  */
 
-export interface RateLimitResult {
+interface RateLimitResult {
   allowed: boolean;
   retryAfter?: number;
 }

@@ -17,34 +17,10 @@
  */
 
 import { corsPreflight, jsonResponse } from '../../lib/api/responses.js';
+import type { UpcomingEvent, UpcomingPayload } from '../../../shared/upcomingTypes';
 
 const UPCOMING_URL = 'https://limitlesstcg.com/tournaments/upcoming?game=PTCG';
 const CACHE_TTL_SECONDS = 60 * 60 * 6; // 6 hours
-
-interface UpcomingEvent {
-  /** YYYY-MM-DD */
-  date: string;
-  /** ISO 2-letter country */
-  country: string;
-  /** Display name, e.g. "Regional Indianapolis, IN" */
-  name: string;
-  /** "standard" / "expanded" / ... */
-  format: string;
-  /** Limitless tournament URL (absolute) */
-  limitlessUrl?: string;
-  /** Organizer / external info URL when Limitless surfaces one */
-  externalUrl?: string;
-  /** Heuristic tournament type, derived from the name */
-  type: 'regional' | 'international' | 'special' | 'worlds' | 'other';
-}
-
-interface UpcomingPayload {
-  refreshedAt: string;
-  source: string;
-  events: UpcomingEvent[];
-  /** Set when the upstream HTML had rows but our parser extracted none — a signal that Limitless's markup probably changed. */
-  parseWarning?: string;
-}
 
 type CfRequestInit = RequestInit & { cf?: unknown };
 

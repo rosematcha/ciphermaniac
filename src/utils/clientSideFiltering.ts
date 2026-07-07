@@ -16,7 +16,7 @@ import {
 import type { Deck, DeckCard, Filter, Operator, PercentRule, PlacementRule } from '../types/index.js';
 import type { CardPresence, CooccurrenceContext } from './cardCooccurrence';
 
-export type { Deck, DeckCard, Filter, Operator };
+export type { Deck };
 
 const SUCCESS_TAG_HIERARCHY = ['winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'];
 

@@ -15,9 +15,9 @@ import type { CardItem } from '../types';
 import type { PricingEntry } from './data';
 
 /** A card must be in at least this share of lists to count toward the estimate. */
-export const INCLUSION_FLOOR = 50;
+const INCLUSION_FLOOR = 50;
 /** Skip the whole estimate if more than this share of included cards lack a price. */
-export const MAX_MISSING_RATIO = 0.2;
+const MAX_MISSING_RATIO = 0.2;
 
 export interface DeckCostEstimate {
   /** Summed market price in USD. */
