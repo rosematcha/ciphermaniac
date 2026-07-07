@@ -774,6 +774,16 @@ body[data-mode='dark'] .arche:hover {
   align-items: center;
   flex-wrap: wrap;
 }
+.filter-link {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.filter-link:hover {
+  color: var(--accent-hover);
+}
 @media (max-width: 640px) {
   .filter-row {
     gap: var(--space-2);

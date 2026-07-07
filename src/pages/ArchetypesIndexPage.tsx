@@ -1,5 +1,5 @@
 import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
-import { useNavigate } from '@solidjs/router';
+import { A, useNavigate } from '@solidjs/router';
 import { fetchArchetypes, getArchetypeIconMap, prettyTournamentName, resolveArchetypeIcons } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
@@ -103,6 +103,9 @@ export function ArchetypesIndexPage() {
         <div class='filter-bar'>
           <div class='filter-row'>
             <SearchInput value={query()} onInput={setQuery} placeholder='Search archetypes by name...' />
+            <A href='/matchups' class='filter-link'>
+              Matchup matrix →
+            </A>
             <Segmented<ViewMode>
               options={VIEW_OPTIONS}
               selected={viewMode()}

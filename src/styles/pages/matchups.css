@@ -1,0 +1,186 @@
+/* ============================================================
+   Matchup matrix page — N×N head-to-head grid.
+   Diverging fills come from --positive/--negative (same semantics
+   as the per-archetype matchup bars); every cell also prints its
+   whole-number win rate + sample size, so colour is never the only
+   channel. Sticky header row + first column keep it scannable.
+   ============================================================ */
+
+.mx-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+.mx-ctl {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.mx-ctl-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.mx-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: var(--space-3);
+}
+.mx-legend-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid var(--rule);
+  margin-left: var(--space-3);
+  vertical-align: middle;
+}
+.mx-legend-swatch:first-child {
+  margin-left: 0;
+}
+.mx-legend-unfav {
+  background: color-mix(in srgb, var(--negative) 55%, var(--surface));
+}
+.mx-legend-mid {
+  background: var(--surface);
+}
+.mx-legend-fav {
+  background: color-mix(in srgb, var(--positive) 55%, var(--surface));
+}
+
+.mx-scroll {
+  overflow: auto;
+  border: var(--border-width) solid var(--rule);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.mx-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sticky header row parks under the topnav; sticky first column stays put on
+   horizontal scroll. The corner cell is sticky on both axes. */
+.mx-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface-2);
+}
+.mx-colhead {
+  min-width: 40px;
+  height: 40px;
+  padding: 4px;
+  text-align: center;
+  box-shadow: inset 0 -1px 0 var(--rule);
+}
+.mx-colhead .arche-icons {
+  justify-content: center;
+}
+.mx-corner {
+  left: 0;
+  z-index: 3;
+  min-width: 168px;
+  box-shadow: inset -1px -1px 0 var(--rule);
+}
+.mx-corner-label {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  padding-left: var(--space-2);
+}
+
+.mx-rowhead {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface-2);
+  min-width: 168px;
+  max-width: 168px;
+  padding: 0 var(--space-2);
+  text-align: left;
+  font-weight: 500;
+  box-shadow: inset -1px 0 0 var(--rule);
+}
+.mx-rowhead .arche-icons {
+  margin-right: var(--space-2);
+  vertical-align: middle;
+}
+.mx-rowname {
+  display: inline-block;
+  max-width: 118px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+  font-size: 13px;
+}
+.mx-rowhead.is-link {
+  cursor: pointer;
+}
+.mx-rowhead.is-link:hover .mx-rowname,
+.mx-rowhead.is-link:focus-visible .mx-rowname {
+  color: var(--accent);
+}
+
+.mx-cell {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  text-align: center;
+  border-bottom: 1px solid var(--rule);
+  border-right: 1px solid var(--rule);
+  line-height: 1.1;
+}
+.mx-cell.is-link {
+  cursor: pointer;
+}
+.mx-cell.is-link:hover,
+.mx-cell.is-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.mx-wr {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mx-n {
+  display: block;
+  font-size: 9.5px;
+  color: var(--muted);
+}
+.mx-cell-empty {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 5px,
+    color-mix(in srgb, var(--rule) 60%, transparent) 5px,
+    color-mix(in srgb, var(--rule) 60%, transparent) 6px
+  );
+}
+.mx-cell-mirror {
+  background: var(--surface-2);
+}
+.mx-mirror-mark {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .mx-corner,
+  .mx-rowhead {
+    min-width: 132px;
+    max-width: 132px;
+  }
+  .mx-rowname {
+    max-width: 88px;
+  }
+}

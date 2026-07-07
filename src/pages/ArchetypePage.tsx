@@ -64,8 +64,8 @@ export function ArchetypePage() {
     setTournament(sharedTour);
   }
   onMount(() => {
-    if (searchParams.tour) {
-      setSearchParams({ tour: undefined }, { replace: true });
+    if (searchParams.tour || searchParams.tab) {
+      setSearchParams({ tour: undefined, tab: undefined }, { replace: true });
     }
   });
 
@@ -103,9 +103,15 @@ export function ArchetypePage() {
     () => (report.error ? 'fallback' : undefined),
     () => fetchRotationIndex()
   );
-  // Land a shared filter link straight on the Filters tab.
+  // Land a shared filter link straight on the Filters tab, or a matrix deep-link
+  // straight on the Matchups tab.
   const sharedFilters = Boolean(searchParams.b || searchParams.s || searchParams.t);
-  const [tab, setTab] = createSignal<ArchTab>(sharedFilters ? 'advanced' : 'core');
+  const TAB_VALUES: readonly ArchTab[] = ['core', 'tech', 'cards', 'matchups', 'advanced'];
+  const sharedTab =
+    typeof searchParams.tab === 'string' && (TAB_VALUES as readonly string[]).includes(searchParams.tab)
+      ? (searchParams.tab as ArchTab)
+      : null;
+  const [tab, setTab] = createSignal<ArchTab>(sharedTab ?? (sharedFilters ? 'advanced' : 'core'));
   const [viewMode, setViewMode] = createPersistentViewMode('cm:cardsView');
 
   // Pre-rotation snapshot fallback. Fires when the live archetype lookup has

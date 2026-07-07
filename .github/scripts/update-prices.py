@@ -9,9 +9,8 @@ import sys
 import json
 import re
 import csv
-import boto3
 import unicodedata
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date, timedelta
 from collections import defaultdict
 from io import StringIO
 
@@ -19,6 +18,14 @@ from io import StringIO
 TCGCSV_GROUPS_URL = 'https://tcgcsv.com/tcgplayer/3/groups'
 ONLINE_META_PATH = 'reports/Online - Last 14 Days'
 CARD_SYNONYMS_URL = 'https://r2.ciphermaniac.com/assets/card-synonyms.json'
+
+# Rolling price-history artifact: one compact file keyed by card UID → list of
+# {d: 'YYYY-MM-DD', p: price} points, bounded to a 90-day window. To keep the
+# file small on $0 static hosting, consecutive same-price days are collapsed
+# (only the day a price *changes* is stored), so a flat card carries a single
+# point and the frontend degrades it to no sparkline.
+PRICES_HISTORY_KEY = 'reports/prices-history.json'
+HISTORY_WINDOW_DAYS = 90
 
 # Manual group ID mappings for sets not in TCGCSV API
 MANUAL_GROUP_ID_MAP = {
@@ -86,6 +93,7 @@ def fetch_csv(url):
 
 def initialize_r2_client():
     """Initialize boto3 S3 client for R2."""
+    import boto3
     r2_account_id = os.environ.get('R2_ACCOUNT_ID')
     r2_access_key_id = os.environ.get('R2_ACCESS_KEY_ID')
     r2_secret_access_key = os.environ.get('R2_SECRET_ACCESS_KEY')
@@ -381,6 +389,92 @@ def add_basic_energy_prices(price_data, card_list):
     print(f"\nAdded {len([k for k in price_data if 'Energy::' in k])} basic energy prices")
 
 
+def load_price_history(r2_client, bucket_name):
+    """Load the existing rolling price-history artifact, or {} if absent."""
+    print(f"\nLoading {PRICES_HISTORY_KEY}...")
+    try:
+        response = r2_client.get_object(Bucket=bucket_name, Key=PRICES_HISTORY_KEY)
+        data = json.loads(response['Body'].read().decode('utf-8'))
+        history = data.get('history', {}) if isinstance(data, dict) else {}
+        print(f"  Loaded history for {len(history)} cards")
+        return history
+    except Exception as e:
+        # First run (no file yet) or a transient read error: start fresh rather
+        # than abort the whole price update.
+        print(f"  No existing history ({e}); starting fresh")
+        return {}
+
+
+def update_price_history(existing_history, price_data, today, window_days=HISTORY_WINDOW_DAYS):
+    """
+    Append today's prices onto the rolling history and return the new history.
+
+    Pure (no I/O) so it's unit-testable. Rules:
+    - Only cards priced today are carried forward (cards that fall out of the
+      report drop out of the file).
+    - A day is only stored when the price differs from the card's most recent
+      stored point — flat runs collapse to a single point to keep the file small.
+    - Points older than `window_days` before `today` are trimmed.
+    - `today` is a `datetime.date`; prices are rounded to whole cents.
+    """
+    cutoff = today - timedelta(days=window_days)
+    today_str = today.isoformat()
+    new_history = {}
+
+    for uid, entry in price_data.items():
+        price = entry.get('price') if isinstance(entry, dict) else None
+        if price is None:
+            continue
+        try:
+            price = round(float(price), 2)
+        except (TypeError, ValueError):
+            continue
+
+        # Carry forward prior in-window points, dropping any stale "today" entry
+        # (idempotent re-runs on the same day) and anything past the window.
+        prior = []
+        for point in existing_history.get(uid, []):
+            d = point.get('d')
+            p = point.get('p')
+            if not d or p is None or d >= today_str:
+                continue
+            try:
+                point_date = date.fromisoformat(d)
+            except (TypeError, ValueError):
+                continue
+            if point_date < cutoff:
+                continue
+            prior.append({'d': d, 'p': round(float(p), 2)})
+
+        prior.sort(key=lambda pt: pt['d'])
+        # Collapse flat runs: only record today if it moves the last known price.
+        if not prior or prior[-1]['p'] != price:
+            prior.append({'d': today_str, 'p': price})
+        new_history[uid] = prior
+
+    return new_history
+
+
+def upload_price_history_to_r2(r2_client, bucket_name, history):
+    """Upload the rolling price-history artifact (compact, no whitespace)."""
+    output = {
+        'history': history,
+        'metadata': {
+            'generated': datetime.now(timezone.utc).isoformat(),
+            'windowDays': HISTORY_WINDOW_DAYS,
+            'totalCards': len(history)
+        }
+    }
+    print(f"\nUploading to R2: {PRICES_HISTORY_KEY}")
+    r2_client.put_object(
+        Bucket=bucket_name,
+        Key=PRICES_HISTORY_KEY,
+        Body=json.dumps(output, separators=(',', ':')),
+        ContentType='application/json'
+    )
+    print(f"  ✓ History upload complete ({len(history)} cards)")
+
+
 def upload_prices_to_r2(r2_client, bucket_name, price_data):
     """Upload price data to R2 (frontend-compatible format)."""
     key = 'reports/prices.json'
@@ -437,8 +531,13 @@ def main():
     # Add basic energy prices
     add_basic_energy_prices(price_data, card_list)
     
-    # Upload to R2
+    # Upload snapshot to R2
     upload_prices_to_r2(r2_client, bucket_name, price_data)
+
+    # Append onto the rolling price history and upload that too.
+    existing_history = load_price_history(r2_client, bucket_name)
+    history = update_price_history(existing_history, price_data, datetime.now(timezone.utc).date())
+    upload_price_history_to_r2(r2_client, bucket_name, history)
     
     # Summary
     print("\n" + "=" * 60)
