@@ -886,6 +886,114 @@ def generate_card_index(all_decks):
     return {"deckTotal": deck_total, "cards": index}
 
 
+def resolve_canonical_uid(uid, synonyms, canonicals):
+    """Mirror shared/synonyms.ts getCanonicalCardFromData so build-time indexes
+    key by the same canonical UID the frontend resolves at read time.
+
+    For UIDs (contain '::') only the explicit synonyms map is consulted (cards
+    with the same name but different abilities must not merge). For name-only
+    identifiers, canonicals wins, then synonyms as a fallback.
+    """
+    if not uid:
+        return uid
+    if "::" in uid:
+        return (synonyms or {}).get(uid, uid)
+    if canonicals and uid in canonicals:
+        return canonicals[uid]
+    return (synonyms or {}).get(uid, uid)
+
+
+def build_card_usage_index(archetype_data_map, synonyms=None, canonicals=None):
+    """Inverted index: canonical card UID -> list of archetypes that play it.
+
+    Lets CardPage's "Where it's played" panel load one small file instead of
+    fanning a request out to every archetype's cards.json. Each entry carries the
+    archetype slug (join to archetypes/index.json for the label/icons/deckCount),
+    the card's inclusion `found`/`pct` within that archetype, and its copy-count
+    `dist`. Variant printings are collapsed to their canonical UID and merged so
+    the numbers match the frontend's read-time canonicalization.
+
+    Schema: {"usage": {"<uid>": [{"slug", "found", "pct", "dist": [...]}, ...]}}
+    """
+    usage: Dict[str, List[Dict[str, Any]]] = {}
+    for base_name, payload in archetype_data_map.items():
+        cards = payload.get("cards") or {}
+        deck_total = cards.get("deckTotal") or 0
+        merged: Dict[str, Dict[str, Any]] = {}
+        for item in cards.get("items") or []:
+            uid = item.get("uid") or item.get("name")
+            if not uid:
+                continue
+            canon = resolve_canonical_uid(uid, synonyms, canonicals)
+            entry = merged.setdefault(canon, {"found": 0, "dist": defaultdict(int)})
+            entry["found"] += item.get("found") or 0
+            for d in item.get("dist") or []:
+                copies = d.get("copies")
+                if copies is None:
+                    continue
+                entry["dist"][copies] += d.get("players") or 0
+        for canon, entry in merged.items():
+            found = entry["found"]
+            dist = [
+                {
+                    "copies": copies,
+                    "players": players,
+                    "percent": round((players / found) * 100, 2) if found else 0,
+                }
+                for copies, players in sorted(entry["dist"].items())
+            ]
+            usage.setdefault(canon, []).append(
+                {
+                    "slug": base_name,
+                    "found": found,
+                    "pct": round((found / deck_total) * 100, 2) if deck_total else 0,
+                    "dist": dist,
+                }
+            )
+    return {"usage": usage}
+
+
+def build_conversion_index(all_decks, synonyms=None, canonicals=None):
+    """Per-card Day 1 -> Day 2 conversion counts for one tournament.
+
+    Precomputes what CardPage's conversion stat needs so the client doesn't have
+    to download the multi-MB decks.json. Each deck carries a `madePhase2` flag;
+    we bucket by canonical card UID (deduped per deck so a deck listing two
+    variant printings counts once). Returns None when no deck made the cut.
+
+    Schema: {"day1Total", "day2Total", "cards": {"<uid>": {"day1", "day2"}}}
+    """
+    if not all_decks:
+        return None
+    if not any(deck.get("madePhase2") for deck in all_decks):
+        return None
+    counts: Dict[str, Dict[str, int]] = {}
+    day2_total = 0
+    for deck in all_decks:
+        is_day2 = bool(deck.get("madePhase2"))
+        if is_day2:
+            day2_total += 1
+        seen = set()
+        for card in deck.get("cards") or []:
+            set_code = card.get("set")
+            number = card.get("number")
+            if not set_code or number in (None, ""):
+                continue
+            sc, num = canonicalize_variant(set_code, number)
+            if not sc or not num:
+                continue
+            raw_uid = f"{card.get('name', '')}::{sc}::{num}"
+            uid = resolve_canonical_uid(raw_uid, synonyms, canonicals)
+            if uid in seen:
+                continue
+            seen.add(uid)
+            entry = counts.setdefault(uid, {"day1": 0, "day2": 0})
+            entry["day1"] += 1
+            if is_day2:
+                entry["day2"] += 1
+    return {"day1Total": len(all_decks), "day2Total": day2_total, "cards": counts}
+
+
 def scrape_card_print_variations(session, set_code, number):
     print(f"  Checking print variations for {set_code}/{number}...")
 
@@ -2873,6 +2981,21 @@ def main():
 
     archetype_data_map, archetype_index = build_archetype_reports(all_decks, master_report, card_types_db)
 
+    # Synonyms for the build-time inverted indexes below. Reuse the merged set
+    # when tournament synonyms were generated this run; otherwise pull the global
+    # assets/card-synonyms.json — the same file the frontend canonicalizes reads
+    # against, so cardUsage/conversion UIDs line up with master.json at read time.
+    if synonyms_data is not None:
+        index_synonyms = synonyms_data.get("synonyms", {})
+        index_canonicals = synonyms_data.get("canonicals", {})
+    elif existing_synonyms or existing_canonicals:
+        index_synonyms, index_canonicals = existing_synonyms, existing_canonicals
+    else:
+        index_synonyms, index_canonicals = load_existing_canonicals(r2_client, r2_bucket_name)
+
+    card_usage = build_card_usage_index(archetype_data_map, index_synonyms, index_canonicals)
+    conversion = build_conversion_index(all_decks, index_synonyms, index_canonicals)
+
     phase2_decks = [deck for deck in all_decks if deck.get("madePhase2")]
     topcut_decks = [deck for deck in all_decks if deck.get("madeTopCut")]
 
@@ -2919,6 +3042,9 @@ def main():
     if synonyms_data is not None:
         upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/synonyms.json", synonyms_data)
     upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/archetypes/index.json", archetype_index)
+    upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/cardUsage.json", card_usage)
+    if conversion is not None:
+        upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/conversion.json", conversion)
 
     if write_tournament_db:
         print("  Building tournament.db...")

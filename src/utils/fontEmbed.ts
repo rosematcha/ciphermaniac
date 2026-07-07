@@ -4,7 +4,9 @@
 // resolve — so the font binaries must be inlined as data: URIs, and the cross-origin
 // Google Fonts dependency is bypassed entirely, making the export deterministic.
 
-const WEIGHTS = [400, 500, 600, 700, 800] as const;
+// Only the weights social-graphics.css actually paints (600/700/800). The 900s
+// in that stylesheet have no woff2 and fall back at render time.
+const WEIGHTS = [600, 700, 800] as const;
 
 const SUBSETS = [
   {
@@ -24,9 +26,12 @@ let cached: Promise<string> | null = null;
 async function woff2DataUri(url: string): Promise<string> {
   const buf = await (await fetch(url)).arrayBuffer();
   const bytes = new Uint8Array(buf);
+  // Chunk the fromCharCode spread — passing an entire multi-KB Uint8Array as
+  // args blows the call-stack limit on large fonts.
+  const CHUNK = 0x8000;
   let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
   }
   return `data:font/woff2;base64,${btoa(binary)}`;
 }

@@ -1197,6 +1197,35 @@ function buildArchetypeReports(decks, synonymDb, masterReport = null, cardTypesD
   };
 }
 
+/**
+ * Inverted index mapping canonical card UID -> archetypes that play it, so
+ * CardPage's "Where it's played" panel loads one file instead of fanning a
+ * request out to every archetype's cards.json. Archetype report items are
+ * already synonym-canonicalized (generateReportFromDecks applies
+ * getCanonicalCard), so their `uid` is the canonical key directly. deckTotal is
+ * recoverable from archetypes/index.json (deckCount), so it's omitted here.
+ *
+ * Schema: {"usage": {"<uid>": [{"slug", "found", "pct", "dist": [...]}, ...]}}
+ */
+function buildCardUsageIndex(archetypeFiles) {
+  const usage = {};
+  for (const file of archetypeFiles) {
+    for (const item of file.data?.items || []) {
+      const uid = item.uid || item.name;
+      if (!uid) {
+        continue;
+      }
+      (usage[uid] ||= []).push({
+        slug: file.base,
+        found: item.found || 0,
+        pct: item.pct || 0,
+        dist: (item.dist || []).map(d => ({ copies: d.copies, players: d.players, percent: d.percent }))
+      });
+    }
+  }
+  return { usage };
+}
+
 async function putJson(key, data) {
   await s3Client.send(
     new PutObjectCommand({
@@ -1916,6 +1945,7 @@ async function main() {
   if (GENERATE_ARCHETYPES) {
     console.log('[online-meta] Uploading archetype reports (new folder structure)...');
     await putJson(`${basePath}/archetypes/index.json`, archetypeIndex);
+    await putJson(`${basePath}/cardUsage.json`, buildCardUsageIndex(archetypeFiles));
 
     for (const file of archetypeFiles) {
       // Upload cards.json for each archetype (e.g., archetypes/Gardevoir/cards.json)

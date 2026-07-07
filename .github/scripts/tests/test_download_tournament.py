@@ -42,7 +42,7 @@ class _FakeR2Client:
             raise self.exceptions.NoSuchKey(Key)
         return {"Body": _FakeBody(self._objects[Key])}
 
-    def put_object(self, Bucket, Key, Body, ContentType):
+    def put_object(self, Bucket, Key, Body, ContentType, **kwargs):
         body_text = Body if isinstance(Body, str) else Body.decode("utf-8")
         self._objects[Key] = body_text
         self.put_calls.append(
@@ -197,6 +197,98 @@ class DownloadTournamentTests(unittest.TestCase):
         rebuilt = download_tournament.rebuild_tournaments_json_from_reports(client, "bucket", dry_run=True)
         self.assertEqual(rebuilt, ["2026-02-13, International Championship London"])
         self.assertEqual(client.put_calls, [])
+
+
+class CardUsageAndConversionTests(unittest.TestCase):
+    def _archetype_map(self):
+        # Two archetypes; the second lists Boss's Orders under a variant printing
+        # that the synonyms map collapses onto the canonical MEG::114.
+        return {
+            "dragapult_dusknoir": {
+                "cards": {
+                    "deckTotal": 4,
+                    "items": [
+                        {
+                            "name": "Boss's Orders",
+                            "uid": "Boss's Orders::MEG::114",
+                            "set": "MEG",
+                            "number": "114",
+                            "found": 3,
+                            "dist": [
+                                {"copies": 1, "players": 2},
+                                {"copies": 2, "players": 1},
+                            ],
+                        }
+                    ],
+                }
+            },
+            "gardevoir": {
+                "cards": {
+                    "deckTotal": 2,
+                    "items": [
+                        {
+                            "name": "Boss's Orders",
+                            "uid": "Boss's Orders::SVI::100",
+                            "set": "SVI",
+                            "number": "100",
+                            "found": 1,
+                            "dist": [{"copies": 1, "players": 1}],
+                        }
+                    ],
+                }
+            },
+        }
+
+    def test_build_card_usage_index_collapses_variants_to_canonical(self):
+        synonyms = {"Boss's Orders::SVI::100": "Boss's Orders::MEG::114"}
+        result = download_tournament.build_card_usage_index(self._archetype_map(), synonyms, {})
+        usage = result["usage"]
+        # Both archetypes now key onto the canonical UID.
+        self.assertIn("Boss's Orders::MEG::114", usage)
+        self.assertNotIn("Boss's Orders::SVI::100", usage)
+        entries = {e["slug"]: e for e in usage["Boss's Orders::MEG::114"]}
+        self.assertEqual(entries["dragapult_dusknoir"]["found"], 3)
+        # pct = found / deckTotal * 100 = 3/4 * 100
+        self.assertEqual(entries["dragapult_dusknoir"]["pct"], 75.0)
+        self.assertEqual(entries["gardevoir"]["found"], 1)
+        self.assertEqual(entries["gardevoir"]["pct"], 50.0)
+        # dist percents recomputed against found.
+        d1 = next(d for d in entries["dragapult_dusknoir"]["dist"] if d["copies"] == 1)
+        self.assertAlmostEqual(d1["percent"], round(2 / 3 * 100, 2))
+
+    def test_build_conversion_index_buckets_by_canonical_uid(self):
+        synonyms = {"Boss's Orders::SVI::100": "Boss's Orders::MEG::114"}
+        decks = [
+            {"madePhase2": True, "cards": [{"name": "Boss's Orders", "set": "MEG", "number": "114", "count": 1}]},
+            {"madePhase2": False, "cards": [{"name": "Boss's Orders", "set": "SVI", "number": "100", "count": 2}]},
+            # A deck listing the same canonical card twice counts once.
+            {
+                "madePhase2": True,
+                "cards": [
+                    {"name": "Boss's Orders", "set": "MEG", "number": "114", "count": 1},
+                    {"name": "Boss's Orders", "set": "SVI", "number": "100", "count": 1},
+                ],
+            },
+        ]
+        result = download_tournament.build_conversion_index(decks, synonyms, {})
+        self.assertEqual(result["day1Total"], 3)
+        self.assertEqual(result["day2Total"], 2)
+        card = result["cards"]["Boss's Orders::MEG::114"]
+        self.assertEqual(card["day1"], 3)
+        self.assertEqual(card["day2"], 2)
+
+    def test_build_conversion_index_returns_none_without_a_cut(self):
+        decks = [{"madePhase2": False, "cards": [{"name": "X", "set": "MEG", "number": "1", "count": 1}]}]
+        self.assertIsNone(download_tournament.build_conversion_index(decks, {}, {}))
+
+    def test_resolve_canonical_uid_matches_frontend_rules(self):
+        synonyms = {"A::S1::002": "A::S1::001"}
+        canonicals = {"BareName": "BareName::S1::009"}
+        self.assertEqual(download_tournament.resolve_canonical_uid("A::S1::002", synonyms, canonicals), "A::S1::001")
+        # Unknown UID is its own canonical.
+        self.assertEqual(download_tournament.resolve_canonical_uid("A::S1::003", synonyms, canonicals), "A::S1::003")
+        # Name-only prefers canonicals.
+        self.assertEqual(download_tournament.resolve_canonical_uid("BareName", synonyms, canonicals), "BareName::S1::009")
 
 
 if __name__ == "__main__":

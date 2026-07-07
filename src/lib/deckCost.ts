@@ -27,7 +27,7 @@ export interface DeckCostEstimate {
 }
 
 /** Price map key: `Name::SET::NUMBER` (matches `PricingPayload.cardPrices`). */
-export function priceKey(name: string, set: string, number: string | number): string {
+function priceKey(name: string, set: string, number: string | number): string {
   return `${name}::${set}::${number}`;
 }
 
