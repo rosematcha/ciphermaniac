@@ -170,10 +170,6 @@ export function ArchetypePage() {
     return true;
   });
 
-  onMount(() => {
-    document.title = `${label()} — Ciphermaniac`;
-  });
-
   createEffect(() => {
     const l = label();
     if (l) {
@@ -469,7 +465,7 @@ function UsageSparkline(props: { points: TrendTimelinePoint[] }) {
   const W = 132;
   const H = 30;
   const PAD = 3;
-  const shares = () => props.points.map(p => p.share);
+  const shares = createMemo(() => props.points.map(p => p.share));
   const start = () => shares()[0];
   const end = () => shares()[shares().length - 1];
   const deltaPp = () => end() - start();

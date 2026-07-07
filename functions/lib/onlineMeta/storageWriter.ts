@@ -8,8 +8,8 @@ const DEFAULT_R2_CONCURRENCY = 6;
  * visitors load instantly while staying same-day fresh. Dated snapshot
  * paths are immutable by construction and get a year (see SNAPSHOT_CACHE_CONTROL).
  */
-export const LIVE_JSON_CACHE_CONTROL = 'public, max-age=21600';
-export const SNAPSHOT_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+const LIVE_JSON_CACHE_CONTROL = 'public, max-age=21600';
+const SNAPSHOT_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 interface R2PutOptions {
   httpMetadata?: { contentType?: string; cacheControl?: string };

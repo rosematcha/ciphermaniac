@@ -4,8 +4,13 @@
  * Example: /thumbnails/sm/TEF/123 -> https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/TEF/TEF_123_R_EN_SM.png
  */
 
+import { corsPreflight } from '../lib/api/responses.js';
+
 const LIMITLESS_CDN_BASE = 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci';
-const CACHE_TTL = 86400; // 24 hours
+const CACHE_TTL = 86400; // 24 hours (edge fetch TTL)
+// Card art for a given set/number never changes, so let browsers cache it for a
+// year and skip revalidation entirely.
+const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 // Validation patterns
 const SET_CODE_PATTERN = /^[A-Z0-9]{2,8}$/;
@@ -114,7 +119,9 @@ export async function onRequest(context: Context): Promise<Response> {
     });
   }
 
-  const candidateNumbers = Array.from(new Set([trimmed, padded].filter(Boolean) as string[]));
+  // Limitless uses zero-padded 3-digit numbers (e.g. TEF_007), so probe the
+  // padded form first — the trimmed/unpadded form 404s for any number < 100.
+  const candidateNumbers = Array.from(new Set([padded, trimmed].filter(Boolean) as string[]));
   const candidateUrls = candidateNumbers.map(
     cardNumber => `${LIMITLESS_CDN_BASE}/${setCode}/${setCode}_${cardNumber}_R_EN_${sizeUpper}.png`
   );
@@ -136,7 +143,7 @@ export async function onRequest(context: Context): Promise<Response> {
     headers.delete('Vary');
     headers.set('Access-Control-Allow-Origin', '*');
     headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    headers.set('Cache-Control', `public, max-age=${CACHE_TTL}`);
+    headers.set('Cache-Control', IMMUTABLE_CACHE_CONTROL);
     headers.set('Content-Type', 'image/png');
 
     return new Response(response.body, {
@@ -158,13 +165,5 @@ export async function onRequest(context: Context): Promise<Response> {
 
 // Handle OPTIONS for CORS preflight
 export async function onRequestOptions(): Promise<Response> {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Max-Age': '86400'
-    }
-  });
+  return corsPreflight('GET, OPTIONS', { maxAge: 86400 });
 }

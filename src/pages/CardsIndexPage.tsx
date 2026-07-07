@@ -13,7 +13,7 @@ import { EmptyState } from '../components/EmptyState';
 import { CardTile } from '../components/CardTile';
 import { createPagination } from '../lib/pagination';
 import { latestValue } from '../lib/resource';
-import { averageCopies, categoryLabel } from '../lib/cardStats';
+import { averageCopies, averageCopiesValue, cardSupercategory, categoryLabel } from '../lib/cardStats';
 import {
   createPersistentNumberSignal,
   createPersistentSignal,
@@ -41,15 +41,6 @@ function defaultDir(key: SortKey): SortDir {
   return key === 'rank' || key === 'name' ? 'asc' : 'desc';
 }
 
-function avgCopiesValue(item: CardItem): number {
-  const dist = item.dist ?? [];
-  const players = dist.reduce((acc, d) => acc + (d.players ?? 0), 0);
-  if (!players) {
-    return 0;
-  }
-  const copies = dist.reduce((acc, d) => acc + (d.copies ?? 0) * (d.players ?? 0), 0);
-  return copies / players;
-}
 const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
   { value: 'grid', label: 'Grid' },
   { value: 'list', label: 'List' }
@@ -102,17 +93,8 @@ export function CardsIndexPage() {
       if (!item.set || item.number === undefined) {
         return false;
       }
-      if (filter !== 'all') {
-        const cat = (item.category ?? '').toLowerCase();
-        if (filter === 'pokemon' && !cat.startsWith('pokemon')) {
-          return false;
-        }
-        if (filter === 'trainer' && !cat.startsWith('trainer')) {
-          return false;
-        }
-        if (filter === 'energy' && !cat.startsWith('energy')) {
-          return false;
-        }
+      if (filter !== 'all' && cardSupercategory(item) !== filter) {
+        return false;
       }
       if (q && !item.name.toLowerCase().includes(q)) {
         return false;
@@ -136,39 +118,47 @@ export function CardsIndexPage() {
   };
 
   const sorted = createMemo(() => {
-    const list = [...filtered()];
     const key = sortKey();
     const mul = sortDir() === 'asc' ? 1 : -1;
-    list.sort((a, b) => {
-      switch (key) {
-        case 'rank':
-          return mul * ((a.rank ?? 9e9) - (b.rank ?? 9e9));
-        case 'name':
-          return mul * a.name.localeCompare(b.name);
-        case 'inclusion':
-          return mul * ((a.pct ?? 0) - (b.pct ?? 0));
-        case 'avgCopies':
-          return mul * (avgCopiesValue(a) - avgCopiesValue(b));
-        case 'price': {
-          // Missing prices always sort last, regardless of direction.
-          const pa = priceFor(a);
-          const pb = priceFor(b);
-          if (pa === null && pb === null) {
-            return (a.rank ?? 9e9) - (b.rank ?? 9e9);
-          }
-          if (pa === null) {
-            return 1;
-          }
-          if (pb === null) {
-            return -1;
-          }
-          return mul * (pa - pb);
+
+    if (key === 'name') {
+      return [...filtered()].sort((a, b) => mul * a.name.localeCompare(b.name));
+    }
+
+    if (key === 'price') {
+      // Decorate once: `priceFor` builds a key + map lookup, so compute per item
+      // rather than twice per comparison. Missing prices always sort last.
+      const decorated = filtered().map(item => ({ item, price: priceFor(item), rank: item.rank ?? 9e9 }));
+      decorated.sort((a, b) => {
+        if (a.price === null && b.price === null) {
+          return a.rank - b.rank;
         }
+        if (a.price === null) {
+          return 1;
+        }
+        if (b.price === null) {
+          return -1;
+        }
+        return mul * (a.price - b.price);
+      });
+      return decorated.map(d => d.item);
+    }
+
+    // Remaining keys are plain numeric — precompute each item's sort value once
+    // (avgCopies is two reduces per item) instead of recomputing per comparison.
+    const valueOf = (item: CardItem): number => {
+      switch (key) {
+        case 'inclusion':
+          return item.pct ?? 0;
+        case 'avgCopies':
+          return averageCopiesValue(item) ?? 0;
         default:
-          return 0;
+          return item.rank ?? 9e9;
       }
-    });
-    return list;
+    };
+    const decorated = filtered().map(item => ({ item, v: valueOf(item) }));
+    decorated.sort((a, b) => mul * (a.v - b.v));
+    return decorated.map(d => d.item);
   });
 
   // Header clicks toggle direction on the active column and reset to the
@@ -394,32 +384,35 @@ function ListView(props: {
         </thead>
         <tbody>
           <For each={props.items}>
-            {item => (
-              <tr
-                class='is-link'
-                onClick={() => props.onCardClick(item)}
-                tabIndex={0}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    props.onCardClick(item);
-                  }
-                }}
-              >
-                <td class='num muted-cell'>{item.rank ?? '—'}</td>
-                <td>
-                  <span class='cardname'>{item.name}</span>
-                </td>
-                <td class='muted-cell'>{item.set ? `${item.set}/${item.number}` : '—'}</td>
-                <td class='muted-cell'>{categoryLabel(item)}</td>
-                <td class='num'>{item.pct.toFixed(1)}%</td>
-                <td class='num muted-cell'>{averageCopies(item)}</td>
-                <td class='num'>
-                  <Show when={props.priceFor(item) !== null} fallback={<span class='muted-cell'>—</span>}>
-                    ${props.priceFor(item)!.toFixed(2)}
-                  </Show>
-                </td>
-              </tr>
-            )}
+            {item => {
+              const price = createMemo(() => props.priceFor(item));
+              return (
+                <tr
+                  class='is-link'
+                  onClick={() => props.onCardClick(item)}
+                  tabIndex={0}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      props.onCardClick(item);
+                    }
+                  }}
+                >
+                  <td class='num muted-cell'>{item.rank ?? '—'}</td>
+                  <td>
+                    <span class='cardname'>{item.name}</span>
+                  </td>
+                  <td class='muted-cell'>{item.set ? `${item.set}/${item.number}` : '—'}</td>
+                  <td class='muted-cell'>{categoryLabel(item)}</td>
+                  <td class='num'>{item.pct.toFixed(1)}%</td>
+                  <td class='num muted-cell'>{averageCopies(item)}</td>
+                  <td class='num'>
+                    <Show when={price() !== null} fallback={<span class='muted-cell'>—</span>}>
+                      ${price()!.toFixed(2)}
+                    </Show>
+                  </td>
+                </tr>
+              );
+            }}
           </For>
         </tbody>
       </table>

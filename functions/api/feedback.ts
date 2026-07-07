@@ -3,7 +3,8 @@
  * Processes feedback and sends emails via Resend
  */
 
-import { jsonError, jsonSuccess } from '../lib/api/responses.js';
+import { corsPreflight, jsonError, jsonSuccess } from '../lib/api/responses.js';
+import { createRateLimiter } from '../lib/api/rateLimiter.js';
 import { sendResendEmail } from '../lib/api/email.js';
 
 // Maximum allowed payload size (1MB)
@@ -12,75 +13,23 @@ const MAX_PAYLOAD_SIZE = 1024 * 1024;
 // Maximum allowed feedback text length in characters (in addition to the byte cap)
 const MAX_FEEDBACK_TEXT_LENGTH = 10_000;
 
-// Rate limiting configuration
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const RATE_LIMIT_MAX_REQUESTS = 5;
-const RATE_LIMIT_MAX_STORE_SIZE = 10_000;
-const RATE_LIMIT_CLEANUP_INTERVAL = 100; // clean every Nth request
-
-// In-memory rate limit store (acceptable for edge functions)
-// Map<IP, { count: number, windowStart: number }>
-const rateLimitStore = new Map<string, { count: number; windowStart: number }>();
-let rateLimitRequestCount = 0;
+// In-memory rate limiter (per-isolate; acceptable for edge functions).
+// 5 requests per IP per hour.
+const rateLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 5
+});
 
 /**
  * Reset rate limit store - exposed for testing only
  * @internal
  */
 export function _resetRateLimitStore(): void {
-  rateLimitStore.clear();
+  rateLimiter.reset();
 }
 
-/**
- * Clean up expired rate limit entries to prevent memory leaks
- */
-function cleanupRateLimitStore(): void {
-  const now = Date.now();
-  for (const [ip, data] of rateLimitStore.entries()) {
-    if (now - data.windowStart > RATE_LIMIT_WINDOW_MS) {
-      rateLimitStore.delete(ip);
-    }
-  }
-}
-
-/**
- * Check if an IP has exceeded the rate limit
- * Returns { allowed: boolean, retryAfter?: number }
- */
 function checkRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
-  const now = Date.now();
-
-  // Deterministic cleanup every N requests + hard cap to prevent OOM
-  rateLimitRequestCount++;
-  if (rateLimitRequestCount % RATE_LIMIT_CLEANUP_INTERVAL === 0) {
-    cleanupRateLimitStore();
-  }
-  if (rateLimitStore.size > RATE_LIMIT_MAX_STORE_SIZE) {
-    rateLimitStore.clear();
-  }
-
-  const existing = rateLimitStore.get(ip);
-
-  if (!existing) {
-    rateLimitStore.set(ip, { count: 1, windowStart: now });
-    return { allowed: true };
-  }
-
-  // Check if window has expired
-  if (now - existing.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimitStore.set(ip, { count: 1, windowStart: now });
-    return { allowed: true };
-  }
-
-  // Within window - check count
-  if (existing.count >= RATE_LIMIT_MAX_REQUESTS) {
-    const retryAfter = Math.ceil((existing.windowStart + RATE_LIMIT_WINDOW_MS - now) / 1000);
-    return { allowed: false, retryAfter };
-  }
-
-  // Increment count
-  existing.count++;
-  return { allowed: true };
+  return rateLimiter.check(ip);
 }
 
 /**
@@ -231,14 +180,7 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
 
 // Handle preflight requests
 export function onRequestOptions(): Response {
-  return new Response(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    }
-  });
+  return corsPreflight('POST, OPTIONS', { status: 200 });
 }
 
 function buildEmailContent(data: FeedbackData): string {

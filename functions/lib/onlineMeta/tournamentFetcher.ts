@@ -51,10 +51,6 @@ export async function runWithConcurrency<T, R>(
   return results;
 }
 
-export function daysAgo(count: number) {
-  return new Date(Date.now() - count * 24 * 60 * 60 * 1000);
-}
-
 export async function fetchRecentOnlineTournaments(
   env: LimitlessEnv | undefined,
   since: Date,
@@ -163,7 +159,7 @@ export async function fetchRecentOnlineTournaments(
     .sort((first, second) => Date.parse(second.date) - Date.parse(first.date));
 }
 
-export function toCardEntries(decklist: unknown, cardTypesDb: CardTypesDatabase | null = null) {
+function toCardEntries(decklist: unknown, cardTypesDb: CardTypesDatabase | null = null) {
   if (!decklist || typeof decklist !== 'object') {
     return [];
   }
@@ -232,7 +228,7 @@ export function toCardEntries(decklist: unknown, cardTypesDb: CardTypesDatabase 
   return cards;
 }
 
-export async function hashDeck(cards: CardEntry[], fallbackKey = '') {
+async function hashDeck(cards: CardEntry[], fallbackKey = '') {
   const cryptoImpl = globalThis.crypto;
   if (!cryptoImpl?.subtle) {
     throw new Error('Web Crypto API not available for hashing decks');
@@ -263,7 +259,7 @@ const PERCENT_TAG_RULES = [
   { tag: 'top50', fraction: 0.5, minPlayers: 8 }
 ];
 
-export function determinePlacementTags(placing: number | null | undefined, players: number | null | undefined) {
+function determinePlacementTags(placing: number | null | undefined, players: number | null | undefined) {
   const place = Number.isFinite(placing) ? placing : null;
   const fieldSize = Number.isFinite(players) ? players : null;
   if (!place || !fieldSize || place <= 0 || fieldSize <= 1) {
@@ -291,7 +287,7 @@ export function determinePlacementTags(placing: number | null | undefined, playe
   return tags;
 }
 
-export function determinePlacementLimit(players: number | null | undefined) {
+function determinePlacementLimit(players: number | null | undefined) {
   const count = Number(players) || 0;
   // Drop ultra-tiny events
   if (count > 0 && count <= 3) {
@@ -393,7 +389,11 @@ export async function gatherDecks(
     const derivedPlayers = Number(tournament?.players) || Math.max(sortedStandings.length, maxReportedPlacing);
 
     const cappedStandings = sortedStandings.slice(0, limit);
-    const decks: GatheredDeck[] = [];
+
+    // First pass: build each deck record synchronously (including its hash
+    // fallback key) without any awaits, so the SHA-1 hashing can then be run in
+    // parallel below instead of serially per standings entry.
+    const pending: { fallbackKey: string; deck: Omit<GatheredDeck, 'id'> }[] = [];
 
     for (const entry of cappedStandings) {
       if (!Number.isFinite(entry?.placing)) {
@@ -445,35 +445,36 @@ export async function gatherDecks(
           break;
       }
 
-      // eslint-disable-next-line no-await-in-loop
-      const id = await hashDeck(
-        cards,
-        `${tournament.id}::${entry?.player || entry?.name || ''}::${entry?.placing ?? ''}::${classification?.id || entry?.deck?.id || classification?.name || entry?.deck?.name || ''}`
-      );
-      decks.push({
-        id,
-        player: entry?.name || entry?.player || 'Unknown Player',
-        playerId: entry?.player || null,
-        country: entry?.country || null,
-        placement: entry?.placing ?? null,
-        archetype: archetypeName,
-        archetypeId: classification?.id || entry?.deck?.id || null,
-        archetypeSource: classificationSource,
-        cards,
-        hasDecklist: cards.length > 0,
-        tournamentId: tournament.id,
-        tournamentName: tournament.name,
-        tournamentDate: tournament.date,
-        tournamentPlayers: derivedPlayers || tournament.players || null,
-        tournamentFormat: tournament.format,
-        tournamentPlatform: tournament.platform,
-        tournamentOrganizer: tournament.organizer,
-        deckSource: 'limitless-online',
-        successTags: determinePlacementTags(entry?.placing, derivedPlayers || tournament?.players)
+      const fallbackKey = `${tournament.id}::${entry?.player || entry?.name || ''}::${entry?.placing ?? ''}::${classification?.id || entry?.deck?.id || classification?.name || entry?.deck?.name || ''}`;
+      pending.push({
+        fallbackKey,
+        deck: {
+          player: entry?.name || entry?.player || 'Unknown Player',
+          playerId: entry?.player || null,
+          country: entry?.country || null,
+          placement: entry?.placing ?? null,
+          archetype: archetypeName,
+          archetypeId: classification?.id || entry?.deck?.id || null,
+          archetypeSource: classificationSource,
+          cards,
+          hasDecklist: cards.length > 0,
+          tournamentId: tournament.id,
+          tournamentName: tournament.name,
+          tournamentDate: tournament.date,
+          tournamentPlayers: derivedPlayers || tournament.players || null,
+          tournamentFormat: tournament.format,
+          tournamentPlatform: tournament.platform,
+          tournamentOrganizer: tournament.organizer,
+          deckSource: 'limitless-online',
+          successTags: determinePlacementTags(entry?.placing, derivedPlayers || tournament?.players)
+        }
       });
     }
 
-    return decks;
+    // Hash all decks in parallel, preserving the standings order.
+    const ids = await Promise.all(pending.map(item => hashDeck(item.deck.cards, item.fallbackKey)));
+
+    return pending.map((item, index): GatheredDeck => ({ id: ids[index], ...item.deck }));
   });
 
   return perTournamentDecks.flat();

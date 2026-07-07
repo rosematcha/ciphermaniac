@@ -146,7 +146,7 @@ function deckMatchesArchetype(deck: Deck, normalizedBase: string): boolean {
   return normalizedDeckArchetype(deck) === normalizedBase;
 }
 
-function getDeckCards(deck: Deck): Card[] {
+export function getDeckCards(deck: Deck): Card[] {
   if (Array.isArray(deck?.cards)) {
     return deck.cards;
   }
@@ -156,7 +156,7 @@ function getDeckCards(deck: Deck): Card[] {
   return [];
 }
 
-function deriveDeckId(deck: Deck, fallbackIndex: number): string {
+export function deriveDeckId(deck: Deck, fallbackIndex: number): string {
   return (
     deck?.id ||
     deck?.deckId ||
@@ -166,7 +166,7 @@ function deriveDeckId(deck: Deck, fallbackIndex: number): string {
   );
 }
 
-function buildCardKeyFromCard(card: Card): string | null {
+export function buildCardKeyFromCard(card: Card): string | null {
   const setCode = typeof card?.set === 'string' ? card.set.trim().toUpperCase() : '';
   if (!setCode) {
     return null;

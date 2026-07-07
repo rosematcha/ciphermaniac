@@ -1,4 +1,4 @@
-import { jsonError } from '../../lib/api/responses.js';
+import { corsPreflight, jsonError, jsonResponse } from '../../lib/api/responses.js';
 import { filterDecksBySuccess, generateReportForFilters } from '../../../src/utils/clientSideFiltering.js';
 import type { ArchetypeFilterRequest, Filter } from '../../../src/types/index.js';
 
@@ -101,12 +101,14 @@ async function fetchDecksFromPath(request: Request, path: string): Promise<any[]
 }
 
 async function loadDecks(request: Request, payload: ArchetypeFilterRequest): Promise<any[] | null> {
-  // Fire both requests in parallel; prefer archetype-specific result
-  const [specific, fallback] = await Promise.all([
-    fetchDecksFromPath(request, buildReportsPath(payload, true)),
-    fetchDecksFromPath(request, buildReportsPath(payload, false))
-  ]);
-  return Array.isArray(specific) ? specific : fallback;
+  // Try the small archetype-specific slice first; only fall back to the full
+  // (multi-MB) decks file when the slice is missing. Fetching both in parallel
+  // wasted bandwidth/CPU downloading the large file on every request.
+  const specific = await fetchDecksFromPath(request, buildReportsPath(payload, true));
+  if (Array.isArray(specific)) {
+    return specific;
+  }
+  return fetchDecksFromPath(request, buildReportsPath(payload, false));
 }
 
 function buildCachePayload(payload: ArchetypeFilterRequest): string {
@@ -149,16 +151,6 @@ async function buildCacheRequest(request: Request, payload: ArchetypeFilterReque
   });
 }
 
-function buildJsonResponse(body: unknown, status = 200, cacheControl = RESPONSE_CACHE_CONTROL): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      ...JSON_HEADERS,
-      'Cache-Control': cacheControl
-    }
-  });
-}
-
 export async function onRequestPost({ request }: RequestContext): Promise<Response> {
   const rawBody = await request.json().catch(() => null);
   const payload = normalizePayload(rawBody);
@@ -185,16 +177,19 @@ export async function onRequestPost({ request }: RequestContext): Promise<Respon
 
   const successScopedDecks = filterDecksBySuccess(decks, payload.successFilter);
   const report = generateReportForFilters(successScopedDecks, payload.archetype, payload.filters || []);
-  const response = buildJsonResponse({
-    deckTotal: report.deckTotal,
-    items: report.items,
-    raw: {
-      generatedServerSide: true,
-      filters: (payload.filters || []).length,
-      successFilter: payload.successFilter,
-      generatedAt: new Date().toISOString()
-    }
-  });
+  const response = jsonResponse(
+    {
+      deckTotal: report.deckTotal,
+      items: report.items,
+      raw: {
+        generatedServerSide: true,
+        filters: (payload.filters || []).length,
+        successFilter: payload.successFilter,
+        generatedAt: new Date().toISOString()
+      }
+    },
+    { cacheControl: RESPONSE_CACHE_CONTROL }
+  );
 
   if (cacheRequest) {
     await caches.default.put(cacheRequest, response.clone());
@@ -204,12 +199,5 @@ export async function onRequestPost({ request }: RequestContext): Promise<Respon
 }
 
 export function onRequestOptions(): Response {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    }
-  });
+  return corsPreflight('POST, OPTIONS');
 }

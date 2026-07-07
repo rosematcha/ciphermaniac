@@ -5,11 +5,28 @@ export function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-export function formatRecord(p: TournamentParticipant): string {
-  if (p.wins == null && p.losses == null && p.ties == null) {
+/**
+ * Format a participant's W-L(-T) record.
+ *
+ * Default: full `W-L-T`, and `'—'` when wins/losses/ties are all absent.
+ * `compact`: omits a zero tie count (`W-L`), and returns `null` when both wins
+ * and losses are absent (ties alone don't count) — the shape storyline copy
+ * expects so callers can branch on truthiness.
+ */
+export function formatRecord(p: TournamentParticipant, opts?: { compact?: boolean }): string | null {
+  const w = p.wins ?? null;
+  const l = p.losses ?? null;
+  const t = p.ties ?? null;
+  if (opts?.compact) {
+    if (w === null && l === null) {
+      return null;
+    }
+    return `${w ?? 0}-${l ?? 0}${t ? `-${t}` : ''}`;
+  }
+  if (w === null && l === null && t === null) {
     return '—';
   }
-  return `${p.wins ?? 0}-${p.losses ?? 0}-${p.ties ?? 0}`;
+  return `${w ?? 0}-${l ?? 0}-${t ?? 0}`;
 }
 
 // Values arrive already on the 0–100 scale — archetype index percents are
@@ -42,6 +59,15 @@ export function parseISODate(s: string | null | undefined): Date | null {
   }
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Win percentage (0–100, one decimal) from a W/L record, or null when unplayed. */
+export function winPercent(wins: number, losses: number): number | null {
+  const denom = wins + losses;
+  if (!denom) {
+    return null;
+  }
+  return Math.round((wins / denom) * 1000) / 10;
 }
 
 export function shortDate(d: Date | null): string {

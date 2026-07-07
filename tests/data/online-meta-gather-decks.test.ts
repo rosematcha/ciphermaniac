@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { gatherDecks } from '../../functions/lib/onlineMeta';
+import { gatherDecks } from '../../functions/lib/onlineMeta/index';
 
 test('gatherDecks includes entries without decklists when archetype metadata is available', async () => {
   const env = { LIMITLESS_API_KEY: 'test-key' };

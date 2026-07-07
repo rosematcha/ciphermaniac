@@ -1,6 +1,27 @@
 import type { CardDistributionEntry } from '../types';
 import { capitalize } from './format';
 
+export type CardSupercategory = 'pokemon' | 'trainer' | 'energy';
+
+/**
+ * Map a card to its top-level TCG section. `category` is heterogeneous (flat
+ * "trainer" in live data, deep "trainer/supporter" in snapshots), so prefix-match
+ * it and fall back to `supertype`; anything unrecognized defaults to Pokémon.
+ * Single source of truth for the trainer/energy/pokemon split used by the card
+ * filters, social graphics, PTCGL export, and the memorial list.
+ */
+export function cardSupercategory(entry: { category?: string; supertype?: string }): CardSupercategory {
+  const cat = (entry.category ?? '').toLowerCase();
+  const supertype = (entry.supertype ?? '').toLowerCase();
+  if (cat.startsWith('trainer') || supertype === 'trainer') {
+    return 'trainer';
+  }
+  if (cat.startsWith('energy') || supertype === 'energy') {
+    return 'energy';
+  }
+  return 'pokemon';
+}
+
 export function categoryLabel(item: { category?: string }): string {
   if (!item.category) {
     return '—';

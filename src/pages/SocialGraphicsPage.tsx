@@ -13,6 +13,7 @@ import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
 import { interEmbedCss } from '../utils/fontEmbed';
 import { latestValue } from '../lib/resource';
+import { cardSupercategory } from '../lib/cardStats';
 import '../styles/pages/social-graphics.css';
 
 type Mode = 'standard' | 'rising' | 'converting';
@@ -62,16 +63,13 @@ interface RenderItem {
 }
 
 function classify(item: CardItem): CatKind {
-  const cat = (item.category ?? '').toLowerCase();
-  const supertype = (item.supertype ?? '').toLowerCase();
-  if (cat.startsWith('trainer') || supertype === 'trainer') {
+  const section = cardSupercategory(item);
+  if (section === 'trainer') {
     return 'trainer';
   }
-  if (cat.startsWith('energy') || supertype === 'energy') {
-    if (cat.includes('basic') || item.energyType === 'basic') {
-      return 'energy-basic';
-    }
-    return 'energy-special';
+  if (section === 'energy') {
+    const cat = (item.category ?? '').toLowerCase();
+    return cat.includes('basic') || item.energyType === 'basic' ? 'energy-basic' : 'energy-special';
   }
   return 'pokemon';
 }

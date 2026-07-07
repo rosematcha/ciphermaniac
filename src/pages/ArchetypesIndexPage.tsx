@@ -167,6 +167,16 @@ export function ArchetypesIndexPage() {
 type SortCol = 'share' | 'decks' | 'winRate';
 type SortDir = 'ascending' | 'descending';
 
+// Single source of truth for the list table's column headers, shared by the
+// real table and its loading skeleton so the two never drift.
+const COLUMNS: { label: string; class?: string; sort?: SortCol }[] = [
+  { label: '#', class: 'num' },
+  { label: 'Archetype' },
+  { label: 'Meta share', class: 'num', sort: 'share' },
+  { label: 'Decks', class: 'num', sort: 'decks' },
+  { label: 'Win rate', class: 'num', sort: 'winRate' }
+];
+
 function ArchetypesListView(props: {
   items: ArchetypeIndexEntry[];
   iconMap?: Map<string, string[]>;
@@ -241,11 +251,11 @@ function ArchetypesListView(props: {
       <table class='data'>
         <thead>
           <tr>
-            <th class='num'>#</th>
-            <th>Archetype</th>
-            <SortHeader col='share' label='Meta share' />
-            <SortHeader col='decks' label='Decks' />
-            <SortHeader col='winRate' label='Win rate' />
+            <For each={COLUMNS}>
+              {col =>
+                col.sort ? <SortHeader col={col.sort} label={col.label} /> : <th class={col.class}>{col.label}</th>
+              }
+            </For>
           </tr>
         </thead>
         <tbody>
@@ -293,11 +303,7 @@ function ListSkeleton() {
       <table class='data'>
         <thead>
           <tr>
-            <th class='num'>#</th>
-            <th>Archetype</th>
-            <th class='num'>Meta share</th>
-            <th class='num'>Decks</th>
-            <th class='num'>Win rate</th>
+            <For each={COLUMNS}>{col => <th class={col.class}>{col.label}</th>}</For>
           </tr>
         </thead>
         <tbody>

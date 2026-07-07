@@ -12,8 +12,7 @@
  */
 
 import type { Deck, DeckCard } from '../types';
-import { normalizeCardNumber } from '../../shared/cardUtils.js';
-import { buildCardId } from './clientSideFiltering';
+import { buildCardKeyFromCard, deriveDeckId, getDeckCards } from './clientSideFiltering';
 
 export interface CardRef {
   cardId: string;
@@ -66,35 +65,8 @@ export interface ComplementSuggestion {
   basePct?: number;
 }
 
-function deckKey(deck: Deck, index: number): string {
-  return deck?.id || deck?.deckId || deck?.deckHash || (typeof deck?.slug === 'string' && deck.slug) || `deck-${index}`;
-}
-
-function deckCards(deck: Deck): DeckCard[] {
-  if (Array.isArray(deck?.cards)) {
-    return deck.cards;
-  }
-  if (Array.isArray(deck?.deck)) {
-    return deck.deck;
-  }
-  return [];
-}
-
 function cardCopies(card: DeckCard): number {
   return Number(card?.count ?? card?.copies ?? 0);
-}
-
-/** Mirror clientSideFiltering's buildCardKeyFromCard so ids align exactly. */
-function cardIdFrom(card: { set?: string; number?: string | number }): string | null {
-  const setCode = typeof card?.set === 'string' ? card.set.trim().toUpperCase() : '';
-  if (!setCode) {
-    return null;
-  }
-  const normalizedNumber = normalizeCardNumber(card?.number);
-  if (!normalizedNumber) {
-    return null;
-  }
-  return buildCardId(setCode, normalizedNumber);
 }
 
 function intersectionSize(a: Set<string>, b: Set<string>): number {
@@ -115,7 +87,7 @@ function intersectionSize(a: Set<string>, b: Set<string>): number {
 export function buildCooccurrence(decks: Deck[], reportItems: ReportItemLike[]): CooccurrenceContext {
   const refFromReport = new Map<string, CardRef>();
   for (const item of reportItems ?? []) {
-    const id = item.cardId ?? cardIdFrom(item);
+    const id = item.cardId ?? buildCardKeyFromCard(item);
     if (!id) {
       continue;
     }
@@ -130,13 +102,13 @@ export function buildCooccurrence(decks: Deck[], reportItems: ReportItemLike[]):
 
   const presence = new Map<string, CardPresence>();
   (decks ?? []).forEach((deck, index) => {
-    const id = deckKey(deck, index);
+    const id = deriveDeckId(deck, index);
     const seen = new Set<string>();
-    for (const card of deckCards(deck)) {
+    for (const card of getDeckCards(deck)) {
       if (cardCopies(card) <= 0) {
         continue;
       }
-      const cid = cardIdFrom(card);
+      const cid = buildCardKeyFromCard(card);
       if (!cid || seen.has(cid)) {
         continue;
       }
@@ -232,11 +204,10 @@ export function findSubstituteQuestions(ctx: CooccurrenceContext, opts: Substitu
     for (let j = i + 1; j < candidates.length; j += 1) {
       const a = candidates[i];
       const b = candidates[j];
+      // Candidates are pre-filtered to freq >= minIndividual (> 0), so counts
+      // are always positive; no zero-probability guard is needed here.
       const pA = a.count / total;
       const pB = b.count / total;
-      if (pA <= 0 || pB <= 0) {
-        continue;
-      }
       const overlap = intersectionSize(a.deckIds, b.deckIds);
       const pAB = overlap / total;
       const lift = pAB === 0 ? 0 : pAB / (pA * pB);

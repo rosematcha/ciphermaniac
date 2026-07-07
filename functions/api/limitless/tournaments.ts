@@ -1,4 +1,8 @@
 import { fetchLimitlessJson } from '../../lib/api/limitless.js';
+import { corsPreflight, jsonResponse } from '../../lib/api/responses.js';
+
+// Edge/browser cache 5 minutes, serve stale for up to an hour while revalidating.
+const RESPONSE_CACHE_CONTROL = 'public, max-age=300, stale-while-revalidate=3600';
 
 type AllowedQueryParam = 'game' | 'format' | 'organizerId' | 'limit' | 'page';
 
@@ -25,18 +29,6 @@ function buildProxySearchParams(url: URL): URLSearchParams {
   return scoped;
 }
 
-function jsonResponse(body: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=300',
-      'Access-Control-Allow-Origin': '*',
-      ...extraHeaders
-    }
-  });
-}
-
 export async function onRequestGet({ request, env }: RequestContext): Promise<Response> {
   try {
     const url = new URL(request.url);
@@ -47,13 +39,16 @@ export async function onRequestGet({ request, env }: RequestContext): Promise<Re
       searchParams: query
     });
 
-    return jsonResponse({
-      success: true,
-      source: 'limitless',
-      receivedAt: new Date().toISOString(),
-      query: Object.fromEntries(query.entries()),
-      data
-    });
+    return jsonResponse(
+      {
+        success: true,
+        source: 'limitless',
+        receivedAt: new Date().toISOString(),
+        query: Object.fromEntries(query.entries()),
+        data
+      },
+      { cacheControl: RESPONSE_CACHE_CONTROL }
+    );
   } catch (error) {
     console.error('Limitless tournaments proxy failed', {
       message: (error as Error)?.message,
@@ -70,19 +65,11 @@ export async function onRequestGet({ request, env }: RequestContext): Promise<Re
         error: 'Failed to fetch Limitless tournaments',
         message: (error as Error)?.message || 'Unknown error'
       },
-      status,
-      { 'Cache-Control': 'no-store' }
+      { status, cacheControl: 'no-store' }
     );
   }
 }
 
 export function onRequestOptions(): Response {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    }
-  });
+  return corsPreflight('GET, OPTIONS');
 }

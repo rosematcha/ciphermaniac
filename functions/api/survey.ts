@@ -8,7 +8,8 @@
  * any surface that renders it MUST output-encode.
  */
 
-import { jsonError, jsonSuccess } from '../lib/api/responses.js';
+import { corsPreflight, jsonError, jsonSuccess } from '../lib/api/responses.js';
+import { createRateLimiter } from '../lib/api/rateLimiter.js';
 import { sendResendEmail } from '../lib/api/email.js';
 
 // Minimal D1 surface we need — the project doesn't pull in @cloudflare/workers-types.
@@ -50,46 +51,15 @@ const MAX_TEXT_LEN = 2000;
 const MAX_SHORT_LEN = 200;
 const MAX_ITEMS = 40;
 
-// Rate limiting: max submissions per IP per window
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const RATE_LIMIT_MAX_REQUESTS = 5;
-const RATE_LIMIT_MAX_STORE_SIZE = 10_000;
-const RATE_LIMIT_CLEANUP_INTERVAL = 100;
-
-// In-memory rate limit store (per-isolate; acceptable for edge functions).
-const rateLimitStore = new Map<string, { count: number; windowStart: number }>();
-let rateLimitRequestCount = 0;
-
-function cleanupRateLimitStore(): void {
-  const now = Date.now();
-  for (const [ip, data] of rateLimitStore.entries()) {
-    if (now - data.windowStart > RATE_LIMIT_WINDOW_MS) {
-      rateLimitStore.delete(ip);
-    }
-  }
-}
+// Rate limiting: max 5 submissions per IP per hour (per-isolate; acceptable for
+// edge functions).
+const rateLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 5
+});
 
 function checkRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
-  const now = Date.now();
-  rateLimitRequestCount++;
-  if (rateLimitRequestCount % RATE_LIMIT_CLEANUP_INTERVAL === 0) {
-    cleanupRateLimitStore();
-  }
-  if (rateLimitStore.size > RATE_LIMIT_MAX_STORE_SIZE) {
-    rateLimitStore.clear();
-  }
-
-  const existing = rateLimitStore.get(ip);
-  if (!existing || now - existing.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimitStore.set(ip, { count: 1, windowStart: now });
-    return { allowed: true };
-  }
-  if (existing.count >= RATE_LIMIT_MAX_REQUESTS) {
-    const retryAfter = Math.ceil((existing.windowStart + RATE_LIMIT_WINDOW_MS - now) / 1000);
-    return { allowed: false, retryAfter };
-  }
-  existing.count++;
-  return { allowed: true };
+  return rateLimiter.check(ip);
 }
 
 /** Trim, strip control chars, and cap length. Returns null when empty. */
@@ -365,12 +335,5 @@ export async function onRequestPost({ request, env, waitUntil }: RequestContext)
 }
 
 export function onRequestOptions(): Response {
-  return new Response(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    }
-  });
+  return corsPreflight('POST, OPTIONS', { status: 200 });
 }

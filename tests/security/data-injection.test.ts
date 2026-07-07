@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 
 import { generateMaliciousInput, generateMockDeck } from '../__utils__/mock-data-factory.js';
 
-import { logger } from '../../src/utils/logger.ts';
+import { formatForTest } from '../../src/utils/logger.ts';
 import { generateReportFromDecks } from '../../functions/lib/data/reportBuilder.js';
 
 /**
@@ -27,7 +27,7 @@ test('Archetype folder names do not allow directory traversal or control charact
 test('Logger should not allow newline injection in logged messages', () => {
   const dangerous = 'User input\nERR: injected';
   // The logger.format function should create a single-line prefix, so message containing newlines should be preserved but not cause multi-line metadata injection
-  const parts = (logger as any).constructor.format('info', dangerous, []);
+  const parts = formatForTest(dangerous, []);
   const joined = parts.join(' ');
   assert.equal(joined.includes('\n'), false, 'Formatted log output should not contain raw newline characters');
 });

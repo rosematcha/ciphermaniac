@@ -16,6 +16,8 @@
  * inner <td>s, so we lean on those.
  */
 
+import { corsPreflight, jsonResponse } from '../../lib/api/responses.js';
+
 const UPCOMING_URL = 'https://limitlesstcg.com/tournaments/upcoming?game=PTCG';
 const CACHE_TTL_SECONDS = 60 * 60 * 6; // 6 hours
 
@@ -45,6 +47,10 @@ interface UpcomingPayload {
 }
 
 type CfRequestInit = RequestInit & { cf?: unknown };
+
+// Upcoming events change rarely; browser-cache 1h, edge-cache 6h.
+const RESPONSE_CACHE_CONTROL = `public, max-age=3600, s-maxage=${CACHE_TTL_SECONDS}`;
+const JSON_CHARSET_HEADER = { 'Content-Type': 'application/json; charset=utf-8' } as const;
 
 interface Context {
   request: Request;
@@ -87,25 +93,15 @@ export async function onRequest(_context: Context): Promise<Response> {
     ...(parseWarning ? { parseWarning } : {})
   };
 
-  return new Response(JSON.stringify(payload), {
-    headers: {
-      'content-type': 'application/json; charset=utf-8',
-      // Edge-cache for 6h, browser-cache for 1h.
-      'cache-control': `public, max-age=3600, s-maxage=${CACHE_TTL_SECONDS}`,
-      'access-control-allow-origin': '*'
-    }
+  // Edge-cache for 6h, browser-cache for 1h.
+  return jsonResponse(payload, {
+    cacheControl: RESPONSE_CACHE_CONTROL,
+    headers: { ...JSON_CHARSET_HEADER }
   });
 }
 
 export async function onRequestOptions(): Promise<Response> {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'access-control-allow-origin': '*',
-      'access-control-allow-methods': 'GET, OPTIONS',
-      'access-control-max-age': '86400'
-    }
-  });
+  return corsPreflight('GET, OPTIONS', { allowHeaders: null, maxAge: 86400 });
 }
 
 const ROW_RE =
@@ -186,12 +182,5 @@ function decodeHtmlEntities(s: string): string {
 }
 
 function jsonError(message: string, status: number): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: {
-      'content-type': 'application/json; charset=utf-8',
-      'cache-control': 'no-store',
-      'access-control-allow-origin': '*'
-    }
-  });
+  return jsonResponse({ error: message }, { status, cacheControl: 'no-store', headers: { ...JSON_CHARSET_HEADER } });
 }
