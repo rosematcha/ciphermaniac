@@ -9,17 +9,21 @@ import {
   fetchPrices,
   fetchRotationIndex,
   findCardBySetNumber,
+  getArchetypeIconMap,
   isSnapshotSource,
+  resolveArchetypeIcons,
   resolveCanonicalSetNumber,
   snapshotDateForCard,
   snapshotSourceKey
 } from '../lib/data';
+import { buildCardId } from '../utils/deckCardId';
+import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { ONLINE_META_NAME } from '../lib/constants';
 import { nameFromTournamentKey } from '../lib/format';
 import { useTournament } from '../lib/tournamentContext';
 import '../styles/pages/cards.css';
 import { latestValue, resolved } from '../lib/resource';
-import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../types';
+import type { ArchetypeIndexEntry, ArchetypeReport, CardDistributionEntry, CardItem } from '../types';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { Badge } from '../components/Badge';
 import { Skeleton } from '../components/Skeleton';
@@ -521,7 +525,7 @@ function CardPageBody(props: {
                   />
                 }
               >
-                <ArchetypeUsageTable rows={props.archetypeUsage!} />
+                <ArchetypeUsageTable rows={props.archetypeUsage!} card={props.card} />
               </Show>
             </Show>
           </div>
@@ -564,45 +568,125 @@ function findCardInArchetypeReport(report: ArchetypeReport, card: CardItem): Car
   return null;
 }
 
+/** Whole-number percent for the usage rows; sub-1% shows as "<1%" instead of rounding to 0. */
+function fmtWholePct(p: number): string {
+  return p > 0 && p < 1 ? '<1%' : `${Math.round(p)}%`;
+}
+
 /**
- * Sortable table of "this card's footprint" across every archetype that plays it.
- * Sorted by inclusion percentage within the archetype, descending — the
- * archetypes that lean hardest on this card surface first.
+ * Expandable per-archetype usage rows: every archetype that plays this card,
+ * with its inclusion rate and most common copy count on the collapsed row, and
+ * the full copy-count distribution behind a chevron — each bucket deep-linking
+ * into that archetype's filter tab pre-set to the exact count. Sorted by
+ * inclusion within the archetype, descending.
  */
-function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[] }) {
+function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem }) {
+  const iconMap = getArchetypeIconMap();
   const sorted = createMemo(() => {
     return [...props.rows].sort((a, b) => (b.item.pct ?? 0) - (a.item.pct ?? 0));
   });
+  const [open, setOpen] = createSignal<Set<string>>(new Set());
+  const toggle = (name: string) =>
+    setOpen(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  // Filter deep links need the card's SET~NUMBER id; without set/number the
+  // expansion still renders, just without "view lists" links.
+  const cardId = createMemo(() =>
+    props.card.set && props.card.number !== undefined && props.card.number !== null
+      ? buildCardId(props.card.set, props.card.number)
+      : null
+  );
+
   return (
-    <div class='archetype-usage-block'>
+    <div class='au-block'>
       <For each={sorted()}>
         {row => {
           const inclusion = row.item.pct ?? 0;
-          const avgCopies = (() => {
-            const dist = row.item.dist ?? [];
-            const players = dist.reduce((acc, d) => acc + (d.players ?? 0), 0);
-            if (!players) {
-              return null;
-            }
-            const copies = dist.reduce((acc, d) => acc + (d.copies ?? 0) * (d.players ?? 0), 0);
-            return copies / players;
-          })();
           const totalDecks = row.report.deckTotal ?? 0;
           const foundDecks = row.item.found ?? 0;
+          const dist = () => (row.item.dist ?? []).filter(d => d.copies !== undefined && (d.players ?? 0) > 0);
+          const modalBucket = () =>
+            dist().reduce<CardDistributionEntry | null>(
+              (m, d) => (m === null || (d.players ?? 0) > (m.players ?? 0) ? d : m),
+              null
+            );
+          const isOpen = () => open().has(row.entry.name);
+          const detailId = `au-detail-${row.entry.name.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
           return (
-            <A class='archetype-usage-row' href={`/archetypes/${encodeURIComponent(row.entry.name)}`}>
-              <span class='arch-name'>{row.entry.label}</span>
-              <div class='arch-bar' aria-hidden='true'>
-                <div class='arch-bar-fill' style={{ width: `${Math.min(100, inclusion)}%` }} />
+            <div class='au-row' classList={{ 'is-open': isOpen() }}>
+              <div
+                class='au-head'
+                onClick={e => {
+                  if (!(e.target as HTMLElement).closest('a')) {
+                    toggle(row.entry.name);
+                  }
+                }}
+              >
+                <button
+                  type='button'
+                  class='au-chevron'
+                  aria-expanded={isOpen()}
+                  aria-controls={detailId}
+                  aria-label={`Copy counts in ${row.entry.label}`}
+                >
+                  ▶
+                </button>
+                <span class='au-name'>
+                  <ArchetypeIcons slugs={resolveArchetypeIcons(row.entry, iconMap)} size={20} />
+                  <A href={`/archetypes/${encodeURIComponent(row.entry.name)}`}>{row.entry.label}</A>
+                </span>
+                <div class='au-bar' aria-hidden='true'>
+                  <div class='au-bar-fill' style={{ width: `${Math.min(100, inclusion)}%` }} />
+                </div>
+                <span class='au-pct'>{fmtWholePct(inclusion)}</span>
+                <span class='au-decks'>
+                  {foundDecks.toLocaleString()}/{totalDecks.toLocaleString()} decks
+                </span>
+                <span class='au-modal'>
+                  <Show when={modalBucket()} keyed>
+                    {m => (
+                      <>
+                        <span class='au-chip'>{m.copies}×</span>
+                        <span class='au-modal-share'>in {fmtWholePct(m.percent ?? 0)}</span>
+                      </>
+                    )}
+                  </Show>
+                </span>
               </div>
-              <span class='arch-pct'>{inclusion.toFixed(1)}%</span>
-              <span class='arch-decks'>
-                {foundDecks.toLocaleString()}/{totalDecks.toLocaleString()} decks
-              </span>
-              <Show when={avgCopies !== null}>
-                <span class='arch-avg'>{avgCopies!.toFixed(2)}× avg</span>
+              <Show when={isOpen()}>
+                <div class='au-detail' id={detailId}>
+                  <For each={dist()}>
+                    {d => (
+                      <div class='au-dist-line' classList={{ 'is-modal': d.copies === modalBucket()?.copies }}>
+                        <span class='au-dist-copies'>{d.copies}× copies</span>
+                        <div class='au-dist-bar' aria-hidden='true'>
+                          <div class='au-dist-fill' style={{ width: `${Math.min(100, d.percent ?? 0)}%` }} />
+                        </div>
+                        <span class='au-dist-stat'>
+                          {fmtWholePct(d.percent ?? 0)} · {(d.players ?? 0).toLocaleString()} decks
+                          <Show when={cardId()}>
+                            {' · '}
+                            <A
+                              class='au-dist-link'
+                              href={`/archetypes/${encodeURIComponent(row.entry.name)}?b=${cardId()}:i:e:${d.copies}`}
+                            >
+                              view lists →
+                            </A>
+                          </Show>
+                        </span>
+                      </div>
+                    )}
+                  </For>
+                </div>
               </Show>
-            </A>
+            </div>
           );
         }}
       </For>

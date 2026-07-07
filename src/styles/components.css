@@ -61,6 +61,22 @@
 .survey-banner-close:hover {
   background: rgba(0, 0, 0, 0.14);
 }
+@media (max-width: 640px) {
+  /* At ~390px the default padding/size pushes the copy onto a second line and
+     doubles the banner height. Tighten the type and side padding, and keep the
+     link on one line (ellipsis) so it can never wrap to two tall rows. */
+  .survey-banner {
+    gap: 6px;
+    padding: 7px 44px 7px 12px;
+    font-size: 12px;
+  }
+  .survey-banner-link {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
 
 /* ---------- Route pending bar ---------- */
 /* Instant "something is happening" feedback while the router resolves a
@@ -232,6 +248,32 @@
 /* ---------- Tournament selector ---------- */
 .t-selector {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Freshness chip: a fixed-width slot (reserved before data lands) keeps the
+   trigger from shifting, and the label fades in once meta.json resolves. */
+.t-freshness {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 92px;
+  min-height: 18px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity var(--ms-base) var(--ease-base);
+}
+.t-freshness.is-ready {
+  opacity: 1;
+}
+@media (max-width: 640px) {
+  .t-freshness {
+    display: none;
+  }
 }
 .t-selector-trigger {
   display: inline-flex;
@@ -535,6 +577,13 @@
     gap: 8px;
   }
 }
+/* Residual "Other" bucket — a footnote under the ranked grid, never a tile. */
+.gallery-other {
+  margin: 10px 2px 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
 .arche {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -803,7 +852,10 @@ body[data-mode='dark'] .arche:hover {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  /* `clip` (not `hidden`) still trims the rounded corners but does NOT create a
+     scroll container, so sticky `thead` cells can park against the viewport /
+     topnav instead of this box. */
+  overflow: clip;
   box-shadow: var(--shadow-1);
 }
 @media (max-width: 640px) {
@@ -849,6 +901,16 @@ table.data {
   height: 34px;
   white-space: nowrap;
 }
+/* Sticky in-table headers: rows scroll under the header, which parks directly
+   beneath the sticky topnav. z-index sits above rows but below the topnav (50).
+   The bottom hairline is a box-shadow — a border on a sticky cell can drop out
+   mid-scroll under border-collapse. */
+.data thead th {
+  position: sticky;
+  top: var(--topnav-h);
+  z-index: 1;
+  box-shadow: inset 0 -1px 0 var(--rule);
+}
 .data th.sortable {
   cursor: pointer;
   user-select: none;
@@ -859,6 +921,34 @@ table.data {
 .data th .sort-mark {
   display: inline-block;
   margin-left: 4px;
+  font-size: 10px;
+  color: var(--accent);
+}
+/* Shared base for the button-driven sortable headers other pages render as
+   `<th class="sortable"><button class="th-sort">…</button></th>`. Strips native
+   button chrome and inherits the th's typography so per-page styles stay thin;
+   the ▲/▼ indicator is driven off the header's aria-sort state. */
+.data th.sortable button.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.data th.sortable[aria-sort='ascending'] button.th-sort::after {
+  content: '▲';
+  font-size: 10px;
+  color: var(--accent);
+}
+.data th.sortable[aria-sort='descending'] button.th-sort::after {
+  content: '▼';
   font-size: 10px;
   color: var(--accent);
 }
@@ -1424,6 +1514,34 @@ body[data-mode='dark'] .tournament-row-link:hover {
   text-decoration: underline;
 }
 
+/* ---------- Conversion table (Field → Day 2 → top cut) ---------- */
+.conversion-disclosure {
+  margin-top: 16px;
+}
+.conversion-summary {
+  cursor: pointer;
+  width: max-content;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  user-select: none;
+}
+.conversion-summary:hover {
+  color: var(--fg);
+}
+.conversion-table-wrap {
+  margin-top: 10px;
+}
+.conversion-table tbody tr {
+  cursor: default;
+}
+.conversion-table .conv-count {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
 /* =====================================================================
    Latest Event callout — Story layout (Stamp design system)
    ===================================================================== */
@@ -1861,98 +1979,10 @@ body[data-mode='dark'] .tournament-row-link:hover {
   height: 100%;
   background: var(--accent);
   border-radius: 2px;
-  transition: width var(--ms-base) var(--ease-base);
 }
 .dist-row .pct {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
-}
-
-/* ---------- Archetype usage block (Card page "Where it's played") ---------- */
-.archetype-usage-block {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 4px 16px;
-  box-shadow: var(--shadow-1);
-}
-.archetype-usage-row {
-  display: grid;
-  /* Fixed widths on the right-hand stat columns so every row's bar track
-     starts and ends at the same X. With `auto`, longer text in one row
-     (e.g. "544/546 decks") would shrink the bar column for that row,
-     making bars visually inconsistent in length. */
-  grid-template-columns: minmax(140px, 1.4fr) minmax(120px, 1fr) 56px 96px 78px;
-  gap: 14px;
-  align-items: center;
-  padding: 10px 4px;
-  font-size: 13px;
-  border-bottom: 1px solid var(--rule);
-  color: var(--fg);
-  text-decoration: none;
-  transition: background-color var(--ms-base) var(--ease-base);
-}
-.archetype-usage-row:last-child {
-  border-bottom: 0;
-}
-.archetype-usage-row:hover {
-  background: var(--surface-2);
-}
-.archetype-usage-row .arch-name {
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.archetype-usage-row .arch-bar {
-  height: 8px;
-  background: var(--surface-2);
-  border-radius: 2px;
-  overflow: hidden;
-}
-.archetype-usage-row .arch-bar-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 2px;
-  transition: width var(--ms-base) var(--ease-base);
-}
-.archetype-usage-row .arch-pct {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-.archetype-usage-row .arch-decks,
-.archetype-usage-row .arch-avg {
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  white-space: nowrap;
-}
-@media (max-width: 640px) {
-  .archetype-usage-row {
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      'name pct'
-      'bar bar'
-      'decks avg';
-    gap: 4px 12px;
-  }
-  .archetype-usage-row .arch-name {
-    grid-area: name;
-  }
-  .archetype-usage-row .arch-pct {
-    grid-area: pct;
-  }
-  .archetype-usage-row .arch-bar {
-    grid-area: bar;
-  }
-  .archetype-usage-row .arch-decks {
-    grid-area: decks;
-    text-align: left;
-  }
-  .archetype-usage-row .arch-avg {
-    grid-area: avg;
-  }
 }
 
 /* ---------- Chart card ---------- */
@@ -2269,7 +2299,6 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   border-radius: 3px 3px 0 0;
   min-height: 3px;
   box-shadow: 0 0 0 1px color-mix(in srgb, #000 25%, transparent);
-  transition: height var(--ms-base) var(--ease-base);
 }
 .card-tile-hist-label {
   position: absolute;
@@ -2306,7 +2335,6 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   bottom: 0;
   left: 0;
   background: var(--accent);
-  transition: width var(--ms-base) var(--ease-base);
 }
 .card-tile-usage-pct {
   position: relative;
@@ -2549,6 +2577,31 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 }
 .prose a {
   font-weight: 500;
+}
+/* Glossary definition list on the About page ("Reading the numbers"). */
+.glossary {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 18px;
+  margin: 4px 0 8px;
+}
+.glossary dt {
+  font-weight: 700;
+  color: var(--fg);
+}
+.glossary dd {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+@media (max-width: 640px) {
+  .glossary {
+    grid-template-columns: 1fr;
+    gap: 2px 0;
+  }
+  .glossary dd {
+    margin-bottom: 8px;
+  }
 }
 
 /* ---------- Advanced filter builder (matches design-explore.html FB-B) ---------- */
@@ -2967,7 +3020,6 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   height: 100%;
   background: var(--accent);
   border-radius: 2px;
-  transition: width var(--ms-fast);
 }
 .fb-bar-track.is-complete .fb-bar-fill {
   background: var(--positive);
@@ -3170,8 +3222,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   .arche:hover,
   .card-tile:hover,
   .story-card:hover,
-  .deck-card:hover,
-  .archetype-usage-row:hover {
+  .deck-card:hover {
     transform: none;
   }
   .arche:hover,
@@ -3526,6 +3577,38 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   transform: translate(-50%, -50%);
   transition: left var(--ms-slow) var(--ease-base);
   z-index: 2;
+}
+
+/*
+ * Signed pp readout on the diverging bar: a non-color redundant encoding of
+ * favorable/unfavorable direction (the +/− sign), so the bar reads correctly
+ * without relying on the fill's hue. Sits in its own chip so it stays legible
+ * whether it lands over the track or over a full-width fill.
+ */
+.mu-bar-pp {
+  position: absolute;
+  top: 50%;
+  padding: 0 3px;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 15px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  opacity: 0.9;
+  transition: left var(--ms-slow) var(--ease-base);
+  z-index: 3;
+}
+.mu-bar-pp-right {
+  transform: translate(4px, -50%);
+}
+.mu-bar-pp-left {
+  transform: translate(calc(-100% - 4px), -50%);
+}
+.mu-bar-pp-center {
+  transform: translate(-50%, -50%);
 }
 
 /* Right-aligned stats */

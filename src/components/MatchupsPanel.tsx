@@ -93,6 +93,31 @@ function signClass(n: number | null, flat = 0.05): string {
   return n > 0 ? 'mu-pos' : 'mu-neg';
 }
 
+/**
+ * Signed percentage-point readout for a diverging bar (deviation from the 50%
+ * center). This is a non-color redundant encoding of favorable/unfavorable
+ * direction: the +/− sign carries the same information as the fill color, so
+ * the bar reads correctly without relying on hue.
+ */
+function fmtBarPp(dev: number | null, flat: number): string {
+  if (dev === null || !Number.isFinite(dev)) {
+    return '';
+  }
+  if (Math.abs(dev) < flat) {
+    return '±0pp';
+  }
+  const rounded = Math.round(Math.abs(dev));
+  return `${dev > 0 ? '+' : '−'}${rounded}pp`;
+}
+
+/** Which side of the diverging bar a pp label should sit on, given its deviation. */
+function ppSideClass(dev: number | null, flat: number): string {
+  if (dev === null || !Number.isFinite(dev) || Math.abs(dev) < flat) {
+    return 'mu-bar-pp-center';
+  }
+  return dev > 0 ? 'mu-bar-pp-right' : 'mu-bar-pp-left';
+}
+
 /** Sort desc by prevalence (when chosen) else by the quality metric, nulls last. */
 function sortByMode<T>(
   rows: T[],
@@ -557,6 +582,7 @@ function MetaShare(props: { value: number | null; show: boolean }) {
 function FieldBar(props: { row: FieldRow; showMeta: boolean; onGo: (slug: string | null) => void }) {
   const wr = () => props.row.winRate;
   const pos = () => barX(wr(), 50); // field fill reaches the track edge at 0%/100%
+  const dev = () => wr() - 50;
   const fillLeft = () => Math.min(50, pos());
   const fillWidth = () => Math.abs(pos() - 50);
   const tone = () => (Math.abs(wr() - 50) < 0.5 ? 'mu-flat' : wr() > 50 ? 'mu-pos' : 'mu-neg');
@@ -586,6 +612,9 @@ function FieldBar(props: { row: FieldRow; showMeta: boolean; onGo: (slug: string
       <div class='mu-bar'>
         <span class='mu-bar-axis' />
         <span class={`mu-bar-fill ${tone()}`} style={{ left: `${fillLeft()}%`, width: `${fillWidth()}%` }} />
+        <span class={`mu-bar-pp ${ppSideClass(dev(), 0.5)}`} style={{ left: `${pos()}%` }}>
+          {fmtBarPp(dev(), 0.5)}
+        </span>
       </div>
       <div class='mu-stats'>
         <span class={`mu-wr ${tone()}`}>{fmtPct(wr())}</span>
@@ -639,6 +668,11 @@ function LensBar(props: { row: LensDisplayRow; showMeta: boolean; onGo: (slug: s
         </Show>
         <Show when={xIn() !== null}>
           <span class='mu-mk mu-mk-in' style={{ left: `${xIn()}%` }} />
+        </Show>
+        <Show when={xIn() !== null}>
+          <span class={`mu-bar-pp ${ppSideClass(props.row.lens.delta, 0.05)}`} style={{ left: `${xIn()}%` }}>
+            {fmtBarPp(props.row.lens.delta, 0.05)}
+          </span>
         </Show>
       </div>
       <div class='mu-stats'>

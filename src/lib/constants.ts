@@ -3,6 +3,6 @@
 // entry and a fetch path.
 export const ONLINE_META_NAME = 'Online - Last 14 Days';
 
-// Display label for the online meta. The hyphen→em-dash swap is cosmetic;
-// the storage key still uses the plain dash above.
-export const ONLINE_META_LABEL = 'Online — Last 14 Days';
+// Display label for the online meta. Purely cosmetic — the storage key still
+// uses the plain string above; nothing parses this label back into a key.
+export const ONLINE_META_LABEL = 'Online ladder · last 14 days';

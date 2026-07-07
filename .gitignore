@@ -94,7 +94,9 @@ trends.json
 /static/*
 !/static/_headers
 !/static/_redirects
+!/static/404.html
 !/static/robots.txt
 !/static/fonts/
 !/static/sw.js
 .lighthouseci/
+.scratch/
