@@ -412,8 +412,29 @@ export async function fetchMaster(tournament: string = ONLINE): Promise<MasterPa
   return canonicalizeReportCached(raw, db);
 }
 
-export function fetchArchetypes(tournament: string = ONLINE): Promise<ArchetypeIndexEntry[]> {
-  return fetchJson<ArchetypeIndexEntry[]>(`${tournamentPath(tournament)}/archetypes/index.json`);
+/**
+ * Archetype index files mix percent scales: indexes ingested before commit
+ * 3939e71 store 0–100, newer ones store a 0–1 fraction. A per-value guess
+ * (≤ 1 ⇒ fraction) misreads sub-1% archetypes in old files as ~90% shares
+ * (e.g. Birmingham's 0.90% Sharpedo Toxtricity rendering as 89.7%), so decide
+ * the scale once per file: any value above 1 means the file is already 0–100.
+ */
+function normalizeIndexPercentScale(list: ArchetypeIndexEntry[]): ArchetypeIndexEntry[] {
+  let max = 0;
+  for (const entry of list) {
+    if (typeof entry.percent === 'number' && entry.percent > max) {
+      max = entry.percent;
+    }
+  }
+  if (max === 0 || max > 1) {
+    return list;
+  }
+  return list.map(entry => (typeof entry.percent === 'number' ? { ...entry, percent: entry.percent * 100 } : entry));
+}
+
+export async function fetchArchetypes(tournament: string = ONLINE): Promise<ArchetypeIndexEntry[]> {
+  const list = await fetchJson<ArchetypeIndexEntry[]>(`${tournamentPath(tournament)}/archetypes/index.json`);
+  return normalizeIndexPercentScale(list);
 }
 
 /**
@@ -710,6 +731,9 @@ export function fetchArchetypeDecks(tournament: string, archetypeBase: string): 
 
 // --- Matchups (per-tournament) ---
 
+// 'phaseWeighted' is no longer generated (the frontend only ever read
+// qualityWeighted with fallback to 'all'), but it's kept in the union so old
+// matchupProfiles.json files that still have it continue to parse.
 export type MatchupWeighting = 'all' | 'phaseWeighted' | 'qualityWeighted';
 
 /**
@@ -748,7 +772,8 @@ export interface MatchupProfilesPayload {
   tournament: { id: string; labsCode?: string; name: string; players: number; division?: string };
   phaseMultipliers: Record<string, number>;
   qualityModel: Record<string, unknown>;
-  profiles: Record<MatchupWeighting, MatchupProfile>;
+  // Partial: new files omit 'phaseWeighted'; old files may still have it.
+  profiles: Partial<Record<MatchupWeighting, MatchupProfile>>;
 }
 
 /**
@@ -821,6 +846,32 @@ export function fetchPlayerMatches(tournament: string): Promise<PlayerMatchRecor
     }
   );
   playerMatchesCache.set(tournament, promise);
+  return promise;
+}
+
+/**
+ * Per-archetype slice of `playerMatches.json`: only the round records whose pilot
+ * belongs to `archetypeBase`, in the same {@link PlayerMatchRecord} shape. This is
+ * what the card lens actually needs, and it's a few KB per deck instead of the
+ * whole ~7MB event file. Returns null (404) for tournaments ingested before this
+ * file existed — callers fall back to {@link fetchPlayerMatches}.
+ */
+const archetypeMatchesCache = new Map<string, Promise<PlayerMatchRecord[] | null>>();
+
+export function fetchArchetypeMatches(tournament: string, archetypeBase: string): Promise<PlayerMatchRecord[] | null> {
+  const cacheKey = `${tournament}::${archetypeBase}`;
+  const cached = archetypeMatchesCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+  const promise = fetchJsonOptional<PlayerMatchRecord[]>(
+    `${tournamentPath(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}/matches.json`
+  ).catch(() => {
+    // Don't pin a rejected promise — let a later open retry the download.
+    archetypeMatchesCache.delete(cacheKey);
+    return null;
+  });
+  archetypeMatchesCache.set(cacheKey, promise);
   return promise;
 }
 

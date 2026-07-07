@@ -15,6 +15,18 @@ import { App } from './app';
 // pages never tax a visitor who only reads card stats (P1.3).
 import { HomePage } from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { probeR2Ready } from './components/CardImage';
+import { getSynonymDatabase } from './utils/cardSynonyms';
+
+// Fire both warmups at startup, well before any CardImage/fetchMaster call
+// needs them: the R2 `_ready` probe (so first-mount images don't wait on it)
+// and the synonym database (so `fetchMaster`'s Promise.all usually resolves
+// it instantly instead of blocking first render on cards/*). Both are
+// fire-and-forget and memoized, so this is free if nothing ends up needing them.
+probeR2Ready();
+getSynonymDatabase().catch(() => {
+  /* fetchMaster will retry and surface the error there */
+});
 
 const CardsIndexPage = lazy(() => import('./pages/CardsIndexPage').then(m => ({ default: m.CardsIndexPage })));
 const CardPage = lazy(() => import('./pages/CardPage').then(m => ({ default: m.CardPage })));

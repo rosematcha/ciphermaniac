@@ -3,7 +3,7 @@ import { useSearchParams } from '@solidjs/router';
 import type { ArchetypeReport, CardItem, Deck, DeckCard } from '../types';
 import { fetchArchetypeDecks } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
-import { filterDecks, filterDecksBySuccess, generateReportForFilters } from '../utils/clientSideFiltering';
+import { filterDecks, filterDecksBySuccess, generateReportAndCooccurrence } from '../utils/clientSideFiltering';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { buildCardId, canonicalizeDeckCard } from '../utils/deckCardId';
 import {
@@ -52,6 +52,14 @@ const nextRuleId = () => ++ruleIdSeq;
 // Router params can be repeated (string[]); collapse to the first value.
 const firstParam = (v: string | string[] | undefined): string | undefined => (Array.isArray(v) ? v[0] : v);
 
+// Cheap deep-enough equality for the reconciliation in `displayedItems` below.
+// Report items are plain JSON-shaped objects (numbers/strings/arrays of
+// primitives-or-flat-objects like `dist`), so a JSON round-trip is a safe and
+// fast way to compare two candidates for the same cardId.
+function shallowEqualCardItem(a: CardListItem, b: CardListItem): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 interface AdvancedPanelProps {
   slug: string;
   label: string;
@@ -81,8 +89,15 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
     if (!raw) {
       return raw;
     }
+    // Wait for BOTH the decks and the synonym DB before canonicalizing. If we
+    // returned the raw decks while the DB is still pending, downstream memos
+    // would run once against raw deck objects (populating the identity-keyed
+    // deckCardCountsCache in clientSideFiltering for those objects) and then a
+    // second time once the DB resolves and every deck is cloned — throwing away
+    // that cache and doubling the aggregation work. `getSynonymDatabase` always
+    // resolves (falls back to an empty DB on failure), so this never stalls.
     if (!db) {
-      return raw as Deck[];
+      return undefined;
     }
     return raw.map(deck => ({
       ...deck,
@@ -192,17 +207,36 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
   };
   onCleanup(cancelDebounce);
 
+  // The threshold slider fires setThreshold on every input event while dragging.
+  // The visual `{threshold()}%` output stays instant (it reads the signal
+  // directly), but the URL write is debounced so the router isn't hammered with
+  // a setSearchParams per tick. Rules/bracket are already debounced upstream, so
+  // this only really throttles the slider.
+  let urlWriteTimer: ReturnType<typeof setTimeout> | undefined;
+  const cancelUrlWrite = () => {
+    if (urlWriteTimer !== undefined) {
+      clearTimeout(urlWriteTimer);
+      urlWriteTimer = undefined;
+    }
+  };
+  onCleanup(cancelUrlWrite);
+
   // Mirror the applied build into the URL so it can be shared / survives a
   // reload. Runs once on mount re-writing the hydrated params (idempotent), and
   // again whenever the applied rules / bracket / threshold change. `replace`
-  // keeps build tweaks out of the history stack.
+  // keeps build tweaks out of the history stack. The effect tracks the signals
+  // synchronously but defers the actual write ~300ms.
   createEffect(() => {
     const params = encodeBuildState({
       rules: appliedRules(),
       successFilter: appliedSuccess(),
       threshold: threshold()
     });
-    setSearchParams({ b: params.b, s: params.s, t: params.t }, { replace: true });
+    cancelUrlWrite();
+    urlWriteTimer = setTimeout(() => {
+      urlWriteTimer = undefined;
+      setSearchParams({ b: params.b, s: params.s, t: params.t }, { replace: true });
+    }, 300);
   });
 
   // When the user switches to a different archetype/tournament without the
@@ -214,6 +248,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
       [() => props.slug, () => props.tournament],
       () => {
         cancelDebounce();
+        cancelUrlWrite();
         setRules([]);
         setSuccessFilter(DEFAULT_SUCCESS);
         setThreshold(DEFAULT_THRESHOLD);
@@ -369,13 +404,18 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
     return filterDecks(successed, props.slug, activeFilters());
   });
 
-  const filteredReport = createMemo(() => {
+  // Aggregate the report and the co-occurrence presence index in ONE pass over
+  // the filtered subset. Deriving them separately (generateReportForFilters +
+  // buildCooccurrence) walks every (deck × card) twice on each apply.
+  const filteredAnalysis = createMemo(() => {
     const d = filteredDecks();
     if (!d) {
       return null;
     }
-    return generateReportForFilters(d, props.slug, []);
+    return generateReportAndCooccurrence(d, props.slug, []);
   });
+
+  const filteredReport = createMemo(() => filteredAnalysis()?.report ?? null);
 
   const matchCount = createMemo(() => filteredReport()?.deckTotal ?? 0);
   const sharePct = createMemo(() => {
@@ -386,13 +426,36 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
     return (matchCount() / total) * 100;
   });
 
+  // `filteredReport()` is rebuilt from scratch on every apply (generateReportAndCooccurrence
+  // creates brand-new item objects), so CardList's <For each> — which is reference-keyed —
+  // would tear down and remount every CardTile (including its CardImage) on each filter
+  // change even when a card's numbers didn't move. Reconcile by cardId here: reuse the
+  // previous item object whenever its content is unchanged, so <For> sees the same
+  // reference and leaves that tile mounted.
+  let prevItemsById = new Map<string, CardListItem>();
   const displayedItems = createMemo<CardListItem[]>(() => {
     const r = filteredReport();
     if (!r) {
+      prevItemsById = new Map();
       return [];
     }
     const t = threshold();
-    return (r.items as unknown as CardListItem[]).filter(i => (i.pct ?? 0) >= t);
+    const filtered = (r.items as unknown as CardListItem[]).filter(i => (i.pct ?? 0) >= t);
+    const nextItemsById = new Map<string, CardListItem>();
+    const reconciled = filtered.map(item => {
+      const cardId = item.set && item.number !== undefined ? buildCardId(item.set, item.number) : undefined;
+      if (cardId) {
+        const prev = prevItemsById.get(cardId);
+        if (prev && shallowEqualCardItem(prev, item)) {
+          nextItemsById.set(cardId, prev);
+          return prev;
+        }
+        nextItemsById.set(cardId, item);
+      }
+      return item;
+    });
+    prevItemsById = nextItemsById;
+    return reconciled;
   });
 
   // ----- Build-toward-60 derived state -----
@@ -404,14 +467,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
     }, 0)
   );
 
-  const cooccurrence = createMemo(() => {
-    const d = filteredDecks();
-    const r = filteredReport();
-    if (!d || !r) {
-      return null;
-    }
-    return buildCooccurrence(d, r.items);
-  });
+  const cooccurrence = createMemo(() => filteredAnalysis()?.cooccurrence ?? null);
 
   const activeRuleIds = createMemo(() => new Set(rules().map(r => r.cardId)));
   const includeRuleIds = createMemo(() =>

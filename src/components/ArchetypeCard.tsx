@@ -3,6 +3,8 @@ import type { ArchetypeIndexEntry } from '../types';
 import { Trend, type TrendDirection } from './Trend';
 import { CardStack } from './CardImage';
 import { formatPercent } from '../lib/format';
+import { prefetchArchetypePage } from '../lib/prefetch';
+import '../styles/pages/archetype.css';
 
 interface ArchetypeCardProps {
   entry: ArchetypeIndexEntry;
@@ -11,6 +13,8 @@ interface ArchetypeCardProps {
   online?: ArchetypeIndexEntry;
   rank?: number;
   trend?: { direction: TrendDirection; delta?: string };
+  /** Eager-load the thumbnail images (above-the-fold tiles). */
+  eagerImage?: boolean;
 }
 
 function entryThumbnails(entry: ArchetypeIndexEntry | undefined): string[] {
@@ -41,14 +45,19 @@ export function ArchetypeCard(props: ArchetypeCardProps) {
   };
 
   return (
-    <A class='arche' href={`/archetypes/${encodeURIComponent(slug())}`}>
+    <A
+      class='arche'
+      href={`/archetypes/${encodeURIComponent(slug())}`}
+      onMouseEnter={prefetchArchetypePage}
+      onFocus={prefetchArchetypePage}
+    >
       <div class='arche-thumb' aria-hidden='true'>
-        <CardStack thumbnails={thumbnails()} size='xs' />
+        <CardStack thumbnails={thumbnails()} size='xs' lazy={!props.eagerImage} />
       </div>
       <div class='arche-name'>{props.entry.label || props.entry.name}</div>
       <div class='arche-stats'>
         <span class='arche-share'>{share()}</span>
-        {decks() ? <span class='arche-wr'>{decks()} decks</span> : null}
+        {decks() ? <span class='arche-decks'>{decks()} decks</span> : null}
         {props.trend ? <Trend direction={props.trend.direction} delta={props.trend.delta} /> : null}
       </div>
     </A>

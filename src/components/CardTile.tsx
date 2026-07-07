@@ -20,7 +20,7 @@ import { CardImage } from './CardImage';
  *
  * The whole tile is a single link to the card detail page.
  */
-export function CardTile(props: { card: CardItem; hideEmptyBuckets?: boolean }) {
+export function CardTile(props: { card: CardItem; hideEmptyBuckets?: boolean; eagerImage?: boolean }) {
   const buckets = createMemo<{ copies: number; pct: number }[]>(() => {
     const dist = props.card.dist ?? [];
     const valid: { copies: number; pct: number }[] = [];
@@ -71,6 +71,19 @@ export function CardTile(props: { card: CardItem; hideEmptyBuckets?: boolean }) 
     return max;
   });
 
+  // Accessible summary + tooltip for the copy-count histogram. Reads like
+  // "1 copy: 12%, 2 copies: 60%, ..." so screen readers (and hover) get the
+  // real distribution instead of a generic label.
+  const bucketText = (b: { copies: number; pct: number }) =>
+    `${b.copies} cop${b.copies === 1 ? 'y' : 'ies'}: ${b.pct.toFixed(0)}%`;
+  const histSummary = createMemo(() => {
+    const b = buckets();
+    if (b.length === 0) {
+      return 'No copy-count data.';
+    }
+    return `Copies per deck — ${b.map(bucketText).join(', ')}`;
+  });
+
   const href = () =>
     props.card.set && props.card.number !== undefined ? `/cards/${props.card.set}/${props.card.number}` : '#';
 
@@ -83,10 +96,11 @@ export function CardTile(props: { card: CardItem; hideEmptyBuckets?: boolean }) 
           size='sm'
           sizes='(max-width: 640px) 30vw, 164px'
           alt={`${props.card.name} card`}
+          lazy={props.eagerImage ? false : undefined}
         />
         <div class='card-tile-shade' aria-hidden='true' />
         <div class='card-tile-overlay'>
-          <div class='card-tile-hist' aria-hidden='true' title='Copies-per-deck distribution'>
+          <div class='card-tile-hist' role='img' aria-label={histSummary()} title={histSummary()}>
             <For each={buckets()}>
               {bucket => {
                 const heightPct = () => {
@@ -98,7 +112,7 @@ export function CardTile(props: { card: CardItem; hideEmptyBuckets?: boolean }) 
                   return Math.max(bucket.pct > 0 ? 8 : 0, (bucket.pct / peak) * 100);
                 };
                 return (
-                  <div class='card-tile-hist-col'>
+                  <div class='card-tile-hist-col' title={bucketText(bucket)}>
                     <div class='card-tile-hist-fill' style={{ height: `${heightPct()}%` }} />
                     <span class='card-tile-hist-label'>{bucket.copies}</span>
                   </div>

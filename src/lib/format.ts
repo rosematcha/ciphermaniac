@@ -9,20 +9,14 @@ export function formatRecord(p: TournamentParticipant): string {
   return `${p.wins ?? 0}-${p.losses ?? 0}-${p.ties ?? 0}`;
 }
 
-// Per-tournament archetype index sometimes uses 0..1 and sometimes 0..100;
-// anything ≤ 1 is treated as a fraction.
-export function normalizePercent(p: number | null | undefined): number {
-  if (p === null || p === undefined || !Number.isFinite(p)) {
-    return 0;
-  }
-  return p <= 1 ? p * 100 : p;
-}
-
+// Values arrive already on the 0–100 scale — archetype index percents are
+// scale-normalized per file in `fetchArchetypes` (see data.ts). Never rescale
+// per value here: a ≤1 heuristic misreads real sub-1% shares.
 export function formatPercent(p: number | null | undefined, fractionDigits = 1): string {
   if (p === null || p === undefined || !Number.isFinite(p)) {
     return '—';
   }
-  return `${normalizePercent(p).toFixed(fractionDigits)}%`;
+  return `${p.toFixed(fractionDigits)}%`;
 }
 
 const TOURNAMENT_KEY_RE = /^\d{4}-\d{2}-\d{2},\s*(.+)$/;

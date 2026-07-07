@@ -3,23 +3,29 @@ import { createEffect, createMemo, createResource, createSignal, onMount, Show }
 import {
   fetchArchetype,
   fetchArchetypes,
+  fetchPrices,
   fetchRotationIndex,
+  prettyTournamentName,
   snapshotDateForArchetype,
   snapshotSourceKey
 } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
+import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../types';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { Tabs } from '../components/Tabs';
 import { Segmented } from '../components/Segmented';
 import { EmptyState } from '../components/EmptyState';
 import { Skeleton } from '../components/Skeleton';
+import { InfoTip } from '../components/InfoTip';
 import { CardList, type ViewMode } from '../components/CardList';
 import { AdvancedPanel } from '../components/AdvancedPanel';
 import { MatchupsPanel } from '../components/MatchupsPanel';
 import { createPersistentViewMode } from '../lib/persistentSignal';
-import { normalizePercent } from '../lib/format';
 import { latestValue, resolved } from '../lib/resource';
+import { fetchArchetypeWinRate, WR_MIN_GAMES, WR_MUTE_GAMES } from '../lib/archetypeWinRate';
+import { estimateDeckCost } from '../lib/deckCost';
+import '../styles/pages/archetype.css';
 
 type ArchTab = 'core' | 'tech' | 'cards' | 'matchups' | 'advanced';
 
@@ -236,19 +242,87 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
     if (p === null || p === undefined || !Number.isFinite(p)) {
       return null;
     }
-    return normalizePercent(p).toFixed(1);
+    return p.toFixed(1);
   };
+
+  // Scope total: the denominator behind the archetype's meta share. Derived
+  // from the entry's own deckCount/percent pair (exact by construction) rather
+  // than summing the index, which under-counts scopes whose index omits
+  // below-threshold archetypes and would disagree with the displayed share.
+  const metaTotal = createMemo(() => {
+    const entry = props.indexEntry;
+    const count = entry?.deckCount;
+    const pct = entry?.percent;
+    if (!count || !pct || !Number.isFinite(pct) || pct <= 0) {
+      return null;
+    }
+    return Math.round((count * 100) / pct);
+  });
+  const scopeLabel = () =>
+    props.tournament === ONLINE_META_NAME ? ONLINE_META_LABEL : prettyTournamentName(props.tournament);
+
+  // Aggregate event win rate — same source the Matchups tab uses.
+  const [winRate] = createResource(
+    () => ({ t: props.tournament, slug: props.slug, label: props.label }),
+    ({ t, slug, label }) => fetchArchetypeWinRate(t, slug, label)
+  );
+  const wr = () => resolved(winRate);
+
+  // Typical-list cost from card prices; null (renders nothing) when coverage is thin.
+  const [prices] = createResource(fetchPrices);
+  const deckCost = createMemo(() => {
+    const p = prices();
+    return p ? estimateDeckCost(props.report.items as CardItem[], p) : null;
+  });
 
   return (
     <>
       <section class='hero'>
         <h1>{props.label}</h1>
         <div class='hero-meta'>
-          <Show when={sharePct()}>
-            <span>{sharePct()}% meta share</span>
-            <span class='dot'>·</span>
-          </Show>
           <span>{props.report.deckTotal.toLocaleString()} decks</span>
+          <Show when={sharePct()}>
+            <span class='dot'>·</span>
+            <span class='arche-stat'>
+              <span>
+                {sharePct()}%<Show when={metaTotal()}>{total => <> of {total().toLocaleString()}</>}</Show> in{' '}
+                {scopeLabel()}
+              </span>
+              <InfoTip marker='i' label='Meta share'>
+                This archetype's share of all decks in the report.
+              </InfoTip>
+            </span>
+          </Show>
+          <Show when={wr()} keyed>
+            {agg => (
+              <Show when={agg.games > 0}>
+                <span class='dot'>·</span>
+                <span class='arche-stat' classList={{ 'is-muted': agg.games < WR_MUTE_GAMES }}>
+                  <span class='arche-stat-lead'>
+                    {agg.games < WR_MIN_GAMES || agg.winRate === null ? '—' : `${agg.winRate.toFixed(1)}%`} win rate ·{' '}
+                    {agg.games.toLocaleString()} games
+                  </span>
+                  <InfoTip marker='i' label='Win rate'>
+                    Match win rate across all recorded games, mirrors excluded. Ties count as one third of a win.
+                  </InfoTip>
+                </span>
+              </Show>
+            )}
+          </Show>
+          <Show when={deckCost()} keyed>
+            {cost => (
+              <>
+                <span class='dot'>·</span>
+                <span class='arche-stat'>
+                  <span class='arche-stat-lead'>≈ ${Math.round(cost.cost).toLocaleString()} typical list</span>
+                  <InfoTip marker='i' label='Typical list cost'>
+                    Market price of a typical list: cards in at least half of lists, at their most common copy count.
+                    TCGPlayer prices.
+                  </InfoTip>
+                </span>
+              </>
+            )}
+          </Show>
         </div>
       </section>
 
@@ -265,6 +339,18 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
             />
           </Show>
         </div>
+
+        <Show when={props.tab === 'tech'}>
+          <p class='arche-tab-note'>
+            <span>
+              Cards in {TECH_THRESHOLD} to {CORE_THRESHOLD} percent of lists
+            </span>
+            <InfoTip marker='i' label='What counts as a tech card'>
+              Cards in {TECH_THRESHOLD} to {CORE_THRESHOLD} percent of lists. Below {TECH_THRESHOLD} percent a card is
+              closer to a one-off experiment than a tech choice.
+            </InfoTip>
+          </p>
+        </Show>
 
         <Show when={props.tab === 'core'}>
           <CardList

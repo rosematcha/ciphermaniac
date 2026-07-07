@@ -17,6 +17,19 @@ export function pointsWinRate(wins: number, ties: number, total: number): number
   return total > 0 ? ((wins + ties * TIE_VALUE) / total) * 100 : 0;
 }
 
+/** Pseudo-games added by {@link shrunkWinRate} to pull small samples toward 50%. */
+export const SHRINK_PSEUDO_GAMES = 10;
+
+/**
+ * Sample-size-adjusted win rate (0..1) used purely to ORDER rows, never displayed.
+ * Adds {@link SHRINK_PSEUDO_GAMES} pseudo-games at 50% so a 2-0 fringe matchup can't
+ * outrank a proven 65% over 200 games. Ties count as {@link TIE_VALUE} of a win.
+ */
+export function shrunkWinRate(wins: number, ties: number, matches: number): number {
+  const effWins = wins + ties * TIE_VALUE;
+  return (effWins + SHRINK_PSEUDO_GAMES * 0.5) / (matches + SHRINK_PSEUDO_GAMES);
+}
+
 export interface MatchupRowCore {
   /** Clean opponent display label (no "(mirror)" suffix). */
   opponentLabel: string;

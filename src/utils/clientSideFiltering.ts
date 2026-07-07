@@ -14,6 +14,7 @@ import {
   sortReportItems
 } from '../../shared/reportUtils.js';
 import type { Deck, DeckCard, Filter, Operator, PercentRule, PlacementRule } from '../types/index.js';
+import type { CardPresence, CooccurrenceContext } from './cardCooccurrence';
 
 export type { Deck, DeckCard, Filter, Operator };
 
@@ -126,8 +127,23 @@ export function buildCardId(set: string, number: string | number | null | undefi
   return `${set}~${fullNumber}`;
 }
 
-function deckMatchesArchetype(deck: Deck, archetypeBase: string): boolean {
-  return normalizeArchetypeName(deck?.archetype) === normalizeArchetypeName(archetypeBase);
+// WeakMap cache to memoize each deck's normalized archetype name. The slug
+// doesn't change per keystroke, so normalizing every deck's archetype on every
+// filter apply is pure repeated work; key the result off the deck identity.
+const deckArchetypeCache = new WeakMap<Deck, string>();
+
+function normalizedDeckArchetype(deck: Deck): string {
+  const cached = deckArchetypeCache.get(deck);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const normalized = normalizeArchetypeName(deck?.archetype);
+  deckArchetypeCache.set(deck, normalized);
+  return normalized;
+}
+
+function deckMatchesArchetype(deck: Deck, normalizedBase: string): boolean {
+  return normalizedDeckArchetype(deck) === normalizedBase;
 }
 
 function getDeckCards(deck: Deck): Card[] {
@@ -243,12 +259,41 @@ function deckMatchesFilters(deck: Deck, filters: Filter[]): boolean {
   });
 }
 
+interface AggregateOptions {
+  /**
+   * Materialize the per-card `deckInstances` array (deckId/count/archetype for
+   * every occurrence). Off by default because the archetype "filters" panel —
+   * the only client-side caller — never reads it, and building + `.slice()`ing
+   * it is O(decks×cards) of pure waste. Server reports carry deckInstances from
+   * the pipeline; this flag only governs the client-side aggregation.
+   */
+  deckInstances?: boolean;
+  /**
+   * Also build a co-occurrence presence index in the SAME pass (which decks run
+   * each card, deduped per deck, copies>0 only). Lets a caller that needs both
+   * the report and the co-occurrence analysis avoid a second full walk over the
+   * filtered decks. Mirrors `buildCooccurrence` exactly so the output matches.
+   */
+  cooccurrence?: boolean;
+}
+
+interface AggregateResult {
+  report: FilteredReport;
+  cooccurrence?: CooccurrenceContext;
+}
+
 /**
- *
+ * Aggregate a deck subset into a report, optionally also producing a
+ * co-occurrence presence index in the same pass.
  * @param decks
+ * @param options
  */
-function aggregateDecks(decks: Deck[]): FilteredReport {
+function aggregateDecks(decks: Deck[], options: AggregateOptions = {}): AggregateResult {
+  const wantDeckInstances = options.deckInstances ?? false;
+  const wantCooccurrence = options.cooccurrence ?? false;
   const cardUsage = new Map<string, CardUsage>();
+  // Co-occurrence presence: cardId → decks running it (deduped, copies>0).
+  const presence = wantCooccurrence ? new Map<string, CardPresence>() : null;
 
   decks.forEach((deck, deckIndex) => {
     const cards = getDeckCards(deck);
@@ -256,6 +301,9 @@ function aggregateDecks(decks: Deck[]): FilteredReport {
       return;
     }
     const deckId = deriveDeckId(deck, deckIndex);
+    // Track cards already credited to this deck's presence (dedupe per deck),
+    // mirroring buildCooccurrence's per-deck `seen` set.
+    const seen = presence ? new Set<string>() : null;
 
     cards.forEach(card => {
       const cardId = buildCardKeyFromCard(card);
@@ -290,12 +338,29 @@ function aggregateDecks(decks: Deck[]): FilteredReport {
       const usage = cardUsage.get(cardId)!;
       const cardCount = Number(card?.count ?? card?.copies ?? 0);
       usage.found += 1;
-      usage.deckInstances.push({
-        deckId,
-        count: cardCount,
-        archetype: deck?.archetype
-      });
+      if (wantDeckInstances) {
+        usage.deckInstances.push({
+          deckId,
+          count: cardCount,
+          archetype: deck?.archetype
+        });
+      }
       usage.histogram.set(cardCount, (usage.histogram.get(cardCount) || 0) + 1);
+
+      // Presence dedupes per deck and ignores zero-copy entries.
+      if (presence && seen && cardCount > 0 && !seen.has(cardId)) {
+        seen.add(cardId);
+        let entry = presence.get(cardId);
+        if (!entry) {
+          entry = {
+            ref: { cardId, name: usage.name, set: usage.set, number: usage.number, category: usage.category },
+            deckIds: new Set<string>(),
+            count: 0
+          };
+          presence.set(cardId, entry);
+        }
+        entry.deckIds.add(deckId);
+      }
     });
   });
 
@@ -327,7 +392,7 @@ function aggregateDecks(decks: Deck[]): FilteredReport {
       total: deckTotal,
       pct,
       dist,
-      deckInstances: usage.deckInstances.slice(),
+      deckInstances: wantDeckInstances ? usage.deckInstances.slice() : usage.deckInstances,
       rank: 0
     };
   });
@@ -336,7 +401,14 @@ function aggregateDecks(decks: Deck[]): FilteredReport {
   const sortedItems = sortReportItems(items);
   const rankedItems = assignRanks(sortedItems);
 
-  return { deckTotal, items: rankedItems };
+  const report: FilteredReport = { deckTotal, items: rankedItems };
+  if (!presence) {
+    return { report };
+  }
+  for (const entry of presence.values()) {
+    entry.count = entry.deckIds.size;
+  }
+  return { report, cooccurrence: { totalDecks: deckTotal, presence } };
 }
 
 function deriveSuccessTags(
@@ -476,7 +548,8 @@ function summarizeFilters(filters: Filter[]): string {
  */
 export function filterDecks(decks: Deck[], archetypeBase: string, filters: any[]): Deck[] {
   const normalizedFilters = normalizeFilters(filters);
-  const archetypeDecks = decks.filter(deck => deckMatchesArchetype(deck, archetypeBase));
+  const normalizedBase = normalizeArchetypeName(archetypeBase);
+  const archetypeDecks = decks.filter(deck => deckMatchesArchetype(deck, normalizedBase));
   return normalizedFilters.length
     ? archetypeDecks.filter(deck => deckMatchesFilters(deck, normalizedFilters))
     : archetypeDecks;
@@ -493,12 +566,57 @@ export function generateReportForFilters(decks: Deck[], archetypeBase: string, f
     filters: summarizeFilters(normalizedFilters)
   });
 
-  const report = aggregateDecks(matchingDecks);
+  const { report } = aggregateDecks(matchingDecks);
   return {
     ...report,
     raw: {
       generatedClientSide: true,
       filterCount: normalizedFilters.length
     }
+  };
+}
+
+export interface FilteredReportWithCooccurrence {
+  report: FilteredReport;
+  cooccurrence: CooccurrenceContext;
+}
+
+/**
+ * Aggregate the report AND the co-occurrence presence index for a filter set in
+ * a single pass over the matching decks. The archetype "filters" panel needs
+ * both — deriving them separately walks every (deck × card) twice. The
+ * co-occurrence output matches a standalone `buildCooccurrence(matchingDecks,
+ * report.items)` because refs are stamped from the same per-card metadata and
+ * the per-deck dedupe / copies>0 rules are mirrored.
+ * @param decks
+ * @param archetypeBase
+ * @param filters
+ */
+export function generateReportAndCooccurrence(
+  decks: Deck[],
+  archetypeBase: string,
+  filters: any[]
+): FilteredReportWithCooccurrence {
+  const normalizedFilters = normalizeFilters(filters);
+  const matchingDecks = filterDecks(decks, archetypeBase, filters);
+
+  logger.info('Generated client-side report + co-occurrence for filters', {
+    archetypeBase,
+    totalDecks: decks.length,
+    matchingDeckCount: matchingDecks.length,
+    filters: summarizeFilters(normalizedFilters)
+  });
+
+  const { report, cooccurrence } = aggregateDecks(matchingDecks, { cooccurrence: true });
+  return {
+    report: {
+      ...report,
+      raw: {
+        generatedClientSide: true,
+        filterCount: normalizedFilters.length
+      }
+    },
+    // aggregateDecks always returns `cooccurrence` when requested.
+    cooccurrence: cooccurrence as CooccurrenceContext
   };
 }

@@ -2,23 +2,24 @@ import { useNavigate } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, on, Show } from 'solid-js';
 import {
   fetchArchetypeDecks,
+  fetchArchetypeMatches,
   fetchArchetypeMatchupsOnline,
   fetchArchetypes,
   fetchMatchupProfiles,
   fetchPlayerMatches,
   normalizeArchetypeKey
 } from '../lib/data';
-import { type MatchupRowCore, rowsFromMajorsProfile, rowsFromOnlineMatchups } from '../lib/matchups';
+import { type MatchupRowCore, rowsFromMajorsProfile, rowsFromOnlineMatchups, shrunkWinRate } from '../lib/matchups';
 import { buildLensRows, canonicalizeForLens, type LensRow, partitionByCard, tallyLens, wrOf } from '../lib/cardLens';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { buildCardId } from '../utils/deckCardId';
-import { normalizePercent } from '../lib/format';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../types';
 import { Segmented } from './Segmented';
 import { EmptyState } from './EmptyState';
 import { Skeleton } from './Skeleton';
 import { InfoTip } from './InfoTip';
 import { buildArchetypeIndexByKey, OpponentCell, resolveOpponentMeta } from './OpponentCell';
+import '../styles/pages/archetype.css';
 
 interface MatchupsPanelProps {
   slug: string;
@@ -53,6 +54,8 @@ const SORT_OPTIONS: { value: SortBy; label: string }[] = [
 
 /** Hide opponents below this many games unless the user expands. */
 const FIELD_FLOOR = 5;
+/** Below this many games a shown field row is faded (still visible, just quieter). */
+const FIELD_LOW_SAMPLE = 20;
 /** A lens opponent needs this many games in BOTH subsets to show by default. */
 const LENS_FLOOR = 3;
 
@@ -124,10 +127,12 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
   const navigate = useNavigate();
 
   // Field data: the pre-aggregated matrix (majors) or the online matchups map.
+  // Both fetches start immediately in parallel — whichever source has data wins
+  // (majors: profiles; online: trends) — rather than waiting on profiles first.
   const [profiles] = createResource(() => props.tournament, fetchMatchupProfiles);
   const [onlineMatchups] = createResource(
-    () => (profiles.loading || profiles() ? false : { t: props.tournament, slug: props.slug }),
-    src => (src ? fetchArchetypeMatchupsOnline(src.t, src.slug) : null)
+    () => ({ t: props.tournament, slug: props.slug }),
+    src => fetchArchetypeMatchupsOnline(src.t, src.slug)
   );
   const [indexFallback] = createResource(() => (props.indexEntries ? false : props.tournament), fetchArchetypes);
   const indexEntries = (): ArchetypeIndexEntry[] => props.indexEntries ?? indexFallback() ?? [];
@@ -150,7 +155,12 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
     () => (engaged() ? { t: props.tournament, slug: props.slug } : false),
     ({ t, slug }) => fetchArchetypeDecks(t, slug)
   );
-  const [matches] = createResource(() => (engaged() ? props.tournament : false), fetchPlayerMatches);
+  // Prefer the per-archetype slice (a few KB); fall back to the whole-event
+  // playerMatches.json (~7MB) for tournaments ingested before the slice existed.
+  const [matches] = createResource(
+    () => (engaged() ? { t: props.tournament, slug: props.slug } : false),
+    async ({ t, slug }) => (await fetchArchetypeMatches(t, slug)) ?? fetchPlayerMatches(t)
+  );
   const [synonymDb] = createResource(
     () => Boolean(engaged()),
     () => getSynonymDatabase()
@@ -175,15 +185,18 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
   );
 
   const isMajors = () => Boolean(profiles());
-  const isOnline = () => !profiles.loading && !profiles() && Boolean(onlineMatchups());
-  const loading = () => profiles.loading || (!profiles() && onlineMatchups.loading);
+  const isOnline = () => !isMajors() && Boolean(onlineMatchups());
+  // Wait for both sources to settle unless majors already has data (the preferred
+  // source), so we don't flash the empty state while online is still in flight.
+  const loading = () => (profiles.loading || onlineMatchups.loading) && !isMajors();
   const showMeta = () => sortBy() === 'prevalence';
 
   // ---- Field rows (Source A) — always quality-weighted for majors ----
   const fieldRows = createMemo<FieldRow[]>(() => {
     const payload = profiles();
-    const cores: MatchupRowCore[] = payload
-      ? rowsFromMajorsProfile(payload.profiles.qualityWeighted ?? payload.profiles.all, props.label)
+    const majorsProfile = payload?.profiles.qualityWeighted ?? payload?.profiles.all;
+    const cores: MatchupRowCore[] = majorsProfile
+      ? rowsFromMajorsProfile(majorsProfile, props.label)
       : onlineMatchups()
         ? rowsFromOnlineMatchups(onlineMatchups()!, props.label)
         : [];
@@ -197,13 +210,15 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
           ...core,
           opponentSlug: meta.slug,
           iconSlugs: meta.iconSlugs,
-          prevalence: meta.percent === null ? null : normalizePercent(meta.percent)
+          prevalence: meta.percent
         };
       });
+    // Order by a sample-size-adjusted win rate so a 5-0 fringe matchup can't
+    // outrank a proven 65% over 200 games. The RAW winRate is still displayed.
     return sortByMode(
       rows,
       sortBy(),
-      r => r.winRate,
+      r => shrunkWinRate(r.wins, r.ties, r.matches),
       r => r.prevalence
     );
   });
@@ -262,7 +277,7 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
           opponentLabel: lens.opponent,
           opponentSlug: meta.slug,
           iconSlugs: meta.iconSlugs,
-          prevalence: meta.percent === null ? null : normalizePercent(meta.percent),
+          prevalence: meta.percent,
           isMirror: normalizeArchetypeKey(lens.opponent) === normalizeArchetypeKey(props.label),
           lens
         };
@@ -348,7 +363,8 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
                     Quality-weighted: games in later rounds and against stronger opponents count for more.{' '}
                   </Show>
                   Win rate scores a win as 3× a tie (win 3, tie 1, loss 0). The % by each deck is its share of the
-                  field.
+                  field. Rows are ordered by a sample-size-adjusted win rate so a 2-0 matchup does not outrank a proven
+                  one. The bar emphasizes the common 50 to 70 percent range, with 50 percent marked at the center.
                 </InfoTip>
               </div>
 
@@ -473,6 +489,13 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
               when={lensActive()}
               fallback={
                 <div class='mu-list'>
+                  <div class='mu-axis-head' aria-hidden='true'>
+                    <span />
+                    <span class='mu-axis-track'>
+                      <span class='mu-axis-tick'>50%</span>
+                    </span>
+                    <span />
+                  </div>
                   <For each={fieldVisible()}>{row => <FieldBar row={row} showMeta={showMeta()} onGo={go} />}</For>
                   <Show when={fieldHidden() > 0 && !showAllField()}>
                     <button type='button' class='mu-more' onClick={() => setShowAllField(true)}>
@@ -537,10 +560,13 @@ function FieldBar(props: { row: FieldRow; showMeta: boolean; onGo: (slug: string
   const fillLeft = () => Math.min(50, pos());
   const fillWidth = () => Math.abs(pos() - 50);
   const tone = () => (Math.abs(wr() - 50) < 0.5 ? 'mu-flat' : wr() > 50 ? 'mu-pos' : 'mu-neg');
+  // Fold double losses into the displayed loss count (a double loss is a loss for
+  // us too), so W-L-T sums to the game total instead of appearing short by `d`.
+  const lossesShown = () => props.row.losses + props.row.doubleLosses;
   return (
     <div
       class='mu-row'
-      classList={{ 'is-link': Boolean(props.row.opponentSlug) }}
+      classList={{ 'is-link': Boolean(props.row.opponentSlug), 'mu-low': props.row.matches < FIELD_LOW_SAMPLE }}
       role={props.row.opponentSlug ? 'link' : undefined}
       tabindex={props.row.opponentSlug ? 0 : undefined}
       onClick={() => props.onGo(props.row.opponentSlug)}
@@ -564,7 +590,7 @@ function FieldBar(props: { row: FieldRow; showMeta: boolean; onGo: (slug: string
       <div class='mu-stats'>
         <span class={`mu-wr ${tone()}`}>{fmtPct(wr())}</span>
         <span class='mu-rec'>
-          {props.row.wins}–{props.row.losses}–{props.row.ties} · {props.row.matches.toLocaleString()}
+          {props.row.wins}–{lossesShown()}–{props.row.ties} · {props.row.matches.toLocaleString()}
         </span>
       </div>
     </div>

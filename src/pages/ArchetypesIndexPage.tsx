@@ -14,6 +14,9 @@ import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { createPersistentViewMode } from '../lib/persistentSignal';
 import { formatPercent } from '../lib/format';
 import { latestValue } from '../lib/resource';
+import { prefetchArchetypePage } from '../lib/prefetch';
+import { fetchAllArchetypeWinRates, type WinRateAggregate, WR_MIN_GAMES, WR_MUTE_GAMES } from '../lib/archetypeWinRate';
+import '../styles/pages/archetype.css';
 
 type ViewMode = 'grid' | 'list';
 const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
@@ -45,6 +48,28 @@ export function ArchetypesIndexPage() {
   const [query, setQuery] = createSignal('');
   const [viewMode, setViewMode] = createPersistentViewMode('cm:archetypesView');
   const navigate = useNavigate();
+
+  // Win rates are only shown in the list view's column. Gate the fetch on that
+  // view (and on the full index, not the filtered subset, so typing doesn't
+  // refetch) — majors resolve in one request; the online meta fans out per
+  // archetype, so we don't want it firing behind the grid.
+  const [winRates] = createResource(
+    () => {
+      const list = archetypesData();
+      return viewMode() === 'list' && list ? { t: tournament(), entries: list } : null;
+    },
+    ({ t, entries }) => fetchAllArchetypeWinRates(t, entries)
+  );
+  const winRateData = () => latestValue(winRates);
+
+  // Field total behind every archetype's meta share (the caption denominator).
+  const totalDecks = createMemo(() => {
+    const list = archetypesData();
+    if (!list || list.length === 0) {
+      return null;
+    }
+    return list.reduce((sum, a) => sum + (a.deckCount ?? 0), 0);
+  });
 
   onMount(() => {
     document.title = 'Archetypes — Ciphermaniac';
@@ -119,12 +144,17 @@ export function ArchetypesIndexPage() {
                 <ArchetypesListView
                   items={filtered()}
                   iconMap={iconMap}
+                  winRates={winRateData()}
+                  totalDecks={totalDecks()}
+                  scopeLabel={scopeLabel()}
                   onSelect={slug => navigate(`/archetypes/${encodeURIComponent(slug)}`)}
                 />
               }
             >
               <div class='gallery-grid'>
-                <For each={filtered()}>{a => <ArchetypeCard entry={a} online={onlineByName().get(a.name)} />}</For>
+                <For each={filtered()}>
+                  {(a, i) => <ArchetypeCard entry={a} online={onlineByName().get(a.name)} eagerImage={i() < 8} />}
+                </For>
               </div>
             </Show>
           </Show>
@@ -134,28 +164,98 @@ export function ArchetypesIndexPage() {
   );
 }
 
+type SortCol = 'share' | 'decks' | 'winRate';
+type SortDir = 'ascending' | 'descending';
+
 function ArchetypesListView(props: {
   items: ArchetypeIndexEntry[];
   iconMap?: Map<string, string[]>;
+  winRates?: Map<string, WinRateAggregate>;
+  totalDecks: number | null;
+  scopeLabel: string;
   onSelect: (slug: string) => void;
 }) {
+  const [sortCol, setSortCol] = createSignal<SortCol>('share');
+  const [sortDir, setSortDir] = createSignal<SortDir>('descending');
+
+  const winRateOf = (entry: ArchetypeIndexEntry): number | null => props.winRates?.get(entry.name)?.winRate ?? null;
+  const gamesOf = (entry: ArchetypeIndexEntry): number => props.winRates?.get(entry.name)?.games ?? 0;
+
+  function toggle(col: SortCol) {
+    if (sortCol() === col) {
+      setSortDir(d => (d === 'ascending' ? 'descending' : 'ascending'));
+    } else {
+      setSortCol(col);
+      setSortDir('descending');
+    }
+  }
+  const ariaSort = (col: SortCol): SortDir | 'none' => (sortCol() === col ? sortDir() : 'none');
+
+  const sorted = createMemo(() => {
+    const col = sortCol();
+    const dir = sortDir() === 'ascending' ? 1 : -1;
+    // Read the reactive inputs here in the memo body; the comparator below closes
+    // over these locals so it stays a plain (non-tracked) function.
+    const rates = props.winRates;
+    const key = (e: ArchetypeIndexEntry): number | null =>
+      col === 'share' ? e.percent : col === 'decks' ? e.deckCount : (rates?.get(e.name)?.winRate ?? null);
+    // Nulls sort last regardless of direction.
+    return [...props.items].sort((a, b) => {
+      const ka = key(a);
+      const kb = key(b);
+      if (ka === null && kb === null) {
+        return 0;
+      }
+      if (ka === null) {
+        return 1;
+      }
+      if (kb === null) {
+        return -1;
+      }
+      return (ka - kb) * dir;
+    });
+  });
+
+  const SortHeader = (p: { col: SortCol; label: string }) => (
+    <th class='num sortable' aria-sort={ariaSort(p.col)}>
+      <button type='button' class='th-sort' onClick={() => toggle(p.col)}>
+        {p.label}
+        <Show when={sortCol() === p.col}>
+          <span class='sort-mark' aria-hidden='true'>
+            {sortDir() === 'ascending' ? '▲' : '▼'}
+          </span>
+        </Show>
+      </button>
+    </th>
+  );
+
   return (
     <div class='table-wrap'>
+      <Show when={props.totalDecks}>
+        {total => (
+          <p class='table-caption'>
+            Share of {total().toLocaleString()} decks · {props.scopeLabel}
+          </p>
+        )}
+      </Show>
       <table class='data'>
         <thead>
           <tr>
             <th class='num'>#</th>
             <th>Archetype</th>
-            <th class='num'>Meta share</th>
-            <th class='num'>Decks</th>
+            <SortHeader col='share' label='Meta share' />
+            <SortHeader col='decks' label='Decks' />
+            <SortHeader col='winRate' label='Win rate' />
           </tr>
         </thead>
         <tbody>
-          <For each={props.items}>
+          <For each={sorted()}>
             {(entry, i) => (
               <tr
                 class='is-link'
                 onClick={() => props.onSelect(entry.name)}
+                onMouseEnter={prefetchArchetypePage}
+                onFocus={prefetchArchetypePage}
                 tabIndex={0}
                 onKeyDown={e => {
                   if (e.key === 'Enter') {
@@ -172,6 +272,12 @@ function ArchetypesListView(props: {
                 </td>
                 <td class='num'>{formatPercent(entry.percent)}</td>
                 <td class='num muted-cell'>{entry.deckCount?.toLocaleString() ?? '—'}</td>
+                <td class='num' classList={{ 'wr-cell': true, 'is-muted': gamesOf(entry) < WR_MUTE_GAMES }}>
+                  <Show when={gamesOf(entry) >= WR_MIN_GAMES && winRateOf(entry) !== null} fallback={<span>—</span>}>
+                    {formatPercent(winRateOf(entry))}
+                    <span class='wr-games'>{gamesOf(entry).toLocaleString()}g</span>
+                  </Show>
+                </td>
               </tr>
             )}
           </For>
@@ -191,6 +297,7 @@ function ListSkeleton() {
             <th>Archetype</th>
             <th class='num'>Meta share</th>
             <th class='num'>Decks</th>
+            <th class='num'>Win rate</th>
           </tr>
         </thead>
         <tbody>
@@ -208,6 +315,9 @@ function ListSkeleton() {
                 </td>
                 <td class='num'>
                   <Skeleton width='48px' />
+                </td>
+                <td class='num'>
+                  <Skeleton width='56px' />
                 </td>
               </tr>
             )}

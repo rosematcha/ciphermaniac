@@ -572,12 +572,7 @@ def rebuild_tournaments_json_from_reports(r2_client, bucket_name: str, dry_run: 
         return updated
 
     print(f"  Uploading rebuilt {tournaments_key} with {len(updated)} entries...")
-    r2_client.put_object(
-        Bucket=bucket_name,
-        Key=tournaments_key,
-        Body=json.dumps(updated, indent=2),
-        ContentType="application/json",
-    )
+    upload_to_r2(r2_client, bucket_name, tournaments_key, updated)
     return updated
 
 
@@ -1269,9 +1264,11 @@ def aggregate_matchups(
             "byArchetype": {},
         }
 
+    # Only "all" and "qualityWeighted" are consumed by the frontend (MatchupsPanel
+    # reads qualityWeighted with fallback to all) — "phaseWeighted" was generated
+    # but never read, so it's dropped here to save compute/storage.
     profiles = {
         "all": init_profile("all"),
-        "phaseWeighted": init_profile("phaseWeighted"),
         "qualityWeighted": init_profile("qualityWeighted"),
     }
 
@@ -1329,7 +1326,6 @@ def aggregate_matchups(
 
         weight_map = {
             "all": 1.0,
-            "phaseWeighted": phase_mult,
             "qualityWeighted": quality_mult,
         }
 
@@ -1932,6 +1928,9 @@ def build_archetype_reports(
     return archetype_data_map, archetype_index_list
 
 
+REPORTS_CACHE_CONTROL = "public, max-age=21600"
+
+
 def upload_to_r2(r2_client, bucket_name, key, data):
     if LOCAL_EXPORT_DIR:
         local_path = Path(LOCAL_EXPORT_DIR) / key
@@ -1946,8 +1945,9 @@ def upload_to_r2(r2_client, bucket_name, key, data):
     r2_client.put_object(
         Bucket=bucket_name,
         Key=key,
-        Body=json.dumps(data, indent=2),
+        Body=json.dumps(data, separators=(",", ":")),
         ContentType="application/json",
+        CacheControl=REPORTS_CACHE_CONTROL,
     )
 
 
@@ -1965,6 +1965,7 @@ def upload_binary_to_r2(r2_client, bucket_name, key, data: bytes, content_type: 
         Key=key,
         Body=data,
         ContentType=content_type,
+        CacheControl=REPORTS_CACHE_CONTROL,
     )
 
 
@@ -1993,12 +1994,7 @@ def update_tournaments_json(r2_client, bucket_name, tournament_name):
     updated = sort_tournament_names_by_recency(updated, meta_map)
 
     print(f"  Uploading updated {tournaments_key}...")
-    r2_client.put_object(
-        Bucket=bucket_name,
-        Key=tournaments_key,
-        Body=json.dumps(updated, indent=2),
-        ContentType="application/json",
-    )
+    upload_to_r2(r2_client, bucket_name, tournaments_key, updated)
     print(f"  ✓ Added '{tournament_name}' to tournaments.json")
 
 
@@ -2944,9 +2940,29 @@ def main():
             "application/x-sqlite3",
         )
 
+    # Group player matches by pilot tpId once so each archetype only pays for
+    # the (small) subset of records involving its own pilots. The frontend's
+    # card lens filters playerMatches down to one archetype by playerId, so we
+    # ship it that slice directly (~7MB whole-event file -> a few KB per deck).
+    matches_by_tp_id: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
+    for player_match in player_matches:
+        tp = player_match.get("playerId")
+        if tp is not None:
+            matches_by_tp_id[int(tp)].append(player_match)
+
     for archetype_base, payload in archetype_data_map.items():
         upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/archetypes/{archetype_base}/cards.json", payload["cards"])
         upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/archetypes/{archetype_base}/decks.json", payload["decks"])
+        archetype_matches: List[Dict[str, Any]] = []
+        for deck in payload["decks"]:
+            deck_tp = deck.get("playerId")
+            if deck_tp is None:
+                continue
+            archetype_matches.extend(matches_by_tp_id.get(int(deck_tp), []))
+        archetype_matches.sort(key=lambda m: (m.get("round") or 0, m.get("playerId") or 0))
+        upload_to_r2(
+            r2_client, r2_bucket_name, f"{base_path}/archetypes/{archetype_base}/matches.json", archetype_matches
+        )
 
     print("\nUploading slices...")
     build_slice_payloads(base_path, "phase2", phase2_decks, r2_client, r2_bucket_name, card_types_db)

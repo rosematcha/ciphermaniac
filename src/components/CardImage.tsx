@@ -55,7 +55,18 @@ const THUMBNAILS_PROXY = '/thumbnails';
  * The probe result is cached per session.
  */
 const [r2Ready, setR2Ready] = createSignal(false);
-if (typeof window !== 'undefined') {
+
+/**
+ * Kicks off the R2 readiness probe. Called once from app startup (main.tsx)
+ * so it's resolved (or at least in flight) before the first `CardImage`
+ * mounts — probing lazily on first mount instead delayed first paint of card
+ * art on cold loads. Safe to call more than once; only fires the network
+ * request when nothing is cached yet.
+ */
+export function probeR2Ready(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
   let cached: string | null = null;
   try {
     cached = sessionStorage.getItem('cm:r2CardImages');
@@ -214,7 +225,7 @@ export function CardImage(props: CardImageProps) {
  * Stack of up to three card images, fanned slightly, used for archetype thumbnails.
  * Accepts a thumbnails array in the format `["SET/NUMBER", "SET/NUMBER", ...]`.
  */
-export function CardStack(props: { thumbnails: string[]; size?: CardImageSize }) {
+export function CardStack(props: { thumbnails: string[]; size?: CardImageSize; lazy?: boolean }) {
   const cards = createMemo(() =>
     props.thumbnails
       .map(t => {
@@ -243,7 +254,7 @@ export function CardStack(props: { thumbnails: string[]; size?: CardImageSize })
       <For each={cards()}>
         {c => (
           <div class='card-stack-slot'>
-            <CardImage set={c.set} number={c.number} size={props.size ?? 'xs'} />
+            <CardImage set={c.set} number={c.number} size={props.size ?? 'xs'} lazy={props.lazy} />
           </div>
         )}
       </For>

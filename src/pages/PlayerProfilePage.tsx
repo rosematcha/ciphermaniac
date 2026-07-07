@@ -10,8 +10,10 @@ import type { PlayerDeckCard, PlayerProfile, PlayerTournamentEntry } from '../ty
 import { capitalize } from '../lib/format';
 import { groupDeckByCategory } from '../lib/deckGrouping';
 import { resolved } from '../lib/resource';
+import '../styles/pages/players-tables.css';
 
 const ARCHETYPE_PREVIEW_COUNT = 5;
+const SMALL_SAMPLE_GAMES = 10;
 
 export function PlayerProfilePage() {
   const params = useParams<{ id: string }>();
@@ -120,21 +122,21 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
       <section class='kpis'>
         <div class='kpi'>
           <div class='kpi-label'>Day 2s</div>
-          <div class='kpi-value leader'>{s().day2s}</div>
+          <div class='kpi-value leader'>{s().day2s.toLocaleString()}</div>
           <div class='kpi-foot'>
-            <Show when={s().eventCount > 0}>{day2Pct()}% of events</Show>
+            <Show when={s().eventCount > 0}>{day2Pct().toFixed(1)}% of events</Show>
           </div>
         </div>
         <div class='kpi'>
           <div class='kpi-label'>Matches</div>
-          <div class='kpi-value'>{matchesPlayed()}</div>
+          <div class='kpi-value'>{matchesPlayed().toLocaleString()}</div>
           <div class='kpi-foot'>
             {s().wins}-{s().losses}-{s().ties}
           </div>
         </div>
         <div class='kpi'>
           <div class='kpi-label'>Win %</div>
-          <div class='kpi-value'>{winPct() != null ? `${winPct()}%` : '—'}</div>
+          <div class='kpi-value'>{winPct() != null ? `${winPct()!.toFixed(1)}%` : '—'}</div>
           <div class='kpi-foot'>ties excluded</div>
         </div>
         <div class='kpi'>
@@ -164,7 +166,7 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
                   <th>Archetype</th>
                   <th class='num'>Events</th>
                   <th class='num'>Record</th>
-                  <th class='num'>Win %</th>
+                  <th class='num'>Win % (ties excluded)</th>
                   <th class='num'>Day 2s</th>
                   <th class='num'>Best</th>
                 </tr>
@@ -173,6 +175,8 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
                 <For each={archetypesToShow()}>
                   {a => {
                     const pct = winPercent(a.wins, a.losses);
+                    const decisiveGames = a.wins + a.losses;
+                    const smallSample = decisiveGames < SMALL_SAMPLE_GAMES;
                     return (
                       <tr>
                         <td>
@@ -180,12 +184,18 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
                             {archetypeName(a.base)}
                           </A>
                         </td>
-                        <td class='num'>{a.eventCount}</td>
+                        <td class='num'>{a.eventCount.toLocaleString()}</td>
                         <td class='num'>
                           {a.wins}-{a.losses}-{a.ties}
                         </td>
-                        <td class='num'>{pct != null ? `${pct}%` : '—'}</td>
-                        <td class='num'>{a.day2s}</td>
+                        <td
+                          class='num'
+                          classList={{ 'stat-dim': smallSample }}
+                          title={smallSample ? `Small sample: ${decisiveGames} games` : undefined}
+                        >
+                          {pct != null ? `${pct.toFixed(1)}%` : '—'}
+                        </td>
+                        <td class='num'>{a.day2s.toLocaleString()}</td>
                         <td class='num'>{a.bestPlacement ?? '—'}</td>
                       </tr>
                     );

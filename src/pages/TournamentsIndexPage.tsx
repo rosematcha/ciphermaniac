@@ -6,10 +6,19 @@ import { Section } from '../components/Section';
 import { ChipGroup, SearchInput } from '../components/Chip';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
+import { Badge } from '../components/Badge';
 import { nameFromTournamentKey } from '../lib/format';
 import { latestValue } from '../lib/resource';
 
 type Filter = 'all' | 'regional' | 'international' | 'special';
+
+const CLASSIFICATION_LABELS: Record<ReturnType<typeof classifyTournament>, string> = {
+  online: 'Online',
+  regional: 'Regional',
+  international: 'International',
+  special: 'Special',
+  other: 'Event'
+};
 
 export function TournamentsIndexPage() {
   const { tournament, setTournament } = useTournament();
@@ -118,7 +127,14 @@ export function TournamentsIndexPage() {
                   >
                     <span class='date'>{dateFromKey(t)}</span>
                     <span class='name'>{nameFromTournamentKey(t)}</span>
-                    <Show when={t === tournament()} fallback={<span class='players'>{classifyTournament(t)}</span>}>
+                    <Show
+                      when={t === tournament()}
+                      fallback={
+                        <Badge variant={classifyTournament(t) === 'international' ? 'regulation' : undefined}>
+                          {CLASSIFICATION_LABELS[classifyTournament(t)]}
+                        </Badge>
+                      }
+                    >
                       <span class='players active-marker'>Active</span>
                     </Show>
                   </button>
