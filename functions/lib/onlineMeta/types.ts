@@ -53,7 +53,7 @@ export interface GatheredDeck {
 }
 
 /** Report item for thumbnail inference (subset of CardItem) */
-export interface ReportItem {
+interface ReportItem {
   name?: string;
   set?: string;
   number?: string | number;
@@ -79,13 +79,13 @@ export interface TournamentDetailsResponse {
 }
 
 /** Base options for functions that accept env and diagnostic options */
-export interface BaseOptions {
+interface BaseOptions {
   diagnostics?: DiagnosticsCollector;
   fetchJson?: typeof fetchLimitlessJson;
 }
 
 /** Diagnostics collector for tracking issues during processing */
-export interface ArchetypeClassificationDiagnostics {
+interface ArchetypeClassificationDiagnostics {
   deckRulesLoaded: number;
   apiName: number;
   deckId: number;
@@ -178,7 +178,7 @@ export interface TrendSeriesEntry {
 }
 
 /** Daily aggregated timeline entry */
-export interface DailyTimelineEntry {
+interface DailyTimelineEntry {
   date: string;
   decks: number;
   totalDecks: number;
@@ -186,7 +186,7 @@ export interface DailyTimelineEntry {
 }
 
 /** Tournament with deck count for trend reports */
-export interface TournamentWithDeckCount {
+interface TournamentWithDeckCount {
   id: string;
   name?: string;
   date?: string | null;
@@ -255,7 +255,6 @@ export type {
   PlayerDecks,
   PlayerIndexEntry,
   PlayerProfile,
-  PlayerProfileSummary,
   PlayerTournamentEntry
 } from '../../../shared/playerTypes';
 

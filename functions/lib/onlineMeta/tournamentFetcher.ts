@@ -51,10 +51,6 @@ export async function runWithConcurrency<T, R>(
   return results;
 }
 
-export function daysAgo(count: number) {
-  return new Date(Date.now() - count * 24 * 60 * 60 * 1000);
-}
-
 export async function fetchRecentOnlineTournaments(
   env: LimitlessEnv | undefined,
   since: Date,
@@ -163,7 +159,7 @@ export async function fetchRecentOnlineTournaments(
     .sort((first, second) => Date.parse(second.date) - Date.parse(first.date));
 }
 
-export function toCardEntries(decklist: unknown, cardTypesDb: CardTypesDatabase | null = null) {
+function toCardEntries(decklist: unknown, cardTypesDb: CardTypesDatabase | null = null) {
   if (!decklist || typeof decklist !== 'object') {
     return [];
   }
@@ -232,7 +228,7 @@ export function toCardEntries(decklist: unknown, cardTypesDb: CardTypesDatabase 
   return cards;
 }
 
-export async function hashDeck(cards: CardEntry[], fallbackKey = '') {
+async function hashDeck(cards: CardEntry[], fallbackKey = '') {
   const cryptoImpl = globalThis.crypto;
   if (!cryptoImpl?.subtle) {
     throw new Error('Web Crypto API not available for hashing decks');
@@ -263,7 +259,7 @@ const PERCENT_TAG_RULES = [
   { tag: 'top50', fraction: 0.5, minPlayers: 8 }
 ];
 
-export function determinePlacementTags(placing: number | null | undefined, players: number | null | undefined) {
+function determinePlacementTags(placing: number | null | undefined, players: number | null | undefined) {
   const place = Number.isFinite(placing) ? placing : null;
   const fieldSize = Number.isFinite(players) ? players : null;
   if (!place || !fieldSize || place <= 0 || fieldSize <= 1) {
@@ -291,7 +287,7 @@ export function determinePlacementTags(placing: number | null | undefined, playe
   return tags;
 }
 
-export function determinePlacementLimit(players: number | null | undefined) {
+function determinePlacementLimit(players: number | null | undefined) {
   const count = Number(players) || 0;
   // Drop ultra-tiny events
   if (count > 0 && count <= 3) {

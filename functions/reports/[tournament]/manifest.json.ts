@@ -16,7 +16,7 @@ interface AssetProbe {
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
-  'Cache-Control': 'public, max-age=300, s-maxage=300'
+  'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=3600'
 } as const;
 
 function encodeTournament(rawTournament: string | undefined): string {

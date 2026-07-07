@@ -76,7 +76,7 @@ export interface PlayerTournamentEntry {
  * Aggregate career summary on a player's profile. Day 2 is the "good event" bar.
  * `winRate`, `day2Rate`, `matchesPlayed` are derived client-side.
  */
-export interface PlayerProfileSummary {
+interface PlayerProfileSummary {
   eventCount: number;
   firstEventDate: string;
   lastEventDate: string;

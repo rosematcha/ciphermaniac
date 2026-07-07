@@ -1,7 +1,7 @@
 /* @refresh reload */
 import { lazy } from 'solid-js';
 import { render } from 'solid-js/web';
-import { Route, Router } from '@solidjs/router';
+import { Navigate, Route, Router, useParams } from '@solidjs/router';
 
 import './styles/fonts.css';
 import './styles/tokens.css';
@@ -38,8 +38,6 @@ const TournamentsIndexPage = lazy(() =>
   import('./pages/TournamentsIndexPage').then(m => ({ default: m.TournamentsIndexPage }))
 );
 const TrendsPage = lazy(() => import('./pages/TrendsPage').then(m => ({ default: m.TrendsPage })));
-const PlayersIndexPage = lazy(() => import('./pages/PlayersIndexPage').then(m => ({ default: m.PlayersIndexPage })));
-const PlayerPage = lazy(() => import('./pages/PlayerPage').then(m => ({ default: m.PlayerPage })));
 const PlayersPage = lazy(() => import('./pages/PlayersPage').then(m => ({ default: m.PlayersPage })));
 const PlayerProfilePage = lazy(() => import('./pages/PlayerProfilePage').then(m => ({ default: m.PlayerProfilePage })));
 const ToysPage = lazy(() => import('./pages/ToysPage').then(m => ({ default: m.ToysPage })));
@@ -52,6 +50,12 @@ const InLovingMemoryPage = lazy(() =>
 const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
 const SurveyPage = lazy(() => import('./pages/SurveyPage').then(m => ({ default: m.SurveyPage })));
 const SurveyResultsPage = lazy(() => import('./pages/SurveyResultsPage').then(m => ({ default: m.SurveyResultsPage })));
+
+// Legacy /standings/:id links redirect to the equivalent /players/:id profile.
+function StandingsPlayerRedirect() {
+  const params = useParams();
+  return <Navigate href={`/players/${params.id}`} />;
+}
 
 const rootEl = document.getElementById('root');
 if (!rootEl) {
@@ -85,8 +89,8 @@ render(
       <Route path='/trends' component={TrendsPage} />
       <Route path='/players' component={PlayersPage} />
       <Route path='/players/:id' component={PlayerProfilePage} />
-      <Route path='/standings' component={PlayersIndexPage} />
-      <Route path='/standings/:id' component={PlayerPage} />
+      <Route path='/standings' component={() => <Navigate href='/players' />} />
+      <Route path='/standings/:id' component={StandingsPlayerRedirect} />
       <Route path='/toys' component={ToysPage} />
       <Route path='/toys/social-graphics' component={SocialGraphicsPage} />
       <Route path='/toys/in-loving-memory' component={InLovingMemoryPage} />

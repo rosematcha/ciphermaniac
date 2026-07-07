@@ -4,7 +4,7 @@
  * JS over all rows (survey volume is small).
  */
 
-import { jsonError, jsonSuccess } from '../../lib/api/responses.js';
+import { corsPreflight, jsonError, jsonSuccess } from '../../lib/api/responses.js';
 
 interface D1Result<T> {
   results: T[];
@@ -189,12 +189,5 @@ export async function onRequestGet({ env }: RequestContext): Promise<Response> {
 }
 
 export function onRequestOptions(): Response {
-  return new Response(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type'
-    }
-  });
+  return corsPreflight('GET, OPTIONS', { status: 200, allowHeaders: 'Authorization, Content-Type' });
 }
