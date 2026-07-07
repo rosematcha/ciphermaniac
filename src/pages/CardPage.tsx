@@ -9,6 +9,7 @@ import {
   fetchCardUsage,
   fetchDay2CardStats,
   fetchMaster,
+  fetchPriceHistory,
   fetchPrices,
   fetchRotationIndex,
   findCardBySetNumber,
@@ -16,6 +17,7 @@ import {
   isSnapshotSource,
   itemUid,
   normalizeCardNumberKey,
+  type PricePoint,
   resolveArchetypeIcons,
   resolveCanonicalSetNumber,
   snapshotDateForCard,
@@ -198,6 +200,20 @@ export function CardPage() {
     return p[`${c.name}::${c.set}::${c.number}`] ?? null;
   });
 
+  // Rolling 90-day price history for the sparkline. One small file for the whole
+  // site (deduped by fetchJson); empty until the pipeline has run, and any card
+  // with fewer than two points degrades to no sparkline.
+  const [priceHistory] = createResource(fetchPriceHistory);
+  const priceHistoryData = () => latestValue(priceHistory);
+  const priceSeries = createMemo<PricePoint[]>(() => {
+    const c = card();
+    const h = priceHistoryData();
+    if (!c || !h) {
+      return [];
+    }
+    return h[`${c.name}::${c.set}::${c.number}`] ?? [];
+  });
+
   // Per-archetype usage: list every archetype that plays this card, with its
   // inclusion rate + average copy count. Fast path loads the precomputed
   // `cardUsage.json` inverted index in a single request; tournaments/snapshots
@@ -311,6 +327,7 @@ export function CardPage() {
           card={card()!}
           setNumber={setNumber()}
           priceEntry={priceEntry()}
+          priceSeries={priceSeries()}
           conversion={conversionStat()}
           archetypeUsage={archetypeUsageData()}
           archetypeUsageLoading={archetypeUsage.loading || archetypeIndex.loading}
@@ -376,6 +393,7 @@ function CardPageBody(props: {
   card: CardItem;
   setNumber: string;
   priceEntry: { price?: number; tcgPlayerId?: string } | null;
+  priceSeries: PricePoint[];
   conversion: Day2CardStat | undefined;
   archetypeUsage: ArchetypeUsageRow[] | null | undefined;
   archetypeUsageLoading: boolean;
@@ -525,7 +543,7 @@ function CardPageBody(props: {
                     <span class='stat-note'>current</span>
                   </Show>
                 </span>
-                <span class='stat-value'>
+                <span class='stat-value stat-value--price'>
                   <Show when={props.priceEntry?.tcgPlayerId} fallback={<>${props.priceEntry!.price!.toFixed(2)}</>}>
                     <a
                       class='price-link'
@@ -535,6 +553,9 @@ function CardPageBody(props: {
                     >
                       ${props.priceEntry!.price!.toFixed(2)} →
                     </a>
+                  </Show>
+                  <Show when={props.priceSeries.length >= 2}>
+                    <PriceSparkline points={props.priceSeries} />
                   </Show>
                 </span>
               </div>
@@ -584,6 +605,61 @@ function CardPageBody(props: {
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * Inline market-price sparkline for the card hero: the card's 90-day price
+ * trajectory with a first-to-last dollar-delta chip. Single series, so no legend
+ * — the "Market price" label names it. The line is colored by direction
+ * (up/flat/down) and the SVG is aria-hidden with the delta restated as text for
+ * screen readers. Only rendered by the caller when there are ≥ 2 points, so it
+ * simply vanishes until the pipeline has collected a few days of history.
+ */
+function PriceSparkline(props: { points: PricePoint[] }) {
+  const W = 108;
+  const H = 26;
+  const PAD = 3;
+  const prices = createMemo(() => props.points.map(p => p.price));
+  const start = () => prices()[0];
+  const end = () => prices()[prices().length - 1];
+  const delta = () => end() - start();
+  // x by real calendar date (history stores only change-points, so index spacing
+  // would misrepresent time); y scaled to the series' own min/max with headroom.
+  const times = createMemo(() => props.points.map(p => Date.parse(`${p.date}T12:00:00Z`)));
+  const bounds = createMemo(() => {
+    const ys = prices();
+    const lo = Math.min(...ys);
+    const hi = Math.max(...ys);
+    const pad = Math.max(0.01, (hi - lo) * 0.15);
+    return { lo: lo - pad, hi: hi + pad };
+  });
+  const x = (i: number) => {
+    const ts = times();
+    const t0 = ts[0];
+    const t1 = ts[ts.length - 1];
+    const frac = t1 === t0 ? i / (ts.length - 1) : (ts[i] - t0) / (t1 - t0);
+    return PAD + frac * (W - 2 * PAD);
+  };
+  const y = (price: number) => {
+    const { lo, hi } = bounds();
+    const t = hi === lo ? 0.5 : (price - lo) / (hi - lo);
+    return H - PAD - t * (H - 2 * PAD);
+  };
+  const path = createMemo(() =>
+    props.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(p.price).toFixed(1)}`).join(' ')
+  );
+  const dir = () => (Math.abs(delta()) < 0.005 ? 'flat' : delta() > 0 ? 'up' : 'down');
+  const deltaText = () => `${delta() > 0 ? '+' : delta() < 0 ? '-' : '±'}$${Math.abs(delta()).toFixed(2)}`;
+
+  return (
+    <span class='price-spark' classList={{ [dir()]: true }}>
+      <svg class='price-spark-svg' width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden='true'>
+        <path class='price-spark-line' d={path()} fill='none' />
+        <circle class='price-spark-dot' cx={x(props.points.length - 1)} cy={y(end())} r='2.2' />
+      </svg>
+      <span class='price-spark-delta'>{deltaText()}</span>
+    </span>
   );
 }
 

@@ -1038,6 +1038,39 @@ export async function fetchPrices(): Promise<Record<string, PricingEntry>> {
   return payload?.cardPrices ?? {};
 }
 
+/** One dated price observation from the rolling history. */
+export interface PricePoint {
+  /** YYYY-MM-DD */
+  date: string;
+  /** Market price in USD on that date. */
+  price: number;
+}
+
+/**
+ * Rolling price history keyed by `Name::SET::NUMBER`. Written daily by
+ * `.github/scripts/update-prices.py`, bounded to a 90-day window, with flat
+ * runs collapsed to a single point (so a card whose price never moved carries
+ * one point and callers degrade it to nothing). Stored compactly as `{d, p}`;
+ * expanded here to `{date, price}`. Absent (null → {}) until the pipeline has
+ * run at least once.
+ */
+interface PriceHistoryPayload {
+  history: Record<string, { d: string; p: number }[]>;
+}
+
+export async function fetchPriceHistory(): Promise<Record<string, PricePoint[]>> {
+  const payload = await fetchJsonOptional<PriceHistoryPayload>('/reports/prices-history.json');
+  const raw = payload?.history;
+  if (!raw) {
+    return {};
+  }
+  const out: Record<string, PricePoint[]> = {};
+  for (const [uid, points] of Object.entries(raw)) {
+    out[uid] = points.map(pt => ({ date: pt.d, price: pt.p }));
+  }
+  return out;
+}
+
 // --- Card lookup helpers ---
 
 /**

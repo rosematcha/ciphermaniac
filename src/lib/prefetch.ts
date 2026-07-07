@@ -13,6 +13,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   '/cards': () => import('../pages/CardsIndexPage'),
   '/archetypes': () => import('../pages/ArchetypesIndexPage'),
   '/archetypes/:slug': () => import('../pages/ArchetypePage'),
+  '/matchups': () => import('../pages/MatchupMatrixPage'),
   '/trends': () => import('../pages/TrendsPage'),
   '/players': () => import('../pages/PlayersPage')
 };
