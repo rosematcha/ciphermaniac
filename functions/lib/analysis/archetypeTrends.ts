@@ -1,5 +1,5 @@
 import { getCanonicalCard } from '../data/cardSynonyms.js';
-import { canonicalizeVariant } from '../util/cardUtils.js';
+import { canonicalizeVariant } from '../../../shared/cardUtils';
 import type { SynonymDatabase } from '../../../shared/synonyms';
 
 // All performance tiers — must match the success-tag taxonomy the report

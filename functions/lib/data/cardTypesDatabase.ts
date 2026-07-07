@@ -37,11 +37,6 @@ interface CardRecord {
   fullType?: string;
 }
 
-interface DeckRecord {
-  cards?: CardRecord[];
-  [key: string]: unknown;
-}
-
 // Module-level cache: persists across requests within the same isolate,
 // avoiding re-fetch and re-parse of the card types JSON on every request.
 let cachedCardTypesData: CardTypesDatabase | null = null;
@@ -131,23 +126,4 @@ export function enrichCardWithType<T extends CardRecord>(card: T, database: Card
   }
 
   return enriched as T;
-}
-
-function enrichDeckCards(deck: DeckRecord, database: CardTypesDatabase): DeckRecord {
-  if (!deck || !Array.isArray(deck.cards) || !database) {
-    return deck;
-  }
-
-  return {
-    ...deck,
-    cards: deck.cards.map(card => enrichCardWithType(card, database))
-  };
-}
-
-export function enrichAllDecks(decks: DeckRecord[], database: CardTypesDatabase): DeckRecord[] {
-  if (!Array.isArray(decks) || !database) {
-    return decks;
-  }
-
-  return decks.map(deck => enrichDeckCards(deck, database));
 }

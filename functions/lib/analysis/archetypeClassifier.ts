@@ -32,13 +32,13 @@ export interface DeckIndex {
   ruleCount: number;
 }
 
-export interface ClassificationInput {
+interface ClassificationInput {
   deckName?: string | null;
   deckId?: string | null;
   decklist?: Record<string, Array<{ name?: string; [key: string]: unknown }>> | null;
 }
 
-export interface ClassificationResult {
+interface ClassificationResult {
   name: string;
   id: string | null;
   source: string;

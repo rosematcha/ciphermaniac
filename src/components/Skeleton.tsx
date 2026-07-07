@@ -27,16 +27,3 @@ export function Skeleton(props: SkeletonProps) {
     />
   );
 }
-
-/**
- * Skeleton row sized for a KPI tile, used while meta is loading.
- */
-export function KpiSkeleton() {
-  return (
-    <div class='kpi'>
-      <Skeleton width='50%' height='11px' />
-      <Skeleton width='70%' height='30px' />
-      <Skeleton width='40%' height='12px' />
-    </div>
-  );
-}

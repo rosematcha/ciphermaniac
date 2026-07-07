@@ -225,7 +225,7 @@ export interface PlayerMatchRecord {
  * Tournament report containing aggregated card data.
  * This is the main report structure for tournaments and archetypes.
  */
-export interface TournamentReport {
+interface TournamentReport {
   /** Total number of decks analyzed */
   deckTotal: number;
   /** Card items with usage statistics */
@@ -255,7 +255,7 @@ export interface ArchetypeReport extends TournamentReport {
  * Signature card entry for archetype display.
  * These are cards that best exemplify the archetype.
  */
-export interface SignatureCardEntry {
+interface SignatureCardEntry {
   /** Card name */
   name: string;
   /** Set code */
@@ -292,7 +292,7 @@ export interface ArchetypeIndexEntry {
 /**
  * Tournament entry within meta report.
  */
-export interface MetaTournamentEntry {
+interface MetaTournamentEntry {
   /** Tournament ID */
   id: string;
   /** Tournament name */

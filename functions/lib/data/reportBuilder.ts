@@ -4,7 +4,7 @@ import {
   normalizeArchetypeName,
   sanitizeForFilename,
   sanitizeForPath
-} from '../util/cardUtils.js';
+} from '../../../shared/cardUtils';
 import { calculatePercentage, composeCategoryPath, createDistributionFromCounts } from '../../../shared/reportUtils';
 
 interface CardEntry {

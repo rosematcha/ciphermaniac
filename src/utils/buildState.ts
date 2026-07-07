@@ -14,7 +14,7 @@
  * display fields (name/set/number) from the archetype report on load.
  */
 
-export type RuleMode = 'include' | 'exclude';
+type RuleMode = 'include' | 'exclude';
 export type CountOp = '>=' | '=' | '<=';
 
 export interface Rule {

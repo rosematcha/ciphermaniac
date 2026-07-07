@@ -104,33 +104,6 @@ export const ARC_TAG_META: Record<ArcTag, { label: string; symbol: string }> = {
 // ---------------------------------------------------------------------------
 
 /**
- * Classify an archetype's trajectory through the tournament funnel.
- *  - surged: gained ≥1pp at both the Day-2 and Cut steps
- *  - climbed: gained at one step but not both
- *  - faded: ≥5% of the field but 0% of the cut
- *  - steady: anything else
- */
-export function classifyArc(row: FieldRow): ArcTag {
-  const f = row.fieldPct;
-  const d = row.day2Pct;
-  const c = row.cutPct;
-  if (f >= 5 && c !== null && c === 0) {
-    return 'faded';
-  }
-  if (d !== null && c !== null) {
-    const gainedD2 = d - f >= 1;
-    const gainedCut = c - d >= 1;
-    if (gainedD2 && gainedCut) {
-      return 'surged';
-    }
-    if (gainedD2 || gainedCut) {
-      return 'climbed';
-    }
-  }
-  return 'steady';
-}
-
-/**
  * Resolve a renderable CardStack thumbnail list ["SET/NUM", ...] for an
  * archetype across two source indexes. Per-tournament reports often ship with
  * `thumbnails: []`, so we prefer the rolling-meta (online) index, which is
@@ -169,11 +142,6 @@ export function countryLabel(code?: string | null): string | null {
     return trimmed.toUpperCase();
   }
   return trimmed.slice(0, 12);
-}
-
-/** Format a participant's record as "W-L" or "W-L-T". Returns null when both wins and losses are missing. */
-export function formatRecord(p: TournamentParticipant): string | null {
-  return formatRecordBase(p, { compact: true });
 }
 
 // ---------------------------------------------------------------------------
@@ -343,7 +311,7 @@ const genUnderdog: StoryGenerator = ctx => {
     return null;
   }
   const entry = ctx.lookupArchetype(underdog.deckName);
-  const record = formatRecord(underdog);
+  const record = formatRecordBase(underdog, { compact: true });
   const country = countryLabel(underdog.country);
   const parts: string[] = [];
   parts.push(`${underdog.name}${country ? ` (${country})` : ''} finished #${underdog.placement}`);
