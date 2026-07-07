@@ -15,7 +15,6 @@ import {
   ARC_TAG_META,
   type ArcTag,
   buildStories,
-  classifyArc,
   countryLabel,
   type FieldRow,
   resolveArchetypeThumbnails,
@@ -348,11 +347,7 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
     if (tournamentList.length === 0) {
       return [];
     }
-    const onlineList = props.onlineArchetypes ?? [];
-    const onlineByLabel = new Map<string, ArchetypeIndexEntry>();
-    for (const o of onlineList) {
-      onlineByLabel.set(normalize(o.label || o.name), o);
-    }
+    const online = onlineLookup();
 
     function bucket(list: TournamentParticipant[]): Map<string, number> {
       const m = new Map<string, number>();
@@ -401,7 +396,7 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
     return tournamentList
       .map<FieldRow>(a => {
         const key = normalize(a.label || a.name);
-        const onlineHit = onlineByLabel.get(key);
+        const onlineHit = online.byNormLabel.get(key) ?? online.byNormName.get(key);
         const fieldDecks = a.deckCount ?? 0;
         const fieldPct = totalDecklists > 0 ? (fieldDecks / totalDecklists) * 100 : 0;
         const topCutCount = topCounts.get(key) ?? 0;
@@ -466,33 +461,6 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
       }
     }
     return max || null;
-  });
-
-  /**
-   * Funnel rows for Variant C — sorted to put the most interesting
-   * trajectories first: surgers, climbers, faders, then everything else by
-   * peak share desc.
-   */
-  const funnelRows = createMemo<FieldRow[]>(() => {
-    const rows = fieldRows();
-    if (rows.length === 0) {
-      return [];
-    }
-    const tagOrder: Record<ArcTag, number> = { surged: 0, faded: 1, climbed: 2, steady: 3 };
-    const tagged = rows
-      .filter(r => r.fieldPct >= 1 || r.day2Count > 0 || r.topCutCount > 0)
-      .map(r => ({ row: r, tag: classifyArc(r) }))
-      .sort((a, b) => {
-        const t = tagOrder[a.tag] - tagOrder[b.tag];
-        if (t !== 0) {
-          return t;
-        }
-        const peakA = Math.max(a.row.fieldPct, a.row.day2Pct ?? 0, a.row.cutPct ?? 0);
-        const peakB = Math.max(b.row.fieldPct, b.row.day2Pct ?? 0, b.row.cutPct ?? 0);
-        return peakB - peakA;
-      })
-      .slice(0, 10);
-    return tagged.map(t => t.row);
   });
 
   /** Field summary for the header line: players, decklists, drops, diversity. */
@@ -567,9 +535,7 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
           winner={winner()}
           winnerArchetype={winnerArchetype()}
           totalTopCut={totalTopCut()}
-          totalDay2={totalDay2()}
           fieldRows={fieldRows()}
-          funnelRows={funnelRows()}
           standings={standingsList()}
           topCutParticipants={fullStandings().filter(p => p.madeTopCut)}
           cutLine={cutLine()}
@@ -678,9 +644,7 @@ function StoryBody(props: {
   winner: TournamentParticipant | undefined;
   winnerArchetype: ArchetypeIndexEntry | undefined;
   totalTopCut: number;
-  totalDay2: number;
   fieldRows: FieldRow[];
-  funnelRows: FieldRow[];
   standings: TournamentParticipant[];
   topCutParticipants: TournamentParticipant[];
   cutLine: number | null;
@@ -701,15 +665,13 @@ function StoryBody(props: {
     })
   );
   return (
-    <>
-      <Show when={stories().length > 0}>
-        <div class='callout-stories'>
-          <div class='callout-stories-grid'>
-            <For each={stories()}>{story => <StoryCard story={story} hasDay2={props.hasDay2} />}</For>
-          </div>
+    <Show when={stories().length > 0}>
+      <div class='callout-stories'>
+        <div class='callout-stories-grid'>
+          <For each={stories()}>{story => <StoryCard story={story} hasDay2={props.hasDay2} />}</For>
         </div>
-      </Show>
-    </>
+      </div>
+    </Show>
   );
 }
 

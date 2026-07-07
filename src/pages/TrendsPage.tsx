@@ -1,4 +1,4 @@
-import { createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { createMemo, createResource, createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js';
 import { A } from '@solidjs/router';
 import {
   fetchArchetypes,
@@ -17,6 +17,7 @@ import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { createPersistentSignal } from '../lib/persistentSignal';
+import { shortDate } from '../lib/format';
 import { latestValue } from '../lib/resource';
 import '../styles/pages/trends.css';
 
@@ -105,11 +106,6 @@ function formatDateWindow(start: string | undefined, end: string | undefined): s
     return null;
   }
   return `${s} to ${e}`;
-}
-
-/** Short date label for an event date, used in the movers half-coverage caption. */
-function shortDate(d: Date): string {
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 interface EventSnapshot {
@@ -353,46 +349,46 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
       <Show when={cardMovers().rising.length > 0 || cardMovers().falling.length > 0}>
         <Section title='Top card movers' right='Rising and falling cards across the window'>
           <div class='movers'>
-            <div class='mover-col'>
-              <h3 class='up'>Rising: biggest gainers</h3>
-              <For each={cardMovers().rising}>
-                {(m, idx) => (
-                  <A href={m.set && m.number ? `/cards/${m.set}/${m.number}` : '#'} class='mover-row'>
-                    <span class='rank'>{idx() + 1}</span>
-                    <span class='name'>{m.name}</span>
-                    <span class='set'>
-                      {m.set ?? ''}/{m.number ?? ''}
-                    </span>
-                    <span class='delta up'>
-                      <span class='delta-pp'>↑ {Math.abs(m.delta).toFixed(1)} pp</span>
-                      <span class='delta-base'>
-                        {m.startShare.toFixed(1)} → {m.endShare.toFixed(1)}%
-                      </span>
-                    </span>
-                  </A>
-                )}
-              </For>
-            </div>
-            <div class='mover-col'>
-              <h3 class='down'>Falling: biggest losers</h3>
-              <For each={cardMovers().falling}>
-                {(m, idx) => (
-                  <A href={m.set && m.number ? `/cards/${m.set}/${m.number}` : '#'} class='mover-row'>
-                    <span class='rank'>{idx() + 1}</span>
-                    <span class='name'>{m.name}</span>
-                    <span class='set'>
-                      {m.set ?? ''}/{m.number ?? ''}
-                    </span>
-                    <span class='delta down'>
-                      <span class='delta-pp'>↓ {Math.abs(m.delta).toFixed(1)} pp</span>
-                      <span class='delta-base'>
-                        {m.startShare.toFixed(1)} → {m.endShare.toFixed(1)}%
-                      </span>
-                    </span>
-                  </A>
-                )}
-              </For>
-            </div>
+            <MoverColumn<CardTrendLike>
+              title='Rising: biggest gainers'
+              titleClass='up'
+              rows={cardMovers().rising}
+              href={m => (m.set && m.number ? `/cards/${m.set}/${m.number}` : '#')}
+              name={m => m.name}
+              setLabel={m => (
+                <>
+                  {m.set ?? ''}/{m.number ?? ''}
+                </>
+              )}
+              trailing={m => (
+                <span class='delta up'>
+                  <span class='delta-pp'>↑ {Math.abs(m.delta).toFixed(1)} pp</span>
+                  <span class='delta-base'>
+                    {m.startShare.toFixed(1)} → {m.endShare.toFixed(1)}%
+                  </span>
+                </span>
+              )}
+            />
+            <MoverColumn<CardTrendLike>
+              title='Falling: biggest losers'
+              titleClass='down'
+              rows={cardMovers().falling}
+              href={m => (m.set && m.number ? `/cards/${m.set}/${m.number}` : '#')}
+              name={m => m.name}
+              setLabel={m => (
+                <>
+                  {m.set ?? ''}/{m.number ?? ''}
+                </>
+              )}
+              trailing={m => (
+                <span class='delta down'>
+                  <span class='delta-pp'>↓ {Math.abs(m.delta).toFixed(1)} pp</span>
+                  <span class='delta-base'>
+                    {m.startShare.toFixed(1)} → {m.endShare.toFixed(1)}%
+                  </span>
+                </span>
+              )}
+            />
           </div>
         </Section>
       </Show>
@@ -672,80 +668,73 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
             )}
           </Show>
           <div class='movers'>
-            <div class='mover-col'>
-              <h3 class='up'>Rising: biggest gainers</h3>
-              <For each={movers().rising}>
-                {(m, idx) => (
-                  <A
-                    href={m.item.set && m.item.number ? `/cards/${m.item.set}/${m.item.number}` : '#'}
-                    class='mover-row'
-                  >
-                    <span class='rank'>{idx() + 1}</span>
-                    <span class='name'>{m.item.name}</span>
-                    <span class='set'>
-                      {m.item.set}/{m.item.number}
-                    </span>
-                    <span class='delta up'>
-                      <span class='delta-pp'>↑ {m.delta.toFixed(1)} pp</span>
-                      <span class='delta-base'>
-                        {(m.olderAvg ?? 0).toFixed(1)} → {(m.recentAvg ?? 0).toFixed(1)}%
-                      </span>
-                    </span>
-                  </A>
-                )}
-              </For>
-            </div>
-            <div class='mover-col'>
-              <h3 class='down'>Falling: biggest losers</h3>
-              <For each={movers().falling}>
-                {(m, idx) => (
-                  <A
-                    href={m.item.set && m.item.number ? `/cards/${m.item.set}/${m.item.number}` : '#'}
-                    class='mover-row'
-                  >
-                    <span class='rank'>{idx() + 1}</span>
-                    <span class='name'>{m.item.name}</span>
-                    <span class='set'>
-                      {m.item.set}/{m.item.number}
-                    </span>
-                    <span class='delta down'>
-                      <span class='delta-pp'>↓ {Math.abs(m.delta).toFixed(1)} pp</span>
-                      <span class='delta-base'>
-                        {(m.olderAvg ?? 0).toFixed(1)} → {(m.recentAvg ?? 0).toFixed(1)}%
-                      </span>
-                    </span>
-                  </A>
-                )}
-              </For>
-            </div>
+            <MoverColumn<Mover>
+              title='Rising: biggest gainers'
+              titleClass='up'
+              rows={movers().rising}
+              href={m => (m.item.set && m.item.number ? `/cards/${m.item.set}/${m.item.number}` : '#')}
+              name={m => m.item.name}
+              setLabel={m => (
+                <>
+                  {m.item.set}/{m.item.number}
+                </>
+              )}
+              trailing={m => (
+                <span class='delta up'>
+                  <span class='delta-pp'>↑ {m.delta.toFixed(1)} pp</span>
+                  <span class='delta-base'>
+                    {(m.olderAvg ?? 0).toFixed(1)} → {(m.recentAvg ?? 0).toFixed(1)}%
+                  </span>
+                </span>
+              )}
+            />
+            <MoverColumn<Mover>
+              title='Falling: biggest losers'
+              titleClass='down'
+              rows={movers().falling}
+              href={m => (m.item.set && m.item.number ? `/cards/${m.item.set}/${m.item.number}` : '#')}
+              name={m => m.item.name}
+              setLabel={m => (
+                <>
+                  {m.item.set}/{m.item.number}
+                </>
+              )}
+              trailing={m => (
+                <span class='delta down'>
+                  <span class='delta-pp'>↓ {Math.abs(m.delta).toFixed(1)} pp</span>
+                  <span class='delta-base'>
+                    {(m.olderAvg ?? 0).toFixed(1)} → {(m.recentAvg ?? 0).toFixed(1)}%
+                  </span>
+                </span>
+              )}
+            />
           </div>
         </Show>
       </Section>
 
       <Show when={movers().newcomers.length > 0}>
         <Section title='Newcomers' right='Appeared only in recent events'>
-          <div class='mover-col'>
-            <Show when={movers().coverage}>
-              {c => (
-                <p class='movers-note'>
-                  Held at least {movers().newcomerMin}% share in the recent half ({c().recent}) and absent from the
-                  older half.
-                </p>
-              )}
-            </Show>
-            <For each={movers().newcomers}>
-              {(m, idx) => (
-                <A href={m.item.set && m.item.number ? `/cards/${m.item.set}/${m.item.number}` : '#'} class='mover-row'>
-                  <span class='rank'>{idx() + 1}</span>
-                  <span class='name'>{m.item.name}</span>
-                  <span class='set'>
-                    {m.item.set}/{m.item.number}
-                  </span>
-                  <span class='share-neutral'>{(m.recentAvg ?? 0).toFixed(1)}% of decks</span>
-                </A>
-              )}
-            </For>
-          </div>
+          <MoverColumn<Mover>
+            note={
+              <Show when={movers().coverage}>
+                {c => (
+                  <p class='movers-note'>
+                    Held at least {movers().newcomerMin}% share in the recent half ({c().recent}) and absent from the
+                    older half.
+                  </p>
+                )}
+              </Show>
+            }
+            rows={movers().newcomers}
+            href={m => (m.item.set && m.item.number ? `/cards/${m.item.set}/${m.item.number}` : '#')}
+            name={m => m.item.name}
+            setLabel={m => (
+              <>
+                {m.item.set}/{m.item.number}
+              </>
+            )}
+            trailing={m => <span class='share-neutral'>{(m.recentAvg ?? 0).toFixed(1)}% of decks</span>}
+          />
         </Section>
       </Show>
     </>
@@ -789,6 +778,18 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[] 
     return m;
   });
   const colorOf = (name: string): string => colorByName().get(name) ?? lineColor(0);
+
+  // Resolve each series' archetype icon slugs once per series list, rather than
+  // per render inside the hover tooltip.
+  const slugsByName = createMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const s of props.series) {
+      m.set(s.name, resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap));
+    }
+    return m;
+  });
+  const slugsOf = (s: ArchetypeSeries): string[] =>
+    slugsByName().get(s.name) ?? resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap);
 
   const legendList = createMemo<ArchetypeSeries[]>(() => {
     const base = props.series.slice(0, TOP_ARCHETYPES_FOR_CHART);
@@ -1057,11 +1058,12 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[] 
     const entries = visibleSeries()
       .map(s => ({
         label: s.label,
-        slugs: resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap),
+        slugs: slugsOf(s),
         color: colorOf(s.name),
         value: s.points[i]
       }))
-      .filter((e): e is { label: string; slugs: string[]; color: string; value: number } => e.value !== null);
+      .filter((e): e is { label: string; slugs: string[]; color: string; value: number } => e.value !== null)
+      .sort((a, b) => b.value - a.value);
     return { day, entries, xPx: x(day.date) };
   });
 
@@ -1116,7 +1118,7 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[] 
           <For each={visibleSeries()}>
             {series => {
               const color = colorOf(series.name);
-              const seg = () => segmentsFor(series.points);
+              const seg = createMemo(() => segmentsFor(series.points));
               const dim = () => legendHover() !== null && legendHover() !== series.name;
               return (
                 <g style={{ opacity: dim() ? 0.22 : 1 }}>
@@ -1173,7 +1175,7 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[] 
                   })}
                 </div>
                 <ul class='chart-tooltip-list'>
-                  <For each={[...h().entries].sort((a, b) => b.value - a.value)}>
+                  <For each={h().entries}>
                     {e => (
                       <li>
                         <span class='dot' style={{ background: e.color }} />
@@ -1230,6 +1232,46 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[] 
           </select>
         </Show>
       </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   Shared movers column
+   ============================================================ */
+
+/**
+ * A single `mover-col`: an optional heading, an optional lead-in note, and a
+ * ranked list of `mover-row` links. The row shape differs between the online
+ * (CardTrendLike) and majors (Mover) views, so the caller supplies accessors
+ * for the href / name / set label plus the trailing delta (or share) cell.
+ */
+function MoverColumn<T>(props: {
+  title?: string;
+  titleClass?: string;
+  note?: JSX.Element;
+  rows: T[];
+  href: (row: T) => string;
+  name: (row: T) => string;
+  setLabel: (row: T) => JSX.Element;
+  trailing: (row: T) => JSX.Element;
+}) {
+  return (
+    <div class='mover-col'>
+      <Show when={props.title}>
+        <h3 class={props.titleClass}>{props.title}</h3>
+      </Show>
+      {props.note}
+      <For each={props.rows}>
+        {(m, idx) => (
+          <A href={props.href(m)} class='mover-row'>
+            <span class='rank'>{idx() + 1}</span>
+            <span class='name'>{props.name(m)}</span>
+            <span class='set'>{props.setLabel(m)}</span>
+            {props.trailing(m)}
+          </A>
+        )}
+      </For>
     </div>
   );
 }

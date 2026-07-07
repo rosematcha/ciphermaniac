@@ -1,156 +1,46 @@
 /**
- * Centralized logging utility with consistent formatting and levels
- * (no private class fields to maximize mobile Firefox compatibility)
+ * Minimal DEV-gated logger. Diagnostic output (debug/info/warn) is emitted only
+ * in development; errors always surface. Optional chaining on import.meta.env
+ * keeps this safe under Node-based tests where it may be undefined.
+ *
+ * String arguments are flattened to a single line ({@link sanitize}) so
+ * attacker-controlled data can't forge extra log lines (log-injection safety).
  * @module Logger
  */
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+const DEV = Boolean(import.meta.env?.DEV);
 
-/**
- * Lightweight logger tuned for browser environments with configurable levels.
- */
-class Logger {
-  private _level: LogLevel;
-  private _levels: Record<LogLevel, number>;
-
-  /**
-   * Constructor initializes logger with default settings
-   */
-  constructor() {
-    // Quiet by default in production; the ?debug= URL param below can lower
-    // the threshold at runtime when diagnosing a live issue. Optional chaining
-    // because this module is also imported by Node-based tests, where
-    // import.meta.env doesn't exist.
-    this._level = import.meta.env?.DEV ? 'info' : 'warn';
-    this._levels = {
-      debug: 0,
-      info: 1,
-      warn: 2,
-      error: 3
-    };
-  }
-
-  /**
-   * Set the minimum log level
-   * @param level
-   */
-  setLevel(level: LogLevel): void {
-    if (level in this._levels) {
-      this._level = level;
-    }
-  }
-
-  /**
-   * Check if a level should be logged
-   * @param level
-   * @returns
-   */
-  private _shouldLog(level: LogLevel): boolean {
-    return this._levels[level] >= this._levels[this._level];
-  }
-
-  /**
-   * Sanitize message to prevent log injection attacks
-   * Replaces newlines and control characters with safe representations
-   * @param text
-   * @returns
-   */
-  static sanitizeMessage(text: string): string {
-    if (typeof text !== 'string') {
-      return String(text);
-    }
-    // Replace newlines with escaped representation to prevent log injection
-    return text.replace(/\r\n/g, '\\r\\n').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
-  }
-
-  /**
-   * Format log message with timestamp and context
-   * @param level
-   * @param message
-   * @param args
-   * @returns
-   */
-  static format(level: LogLevel, message: string, args: any[]): [string, ...any[]] {
-    try {
-      const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
-      const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
-      // Sanitize message to prevent log injection
-      const sanitizedMessage = Logger.sanitizeMessage(message);
-      return [`${prefix} ${sanitizedMessage}`, ...args];
-    } catch {
-      return [Logger.sanitizeMessage(message), ...args];
-    }
-  }
-
-  /**
-   * Log debug message
-   * @param message
-   * @param args
-   */
-  debug(message: string, ...args: any[]): void {
-    if (this._shouldLog('debug')) {
-      // Use console.log for broader support where console.debug may be filtered
-      const parts = Logger.format('debug', message, args);
-      (console.debug || console.log).apply(console, parts);
-    }
-  }
-
-  /**
-   * Log info message
-   * @param message
-   * @param args
-   */
-  info(message: string, ...args: any[]): void {
-    if (this._shouldLog('info')) {
-      console.log(...Logger.format('info', message, args));
-    }
-  }
-
-  /**
-   * Log warning message
-   * @param message
-   * @param args
-   */
-  warn(message: string, ...args: any[]): void {
-    if (this._shouldLog('warn')) {
-      console.warn(...Logger.format('warn', message, args));
-    }
-  }
-
-  /**
-   * Log error message
-   * @param message
-   * @param args
-   */
-  error(message: string, ...args: any[]): void {
-    console.error(...Logger.format('error', message, args));
-  }
-
-  /**
-   * Log error with stack trace
-   * @param message
-   * @param error
-   * @param args
-   */
-  exception(message: string, error: Error | unknown, ...args: any[]): void {
-    const errorMessage = error && typeof error === 'object' && 'message' in error ? error.message : String(error);
-    const errorStack = error && typeof error === 'object' && 'stack' in error ? error.stack : '';
-    this.error(message, errorMessage, errorStack, ...args);
-  }
+/** Collapse CR/LF runs in string args to a space so a message can't span lines. */
+function sanitize(args: unknown[]): unknown[] {
+  return args.map(a => (typeof a === 'string' ? a.replace(/[\r\n]+/g, ' ') : a));
 }
 
-// Create singleton instance
-export const logger = new Logger();
-
-// Set log level based on environment or URL params
-try {
-  if (typeof window !== 'undefined' && 'URLSearchParams' in window) {
-    const params = new URLSearchParams(window.location.search || '');
-    const debugLevel = params.get('debug');
-    if (debugLevel && ['debug', 'info', 'warn', 'error'].includes(debugLevel)) {
-      logger.setLevel(debugLevel as LogLevel);
+export const logger = {
+  debug: (...args: unknown[]): void => {
+    if (DEV) {
+      console.debug(...sanitize(args));
     }
+  },
+  info: (...args: unknown[]): void => {
+    if (DEV) {
+      console.log(...sanitize(args));
+    }
+  },
+  warn: (...args: unknown[]): void => {
+    if (DEV) {
+      console.warn(...sanitize(args));
+    }
+  },
+  error: (...args: unknown[]): void => {
+    console.error(...sanitize(args));
+  },
+  exception: (message: string, error: unknown, ...args: unknown[]): void => {
+    const errorMessage = error && typeof error === 'object' && 'message' in error ? error.message : String(error);
+    console.error(...sanitize([message, errorMessage, ...args]));
   }
-} catch {
-  // Ignore localStorage errors
+};
+
+/** Test hook: the single-line parts a message would produce. */
+export function formatForTest(message: string, args: unknown[] = []): unknown[] {
+  return sanitize([message, ...args]);
 }
