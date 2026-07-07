@@ -27,7 +27,10 @@ import type {
 import { getCanonicalCardFromData, type SynonymDatabase } from '../../shared/synonyms.js';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { calculatePercentage } from '../../shared/reportUtils.js';
+import type { UpcomingEvent, UpcomingPayload } from '../../shared/upcomingTypes.js';
 import archetypeIconsRaw from '../data/archetype-icons.json';
+
+export type { UpcomingEvent, UpcomingPayload };
 
 const R2_BASE = 'https://r2.ciphermaniac.com';
 
@@ -81,30 +84,15 @@ function rememberFetch(url: string, promise: Promise<unknown>): void {
  * keep their fast path.
  */
 function shouldUseLocalForPath(path: string): boolean {
-  return import.meta.env.DEV && path.startsWith('/reports/Snapshots/');
-}
-
-async function fetchJson<T>(path: string): Promise<T> {
-  const url = shouldUseLocalForPath(path) ? path : `${R2_BASE}${path}`;
-  const cached = cachedFetch(url);
-  if (cached) {
-    return cached as Promise<T>;
-  }
-  const promise = (async () => {
-    const response = await fetch(url, { mode: 'cors' });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
-    }
-    return (await response.json()) as T;
-  })();
-  rememberFetch(url, promise);
-  return promise;
+  return Boolean(import.meta.env?.DEV) && path.startsWith('/reports/Snapshots/');
 }
 
 /**
- * Optional variant of fetchJson that resolves to null on 404 rather than throwing.
+ * Shared fetch core with dedupe/short-cache. `optional` resolves 404s to null
+ * instead of throwing; the two public names below pin the return type so callers
+ * keep their non-null / nullable contracts.
  */
-async function fetchJsonOptional<T>(path: string): Promise<T | null> {
+async function fetchJsonCore<T>(path: string, optional: boolean): Promise<T | null> {
   const url = shouldUseLocalForPath(path) ? path : `${R2_BASE}${path}`;
   const cached = cachedFetch(url);
   if (cached) {
@@ -112,7 +100,7 @@ async function fetchJsonOptional<T>(path: string): Promise<T | null> {
   }
   const promise = (async () => {
     const response = await fetch(url, { mode: 'cors' });
-    if (response.status === 404) {
+    if (optional && response.status === 404) {
       return null;
     }
     if (!response.ok) {
@@ -122,6 +110,17 @@ async function fetchJsonOptional<T>(path: string): Promise<T | null> {
   })();
   rememberFetch(url, promise);
   return promise;
+}
+
+function fetchJson<T>(path: string): Promise<T> {
+  return fetchJsonCore<T>(path, false) as Promise<T>;
+}
+
+/**
+ * Optional variant of fetchJson that resolves to null on 404 rather than throwing.
+ */
+function fetchJsonOptional<T>(path: string): Promise<T | null> {
+  return fetchJsonCore<T>(path, true);
 }
 
 // --- Tournament-scoped reports ---
@@ -164,7 +163,7 @@ function tournamentPath(name: string): string {
  * Compute the UID for a card item. Prefers an explicit `uid` field, then
  * `Name::SET::NUMBER`, then bare name as a last resort.
  */
-function itemUid(item: CardItem): string {
+export function itemUid(item: CardItem): string {
   if (item.uid) {
     return item.uid;
   }
@@ -508,6 +507,54 @@ export async function fetchArchetype(tournament: string, archetypeBase: string):
 // Backwards-compatible alias (always online meta)
 export const fetchOnlineArchetypes = (): Promise<ArchetypeIndexEntry[]> => fetchArchetypes(ONLINE);
 
+/** One archetype's usage of a card, from the precomputed `cardUsage.json` index. */
+export interface CardUsageEntry {
+  /** Archetype slug — joins to archetypes/index.json `name` for label/icons/deckCount. */
+  slug: string;
+  found: number;
+  pct: number;
+  dist: CardDistributionEntry[];
+}
+
+/**
+ * Build-time inverted index (`cardUsage.json`): canonical card UID → every
+ * archetype that plays it. Lets CardPage load one small file instead of fanning
+ * a fetch out to every archetype's cards.json. Absent for tournaments/snapshots
+ * generated before the file existed — callers fall back to the per-archetype
+ * fan-out.
+ */
+export interface CardUsagePayload {
+  usage: Record<string, CardUsageEntry[]>;
+}
+
+export function fetchCardUsage(tournament: string): Promise<CardUsagePayload | null> {
+  return fetchJsonOptional<CardUsagePayload>(`${tournamentPath(tournament)}/cardUsage.json`);
+}
+
+/**
+ * Look up a card's per-archetype usage in a `cardUsage.json` payload. Tries the
+ * card's canonical UID first, then a set+number normalized scan across the index
+ * keys (defensive: the card came from the canonicalized master, so a direct UID
+ * hit is the norm). Returns null if the card isn't in the index.
+ */
+export function cardUsageForCard(payload: CardUsagePayload, card: CardItem): CardUsageEntry[] | null {
+  const direct = payload.usage[itemUid(card)];
+  if (direct) {
+    return direct;
+  }
+  if (card.set && card.number != null) {
+    const setU = card.set.toUpperCase();
+    const numKey = normalizeCardNumberKey(String(card.number));
+    for (const [uid, entries] of Object.entries(payload.usage)) {
+      const parts = uid.split('::');
+      if (parts.length >= 3 && parts[1].toUpperCase() === setU && normalizeCardNumberKey(parts[2]) === numKey) {
+        return entries;
+      }
+    }
+  }
+  return null;
+}
+
 // --- Rotation snapshots ---
 
 /**
@@ -620,16 +667,100 @@ export interface Day2CardStat {
 }
 
 /**
+ * Precomputed Day 1 → Day 2 conversion counts for one tournament
+ * (`conversion.json`, built by the pipeline). Keyed by canonical card UID so it
+ * lines up with master.json. Absent for events ingested before the file existed
+ * (callers fall back to computing from decks.json).
+ */
+export interface ConversionPayload {
+  day1Total: number;
+  day2Total: number;
+  cards: Record<string, { day1: number; day2: number }>;
+}
+
+export function fetchConversionIndex(tournament: string): Promise<ConversionPayload | null> {
+  return fetchJsonOptional<ConversionPayload>(`${tournamentPath(tournament)}/conversion.json`);
+}
+
+/** Map canonical UID → display name/set/number from the (canonicalized) master report. */
+function buildDisplayMap(master: MasterPayload): Map<string, { name: string; set: string; number: string }> {
+  const display = new Map<string, { name: string; set: string; number: string }>();
+  for (const item of master.items) {
+    display.set(itemUid(item), {
+      name: item.name,
+      set: item.set ?? '',
+      number: String(item.number ?? '')
+    });
+  }
+  return display;
+}
+
+/** Resolve display fields for a UID, falling back to parsing `Name::SET::NUMBER`. */
+function displayForUid(
+  uid: string,
+  display: Map<string, { name: string; set: string; number: string }>
+): { name: string; set: string; number: string } | null {
+  const hit = display.get(uid);
+  if (hit) {
+    return hit;
+  }
+  const parts = uid.split('::');
+  if (parts.length < 3) {
+    return null;
+  }
+  return { name: parts[0], set: parts[1], number: parts[2] };
+}
+
+/**
  * Compute per-card Day 1 → Day 2 conversion for a single tournament.
  *
- * Each entry in `decks.json` carries its own `madePhase2` flag, so we just
- * iterate decks and bucket by card UID. Cards are keyed by canonical UID so
- * reprints/variants collapse the same way they do in master.json. Returns null
- * when the tournament has no decks.json or no Day 2 decks at all — Online
- * Meta in particular has no single Day 2 cut, so callers should not invoke
- * this for that key.
+ * Fast path: the pipeline precomputes `conversion.json` (per-UID day1/day2
+ * counts) so we avoid downloading the multi-MB decks.json. Falls back to the
+ * decks-based computation for events generated before that file existed (404).
+ * Returns null when the tournament has no Day 2 cut — Online Meta in particular
+ * has no single cut, so callers should not invoke this for that key.
  */
 export async function fetchDay2CardStats(tournament: string): Promise<Day2CardStat[] | null> {
+  const conversion = await fetchConversionIndex(tournament);
+  if (conversion) {
+    return day2CardStatsFromConversion(conversion, tournament);
+  }
+  return day2CardStatsFromDecks(tournament);
+}
+
+async function day2CardStatsFromConversion(
+  conversion: ConversionPayload,
+  tournament: string
+): Promise<Day2CardStat[] | null> {
+  if (conversion.day2Total === 0) {
+    return null;
+  }
+  const entries = Object.entries(conversion.cards);
+  if (entries.length === 0) {
+    return null;
+  }
+  const master = await fetchMaster(tournament);
+  const display = buildDisplayMap(master);
+  const out: Day2CardStat[] = [];
+  for (const [uid, c] of entries) {
+    const d = displayForUid(uid, display);
+    if (!d) {
+      continue;
+    }
+    out.push({
+      uid,
+      name: d.name,
+      set: d.set,
+      number: d.number,
+      day1Count: c.day1,
+      day2Count: c.day2,
+      conversion: c.day1 > 0 ? (c.day2 / c.day1) * 100 : 0
+    });
+  }
+  return out;
+}
+
+async function day2CardStatsFromDecks(tournament: string): Promise<Day2CardStat[] | null> {
   const [decks, master, db] = await Promise.all([
     fetchDecks(tournament),
     fetchMaster(tournament),
@@ -647,15 +778,7 @@ export async function fetchDay2CardStats(tournament: string): Promise<Day2CardSt
   // master.json items are already canonicalized — use them as the source of
   // truth for display name/set/number so the graphic matches the rest of the
   // site.
-  const display = new Map<string, { name: string; set: string; number: string }>();
-  for (const item of master.items) {
-    const uid = item.uid ?? (item.set && item.number != null ? `${item.name}::${item.set}::${item.number}` : item.name);
-    display.set(uid, {
-      name: item.name,
-      set: item.set ?? '',
-      number: String(item.number ?? '')
-    });
-  }
+  const display = buildDisplayMap(master);
 
   const counts = new Map<string, { day1: number; day2: number }>();
   for (const deck of decks) {
@@ -687,23 +810,10 @@ export async function fetchDay2CardStats(tournament: string): Promise<Day2CardSt
 
   const out: Day2CardStat[] = [];
   for (const [uid, c] of counts) {
-    const d = display.get(uid);
+    // Card present in decks but not in master (rare — typically dropped by
+    // canonicalization) falls back to parsing the UID.
+    const d = displayForUid(uid, display);
     if (!d) {
-      // Card present in decks but not in master (rare — typically dropped by
-      // canonicalization). Fall back to parsing the UID.
-      const parts = uid.split('::');
-      if (parts.length < 3) {
-        continue;
-      }
-      out.push({
-        uid,
-        name: parts[0],
-        set: parts[1],
-        number: parts[2],
-        day1Count: c.day1,
-        day2Count: c.day2,
-        conversion: c.day1 > 0 ? (c.day2 / c.day1) * 100 : 0
-      });
       continue;
     }
     out.push({
@@ -961,7 +1071,7 @@ export function findCardBySetNumber(items: CardItem[], set: string, number: stri
  * the number into a digit prefix and an alphabetic suffix; strips leading zeros
  * from the digit prefix only.
  */
-function normalizeCardNumberKey(raw: string): string {
+export function normalizeCardNumberKey(raw: string): string {
   const upper = raw.toUpperCase();
   const match = upper.match(/^(\d+)(.*)$/);
   if (!match) {
@@ -1082,22 +1192,9 @@ export function tournamentSlug(key: string): string {
 }
 
 // --- Upcoming tournaments (Limitless scraper Function) ---
-
-export interface UpcomingEvent {
-  date: string;
-  country: string;
-  name: string;
-  format: string;
-  type: 'regional' | 'international' | 'special' | 'worlds' | 'other';
-  limitlessUrl?: string;
-  externalUrl?: string;
-}
-
-export interface UpcomingPayload {
-  refreshedAt: string;
-  source: string;
-  events: UpcomingEvent[];
-}
+// Types live in shared/upcomingTypes.ts so the producing Pages Function
+// (functions/api/limitless/upcoming.ts — owned separately) can share them.
+// FOLLOW-UP: point that Function's inline types at shared/upcomingTypes.ts too.
 
 // --- Trend report (cron-built, daily timeline per archetype) ---
 

@@ -35,8 +35,7 @@ h3 { font-size: 15px; line-height: 1.3; font-weight: 600; }
 
 p { margin: 0; }
 
-.num,
-.tabular {
+.num {
   font-variant-numeric: tabular-nums;
 }
 

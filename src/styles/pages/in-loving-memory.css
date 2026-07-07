@@ -250,11 +250,3 @@
   letter-spacing: -0.015em;
 }
 
-/* ---- Loading / empty ---- */
-
-.ilm-empty {
-  text-align: center;
-  padding: var(--space-6);
-  color: var(--muted);
-  font-size: 13px;
-}

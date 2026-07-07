@@ -1,9 +1,12 @@
 import { A, useNavigate, useParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js';
 import {
+  cardUsageForCard,
+  type CardUsagePayload,
   type Day2CardStat,
   fetchArchetype,
   fetchArchetypes,
+  fetchCardUsage,
   fetchDay2CardStats,
   fetchMaster,
   fetchPrices,
@@ -11,6 +14,8 @@ import {
   findCardBySetNumber,
   getArchetypeIconMap,
   isSnapshotSource,
+  itemUid,
+  normalizeCardNumberKey,
   resolveArchetypeIcons,
   resolveCanonicalSetNumber,
   snapshotDateForCard,
@@ -194,9 +199,10 @@ export function CardPage() {
   });
 
   // Per-archetype usage: list every archetype that plays this card, with its
-  // inclusion rate + average copy count. We fan out one fetch per archetype
-  // (these are small JSON files that R2 serves cached); the deduping in
-  // `fetchJson` means revisiting the same card during a session is free.
+  // inclusion rate + average copy count. Fast path loads the precomputed
+  // `cardUsage.json` inverted index in a single request; tournaments/snapshots
+  // built before that file existed (404) fall back to the per-archetype fan-out
+  // (small JSON files R2 serves cached; `fetchJson` dedupes within a session).
   const [archetypeIndex] = createResource(effectiveTournament, fetchArchetypes);
   const archetypeIndexData = () => latestValue(archetypeIndex);
   const [archetypeUsage] = createResource(
@@ -207,8 +213,12 @@ export function CardPage() {
       return c && list ? { card: c, list, tournament: t } : null;
     },
     async ({ card, list, tournament }) => {
+      const usage = await fetchCardUsage(tournament).catch(() => null);
+      if (usage) {
+        return buildUsageRowsFromIndex(usage, list, card);
+      }
       const results = await Promise.all(
-        list.map(async entry => {
+        list.map(async (entry): Promise<ArchetypeUsageRow | null> => {
           try {
             const report = await fetchArchetype(tournament, entry.name);
             const item = findCardInArchetypeReport(report, card);
@@ -245,17 +255,16 @@ export function CardPage() {
     if (!c || !stats) {
       return undefined;
     }
-    const uid = c.uid ?? (c.set && c.number != null ? `${c.name}::${c.set}::${c.number}` : c.name);
-    const byUid = stats.find(s => s.uid === uid);
+    const byUid = stats.find(s => s.uid === itemUid(c));
     if (byUid) {
       return byUid;
     }
-    // Fallback: match on set + number with leading zeros stripped, mirroring
+    // Fallback: match on set + number with leading zeros normalized, mirroring
     // the archetype-report lookup above.
     if (c.set && c.number != null) {
       const setU = c.set.toUpperCase();
-      const numTrim = String(c.number).replace(/^0+/, '') || '0';
-      return stats.find(s => s.set?.toUpperCase() === setU && (String(s.number).replace(/^0+/, '') || '0') === numTrim);
+      const numKey = normalizeCardNumberKey(String(c.number));
+      return stats.find(s => s.set?.toUpperCase() === setU && normalizeCardNumberKey(String(s.number)) === numKey);
     }
     return undefined;
   });
@@ -284,7 +293,7 @@ export function CardPage() {
               !rotationIndex.loading &&
               (snapshotDate() === null || (!snapshotMaster.loading && !snapshotCard()))
             }
-            fallback={<CardPageSkeleton setNumber={setNumber()} />}
+            fallback={<CardPageSkeleton />}
           >
             <EmptyState
               title={`No card found at ${setNumber()}.`}
@@ -317,7 +326,50 @@ export function CardPage() {
 interface ArchetypeUsageRow {
   entry: ArchetypeIndexEntry;
   item: CardItem;
-  report: ArchetypeReport;
+  /** Only `deckTotal` is read; the fan-out path passes a full ArchetypeReport (structurally compatible). */
+  report: { deckTotal: number };
+}
+
+/**
+ * Turn the precomputed `cardUsage.json` index into the same row shape the
+ * per-archetype fan-out produces. Joins each usage entry's slug to the
+ * archetype index for label/icons; deckTotal comes from the index's deckCount
+ * (equal to the archetype report's deckTotal). Rows the index can't join to an
+ * archetype entry are dropped.
+ */
+function buildUsageRowsFromIndex(
+  payload: CardUsagePayload,
+  list: ArchetypeIndexEntry[],
+  card: CardItem
+): ArchetypeUsageRow[] {
+  const entries = cardUsageForCard(payload, card);
+  if (!entries) {
+    return [];
+  }
+  const bySlug = new Map(list.map(e => [e.name, e]));
+  const rows: ArchetypeUsageRow[] = [];
+  for (const usage of entries) {
+    const entry = bySlug.get(usage.slug);
+    if (!entry) {
+      continue;
+    }
+    const deckTotal = entry.deckCount ?? 0;
+    rows.push({
+      entry,
+      item: {
+        name: card.name,
+        set: card.set,
+        number: card.number,
+        uid: itemUid(card),
+        found: usage.found,
+        total: deckTotal,
+        pct: usage.pct,
+        dist: usage.dist
+      },
+      report: { deckTotal }
+    });
+  }
+  return rows;
 }
 
 function CardPageBody(props: {
@@ -550,10 +602,10 @@ function findCardInArchetypeReport(report: ArchetypeReport, card: CardItem): Car
     return null;
   }
   const setU = card.set?.toUpperCase();
-  const numTrim = card.number ? String(card.number).replace(/^0+/, '') || '0' : null;
+  const numKey = card.number != null ? normalizeCardNumberKey(String(card.number)) : null;
   for (const item of report.items) {
-    if (setU && numTrim && item.set && item.number !== undefined) {
-      if (item.set.toUpperCase() === setU && (String(item.number).replace(/^0+/, '') || '0') === numTrim) {
+    if (setU && numKey && item.set && item.number !== undefined) {
+      if (item.set.toUpperCase() === setU && normalizeCardNumberKey(String(item.number)) === numKey) {
         return item;
       }
     }
@@ -611,12 +663,13 @@ function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem 
           const inclusion = row.item.pct ?? 0;
           const totalDecks = row.report.deckTotal ?? 0;
           const foundDecks = row.item.found ?? 0;
-          const dist = () => (row.item.dist ?? []).filter(d => d.copies !== undefined && (d.players ?? 0) > 0);
-          const modalBucket = () =>
-            dist().reduce<CardDistributionEntry | null>(
-              (m, d) => (m === null || (d.players ?? 0) > (m.players ?? 0) ? d : m),
-              null
-            );
+          // Row data is static once the row renders — compute the filtered dist
+          // and modal bucket once instead of re-running the reduce per accessor.
+          const dist = (row.item.dist ?? []).filter(d => d.copies !== undefined && (d.players ?? 0) > 0);
+          const modalBucket = dist.reduce<CardDistributionEntry | null>(
+            (m, d) => (m === null || (d.players ?? 0) > (m.players ?? 0) ? d : m),
+            null
+          );
           const isOpen = () => open().has(row.entry.name);
           const detailId = `au-detail-${row.entry.name.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
           return (
@@ -650,7 +703,7 @@ function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem 
                   {foundDecks.toLocaleString()}/{totalDecks.toLocaleString()} decks
                 </span>
                 <span class='au-modal'>
-                  <Show when={modalBucket()} keyed>
+                  <Show when={modalBucket} keyed>
                     {m => (
                       <>
                         <span class='au-chip'>{m.copies}×</span>
@@ -662,9 +715,9 @@ function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem 
               </div>
               <Show when={isOpen()}>
                 <div class='au-detail' id={detailId}>
-                  <For each={dist()}>
+                  <For each={dist}>
                     {d => (
-                      <div class='au-dist-line' classList={{ 'is-modal': d.copies === modalBucket()?.copies }}>
+                      <div class='au-dist-line' classList={{ 'is-modal': d.copies === modalBucket?.copies }}>
                         <span class='au-dist-copies'>{d.copies}× copies</span>
                         <div class='au-dist-bar' aria-hidden='true'>
                           <div class='au-dist-fill' style={{ width: `${Math.min(100, d.percent ?? 0)}%` }} />
@@ -694,7 +747,7 @@ function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem 
   );
 }
 
-function CardPageSkeleton(_props: { setNumber: string }) {
+function CardPageSkeleton() {
   return (
     <>
       <div class='card-page-hero'>
