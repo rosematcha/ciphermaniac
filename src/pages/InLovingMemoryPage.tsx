@@ -4,6 +4,7 @@ import { Tabs } from '../components/Tabs';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { resolved } from '../lib/resource';
+import { cardSupercategory } from '../lib/cardStats';
 import '../styles/pages/in-loving-memory.css';
 
 interface ArchetypeEntry {
@@ -104,17 +105,10 @@ function categoryOf(item: MasterItem): CategoryFilter {
   if (item.aceSpec) {
     return 'ace-spec';
   }
-  const cat = (item.category ?? '').toLowerCase();
-  if (cat.startsWith('pokemon') || cat.startsWith('pokémon')) {
-    return 'pokemon';
+  if (!item.category) {
+    return 'all';
   }
-  if (cat.startsWith('trainer')) {
-    return 'trainer';
-  }
-  if (cat.startsWith('energy')) {
-    return 'energy';
-  }
-  return 'all';
+  return cardSupercategory(item);
 }
 
 export function InLovingMemoryPage() {

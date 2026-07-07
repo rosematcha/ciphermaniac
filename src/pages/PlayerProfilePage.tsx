@@ -7,7 +7,7 @@ import { Badge } from '../components/Badge';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import type { PlayerDeckCard, PlayerProfile, PlayerTournamentEntry } from '../types';
-import { capitalize } from '../lib/format';
+import { capitalize, winPercent } from '../lib/format';
 import { groupDeckByCategory } from '../lib/deckGrouping';
 import { resolved } from '../lib/resource';
 import '../styles/pages/players-tables.css';
@@ -60,14 +60,6 @@ export function PlayerProfilePage() {
       </Show>
     </>
   );
-}
-
-function winPercent(wins: number, losses: number): number | null {
-  const denom = wins + losses;
-  if (!denom) {
-    return null;
-  }
-  return Math.round((wins / denom) * 1000) / 10;
 }
 
 function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {

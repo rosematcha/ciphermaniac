@@ -12,6 +12,7 @@ const prefetched = new Set<string>();
 const routeLoaders: Record<string, () => Promise<unknown>> = {
   '/cards': () => import('../pages/CardsIndexPage'),
   '/archetypes': () => import('../pages/ArchetypesIndexPage'),
+  '/archetypes/:slug': () => import('../pages/ArchetypePage'),
   '/trends': () => import('../pages/TrendsPage'),
   '/players': () => import('../pages/PlayersPage')
 };
@@ -34,12 +35,5 @@ export function prefetchRoute(path: string): void {
 
 /** Prefetch the archetype detail page chunk, once per session. */
 export function prefetchArchetypePage(): void {
-  const key = '/archetypes/:slug';
-  if (prefetched.has(key)) {
-    return;
-  }
-  prefetched.add(key);
-  import('../pages/ArchetypePage').catch(() => {
-    prefetched.delete(key);
-  });
+  prefetchRoute('/archetypes/:slug');
 }

@@ -8,6 +8,7 @@
  *
  * Pure module — no DOM. The caller handles clipboard/download.
  */
+import { type CardSupercategory, cardSupercategory } from '../lib/cardStats';
 
 export interface PtcglEntry {
   name: string;
@@ -21,7 +22,7 @@ export interface PtcglEntry {
   count: number;
 }
 
-export type PtcglSection = 'pokemon' | 'trainer' | 'energy';
+export type PtcglSection = CardSupercategory;
 
 /**
  * Strip leading zeros from a collector number while preserving any letter
@@ -42,15 +43,7 @@ export function ptcglNumber(n: string | number | null | undefined): string {
  * to `supertype`. Unknown cards default to Pokémon.
  */
 export function ptcglSection(entry: { category?: string; supertype?: string }): PtcglSection {
-  const cat = (entry.category ?? '').toLowerCase();
-  const supertype = (entry.supertype ?? '').toLowerCase();
-  if (cat.startsWith('trainer') || supertype === 'trainer') {
-    return 'trainer';
-  }
-  if (cat.startsWith('energy') || supertype === 'energy') {
-    return 'energy';
-  }
-  return 'pokemon';
+  return cardSupercategory(entry);
 }
 
 function formatLine(entry: PtcglEntry): string {

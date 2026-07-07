@@ -22,8 +22,8 @@ export function createPagination<T>(
     return source().slice(start, start + pageSize) as T[];
   });
 
-  for (const dep of resetOn ?? []) {
-    createEffect(on(dep, () => setRawPage(1), { defer: true }));
+  if (resetOn && resetOn.length > 0) {
+    createEffect(on(resetOn, () => setRawPage(1), { defer: true }));
   }
 
   return { page, totalPages, pageItems, setPage: setRawPage };

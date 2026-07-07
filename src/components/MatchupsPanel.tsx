@@ -10,7 +10,15 @@ import {
   normalizeArchetypeKey
 } from '../lib/data';
 import { type MatchupRowCore, rowsFromMajorsProfile, rowsFromOnlineMatchups, shrunkWinRate } from '../lib/matchups';
-import { buildLensRows, canonicalizeForLens, type LensRow, partitionByCard, tallyLens, wrOf } from '../lib/cardLens';
+import {
+  buildLensRows,
+  canonicalizeForLens,
+  copiesByPlayer,
+  type LensRow,
+  partitionByCopies,
+  tallyLens,
+  wrOf
+} from '../lib/cardLens';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { buildCardId } from '../utils/deckCardId';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../types';
@@ -259,14 +267,25 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
     return raw ? canonicalizeForLens(raw, synonymDb()) : null;
   });
 
-  const lensTallies = createMemo(() => {
+  // Copies-per-player only depends on the deck list + selected card, so it's
+  // memoized independently: changing `minCopies` re-splits this map instead of
+  // rescanning every deck's cards.
+  const lensCopies = createMemo(() => {
     const card = lensCard();
     const ds = lensDecks();
-    const ms = matches();
-    if (!card || !ds || !ms) {
+    if (!card || !ds) {
       return null;
     }
-    const part = partitionByCard(ds, card.cardId, minCopies());
+    return copiesByPlayer(ds, card.cardId);
+  });
+
+  const lensTallies = createMemo(() => {
+    const copies = lensCopies();
+    const ms = matches();
+    if (!copies || !ms) {
+      return null;
+    }
+    const part = partitionByCopies(copies, minCopies());
     return { part, ...tallyLens(ms, part) };
   });
 

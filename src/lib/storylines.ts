@@ -5,7 +5,7 @@
 // pre-pick stories server-side later.
 
 import type { ArchetypeIndexEntry, TournamentParticipant } from '../types';
-import { capitalize } from './format';
+import { capitalize, formatRecord as formatRecordBase } from './format';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -173,13 +173,7 @@ export function countryLabel(code?: string | null): string | null {
 
 /** Format a participant's record as "W-L" or "W-L-T". Returns null when both wins and losses are missing. */
 export function formatRecord(p: TournamentParticipant): string | null {
-  const w = p.wins ?? null;
-  const l = p.losses ?? null;
-  const t = p.ties ?? null;
-  if (w === null && l === null) {
-    return null;
-  }
-  return `${w ?? 0}-${l ?? 0}${t ? `-${t}` : ''}`;
+  return formatRecordBase(p, { compact: true });
 }
 
 // ---------------------------------------------------------------------------
@@ -286,14 +280,33 @@ function pickStories(candidates: StoryCandidate[], limit: number): Story[] {
 
 const MEANINGFUL_FIELD = 5;
 
+/**
+ * The element with the greatest `keyFn` value — O(n), no array copy. Ties
+ * resolve to the first-occurring element, matching what `[...rows].sort(desc)[0]`
+ * yields under a stable sort. For a minimum, negate the key.
+ */
+function maxBy<T>(rows: readonly T[], keyFn: (row: T) => number): T | undefined {
+  let best: T | undefined;
+  let bestKey = -Infinity;
+  for (const row of rows) {
+    const key = keyFn(row);
+    if (best === undefined || key > bestKey) {
+      best = row;
+      bestKey = key;
+    }
+  }
+  return best;
+}
+
 /** Top performer — best Day-2 conversion among decks with ≥5 pilots. */
 const genTopPerformer: StoryGenerator = ctx => {
   if (!ctx.hasDay2) {
     return null;
   }
-  const best = [...ctx.rows]
-    .filter(r => r.day2Conversion !== null && r.fieldDecks >= MEANINGFUL_FIELD)
-    .sort((a, b) => b.day2Conversion! - a.day2Conversion!)[0];
+  const best = maxBy(
+    ctx.rows.filter(r => r.day2Conversion !== null && r.fieldDecks >= MEANINGFUL_FIELD),
+    r => r.day2Conversion!
+  );
   if (!best || (best.day2Conversion ?? 0) < 25) {
     return null;
   }
@@ -359,9 +372,10 @@ const genDisappointment: StoryGenerator = ctx => {
   if (!ctx.hasDay2) {
     return null;
   }
-  const worst = [...ctx.rows]
-    .filter(r => r.day2Conversion !== null && r.fieldDecks >= 10)
-    .sort((a, b) => a.day2Conversion! - b.day2Conversion!)[0];
+  const worst = maxBy(
+    ctx.rows.filter(r => r.day2Conversion !== null && r.fieldDecks >= 10),
+    r => -r.day2Conversion!
+  );
   if (!worst || (worst.day2Conversion ?? 100) >= 25) {
     return null;
   }
@@ -397,9 +411,10 @@ const genHiddenGem: StoryGenerator = ctx => {
   if (!ctx.hasDay2) {
     return null;
   }
-  const gem = [...ctx.rows]
-    .filter(r => r.day2Conversion !== null && r.fieldDecks >= 3 && r.fieldDecks < MEANINGFUL_FIELD * 3)
-    .sort((a, b) => b.day2Conversion! - a.day2Conversion!)[0];
+  const gem = maxBy(
+    ctx.rows.filter(r => r.day2Conversion !== null && r.fieldDecks >= 3 && r.fieldDecks < MEANINGFUL_FIELD * 3),
+    r => r.day2Conversion!
+  );
   if (!gem || (gem.day2Conversion ?? 0) < 35) {
     return null;
   }
@@ -418,9 +433,10 @@ const genHiddenGem: StoryGenerator = ctx => {
 
 /** Biggest divergence from online-meta share — over or underbrought. */
 const genMetaSurprise: StoryGenerator = ctx => {
-  const surprise = [...ctx.rows]
-    .filter(r => r.delta !== null && r.archetype !== ctx.excludeArchetype)
-    .sort((a, b) => Math.abs(b.delta!) - Math.abs(a.delta!))[0];
+  const surprise = maxBy(
+    ctx.rows.filter(r => r.delta !== null && r.archetype !== ctx.excludeArchetype),
+    r => Math.abs(r.delta!)
+  );
   if (!surprise || Math.abs(surprise.delta ?? 0) < 4) {
     return null;
   }
@@ -449,7 +465,10 @@ const genCutDomination: StoryGenerator = ctx => {
   if (ctx.totalTopCut < 4) {
     return null;
   }
-  const dominant = [...ctx.rows].filter(r => r.topCutCount >= 2).sort((a, b) => b.topCutCount - a.topCutCount)[0];
+  const dominant = maxBy(
+    ctx.rows.filter(r => r.topCutCount >= 2),
+    r => r.topCutCount
+  );
   if (!dominant) {
     return null;
   }
@@ -499,7 +518,8 @@ const genOffMetaFinalist: StoryGenerator = ctx => {
       label: 'Online meta share',
       fillPct: Math.min(100, best.row.onlinePct! * 20),
       left: `${fmtPct(best.row.onlinePct!)} online`,
-      right: `${ctx.rows.indexOf(best.row) >= 0 ? `${best.row.fieldDecks} pilots` : ''}`
+      // best.row came from ctx.rows.find(), so it's always a member of ctx.rows.
+      right: `${best.row.fieldDecks} pilots`
     },
     weight: 50 + (2 - best.row.onlinePct!) * 15,
     subjectKey: `archetype:${best.row.archetype?.name ?? best.row.label}`
@@ -508,9 +528,10 @@ const genOffMetaFinalist: StoryGenerator = ctx => {
 
 /** Major online-meta archetype with no representation here at all. */
 const genNoShowMeta: StoryGenerator = ctx => {
-  const missing = [...ctx.rows]
-    .filter(r => r.onlinePct !== null && r.onlinePct >= 5 && r.fieldDecks === 0)
-    .sort((a, b) => b.onlinePct! - a.onlinePct!)[0];
+  const missing = maxBy(
+    ctx.rows.filter(r => r.onlinePct !== null && r.onlinePct >= 5 && r.fieldDecks === 0),
+    r => r.onlinePct!
+  );
   if (!missing) {
     return null;
   }
@@ -552,15 +573,7 @@ const genUnbrokenWinner: StoryGenerator = ctx => {
     headline: `${ctx.winner.name} ran the table`,
     body: `${w}-0${ctx.winner.ties ? `-${ctx.winner.ties}` : ''} through Swiss${ctx.winner.deckName ? ` on ${ctx.winner.deckName}` : ''}.`,
     href: entry ? `/archetypes/${encodeURIComponent(entry.name)}` : undefined,
-    statBar:
-      row.day2Conversion !== null
-        ? {
-            label: 'Day 2 conversion',
-            fillPct: row.day2Conversion,
-            left: `${row.day2Count} of ${row.fieldDecks}`,
-            right: fmtPct(row.day2Conversion)
-          }
-        : undefined,
+    statBar: day2ConversionStatBar(row),
     weight: 85,
     subjectKey: `player:${ctx.winner.name}#1`
   };
@@ -615,6 +628,23 @@ const STORY_GENERATORS: StoryGenerator[] = [
 // Generator helpers (internal)
 // ---------------------------------------------------------------------------
 
+/**
+ * The "Day 2 conversion" progress bar for a field row — the `day2Count of
+ * fieldDecks` fill used by both the conversion stories and the unbeaten-winner
+ * story. Returns undefined when the row has no conversion data.
+ */
+function day2ConversionStatBar(row: FieldRow): Story['statBar'] {
+  if (row.day2Conversion === null) {
+    return undefined;
+  }
+  return {
+    label: 'Day 2 conversion',
+    fillPct: row.day2Conversion,
+    left: `${row.day2Count} of ${row.fieldDecks}`,
+    right: fmtPct(row.day2Conversion)
+  };
+}
+
 function makeConversionStory(args: {
   row: FieldRow;
   tag: ArcTag;
@@ -629,15 +659,7 @@ function makeConversionStory(args: {
     row: r,
     headline: args.headline,
     body: args.body,
-    statBar:
-      r.day2Conversion !== null
-        ? {
-            label: 'Day 2 conversion',
-            fillPct: r.day2Conversion,
-            left: `${r.day2Count} of ${r.fieldDecks}`,
-            right: fmtPct(r.day2Conversion)
-          }
-        : undefined
+    statBar: day2ConversionStatBar(r)
   };
 }
 

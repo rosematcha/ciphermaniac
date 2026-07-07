@@ -6,7 +6,7 @@
  */
 import type { DeckCard, PlayerMatchRecord } from '../types';
 import type { DeckRecord } from './data';
-import { TIE_VALUE } from './matchups';
+import { pointsWinRate } from './matchups';
 import { buildCardId, canonicalizeDeckCard } from '../utils/deckCardId';
 import { normalizeCardNumber } from '../../shared/cardUtils.js';
 
@@ -59,9 +59,9 @@ export function classify(outcome: PlayerMatchRecord['outcome']): 'w' | 'l' | 't'
   return null; // bye / unpaired / unknown — not a real game
 }
 
-/** Win rate valuing a tie at {@link TIE_VALUE} of a win (match points), or null if no games. */
+/** Win rate valuing a tie at a match-point third of a win, or null if no games. */
 export function wrOf(rec: Tally): number | null {
-  return rec.n > 0 ? ((rec.w + rec.t * TIE_VALUE) / rec.n) * 100 : null;
+  return rec.n > 0 ? pointsWinRate(rec.w, rec.t, rec.n) : null;
 }
 
 /** Total copies of `cardId` across a (canonicalized) deck's card list. */
@@ -89,19 +89,32 @@ export interface Partition {
   withoutCount: number;
 }
 
-/** Split decks into runs-≥minCopies vs not, as sets of tournament-player ids. */
-export function partitionByCard(decks: DeckLite[], cardId: string, minCopies: number): Partition {
-  const n = Math.max(1, minCopies);
-  const withIds = new Set<number>();
-  const withoutIds = new Set<number>();
-  let withCount = 0;
-  let withoutCount = 0;
+/**
+ * Copies of `cardId` per tournament-player id, computed once per (decks, cardId).
+ * Callers memoize this so a `minCopies` change becomes a cheap threshold split
+ * ({@link partitionByCopies}) instead of a full rescan of every deck's cards.
+ */
+export function copiesByPlayer(decks: DeckLite[], cardId: string): Map<number, number> {
+  const copies = new Map<number, number>();
   for (const deck of decks) {
     const tp = Number(deck.playerId);
     if (!Number.isFinite(tp)) {
       continue;
     }
-    if (countInDeck(deck.cards, cardId) >= n) {
+    copies.set(tp, countInDeck(deck.cards, cardId));
+  }
+  return copies;
+}
+
+/** Threshold-split a precomputed copies map into runs-≥minCopies vs not. */
+export function partitionByCopies(copies: Map<number, number>, minCopies: number): Partition {
+  const n = Math.max(1, minCopies);
+  const withIds = new Set<number>();
+  const withoutIds = new Set<number>();
+  let withCount = 0;
+  let withoutCount = 0;
+  for (const [tp, count] of copies) {
+    if (count >= n) {
       withIds.add(tp);
       withCount += 1;
     } else {
@@ -110,6 +123,11 @@ export function partitionByCard(decks: DeckLite[], cardId: string, minCopies: nu
     }
   }
   return { withIds, withoutIds, withCount, withoutCount };
+}
+
+/** Split decks into runs-≥minCopies vs not, as sets of tournament-player ids. */
+export function partitionByCard(decks: DeckLite[], cardId: string, minCopies: number): Partition {
+  return partitionByCopies(copiesByPlayer(decks, cardId), minCopies);
 }
 
 export interface LensTallies {
