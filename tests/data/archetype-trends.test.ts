@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildCardTrendReport, buildTrendReport } from '../../functions/lib/onlineMeta.js';
+import { buildCardTrendReport, buildTrendReport } from '../../functions/lib/onlineMeta/index.js';
 
 // Helper factories
 function makeTournament(id: string, date: string, players = 16, deckTotal = 0) {

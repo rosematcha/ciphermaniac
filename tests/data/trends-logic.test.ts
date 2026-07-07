@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { buildCardTrendReport, buildTrendReport } from '../functions/lib/onlineMeta.ts';
+import { buildCardTrendReport, buildTrendReport } from '../../functions/lib/onlineMeta/index.ts';
 
 // Mock data helpers
 const createTournament = (id: string, date: string, players: number, deckTotal: number) => ({

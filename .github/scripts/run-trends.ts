@@ -14,7 +14,7 @@ import {
   gatherDecks,
   buildTrendReport,
   buildCardTrendReport
-} from '../../functions/lib/onlineMeta.ts';
+} from '../../functions/lib/onlineMeta/index.ts';
 import { loadCardTypesDatabase } from '../../functions/lib/data/cardTypesDatabase.js';
 import { fetchLimitlessJson } from '../../functions/lib/api/limitless.ts';
 import type { DiagnosticsCollector, TrendSeriesEntry } from '../../functions/lib/onlineMeta/types.ts';

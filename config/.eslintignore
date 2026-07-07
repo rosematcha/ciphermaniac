@@ -1,3 +1,0 @@
-# Tooling-heavy modules that aren't production-critical yet
-assets/js/social-graphics.js
-assets/js/utils/imagePreloader.js
