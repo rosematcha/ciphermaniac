@@ -1047,12 +1047,21 @@ def scrape_card_print_variations(session, set_code, number):
         set_name_elem = first_cell.find("a")
         set_acronym = None
 
-        if set_name_elem:
-            href = set_name_elem.get("href", "")
-            if href:
-                match = re.search(r"/cards/([A-Z0-9]+)/\d+", href)
-                if match:
-                    set_acronym = match.group(1)
+        # Match the set segment regardless of the card-number format so promo
+        # numbers like TG24/GG05 parse to their real set instead of falling
+        # through to the self-row branch below.
+        href = set_name_elem.get("href", "") if set_name_elem else ""
+        match = re.search(r"/cards/([A-Z0-9]+)/", href)
+        if match:
+            set_acronym = match.group(1)
+        elif not href and set_code:
+            # The card's own row on its Limitless page carries an anchor with
+            # no href (you are already on it), so it has no set acronym.
+            # Attribute it to the set being scraped — otherwise a page listing
+            # only two prints yields a single usable row and the card never
+            # reaches the 2-row cluster threshold (e.g. two-print cards like
+            # Pecharunt).
+            set_acronym = str(set_code).upper()
 
         if not set_acronym:
             continue
@@ -1078,45 +1087,96 @@ def scrape_card_print_variations(session, set_code, number):
     return variations
 
 
+def _load_set_catalog():
+    catalog_path = Path(__file__).parent / "data" / "set-catalog.json"
+    with catalog_path.open(encoding="utf-8") as f:
+        return json.load(f)
+
+
+_SET_CATALOG_DATA = _load_set_catalog()
+# sets is ordered newest-first, so a larger index means an older set.
+_SET_RELEASE_INDEX = {entry["code"]: index for index, entry in enumerate(_SET_CATALOG_DATA["sets"])}
+_STANDARD_LEGAL_SETS = set(_SET_CATALOG_DATA["standardLegalSets"])
+_PROMO_SETS = set(_SET_CATALOG_DATA["promoSets"])
+_CANONICAL_BASIC_ENERGY_NAMES = set(_SET_CATALOG_DATA["basicEnergyNames"])
+
+# Unknown sets are treated as newest: they are either brand-new sets missing
+# from the catalog or oddball products, and neither should win "oldest".
+_UNKNOWN_SET_INDEX = -1
+
+
+def _release_index(set_code):
+    if not set_code:
+        return _UNKNOWN_SET_INDEX
+    return _SET_RELEASE_INDEX.get(str(set_code).upper(), _UNKNOWN_SET_INDEX)
+
+
+def _normalize_price(value):
+    if isinstance(value, (int, float)) and value >= 0:
+        return float(value)
+    return None
+
+
+def _number_sort_key(number):
+    match = re.match(r"^(\d+)([A-Za-z]*)$", str(number or ""))
+    if not match:
+        return (10**9, str(number or ""))
+    return (int(match.group(1)), match.group(2).upper())
+
+
 def choose_canonical_print(variations, card_name):
+    """Pick the print a player would actually buy for a standard deck.
+
+    Oldest standard-legal print that is still cheap, skipping high-rarity
+    reprints (secret rares, gold energies) and hard-to-find promos. Basic
+    energies invert the age rule: they are worthless, so take the newest
+    cheap print instead.
+
+    Mirror of chooseCanonicalPrint in lib/canonical-print.mjs — keep the two
+    implementations in sync.
+    """
     if not variations:
         return None
 
-    standard_legal_sets = {
-        "MEG",
-        "MEE",
-        "MEP",
-        "WHT",
-        "BLK",
-        "DRI",
-        "JTG",
-        "PRE",
-        "SSP",
-        "SCR",
-        "SFA",
-        "TWM",
-        "TEF",
-        "PAF",
-        "PAR",
-        "MEW",
-        "M23",
-        "OBF",
-        "PAL",
-        "SVE",
-        "SVI",
-        "SVP",
-    }
-    promo_sets = {"SVP", "MEP", "PRE", "M23", "PAF"}
+    # 1. Standard legality. If nothing is legal (a fully rotated card in
+    #    historical data), fall back to every print.
+    legal = [v for v in variations if str(v.get("set", "")).upper() in _STANDARD_LEGAL_SETS]
+    pool = legal if legal else list(variations)
+
+    # 2. Accessibility. Strike collector-priced prints, and prints with no
+    #    price at all when priced alternatives exist. A print is accessible
+    #    when it costs no more than twice the cheapest print, with $0.50 of
+    #    absolute slack so penny-priced cards do not strike prints over noise.
+    prices = [p for p in (_normalize_price(v.get("price_usd")) for v in pool) if p is not None]
+    if prices:
+        cap = max(min(prices) * 2, min(prices) + 0.5)
+        affordable = [
+            v for v in pool
+            if _normalize_price(v.get("price_usd")) is not None
+            and _normalize_price(v.get("price_usd")) <= cap
+        ]
+        if affordable:
+            pool = affordable
+
+    # 3. Prefer non-promo prints; promos stay only for promo-only cards.
+    non_promo = [v for v in pool if str(v.get("set", "")).upper() not in _PROMO_SETS]
+    if non_promo:
+        pool = non_promo
+
+    # 4. Basic energies take the newest remaining print, everything else the
+    #    oldest. Ties break by lower price, then lower collector number.
+    want_newest = card_name in _CANONICAL_BASIC_ENERGY_NAMES
 
     def sort_key(var):
-        set_priority = 0 if var["set"] in standard_legal_sets else 1
-        promo_priority = 1 if var["set"] in promo_sets else 0
-        price = var.get("price_usd") or 999999
-        card_num = int(var["number"]) if str(var["number"]).isdigit() else 999999
-        return (set_priority, promo_priority, price, card_num)
+        index = _release_index(var.get("set"))
+        price = _normalize_price(var.get("price_usd"))
+        return (
+            index if want_newest else -index,
+            price if price is not None else float("inf"),
+            _number_sort_key(var.get("number")),
+        )
 
-    sorted_variations = sorted(variations, key=sort_key)
-    canonical = sorted_variations[0]
+    canonical = min(pool, key=sort_key)
 
     price_str = f"${canonical.get('price_usd', 'N/A')}" if canonical.get("price_usd") else "N/A"
     print(

@@ -1,11 +1,17 @@
 import { createSignal, For, Show } from 'solid-js';
 
 /**
- * Base URL for Limitless's clean Pokémon sprite icons. Slugs are lowercase and
- * hyphenated with form suffixes, e.g. `dragapult`, `greninja-mega`, `raging-bolt`.
- * Hotlinked directly (no CORS, no storage) — same posture as CardImage.
+ * Pokémon sprite icons. Slugs are lowercase and hyphenated with form
+ * suffixes, e.g. `dragapult`, `greninja-mega`, `raging-bolt`.
+ *
+ * Primary source is our own R2 mirror (scripts/mirror-archetype-sprites.ts)
+ * so archetype icons follow the same same-origin-ish posture as card art —
+ * not subject to Limitless CDN bot-blocking or availability. Any sprite the
+ * mirror doesn't have yet falls back to Limitless, then hides on a second
+ * failure.
  */
-const ICON_BASE = 'https://r2.limitlesstcg.net/pokemon/gen9';
+const ICON_BASE = 'https://r2.ciphermaniac.com/pokemon-sprites/gen9';
+const ICON_FALLBACK_BASE = 'https://r2.limitlesstcg.net/pokemon/gen9';
 
 /** Paired icons overlap by this many px (kept in sync with `.arche-icons` CSS). */
 const ICON_OVERLAP = 6;
@@ -50,19 +56,21 @@ export function ArchetypeIcons(props: ArchetypeIconsProps) {
 }
 
 function ArchetypeIcon(props: { slug: string; size: number }) {
-  const [errored, setErrored] = createSignal(false);
+  // 0 = mirror, 1 = Limitless fallback, 2 = give up and hide.
+  const [sourceStage, setSourceStage] = createSignal(0);
+  const src = () => `${sourceStage() === 0 ? ICON_BASE : ICON_FALLBACK_BASE}/${props.slug}.png`;
   return (
-    <Show when={!errored()}>
+    <Show when={sourceStage() < 2}>
       <img
         class='arche-icon'
-        src={`${ICON_BASE}/${props.slug}.png`}
+        src={src()}
         alt=''
         width={props.size}
         height={props.size}
         loading='lazy'
         decoding='async'
         referrerpolicy='no-referrer'
-        onError={() => setErrored(true)}
+        onError={() => setSourceStage(s => s + 1)}
       />
     </Show>
   );

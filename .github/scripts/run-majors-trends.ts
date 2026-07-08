@@ -24,7 +24,7 @@
 
 import process from 'node:process';
 import { writeFile } from 'node:fs/promises';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { canonicalizeReport, majorTournaments, tournamentDate, type MasterPayload } from '../../src/lib/data.ts';
 import {
   computeMajorsWindowResult,
@@ -35,8 +35,6 @@ import {
 import type { ArchetypeIndexEntry } from '../../src/types/index.ts';
 import { EMPTY_DATABASE, type SynonymDatabase } from '../../shared/synonyms.ts';
 
-/** Public R2 origin — the same base the browser reads from. */
-const R2_PUBLIC_BASE = (process.env.R2_PUBLIC_BASE || 'https://r2.ciphermaniac.com').replace(/\/+$/, '');
 /** Window sizes the page offers (must match MAJORS_WINDOW_COUNT in TrendsPage). */
 const WINDOWS: { key: string; count: number }[] = [
   { key: '3-events', count: 3 },
@@ -57,32 +55,48 @@ function requireEnv(name: string): string {
   return value;
 }
 
-/** GET + parse JSON from the public R2 base. Returns null on 404, throws otherwise. */
-async function fetchJson<T>(path: string): Promise<T | null> {
-  const url = `${R2_PUBLIC_BASE}${path}`;
-  const res = await fetch(url);
-  if (res.status === 404) {
-    return null;
+// Read the R2 bucket through the authenticated S3 endpoint, not the public
+// r2.ciphermaniac.com origin. The public origin sits behind Cloudflare's WAF,
+// which intermittently 403s requests from GitHub Actions runner IP ranges; the
+// S3 endpoint bypasses it (and the edge cache) the same way run-trends.ts does.
+const R2_BUCKET = requireEnv('R2_BUCKET_NAME');
+const REPORTS_PREFIX = (process.env.R2_REPORTS_PREFIX || 'reports').replace(/\/+$/, '');
+const s3Client = new S3Client({
+  region: 'auto',
+  endpoint: `https://${requireEnv('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
+    secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY')
   }
-  if (!res.ok) {
-    throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`);
+});
+
+/** GET + parse a JSON object from R2 by key. Returns null on 404, throws otherwise. */
+async function fetchJson<T>(key: string): Promise<T | null> {
+  try {
+    const res = await s3Client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+    return JSON.parse(await res.Body!.transformToString()) as T;
+  } catch (error) {
+    const meta = error as { name?: string; $metadata?: { httpStatusCode?: number } };
+    if (meta?.name === 'NoSuchKey' || meta?.$metadata?.httpStatusCode === 404) {
+      return null;
+    }
+    throw error;
   }
-  return (await res.json()) as T;
 }
 
 /** Same as fetchJson but never throws — mirrors the page's Promise.allSettled per-event fetch. */
-async function fetchJsonSafe<T>(path: string): Promise<T | null> {
+async function fetchJsonSafe<T>(key: string): Promise<T | null> {
   try {
-    return await fetchJson<T>(path);
+    return await fetchJson<T>(key);
   } catch (error) {
-    console.warn(`[majors-trends] read failed for ${path}:`, (error as Error).message);
+    console.warn(`[majors-trends] read failed for ${key}:`, (error as Error).message);
     return null;
   }
 }
 
 /** Load the synonym DB the same way the browser does (see src/utils/cardSynonyms.ts). */
 async function loadSynonymDatabase(): Promise<SynonymDatabase> {
-  const data = await fetchJsonSafe<SynonymDatabase>('/assets/card-synonyms.json');
+  const data = await fetchJsonSafe<SynonymDatabase>('assets/card-synonyms.json');
   return data ?? EMPTY_DATABASE;
 }
 
@@ -95,10 +109,10 @@ async function loadSynonymDatabase(): Promise<SynonymDatabase> {
  *    page's normalizeIndexPercentScale pre-pass to reach the same numbers.
  */
 async function buildSnapshot(tournament: string, db: SynonymDatabase): Promise<EventSnapshot> {
-  const encoded = encodeURIComponent(tournament);
+  // S3 object keys use the raw folder name; the SDK handles URL-encoding.
   const [rawMaster, rawArchetypes] = await Promise.all([
-    fetchJsonSafe<MasterPayload>(`/reports/${encoded}/master.json`),
-    fetchJsonSafe<ArchetypeIndexEntry[]>(`/reports/${encoded}/archetypes/index.json`)
+    fetchJsonSafe<MasterPayload>(`${REPORTS_PREFIX}/${tournament}/master.json`),
+    fetchJsonSafe<ArchetypeIndexEntry[]>(`${REPORTS_PREFIX}/${tournament}/archetypes/index.json`)
   ]);
   return {
     tournament,
@@ -109,7 +123,7 @@ async function buildSnapshot(tournament: string, db: SynonymDatabase): Promise<E
 }
 
 async function main() {
-  const tournaments = (await fetchJson<string[]>('/reports/tournaments.json')) ?? [];
+  const tournaments = (await fetchJson<string[]>(`${REPORTS_PREFIX}/tournaments.json`)) ?? [];
   const majors = majorTournaments(tournaments).slice(0, MAX_EVENTS);
   console.log(`[majors-trends] ${tournaments.length} tournaments, ${majors.length} majors (cap ${MAX_EVENTS})`);
   if (majors.length === 0) {
@@ -162,19 +176,10 @@ async function main() {
     return;
   }
 
-  const s3Client = new S3Client({
-    region: 'auto',
-    endpoint: `https://${requireEnv('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
-      secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY')
-    }
-  });
-  const prefix = (process.env.R2_REPORTS_PREFIX || 'reports').replace(/\/+$/, '');
-  const key = `${prefix}/${ARTIFACT_KEY}`;
+  const key = `${REPORTS_PREFIX}/${ARTIFACT_KEY}`;
   await s3Client.send(
     new PutObjectCommand({
-      Bucket: requireEnv('R2_BUCKET_NAME'),
+      Bucket: R2_BUCKET,
       Key: key,
       Body: body,
       ContentType: 'application/json',

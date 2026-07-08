@@ -291,5 +291,130 @@ class CardUsageAndConversionTests(unittest.TestCase):
         self.assertEqual(download_tournament.resolve_canonical_uid("BareName", synonyms, canonicals), "BareName::S1::009")
 
 
+def _print(set_code, number, price):
+    return {"set": set_code, "number": number, "price_usd": price}
+
+
+class ChooseCanonicalPrintTests(unittest.TestCase):
+    """Real print tables scraped from Limitless, chooser expectations agreed with Reese."""
+
+    def _choose(self, variations, card_name):
+        result = download_tournament.choose_canonical_print(variations, card_name)
+        self.assertIsNotNone(result)
+        return (result["set"], result["number"])
+
+    def test_pokemon_prefers_oldest_cheap_standard_print(self):
+        # Dreepy: ASC 247 is a collector print; TWM is the oldest cheap legal print.
+        variations = [
+            _print("TWM", "128", 0.24),
+            _print("PRE", "071", 0.15),
+            _print("ASC", "158", 0.19),
+            _print("ASC", "247", 10.68),
+        ]
+        self.assertEqual(self._choose(variations, "Dreepy"), ("TWM", "128"))
+
+    def test_rotated_prints_are_excluded(self):
+        # Boss's Orders: everything before MEG has rotated; ASC 256 is a secret rare.
+        variations = [
+            _print("SP", "251", 13.57),
+            _print("RCL", "154", 1.35),
+            _print("RCL", "189", 67.04),
+            _print("RCL", "200", 46.56),
+            _print("SHF", "058", 0.31),
+            _print("BRS", "132", 0.44),
+            _print("LOR", "TG24", 10.96),
+            _print("PAL", "172", 0.32),
+            _print("PAL", "248", 11.18),
+            _print("PAL", "265", 19.95),
+            _print("MEG", "114", 0.25),
+            _print("ASC", "183", 0.23),
+            _print("ASC", "256", 8.05),
+        ]
+        self.assertEqual(self._choose(variations, "Boss's Orders"), ("MEG", "114"))
+
+    def test_single_legal_print_wins_regardless_of_age(self):
+        # Pokegear 3.0: only the Black Bolt print is still standard legal.
+        variations = [
+            _print("HS", "096", 11.78),
+            _print("UNB", "182B", 2.25),
+            _print("UNB", "182A", 26.99),
+            _print("UNB", "182", 0.95),
+            _print("UNB", "233", 47.12),
+            _print("SSH", "174", 0.34),
+            _print("SVI", "186", 0.32),
+            _print("BLK", "084", 0.29),
+        ]
+        self.assertEqual(self._choose(variations, "Pokegear 3.0"), ("BLK", "084"))
+
+    def test_basic_energy_prefers_newest_cheap_print(self):
+        # Fire Energy: gold prints (CRZ/OBF) and rotated sets drop out; the
+        # newest cheap legal print (MEE) beats the SVE energy-set prints.
+        variations = [
+            _print("BS", "098", 0.37),
+            _print("EVO", "092", 0.29),
+            _print("SUM", "R", 0.17),
+            _print("TEU", "R", 0.14),
+            _print("SSH", "R", 0.28),
+            _print("FST", "284", 6.34),
+            _print("BRS", "R", None),
+            _print("CRZ", "153", 3.59),
+            _print("SVE", "002", 0.19),
+            _print("SVE", "010", 0.11),
+            _print("SVE", "018", 0.19),
+            _print("OBF", "230", 3.55),
+            _print("MEE", "002", 0.22),
+        ]
+        self.assertEqual(self._choose(variations, "Fire Energy"), ("MEE", "002"))
+
+    def test_expensive_promo_loses_to_cheap_set_print(self):
+        # Psyduck: the original Mega Promos print is priced out of reach, so
+        # the accessible Ascended Heroes print is canonical despite being newer.
+        variations = [
+            _print("MEP", "007", 10.91),
+            _print("ASC", "039", 0.26),
+            _print("ASC", "226", 83.72),
+        ]
+        self.assertEqual(self._choose(variations, "Psyduck"), ("ASC", "039"))
+
+    def test_promo_only_card_uses_most_accessible_promo(self):
+        # Pecharunt: promo-only, so the cheap promo wins over the older one.
+        variations = [
+            _print("SVP", "129", 2.05),
+            _print("SVP", "149", 0.76),
+        ]
+        self.assertEqual(self._choose(variations, "Pecharunt"), ("SVP", "149"))
+
+    def test_reprinted_original_stays_canonical_once_affordable(self):
+        # Poke Pad: the original ASC print settled back to a reasonable price,
+        # so it beats the newer POR reprint; POR 113 is a collector print.
+        variations = [
+            _print("ASC", "198", 0.43),
+            _print("POR", "081", 0.30),
+            _print("POR", "113", 12.82),
+        ]
+        self.assertEqual(self._choose(variations, "Poke Pad"), ("ASC", "198"))
+
+    def test_unpriced_prints_lose_to_priced_ones(self):
+        variations = [
+            _print("MEG", "050", None),
+            _print("ASC", "010", 0.30),
+        ]
+        self.assertEqual(self._choose(variations, "Some Card"), ("ASC", "010"))
+
+    def test_all_unpriced_falls_back_to_oldest_legal(self):
+        variations = [
+            _print("MEG", "050", None),
+            _print("ASC", "010", None),
+        ]
+        self.assertEqual(self._choose(variations, "Some Card"), ("MEG", "050"))
+
+    def test_fully_rotated_card_still_gets_a_canonical(self):
+        variations = [
+            _print("RCL", "154", 1.35),
+            _print("BRS", "132", 0.44),
+        ]
+        self.assertEqual(self._choose(variations, "Boss's Orders"), ("BRS", "132"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,7 @@
 import { createSignal, For, onMount, Show } from 'solid-js';
 
-import evaGif from '../assets/eva-evangelion.gif';
+// MP4 loop instead of the original 418KB GIF — same frames at ~44KB.
+import evaVideo from '../assets/eva-evangelion.mp4';
 import { isSurveyClosed, SURVEY_CLOSED_MESSAGE } from '../lib/survey';
 import '../styles/pages/survey.css';
 
@@ -108,7 +109,7 @@ export function SurveyPage() {
           <section>
             <div class='survey-done'>
               <h2>Congratulations!</h2>
-              <img class='survey-done-gif' src={evaGif} alt='' />
+              <video class='survey-done-gif' src={evaVideo} autoplay loop muted playsinline aria-hidden='true' />
               <p>
                 I appreciate you taking the time to fill out this survey! Any user feedback always helps. I'll make a
                 summary post after the survey closes. Thanks again! :)
