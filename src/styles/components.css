@@ -2191,6 +2191,12 @@ body[data-mode='dark'] .tournament-row-link:hover {
     gap: 10px;
   }
 }
+/* "Show all N cards" reveal under a capped CardList. */
+.cards-grid-more {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-5);
+}
 .card-tile {
   display: grid;
   gap: 8px;

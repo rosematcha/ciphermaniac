@@ -228,15 +228,23 @@ export function CardPage() {
   // (small JSON files R2 serves cached; `fetchJson` dedupes within a session).
   const [archetypeIndex] = createResource(effectiveTournament, fetchArchetypes);
   const archetypeIndexData = () => latestValue(archetypeIndex);
+  // cardUsage.json is this page's largest payload and depends only on the
+  // tournament, so fire it in its own resource immediately — gating it behind
+  // the (tiny) archetype index serialized the two fetches and added a full
+  // RTT before the big download even started. `null` doubles as the 404
+  // signal that sends the joiner below down the per-archetype fallback.
+  const [cardUsage] = createResource(effectiveTournament, t => fetchCardUsage(t).catch(() => null));
   const [archetypeUsage] = createResource(
     () => {
       const c = card();
       const list = archetypeIndexData();
       const t = effectiveTournament();
-      return c && list ? { card: c, list, tournament: t } : null;
+      if (!c || !list || cardUsage.loading) {
+        return null;
+      }
+      return { card: c, list, tournament: t, usage: cardUsage() ?? null };
     },
-    async ({ card, list, tournament }) => {
-      const usage = await fetchCardUsage(tournament).catch(() => null);
+    async ({ card, list, tournament, usage }) => {
       if (usage) {
         return buildUsageRowsFromIndex(usage, list, card);
       }

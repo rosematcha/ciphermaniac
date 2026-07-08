@@ -19,9 +19,11 @@
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
 
-# Live report JSON and player data (also served from Pages in local/preview
-# builds; production reads the same keys from R2, which sets matching
-# metadata via storageWriter.ts).
+# Live report JSON and player data. PREVIEW/LOCAL ONLY: production fetches
+# these paths cross-origin from r2.ciphermaniac.com, so these rules never see
+# real traffic — the effective production policy is the Cache-Control metadata
+# set at upload time (storageWriter.ts, run-online-meta.mjs, update-prices.py,
+# upload-toys.ts). Keep both in sync.
 /reports/*
   Cache-Control: public, max-age=21600
 

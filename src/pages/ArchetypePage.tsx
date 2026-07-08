@@ -418,6 +418,7 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
             items={sortedByPct()}
             viewMode={props.viewMode}
             emptyMessage='No cards in this report.'
+            initialLimit={60}
           />
         </Show>
 
