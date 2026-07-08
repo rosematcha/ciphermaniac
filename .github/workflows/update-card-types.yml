@@ -135,9 +135,17 @@ jobs:
             public/assets/data/card-types.json \
             "s3://${R2_BUCKET_NAME}/assets/data/card-types.json" \
             --content-type "application/json" \
+            --cache-control "public, max-age=21600" \
             --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
-          echo "Uploaded card types database to R2"
+          aws s3 cp \
+            public/assets/data/evolves-from.json \
+            "s3://${R2_BUCKET_NAME}/assets/data/evolves-from.json" \
+            --content-type "application/json" \
+            --cache-control "public, max-age=21600" \
+            --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+          echo "Uploaded card types database + slim evolves-from map to R2"
 
       - name: Check for changes
         id: check_changes

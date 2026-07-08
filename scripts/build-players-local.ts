@@ -9,6 +9,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildPlayerAggregates } from '../functions/lib/onlineMeta/playerAggregator';
+import { toSlimIndexEntry } from '../shared/playerTypes';
 
 const R2_BASE = 'https://r2.ciphermaniac.com';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -87,6 +88,11 @@ async function main() {
 
   const indexPath = join(OUT_BASE, 'players', 'index.json');
   await writeFile(indexPath, JSON.stringify(trimmed, null, 2));
+
+  // Slim index the SPA actually downloads (see playerAggregator.SLIM_INDEX_KEY).
+  // Written compact, mirroring production.
+  const slimPath = join(OUT_BASE, 'players', 'index-slim.json');
+  await writeFile(slimPath, JSON.stringify(trimmed.map(toSlimIndexEntry)));
 
   const ms = Date.now() - t0;
   console.info('[local-build] Done', {

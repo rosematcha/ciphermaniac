@@ -4,6 +4,7 @@ import { SurveyBanner } from './components/SurveyBanner';
 import { Skeleton } from './components/Skeleton';
 import { TopNav } from './components/TopNav';
 import { TournamentProvider } from './lib/tournamentContext';
+import { useScrollRestoration } from './lib/scrollRestore';
 
 /**
  * Fallback while a lazy route chunk downloads on a cold load (page data never
@@ -30,6 +31,7 @@ function ChunkFallback() {
  */
 export const App: ParentComponent = props => {
   const isRouting = useIsRouting();
+  useScrollRestoration();
   return (
     <TournamentProvider>
       {/* Slim pending bar: instant feedback the moment a nav starts, for the

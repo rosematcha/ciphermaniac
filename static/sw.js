@@ -9,8 +9,10 @@
  *     fine (same policy as the 6h HTTP cache, but instant and offline-safe).
  *  2. Same-origin /assets/ + /fonts/: cache-first. Bundle filenames are
  *     content-hashed and fonts are frozen, so these never go stale.
- *  3. Navigations: network-first, falling back to the last-cached app shell
- *     when offline. The cached shell is refreshed on every successful nav.
+ *  3. Navigations: stale-while-revalidate on the app shell. Repeat visitors
+ *     paint instantly from the cached shell (all content is client-rendered
+ *     from hashed assets + JSON, so a briefly-stale shell is harmless); a
+ *     background refresh keeps the cache current and covers offline.
  *
  * Card images are intentionally NOT cached here: they're no-cors/opaque
  * responses (quota-padded heavily by browsers) and already long-cached by
@@ -94,19 +96,25 @@ async function cacheFirst(request) {
   return response;
 }
 
-async function navigationNetworkFirst(request) {
+async function navigationStaleWhileRevalidate(request) {
   const cache = await caches.open(SHELL_CACHE);
-  try {
-    const response = await fetch(request);
-    if (response.ok) {
-      // Keep one shell copy fresh for offline fallback.
-      cache.put('/', response.clone());
-    }
-    return response;
-  } catch {
-    const cached = await cache.match('/');
-    return cached ?? Response.error();
+  const cached = await cache.match('/');
+  const refresh = fetch(request)
+    .then(response => {
+      if (response.ok) {
+        // Keep one shell copy fresh (also the offline fallback). The shell is
+        // tiny HTML pointing at hashed assets, so serving it stale never
+        // serves stale code — the asset URLs inside decide that.
+        cache.put('/', response.clone());
+      }
+      return response;
+    })
+    .catch(() => null);
+  if (cached) {
+    return cached;
   }
+  const fresh = await refresh;
+  return fresh ?? Response.error();
 }
 
 self.addEventListener('fetch', event => {
@@ -117,7 +125,7 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
 
   if (request.mode === 'navigate') {
-    event.respondWith(navigationNetworkFirst(request));
+    event.respondWith(navigationStaleWhileRevalidate(request));
     return;
   }
   if (url.host === 'r2.ciphermaniac.com' && !url.pathname.startsWith('/card-images/')) {

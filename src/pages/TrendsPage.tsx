@@ -2,6 +2,7 @@ import { createMemo, createResource, createSignal, For, type JSX, onCleanup, onM
 import { A } from '@solidjs/router';
 import {
   fetchArchetypes,
+  fetchMajorsTrendReport,
   fetchMaster,
   fetchOnlineTrendReport,
   fetchPriceHistory,
@@ -13,14 +14,24 @@ import {
   resolveArchetypeIcons,
   tournamentDate
 } from '../lib/data';
-import type { ArchetypeIndexEntry, CardItem } from '../types';
+import {
+  type ArchetypeSeries,
+  computeMajorsArchetypeSeries,
+  computeMajorsMovers,
+  type DayBin,
+  type EventSnapshot,
+  type MajorsWindowResult,
+  type MoverRow,
+  type MoversResult,
+  NEWCOMER_MIN_SHARE,
+  parseDayKey
+} from '../lib/majorsTrends';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { Section } from '../components/Section';
 import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { createPersistentSignal } from '../lib/persistentSignal';
-import { shortDate } from '../lib/format';
 import { latestValue } from '../lib/resource';
 import '../styles/pages/trends.css';
 
@@ -58,8 +69,6 @@ const ARCHETYPE_LINE_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-
 const TOP_ARCHETYPES_FOR_CHART = 6;
 /** Never draw more than this many lines at once — the chart stays readable. */
 const MAX_VISIBLE_SERIES = 8;
-/** A newcomer must hold at least this share (%) in the recent half to be listed. */
-const NEWCOMER_MIN_SHARE = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Stable line color for a series by its rank index (cycles the palette). */
@@ -109,13 +118,6 @@ function formatDateWindow(start: string | undefined, end: string | undefined): s
     return null;
   }
   return `${s} to ${e}`;
-}
-
-interface EventSnapshot {
-  tournament: string;
-  date: Date;
-  master: { deckTotal: number; items: CardItem[] } | null;
-  archetypes: ArchetypeIndexEntry[] | null;
 }
 
 /**
@@ -518,12 +520,34 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
    ============================================================ */
 
 function MajorsView(props: { windowKey: MajorsWindow }) {
+  // Fast path: the pipeline precomputes the movers + timeline for each window
+  // into a small artifact (see .github/scripts/run-majors-trends.ts). Fetch it
+  // first; only when it's absent (404 — e.g. right after a deploy, before the
+  // pipeline has run) do we fall back to the legacy client computation, which
+  // downloads every event's master.json (~5 MB total).
+  const [report] = createResource(fetchMajorsTrendReport);
   const [tournaments] = createResource(fetchTournamentsList);
 
-  // Non-suspending read (see lib/resource.ts).
+  // Non-suspending reads (see lib/resource.ts).
+  const reportData = () => latestValue(report);
   const tournamentsData = () => latestValue(tournaments);
 
+  /** True once the artifact fetch has resolved to a 404 — the fallback is live. */
+  const artifactMissing = () => reportData() === null;
+
+  /** Precomputed result for the selected window, or null when unavailable. */
+  const windowResult = createMemo<MajorsWindowResult | null>(() => {
+    const data = reportData();
+    return data ? (data.windows[props.windowKey] ?? null) : null;
+  });
+
+  // Fallback only: the major tournament keys for the window. Empty whenever the
+  // artifact is present, so the snapshots resource below never fires (and the
+  // ~5 MB of master.json downloads never happen).
   const sample = createMemo<string[]>(() => {
+    if (!artifactMissing()) {
+      return [];
+    }
     const list = tournamentsData() ?? [];
     return majorTournaments(list).slice(0, MAJORS_WINDOW_COUNT[props.windowKey]);
   });
@@ -549,198 +573,53 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
   // chart in place instead of flashing a skeleton.
   const snapshotsData = () => latestValue(snapshots);
 
-  const movers = createMemo<MoversResult>(() => {
-    const empty = (enough: boolean, coverage: HalfCoverage | null): MoversResult => ({
-      rising: [],
-      falling: [],
-      newcomers: [],
-      enoughForMovers: enough,
-      coverage,
-      newcomerMin: NEWCOMER_MIN_SHARE
-    });
+  /** Number of events in the window, for the section captions. */
+  const sampleCount = () => {
+    const w = windowResult();
+    return w ? w.sampleCount : sample().length;
+  };
 
-    const reps = (snapshotsData() ?? []).filter(r => r.master !== null);
-    if (reps.length < 2) {
-      return empty(false, null);
-    }
-    // reps arrive most-recent first. Split into a recent half and an older half.
-    const mid = Math.ceil(reps.length / 2);
-    const recentReps = reps.slice(0, mid);
-    const olderReps = reps.slice(mid);
-    const coverage: HalfCoverage = {
-      recent: eventDateRange(recentReps),
-      older: eventDateRange(olderReps),
-      recentCount: recentReps.length,
-      olderCount: olderReps.length
-    };
-    // A trend needs at least two events on each side. At "Last 3 events" the
-    // older half is a single tournament, so one event's local meta would read as
-    // a movement. Below that, disable the list rather than mislead.
-    if (recentReps.length < 2 || olderReps.length < 2) {
-      return empty(false, coverage);
-    }
-
-    // Build a key→item map for each report once; previously avgPctIn/appearancesIn
-    // ran .find() per key per report (O(reports × keys × items)).
-    const repMaps = reps.map(r => {
-      const m = new Map<string, CardItem>();
-      for (const item of r.master!.items) {
-        if (!item.set || item.number === undefined || item.number === null || item.number === '') {
-          continue;
-        }
-        m.set(`${item.set}::${item.number}`, item);
-      }
-      return m;
-    });
-    // Weight each event by its deck total, so a 3,752-player IC counts for more
-    // than a 300-player special instead of one-event-one-vote.
-    const repWeights = reps.map(r => {
-      const dt = r.master!.deckTotal;
-      return Number.isFinite(dt) && dt > 0 ? dt : 1;
-    });
-    const recentMaps = repMaps.slice(0, mid);
-    const olderMaps = repMaps.slice(mid);
-    const recentWeights = repWeights.slice(0, mid);
-    const olderWeights = repWeights.slice(mid);
-
-    const allKeys = new Map<string, CardItem>();
-    for (let i = 0; i < reps.length; i++) {
-      for (const [key, item] of repMaps[i]) {
-        if (!allKeys.has(key) || (item.pct ?? 0) > (allKeys.get(key)!.pct ?? 0)) {
-          allKeys.set(key, item);
-        }
-      }
-    }
-
-    const avgFor = (maps: Map<string, CardItem>[], weights: number[], key: string): number | null => {
-      let sum = 0;
-      let weight = 0;
-      for (let i = 0; i < maps.length; i++) {
-        const item = maps[i].get(key);
-        if (item && Number.isFinite(item.pct)) {
-          sum += item.pct * weights[i];
-          weight += weights[i];
-        }
-      }
-      return weight === 0 ? null : sum / weight;
-    };
-    const appearancesFor = (maps: Map<string, CardItem>[], key: string): number =>
-      maps.reduce((n, m) => (m.has(key) ? n + 1 : n), 0);
-
-    const all: Mover[] = [];
-    for (const [key, item] of allKeys) {
-      const recentAvg = avgFor(recentMaps, recentWeights, key);
-      const olderAvg = avgFor(olderMaps, olderWeights, key);
-      const appearancesRecent = appearancesFor(recentMaps, key);
-      if (appearancesRecent < Math.max(1, Math.ceil(recentMaps.length / 2))) {
-        continue;
-      }
-      const delta = (recentAvg ?? 0) - (olderAvg ?? 0);
-      all.push({ item, recentAvg, olderAvg, delta });
-    }
-
-    const present = all.filter(m => m.olderAvg !== null && m.recentAvg !== null);
-    const rising = [...present].sort((a, b) => b.delta - a.delta).slice(0, 12);
-    const falling = [...present].sort((a, b) => a.delta - b.delta).slice(0, 12);
-    const newcomers = all
-      .filter(m => m.olderAvg === null && m.recentAvg !== null && m.recentAvg >= NEWCOMER_MIN_SHARE)
-      .sort((a, b) => (b.recentAvg ?? 0) - (a.recentAvg ?? 0))
-      .slice(0, 8);
-    return { rising, falling, newcomers, enoughForMovers: true, coverage, newcomerMin: NEWCOMER_MIN_SHARE };
-  });
-
+  /** Archetype-share timeline: from the artifact when present, else computed. */
   const archetypeSeries = createMemo<{ series: ArchetypeSeries[]; days: DayBin[] }>(() => {
-    const reps = (snapshotsData() ?? []).filter(r => r.archetypes !== null);
-    if (reps.length === 0) {
-      return { series: [], days: [] };
+    const w = windowResult();
+    if (w) {
+      return {
+        series: w.series,
+        days: w.dayKeys.map(key => ({ key, date: parseDayKey(key), count: 1 }))
+      };
     }
-    const byDay = new Map<string, EventSnapshot[]>();
-    for (const r of reps) {
-      const key = dayKey(r.date);
-      if (!byDay.has(key)) {
-        byDay.set(key, []);
-      }
-      byDay.get(key)!.push(r);
-    }
-    const days: DayBin[] = Array.from(byDay.entries())
-      .map(([key, snaps]) => ({ key, date: snaps[0].date, count: snaps.length, snaps }))
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
-
-    // Per (archetype, day): a deck-total-weighted share. `num` accumulates
-    // Σ(share × eventDeckTotal) and `den` accumulates Σ(eventDeckTotal), so a
-    // day's value is the true pooled share. The old (existing + raw) / 2 merge
-    // was order-dependent — a third same-day event got weight 1/2 while the
-    // first two got 1/4 — and every event counted equally regardless of size.
-    const byArche = new Map<string, { label: string; num: number[]; den: number[] }>();
-    days.forEach((day, dayIdx) => {
-      for (const snap of day.snaps!) {
-        // Per-event archetype reports store `percent` as either a 0..1 fraction
-        // (post-3939e71) or a 0..100 value (older files). The scale is uniform
-        // within a file, so detect it once per snapshot: a fractional file's max
-        // is ≤1, while a 0..100 file always has a dominant deck >1. Detecting
-        // per-value instead would wrongly inflate sub-1% niche decks (e.g. a deck
-        // at 0.84% in a 0..100 file) into 84%.
-        const maxPercent = snap.archetypes!.reduce(
-          (m, a) => (Number.isFinite(a.percent) && (a.percent as number) > m ? (a.percent as number) : m),
-          0
-        );
-        const scale = maxPercent > 0 && maxPercent <= 1 ? 100 : 1;
-        // Event weight: master deck total when present, else summed archetype
-        // deck counts, else 1.
-        const masterTotal = snap.master?.deckTotal;
-        const archTotal = snap.archetypes!.reduce((s, a) => s + (a.deckCount ?? 0), 0);
-        const weight =
-          Number.isFinite(masterTotal) && (masterTotal as number) > 0
-            ? (masterTotal as number)
-            : archTotal > 0
-              ? archTotal
-              : 1;
-        for (const a of snap.archetypes!) {
-          const key = a.name;
-          if (!byArche.has(key)) {
-            byArche.set(key, {
-              label: a.label || a.name,
-              num: Array.from({ length: days.length }, () => 0),
-              den: Array.from({ length: days.length }, () => 0)
-            });
-          }
-          if (a.percent === null || a.percent === undefined || !Number.isFinite(a.percent)) {
-            continue;
-          }
-          const raw = a.percent * scale;
-          const acc = byArche.get(key)!;
-          acc.num[dayIdx] += raw * weight;
-          acc.den[dayIdx] += weight;
-        }
-      }
-    });
-
-    const allSeries: ArchetypeSeries[] = [];
-    for (const [name, info] of byArche.entries()) {
-      const shares: (number | null)[] = info.num.map((n, i) => (info.den[i] > 0 ? n / info.den[i] : null));
-      const present = shares.filter((s): s is number => s !== null);
-      if (present.length === 0) {
-        continue;
-      }
-      const avg = present.reduce((a, b) => a + b, 0) / present.length;
-      allSeries.push({ name, label: info.label, avg, points: shares });
-    }
-    allSeries.sort((a, b) => b.avg - a.avg);
-
-    return { series: allSeries, days };
+    return computeMajorsArchetypeSeries(snapshotsData() ?? []);
   });
+
+  /** Card movers: from the artifact when present, else computed. */
+  const movers = createMemo<MoversResult>(() => {
+    const w = windowResult();
+    return w ? w.movers : computeMajorsMovers(snapshotsData() ?? [], NEWCOMER_MIN_SHARE);
+  });
+
+  /**
+   * Busy while the artifact fetch is in flight, or (on the fallback path) while
+   * the per-event snapshots are downloading — so the skeleton shows instead of
+   * an empty state.
+   */
+  const busy = () => {
+    if (reportData() === undefined) {
+      return true;
+    }
+    return artifactMissing() && snapshots.loading;
+  };
 
   return (
     <>
       <Section
         title='Archetype share over time'
-        right={`${archetypeSeries().days.length} days · ${sample().length} events`}
+        right={`${archetypeSeries().days.length} days · ${sampleCount()} events`}
       >
         <Show
-          when={snapshotsData() && archetypeSeries().series.length > 0}
+          when={archetypeSeries().series.length > 0}
           fallback={
             <Show
-              when={snapshots.loading}
+              when={busy()}
               fallback={
                 <EmptyState
                   title='Not enough major events.'
@@ -756,12 +635,12 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
         </Show>
       </Section>
 
-      <Section title='Top card movers' right={`Across ${sample().length} tournaments`}>
+      <Section title='Top card movers' right={`Across ${sampleCount()} tournaments`}>
         <Show
-          when={snapshotsData() && movers().enoughForMovers}
+          when={movers().enoughForMovers}
           fallback={
             <Show
-              when={snapshots.loading}
+              when={busy()}
               fallback={
                 <EmptyState
                   title='Not enough events to compare'
@@ -785,15 +664,15 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
             )}
           </Show>
           <div class='movers'>
-            <MoverColumn<Mover>
+            <MoverColumn<MoverRow>
               title='Rising: biggest gainers'
               titleClass='up'
               rows={movers().rising}
-              href={m => (m.item.set && m.item.number ? `/cards/${m.item.set}/${m.item.number}` : '#')}
-              name={m => m.item.name}
+              href={m => (m.set && m.number ? `/cards/${m.set}/${m.number}` : '#')}
+              name={m => m.name}
               setLabel={m => (
                 <>
-                  {m.item.set}/{m.item.number}
+                  {m.set}/{m.number}
                 </>
               )}
               trailing={m => (
@@ -805,15 +684,15 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
                 </span>
               )}
             />
-            <MoverColumn<Mover>
+            <MoverColumn<MoverRow>
               title='Falling: biggest losers'
               titleClass='down'
               rows={movers().falling}
-              href={m => (m.item.set && m.item.number ? `/cards/${m.item.set}/${m.item.number}` : '#')}
-              name={m => m.item.name}
+              href={m => (m.set && m.number ? `/cards/${m.set}/${m.number}` : '#')}
+              name={m => m.name}
               setLabel={m => (
                 <>
-                  {m.item.set}/{m.item.number}
+                  {m.set}/{m.number}
                 </>
               )}
               trailing={m => (
@@ -831,7 +710,7 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
 
       <Show when={movers().newcomers.length > 0}>
         <Section title='Newcomers' right='Appeared only in recent events'>
-          <MoverColumn<Mover>
+          <MoverColumn<MoverRow>
             note={
               <Show when={movers().coverage}>
                 {c => (
@@ -843,11 +722,11 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
               </Show>
             }
             rows={movers().newcomers}
-            href={m => (m.item.set && m.item.number ? `/cards/${m.item.set}/${m.item.number}` : '#')}
-            name={m => m.item.name}
+            href={m => (m.set && m.number ? `/cards/${m.set}/${m.number}` : '#')}
+            name={m => m.name}
             setLabel={m => (
               <>
-                {m.item.set}/{m.item.number}
+                {m.set}/{m.number}
               </>
             )}
             trailing={m => <span class='share-neutral'>{(m.recentAvg ?? 0).toFixed(1)}% of decks</span>}
@@ -861,20 +740,6 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
 /* ============================================================
    Shared chart
    ============================================================ */
-
-interface ArchetypeSeries {
-  name: string;
-  label: string;
-  avg: number;
-  points: (number | null)[];
-}
-
-interface DayBin {
-  key: string;
-  date: Date;
-  count: number;
-  snaps?: EventSnapshot[];
-}
 
 function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[] }) {
   const iconMap = getArchetypeIconMap();
@@ -1394,53 +1259,6 @@ function MoverColumn<T>(props: {
 }
 
 /* ---------- helpers ---------- */
-
-function dayKey(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-interface Mover {
-  item: CardItem;
-  recentAvg: number | null;
-  olderAvg: number | null;
-  delta: number;
-}
-
-interface HalfCoverage {
-  /** Date range covered by the recent half, e.g. "Jun 6 to Jul 6". */
-  recent: string;
-  /** Date range covered by the older half. */
-  older: string;
-  recentCount: number;
-  olderCount: number;
-}
-
-interface MoversResult {
-  rising: Mover[];
-  falling: Mover[];
-  newcomers: Mover[];
-  /** False when a half has fewer than two events, so the list stays hidden. */
-  enoughForMovers: boolean;
-  coverage: HalfCoverage | null;
-  newcomerMin: number;
-}
-
-/** Min-to-max date label for a set of events, e.g. "Jun 6 to Jul 6" (or a single date). */
-function eventDateRange(reps: EventSnapshot[]): string {
-  const times = reps
-    .map(r => r.date.getTime())
-    .filter(t => t > 0)
-    .sort((a, b) => a - b);
-  if (times.length === 0) {
-    return '';
-  }
-  const first = shortDate(new Date(times[0]));
-  const last = shortDate(new Date(times[times.length - 1]));
-  return first === last ? first : `${first} to ${last}`;
-}
 
 interface CardTrendLike {
   name: string;

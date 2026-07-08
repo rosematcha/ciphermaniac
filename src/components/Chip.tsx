@@ -46,6 +46,7 @@ interface SearchInputProps {
   onInput: (value: string) => void;
   placeholder?: string;
   ariaLabel?: string;
+  onFocus?: () => void;
 }
 
 export function SearchInput(props: SearchInputProps): JSX.Element {
@@ -57,6 +58,7 @@ export function SearchInput(props: SearchInputProps): JSX.Element {
       aria-label={props.ariaLabel ?? props.placeholder ?? 'Search'}
       value={props.value}
       onInput={e => props.onInput(e.currentTarget.value)}
+      onFocus={() => props.onFocus?.()}
     />
   );
 }

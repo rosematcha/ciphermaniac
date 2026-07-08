@@ -1,13 +1,13 @@
 import { A, useSearchParams } from '@solidjs/router';
 import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
-import { fetchPlayerIndex, fetchPlayerProfile, prettyTournamentName } from '../lib/data';
+import { fetchPlayerIndexSlim, fetchPlayerProfile, prettyTournamentName } from '../lib/data';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { Section } from '../components/Section';
 import { SearchInput } from '../components/Chip';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { resolved } from '../lib/resource';
-import type { PlayerIndexEntry, PlayerProfile, PlayerTournamentEntry } from '../types';
+import type { PlayerIndexSlimEntry, PlayerProfile, PlayerTournamentEntry } from '../types';
 import '../styles/pages/players-tables.css';
 import '../styles/pages/player-compare.css';
 
@@ -65,7 +65,12 @@ function finishCmp(a: PlayerTournamentEntry, b: PlayerTournamentEntry): number {
 export function PlayerComparePage() {
   const [params, setParams] = useSearchParams<{ a?: string; b?: string }>();
 
-  const [index] = createResource(fetchPlayerIndex);
+  // The index only feeds the picker autocomplete, so we don't download it on
+  // mount — we defer until the user focuses a search box. When the page loads
+  // with ?a/?b already set, the chosen profiles fetch directly by id and the
+  // index is never needed at all.
+  const [indexRequested, setIndexRequested] = createSignal(false);
+  const [index] = createResource(() => (indexRequested() ? 'load' : null), fetchPlayerIndexSlim);
   const indexData = () => resolved(index) ?? [];
 
   const [profileA] = createResource(() => params.a ?? null, fetchPlayerProfile);
@@ -124,6 +129,7 @@ export function PlayerComparePage() {
           selectedId={params.a}
           otherId={params.b}
           onPick={id => setSlot('a', id)}
+          onActivate={() => setIndexRequested(true)}
         />
         <PlayerSlot
           label='Player 2'
@@ -132,6 +138,7 @@ export function PlayerComparePage() {
           selectedId={params.b}
           otherId={params.a}
           onPick={id => setSlot('b', id)}
+          onActivate={() => setIndexRequested(true)}
         />
       </div>
 
@@ -168,11 +175,13 @@ export function PlayerComparePage() {
 
 function PlayerSlot(props: {
   label: string;
-  index: PlayerIndexEntry[];
+  index: PlayerIndexSlimEntry[];
   selected: PlayerProfile | null | undefined;
   selectedId: string | undefined;
   otherId: string | undefined;
   onPick: (id: string) => void;
+  /** Fired when the search box gains focus, so the parent can lazy-load the index. */
+  onActivate: () => void;
 }) {
   const [query, setQuery] = createSignal('');
   const matches = createMemo(() => {
@@ -202,6 +211,7 @@ function PlayerSlot(props: {
               onInput={setQuery}
               placeholder='Search players…'
               ariaLabel={`${props.label} search`}
+              onFocus={() => props.onActivate()}
             />
             <Show when={matches().length > 0}>
               <ul class='compare-picker-list'>
