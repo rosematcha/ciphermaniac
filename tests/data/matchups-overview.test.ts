@@ -37,12 +37,14 @@ test('bucketWinRate: 48-52 (rounded) inclusive is even, else fav/unf', () => {
   assert.equal(bucketWinRate(39), 'unf');
 });
 
-test('gaugeWidth: |WR-50|/50 as a percentage, clamped 0..100', () => {
+test('gaugeWidth: |WR-50|/30 as a percentage, clamped 0..100', () => {
   approx(gaugeWidth(50), 0);
-  approx(gaugeWidth(57), 14);
-  approx(gaugeWidth(63), 26);
-  approx(gaugeWidth(45), 10);
-  approx(gaugeWidth(0), 100);
+  approx(gaugeWidth(80), 100); // ±30pp fills the track
+  approx(gaugeWidth(20), 100);
+  approx(gaugeWidth(65), 50); // half at 15pp
+  approx(gaugeWidth(35), 50);
+  approx(gaugeWidth(60), (10 / 30) * 100);
+  approx(gaugeWidth(0), 100); // clamped
   approx(gaugeWidth(100), 100);
   approx(gaugeWidth(200), 100); // clamped
 });
@@ -66,6 +68,20 @@ test('summarizeMatchups: counts by bucket, mirror counts as even, low-sample exc
   assert.equal(s.best?.winRate, 63);
   assert.equal(s.toughest?.label, 'Regidrago VSTAR');
   assert.equal(s.toughest?.winRate, 39);
+});
+
+test('summarizeMatchups: accumulates field share per bucket for popularity weighting', () => {
+  const rows: MatchupStat[] = [
+    stat({ opponentLabel: 'BigFav', winRate: 60, matches: 200, fieldShare: 80 }),
+    stat({ opponentLabel: 'SmallFav', winRate: 55, matches: 200, fieldShare: 5 }),
+    stat({ opponentLabel: 'Even', winRate: 50, matches: 200, fieldShare: 10 }),
+    stat({ opponentLabel: 'Unf', winRate: 40, matches: 200, fieldShare: 3 }),
+    stat({ opponentLabel: 'Unknown', winRate: 42, matches: 200, fieldShare: null })
+  ];
+  const s = summarizeMatchups(rows);
+  assert.equal(s.favoredShare, 85); // 80 + 5
+  assert.equal(s.evenShare, 10);
+  assert.equal(s.unfavoredShare, 3); // null contributes 0
 });
 
 test('summarizeMatchups: empty when nothing meets the floor', () => {

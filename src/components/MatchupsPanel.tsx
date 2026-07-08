@@ -438,8 +438,14 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
             {/* ===== 1. Overview ===== */}
             <Show when={summary().tracked > 0 ? summary() : undefined}>
               {overview => {
-                const total = () => Math.max(1, overview().favored + overview().even + overview().unfavored);
-                const pct = (n: number) => `${(n / total()) * 100}%`;
+                // Strip widths are weighted by opponent field share so a deck you
+                // face 80% of the time claims 80% of the bar. Falls back to raw
+                // counts when no share data is available (total share of 0).
+                const shareTotal = () => overview().favoredShare + overview().evenShare + overview().unfavoredShare;
+                const countTotal = () => Math.max(1, overview().favored + overview().even + overview().unfavored);
+                const weight = (share: number, count: number) =>
+                  shareTotal() > 0 ? share / shareTotal() : count / countTotal();
+                const pct = (share: number, count: number) => `${weight(share, count) * 100}%`;
                 return (
                   <>
                     <div class='r2-overview'>
@@ -449,13 +455,22 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
                         aria-label={`${overview().favored} favored, ${overview().even} even, ${overview().unfavored} unfavored of ${overview().tracked} tracked matchups`}
                       >
                         <Show when={overview().favored > 0}>
-                          <span class='r2-strip-seg fav' style={{ width: pct(overview().favored) }} />
+                          <span
+                            class='r2-strip-seg fav'
+                            style={{ width: pct(overview().favoredShare, overview().favored) }}
+                          />
                         </Show>
                         <Show when={overview().even > 0}>
-                          <span class='r2-strip-seg even' style={{ width: pct(overview().even) }} />
+                          <span
+                            class='r2-strip-seg even'
+                            style={{ width: pct(overview().evenShare, overview().even) }}
+                          />
                         </Show>
                         <Show when={overview().unfavored > 0}>
-                          <span class='r2-strip-seg unf' style={{ width: pct(overview().unfavored) }} />
+                          <span
+                            class='r2-strip-seg unf'
+                            style={{ width: pct(overview().unfavoredShare, overview().unfavored) }}
+                          />
                         </Show>
                       </div>
                       <div class='r2-strip-labels'>

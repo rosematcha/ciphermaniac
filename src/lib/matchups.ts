@@ -117,12 +117,20 @@ export function bucketWinRate(winRate: number): MatchupBucket {
 }
 
 /**
+ * Deviation (in pp from 50) that fills the gauge track completely. Set to 30 so
+ * an 80/20 matchup — realistically near-unwinnable — reads as fully lopsided, and
+ * a 65/35 reads as half. Deviations beyond 30pp clamp to full.
+ */
+export const GAUGE_FULL_DEVIATION = 30;
+
+/**
  * Gauge fill as a percentage (0..100) of the track: the deviation |WR − 50|
- * scaled so ±50pp fills the whole track. Even matchups fill nothing.
+ * scaled so ±{@link GAUGE_FULL_DEVIATION}pp fills the whole track. Even matchups
+ * fill nothing.
  */
 export function gaugeWidth(winRate: number): number {
   const dev = Math.abs(winRate - 50);
-  return Math.max(0, Math.min(100, (dev / 50) * 100));
+  return Math.max(0, Math.min(100, (dev / GAUGE_FULL_DEVIATION) * 100));
 }
 
 /** The minimal per-opponent shape the overview + key-selection helpers need. */
@@ -142,6 +150,14 @@ export interface MatchupSummary {
   unfavored: number;
   /** favored + even + unfavored (rows meeting the games floor). */
   tracked: number;
+  /**
+   * Per-bucket sum of opponent field share (percent), for popularity-weighting the
+   * overview strip. Opponents with unknown share (null) contribute 0. Sums are not
+   * normalized — the strip divides by their total.
+   */
+  favoredShare: number;
+  evenShare: number;
+  unfavoredShare: number;
   best: { label: string; winRate: number } | null;
   toughest: { label: string; winRate: number } | null;
 }
@@ -155,6 +171,9 @@ export function summarizeMatchups(rows: MatchupStat[], minGames = WR_MIN_GAMES):
   let favored = 0;
   let even = 0;
   let unfavored = 0;
+  let favoredShare = 0;
+  let evenShare = 0;
+  let unfavoredShare = 0;
   let best: { label: string; winRate: number } | null = null;
   let toughest: { label: string; winRate: number } | null = null;
   let tracked = 0;
@@ -163,13 +182,17 @@ export function summarizeMatchups(rows: MatchupStat[], minGames = WR_MIN_GAMES):
       continue;
     }
     tracked += 1;
+    const share = r.fieldShare ?? 0;
     const bucket = bucketWinRate(r.winRate);
     if (bucket === 'fav') {
       favored += 1;
+      favoredShare += share;
     } else if (bucket === 'even') {
       even += 1;
+      evenShare += share;
     } else {
       unfavored += 1;
+      unfavoredShare += share;
     }
     if (!best || r.winRate > best.winRate) {
       best = { label: r.opponentLabel, winRate: r.winRate };
@@ -178,7 +201,7 @@ export function summarizeMatchups(rows: MatchupStat[], minGames = WR_MIN_GAMES):
       toughest = { label: r.opponentLabel, winRate: r.winRate };
     }
   }
-  return { favored, even, unfavored, tracked, best, toughest };
+  return { favored, even, unfavored, tracked, favoredShare, evenShare, unfavoredShare, best, toughest };
 }
 
 /** Decision-relevance of a matchup: field share weighted by how lopsided it is. */
