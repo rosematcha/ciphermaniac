@@ -108,6 +108,8 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
             <span class='dot'>·</span>
             <span class='muted-cell'>aka {props.profile.aliases.join(', ')}</span>
           </Show>
+          <span class='dot'>·</span>
+          <A href={`/players/compare?a=${encodeURIComponent(props.playerId)}`}>Compare</A>
         </div>
       </section>
 

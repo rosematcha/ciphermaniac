@@ -41,6 +41,7 @@ const TournamentsIndexPage = lazy(() =>
 const TrendsPage = lazy(() => import('./pages/TrendsPage').then(m => ({ default: m.TrendsPage })));
 const PlayersPage = lazy(() => import('./pages/PlayersPage').then(m => ({ default: m.PlayersPage })));
 const PlayerProfilePage = lazy(() => import('./pages/PlayerProfilePage').then(m => ({ default: m.PlayerProfilePage })));
+const PlayerComparePage = lazy(() => import('./pages/PlayerComparePage').then(m => ({ default: m.PlayerComparePage })));
 const ToysPage = lazy(() => import('./pages/ToysPage').then(m => ({ default: m.ToysPage })));
 const SocialGraphicsPage = lazy(() =>
   import('./pages/SocialGraphicsPage').then(m => ({ default: m.SocialGraphicsPage }))
@@ -90,6 +91,7 @@ render(
       <Route path='/tournaments' component={TournamentsIndexPage} />
       <Route path='/trends' component={TrendsPage} />
       <Route path='/players' component={PlayersPage} />
+      <Route path='/players/compare' component={PlayerComparePage} />
       <Route path='/players/:id' component={PlayerProfilePage} />
       <Route path='/standings' component={() => <Navigate href='/players' />} />
       <Route path='/standings/:id' component={StandingsPlayerRedirect} />

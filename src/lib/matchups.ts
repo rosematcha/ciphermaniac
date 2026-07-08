@@ -62,6 +62,111 @@ export function shrunkWinRate(wins: number, ties: number, matches: number): numb
   return (effWins + SHRINK_PSEUDO_GAMES * 0.5) / (matches + SHRINK_PSEUDO_GAMES);
 }
 
+/**
+ * Minimum games for a matchup to count in the overview summary, be eligible as a
+ * key matchup, or appear in the main "rest of the field" list. Rows below this are
+ * low-sample: hidden behind the expander and shown without a win-rate readout.
+ */
+export const WR_MIN_GAMES = 20;
+
+/** Overview bucket a matchup falls into, by its DISPLAYED whole-number win rate. */
+export type MatchupBucket = 'fav' | 'even' | 'unf';
+
+/**
+ * Bucket a matchup by its DISPLAYED whole-number win rate (Math.round): 48-52
+ * inclusive counts as even, strictly above as favored, strictly below as
+ * unfavored. This is the overview-count convention only; per-row tone still keys
+ * off the exact 50% center so a rounded-52 row can read green while counting even.
+ */
+export function bucketWinRate(winRate: number): MatchupBucket {
+  const wr = Math.round(winRate);
+  if (wr >= 48 && wr <= 52) {
+    return 'even';
+  }
+  return wr > 52 ? 'fav' : 'unf';
+}
+
+/**
+ * Gauge fill as a percentage (0..100) of the track: the deviation |WR − 50|
+ * scaled so ±50pp fills the whole track. Even matchups fill nothing.
+ */
+export function gaugeWidth(winRate: number): number {
+  const dev = Math.abs(winRate - 50);
+  return Math.max(0, Math.min(100, (dev / 50) * 100));
+}
+
+/** The minimal per-opponent shape the overview + key-selection helpers need. */
+export interface MatchupStat {
+  opponentLabel: string;
+  /** 0..100 displayed win rate. */
+  winRate: number;
+  matches: number;
+  /** Opponent's share of the field (a percent like 12.7), or null if unknown. */
+  fieldShare: number | null;
+  isMirror: boolean;
+}
+
+export interface MatchupSummary {
+  favored: number;
+  even: number;
+  unfavored: number;
+  /** favored + even + unfavored (rows meeting the games floor). */
+  tracked: number;
+  best: { label: string; winRate: number } | null;
+  toughest: { label: string; winRate: number } | null;
+}
+
+/**
+ * Overview counts + best/toughest opponent, over rows meeting the games floor
+ * (mirror included — a 50% mirror simply counts as even). Bucketing follows
+ * {@link bucketWinRate}; best/toughest are the highest/lowest displayed win rate.
+ */
+export function summarizeMatchups(rows: MatchupStat[], minGames = WR_MIN_GAMES): MatchupSummary {
+  let favored = 0;
+  let even = 0;
+  let unfavored = 0;
+  let best: { label: string; winRate: number } | null = null;
+  let toughest: { label: string; winRate: number } | null = null;
+  let tracked = 0;
+  for (const r of rows) {
+    if (r.matches < minGames) {
+      continue;
+    }
+    tracked += 1;
+    const bucket = bucketWinRate(r.winRate);
+    if (bucket === 'fav') {
+      favored += 1;
+    } else if (bucket === 'even') {
+      even += 1;
+    } else {
+      unfavored += 1;
+    }
+    if (!best || r.winRate > best.winRate) {
+      best = { label: r.opponentLabel, winRate: r.winRate };
+    }
+    if (!toughest || r.winRate < toughest.winRate) {
+      toughest = { label: r.opponentLabel, winRate: r.winRate };
+    }
+  }
+  return { favored, even, unfavored, tracked, best, toughest };
+}
+
+/** Decision-relevance of a matchup: field share weighted by how lopsided it is. */
+export function matchupImportance(row: MatchupStat): number {
+  return (row.fieldShare ?? 0) * Math.sqrt(Math.max(Math.abs(row.winRate - 50), 1));
+}
+
+/**
+ * The most decision-relevant opponents. Among rows meeting the games floor and
+ * excluding the mirror, rank by {@link matchupImportance} and take the top
+ * `count`, then return them ordered by field share (descending) for display.
+ */
+export function selectKeyMatchups<T extends MatchupStat>(rows: T[], minGames = WR_MIN_GAMES, count = 5): T[] {
+  const eligible = rows.filter(r => !r.isMirror && r.matches >= minGames);
+  const top = [...eligible].sort((a, b) => matchupImportance(b) - matchupImportance(a)).slice(0, count);
+  return top.sort((a, b) => (b.fieldShare ?? 0) - (a.fieldShare ?? 0));
+}
+
 export interface MatchupRowCore {
   /** Clean opponent display label (no "(mirror)" suffix). */
   opponentLabel: string;

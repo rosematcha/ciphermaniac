@@ -17,6 +17,8 @@ import {
   isSnapshotSource,
   itemUid,
   normalizeCardNumberKey,
+  PRICE_HISTORY_MIN_DAYS,
+  priceHistorySpanDays,
   type PricePoint,
   resolveArchetypeIcons,
   resolveCanonicalSetNumber,
@@ -201,14 +203,19 @@ export function CardPage() {
   });
 
   // Rolling 90-day price history for the sparkline. One small file for the whole
-  // site (deduped by fetchJson); empty until the pipeline has run, and any card
+  // site (deduped by fetchJson); empty until the pipeline has run. The sparkline
+  // stays hidden until the history spans PRICE_HISTORY_MIN_DAYS, and any card
   // with fewer than two points degrades to no sparkline.
   const [priceHistory] = createResource(fetchPriceHistory);
   const priceHistoryData = () => latestValue(priceHistory);
+  const priceHistoryReady = createMemo(() => {
+    const h = priceHistoryData();
+    return Boolean(h) && priceHistorySpanDays(h!) >= PRICE_HISTORY_MIN_DAYS;
+  });
   const priceSeries = createMemo<PricePoint[]>(() => {
     const c = card();
     const h = priceHistoryData();
-    if (!c || !h) {
+    if (!c || !h || !priceHistoryReady()) {
       return [];
     }
     return h[`${c.name}::${c.set}::${c.number}`] ?? [];
