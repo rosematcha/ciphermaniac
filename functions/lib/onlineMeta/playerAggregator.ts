@@ -1,4 +1,5 @@
 import { normalizeArchetypeName, sanitizeForFilename } from '../data/reportBuilder.js';
+import { toSlimIndexEntry } from '../../../shared/playerTypes';
 import { runWithConcurrency } from './tournamentFetcher';
 import { batchPutJson, getJson, putJson } from './storageWriter';
 import type {
@@ -76,6 +77,21 @@ interface TournamentSlice {
 const DATE_PREFIX = /^(\d{4}-\d{2}-\d{2})/;
 const MANIFEST_KEY = 'players/_manifest.json';
 const INDEX_KEY = 'players/index.json';
+// Slim projection the SPA actually downloads (players index table + compare-page
+// autocomplete). Full index.json is kept for compatibility / other consumers.
+const SLIM_INDEX_KEY = 'players/index-slim.json';
+
+/**
+ * Emit the slim index alongside the full one. Written compact on the standard
+ * 6-hour live-data cache. Called on every run (including the no-change fast
+ * path) so the file exists as soon as this code ships, not only after the next
+ * real rebuild.
+ */
+async function writeSlimIndex(env: unknown, index: PlayerIndexEntry[]): Promise<void> {
+  await putJson(env, SLIM_INDEX_KEY, index.map(toSlimIndexEntry), {
+    cacheControl: 'public, max-age=21600'
+  });
+}
 // Players with only one event dominate the long tail and inflate the index ~2x
 // without adding signal — they're still reachable via direct /players/:id URLs.
 const INDEX_MIN_EVENTS = 2;
@@ -376,6 +392,7 @@ export async function buildPlayerAggregates(
       tournaments: currentSorted.length
     });
     const index = (await getJson<PlayerIndexEntry[]>(env, INDEX_KEY)) ?? [];
+    await writeSlimIndex(env, index);
     return {
       index,
       profileCount: Object.keys(previousManifest.players).length,
@@ -578,6 +595,7 @@ export async function buildPlayerAggregates(
   });
 
   await putJson(env, INDEX_KEY, index);
+  await writeSlimIndex(env, index);
   await batchPutJson(env, [...profileWrites, ...deckWrites], writeConcurrency);
 
   const manifest: PlayerAggregateManifest = {

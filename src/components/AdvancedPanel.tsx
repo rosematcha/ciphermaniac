@@ -53,11 +53,29 @@ const nextRuleId = () => ++ruleIdSeq;
 const firstParam = (v: string | string[] | undefined): string | undefined => (Array.isArray(v) ? v[0] : v);
 
 // Cheap deep-enough equality for the reconciliation in `displayedItems` below.
-// Report items are plain JSON-shaped objects (numbers/strings/arrays of
-// primitives-or-flat-objects like `dist`), so a JSON round-trip is a safe and
-// fast way to compare two candidates for the same cardId.
+// Both candidates are report items for the SAME cardId, so identity fields
+// (name/set/number) can't differ — only the aggregated stats can. Comparing
+// those directly is far cheaper than the JSON round-trip this used to do,
+// which showed up hot when the threshold slider re-ran the reconciliation.
 function shallowEqualCardItem(a: CardListItem, b: CardListItem): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+  if (a.pct !== b.pct || a.found !== b.found || a.total !== b.total || a.rank !== b.rank) {
+    return false;
+  }
+  const distA = a.dist ?? [];
+  const distB = b.dist ?? [];
+  if (distA.length !== distB.length) {
+    return false;
+  }
+  for (let i = 0; i < distA.length; i++) {
+    if (
+      distA[i].copies !== distB[i].copies ||
+      distA[i].players !== distB[i].players ||
+      distA[i].percent !== distB[i].percent
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 interface AdvancedPanelProps {
@@ -190,6 +208,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
   // the user stops fiddling for a beat.
   const [appliedRules, setAppliedRules] = createSignal<Rule[]>(initialRules);
   const [appliedSuccess, setAppliedSuccess] = createSignal(initialSuccess);
+  const [appliedThreshold, setAppliedThreshold] = createSignal(initialThreshold);
 
   let debounceTimer: ReturnType<typeof setTimeout> | undefined;
   const cancelDebounce = () => {
@@ -203,6 +222,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
     debounceTimer = setTimeout(() => {
       setAppliedRules(rules());
       setAppliedSuccess(successFilter());
+      setAppliedThreshold(threshold());
     }, 200);
   };
   onCleanup(cancelDebounce);
@@ -439,7 +459,10 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
       prevItemsById = new Map();
       return [];
     }
-    const t = threshold();
+    // Debounced (see `schedule`): the slider fires per drag tick, and this memo
+    // re-filters + reconciles the whole report — the readout stays on the raw
+    // `threshold()` so the % label still tracks the thumb instantly.
+    const t = appliedThreshold();
     const filtered = (r.items as unknown as CardListItem[]).filter(i => (i.pct ?? 0) >= t);
     const nextItemsById = new Map<string, CardListItem>();
     const reconciled = filtered.map(item => {
@@ -689,7 +712,10 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
               max='100'
               step='5'
               value={threshold()}
-              onInput={e => setThreshold(Number(e.currentTarget.value))}
+              onInput={e => {
+                setThreshold(Number(e.currentTarget.value));
+                schedule();
+              }}
               class='fb-range'
             />
           </label>

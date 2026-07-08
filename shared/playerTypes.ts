@@ -27,6 +27,36 @@ export interface PlayerIndexEntry {
 }
 
 /**
+ * Slim projection served at `players/index-slim.json`. Carries exactly the
+ * fields the players index table and the compare-page autocomplete render —
+ * everything in `PlayerIndexEntry` except `lastEventDate`, which is used only
+ * for the server-side index ordering (the array preserves that order, so the
+ * field itself is dead weight on the wire). Entry order matches `index.json`.
+ */
+export interface PlayerIndexSlimEntry {
+  playerId: string;
+  name: string;
+  country?: string;
+  eventCount: number;
+  day2s: number;
+  topCuts: number;
+  tournamentWins: number;
+}
+
+/** Project a full index entry down to its slim wire shape. */
+export function toSlimIndexEntry(entry: PlayerIndexEntry): PlayerIndexSlimEntry {
+  return {
+    playerId: entry.playerId,
+    name: entry.name,
+    country: entry.country,
+    eventCount: entry.eventCount,
+    day2s: entry.day2s,
+    topCuts: entry.topCuts,
+    tournamentWins: entry.tournamentWins
+  };
+}
+
+/**
  * Per-archetype rollup within a player's career profile. `displayName` is not
  * stored on each row — look it up via `PlayerProfile.archetypeNames[base]`.
  * Derived stats (winRate, matchesPlayed) are computed client-side.

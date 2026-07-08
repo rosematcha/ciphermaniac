@@ -1,6 +1,6 @@
 import { createMemo, createResource, createSignal, For, type JSX, onMount, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
-import { fetchPlayerIndex } from '../lib/data';
+import { fetchPlayerIndexSlim } from '../lib/data';
 import { resolved } from '../lib/resource';
 import { Section } from '../components/Section';
 import { SearchInput } from '../components/Chip';
@@ -8,7 +8,8 @@ import { Pagination } from '../components/Pagination';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { createPagination } from '../lib/pagination';
-import type { PlayerIndexEntry } from '../types';
+import { prefetchPlayerProfilePage } from '../lib/prefetch';
+import type { PlayerIndexSlimEntry } from '../types';
 import '../styles/pages/players-tables.css';
 
 type SortKey = 'events' | 'day2s' | 'topCuts' | 'titles' | 'day2Rate';
@@ -17,11 +18,11 @@ type SortDir = 'asc' | 'desc';
 const PAGE_SIZE = 50;
 const DAY2_RATE_MIN_EVENTS = 5;
 
-function day2Rate(p: PlayerIndexEntry): number {
+function day2Rate(p: PlayerIndexSlimEntry): number {
   return p.eventCount > 0 ? p.day2s / p.eventCount : 0;
 }
 
-function sortValue(p: PlayerIndexEntry, key: SortKey): number {
+function sortValue(p: PlayerIndexSlimEntry, key: SortKey): number {
   switch (key) {
     case 'day2s':
       return p.day2s;
@@ -38,7 +39,7 @@ function sortValue(p: PlayerIndexEntry, key: SortKey): number {
 }
 
 export function PlayersPage() {
-  const [index] = createResource(fetchPlayerIndex);
+  const [index] = createResource(fetchPlayerIndexSlim);
   const [query, setQuery] = createSignal('');
   const [sortKey, setSortKey] = createSignal<SortKey>('day2s');
   const [sortDir, setSortDir] = createSignal<SortDir>('desc');
@@ -52,7 +53,7 @@ export function PlayersPage() {
   // error fallbacks below actually render (see lib/resource.ts).
   const indexData = () => resolved(index);
 
-  const filtered = createMemo<PlayerIndexEntry[]>(() => {
+  const filtered = createMemo<PlayerIndexSlimEntry[]>(() => {
     const list = indexData() ?? [];
     const q = query().trim().toLowerCase();
     if (!q) {
@@ -158,6 +159,8 @@ export function PlayersPage() {
                       <tr
                         class='is-link'
                         onClick={() => navigate(`/players/${p.playerId}`)}
+                        onMouseEnter={prefetchPlayerProfilePage}
+                        onFocus={prefetchPlayerProfilePage}
                         tabIndex={0}
                         onKeyDown={e => {
                           if (e.key === 'Enter') {

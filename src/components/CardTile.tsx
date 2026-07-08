@@ -2,6 +2,7 @@ import { A } from '@solidjs/router';
 import { createMemo, For } from 'solid-js';
 import type { CardItem } from '../types';
 import { CardImage } from './CardImage';
+import { prefetchCardPage } from '../lib/prefetch';
 
 /**
  * Grid cell for the /cards page.
@@ -88,7 +89,7 @@ export function CardTile(props: { card: CardItem; hideEmptyBuckets?: boolean; ea
     props.card.set && props.card.number !== undefined ? `/cards/${props.card.set}/${props.card.number}` : '#';
 
   return (
-    <A class='card-tile' href={href()}>
+    <A class='card-tile' href={href()} onMouseEnter={prefetchCardPage} onFocus={prefetchCardPage}>
       <div class='card-tile-card'>
         <CardImage
           set={props.card.set ?? '?'}

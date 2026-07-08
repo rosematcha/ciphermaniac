@@ -20,6 +20,7 @@ import type {
   MetaReport,
   PlayerDecks,
   PlayerIndexEntry,
+  PlayerIndexSlimEntry,
   PlayerMatchRecord,
   PlayerProfile,
   TournamentParticipant
@@ -28,6 +29,7 @@ import { getCanonicalCardFromData, type SynonymDatabase } from '../../shared/syn
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { calculatePercentage } from '../../shared/reportUtils.js';
 import type { UpcomingPayload } from '../../shared/upcomingTypes.js';
+import type { MajorsTrendsPayload } from './majorsTrends';
 import archetypeIconsRaw from '../data/archetype-icons.json';
 
 export type { UpcomingPayload };
@@ -1007,6 +1009,21 @@ export function fetchPlayerIndex(): Promise<PlayerIndexEntry[] | null> {
   return fetchPlayerJson<PlayerIndexEntry[]>('/players/index.json');
 }
 
+/**
+ * Slim index (players table + compare autocomplete). Roughly 20% smaller raw
+ * than the full index — it drops `lastEventDate`. Falls back to the full index
+ * when `index-slim.json` 404s so the frontend keeps working if it deploys ahead
+ * of the aggregator that first writes the slim file. The full entry is a
+ * superset of the slim shape, so it's returned as-is.
+ */
+export async function fetchPlayerIndexSlim(): Promise<PlayerIndexSlimEntry[] | null> {
+  const slim = await fetchPlayerJson<PlayerIndexSlimEntry[]>('/players/index-slim.json');
+  if (slim) {
+    return slim;
+  }
+  return fetchPlayerJson<PlayerIndexEntry[]>('/players/index.json');
+}
+
 export function fetchPlayerProfile(playerId: string): Promise<PlayerProfile | null> {
   return fetchPlayerJson<PlayerProfile>(`/players/${encodeURIComponent(playerId)}/profile.json`);
 }
@@ -1335,6 +1352,21 @@ export async function fetchOnlineTrendReport(): Promise<OnlineTrendsPayload | nu
       falling: canonicalizeCardTrendEntries(raw.cardTrends.falling ?? [], db)
     }
   };
+}
+
+/**
+ * Reads the majors-trends file produced by the pipeline
+ * (`.github/scripts/run-majors-trends.ts`), stored at `reports/majors-trends.json`.
+ *
+ * Carries the precomputed archetype-share timeline + card movers for the last
+ * 3 / 5 / 10 major events — the same result the page used to compute in the
+ * browser from up to ten full `master.json` files (~5 MB). Set/number in the
+ * mover rows are already canonicalized at build time, so no read-time merge is
+ * needed here. Returns null (404) until the pipeline has run, so callers fall
+ * back to the client-side computation.
+ */
+export function fetchMajorsTrendReport(): Promise<MajorsTrendsPayload | null> {
+  return fetchJsonOptional<MajorsTrendsPayload>('/reports/majors-trends.json');
 }
 
 /**

@@ -191,6 +191,7 @@ export type {
   PlayerDeckCard,
   PlayerDecks,
   PlayerIndexEntry,
+  PlayerIndexSlimEntry,
   PlayerProfile,
   PlayerTournamentEntry
 } from '../../shared/playerTypes.js';

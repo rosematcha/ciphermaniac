@@ -11,11 +11,13 @@ const prefetched = new Set<string>();
 /** Route-path -> loader. Keys match the `path` prop passed to `<Route>` in main.tsx. */
 const routeLoaders: Record<string, () => Promise<unknown>> = {
   '/cards': () => import('../pages/CardsIndexPage'),
+  '/cards/:set/:number': () => import('../pages/CardPage'),
   '/archetypes': () => import('../pages/ArchetypesIndexPage'),
   '/archetypes/:slug': () => import('../pages/ArchetypePage'),
   '/matchups': () => import('../pages/MatchupMatrixPage'),
   '/trends': () => import('../pages/TrendsPage'),
-  '/players': () => import('../pages/PlayersPage')
+  '/players': () => import('../pages/PlayersPage'),
+  '/players/:id': () => import('../pages/PlayerProfilePage')
 };
 
 /** Prefetch the lazy chunk for a top-nav route, once per session. */
@@ -37,4 +39,14 @@ export function prefetchRoute(path: string): void {
 /** Prefetch the archetype detail page chunk, once per session. */
 export function prefetchArchetypePage(): void {
   prefetchRoute('/archetypes/:slug');
+}
+
+/** Prefetch the card detail page chunk (the largest route chunk), once per session. */
+export function prefetchCardPage(): void {
+  prefetchRoute('/cards/:set/:number');
+}
+
+/** Prefetch the player profile page chunk, once per session. */
+export function prefetchPlayerProfilePage(): void {
+  prefetchRoute('/players/:id');
 }
