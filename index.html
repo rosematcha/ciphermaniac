@@ -11,8 +11,14 @@
 
   <!-- Overlap TLS handshakes with JS download: report data comes from the R2
        custom domain and card art from the limitless CDN. On a 150ms-RTT mobile
-       connection each cold handshake costs ~300-500ms if it waits for app boot. -->
+       connection each cold handshake costs ~300-500ms if it waits for app boot.
+       R2 gets two preconnects on purpose: browsers keep separate connection
+       pools for CORS vs non-CORS requests to the same origin. The `crossorigin`
+       line warms the pool used by the JSON `fetch()`es; the bare line warms the
+       pool `<img>` card art loads on (no-CORS) — without it, the first card pays
+       a fresh DNS+TLS handshake the JSON preconnect never shared. -->
   <link rel="preconnect" href="https://r2.ciphermaniac.com" crossorigin>
+  <link rel="preconnect" href="https://r2.ciphermaniac.com">
   <link rel="preconnect" href="https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com">
 
   <!-- Inter is self-hosted (see src/styles/fonts.css); preload the three weights

@@ -608,7 +608,9 @@ def main():
     }
 
     # Step 5: Write output
-    out_dir = Path("public") / "toys" / "in-loving-memory" / "data" / slug
+    # static/ is vite's publicDir; production reads the same tree from R2
+    # (upload with scripts/upload-toys.ts after scraping).
+    out_dir = Path("static") / "toys" / "in-loving-memory" / "data" / slug
     out_dir.mkdir(parents=True, exist_ok=True)
 
     master_path = out_dir / "master.json"

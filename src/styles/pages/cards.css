@@ -34,13 +34,6 @@
   align-items: flex-end;
   gap: 1px;
 }
-.stats-panel .stat-subline {
-  color: var(--muted);
-  font-weight: 400;
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: normal;
-}
 
 /* Rank denominator ("of 944") and small inline notes (e.g. snapshot price). */
 .stats-panel .stat-rank-total,
@@ -147,7 +140,7 @@
 }
 .au-head {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 96px 44px 96px 92px;
+  grid-template-columns: 18px minmax(0, 1fr) 96px 44px 92px;
   gap: 10px;
   align-items: center;
   padding: 8px 0;
@@ -202,13 +195,6 @@
   font-size: 12.5px;
   font-variant-numeric: tabular-nums;
   text-align: right;
-}
-.au-decks {
-  color: var(--muted);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  white-space: nowrap;
 }
 .au-modal {
   display: inline-flex;
@@ -286,8 +272,7 @@
   .au-head {
     grid-template-columns: 18px minmax(0, 1fr) 44px 92px;
   }
-  .au-bar,
-  .au-decks {
+  .au-bar {
     display: none;
   }
   .au-dist-line {

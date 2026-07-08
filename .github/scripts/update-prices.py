@@ -25,6 +25,7 @@ CARD_SYNONYMS_URL = 'https://r2.ciphermaniac.com/assets/card-synonyms.json'
 # (only the day a price *changes* is stored), so a flat card carries a single
 # point and the frontend degrades it to no sparkline.
 PRICES_HISTORY_KEY = 'reports/prices-history.json'
+PRICES_CACHE_CONTROL = 'public, max-age=21600'
 HISTORY_WINDOW_DAYS = 90
 
 # Manual group ID mappings for sets not in TCGCSV API
@@ -470,7 +471,8 @@ def upload_price_history_to_r2(r2_client, bucket_name, history):
         Bucket=bucket_name,
         Key=PRICES_HISTORY_KEY,
         Body=json.dumps(output, separators=(',', ':')),
-        ContentType='application/json'
+        ContentType='application/json',
+        CacheControl=PRICES_CACHE_CONTROL
     )
     print(f"  ✓ History upload complete ({len(history)} cards)")
 
@@ -493,8 +495,9 @@ def upload_prices_to_r2(r2_client, bucket_name, price_data):
     r2_client.put_object(
         Bucket=bucket_name,
         Key=key,
-        Body=json.dumps(output, indent=2),
-        ContentType='application/json'
+        Body=json.dumps(output, separators=(',', ':')),
+        ContentType='application/json',
+        CacheControl=PRICES_CACHE_CONTROL
     )
     print("  ✓ Upload complete")
 

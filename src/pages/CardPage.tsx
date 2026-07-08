@@ -508,9 +508,6 @@ function CardPageBody(props: {
               </span>
               <span class='stat-lead-value'>
                 <span class='stat-value'>{props.card.pct.toFixed(1)}%</span>
-                <span class='stat-subline'>
-                  {props.card.found.toLocaleString()} of {props.card.total.toLocaleString()} decks
-                </span>
               </span>
             </div>
             <Show when={props.conversion}>
@@ -750,8 +747,6 @@ function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem 
       <For each={sorted()}>
         {row => {
           const inclusion = row.item.pct ?? 0;
-          const totalDecks = row.report.deckTotal ?? 0;
-          const foundDecks = row.item.found ?? 0;
           // Row data is static once the row renders — compute the filtered dist
           // and modal bucket once instead of re-running the reduce per accessor.
           const dist = (row.item.dist ?? []).filter(d => d.copies !== undefined && (d.players ?? 0) > 0);
@@ -781,16 +776,13 @@ function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem 
                   ▶
                 </button>
                 <span class='au-name'>
-                  <ArchetypeIcons slugs={resolveArchetypeIcons(row.entry, iconMap)} size={20} />
+                  <ArchetypeIcons slugs={resolveArchetypeIcons(row.entry, iconMap)} size={20} reserveSlot />
                   <A href={`/archetypes/${encodeURIComponent(row.entry.name)}`}>{row.entry.label}</A>
                 </span>
                 <div class='au-bar' aria-hidden='true'>
                   <div class='au-bar-fill' style={{ width: `${Math.min(100, inclusion)}%` }} />
                 </div>
                 <span class='au-pct'>{fmtWholePct(inclusion)}</span>
-                <span class='au-decks'>
-                  {foundDecks.toLocaleString()}/{totalDecks.toLocaleString()} decks
-                </span>
                 <span class='au-modal'>
                   <Show when={modalBucket} keyed>
                     {m => (
