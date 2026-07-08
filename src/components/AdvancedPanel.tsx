@@ -93,6 +93,17 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
   );
   const [synonymDb] = createResource(() => getSynonymDatabase());
 
+  // Let the panel's shell paint before the heavy first aggregation runs. When
+  // decks.json is already in the data layer's short cache, the resource
+  // resolves in a microtask — which runs BEFORE the browser paints — so for a
+  // top archetype (1,200+ decks × ~27 cards) the clone + co-occurrence +
+  // report passes would block the tab open. rAF + timeout pushes that work to
+  // after first paint; on a cold fetch the network wait dwarfs this anyway.
+  const [painted, setPainted] = createSignal(false);
+  requestAnimationFrame(() => {
+    setTimeout(() => setPainted(true), 0);
+  });
+
   /**
    * The data layer canonicalizes `cards.json` at read time (e.g. Dragapult ex
    * is reported under its canonical printing PRE/073 even though most decks
@@ -102,6 +113,9 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
    * once on load and rewrite each card's set/number to the canonical pair.
    */
   const canonicalDecks = createMemo(() => {
+    if (!painted()) {
+      return undefined;
+    }
     const raw = decks();
     const db = synonymDb();
     if (!raw) {

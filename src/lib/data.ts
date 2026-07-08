@@ -333,6 +333,14 @@ export function fetchEvolutionMap(): Promise<Map<string, string>> {
   // promise is dropped before resolving the fallback empty map.
   evolutionMapPromise = (async () => {
     try {
+      // Prefer the slim precomputed map (~20KB vs the 700KB full database);
+      // fall back to deriving it from card-types.json until the pipeline has
+      // published the slim artifact for the first time.
+      const slim = await fetch(`${R2_BASE}/assets/data/evolves-from.json`, { mode: 'cors' });
+      if (slim.ok) {
+        const entries = (await slim.json()) as Record<string, string>;
+        return new Map<string, string>(Object.entries(entries));
+      }
       const response = await fetch(`${R2_BASE}/assets/data/card-types.json`, { mode: 'cors' });
       if (!response.ok) {
         evolutionMapPromise = null;

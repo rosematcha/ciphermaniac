@@ -1,4 +1,4 @@
-import { createMemo, createResource, For, onMount, Show } from 'solid-js';
+import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
 import { A } from '@solidjs/router';
 import {
   fetchArchetypes,
@@ -11,15 +11,7 @@ import {
   prettyTournamentName,
   tournamentDate
 } from '../lib/data';
-import {
-  ARC_TAG_META,
-  type ArcTag,
-  buildStories,
-  countryLabel,
-  type FieldRow,
-  resolveArchetypeThumbnails,
-  type Story
-} from '../lib/storylines';
+import type { ArcTag, FieldRow, Story } from '../lib/storylines';
 import type { ArchetypeIndexEntry, TournamentParticipant } from '../types';
 import { Skeleton } from '../components/Skeleton';
 import { Section } from '../components/Section';
@@ -28,6 +20,31 @@ import { CardStack } from '../components/CardImage';
 import { EmptyState } from '../components/EmptyState';
 import { formatPercent, nameFromTournamentKey, parseISODate, shortDate } from '../lib/format';
 import { resolved } from '../lib/resource';
+
+/**
+ * storylines.ts (~25KB source) is home-only, but HomePage is deliberately
+ * eager in the entry chunk (see main.tsx). Loading storylines dynamically
+ * keeps it out of that chunk, so deep-link landings (/cards/…, /players/…)
+ * never download or parse it. Module-scope signal + one-shot import: every
+ * component in this file shares the same load, and Vite's module cache
+ * dedupes the request.
+ */
+type StorylinesModule = typeof import('../lib/storylines');
+const [storylinesModule, setStorylinesModule] = createSignal<StorylinesModule>();
+let storylinesRequested = false;
+function useStorylines(): () => StorylinesModule | undefined {
+  if (!storylinesRequested) {
+    storylinesRequested = true;
+    import('../lib/storylines').then(
+      m => setStorylinesModule(() => m),
+      () => {
+        // Let a later mount retry; the sections below just stay hidden.
+        storylinesRequested = false;
+      }
+    );
+  }
+  return storylinesModule;
+}
 
 const LATEST_EVENT_WINDOW_DAYS = 14;
 // Majors whose dates fall within this many days of each other count as the
@@ -231,6 +248,7 @@ export function HomePage() {
 /* ---------- Latest event callout ---------- */
 
 function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: ArchetypeIndexEntry[] | undefined }) {
+  const storylines = useStorylines();
   const [meta] = createResource(() => props.tournamentKey, fetchMeta);
   const [participants] = createResource(() => props.tournamentKey, fetchParticipants);
   const [tournamentArchetypes] = createResource(() => props.tournamentKey, fetchArchetypes);
@@ -343,6 +361,10 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
   const totalDay2 = createMemo(() => day2Participants().length);
 
   const fieldRows = createMemo<FieldRow[]>(() => {
+    const sl = storylines();
+    if (!sl) {
+      return [];
+    }
     const tournamentList = tournamentArchetypesData() ?? [];
     if (tournamentList.length === 0) {
       return [];
@@ -417,7 +439,7 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
           rawName: a.label || a.name,
           label: a.label || a.name,
           archetype: onlineHit ?? a,
-          thumbnails: resolveArchetypeThumbnails(onlineHit, a),
+          thumbnails: sl.resolveArchetypeThumbnails(onlineHit, a),
           fieldPct,
           fieldDecks,
           day2Count,
@@ -557,8 +579,11 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
                 return (
                   <li class='callout-cut-strip-row'>
                     <span class='cut-place'>#{p.placement ?? '—'}</span>
-                    <Show when={countryLabel(p.country)} fallback={<span class='cut-country cut-country-empty' />}>
-                      <span class='cut-country'>{countryLabel(p.country)}</span>
+                    <Show
+                      when={storylines()?.countryLabel(p.country)}
+                      fallback={<span class='cut-country cut-country-empty' />}
+                    >
+                      <span class='cut-country'>{storylines()?.countryLabel(p.country)}</span>
                     </Show>
                     <span class='cut-name'>{p.name}</span>
                     <Show when={entry} fallback={<span class='cut-deck'>{p.deckName ?? '—'}</span>}>
@@ -651,8 +676,13 @@ function StoryBody(props: {
   lookupArchetype: (name: string | null | undefined) => ArchetypeIndexEntry | undefined;
   hasDay2: boolean;
 }) {
-  const stories = createMemo(() =>
-    buildStories({
+  const storylines = useStorylines();
+  const stories = createMemo(() => {
+    const sl = storylines();
+    if (!sl) {
+      return [];
+    }
+    return sl.buildStories({
       rows: props.fieldRows,
       excludeArchetype: props.winnerArchetype,
       hasDay2: props.hasDay2,
@@ -662,8 +692,8 @@ function StoryBody(props: {
       cutLine: props.cutLine,
       totalTopCut: props.totalTopCut,
       lookupArchetype: props.lookupArchetype
-    })
-  );
+    });
+  });
   return (
     <Show when={stories().length > 0}>
       <div class='callout-stories'>
@@ -676,8 +706,11 @@ function StoryBody(props: {
 }
 
 function StoryCard(props: { story: Story; hasDay2: boolean }) {
+  const storylines = useStorylines();
   const r = () => props.story.row;
-  const meta = () => ARC_TAG_META[props.story.tag];
+  // StoryCard only renders from a non-empty stories() list, which requires the
+  // storylines module to be loaded — the fallback never shows in practice.
+  const meta = () => storylines()?.ARC_TAG_META[props.story.tag] ?? { label: '', symbol: '' };
   const href = () =>
     props.story.href ?? (r().archetype ? `/archetypes/${encodeURIComponent(r().archetype!.name)}` : '#');
   const thumbnails = createMemo<string[]>(() => {

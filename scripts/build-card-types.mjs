@@ -268,6 +268,29 @@ async function saveDatabase(database) {
   }
 
   await fs.writeFile(CARD_TYPES_DB_PATH, `${JSON.stringify(sorted, null, 2)}\n`, 'utf-8');
+
+  // Slim companion artifact: just "SET::NUMBER" → lowercase evolves-from name.
+  // The frontend's evolution collapsing needs only this mapping, so it can
+  // fetch ~a few KB instead of the full 700KB database (see fetchEvolutionMap).
+  const NAMED_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+  const decodeEntities = s =>
+    s.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (all, ent) => {
+      if (ent[0] === '#') {
+        const code = ent[1].toLowerCase() === 'x' ? parseInt(ent.slice(2), 16) : parseInt(ent.slice(1), 10);
+        return Number.isFinite(code) ? String.fromCodePoint(code) : all;
+      }
+      return NAMED_ENTITIES[ent.toLowerCase()] ?? all;
+    });
+  const evolvesFrom = {};
+  for (const key of sortedKeys) {
+    const info = sorted[key]?.evolutionInfo;
+    const m = typeof info === 'string' ? info.match(/Evolves from\s+(.+?)\s*$/i) : null;
+    if (m) {
+      evolvesFrom[key] = decodeEntities(m[1]).trim().toLowerCase();
+    }
+  }
+  const evolvesFromPath = join(dirname(CARD_TYPES_DB_PATH), 'evolves-from.json');
+  await fs.writeFile(evolvesFromPath, `${JSON.stringify(evolvesFrom)}\n`, 'utf-8');
 }
 
 /**
