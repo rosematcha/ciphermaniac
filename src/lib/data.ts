@@ -1071,6 +1071,43 @@ export async function fetchPriceHistory(): Promise<Record<string, PricePoint[]>>
   return out;
 }
 
+/**
+ * Minimum calendar span the rolling price history must cover before any
+ * price-trend UI is surfaced. The artifact accumulates one day at a time from
+ * the daily pipeline (no backfill), so trends are withheld until enough has
+ * been collected to be meaningful.
+ */
+export const PRICE_HISTORY_MIN_DAYS = 30;
+
+/**
+ * Days spanned by the whole rolling history (latest observation − earliest,
+ * across every card). Flat runs collapse to a single point, so the earliest
+ * date across volatile cards is the best proxy for when accumulation began.
+ * Gate price UIs on this being ≥ {@link PRICE_HISTORY_MIN_DAYS}.
+ */
+export function priceHistorySpanDays(history: Record<string, PricePoint[]>): number {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const points of Object.values(history)) {
+    for (const pt of points) {
+      const t = Date.parse(pt.date);
+      if (Number.isNaN(t)) {
+        continue;
+      }
+      if (t < min) {
+        min = t;
+      }
+      if (t > max) {
+        max = t;
+      }
+    }
+  }
+  if (min === Infinity) {
+    return 0;
+  }
+  return Math.round((max - min) / 86_400_000);
+}
+
 // --- Card lookup helpers ---
 
 /**

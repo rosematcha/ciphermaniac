@@ -18,7 +18,7 @@
  *
  * Bump VERSION to invalidate all SW caches.
  */
-const VERSION = 'v1';
+const VERSION = 'v2'; // v2: flush caches poisoned by the July 2026 _redirects outage
 const JSON_CACHE = `cm-json-${VERSION}`;
 const ASSET_CACHE = `cm-assets-${VERSION}`;
 const SHELL_CACHE = `cm-shell-${VERSION}`;
@@ -51,12 +51,21 @@ async function trimCache(cacheName, maxEntries) {
   }
 }
 
+// Never cache an HTML body under a data/asset URL. During an outage the
+// server can 200 the SPA shell for any path (that is exactly what the July
+// 2026 _redirects catch-all did), and cache-first would then serve the
+// poisoned entry forever.
+function cacheable(response) {
+  const type = response.headers.get('content-type') ?? '';
+  return response.ok && !type.includes('text/html');
+}
+
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(JSON_CACHE);
   const cached = await cache.match(request);
   const refresh = fetch(request)
     .then(response => {
-      if (response.ok) {
+      if (cacheable(response)) {
         cache.put(request, response.clone()).then(() => trimCache(JSON_CACHE, JSON_MAX_ENTRIES));
       }
       return response;
@@ -79,7 +88,7 @@ async function cacheFirst(request) {
     return cached;
   }
   const response = await fetch(request);
-  if (response.ok) {
+  if (cacheable(response)) {
     cache.put(request, response.clone());
   }
   return response;

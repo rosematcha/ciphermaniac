@@ -1,0 +1,99 @@
+/* Player compare view. Reuses .data / .hero / .kpis from players-tables.css. */
+
+.compare-pickers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 560px) {
+  .compare-pickers {
+    grid-template-columns: 1fr;
+  }
+}
+
+.compare-slot {
+  position: relative;
+  min-width: 0;
+}
+
+.compare-slot-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.compare-slot .search {
+  width: 100%;
+}
+
+.compare-slot-chosen {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.compare-slot-name {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.compare-picker-list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 4px;
+  border: var(--border-width) solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  position: absolute;
+  z-index: 5;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.compare-picker-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 6px 8px;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+
+.compare-picker-item:hover {
+  background: var(--surface-2);
+}
+
+/* Metric-comparison table: fixed label column, equal player columns. */
+.compare-table th,
+.compare-table td {
+  width: 40%;
+}
+.compare-table th:first-child,
+.compare-table td:first-child {
+  width: 20%;
+}
+
+.compare-lead {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.compare-caret {
+  color: var(--accent);
+  font-size: 9px;
+}
+
+.compare-h2h {
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}

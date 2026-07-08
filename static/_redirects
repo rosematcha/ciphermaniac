@@ -1,10 +1,12 @@
-# A missing hashed asset must 404 — never fall through to the SPA shell below.
-# Otherwise a request during a deploy propagation gap serves index.html with a
-# 200, and because _headers marks /assets/* immutable-for-a-year by path, the
-# edge caches that HTML under the asset URL and poisons it for a year.
-/assets/*    /404.html    404
-
-# Cloudflare Pages SPA fallback — any non-asset, non-API route serves index.html
-# so the Solid Router can take over and render the correct page.
-# Real Functions in /functions are matched FIRST by Pages, so /api/* etc. still work.
-/*    /index.html    200
+# KEEP THIS FILE RULE-FREE.
+#
+# On Cloudflare Pages, _redirects rules are followed even when a static asset
+# matches the request ("Redirects are always followed, regardless of whether
+# or not an asset matches"). A SPA catch-all like "/*  /  200" therefore
+# rewrites EVERY request — hashed JS/CSS bundles, fonts, sw.js — to the HTML
+# shell, which took the whole site down in July 2026.
+#
+# SPA fallback comes from the platform instead: because this project ships no
+# top-level 404.html, Pages serves the root shell for any path with no
+# matching asset, so deep links and hard refreshes work with zero rules here.
+# (Adding a top-level 404.html silently disables that fallback — don't.)

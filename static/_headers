@@ -4,6 +4,12 @@
 # NOTE: when several rules match a path and set the same header, the later
 # rule wins — so general rules come first and specific overrides after.
 
+# The service worker script must never be served stale: a cached sw.js delays
+# every SW rollout (cache flushes, fix deploys) by the TTL. Browsers bypass
+# their own HTTP cache for SW update checks, but the Cloudflare edge does not.
+/sw.js
+  Cache-Control: no-cache
+
 # Vite bundles: content-hashed filenames, safe to cache forever.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable

@@ -4,9 +4,12 @@ import {
   fetchArchetypes,
   fetchMaster,
   fetchOnlineTrendReport,
+  fetchPriceHistory,
   fetchTournamentsList,
   getArchetypeIconMap,
   majorTournaments,
+  PRICE_HISTORY_MIN_DAYS,
+  priceHistorySpanDays,
   resolveArchetypeIcons,
   tournamentDate
 } from '../lib/data';
@@ -182,7 +185,121 @@ export function TrendsPage() {
       <Show when={source() === 'online'} fallback={<MajorsView windowKey={majorsWindow()} />}>
         <OnlineView windowKey={onlineWindow()} />
       </Show>
+
+      <PriceMovers />
     </>
+  );
+}
+
+/* ============================================================
+   PRICE MOVERS — biggest TCGPlayer market-price swings
+   ============================================================ */
+
+interface PriceMover {
+  uid: string;
+  name: string;
+  set: string;
+  number: string;
+  start: number;
+  current: number;
+  delta: number;
+}
+
+/** Minimum current price to list — filters out penny cards whose swings are noise. */
+const PRICE_MOVER_MIN = 1;
+/** Minimum absolute dollar swing to count as a mover. */
+const PRICE_MOVER_MIN_DELTA = 0.25;
+
+/**
+ * Price movers, independent of the online/majors toggle: the biggest first-to-
+ * last swings in the rolling 90-day price history. Renders nothing until the
+ * history spans PRICE_HISTORY_MIN_DAYS, so it stays invisible rather than
+ * showing a placeholder while the pipeline accumulates its first month of data.
+ */
+function PriceMovers() {
+  const [history] = createResource(fetchPriceHistory);
+  const historyData = () => latestValue(history);
+
+  const movers = createMemo<{ rising: PriceMover[]; falling: PriceMover[] }>(() => {
+    const h = historyData();
+    if (!h || priceHistorySpanDays(h) < PRICE_HISTORY_MIN_DAYS) {
+      return { rising: [], falling: [] };
+    }
+    const all: PriceMover[] = [];
+    for (const [uid, points] of Object.entries(h)) {
+      if (points.length < 2) {
+        continue;
+      }
+      const start = points[0].price;
+      const current = points[points.length - 1].price;
+      const delta = current - start;
+      if (current < PRICE_MOVER_MIN || Math.abs(delta) < PRICE_MOVER_MIN_DELTA) {
+        continue;
+      }
+      const parts = uid.split('::');
+      if (parts.length < 3) {
+        continue;
+      }
+      all.push({ uid, name: parts[0], set: parts[1], number: parts[2], start, current, delta });
+    }
+    const rising = all
+      .filter(m => m.delta > 0)
+      .sort((a, b) => b.delta - a.delta)
+      .slice(0, 12);
+    const falling = all
+      .filter(m => m.delta < 0)
+      .sort((a, b) => a.delta - b.delta)
+      .slice(0, 12);
+    return { rising, falling };
+  });
+
+  return (
+    <Show when={movers().rising.length > 0 || movers().falling.length > 0}>
+      <Section title='Price movers' right='Biggest market-price swings, last 90 days'>
+        <div class='movers'>
+          <div class='mover-col'>
+            <h3 class='up'>Rising: biggest gainers</h3>
+            <For each={movers().rising}>
+              {(m, idx) => (
+                <A href={`/cards/${m.set}/${m.number}`} class='mover-row'>
+                  <span class='rank'>{idx() + 1}</span>
+                  <span class='name'>{m.name}</span>
+                  <span class='set'>
+                    {m.set}/{m.number}
+                  </span>
+                  <span class='delta up'>
+                    <span class='delta-pp'>↑ ${m.delta.toFixed(2)}</span>
+                    <span class='delta-base'>
+                      ${m.start.toFixed(2)} → ${m.current.toFixed(2)}
+                    </span>
+                  </span>
+                </A>
+              )}
+            </For>
+          </div>
+          <div class='mover-col'>
+            <h3 class='down'>Falling: biggest drops</h3>
+            <For each={movers().falling}>
+              {(m, idx) => (
+                <A href={`/cards/${m.set}/${m.number}`} class='mover-row'>
+                  <span class='rank'>{idx() + 1}</span>
+                  <span class='name'>{m.name}</span>
+                  <span class='set'>
+                    {m.set}/{m.number}
+                  </span>
+                  <span class='delta down'>
+                    <span class='delta-pp'>↓ ${Math.abs(m.delta).toFixed(2)}</span>
+                    <span class='delta-base'>
+                      ${m.start.toFixed(2)} → ${m.current.toFixed(2)}
+                    </span>
+                  </span>
+                </A>
+              )}
+            </For>
+          </div>
+        </div>
+      </Section>
+    </Show>
   );
 }
 
