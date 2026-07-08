@@ -1226,13 +1226,16 @@ function buildCardUsageIndex(archetypeFiles) {
   return { usage };
 }
 
+const REPORTS_CACHE_CONTROL = 'public, max-age=21600';
+
 async function putJson(key, data) {
   await s3Client.send(
     new PutObjectCommand({
       Bucket: R2_BUCKET_NAME,
       Key: key,
-      Body: JSON.stringify(data, null, 2),
-      ContentType: 'application/json'
+      Body: JSON.stringify(data),
+      ContentType: 'application/json',
+      CacheControl: REPORTS_CACHE_CONTROL
     })
   );
 }

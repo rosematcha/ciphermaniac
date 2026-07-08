@@ -68,7 +68,12 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
   { value: 'name-desc', label: 'Name (Z → A)' }
 ];
 
-const DATA_BASE = '/toys/in-loving-memory/data';
+// Toy data is uploaded to R2 (scripts/upload-toys.ts); Pages never serves
+// /toys/* in production — the SPA fallback would answer with HTML and a 200.
+// In dev, vite serves the scraper's output from static/ at the root.
+const DATA_BASE = import.meta.env?.DEV
+  ? '/toys/in-loving-memory/data'
+  : 'https://r2.ciphermaniac.com/toys/in-loving-memory/data';
 const THUMBNAILS_PROXY = '/thumbnails';
 
 /**
