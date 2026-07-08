@@ -12,6 +12,7 @@ import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CardTile } from '../components/CardTile';
 import { createPagination } from '../lib/pagination';
+import { debounced } from '../lib/debounce';
 import { latestValue } from '../lib/resource';
 import { averageCopies, averageCopiesValue, cardSupercategory, categoryLabel } from '../lib/cardStats';
 import {
@@ -85,9 +86,14 @@ export function CardsIndexPage() {
   const masterData = () => latestValue(master);
   const pricesData = () => latestValue(prices);
 
+  // The input binds the raw `query` signal so typing echoes instantly; the
+  // filter → sort → 60-tile render chain reads this debounced view so it runs
+  // once per pause instead of once per keystroke.
+  const debouncedQuery = debounced(query, 150);
+
   const filtered = createMemo(() => {
     const items = masterData()?.items ?? [];
-    const q = query().trim().toLowerCase();
+    const q = debouncedQuery().trim().toLowerCase();
     const filter = typeFilter();
     return items.filter(item => {
       if (!item.set || item.number === undefined) {
@@ -176,7 +182,7 @@ export function CardsIndexPage() {
   const { page, totalPages, pageItems, setPage } = createPagination(
     sorted,
     PAGE_SIZE,
-    [query, typeFilter, sortKey, tournament],
+    [debouncedQuery, typeFilter, sortKey, tournament],
     pageSignal
   );
 

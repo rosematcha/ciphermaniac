@@ -19,6 +19,7 @@ interface PaginationProps {
  */
 export function Pagination(props: PaginationProps) {
   const pages = () => buildRange(props.page, props.totalPages);
+  let navEl: HTMLElement | undefined;
 
   const goto = (p: number) => {
     const clamped = Math.min(Math.max(1, p), props.totalPages);
@@ -26,6 +27,10 @@ export function Pagination(props: PaginationProps) {
       return;
     }
     props.onChange(clamped);
+    // The controls sit below the list, so after a page swap the viewport
+    // would still be pinned at the bottom — showing the new page's LAST rows.
+    // Jump back to the top of the containing section.
+    navEl?.parentElement?.scrollIntoView({ block: 'start' });
   };
 
   const summary = () => {
@@ -43,7 +48,7 @@ export function Pagination(props: PaginationProps) {
   };
 
   return (
-    <nav class='pagination' aria-label='Pagination'>
+    <nav ref={navEl} class='pagination' aria-label='Pagination'>
       <Show when={summary()}>
         <span class='pagination-summary'>{summary()}</span>
       </Show>
