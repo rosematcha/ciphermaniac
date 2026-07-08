@@ -13,6 +13,7 @@ import {
   matchupImportance,
   type MatchupStat,
   selectKeyMatchups,
+  shownMatchups,
   summarizeMatchups,
   WR_MIN_GAMES
 } from '../../src/lib/matchups.ts';
@@ -72,6 +73,67 @@ test('summarizeMatchups: empty when nothing meets the floor', () => {
   assert.equal(s.tracked, 0);
   assert.equal(s.best, null);
   assert.equal(s.toughest, null);
+});
+
+test('shownMatchups: well-sampled deck shows exactly the rows meeting the floor', () => {
+  const rows = [
+    { opponentLabel: 'a', matches: 200 },
+    { opponentLabel: 'b', matches: 100 },
+    { opponentLabel: 'c', matches: 60 },
+    { opponentLabel: 'd', matches: 40 },
+    { opponentLabel: 'e', matches: 30 },
+    { opponentLabel: 'f', matches: 25 },
+    { opponentLabel: 'g', matches: 21 },
+    { opponentLabel: 'h', matches: 20 },
+    { opponentLabel: 'i', matches: 19 }, // below floor, not needed to reach MIN_SHOWN
+    { opponentLabel: 'j', matches: 3 }
+  ];
+  const shown = shownMatchups(rows);
+  assert.equal(shown.size, 8);
+  assert.ok(shown.has('h')); // exactly at the floor
+  assert.ok(!shown.has('i')); // below floor, and 8 already clear it
+  assert.ok(!shown.has('j'));
+});
+
+test('shownMatchups: low-playrate deck fills up to MIN_SHOWN by most-played', () => {
+  // Every matchup is thin (< WR_MIN_GAMES); none clears the floor.
+  const rows = [
+    { opponentLabel: 'a', matches: 12 },
+    { opponentLabel: 'b', matches: 9 },
+    { opponentLabel: 'c', matches: 8 },
+    { opponentLabel: 'd', matches: 7 },
+    { opponentLabel: 'e', matches: 6 },
+    { opponentLabel: 'f', matches: 5 },
+    { opponentLabel: 'g', matches: 4 },
+    { opponentLabel: 'h', matches: 3 },
+    { opponentLabel: 'i', matches: 2 }, // the tail spills to the expander
+    { opponentLabel: 'j', matches: 1 }
+  ];
+  const shown = shownMatchups(rows);
+  assert.equal(shown.size, 8);
+  assert.ok(shown.has('a')); // most-played 2-game+ matchups headline
+  assert.ok(shown.has('h'));
+  assert.ok(!shown.has('i')); // the two rarest stay hidden
+  assert.ok(!shown.has('j'));
+});
+
+test('shownMatchups: floor rows plus fill can exceed the floor count', () => {
+  // 3 clear the floor; fill tops up to MIN_SHOWN with the next most-played.
+  const rows = [
+    { opponentLabel: 'a', matches: 50 },
+    { opponentLabel: 'b', matches: 40 },
+    { opponentLabel: 'c', matches: 20 },
+    { opponentLabel: 'd', matches: 15 },
+    { opponentLabel: 'e', matches: 14 },
+    { opponentLabel: 'f', matches: 13 },
+    { opponentLabel: 'g', matches: 12 },
+    { opponentLabel: 'h', matches: 11 },
+    { opponentLabel: 'i', matches: 10 }
+  ];
+  const shown = shownMatchups(rows);
+  assert.equal(shown.size, 8);
+  assert.ok(shown.has('h'));
+  assert.ok(!shown.has('i'));
 });
 
 test('matchupImportance: field share weighted by sqrt of deviation (min 1)', () => {

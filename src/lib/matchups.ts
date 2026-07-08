@@ -69,6 +69,36 @@ export function shrunkWinRate(wins: number, ties: number, matches: number): numb
  */
 export const WR_MIN_GAMES = 20;
 
+/**
+ * Guaranteed number of matchups that render with a win-rate readout, even when
+ * they sit below {@link WR_MIN_GAMES}. A low-playrate deck plays so few total
+ * games that every one of its matchups is thin, so a hard floor would surface
+ * nothing; this floors the shown set at the deck's most-played opponents so the
+ * panel is never empty. The W-L-T record beside each row keeps the (small)
+ * sample visible in lieu of any hidden confidence threshold.
+ */
+export const MIN_SHOWN = 8;
+
+/**
+ * Labels of the matchups that should render with a win rate. Every row meeting
+ * `minGames` qualifies; if fewer than `minShown` do, the most-played sub-floor
+ * rows fill in up to `minShown`. For well-sampled decks this is exactly the rows
+ * meeting the floor (unchanged behaviour); for low-playrate decks it guarantees
+ * their top matchups still show instead of hiding behind the expander.
+ */
+export function shownMatchups<T extends { opponentLabel: string; matches: number }>(
+  rows: T[],
+  minGames = WR_MIN_GAMES,
+  minShown = MIN_SHOWN
+): Set<string> {
+  const met = rows.filter(r => r.matches >= minGames);
+  if (met.length >= minShown) {
+    return new Set(met.map(r => r.opponentLabel));
+  }
+  const filled = [...rows].sort((a, b) => b.matches - a.matches).slice(0, minShown);
+  return new Set([...met, ...filled].map(r => r.opponentLabel));
+}
+
 /** Overview bucket a matchup falls into, by its DISPLAYED whole-number win rate. */
 export type MatchupBucket = 'fav' | 'even' | 'unf';
 

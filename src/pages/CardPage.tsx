@@ -574,7 +574,6 @@ function CardPageBody(props: {
           <Show when={props.card.dist && props.card.dist.length > 0}>
             <div class='card-section'>
               <h3>Copy count distribution</h3>
-              <p class='dist-caption'>Of the {props.card.found.toLocaleString()} decks running it</p>
               <div class='dist-block'>
                 <For each={props.card.dist}>
                   {d => (
@@ -712,13 +711,20 @@ function fmtWholePct(p: number): string {
  * Expandable per-archetype usage rows: every archetype that plays this card,
  * with its inclusion rate and most common copy count on the collapsed row, and
  * the full copy-count distribution behind a chevron — each bucket deep-linking
- * into that archetype's filter tab pre-set to the exact count. Sorted by
- * inclusion within the archetype, descending.
+ * into that archetype's filter tab pre-set to the exact count. Sorted by the
+ * raw number of decks running the card within each archetype, descending, so
+ * popular decks outrank tiny ones with a higher inclusion rate.
  */
 function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem }) {
   const iconMap = getArchetypeIconMap();
   const sorted = createMemo(() => {
-    return [...props.rows].sort((a, b) => (b.item.pct ?? 0) - (a.item.pct ?? 0));
+    // Rank by the raw number of players running the card in each archetype
+    // (found = pct × deckTotal), so a large deck's high count outweighs a tiny
+    // deck's high rate — 800/1000 Dragapult beats 9/10 Kangaskhan. Ties fall
+    // back to inclusion rate.
+    return [...props.rows].sort(
+      (a, b) => (b.item.found ?? 0) - (a.item.found ?? 0) || (b.item.pct ?? 0) - (a.item.pct ?? 0)
+    );
   });
   const [open, setOpen] = createSignal<Set<string>>(new Set());
   const toggle = (name: string) =>

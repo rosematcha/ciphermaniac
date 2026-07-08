@@ -3424,9 +3424,6 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 .mu-gauge-fill.mu-flat {
   background: transparent;
 }
-.mu-low .mu-gauge-fill {
-  opacity: 0.55;
-}
 
 /* ---- List + shared cells ---- */
 .mu-list {
@@ -3560,14 +3557,6 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
   background: var(--surface-2);
-}
-.r2-krow.mu-low,
-.r2-rrow.mu-low {
-  opacity: 0.6;
-}
-.r2-krow.mu-low:hover,
-.r2-rrow.mu-low:hover {
-  opacity: 0.9;
 }
 
 /* Per-row deep link, revealed on hover/focus in a reserved right gutter */

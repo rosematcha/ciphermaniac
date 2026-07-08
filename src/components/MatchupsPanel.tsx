@@ -16,9 +16,9 @@ import {
   rowsFromMajorsProfile,
   rowsFromOnlineMatchups,
   selectKeyMatchups,
+  shownMatchups,
   shrunkWinRate,
-  summarizeMatchups,
-  WR_MIN_GAMES
+  summarizeMatchups
 } from '../lib/matchups';
 import {
   buildLensRows,
@@ -54,6 +54,8 @@ interface FieldRow extends MatchupRowCore {
   opponentSlug: string | null;
   iconSlugs: string[];
   prevalence: number | null;
+  /** Whether this row renders a win rate (meets the floor, or fills the top-N guarantee). */
+  shown: boolean;
 }
 
 interface LensDisplayRow {
@@ -72,8 +74,6 @@ const SORT_OPTIONS: { value: SortBy; label: string }[] = [
 
 /** Number of decision-relevant opponents surfaced in the Key matchups section. */
 const KEY_COUNT = 5;
-/** Below this many games a shown field row is faded (still visible, just quieter). */
-const FIELD_MUTED = 50;
 /** A lens opponent needs this many games in BOTH subsets to show by default. */
 const LENS_FLOOR = 3;
 /** Up to this many suggested tech-card chips in the lens drawer. */
@@ -215,22 +215,29 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
       : onlineMatchups()
         ? rowsFromOnlineMatchups(onlineMatchups()!, props.label)
         : [];
-    return cores.map(core => {
+    const base = cores.map(core => {
       const meta = resolveOpponentMeta(core.opponentLabel, indexByKey());
       return { ...core, opponentSlug: meta.slug, iconSlugs: meta.iconSlugs, prevalence: meta.percent };
     });
+    // Which rows earn a win-rate readout — the floor, topped up to MIN_SHOWN by
+    // sample so low-playrate decks still surface their most-played matchups.
+    const shown = shownMatchups(base);
+    return base.map(row => ({ ...row, shown: shown.has(row.opponentLabel) }));
   });
 
   // Overview summary + strip proportions (derived counts only, no editorial copy).
   const summary = createMemo(() =>
     summarizeMatchups(
-      fieldRows().map(r => ({
-        opponentLabel: r.opponentLabel,
-        winRate: r.winRate,
-        matches: r.matches,
-        fieldShare: r.prevalence,
-        isMirror: r.isMirror
-      }))
+      fieldRows()
+        .filter(r => r.shown)
+        .map(r => ({
+          opponentLabel: r.opponentLabel,
+          winRate: r.winRate,
+          matches: r.matches,
+          fieldShare: r.prevalence,
+          isMirror: r.isMirror
+        })),
+      0
     )
   );
 
@@ -238,8 +245,10 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
   // importance = fieldShare * sqrt(max(|WR-50|,1)), displayed by field share desc.
   const keyRows = createMemo<FieldRow[]>(() =>
     selectKeyMatchups(
-      fieldRows().map(r => ({ ...r, fieldShare: r.prevalence })),
-      WR_MIN_GAMES,
+      fieldRows()
+        .filter(r => r.shown)
+        .map(r => ({ ...r, fieldShare: r.prevalence })),
+      0,
       KEY_COUNT
     ).map(({ fieldShare: _fieldShare, ...row }) => row)
   );
@@ -265,8 +274,9 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
   });
 
   // Rest of the field: everything not surfaced as a key row (mirror included),
-  // split into a shown set (>= WR_MIN_GAMES games) and low-sample rows behind the
-  // expander. Ordered by the chosen sort; win rate uses a sample-adjusted metric.
+  // split into a shown set (meets the floor, or fills the top-N guarantee) and the
+  // remaining thin-sample rows behind the expander. Ordered by the chosen sort;
+  // win rate uses a sample-adjusted metric.
   const restRows = createMemo<FieldRow[]>(() => {
     const keySet = new Set(keyRows().map(r => r.opponentLabel));
     const rows = fieldRows().filter(r => !keySet.has(r.opponentLabel));
@@ -277,8 +287,8 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
       r => r.prevalence
     );
   });
-  const restVisible = createMemo(() => restRows().filter(r => r.matches >= WR_MIN_GAMES));
-  const restLowSample = createMemo(() => restRows().filter(r => r.matches < WR_MIN_GAMES));
+  const restVisible = createMemo(() => restRows().filter(r => r.shown));
+  const restLowSample = createMemo(() => restRows().filter(r => !r.shown));
 
   // ---- Lens rows ----
   const lensDecks = createMemo(() => {
@@ -524,9 +534,7 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
               </div>
               <Show when={restLowSample().length > 0}>
                 <details class='r2-more'>
-                  <summary>
-                    Show {restLowSample().length} low-sample matchups (&lt; {WR_MIN_GAMES} games)
-                  </summary>
+                  <summary>Show {restLowSample().length} more matchups</summary>
                   <div class='mu-list' style={{ 'margin-top': '8px' }}>
                     <For each={restLowSample()}>{row => <RestMatchupRow row={row} onGo={go} />}</For>
                   </div>
@@ -686,8 +694,8 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
 }
 
 /** The gauge: a half-width deviation bar, empty at even, green above / red below. */
-function Gauge(props: { winRate: number | null; matches: number }) {
-  const shown = () => props.matches >= WR_MIN_GAMES && props.winRate !== null;
+function Gauge(props: { winRate: number | null; shown: boolean }) {
+  const shown = () => props.shown && props.winRate !== null;
   const width = () => (shown() ? gaugeWidth(props.winRate!) : 0);
   return (
     <span class='mu-gauge' aria-hidden='true'>
@@ -698,7 +706,7 @@ function Gauge(props: { winRate: number | null; matches: number }) {
 
 /** W-L-T record + total games; double losses fold into the shown loss count. */
 function RowStats(props: { row: FieldRow }) {
-  const wr = () => (props.row.matches >= WR_MIN_GAMES ? props.row.winRate : null);
+  const wr = () => (props.row.shown ? props.row.winRate : null);
   const lossesShown = () => props.row.losses + props.row.doubleLosses;
   return (
     <div class='mu-stats'>
@@ -731,7 +739,7 @@ function MatrixLink(props: { label: string }) {
 
 function rowNav(row: FieldRow, onGo: (slug: string | null) => void) {
   return {
-    classList: { 'is-link': Boolean(row.opponentSlug), 'mu-low': row.matches < FIELD_MUTED },
+    classList: { 'is-link': Boolean(row.opponentSlug) },
     role: row.opponentSlug ? ('link' as const) : undefined,
     tabindex: row.opponentSlug ? 0 : undefined,
     onClick: () => onGo(row.opponentSlug),
@@ -757,7 +765,7 @@ function KeyMatchupRow(props: { row: FieldRow; onGo: (slug: string | null) => vo
           <span class='r2-share'>{fmtShare(props.row.prevalence)} of field</span>
         </Show>
       </div>
-      <Gauge winRate={props.row.winRate} matches={props.row.matches} />
+      <Gauge winRate={props.row.winRate} shown={props.row.shown} />
       <RowStats row={props.row} />
       <MatrixLink label={props.row.opponentLabel} />
     </div>
@@ -780,7 +788,7 @@ function RestMatchupRow(props: { row: FieldRow; onGo: (slug: string | null) => v
           </span>
         </Show>
       </div>
-      <Gauge winRate={props.row.winRate} matches={props.row.matches} />
+      <Gauge winRate={props.row.winRate} shown={props.row.shown} />
       <RowStats row={props.row} />
       <MatrixLink label={props.row.opponentLabel} />
     </div>

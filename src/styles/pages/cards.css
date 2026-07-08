@@ -100,14 +100,6 @@
   color: var(--negative);
 }
 
-/* ---------- Copy-count distribution caption (CardPage) ---------- */
-.dist-caption {
-  margin: -4px 0 10px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
 /* ---------- Sortable table headers (CardsIndexPage list view) ----------
    Markup contract: <th class='sortable'><button class='th-sort'>Label</button></th>.
    The button is a transparent trigger that inherits the header's typography; the
