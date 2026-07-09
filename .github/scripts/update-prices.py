@@ -39,16 +39,17 @@ MANUAL_GROUP_ID_MAP = {
 # for rares/ex), and reverse holo only as a last resort.
 SUBTYPE_PREFERENCE = ('Normal', 'Holofoil', 'Reverse Holofoil')
 
-# Basic energy canonical mappings
+# Basic energy canonical mappings — the newest cheap print (currently MEE).
+# Keep in sync with the canonicals emitted by update-card-synonyms.mjs.
 BASIC_ENERGY_CANONICALS = {
-    'Grass Energy': 'Grass Energy::SVE::017',
-    'Psychic Energy': 'Psychic Energy::SVE::021',
-    'Lightning Energy': 'Lightning Energy::SVE::019',
-    'Fire Energy': 'Fire Energy::SVE::018',
-    'Darkness Energy': 'Darkness Energy::SVE::015',
-    'Metal Energy': 'Metal Energy::SVE::020',
-    'Fighting Energy': 'Fighting Energy::SVE::016',
-    'Water Energy': 'Water Energy::SVE::022'
+    'Grass Energy': 'Grass Energy::MEE::001',
+    'Fire Energy': 'Fire Energy::MEE::002',
+    'Water Energy': 'Water Energy::MEE::003',
+    'Lightning Energy': 'Lightning Energy::MEE::004',
+    'Psychic Energy': 'Psychic Energy::MEE::005',
+    'Fighting Energy': 'Fighting Energy::MEE::006',
+    'Darkness Energy': 'Darkness Energy::MEE::007',
+    'Metal Energy': 'Metal Energy::MEE::008'
 }
 
 BASIC_ENERGY_NAMES = {

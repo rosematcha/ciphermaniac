@@ -5,65 +5,19 @@
  * Creates canonical mappings for card reprints across all sets.
  */
 
-import { readFile, writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir } from 'fs/promises';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import * as cheerio from 'cheerio';
+import { chooseCanonicalPrint } from './lib/canonical-print.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-async function loadSetCatalog() {
-    const source = join(__dirname, '../../src/data/setCatalog.ts');
-    let text;
-    try {
-        text = await readFile(source, 'utf-8');
-    } catch (error) {
-        throw new Error(`Unable to read setCatalog from ${source}: ${error.message}`);
-    }
-
-    const match = text.match(/const\s+SET_CATALOG\s*=\s*\[([\s\S]*?)\];/);
-    if (!match) {
-        throw new Error('Unable to locate SET_CATALOG array in setCatalog.ts');
-    }
-
-    const entries = [];
-    const entryRegex = /\{\s*code:\s*'([^']+)'\s*,\s*name:\s*'([^']*)'\s*\}/g;
-    let m;
-    while ((m = entryRegex.exec(match[1])) !== null) {
-        entries.push({ code: m[1], name: m[2] });
-    }
-
-    if (!entries.length) {
-        throw new Error('SET_CATALOG parsed as empty from setCatalog.ts');
-    }
-
-    return entries;
-}
-
-const SET_CATALOG = await loadSetCatalog();
-
 const PUBLIC_R2_BASE = process.env.PUBLIC_R2_BASE_URL || 'https://r2.ciphermaniac.com';
 const OUTPUT_PATH = join(__dirname, '../../public/assets/card-synonyms.json');
 const ONLINE_META_FOLDER = 'Online - Last 14 Days';
-const SET_RELEASE_INDEX = new Map(SET_CATALOG.map((entry, index) => [entry.code, index]));
-
-// Standard-legal sets (Scarlet & Violet era onwards, including Mega Evolution)
-const STANDARD_LEGAL_SETS = new Set([
-    'MEG', 'MEE', 'MEP',
-    'WHT', 'BLK', 'DRI', 'JTG', 'PRE', 'SSP', 'SCR', 'SFA', 'TWM', 'TEF',
-    'PAF', 'PAR', 'MEW', 'M23', 'OBF', 'PAL', 'SVE', 'SVI', 'SVP'
-]);
-
-// Promo sets (should be deprioritized)
-const PROMO_SETS = new Set(['SVP', 'MEP', 'PRE', 'M23', 'PAF']);
-
-function getReleaseIndex(setCode) {
-    if (!setCode) return Number.MAX_SAFE_INTEGER;
-    const upper = setCode.toUpperCase();
-    return SET_RELEASE_INDEX.has(upper) ? SET_RELEASE_INDEX.get(upper) : Number.MAX_SAFE_INTEGER;
-}
 
 function log(message) {
     console.log(message);
@@ -324,12 +278,21 @@ async function _scrapeCardPrintVariations(setCode, number) {
         const setNameElem = firstCell.find('a');
         let setAcronym;
 
-        if (setNameElem.length) {
-            const href = setNameElem.attr('href') || '';
-            const match = href.match(/\/cards\/([A-Z0-9]+)\/\d+/);
-            if (match) {
-                setAcronym = match[1];
-            }
+        // Match the set segment regardless of the card-number format so promo
+        // numbers like TG24/GG05 parse to their real set instead of falling
+        // through to the self-row branch below.
+        const href = setNameElem.length ? setNameElem.attr('href') || '' : '';
+        const match = href.match(/\/cards\/([A-Z0-9]+)\//);
+        if (match) {
+            setAcronym = match[1];
+        } else if (!href && setCode) {
+            // The card's own row on its Limitless page carries an anchor with
+            // no href (you are already on it), so it has no set acronym.
+            // Attribute it to the set being scraped — otherwise a page listing
+            // only two prints yields a single usable row and the card never
+            // reaches the 2-row cluster threshold (e.g. two-print cards like
+            // Pecharunt).
+            setAcronym = setCode.toUpperCase();
         }
 
         if (!setAcronym) return;
@@ -356,57 +319,6 @@ async function _scrapeCardPrintVariations(setCode, number) {
     });
 
     return variations;
-}
-
-function chooseCanonicalPrint(variations) {
-    if (!variations.length) return null;
-
-    const normalizePrice = value => {
-        return typeof value === 'number' && Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
-    };
-
-    const priced = variations
-        .map(v => normalizePrice(v.price_usd))
-        .filter(price => Number.isFinite(price) && price !== Number.POSITIVE_INFINITY);
-
-    const cheapestPrice = priced.length ? Math.min(...priced) : null;
-    const priceBandLimit =
-        cheapestPrice !== null ? cheapestPrice + Math.max(0.1, cheapestPrice * 0.25) : null;
-
-    // Focus on the cheapest options; if prices are missing, fall back to the full list
-    const candidates =
-        priceBandLimit !== null
-            ? variations.filter(v => normalizePrice(v.price_usd) <= priceBandLimit)
-            : variations;
-    const pool = candidates.length ? candidates : variations;
-
-    function getSetPriority(setCode) {
-        return STANDARD_LEGAL_SETS.has(setCode) ? 0 : 1;
-    }
-
-    function isPromo(setCode) {
-        return PROMO_SETS.has(setCode);
-    }
-
-    function sortKey(var_) {
-        const setPriority = getSetPriority(var_.set);
-        const releaseIndex = getReleaseIndex(var_.set);
-        const promoPriority = isPromo(var_.set) ? 1 : 0;
-        const price = normalizePrice(var_.price_usd);
-        const cardNum = /^\d+$/.test(var_.number) ? parseInt(var_.number, 10) : 999999;
-        return [setPriority, releaseIndex, promoPriority, price, cardNum];
-    }
-
-    const sorted = [...pool].sort((a, b) => {
-        const aKey = sortKey(a);
-        const bKey = sortKey(b);
-        for (let i = 0; i < aKey.length; i++) {
-            if (aKey[i] !== bKey[i]) return aKey[i] - bKey[i];
-        }
-        return 0;
-    });
-
-    return sorted[0];
 }
 
 class UnionFind {
@@ -497,26 +409,29 @@ async function buildClustersFromLimitless(printSet) {
     return clusters;
 }
 
+// Basic energies keyed by their SVE base-set position; SVE reprints the same
+// energy at n, n+8, and n+16, and MEE uses the base position directly.
 const MEE_BASIC_ENERGY = [
-    { name: 'Darkness Energy', set: 'MEE', number: '007', fallback: 'Darkness Energy::SVE::007' },
-    { name: 'Psychic Energy', set: 'MEE', number: '005', fallback: 'Psychic Energy::SVE::005' },
-    { name: 'Fighting Energy', set: 'MEE', number: '006', fallback: 'Fighting Energy::SVE::014' },
-    { name: 'Fire Energy', set: 'MEE', number: '002', fallback: 'Fire Energy::SVE::002' },
-    { name: 'Metal Energy', set: 'MEE', number: '008', fallback: 'Metal Energy::SVE::016' },
-    { name: 'Grass Energy', set: 'MEE', number: '001', fallback: 'Grass Energy::SVE::017' },
-    { name: 'Water Energy', set: 'MEE', number: '003', fallback: 'Water Energy::SVE::003' },
-    { name: 'Lightning Energy', set: 'MEE', number: '004', fallback: 'Lightning Energy::SVE::004' }
+    { name: 'Grass Energy', position: 1 },
+    { name: 'Fire Energy', position: 2 },
+    { name: 'Water Energy', position: 3 },
+    { name: 'Lightning Energy', position: 4 },
+    { name: 'Psychic Energy', position: 5 },
+    { name: 'Fighting Energy', position: 6 },
+    { name: 'Darkness Energy', position: 7 },
+    { name: 'Metal Energy', position: 8 }
 ];
 
 function ensureMeeBasicEnergySynonyms(synonymsDict, canonicalsDict) {
-    const canonicalByName = { ...canonicalsDict };
     for (const energy of MEE_BASIC_ENERGY) {
-        const canonical = canonicalByName[energy.name] || energy.fallback;
-        if (!canonical) continue;
-        const number = normalizeCardNumber(energy.number) || energy.number;
-        const uid = `${energy.name}::${energy.set}::${number}`;
-        if (!synonymsDict[uid]) {
-            synonymsDict[uid] = canonical;
+        const meeNumber = String(energy.position).padStart(3, '0');
+        const canonical = canonicalsDict[energy.name] || `${energy.name}::MEE::${meeNumber}`;
+        canonicalsDict[energy.name] = canonical;
+        for (const sveNumber of [energy.position, energy.position + 8, energy.position + 16]) {
+            const uid = `${energy.name}::SVE::${String(sveNumber).padStart(3, '0')}`;
+            if (uid !== canonical && !synonymsDict[uid]) {
+                synonymsDict[uid] = canonical;
+            }
         }
     }
 }
@@ -554,7 +469,7 @@ async function generateSynonyms(cardsByName) {
         }
 
         for (const cluster of clusters) {
-            const canonicalVar = chooseCanonicalPrint(cluster);
+            const canonicalVar = chooseCanonicalPrint(cluster, cardName);
             if (!canonicalVar) continue;
 
             const canonicalUid = `${cardName}::${canonicalVar.set}::${canonicalVar.number}`;

@@ -1,0 +1,84 @@
+# =============================================================================
+# Reprocess Event Indexes
+# =============================================================================
+# Re-bakes every stored event's cardUsage.json and conversion.json against the
+# current card-synonyms.json, straight from data already in R2 (no Labs
+# re-download). Run this after a synonyms rebuild so historical event pages key
+# their "where it's played" and conversion stats to the new canonicals.
+#
+# The report bodies (master.json, per-archetype cards.json, decks.json) are
+# canonicalized by the frontend at read time and do NOT need this.
+#
+# Trigger: manual dispatch only. dry_run defaults to true — run it once to
+# review the logged old→new key counts, then run again with dry_run=false.
+# =============================================================================
+
+name: (Card Metadata) Reprocess Event Indexes
+
+run-name: >-
+  Reprocess Event Indexes (dry_run=${{ inputs.dry_run }}${{ inputs.only && format(', only={0}', inputs.only) || '' }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Compute and log changes without uploading'
+        required: false
+        type: boolean
+        default: true
+      only:
+        description: 'Process a single event folder by exact name (optional)'
+        required: false
+        type: string
+      limit:
+        description: 'Process at most N events (optional; blank = all)'
+        required: false
+        type: string
+
+concurrency:
+  group: reprocess-event-indexes-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  reprocess:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install boto3 requests beautifulsoup4
+
+      - name: Reprocess event indexes
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: |
+          args=()
+          if [ "${{ inputs.dry_run }}" = "true" ]; then args+=(--dry-run); fi
+          if [ -n "${{ inputs.only }}" ]; then args+=(--only "${{ inputs.only }}"); fi
+          if [ -n "${{ inputs.limit }}" ]; then args+=(--limit "${{ inputs.limit }}"); fi
+          python .github/scripts/reprocess-event-indexes.py "${args[@]}"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Reprocess Event Indexes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- dry_run: \`${{ inputs.dry_run }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- only: \`${{ inputs.only || 'all events' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- limit: \`${{ inputs.limit || 'none' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "See the job log for per-event old→new key counts." >> $GITHUB_STEP_SUMMARY
