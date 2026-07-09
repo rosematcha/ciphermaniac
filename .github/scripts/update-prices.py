@@ -8,11 +8,10 @@ import os
 import sys
 import json
 import re
-import csv
+import time
 import unicodedata
 from datetime import datetime, timezone, date, timedelta
 from collections import defaultdict
-from io import StringIO
 
 
 TCGCSV_GROUPS_URL = 'https://tcgcsv.com/tcgplayer/3/groups'
@@ -33,6 +32,12 @@ MANUAL_GROUP_ID_MAP = {
     'MEP': 24451,
     'SVP': 22872
 }
+
+# TCGCSV publishes one price record per product per printing variant
+# (subTypeName). The card's "standard" price is the plainest printing that
+# actually has a market price: non-holo first, then holo (the only printing
+# for rares/ex), and reverse holo only as a last resort.
+SUBTYPE_PREFERENCE = ('Normal', 'Holofoil', 'Reverse Holofoil')
 
 # Basic energy canonical mappings
 BASIC_ENERGY_CANONICALS = {
@@ -84,12 +89,12 @@ def fetch_json(url):
     return response.json()
 
 
-def fetch_csv(url):
-    """Fetch CSV text from a URL."""
-    import requests
-    response = requests.get(url, timeout=30, headers={"User-Agent": TCGCSV_USER_AGENT})
-    response.raise_for_status()
-    return response.text
+def fetch_tcgcsv_results(url):
+    """Fetch a TCGCSV endpoint and return its results list."""
+    data = fetch_json(url)
+    if not data.get('success'):
+        raise RuntimeError(f"TCGCSV returned success=false for {url}")
+    return data.get('results', [])
 
 
 def initialize_r2_client():
@@ -254,107 +259,135 @@ def map_sets_to_group_ids(card_sets):
     return mappings
 
 
-def parse_csv_to_records(csv_text):
-    """Parse CSV text into list of dict records."""
-    reader = csv.DictReader(StringIO(csv_text))
-    return list(reader)
-
-
-def extract_price_from_record(record, set_code, card_uid_lookup, normalized_lookup):
-    """Extract price data from a CSV record."""
-    product_id = record.get('productId', '').strip()
-    name = record.get('name', '').strip()
-    market_price = record.get('marketPrice', '').strip()
-    ext_number = record.get('extNumber', '').strip()
-    
-    # Validate required fields
-    if not product_id or not name or not ext_number:
+def parse_product(product):
+    """
+    Extract (product_id, card_name, normalized_number) from a TCGCSV product
+    record, or None for products that aren't single cards (sealed product etc.
+    carries no Number in extendedData).
+    """
+    product_id = product.get('productId')
+    name = (product.get('name') or '').strip()
+    if not product_id or not name:
         return None
-    
-    # Parse card name - TCGCSV format can be:
-    # - "CardName" or
-    # - "CardName - Number/Total"
-    # We need to extract just the card name part
+
+    number = ''
+    for ext in product.get('extendedData') or []:
+        if ext.get('name') == 'Number':
+            number = str(ext.get('value') or '').strip()
+            break
+    if not number:
+        return None
+
+    # Product names come as "CardName - Number/Total" or bare "CardName"
     if ' - ' in name and '/' in name:
-        # Has the " - Number/Total" suffix, extract just the name
         card_name = name.split(' - ')[0].strip()
     else:
         card_name = name
-    
-    # Parse price
-    try:
-        price = float(market_price) if market_price else 0.0
-    except ValueError:
-        price = 0.0
-    
-    # Extract card number from extNumber (format is "Number/Total")
-    # We only want the number part before the slash
-    if '/' in ext_number:
-        card_number = ext_number.split('/')[0]
-    else:
-        card_number = ext_number
-    
-    # Normalize card number (pad to 3 digits if it's purely numeric)
+
+    card_number = number.split('/')[0] if '/' in number else number
     normalized_number = card_number.zfill(3) if card_number.isdigit() else card_number
-    
-    # Try exact match first
-    card_uid = f"{card_name}::{set_code}::{normalized_number}"
-    if card_uid in card_uid_lookup:
-        return {
-            'uid': card_uid,
-            'price': price,
-            'tcgPlayerId': product_id
-        }
-    
-    # Try normalized/fuzzy match
-    normalized_key = f"{normalize_card_name(card_name)}::{normalized_number}"
-    if normalized_key in normalized_lookup:
-        matched_uid = normalized_lookup[normalized_key]
-        return {
-            'uid': matched_uid,
-            'price': price,
-            'tcgPlayerId': product_id
-        }
-    
+    return product_id, card_name, normalized_number
+
+
+def build_normalized_lookup(card_uids):
+    """Map "normalized_name::number" to actual UID for fuzzy matching."""
+    normalized_lookup = {}
+    for uid in card_uids:
+        parts = uid.split('::')
+        if len(parts) >= 3:
+            normalized_key = f"{normalize_card_name(parts[0])}::{parts[2]}"
+            normalized_lookup[normalized_key] = uid
+    return normalized_lookup
+
+
+def build_product_uid_map(products, set_code, card_uids):
+    """Map TCGCSV productId -> card UID for the cards we track in this set."""
+    card_uid_lookup = set(card_uids)
+    normalized_lookup = build_normalized_lookup(card_uids)
+
+    product_uid_map = {}
+    for product in products:
+        parsed = parse_product(product)
+        if not parsed:
+            continue
+        product_id, card_name, number = parsed
+
+        uid = f"{card_name}::{set_code}::{number}"
+        if uid not in card_uid_lookup:
+            uid = normalized_lookup.get(f"{normalize_card_name(card_name)}::{number}")
+        if uid:
+            product_uid_map[product_id] = uid
+    return product_uid_map
+
+
+def select_market_price(variants):
+    """
+    Pick the standard printing's market price from a product's price records.
+
+    Returns (price, subTypeName) for the first SUBTYPE_PREFERENCE entry with a
+    positive market price, falling back to any positive price, or None when
+    the product has no usable market price at all.
+    """
+    priced = []
+    for variant in variants:
+        try:
+            price = float(variant.get('marketPrice') or 0)
+        except (TypeError, ValueError):
+            price = 0.0
+        priced.append((variant.get('subTypeName'), price))
+
+    for preferred in SUBTYPE_PREFERENCE:
+        for subtype, price in priced:
+            if subtype == preferred and price > 0:
+                return price, subtype
+    for subtype, price in priced:
+        if price > 0:
+            return price, subtype
     return None
 
 
+def extract_set_prices(products, price_records, set_code, card_uids):
+    """
+    Join a set's product and price records into {uid: {price, tcgPlayerId}}.
+
+    Pure (no I/O) so it's unit-testable. When several products resolve to the
+    same UID, the first priced one wins (stable product order beats the old
+    last-row-wins accident).
+    """
+    product_uid_map = build_product_uid_map(products, set_code, card_uids)
+
+    variants_by_product = defaultdict(list)
+    for record in price_records:
+        product_id = record.get('productId')
+        if product_id in product_uid_map:
+            variants_by_product[product_id].append(record)
+
+    prices = {}
+    for product in products:
+        product_id = product.get('productId')
+        uid = product_uid_map.get(product_id)
+        if not uid or uid in prices:
+            continue
+        selected = select_market_price(variants_by_product.get(product_id, []))
+        if selected is None:
+            continue
+        price, _subtype = selected
+        prices[uid] = {
+            'price': price,
+            'tcgPlayerId': str(product_id)
+        }
+    return prices
+
+
 def fetch_prices_for_set(set_code, group_id, card_uids):
-    """Fetch prices for a single set from TCGCSV."""
-    csv_url = f"https://tcgcsv.com/tcgplayer/3/{group_id}/ProductsAndPrices.csv"
+    """Fetch prices for a single set from TCGCSV's JSON endpoints."""
     print(f"\n  Fetching {set_code} (group {group_id})...")
-    
     try:
-        csv_text = fetch_csv(csv_url)
-        records = parse_csv_to_records(csv_text)
-        
-        # Create lookup for exact matching
-        card_uid_lookup = set(card_uids)
-        
-        # Create normalized lookup for fuzzy matching
-        # Maps "normalized_name::number" to actual UID
-        normalized_lookup = {}
-        for uid in card_uids:
-            parts = uid.split('::')
-            if len(parts) >= 3:
-                card_name = parts[0]
-                card_number = parts[2]
-                normalized_key = f"{normalize_card_name(card_name)}::{card_number}"
-                normalized_lookup[normalized_key] = uid
-        
-        # Extract prices
-        prices = {}
-        for record in records:
-            price_data = extract_price_from_record(record, set_code, card_uid_lookup, normalized_lookup)
-            if price_data:
-                prices[price_data['uid']] = {
-                    'price': price_data['price'],
-                    'tcgPlayerId': price_data['tcgPlayerId']
-                }
-        
+        products = fetch_tcgcsv_results(f"https://tcgcsv.com/tcgplayer/3/{group_id}/products")
+        price_records = fetch_tcgcsv_results(f"https://tcgcsv.com/tcgplayer/3/{group_id}/prices")
+        prices = extract_set_prices(products, price_records, set_code, card_uids)
         print(f"    Found {len(prices)} prices for {set_code}")
         return prices
-        
     except Exception as e:
         print(f"    Error fetching {set_code}: {e}")
         return {}
@@ -364,16 +397,17 @@ def fetch_all_prices(card_sets_map, set_mappings):
     """Fetch prices for all sets."""
     print("\nFetching prices from TCGCSV...")
     all_prices = {}
-    
+
     for set_code, card_uids in card_sets_map.items():
         group_id = set_mappings.get(set_code)
         if not group_id:
             print(f"  Skipping {set_code} (no group ID)")
             continue
-        
+
         set_prices = fetch_prices_for_set(set_code, group_id, card_uids)
         all_prices.update(set_prices)
-    
+        time.sleep(0.25)  # per TCGCSV FAQ etiquette
+
     return all_prices
 
 
