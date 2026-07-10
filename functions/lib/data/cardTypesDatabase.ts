@@ -10,6 +10,8 @@ interface WorkerEnv {
 }
 
 interface CardTypeInfo {
+  /** Internal parser schema marker used to backfill newly introduced metadata once. */
+  metadataVersion?: number;
   cardType?: string;
   subType?: string;
   fullType?: string;
@@ -18,6 +20,19 @@ interface CardTypeInfo {
   aceSpec?: boolean;
   abilities?: string[];
   attacks?: string[];
+  /* Enrichment fields emitted by scripts/build-card-types.mjs (July 2026+).
+     Older database entries predate them, so every field stays optional. */
+  hp?: number;
+  pokemonType?: string;
+  weakness?: string;
+  resistance?: string;
+  retreatCost?: number;
+  rarity?: string;
+  artist?: string;
+  text?: string;
+  abilityDetails?: { name: string; effect: string | null }[];
+  attackDetails?: { cost: string | null; name: string; damage: string | null; effect: string | null }[];
+  legality?: Record<string, string>;
   lastUpdated?: string;
 }
 
@@ -39,10 +54,14 @@ interface CardRecord {
 
 // Module-level cache: persists across requests within the same isolate,
 // avoiding re-fetch and re-parse of the card types JSON on every request.
+// Bounded by the same 24h TTL the KV layer uses so a long-lived warm isolate
+// doesn't serve stale card types indefinitely after an R2 update.
+const CARD_TYPES_CACHE_TTL_MS = 86400 * 1000;
 let cachedCardTypesData: CardTypesDatabase | null = null;
+let cachedAt = 0;
 
 export async function loadCardTypesDatabase(env: WorkerEnv): Promise<CardTypesDatabase> {
-  if (cachedCardTypesData) {
+  if (cachedCardTypesData && Date.now() - cachedAt < CARD_TYPES_CACHE_TTL_MS) {
     return cachedCardTypesData;
   }
   try {
@@ -50,6 +69,7 @@ export async function loadCardTypesDatabase(env: WorkerEnv): Promise<CardTypesDa
       const cached = await env.CARD_TYPES_KV.get('card-types-database', 'json');
       if (cached) {
         cachedCardTypesData = cached as CardTypesDatabase;
+        cachedAt = Date.now();
         return cachedCardTypesData;
       }
     }
@@ -67,6 +87,7 @@ export async function loadCardTypesDatabase(env: WorkerEnv): Promise<CardTypesDa
         }
 
         cachedCardTypesData = data;
+        cachedAt = Date.now();
         return data;
       }
     }

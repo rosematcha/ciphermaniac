@@ -256,6 +256,41 @@ async function r2Has(key: string): Promise<boolean> {
 
 const stats = { uploaded: 0, skipped: 0, missingSource: 0, failed: 0, pngBytes: 0, webpBytes: 0 };
 
+const SOURCE_FETCH_RETRIES = 3;
+
+type SourceFetch = { kind: 'ok'; buffer: ArrayBuffer } | { kind: 'missing' } | { kind: 'failed'; reason: string };
+
+/**
+ * Fetch a source PNG, distinguishing a genuine absence (HTTP 404 → the card
+ * simply has no art at that tier) from a transient failure (network error,
+ * timeout, 5xx, rate-limit). Only a 404 counts as "missing"; everything else is
+ * retried and, if still unresolved, reported as a hard failure so the run does
+ * not falsely publish the R2-ready marker (P-20).
+ */
+async function fetchSourcePng(url: string): Promise<SourceFetch> {
+  let lastReason = 'unknown error';
+  for (let attempt = 1; attempt <= SOURCE_FETCH_RETRIES; attempt++) {
+    try {
+      const res = await fetch(url);
+      if (res.status === 404) {
+        return { kind: 'missing' };
+      }
+      if (res.ok) {
+        return { kind: 'ok', buffer: await res.arrayBuffer() };
+      }
+      lastReason = `HTTP ${res.status}`;
+    } catch (err) {
+      lastReason = err instanceof Error ? err.message : String(err);
+    }
+    if (attempt < SOURCE_FETCH_RETRIES) {
+      await new Promise(resolve => {
+        setTimeout(resolve, 500 * 2 ** (attempt - 1));
+      });
+    }
+  }
+  return { kind: 'failed', reason: lastReason };
+}
+
 async function convertCard(ref: CardRef): Promise<void> {
   const setU = ref.set.toUpperCase();
   const num = paddedNumber(ref.number);
@@ -266,18 +301,17 @@ async function convertCard(ref: CardRef): Promise<void> {
       continue;
     }
     const sourceUrl = `${LIMITLESS_CDN}/${setU}/${setU}_${num}_R_EN_${tier}.png`;
-    let png: ArrayBuffer;
-    try {
-      const res = await fetch(sourceUrl);
-      if (!res.ok) {
-        stats.missingSource++;
-        continue;
-      }
-      png = await res.arrayBuffer();
-    } catch {
+    const source = await fetchSourcePng(sourceUrl);
+    if (source.kind === 'missing') {
       stats.missingSource++;
       continue;
     }
+    if (source.kind === 'failed') {
+      stats.failed++;
+      console.error(`  fetch failed for ${key}: ${source.reason}`);
+      continue;
+    }
+    const png: ArrayBuffer = source.buffer;
     try {
       const webp = await sharp(Buffer.from(png)).webp({ quality: WEBP_QUALITY }).toBuffer();
       stats.pngBytes += png.byteLength;
@@ -349,6 +383,14 @@ async function main(): Promise<void> {
       })
     );
     console.log('Wrote card-images/_ready marker — CardImage will now prefer R2 WebP.');
+  }
+
+  // Unresolved transient failures mean the bucket is incomplete; surface a
+  // non-zero exit so CI fails instead of silently shipping a partial run (the
+  // _ready marker above is already withheld while failed > 0).
+  if (stats.failed > 0) {
+    console.error(`\n${stats.failed} object(s) failed after retries — withholding _ready and exiting non-zero.`);
+    process.exit(1);
   }
 }
 

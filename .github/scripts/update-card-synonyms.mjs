@@ -5,7 +5,7 @@
  * Creates canonical mappings for card reprints across all sets.
  */
 
-import { writeFile, mkdir } from 'fs/promises';
+import { appendFile, writeFile, mkdir } from 'fs/promises';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
@@ -76,6 +76,23 @@ async function loadTournamentsList() {
     } catch (error) {
         log(`  Error loading tournaments: ${error.message}`);
         return [];
+    }
+}
+
+async function loadPreviousSynonyms() {
+    // Read the live DB straight from R2 (authenticated S3 GET, so it bypasses
+    // the hours-long public edge cache). Used to MERGE rather than replace, so a
+    // transient scrape failure can never drop mappings unique to a missing
+    // source (P-06). Returns null when there is no prior DB.
+    try {
+        const data = await getObject('assets/card-synonyms.json');
+        const synonyms = data?.synonyms && typeof data.synonyms === 'object' ? data.synonyms : {};
+        const canonicals = data?.canonicals && typeof data.canonicals === 'object' ? data.canonicals : {};
+        log(`  Loaded previous synonyms from R2: ${Object.keys(synonyms).length} synonyms, ${Object.keys(canonicals).length} canonicals`);
+        return { synonyms, canonicals };
+    } catch (error) {
+        log(`  No previous synonyms loaded (${error.message}); starting fresh`);
+        return null;
     }
 }
 
@@ -168,7 +185,15 @@ async function collectAllCards(tournaments) {
     const onlineNote = onlineIncluded ? ' (online meta included)' : '';
     log(`  Processed ${processed} tournaments${onlineNote}, skipped ${skipped}`);
     log(`  Found ${cardsByName.size} unique card names`);
-    return cardsByName;
+    return {
+        cardsByName,
+        stats: {
+            expected: tournaments.length,
+            processed,
+            skipped,
+            onlineIncluded
+        }
+    };
 }
 
 function buildNumberVariants(number) {
@@ -540,11 +565,64 @@ async function main() {
         process.exit(1);
     }
 
-    // Collect all cards from all tournaments
-    const cardsByName = await collectAllCards(tournaments);
+    // Merge against the current DB unless a full rewrite was requested.
+    const previous = fullRewrite ? null : await loadPreviousSynonyms();
 
-    // Generate canonical synonyms
+    // Collect all cards from all tournaments
+    const { cardsByName, stats } = await collectAllCards(tournaments);
+
+    // Guard against publishing a DB built from a badly-degraded scrape. The
+    // merge below protects existing mappings, but a mass source failure still
+    // means this run's fresh clusters are untrustworthy — fail loudly (P-06).
+    const maxSkippedRaw = Number.parseInt(process.env.SYNONYM_MAX_SKIPPED ?? '', 10);
+    const maxSkipped = Number.isFinite(maxSkippedRaw) ? maxSkippedRaw : 5;
+    if (stats.processed === 0) {
+        log(`ERROR: No tournament decks could be loaded (expected ${stats.expected}); aborting`);
+        process.exit(1);
+    }
+    if (!fullRewrite && stats.skipped > maxSkipped) {
+        log(`ERROR: ${stats.skipped} tournament source(s) skipped exceeds SYNONYM_MAX_SKIPPED=${maxSkipped}; aborting to avoid an untrustworthy rebuild`);
+        log('       (set FULL_REWRITE=true or raise SYNONYM_MAX_SKIPPED to override)');
+        process.exit(1);
+    }
+
+    // Generate canonical synonyms (fresh clusters from this run's data)
     const synonymsData = await generateSynonyms(cardsByName);
+
+    // Merge previous mappings UNDER the fresh ones: any card re-clustered this
+    // run overrides its old entry, while mappings whose source was missing this
+    // run are retained rather than dropped (P-06).
+    if (previous) {
+        const beforeSynonyms = Object.keys(synonymsData.synonyms).length;
+        const beforeCanonicals = Object.keys(synonymsData.canonicals).length;
+        synonymsData.synonyms = { ...previous.synonyms, ...synonymsData.synonyms };
+        synonymsData.canonicals = { ...previous.canonicals, ...synonymsData.canonicals };
+        const mergedSynonyms = Object.keys(synonymsData.synonyms).length;
+        const mergedCanonicals = Object.keys(synonymsData.canonicals).length;
+        log(`\nMerged with previous DB: synonyms ${beforeSynonyms}→${mergedSynonyms}, canonicals ${beforeCanonicals}→${mergedCanonicals}`);
+        synonymsData.metadata.totalSynonyms = mergedSynonyms;
+        synonymsData.metadata.totalCanonicals = mergedCanonicals;
+        synonymsData.metadata.mergedWithPrevious = true;
+    }
+
+    // Record processed-vs-expected source coverage for auditability.
+    synonymsData.metadata.sourceTournamentsExpected = stats.expected;
+    synonymsData.metadata.sourceTournamentsProcessed = stats.processed;
+    synonymsData.metadata.sourceTournamentsSkipped = stats.skipped;
+    synonymsData.metadata.onlineMetaIncluded = stats.onlineIncluded;
+
+    // Semantic change detection: metadata (generated timestamp, coverage
+    // stats) changes every run, so a raw file diff always reports "changed".
+    // Downstream jobs that re-bake derived indexes must only fire when the
+    // mappings themselves moved.
+    const mappingsChanged =
+        !previous ||
+        !flatMapsEqual(synonymsData.synonyms, previous.synonyms || {}) ||
+        !flatMapsEqual(synonymsData.canonicals, previous.canonicals || {});
+    log(`\nMappings changed vs previous DB: ${mappingsChanged}`);
+    if (process.env.GITHUB_OUTPUT) {
+        await appendFile(process.env.GITHUB_OUTPUT, `mappings_changed=${mappingsChanged}\n`);
+    }
 
     // Save to file
     await saveSynonyms(synonymsData);
@@ -560,6 +638,20 @@ async function main() {
     log(`  Cards with multiple prints: ${synonymsData.metadata.totalCanonicals}`);
     log(`  Total synonym mappings: ${synonymsData.metadata.totalSynonyms}`);
     log('\nCard synonyms generation complete!');
+}
+
+/**
+ * Compare two flat string→string maps for exact equality.
+ * @param {Record<string, string>} a
+ * @param {Record<string, string>} b
+ * @returns {boolean}
+ */
+function flatMapsEqual(a, b) {
+    const aKeys = Object.keys(a);
+    if (aKeys.length !== Object.keys(b).length) {
+        return false;
+    }
+    return aKeys.every(key => a[key] === b[key]);
 }
 
 main().catch(error => {

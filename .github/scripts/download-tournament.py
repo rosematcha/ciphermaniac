@@ -2119,6 +2119,19 @@ def upload_to_r2(r2_client, bucket_name, key, data):
     )
 
 
+def delete_from_r2(r2_client, bucket_name, key):
+    """Delete a single object. Idempotent: a missing key is not an error."""
+    if LOCAL_EXPORT_DIR:
+        local_path = Path(LOCAL_EXPORT_DIR) / key
+        if local_path.exists():
+            local_path.unlink()
+            print(f"  Removed {local_path}")
+        return
+
+    print(f"  Deleting {key}...")
+    r2_client.delete_object(Bucket=bucket_name, Key=key)
+
+
 def upload_binary_to_r2(r2_client, bucket_name, key, data: bytes, content_type: str):
     if LOCAL_EXPORT_DIR:
         local_path = Path(LOCAL_EXPORT_DIR) / key
@@ -2137,33 +2150,107 @@ def upload_binary_to_r2(r2_client, bucket_name, key, data: bytes, content_type: 
     )
 
 
+def _is_no_such_key(r2_client, error):
+    """True when ``error`` means the object simply does not exist."""
+    if isinstance(error, r2_client.exceptions.NoSuchKey):
+        return True
+    if isinstance(error, ClientError):
+        code = error.response.get("Error", {}).get("Code")
+        return code in ("NoSuchKey", "NoSuchBucket", "404")
+    return False
+
+
+def _read_tournaments_index(r2_client, bucket_name, tournaments_key):
+    """Read the index, returning ``(list, etag)``.
+
+    A genuinely-missing object yields ``([], None)``. Any *other* failure
+    (timeout, 5xx, malformed body) is re-raised so the caller aborts instead
+    of silently replacing the index with a single-entry list.
+    """
+    try:
+        print(f"Downloading existing {tournaments_key}...")
+        response = r2_client.get_object(Bucket=bucket_name, Key=tournaments_key)
+    except Exception as error:  # noqa: BLE001
+        if _is_no_such_key(r2_client, error):
+            print(f"  {tournaments_key} not found, creating new list")
+            return [], None
+        raise
+
+    existing = json.loads(response["Body"].read().decode("utf-8"))
+    if not isinstance(existing, list):
+        raise ValueError(f"{tournaments_key} is not a JSON array")
+    return existing, response.get("ETag")
+
+
+def _put_tournaments_index(r2_client, bucket_name, tournaments_key, updated, etag):
+    """Conditionally PUT the index, guarding against lost updates.
+
+    Uses ``If-Match`` (or ``If-None-Match: *`` for a create) so a concurrent
+    writer that changed the object between our read and write loses the PUT and
+    triggers a retry. Falls back to an unconditional PUT only when the store
+    reports it does not implement conditional writes.
+    """
+    params = {
+        "Bucket": bucket_name,
+        "Key": tournaments_key,
+        "Body": json.dumps(updated, separators=(",", ":")),
+        "ContentType": "application/json",
+        "CacheControl": REPORTS_CACHE_CONTROL,
+    }
+    if etag:
+        params["IfMatch"] = etag
+    else:
+        params["IfNoneMatch"] = "*"
+
+    try:
+        r2_client.put_object(**params)
+    except ClientError as error:
+        code = error.response.get("Error", {}).get("Code")
+        status = error.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+        # A store that does not implement conditional writes should degrade to an
+        # unconditional PUT rather than abort the whole tournament download — the
+        # lost-update race is rarer than a broken critical path. A conflict
+        # (412/PreconditionFailed) is NOT handled here; the caller retries it.
+        if code in ("NotImplemented", "InvalidRequest", "501") or status == 501:
+            print("  Warning: conditional writes unsupported; retrying without guard")
+            params.pop("IfMatch", None)
+            params.pop("IfNoneMatch", None)
+            r2_client.put_object(**params)
+            return
+        raise
+
+
 def update_tournaments_json(r2_client, bucket_name, tournament_name):
     if LOCAL_EXPORT_DIR:
         print("Skipping tournaments.json update (local export mode)")
         return
 
     tournaments_key = "reports/tournaments.json"
-    try:
-        print(f"Downloading existing {tournaments_key}...")
-        response = r2_client.get_object(Bucket=bucket_name, Key=tournaments_key)
-        existing = json.loads(response["Body"].read().decode("utf-8"))
-    except r2_client.exceptions.NoSuchKey:
-        print(f"  {tournaments_key} not found, creating new list")
-        existing = []
-    except Exception as e:
-        print(f"  Warning: Could not read {tournaments_key}: {e}")
-        existing = []
+    max_attempts = 5
 
-    existing = [x for x in existing if x != tournament_name]
-    updated = [tournament_name] + existing
-    meta_map = build_tournament_meta_map(r2_client, bucket_name, updated)
-    updated = dedupe_tournament_names(updated, meta_map)
-    updated = filter_dated_tournament_names(updated)
-    updated = sort_tournament_names_by_recency(updated, meta_map)
+    for attempt in range(1, max_attempts + 1):
+        existing, etag = _read_tournaments_index(r2_client, bucket_name, tournaments_key)
 
-    print(f"  Uploading updated {tournaments_key}...")
-    upload_to_r2(r2_client, bucket_name, tournaments_key, updated)
-    print(f"  ✓ Added '{tournament_name}' to tournaments.json")
+        existing = [x for x in existing if x != tournament_name]
+        updated = [tournament_name] + existing
+        meta_map = build_tournament_meta_map(r2_client, bucket_name, updated)
+        updated = dedupe_tournament_names(updated, meta_map)
+        updated = filter_dated_tournament_names(updated)
+        updated = sort_tournament_names_by_recency(updated, meta_map)
+
+        print(f"  Uploading updated {tournaments_key}...")
+        try:
+            _put_tournaments_index(r2_client, bucket_name, tournaments_key, updated, etag)
+        except ClientError as error:
+            code = error.response.get("Error", {}).get("Code")
+            status = error.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+            conflict = code in ("PreconditionFailed", "412", "ConditionalRequestConflict") or status in (409, 412)
+            if conflict and attempt < max_attempts:
+                print(f"  Concurrent update detected (attempt {attempt}); re-reading and retrying...")
+                continue
+            raise
+        print(f"  ✓ Added '{tournament_name}' to tournaments.json")
+        return
 
 
 def build_slice_payloads(
@@ -3105,6 +3192,11 @@ def main():
     upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/cardUsage.json", card_usage)
     if conversion is not None:
         upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/conversion.json", conversion)
+    else:
+        # A rerun of an event that no longer has a Day 2 cut must not leave the
+        # previous conversion.json in place — the frontend prefers it over the
+        # decks.json fallback and would show stale Day 2 stats (P-08).
+        delete_from_r2(r2_client, r2_bucket_name, f"{base_path}/conversion.json")
 
     if write_tournament_db:
         print("  Building tournament.db...")

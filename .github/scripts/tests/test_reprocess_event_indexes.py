@@ -21,6 +21,7 @@ class _FakeClient:
     def __init__(self, objects):
         self._objects = dict(objects)
         self.puts = {}
+        self.deleted = []
 
     def get_object(self, Bucket, Key):
         if Key not in self._objects:
@@ -38,6 +39,10 @@ class _FakeClient:
     def put_object(self, Bucket, Key, Body, **kwargs):
         self._objects[Key] = Body
         self.puts[Key] = json.loads(Body)
+
+    def delete_object(self, Bucket, Key):
+        self._objects.pop(Key, None)
+        self.deleted.append(Key)
 
     def list_objects_v2(self, Bucket, Prefix, Delimiter, ContinuationToken=None):
         prefixes = set()
@@ -115,6 +120,40 @@ class ReprocessEventTests(unittest.TestCase):
         client = _FakeClient(store)
         reprocess.reprocess_event(client, "b", folder, self.SYNONYMS, self.CANONICALS, dry_run=True)
         self.assertEqual(client.puts, {})
+
+    def test_stale_conversion_deleted_when_cut_disappears(self):
+        # Event previously had a Day 2 cut (old conversion.json exists) but the
+        # corrected decks have none → the stale index must be deleted (P-08).
+        folder = "2026-01-01, Test Event"
+        base = f"reports/{folder}"
+        store = {
+            f"{base}/decks.json": json.dumps(
+                [{"madePhase2": False, "cards": [{"name": "Dreepy", "set": "PRE", "number": "071", "count": 2}]}]
+            ),
+            f"{base}/archetypes/Dragapult/cards.json": json.dumps(_cards_json()),
+            f"{base}/conversion.json": json.dumps(
+                {"day1Total": 2, "day2Total": 1, "cards": {"Dreepy::PRE::071": {"day1": 2, "day2": 1}}}
+            ),
+        }
+        client = _FakeClient(store)
+        summary = reprocess.reprocess_event(client, "b", folder, self.SYNONYMS, self.CANONICALS)
+        self.assertIn(f"{base}/conversion.json", client.deleted)
+        self.assertEqual(summary["conversion"], {"deleted": "no Day 2 cut"})
+
+    def test_absent_conversion_not_deleted_when_no_cut(self):
+        # No prior conversion.json and no cut → nothing to delete, no error.
+        folder = "2026-01-02, No Cut Event"
+        base = f"reports/{folder}"
+        store = {
+            f"{base}/decks.json": json.dumps(
+                [{"madePhase2": False, "cards": [{"name": "Dreepy", "set": "PRE", "number": "071", "count": 2}]}]
+            ),
+            f"{base}/archetypes/Dragapult/cards.json": json.dumps(_cards_json()),
+        }
+        client = _FakeClient(store)
+        summary = reprocess.reprocess_event(client, "b", folder, self.SYNONYMS, self.CANONICALS)
+        self.assertEqual(client.deleted, [])
+        self.assertEqual(summary["conversion"], {"skipped": "no Day 2 cut"})
 
     def test_missing_data_is_reported_not_raised(self):
         folder = "empty"

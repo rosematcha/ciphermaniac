@@ -63,6 +63,10 @@ export async function fetchRecentOnlineTournaments(
   const { diagnostics } = options;
   const fetchJson = options.fetchJson || fetchLimitlessJson;
   const detailsConcurrency = options.detailsConcurrency || DEFAULT_DETAILS_CONCURRENCY;
+  const maxDetailsFailureRatio =
+    typeof options.maxDetailsFailureRatio === 'number' ? options.maxDetailsFailureRatio : 0.25;
+  const detailsFailureAllowance =
+    typeof options.detailsFailureAllowance === 'number' ? options.detailsFailureAllowance : 2;
   const unique = new Map();
 
   for (let page = 1; page <= maxPages; page += 1) {
@@ -102,6 +106,10 @@ export async function fetchRecentOnlineTournaments(
   }
 
   const summaries = Array.from(unique.values());
+  // Count transient detail-fetch failures so we can refuse to publish trends
+  // built from an arbitrary subset of the field (P-43). A dropped tournament is
+  // invisible in the output otherwise.
+  const detailsFetchFailures: Array<{ tournamentId: string; name: string; message: string }> = [];
   const detailed = await runWithConcurrency(
     summaries,
     detailsConcurrency,
@@ -144,15 +152,31 @@ export async function fetchRecentOnlineTournaments(
           organizerId: details.organizer?.id || null
         };
       } catch (error) {
-        console.warn(
-          'Failed to fetch tournament details',
-          summary?.id,
-          (error as { message?: string })?.message || error
-        );
+        const message = (error as { message?: string })?.message || String(error);
+        console.warn('Failed to fetch tournament details', summary?.id, message);
+        detailsFetchFailures.push({
+          tournamentId: summary?.id,
+          name: summary?.name,
+          message
+        });
         return null;
       }
     }
   );
+
+  // Surface the failures on the diagnostics collector (when provided) and abort
+  // if they exceed the budget — publishing trends from an unknown subset of the
+  // field silently understates or distorts every share.
+  if (diagnostics) {
+    diagnostics.detailsFetchFailures = detailsFetchFailures;
+  }
+  const failureBudget = Math.max(detailsFailureAllowance, Math.ceil(summaries.length * maxDetailsFailureRatio));
+  if (detailsFetchFailures.length > failureBudget) {
+    throw new Error(
+      `Tournament details fetch failed for ${detailsFetchFailures.length}/${summaries.length} tournaments ` +
+        `(budget ${failureBudget}); refusing to publish partial data.`
+    );
+  }
 
   return detailed
     .filter((entry): entry is OnlineTournamentSummary => Boolean(entry))

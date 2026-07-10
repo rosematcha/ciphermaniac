@@ -18,7 +18,7 @@ import type { CardPresence, CooccurrenceContext } from './cardCooccurrence';
 
 export type { Deck };
 
-const SUCCESS_TAG_HIERARCHY = ['winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'];
+export const SUCCESS_TAG_HIERARCHY = ['winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'];
 
 const PLACEMENT_TAG_RULES: PlacementRule[] = [
   { tag: 'winner', maxPlacing: 1, minPlayers: 2 },
@@ -41,6 +41,13 @@ const OPERATOR_COMPARATORS: Record<string, (count: number, expected: number) => 
   '>': (count, expected) => count > expected,
   '>=': (count, expected) => count >= expected
 };
+
+/**
+ * Every quantity operator `matchesQuantity` accepts: the comparator set plus
+ * the special-cased 'any' (count > 0). API validation imports this so the
+ * allowlist can't drift from the matcher.
+ */
+export const QUANTITY_OPERATORS = [...Object.keys(OPERATOR_COMPARATORS), 'any'];
 
 // Local type alias for Card since we use DeckCard from types
 type Card = DeckCard;
@@ -243,7 +250,9 @@ function matchesQuantity(
 
   const comparator = OPERATOR_COMPARATORS[operator];
   if (!comparator) {
-    return count > 0;
+    // An unknown operator must NOT silently match every deck — that turns a
+    // typo in a shared build URL into a semantics change. Reject loudly.
+    throw new Error(`Unknown quantity operator: ${String(operator)}`);
   }
   return comparator(count, expected);
 }
@@ -301,10 +310,11 @@ function aggregateDecks(decks: Deck[], options: AggregateOptions = {}): Aggregat
       return;
     }
     const deckId = deriveDeckId(deck, deckIndex);
-    // Track cards already credited to this deck's presence (dedupe per deck),
-    // mirroring buildCooccurrence's per-deck `seen` set.
-    const seen = presence ? new Set<string>() : null;
-
+    // Collapse duplicate printings within THIS deck before counting: two
+    // printings of the same card canonicalized to one cardId must credit
+    // `usage.found` once (never >100% playrate) with their copies summed for
+    // the count distribution. Mirrors buildCooccurrence's per-deck dedupe.
+    const perDeck = new Map<string, number>();
     cards.forEach(card => {
       const cardId = buildCardKeyFromCard(card);
       if (!cardId) {
@@ -335,21 +345,24 @@ function aggregateDecks(decks: Deck[], options: AggregateOptions = {}): Aggregat
         });
       }
 
-      const usage = cardUsage.get(cardId)!;
       const cardCount = Number(card?.count ?? card?.copies ?? 0);
+      perDeck.set(cardId, (perDeck.get(cardId) ?? 0) + cardCount);
+    });
+
+    for (const [cardId, totalCount] of perDeck) {
+      const usage = cardUsage.get(cardId)!;
       usage.found += 1;
       if (wantDeckInstances) {
         usage.deckInstances.push({
           deckId,
-          count: cardCount,
+          count: totalCount,
           archetype: deck?.archetype
         });
       }
-      usage.histogram.set(cardCount, (usage.histogram.get(cardCount) || 0) + 1);
+      usage.histogram.set(totalCount, (usage.histogram.get(totalCount) || 0) + 1);
 
-      // Presence dedupes per deck and ignores zero-copy entries.
-      if (presence && seen && cardCount > 0 && !seen.has(cardId)) {
-        seen.add(cardId);
+      // Presence ignores zero-copy entries; perDeck already dedupes per deck.
+      if (presence && totalCount > 0) {
         let entry = presence.get(cardId);
         if (!entry) {
           entry = {
@@ -361,7 +374,7 @@ function aggregateDecks(decks: Deck[], options: AggregateOptions = {}): Aggregat
         }
         entry.deckIds.add(deckId);
       }
-    });
+    }
   });
 
   const deckTotal = decks.length;
@@ -480,7 +493,11 @@ export function filterDecksBySuccess(decks: Deck[], tag: string): Deck[] {
   }
   const normalized = String(tag).toLowerCase();
   if (!SUCCESS_TAG_HIERARCHY.includes(normalized)) {
-    return decks;
+    // Unknown bucket must not silently return every deck — that lets a bad
+    // `successFilter` broaden results instead of failing. Reject loudly; the
+    // API allowlists values before calling, and the panel only passes known
+    // buckets.
+    throw new Error(`Unknown success filter: ${String(tag)}`);
   }
 
   // Build tournament size fallbacks so success tags can be derived even if the ingest didn't persist players.

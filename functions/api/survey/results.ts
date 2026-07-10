@@ -60,6 +60,33 @@ function parseJson<T>(value: string | null): T | null {
   }
 }
 
+/**
+ * Parse a JSON column expected to hold an array of strings. A malformed row
+ * (non-array JSON, or an array with non-string members) must not crash the
+ * whole route — `for...of` over a parsed object throws — so we coerce to a safe
+ * `string[]`, dropping anything that isn't a string.
+ */
+function parseStringArray(value: string | null): string[] {
+  const parsed = parseJson<unknown>(value);
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+  return parsed.filter((item): item is string => typeof item === 'string');
+}
+
+/**
+ * Parse a JSON column expected to hold a `Record<string, number>` rating map.
+ * Returns null for anything that isn't a plain object so `accumulated` never
+ * iterates a string/array/primitive.
+ */
+function parseRatingMap(value: string | null): Record<string, number> | null {
+  const parsed = parseJson<unknown>(value);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return null;
+  }
+  return parsed as Record<string, number>;
+}
+
 /** Return a new count map with `key` incremented (avoids mutating a param). */
 function bumped(counts: Record<string, number>, key: string | null | undefined): Record<string, number> {
   if (!key) {
@@ -124,13 +151,13 @@ export async function onRequestGet({ env }: RequestContext): Promise<Response> {
   for (const row of results) {
     region = bumped(region, row.region);
     discovery = bumped(discovery, row.discovery);
-    for (const d of parseJson<string[]>(row.devices_json) || []) {
+    for (const d of parseStringArray(row.devices_json)) {
       devices = bumped(devices, d);
     }
-    for (const f of parseJson<string[]>(row.formats_json) || []) {
+    for (const f of parseStringArray(row.formats_json)) {
       formats = bumped(formats, f);
     }
-    for (const a of parseJson<string[]>(row.areas_json) || []) {
+    for (const a of parseStringArray(row.areas_json)) {
       areas = bumped(areas, a);
     }
     if (typeof row.speed === 'number') {
@@ -142,9 +169,9 @@ export async function onRequestGet({ env }: RequestContext): Promise<Response> {
     if (typeof row.recommend === 'number') {
       recommendVals.push(row.recommend);
     }
-    readAcc = accumulated(readAcc, parseJson(row.readability_json));
-    effAcc = accumulated(effAcc, parseJson(row.effectiveness_json));
-    layoutAcc = accumulated(layoutAcc, parseJson(row.layout_json));
+    readAcc = accumulated(readAcc, parseRatingMap(row.readability_json));
+    effAcc = accumulated(effAcc, parseRatingMap(row.effectiveness_json));
+    layoutAcc = accumulated(layoutAcc, parseRatingMap(row.layout_json));
 
     if (row.feature_text) {
       featureText.push({ at: row.created_at, text: row.feature_text });

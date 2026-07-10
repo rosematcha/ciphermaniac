@@ -203,7 +203,13 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
   });
   // eslint-disable-next-line solid/reactivity -- intentional one-shot hydration of the initial build from the URL; later URL changes flow through setSearchParams, not back into this seed
   const initialRules = rulesFromPersisted(initial.rules);
-  const initialSuccess = initial.successFilter ?? DEFAULT_SUCCESS;
+  // Clamp the URL-supplied bracket to a known option. `filterDecksBySuccess`
+  // now throws on unknown buckets, so a typo'd `s` param in a shared link must
+  // not reach it — fall back to "all" instead of crashing the panel.
+  const initialSuccess =
+    initial.successFilter && SUCCESS_OPTIONS.some(o => o.value === initial.successFilter)
+      ? initial.successFilter
+      : DEFAULT_SUCCESS;
   const initialThreshold = initial.threshold ?? DEFAULT_THRESHOLD;
 
   const [rules, setRules] = createSignal<Rule[]>(initialRules);
@@ -288,6 +294,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
         setThreshold(DEFAULT_THRESHOLD);
         setAppliedRules([]);
         setAppliedSuccess(DEFAULT_SUCCESS);
+        setAppliedThreshold(DEFAULT_THRESHOLD);
         setSkipped(new Set<string>());
         setQuestionsOpen(false);
       },
@@ -306,11 +313,15 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
   }
 
   function reset() {
+    // Cancel any pending debounce so a stale apply can't resurrect the old
+    // threshold/rules onto the freshly-reset state.
+    cancelDebounce();
     setRules([]);
     setSuccessFilter(DEFAULT_SUCCESS);
     setThreshold(DEFAULT_THRESHOLD);
     setAppliedRules([]);
     setAppliedSuccess(DEFAULT_SUCCESS);
+    setAppliedThreshold(DEFAULT_THRESHOLD);
     setSkipped(new Set<string>());
     setQuestionsOpen(false);
   }
@@ -319,6 +330,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
     cancelDebounce();
     setAppliedRules(rules());
     setAppliedSuccess(successFilter());
+    setAppliedThreshold(threshold());
   }
 
   // ----- Search/autocomplete -----

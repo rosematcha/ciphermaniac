@@ -56,9 +56,8 @@ def list_recent_folders(folders: Iterable[str], cutoff: datetime) -> list[str]:
     return selected
 
 
-def delete_prefix(r2_client, bucket_name: str, prefix: str) -> tuple[int, int]:
-    deleted = 0
-    total_keys = 0
+def list_prefix_keys(r2_client, bucket_name: str, prefix: str) -> set[str]:
+    keys: set[str] = set()
     continuation_token = None
 
     while True:
@@ -70,24 +69,31 @@ def delete_prefix(r2_client, bucket_name: str, prefix: str) -> tuple[int, int]:
             kwargs["ContinuationToken"] = continuation_token
 
         response = r2_client.list_objects_v2(**kwargs)
-        keys = [obj["Key"] for obj in response.get("Contents", []) if obj.get("Key")]
-        total_keys += len(keys)
-
-        for index in range(0, len(keys), 1000):
-            chunk = keys[index : index + 1000]
-            if not chunk:
-                continue
-            r2_client.delete_objects(
-                Bucket=bucket_name,
-                Delete={"Objects": [{"Key": key} for key in chunk], "Quiet": True},
-            )
-            deleted += len(chunk)
+        for obj in response.get("Contents", []):
+            key = obj.get("Key")
+            if key:
+                keys.add(key)
 
         if not response.get("IsTruncated"):
             break
         continuation_token = response.get("NextContinuationToken")
 
-    return deleted, total_keys
+    return keys
+
+
+def delete_keys(r2_client, bucket_name: str, keys: Iterable[str]) -> int:
+    key_list = list(keys)
+    deleted = 0
+    for index in range(0, len(key_list), 1000):
+        chunk = key_list[index : index + 1000]
+        if not chunk:
+            continue
+        r2_client.delete_objects(
+            Bucket=bucket_name,
+            Delete={"Objects": [{"Key": key} for key in chunk], "Quiet": True},
+        )
+        deleted += len(chunk)
+    return deleted
 
 
 def fetch_json(r2_client, bucket_name: str, key: str):
@@ -163,10 +169,15 @@ def main() -> int:
             print(f"[refresh] Skipping {folder_name}: missing sourceUrl in meta.json")
             continue
 
+        # Snapshot the existing objects BEFORE the rebuild so we can prune only
+        # the orphans afterwards. Deleting up front (the old behaviour) left the
+        # folder empty or partial whenever the download failed, even though the
+        # index still listed the event (P-02). The subprocess overwrites the
+        # full report in place, so a failure now leaves the previous data intact.
+        prefix = f"reports/{folder_name}/"
+        stale_candidates: set[str] = set()
         if delete_before_rebuild:
-            prefix = f"reports/{folder_name}/"
-            deleted, total = delete_prefix(r2_client, bucket_name, prefix)
-            print(f"[refresh] Cleared {deleted}/{total} objects under {prefix}")
+            stale_candidates = list_prefix_keys(r2_client, bucket_name, prefix)
 
         print(f"[refresh] Rebuilding {folder_name} from {source_url}")
         env = os.environ.copy()
@@ -178,8 +189,19 @@ def main() -> int:
             refreshed += 1
         except subprocess.CalledProcessError as error:
             failures.append((folder_name, f"exit code {error.returncode}"))
+            continue
         except Exception as error:  # noqa: BLE001
             failures.append((folder_name, str(error)))
+            continue
+
+        # Only after a successful rebuild, remove objects the fresh run did not
+        # overwrite (e.g. archetype folders that no longer exist).
+        if delete_before_rebuild:
+            fresh_keys = list_prefix_keys(r2_client, bucket_name, prefix)
+            orphans = stale_candidates - fresh_keys
+            if orphans:
+                removed = delete_keys(r2_client, bucket_name, orphans)
+                print(f"[refresh] Removed {removed} orphaned objects under {prefix}")
 
     print(f"[refresh] Refreshed {refreshed} tournament folders")
     if failures:

@@ -20,4 +20,10 @@ export interface UpcomingPayload {
   refreshedAt: string;
   source: string;
   events: UpcomingEvent[];
+  /**
+   * Set when the scraper saw a non-empty upstream table but extracted zero
+   * events — a signal the Limitless markup likely changed and the parser needs
+   * updating. The UI surfaces it instead of silently rendering "no events".
+   */
+  parseWarning?: string;
 }

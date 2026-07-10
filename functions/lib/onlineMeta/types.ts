@@ -95,6 +95,8 @@ interface ArchetypeClassificationDiagnostics {
 }
 
 export interface DiagnosticsCollector {
+  /** Tournaments whose /details fetch threw (transient/network/API failures). */
+  detailsFetchFailures?: Array<{ tournamentId: string; name: string; message: string }>;
   detailsWithoutDecklists?: Array<{ tournamentId: string; name: string }>;
   detailsOffline?: Array<{ tournamentId: string; name: string }>;
   detailsUnsupportedFormat?: Array<{ tournamentId: string; name: string; format: string }>;
@@ -112,6 +114,17 @@ export interface FetchTournamentsOptions extends BaseOptions {
   pageSize?: number;
   maxPages?: number;
   detailsConcurrency?: number;
+  /**
+   * Fraction of tournament-detail fetches allowed to fail before the run is
+   * aborted (throws) rather than silently publishing trends from the survivors.
+   * Default 0.25.
+   */
+  maxDetailsFailureRatio?: number;
+  /**
+   * Absolute number of detail-fetch failures always tolerated regardless of the
+   * ratio (covers tiny windows). Default 2.
+   */
+  detailsFailureAllowance?: number;
 }
 
 /** Options for gatherDecks */

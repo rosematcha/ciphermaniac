@@ -310,6 +310,20 @@ export function SocialGraphicsPage() {
     return collapsed.slice(0, size()).map((c, idx) => ({ ...c, rank: idx + 1 }));
   });
 
+  // Export rasterizes the live preview canvas, so it must stay disabled until
+  // every resource the ACTIVE mode reads has resolved — rising needs the
+  // comparison master, converting needs the Day-2 stats — and until there's a
+  // rendered canvas to snapshot (items present). Gating only on `master.loading`
+  // let a click during a mode's secondary load hit "Canvas not ready."
+  const exportBlocked = createMemo(
+    () =>
+      busy() !== null ||
+      master.loading ||
+      items().length === 0 ||
+      (mode() === 'rising' && comparisonMaster.loading) ||
+      (mode() === 'converting' && day2Stats.loading)
+  );
+
   async function exportImage(format: 'png' | 'jpg') {
     setBusy(format);
     setError(null);
@@ -457,20 +471,10 @@ export function SocialGraphicsPage() {
           </div>
 
           <div class='sg-actions'>
-            <button
-              class='sg-btn primary'
-              type='button'
-              disabled={busy() !== null || master.loading}
-              onClick={() => exportImage('png')}
-            >
+            <button class='sg-btn primary' type='button' disabled={exportBlocked()} onClick={() => exportImage('png')}>
               {busy() === 'png' ? 'Exporting…' : 'Export PNG'}
             </button>
-            <button
-              class='sg-btn'
-              type='button'
-              disabled={busy() !== null || master.loading}
-              onClick={() => exportImage('jpg')}
-            >
+            <button class='sg-btn' type='button' disabled={exportBlocked()} onClick={() => exportImage('jpg')}>
               {busy() === 'jpg' ? 'Exporting…' : 'Export JPG'}
             </button>
             <Show when={error()}>
