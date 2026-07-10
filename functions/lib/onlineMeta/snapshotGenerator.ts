@@ -1,7 +1,7 @@
 import { generateReportFromDecks } from '../data/reportBuilder.js';
 import { loadCardSynonyms } from '../data/cardSynonyms.js';
 import { ARCHETYPE_THUMBNAILS, buildArchetypeReports } from './reportGenerator';
-import { batchPutJson, getJson } from './storageWriter';
+import { batchPutJson, getJsonResult } from './storageWriter';
 import { runWithConcurrency } from './tournamentFetcher';
 
 const SNAPSHOT_WINDOW_DAYS = 30;
@@ -46,7 +46,13 @@ function parseTournamentDate(key: string): Date | null {
  * are loaded separately.
  */
 async function findInWindowTournaments(env: any, since: Date, windowEnd: Date): Promise<string[]> {
-  const list = await getJson<string[]>(env, 'reports/tournaments.json');
+  const result = await getJsonResult<string[]>(env, 'reports/tournaments.json');
+  if (result.status === 'error') {
+    // A corrupt or unreadable index must not be mistaken for "no tournaments"
+    // — that would freeze a snapshot from nothing.
+    throw new Error(`Failed to read reports/tournaments.json: ${String(result.error)}`);
+  }
+  const list = result.status === 'ok' ? result.value : null;
   if (!Array.isArray(list)) {
     return [];
   }
@@ -79,7 +85,13 @@ async function loadStoredDecks(
 ): Promise<{ decks: StoredDeck[]; sourcesWithDecks: string[] }> {
   const sourcesWithDecks: string[] = [];
   const perTournament = await runWithConcurrency(tournamentKeys, concurrency, async (key: string) => {
-    const decks = await getJson<StoredDeck[]>(env, `reports/${key}/decks.json`);
+    const result = await getJsonResult<StoredDeck[]>(env, `reports/${key}/decks.json`);
+    if (result.status === 'error') {
+      // Missing decks are tolerated; a corrupt/unreadable file is not — it
+      // would silently freeze a snapshot without that tournament's decks.
+      throw new Error(`Failed to read reports/${key}/decks.json: ${String(result.error)}`);
+    }
+    const decks = result.status === 'ok' ? result.value : null;
     if (!Array.isArray(decks) || decks.length === 0) {
       return [] as StoredDeck[];
     }
@@ -110,9 +122,13 @@ export async function runRotationSnapshot(
   const r2Concurrency = Math.max(1, options.r2Concurrency || DEFAULT_R2_CONCURRENCY);
 
   const rotationDay = new Date(`${rotationDate}T00:00:00Z`);
-  // Pre-rotation window: include tournaments held on rotation day (last day
-  // of the old format). `windowEnd` is exclusive — point it at the day after.
-  const windowEnd = new Date(rotationDay.getTime() + DAY_MS);
+  // Pre-rotation window: exactly `windowDays` calendar dates immediately BEFORE
+  // the rotation, i.e. [rotationDay - windowDays, rotationDay). The window is
+  // EXCLUSIVE of the rotation day itself — events held on the rotation date
+  // belong to the new format, not the pre-rotation meta this snapshot captures.
+  // (Previously `windowEnd = rotationDay + 1 day` spanned windowDays + 1 = 31
+  // dates for windowDays=30, contradicting the metadata label — P-29.)
+  const windowEnd = rotationDay;
   const since = new Date(rotationDay.getTime() - windowDays * DAY_MS);
 
   const snapshotKey = `Snapshots/${rotationDate}`;

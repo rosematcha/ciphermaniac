@@ -127,7 +127,7 @@ def main():
 
     # Same card universe as the daily job.
     master_report = up.load_online_meta_report(r2_client, bucket)
-    synonyms_data = up.load_card_synonyms()
+    synonyms_data = up.load_card_synonyms(r2_client, bucket)
     card_list = up.extract_unique_cards(master_report, synonyms_data)
     card_sets_map = up.group_cards_by_set(card_list)
     set_mappings = up.map_sets_to_group_ids(card_sets_map.keys())

@@ -15,7 +15,7 @@
  */
 
 import process from 'node:process';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { buildPlayerAggregates } from '../../functions/lib/onlineMeta/playerAggregator.ts';
 
 function requireEnv(name: string): string {
@@ -96,6 +96,14 @@ const reportsBinding = {
         Body: body,
         ContentType: opts?.httpMetadata?.contentType || 'application/json',
         CacheControl: opts?.httpMetadata?.cacheControl
+      })
+    );
+  },
+  async delete(key: string) {
+    await s3Client.send(
+      new DeleteObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: key
       })
     );
   }

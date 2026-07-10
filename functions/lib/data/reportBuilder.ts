@@ -134,12 +134,16 @@ function generateReportFromDecks(
     };
 
     if (uid.includes('::')) {
-      const meta = uidMeta.get(uid);
-      if (meta?.set) {
-        item.set = meta.set;
+      // Derive set/number from the canonical UID itself so uid/set/number stay
+      // mutually consistent. Reading them from the first-seen variant's
+      // perDeckMeta would emit e.g. uid `X::NEW::001` alongside set `OLD` /
+      // number `002` whenever a synonym mapping rewrote the variant.
+      const [, canonicalSet, canonicalNumber] = uid.split('::');
+      if (canonicalSet) {
+        item.set = canonicalSet;
       }
-      if (meta?.number) {
-        item.number = meta.number;
+      if (canonicalNumber) {
+        item.number = canonicalNumber;
       }
       item.uid = uid;
     }

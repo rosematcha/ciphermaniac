@@ -40,6 +40,30 @@ export function normalizeCardNumber(value: string | number | null | undefined): 
 }
 
 /**
+ * Normalizes a card number for zero-stripped `SET::NUMBER` index keys: the
+ * digit prefix loses leading zeros and any letter suffix is uppercased, so
+ * `018a`, `18A`, and `18a` all collapse to `18A`. This is the complement of
+ * {@link normalizeCardNumber} (which zero-PADS) — both the index producers and
+ * the SPA readers must use this one helper so keys can't drift.
+ * @example
+ * cardNumberIndexKey("045a") // "45A"
+ * cardNumberIndexKey("098")  // "98"
+ * cardNumberIndexKey("GG05") // "GG05"
+ * @param value - The card number to normalize
+ * @returns Zero-stripped, suffix-uppercased card number
+ */
+export function cardNumberIndexKey(value: string | number): string {
+  const raw = String(value).trim();
+  const match = raw.match(/^(\d+)([A-Za-z]*)$/);
+  if (!match) {
+    return raw.toUpperCase();
+  }
+  const digits = match[1].replace(/^0+/, '') || '0';
+  const suffix = match[2] ? match[2].toUpperCase() : '';
+  return `${digits}${suffix}`;
+}
+
+/**
  * Canonicalizes a card variant by normalizing set code and number.
  * @param setCode - The set code (e.g., "SVI", "paldea")
  * @param number - The card number

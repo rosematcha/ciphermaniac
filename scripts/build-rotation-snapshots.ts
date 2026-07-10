@@ -25,7 +25,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { runRotationSnapshot } from '../functions/lib/onlineMeta/snapshotGenerator';
 import { rebuildSnapshotIndex, type RotationDescriptor } from '../functions/lib/onlineMeta/snapshotIndexBuilder';
 
@@ -78,6 +78,31 @@ async function readFromR2Public(key: string): Promise<string | null> {
   return res.text();
 }
 
+/**
+ * Authenticated read of the authoritative object over S3. Used instead of the
+ * public edge whenever credentials exist: the public CDN caches JSON for up to
+ * 6 hours, so reading own/upstream writes through it right after an online-meta
+ * upload can return stale data (P-14 / Theme D).
+ */
+async function readFromR2S3(key: string): Promise<string | null> {
+  if (!s3Client || !r2Bucket) {
+    return null;
+  }
+  try {
+    const res = await s3Client.send(new GetObjectCommand({ Bucket: r2Bucket, Key: key }));
+    if (!res.Body) {
+      return null;
+    }
+    return await res.Body.transformToString();
+  } catch (err: unknown) {
+    const meta = (err as { $metadata?: { httpStatusCode?: number }; name?: string }) ?? {};
+    if (meta.$metadata?.httpStatusCode === 404 || meta.name === 'NoSuchKey') {
+      return null;
+    }
+    throw err;
+  }
+}
+
 async function writeLocal(key: string, body: string | Uint8Array): Promise<void> {
   const fullPath = join(OUT_BASE, key);
   await mkdir(dirname(fullPath), { recursive: true });
@@ -92,11 +117,11 @@ async function writeToR2(key: string, body: string | Uint8Array, contentType: st
   if (!s3Client || !r2Bucket) {
     return;
   }
-  // Same policy as functions/lib/onlineMeta/storageWriter.ts (P3.1): dated
-  // snapshot dirs are immutable; the rebuilt-on-rotation index gets 6 hours.
-  const cacheControl = /^reports\/Snapshots\/\d{4}-\d{2}-\d{2}\//.test(key)
-    ? 'public, max-age=31536000, immutable'
-    : 'public, max-age=21600';
+  // Same policy as functions/lib/onlineMeta/storageWriter.ts: every key gets the
+  // 6-hour live cache. Dated snapshot bodies are rerunnable (this script
+  // re-publishes the same date after corrections), so they must NOT be immutable
+  // (P-15).
+  const cacheControl = 'public, max-age=21600';
   await s3Client.send(
     new PutObjectCommand({
       Bucket: r2Bucket,
@@ -118,7 +143,11 @@ const env = {
       if (local !== null) {
         return { text: async () => local };
       }
-      const remote = await readFromR2Public(key);
+      // With credentials, read the authoritative object over S3 — never the
+      // public edge, which can serve data cached up to 6h and be stale right
+      // after an upstream online-meta upload (P-14). Public HTTP is reserved
+      // for credentialless local dev.
+      const remote = s3Client ? await readFromR2S3(key) : await readFromR2Public(key);
       if (remote !== null) {
         return { text: async () => remote };
       }

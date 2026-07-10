@@ -5,11 +5,15 @@ const DEFAULT_R2_CONCURRENCY = 6;
 /**
  * Default browser/edge cache for live report JSON (P3.1, owner-approved):
  * data regenerates roughly daily, so a 6-hour client cache means repeat
- * visitors load instantly while staying same-day fresh. Dated snapshot
- * paths are immutable by construction and get a year (see SNAPSHOT_CACHE_CONTROL).
+ * visitors load instantly while staying same-day fresh.
+ *
+ * NOTE: dated snapshot bodies under `reports/Snapshots/YYYY-MM-DD/` are NOT
+ * immutable — the rotation-snapshot build reruns the same date after data
+ * corrections. Marking them `immutable, max-age=1y` (as this code previously
+ * did) meant a corrected snapshot body could be served stale by browsers/CDN
+ * for up to a year (P-15). All keys now use the same 6-hour live policy.
  */
 const LIVE_JSON_CACHE_CONTROL = 'public, max-age=21600';
-const SNAPSHOT_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 interface R2PutOptions {
   httpMetadata?: { contentType?: string; cacheControl?: string };
@@ -22,6 +26,7 @@ interface R2Object {
 interface R2Bucket {
   get(key: string): Promise<R2Object | null>;
   put(key: string, data: string | ArrayBuffer | ArrayBufferView, opts?: R2PutOptions): Promise<unknown>;
+  delete?(key: string): Promise<unknown>;
 }
 
 interface EnvWithReports {
@@ -52,6 +57,74 @@ export async function getJson<T = unknown>(env: unknown, key: string): Promise<T
   }
 }
 
+/**
+ * Discriminated JSON load result. Unlike {@link getJson}, this distinguishes:
+ *   - `missing`: the key does not exist (a valid, expected state)
+ *   - `error`:   a transport/permission failure OR corrupt (unparseable) body
+ *   - `ok`:      a successfully parsed payload
+ *
+ * Callers that publish destructive indexes (snapshot index, player aggregates)
+ * must NOT conflate `error` with `missing` — a corrupt live master read as
+ * "empty" silently produces a wrong index (Theme E, P-05, P-16).
+ */
+export type JsonLoadResult<T> =
+  | { status: 'ok'; value: T }
+  | { status: 'missing' }
+  | { status: 'error'; error: unknown };
+
+export async function getJsonResult<T = unknown>(env: unknown, key: string): Promise<JsonLoadResult<T>> {
+  const bucket = (env as EnvWithReports)?.REPORTS;
+  if (!bucket?.get) {
+    throw new Error('REPORTS bucket not configured');
+  }
+  let obj: R2Object | null;
+  try {
+    obj = await bucket.get(key);
+  } catch (error) {
+    // Transport/permission failure is NOT the same as a missing object.
+    return { status: 'error', error };
+  }
+  if (!obj) {
+    return { status: 'missing' };
+  }
+  let text: string;
+  try {
+    text = await obj.text();
+  } catch (error) {
+    return { status: 'error', error };
+  }
+  try {
+    return { status: 'ok', value: JSON.parse(text) as T };
+  } catch (error) {
+    return { status: 'error', error };
+  }
+}
+
+/**
+ * Delete an object. No-op-safe against already-absent keys (R2 delete is
+ * idempotent). Throws if the binding does not expose `delete`.
+ */
+async function deleteObject(env: unknown, key: string): Promise<void> {
+  const bucket = (env as EnvWithReports)?.REPORTS;
+  if (!bucket?.delete) {
+    throw new Error('REPORTS bucket delete not configured');
+  }
+  await bucket.delete(key);
+}
+
+export async function batchDelete(
+  env: unknown,
+  keys: string[],
+  concurrency: number = DEFAULT_R2_CONCURRENCY
+): Promise<void> {
+  const normalized = (Array.isArray(keys) ? keys : []).filter(Boolean);
+  if (!normalized.length) {
+    return;
+  }
+  const limit = Math.max(1, Number(concurrency) || DEFAULT_R2_CONCURRENCY);
+  await runWithConcurrency(normalized, limit, async key => deleteObject(env, key));
+}
+
 export interface PutJsonOptions {
   /** Pretty-print with 2-space indent. Defaults to false (compact). */
   pretty?: boolean;
@@ -65,16 +138,13 @@ export async function putJson(env: unknown, key: string, data: unknown, options:
     throw new Error('REPORTS bucket not configured');
   }
   const payload = options.pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data);
-  // Objects under a dated snapshot dir never change after being written;
-  // everything else — including Snapshots/index.json, which is rebuilt on
-  // each rotation — is live data on the 6-hour policy.
-  const defaultCache = /^reports\/Snapshots\/\d{4}-\d{2}-\d{2}\//.test(key)
-    ? SNAPSHOT_CACHE_CONTROL
-    : LIVE_JSON_CACHE_CONTROL;
+  // Every key uses the 6-hour live policy. Dated snapshot bodies are rerunnable
+  // (corrections re-publish under the same date), so they must not be immutable
+  // (P-15).
   await bucket.put(key, payload, {
     httpMetadata: {
       contentType: 'application/json',
-      cacheControl: options.cacheControl ?? defaultCache
+      cacheControl: options.cacheControl ?? LIVE_JSON_CACHE_CONTROL
     }
   });
 }

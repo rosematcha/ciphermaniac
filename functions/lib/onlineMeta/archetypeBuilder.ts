@@ -328,7 +328,9 @@ export function buildCardTrendReport(
     series.push({
       key,
       ...cardMeta.get(key),
-      appearances: timeline.length,
+      // Number of events the card actually appeared in, not the total number of
+      // events in the window (timeline.length includes zero-presence events).
+      appearances: presentEvents,
       startShare: startAvg,
       endShare: endAvg,
       delta,
