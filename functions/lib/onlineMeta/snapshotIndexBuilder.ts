@@ -1,6 +1,7 @@
 import { loadCardSynonyms } from '../data/cardSynonyms.js';
 import { getCanonicalCardFromData } from '../../../shared/synonyms';
-import { getJson, putJson } from './storageWriter';
+import { cardNumberIndexKey } from '../../../shared/cardUtils.js';
+import { getJson, getJsonResult, putJson } from './storageWriter';
 
 const SNAPSHOT_ROOT = 'reports/Snapshots';
 const LIVE_BASE = 'reports/Online - Last 14 Days';
@@ -49,10 +50,9 @@ function itemUid(item: MinimalCardItem): string | null {
 }
 
 function setNumberKey(set: string, number: string | number): string {
-  // Only strip leading zeros from a *digit* prefix so "045a" → "45a"
-  // but "0aa" (non-numeric) is left intact.
-  const numTrim = String(number).replace(/^0+(?=\d)/, '') || '0';
-  return `${set.toUpperCase()}::${numTrim}`;
+  // Shared normalization (zero-strip + uppercase suffix) so the keys written
+  // here always match the ones the SPA reader builds.
+  return `${set.toUpperCase()}::${cardNumberIndexKey(number)}`;
 }
 
 /**
@@ -63,8 +63,27 @@ function setNumberKey(set: string, number: string | number): string {
  * is needed.
  */
 async function loadActiveSets(env: unknown, synonymDb: unknown) {
-  const liveMaster = await getJson<MinimalMasterPayload>(env, `${LIVE_BASE}/master.json`);
-  const liveIndex = await getJson<MinimalArchetypeIndexEntry[]>(env, `${LIVE_BASE}/archetypes/index.json`);
+  // Corrupt/unreadable live inputs must ABORT the index rebuild. Treating a
+  // parse failure as "no live data" (empty active sets) would classify every
+  // live card and archetype as rotated and publish a destructive index (P-16).
+  // A genuinely-missing live file is still tolerated as empty — that's the
+  // valid "no live data yet" bootstrap state.
+  const masterR = await getJsonResult<MinimalMasterPayload>(env, `${LIVE_BASE}/master.json`);
+  const indexR = await getJsonResult<MinimalArchetypeIndexEntry[]>(env, `${LIVE_BASE}/archetypes/index.json`);
+  if (masterR.status === 'error') {
+    throw new Error(
+      `[snapshotIndex] Live master.json at ${LIVE_BASE}/master.json is unreadable/corrupt; refusing to rebuild snapshot index (would misclassify all live cards as rotated)`,
+      { cause: masterR.error }
+    );
+  }
+  if (indexR.status === 'error') {
+    throw new Error(
+      `[snapshotIndex] Live archetypes/index.json at ${LIVE_BASE}/archetypes/index.json is unreadable/corrupt; refusing to rebuild snapshot index`,
+      { cause: indexR.error }
+    );
+  }
+  const liveMaster = masterR.status === 'ok' ? masterR.value : null;
+  const liveIndex = indexR.status === 'ok' ? indexR.value : null;
 
   const activeCanonicalUids = new Set<string>();
   const activeSetNumber = new Set<string>();

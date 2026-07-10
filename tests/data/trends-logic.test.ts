@@ -150,5 +150,28 @@ describe('Trends Logic', () => {
       assert.ok(!report.rising.some(card => card.name === 'Flat'));
       assert.ok(!report.falling.some(card => card.name === 'Flat'));
     });
+
+    // P-27: appearances must be the number of events the card was present in,
+    // not the total number of events in the window.
+    it('should report appearances as present-event count, not total events', () => {
+      const tournaments = [
+        createTournament('t1', '2023-01-01', 20, 20),
+        createTournament('t2', '2023-01-15', 20, 20),
+        createTournament('t3', '2023-01-29', 20, 20)
+      ];
+      // Riser present in t1 and t3 only (2 of 3 events).
+      const decks = [
+        { ...createDeck('t1', 'A'), cards: [{ name: 'Riser', set: 'SVI', number: '1' }] },
+        ...Array.from({ length: 10 }, () => ({
+          ...createDeck('t3', 'A'),
+          cards: [{ name: 'Riser', set: 'SVI', number: '1' }]
+        }))
+      ];
+
+      const report = buildCardTrendReport(decks, tournaments, { minAppearances: 1, topCount: 5 });
+      const riser = [...report.rising, ...report.falling].find(card => card.name === 'Riser');
+      assert.ok(riser, 'Riser should appear in the trend report');
+      assert.strictEqual(riser!.appearances, 2, 'appearances should count only present events (2 of 3)');
+    });
   });
 });

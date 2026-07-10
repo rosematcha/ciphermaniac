@@ -16,7 +16,7 @@ from collections import defaultdict
 
 TCGCSV_GROUPS_URL = 'https://tcgcsv.com/tcgplayer/3/groups'
 ONLINE_META_PATH = 'reports/Online - Last 14 Days'
-CARD_SYNONYMS_URL = 'https://r2.ciphermaniac.com/assets/card-synonyms.json'
+CARD_SYNONYMS_KEY = 'assets/card-synonyms.json'
 
 # Rolling price-history artifact: one compact file keyed by card UID → list of
 # {d: 'YYYY-MM-DD', p: price} points, bounded to a 90-day window. To keep the
@@ -133,18 +133,25 @@ def load_online_meta_report(r2_client, bucket_name):
         sys.exit(1)
 
 
-def load_card_synonyms():
-    """Load card synonyms for resolving canonical UIDs."""
+def load_card_synonyms(r2_client, bucket_name):
+    """Load card synonyms for resolving canonical UIDs.
+
+    Read straight from the R2 bucket, not the public r2.ciphermaniac.com URL:
+    that origin sits behind Cloudflare's edge cache, which serves a stale
+    synonyms file for hours after a rebuild — so the daily price job would key
+    prices to the previous run's canonicals. The bucket is always current.
+    """
     print("Loading card synonyms...")
     try:
-        data = fetch_json(CARD_SYNONYMS_URL)
-        print(f"  Loaded {len(data.get('synonyms', {}))} synonyms")
+        response = r2_client.get_object(Bucket=bucket_name, Key=CARD_SYNONYMS_KEY)
+        data = json.loads(response['Body'].read().decode('utf-8'))
+        print(f"  Loaded {len(data.get('synonyms', {}))} synonyms from R2")
         return {
             'synonyms': data.get('synonyms', {}),
             'canonicals': data.get('canonicals', {})
         }
     except Exception as e:
-        print(f"  Warning: Could not load synonyms: {e}")
+        print(f"  Warning: Could not load synonyms from R2: {e}")
         return {'synonyms': {}, 'canonicals': {}}
 
 
@@ -549,7 +556,7 @@ def main():
     
     # Load data
     master_report = load_online_meta_report(r2_client, bucket_name)
-    synonyms_data = load_card_synonyms()
+    synonyms_data = load_card_synonyms(r2_client, bucket_name)
     
     # Extract unique cards
     card_list = extract_unique_cards(master_report, synonyms_data)

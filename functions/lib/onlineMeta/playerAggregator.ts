@@ -1,7 +1,7 @@
 import { normalizeArchetypeName, sanitizeForFilename } from '../data/reportBuilder.js';
 import { toSlimIndexEntry } from '../../../shared/playerTypes';
 import { runWithConcurrency } from './tournamentFetcher';
-import { batchPutJson, getJson, putJson } from './storageWriter';
+import { batchDelete, batchPutJson, getJson, getJsonResult, putJson } from './storageWriter';
 import type {
   PlayerAggregateManifest,
   PlayerArchetypeBreakdown,
@@ -59,6 +59,12 @@ interface DeckRow {
 }
 
 interface MetaRow {
+  /**
+   * Per-tournament reports write `fetchedAt` (set fresh on every download /
+   * refresh); the aggregated online-meta report uses `generatedAt`. Either is a
+   * usable content fingerprint — a corrected re-download bumps it (P-04).
+   */
+  fetchedAt?: string;
   generatedAt?: string;
   windowStart?: string;
   windowEnd?: string;
@@ -72,6 +78,23 @@ interface TournamentSlice {
   participants: ParticipantRow[];
   decks: DeckRow[];
   totalPlayers: number | null;
+  /** Content fingerprint from meta.json (fetchedAt/generatedAt); '' if absent. */
+  fingerprint: string;
+}
+
+/**
+ * Manifest with an added per-tournament content fingerprint map. The field is
+ * optional so manifests written before this change (no `fingerprints`) are read
+ * gracefully and force a rebuild (P-04). Kept local — the manifest is internal
+ * to the cron and not consumed by the frontend.
+ */
+interface PlayerAggregateManifestV2 extends PlayerAggregateManifest {
+  /** tournament key → content fingerprint at last successful build. */
+  fingerprints?: Record<string, string>;
+}
+
+function sliceFingerprint(meta: MetaRow | null): string {
+  return meta?.fetchedAt ?? meta?.generatedAt ?? '';
 }
 
 const DATE_PREFIX = /^(\d{4}-\d{2}-\d{2})/;
@@ -145,11 +168,27 @@ function median(values: number[]): number | null {
 
 async function loadTournamentSlice(env: unknown, key: string): Promise<TournamentSlice | null> {
   const base = `reports/${key}`;
-  const [participants, decks, meta] = await Promise.all([
-    getJson<ParticipantRow[]>(env, `${base}/players.json`),
-    getJson<DeckRow[]>(env, `${base}/decks.json`),
-    getJson<MetaRow>(env, `${base}/meta.json`)
+  const [participantsR, decksR, metaR] = await Promise.all([
+    getJsonResult<ParticipantRow[]>(env, `${base}/players.json`),
+    getJsonResult<DeckRow[]>(env, `${base}/decks.json`),
+    getJsonResult<MetaRow>(env, `${base}/meta.json`)
   ]);
+  // A corrupt body or transport failure is NOT the same as a genuinely absent
+  // slice. Missing → skip (return null); error → abort the whole run so we
+  // never publish player aggregates built from a partial view (P-05).
+  if (participantsR.status === 'error') {
+    throw new Error(`[playerAggregator] Failed to load ${base}/players.json`, { cause: participantsR.error });
+  }
+  if (decksR.status === 'error') {
+    throw new Error(`[playerAggregator] Failed to load ${base}/decks.json`, { cause: decksR.error });
+  }
+  if (metaR.status === 'error') {
+    throw new Error(`[playerAggregator] Failed to load ${base}/meta.json`, { cause: metaR.error });
+  }
+  const participants = participantsR.status === 'ok' ? participantsR.value : null;
+  const decks = decksR.status === 'ok' ? decksR.value : null;
+  const meta = metaR.status === 'ok' ? metaR.value : null;
+
   if (!Array.isArray(participants) || !participants.length) {
     return null;
   }
@@ -169,8 +208,24 @@ async function loadTournamentSlice(env: unknown, key: string): Promise<Tournamen
     date,
     participants,
     decks: Array.isArray(decks) ? decks : [],
-    totalPlayers: Number.isFinite(totalPlayers) ? Number(totalPlayers) : null
+    totalPlayers: Number.isFinite(totalPlayers) ? Number(totalPlayers) : null,
+    fingerprint: sliceFingerprint(meta)
   };
+}
+
+/**
+ * Cheap read of just meta.json to fingerprint a tournament's content for the
+ * no-change fast path. Corrupt/transport error → throw (aborts the run rather
+ * than risk skipping a real change).
+ */
+async function loadFingerprint(env: unknown, key: string): Promise<string> {
+  const metaR = await getJsonResult<MetaRow>(env, `reports/${key}/meta.json`);
+  if (metaR.status === 'error') {
+    throw new Error(`[playerAggregator] Failed to load reports/${key}/meta.json for fingerprint`, {
+      cause: metaR.error
+    });
+  }
+  return sliceFingerprint(metaR.status === 'ok' ? metaR.value : null);
 }
 
 interface Accumulator {
@@ -380,38 +435,56 @@ export async function buildPlayerAggregates(
     };
   }
 
-  const previousManifest = options.forceFullRebuild ? null : await getJson<PlayerAggregateManifest>(env, MANIFEST_KEY);
+  const previousManifest = options.forceFullRebuild
+    ? null
+    : await getJson<PlayerAggregateManifestV2>(env, MANIFEST_KEY);
 
-  // Fast path: if the tournament set matches the last run exactly, skip the
-  // rebuild entirely. The manifest comparison treats both sides as sets so
-  // we're not order-sensitive.
+  // Fast path: skip the rebuild only if BOTH the tournament set AND every
+  // tournament's content fingerprint match the last run. Key-membership
+  // equality alone is not enough: `refresh-recent-tournaments.py` corrects
+  // placements/decklists under the same folder name, which changes meta's
+  // `fetchedAt` but not the key set (P-04). Manifests written before
+  // fingerprints existed have no `fingerprints` map → treated as changed.
   const currentSorted = [...tournamentList].sort();
   const prevSorted = previousManifest?.tournamentKeys ? [...previousManifest.tournamentKeys].sort() : null;
   if (previousManifest && prevSorted && arrayEquals(currentSorted, prevSorted)) {
-    console.info('[playerAggregator] Tournament set unchanged; skipping rebuild', {
-      tournaments: currentSorted.length
-    });
-    const index = (await getJson<PlayerIndexEntry[]>(env, INDEX_KEY)) ?? [];
-    await writeSlimIndex(env, index);
-    return {
-      index,
-      profileCount: Object.keys(previousManifest.players).length,
-      profilesWritten: 0,
-      tournamentsScanned: 0,
-      tournamentsSkipped: 0,
-      skippedNoChanges: true
-    };
+    const prevFingerprints = previousManifest.fingerprints;
+    let contentUnchanged = false;
+    if (prevFingerprints) {
+      const current = await runWithConcurrency(tournamentList, sliceConcurrency, (key: string) =>
+        loadFingerprint(env, key)
+      );
+      contentUnchanged = tournamentList.every((key, i) => (prevFingerprints[key] ?? '') === current[i]);
+    }
+    if (contentUnchanged) {
+      console.info('[playerAggregator] Tournament set and content unchanged; skipping rebuild', {
+        tournaments: currentSorted.length
+      });
+      const index = (await getJson<PlayerIndexEntry[]>(env, INDEX_KEY)) ?? [];
+      await writeSlimIndex(env, index);
+      return {
+        index,
+        profileCount: Object.keys(previousManifest.players).length,
+        profilesWritten: 0,
+        tournamentsScanned: 0,
+        tournamentsSkipped: 0,
+        skippedNoChanges: true
+      };
+    }
+    console.info('[playerAggregator] Tournament set unchanged but content fingerprints differ; rebuilding');
   }
 
+  // A transport/corrupt failure in loadTournamentSlice throws and propagates
+  // here, aborting the whole run — we never publish player aggregates built
+  // from a partial slice set (P-05). A genuinely-missing/empty slice returns
+  // null and is counted as skipped (legitimate).
   const slices = await runWithConcurrency(tournamentList, sliceConcurrency, (key: string) =>
-    loadTournamentSlice(env, key).catch(err => {
-      console.warn(`[playerAggregator] Failed to load slice ${key}`, err);
-      return null;
-    })
+    loadTournamentSlice(env, key)
   );
 
   const accs = new Map<string, Accumulator>();
   const loadedTournamentKeys: string[] = [];
+  const fingerprints: Record<string, string> = {};
   let skipped = 0;
   let scanned = 0;
 
@@ -422,6 +495,7 @@ export async function buildPlayerAggregates(
     }
     scanned += 1;
     loadedTournamentKeys.push(slice.key);
+    fingerprints[slice.key] = slice.fingerprint;
 
     // Upstream tournaments are inconsistent about what they put in
     // decks.json's `playerId` field: some use the canonical Limitless
@@ -545,8 +619,22 @@ export async function buildPlayerAggregates(
   const index: PlayerIndexEntry[] = [];
   const profileWrites: Array<{ key: string; data: PlayerProfile }> = [];
   const deckWrites: Array<{ key: string; data: PlayerDecks }> = [];
+  const deckDeletes: string[] = [];
   const manifestPlayers: Record<string, string[]> = {};
   const prevPlayers = previousManifest?.players ?? {};
+
+  // Which loaded tournaments changed content since the last manifest. A player
+  // whose tournament *key set* is unchanged but one of whose events was
+  // corrected (same folder, new fingerprint) must still be rewritten (P-04).
+  // No previous fingerprints (old manifest / forced rebuild) → treat every
+  // tournament as changed so all players are rewritten.
+  const prevFingerprintMap = previousManifest?.fingerprints;
+  const changedTournaments = new Set<string>();
+  for (const key of loadedTournamentKeys) {
+    if (!prevFingerprintMap || (prevFingerprintMap[key] ?? '') !== (fingerprints[key] ?? '')) {
+      changedTournaments.add(key);
+    }
+  }
 
   for (const acc of accs.values()) {
     const profile = buildProfile(acc, generatedAt);
@@ -566,11 +654,13 @@ export async function buildPlayerAggregates(
       });
     }
 
-    // Incremental skip: if this player's tournament set is unchanged from the
-    // last run AND the profile already exists, skip the write.
+    // Incremental skip: skip the write only if this player's tournament set is
+    // unchanged from the last run AND none of their events had their content
+    // corrected this run (P-04).
     const prevKeys = prevPlayers[acc.playerId];
-    const unchanged = prevKeys && arrayEquals(tournamentKeys, [...prevKeys].sort());
-    if (unchanged) {
+    const keysUnchanged = prevKeys && arrayEquals(tournamentKeys, [...prevKeys].sort());
+    const contentUnchanged = !profile.tournaments.some(t => changedTournaments.has(t.tournamentId));
+    if (keysUnchanged && contentUnchanged) {
       continue;
     }
 
@@ -584,6 +674,22 @@ export async function buildPlayerAggregates(
         key: `players/${profile.playerId}/decks.json`,
         data: decks
       });
+    } else {
+      // This player has no decks this run. If a prior run wrote a
+      // players/{id}/decks.json, it's now stale — delete it so expanded rows
+      // don't surface last run's decklists (P-23). Deleting an absent key is a
+      // harmless no-op.
+      deckDeletes.push(`players/${profile.playerId}/decks.json`);
+    }
+  }
+
+  // Orphan cleanup: players present in the previous manifest but not in this
+  // run have dropped out entirely (e.g. their only event was corrected away).
+  // Their profile/decks objects stay addressable unless deleted (P-25).
+  const orphanDeletes: string[] = [];
+  for (const prevId of Object.keys(prevPlayers)) {
+    if (!(prevId in manifestPlayers)) {
+      orphanDeletes.push(`players/${prevId}/profile.json`, `players/${prevId}/decks.json`);
     }
   }
 
@@ -594,16 +700,22 @@ export async function buildPlayerAggregates(
     return b.eventCount - a.eventCount;
   });
 
+  // Publication order (Theme A / P-24): write bodies FIRST, then delete stale
+  // bodies, then the index that points at them, then the manifest last. A
+  // failure mid-run must never leave the index/manifest referencing objects
+  // that don't exist yet.
+  await batchPutJson(env, [...profileWrites, ...deckWrites], writeConcurrency);
+  await batchDelete(env, [...deckDeletes, ...orphanDeletes], writeConcurrency);
   await putJson(env, INDEX_KEY, index);
   await writeSlimIndex(env, index);
-  await batchPutJson(env, [...profileWrites, ...deckWrites], writeConcurrency);
 
-  const manifest: PlayerAggregateManifest = {
+  const manifest: PlayerAggregateManifestV2 = {
     generatedAt,
     // Only successfully-loaded slices: a transient R2 fetch failure must not
     // be cached as "covered" — next run's fast-path needs to retry it.
     tournamentKeys: loadedTournamentKeys.slice().sort(),
-    players: manifestPlayers
+    players: manifestPlayers,
+    fingerprints
   };
   await putJson(env, MANIFEST_KEY, manifest);
 

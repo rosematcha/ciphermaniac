@@ -274,11 +274,15 @@ test('buildMatchupMatrix aggregates wins/losses/ties correctly', () => {
   assert.strictEqual(gardevoir.wins, 1, 'Should have 1 win vs Gardevoir');
   assert.strictEqual(gardevoir.losses, 2, 'Should have 2 losses vs Gardevoir');
 
-  // Check mirror matchup (3 games total)
-  assert.ok(result['Dragapult Dusknoir'], 'Should have mirror matchup');
+  // Mirror matches (both players on the target archetype) are kept as a
+  // self-keyed entry — the frontend renders the "(mirror)" row from it — but
+  // counted symmetrically so pairing order can't bias the record (P-26).
+  assert.ok(result['Dragapult Dusknoir'], 'Mirror matchup should keep its self-keyed entry');
   const mirror = result['Dragapult Dusknoir'];
-  assert.strictEqual(mirror.total, 3, 'Should have 3 mirror matches');
-  assert.strictEqual(mirror.ties, 1, 'Should have 1 tie in mirrors');
+  assert.strictEqual(mirror.total, 3, 'Mirror counts each match once');
+  assert.strictEqual(mirror.ties, 1, 'Mirror ties recorded');
+  assert.strictEqual(mirror.wins, mirror.losses, 'Mirror record is symmetric');
+  assert.strictEqual(mirror.winRate, 50, 'Mirror win rate pinned at 50');
 });
 
 test('buildMatchupMatrix handles ties correctly', () => {
@@ -518,4 +522,83 @@ test('generateArchetypeTrends returns empty matchups when no pairingsData', () =
 
   assert.ok(result.matchups !== undefined, 'matchups should be defined');
   assert.deepStrictEqual(result.matchups, {}, 'matchups should be empty object');
+});
+
+// ============================================================================
+// Regression tests for review findings
+// ============================================================================
+
+// P-09: a card that drops to 0% on the final day must report currentPlayrate 0
+// and a correct negative playrateChange (previously stuck on last nonzero day).
+test('generateArchetypeTrends reports 0 playrate when card absent on last day (P-09)', () => {
+  const tournaments = [
+    makeTournament('t1', '2026-01-01T12:00:00Z', 1),
+    makeTournament('t2', '2026-01-02T12:00:00Z', 1)
+  ];
+  const decks = [
+    makeDeck('t1', '2026-01-01T12:00:00Z', 'A', ['top8'], [{ name: 'X', count: 1, set: 'TST', number: '001' }]),
+    makeDeck('t2', '2026-01-02T12:00:00Z', 'A', ['top8'], [])
+  ];
+
+  const result = generateArchetypeTrends(decks, tournaments, null);
+  const card = Object.values(result.cards).find((c: any) => c.name === 'X') as any;
+
+  assert.ok(card, 'Card X should be present');
+  assert.strictEqual(card.currentPlayrate, 0, 'currentPlayrate should be 0 on the absent final day');
+  assert.strictEqual(card.playrateChange, -100, 'playrateChange should be -100 (100% -> 0%)');
+});
+
+// P-10: two synonym variants of the same card in one deck must count once per
+// deck. Previously playrate could reach 200% and copy-distribution buckets went
+// negative (tierTotal - counts.length).
+test('generateArchetypeTrends dedupes synonym variants per deck (P-10)', () => {
+  const synonymDb = { synonyms: { 'X::OLD::002': 'X::NEW::001' }, canonicals: {} };
+  const tournaments = [makeTournament('t1', '2026-01-01T12:00:00Z', 1)];
+  const decks = [
+    makeDeck(
+      't1',
+      '2026-01-01T12:00:00Z',
+      'A',
+      ['top8'],
+      [
+        { name: 'X', count: 2, set: 'OLD', number: '002' },
+        { name: 'X', count: 1, set: 'NEW', number: '001' }
+      ]
+    )
+  ];
+
+  const result = generateArchetypeTrends(decks, tournaments, synonymDb as any);
+  const entries = Object.entries(result.cards);
+  assert.strictEqual(entries.length, 1, 'Both variants collapse to a single canonical card');
+
+  const [uid, card] = entries[0] as [string, any];
+  assert.strictEqual(uid, 'X::NEW::001', 'Card keyed on canonical UID');
+  assert.ok(card.currentPlayrate <= 100, `playrate must be <= 100 (got ${card.currentPlayrate})`);
+  assert.strictEqual(card.set, 'NEW', 'meta.set derived from canonical UID');
+  assert.strictEqual(card.number, '001', 'meta.number derived from canonical UID');
+
+  // Copy distribution buckets must never be negative.
+  const dist = card.timeline[0].all.dist as number[];
+  for (const bucket of dist) {
+    assert.ok(bucket >= 0, `distribution bucket must be non-negative (got ${bucket})`);
+  }
+});
+
+// P-26: mirror matches must not bias the directional win rate by pairing order.
+test('buildMatchupMatrix counts mirror matches symmetrically (P-26)', () => {
+  const pairingsData = [
+    {
+      tournamentId: 't1',
+      standings: [makeStanding('p1', 'TestDeck'), makeStanding('p2', 'TestDeck')],
+      pairings: [makePairing('p1', 'p2', 'p1'), makePairing('p1', 'p2', 'p1'), makePairing('p1', 'p2', 'p1')]
+    }
+  ];
+
+  const result = buildMatchupMatrix('TestDeck', pairingsData);
+  const mirror = result.TestDeck;
+  assert.ok(mirror, 'Mirror-only pairings keep the self-keyed entry');
+  assert.strictEqual(mirror.total, 3, 'Each mirror match counted once');
+  assert.strictEqual(mirror.winRate, 50, 'Win rate pinned at 50 regardless of who is player1');
+  assert.strictEqual(mirror.wins + mirror.losses + mirror.ties, 3, 'Record reconciles with total');
+  assert.ok(Math.abs(mirror.wins - mirror.losses) <= 1, 'Wins and losses split as evenly as possible');
 });

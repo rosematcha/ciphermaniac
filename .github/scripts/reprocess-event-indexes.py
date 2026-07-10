@@ -31,6 +31,7 @@ import importlib.util
 import json
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import boto3
@@ -67,6 +68,23 @@ def get_json(client, bucket, key):
             return None
         raise
     return json.loads(obj["Body"].read().decode("utf-8"))
+
+
+def get_many(client, bucket, keys_by_label, workers=16):
+    """Fetch several keys concurrently. Returns {label: parsed-json-or-None}.
+
+    R2 GETs dominate wall time (dozens of per-archetype cards.json per event), so
+    the boto3 client — which is thread-safe for this usage — fans them out.
+    """
+    def _one(item):
+        label, key = item
+        return label, get_json(client, bucket, key)
+
+    results = {}
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for label, value in pool.map(_one, list(keys_by_label.items())):
+            results[label] = value
+    return results
 
 
 def list_subprefixes(client, bucket, prefix):
@@ -121,18 +139,24 @@ def reprocess_event(client, bucket, folder, synonyms, canonicals, dry_run=False)
     base = f"reports/{folder}"
     summary = {"folder": folder, "cardUsage": None, "conversion": None, "errors": []}
 
-    # cardUsage.json — assemble the archetype map from stored per-archetype
-    # cards.json (each is exactly the payload["cards"] download-tournament wrote),
-    # then rebuild the inverted index against the current synonyms.
-    archetype_map = {}
-    for slug in list_subprefixes(client, bucket, f"{base}/archetypes/"):
-        cards = get_json(client, bucket, f"{base}/archetypes/{slug}/cards.json")
-        if cards:
-            archetype_map[slug] = {"cards": cards}
+    # Fetch everything this event needs in one concurrent batch: each archetype's
+    # cards.json (stored raw, exactly the payload["cards"] download-tournament
+    # wrote), the decks.json, and the existing indexes for the before/after diff.
+    slugs = list_subprefixes(client, bucket, f"{base}/archetypes/")
+    keys = {f"cards::{slug}": f"{base}/archetypes/{slug}/cards.json" for slug in slugs}
+    keys["decks"] = f"{base}/decks.json"
+    keys["old_usage"] = f"{base}/cardUsage.json"
+    keys["old_conversion"] = f"{base}/conversion.json"
+    fetched = get_many(client, bucket, keys)
+
+    # cardUsage.json — rebuild the inverted index against the current synonyms.
+    archetype_map = {
+        slug: {"cards": fetched[f"cards::{slug}"]}
+        for slug in slugs if fetched.get(f"cards::{slug}")
+    }
     if archetype_map:
         usage = dt.build_card_usage_index(archetype_map, synonyms, canonicals)
-        old = get_json(client, bucket, f"{base}/cardUsage.json") or {}
-        old_keys = len((old or {}).get("usage", {}))
+        old_keys = len((fetched.get("old_usage") or {}).get("usage", {}))
         new_keys = len(usage.get("usage", {}))
         summary["cardUsage"] = {"archetypes": len(archetype_map),
                                 "old_keys": old_keys, "new_keys": new_keys}
@@ -144,12 +168,12 @@ def reprocess_event(client, bucket, folder, synonyms, canonicals, dry_run=False)
     # conversion.json — rebuild from the stored decks.json. build_conversion_index
     # returns None when no deck made Day 2; match download-tournament and only
     # write when there is a cut (leave any existing file untouched otherwise).
-    decks = get_json(client, bucket, f"{base}/decks.json")
+    decks = fetched.get("decks")
     if decks:
         conversion = dt.build_conversion_index(decks, synonyms, canonicals)
         if conversion is not None:
-            old = get_json(client, bucket, f"{base}/conversion.json") or {}
-            summary["conversion"] = {"old_cards": len((old or {}).get("cards", {})),
+            old = fetched.get("old_conversion") or {}
+            summary["conversion"] = {"old_cards": len(old.get("cards", {})),
                                      "new_cards": len(conversion.get("cards", {}))}
             if not dry_run:
                 dt.upload_to_r2(client, bucket, f"{base}/conversion.json", conversion)
@@ -182,7 +206,9 @@ def main():
 
     processed = 0
     failures = []
-    for folder in folders:
+    total = len(folders)
+    for i, folder in enumerate(folders, 1):
+        print(f"[{i}/{total}] {folder}", flush=True)
         try:
             s = reprocess_event(client, bucket, folder, synonyms, canonicals, args.dry_run)
         except Exception as exc:  # noqa: BLE001

@@ -238,6 +238,34 @@ test('buildArchetypeReports groups archetypes and computes thumbnails/index', ()
   assert.strictEqual(minDecks >= 1, true);
 });
 
+// P-12: after resolving the canonical UID via the synonym DB, the emitted
+// set/number must be parsed from that UID so uid/set/number stay mutually
+// consistent (previously set/number came from the first-seen variant's meta).
+test('report item set/number are consistent with the canonical UID (P-12)', () => {
+  const synonymDb = { synonyms: { 'X::OLD::002': 'X::NEW::001' }, canonicals: {}, metadata: {} };
+  const decks = [{ cards: [makeCard('X', 1, 'OLD', '002')] }];
+
+  const report = generateReportFromDecks(decks as any, decks.length, synonymDb as any);
+  const item = report.items[0];
+
+  assert.strictEqual(item.uid, 'X::NEW::001', 'uid should be the canonical UID');
+  assert.strictEqual(item.set, 'NEW', 'set should be derived from the canonical UID');
+  assert.strictEqual(item.number, '001', 'number should be derived from the canonical UID');
+});
+
+// P-10 (report path): two synonym variants of the same card in ONE deck must
+// count once per deck — never yielding pct > 100.
+test('report dedupes synonym variants within a single deck (P-10)', () => {
+  const synonymDb = { synonyms: { 'X::OLD::002': 'X::NEW::001' }, canonicals: {}, metadata: {} };
+  const decks = [{ cards: [makeCard('X', 2, 'OLD', '002'), makeCard('X', 1, 'NEW', '001')] }];
+
+  const report = generateReportFromDecks(decks as any, decks.length, synonymDb as any);
+  assert.strictEqual(report.items.length, 1, 'variants collapse to one canonical item');
+  const item = report.items[0];
+  assert.strictEqual(item.found, 1, 'card counted once for the single deck');
+  assert.ok(Number(item.pct) <= 100, `pct must be <= 100 (got ${item.pct})`);
+});
+
 test('cleanup report-generation mocks', () => {
   restoreFetch();
 });

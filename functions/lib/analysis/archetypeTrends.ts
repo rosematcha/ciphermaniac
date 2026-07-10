@@ -1,5 +1,4 @@
-import { getCanonicalCard } from '../data/cardSynonyms.js';
-import { canonicalizeVariant } from '../../../shared/cardUtils';
+import { aggregateCanonicalCardsPerDeck } from '../../../shared/canonicalDeckCards';
 import type { SynonymDatabase } from '../../../shared/synonyms';
 
 // All performance tiers — must match the success-tag taxonomy the report
@@ -415,7 +414,15 @@ export function buildMatchupMatrix(targetArchetype: string, allPairings: Pairing
         continue;
       }
 
-      // Determine opponent archetype
+      // Mirror match (both players on the target archetype) carries no
+      // directional signal: attributing the win to whoever happens to be
+      // `player1` biases the win rate by pairing order. Keep the self-keyed
+      // entry (the frontend derives its "(mirror)" row and match count from
+      // it) but record it symmetrically — wins/losses are forced equal and the
+      // final win rate is pinned at 50 below.
+      const isMirror = isPlayer1Target && isPlayer2Target;
+
+      // Determine opponent archetype (the target itself for mirrors)
       const opponentArchetype = isPlayer1Target ? deck2 : deck1;
 
       if (!matchups.has(opponentArchetype)) {
@@ -435,6 +442,9 @@ export function buildMatchupMatrix(targetArchetype: string, allPairings: Pairing
       if (match.winner === 0) {
         // Tie
         matchupData.ties += 1;
+      } else if (isMirror) {
+        // Non-tie mirror: order-independent by construction. wins/losses are
+        // recomputed symmetrically when the record is finalized.
       } else if (match.winner === -1) {
         // Double loss - count as loss for both
         matchupData.losses += 1;
@@ -455,6 +465,14 @@ export function buildMatchupMatrix(targetArchetype: string, allPairings: Pairing
   const result: Record<string, MatchupRecord> = {};
   for (const [opponent, data] of matchups.entries()) {
     if (data.total >= MIN_MATCHUP_GAMES) {
+      const isMirror = opponent === targetArchetype;
+      if (isMirror) {
+        // Split decisive mirror games evenly so the record is independent of
+        // pairing order; the win rate is definitionally 50%.
+        const decisive = data.total - data.ties;
+        data.wins = Math.floor(decisive / 2);
+        data.losses = decisive - data.wins;
+      }
       result[opponent] = {
         opponent: data.opponent,
         wins: data.wins,
@@ -462,7 +480,7 @@ export function buildMatchupMatrix(targetArchetype: string, allPairings: Pairing
         ties: data.ties,
         total: data.total,
         // Store as percentage (0-100), not decimal (0-1)
-        winRate: data.total > 0 ? Math.round((data.wins / data.total) * 1000) / 10 : 0
+        winRate: isMirror ? 50 : data.total > 0 ? Math.round((data.wins / data.total) * 1000) / 10 : 0
       };
     }
   }
@@ -600,27 +618,16 @@ export function generateArchetypeTrends(
       }
     }
 
-    // Process cards in deck
-    for (const card of deck.cards || []) {
-      const count = Number(card.count) || 0;
-      if (!count) {
-        continue;
-      }
-
-      const [setCode, number] = canonicalizeVariant(card.set, card.number);
-      let uid = setCode && number ? `${card.name}::${setCode}::${number}` : card.name;
-
-      if (synonymDb) {
-        uid = getCanonicalCard(synonymDb, uid);
-      }
-
+    // Aggregate cards per deck by canonical UID first, then increment presence
+    // once per canonical card. Duplicate printings that a synonym mapping
+    // collapses to the same canonical UID must count once per deck — counting
+    // per row would push decksWithCard above totalDecks, yielding playrate
+    // > 100% and negative copy-distribution buckets (tierTotal - counts.length).
+    const deckTags = new Set<string>(['all', ...(deck.successTags || [])]);
+    for (const { uid, name, set, number, copies } of aggregateCanonicalCardsPerDeck(deck.cards, synonymDb).values()) {
       // Initialize card meta
       if (!cardMeta.has(uid)) {
-        cardMeta.set(uid, {
-          name: card.name,
-          set: setCode,
-          number
-        });
+        cardMeta.set(uid, { name, set, number });
       }
 
       // Initialize card day data
@@ -638,11 +645,9 @@ export function generateArchetypeTrends(
       }
 
       const dayEntry = cardDays.get(dateStr)!;
-      const deckTags = new Set<string>(['all', ...(deck.successTags || [])]);
-
       for (const tag of SUCCESS_TAGS) {
         if (deckTags.has(tag)) {
-          dayEntry[tag].counts.push(count);
+          dayEntry[tag].counts.push(copies);
           dayEntry[tag].decksWithCard += 1;
         }
       }
@@ -705,8 +710,6 @@ export function generateArchetypeTrends(
     const copyTrend: CopyTrendEntry[] = [];
 
     let maxShare = 0;
-    let firstPlayrate: number | null = null;
-    let lastPlayrate = 0;
 
     // First pass: build daily timeline
     for (const dayItem of activeDays) {
@@ -739,10 +742,6 @@ export function generateArchetypeTrends(
         if (playrate > maxShare) {
           maxShare = playrate;
         }
-        if (firstPlayrate === null) {
-          firstPlayrate = playrate;
-        }
-        lastPlayrate = playrate;
 
         // Build timeline entry for each tier
         const tierEntry: Record<string, TierData> = {};
@@ -828,11 +827,19 @@ export function generateArchetypeTrends(
       }
     }
 
+    // Derive start/end playrate from the fully-filled daily array (which
+    // includes explicit 0% entries for days where the card was absent). Using
+    // the first/last active-day values — rather than the first/last day the
+    // card happened to appear — means a card that drops to 0 on the final day
+    // reports currentPlayrate 0 and a correct negative playrateChange.
+    const startPlayrate = dailyPlayrates.length > 0 ? dailyPlayrates[0] : 0;
+    const endPlayrate = dailyPlayrates.length > 0 ? dailyPlayrates[dailyPlayrates.length - 1] : 0;
+
     // Filter by interest threshold
     const cardStats: CardInterestStats = {
       maxShare,
-      startShare: firstPlayrate ?? 0,
-      endShare: lastPlayrate
+      startShare: startPlayrate,
+      endShare: endPlayrate
     };
 
     if (!isInterestingCard(cardStats)) {
@@ -842,7 +849,7 @@ export function generateArchetypeTrends(
     // Calculate aggregated stats
     const avgPlayrate =
       dailyPlayrates.length > 0 ? dailyPlayrates.reduce((acc, val) => acc + val, 0) / dailyPlayrates.length : 0;
-    const playrateChange = lastPlayrate - (firstPlayrate ?? 0);
+    const playrateChange = endPlayrate - startPlayrate;
     const volatility = calculateStdDev(dailyPlayrates);
 
     // Calculate copy change
@@ -856,11 +863,11 @@ export function generateArchetypeTrends(
 
     // Classify the card
     const classificationStats: CardClassificationStats = {
-      currentPlayrate: lastPlayrate,
+      currentPlayrate: endPlayrate,
       playrateChange,
       volatility,
       avgPlayrate,
-      startPlayrate: firstPlayrate ?? 0
+      startPlayrate
     };
     const category = classifyCard(classificationStats);
 
@@ -875,7 +882,7 @@ export function generateArchetypeTrends(
       set: meta.set,
       number: meta.number,
       category,
-      currentPlayrate: Math.round(lastPlayrate * 10) / 10,
+      currentPlayrate: Math.round(endPlayrate * 10) / 10,
       currentAvgCopies: lastValidCopy?.avg ?? 0,
       currentModeCopies: lastValidCopy?.mode ?? 0,
       playrateChange: Math.round(playrateChange * 10) / 10,
