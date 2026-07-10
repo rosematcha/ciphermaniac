@@ -1863,11 +1863,9 @@ async function main() {
   const fetchWindowStart = daysAgo(fetchWindowDays);
   const basePath = `${R2_REPORTS_PREFIX}/${TARGET_FOLDER}`;
 
-  if (CLEAN_MONTH_CACHE) {
-    console.log(`[online-meta] CLEAN_MONTH_CACHE=true: deleting existing ${basePath} artifacts before rebuild...`);
-    const deleted = await deletePrefix(`${basePath}/`);
-    console.log(`[online-meta] Deleted ${deleted.deleted}/${deleted.keys} objects from ${basePath}/`);
-  }
+  // NOTE: In CLEAN_MONTH_CACHE mode the existing artifacts are deleted only
+  // AFTER a complete, validated report is in hand (see below), so a fetch outage
+  // or an empty report window can no longer wipe production (P-03).
 
   console.log(`[online-meta] Gathering tournaments since ${fetchWindowStart.toISOString()}`);
   const tournaments = await fetchRecentOnlineTournaments(fetchWindowStart);
@@ -1880,12 +1878,22 @@ async function main() {
     throw new Error('No decklists gathered from online tournaments');
   }
 
+  // The published report always describes the WINDOW_DAYS window. When a clean
+  // rebuild fetches a wider window (CACHE_REFRESH_LOOKBACK_DAYS), keep only the
+  // tournaments that actually fall inside the report window — never silently
+  // widen the report to older events while labelling it "Last 14 Days" (P-30).
   const reportWindowStartMs = reportWindowStart.getTime();
-  const inReportWindow = tournaments.filter(tournament => {
+  const reportTournaments = tournaments.filter(tournament => {
     const dateMs = Date.parse(tournament?.date);
     return Number.isFinite(dateMs) && dateMs >= reportWindowStartMs;
   });
-  const reportTournaments = inReportWindow.length ? inReportWindow : tournaments;
+  if (!reportTournaments.length) {
+    throw new Error(
+      `No tournaments fall within the ${WINDOW_DAYS}-day report window ` +
+        `(fetched ${tournaments.length} over ${fetchWindowDays} days); ` +
+        'refusing to publish a mislabelled report'
+    );
+  }
   const reportTournamentIds = new Set(reportTournaments.map(tournament => tournament.id));
   const reportDecks = decks.filter(deck => reportTournamentIds.has(deck?.tournamentId));
   if (!reportDecks.length) {
@@ -1927,10 +1935,48 @@ async function main() {
     }))
   };
 
-  // Always upload meta.json (required for the UI)
-  await putJson(`${basePath}/meta.json`, meta);
+  // Pre-generate every archetype's trends BEFORE any destructive step. Trend
+  // generation is pure/in-memory, so a failure here signals a real bug — surface
+  // it now, while the previous report is still intact, rather than publishing
+  // new decks alongside stale (or missing) trends (P-31).
+  const trendsByBase = new Map();
+  if (GENERATE_ARCHETYPES) {
+    const trendFailures = [];
+    for (const file of archetypeFiles) {
+      const archetypeDecks = decksByArchetype.get(file.base);
+      if (!archetypeDecks) {
+        continue;
+      }
+      try {
+        const archetypeName = file.displayName || file.base.replace(/_/g, ' ');
+        const trends = generateArchetypeTrends(archetypeDecks, reportTournaments, synonymDb, {
+          pairingsData,
+          archetypeName
+        });
+        trendsByBase.set(file.base, trends);
+      } catch (err) {
+        trendFailures.push(`${file.base}: ${err?.message || err}`);
+      }
+    }
+    if (trendFailures.length) {
+      throw new Error(
+        `Trend generation failed for ${trendFailures.length} archetype(s): ${trendFailures.join('; ')}`
+      );
+    }
+  }
 
-  // Conditionally upload based on feature flags
+  // Everything needed for a complete report is now in hand. In clean mode it is
+  // finally safe to clear the old artifacts (P-03): a fetch outage, empty window,
+  // or trend bug above already aborted without touching production.
+  if (CLEAN_MONTH_CACHE) {
+    console.log(`[online-meta] CLEAN_MONTH_CACHE=true: deleting existing ${basePath} artifacts before rebuild...`);
+    const deleted = await deletePrefix(`${basePath}/`);
+    console.log(`[online-meta] Deleted ${deleted.deleted}/${deleted.keys} objects from ${basePath}/`);
+  }
+
+  // Conditionally upload based on feature flags. meta.json — the pointer the UI
+  // reads first — is written LAST (after the include-exclude block below) so a
+  // partial upload never advertises a report whose bodies are missing (P-03).
   if (GENERATE_MASTER) {
     console.log('[online-meta] Uploading master.json...');
     await putJson(`${basePath}/master.json`, masterReport);
@@ -1959,16 +2005,10 @@ async function main() {
       if (archetypeDecks) {
         await putJson(`${basePath}/archetypes/${file.base}/decks.json`, archetypeDecks);
 
-        // Generate and upload trends.json for each archetype
-        try {
-          const archetypeName = file.displayName || file.base.replace(/_/g, ' ');
-          const trends = generateArchetypeTrends(archetypeDecks, reportTournaments, synonymDb, {
-            pairingsData,
-            archetypeName
-          });
+        // Upload the trends.json pre-generated above.
+        const trends = trendsByBase.get(file.base);
+        if (trends) {
           await putJson(`${basePath}/archetypes/${file.base}/trends.json`, trends);
-        } catch (err) {
-          console.error(`[online-meta] Failed to generate trends for ${file.base}:`, err.message || err);
         }
       }
     }
@@ -2032,6 +2072,11 @@ async function main() {
 
   // Note: Online tournaments are NOT added to tournaments.json
   // They are treated as a special case in the UI
+
+  // meta.json is the pointer the UI loads first — write it LAST so a partial
+  // upload never advertises a report whose bodies are missing (P-03).
+  console.log('[online-meta] Uploading meta.json (pointer, written last)...');
+  await putJson(`${basePath}/meta.json`, meta);
 
   const uploadedComponents = [];
   if (GENERATE_MASTER) uploadedComponents.push('master');

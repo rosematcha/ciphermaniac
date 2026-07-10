@@ -26,6 +26,7 @@ import type {
   TournamentParticipant
 } from '../types';
 import { getCanonicalCardFromData, type SynonymDatabase } from '../../shared/synonyms.js';
+import { cardNumberIndexKey, normalizeCardNumber } from '../../shared/cardUtils.js';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { calculatePercentage } from '../../shared/reportUtils.js';
 import type { UpcomingPayload } from '../../shared/upcomingTypes.js';
@@ -162,15 +163,28 @@ function tournamentPath(name: string): string {
 // --- Read-time canonicalization ("symlink" model) ---
 
 /**
+ * Normalize a card number for the SPA's `SET::NUMBER` synonym/snapshot index
+ * keys. Delegates to the shared helper so the keys the SPA builds can never
+ * drift from the ones the index producers write; lowercase-suffixed URLs
+ * resolve the same way the edge 301 does.
+ */
+export function setNumberKey(value: string | number): string {
+  return cardNumberIndexKey(value);
+}
+
+/**
  * Compute the UID for a card item. Prefers an explicit `uid` field, then
- * `Name::SET::NUMBER`, then bare name as a last resort.
+ * `Name::SET::NUMBER`, then bare name as a last resort. The number is
+ * zero-padded to the synonym DB's canonical form (e.g. `098`, not `98`) so the
+ * fallback UID hits the synonym index consistently.
  */
 export function itemUid(item: CardItem): string {
   if (item.uid) {
     return item.uid;
   }
   if (item.set && item.number !== undefined && item.number !== null) {
-    return `${item.name}::${item.set}::${item.number}`;
+    const num = normalizeCardNumber(item.number) || String(item.number);
+    return `${item.name}::${item.set}::${num}`;
   }
   return item.name;
 }
@@ -209,9 +223,12 @@ export function canonicalizeReport<T extends { deckTotal: number; items: AnyCard
 
     const existing = grouped.get(canonicalUid);
     if (!existing) {
-      // First occurrence — clone and stamp with canonical identity.
+      // First occurrence — clone and stamp with canonical identity. Only
+      // rewrite name/set/number when a real synonym mapping applied
+      // (canonicalUid !== uid); otherwise keep the item's own display fields so
+      // the padded lookup UID doesn't leak into the rendered number.
       const next: AnyCardItem = { ...item, uid: canonicalUid };
-      if (canonicalParts && canonicalParts.length >= 3) {
+      if (canonicalUid !== uid && canonicalParts && canonicalParts.length >= 3) {
         next.name = canonicalParts[0];
         next.set = canonicalParts[1];
         next.number = canonicalParts[2];
@@ -256,6 +273,38 @@ export function canonicalizeReport<T extends { deckTotal: number; items: AnyCard
 
   // Recompute derived stats now that variants are merged.
   for (const item of grouped.values()) {
+    // A deck that ran two variant printings of one canonical card is counted in
+    // each variant row's `found`, so naively summing double-counts it (pct can
+    // exceed 100%). When per-deck identity is available (archetype reports carry
+    // `deckInstances`), dedupe by deckId and recompute `found` from the distinct
+    // decks. Otherwise (pre-aggregated master rows without deckIds) the overlap
+    // can't be recovered, so clamp `found` to the deck total as a floor defense.
+    if (item.deckInstances?.length) {
+      const seen = new Set<string>();
+      const deduped: Array<{ deckId: string; count: number; archetype?: string }> = [];
+      for (const inst of item.deckInstances) {
+        const id = inst?.deckId;
+        if (id) {
+          if (seen.has(id)) {
+            continue;
+          }
+          seen.add(id);
+        }
+        deduped.push(inst);
+      }
+      if (deduped.length !== item.deckInstances.length) {
+        item.deckInstances = deduped;
+        item.found = deduped.length;
+      }
+    }
+    if (item.found !== undefined && item.found > report.deckTotal) {
+      // A producer double-counted a canonical card. Clamp so the UI stays
+      // sane, but say so — silently rendering 100% would hide the regression.
+      console.warn(
+        `[canonicalizeReport] found (${item.found}) exceeds deckTotal (${report.deckTotal}) for ${item.uid ?? item.name}; clamping`
+      );
+      item.found = report.deckTotal;
+    }
     item.pct = calculatePercentage(item.found ?? 0, report.deckTotal);
     if (item.dist) {
       for (const d of item.dist) {
@@ -619,7 +668,7 @@ export function snapshotDateForCard(index: SnapshotIndex | null, set: string, nu
     return null;
   }
   const setU = set.toUpperCase();
-  const numTrim = String(number).replace(/^0+/, '') || '0';
+  const numTrim = setNumberKey(number);
   return index.cardsBySetNumber[`${setU}::${numTrim}`] ?? null;
 }
 
@@ -1190,7 +1239,7 @@ export async function resolveCanonicalSetNumber(
     return null;
   }
   const index = getSetNumberCanonicalIndex(db);
-  const key = `${set.toUpperCase()}::${number.replace(/^0+/, '') || '0'}`;
+  const key = `${set.toUpperCase()}::${setNumberKey(number)}`;
   const canonical = index.get(key);
   if (!canonical || canonical.key === key) {
     return null;
@@ -1214,12 +1263,12 @@ function getSetNumberCanonicalIndex(db: { synonyms: Record<string, string> }) {
       continue;
     }
     const vSet = parts[1].toUpperCase();
-    const vNum = parts[2].replace(/^0+/, '') || '0';
+    const vNum = setNumberKey(parts[2]);
     const cParts = canonicalUid.split('::');
     if (cParts.length < 3) {
       continue;
     }
-    const cKey = `${cParts[1].toUpperCase()}::${cParts[2].replace(/^0+/, '') || '0'}`;
+    const cKey = `${cParts[1].toUpperCase()}::${setNumberKey(cParts[2])}`;
     index.set(`${vSet}::${vNum}`, { key: cKey, set: cParts[1], number: cParts[2] });
   }
   setNumberIndexCache.set(db, index);

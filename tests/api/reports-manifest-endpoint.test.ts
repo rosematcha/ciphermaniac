@@ -48,3 +48,59 @@ test('reports manifest endpoint reports master size and db availability', async 
     globalThis.fetch = originalFetch;
   }
 });
+
+// --- P-18: storage failures must not be masked as a 404 ---
+
+async function callManifest(status: number | 'network'): Promise<Response> {
+  // Every probe (both mirrors, master + db) resolves the same way, simulating
+  // a total storage outage.
+  const original = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    if (status === 'network') {
+      throw new Error('connection reset');
+    }
+    return new Response(null, { status });
+  }) as typeof fetch;
+  try {
+    const request = new Request('https://ciphermaniac.com/reports/Some%20Event/manifest.json');
+    return await onRequestGet({ request, params: { tournament: 'Some Event' } });
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+test('reports manifest returns 503 (not 404) when master probe 5xxs', async () => {
+  const response = await callManifest(500);
+  assert.strictEqual(response.status, 503);
+  assert.strictEqual(response.headers.get('Cache-Control'), 'no-store');
+});
+
+test('reports manifest returns 503 when master probe hits a network error', async () => {
+  const response = await callManifest('network');
+  assert.strictEqual(response.status, 503);
+});
+
+test('reports manifest still returns 404 when the report is genuinely absent', async () => {
+  const response = await callManifest(404);
+  assert.strictEqual(response.status, 404);
+});
+
+test('reports manifest returns 503 when master exists but the db probe 5xxs', async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    const method = (init?.method || 'GET').toUpperCase();
+    if (method === 'HEAD' && url.includes('/master.json')) {
+      return new Response(null, { status: 200, headers: { 'content-length': '10' } });
+    }
+    // tournament.db probe: storage error
+    return new Response(null, { status: 503 });
+  }) as typeof fetch;
+  try {
+    const request = new Request('https://ciphermaniac.com/reports/Some%20Event/manifest.json');
+    const response = await onRequestGet({ request, params: { tournament: 'Some Event' } });
+    assert.strictEqual(response.status, 503);
+  } finally {
+    globalThis.fetch = original;
+  }
+});

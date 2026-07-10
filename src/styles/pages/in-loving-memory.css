@@ -39,7 +39,7 @@
   transform: translate(-1px, -1px);
   box-shadow: var(--shadow-1);
 }
-.ilm-arche[aria-pressed='true'] {
+.ilm-arche[aria-checked='true'] {
   background: var(--accent);
   color: var(--accent-fg);
   border-color: var(--accent);
@@ -75,7 +75,7 @@
   font-variant-numeric: tabular-nums;
   text-transform: uppercase;
 }
-.ilm-arche[aria-pressed='true'] .ilm-arche-count {
+.ilm-arche[aria-checked='true'] .ilm-arche-count {
   color: color-mix(in srgb, var(--accent-fg) 70%, transparent);
 }
 

@@ -427,6 +427,9 @@ async function main() {
 
   if (cardsToFetch.length === 0) {
     console.log('✅ All cards are already in the database!');
+    // Still (re)write the slim evolves-from.json companion — the CI upload step
+    // expects it to exist even when no new cards were fetched (P-19).
+    await saveDatabase(database);
     return;
   }
 

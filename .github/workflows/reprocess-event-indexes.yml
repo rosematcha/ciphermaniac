@@ -34,6 +34,23 @@ on:
         description: 'Process at most N events (optional; blank = all)'
         required: false
         type: string
+  # Reusable: the synonyms workflow calls this (with dry_run=false) after a
+  # successful publish so derived indexes never lag the new canonicals (P-32).
+  workflow_call:
+    inputs:
+      dry_run:
+        description: 'Compute and log changes without uploading'
+        required: false
+        type: boolean
+        default: true
+      only:
+        description: 'Process a single event folder by exact name (optional)'
+        required: false
+        type: string
+      limit:
+        description: 'Process at most N events (optional; blank = all)'
+        required: false
+        type: string
 
 concurrency:
   group: reprocess-event-indexes-${{ github.ref }}

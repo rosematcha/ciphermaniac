@@ -101,12 +101,32 @@ function parseUpcoming(html: string): UpcomingEvent[] {
       format,
       type: classifyType(name),
       limitlessUrl: limitlessMatch ? `https://limitlesstcg.com${limitlessMatch[1]}` : undefined,
-      externalUrl: externalMatch ? externalMatch[1] : undefined
+      externalUrl: externalMatch ? sanitizeExternalUrl(externalMatch[1]) : undefined
     });
   }
   // Already in ascending-date order on the source page, but make it explicit.
   events.sort((a, b) => a.date.localeCompare(b.date));
   return events;
+}
+
+/**
+ * The href is captured raw from HTML, so it still contains entities like
+ * `&amp;` that would corrupt query params (`?a=1&amp;b=2` → a broken `amp;b`).
+ * Decode it, then only emit http(s) URLs — anything else (javascript:, data:,
+ * malformed) is dropped rather than surfaced as a clickable link.
+ */
+function sanitizeExternalUrl(raw: string): string | undefined {
+  const decoded = decodeHtmlEntities(raw);
+  let parsed: URL;
+  try {
+    parsed = new URL(decoded);
+  } catch {
+    return undefined;
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return undefined;
+  }
+  return decoded;
 }
 
 function classifyType(name: string): UpcomingEvent['type'] {

@@ -1,4 +1,4 @@
-import { createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { fetchMeta, fetchTournamentsList, prettyTournamentName } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
@@ -22,6 +22,25 @@ export function TournamentSelector() {
       return all;
     }
     return all.filter(t => t.toLowerCase().includes(q));
+  });
+
+  // Reconcile a stale localStorage selection: if the persisted tournament is no
+  // longer in the published list (renamed / removed), every report fetch would
+  // 404. Once the list loads, fall back to the online-meta default and rewrite
+  // storage. Only the value hydrated at mount is checked — a later programmatic
+  // selection (e.g. a ?tour= deep link on ArchetypePage) can legitimately name
+  // a fresh tournament that the edge-cached tournaments.json doesn't list yet,
+  // and must not be clobbered.
+  const hydratedSelection = tournament();
+  createEffect(() => {
+    const list = tournaments();
+    if (!list || list.length === 0) {
+      return;
+    }
+    const current = tournament();
+    if (current !== ONLINE_META_NAME && current === hydratedSelection && !list.includes(current)) {
+      setTournament(ONLINE_META_NAME);
+    }
   });
 
   const sorted = createMemo(() => {

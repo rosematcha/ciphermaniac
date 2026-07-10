@@ -72,6 +72,40 @@ test('archetype filter-report endpoint validates payload', async () => {
   assert.strictEqual(response.status, 400);
 });
 
+test('archetype filter-report returns 400 for an unknown successFilter', async () => {
+  // Regression for P-17: a typo'd bracket used to pass through and silently
+  // return every deck. It must now 400 before any deck load.
+  const request = new Request('https://ciphermaniac.com/api/archetype/filter-report', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tournament: 'Online - Last 14 Days',
+      archetype: 'Dragapult_Dusknoir',
+      successFilter: 'winer',
+      filters: []
+    })
+  });
+
+  const response = await onRequestPost({ request });
+  assert.strictEqual(response.status, 400);
+});
+
+test('archetype filter-report returns 400 for an unknown quantity operator', async () => {
+  const request = new Request('https://ciphermaniac.com/api/archetype/filter-report', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tournament: 'Online - Last 14 Days',
+      archetype: 'Dragapult_Dusknoir',
+      successFilter: 'all',
+      filters: [{ cardId: 'SVI~191', operator: 'exactly', count: 1 }]
+    })
+  });
+
+  const response = await onRequestPost({ request });
+  assert.strictEqual(response.status, 400);
+});
+
 test('archetype filter-report CORS preflight returns 204 with correct headers', () => {
   const response = onRequestOptions();
   assert.strictEqual(response.status, 204);

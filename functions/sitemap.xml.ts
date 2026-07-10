@@ -121,8 +121,11 @@ function buildSynonymExclusions(synonyms: Record<string, string> | undefined): S
 }
 
 export async function onRequest({ request, env }: RequestContext): Promise<Response> {
-  // Serve from Cloudflare Cache API to avoid re-generating on every request
-  const cacheKey = new URL(request.url);
+  // Serve from Cloudflare Cache API to avoid re-generating on every request.
+  // Normalize the cache key to origin + '/sitemap.xml' so query strings
+  // (e.g. ?nonce=unique) can't bypass the cache and force a full R2 read +
+  // regeneration on every request.
+  const cacheKey = new URL('/sitemap.xml', new URL(request.url).origin).toString();
   const cache = caches.default;
   const cachedResponse = await cache.match(cacheKey);
   if (cachedResponse) {

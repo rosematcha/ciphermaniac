@@ -13,6 +13,10 @@ const MAX_PAYLOAD_SIZE = 1024 * 1024;
 // Maximum allowed feedback text length in characters (in addition to the byte cap)
 const MAX_FEEDBACK_TEXT_LENGTH = 10_000;
 
+// The only feedback categories the UI offers. Anything else is a malformed or
+// scripted submission and is rejected.
+const ALLOWED_FEEDBACK_TYPES = new Set(['bug', 'feature']);
+
 // In-memory rate limiter (per-isolate; acceptable for edge functions).
 // 5 requests per IP per hour.
 const rateLimiter = createRateLimiter({
@@ -154,6 +158,15 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
     // pattern as the survey endpoint) so bots don't learn they were caught.
     if (typeof feedbackData.hp === 'string' && feedbackData.hp.trim()) {
       return jsonSuccess({ success: true });
+    }
+
+    // Normalize and require real content: trimmed text must be non-empty and the
+    // type must be one the UI actually offers. Otherwise an empty or garbage
+    // submission would still send an email and report success.
+    feedbackData.feedbackType = feedbackData.feedbackType.trim();
+    feedbackData.feedbackText = feedbackData.feedbackText.trim();
+    if (!ALLOWED_FEEDBACK_TYPES.has(feedbackData.feedbackType) || !feedbackData.feedbackText) {
+      return jsonError('Missing required fields', 400, { 'Access-Control-Allow-Origin': '*' });
     }
 
     if (feedbackData.feedbackText.length > MAX_FEEDBACK_TEXT_LENGTH) {

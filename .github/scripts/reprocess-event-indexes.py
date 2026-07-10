@@ -166,8 +166,10 @@ def reprocess_event(client, bucket, folder, synonyms, canonicals, dry_run=False)
         summary["errors"].append("no archetype cards.json found")
 
     # conversion.json — rebuild from the stored decks.json. build_conversion_index
-    # returns None when no deck made Day 2; match download-tournament and only
-    # write when there is a cut (leave any existing file untouched otherwise).
+    # returns None when no deck made Day 2. If the event previously had a cut and
+    # no longer does (e.g. corrected placements), the stale conversion.json must
+    # be deleted — the frontend prefers it over the decks.json fallback and would
+    # otherwise show phantom Day 2 stats (P-08).
     decks = fetched.get("decks")
     if decks:
         conversion = dt.build_conversion_index(decks, synonyms, canonicals)
@@ -177,6 +179,10 @@ def reprocess_event(client, bucket, folder, synonyms, canonicals, dry_run=False)
                                      "new_cards": len(conversion.get("cards", {}))}
             if not dry_run:
                 dt.upload_to_r2(client, bucket, f"{base}/conversion.json", conversion)
+        elif fetched.get("old_conversion") is not None:
+            summary["conversion"] = {"deleted": "no Day 2 cut"}
+            if not dry_run:
+                dt.delete_from_r2(client, bucket, f"{base}/conversion.json")
         else:
             summary["conversion"] = {"skipped": "no Day 2 cut"}
     else:
@@ -218,8 +224,14 @@ def main():
         cu = s["cardUsage"]
         cv = s["conversion"]
         cu_txt = f"cardUsage {cu['old_keys']}→{cu['new_keys']} keys ({cu['archetypes']} archetypes)" if cu else "cardUsage —"
-        cv_txt = (f"conversion {cv['old_cards']}→{cv['new_cards']} cards" if cv and "new_cards" in cv
-                  else ("conversion skipped (no cut)" if cv else "conversion —"))
+        if cv and "new_cards" in cv:
+            cv_txt = f"conversion {cv['old_cards']}→{cv['new_cards']} cards"
+        elif cv and "deleted" in cv:
+            cv_txt = "conversion deleted (no cut)"
+        elif cv:
+            cv_txt = "conversion skipped (no cut)"
+        else:
+            cv_txt = "conversion —"
         flag = "  ⚠ " + "; ".join(s["errors"]) if s["errors"] else ""
         print(f"  ✓ {folder}: {cu_txt}; {cv_txt}{flag}")
         processed += 1

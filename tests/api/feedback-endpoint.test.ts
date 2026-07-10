@@ -103,6 +103,38 @@ test('Feedback API - missing required fields returns 400', async () => {
   assert.ok(body.error);
 });
 
+// --- P-38: empty / whitespace / disallowed-type submissions must be rejected ---
+
+test('Feedback API - empty feedbackType and feedbackText returns 400 (no email)', async () => {
+  _resetRateLimitStore();
+  const env = { RESEND_API_KEY: 'k' } as any;
+  const res = await onRequestPost({
+    request: makeJsonRequest({ feedbackType: '', feedbackText: '' }),
+    env
+  });
+  assert.strictEqual(res.status, 400);
+});
+
+test('Feedback API - whitespace-only feedbackText returns 400', async () => {
+  _resetRateLimitStore();
+  const env = { RESEND_API_KEY: 'k' } as any;
+  const res = await onRequestPost({
+    request: makeJsonRequest({ feedbackType: 'bug', feedbackText: '   \n\t ' }),
+    env
+  });
+  assert.strictEqual(res.status, 400);
+});
+
+test('Feedback API - disallowed feedbackType returns 400', async () => {
+  _resetRateLimitStore();
+  const env = { RESEND_API_KEY: 'k' } as any;
+  const res = await onRequestPost({
+    request: makeJsonRequest({ feedbackType: 'spam', feedbackText: 'real content' }),
+    env
+  });
+  assert.strictEqual(res.status, 400);
+});
+
 test('Feedback API - platform-specific validation: mobile requires mobileOS/mobileBrowser when platform mobile (but still accepts missing optional fields)', async () => {
   // Mock Resend success
   mockFetch({ 'https://api.resend.com/emails': { status: 200, body: { id: 'ok' } } });

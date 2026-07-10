@@ -42,6 +42,11 @@ jobs:
   update-synonyms:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      # Semantic flag emitted by the script (mappings only, metadata excluded):
+      # the raw file diff is always dirty because metadata.generated changes
+      # every run, so it must not gate downstream reprocessing.
+      mappings_changed: ${{ steps.generate.outputs.mappings_changed }}
 
     steps:
       - name: Checkout repository
@@ -57,6 +62,7 @@ jobs:
         run: npm ci
 
       - name: Generate and upload card synonyms
+        id: generate
         run: node .github/scripts/update-card-synonyms.mjs
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
@@ -95,3 +101,15 @@ jobs:
           else
             echo "No changes - synonyms are up to date" >> $GITHUB_STEP_SUMMARY
           fi
+
+  # When synonyms change, re-bake every stored event's derived cardUsage.json /
+  # conversion.json against the new canonicals (P-32). The reprocess job reads
+  # synonyms and event data straight from R2 over authenticated S3, so it never
+  # sees the stale public edge cache. Runs live (dry_run=false).
+  reprocess-indexes:
+    needs: update-synonyms
+    if: needs.update-synonyms.outputs.mappings_changed == 'true'
+    uses: ./.github/workflows/reprocess-event-indexes.yml
+    with:
+      dry_run: false
+    secrets: inherit

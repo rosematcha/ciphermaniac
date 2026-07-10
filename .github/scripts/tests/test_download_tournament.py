@@ -36,11 +36,12 @@ class _FakeR2Client:
     def __init__(self, objects):
         self._objects = dict(objects)
         self.put_calls = []
+        self.deleted_keys = []
 
     def get_object(self, Bucket, Key):
         if Key not in self._objects:
             raise self.exceptions.NoSuchKey(Key)
-        return {"Body": _FakeBody(self._objects[Key])}
+        return {"Body": _FakeBody(self._objects[Key]), "ETag": f'"{Key}"'}
 
     def put_object(self, Bucket, Key, Body, ContentType, **kwargs):
         body_text = Body if isinstance(Body, str) else Body.decode("utf-8")
@@ -51,8 +52,13 @@ class _FakeR2Client:
                 "Key": Key,
                 "Body": body_text,
                 "ContentType": ContentType,
+                "kwargs": kwargs,
             }
         )
+
+    def delete_object(self, Bucket, Key):
+        self._objects.pop(Key, None)
+        self.deleted_keys.append(Key)
 
     def list_objects_v2(self, Bucket, Prefix, Delimiter, ContinuationToken=None):
         folders = []
@@ -181,6 +187,47 @@ class DownloadTournamentTests(unittest.TestCase):
                 "2025-11-29, Regional Championship Stuttgart",
             ],
         )
+
+    def test_update_tournaments_json_aborts_on_transient_read_error(self):
+        # A non-NoSuchKey failure reading the index must abort without a PUT so a
+        # transient R2 error can't replace the whole index with one entry (P-01).
+        class _FlakyClient(_FakeR2Client):
+            def get_object(self, Bucket, Key):
+                if Key == "reports/tournaments.json":
+                    raise RuntimeError("simulated 500 from R2")
+                return super().get_object(Bucket, Key)
+
+        client = _FlakyClient({"reports/tournaments.json": json.dumps(["Existing Event"])})
+        with self.assertRaises(RuntimeError):
+            download_tournament.update_tournaments_json(client, "bucket", "New Event")
+        index_puts = [c for c in client.put_calls if c["Key"] == "reports/tournaments.json"]
+        self.assertEqual(index_puts, [])
+        # Original index left untouched.
+        self.assertEqual(json.loads(client._objects["reports/tournaments.json"]), ["Existing Event"])
+
+    def test_update_tournaments_json_uses_conditional_put(self):
+        objects = {
+            "reports/tournaments.json": json.dumps(["2026-02-13, International Championship London"]),
+            "reports/2026-02-13, International Championship London/meta.json": json.dumps(
+                {"date": "February 13–15, 2026", "startDate": "2026-02-13"}
+            ),
+            "reports/2026-02-27, Regional Championship Seattle/meta.json": json.dumps(
+                {"date": "February 27–March 1, 2026", "startDate": "2026-02-27"}
+            ),
+        }
+        client = _FakeR2Client(objects)
+        download_tournament.update_tournaments_json(
+            client, "bucket", "2026-02-27, Regional Championship Seattle"
+        )
+        index_put = next(c for c in client.put_calls if c["Key"] == "reports/tournaments.json")
+        # An existing object → If-Match guard against a concurrent overwrite (P-07).
+        self.assertEqual(index_put["kwargs"].get("IfMatch"), '"reports/tournaments.json"')
+
+    def test_delete_from_r2_removes_key(self):
+        client = _FakeR2Client({"reports/x/conversion.json": "{}"})
+        download_tournament.delete_from_r2(client, "bucket", "reports/x/conversion.json")
+        self.assertNotIn("reports/x/conversion.json", client._objects)
+        self.assertIn("reports/x/conversion.json", client.deleted_keys)
 
     def test_rebuild_tournaments_json_from_reports_dry_run_does_not_upload(self):
         objects = {

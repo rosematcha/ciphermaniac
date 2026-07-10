@@ -218,7 +218,16 @@ export function HomePage() {
         >
           <Show
             when={(upcomingData()!.events ?? []).length > 0}
-            fallback={<EmptyState title='No upcoming tournaments listed.' />}
+            fallback={
+              upcomingData()!.parseWarning ? (
+                <EmptyState
+                  title='Upcoming tournaments are temporarily unavailable.'
+                  description="We couldn't read the latest list from Limitless. This is usually brief — check back soon."
+                />
+              ) : (
+                <EmptyState title='No upcoming tournaments listed.' />
+              )
+            }
           >
             <div class='tournament-list'>
               <For each={upcomingData()!.events.slice(0, UPCOMING_COUNT)}>

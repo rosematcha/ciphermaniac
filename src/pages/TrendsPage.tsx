@@ -33,6 +33,7 @@ import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { createPersistentSignal } from '../lib/persistentSignal';
 import { latestValue } from '../lib/resource';
+import { DAY_MS, parseReportDate, windowCutoff } from '../lib/trendWindow';
 import '../styles/pages/trends.css';
 
 type Source = 'online' | 'majors';
@@ -69,7 +70,6 @@ const ARCHETYPE_LINE_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-
 const TOP_ARCHETYPES_FOR_CHART = 6;
 /** Never draw more than this many lines at once — the chart stays readable. */
 const MAX_VISIBLE_SERIES = 8;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Stable line color for a series by its rank index (cycles the palette). */
 function lineColor(index: number): string {
@@ -100,13 +100,10 @@ function relativeTimeFrom(iso: string | undefined): string | null {
   return `${days} day${days === 1 ? '' : 's'} ago`;
 }
 
-/** "Jun 6 to Jul 6" from two YYYY-MM-DD strings, or null if either is unparseable. */
+/** "Jun 6 to Jul 6" from two date strings (YYYY-MM-DD or full ISO), or null if either is unparseable. */
 function formatDateWindow(start: string | undefined, end: string | undefined): string | null {
   const fmt = (d: string | undefined): string | null => {
-    if (!d) {
-      return null;
-    }
-    const t = Date.parse(`${d}T12:00:00Z`);
+    const t = parseReportDate(d);
     if (!Number.isFinite(t)) {
       return null;
     }
@@ -334,17 +331,35 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
     // Anchor the window to the payload's own end date, not Date.now(). If the
     // cron lags, wall-clock "now" drifts past the newest data and a 7-day window
     // would slide off the end; anchoring to windowEnd keeps the window aligned
-    // with what the file actually contains.
-    const windowEndMs = Date.parse(`${report.windowEnd}T12:00:00Z`);
-    const anchorMs = Number.isFinite(windowEndMs) ? windowEndMs : Date.now();
-    const cutoffMs = anchorMs - windowDays * DAY_MS;
+    // with what the file actually contains. `windowEnd` may be a bare date or a
+    // full ISO timestamp (the producer emits `toISOString()`); parseReportDate
+    // handles both.
+    const parsedEnd = parseReportDate(report.windowEnd);
+    // Deterministic fallback when windowEnd is missing/unparseable: the latest
+    // timeline date actually present in the file — never wall-clock now.
+    let latestPoint = NaN;
+    for (const s of report.series) {
+      for (const p of s.timeline ?? []) {
+        const t = parseReportDate(p.date);
+        if (Number.isFinite(t) && (!Number.isFinite(latestPoint) || t > latestPoint)) {
+          latestPoint = t;
+        }
+      }
+    }
+    const anchorMs = Number.isFinite(parsedEnd) ? parsedEnd : latestPoint;
+    if (!Number.isFinite(anchorMs)) {
+      return { series: [], days: [] };
+    }
+    // Inclusive window: the anchor day plus the (windowDays - 1) days before it.
+    // Subtracting the full windowDays would admit N+1 calendar days.
+    const cutoffMs = windowCutoff(anchorMs, windowDays);
 
     // Union of all dates across archetypes that fall in window (some archetypes
     // may skip days). Sorted ascending.
     const dateSet = new Set<string>();
     for (const s of report.series) {
       for (const p of s.timeline ?? []) {
-        const t = Date.parse(`${p.date}T12:00:00Z`);
+        const t = parseReportDate(p.date);
         if (Number.isFinite(t) && t >= cutoffMs) {
           dateSet.add(p.date);
         }

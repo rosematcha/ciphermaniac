@@ -192,15 +192,23 @@ export function computeMajorsMovers(snapshots: EventSnapshot[], newcomerMin = NE
 
   const avgFor = (maps: Map<string, CardItem>[], weights: number[], key: string): number | null => {
     let sum = 0;
-    let weight = 0;
+    let totalWeight = 0;
+    let appeared = false;
     for (let i = 0; i < maps.length; i++) {
+      // Denominator is the total weight of EVERY event in the half — an event
+      // where the card is absent counts as a 0% share, not omitted. Otherwise a
+      // card in one of two equal events reads as its full local share (20%)
+      // instead of the true pooled share (10%).
+      totalWeight += weights[i];
       const item = maps[i].get(key);
       if (item && Number.isFinite(item.pct)) {
         sum += item.pct * weights[i];
-        weight += weights[i];
+        appeared = true;
       }
     }
-    return weight === 0 ? null : sum / weight;
+    // Null only when the card never appears in this half (preserves newcomer
+    // detection, which keys off olderAvg === null).
+    return appeared && totalWeight > 0 ? sum / totalWeight : null;
   };
   const appearancesFor = (maps: Map<string, CardItem>[], key: string): number =>
     maps.reduce((n, m) => (m.has(key) ? n + 1 : n), 0);

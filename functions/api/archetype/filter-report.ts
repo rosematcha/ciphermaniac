@@ -1,5 +1,12 @@
 import { corsPreflight, jsonError, jsonResponse } from '../../lib/api/responses.js';
-import { filterDecksBySuccess, generateReportForFilters } from '../../../src/utils/clientSideFiltering.js';
+import {
+  filterDecksBySuccess,
+  generateReportForFilters,
+  QUANTITY_OPERATORS,
+  SUCCESS_TAG_HIERARCHY
+} from '../../../src/utils/clientSideFiltering.js';
+import { canonicalizeDeckCard } from '../../../src/utils/deckCardId.js';
+import { loadCardSynonyms } from '../../lib/data/cardSynonyms.js';
 import type { ArchetypeFilterRequest, Filter } from '../../../src/types/index.js';
 
 const JSON_HEADERS = {
@@ -13,8 +20,22 @@ const RESPONSE_CACHE_CONTROL = 'public, max-age=60, s-maxage=180';
 // deck list, so an unbounded array is an easy CPU-exhaustion vector.
 const MAX_FILTERS = 50;
 
+// Allowlisted success brackets: the canonical tag hierarchy plus "all". An
+// unknown value used to pass through and silently return every deck; now it
+// 400s.
+const VALID_SUCCESS_FILTERS = new Set(['all', ...SUCCESS_TAG_HIERARCHY]);
+
+// Allowlisted quantity operators. Empty / absent means "none" (exclude, count
+// must be 0). Any other non-empty string is rejected so a typo can't broaden
+// results.
+const VALID_OPERATORS = new Set(QUANTITY_OPERATORS);
+
+/** Sentinel: a filter carried an unknown operator → reject the whole payload. */
+const INVALID_FILTER = Symbol('invalid-filter');
+
 interface RequestContext {
   request: Request;
+  env?: Parameters<typeof loadCardSynonyms>[0];
 }
 
 function normalizeString(value: unknown): string {
@@ -29,7 +50,7 @@ function normalizeSlice(value: unknown): 'all' | 'phase2' | 'topcut' {
   return 'all';
 }
 
-function normalizeFilter(raw: unknown): Filter | null {
+function normalizeFilter(raw: unknown): Filter | null | typeof INVALID_FILTER {
   if (!raw || typeof raw !== 'object') {
     return null;
   }
@@ -38,7 +59,11 @@ function normalizeFilter(raw: unknown): Filter | null {
   if (!cardId) {
     return null;
   }
-  const operator = normalizeString(record.operator || null) || null;
+  const rawOperator = normalizeString(record.operator);
+  if (rawOperator && !VALID_OPERATORS.has(rawOperator)) {
+    return INVALID_FILTER;
+  }
+  const operator = rawOperator || null;
   const numericCount = Number(record.count);
   const count = Number.isFinite(numericCount) ? numericCount : null;
   return {
@@ -61,13 +86,27 @@ function normalizePayload(raw: unknown): ArchetypeFilterRequest | null {
     return null;
   }
 
+  if (!VALID_SUCCESS_FILTERS.has(successFilter)) {
+    return null;
+  }
+
   if (Array.isArray(record.filters) && record.filters.length > MAX_FILTERS) {
     return null;
   }
 
-  const filters = Array.isArray(record.filters)
-    ? record.filters.map(normalizeFilter).filter((entry): entry is Filter => Boolean(entry))
-    : [];
+  const filters: Filter[] = [];
+  if (Array.isArray(record.filters)) {
+    for (const raw of record.filters) {
+      const normalized = normalizeFilter(raw);
+      if (normalized === INVALID_FILTER) {
+        // An unknown operator is a client error, not something to silently drop.
+        return null;
+      }
+      if (normalized) {
+        filters.push(normalized);
+      }
+    }
+  }
 
   return {
     tournament,
@@ -151,7 +190,22 @@ async function buildCacheRequest(request: Request, payload: ArchetypeFilterReque
   });
 }
 
-export async function onRequestPost({ request }: RequestContext): Promise<Response> {
+/**
+ * Rewrite every deck card to its canonical printing so aggregation counts
+ * synonym-unified variants as one card. Without this, the API path splits a
+ * card's playrate across printings while the client panel (which canonicalizes
+ * before aggregating) merges them.
+ */
+function canonicalizeDecks(decks: any[], db: Awaited<ReturnType<typeof loadCardSynonyms>>): any[] {
+  return decks.map(deck => {
+    if (!deck || !Array.isArray(deck.cards)) {
+      return deck;
+    }
+    return { ...deck, cards: deck.cards.map((card: any) => canonicalizeDeckCard(card, db)) };
+  });
+}
+
+export async function onRequestPost({ request, env }: RequestContext): Promise<Response> {
   const rawBody = await request.json().catch(() => null);
   const payload = normalizePayload(rawBody);
   if (!payload) {
@@ -175,7 +229,12 @@ export async function onRequestPost({ request }: RequestContext): Promise<Respon
     });
   }
 
-  const successScopedDecks = filterDecksBySuccess(decks, payload.successFilter);
+  // loadCardSynonyms degrades to an empty DB on failure, in which case
+  // canonicalizeDeckCard is a no-op — same behavior as before this existed.
+  const synonymDb = env ? await loadCardSynonyms(env) : { synonyms: {}, canonicals: {}, metadata: {} };
+  const canonicalDecks = canonicalizeDecks(decks, synonymDb as Awaited<ReturnType<typeof loadCardSynonyms>>);
+
+  const successScopedDecks = filterDecksBySuccess(canonicalDecks, payload.successFilter);
   const report = generateReportForFilters(successScopedDecks, payload.archetype, payload.filters || []);
   const response = jsonResponse(
     {

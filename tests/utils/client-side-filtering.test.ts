@@ -88,8 +88,35 @@ test('filterDecksBySuccess derives success tags from placement data', () => {
   assert.deepEqual(ids, ['tagged', 'winner']);
 });
 
-test('filterDecksBySuccess returns input for unknown tags', () => {
+test('one deck with two printings of the same cardId counts once (pct <= 100)', () => {
+  // After canonicalization, two variant printings of one card share a cardId.
+  // The aggregator must credit the deck's presence once — never >100% playrate —
+  // while summing the copies for the count distribution.
+  const decks: Deck[] = [
+    makeDeck({
+      id: 'd1',
+      archetype: 'Mew',
+      cards: [
+        { name: 'Dragapult ex', set: 'PRE', number: '073', count: 2 },
+        { name: 'Dragapult ex', set: 'PRE', number: '073', count: 1 }
+      ]
+    })
+  ];
+
+  const report = generateReportForFilters(decks, 'Mew', []);
+  const item = report.items.find(i => i.cardId === 'PRE~073');
+  assert.ok(item, 'canonical card should be present');
+  assert.equal(item!.found, 1, 'presence counts the deck once, not per printing');
+  assert.ok(item!.pct <= 100, `pct must not exceed 100, got ${item!.pct}`);
+  // Copies summed across the duplicate rows land in one distribution bucket.
+  const threeCopyBucket = item!.dist.find(d => d.copies === 3);
+  assert.ok(threeCopyBucket, 'summed copies (2 + 1) should form a 3-copy bucket');
+  assert.equal(threeCopyBucket!.players, 1);
+});
+
+test('filterDecksBySuccess throws on unknown tags instead of silently matching all', () => {
   const decks: Deck[] = [makeDeck({ id: 'd1' }), makeDeck({ id: 'd2' })];
-  const filtered = filterDecksBySuccess(decks, 'unknown');
-  assert.equal(filtered.length, decks.length);
+  // A typo'd bucket used to return every deck (silently broadening results);
+  // it must now reject loudly so callers can 400 rather than mislead.
+  assert.throws(() => filterDecksBySuccess(decks, 'unknown'), /Unknown success filter/);
 });
