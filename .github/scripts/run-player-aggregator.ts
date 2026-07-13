@@ -15,7 +15,7 @@
  */
 
 import process from 'node:process';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { createR2Client, createReportsBinding } from './lib/r2.mjs';
 import { buildPlayerAggregates } from '../../functions/lib/onlineMeta/playerAggregator.ts';
 
 function requireEnv(name: string): string {
@@ -46,68 +46,15 @@ const R2_SECRET_ACCESS_KEY = requireEnv('R2_SECRET_ACCESS_KEY');
 const R2_BUCKET_NAME = requireEnv('R2_BUCKET_NAME');
 const FORCE_FULL_REBUILD = parseBoolean(process.env.FORCE_FULL_REBUILD, false);
 
-const s3Client = new S3Client({
-  region: 'auto',
-  endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: R2_ACCESS_KEY_ID,
-    secretAccessKey: R2_SECRET_ACCESS_KEY
-  }
+const s3Client = createR2Client({
+  accountId: R2_ACCOUNT_ID,
+  accessKeyId: R2_ACCESS_KEY_ID,
+  secretAccessKey: R2_SECRET_ACCESS_KEY
 });
 
 // Aggregator uses bare keys (`reports/tournaments.json`, `players/index.json`)
 // so this binding does NOT prefix anything.
-const reportsBinding = {
-  async get(key: string) {
-    try {
-      const response = await s3Client.send(
-        new GetObjectCommand({
-          Bucket: R2_BUCKET_NAME,
-          Key: key
-        })
-      );
-      return {
-        async text() {
-          const chunks: Buffer[] = [];
-          for await (const chunk of response.Body as AsyncIterable<Buffer>) {
-            chunks.push(chunk);
-          }
-          return Buffer.concat(chunks).toString('utf-8');
-        }
-      };
-    } catch (error: any) {
-      if (error?.$metadata?.httpStatusCode === 404 || error?.name === 'NoSuchKey') {
-        return null;
-      }
-      throw error;
-    }
-  },
-  async put(key: string, data: string | ArrayBuffer | ArrayBufferView, opts?: any) {
-    const body =
-      typeof data === 'string'
-        ? data
-        : data instanceof ArrayBuffer
-          ? Buffer.from(new Uint8Array(data))
-          : Buffer.from(data.buffer, data.byteOffset, data.byteLength);
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: R2_BUCKET_NAME,
-        Key: key,
-        Body: body,
-        ContentType: opts?.httpMetadata?.contentType || 'application/json',
-        CacheControl: opts?.httpMetadata?.cacheControl
-      })
-    );
-  },
-  async delete(key: string) {
-    await s3Client.send(
-      new DeleteObjectCommand({
-        Bucket: R2_BUCKET_NAME,
-        Key: key
-      })
-    );
-  }
-};
+const reportsBinding = createReportsBinding(s3Client, R2_BUCKET_NAME);
 
 async function main() {
   const t0 = Date.now();

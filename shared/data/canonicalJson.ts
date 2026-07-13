@@ -1,0 +1,54 @@
+/**
+ * Deterministic JSON serialization for hashing and snapshots.
+ *
+ * Object keys are emitted in sorted order; array order is preserved (arrays are
+ * meaningful sequences, objects are unordered maps). `undefined` object
+ * properties are dropped and `undefined`/non-finite numbers inside arrays
+ * collapse to `null`, mirroring `JSON.stringify` so a canonical string is always
+ * parseable JSON.
+ *
+ * IMPORTANT: this module is environment-neutral — it must work in the browser,
+ * Node.js, and Cloudflare Workers. Do not import `node:crypto` or any other
+ * environment-specific dependency here (hashing lives in `shared/data/hash.ts`).
+ * @module shared/data/canonicalJson
+ */
+
+function serialize(value: unknown): string {
+  if (value === null || value === undefined) {
+    return 'null';
+  }
+  const type = typeof value;
+  if (type === 'number') {
+    return Number.isFinite(value) ? String(value) : 'null';
+  }
+  if (type === 'boolean') {
+    return value ? 'true' : 'false';
+  }
+  if (type === 'string') {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(entry => serialize(entry)).join(',')}]`;
+  }
+  if (type === 'object') {
+    const record = value as Record<string, unknown>;
+    const keys = Object.keys(record)
+      .filter(key => record[key] !== undefined)
+      .sort();
+    const body = keys.map(key => `${JSON.stringify(key)}:${serialize(record[key])}`).join(',');
+    return `{${body}}`;
+  }
+  // Functions, symbols, bigint: not representable — treat as absent.
+  return 'null';
+}
+
+/**
+ * Serialize a value to canonical JSON: sorted object keys, preserved array
+ * order. Two structurally equal values always produce byte-identical output
+ * regardless of the order their keys were inserted.
+ * @param value - The value to serialize
+ * @returns Canonical JSON string
+ */
+export function canonicalStringify(value: unknown): string {
+  return serialize(value);
+}

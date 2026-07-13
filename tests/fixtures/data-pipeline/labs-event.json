@@ -1,0 +1,695 @@
+{
+  "schemaVersion": 1,
+  "eventId": "labs:0001",
+  "kind": "labs-event",
+  "meta": {
+    "name": "Test Regional 2026",
+    "date": "2026-06-15",
+    "playerCount": 24,
+    "format": null,
+    "division": "MA",
+    "hasDay2": true
+  },
+  "participants": [
+    {
+      "participantId": "labs:0001:101",
+      "playerRef": "player-501",
+      "name": "Alice",
+      "country": "US",
+      "placement": 1,
+      "record": {
+        "wins": 6,
+        "losses": 1,
+        "ties": 0
+      },
+      "opwPct": 62.5,
+      "oopwPct": 58,
+      "flags": {
+        "madePhase2": true,
+        "madeTopCut": true,
+        "dropped": false,
+        "dqed": false,
+        "late": false,
+        "decklistPublished": true
+      },
+      "deckId": "sha256:a96f81c1516231d3a715f619b5ba8b889bafc0d7e7527d6da084d054213a8040"
+    },
+    {
+      "participantId": "labs:0001:102",
+      "playerRef": "player-502",
+      "name": "Bob",
+      "country": "CA",
+      "placement": 2,
+      "record": {
+        "wins": 5,
+        "losses": 2,
+        "ties": 0
+      },
+      "opwPct": 60,
+      "oopwPct": 55.5,
+      "flags": {
+        "madePhase2": true,
+        "madeTopCut": true,
+        "dropped": false,
+        "dqed": false,
+        "late": false,
+        "decklistPublished": true
+      },
+      "deckId": "sha256:30fa59238bb2ff819cc74eded0649a191ba55dfae3b964f93880704506e76d2f"
+    },
+    {
+      "participantId": "labs:0001:103",
+      "playerRef": "player-503",
+      "name": "Cleo",
+      "country": "GB",
+      "placement": 3,
+      "record": {
+        "wins": 5,
+        "losses": 2,
+        "ties": 0
+      },
+      "opwPct": 57,
+      "oopwPct": 54,
+      "flags": {
+        "madePhase2": true,
+        "madeTopCut": true,
+        "dropped": false,
+        "dqed": false,
+        "late": false,
+        "decklistPublished": true
+      },
+      "deckId": "sha256:d02c08aee3cae463bd67d2ead6506fe3957024e60fba87fa498a59fd87dccc35"
+    },
+    {
+      "participantId": "labs:0001:104",
+      "playerRef": "player-504",
+      "name": "Dara",
+      "country": "JP",
+      "placement": 3,
+      "record": {
+        "wins": 5,
+        "losses": 2,
+        "ties": 0
+      },
+      "opwPct": 56.5,
+      "oopwPct": 53,
+      "flags": {
+        "madePhase2": true,
+        "madeTopCut": true,
+        "dropped": false,
+        "dqed": false,
+        "late": false,
+        "decklistPublished": true
+      },
+      "deckId": "sha256:fb1923168e6e551c90134ea316d36d982588e2b16b1557c9e65f9a0642b3892c"
+    },
+    {
+      "participantId": "labs:0001:105",
+      "playerRef": "player-505",
+      "name": "Evan",
+      "country": "DE",
+      "placement": 5,
+      "record": {
+        "wins": 4,
+        "losses": 3,
+        "ties": 0
+      },
+      "opwPct": 50,
+      "oopwPct": 49,
+      "flags": {
+        "madePhase2": false,
+        "madeTopCut": false,
+        "dropped": false,
+        "dqed": false,
+        "late": false,
+        "decklistPublished": false
+      },
+      "deckId": null
+    }
+  ],
+  "decks": [
+    {
+      "schemaVersion": 1,
+      "deckId": "sha256:a96f81c1516231d3a715f619b5ba8b889bafc0d7e7527d6da084d054213a8040",
+      "participantId": "labs:0001:101",
+      "playerRef": "player-501",
+      "archetype": {
+        "key": "gardevoir ex",
+        "displayName": "Gardevoir ex",
+        "slug": "gardevoir-ex"
+      },
+      "cards": [
+        {
+          "canonical": {
+            "uid": "Gardevoir ex::SVI::086",
+            "name": "Gardevoir ex",
+            "set": "SVI",
+            "number": "086"
+          },
+          "printings": [
+            {
+              "uid": "Gardevoir ex::SVI::086",
+              "name": "Gardevoir ex",
+              "set": "SVI",
+              "number": "086"
+            }
+          ],
+          "count": 3,
+          "category": "pokemon",
+          "regulationMark": "H"
+        },
+        {
+          "canonical": {
+            "uid": "Kirlia::SIT::068",
+            "name": "Kirlia",
+            "set": "SIT",
+            "number": "068"
+          },
+          "printings": [
+            {
+              "uid": "Kirlia::SIT::068",
+              "name": "Kirlia",
+              "set": "SIT",
+              "number": "068"
+            }
+          ],
+          "count": 4,
+          "category": "pokemon",
+          "regulationMark": "F"
+        },
+        {
+          "canonical": {
+            "uid": "Basic Psychic Energy",
+            "name": "Basic Psychic Energy",
+            "set": null,
+            "number": null
+          },
+          "printings": [],
+          "count": 10,
+          "category": "energy",
+          "energyType": "basic"
+        }
+      ],
+      "hasDecklist": true,
+      "successTags": [
+        "winner",
+        "top2",
+        "top4",
+        "top8",
+        "top10",
+        "top25",
+        "top50",
+        "phase2",
+        "topcut"
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "deckId": "sha256:30fa59238bb2ff819cc74eded0649a191ba55dfae3b964f93880704506e76d2f",
+      "participantId": "labs:0001:102",
+      "playerRef": "player-502",
+      "archetype": {
+        "key": "gardevoir ex",
+        "displayName": "gardevoir EX",
+        "slug": "gardevoir-ex"
+      },
+      "cards": [
+        {
+          "canonical": {
+            "uid": "Gardevoir ex::SVI::086",
+            "name": "Gardevoir ex",
+            "set": "SVI",
+            "number": "086"
+          },
+          "printings": [
+            {
+              "uid": "Gardevoir ex::SVI::086",
+              "name": "Gardevoir ex",
+              "set": "SVI",
+              "number": "086"
+            }
+          ],
+          "count": 2,
+          "category": "pokemon",
+          "regulationMark": "H"
+        },
+        {
+          "canonical": {
+            "uid": "Munkidori::TWM::095",
+            "name": "Munkidori",
+            "set": "TWM",
+            "number": "095"
+          },
+          "printings": [
+            {
+              "uid": "Munkidori::TWM::095",
+              "name": "Munkidori",
+              "set": "TWM",
+              "number": "095"
+            }
+          ],
+          "count": 2,
+          "category": "pokemon",
+          "regulationMark": "H"
+        },
+        {
+          "canonical": {
+            "uid": "Basic Darkness Energy",
+            "name": "Basic Darkness Energy",
+            "set": null,
+            "number": null
+          },
+          "printings": [],
+          "count": 8,
+          "category": "energy",
+          "energyType": "basic"
+        }
+      ],
+      "hasDecklist": true,
+      "successTags": [
+        "top2",
+        "top4",
+        "top8",
+        "top10",
+        "top25",
+        "top50",
+        "phase2",
+        "topcut"
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "deckId": "sha256:d02c08aee3cae463bd67d2ead6506fe3957024e60fba87fa498a59fd87dccc35",
+      "participantId": "labs:0001:103",
+      "playerRef": "player-503",
+      "archetype": {
+        "key": "charizard pidgeot",
+        "displayName": "Charizard Pidgeot",
+        "slug": "charizard-pidgeot"
+      },
+      "cards": [
+        {
+          "canonical": {
+            "uid": "Pidgeot ex::OBF::164",
+            "name": "Pidgeot ex",
+            "set": "OBF",
+            "number": "164"
+          },
+          "printings": [
+            {
+              "uid": "Pidgeot ex::OBF::164",
+              "name": "Pidgeot ex",
+              "set": "OBF",
+              "number": "164"
+            },
+            {
+              "uid": "Pidgeot ex::OBF::217",
+              "name": "Pidgeot ex",
+              "set": "OBF",
+              "number": "217"
+            }
+          ],
+          "count": 2,
+          "category": "pokemon",
+          "regulationMark": "H"
+        },
+        {
+          "canonical": {
+            "uid": "Charizard ex::OBF::125",
+            "name": "Charizard ex",
+            "set": "OBF",
+            "number": "125"
+          },
+          "printings": [
+            {
+              "uid": "Charizard ex::OBF::125",
+              "name": "Charizard ex",
+              "set": "OBF",
+              "number": "125"
+            }
+          ],
+          "count": 3,
+          "category": "pokemon",
+          "regulationMark": "G"
+        },
+        {
+          "canonical": {
+            "uid": "Rare Candy::SVI::256",
+            "name": "Rare Candy",
+            "set": "SVI",
+            "number": "256"
+          },
+          "printings": [
+            {
+              "uid": "Rare Candy::SVI::191",
+              "name": "Rare Candy",
+              "set": "SVI",
+              "number": "191"
+            }
+          ],
+          "count": 4,
+          "category": "trainer",
+          "trainerType": "item",
+          "regulationMark": "G"
+        },
+        {
+          "canonical": {
+            "uid": "Sprigatito::SVI::001",
+            "name": "Sprigatito",
+            "set": "SVI",
+            "number": "001"
+          },
+          "printings": [
+            {
+              "uid": "Sprigatito::SVI::001",
+              "name": "Sprigatito",
+              "set": "SVI",
+              "number": "001"
+            }
+          ],
+          "count": 1,
+          "category": "pokemon",
+          "regulationMark": "G"
+        },
+        {
+          "canonical": {
+            "uid": "Iron Leaves::TEF::018A",
+            "name": "Iron Leaves",
+            "set": "TEF",
+            "number": "018A"
+          },
+          "printings": [
+            {
+              "uid": "Iron Leaves::TEF::018A",
+              "name": "Iron Leaves",
+              "set": "TEF",
+              "number": "018A"
+            }
+          ],
+          "count": 1,
+          "category": "pokemon",
+          "regulationMark": "H"
+        },
+        {
+          "canonical": {
+            "uid": "Comfey::SIT::TG15",
+            "name": "Comfey",
+            "set": "SIT",
+            "number": "TG15"
+          },
+          "printings": [
+            {
+              "uid": "Comfey::SIT::TG15",
+              "name": "Comfey",
+              "set": "SIT",
+              "number": "TG15"
+            }
+          ],
+          "count": 2,
+          "category": "pokemon",
+          "regulationMark": "F"
+        },
+        {
+          "canonical": {
+            "uid": "Basic Fire Energy",
+            "name": "Basic Fire Energy",
+            "set": null,
+            "number": null
+          },
+          "printings": [],
+          "count": 8,
+          "category": "energy",
+          "energyType": "basic"
+        },
+        {
+          "canonical": {
+            "uid": "Reversal Energy::PAR::192",
+            "name": "Reversal Energy",
+            "set": "PAR",
+            "number": "192"
+          },
+          "printings": [
+            {
+              "uid": "Reversal Energy::PAR::192",
+              "name": "Reversal Energy",
+              "set": "PAR",
+              "number": "192"
+            }
+          ],
+          "count": 2,
+          "category": "energy",
+          "energyType": "special",
+          "regulationMark": "G"
+        },
+        {
+          "canonical": {
+            "uid": "Iono::PAL::185",
+            "name": "Iono",
+            "set": "PAL",
+            "number": "185"
+          },
+          "printings": [
+            {
+              "uid": "Iono::PAL::185",
+              "name": "Iono",
+              "set": "PAL",
+              "number": "185"
+            }
+          ],
+          "count": 4,
+          "category": "trainer",
+          "trainerType": "supporter",
+          "regulationMark": "F"
+        },
+        {
+          "canonical": {
+            "uid": "Artazon::PAL::171",
+            "name": "Artazon",
+            "set": "PAL",
+            "number": "171"
+          },
+          "printings": [
+            {
+              "uid": "Artazon::PAL::171",
+              "name": "Artazon",
+              "set": "PAL",
+              "number": "171"
+            }
+          ],
+          "count": 2,
+          "category": "trainer",
+          "trainerType": "stadium",
+          "regulationMark": "F"
+        },
+        {
+          "canonical": {
+            "uid": "Bravery Charm::PAL::173",
+            "name": "Bravery Charm",
+            "set": "PAL",
+            "number": "173"
+          },
+          "printings": [
+            {
+              "uid": "Bravery Charm::PAL::173",
+              "name": "Bravery Charm",
+              "set": "PAL",
+              "number": "173"
+            }
+          ],
+          "count": 1,
+          "category": "trainer",
+          "trainerType": "tool",
+          "regulationMark": "F"
+        },
+        {
+          "canonical": {
+            "uid": "Prime Catcher::TEF::157",
+            "name": "Prime Catcher",
+            "set": "TEF",
+            "number": "157"
+          },
+          "printings": [
+            {
+              "uid": "Prime Catcher::TEF::157",
+              "name": "Prime Catcher",
+              "set": "TEF",
+              "number": "157"
+            }
+          ],
+          "count": 1,
+          "category": "trainer",
+          "trainerType": "item",
+          "aceSpec": true,
+          "regulationMark": "H"
+        }
+      ],
+      "hasDecklist": true,
+      "successTags": [
+        "top4",
+        "top8",
+        "top10",
+        "top25",
+        "top50",
+        "phase2",
+        "topcut"
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "deckId": "sha256:fb1923168e6e551c90134ea316d36d982588e2b16b1557c9e65f9a0642b3892c",
+      "participantId": "labs:0001:104",
+      "playerRef": "player-504",
+      "archetype": {
+        "key": "charizard pidgeot",
+        "displayName": "charizard_PIDGEOT",
+        "slug": "charizard-pidgeot"
+      },
+      "cards": [
+        {
+          "canonical": {
+            "uid": "Charizard ex::OBF::125",
+            "name": "Charizard ex",
+            "set": "OBF",
+            "number": "125"
+          },
+          "printings": [
+            {
+              "uid": "Charizard ex::OBF::125",
+              "name": "Charizard ex",
+              "set": "OBF",
+              "number": "125"
+            }
+          ],
+          "count": 2,
+          "category": "pokemon",
+          "regulationMark": "G"
+        },
+        {
+          "canonical": {
+            "uid": "Pidgeot ex::OBF::164",
+            "name": "Pidgeot ex",
+            "set": "OBF",
+            "number": "164"
+          },
+          "printings": [
+            {
+              "uid": "Pidgeot ex::OBF::164",
+              "name": "Pidgeot ex",
+              "set": "OBF",
+              "number": "164"
+            }
+          ],
+          "count": 2,
+          "category": "pokemon",
+          "regulationMark": "H"
+        },
+        {
+          "canonical": {
+            "uid": "Basic Fire Energy",
+            "name": "Basic Fire Energy",
+            "set": null,
+            "number": null
+          },
+          "printings": [],
+          "count": 6,
+          "category": "energy",
+          "energyType": "basic"
+        }
+      ],
+      "hasDecklist": true,
+      "successTags": [
+        "top4",
+        "top8",
+        "top10",
+        "top25",
+        "top50",
+        "phase2",
+        "topcut"
+      ]
+    }
+  ],
+  "matches": [
+    {
+      "schemaVersion": 1,
+      "matchId": "r1:p1:labs:0001:101:labs:0001:102",
+      "round": 1,
+      "phase": 1,
+      "table": 1,
+      "participantIds": [
+        "labs:0001:101",
+        "labs:0001:102"
+      ],
+      "outcome": "decided",
+      "winnerParticipantId": "labs:0001:101",
+      "completed": true
+    },
+    {
+      "schemaVersion": 1,
+      "matchId": "r1:p1:labs:0001:103:labs:0001:104",
+      "round": 1,
+      "phase": 1,
+      "table": 2,
+      "participantIds": [
+        "labs:0001:103",
+        "labs:0001:104"
+      ],
+      "outcome": "tie",
+      "winnerParticipantId": null,
+      "completed": true
+    },
+    {
+      "schemaVersion": 1,
+      "matchId": "r2:p2:labs:0001:101:labs:0001:102",
+      "round": 2,
+      "phase": 2,
+      "table": 1,
+      "participantIds": [
+        "labs:0001:101",
+        "labs:0001:102"
+      ],
+      "outcome": "double_loss",
+      "winnerParticipantId": null,
+      "completed": true
+    },
+    {
+      "schemaVersion": 1,
+      "matchId": "r2:p2:solo:labs:0001:103",
+      "round": 2,
+      "phase": 2,
+      "table": null,
+      "participantIds": [
+        "labs:0001:103"
+      ],
+      "outcome": "bye",
+      "winnerParticipantId": null,
+      "completed": true
+    },
+    {
+      "schemaVersion": 1,
+      "matchId": "r2:p2:solo:labs:0001:105",
+      "round": 2,
+      "phase": 2,
+      "table": null,
+      "participantIds": [
+        "labs:0001:105"
+      ],
+      "outcome": "unpaired",
+      "winnerParticipantId": null,
+      "completed": false
+    }
+  ],
+  "sourceRevisions": [
+    {
+      "source": "limitless-labs",
+      "entityId": "0001/standings",
+      "sourceHash": "sha256:00000000000000000000000000000000000000000000000000000000stand01",
+      "fetchedAt": "2026-06-16T02:00:00.000Z"
+    },
+    {
+      "source": "limitless-labs",
+      "entityId": "0001/decklists",
+      "sourceHash": "sha256:00000000000000000000000000000000000000000000000000000000decks01",
+      "fetchedAt": "2026-06-16T02:00:05.000Z"
+    }
+  ]
+}

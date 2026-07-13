@@ -25,7 +25,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { createR2Client, createReportsBinding } from '../.github/scripts/lib/r2.mjs';
 import { runRotationSnapshot } from '../functions/lib/onlineMeta/snapshotGenerator';
 import { rebuildSnapshotIndex, type RotationDescriptor } from '../functions/lib/onlineMeta/snapshotIndexBuilder';
 
@@ -49,17 +49,18 @@ const r2Configured =
   Boolean(process.env.R2_SECRET_ACCESS_KEY) &&
   Boolean(process.env.R2_BUCKET_NAME);
 
-const s3Client = r2Configured
-  ? new S3Client({
-      region: 'auto',
-      endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-      credentials: {
-        accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!
-      }
-    })
-  : null;
 const r2Bucket = process.env.R2_BUCKET_NAME;
+const reports =
+  r2Configured && r2Bucket
+    ? createReportsBinding(
+        createR2Client({
+          accountId: process.env.R2_ACCOUNT_ID!,
+          accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!
+        }),
+        r2Bucket
+      )
+    : null;
 
 async function readLocal(key: string): Promise<string | null> {
   try {
@@ -85,22 +86,12 @@ async function readFromR2Public(key: string): Promise<string | null> {
  * upload can return stale data (P-14 / Theme D).
  */
 async function readFromR2S3(key: string): Promise<string | null> {
-  if (!s3Client || !r2Bucket) {
+  if (!reports) {
     return null;
   }
-  try {
-    const res = await s3Client.send(new GetObjectCommand({ Bucket: r2Bucket, Key: key }));
-    if (!res.Body) {
-      return null;
-    }
-    return await res.Body.transformToString();
-  } catch (err: unknown) {
-    const meta = (err as { $metadata?: { httpStatusCode?: number }; name?: string }) ?? {};
-    if (meta.$metadata?.httpStatusCode === 404 || meta.name === 'NoSuchKey') {
-      return null;
-    }
-    throw err;
-  }
+  // Shared binding: null on a verified 404, throws on any transport failure.
+  const obj = await reports.get(key);
+  return obj ? obj.text() : null;
 }
 
 async function writeLocal(key: string, body: string | Uint8Array): Promise<void> {
@@ -114,23 +105,16 @@ async function writeLocal(key: string, body: string | Uint8Array): Promise<void>
 }
 
 async function writeToR2(key: string, body: string | Uint8Array, contentType: string): Promise<void> {
-  if (!s3Client || !r2Bucket) {
+  if (!reports) {
     return;
   }
   // Same policy as functions/lib/onlineMeta/storageWriter.ts: every key gets the
   // 6-hour live cache. Dated snapshot bodies are rerunnable (this script
   // re-publishes the same date after corrections), so they must NOT be immutable
   // (P-15).
-  const cacheControl = 'public, max-age=21600';
-  await s3Client.send(
-    new PutObjectCommand({
-      Bucket: r2Bucket,
-      Key: key,
-      Body: typeof body === 'string' ? body : Buffer.from(body),
-      ContentType: contentType,
-      CacheControl: cacheControl
-    })
-  );
+  await reports.put(key, body, {
+    httpMetadata: { contentType, cacheControl: 'public, max-age=21600' }
+  });
 }
 
 // Env shim mirroring the Cloudflare R2 binding shape that the pipeline expects
@@ -147,7 +131,7 @@ const env = {
       // public edge, which can serve data cached up to 6h and be stale right
       // after an upstream online-meta upload (P-14). Public HTTP is reserved
       // for credentialless local dev.
-      const remote = s3Client ? await readFromR2S3(key) : await readFromR2Public(key);
+      const remote = reports ? await readFromR2S3(key) : await readFromR2Public(key);
       if (remote !== null) {
         return { text: async () => remote };
       }

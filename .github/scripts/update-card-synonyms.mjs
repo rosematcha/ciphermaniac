@@ -8,9 +8,10 @@
 import { appendFile, writeFile, mkdir } from 'fs/promises';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 import * as cheerio from 'cheerio';
 import { chooseCanonicalPrint } from './lib/canonical-print.mjs';
+import { createR2Client, getJsonResult } from './lib/r2.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -36,24 +37,11 @@ const R2_ACCESS_KEY_ID = requireEnv('R2_ACCESS_KEY_ID');
 const R2_SECRET_ACCESS_KEY = requireEnv('R2_SECRET_ACCESS_KEY');
 const R2_BUCKET_NAME = requireEnv('R2_BUCKET_NAME');
 
-const s3Client = new S3Client({
-    region: 'auto',
-    endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-    credentials: {
-        accessKeyId: R2_ACCESS_KEY_ID,
-        secretAccessKey: R2_SECRET_ACCESS_KEY
-    }
+const s3Client = createR2Client({
+    accountId: R2_ACCOUNT_ID,
+    accessKeyId: R2_ACCESS_KEY_ID,
+    secretAccessKey: R2_SECRET_ACCESS_KEY
 });
-
-async function getObject(key) {
-    const command = new GetObjectCommand({
-        Bucket: R2_BUCKET_NAME,
-        Key: key
-    });
-    const response = await s3Client.send(command);
-    const str = await response.Body.transformToString();
-    return JSON.parse(str);
-}
 
 async function putObject(key, data) {
     const body = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
@@ -68,43 +56,48 @@ async function putObject(key, data) {
 
 async function loadTournamentsList() {
     log('Loading tournaments list...');
-    try {
-        const data = await getObject('reports/tournaments.json');
-        const tournaments = Array.isArray(data) ? data : (data.tournaments || []);
-        log(`  Found ${tournaments.length} tournaments`);
-        return tournaments;
-    } catch (error) {
-        log(`  Error loading tournaments: ${error.message}`);
-        return [];
+    const result = await getJsonResult(s3Client, R2_BUCKET_NAME, 'reports/tournaments.json');
+    if (result.status === 'transport' || result.status === 'corrupt') {
+        throw new Error(`Failed to load reports/tournaments.json (${result.status})`, { cause: result.error });
     }
+    const data = result.status === 'found' ? result.value : null;
+    const tournaments = Array.isArray(data) ? data : (data?.tournaments || []);
+    log(`  Found ${tournaments.length} tournaments`);
+    return tournaments;
 }
 
 async function loadPreviousSynonyms() {
     // Read the live DB straight from R2 (authenticated S3 GET, so it bypasses
     // the hours-long public edge cache). Used to MERGE rather than replace, so a
     // transient scrape failure can never drop mappings unique to a missing
-    // source (P-06). Returns null when there is no prior DB.
-    try {
-        const data = await getObject('assets/card-synonyms.json');
-        const synonyms = data?.synonyms && typeof data.synonyms === 'object' ? data.synonyms : {};
-        const canonicals = data?.canonicals && typeof data.canonicals === 'object' ? data.canonicals : {};
-        log(`  Loaded previous synonyms from R2: ${Object.keys(synonyms).length} synonyms, ${Object.keys(canonicals).length} canonicals`);
-        return { synonyms, canonicals };
-    } catch (error) {
-        log(`  No previous synonyms loaded (${error.message}); starting fresh`);
+    // source (P-06). Returns null only when there is verifiably no prior DB — a
+    // transport/corrupt read throws rather than silently discarding the DB.
+    const result = await getJsonResult(s3Client, R2_BUCKET_NAME, 'assets/card-synonyms.json');
+    if (result.status === 'transport' || result.status === 'corrupt') {
+        throw new Error(`Failed to load previous synonyms (${result.status})`, { cause: result.error });
+    }
+    if (result.status === 'missing') {
+        log('  No previous synonyms in R2; starting fresh');
         return null;
     }
+    const data = result.value;
+    const synonyms = data?.synonyms && typeof data.synonyms === 'object' ? data.synonyms : {};
+    const canonicals = data?.canonicals && typeof data.canonicals === 'object' ? data.canonicals : {};
+    log(`  Loaded previous synonyms from R2: ${Object.keys(synonyms).length} synonyms, ${Object.keys(canonicals).length} canonicals`);
+    return { synonyms, canonicals };
 }
 
 async function loadTournamentDecks(folder) {
     const key = `reports/${folder}/decks.json`;
-    try {
-        const decks = await getObject(key);
-        return Array.isArray(decks) ? decks : [];
-    } catch {
-        // Silently skip tournaments without decks.json
-        return [];
+    const result = await getJsonResult(s3Client, R2_BUCKET_NAME, key);
+    if (result.status === 'transport' || result.status === 'corrupt') {
+        throw new Error(`Failed to load ${key} (${result.status})`, { cause: result.error });
     }
+    if (result.status === 'found') {
+        return Array.isArray(result.value) ? result.value : [];
+    }
+    // Verified-missing decks.json: silently skip this tournament.
+    return [];
 }
 
 function normalizeCardNumber(number) {

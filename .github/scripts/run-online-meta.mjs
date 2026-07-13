@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import crypto from 'node:crypto';
-import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
+import { ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
+import { createR2Client, getJsonResult, putJson as putJsonR2 } from './lib/r2.mjs';
 import { enrichCardWithType } from '../../functions/lib/data/cardTypesDatabase.js';
 import { getCanonicalCard } from '../../functions/lib/data/cardSynonyms.js';
 import { buildArchetypeDeckIndex, resolveArchetypeClassification } from '../../functions/lib/analysis/archetypeClassifier.js';
@@ -69,13 +70,10 @@ const PERCENT_TAG_RULES = [
   { tag: 'top50', fraction: 0.5, minPlayers: 8 }
 ];
 
-const s3Client = new S3Client({
-  region: 'auto',
-  endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: R2_ACCESS_KEY_ID,
-    secretAccessKey: R2_SECRET_ACCESS_KEY
-  }
+const s3Client = createR2Client({
+  accountId: R2_ACCOUNT_ID,
+  accessKeyId: R2_ACCESS_KEY_ID,
+  secretAccessKey: R2_SECRET_ACCESS_KEY
 });
 
 function daysAgo(days) {
@@ -1229,37 +1227,18 @@ function buildCardUsageIndex(archetypeFiles) {
 const REPORTS_CACHE_CONTROL = 'public, max-age=21600';
 
 async function putJson(key, data) {
-  await s3Client.send(
-    new PutObjectCommand({
-      Bucket: R2_BUCKET_NAME,
-      Key: key,
-      Body: JSON.stringify(data),
-      ContentType: 'application/json',
-      CacheControl: REPORTS_CACHE_CONTROL
-    })
-  );
+  await putJsonR2(s3Client, R2_BUCKET_NAME, key, data, { cacheControl: REPORTS_CACHE_CONTROL });
 }
 
 async function readJson(key) {
-  try {
-    const object = await s3Client.send(
-      new GetObjectCommand({
-        Bucket: R2_BUCKET_NAME,
-        Key: key
-      })
-    );
-    const chunks = [];
-    for await (const chunk of object.Body) {
-      chunks.push(chunk);
-    }
-    const text = Buffer.concat(chunks).toString('utf-8');
-    return JSON.parse(text);
-  } catch (error) {
-    if (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
-      return null;
-    }
-    throw error;
+  const result = await getJsonResult(s3Client, R2_BUCKET_NAME, key);
+  if (result.status === 'found') {
+    return result.value;
   }
+  if (result.status === 'missing') {
+    return null;
+  }
+  throw result.error;
 }
 
 async function listKeys(prefix) {
