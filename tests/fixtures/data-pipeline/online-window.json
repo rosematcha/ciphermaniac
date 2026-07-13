@@ -120,28 +120,15 @@
       "cards": [
         {
           "canonical": {
-            "uid": "Raging Bolt ex::TEF::123",
-            "name": "Raging Bolt ex",
-            "set": "TEF",
-            "number": "123"
+            "uid": "Basic Fighting Energy",
+            "name": "Basic Fighting Energy",
+            "set": null,
+            "number": null
           },
-          "printings": [
-            {
-              "uid": "Raging Bolt ex::TEF::123",
-              "name": "Raging Bolt ex",
-              "set": "TEF",
-              "number": "123"
-            },
-            {
-              "uid": "Raging Bolt ex::TEF::213",
-              "name": "Raging Bolt ex",
-              "set": "TEF",
-              "number": "213"
-            }
-          ],
-          "count": 2,
-          "category": "pokemon",
-          "regulationMark": "H"
+          "printings": [],
+          "count": 10,
+          "category": "energy",
+          "energyType": "basic"
         },
         {
           "canonical": {
@@ -185,15 +172,28 @@
         },
         {
           "canonical": {
-            "uid": "Basic Fighting Energy",
-            "name": "Basic Fighting Energy",
-            "set": null,
-            "number": null
+            "uid": "Raging Bolt ex::TEF::123",
+            "name": "Raging Bolt ex",
+            "set": "TEF",
+            "number": "123"
           },
-          "printings": [],
-          "count": 10,
-          "category": "energy",
-          "energyType": "basic"
+          "printings": [
+            {
+              "uid": "Raging Bolt ex::TEF::123",
+              "name": "Raging Bolt ex",
+              "set": "TEF",
+              "number": "123"
+            },
+            {
+              "uid": "Raging Bolt ex::TEF::213",
+              "name": "Raging Bolt ex",
+              "set": "TEF",
+              "number": "213"
+            }
+          ],
+          "count": 2,
+          "category": "pokemon",
+          "regulationMark": "H"
         }
       ],
       "hasDecklist": true,
@@ -213,6 +213,18 @@
         "slug": "raging-bolt-ex"
       },
       "cards": [
+        {
+          "canonical": {
+            "uid": "Basic Lightning Energy",
+            "name": "Basic Lightning Energy",
+            "set": null,
+            "number": null
+          },
+          "printings": [],
+          "count": 9,
+          "category": "energy",
+          "energyType": "basic"
+        },
         {
           "canonical": {
             "uid": "Raging Bolt ex::TEF::123",
@@ -250,18 +262,6 @@
           "count": 1,
           "category": "pokemon",
           "regulationMark": "G"
-        },
-        {
-          "canonical": {
-            "uid": "Basic Lightning Energy",
-            "name": "Basic Lightning Energy",
-            "set": null,
-            "number": null
-          },
-          "printings": [],
-          "count": 9,
-          "category": "energy",
-          "energyType": "basic"
         }
       ],
       "hasDecklist": true,
@@ -282,22 +282,15 @@
       "cards": [
         {
           "canonical": {
-            "uid": "Regidrago VSTAR::SIT::136",
-            "name": "Regidrago VSTAR",
-            "set": "SIT",
-            "number": "136"
+            "uid": "Basic Grass Energy",
+            "name": "Basic Grass Energy",
+            "set": null,
+            "number": null
           },
-          "printings": [
-            {
-              "uid": "Regidrago VSTAR::SIT::136",
-              "name": "Regidrago VSTAR",
-              "set": "SIT",
-              "number": "136"
-            }
-          ],
-          "count": 2,
-          "category": "pokemon",
-          "regulationMark": "F"
+          "printings": [],
+          "count": 8,
+          "category": "energy",
+          "energyType": "basic"
         },
         {
           "canonical": {
@@ -320,15 +313,22 @@
         },
         {
           "canonical": {
-            "uid": "Basic Grass Energy",
-            "name": "Basic Grass Energy",
-            "set": null,
-            "number": null
+            "uid": "Regidrago VSTAR::SIT::136",
+            "name": "Regidrago VSTAR",
+            "set": "SIT",
+            "number": "136"
           },
-          "printings": [],
-          "count": 8,
-          "category": "energy",
-          "energyType": "basic"
+          "printings": [
+            {
+              "uid": "Regidrago VSTAR::SIT::136",
+              "name": "Regidrago VSTAR",
+              "set": "SIT",
+              "number": "136"
+            }
+          ],
+          "count": 2,
+          "category": "pokemon",
+          "regulationMark": "F"
         }
       ],
       "hasDecklist": true,

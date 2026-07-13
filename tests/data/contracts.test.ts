@@ -18,9 +18,12 @@ import {
   cardUid,
   computeSuccessTags,
   deckId,
+  eventId,
+  labsParticipantId,
   makeArchetypeIdentity,
   matchId,
   type NormalizedEvent,
+  onlineParticipantId,
   parseCardUid,
   validateNormalizedEvent
 } from '../../shared/data/contracts.ts';
@@ -352,9 +355,9 @@ test('deckId hashes are stable and match the fixtures', () => {
 
 test('matchId keys are stable and match the fixtures', () => {
   const expected = [
-    'r1:p1:labs:0001:101:labs:0001:102',
-    'r1:p1:labs:0001:103:labs:0001:104',
-    'r2:p2:labs:0001:101:labs:0001:102',
+    'r1:p1:labs:0001:101|labs:0001:102',
+    'r1:p1:labs:0001:103|labs:0001:104',
+    'r2:p2:labs:0001:101|labs:0001:102',
     'r2:p2:solo:labs:0001:103',
     'r2:p2:solo:labs:0001:105'
   ];
@@ -365,4 +368,146 @@ test('matchId keys are stable and match the fixtures', () => {
   for (const match of labs.matches) {
     assert.strictEqual(matchId(match.round, match.phase, match.participantIds), match.matchId);
   }
+});
+
+// ============================================================================
+// Validator strictness — checks added by the contracts review
+// ============================================================================
+
+test('rejects a solo outcome carrying two participants', () => {
+  const event = clone(labs);
+  event.matches[0].outcome = 'bye';
+  event.matches[0].winnerParticipantId = null;
+  assertRejects(event, 'requires exactly 1 participant');
+});
+
+test('rejects a pair outcome carrying one participant', () => {
+  const event = clone(labs);
+  const solo = event.matches.find(match => match.outcome === 'bye' || match.outcome === 'unpaired');
+  assert.ok(solo);
+  solo.outcome = 'tie';
+  assertRejects(event, 'requires exactly 2 participants');
+});
+
+test('rejects a winner named on a non-decided outcome', () => {
+  const event = clone(labs);
+  event.matches[0].outcome = 'tie';
+  assertRejects(event, 'forbidden for outcome');
+});
+
+test('rejects a winner who is not a match participant', () => {
+  const event = clone(labs);
+  event.matches[0].winnerParticipantId = event.matches[1].participantIds[0];
+  assertRejects(event, 'not a match participant');
+});
+
+test('rejects non-integer or below-1 round/phase/table', () => {
+  const roundZero = clone(labs);
+  roundZero.matches[0].round = 0;
+  assertRejects(roundZero, 'round: expected integer >= 1');
+
+  const stringPhase = clone(labs);
+  (stringPhase.matches[0] as unknown as Record<string, unknown>).phase = '2';
+  assertRejects(stringPhase, 'phase: expected integer >= 1');
+
+  const badTable = clone(labs);
+  (badTable.matches[0] as unknown as Record<string, unknown>).table = 'foo';
+  assertRejects(badTable, 'table: expected integer >= 1 or null');
+});
+
+test('rejects negative or non-integer win/loss/tie counts', () => {
+  const event = clone(labs);
+  event.participants[0].record.wins = -1;
+  assertRejects(event, 'record.wins: expected a non-negative integer');
+});
+
+test('rejects non-boolean participant flags', () => {
+  const event = clone(labs);
+  (event.participants[0].flags as unknown as Record<string, unknown>).madePhase2 = 'true';
+  assertRejects(event, 'flags.madePhase2: expected boolean');
+});
+
+test('rejects out-of-range opponent win percentages', () => {
+  const event = clone(labs);
+  event.participants[0].opwPct = 240;
+  assertRejects(event, 'opwPct: expected a finite number in [0, 100] or null');
+});
+
+test('rejects an unpadded number on a printing (not just the canonical)', () => {
+  const event = clone(labs);
+  const withPrinting = event.decks
+    .flatMap(deck => deck.cards)
+    .find(card => card.printings.length > 0 && card.printings[0].number.startsWith('0'));
+  assert.ok(withPrinting);
+  const printing = withPrinting.printings[0];
+  const stripped = printing.number.replace(/^0+/, '');
+  printing.uid = `${printing.name}::${printing.set}::${stripped}`;
+  printing.number = stripped;
+  assertRejects(event, 'not canonical padded form');
+});
+
+test('rejects a printing whose name disagrees with its UID', () => {
+  const event = clone(labs);
+  const card = event.decks.flatMap(deck => deck.cards).find(candidate => candidate.printings.length > 0);
+  assert.ok(card);
+  card.printings[0].name = `${card.printings[0].name}X`;
+  assertRejects(event, 'does not match UID name');
+});
+
+test('rejects a broken deck<->participant back-reference', () => {
+  const event = clone(labs);
+  const [a, b] = event.participants.filter(participant => participant.deckId);
+  assert.ok(a && b);
+  a.deckId = b.deckId;
+  assertRejects(event, 'back-references participant');
+});
+
+test('rejects two decks claiming the same participant', () => {
+  const event = clone(labs);
+  event.decks[1].participantId = event.decks[0].participantId;
+  assertRejects(event, 'claimed by more than one deck');
+});
+
+test('rejects successTags that disagree with the frozen policy', () => {
+  const event = clone(online);
+  event.decks[0].successTags = [...event.decks[0].successTags, 'phase2'];
+  assertRejects(event, 'does not match policy recomputation');
+});
+
+test('rejects decks stored out of canonical ascending order', () => {
+  const event = clone(labs);
+  const sorted = [...event.decks].sort((a, b) => (a.deckId < b.deckId ? -1 : 1));
+  event.decks = [sorted[sorted.length - 1], ...sorted.slice(0, -1)];
+  // Re-point participants at their decks unchanged; only storage order moved.
+  assertRejects(event, 'not in canonical ascending order');
+});
+
+test('rejects trainer/energy subtype fields on the wrong category', () => {
+  const event = clone(labs);
+  const pokemon = event.decks.flatMap(deck => deck.cards).find(card => card.category === 'pokemon');
+  assert.ok(pokemon);
+  (pokemon as unknown as Record<string, unknown>).trainerType = 'supporter';
+  assertRejects(event, 'only allowed when category is "trainer"');
+});
+
+test('rejects an invalid regulation mark', () => {
+  const event = clone(labs);
+  (event.decks[0].cards[0] as unknown as Record<string, unknown>).regulationMark = 'h';
+  assertRejects(event, 'single uppercase letter');
+});
+
+test('ID constructors reject degenerate and delimiter-bearing inputs', () => {
+  assert.throws(() => eventId('labs-event', ''), TypeError);
+  assert.throws(() => eventId('labs-event', '   '), TypeError);
+  assert.throws(() => labsParticipantId('labs:0001', Number.NaN), TypeError);
+  assert.throws(() => onlineParticipantId('online:w1', 'a|b'), TypeError);
+  assert.throws(() => matchId(Number.NaN, 1, ['labs:0001:101']), TypeError);
+  assert.throws(() => matchId(1, 1, ['a|b', 'c']), TypeError);
+});
+
+test('canonicalStringify honors toJSON like JSON.stringify (Dates do not collide)', () => {
+  const a = canonicalStringify({ at: new Date('2026-07-12T00:00:00Z') });
+  const b = canonicalStringify({ at: new Date('2026-07-13T00:00:00Z') });
+  assert.notStrictEqual(a, b);
+  assert.strictEqual(a, '{"at":"2026-07-12T00:00:00.000Z"}');
 });

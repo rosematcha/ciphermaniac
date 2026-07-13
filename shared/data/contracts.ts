@@ -42,6 +42,9 @@ export type NormalizedEventKind = 'labs-event' | 'online-window';
 /** Top-level card category. */
 export type CardCategory = 'pokemon' | 'trainer' | 'energy';
 
+/** All valid card categories, for runtime validation. */
+export const CARD_CATEGORIES: readonly CardCategory[] = ['pokemon', 'trainer', 'energy'];
+
 /** Trainer subtype (present only when category is `trainer`). */
 export type TrainerType = 'supporter' | 'item' | 'stadium' | 'tool';
 
@@ -50,23 +53,31 @@ export type EnergyType = 'basic' | 'special';
 
 /**
  * Perspective-free canonical match outcome. `decided` marks a match with a
- * single winner (named by {@link Match.winnerParticipantId}); win/loss are
- * retained for per-side derivations but a canonical Match record never uses
- * them. `bye`/`unpaired` are solo (single-participant) rows.
+ * single winner (named by {@link Match.winnerParticipantId}). `tie`,
+ * `double_loss` and `decided` are two-participant rows; `bye`/`unpaired`/
+ * `unknown` are solo (single-participant) rows. Per-side win/loss values are a
+ * SEPARATE union ({@link MatchSideOutcome}) for later per-side derivations — a
+ * canonical Match record never carries win/loss.
  */
-export type MatchOutcome = 'decided' | 'win' | 'loss' | 'tie' | 'double_loss' | 'bye' | 'unpaired' | 'unknown';
+export type MatchOutcome = 'decided' | 'tie' | 'double_loss' | 'bye' | 'unpaired' | 'unknown';
 
-/** All valid match outcome values, for runtime validation. */
-export const MATCH_OUTCOMES: readonly MatchOutcome[] = [
-  'decided',
-  'win',
-  'loss',
-  'tie',
-  'double_loss',
-  'bye',
-  'unpaired',
-  'unknown'
-];
+/** Per-side outcome for later derivations; never stored on a canonical Match. */
+export type MatchSideOutcome = 'win' | 'loss';
+
+/** All valid canonical match outcome values, for runtime validation. */
+export const MATCH_OUTCOMES: readonly MatchOutcome[] = ['decided', 'tie', 'double_loss', 'bye', 'unpaired', 'unknown'];
+
+/** Canonical outcomes that name exactly two participants. */
+const PAIR_OUTCOMES: ReadonlySet<string> = new Set<MatchOutcome>(['decided', 'tie', 'double_loss']);
+
+/** Canonical outcomes that name exactly one participant. */
+const SOLO_OUTCOMES: ReadonlySet<string> = new Set<MatchOutcome>(['bye', 'unpaired', 'unknown']);
+
+/** Membership sets for O(1) runtime validation. */
+const CARD_CATEGORY_SET: ReadonlySet<string> = new Set(CARD_CATEGORIES);
+const MATCH_OUTCOME_SET: ReadonlySet<string> = new Set(MATCH_OUTCOMES);
+const TRAINER_TYPE_SET: ReadonlySet<string> = new Set<TrainerType>(['supporter', 'item', 'stadium', 'tool']);
+const ENERGY_TYPE_SET: ReadonlySet<string> = new Set<EnergyType>(['basic', 'special']);
 
 // ============================================================================
 // Success tags
@@ -157,10 +168,12 @@ export function computeSuccessTags(
   }
 
   if (options.appendPhaseTags) {
-    if (options.madePhase2 && !tags.includes('phase2')) {
+    // The placement/percent branch never emits phase2/topcut, so these append
+    // unconditionally within the phase-tags branch (no dedupe guard needed).
+    if (options.madePhase2) {
       tags.push('phase2');
     }
-    if (options.madeTopCut && !tags.includes('topcut')) {
+    if (options.madeTopCut) {
       tags.push('topcut');
     }
   }
@@ -338,15 +351,40 @@ export interface NormalizedEvent {
 // ============================================================================
 
 /**
+ * Validate and normalize one id-constructor input segment. Rejects
+ * empty/whitespace-only strings, non-finite numbers, and any other type; also
+ * rejects the `|` character, which is reserved as the {@link matchId} pair
+ * delimiter and must not appear inside a segment.
+ * @param value - The raw segment
+ * @param label - Segment name, for error messages
+ * @returns The segment coerced to a string
+ * @throws {TypeError} When the segment is empty, non-finite, or contains `|`
+ */
+function requireIdSegment(value: string | number, label: string): string {
+  if (typeof value === 'number' && !Number.isFinite(value)) {
+    throw new TypeError(`${label}: expected a finite number`);
+  }
+  const segment = typeof value === 'number' ? String(value) : value;
+  if (typeof segment !== 'string' || segment.trim().length === 0) {
+    throw new TypeError(`${label}: expected a non-empty string`);
+  }
+  if (segment.includes('|')) {
+    throw new TypeError(`${label}: must not contain the reserved "|" delimiter`);
+  }
+  return segment;
+}
+
+/**
  * Build a stable event id: `labs:{code}` or `online:{windowId}`. Not the R2
  * folder name.
  * @param kind - Event kind
  * @param code - Labs event code or online window id
  * @returns Stable event id
+ * @throws {TypeError} When `code` is empty/whitespace or contains `|`
  */
 export function eventId(kind: NormalizedEventKind, code: string): string {
   const prefix = kind === 'labs-event' ? 'labs' : 'online';
-  return `${prefix}:${code}`;
+  return `${prefix}:${requireIdSegment(code, 'eventId code')}`;
 }
 
 /**
@@ -354,9 +392,11 @@ export function eventId(kind: NormalizedEventKind, code: string): string {
  * @param scopedEventId - The event id
  * @param tpId - Tournament-participant id
  * @returns Participant id
+ * @throws {TypeError} When either input is empty/whitespace/non-finite or contains `|`
  */
 export function labsParticipantId(scopedEventId: string, tpId: string | number): string {
-  return `${scopedEventId}:${tpId}`;
+  const scope = requireIdSegment(scopedEventId, 'labsParticipantId scopedEventId');
+  return `${scope}:${requireIdSegment(tpId, 'labsParticipantId tpId')}`;
 }
 
 /**
@@ -364,9 +404,11 @@ export function labsParticipantId(scopedEventId: string, tpId: string | number):
  * @param scopedEventId - The event id
  * @param handle - Limitless player handle
  * @returns Participant id
+ * @throws {TypeError} When either input is empty/whitespace or contains `|`
  */
 export function onlineParticipantId(scopedEventId: string, handle: string): string {
-  return `${scopedEventId}:${handle}`;
+  const scope = requireIdSegment(scopedEventId, 'onlineParticipantId scopedEventId');
+  return `${scope}:${requireIdSegment(handle, 'onlineParticipantId handle')}`;
 }
 
 /** Parsed pieces of a card UID. */
@@ -418,14 +460,20 @@ export function parseCardUid(uid: string): ParsedCardUid | null {
 }
 
 /**
- * Derive an archetype comparison key: whitespace-collapsed, underscore-to-space,
- * lowercased. Reuses {@link normalizeArchetypeName}; empty names become
- * `"unknown"`.
+ * Derive an archetype comparison key: NFC-normalized, whitespace-collapsed,
+ * underscore-to-space, lowercased. Reuses {@link normalizeArchetypeName} but
+ * applies Unicode NFC first so composed vs decomposed accents (é U+00E9 vs
+ * e+U+0301) collapse to a single key/slug — this intentionally diverges from
+ * legacy `normalizeArchetypeName` only for accent-variant inputs.
+ *
+ * Empty names become `"unknown"`; this fallback is indistinguishable from a real
+ * archetype literally named "Unknown" — a knowing legacy-compat decision.
  * @param displayName - The display label
  * @returns Comparison key
  */
 export function archetypeKey(displayName: string | null | undefined): string {
-  return normalizeArchetypeName(displayName);
+  const nfc = typeof displayName === 'string' ? displayName.normalize('NFC') : displayName;
+  return normalizeArchetypeName(nfc);
 }
 
 /**
@@ -470,24 +518,30 @@ export interface DeckIdCard {
  * @returns Deck id of the form `sha256:{hex}`
  */
 export function deckId(participantId: string, cards: DeckIdCard[], hashValue: (value: unknown) => string): string {
+  const scoped = requireIdSegment(participantId, 'deckId participantId');
   const cardKeys = cards
     .map(card => ({ uid: card.canonical.uid, count: card.count }))
     .sort((left, right) => (left.uid < right.uid ? -1 : left.uid > right.uid ? 1 : left.count - right.count));
-  return `sha256:${hashValue({ schemaVersion: SCHEMA_VERSION, participantId, cards: cardKeys })}`;
+  return `sha256:${hashValue({ schemaVersion: SCHEMA_VERSION, participantId: scoped, cards: cardKeys })}`;
 }
 
 /**
  * Canonical match key: `r{round}:p{phase}:solo:{id}` for a single-participant
- * row, else `r{round}:p{phase}:{lo}:{hi}` with participant ids sorted so the key
- * is perspective-free.
- * @param round - Round number
- * @param phase - Phase number
+ * row, else `r{round}:p{phase}:{lo}|{hi}` with participant ids sorted so the key
+ * is perspective-free. The pair delimiter is `|` (not `:`) because participant
+ * ids contain `:` internally — `|` removes the structural ambiguity.
+ * @param round - Round number (finite)
+ * @param phase - Phase number (finite)
  * @param participantIds - One or two participant ids
  * @returns Canonical match id
+ * @throws {TypeError} When round/phase are non-finite or an id is empty or contains `|`
  */
 export function matchId(round: number, phase: number, participantIds: string[]): string {
-  const ids = [...participantIds].sort();
-  const pair = ids.length === 1 ? `solo:${ids[0]}` : `${ids[0]}:${ids[1]}`;
+  if (!Number.isFinite(round) || !Number.isFinite(phase)) {
+    throw new TypeError('matchId: round and phase must be finite numbers');
+  }
+  const ids = participantIds.map(id => requireIdSegment(id, 'matchId participantId')).sort();
+  const pair = ids.length === 1 ? `solo:${ids[0]}` : `${ids[0]}|${ids[1]}`;
   return `r${round}:p${phase}:${pair}`;
 }
 
@@ -514,23 +568,60 @@ function pushDuplicate(seen: Set<string>, id: string, label: string, errors: str
   }
 }
 
+/**
+ * Assert an array of extracted keys is in canonical ascending (plain string)
+ * order. Non-string keys (from malformed entries whose structural errors were
+ * already reported) are skipped rather than compared.
+ */
+function checkAscending(keys: (string | undefined)[], path: string, label: string, errors: string[]): void {
+  for (let i = 1; i < keys.length; i++) {
+    const prev = keys[i - 1];
+    const cur = keys[i];
+    if (typeof prev === 'string' && typeof cur === 'string' && prev > cur) {
+      errors.push(`${path}: ${label} not in canonical ascending order (index ${i})`);
+      return;
+    }
+  }
+}
+
+/**
+ * Shared canonical-identity checks for a card {@link CardIdentity}/{@link
+ * CardPrinting}: the uid parses, its name segment matches the record's `name`,
+ * its set segment is canonical uppercase, and its number segment is the
+ * canonical padded form. Returns the parsed uid (or null when the uid is
+ * missing/unparseable so the caller can stop).
+ */
+function checkUidSegments(record: Record<string, unknown>, path: string, errors: string[]): ParsedCardUid | null {
+  const { uid } = record;
+  if (typeof uid !== 'string' || uid.length === 0) {
+    errors.push(`${path}.uid: expected non-empty string`);
+    return null;
+  }
+  const parsed = parseCardUid(uid);
+  if (!parsed) {
+    errors.push(`${path}.uid: unparseable UID "${uid}"`);
+    return null;
+  }
+  if (record.name !== parsed.name) {
+    errors.push(`${path}.name: "${String(record.name)}" does not match UID name "${parsed.name}"`);
+  }
+  if (parsed.set !== null && parsed.set !== parsed.set.toUpperCase()) {
+    errors.push(`${path}.set: "${parsed.set}" is not canonical uppercase form`);
+  }
+  if (parsed.number !== null && parsed.number !== normalizeCardNumber(parsed.number)) {
+    errors.push(`${path}.number: "${parsed.number}" is not canonical padded form`);
+  }
+  return parsed;
+}
+
 function validateCardIdentity(identity: unknown, path: string, errors: string[]): void {
   if (!isRecord(identity)) {
     errors.push(`${path}: expected object`);
     return;
   }
-  const { uid } = identity;
-  if (typeof uid !== 'string' || uid.length === 0) {
-    errors.push(`${path}.uid: expected non-empty string`);
-    return;
-  }
-  const parsed = parseCardUid(uid);
+  const parsed = checkUidSegments(identity, path, errors);
   if (!parsed) {
-    errors.push(`${path}.uid: unparseable UID "${uid}"`);
     return;
-  }
-  if (identity.name !== parsed.name) {
-    errors.push(`${path}.name: "${String(identity.name)}" does not match UID name "${parsed.name}"`);
   }
   const set = identity.set === undefined ? null : identity.set;
   const number = identity.number === undefined ? null : identity.number;
@@ -540,9 +631,6 @@ function validateCardIdentity(identity: unknown, path: string, errors: string[])
   if (number !== parsed.number) {
     errors.push(`${path}.number: "${String(number)}" does not match UID number "${String(parsed.number)}"`);
   }
-  if (parsed.number !== null && parsed.number !== normalizeCardNumber(parsed.number)) {
-    errors.push(`${path}.number: "${parsed.number}" is not canonical padded form`);
-  }
 }
 
 function validatePrinting(printing: unknown, path: string, errors: string[]): void {
@@ -550,14 +638,12 @@ function validatePrinting(printing: unknown, path: string, errors: string[]): vo
     errors.push(`${path}: expected object`);
     return;
   }
-  const { uid } = printing;
-  if (typeof uid !== 'string' || uid.length === 0) {
-    errors.push(`${path}.uid: expected non-empty string`);
+  const parsed = checkUidSegments(printing, path, errors);
+  if (!parsed) {
     return;
   }
-  const parsed = parseCardUid(uid);
-  if (!parsed || parsed.set === null || parsed.number === null) {
-    errors.push(`${path}.uid: printing requires a Name::SET::NUMBER UID, got "${uid}"`);
+  if (parsed.set === null || parsed.number === null) {
+    errors.push(`${path}.uid: printing requires a Name::SET::NUMBER UID, got "${String(printing.uid)}"`);
     return;
   }
   if (printing.set !== parsed.set) {
@@ -588,13 +674,42 @@ function validateDeckCard(card: unknown, path: string, canonicalUidsInDeck: Set<
     card.printings.forEach((printing, index) => {
       validatePrinting(printing, `${path}.printings[${index}]`, errors);
     });
+    checkAscending(
+      card.printings.map(printing =>
+        isRecord(printing) && typeof printing.uid === 'string' ? printing.uid : undefined
+      ),
+      `${path}.printings`,
+      'printings',
+      errors
+    );
   }
   if (!isInteger(card.count) || card.count < 1) {
     errors.push(`${path}.count: expected integer >= 1`);
   }
-  const categories: CardCategory[] = ['pokemon', 'trainer', 'energy'];
-  if (!categories.includes(card.category as CardCategory)) {
-    errors.push(`${path}.category: invalid category "${String(card.category)}"`);
+  const { category } = card;
+  if (!CARD_CATEGORY_SET.has(category as string)) {
+    errors.push(`${path}.category: invalid category "${String(category)}"`);
+  }
+  const { trainerType, energyType, aceSpec, regulationMark } = card;
+  if (trainerType !== null && trainerType !== undefined) {
+    if (category !== 'trainer') {
+      errors.push(`${path}.trainerType: only allowed when category is "trainer"`);
+    } else if (!TRAINER_TYPE_SET.has(trainerType as string)) {
+      errors.push(`${path}.trainerType: invalid trainer type "${String(trainerType)}"`);
+    }
+  }
+  if (energyType !== null && energyType !== undefined) {
+    if (category !== 'energy') {
+      errors.push(`${path}.energyType: only allowed when category is "energy"`);
+    } else if (!ENERGY_TYPE_SET.has(energyType as string)) {
+      errors.push(`${path}.energyType: invalid energy type "${String(energyType)}"`);
+    }
+  }
+  if (aceSpec !== null && aceSpec !== undefined && typeof aceSpec !== 'boolean') {
+    errors.push(`${path}.aceSpec: expected boolean`);
+  }
+  if (regulationMark !== null && regulationMark !== undefined && !/^[A-Z]$/.test(String(regulationMark))) {
+    errors.push(`${path}.regulationMark: expected a single uppercase letter`);
   }
 }
 
@@ -638,9 +753,30 @@ function validateParticipant(participant: unknown, index: number, ids: Set<strin
   }
   if (!isRecord(participant.record)) {
     errors.push(`${path}.record: expected object`);
+  } else {
+    for (const field of ['wins', 'losses', 'ties'] as const) {
+      const value = participant.record[field];
+      if (!isInteger(value) || value < 0) {
+        errors.push(`${path}.record.${field}: expected a non-negative integer`);
+      }
+    }
   }
   if (!isRecord(participant.flags)) {
     errors.push(`${path}.flags: expected object`);
+  } else {
+    for (const flag of ['madePhase2', 'madeTopCut', 'dropped', 'dqed', 'late', 'decklistPublished'] as const) {
+      if (typeof participant.flags[flag] !== 'boolean') {
+        errors.push(`${path}.flags.${flag}: expected boolean`);
+      }
+    }
+  }
+  for (const field of ['opwPct', 'oopwPct'] as const) {
+    const value = participant[field];
+    if (value !== null && value !== undefined) {
+      if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100) {
+        errors.push(`${path}.${field}: expected a finite number in [0, 100] or null`);
+      }
+    }
   }
 }
 
@@ -677,6 +813,16 @@ function validateDeck(
     deck.cards.forEach((card, cardIndex) => {
       validateDeckCard(card, `${path}.cards[${cardIndex}]`, canonicalUidsInDeck, errors);
     });
+    checkAscending(
+      deck.cards.map(card =>
+        isRecord(card) && isRecord(card.canonical) && typeof card.canonical.uid === 'string'
+          ? card.canonical.uid
+          : undefined
+      ),
+      `${path}.cards`,
+      'cards',
+      errors
+    );
   }
   if (typeof deck.hasDecklist !== 'boolean') {
     errors.push(`${path}.hasDecklist: expected boolean`);
@@ -706,8 +852,21 @@ function validateMatch(
   } else {
     pushDuplicate(ids, match.matchId, path, errors);
   }
-  if (!MATCH_OUTCOMES.includes(match.outcome as MatchOutcome)) {
-    errors.push(`${path}.outcome: invalid outcome "${String(match.outcome)}"`);
+  const { outcome } = match;
+  if (!MATCH_OUTCOME_SET.has(outcome as string)) {
+    errors.push(`${path}.outcome: invalid outcome "${String(outcome)}"`);
+  }
+  if (!isInteger(match.round) || match.round < 1) {
+    errors.push(`${path}.round: expected integer >= 1`);
+  }
+  if (!isInteger(match.phase) || match.phase < 1) {
+    errors.push(`${path}.phase: expected integer >= 1`);
+  }
+  if (match.table !== null && match.table !== undefined && (!isInteger(match.table) || match.table < 1)) {
+    errors.push(`${path}.table: expected integer >= 1 or null`);
+  }
+  if (typeof match.completed !== 'boolean') {
+    errors.push(`${path}.completed: expected boolean`);
   }
   const memberIds = match.participantIds;
   if (!Array.isArray(memberIds) || memberIds.length < 1 || memberIds.length > 2) {
@@ -718,17 +877,33 @@ function validateMatch(
         errors.push(`${path}.participantIds[${memberIndex}]: unresolved participant "${String(memberId)}"`);
       }
     });
+    // Cross-validate arity against outcome: solo outcomes name one participant,
+    // pair outcomes name two.
+    if (SOLO_OUTCOMES.has(outcome as string) && memberIds.length !== 1) {
+      errors.push(`${path}.participantIds: outcome "${String(outcome)}" requires exactly 1 participant`);
+    }
+    if (PAIR_OUTCOMES.has(outcome as string) && memberIds.length !== 2) {
+      errors.push(`${path}.participantIds: outcome "${String(outcome)}" requires exactly 2 participants`);
+    }
   }
   const winner = match.winnerParticipantId;
-  if (winner !== null && winner !== undefined) {
+  const hasWinner = winner !== null && winner !== undefined;
+  if (hasWinner) {
     if (typeof winner !== 'string' || !participantIds.has(winner)) {
       errors.push(`${path}.winnerParticipantId: unresolved participant "${String(winner)}"`);
     } else if (Array.isArray(memberIds) && !memberIds.includes(winner)) {
       errors.push(`${path}.winnerParticipantId: winner "${winner}" is not a match participant`);
     }
   }
-  if (match.outcome === 'decided' && (winner === null || winner === undefined)) {
+  // winnerParticipantId is REQUIRED for 'decided' and FORBIDDEN for every other
+  // outcome.
+  if (outcome === 'decided' && !hasWinner) {
     errors.push(`${path}.winnerParticipantId: required for a decided match`);
+  }
+  if (outcome !== 'decided' && hasWinner) {
+    errors.push(
+      `${path}.winnerParticipantId: forbidden for outcome "${String(outcome)}" (only "decided" names a winner)`
+    );
   }
 }
 
@@ -781,22 +956,68 @@ export function validateNormalizedEvent(value: unknown): ValidationResult<Normal
   }
 
   const participantIds = new Set<string>();
+  const participantById = new Map<string, Record<string, unknown>>();
   if (participants) {
-    participants.forEach((participant, index) => validateParticipant(participant, index, participantIds, errors));
+    participants.forEach((participant, index) => {
+      validateParticipant(participant, index, participantIds, errors);
+      if (isRecord(participant) && typeof participant.participantId === 'string') {
+        participantById.set(participant.participantId, participant);
+      }
+    });
+    checkAscending(
+      participants.map(participant =>
+        isRecord(participant) && typeof participant.participantId === 'string' ? participant.participantId : undefined
+      ),
+      'root.participants',
+      'participants',
+      errors
+    );
   }
 
   const deckIds = new Set<string>();
+  const deckById = new Map<string, Record<string, unknown>>();
+  const deckByParticipant = new Map<string, number>();
   if (decks) {
-    decks.forEach((deck, index) => validateDeck(deck, index, deckIds, participantIds, errors));
+    decks.forEach((deck, index) => {
+      validateDeck(deck, index, deckIds, participantIds, errors);
+      if (isRecord(deck) && typeof deck.deckId === 'string') {
+        deckById.set(deck.deckId, deck);
+        if (typeof deck.participantId === 'string') {
+          if (deckByParticipant.has(deck.participantId)) {
+            errors.push(
+              `decks[${index}].participantId: participant "${deck.participantId}" is claimed by more than one deck`
+            );
+          } else {
+            deckByParticipant.set(deck.participantId, index);
+          }
+        }
+      }
+    });
+    checkAscending(
+      decks.map(deck => (isRecord(deck) && typeof deck.deckId === 'string' ? deck.deckId : undefined)),
+      'root.decks',
+      'decks',
+      errors
+    );
   }
 
-  // Participant.deckId must resolve to a deck (checked after deck ids collected).
+  // Participant.deckId must resolve to a deck AND the referenced deck must
+  // point back at that same participant (deck↔participant reconciliation).
   if (participants) {
     participants.forEach((participant, index) => {
       if (isRecord(participant)) {
         const ref = participant.deckId;
-        if (ref !== null && ref !== undefined && (typeof ref !== 'string' || !deckIds.has(ref))) {
-          errors.push(`participants[${index}].deckId: unresolved deck "${String(ref)}"`);
+        if (ref !== null && ref !== undefined) {
+          if (typeof ref !== 'string' || !deckIds.has(ref)) {
+            errors.push(`participants[${index}].deckId: unresolved deck "${String(ref)}"`);
+          } else {
+            const deck = deckById.get(ref);
+            if (deck && deck.participantId !== participant.participantId) {
+              errors.push(
+                `participants[${index}].deckId: deck "${ref}" back-references participant "${String(deck.participantId)}", not "${String(participant.participantId)}"`
+              );
+            }
+          }
         }
       }
     });
@@ -805,6 +1026,54 @@ export function validateNormalizedEvent(value: unknown): ValidationResult<Normal
   const matchIds = new Set<string>();
   if (matches) {
     matches.forEach((match, index) => validateMatch(match, index, matchIds, participantIds, errors));
+    checkAscending(
+      matches.map(match => (isRecord(match) && typeof match.matchId === 'string' ? match.matchId : undefined)),
+      'root.matches',
+      'matches',
+      errors
+    );
+  }
+
+  if (Array.isArray(value.sourceRevisions)) {
+    checkAscending(
+      value.sourceRevisions.map(revision =>
+        isRecord(revision) && typeof revision.source === 'string' && typeof revision.entityId === 'string'
+          ? `${revision.source}\u0000${revision.entityId}`
+          : undefined
+      ),
+      'root.sourceRevisions',
+      'sourceRevisions',
+      errors
+    );
+  }
+
+  // successTags must equal the policy recomputation exactly (order included, for
+  // byte-determinism). Phase tags append only for Labs events (D7 divergence).
+  const playerCount = isRecord(value.meta) && isInteger(value.meta.playerCount) ? value.meta.playerCount : null;
+  if (decks) {
+    decks.forEach((deck, index) => {
+      if (!isRecord(deck) || !Array.isArray(deck.successTags) || typeof deck.participantId !== 'string') {
+        return;
+      }
+      const participant = participantById.get(deck.participantId);
+      if (!participant || !isRecord(participant.flags)) {
+        return;
+      }
+      const { flags } = participant;
+      const placement = typeof participant.placement === 'number' ? participant.placement : null;
+      const expected = computeSuccessTags(placement, playerCount, {
+        madePhase2: flags.madePhase2 === true,
+        madeTopCut: flags.madeTopCut === true,
+        appendPhaseTags: kind === 'labs-event'
+      });
+      const actual = deck.successTags;
+      const drifted = actual.length !== expected.length || expected.some((tag, tagIndex) => actual[tagIndex] !== tag);
+      if (drifted) {
+        errors.push(
+          `decks[${index}].successTags: [${actual.map(String).join(', ')}] does not match policy recomputation [${expected.join(', ')}]`
+        );
+      }
+    });
   }
 
   // Structural asymmetry (D11): online windows carry no match data.

@@ -1,8 +1,8 @@
 {
   "planDocument": "DB-MASTER-PLAN.md",
-  "updatedAt": "2026-07-12",
-  "currentPhase": 1,
-  "currentSlice": "phase1-slice1-contracts-and-fixtures",
+  "updatedAt": "2026-07-13",
+  "currentPhase": 2,
+  "currentSlice": "phase2-slice1-card-identity-consolidation",
   "phases": {
     "0": {
       "title": "Baseline, inventory, and safety rails",
@@ -27,11 +27,26 @@
     },
     "1": {
       "title": "Freeze semantics with contracts and golden fixtures",
-      "status": "in-progress"
+      "status": "complete",
+      "completedGates": [
+        "normalized-layer contract shared/data/contracts.ts (schema v1): types, stable IDs, archetype identity triple, frozen SuccessTagPolicy, all-errors validator",
+        "canonical JSON serialization + sha256 content hashing (shared/data/{canonicalJson,hash}.ts)",
+        "golden fixtures for labs-event and online-window covering every plan-required edge case (tests/fixtures/data-pipeline/)",
+        "representability, invariant-rejection (30+ mutations), permutation-invariance, and ID-stability tests (tests/data/contracts.test.ts)",
+        "adversarial review pass: validator hardened (match arity/winner, participant records/flags, printing UID padding+name, back-reference reconciliation, policy recomputation, storage order, subtype consistency, constructor hygiene)",
+        "compatibility decisions D1-D11 recorded in semanticDifferences",
+        "serving-artifact contract shared/data/artifacts.ts: CardReport/CardUsageIndex/ConversionIndex/ArchetypeIndex schemas, all-errors validators with artifact-level invariants, and pure reference builders from normalized decks",
+        "golden snapshot hashes for all artifacts from both fixtures; permutation-invariance and rebuild byte-identity proven (20 tests)"
+      ],
+      "outstandingGates": [],
+      "notes": [
+        "Exit criteria: representability proven via fixtures for both adapters; all 11 legacy inconsistencies have documented decisions; fixed inputs produce byte-identical normalized records AND serving artifacts.",
+        "Reference builders are the target for Phase 2 producer migration; archetype displayName is the lexicographically-smallest label (deterministic) pending the Phase 2 presentation merge."
+      ]
     },
     "2": {
       "title": "Consolidate domain logic",
-      "status": "not-started"
+      "status": "in-progress"
     },
     "3": {
       "title": "Build graph and shadow receipts",

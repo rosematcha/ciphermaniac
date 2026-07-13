@@ -31,6 +31,12 @@ function serialize(value: unknown): string {
     return `[${value.map(entry => serialize(entry)).join(',')}]`;
   }
   if (type === 'object') {
+    // Honor toJSON (Date and friends) like JSON.stringify does — otherwise a
+    // Date would serialize as '{}' and hash-collide with every other Date.
+    const withToJson = value as { toJSON?: () => unknown };
+    if (typeof withToJson.toJSON === 'function') {
+      return serialize(withToJson.toJSON());
+    }
     const record = value as Record<string, unknown>;
     const keys = Object.keys(record)
       .filter(key => record[key] !== undefined)
