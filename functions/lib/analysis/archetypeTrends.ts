@@ -1,9 +1,12 @@
 import { aggregateCanonicalCardsPerDeck } from '../../../shared/canonicalDeckCards';
+import { SUCCESS_TAG_NAMES } from '../../../shared/data/contracts';
 import type { SynonymDatabase } from '../../../shared/synonyms';
 
-// All performance tiers — must match the success-tag taxonomy the report
-// pipeline assigns (determinePlacementTags in onlineMeta/tournamentFetcher.ts)
-const SUCCESS_TAGS = ['all', 'winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'] as const;
+// Performance tiers = the synthetic `all` aggregate plus every placement/percent
+// tag emitted by the one frozen SUCCESS_TAG_POLICY (phase2/topcut are Labs-only
+// and never surface in online trends). Sourced from SUCCESS_TAG_NAMES so this
+// taxonomy cannot drift from the policy.
+const SUCCESS_TAGS = ['all', ...SUCCESS_TAG_NAMES] as const;
 type SuccessTag = (typeof SUCCESS_TAGS)[number];
 
 type TierTotals = Record<SuccessTag, number>;

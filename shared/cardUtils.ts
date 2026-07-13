@@ -1,109 +1,26 @@
 /**
  * Shared Card Utility Functions
  *
- * This module contains reusable functions for card identifier normalization,
- * sanitization, and path generation used across both frontend and backend.
+ * Path/filename sanitization and archetype-name normalization used across both
+ * frontend and backend. Card *identity* policy (number/set/UID normalization)
+ * moved to {@link module:shared/data/cardIdentity} in DB-MASTER-PLAN Phase 2;
+ * this module re-exports those functions so existing callers keep working.
  *
  * IMPORTANT: This module is isomorphic - it works in both browser and Node.js/Workers.
  * Do not add any environment-specific dependencies here.
  * @module shared/cardUtils
  */
 
+// Re-export card identity policy from its consolidated home. Callers may keep
+// importing these from 'shared/cardUtils' unchanged.
+export {
+  normalizeCardNumber,
+  cardNumberIndexKey,
+  canonicalizeVariant,
+  buildCardIdentifier
+} from './data/cardIdentity';
+
 const INVALID_PATH_CHARS = /[<>:"/\\|?*]/g;
-
-/**
- * Normalizes a card number to 3-digit format with optional uppercase suffix.
- * @example
- * normalizeCardNumber("5")     // "005"
- * normalizeCardNumber("18a")   // "018A"
- * normalizeCardNumber("118")   // "118"
- * normalizeCardNumber("GG05")  // "GG05" (non-numeric prefix preserved, uppercased)
- * @param value - The card number to normalize
- * @returns Normalized card number, or empty string if invalid
- */
-export function normalizeCardNumber(value: string | number | null | undefined): string {
-  if (value === undefined || value === null) {
-    return '';
-  }
-  const raw = String(value).trim();
-  if (!raw) {
-    return '';
-  }
-  const match = raw.match(/^(\d+)([A-Za-z]*)$/);
-  if (!match) {
-    // Non-numeric prefix (like "GG05") - just uppercase it
-    return raw.toUpperCase();
-  }
-  const [, digits, suffix = ''] = match;
-  const normalized = digits.padStart(3, '0');
-  return suffix ? `${normalized}${suffix.toUpperCase()}` : normalized;
-}
-
-/**
- * Normalizes a card number for zero-stripped `SET::NUMBER` index keys: the
- * digit prefix loses leading zeros and any letter suffix is uppercased, so
- * `018a`, `18A`, and `18a` all collapse to `18A`. This is the complement of
- * {@link normalizeCardNumber} (which zero-PADS) — both the index producers and
- * the SPA readers must use this one helper so keys can't drift.
- * @example
- * cardNumberIndexKey("045a") // "45A"
- * cardNumberIndexKey("098")  // "98"
- * cardNumberIndexKey("GG05") // "GG05"
- * @param value - The card number to normalize
- * @returns Zero-stripped, suffix-uppercased card number
- */
-export function cardNumberIndexKey(value: string | number): string {
-  const raw = String(value).trim();
-  const match = raw.match(/^(\d+)([A-Za-z]*)$/);
-  if (!match) {
-    return raw.toUpperCase();
-  }
-  const digits = match[1].replace(/^0+/, '') || '0';
-  const suffix = match[2] ? match[2].toUpperCase() : '';
-  return `${digits}${suffix}`;
-}
-
-/**
- * Canonicalizes a card variant by normalizing set code and number.
- * @param setCode - The set code (e.g., "SVI", "paldea")
- * @param number - The card number
- * @returns Tuple of [uppercased setCode, normalized number]
- */
-export function canonicalizeVariant(
-  setCode: string | null | undefined,
-  number: string | number | null | undefined
-): [string | null, string | null] {
-  const sc = (setCode || '').toString().toUpperCase().trim();
-  if (!sc) {
-    return [null, null];
-  }
-  const normalizedNumber = normalizeCardNumber(number);
-  if (!normalizedNumber) {
-    return [sc, null];
-  }
-  return [sc, normalizedNumber];
-}
-
-/**
- * Builds a card identifier string in the format "SET~NUMBER".
- * @param setCode - The set code
- * @param number - The card number
- * @returns Identifier like "SVI~118", or null if invalid
- */
-export function buildCardIdentifier(
-  setCode: string | null | undefined,
-  number: string | number | null | undefined
-): string | null {
-  const sc = (setCode || '').toString().toUpperCase().trim();
-  if (!sc) {
-    return null;
-  }
-  const normalized = normalizeCardNumber(number);
-  if (!normalized) {
-    return null;
-  }
-  return `${sc}~${normalized}`;
-}
 
 /**
  * Sanitizes text for use in file paths by removing invalid characters.

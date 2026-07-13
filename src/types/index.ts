@@ -367,27 +367,3 @@ export interface ArchetypeFilterRequest {
   filters: Filter[];
   slice?: 'all' | 'phase2' | 'topcut';
 }
-
-/**
- * Placement rule for determining success tags.
- */
-export interface PlacementRule {
-  /** Tag name (e.g., "winner", "top8") */
-  tag: string;
-  /** Maximum placement to qualify */
-  maxPlacing: number;
-  /** Minimum tournament size to apply this rule */
-  minPlayers: number;
-}
-
-/**
- * Percentile-based placement rule.
- */
-export interface PercentRule {
-  /** Tag name (e.g., "top10", "top25") */
-  tag: string;
-  /** Fraction of field (0.1 = top 10%) */
-  fraction: number;
-  /** Minimum tournament size to apply this rule */
-  minPlayers: number;
-}

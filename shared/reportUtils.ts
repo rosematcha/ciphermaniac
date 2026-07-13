@@ -106,12 +106,16 @@ export function composeCategoryPath(
 }
 
 /**
- * Sort report items by percentage (descending), then found count, then name.
- * This is the standard sorting for card usage reports.
- * @param items - Array of items with pct, found, and name properties
+ * Sort report items by percentage (descending), then found count, then name,
+ * then canonical uid. This is the standard total order for card usage reports:
+ * the uid tie-breaker makes equal-name/equal-found ties deterministic and
+ * input-order-independent (DB-MASTER-PLAN decision D9).
+ * @param items - Array of items with pct, found, name, and optional uid properties
  * @returns New sorted array (does not mutate input)
  */
-export function sortReportItems<T extends { pct: number; found: number; name: string }>(items: T[]): T[] {
+export function sortReportItems<T extends { pct: number; found: number; name: string; uid?: string }>(
+  items: T[]
+): T[] {
   return [...items].sort((left, right) => {
     if (right.pct !== left.pct) {
       return right.pct - left.pct;
@@ -119,7 +123,11 @@ export function sortReportItems<T extends { pct: number; found: number; name: st
     if (right.found !== left.found) {
       return right.found - left.found;
     }
-    return (left.name || '').localeCompare(right.name || '');
+    const nameComparison = (left.name || '').localeCompare(right.name || '');
+    if (nameComparison !== 0) {
+      return nameComparison;
+    }
+    return (left.uid || '').localeCompare(right.uid || '');
   });
 }
 

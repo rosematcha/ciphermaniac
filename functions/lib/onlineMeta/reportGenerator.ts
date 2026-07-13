@@ -1,4 +1,6 @@
-import { generateReportFromDecks, normalizeArchetypeName, sanitizeForFilename } from '../data/reportBuilder.js';
+import { generateReportFromDecks } from '../../../shared/data/reports/cardReport';
+import type { SynonymDatabase } from '../../../shared/data/cardIdentity';
+import { normalizeArchetypeName, sanitizeForFilename } from '../data/reportBuilder.js';
 import archetypeThumbnails from '../../../public/assets/data/archetype-thumbnails.json';
 import type { BuildArchetypeReportsOptions, CardEntryInput, ReportData, ThumbnailConfig } from './types';
 
@@ -203,7 +205,7 @@ export function buildArchetypeReports(
       return;
     }
     const filename = `${group.filenameBase}.json`;
-    const data = generateReportFromDecks(group.decks, group.decks.length, synonymDb);
+    const data = generateReportFromDecks(group.decks, group.decks.length, synonymDb as SynonymDatabase | null);
     archetypeFiles.push({
       filename,
       base: group.filenameBase,

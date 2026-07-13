@@ -2,7 +2,7 @@
   "planDocument": "DB-MASTER-PLAN.md",
   "updatedAt": "2026-07-13",
   "currentPhase": 2,
-  "currentSlice": "phase2-slice1-card-identity-consolidation",
+  "currentSlice": "phase2-slice3-card-reports",
   "phases": {
     "0": {
       "title": "Baseline, inventory, and safety rails",
@@ -46,7 +46,22 @@
     },
     "2": {
       "title": "Consolidate domain logic",
-      "status": "in-progress"
+      "status": "in-progress",
+      "completedGates": [
+        "card identity + canonical-print policy consolidated into shared/data/{cardIdentity,canonicalPrint}.ts; old shared modules are thin re-exports; 12-scenario parity corpus pins the legacy canonical-print.mjs until its producer migrates (dcf3bd4)",
+        "success tags: every TS producer (functions/lib, .github/scripts/*.ts) computes from the one frozen SUCCESS_TAG_POLICY; grid parity test (placements 1-40 x 11 field sizes + edge inputs) pins run-online-meta.mjs until conversion (fc5e493)",
+        "frontend derivation copy in src/utils/clientSideFiltering.ts replaced by the shared policy (4c10c42)"
+      ],
+      "outstandingGates": [
+        "card reports consolidated (in progress)",
+        "card usage + conversion consolidated",
+        "archetype identity/grouping/thumbnails/icons/signature-cards merged into shared/data/archetypes/",
+        "trends + matchups consolidated",
+        "run-online-meta.mjs converted to orchestration around shared builders",
+        "download-tournament.py reduced to Labs scraper + normalized-record exporter",
+        "TypeScript event build CLI; reprocess/backfill call the CLI instead of importing the Python monolith",
+        "memorial generation migrated"
+      ]
     },
     "3": {
       "title": "Build graph and shadow receipts",

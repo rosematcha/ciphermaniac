@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 import crypto from 'node:crypto';
+import { pathToFileURL } from 'node:url';
 import { ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import { createR2Client, getJsonResult, putJson as putJsonR2 } from './lib/r2.mjs';
 import { enrichCardWithType } from '../../functions/lib/data/cardTypesDatabase.js';
 import { getCanonicalCard } from '../../functions/lib/data/cardSynonyms.js';
 import { buildArchetypeDeckIndex, resolveArchetypeClassification } from '../../functions/lib/analysis/archetypeClassifier.js';
-import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json' assert { type: 'json' };
+import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json' with { type: 'json' };
 import { generateArchetypeTrends } from '../../functions/lib/analysis/archetypeTrends.js';
 
 const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api';
@@ -45,8 +46,9 @@ const R2_SECRET_ACCESS_KEY = env('R2_SECRET_ACCESS_KEY');
 const R2_BUCKET_NAME = env('R2_BUCKET_NAME');
 const R2_REPORTS_PREFIX = process.env.R2_REPORTS_PREFIX || 'reports';
 
-// Validate all required environment variables are present
-validateEnv();
+// Validate all required environment variables are present. Deferred to the
+// direct-execution guard at the bottom so the parity test can import
+// determinePlacementTags without a fully configured environment.
 
 // Feature flags - default to true if not specified
 const GENERATE_MASTER = process.env.GENERATE_MASTER !== 'false';
@@ -54,8 +56,14 @@ const GENERATE_ARCHETYPES = process.env.GENERATE_ARCHETYPES !== 'false';
 const GENERATE_INCLUDE_EXCLUDE = process.env.GENERATE_INCLUDE_EXCLUDE !== 'false';
 const GENERATE_DECKS = process.env.GENERATE_DECKS !== 'false';
 
-// Placement tagging thresholds (absolute finishing positions)
-const PLACEMENT_TAG_RULES = [
+// Placement tagging thresholds (absolute finishing positions).
+//
+// NOTE: this is a byte-for-byte copy of the frozen SUCCESS_TAG_POLICY in
+// shared/data/contracts.ts. It stays duplicated here only because this ESM
+// producer cannot import TypeScript; tests/data/online-meta-success-tags-parity
+// pins it to the shared policy until run-online-meta.mjs is converted to
+// orchestration around the shared builders (DB-MASTER-PLAN Phase 2).
+export const PLACEMENT_TAG_RULES = [
   { tag: 'winner', maxPlacing: 1, minPlayers: 2 },
   { tag: 'top2', maxPlacing: 2, minPlayers: 4 },
   { tag: 'top4', maxPlacing: 4, minPlayers: 8 },
@@ -64,7 +72,7 @@ const PLACEMENT_TAG_RULES = [
 ];
 
 // Percentile-based placement tagging thresholds
-const PERCENT_TAG_RULES = [
+export const PERCENT_TAG_RULES = [
   { tag: 'top10', fraction: 0.1, minPlayers: 20 },
   { tag: 'top25', fraction: 0.25, minPlayers: 12 },
   { tag: 'top50', fraction: 0.5, minPlayers: 8 }
@@ -102,7 +110,7 @@ const CLEAN_MONTH_CACHE = parseBoolean(process.env.CLEAN_MONTH_CACHE, false);
  * @param {number} players - Total players in the tournament
  * @returns {string[]} Array of applicable success tags
  */
-function determinePlacementTags(placing, players) {
+export function determinePlacementTags(placing, players) {
   const place = Number.isFinite(placing) ? placing : null;
   const fieldSize = Number.isFinite(players) ? players : null;
   if (!place || !fieldSize || place <= 0 || fieldSize <= 1) {
@@ -2066,7 +2074,13 @@ async function main() {
   console.log(`[online-meta] Uploaded ${uploadedComponents.join(' + ')} to ${R2_BUCKET_NAME}/${basePath}`);
 }
 
-main().catch(error => {
-  console.error('[online-meta] Failed:', error);
-  process.exit(1);
-});
+// Only run the build when executed directly — tests import this module's
+// success-tag rules/function for the shared-policy parity corpus.
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) {
+  validateEnv();
+  main().catch(error => {
+    console.error('[online-meta] Failed:', error);
+    process.exit(1);
+  });
+}

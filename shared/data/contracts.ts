@@ -181,6 +181,24 @@ export function computeSuccessTags(
   return tags;
 }
 
+/**
+ * Ordered placement- and percent-tier tag names emitted by
+ * {@link SUCCESS_TAG_POLICY} (the Labs-only `phase2`/`topcut` phase tags are
+ * excluded). This is the canonical taxonomy consumers iterate when they need a
+ * literal-typed tier list; a test pins it to the policy so the two cannot
+ * drift. See divergence D7.
+ */
+export const SUCCESS_TAG_NAMES = [
+  'winner',
+  'top2',
+  'top4',
+  'top8',
+  'top16',
+  'top10',
+  'top25',
+  'top50'
+] as const;
+
 // ============================================================================
 // Card identity
 // ============================================================================
