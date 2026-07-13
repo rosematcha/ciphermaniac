@@ -14,9 +14,12 @@ import re
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Iterable
 
-import boto3
+# Shared R2 helpers (retrying client + typed read results).
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+import r2  # noqa: E402
 
 
 TOURNAMENTS_KEY = "reports/tournaments.json"
@@ -104,11 +107,14 @@ def fetch_json(r2_client, bucket_name: str, key: str):
 
 def get_source_url(r2_client, bucket_name: str, folder_name: str) -> str | None:
     meta_key = f"reports/{folder_name}/meta.json"
-    try:
-        meta = fetch_json(r2_client, bucket_name, meta_key)
-    except Exception as error:  # noqa: BLE001
-        print(f"[refresh] Could not read {meta_key}: {error}")
+    result = r2.read_json(r2_client, bucket_name, meta_key)
+    if result.status == "missing":
         return None
+    if result.status != "found":
+        # A transport blip or corrupt payload must abort — treating it as "no
+        # source URL" would silently skip refreshing a live event.
+        raise result.error
+    meta = result.value
 
     if not isinstance(meta, dict):
         return None
@@ -133,13 +139,7 @@ def main() -> int:
     cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days - 1)
     delete_before_rebuild = parse_bool(os.environ.get("REFRESH_DELETE_EXISTING"), True)
 
-    r2_client = boto3.client(
-        "s3",
-        endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
-        aws_access_key_id=access_key,
-        aws_secret_access_key=secret_key,
-        region_name="auto",
-    )
+    r2_client = r2.make_r2_client(account_id, access_key, secret_key)
 
     try:
         folders = fetch_json(r2_client, bucket_name, TOURNAMENTS_KEY)

@@ -22,12 +22,14 @@ import os
 import sys
 from pathlib import Path
 
-import boto3
-
 _dt_path = Path(__file__).parent / "download-tournament.py"
 _spec = importlib.util.spec_from_file_location("download_tournament", _dt_path)
 dt = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(dt)
+
+# Shared R2 helpers (retrying client + typed read results).
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+import r2  # noqa: E402
 
 
 def get_json(client, bucket, key):
@@ -43,23 +45,17 @@ def get_json(client, bucket, key):
 
 
 def key_exists(client, bucket, key):
-    try:
-        client.head_object(Bucket=bucket, Key=key)
-        return True
-    except Exception:  # noqa: BLE001 — head_object raises ClientError on 404
-        return False
+    # Raises on transport errors (a swallowed error here would rewrite a
+    # conversion.json that already exists but was momentarily unreadable).
+    return r2.object_exists(client, bucket, key)
 
 
 def main():
     dry_run = "--dry-run" in sys.argv
     account_id = os.environ["R2_ACCOUNT_ID"]
     bucket = os.environ.get("R2_BUCKET_NAME", "ciphermaniac-reports")
-    client = boto3.client(
-        "s3",
-        endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
-        aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
-        region_name="auto",
+    client = r2.make_r2_client(
+        account_id, os.environ["R2_ACCESS_KEY_ID"], os.environ["R2_SECRET_ACCESS_KEY"]
     )
 
     tournaments = get_json(client, bucket, "reports/tournaments.json")

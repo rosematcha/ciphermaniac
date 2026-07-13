@@ -1,0 +1,101 @@
+{
+  "date": "2026-07-12",
+  "bucket": "ciphermaniac-reports",
+  "totalObjects": 112267,
+  "totalBytes": 4266698024,
+  "prefixes": {
+    "assets/": {
+      "objects": 3,
+      "bytes": 892766
+    },
+    "card-images/": {
+      "objects": 7285,
+      "bytes": 216098403
+    },
+    "docs.md": {
+      "objects": 1,
+      "bytes": 7888
+    },
+    "index.html": {
+      "objects": 1,
+      "bytes": 6247
+    },
+    "players/_manifest.json": {
+      "objects": 1,
+      "bytes": 5304365
+    },
+    "players/index-slim.json": {
+      "objects": 1,
+      "bytes": 2394021
+    },
+    "players/index.json": {
+      "objects": 1,
+      "bytes": 2991421
+    },
+    "players/{id}": {
+      "objects": 89174,
+      "bytes": 312434055
+    },
+    "pokemon-sprites/": {
+      "objects": 194,
+      "bytes": 891757
+    },
+    "reports/majors-trends.json": {
+      "objects": 1,
+      "bytes": 52979
+    },
+    "reports/prices-history.json": {
+      "objects": 1,
+      "bytes": 2002433
+    },
+    "reports/prices.json": {
+      "objects": 1,
+      "bytes": 73069
+    },
+    "reports/tournaments.json": {
+      "objects": 1,
+      "bytes": 3119
+    },
+    "reports/{event or scope}": {
+      "objects": 15587,
+      "bytes": 3702621811
+    },
+    "toys/": {
+      "objects": 15,
+      "bytes": 20923690
+    }
+  },
+  "notes": [
+    "Prefixes collapsed: reports/{event or scope} is every reports/ subfolder (event folders, online window, trends, snapshots); players/{id} is all per-player bodies.",
+    "Measured via authenticated S3 ListObjectsV2 (Phase 0 inventory gate). Retained-data safety budget: 8 GB (plan, Cost section)."
+  ],
+  "writeRecency": {
+    "1d": {
+      "reports": 290,
+      "assets": 3,
+      "players": 1
+    },
+    "7d": {
+      "players": 89177,
+      "reports": 302,
+      "pokemon-sprites": 194,
+      "card-images": 40,
+      "toys": 15,
+      "assets": 3
+    },
+    "30d": {
+      "players": 89177,
+      "card-images": 7285,
+      "reports": 606,
+      "pokemon-sprites": 194,
+      "toys": 15,
+      "assets": 3
+    }
+  },
+  "classAOpsEstimate": {
+    "steadyStateDailyWrites": 294,
+    "steadyStateMonthlyClassA": "~9k puts + ~4k lists (well under the 1M/month free tier)",
+    "fullPlayerRebuildWrites": 89177,
+    "note": "All 89,177 player bodies were rewritten within the last 7 days (one full-archive rebuild ~9% of the monthly Class A allowance per occurrence). The Phase 5 content-hash player fingerprints are the fix."
+  }
+}

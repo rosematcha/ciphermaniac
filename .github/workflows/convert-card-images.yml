@@ -22,8 +22,10 @@ on:
   schedule:
     - cron: '30 4 * * 1' # Mondays at 04:30 UTC
 
+# All R2 bucket writers share one concurrency group so producers and repair
+# jobs can never mutate the bucket at the same time (DB-MASTER-PLAN Phase 0).
 concurrency:
-  group: convert-card-images
+  group: r2-bucket-writers
   cancel-in-progress: false
 
 jobs:

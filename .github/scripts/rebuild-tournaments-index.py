@@ -12,7 +12,9 @@ import os
 import sys
 from pathlib import Path
 
-import boto3
+# Shared R2 helpers (retrying client + typed read results).
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+import r2  # noqa: E402
 
 
 def parse_bool_env(name: str, default: bool) -> bool:
@@ -48,13 +50,7 @@ def main():
         print("Error: R2 credentials not set")
         sys.exit(1)
 
-    client = boto3.client(
-        "s3",
-        endpoint_url=f"https://{r2_account_id}.r2.cloudflarestorage.com",
-        aws_access_key_id=r2_access_key_id,
-        aws_secret_access_key=r2_secret_access_key,
-        region_name="auto",
-    )
+    client = r2.make_r2_client(r2_account_id, r2_access_key_id, r2_secret_access_key)
 
     module = load_download_module()
     rebuilt = module.rebuild_tournaments_json_from_reports(client, r2_bucket_name, dry_run=dry_run)
