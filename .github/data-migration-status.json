@@ -1,26 +1,25 @@
 {
   "planDocument": "DB-MASTER-PLAN.md",
-  "updatedAt": "2026-07-12",
-  "currentPhase": 0,
-  "currentSlice": "phase0-slice2-r2-result-types-and-retries",
+  "updatedAt": "2026-07-13",
+  "currentPhase": 2,
+  "currentSlice": "phase2-python-export-boundary",
   "phases": {
     "0": {
       "title": "Baseline, inventory, and safety rails",
-      "status": "in-progress",
+      "status": "complete",
       "completedGates": [
         "price-history transport failure aborts instead of replacing valid history (update-prices.py, tested)",
         "all R2-writing workflows share one concurrency group (r2-bucket-writers, cancel-in-progress: false)",
         "Python dependencies pinned in .github/scripts/requirements.txt; workflows install from it",
         "quality-gates.yml runs API tests (tests/api) and Python tests (.github/scripts/tests)",
         "daily-pricing schedule moved 12:00 -> 14:00 UTC so it no longer races the online-meta build it reads",
-        "R2 inventory measured and checked in (.github/baselines/r2-inventory-2026-07-12.json): 112,267 objects, 4.27 GB of the 8 GB budget; steady-state ~294 writes/day; full player rebuild rewrites all 89k player bodies"
+        "R2 inventory measured and checked in (.github/baselines/r2-inventory-2026-07-12.json): 112,267 objects, 4.27 GB of the 8 GB budget; steady-state ~294 writes/day; full player rebuild rewrites all 89k player bodies",
+        "shared Python R2 module (.github/scripts/lib/r2.py): adaptive-retry client + found/missing/corrupt/transport read results adopted by all 7 Python producers (12 new tests)",
+        "shared Node R2 module (.github/scripts/lib/r2.mjs): adaptive-retry client + typed read results adopted by all 6 Node producers; majors-trends and synonym-update no longer treat transport failures as missing data (11 new tests)",
+        "reproducible route-data benchmark (scripts/benchmark-routes.ts, npm run bench:routes) with mobile profile; baseline in .github/baselines/route-benchmark-2026-07-12.json",
+        "p50/p95 budgets set from measured baseline (see measuredBaselines.browser)"
       ],
-      "outstandingGates": [
-        "reproducible browser benchmark for home/card/archetype/trends/tournament/player deep links (cold, SW-controlled, repeat; mobile profile)",
-        "p50/p95 budgets checked into the repository",
-        "explicit result types (found/missing/corrupt/transport) for R2 reads across producers",
-        "retries with exponential backoff and jitter for R2 reads and writes across producers"
-      ],
+      "outstandingGates": [],
       "notes": [
         "Workflow sleeps in trends/player-aggregator intentionally retained until the build graph replaces them (plan: Phase 0 work list).",
         "Shared concurrency group means GitHub may displace a pending writer run; accepted by plan until the Phase 5 reconciling workflow rediscovers dirty state from receipts."
@@ -28,11 +27,48 @@
     },
     "1": {
       "title": "Freeze semantics with contracts and golden fixtures",
-      "status": "not-started"
+      "status": "complete",
+      "completedGates": [
+        "normalized-layer contract shared/data/contracts.ts (schema v1): types, stable IDs, archetype identity triple, frozen SuccessTagPolicy, all-errors validator",
+        "canonical JSON serialization + sha256 content hashing (shared/data/{canonicalJson,hash}.ts)",
+        "golden fixtures for labs-event and online-window covering every plan-required edge case (tests/fixtures/data-pipeline/)",
+        "representability, invariant-rejection (30+ mutations), permutation-invariance, and ID-stability tests (tests/data/contracts.test.ts)",
+        "adversarial review pass: validator hardened (match arity/winner, participant records/flags, printing UID padding+name, back-reference reconciliation, policy recomputation, storage order, subtype consistency, constructor hygiene)",
+        "compatibility decisions D1-D11 recorded in semanticDifferences",
+        "serving-artifact contract shared/data/artifacts.ts: CardReport/CardUsageIndex/ConversionIndex/ArchetypeIndex schemas, all-errors validators with artifact-level invariants, and pure reference builders from normalized decks",
+        "golden snapshot hashes for all artifacts from both fixtures; permutation-invariance and rebuild byte-identity proven (20 tests)"
+      ],
+      "outstandingGates": [],
+      "notes": [
+        "Exit criteria: representability proven via fixtures for both adapters; all 11 legacy inconsistencies have documented decisions; fixed inputs produce byte-identical normalized records AND serving artifacts.",
+        "Reference builders are the target for Phase 2 producer migration; archetype displayName is the lexicographically-smallest label (deterministic) pending the Phase 2 presentation merge."
+      ]
     },
     "2": {
       "title": "Consolidate domain logic",
-      "status": "not-started"
+      "status": "in-progress",
+      "completedGates": [
+        "card identity + canonical-print policy consolidated into shared/data/{cardIdentity,canonicalPrint}.ts; old shared modules are thin re-exports; 12-scenario parity corpus pins the legacy canonical-print.mjs until its producer migrates (dcf3bd4)",
+        "success tags: every TS producer (functions/lib, .github/scripts/*.ts) computes from the one frozen SUCCESS_TAG_POLICY; grid parity test (placements 1-40 x 11 field sizes + edge inputs) pins run-online-meta.mjs until conversion (fc5e493)",
+        "frontend derivation copy in src/utils/clientSideFiltering.ts replaced by the shared policy (4c10c42)",
+        "card report builder consolidated into shared/data/reports/cardReport.ts with D9 deterministic tie-breakers; reportBuilder.ts is a shim; parity suite pins pre-move algorithm (457acdb)",
+        "legacy cardUsage + conversion builders consolidated into shared/data/reports/{cardUsage,conversion}.ts; byte-identical to the live .mjs producer and Python semantics, 7 parity tests (9902ba5)",
+        "archetype identity/presentation/build consolidated into shared/data/archetypes/{identity,presentation,build}.ts; stale Functions thumbnail engine retired (recorded improvement: snapshot archetypes can now infer thumbnails); Python icon behavior ported; 11 parity tests (afb21cb)",
+        "trends/matchup aggregation authority moved to shared/data/analysis/archetypeTrends.ts with explicit input contracts; survey confirmed no other TS aggregation copies exist (src/lib/matchups.ts is read-side presentation); behavior byte-preserved (1ae15b7)",
+        "normalized contract extended with Labs source fields (Participant points/icons/dropRound/labsDeckId/deckName; EventMeta country/city/eventType/updatedAt/completed/started/playersRound1/decklistCount/rk9Id/playlatamId/labsCode/sourceTournamentId), validated, opw scale documented as adapter-converted; content-hash snapshots unchanged (6aef355)",
+        "event match serving builders (shared/data/reports/eventMatches.ts: playerMatches + canonical matches) built from normalized records, 7 tests (e514600)",
+        "matchupProfiles quality-model builder (shared/data/reports/matchupProfiles.ts) ported from aggregate_matchups; groups by archetype key so casing variants collapse (D3); 8 tests (bb3bf17)",
+        "event artifact orchestrator (shared/data/reports/eventArtifacts.ts): one pure fn NormalizedEvent -> full serving tree (master/decks/players/matches/playerMatches/conversion/matchupProfiles/cardUsage/archetypes index+per-archetype files/index/meta + phase2/topcut slices), permutation-invariant, 9 tests (78c2665)",
+        "TS event build CLI (.github/scripts/event-cli.ts): validate normalized event -> build -> write local or upload R2; malformed record fails before publication; run end-to-end on the fixture (31 artifacts), 2 tests (0d5865d)"
+      ],
+      "outstandingGates": [
+        "download-tournament.py reduced to a Labs scraper that emits a NormalizedEvent JSON (contract from slice 8) at its export boundary (~L2818), then invokes event-cli.ts build; the whole TS receiving side is now in place and fixture-verified",
+        "event-cli subcommands reindex/backfill-conversion/rebuild-catalog so reprocess-event-indexes.py / backfill-conversion.py / rebuild-tournaments-index.py stop importing the Python monolith",
+        "memorial generation migrated to shared builders (keeps its limitlesstcg HTML scraper, swaps its private report/canonicalization)",
+        "tournaments.json catalog builder",
+        "run-online-meta.mjs -> TS orchestration: DEFERRED pending a verified fixture-diff port",
+        "DECISION: tournament.db + cardIndex.json have no consumers; retire in Phase 7 rather than port"
+      ]
     },
     "3": {
       "title": "Build graph and shadow receipts",
@@ -63,9 +99,115 @@
       "storageBudgetGB": 8,
       "steadyStateDailyWrites": 294,
       "fullPlayerRebuildWrites": 89177
+    },
+    "browser": {
+      "benchmarkFile": ".github/baselines/route-benchmark-2026-07-12.json",
+      "profile": "mobile 390x844, 4x CPU throttle, slow-4G (1.6 Mbps / 150ms RTT)",
+      "budgets": {
+        "rule": "no added blocking/route-data requests; regressions capped at min(5%, 50ms) on p95 first-data per plan",
+        "cold": {
+          "p50": {
+            "networkMs": 3668,
+            "firstDataMs": 1187,
+            "lcpMs": 2922,
+            "transferredKB": 360,
+            "parseMs": 5
+          },
+          "p95": {
+            "networkMs": 4404,
+            "firstDataMs": 1205,
+            "lcpMs": 3356,
+            "transferredKB": 446,
+            "parseMs": 27
+          }
+        },
+        "repeat": {
+          "p50": {
+            "networkMs": 961,
+            "firstDataMs": 76,
+            "lcpMs": 464,
+            "transferredKB": 39,
+            "parseMs": 4
+          },
+          "p95": {
+            "networkMs": 2654,
+            "firstDataMs": 91,
+            "lcpMs": 1906,
+            "transferredKB": 370,
+            "parseMs": 22
+          }
+        }
+      },
+      "existingLighthouseBudgets": "LCP <= 3s, script transfer <= 90KB, CLS <= 0.1 (.lighthouserc.json)"
     }
   },
-  "semanticDifferences": [],
+  "semanticDifferences": [
+    {
+      "id": "D1",
+      "legacy": "decks.json playerId means tp_id (Python events) but global handle (online); consumers sample-detect",
+      "decision": "contract separates participantId (event-scoped) from playerRef (global, nullable); both stored on decks"
+    },
+    {
+      "id": "D2",
+      "legacy": "item pct/dist 0-100 but archetype index percent is a 0-1 fraction; client infers scale from magnitude",
+      "decision": "one representation: 0-100 with Pct field suffix; normalized layer stores counts, serving layer computes Pct; legacy fraction files get migration fixtures"
+    },
+    {
+      "id": "D3",
+      "legacy": "producers preserve archetype case in slugs; shared TS lowercases -> split identities",
+      "decision": "archetype identity triple: key (lowercased comparison), displayName (cased), slug (derived from key, never from sanitized display labels)"
+    },
+    {
+      "id": "D4",
+      "legacy": "online + Python read item set/number from first-seen variant meta; can disagree with canonical UID after synonym rewrite",
+      "decision": "set/number always derived from canonical UID and validated against it (reportBuilder.ts behavior wins)"
+    },
+    {
+      "id": "D5",
+      "legacy": "Python master.json / archetype cards.json not synonym-canonicalized; only derived indexes are",
+      "decision": "all serving reports canonicalize through the one shared builder"
+    },
+    {
+      "id": "D6",
+      "legacy": "Python canonicalize_variant lstrips zeros ('18A') vs normalize_card_number pads ('018A'); three variants incl. SQLite",
+      "decision": "canonical padded form (018A) everywhere; index keys remain a derived stripped lookup helper"
+    },
+    {
+      "id": "D7",
+      "legacy": "phase2/topcut success tags only on labs events; guard implementations differ",
+      "decision": "one versioned SuccessTagPolicy; phase tags apply only where phases exist (explicit in policy, not producer-local code)"
+    },
+    {
+      "id": "D8",
+      "legacy": "archetype index fields differ per producer (icons Python-only; reportGenerator has neither icons nor signatureCards)",
+      "decision": "one presentation module (Phase 2) merges thumbnail/signature/icon behavior; index schema lists all three explicitly"
+    },
+    {
+      "id": "D9",
+      "legacy": "report items sorted by found only; ties are input-order-dependent",
+      "decision": "explicit total-order tie-breakers (found desc, then name, then uid) required by contract; permutation tests enforce"
+    },
+    {
+      "id": "D10",
+      "legacy": "reportVersion 3.1 on events only; no schemaVersion anywhere; volatile fetchedAt used as fingerprint",
+      "decision": "schemaVersion + builderVersion on all normalized partitions, artifacts, receipts, manifests; volatile fetch time excluded from semantic hashes"
+    },
+    {
+      "id": "D11",
+      "legacy": "online windows carry no match data; raw Labs winner codes surface to consumers",
+      "decision": "normalized Match with explicit outcome enum (win/loss/tie/double_loss/bye/unpaired/unknown); online windows have matches: [] explicitly; raw winner codes stay in source captures"
+    },
+    {
+      "id": "D12",
+      "legacy": "Python canonicalize_variant strips number '0' to empty (card skipped); shared TS normalizeCardNumber pads to '000'",
+      "decision": "shared TS helper behavior wins ('0' is not a real card number; unrealistic edge, no production data affected)"
+    },
+    {
+      "id": "D13",
+      "legacy": "Labs opw/oopw stored raw (0-1 fraction) in players.json",
+      "decision": "source adapter multiplies by 100; contract opwPct/oopwPct always 0-100"
+    }
+  ],
   "discoveredDependencyEdges": [
     "measured: player-aggregator full rebuilds rewrite every players/{id} body (89,177 objects observed rewritten in one week) \u2014 confirms Phase 5 content-hash fingerprint requirement"
   ]

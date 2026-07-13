@@ -22,6 +22,7 @@
     "test:coverage": "c8 npm run test:unit",
     "test:mobile": "playwright test",
     "images:convert": "tsx scripts/convert-card-images.ts",
+    "bench:routes": "tsx scripts/benchmark-routes.ts",
     "prepare": "husky",
     "knip": "knip"
   },

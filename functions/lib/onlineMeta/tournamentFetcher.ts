@@ -1,3 +1,4 @@
+import { computeSuccessTags } from '../../../shared/data/contracts';
 import { fetchLimitlessJson, type LimitlessEnv } from '../api/limitless.js';
 import { type CardTypesDatabase, enrichCardWithType } from '../data/cardTypesDatabase.js';
 import { inferEnergyType, inferTrainerType, isAceSpecName } from '../analysis/cardTypeInference.js';
@@ -267,50 +268,6 @@ async function hashDeck(cards: CardEntry[], fallbackKey = '') {
   return bytes.map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-// Placement tagging thresholds (absolute finishing positions)
-const PLACEMENT_TAG_RULES = [
-  { tag: 'winner', maxPlacing: 1, minPlayers: 2 },
-  { tag: 'top2', maxPlacing: 2, minPlayers: 4 },
-  { tag: 'top4', maxPlacing: 4, minPlayers: 8 },
-  { tag: 'top8', maxPlacing: 8, minPlayers: 16 },
-  { tag: 'top16', maxPlacing: 16, minPlayers: 32 }
-];
-
-// Percentile-based placement tagging thresholds
-const PERCENT_TAG_RULES = [
-  { tag: 'top10', fraction: 0.1, minPlayers: 20 },
-  { tag: 'top25', fraction: 0.25, minPlayers: 12 },
-  { tag: 'top50', fraction: 0.5, minPlayers: 8 }
-];
-
-function determinePlacementTags(placing: number | null | undefined, players: number | null | undefined) {
-  const place = Number.isFinite(placing) ? placing : null;
-  const fieldSize = Number.isFinite(players) ? players : null;
-  if (!place || !fieldSize || place <= 0 || fieldSize <= 1) {
-    return [];
-  }
-
-  const tags: string[] = [];
-
-  for (const rule of PLACEMENT_TAG_RULES) {
-    if (fieldSize >= rule.minPlayers && place <= rule.maxPlacing) {
-      tags.push(rule.tag);
-    }
-  }
-
-  for (const rule of PERCENT_TAG_RULES) {
-    if (fieldSize < rule.minPlayers) {
-      continue;
-    }
-    const cutoff = Math.max(1, Math.ceil(fieldSize * rule.fraction));
-    if (place <= cutoff) {
-      tags.push(rule.tag);
-    }
-  }
-
-  return tags;
-}
-
 function determinePlacementLimit(players: number | null | undefined) {
   const count = Number(players) || 0;
   // Drop ultra-tiny events
@@ -490,7 +447,9 @@ export async function gatherDecks(
           tournamentPlatform: tournament.platform,
           tournamentOrganizer: tournament.organizer,
           deckSource: 'limitless-online',
-          successTags: determinePlacementTags(entry?.placing, derivedPlayers || tournament?.players)
+          // Online windows never carry Day-2 phases, so phase tags are not
+          // appended (appendPhaseTags defaults false) — see divergence D7.
+          successTags: computeSuccessTags(entry?.placing, derivedPlayers || tournament?.players)
         }
       });
     }

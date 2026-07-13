@@ -8,7 +8,8 @@
  */
 
 import process from 'node:process';
-import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
+import { ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
+import { createR2Client, createReportsBinding } from './lib/r2.mjs';
 import {
   fetchRecentOnlineTournaments,
   gatherDecks,
@@ -42,14 +43,15 @@ const R2_SECRET_ACCESS_KEY = requireEnv('R2_SECRET_ACCESS_KEY');
 const R2_BUCKET_NAME = requireEnv('R2_BUCKET_NAME');
 const R2_REPORTS_PREFIX = process.env.R2_REPORTS_PREFIX || 'reports';
 
-const s3Client = new S3Client({
-  region: 'auto',
-  endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: R2_ACCESS_KEY_ID,
-    secretAccessKey: R2_SECRET_ACCESS_KEY
-  }
+const s3Client = createR2Client({
+  accountId: R2_ACCOUNT_ID,
+  accessKeyId: R2_ACCESS_KEY_ID,
+  secretAccessKey: R2_SECRET_ACCESS_KEY
 });
+
+// Shared retrying binding (404 → null, other errors throw). This class keeps
+// only the prefix + list/delete helpers that are specific to this job.
+const reports = createReportsBinding(s3Client, R2_BUCKET_NAME);
 
 class R2Binding {
   private readonly prefix: string;
@@ -64,39 +66,11 @@ class R2Binding {
 
   async put(key: string, data: unknown) {
     const body = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: R2_BUCKET_NAME,
-        Key: this.withPrefix(key),
-        Body: body,
-        ContentType: 'application/json'
-      })
-    );
+    await reports.put(this.withPrefix(key), body);
   }
 
   async get(key: string) {
-    try {
-      const response = await s3Client.send(
-        new GetObjectCommand({
-          Bucket: R2_BUCKET_NAME,
-          Key: this.withPrefix(key)
-        })
-      );
-      return {
-        async text() {
-          const chunks: Uint8Array[] = [];
-          for await (const chunk of response.Body as unknown as AsyncIterable<Uint8Array>) {
-            chunks.push(chunk);
-          }
-          return Buffer.concat(chunks).toString('utf-8');
-        }
-      };
-    } catch (error) {
-      if ((error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode === 404) {
-        return null;
-      }
-      throw error;
-    }
+    return reports.get(this.withPrefix(key));
   }
 
   async listKeys(prefix: string) {

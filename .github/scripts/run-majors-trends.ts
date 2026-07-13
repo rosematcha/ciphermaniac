@@ -24,7 +24,7 @@
 
 import process from 'node:process';
 import { writeFile } from 'node:fs/promises';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { createR2Client, getJsonResult, putJson } from './lib/r2.mjs';
 import { canonicalizeReport, majorTournaments, tournamentDate, type MasterPayload } from '../../src/lib/data.ts';
 import {
   computeMajorsWindowResult,
@@ -61,37 +61,38 @@ function requireEnv(name: string): string {
 // S3 endpoint bypasses it (and the edge cache) the same way run-trends.ts does.
 const R2_BUCKET = requireEnv('R2_BUCKET_NAME');
 const REPORTS_PREFIX = (process.env.R2_REPORTS_PREFIX || 'reports').replace(/\/+$/, '');
-const s3Client = new S3Client({
-  region: 'auto',
-  endpoint: `https://${requireEnv('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
-    secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY')
-  }
+const s3Client = createR2Client({
+  accountId: requireEnv('R2_ACCOUNT_ID'),
+  accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
+  secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY')
 });
 
 /** GET + parse a JSON object from R2 by key. Returns null on 404, throws otherwise. */
 async function fetchJson<T>(key: string): Promise<T | null> {
-  try {
-    const res = await s3Client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
-    return JSON.parse(await res.Body!.transformToString()) as T;
-  } catch (error) {
-    const meta = error as { name?: string; $metadata?: { httpStatusCode?: number } };
-    if (meta?.name === 'NoSuchKey' || meta?.$metadata?.httpStatusCode === 404) {
-      return null;
-    }
-    throw error;
+  const result = await getJsonResult<T>(s3Client, R2_BUCKET, key);
+  if (result.status === 'found') {
+    return result.value;
   }
-}
-
-/** Same as fetchJson but never throws — mirrors the page's Promise.allSettled per-event fetch. */
-async function fetchJsonSafe<T>(key: string): Promise<T | null> {
-  try {
-    return await fetchJson<T>(key);
-  } catch (error) {
-    console.warn(`[majors-trends] read failed for ${key}:`, (error as Error).message);
+  if (result.status === 'missing') {
     return null;
   }
+  throw new Error(`[majors-trends] read failed for ${key}`, { cause: result.error });
+}
+
+/**
+ * Tolerate ONLY a verified-missing event (majors trends may publish partial
+ * results when an event artifact is absent). A transport or corrupt read must
+ * fail the run rather than silently drop an event from the artifact.
+ */
+async function fetchJsonSafe<T>(key: string): Promise<T | null> {
+  const result = await getJsonResult<T>(s3Client, R2_BUCKET, key);
+  if (result.status === 'found') {
+    return result.value;
+  }
+  if (result.status === 'missing') {
+    return null;
+  }
+  throw new Error(`[majors-trends] read failed for ${key} (${result.status})`, { cause: result.error });
 }
 
 /** Load the synonym DB the same way the browser does (see src/utils/cardSynonyms.ts). */
@@ -177,15 +178,7 @@ async function main() {
   }
 
   const key = `${REPORTS_PREFIX}/${ARTIFACT_KEY}`;
-  await s3Client.send(
-    new PutObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: key,
-      Body: body,
-      ContentType: 'application/json',
-      CacheControl: CACHE_CONTROL
-    })
-  );
+  await putJson(s3Client, R2_BUCKET, key, body, { cacheControl: CACHE_CONTROL });
   console.log(`[majors-trends] Uploaded ${key} (${body.length} bytes)`);
 }
 

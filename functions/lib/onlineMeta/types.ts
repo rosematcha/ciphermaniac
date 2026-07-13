@@ -52,19 +52,9 @@ export interface GatheredDeck {
   successTags: string[];
 }
 
-/** Report item for thumbnail inference (subset of CardItem) */
-interface ReportItem {
-  name?: string;
-  set?: string;
-  number?: string | number;
-  pct?: number;
-  category?: string;
-}
-
-/** Report data structure with items array */
-export interface ReportData {
-  items?: ReportItem[];
-}
+// The ReportItem/ReportData thumbnail-inference shapes retired with the stale
+// reportGenerator presentation copy (DB-MASTER-PLAN Phase 2, slice 5); the
+// shared engine's types live in shared/data/archetypes/presentation.ts.
 
 /** Tournament details response from Limitless API */
 export interface TournamentDetailsResponse {

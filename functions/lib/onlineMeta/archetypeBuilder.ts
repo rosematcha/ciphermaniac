@@ -1,4 +1,5 @@
-import { normalizeArchetypeName, sanitizeForFilename } from '../data/reportBuilder.js';
+import { SUCCESS_TAG_NAMES } from '../../../shared/data/contracts';
+import { deriveArchetypeGrouping } from '../../../shared/data/archetypes/build';
 import { getCanonicalCard } from '../data/cardSynonyms.js';
 import type {
   BuildCardTrendReportOptions,
@@ -15,24 +16,6 @@ const MIN_TREND_PLAYERS = 0;
 const DEFAULT_MIN_TREND_APPEARANCES = 3;
 const CARD_TREND_MIN_APPEARANCES = 2;
 const DEFAULT_CARD_TREND_TOP = 12;
-
-const PLACEMENT_TAG_RULES = [
-  { tag: 'winner', maxPlacing: 1, minPlayers: 2 },
-  { tag: 'top2', maxPlacing: 2, minPlayers: 4 },
-  { tag: 'top4', maxPlacing: 4, minPlayers: 8 },
-  { tag: 'top8', maxPlacing: 8, minPlayers: 16 },
-  { tag: 'top16', maxPlacing: 16, minPlayers: 32 }
-];
-
-const PERCENT_TAG_RULES = [
-  { tag: 'top10', fraction: 0.1, minPlayers: 20 },
-  { tag: 'top25', fraction: 0.25, minPlayers: 12 },
-  { tag: 'top50', fraction: 0.5, minPlayers: 8 }
-];
-
-const SUCCESS_TAGS = Array.from(
-  new Set([...PLACEMENT_TAG_RULES.map(rule => rule.tag), ...PERCENT_TAG_RULES.map(rule => rule.tag)])
-);
 
 export function buildTrendReport(
   decks: TrendDeckInput[],
@@ -65,7 +48,7 @@ export function buildTrendReport(
   });
 
   const archetypes = new Map();
-  const successTagSet = new Set(SUCCESS_TAGS);
+  const successTagSet = new Set<string>(SUCCESS_TAG_NAMES);
   const deckList = Array.isArray(decks) ? decks : [];
 
   for (const deck of deckList) {
@@ -73,8 +56,10 @@ export function buildTrendReport(
     if (!tournamentId || !tournamentIndex.has(tournamentId)) {
       continue;
     }
-    const normalizedName = normalizeArchetypeName(deck?.archetype || 'Unknown');
-    const base = sanitizeForFilename(normalizedName.replace(/ /g, '_')) || 'unknown';
+    // Same lowercased grouping this file always used, now derived through the
+    // shared archetype grouping helper (Phase 2, slice 5). Note the historical
+    // 'unknown' (lowercase) fallback base, unlike reportGenerator's 'Unknown'.
+    const { base } = deriveArchetypeGrouping(deck?.archetype || 'Unknown', 'lower', 'unknown');
     const displayName = deck?.archetype || 'Unknown';
 
     const archetype = archetypes.get(base) || {

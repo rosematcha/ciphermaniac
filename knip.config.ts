@@ -23,6 +23,12 @@ const config: KnipConfig = {
     'scripts/**/*.{ts,mjs}',
     '.github/scripts/*.{ts,mjs}',
     'tests/**/*.{ts,js,mjs}'
+  ],
+
+  ignore: [
+    // Contract layer lands ahead of its producers (DB-MASTER-PLAN Phase 2 adopts
+    // it); its exports have no consumers yet. Remove this ignore then.
+    'shared/data/**'
   ]
 };
 

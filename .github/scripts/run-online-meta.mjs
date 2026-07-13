@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
 import crypto from 'node:crypto';
-import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
+import { pathToFileURL } from 'node:url';
+import { ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
+import { createR2Client, getJsonResult, putJson as putJsonR2 } from './lib/r2.mjs';
 import { enrichCardWithType } from '../../functions/lib/data/cardTypesDatabase.js';
 import { getCanonicalCard } from '../../functions/lib/data/cardSynonyms.js';
 import { buildArchetypeDeckIndex, resolveArchetypeClassification } from '../../functions/lib/analysis/archetypeClassifier.js';
-import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json' assert { type: 'json' };
+import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json' with { type: 'json' };
 import { generateArchetypeTrends } from '../../functions/lib/analysis/archetypeTrends.js';
 
 const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api';
@@ -44,8 +46,9 @@ const R2_SECRET_ACCESS_KEY = env('R2_SECRET_ACCESS_KEY');
 const R2_BUCKET_NAME = env('R2_BUCKET_NAME');
 const R2_REPORTS_PREFIX = process.env.R2_REPORTS_PREFIX || 'reports';
 
-// Validate all required environment variables are present
-validateEnv();
+// Validate all required environment variables are present. Deferred to the
+// direct-execution guard at the bottom so the parity test can import
+// determinePlacementTags without a fully configured environment.
 
 // Feature flags - default to true if not specified
 const GENERATE_MASTER = process.env.GENERATE_MASTER !== 'false';
@@ -53,8 +56,14 @@ const GENERATE_ARCHETYPES = process.env.GENERATE_ARCHETYPES !== 'false';
 const GENERATE_INCLUDE_EXCLUDE = process.env.GENERATE_INCLUDE_EXCLUDE !== 'false';
 const GENERATE_DECKS = process.env.GENERATE_DECKS !== 'false';
 
-// Placement tagging thresholds (absolute finishing positions)
-const PLACEMENT_TAG_RULES = [
+// Placement tagging thresholds (absolute finishing positions).
+//
+// NOTE: this is a byte-for-byte copy of the frozen SUCCESS_TAG_POLICY in
+// shared/data/contracts.ts. It stays duplicated here only because this ESM
+// producer cannot import TypeScript; tests/data/online-meta-success-tags-parity
+// pins it to the shared policy until run-online-meta.mjs is converted to
+// orchestration around the shared builders (DB-MASTER-PLAN Phase 2).
+export const PLACEMENT_TAG_RULES = [
   { tag: 'winner', maxPlacing: 1, minPlayers: 2 },
   { tag: 'top2', maxPlacing: 2, minPlayers: 4 },
   { tag: 'top4', maxPlacing: 4, minPlayers: 8 },
@@ -63,19 +72,16 @@ const PLACEMENT_TAG_RULES = [
 ];
 
 // Percentile-based placement tagging thresholds
-const PERCENT_TAG_RULES = [
+export const PERCENT_TAG_RULES = [
   { tag: 'top10', fraction: 0.1, minPlayers: 20 },
   { tag: 'top25', fraction: 0.25, minPlayers: 12 },
   { tag: 'top50', fraction: 0.5, minPlayers: 8 }
 ];
 
-const s3Client = new S3Client({
-  region: 'auto',
-  endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: R2_ACCESS_KEY_ID,
-    secretAccessKey: R2_SECRET_ACCESS_KEY
-  }
+const s3Client = createR2Client({
+  accountId: R2_ACCOUNT_ID,
+  accessKeyId: R2_ACCESS_KEY_ID,
+  secretAccessKey: R2_SECRET_ACCESS_KEY
 });
 
 function daysAgo(days) {
@@ -104,7 +110,7 @@ const CLEAN_MONTH_CACHE = parseBoolean(process.env.CLEAN_MONTH_CACHE, false);
  * @param {number} players - Total players in the tournament
  * @returns {string[]} Array of applicable success tags
  */
-function determinePlacementTags(placing, players) {
+export function determinePlacementTags(placing, players) {
   const place = Number.isFinite(placing) ? placing : null;
   const fieldSize = Number.isFinite(players) ? players : null;
   if (!place || !fieldSize || place <= 0 || fieldSize <= 1) {
@@ -517,7 +523,7 @@ function buildThumbnailId(setCode, number) {
  * @param {object} cardTypesDb
  * @returns {Map<string, {abilities: string[], attacks: string[]}>}
  */
-function buildCardMetaLookup(cardTypesDb) {
+export function buildCardMetaLookup(cardTypesDb) {
   const lookup = new Map();
   for (const [key, info] of Object.entries(cardTypesDb || {})) {
     if (!info || typeof info !== 'object') {
@@ -719,7 +725,7 @@ function inferArchetypeThumbnails(displayName, reportData, cardMetaLookup = null
   return inferDistinctiveThumbnails(items, metaUsage);
 }
 
-function resolveArchetypeThumbnails(baseName, displayName, reportData, cardMetaLookup = null, metaUsage = null) {
+export function resolveArchetypeThumbnails(baseName, displayName, reportData, cardMetaLookup = null, metaUsage = null) {
   const attempts = [displayName, displayName?.replace(/_/g, ' '), baseName];
   for (const key of attempts) {
     if (key && Array.isArray(ARCHETYPE_THUMBNAILS[key]) && ARCHETYPE_THUMBNAILS[key].length) {
@@ -891,7 +897,7 @@ function isSpecialEnergy(card) {
  * @param {string[]} thumbnails - Thumbnail card IDs
  * @returns {Array<{name: string, set: string, number: string, pct: number}>}
  */
-function generateSignatureCards(displayName, archetypeReport, masterReport, thumbnails) {
+export function generateSignatureCards(displayName, archetypeReport, masterReport, thumbnails) {
   const items = archetypeReport?.items || [];
   if (items.length === 0) {
     return [];
@@ -1127,7 +1133,7 @@ function generateReportFromDecks(deckList, deckTotal, synonymDb) {
   };
 }
 
-function buildArchetypeReports(decks, synonymDb, masterReport = null, cardTypesDb = null) {
+export function buildArchetypeReports(decks, synonymDb, masterReport = null, cardTypesDb = null) {
   const cardMetaLookup = buildCardMetaLookup(cardTypesDb);
   const metaUsage = new Map();
   for (const item of masterReport?.items || []) {
@@ -1206,8 +1212,13 @@ function buildArchetypeReports(decks, synonymDb, masterReport = null, cardTypesD
  * recoverable from archetypes/index.json (deckCount), so it's omitted here.
  *
  * Schema: {"usage": {"<uid>": [{"slug", "found", "pct", "dist": [...]}, ...]}}
+ *
+ * Exported so tests/data/card-usage-conversion-parity.test.ts can pin this live
+ * producer against shared/data/reports/cardUsage.ts. This ESM script cannot
+ * import that TypeScript module (DB-MASTER-PLAN Phase 2), so the copy is kept in
+ * lockstep by the parity test rather than by importing.
  */
-function buildCardUsageIndex(archetypeFiles) {
+export function buildCardUsageIndex(archetypeFiles) {
   const usage = {};
   for (const file of archetypeFiles) {
     for (const item of file.data?.items || []) {
@@ -1229,37 +1240,18 @@ function buildCardUsageIndex(archetypeFiles) {
 const REPORTS_CACHE_CONTROL = 'public, max-age=21600';
 
 async function putJson(key, data) {
-  await s3Client.send(
-    new PutObjectCommand({
-      Bucket: R2_BUCKET_NAME,
-      Key: key,
-      Body: JSON.stringify(data),
-      ContentType: 'application/json',
-      CacheControl: REPORTS_CACHE_CONTROL
-    })
-  );
+  await putJsonR2(s3Client, R2_BUCKET_NAME, key, data, { cacheControl: REPORTS_CACHE_CONTROL });
 }
 
 async function readJson(key) {
-  try {
-    const object = await s3Client.send(
-      new GetObjectCommand({
-        Bucket: R2_BUCKET_NAME,
-        Key: key
-      })
-    );
-    const chunks = [];
-    for await (const chunk of object.Body) {
-      chunks.push(chunk);
-    }
-    const text = Buffer.concat(chunks).toString('utf-8');
-    return JSON.parse(text);
-  } catch (error) {
-    if (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
-      return null;
-    }
-    throw error;
+  const result = await getJsonResult(s3Client, R2_BUCKET_NAME, key);
+  if (result.status === 'found') {
+    return result.value;
   }
+  if (result.status === 'missing') {
+    return null;
+  }
+  throw result.error;
 }
 
 async function listKeys(prefix) {
@@ -2087,7 +2079,13 @@ async function main() {
   console.log(`[online-meta] Uploaded ${uploadedComponents.join(' + ')} to ${R2_BUCKET_NAME}/${basePath}`);
 }
 
-main().catch(error => {
-  console.error('[online-meta] Failed:', error);
-  process.exit(1);
-});
+// Only run the build when executed directly — tests import this module's
+// success-tag rules/function for the shared-policy parity corpus.
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) {
+  validateEnv();
+  main().catch(error => {
+    console.error('[online-meta] Failed:', error);
+    process.exit(1);
+  });
+}

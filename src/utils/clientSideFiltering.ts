@@ -13,26 +13,13 @@ import {
   createDistFromHistogram,
   sortReportItems
 } from '../../shared/reportUtils.js';
-import type { Deck, DeckCard, Filter, Operator, PercentRule, PlacementRule } from '../types/index.js';
+import { computeSuccessTags, SUCCESS_TAG_NAMES } from '../../shared/data/contracts.js';
+import type { Deck, DeckCard, Filter, Operator } from '../types/index.js';
 import type { CardPresence, CooccurrenceContext } from './cardCooccurrence';
 
 export type { Deck };
 
-export const SUCCESS_TAG_HIERARCHY = ['winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'];
-
-const PLACEMENT_TAG_RULES: PlacementRule[] = [
-  { tag: 'winner', maxPlacing: 1, minPlayers: 2 },
-  { tag: 'top2', maxPlacing: 2, minPlayers: 4 },
-  { tag: 'top4', maxPlacing: 4, minPlayers: 8 },
-  { tag: 'top8', maxPlacing: 8, minPlayers: 16 },
-  { tag: 'top16', maxPlacing: 16, minPlayers: 32 }
-];
-
-const PERCENT_TAG_RULES: PercentRule[] = [
-  { tag: 'top10', fraction: 0.1, minPlayers: 20 },
-  { tag: 'top25', fraction: 0.25, minPlayers: 12 },
-  { tag: 'top50', fraction: 0.5, minPlayers: 8 }
-];
+export const SUCCESS_TAG_HIERARCHY: readonly string[] = SUCCESS_TAG_NAMES;
 
 const OPERATOR_COMPARATORS: Record<string, (count: number, expected: number) => boolean> = {
   '=': (count, expected) => count === expected,
@@ -459,24 +446,7 @@ function deriveSuccessTags(
     return [];
   }
 
-  const tags: string[] = [];
-  PLACEMENT_TAG_RULES.forEach(rule => {
-    if (players >= rule.minPlayers && placing <= rule.maxPlacing) {
-      tags.push(rule.tag);
-    }
-  });
-
-  PERCENT_TAG_RULES.forEach(rule => {
-    if (players < rule.minPlayers) {
-      return;
-    }
-    const cutoff = Math.max(1, Math.ceil(players * rule.fraction));
-    if (placing <= cutoff) {
-      tags.push(rule.tag);
-    }
-  });
-
-  return tags;
+  return computeSuccessTags(placing, players);
 }
 
 /**

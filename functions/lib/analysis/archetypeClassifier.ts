@@ -1,3 +1,8 @@
+// Name-normalization boundary re-pointed to the consolidated archetype
+// identity module (DB-MASTER-PLAN Phase 2, slice 5). Classification logic
+// itself stays here — this file remains the classification authority.
+import { canonicalizeArchetypeLabel, normalizeForLookup } from '../../../shared/data/archetypes/identity';
+
 interface DeckRule {
   name?: string;
   id?: string;
@@ -82,21 +87,6 @@ const RULE_CONTAINER_KEYS = [
   'trainer',
   'energy'
 ];
-
-function canonicalizeArchetypeLabel(value: unknown): string {
-  return String(value || '')
-    .replace(/_/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function normalizeForLookup(value: unknown): string {
-  return canonicalizeArchetypeLabel(value)
-    .toLowerCase()
-    .replace(/['’]/g, '')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
 
 function tokenize(value: unknown): string[] {
   return normalizeForLookup(value).split(/\s+/).filter(Boolean);
