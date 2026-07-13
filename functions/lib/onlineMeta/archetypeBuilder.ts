@@ -1,5 +1,5 @@
 import { SUCCESS_TAG_NAMES } from '../../../shared/data/contracts';
-import { normalizeArchetypeName, sanitizeForFilename } from '../data/reportBuilder.js';
+import { deriveArchetypeGrouping } from '../../../shared/data/archetypes/build';
 import { getCanonicalCard } from '../data/cardSynonyms.js';
 import type {
   BuildCardTrendReportOptions,
@@ -56,8 +56,10 @@ export function buildTrendReport(
     if (!tournamentId || !tournamentIndex.has(tournamentId)) {
       continue;
     }
-    const normalizedName = normalizeArchetypeName(deck?.archetype || 'Unknown');
-    const base = sanitizeForFilename(normalizedName.replace(/ /g, '_')) || 'unknown';
+    // Same lowercased grouping this file always used, now derived through the
+    // shared archetype grouping helper (Phase 2, slice 5). Note the historical
+    // 'unknown' (lowercase) fallback base, unlike reportGenerator's 'Unknown'.
+    const { base } = deriveArchetypeGrouping(deck?.archetype || 'Unknown', 'lower', 'unknown');
     const displayName = deck?.archetype || 'Unknown';
 
     const archetype = archetypes.get(base) || {

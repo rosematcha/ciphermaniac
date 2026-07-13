@@ -27,7 +27,13 @@
  * @module shared/data/contracts
  */
 
-import { canonicalizeVariant, normalizeArchetypeName, normalizeCardNumber } from '../cardUtils';
+import { canonicalizeVariant, normalizeCardNumber } from '../cardUtils';
+import { archetypeKey, archetypeSlug } from './archetypes/identity';
+
+// Archetype identity policy (key/displayName/slug triple) lives in
+// shared/data/archetypes/identity.ts (DB-MASTER-PLAN Phase 2, slice 5). These
+// re-exports keep contracts.ts's public API intact for existing importers.
+export { archetypeKey, archetypeSlug, makeArchetypeIdentity } from './archetypes/identity';
 
 /** Schema version stamped on every top-level normalized record. */
 export const SCHEMA_VERSION = 1;
@@ -188,16 +194,7 @@ export function computeSuccessTags(
  * literal-typed tier list; a test pins it to the policy so the two cannot
  * drift. See divergence D7.
  */
-export const SUCCESS_TAG_NAMES = [
-  'winner',
-  'top2',
-  'top4',
-  'top8',
-  'top16',
-  'top10',
-  'top25',
-  'top50'
-] as const;
+export const SUCCESS_TAG_NAMES = ['winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'] as const;
 
 // ============================================================================
 // Card identity
@@ -475,47 +472,6 @@ export function parseCardUid(uid: string): ParsedCardUid | null {
     return { name: parts[0], set: parts[1], number: parts[2] };
   }
   return null;
-}
-
-/**
- * Derive an archetype comparison key: NFC-normalized, whitespace-collapsed,
- * underscore-to-space, lowercased. Reuses {@link normalizeArchetypeName} but
- * applies Unicode NFC first so composed vs decomposed accents (é U+00E9 vs
- * e+U+0301) collapse to a single key/slug — this intentionally diverges from
- * legacy `normalizeArchetypeName` only for accent-variant inputs.
- *
- * Empty names become `"unknown"`; this fallback is indistinguishable from a real
- * archetype literally named "Unknown" — a knowing legacy-compat decision.
- * @param displayName - The display label
- * @returns Comparison key
- */
-export function archetypeKey(displayName: string | null | undefined): string {
-  const nfc = typeof displayName === 'string' ? displayName.normalize('NFC') : displayName;
-  return normalizeArchetypeName(nfc);
-}
-
-/**
- * Derive a URL-safe slug from an archetype KEY (already lowercased). Non
- * alphanumeric runs become single hyphens; leading/trailing hyphens are
- * trimmed. Empty keys become `"unknown"`.
- * @param key - The archetype key
- * @returns URL-safe slug
- */
-export function archetypeSlug(key: string): string {
-  const slug = key.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  return slug || 'unknown';
-}
-
-/**
- * Build the full archetype identity triple from a display label. The key is
- * derived from the label, the slug from the key, and the display label is
- * preserved verbatim.
- * @param displayName - The display label
- * @returns Archetype identity
- */
-export function makeArchetypeIdentity(displayName: string): ArchetypeIdentity {
-  const key = archetypeKey(displayName);
-  return { key, displayName, slug: archetypeSlug(key) };
 }
 
 /** Minimal card shape needed to compute a deck's content hash. */

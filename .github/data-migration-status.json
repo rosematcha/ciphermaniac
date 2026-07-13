@@ -2,7 +2,7 @@
   "planDocument": "DB-MASTER-PLAN.md",
   "updatedAt": "2026-07-13",
   "currentPhase": 2,
-  "currentSlice": "phase2-slice3-card-reports",
+  "currentSlice": "phase2-slice6-trends-matchups",
   "phases": {
     "0": {
       "title": "Baseline, inventory, and safety rails",
@@ -50,12 +50,12 @@
       "completedGates": [
         "card identity + canonical-print policy consolidated into shared/data/{cardIdentity,canonicalPrint}.ts; old shared modules are thin re-exports; 12-scenario parity corpus pins the legacy canonical-print.mjs until its producer migrates (dcf3bd4)",
         "success tags: every TS producer (functions/lib, .github/scripts/*.ts) computes from the one frozen SUCCESS_TAG_POLICY; grid parity test (placements 1-40 x 11 field sizes + edge inputs) pins run-online-meta.mjs until conversion (fc5e493)",
-        "frontend derivation copy in src/utils/clientSideFiltering.ts replaced by the shared policy (4c10c42)"
+        "frontend derivation copy in src/utils/clientSideFiltering.ts replaced by the shared policy (4c10c42)",
+        "card report builder consolidated into shared/data/reports/cardReport.ts with D9 deterministic tie-breakers; reportBuilder.ts is a shim; parity suite pins pre-move algorithm (457acdb)",
+        "legacy cardUsage + conversion builders consolidated into shared/data/reports/{cardUsage,conversion}.ts; byte-identical to the live .mjs producer and Python semantics, 7 parity tests (9902ba5)",
+        "archetype identity/presentation/build consolidated into shared/data/archetypes/{identity,presentation,build}.ts; stale Functions thumbnail engine retired (recorded improvement: snapshot archetypes can now infer thumbnails); Python icon behavior ported; 11 parity tests (afb21cb)"
       ],
       "outstandingGates": [
-        "card reports consolidated (in progress)",
-        "card usage + conversion consolidated",
-        "archetype identity/grouping/thumbnails/icons/signature-cards merged into shared/data/archetypes/",
         "trends + matchups consolidated",
         "run-online-meta.mjs converted to orchestration around shared builders",
         "download-tournament.py reduced to Labs scraper + normalized-record exporter",
@@ -189,6 +189,11 @@
       "id": "D11",
       "legacy": "online windows carry no match data; raw Labs winner codes surface to consumers",
       "decision": "normalized Match with explicit outcome enum (win/loss/tie/double_loss/bye/unpaired/unknown); online windows have matches: [] explicitly; raw winner codes stay in source captures"
+    },
+    {
+      "id": "D12",
+      "legacy": "Python canonicalize_variant strips number '0' to empty (card skipped); shared TS normalizeCardNumber pads to '000'",
+      "decision": "shared TS helper behavior wins ('0' is not a real card number; unrealistic edge, no production data affected)"
     }
   ],
   "discoveredDependencyEdges": [

@@ -523,7 +523,7 @@ function buildThumbnailId(setCode, number) {
  * @param {object} cardTypesDb
  * @returns {Map<string, {abilities: string[], attacks: string[]}>}
  */
-function buildCardMetaLookup(cardTypesDb) {
+export function buildCardMetaLookup(cardTypesDb) {
   const lookup = new Map();
   for (const [key, info] of Object.entries(cardTypesDb || {})) {
     if (!info || typeof info !== 'object') {
@@ -725,7 +725,7 @@ function inferArchetypeThumbnails(displayName, reportData, cardMetaLookup = null
   return inferDistinctiveThumbnails(items, metaUsage);
 }
 
-function resolveArchetypeThumbnails(baseName, displayName, reportData, cardMetaLookup = null, metaUsage = null) {
+export function resolveArchetypeThumbnails(baseName, displayName, reportData, cardMetaLookup = null, metaUsage = null) {
   const attempts = [displayName, displayName?.replace(/_/g, ' '), baseName];
   for (const key of attempts) {
     if (key && Array.isArray(ARCHETYPE_THUMBNAILS[key]) && ARCHETYPE_THUMBNAILS[key].length) {
@@ -897,7 +897,7 @@ function isSpecialEnergy(card) {
  * @param {string[]} thumbnails - Thumbnail card IDs
  * @returns {Array<{name: string, set: string, number: string, pct: number}>}
  */
-function generateSignatureCards(displayName, archetypeReport, masterReport, thumbnails) {
+export function generateSignatureCards(displayName, archetypeReport, masterReport, thumbnails) {
   const items = archetypeReport?.items || [];
   if (items.length === 0) {
     return [];
@@ -1133,7 +1133,7 @@ function generateReportFromDecks(deckList, deckTotal, synonymDb) {
   };
 }
 
-function buildArchetypeReports(decks, synonymDb, masterReport = null, cardTypesDb = null) {
+export function buildArchetypeReports(decks, synonymDb, masterReport = null, cardTypesDb = null) {
   const cardMetaLookup = buildCardMetaLookup(cardTypesDb);
   const metaUsage = new Map();
   for (const item of masterReport?.items || []) {
@@ -1212,8 +1212,13 @@ function buildArchetypeReports(decks, synonymDb, masterReport = null, cardTypesD
  * recoverable from archetypes/index.json (deckCount), so it's omitted here.
  *
  * Schema: {"usage": {"<uid>": [{"slug", "found", "pct", "dist": [...]}, ...]}}
+ *
+ * Exported so tests/data/card-usage-conversion-parity.test.ts can pin this live
+ * producer against shared/data/reports/cardUsage.ts. This ESM script cannot
+ * import that TypeScript module (DB-MASTER-PLAN Phase 2), so the copy is kept in
+ * lockstep by the parity test rather than by importing.
  */
-function buildCardUsageIndex(archetypeFiles) {
+export function buildCardUsageIndex(archetypeFiles) {
   const usage = {};
   for (const file of archetypeFiles) {
     for (const item of file.data?.items || []) {
