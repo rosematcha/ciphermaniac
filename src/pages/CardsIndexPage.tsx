@@ -1,4 +1,4 @@
-import { createMemo, createResource, For, onMount, Show } from 'solid-js';
+import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { fetchMaster, fetchPrices, prettyTournamentName, type PricingEntry } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
@@ -11,10 +11,12 @@ import { Pagination } from '../components/Pagination';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CardTile } from '../components/CardTile';
+import { BottomSheet } from '../components/BottomSheet';
 import { createPagination } from '../lib/pagination';
 import { debounced } from '../lib/debounce';
 import { latestValue } from '../lib/resource';
-import { averageCopies, averageCopiesValue, cardSupercategory, categoryLabel } from '../lib/cardStats';
+import { averageCopies, averageCopiesValue, categoryLabel } from '../lib/cardStats';
+import { type CardFilters, countActiveCardFilters, matchesCardFilters, type PriceBand } from '../lib/cardFilters';
 import {
   createPersistentNumberSignal,
   createPersistentSignal,
@@ -26,8 +28,43 @@ type SortKey = 'rank' | 'name' | 'price' | 'inclusion' | 'avgCopies';
 type SortDir = 'asc' | 'desc';
 type TypeFilter = 'all' | 'pokemon' | 'trainer' | 'energy';
 type ViewMode = 'grid' | 'list';
+type Subtype = string; // 'all' or a trainer/energy subtype value
+type RegMark = 'all' | 'G' | 'H' | 'I' | 'J';
 
 const PAGE_SIZE = 60;
+
+// Contextual subtype options, keyed by the parent type. Only trainers and
+// energy carry a meaningful subdivision; Pokémon show no subtype group.
+const SUBTYPE_OPTIONS: Record<'trainer' | 'energy', { value: string; label: string }[]> = {
+  trainer: [
+    { value: 'supporter', label: 'Supporter' },
+    { value: 'item', label: 'Item' },
+    { value: 'tool', label: 'Tool' },
+    { value: 'stadium', label: 'Stadium' }
+  ],
+  energy: [
+    { value: 'basic', label: 'Basic' },
+    { value: 'special', label: 'Special' }
+  ]
+};
+
+const REG_MARKS: RegMark[] = ['G', 'H', 'I', 'J'];
+
+const PRICE_BANDS: { value: PriceBand; label: string }[] = [
+  { value: 'lt1', label: 'Under $1' },
+  { value: '1to5', label: '$1–5' },
+  { value: '5to15', label: '$5–15' },
+  { value: 'gte15', label: '$15+' }
+];
+
+// Sort options offered inside the mobile sheet — the headline three plus
+// inclusion, matching the round-2 prototype's sort group.
+const SHEET_SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: 'rank', label: 'Rank' },
+  { value: 'price', label: 'Price' },
+  { value: 'name', label: 'Name' },
+  { value: 'inclusion', label: 'Inclusion' }
+];
 // The Segmented control keeps the three headline sorts; the list-view table
 // headers (see ListView) drive the full set including inclusion and avg copies.
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -71,6 +108,34 @@ export function CardsIndexPage() {
     sessionStorage
   );
   const [viewMode, setViewMode] = createPersistentViewMode('cm:cardsView');
+
+  // Metadata filters (shared by the desktop bar and the mobile sheet). Each is
+  // an independent persistent signal so the URL-less session state survives a
+  // reload the same way the type/sort filters already do.
+  const [subtype, setSubtype] = createPersistentSignal<Subtype>('cm:cardsSubtype', 'all', v => v, sessionStorage);
+  const [reg, setReg] = createPersistentSignal<RegMark>(
+    'cm:cardsReg',
+    'all',
+    v => (v === 'all' || v === 'G' || v === 'H' || v === 'I' || v === 'J' ? v : null),
+    sessionStorage
+  );
+  const [aceSpec, setAceSpec] = createPersistentSignal<'true' | 'false'>(
+    'cm:cardsAceSpec',
+    'false',
+    v => (v === 'true' || v === 'false' ? v : null),
+    sessionStorage
+  );
+  const [priceBand, setPriceBand] = createPersistentSignal<'all' | PriceBand>(
+    'cm:cardsPriceBand',
+    'all',
+    v => (v === 'all' || v === 'lt1' || v === '1to5' || v === '5to15' || v === 'gte15' ? v : null),
+    sessionStorage
+  );
+
+  // Mobile refine sheet visibility. Never opened on desktop (its only trigger
+  // lives in a mobile-only control row), so it needs no persistence.
+  const [sheetOpen, setSheetOpen] = createSignal(false);
+
   const pageSignal = createPersistentNumberSignal('cm:cardsPage', 1, sessionStorage);
   const navigate = useNavigate();
 
@@ -91,24 +156,6 @@ export function CardsIndexPage() {
   // once per pause instead of once per keystroke.
   const debouncedQuery = debounced(query, 150);
 
-  const filtered = createMemo(() => {
-    const items = masterData()?.items ?? [];
-    const q = debouncedQuery().trim().toLowerCase();
-    const filter = typeFilter();
-    return items.filter(item => {
-      if (!item.set || item.number === undefined) {
-        return false;
-      }
-      if (filter !== 'all' && cardSupercategory(item) !== filter) {
-        return false;
-      }
-      if (q && !item.name.toLowerCase().includes(q)) {
-        return false;
-      }
-      return true;
-    });
-  });
-
   const priceFor = (item: CardItem): number | null => {
     const map = pricesData();
     if (!map) {
@@ -122,6 +169,35 @@ export function CardsIndexPage() {
     const p = entry?.price;
     return typeof p === 'number' && Number.isFinite(p) ? p : null;
   };
+
+  // Snapshot of the metadata facets in the shape the pure predicate expects.
+  const cardFilters = (): CardFilters => ({
+    type: typeFilter(),
+    subtype: subtype(),
+    reg: reg(),
+    aceSpec: aceSpec() === 'true',
+    priceBand: priceBand()
+  });
+
+  const activeFilterCount = () => countActiveCardFilters(cardFilters());
+
+  const filtered = createMemo(() => {
+    const items = masterData()?.items ?? [];
+    const q = debouncedQuery().trim().toLowerCase();
+    const filters = cardFilters();
+    return items.filter(item => {
+      if (!item.set || item.number === undefined) {
+        return false;
+      }
+      if (q && !item.name.toLowerCase().includes(q)) {
+        return false;
+      }
+      // Price is only resolved when a band filter is active — the lookup is a
+      // string build + map read we'd rather skip for the common case.
+      const price = filters.priceBand === 'all' ? null : priceFor(item);
+      return matchesCardFilters(item, filters, price);
+    });
+  });
 
   const sorted = createMemo(() => {
     const key = sortKey();
@@ -182,7 +258,7 @@ export function CardsIndexPage() {
   const { page, totalPages, pageItems, setPage } = createPagination(
     sorted,
     PAGE_SIZE,
-    [debouncedQuery, typeFilter, sortKey, tournament],
+    [debouncedQuery, typeFilter, subtype, reg, aceSpec, priceBand, sortKey, tournament],
     pageSignal
   );
 
@@ -193,9 +269,62 @@ export function CardsIndexPage() {
     navigate(`/cards/${item.set}/${item.number}`);
   }
 
+  // Changing the top-level type invalidates any contextual subtype (a trainer
+  // subtype is meaningless once Energy is selected), so clear it in lockstep.
+  function selectType(next: TypeFilter) {
+    setTypeFilter(next);
+    setSubtype('all');
+  }
+
+  // Subtype options for whichever specific type is selected; empty for
+  // Pokémon / "all", which suppresses the group entirely.
+  const subtypeOptions = () => {
+    const t = typeFilter();
+    return t === 'trainer' || t === 'energy' ? SUBTYPE_OPTIONS[t] : [];
+  };
+
+  function setSort(key: SortKey) {
+    setSortKey(key);
+    setSortDir(defaultDir(key));
+  }
+
+  function clearFilters() {
+    setTypeFilter('all');
+    setSubtype('all');
+    setReg('all');
+    setAceSpec('false');
+    setPriceBand('all');
+  }
+
+  // Removable summary chips shown under the mobile control row when filters are
+  // active and the sheet is closed. Each carries the label and its own clear.
+  const summaryChips = () => {
+    const chips: { key: string; label: string; clear: () => void }[] = [];
+    const t = typeFilter();
+    if (t !== 'all') {
+      const label = t === 'pokemon' ? 'Pokémon' : t === 'trainer' ? 'Trainer' : 'Energy';
+      chips.push({ key: 'type', label, clear: () => selectType('all') });
+    }
+    if (subtype() !== 'all') {
+      const opt = subtypeOptions().find(o => o.value === subtype());
+      chips.push({ key: 'subtype', label: opt?.label ?? subtype(), clear: () => setSubtype('all') });
+    }
+    if (reg() !== 'all') {
+      chips.push({ key: 'reg', label: `Reg ${reg()}`, clear: () => setReg('all') });
+    }
+    if (aceSpec() === 'true') {
+      chips.push({ key: 'ace', label: 'Ace Spec', clear: () => setAceSpec('false') });
+    }
+    if (priceBand() !== 'all') {
+      const opt = PRICE_BANDS.find(o => o.value === priceBand());
+      chips.push({ key: 'price', label: opt?.label ?? priceBand(), clear: () => setPriceBand('all') });
+    }
+    return chips;
+  };
+
   return (
     <>
-      <section class='hero'>
+      <section class='hero hero-collapsible'>
         <h1>Cards</h1>
         <div class='hero-meta'>
           <Show when={masterData()} fallback={<Skeleton width='240px' height='13px' />}>
@@ -209,7 +338,9 @@ export function CardsIndexPage() {
       </section>
 
       <Section>
-        <div class='filter-bar'>
+        {/* Desktop filter bar — the full facet set laid out inline. Hidden on
+            mobile, where the same signals drive the refine sheet instead. */}
+        <div class='filter-bar cards-filter-bar'>
           <div class='filter-row'>
             <SearchInput value={query()} onInput={setQuery} placeholder='Search cards by name...' />
             <Segmented<ViewMode>
@@ -218,15 +349,7 @@ export function CardsIndexPage() {
               onSelect={setViewMode}
               ariaLabel='View mode'
             />
-            <Segmented<SortKey>
-              options={SORT_OPTIONS}
-              selected={sortKey()}
-              onSelect={k => {
-                setSortKey(k);
-                setSortDir(defaultDir(k));
-              }}
-              ariaLabel='Sort by'
-            />
+            <Segmented<SortKey> options={SORT_OPTIONS} selected={sortKey()} onSelect={setSort} ariaLabel='Sort by' />
           </div>
           <div class='filter-row'>
             <ChipGroup
@@ -237,13 +360,178 @@ export function CardsIndexPage() {
                 { value: 'energy', label: 'Energy' }
               ]}
               selected={typeFilter()}
-              onSelect={v => setTypeFilter(v as TypeFilter)}
+              onSelect={v => selectType(v as TypeFilter)}
             />
+            <Show when={subtypeOptions().length > 0}>
+              <ChipGroup
+                options={[{ value: 'all', label: 'All subtypes' }, ...subtypeOptions()]}
+                selected={subtype()}
+                onSelect={setSubtype}
+              />
+            </Show>
           </div>
+          <div class='filter-row'>
+            <ChipGroup
+              options={[{ value: 'all', label: 'All regs' }, ...REG_MARKS.map(m => ({ value: m, label: `Reg ${m}` }))]}
+              selected={reg()}
+              onSelect={v => setReg(v as RegMark)}
+            />
+            <ChipGroup
+              options={[{ value: 'all', label: 'All prices' }, ...PRICE_BANDS]}
+              selected={priceBand()}
+              onSelect={v => setPriceBand(v as 'all' | PriceBand)}
+            />
+            <button
+              type='button'
+              class='chip'
+              aria-pressed={aceSpec() === 'true' ? 'true' : 'false'}
+              onClick={() => setAceSpec(v => (v === 'true' ? 'false' : 'true'))}
+            >
+              Ace Spec
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile control row — full-width search + a square filter trigger of
+            matching height. Hidden on desktop. */}
+        <div class='cards-mobile-controls'>
+          <div class='control-row'>
+            <SearchInput value={query()} onInput={setQuery} placeholder='Search cards by name...' />
+            <button
+              type='button'
+              class='filters-btn'
+              classList={{ 'is-active': activeFilterCount() > 0 }}
+              aria-haspopup='dialog'
+              aria-expanded={sheetOpen() ? 'true' : 'false'}
+              aria-label='Refine cards'
+              onClick={() => setSheetOpen(o => !o)}
+            >
+              <svg
+                width='16'
+                height='16'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                stroke-width='2'
+                stroke-linecap='round'
+                stroke-linejoin='round'
+                aria-hidden='true'
+              >
+                <path d='M3 5h18l-7 8v5.5l-4 2V13L3 5z' />
+              </svg>
+              <Show when={activeFilterCount() > 0}>
+                <span class='fb-count'>{activeFilterCount()}</span>
+              </Show>
+            </button>
+          </div>
+          <Show when={summaryChips().length > 0}>
+            <div class='filter-strip' aria-label='Active filters'>
+              <For each={summaryChips()}>
+                {chip => (
+                  <button
+                    type='button'
+                    class='mini-chip'
+                    aria-label={`Remove ${chip.label} filter`}
+                    onClick={() => chip.clear()}
+                  >
+                    {chip.label}
+                    <span class='mc-x' aria-hidden='true'>
+                      ✕
+                    </span>
+                  </button>
+                )}
+              </For>
+            </div>
+          </Show>
         </div>
       </Section>
 
-      <Section right={`${filtered().length.toLocaleString()} matching`}>
+      <BottomSheet
+        open={sheetOpen()}
+        onClose={() => setSheetOpen(false)}
+        title='Refine'
+        ariaLabel='Refine cards'
+        footer={
+          <>
+            <button class='sheet-clear' type='button' onClick={clearFilters}>
+              Clear
+            </button>
+            <button class='btn sheet-apply' type='button' onClick={() => setSheetOpen(false)}>
+              Show {filtered().length.toLocaleString()} cards
+            </button>
+          </>
+        }
+      >
+        <div class='group'>
+          <p class='group-label'>Card type</p>
+          <ChipGroup
+            options={[
+              { value: 'all', label: 'All types' },
+              { value: 'pokemon', label: 'Pokémon' },
+              { value: 'trainer', label: 'Trainer' },
+              { value: 'energy', label: 'Energy' }
+            ]}
+            selected={typeFilter()}
+            onSelect={v => selectType(v as TypeFilter)}
+          />
+        </div>
+
+        <Show when={subtypeOptions().length > 0}>
+          <div class='group'>
+            <p class='group-label'>Subtype</p>
+            <ChipGroup
+              options={[{ value: 'all', label: 'All subtypes' }, ...subtypeOptions()]}
+              selected={subtype()}
+              onSelect={setSubtype}
+            />
+          </div>
+        </Show>
+
+        <div class='group'>
+          <p class='group-label'>Regulation mark</p>
+          <p class='group-caption'>Post-rotation legality</p>
+          <ChipGroup
+            options={[{ value: 'all', label: 'All regs' }, ...REG_MARKS.map(m => ({ value: m, label: `Reg ${m}` }))]}
+            selected={reg()}
+            onSelect={v => setReg(v as RegMark)}
+          />
+        </div>
+
+        <div class='group group-inline'>
+          <p class='group-label'>Ace Spec</p>
+          <div class='chips'>
+            <button
+              type='button'
+              class='chip'
+              aria-pressed={aceSpec() === 'true' ? 'true' : 'false'}
+              onClick={() => setAceSpec(v => (v === 'true' ? 'false' : 'true'))}
+            >
+              Ace Spec only
+            </button>
+          </div>
+        </div>
+
+        <div class='group'>
+          <p class='group-label'>Price band</p>
+          <ChipGroup
+            options={[{ value: 'all', label: 'All prices' }, ...PRICE_BANDS]}
+            selected={priceBand()}
+            onSelect={v => setPriceBand(v as 'all' | PriceBand)}
+          />
+        </div>
+
+        <div class='group'>
+          <p class='group-label'>Sort by</p>
+          <ChipGroup options={SHEET_SORT_OPTIONS} selected={sortKey()} onSelect={v => setSort(v as SortKey)} />
+        </div>
+
+        <div class='group'>
+          <p class='group-label'>View</p>
+          <ChipGroup options={VIEW_OPTIONS} selected={viewMode()} onSelect={v => setViewMode(v as ViewMode)} />
+        </div>
+      </BottomSheet>
+
+      <Section>
         <Show
           when={masterData()}
           fallback={
@@ -272,7 +560,7 @@ export function CardsIndexPage() {
                     type='button'
                     onClick={() => {
                       setQuery('');
-                      setTypeFilter('all');
+                      clearFilters();
                       setSortKey('rank');
                     }}
                   >
@@ -296,7 +584,9 @@ export function CardsIndexPage() {
               }
             >
               <div class='cards-grid'>
-                <For each={pageItems()}>{(item, i) => <CardTile card={item} eagerImage={i() < 8} />}</For>
+                <For each={pageItems()}>
+                  {(item, i) => <CardTile card={item} hideEmptyBuckets eagerImage={i() < 8} />}
+                </For>
               </div>
             </Show>
 

@@ -6,7 +6,6 @@ import { prefetchRoute } from '../lib/prefetch';
 const links: { href: string; label: string }[] = [
   { href: '/cards', label: 'Cards' },
   { href: '/archetypes', label: 'Archetypes' },
-  { href: '/matchups', label: 'Matchups' },
   { href: '/trends', label: 'Trends' },
   { href: '/players', label: 'Players' }
 ];

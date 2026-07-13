@@ -14,7 +14,6 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   '/cards/:set/:number': () => import('../pages/CardPage'),
   '/archetypes': () => import('../pages/ArchetypesIndexPage'),
   '/archetypes/:slug': () => import('../pages/ArchetypePage'),
-  '/matchups': () => import('../pages/MatchupMatrixPage'),
   '/trends': () => import('../pages/TrendsPage'),
   '/players': () => import('../pages/PlayersPage'),
   '/players/:id': () => import('../pages/PlayerProfilePage')

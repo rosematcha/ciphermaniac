@@ -9,38 +9,6 @@
  */
 import { type MatchupProfile, normalizeArchetypeKey, type OnlineMatchupRecord } from './data';
 
-export interface MatrixCell {
-  /** 0..100 match-points win rate of the row archetype vs the column archetype. */
-  winRate: number;
-  matches: number;
-  isMirror: boolean;
-}
-
-/**
- * Assemble an N×N head-to-head matrix keyed by normalized archetype key. Each
- * entry supplies its own already-normalized rows (from {@link rowsFromMajorsProfile}
- * or {@link rowsFromOnlineMatchups}); opponents outside the supplied key set are
- * dropped so the matrix stays square. Pure so it's unit-testable.
- */
-export function buildMatchupMatrix(
-  entries: { key: string; rows: MatchupRowCore[] }[]
-): Map<string, Map<string, MatrixCell>> {
-  const keySet = new Set(entries.map(e => e.key));
-  const out = new Map<string, Map<string, MatrixCell>>();
-  for (const entry of entries) {
-    const cells = new Map<string, MatrixCell>();
-    for (const row of entry.rows) {
-      const oppKey = normalizeArchetypeKey(row.opponentLabel);
-      if (!keySet.has(oppKey)) {
-        continue;
-      }
-      cells.set(oppKey, { winRate: row.winRate, matches: row.matches, isMirror: row.isMirror });
-    }
-    out.set(entry.key, cells);
-  }
-  return out;
-}
-
 /** A win is worth 3× a tie — Pokémon match points (win 3, tie 1, loss 0). */
 const TIE_VALUE = 1 / 3;
 

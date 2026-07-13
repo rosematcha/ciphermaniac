@@ -6,7 +6,7 @@
  */
 
 import { promises as fs } from 'fs';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -17,6 +17,9 @@ const REPORTS_BASE_PATH = join(__dirname, '..', 'public', 'reports');
 const RATE_LIMIT_MS = 250; // 4 requests per second to be respectful
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
+// Bump when parseCardPage gains persisted enrichment fields. This lets routine
+// runs backfill prior database entries once, without repeatedly force-refreshing.
+const METADATA_SCHEMA_VERSION = 1;
 
 /**
  * Produce number variants to accommodate Limitless URLs without leading zeros.
@@ -90,6 +93,242 @@ function extractCardTextNames(html) {
   return { abilities, attacks };
 }
 
+/** Strip tags and collapse whitespace, preserving <br> as newlines. */
+function htmlToText(fragment) {
+  return fragment
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/ ?\n ?/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/**
+ * Extract detailed ability/attack structures from a Limitless card page.
+ * Complements extractCardTextNames (which archetype matching depends on):
+ * here we keep the full shape — energy cost, damage, and effect text.
+ * @param {string} html
+ * @returns {{abilityDetails: {name: string, effect: string|null}[],
+ *            attackDetails: {cost: string|null, name: string, damage: string|null, effect: string|null}[]}}
+ */
+function extractCardTextDetails(html) {
+  const abilityDetails = [];
+  const attackDetails = [];
+
+  const abilityBlockRe = /<div class="card-text-ability">([\s\S]*?)<\/p>\s*<p class="card-text-ability-effect"[^>]*>([\s\S]*?)<\/p>/gi;
+  let match;
+  while ((match = abilityBlockRe.exec(html)) !== null) {
+    const name = htmlToText(match[1]).replace(/^\s*ability\s*:\s*/i, '').trim();
+    const effect = htmlToText(match[2]) || null;
+    if (name) {
+      abilityDetails.push({ name, effect });
+    }
+  }
+
+  const attackBlockRe = /<p class="card-text-attack-info"[^>]*>([\s\S]*?)<\/p>\s*<p class="card-text-attack-effect"[^>]*>([\s\S]*?)<\/p>/gi;
+  while ((match = attackBlockRe.exec(html)) !== null) {
+    const costMatch = match[1].match(/<span class="ptcg-symbol"[^>]*>([\s\S]*?)<\/span>/i);
+    const cost = costMatch ? htmlToText(costMatch[1]).replace(/\s+/g, '') || null : null;
+    let nameAndDamage = htmlToText(match[1].replace(/<span class="ptcg-symbol"[^>]*>[\s\S]*?<\/span>/gi, ' '));
+    let damage = null;
+    const damageMatch = nameAndDamage.match(/\s(\d+[+x×]?)\s*$/i);
+    if (damageMatch) {
+      damage = damageMatch[1];
+      nameAndDamage = nameAndDamage.slice(0, damageMatch.index).trim();
+    }
+    const effect = htmlToText(match[2]) || null;
+    if (nameAndDamage) {
+      attackDetails.push({ cost, name: nameAndDamage, damage, effect });
+    }
+  }
+
+  return { abilityDetails, attackDetails };
+}
+
+/**
+ * Parse everything we can from a Limitless card page.
+ * Existing fields (cardType/subType/evolutionInfo/fullType/aceSpec/
+ * regulationMark/abilities/attacks) keep their historical semantics —
+ * archetype-title matching and the report enricher consume them — while the
+ * enrichment fields (hp, rarity, attack costs, …) are additive.
+ * @param {string} html
+ * @returns {object|null} parsed card info, or null when no type line exists
+ */
+export function parseCardPage(html) {
+  // Extract card-text-type content (<p> on the new site, <div> historically)
+  const typeMatch = html.match(/<(?:div|p)[^>]*class="card-text-type"[^>]*>([\s\S]*?)<\/(?:div|p)>/i);
+  if (!typeMatch) {
+    return null;
+  }
+
+  const rawType = typeMatch[1].replace(/<[^>]+>/g, ' ');
+  const fullType = rawType
+    .replace(/\s+/g, ' ')
+    .replace(/\s*–\s*/g, ' - ')
+    .trim();
+  const parts = fullType
+    .split(/\s*-\s*/)
+    .map(p => p.trim())
+    .filter(Boolean);
+  const normalize = value =>
+    value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+  // Parse regulation mark from div.regulation-mark
+  // Format: "G Regulation Mark •" or "H Regulation Mark •" etc.
+  let regulationMark = null;
+  const regMarkMatch = html.match(/<div class="regulation-mark"[^>]*>\s*([A-Z])\s*Regulation\s*Mark/i);
+  if (regMarkMatch) {
+    regulationMark = regMarkMatch[1].toUpperCase();
+  }
+
+  // Parse the type information
+  const cardType = normalize(parts[0]); // "pokemon", "trainer", "energy"
+  let subType = null;
+  let evolutionInfo = null;
+  // ACE SPEC shows up as a segment of the type line ("Trainer - Item - ACE SPEC").
+  // Limitless only marks trainers; special-energy ACE SPECs carry no marker on
+  // the page, so downstream consumers still need the name heuristic for those.
+  const aceSpec = parts.some(part => normalize(part).includes('ace spec'));
+
+  if (cardType === 'trainer' && parts.length > 1) {
+    const subtypeText = normalize(parts[1]);
+    if (subtypeText.includes('tool')) {
+      subType = 'tool';
+    } else if (subtypeText.includes('supporter')) {
+      subType = 'supporter';
+    } else if (subtypeText.includes('stadium')) {
+      subType = 'stadium';
+    } else if (subtypeText.includes('item')) {
+      subType = 'item';
+    } else {
+      subType = subtypeText;
+    }
+    if (aceSpec && subType !== 'tool') {
+      subType = 'tool';
+    }
+  } else if (cardType === 'energy' && parts.length > 1) {
+    // "Special Energy" or just "Basic"
+    const subtypeText = normalize(parts[1]);
+    if (subtypeText.includes('special')) {
+      subType = 'special';
+    } else {
+      subType = 'basic';
+    }
+  } else if (cardType === 'pokemon') {
+    if (parts.length > 1) {
+      evolutionInfo = parts.slice(1).join(' - '); // "Stage 2 - Evolves from Kirlia"
+    }
+  }
+
+  const { abilities, attacks } = extractCardTextNames(html);
+  const { abilityDetails, attackDetails } = extractCardTextDetails(html);
+
+  // Title line: "<name> - Darkness - 210 HP" (Pokémon only carry type + HP)
+  let hp = null;
+  let pokemonType = null;
+  const titleMatch = html.match(/<p class="card-text-title"[^>]*>([\s\S]*?)<\/p>/i);
+  if (titleMatch) {
+    const titleParts = htmlToText(titleMatch[1])
+      .split(/\s+-\s+/)
+      .map(p => p.trim())
+      .filter(Boolean);
+    for (const part of titleParts.slice(1)) {
+      const hpMatch = part.match(/^(\d+)\s*HP$/i);
+      if (hpMatch) {
+        hp = Number(hpMatch[1]);
+      } else if (!pokemonType) {
+        pokemonType = part;
+      }
+    }
+  }
+
+  // Weakness / Resistance / Retreat
+  let weakness = null;
+  let resistance = null;
+  let retreatCost = null;
+  const wrrMatch = html.match(/<p class="card-text-wrr"[^>]*>([\s\S]*?)<\/p>/i);
+  if (wrrMatch) {
+    const wrrText = htmlToText(wrrMatch[1]);
+    const grab = label => {
+      const m = wrrText.match(new RegExp(`${label}:\\s*([^\\n]+)`, 'i'));
+      const value = m ? m[1].trim() : null;
+      return value && normalize(value) !== 'none' ? value : null;
+    };
+    weakness = grab('Weakness');
+    resistance = grab('Resistance');
+    const retreat = grab('Retreat');
+    if (retreat && /^\d+$/.test(retreat)) {
+      retreatCost = Number(retreat);
+    }
+  }
+
+  // Rarity: ".prints-current-details" second span reads "#142 · Double Rare"
+  let rarity = null;
+  const printsMatch = html.match(/prints-current-details[\s\S]*?<span>\s*#[^<·]*·\s*([^<]+)<\/span>/i);
+  if (printsMatch) {
+    rarity = printsMatch[1].trim() || null;
+  }
+
+  // Artist
+  let artist = null;
+  const artistMatch = html.match(/card-text-artist[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i);
+  if (artistMatch) {
+    artist = htmlToText(artistMatch[1]) || null;
+  }
+
+  // Plain rules text (trainer/energy effect text, Tera notes, …): any
+  // card-text-section without a recognized sub-block or nested markup.
+  const textChunks = [];
+  const sectionRe = /<div class="card-text-section"[^>]*>([\s\S]*?)<\/div>/gi;
+  let sectionMatch;
+  while ((sectionMatch = sectionRe.exec(html)) !== null) {
+    const chunk = sectionMatch[1];
+    if (/card-text-(?:ability|attack|wrr|artist|title|type)|<div/i.test(chunk)) {
+      continue;
+    }
+    const text = htmlToText(chunk);
+    if (text) {
+      textChunks.push(text);
+    }
+  }
+  const text = textChunks.length ? textChunks.join('\n\n') : null;
+
+  // Format legality (EN formats only; JP rows link via /cards/jp)
+  const legality = {};
+  const legalityRe = /<a href="\/cards\?q=format:(standard|expanded)">[\s\S]*?<div class="[^"]*">\s*([\s\S]*?)\s*<\/div>/gi;
+  let legalityMatch;
+  while ((legalityMatch = legalityRe.exec(html)) !== null) {
+    legality[legalityMatch[1]] = htmlToText(legalityMatch[2]);
+  }
+
+  return {
+    metadataVersion: METADATA_SCHEMA_VERSION,
+    cardType,
+    subType,
+    evolutionInfo,
+    fullType,
+    ...(aceSpec ? { aceSpec: true } : {}),
+    ...(regulationMark ? { regulationMark } : {}),
+    ...(abilities.length ? { abilities } : {}),
+    ...(attacks.length ? { attacks } : {}),
+    ...(hp !== null ? { hp } : {}),
+    ...(pokemonType ? { pokemonType } : {}),
+    ...(weakness ? { weakness } : {}),
+    ...(resistance ? { resistance } : {}),
+    ...(retreatCost !== null ? { retreatCost } : {}),
+    ...(rarity ? { rarity } : {}),
+    ...(artist ? { artist } : {}),
+    ...(text ? { text } : {}),
+    ...(abilityDetails.length ? { abilityDetails } : {}),
+    ...(attackDetails.length ? { attackDetails } : {}),
+    ...(Object.keys(legality).length ? { legality } : {})
+  };
+}
+
 /**
  * Sleep for a given number of milliseconds
  * @param {number} ms
@@ -141,86 +380,12 @@ async function fetchCardTypeVariant(setCode, numberVariant) {
 
       const html = await response.text();
 
-      // Extract card-text-type content (<p> on the new site, <div> historically)
-      const match = html.match(/<(?:div|p)[^>]*class="card-text-type"[^>]*>([\s\S]*?)<\/(?:div|p)>/i);
-
-      if (!match) {
+      const parsed = parseCardPage(html);
+      if (!parsed) {
         console.log(`  ⚠️  Could not find card type for ${setCode}/${numberVariant}`);
         return null;
       }
-
-      const rawType = match[1].replace(/<[^>]+>/g, ' ');
-      const fullType = rawType
-        .replace(/\s+/g, ' ')
-        .replace(/\s*–\s*/g, ' - ')
-        .trim();
-      const parts = fullType
-        .split(/\s*-\s*/)
-        .map(p => p.trim())
-        .filter(Boolean);
-      const normalize = value =>
-        value
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .toLowerCase();
-
-      // Parse regulation mark from div.regulation-mark
-      // Format: "G Regulation Mark •" or "H Regulation Mark •" etc.
-      let regulationMark = null;
-      const regMarkMatch = html.match(/<div class="regulation-mark"[^>]*>\s*([A-Z])\s*Regulation\s*Mark/i);
-      if (regMarkMatch) {
-        regulationMark = regMarkMatch[1].toUpperCase();
-      }
-
-      // Parse the type information
-      const cardType = normalize(parts[0]); // "pokemon", "trainer", "energy"
-      let subType = null;
-      let evolutionInfo = null;
-      let aceSpec = false;
-
-      if (cardType === 'trainer' && parts.length > 1) {
-        const subtypeText = normalize(parts[1]);
-        if (subtypeText.includes('tool')) {
-          subType = 'tool';
-        } else if (subtypeText.includes('supporter')) {
-          subType = 'supporter';
-        } else if (subtypeText.includes('stadium')) {
-          subType = 'stadium';
-        } else if (subtypeText.includes('item')) {
-          subType = 'item';
-        } else {
-          subType = subtypeText;
-        }
-        aceSpec = parts.some(part => normalize(part).includes('ace spec'));
-        if (aceSpec && subType !== 'tool') {
-          subType = 'tool';
-        }
-      } else if (cardType === 'energy' && parts.length > 1) {
-        // "Special Energy" or just "Basic"
-        const subtypeText = normalize(parts[1]);
-        if (subtypeText.includes('special')) {
-          subType = 'special';
-        } else {
-          subType = 'basic';
-        }
-      } else if (cardType === 'pokemon') {
-        if (parts.length > 1) {
-          evolutionInfo = parts.slice(1).join(' - '); // "Stage 2 - Evolves from Kirlia"
-        }
-      }
-
-      const { abilities, attacks } = extractCardTextNames(html);
-
-      return {
-        cardType,
-        subType,
-        evolutionInfo,
-        fullType,
-        ...(aceSpec ? { aceSpec: true } : {}),
-        ...(regulationMark ? { regulationMark } : {}),
-        ...(abilities.length ? { abilities } : {}),
-        ...(attacks.length ? { attacks } : {})
-      };
+      return parsed;
     } catch (error) {
       if (attempt < MAX_RETRIES - 1) {
         console.log(`  ⚠️  Retry ${attempt + 1}/${MAX_RETRIES} for ${setCode}/${numberVariant}: ${error.message}`);
@@ -401,14 +566,23 @@ async function main() {
   // Collect all cards from reports
   const allCards = await collectAllCards();
 
-  // In force refresh mode, also include existing database cards
-  // (they may have aged out of reports but still need regulation marks updated)
-  const allCardsToProcess = forceRefresh ? new Set([...Object.keys(database), ...allCards]) : allCards;
+  // Re-fetch every entry only when explicitly requested. Otherwise, include
+  // entries from a prior metadata schema so additive parser changes backfill
+  // automatically once, even for cards that have aged out of current reports.
+  const cardsNeedingMetadataBackfill = Object.entries(database)
+    .filter(([, typeInfo]) => typeInfo?.metadataVersion !== METADATA_SCHEMA_VERSION)
+    .map(([cardKey]) => cardKey);
+  const allCardsToProcess =
+    forceRefresh || cardsNeedingMetadataBackfill.length > 0
+      ? new Set([...Object.keys(database), ...allCards])
+      : allCards;
 
   if (forceRefresh) {
     console.log(
       `📊 Database cards: ${Object.keys(database).length}, Report cards: ${allCards.length}, Combined: ${allCardsToProcess.size}`
     );
+  } else if (cardsNeedingMetadataBackfill.length > 0) {
+    console.log(`📊 Backfilling metadata for ${cardsNeedingMetadataBackfill.length} legacy database entries`);
   }
 
   // Find cards that need to be fetched
@@ -417,8 +591,8 @@ async function main() {
     if (forceRefresh) {
       // In force refresh mode, re-fetch all cards
       cardsToFetch.push(cardKey);
-    } else if (!database[cardKey]) {
-      // Normal mode: only fetch missing cards
+    } else if (database[cardKey]?.metadataVersion !== METADATA_SCHEMA_VERSION) {
+      // Normal mode: fetch missing cards and legacy entries requiring enrichment.
       cardsToFetch.push(cardKey);
     }
   }
@@ -447,15 +621,12 @@ async function main() {
       console.log(
         `  ✅ Success: ${cardKey} → ${typeInfo.cardType}${typeInfo.subType ? `/${typeInfo.subType}` : ''}${typeInfo.regulationMark ? ` [${typeInfo.regulationMark}]` : ''}`
       );
+      // parseCardPage already emits only-present enrichment fields (hp, rarity,
+      // attackDetails, legality, …) — persist the whole shape plus a timestamp.
+      const { fullType, ...rest } = typeInfo;
       database[cardKey] = {
-        cardType: typeInfo.cardType,
-        ...(typeInfo.subType ? { subType: typeInfo.subType } : {}),
-        ...(typeInfo.evolutionInfo ? { evolutionInfo: typeInfo.evolutionInfo } : {}),
-        ...(typeInfo.aceSpec ? { aceSpec: true } : {}),
-        ...(typeInfo.regulationMark ? { regulationMark: typeInfo.regulationMark } : {}),
-        ...(typeInfo.abilities ? { abilities: typeInfo.abilities } : {}),
-        ...(typeInfo.attacks ? { attacks: typeInfo.attacks } : {}),
-        fullType: typeInfo.fullType,
+        ...rest,
+        fullType,
         lastUpdated: new Date().toISOString()
       };
       fetched++;
@@ -483,7 +654,11 @@ async function main() {
   console.log(`   Errors: ${errors}`);
 }
 
-main().catch(error => {
-  console.error('Fatal error:', error);
-  process.exit(1);
-});
+// Only run the CLI when executed directly — tests import parseCardPage.
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) {
+  main().catch(error => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
+}

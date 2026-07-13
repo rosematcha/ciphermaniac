@@ -34,7 +34,6 @@ const ArchetypesIndexPage = lazy(() =>
   import('./pages/ArchetypesIndexPage').then(m => ({ default: m.ArchetypesIndexPage }))
 );
 const ArchetypePage = lazy(() => import('./pages/ArchetypePage').then(m => ({ default: m.ArchetypePage })));
-const MatchupMatrixPage = lazy(() => import('./pages/MatchupMatrixPage').then(m => ({ default: m.MatchupMatrixPage })));
 const TournamentsIndexPage = lazy(() =>
   import('./pages/TournamentsIndexPage').then(m => ({ default: m.TournamentsIndexPage }))
 );
@@ -87,7 +86,6 @@ render(
       <Route path='/cards/:set/:number' component={CardPage} />
       <Route path='/archetypes' component={ArchetypesIndexPage} />
       <Route path='/archetypes/:slug' component={ArchetypePage} />
-      <Route path='/matchups' component={MatchupMatrixPage} />
       <Route path='/tournaments' component={TournamentsIndexPage} />
       <Route path='/trends' component={TrendsPage} />
       <Route path='/players' component={PlayersPage} />

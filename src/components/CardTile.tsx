@@ -1,5 +1,5 @@
 import { A } from '@solidjs/router';
-import { createMemo, For } from 'solid-js';
+import { createMemo, For, Show } from 'solid-js';
 import type { CardItem } from '../types';
 import { CardImage } from './CardImage';
 import { prefetchCardPage } from '../lib/prefetch';
@@ -30,7 +30,11 @@ export function CardTile(props: { card: CardItem; hideEmptyBuckets?: boolean; ea
       if (!Number.isFinite(copies) || copies <= 0) {
         continue;
       }
-      valid.push({ copies, pct: Number(d.percent ?? 0) });
+      const pct = Number(d.percent ?? 0);
+      if (pct <= 0) {
+        continue;
+      }
+      valid.push({ copies, pct });
     }
 
     // Always render exactly 4 bars. For "normal" cards every copy count we have
@@ -114,7 +118,9 @@ export function CardTile(props: { card: CardItem; hideEmptyBuckets?: boolean; ea
                 };
                 return (
                   <div class='card-tile-hist-col' title={bucketText(bucket)}>
-                    <div class='card-tile-hist-fill' style={{ height: `${heightPct()}%` }} />
+                    <Show when={bucket.pct > 0}>
+                      <div class='card-tile-hist-fill' style={{ height: `${heightPct()}%` }} />
+                    </Show>
                     <span class='card-tile-hist-label'>{bucket.copies}</span>
                   </div>
                 );

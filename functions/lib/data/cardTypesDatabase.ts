@@ -10,6 +10,8 @@ interface WorkerEnv {
 }
 
 interface CardTypeInfo {
+  /** Internal parser schema marker used to backfill newly introduced metadata once. */
+  metadataVersion?: number;
   cardType?: string;
   subType?: string;
   fullType?: string;
@@ -18,6 +20,19 @@ interface CardTypeInfo {
   aceSpec?: boolean;
   abilities?: string[];
   attacks?: string[];
+  /* Enrichment fields emitted by scripts/build-card-types.mjs (July 2026+).
+     Older database entries predate them, so every field stays optional. */
+  hp?: number;
+  pokemonType?: string;
+  weakness?: string;
+  resistance?: string;
+  retreatCost?: number;
+  rarity?: string;
+  artist?: string;
+  text?: string;
+  abilityDetails?: { name: string; effect: string | null }[];
+  attackDetails?: { cost: string | null; name: string; damage: string | null; effect: string | null }[];
+  legality?: Record<string, string>;
   lastUpdated?: string;
 }
 

@@ -35,7 +35,6 @@ Ciphermaniac answers the questions competitive Pokémon TCG players actually ask
 - **Archetype breakdowns** — core lists, tech choices, and side-by-side variant comparisons
 - **Meta trends** — archetype popularity shifts, rising and falling cards, and price movers
 - **Player profiles** — tournament results per player, with head-to-head comparison across shared events
-- **Matchup matrix** — archetype-vs-archetype win rates
 - **Flexible filtering** — stack multiple includes and excludes, down to specific copy counts
 - **Fast loads** — reports are precomputed and served as static artifacts, so pages render in under a second
 

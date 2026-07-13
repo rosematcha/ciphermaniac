@@ -1,4 +1,4 @@
-import { A, useNavigate } from '@solidjs/router';
+import { useNavigate } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, on, Show } from 'solid-js';
 import {
   fetchArchetypeDecks,
@@ -733,25 +733,6 @@ function RowStats(props: { row: FieldRow }) {
   );
 }
 
-/**
- * Hover-revealed deep link to the matchup matrix. The matrix page focuses no
- * specific pair (it reads only the global tournament + navigates by row), so we
- * link to /matchups plainly.
- * TODO: focus this opponent's row/cell once MatchupMatrixPage supports a pair anchor.
- */
-function MatrixLink(props: { label: string }) {
-  return (
-    <A
-      class='rf-link'
-      href='/matchups'
-      aria-label={`Open ${props.label} in the matchup matrix`}
-      onClick={e => e.stopPropagation()}
-    >
-      ↗
-    </A>
-  );
-}
-
 function rowNav(row: FieldRow, onGo: (slug: string | null) => void) {
   return {
     classList: { 'is-link': Boolean(row.opponentSlug) },
@@ -782,7 +763,6 @@ function KeyMatchupRow(props: { row: FieldRow; onGo: (slug: string | null) => vo
       </div>
       <Gauge winRate={props.row.winRate} shown={props.row.shown} />
       <RowStats row={props.row} />
-      <MatrixLink label={props.row.opponentLabel} />
     </div>
   );
 }
@@ -805,7 +785,6 @@ function RestMatchupRow(props: { row: FieldRow; onGo: (slug: string | null) => v
       </div>
       <Gauge winRate={props.row.winRate} shown={props.row.shown} />
       <RowStats row={props.row} />
-      <MatrixLink label={props.row.opponentLabel} />
     </div>
   );
 }

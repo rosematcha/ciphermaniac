@@ -282,3 +282,238 @@
     grid-column: 2;
   }
 }
+
+/* ---------- Mobile card filters (CardsIndexPage) ----------
+   Two surfaces drive one shared set of filter signals: the desktop
+   `.cards-filter-bar` (inline chip rows) and the mobile control row + refine
+   sheet below. Only the *surfacing* differs per breakpoint; the filter logic is
+   identical. The mobile controls are hidden on desktop and vice-versa. */
+.cards-mobile-controls {
+  display: none;
+}
+
+/* Full-width search + a square trigger sized to match the input's height —
+   the round-1 complaint was mismatched heights, so both stretch to the row. */
+.control-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.control-row .search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.filters-btn {
+  width: 46px;
+  flex-shrink: 0;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.filters-btn:hover {
+  background: var(--surface-2);
+}
+/* Active state: fill with the accent and widen to seat the count numeral inline
+   next to the funnel — no floating corner badge. */
+.filters-btn.is-active {
+  width: auto;
+  padding: 0 12px;
+  background: var(--accent);
+  border-color: var(--accent-hover);
+  color: var(--accent-fg);
+}
+.fb-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-fg);
+  line-height: 1;
+}
+
+/* Closed-state summary: removable mini-chips for each active facet. */
+.filter-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.mini-chip {
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--fg);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.mini-chip:hover {
+  border-color: var(--muted);
+}
+.mini-chip .mc-x {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* ---------- Bottom sheet (shared BottomSheet component) ----------
+   Portalled to <body>; a scrim + a panel that slides up from the bottom edge.
+   Present in the DOM at all widths but only reachable via the mobile trigger. */
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--fg);
+  opacity: 0;
+  z-index: 40;
+  pointer-events: none;
+  transition: opacity var(--ms-base) var(--ease-base);
+}
+.sheet-scrim.open {
+  opacity: 0.32;
+  pointer-events: auto;
+}
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+  transform: translateY(100%);
+  transition: transform var(--ms-base) var(--ease-base);
+  will-change: transform;
+}
+.sheet.open {
+  transform: translateY(0);
+}
+.sheet-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--rule);
+  flex-shrink: 0;
+}
+.sheet-grip {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 34px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+}
+.sheet-head h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--fg);
+  margin: 0;
+}
+.sheet-close {
+  font: inherit;
+  font-size: 13px;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 4px 2px;
+  cursor: pointer;
+}
+.sheet-close:hover {
+  color: var(--fg);
+}
+.sheet-body {
+  overflow-y: auto;
+  padding: 14px 16px 18px;
+  flex: 1 1 auto;
+}
+/* Hairline-separated "filter room": bold labels, generous breathing space. */
+.sheet-body .group {
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--rule);
+}
+.sheet-body .group:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+.sheet-body .group-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg);
+  letter-spacing: 0.01em;
+  margin: 0 0 8px;
+}
+.sheet-body .group-caption {
+  font-size: 11px;
+  color: var(--muted);
+  margin: -4px 0 9px;
+}
+/* Ace Spec collapses to one inline row: label left, toggle chip right. */
+.sheet-body .group-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.sheet-body .group-inline .group-label {
+  margin: 0;
+}
+.sheet-body .chips {
+  flex-wrap: wrap;
+}
+.sheet-foot {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--rule);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.sheet-clear {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-hover);
+  background: none;
+  border: 0;
+  padding: 8px 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sheet-apply {
+  flex: 1 1 auto;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: 1px solid var(--accent-hover);
+}
+
+@media (max-width: 640px) {
+  /* Swap surfaces: hide the inline desktop bar, reveal the control row. */
+  .cards-filter-bar {
+    display: none;
+  }
+  .cards-mobile-controls {
+    display: block;
+  }
+}

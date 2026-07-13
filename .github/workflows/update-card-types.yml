@@ -35,7 +35,7 @@ concurrency:
 jobs:
   update-card-types:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45 # force-refresh re-scrapes every card (~2,700 x ~0.5s)
 
     permissions:
       contents: write

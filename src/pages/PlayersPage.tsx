@@ -87,7 +87,7 @@ export function PlayersPage() {
 
   return (
     <>
-      <section class='hero'>
+      <section class='hero hero-collapsible'>
         <h1>Players</h1>
         <div class='hero-meta'>
           <Show when={indexData()} fallback={<Skeleton width='240px' height='13px' />}>

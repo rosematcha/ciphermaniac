@@ -380,6 +380,19 @@
   margin: 0 8px;
   opacity: 0.4;
 }
+/* Index pages whose hero is a pure title + meta line drop it on phones, where
+   the vertical space is better spent on the filter controls and results. Opt-in
+   via `.hero-collapsible` so hero sections that carry real content stay put. */
+@media (max-width: 640px) {
+  .hero-collapsible {
+    display: none;
+  }
+  /* `.page > section + section` margins key off DOM adjacency, not layout, so
+     a display:none hero still pushes its sibling down without this reset. */
+  .hero-collapsible + section {
+    margin-top: 0;
+  }
+}
 
 /* ---------- Section heading ---------- */
 .section-head {
@@ -3497,7 +3510,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   align-items: center;
   gap: 16px;
   min-height: 54px;
-  padding: 8px 24px 8px 6px;
+  padding: 8px 6px;
   border-bottom: 1px solid var(--rule);
   border-radius: var(--radius-sm);
 }
@@ -3508,7 +3521,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   align-items: center;
   gap: 14px;
   min-height: 36px;
-  padding: 4px 24px 4px 6px;
+  padding: 4px 6px;
   border-bottom: 1px solid var(--rule);
   border-radius: var(--radius-sm);
 }
@@ -3563,35 +3576,6 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
   background: var(--surface-2);
-}
-
-/* Per-row deep link, revealed on hover/focus in a reserved right gutter */
-.rf-link {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  font-size: 12px;
-  line-height: 1;
-  color: var(--muted);
-  text-decoration: none;
-  opacity: 0;
-  transition:
-    opacity var(--ms-fast),
-    color var(--ms-fast);
-}
-.r2-krow:hover .rf-link,
-.r2-rrow:hover .rf-link,
-.rf-link:focus-visible {
-  opacity: 1;
-}
-.rf-link:hover {
-  color: var(--accent);
 }
 
 /* ---- Low-sample expander ---- */
@@ -3878,9 +3862,6 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   .r2-rrow > .mu-gauge {
     grid-area: gauge;
     width: 100%;
-  }
-  .rf-link {
-    opacity: 1;
   }
   .r2-sechead-note {
     display: none;
