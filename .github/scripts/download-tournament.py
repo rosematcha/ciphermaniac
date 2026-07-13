@@ -22,10 +22,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
-import boto3
 import requests
 from botocore.exceptions import ClientError
 from bs4 import BeautifulSoup
+
+# Shared R2 helpers (retrying client + typed read results). lib/r2.py has an
+# underscore-free name so it imports cleanly regardless of the current directory,
+# including when this module is loaded via importlib by sibling scripts.
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+import r2  # noqa: E402
 
 
 LIMITLESS_BASE_URL = "https://limitlesstcg.com"
@@ -204,20 +209,17 @@ def load_card_types_database(r2_client, bucket_name):
     if not r2_client:
         print("Card types database unavailable (no R2 client)")
         return {}
-    try:
-        obj = r2_client.get_object(Bucket=bucket_name, Key=CARD_TYPES_KEY)
-        payload = obj["Body"].read().decode("utf-8")
-        data = json.loads(payload)
-        print(f"Loaded card types database from R2 ({len(data)} entries)")
-        return data
-    except ClientError as exc:
-        if exc.response.get("Error", {}).get("Code") == "NoSuchKey":
-            print("Card types database not found in R2; continuing without enrichment")
-            return {}
-        raise
-    except Exception as exc:
-        print(f"Warning: Failed to load card types database: {exc}")
+    result = r2.read_json(r2_client, bucket_name, CARD_TYPES_KEY)
+    if result.status == "missing":
+        print("Card types database not found in R2; continuing without enrichment")
         return {}
+    if result.status != "found":
+        # A transport blip or corrupt payload must abort, not silently degrade
+        # canonicalization by returning an empty database.
+        raise result.error
+    data = result.value
+    print(f"Loaded card types database from R2 ({len(data)} entries)")
+    return data
 
 
 def load_existing_canonicals(r2_client, bucket_name):
@@ -231,22 +233,19 @@ def load_existing_canonicals(r2_client, bucket_name):
     if not r2_client:
         print("Existing canonicals unavailable (no R2 client)")
         return {}, {}
-    try:
-        obj = r2_client.get_object(Bucket=bucket_name, Key=CARD_SYNONYMS_KEY)
-        payload = obj["Body"].read().decode("utf-8")
-        data = json.loads(payload)
-        synonyms = data.get("synonyms", {})
-        canonicals = data.get("canonicals", {})
-        print(f"Loaded existing canonicals from R2 ({len(synonyms)} synonyms, {len(canonicals)} canonicals)")
-        return synonyms, canonicals
-    except ClientError as exc:
-        if exc.response.get("Error", {}).get("Code") == "NoSuchKey":
-            print("Existing canonicals not found; will generate new ones")
-            return {}, {}
-        raise
-    except Exception as exc:
-        print(f"Warning: Failed to load existing canonicals: {exc}")
+    result = r2.read_json(r2_client, bucket_name, CARD_SYNONYMS_KEY)
+    if result.status == "missing":
+        print("Existing canonicals not found; will generate new ones")
         return {}, {}
+    if result.status != "found":
+        # A transport blip or corrupt payload must abort, not silently degrade
+        # canonicalization by returning empty maps.
+        raise result.error
+    data = result.value
+    synonyms = data.get("synonyms", {})
+    canonicals = data.get("canonicals", {})
+    print(f"Loaded existing canonicals from R2 ({len(synonyms)} synonyms, {len(canonicals)} canonicals)")
+    return synonyms, canonicals
 
 
 def enrich_card_entry(card, card_types_db):
@@ -392,26 +391,16 @@ def fetch_tournament_meta(r2_client, bucket_name: str, tournament_name: str) -> 
     if not r2_client:
         return {}
     key = f"reports/{tournament_name}/meta.json"
-    try:
-        response = r2_client.get_object(Bucket=bucket_name, Key=key)
-    except Exception as exc:
-        no_such_key_exc = getattr(getattr(r2_client, "exceptions", object), "NoSuchKey", None)
-        if no_such_key_exc and isinstance(exc, no_such_key_exc):
-            return {}
-        if isinstance(exc, ClientError):
-            code = exc.response.get("Error", {}).get("Code")
-            if code in {"NoSuchKey", "404", "NotFound"}:
-                return {}
-        print(f"  Warning: Could not read {key}: {exc}")
-        return {}
-
-    try:
-        payload = response["Body"].read().decode("utf-8")
-        parsed = json.loads(payload)
+    result = r2.read_json(r2_client, bucket_name, key)
+    if result.status == "found":
+        parsed = result.value
         return parsed if isinstance(parsed, dict) else {}
-    except Exception as exc:
-        print(f"  Warning: Invalid meta payload for {tournament_name}: {exc}")
+    # A verifiable 404 (either the S3 error code or the client's own NoSuchKey
+    # type) means the event simply has no meta yet. Any other failure — a
+    # transport blip or corrupt payload — must abort, not silently drop the date.
+    if result.status == "missing" or _is_no_such_key(r2_client, result.error):
         return {}
+    raise result.error
 
 
 def derive_tournament_start_date(tournament_name: str, meta: Optional[Dict[str, Any]] = None) -> Optional[str]:
@@ -2154,10 +2143,7 @@ def _is_no_such_key(r2_client, error):
     """True when ``error`` means the object simply does not exist."""
     if isinstance(error, r2_client.exceptions.NoSuchKey):
         return True
-    if isinstance(error, ClientError):
-        code = error.response.get("Error", {}).get("Code")
-        return code in ("NoSuchKey", "NoSuchBucket", "404")
-    return False
+    return r2.is_missing_object_error(error)
 
 
 def _read_tournaments_index(r2_client, bucket_name, tournaments_key):
@@ -2794,13 +2780,7 @@ def main():
             print("Error: R2 credentials not set")
             sys.exit(1)
 
-        r2_client = boto3.client(
-            "s3",
-            endpoint_url=f"https://{r2_account_id}.r2.cloudflarestorage.com",
-            aws_access_key_id=r2_access_key_id,
-            aws_secret_access_key=r2_secret_access_key,
-            region_name="auto",
-        )
+        r2_client = r2.make_r2_client(r2_account_id, r2_access_key_id, r2_secret_access_key)
 
     if rebuild_tournaments_only:
         if not r2_client:

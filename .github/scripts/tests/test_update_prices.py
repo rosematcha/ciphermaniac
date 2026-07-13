@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import unittest
 from datetime import date, timedelta
 from pathlib import Path
@@ -192,6 +193,62 @@ class UpdatePriceHistoryTest(unittest.TestCase):
             {}, {"A::SET::001": {"price": None}, "B::SET::002": {}}, date(2026, 7, 7)
         )
         self.assertEqual(out, {})
+
+
+class _FakeS3Error(Exception):
+    def __init__(self, code):
+        super().__init__(code)
+        self.response = {"Error": {"Code": code}}
+
+
+class _FakeBody:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def read(self):
+        return self._payload
+
+
+class _FakeR2Client:
+    def __init__(self, error=None, payload=None):
+        self._error = error
+        self._payload = payload
+
+    def get_object(self, Bucket, Key):
+        if self._error is not None:
+            raise self._error
+        return {"Body": _FakeBody(self._payload)}
+
+
+class LoadPriceHistoryTest(unittest.TestCase):
+    def test_missing_object_starts_fresh(self):
+        client = _FakeR2Client(error=_FakeS3Error("NoSuchKey"))
+        self.assertEqual(update_prices.load_price_history(client, "bucket"), {})
+
+    def test_transport_error_aborts_instead_of_starting_fresh(self):
+        client = _FakeR2Client(error=ConnectionError("connection reset"))
+        with self.assertRaises(update_prices.PriceHistoryReadError):
+            update_prices.load_price_history(client, "bucket")
+
+    def test_permission_error_aborts(self):
+        client = _FakeR2Client(error=_FakeS3Error("AccessDenied"))
+        with self.assertRaises(update_prices.PriceHistoryReadError):
+            update_prices.load_price_history(client, "bucket")
+
+    def test_corrupt_json_aborts(self):
+        client = _FakeR2Client(payload=b"{not json")
+        with self.assertRaises(update_prices.PriceHistoryReadError):
+            update_prices.load_price_history(client, "bucket")
+
+    def test_valid_history_loads(self):
+        payload = json.dumps(
+            {"history": {"A::SET::001": [{"d": "2026-07-06", "p": 1.5}]}}
+        ).encode("utf-8")
+        client = _FakeR2Client(payload=payload)
+        self.assertEqual(
+            update_prices.load_price_history(client, "bucket"),
+            {"A::SET::001": [{"d": "2026-07-06", "p": 1.5}]},
+        )
 
 
 if __name__ == "__main__":

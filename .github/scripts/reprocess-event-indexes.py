@@ -34,7 +34,6 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-import boto3
 from botocore.exceptions import ClientError
 
 # Reuse the exact builders and helpers download-tournament.py bakes with, so the
@@ -44,18 +43,19 @@ _spec = importlib.util.spec_from_file_location("download_tournament", _DT_PATH)
 dt = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(dt)
 
+# Shared R2 helpers (retrying client + typed read results).
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+import r2  # noqa: E402
+
 CARD_SYNONYMS_KEY = "assets/card-synonyms.json"
 TOURNAMENTS_KEY = "reports/tournaments.json"
 
 
 def make_client():
-    account_id = os.environ["R2_ACCOUNT_ID"]
-    return boto3.client(
-        "s3",
-        endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
-        aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
-        region_name="auto",
+    return r2.make_r2_client(
+        os.environ["R2_ACCOUNT_ID"],
+        os.environ["R2_ACCESS_KEY_ID"],
+        os.environ["R2_SECRET_ACCESS_KEY"],
     )
 
 

@@ -12,6 +12,12 @@ import time
 import unicodedata
 from datetime import datetime, timezone, date, timedelta
 from collections import defaultdict
+from pathlib import Path
+
+# Shared R2 helpers (retrying client + typed read results). lib/r2.py has an
+# underscore-free name so it imports cleanly regardless of the current directory.
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+import r2  # noqa: E402
 
 
 TCGCSV_GROUPS_URL = 'https://tcgcsv.com/tcgplayer/3/groups'
@@ -100,7 +106,6 @@ def fetch_tcgcsv_results(url):
 
 def initialize_r2_client():
     """Initialize boto3 S3 client for R2."""
-    import boto3
     r2_account_id = os.environ.get('R2_ACCOUNT_ID')
     r2_access_key_id = os.environ.get('R2_ACCESS_KEY_ID')
     r2_secret_access_key = os.environ.get('R2_SECRET_ACCESS_KEY')
@@ -109,13 +114,7 @@ def initialize_r2_client():
         print("Error: R2 credentials not set")
         sys.exit(1)
 
-    return boto3.client(
-        's3',
-        endpoint_url=f'https://{r2_account_id}.r2.cloudflarestorage.com',
-        aws_access_key_id=r2_access_key_id,
-        aws_secret_access_key=r2_secret_access_key,
-        region_name='auto'
-    )
+    return r2.make_r2_client(r2_account_id, r2_access_key_id, r2_secret_access_key)
 
 
 def load_online_meta_report(r2_client, bucket_name):
@@ -142,17 +141,21 @@ def load_card_synonyms(r2_client, bucket_name):
     prices to the previous run's canonicals. The bucket is always current.
     """
     print("Loading card synonyms...")
-    try:
-        response = r2_client.get_object(Bucket=bucket_name, Key=CARD_SYNONYMS_KEY)
-        data = json.loads(response['Body'].read().decode('utf-8'))
-        print(f"  Loaded {len(data.get('synonyms', {}))} synonyms from R2")
-        return {
-            'synonyms': data.get('synonyms', {}),
-            'canonicals': data.get('canonicals', {})
-        }
-    except Exception as e:
-        print(f"  Warning: Could not load synonyms from R2: {e}")
+    result = r2.read_json(r2_client, bucket_name, CARD_SYNONYMS_KEY)
+    if result.status == 'missing':
+        print("  No synonyms object in R2; starting with empty synonyms")
         return {'synonyms': {}, 'canonicals': {}}
+    if result.status != 'found':
+        # A transport blip or corrupt payload here would mis-key every price to
+        # the previous canonicals — abort rather than run with empty synonyms.
+        print(f"  Error: could not load synonyms from R2 ({result.status}): {result.error}")
+        sys.exit(1)
+    data = result.value if isinstance(result.value, dict) else {}
+    print(f"  Loaded {len(data.get('synonyms', {}))} synonyms from R2")
+    return {
+        'synonyms': data.get('synonyms', {}),
+        'canonicals': data.get('canonicals', {})
+    }
 
 
 def build_uid_from_parts(name, set_code, number):
@@ -432,20 +435,47 @@ def add_basic_energy_prices(price_data, card_list):
     print(f"\nAdded {len([k for k in price_data if 'Energy::' in k])} basic energy prices")
 
 
+class PriceHistoryReadError(Exception):
+    """Raised when the existing price history exists but cannot be read.
+
+    A transient transport error or corrupt payload must abort the run:
+    starting fresh here would replace up to 90 days of valid history with
+    a single day's data.
+    """
+
+
+def _is_missing_object_error(error):
+    """True only when the object verifiably does not exist (404/NoSuchKey)."""
+    return r2.is_missing_object_error(error)
+
+
 def load_price_history(r2_client, bucket_name):
-    """Load the existing rolling price-history artifact, or {} if absent."""
+    """Load the existing rolling price-history artifact.
+
+    Returns {} only when the object verifiably does not exist (first run).
+    Any other failure — transport error, permission error, corrupt JSON —
+    raises PriceHistoryReadError so the run aborts instead of silently
+    replacing valid history.
+    """
     print(f"\nLoading {PRICES_HISTORY_KEY}...")
     try:
         response = r2_client.get_object(Bucket=bucket_name, Key=PRICES_HISTORY_KEY)
-        data = json.loads(response['Body'].read().decode('utf-8'))
-        history = data.get('history', {}) if isinstance(data, dict) else {}
-        print(f"  Loaded history for {len(history)} cards")
-        return history
     except Exception as e:
-        # First run (no file yet) or a transient read error: start fresh rather
-        # than abort the whole price update.
-        print(f"  No existing history ({e}); starting fresh")
-        return {}
+        if _is_missing_object_error(e):
+            print("  No existing history object; starting fresh")
+            return {}
+        raise PriceHistoryReadError(
+            f"Failed to read {PRICES_HISTORY_KEY}: {e}"
+        ) from e
+    try:
+        data = json.loads(response['Body'].read().decode('utf-8'))
+    except (ValueError, UnicodeDecodeError) as e:
+        raise PriceHistoryReadError(
+            f"Corrupt price history at {PRICES_HISTORY_KEY}: {e}"
+        ) from e
+    history = data.get('history', {}) if isinstance(data, dict) else {}
+    print(f"  Loaded history for {len(history)} cards")
+    return history
 
 
 def update_price_history(existing_history, price_data, today, window_days=HISTORY_WINDOW_DAYS):

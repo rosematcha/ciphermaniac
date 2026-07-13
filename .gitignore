@@ -100,3 +100,4 @@ trends.json
 !/static/sw.js
 .lighthouseci/
 .scratch/
+.venv/

@@ -1,4 +1,4 @@
-import { createEffect, type JSX, onCleanup, type ParentComponent, Show } from 'solid-js';
+import { createEffect, createSignal, type JSX, onCleanup, type ParentComponent, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
 
 interface BottomSheetProps {
@@ -27,6 +27,27 @@ function focusableIn(root: HTMLElement): HTMLElement[] {
  */
 export const BottomSheet: ParentComponent<BottomSheetProps> = props => {
   let dialogRef: HTMLDivElement | undefined;
+
+  // Mount/animation split: `mounted` keeps the DOM alive through both
+  // transitions; `shown` drives the .open classes. Opening mounts closed and
+  // flips .open a frame later so the slide-up/scrim-fade actually plays
+  // (mounting with .open already applied paints directly in the end state);
+  // closing removes .open first and unmounts after the transition finishes.
+  const [mounted, setMounted] = createSignal(false);
+  const [shown, setShown] = createSignal(false);
+  const UNMOUNT_DELAY_MS = 220; // just past --ms-base (180ms)
+
+  createEffect(() => {
+    if (props.open) {
+      setMounted(true);
+      const raf = requestAnimationFrame(() => requestAnimationFrame(() => setShown(true)));
+      onCleanup(() => cancelAnimationFrame(raf));
+    } else if (mounted()) {
+      setShown(false);
+      const timer = setTimeout(() => setMounted(false), UNMOUNT_DELAY_MS);
+      onCleanup(() => clearTimeout(timer));
+    }
+  });
 
   createEffect(() => {
     if (!props.open) {
@@ -82,12 +103,13 @@ export const BottomSheet: ParentComponent<BottomSheetProps> = props => {
   });
 
   return (
-    <Show when={props.open}>
+    <Show when={mounted()}>
       <Portal>
-        <div class='sheet-scrim open' aria-hidden='true' onClick={() => props.onClose()} />
+        <div class='sheet-scrim' classList={{ open: shown() }} aria-hidden='true' onClick={() => props.onClose()} />
         <div
           ref={dialogRef}
-          class='sheet open'
+          class='sheet'
+          classList={{ open: shown() }}
           role='dialog'
           aria-modal='true'
           aria-label={props.ariaLabel ?? props.title}

@@ -292,6 +292,37 @@
   display: none;
 }
 
+/* Desktop trigger: the mobile funnel button with room for a text label, so
+   both breakpoints share one affordance for the hidden facets. */
+.filters-btn--labeled {
+  width: auto;
+  padding: 0 12px;
+  gap: 7px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+.filters-btn--labeled.is-open:not(.is-active) {
+  background: var(--surface-2);
+}
+
+/* Desktop disclosure panel: the sheet's interior in an in-flow bordered block
+   (pushes the grid down rather than floating over it). */
+.cards-filter-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  padding: 14px 16px;
+  animation: filter-panel-in var(--ms-fast) var(--ease-base);
+}
+@keyframes filter-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
 /* Full-width search + a square trigger sized to match the input's height —
    the round-1 complaint was mismatched heights, so both stretch to the row. */
 .control-row {
@@ -446,36 +477,42 @@
   flex: 1 1 auto;
 }
 /* Hairline-separated "filter room": bold labels, generous breathing space. */
-.sheet-body .group {
+.sheet-body .group,
+.cards-filter-panel .group {
   padding-bottom: 18px;
   margin-bottom: 18px;
   border-bottom: 1px solid var(--rule);
 }
-.sheet-body .group:last-child {
+.sheet-body .group:last-child,
+.cards-filter-panel .group:last-child {
   padding-bottom: 0;
   margin-bottom: 0;
   border-bottom: 0;
 }
-.sheet-body .group-label {
+.sheet-body .group-label,
+.cards-filter-panel .group-label {
   font-size: 12px;
   font-weight: 600;
   color: var(--fg);
   letter-spacing: 0.01em;
   margin: 0 0 8px;
 }
-.sheet-body .group-caption {
+.sheet-body .group-caption,
+.cards-filter-panel .group-caption {
   font-size: 11px;
   color: var(--muted);
   margin: -4px 0 9px;
 }
 /* Ace Spec collapses to one inline row: label left, toggle chip right. */
-.sheet-body .group-inline {
+.sheet-body .group-inline,
+.cards-filter-panel .group-inline {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
-.sheet-body .group-inline .group-label {
+.sheet-body .group-inline .group-label,
+.cards-filter-panel .group-inline .group-label {
   margin: 0;
 }
 .sheet-body .chips {

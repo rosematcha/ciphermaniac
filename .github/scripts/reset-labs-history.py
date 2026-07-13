@@ -20,7 +20,10 @@ import time
 from pathlib import Path
 from typing import Iterable, List, Tuple
 
-import boto3
+# Shared R2 helpers (retrying client + typed read results). The adaptive retries
+# cover transient transport errors; this repair job's flow is otherwise unchanged.
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+import r2  # noqa: E402
 
 REPORTS_PREFIX = "reports/"
 TOURNAMENTS_KEY = "reports/tournaments.json"
@@ -147,13 +150,7 @@ def main() -> int:
         print("[reset] Missing required R2 credentials")
         return 1
 
-    r2_client = boto3.client(
-        "s3",
-        endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
-        aws_access_key_id=access_key,
-        aws_secret_access_key=secret_key,
-        region_name="auto",
-    )
+    r2_client = r2.make_r2_client(account_id, access_key, secret_key)
 
     started = time.time()
 

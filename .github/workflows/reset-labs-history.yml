@@ -44,8 +44,10 @@ on:
         type: boolean
         default: true
 
+# All R2 bucket writers share one concurrency group so producers and repair
+# jobs can never mutate the bucket at the same time (DB-MASTER-PLAN Phase 0).
 concurrency:
-  group: reset-labs-history-${{ github.ref }}
+  group: r2-bucket-writers
   cancel-in-progress: false
 
 permissions:
@@ -72,7 +74,7 @@ jobs:
           cache: 'npm'
 
       - name: Install Python dependencies
-        run: pip install requests beautifulsoup4 boto3
+        run: pip install -r .github/scripts/requirements.txt
 
       - name: Install Node dependencies
         run: npm ci

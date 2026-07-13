@@ -132,9 +132,11 @@ export function CardsIndexPage() {
     sessionStorage
   );
 
-  // Mobile refine sheet visibility. Never opened on desktop (its only trigger
-  // lives in a mobile-only control row), so it needs no persistence.
+  // Refine-surface visibility. Two independent signals because the surfaces
+  // differ per breakpoint (mobile bottom sheet vs desktop in-flow panel) and
+  // the sheet is portalled — one shared signal would open both at once.
   const [sheetOpen, setSheetOpen] = createSignal(false);
+  const [panelOpen, setPanelOpen] = createSignal(false);
 
   const pageSignal = createPersistentNumberSignal('cm:cardsPage', 1, sessionStorage);
   const navigate = useNavigate();
@@ -322,6 +324,72 @@ export function CardsIndexPage() {
     return chips;
   };
 
+  // The five metadata filter groups, shared verbatim by the mobile sheet and
+  // the desktop disclosure panel so the two surfaces never drift apart. Sort
+  // and View stay out: they are sheet-only additions (desktop keeps its
+  // segmented controls inline).
+  const FilterGroups = () => (
+    <>
+      <div class='group'>
+        <p class='group-label'>Card type</p>
+        <ChipGroup
+          options={[
+            { value: 'all', label: 'All types' },
+            { value: 'pokemon', label: 'Pokémon' },
+            { value: 'trainer', label: 'Trainer' },
+            { value: 'energy', label: 'Energy' }
+          ]}
+          selected={typeFilter()}
+          onSelect={v => selectType(v as TypeFilter)}
+        />
+      </div>
+
+      <Show when={subtypeOptions().length > 0}>
+        <div class='group'>
+          <p class='group-label'>Subtype</p>
+          <ChipGroup
+            options={[{ value: 'all', label: 'All subtypes' }, ...subtypeOptions()]}
+            selected={subtype()}
+            onSelect={setSubtype}
+          />
+        </div>
+      </Show>
+
+      <div class='group'>
+        <p class='group-label'>Regulation mark</p>
+        <p class='group-caption'>Post-rotation legality</p>
+        <ChipGroup
+          options={[{ value: 'all', label: 'All regs' }, ...REG_MARKS.map(m => ({ value: m, label: `Reg ${m}` }))]}
+          selected={reg()}
+          onSelect={v => setReg(v as RegMark)}
+        />
+      </div>
+
+      <div class='group group-inline'>
+        <p class='group-label'>Ace Spec</p>
+        <div class='chips'>
+          <button
+            type='button'
+            class='chip'
+            aria-pressed={aceSpec() === 'true' ? 'true' : 'false'}
+            onClick={() => setAceSpec(v => (v === 'true' ? 'false' : 'true'))}
+          >
+            Ace Spec only
+          </button>
+        </div>
+      </div>
+
+      <div class='group'>
+        <p class='group-label'>Price band</p>
+        <ChipGroup
+          options={[{ value: 'all', label: 'All prices' }, ...PRICE_BANDS]}
+          selected={priceBand()}
+          onSelect={v => setPriceBand(v as 'all' | PriceBand)}
+        />
+      </div>
+    </>
+  );
+
   return (
     <>
       <section class='hero hero-collapsible'>
@@ -338,11 +406,38 @@ export function CardsIndexPage() {
       </section>
 
       <Section>
-        {/* Desktop filter bar — the full facet set laid out inline. Hidden on
-            mobile, where the same signals drive the refine sheet instead. */}
+        {/* Desktop filter bar — search plus display controls stay inline; the
+            metadata facets hide behind the same funnel trigger as mobile,
+            opening an in-flow panel instead of a sheet. Hidden on mobile. */}
         <div class='filter-bar cards-filter-bar'>
           <div class='filter-row'>
             <SearchInput value={query()} onInput={setQuery} placeholder='Search cards by name...' />
+            <button
+              type='button'
+              class='filters-btn filters-btn--labeled'
+              classList={{ 'is-active': activeFilterCount() > 0, 'is-open': panelOpen() }}
+              aria-expanded={panelOpen() ? 'true' : 'false'}
+              aria-controls='cards-filter-panel'
+              onClick={() => setPanelOpen(o => !o)}
+            >
+              <svg
+                width='14'
+                height='14'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                stroke-width='2'
+                stroke-linecap='round'
+                stroke-linejoin='round'
+                aria-hidden='true'
+              >
+                <path d='M3 5h18l-7 8v5.5l-4 2V13L3 5z' />
+              </svg>
+              Filters
+              <Show when={activeFilterCount() > 0}>
+                <span class='fb-count'>{activeFilterCount()}</span>
+              </Show>
+            </button>
             <Segmented<ViewMode>
               options={VIEW_OPTIONS}
               selected={viewMode()}
@@ -351,45 +446,11 @@ export function CardsIndexPage() {
             />
             <Segmented<SortKey> options={SORT_OPTIONS} selected={sortKey()} onSelect={setSort} ariaLabel='Sort by' />
           </div>
-          <div class='filter-row'>
-            <ChipGroup
-              options={[
-                { value: 'all', label: 'All types' },
-                { value: 'pokemon', label: 'Pokémon' },
-                { value: 'trainer', label: 'Trainer' },
-                { value: 'energy', label: 'Energy' }
-              ]}
-              selected={typeFilter()}
-              onSelect={v => selectType(v as TypeFilter)}
-            />
-            <Show when={subtypeOptions().length > 0}>
-              <ChipGroup
-                options={[{ value: 'all', label: 'All subtypes' }, ...subtypeOptions()]}
-                selected={subtype()}
-                onSelect={setSubtype}
-              />
-            </Show>
-          </div>
-          <div class='filter-row'>
-            <ChipGroup
-              options={[{ value: 'all', label: 'All regs' }, ...REG_MARKS.map(m => ({ value: m, label: `Reg ${m}` }))]}
-              selected={reg()}
-              onSelect={v => setReg(v as RegMark)}
-            />
-            <ChipGroup
-              options={[{ value: 'all', label: 'All prices' }, ...PRICE_BANDS]}
-              selected={priceBand()}
-              onSelect={v => setPriceBand(v as 'all' | PriceBand)}
-            />
-            <button
-              type='button'
-              class='chip'
-              aria-pressed={aceSpec() === 'true' ? 'true' : 'false'}
-              onClick={() => setAceSpec(v => (v === 'true' ? 'false' : 'true'))}
-            >
-              Ace Spec
-            </button>
-          </div>
+          <Show when={panelOpen()}>
+            <div class='cards-filter-panel' id='cards-filter-panel'>
+              <FilterGroups />
+            </div>
+          </Show>
         </div>
 
         {/* Mobile control row — full-width search + a square filter trigger of
@@ -424,26 +485,30 @@ export function CardsIndexPage() {
               </Show>
             </button>
           </div>
-          <Show when={summaryChips().length > 0}>
-            <div class='filter-strip' aria-label='Active filters'>
-              <For each={summaryChips()}>
-                {chip => (
-                  <button
-                    type='button'
-                    class='mini-chip'
-                    aria-label={`Remove ${chip.label} filter`}
-                    onClick={() => chip.clear()}
-                  >
-                    {chip.label}
-                    <span class='mc-x' aria-hidden='true'>
-                      ✕
-                    </span>
-                  </button>
-                )}
-              </For>
-            </div>
-          </Show>
         </div>
+
+        {/* Active-filter summary: removable mini-chips, shown on every
+            breakpoint whenever filters are set (the facets themselves are
+            hidden behind the trigger, so this is the at-rest state readout). */}
+        <Show when={summaryChips().length > 0}>
+          <div class='filter-strip' aria-label='Active filters'>
+            <For each={summaryChips()}>
+              {chip => (
+                <button
+                  type='button'
+                  class='mini-chip'
+                  aria-label={`Remove ${chip.label} filter`}
+                  onClick={() => chip.clear()}
+                >
+                  {chip.label}
+                  <span class='mc-x' aria-hidden='true'>
+                    ✕
+                  </span>
+                </button>
+              )}
+            </For>
+          </div>
+        </Show>
       </Section>
 
       <BottomSheet
@@ -462,63 +527,7 @@ export function CardsIndexPage() {
           </>
         }
       >
-        <div class='group'>
-          <p class='group-label'>Card type</p>
-          <ChipGroup
-            options={[
-              { value: 'all', label: 'All types' },
-              { value: 'pokemon', label: 'Pokémon' },
-              { value: 'trainer', label: 'Trainer' },
-              { value: 'energy', label: 'Energy' }
-            ]}
-            selected={typeFilter()}
-            onSelect={v => selectType(v as TypeFilter)}
-          />
-        </div>
-
-        <Show when={subtypeOptions().length > 0}>
-          <div class='group'>
-            <p class='group-label'>Subtype</p>
-            <ChipGroup
-              options={[{ value: 'all', label: 'All subtypes' }, ...subtypeOptions()]}
-              selected={subtype()}
-              onSelect={setSubtype}
-            />
-          </div>
-        </Show>
-
-        <div class='group'>
-          <p class='group-label'>Regulation mark</p>
-          <p class='group-caption'>Post-rotation legality</p>
-          <ChipGroup
-            options={[{ value: 'all', label: 'All regs' }, ...REG_MARKS.map(m => ({ value: m, label: `Reg ${m}` }))]}
-            selected={reg()}
-            onSelect={v => setReg(v as RegMark)}
-          />
-        </div>
-
-        <div class='group group-inline'>
-          <p class='group-label'>Ace Spec</p>
-          <div class='chips'>
-            <button
-              type='button'
-              class='chip'
-              aria-pressed={aceSpec() === 'true' ? 'true' : 'false'}
-              onClick={() => setAceSpec(v => (v === 'true' ? 'false' : 'true'))}
-            >
-              Ace Spec only
-            </button>
-          </div>
-        </div>
-
-        <div class='group'>
-          <p class='group-label'>Price band</p>
-          <ChipGroup
-            options={[{ value: 'all', label: 'All prices' }, ...PRICE_BANDS]}
-            selected={priceBand()}
-            onSelect={v => setPriceBand(v as 'all' | PriceBand)}
-          />
-        </div>
+        <FilterGroups />
 
         <div class='group'>
           <p class='group-label'>Sort by</p>

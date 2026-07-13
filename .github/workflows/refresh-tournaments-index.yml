@@ -12,8 +12,10 @@ on:
         type: boolean
         default: true
 
+# All R2 bucket writers share one concurrency group so producers and repair
+# jobs can never mutate the bucket at the same time (DB-MASTER-PLAN Phase 0).
 concurrency:
-  group: refresh-tournaments-index-${{ github.ref }}
+  group: r2-bucket-writers
   cancel-in-progress: false
 
 permissions:
@@ -34,7 +36,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install boto3 requests beautifulsoup4
+        run: pip install -r .github/scripts/requirements.txt
 
       - name: Rebuild tournaments index
         env:

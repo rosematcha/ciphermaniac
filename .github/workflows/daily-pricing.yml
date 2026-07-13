@@ -5,7 +5,7 @@
 # Stores price history in Cloudflare R2 for trend analysis.
 #
 # Triggers:
-#   - Daily at 12:00 UTC (same time as online-meta for fresh data)
+#   - Daily at 14:00 UTC (after the 12:00 online-meta build it reads from)
 #   - Manual dispatch
 # =============================================================================
 
@@ -16,12 +16,16 @@ run-name: >-
 
 on:
   schedule:
-    - cron: '0 12 * * *' # Daily at 12:00 UTC
+    # 14:00 UTC: pricing reads the online-meta output produced at 12:00, so it
+    # must not race that build (DB-MASTER-PLAN Phase 0 implicit-dependency fix).
+    - cron: '0 14 * * *'
   workflow_dispatch:
 
+# All R2 bucket writers share one concurrency group so producers and repair
+# jobs can never mutate the bucket at the same time (DB-MASTER-PLAN Phase 0).
 concurrency:
-  group: pricing-${{ github.ref }}
-  cancel-in-progress: true
+  group: r2-bucket-writers
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -41,7 +45,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests boto3
+        run: pip install -r .github/scripts/requirements.txt
 
       - name: Update card prices
         env:

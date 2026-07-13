@@ -49,9 +49,11 @@ on:
         type: boolean
         default: false
 
+# All R2 bucket writers share one concurrency group so producers and repair
+# jobs can never mutate the bucket at the same time (DB-MASTER-PLAN Phase 0).
 concurrency:
-  group: online-meta-${{ github.ref }}
-  cancel-in-progress: true
+  group: r2-bucket-writers
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -82,7 +84,7 @@ jobs:
 
       - name: Install Python dependencies (clean refresh mode)
         if: github.event.inputs.clean_month_cache == 'true'
-        run: pip install requests beautifulsoup4 boto3
+        run: pip install -r .github/scripts/requirements.txt
 
       - name: Rebuild recent daily tournament folders (clean refresh mode)
         if: github.event.inputs.clean_month_cache == 'true'

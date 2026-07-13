@@ -1,0 +1,72 @@
+{
+  "planDocument": "DB-MASTER-PLAN.md",
+  "updatedAt": "2026-07-12",
+  "currentPhase": 0,
+  "currentSlice": "phase0-slice2-r2-result-types-and-retries",
+  "phases": {
+    "0": {
+      "title": "Baseline, inventory, and safety rails",
+      "status": "in-progress",
+      "completedGates": [
+        "price-history transport failure aborts instead of replacing valid history (update-prices.py, tested)",
+        "all R2-writing workflows share one concurrency group (r2-bucket-writers, cancel-in-progress: false)",
+        "Python dependencies pinned in .github/scripts/requirements.txt; workflows install from it",
+        "quality-gates.yml runs API tests (tests/api) and Python tests (.github/scripts/tests)",
+        "daily-pricing schedule moved 12:00 -> 14:00 UTC so it no longer races the online-meta build it reads",
+        "R2 inventory measured and checked in (.github/baselines/r2-inventory-2026-07-12.json): 112,267 objects, 4.27 GB of the 8 GB budget; steady-state ~294 writes/day; full player rebuild rewrites all 89k player bodies"
+      ],
+      "outstandingGates": [
+        "reproducible browser benchmark for home/card/archetype/trends/tournament/player deep links (cold, SW-controlled, repeat; mobile profile)",
+        "p50/p95 budgets checked into the repository",
+        "explicit result types (found/missing/corrupt/transport) for R2 reads across producers",
+        "retries with exponential backoff and jitter for R2 reads and writes across producers"
+      ],
+      "notes": [
+        "Workflow sleeps in trends/player-aggregator intentionally retained until the build graph replaces them (plan: Phase 0 work list).",
+        "Shared concurrency group means GitHub may displace a pending writer run; accepted by plan until the Phase 5 reconciling workflow rediscovers dirty state from receipts."
+      ]
+    },
+    "1": {
+      "title": "Freeze semantics with contracts and golden fixtures",
+      "status": "not-started"
+    },
+    "2": {
+      "title": "Consolidate domain logic",
+      "status": "not-started"
+    },
+    "3": {
+      "title": "Build graph and shadow receipts",
+      "status": "not-started"
+    },
+    "4": {
+      "title": "Immutable publication and embedded release",
+      "status": "not-started"
+    },
+    "5": {
+      "title": "Dependency-aware incremental builds",
+      "status": "not-started"
+    },
+    "6": {
+      "title": "Regenerate and cut over all data",
+      "status": "not-started"
+    },
+    "7": {
+      "title": "Delete obsolete paths and documentation",
+      "status": "not-started"
+    }
+  },
+  "measuredBaselines": {
+    "r2": {
+      "inventoryFile": ".github/baselines/r2-inventory-2026-07-12.json",
+      "totalObjects": 112267,
+      "totalGB": 4.27,
+      "storageBudgetGB": 8,
+      "steadyStateDailyWrites": 294,
+      "fullPlayerRebuildWrites": 89177
+    }
+  },
+  "semanticDifferences": [],
+  "discoveredDependencyEdges": [
+    "measured: player-aggregator full rebuilds rewrite every players/{id} body (89,177 objects observed rewritten in one week) \u2014 confirms Phase 5 content-hash fingerprint requirement"
+  ]
+}
