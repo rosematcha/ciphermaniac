@@ -23,7 +23,7 @@
  */
 
 import { canonicalizeVariant, getCanonicalCardFromData, type SynonymDatabase } from '../cardIdentity';
-import { sanitizeForPath } from '../../cardUtils';
+import { sanitizeDisplayName } from '../../cardUtils';
 import {
   calculatePercentage,
   composeCategoryPath,
@@ -173,9 +173,11 @@ export function generateReportFromDecks(
   const items = Array.from(cardData.keys()).map(uid => {
     const countsList = cardData.get(uid) || [];
     const foundCount = countsList.length;
-    // Sanitize the name to prevent path traversal in reports.
+    // Preserve the display name's punctuation (e.g. the colon in "Technical
+    // Machine: Evolution") while still stripping traversal/injection. Path
+    // safety for keys/filenames is applied separately, not to display names.
     const rawName = nameCasing.get(uid) || uid;
-    const safeName = sanitizeForPath(rawName);
+    const safeName = sanitizeDisplayName(rawName);
     const item: ReportItem = {
       rank: 0,
       name: safeName,

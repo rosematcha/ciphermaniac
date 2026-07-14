@@ -19,8 +19,11 @@ const online = JSON.parse(readFileSync(join(fixturesDir, 'online-window.json'), 
 
 test('playerMatches: two rows per pair match, one per solo match', () => {
   const rows = buildPlayerMatches(labs);
-  // 3 pair matches (r1 t1 decided, r1 t2 tie, r2 double_loss) + 2 solo = 3*2 + 2 = 8
-  assert.strictEqual(rows.length, 8);
+  // Rows are emitted only from a DECKED pilot's perspective (matching legacy).
+  // 3 pair matches (all four pilots decked) = 6 rows, + 103's bye = 1. Player
+  // 105 has no decklist, so its unpaired row is excluded. 6 + 1 = 7.
+  assert.strictEqual(rows.length, 7);
+  assert.strictEqual(rows.some(r => r.playerId === 'labs:0001:105'), false);
 });
 
 test('playerMatches: decided match yields win for winner, loss for the other', () => {
@@ -43,7 +46,8 @@ test('playerMatches: tie/double_loss/bye/unpaired map through per side', () => {
   const bye = rows.find(r => r.playerId === 'labs:0001:103' && r.round === 2);
   assert.strictEqual(bye?.outcome, 'bye');
   assert.strictEqual(bye?.opponentId, null);
-  assert.strictEqual(rows.find(r => r.playerId === 'labs:0001:105' && r.round === 2)?.outcome, 'unpaired');
+  // 105 (no decklist) contributes no perspective rows, so its unpaired row is absent.
+  assert.strictEqual(rows.find(r => r.playerId === 'labs:0001:105' && r.round === 2), undefined);
 });
 
 test('playerMatches: flags come from the pilot participant', () => {

@@ -17,6 +17,13 @@ the data already in R2 — no Labs round-trip — by feeding the stored decks.js
 and per-archetype cards.json back through the same builders download-tournament
 uses, with the current synonyms.
 
+MIGRATION NOTE (DB-MASTER-PLAN Phase 2): the TypeScript replacement for a single
+event is `event-cli.ts reindex --r2-prefix "reports/<date, Name>" --write`, which
+rebuilds cardUsage + conversion through the consolidated shared builders (parity-
+verified byte-equivalent to this script's output on all 20 production events).
+This Python script stays the batch driver until the reconciling build workflow
+(Phase 5/6) loops the CLI over every event; retire it then.
+
 Usage:
   R2_ACCOUNT_ID=... R2_ACCESS_KEY_ID=... R2_SECRET_ACCESS_KEY=... \
   R2_BUCKET_NAME=ciphermaniac-reports \

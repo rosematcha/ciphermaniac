@@ -32,6 +32,7 @@ import { calculatePercentage } from '../../shared/reportUtils.js';
 import type { UpcomingPayload } from '../../shared/upcomingTypes.js';
 import type { MajorsTrendsPayload } from './majorsTrends';
 import archetypeIconsRaw from '../data/archetype-icons.json';
+import { isReleasePath, recoverFromMissingReleaseBody, resolveDataPath } from './releaseClient';
 
 export type { UpcomingPayload };
 
@@ -96,13 +97,23 @@ function shouldUseLocalForPath(path: string): boolean {
  * keep their non-null / nullable contracts.
  */
 async function fetchJsonCore<T>(path: string, optional: boolean): Promise<T | null> {
-  const url = shouldUseLocalForPath(path) ? path : `${R2_BASE}${path}`;
+  // Release-aware resolution: a no-op when no manifest is embedded (production
+  // default), else rewrites scope paths to their immutable release roots.
+  const resolvedPath = resolveDataPath(path);
+  const url = shouldUseLocalForPath(resolvedPath) ? resolvedPath : `${R2_BASE}${resolvedPath}`;
   const cached = cachedFetch(url);
   if (cached) {
     return cached as Promise<T | null>;
   }
   const promise = (async () => {
     const response = await fetch(url, { mode: 'cors' });
+    // A 404 on an IMMUTABLE release body is corruption, not an optional miss:
+    // recover with one controlled reload (adopt a newer release) rather than
+    // mixing a legacy generation into this document. recoverFromMissingReleaseBody
+    // is a no-op unless a manifest is embedded and this is a release path.
+    if (response.status === 404 && isReleasePath(resolvedPath) && recoverFromMissingReleaseBody(resolvedPath)) {
+      return new Promise<T | null>(() => {}); // navigation underway; never resolves
+    }
     if (optional && response.status === 404) {
       return null;
     }

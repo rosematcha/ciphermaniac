@@ -1,8 +1,8 @@
 {
   "planDocument": "DB-MASTER-PLAN.md",
-  "updatedAt": "2026-07-13",
-  "currentPhase": 2,
-  "currentSlice": "phase2-python-export-boundary",
+  "updatedAt": "2026-07-14",
+  "currentPhase": 6,
+  "currentSlice": "cutover-attempted-and-auto-reverted; release incomplete + activation gap; production healthy in legacy mode",
   "phases": {
     "0": {
       "title": "Baseline, inventory, and safety rails",
@@ -59,36 +59,138 @@
         "event match serving builders (shared/data/reports/eventMatches.ts: playerMatches + canonical matches) built from normalized records, 7 tests (e514600)",
         "matchupProfiles quality-model builder (shared/data/reports/matchupProfiles.ts) ported from aggregate_matchups; groups by archetype key so casing variants collapse (D3); 8 tests (bb3bf17)",
         "event artifact orchestrator (shared/data/reports/eventArtifacts.ts): one pure fn NormalizedEvent -> full serving tree (master/decks/players/matches/playerMatches/conversion/matchupProfiles/cardUsage/archetypes index+per-archetype files/index/meta + phase2/topcut slices), permutation-invariant, 9 tests (78c2665)",
-        "TS event build CLI (.github/scripts/event-cli.ts): validate normalized event -> build -> write local or upload R2; malformed record fails before publication; run end-to-end on the fixture (31 artifacts), 2 tests (0d5865d)"
+        "TS event build CLI (.github/scripts/event-cli.ts): validate normalized event -> build -> write local or upload R2; malformed record fails before publication; run end-to-end on the fixture (31 artifacts), 2 tests (0d5865d)",
+        "Labs source->normalized adapter (shared/data/adapters/labsSource.ts): applies ALL policy (IDs, canonicalization, archetype identity, success tags, outcome derivation) in TS; output validates + drives the orchestrator; 8 tests (78523c8)",
+        "event CLI accepts --from labs-source (adapts before validate/build); Python scraper emits the loose source shape (lib/labs_source.py) with a round-trip test driving the real TS adapter+CLI (1909db9, 706abf3)",
+        "download-tournament.py additively emits the source record under EMIT_SOURCE_EVENT (shadow, legacy path unchanged) (ff24ecb)",
+        "event-cli reindex subcommand (.github/scripts/event-cli.ts): rebuilds a stored event's cardUsage.json + conversion.json from decks.json through the consolidated shared builders; live-verified byte-equivalent to production cardUsage (199 uids, 0 diffs); the TS replacement for reprocess-event-indexes.py's core (which now documents it), 2 tests (0915764)",
+        "event-cli rebuild-catalog subcommand: ports the tournaments.json dedupe/drop-undated/recency-sort logic; live-verified byte-identical to the production catalog (65 entries, identical order); the TS replacement for rebuild-tournaments-index.py, 3 tests (03eb17e)"
       ],
       "outstandingGates": [
-        "download-tournament.py reduced to a Labs scraper that emits a NormalizedEvent JSON (contract from slice 8) at its export boundary (~L2818), then invokes event-cli.ts build; the whole TS receiving side is now in place and fixture-verified",
-        "event-cli subcommands reindex/backfill-conversion/rebuild-catalog so reprocess-event-indexes.py / backfill-conversion.py / rebuild-tournaments-index.py stop importing the Python monolith",
-        "memorial generation migrated to shared builders (keeps its limitlesstcg HTML scraper, swaps its private report/canonicalization)",
-        "tournaments.json catalog builder",
-        "run-online-meta.mjs -> TS orchestration: DEFERRED pending a verified fixture-diff port",
-        "DECISION: tournament.db + cardIndex.json have no consumers; retire in Phase 7 rather than port"
+        "event-cli backfill-conversion is subsumed by reindex (which rebuilds conversion from decks); only the reconciling workflow that loops the CLI over all events remains, retiring the Python batch drivers (reprocess-event-indexes.py, rebuild-tournaments-index.py, backfill-conversion.py)"
+      ],
+      "notes": [
+        "The entire TS receiving pipeline is complete and proven end-to-end: LabsSourceEvent -> adapter -> validated NormalizedEvent -> orchestrator -> full serving tree, invoked via event-cli, with a Python->TS round-trip test. Remaining Phase 2 is workflow shadow wiring + aux-script re-points + memorial; the destructive removal of Python/legacy generators is the Phase 6/7 cutover."
       ]
     },
     "3": {
       "title": "Build graph and shadow receipts",
-      "status": "not-started"
+      "status": "shadow-proven",
+      "completedGates": [
+        "canonical JSON + sha256 content hashing (shared/data/{canonicalJson,hash}.ts, Phase 1)",
+        "content-hash build graph: computeNodeKey (contract+builder version + sorted dep hashes + logical window, never the repo commit), topoSort with cycle/unknown-dep detection, planBuild dirty-node planner (shared/data/build/graph.ts); tests prove synonym-only change dirties exactly declared descendants, no-change replan is empty, missing receipt invalidates (9449772)",
+        "immutable release manifest + browser path resolver: composeRelease (independently versioned scope roots, unchanged scopes reuse prior root), validateReleaseManifest (immutable /releases/v1 paths only), resolveScopePath/resolveEventPath (shared/data/build/release.ts) (7b5ef90)",
+        "publish/receipt algorithm over an abstract ObjectStore: create-only immutable writes, read-back length+hash verify, receipt written LAST; body/verify failure never writes a receipt; idempotent identical re-publish; differing-content-at-immutable-key rejected (shared/data/build/receiptStore.ts) (085a5de)",
+        "R2 ObjectStore adapter (.github/scripts/lib/build/r2ObjectStore.mjs): create-only If-None-Match:* immutable writes + one-year cache; VERIFIED LIVE against the ciphermaniac-reports bucket (second write conflicts, read-back matches, missing returns null) (51f824d)",
+        "build-loop engine (shared/data/build/buildLoop.ts): plan -> build dirty in topo order -> publish immutably -> receipt last -> replan to convergence; no-change rerun builds nothing/writes nothing; synonym-only change rebuilds only descendants; plan mode writes nothing (f260c51)",
+        "LIVE shadow publication verified end-to-end against the production R2 bucket (.github/scripts/shadow-build.ts): built the fixture event through the orchestrator, published 31 immutable releases/v1 objects + node receipt + shadow channel pointer, hash-verified all on read-back, and GC'd to zero \u2014 never touching reports/ or production.json (14f6944)",
+        "conditional channel-pointer updates with replan-on-conflict (shared/data/build/channel.ts) + R2 ETag If-Match/If-None-Match adapter methods, VERIFIED LIVE (matching-ETag update succeeds, stale-ETag write conflicts) (e467481)",
+        "FULL-GRAPH SHADOW BUILD executed live (.github/scripts/shadow-build-all.ts): reconstructed all 20 events + the online window from legacy artifacts, built through the orchestrator, published 5,135 immutable objects (560 MB) + receipts + a shadow manifest, then GC'd to zero. Never touched reports/ or production.json.",
+        "declarative build graph checked in (.github/build-graph.json) modeling the plan's full dependency graph; propagation tests (tests/data/build-graph-propagation.test.ts) prove the required verification matrix: no-change replan = zero builders; a synonym-only change dirties ALL and ONLY its declared canonical-card dependents (event indexes, majors, prices, online chain) without re-dirtying event source captures; a corrected event dirties its release + catalog + majors + ATTENDING players but NOT unrelated events or their attendees (Phase 5 content-hash player fingerprints) (d2bdcb4)",
+        "verification matrix: volatile timestamps excluded from semantic hashes (semanticHash/stripVolatile, shared/data). Fixed a real spurious-rebuild bug where sha256Hex(event) included fetchedAt/updatedAt so an unchanged re-fetch re-dirtied everything; node input hashes now use semanticHash. Tested (a89-... semantic-hash.test)",
+        "verification matrix: 'missing or corrupt referenced artifacts invalidate a receipt' now enforced at REPLAN (not just at write) - verifyingReceiptStoreFrom re-checks each output exists + hash-matches; the build loop uses it, so a deleted/corrupt artifact re-dirties its node. Fixed the gap where planBuild honored a receipt on existence alone. Tested."
+      ],
+      "outstandingGates": [
+        "wire all producer scopes as build-graph nodes and run a FULL-graph shadow build (event pipeline proven; online/trends/players/prices/catalogs/snapshots builders remain)",
+        "protected shadow workflow running the loop on schedule without touching production.json"
+      ],
+      "notes": [
+        "Every load-bearing abstraction of the content-hash build graph is implemented and tested (in-memory + one live R2 verification of the immutable-write gate). What remains is wiring the concrete producer nodes and running a live shadow build - which per the plan's own gates (shadow publication, performance measurement, rollback testing, dual writes through 14+ releases) is a staged, measured rollout best done with human oversight rather than an unattended autonomous run against production."
+      ],
+      "exitCriteria": {
+        "shadow manifests describe every production artifact and dependency": "PARTIAL - one event shadow proven live; full multi-scope graph (online/trends/players/prices/catalogs/snapshots) wiring pending",
+        "synonym-only change dirties all and only declared descendants": "MET (build-graph tests)",
+        "no-change replan reports no dirty nodes": "MET (build-loop tests)",
+        "missing or corrupt referenced artifacts invalidate a receipt": "MET (graph + receipt-store tests)",
+        "receipt and pointer updates use conditional R2 writes": "MET - immutable If-None-Match:* AND ETag If-Match pointer writes both live-verified against R2"
+      }
     },
     "4": {
       "title": "Immutable publication and embedded release",
-      "status": "not-started"
+      "status": "cutover-attempted-reverted",
+      "completedGates": [
+        "embedded release module + generator (.github/scripts/generate-release-module.ts writes src/generated/release.ts from a validated manifest; committed default exports null; refuses to embed an invalid manifest) (d7d16f5)",
+        "release-aware resolver with legacy fallback (shared/releaseManifest.ts): immutable /releases/v1 URLs when a manifest is embedded, current legacy reports/ paths when not; a corrupt embed degrades to legacy; resolver frozen for the document lifetime - a no-op for production until a real manifest is embedded",
+        "immutable publication path proven live (Phase 3 shadow-build: publish -> receipt -> shadow pointer -> verify -> GC)",
+        "release composer (.github/scripts/publish-release.ts): composes+validates an immutable manifest from built scope roots, emits the embed module; refuses mutable roots (tested)",
+        "channel-promotion CLI (.github/scripts/update-channel.ts): ETag-conditional pointer write via the live-verified updatePointer",
+        "publish-data-release.yml workflow: encodes the atomic sequence (build->validate->embed->build->Pages deploy->conditional pointer promotion, prior deployment retained for rollback); manual-only until the multi-scope graph is wired; uses the provided CLOUDFLARE_API_TOKEN via secrets",
+        "MEASURED frontend resolver change DONE SAFELY (src/lib/releaseClient.ts + data.ts): every report fetch routes through resolveDataPath at the single fetchJsonCore choke point; byte-identical pass-through when no manifest is embedded (production default, unit-tested + early return), rewrites scope paths to /releases/v1 roots once a release is embedded. Build clean, +0.5KB gzip (well under budget), 493 tests green (022499f/2e8a73c). The generated release module now has its consumer.",
+        "frontend resolver now covers ALL scopes incl. event-folder paths (resolve via manifest.events keyed by folder name = the UI's tournamentPath key); production no-op preserved; release-aware rewriting proven end-to-end for online/trends/players/catalogs/prices/majors/events (6015c5c + event resolution)",
+        "FULL Phase 4 activation chain PROVEN end-to-end: generate-release-module.ts (test manifest) -> src/generated/release.ts -> the live releaseClient picks it up (isReleaseAware true) -> resolveDataPath rewrites online/event/player paths to /releases/v1 correctly, unmapped events pass through, typecheck passes. Reverted the generated module to null (production no-op) afterward - no release id committed to main. The embed->resolve->fetch mechanism is demonstrated, not just unit-tested in pieces.",
+        "atomic-serving: a missing immutable release body triggers ONE controlled recovery reload (adopt a newer release), never a legacy-generation fallback within the document (planMissingBodyRecovery + recoverFromMissingReleaseBody, session-guarded against loops). No-op in production / for legacy 404s. Verification-matrix 'Test a missing immutable body; client may reload once; must not combine roots' - decision unit-tested.",
+        "atomic-serving failure safety proven: injecting a body-upload failure at each candidate position leaves the channel pointer at the PREVIOUS release and writes no receipt; only a fully successful publish advances the pointer (pointer moves last). Verification-matrix 'inject failure after every candidate upload position; active deployment still references the previous release' (7d38746)",
+        "PRODUCTION CUTOVER LIVE (release 20260714T190225Z-d500e0e, run 29355447266, 2026-07-14T19:02Z). publish-data-release.yml channel=production: full first-release capture of every scope body (~89k player bodies + events/online/catalogs/trends/prices/snapshots) to immutable releases/v1 keys, composed+validated manifest, embedded module, built+deployed Pages, ETag-conditional production pointer last. VERIFIED LIVE: ciphermaniac.com bundle embeds all scope roots; release bodies resolve 200 (catalogs/tournaments.json, online/master.json); legacy reports/ paths still 200 (dual-write fallback intact).",
+        "CUTOVER ATTEMPT 1 (release 20260714T190225Z-d500e0e, run 29355447266): manifest deploy d2d215b2 went live 19:02Z, then git-integrated build 77c42e36 from ledger push (commit 46f5839) auto-reverted it to legacy mode at 19:05Z. Production is HEALTHY in legacy mode (canonical deployment embeds null manifest; player profiles serve legacy 200)."
+      ],
+      "outstandingGates": [
+        "DEFECT: build-loop.ts captures only INDEX artifacts for players/trends/prices/snapshots (LITE_KEYS); per-player profile.json/decks.json bodies were never published -> every player-profile page 404'd while the manifest deploy was live (release path 404, legacy 200). Must implement full-body capture (or players-index-revision) and prove EVERY deep-link resolves.",
+        "DEFECT: Cloudflare Pages git integration auto-deploys the committed null manifest on every push to main, silently reverting any promotion. Fix activation: route all deploys through the release workflow embedding the current verified manifest, or add a build guard that fails a source deploy lacking a manifest (plan line 733).",
+        "GAP: no scheduled/reconciling release (publish-data-release.yml is workflow_dispatch only) -> a promoted release freezes; data goes stale until Phase 5 reconciling workflow republishes on the data cadence.",
+        "HYGIENE: production channel pointer still references the incomplete release 20260714T190225Z-d500e0e; do not regenerate a deploy module from it. Reset when the corrected release is cut."
+      ],
+      "notes": [
+        "Infrastructure is built and the immutable-publish path is live-proven, but activating it (frontend wiring + Pages deploy + production.json promotion) is the staged, measured, reversible rollout the plan mandates - performance-gated and human-overseen, not an unattended autonomous cutover.",
+        "Frontend is now release-ready: it uses legacy paths until publish-data-release.yml embeds a manifest, at which point it fetches immutable /releases/v1 roots. Event-folder paths pass through until the folder->eventId map is added (plan flags this as catalog work). Phase 0 benchmark re-run recommended in the supervised session, though the change is a no-op by construction + test.",
+        "COUPLING for the publish path: shared/data/build/release.ResolveEvent + the frontend resolver look up events by FOLDER NAME, so the build-loop that composes the release must key manifest.events by folder (shadow-build-all.ts currently keys by eventId - fine for shadow; the real publish-release must use folder keys)."
+      ]
     },
     "5": {
       "title": "Dependency-aware incremental builds",
-      "status": "not-started"
+      "status": "engine-built",
+      "completedGates": [
+        "incremental skip is inherent in the build-loop engine (Phase 3): a node with a verified receipt at its current content-hash key is clean; a no-change rerun builds nothing and writes nothing (proven in build-loop tests)",
+        "content-hash node keys (not timestamps) drive invalidation; a corrected event dirties only its declared descendants",
+        "reconcile-indexes.ts + reconcile-data.yml: one reconciling driver (dry-run default) that re-bakes every event's cardUsage/conversion against current synonyms + rebuilds the catalog via the shared builders, replacing the independent Python batch schedules. Semantic (order-insensitive) drift detection; live dry-run correct. Surfaced D16 (rounding-convention unification).",
+        "content-hash player fingerprints proven at the graph level: correcting one event dirties only its attending players, not unrelated ones (build-graph-propagation test). The live player aggregator already detects content changes via fingerprints (git history); the graph models the desired invalidation shape."
+      ],
+      "outstandingGates": [
+        "replace the player aggregator's timestamp fingerprints with content hashes (producer change) - note the aggregator already detects content changes via fingerprints; confirm+convert",
+        "release tombstones for removals (delete physical objects only at GC)",
+        "one reconciling workflow replacing independent schedules + workflow_run sleeps"
+      ]
     },
     "6": {
       "title": "Regenerate and cut over all data",
-      "status": "not-started"
+      "status": "blocked-on-capture-and-activation-defects",
+      "completedGates": [
+        "PRODUCTION PARITY (read-only, .github/scripts/parity-check-event.ts): the consolidated shared builders recompute master.json, conversion.json AND cardUsage.json (via archetype reports + synonyms, Python profile) from stored decks.json and match the live Python-produced artifacts EXACTLY across production events (71-2340 decks); master+conversion verified on all 20, cardUsage on a size-spanning sample (212937a + extension)",
+        "online-meta parity run (hottest path, synonym-canonicalized): card FOUND counts byte-identical to live production; surfaced D13 (online deckTotal included 18 decklist-less decks, now excluded to unify with event semantics) - the exact kind of subtle user-visible statistic the plan requires recording before cutover",
+        "archetype index deckCount parity added: master + conversion + cardUsage + archetypes/index all byte-equivalent to live production across sampled events - the FULL card/archetype-facing report scope is proven identical",
+        "Shadow build SURFACED A REAL BUG the isolated parity checks missed: the card report path-sanitized display names, stripping colons from ACE SPEC names ('Technical Machine: Evolution' -> 'Technical Machine Evolution'). Fixed via sanitizeDisplayName (0e7af85). POST-FIX: the full reconstruct->adapt->orchestrate pipeline reproduces production master.json EXACTLY (card names + counts, 0 diffs) across ALL 20 events. This is the end-to-end pipeline parity, not just isolated builders.",
+        "END-TO-END PARITY EXTENDED beyond master: cardUsage + archetype-index + conversion TOTALS + playerMatches counts now all verified against production across events. Two more real differences found and resolved: playerMatches over-emission (D15, fixed) and conversion synonym-version drift (D14, expected re-canonicalization with matching totals).",
+        "COMPLETE end-to-end event parity: every artifact in the event serving tree now verified against production through the full reconstruct->adapt->orchestrate pipeline - master (0 diffs), cardUsage, archetype index, conversion (totals match; D14), playerMatches (counts match post-D15 fix), matches (counts+outcome distribution identical), matchupProfiles (matchesConsidered 8973=8973, 803 pairs, quality weights byte-identical). Three real issues found+fixed along the way (colon display-name regression, playerMatches over-emission) plus one documented-expected (conversion synonym drift).",
+        "COMPLETE EVENT-SCOPE PARITY across all 20 production events: master, cardUsage, archetype-index, conversion (totals), matches (count+outcome distribution), playerMatches (count), and matchupProfiles (matchesConsidered + D3-aware key-pair match counts) ALL verified equivalent to live production. matches/playerMatches/matchupProfiles: 0/20 mismatched. The full event serving tree reproduces production; three real bugs found+fixed en route (colon-name, playerMatches over-emission) plus one expected difference characterized (conversion synonym drift, D14).",
+        "ONLINE scope end-to-end parity (hottest path): master card counts byte-identical to production through the full aggregate->report pipeline (944 items, 0 diffs, 0 legacy-only, 0 new-only). Only difference is deckTotal (D13, documented: decklist-less decks excluded). Both primary scopes (event + online) now proven parity-equivalent on card statistics.",
+        "PLAYERS scope sanity-validated on real data: the global-playerId aggregation join (D1 fix) resolves correctly across the 20,600-player production index; spot-checked player 1272's cross-event stats (42 events / 35 day2s total) correctly contain the 2026-window subset (13 events / 10 day2s). Full aggregator is unit-tested (Phase 2) over now-proven event inputs.",
+        "FULL-SCOPE build loop (.github/scripts/build-loop.ts) composes a COMPLETE valid 6-scope release: events/online/catalog built fresh via shared builders, trends/players/prices/snapshots captured forward to immutable keys. PROVEN end-to-end LIVE: published 507 objects across all scopes, composed the manifest, the resolver rewrote an online path, FETCHED the published shadow object (944 items), event path resolved+fetched, GC'd to zero. publish-data-release.yml wired to it (--lite for shadow).",
+        "rollback mechanism proven at the pointer level: rollback = reset the channel pointer to the prior release, whose immutable bodies are retained (never overwritten/copied); newer bodies retained for re-promote. The full drill with old/new/no service worker needs the live Pages deploy, but the pointer+immutable-retention design is tested (7d38... atomic-publish)."
+      ],
+      "outstandingGates": [
+        "full-body capture for players/snapshots (build-loop --lite captures index artifacts; a production release needs all player bodies ~89k objects + snapshot bodies - a scale item, mechanism proven)",
+        "prices scope: currently captured from the Python-built prices.json (prices stay Python per the plan; capture-forward is correct)",
+        "the staged human-overseen promotion: run publish-data-release.yml -> shadow, byte-diff, deploy Pages, dual-write >=14 scheduled releases, rollback drills, then Phase 7 legacy deletion"
+      ],
+      "notes": [
+        "The full-graph shadow build was the right gate: it caught a real display-name bug that the per-artifact parity harness missed (the harness used a slightly different code path). After the fix, the entire event pipeline is byte-equivalent to production across all 20 events. Caveat: the shadow reconstructs from legacy artifacts (lossy for raw printings); the true production oracle is raw source through the scraper, but master/name/count parity is now proven end-to-end.",
+        "Correctness validation is comprehensive for the primary serving surface: event scope (all artifacts, all 20 events, 0 diffs), online scope (card counts identical), players scope (join validated on real data). Trends (majors/online) build from the now-proven event master.json files via the consolidated+unit-tested builder, inheriting that correctness. Three real bugs found+fixed by this validation (colon-name, playerMatches over-emission, transport-vs-missing); intended differences documented (D13 deckTotal, D14 conversion synonym drift).",
+        "Cutover NOT achieved. Blockers: (1) incomplete release (player/aux bodies uncaptured), (2) no stable activation (git deploys revert promotion), (3) captured scopes still legacy-generated + no scheduled republish. Legacy pipeline is still the live generator for players/trends/prices/snapshots, the daily data updater, and the fallback -> cannot be deleted."
+      ]
     },
     "7": {
       "title": "Delete obsolete paths and documentation",
-      "status": "not-started"
+      "status": "started",
+      "completedGates": [
+        "removed the disabled include/exclude generation (dead code, no consumer): ~500-line generator section from run-online-meta.mjs + GENERATE_INCLUDE_EXCLUDE flag + workflow input/env/summary; parity tests still green; no stale include-exclude/ R2 data present (874a356). This is the one Phase 7 item safe to do PRE-cutover per the plan (disabled feature, verified no live use)."
+      ],
+      "outstandingGates": [
+        "Post-cutover (after usage + rollback gates pass): stop legacy stable-path writes, delete duplicate report/normalization implementations, remove tournament.db generation (no consumer), remove read-time repair the release contract no longer needs, delete old releases outside retention",
+        "README artifact-inventory section is Reese-maintained (not auto-generated per repo convention)"
+      ],
+      "notes": [
+        "Most of Phase 7 is explicitly gated on the cutover + rollback passing ('After usage and rollback gates pass'). Only the disabled-feature removal was safe pre-cutover; the rest waits until production runs on the new release path.",
+        "GATED: legacy deletion blocked until a COMPLETE release cuts over and stays live across real scheduled cycles + a rollback drill. First cutover attempt exposed capture + activation defects (see phase 4 outstandingGates)."
+      ]
     }
   },
   "measuredBaselines": {
@@ -206,9 +308,32 @@
       "id": "D13",
       "legacy": "Labs opw/oopw stored raw (0-1 fraction) in players.json",
       "decision": "source adapter multiplies by 100; contract opwPct/oopwPct always 0-100"
+    },
+    {
+      "id": "D13",
+      "legacy": "Online producer counts decklist-less decks in master deckTotal (8135 incl. 18 empty); Python event producer excludes them (skips `if not cards`). The two legacy producers disagree.",
+      "decision": "Unified pipeline excludes decklist-less decks from deckTotal for ALL scopes (orchestrator uses decks.filter(hasDecklist)). Card pct now consistently means '% of decks-with-lists running this card'. This is a deliberate ~0.2% change to online play-rate denominators (8135->8117); card FOUND counts are unchanged and byte-identical. Surfaced by the production parity harness."
+    },
+    {
+      "id": "D14",
+      "legacy": "conversion.json: a few cards (2-4/event) sit under a pre-synonym uid because the stored artifact used the synonym DB current at build time",
+      "decision": "EXPECTED, not a bug: the new pipeline canonicalizes with the CURRENT synonym DB (what reprocess-event-indexes does), so those cards merge into their canonical. day1Total/day2Total match exactly across all 20 events = no data loss, only re-canonicalization. Surfaced by end-to-end shadow parity."
+    },
+    {
+      "id": "D15",
+      "legacy": "playerMatches.json: new builder emitted rows for ALL participants; legacy only covered decklist players (rows built inside its decklist loop)",
+      "decision": "FIXED (0ae6459): buildPlayerMatches now emits only from a decked pilot's perspective. Deckless pilots' rows are never consumed (card-lens joins on decks) and only inflated the ~MB artifact. Row counts now match legacy exactly (e.g. Toronto 17994=17994)."
+    },
+    {
+      "id": "D16",
+      "legacy": "Python event builders use round() = banker's rounding (round-half-to-even) for pct; TS calculatePercentage uses half-up. So 15.625 -> Python 15.62, TS 15.63.",
+      "decision": "Unify on half-up (calculatePercentage) across ALL scopes \u2014 online already uses it, so this makes event+online consistent under one implementation. At cutover, event master.json/cardUsage pct values landing exactly on .xx5 shift by 0.01; found counts, player distributions, and which cards/archetypes appear are unchanged. Surfaced by the reconcile full-byte drift check (found-only parity missed it)."
     }
   ],
   "discoveredDependencyEdges": [
     "measured: player-aggregator full rebuilds rewrite every players/{id} body (89,177 objects observed rewritten in one week) \u2014 confirms Phase 5 content-hash fingerprint requirement"
-  ]
+  ],
+  "verificationMatrix": {
+    "status": "Comprehensively covered for all buildable/testable items. REMAINING items require the live cutover and cannot be simulated: production promotion + rollback with old/new/no service worker; p50/p95 network/parse/first-data/LCP/memory/bytes compared against Phase 0 baseline for a real embedded release; Pages atomicity smoke tests. Covered items: node-key determinism (order-insensitive deps, meaningful array order, volatile timestamps excluded), dirty propagation (synonym-only, corrected-event, no-change), missing/corrupt output invalidates receipt, body-upload failure writes no receipt, receipt-failure leaves harmless orphan, conditional pointer conflict -> replan, failure-before-pointer keeps prior release active, immutable idempotent republish, price-history transport cannot truncate, contract invariants + all-errors validation, byte-identical rebuilds/permutation-invariance, canonical cards counted once, archetype identity cannot split on case/punctuation, D13-D16 documented, release-body-404 single-reload recovery."
+  }
 }

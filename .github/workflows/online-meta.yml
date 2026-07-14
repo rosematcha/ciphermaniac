@@ -33,11 +33,6 @@ on:
         required: false
         type: boolean
         default: true
-      generate_include_exclude:
-        description: 'Generate include-exclude filtered reports'
-        required: false
-        type: boolean
-        default: true
       generate_decks:
         description: 'Upload decks.json (raw deck data)'
         required: false
@@ -108,7 +103,6 @@ jobs:
           R2_REPORTS_PREFIX: reports
           GENERATE_MASTER: ${{ inputs.generate_master == '' && 'true' || inputs.generate_master }}
           GENERATE_ARCHETYPES: ${{ inputs.generate_archetypes == '' && 'true' || inputs.generate_archetypes }}
-          GENERATE_INCLUDE_EXCLUDE: ${{ inputs.generate_include_exclude == '' && 'true' || inputs.generate_include_exclude }}
           GENERATE_DECKS: ${{ inputs.generate_decks == '' && 'true' || inputs.generate_decks }}
           CLEAN_MONTH_CACHE: ${{ github.event.inputs.clean_month_cache || 'false' }}
 
@@ -120,6 +114,5 @@ jobs:
           echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Master JSON | ${{ inputs.generate_master != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Archetypes | ${{ inputs.generate_archetypes != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Include/Exclude | ${{ inputs.generate_include_exclude != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Decks | ${{ inputs.generate_decks != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Clean Month Cache | ${{ github.event.inputs.clean_month_cache == 'true' && 'Enabled' || 'Disabled' }} |" >> $GITHUB_STEP_SUMMARY

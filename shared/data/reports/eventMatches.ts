@@ -125,10 +125,17 @@ export function buildPlayerMatches(event: NormalizedEvent): PlayerMatchRow[] {
   const views = participantViews(event);
   const labels = archetypeLabels(event);
   const rows: PlayerMatchRow[] = [];
+  // Emit rows only from the perspective of pilots who submitted a decklist,
+  // matching the legacy producer (which built player matches inside its
+  // decklist loop). A deckless pilot's own rows are never consumed — the
+  // card-lens join keys on decks — so keeping them only inflates the ~MB
+  // artifact. The opponent may still be deckless; only the row's OWNER is gated.
+  const deckedParticipants = new Set(event.decks.map(deck => deck.participantId));
 
   for (const match of event.matches) {
     const ids = match.participantIds;
     ids.forEach((meId, index) => {
+      if (!deckedParticipants.has(meId)) return;
       const opponentId = ids.length === 2 ? ids[1 - index] : null;
       const me = views.get(meId);
       const opponent = opponentId ? views.get(opponentId) : undefined;

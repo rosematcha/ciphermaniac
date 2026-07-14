@@ -31,6 +31,7 @@ from bs4 import BeautifulSoup
 # including when this module is loaded via importlib by sibling scripts.
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import r2  # noqa: E402
+from labs_source import build_labs_source_event  # noqa: E402
 
 
 LIMITLESS_BASE_URL = "https://limitlesstcg.com"
@@ -3134,6 +3135,34 @@ def main():
         folder_name = f"Tournament {labs_code}"
 
     base_path = f"reports/{folder_name}"
+
+    # Additive shadow output (DB-MASTER-PLAN Phase 2): when EMIT_SOURCE_EVENT is
+    # set to a path, write the loose Labs *source* record the TypeScript event
+    # CLI consumes. This does not change the legacy production path — it lets a
+    # shadow build run `event-cli build --from labs-source` and compare before
+    # the Phase 6 cutover retires the Python artifact generation below.
+    emit_source_path = os.environ.get("EMIT_SOURCE_EVENT")
+    if emit_source_path:
+        source_decklists = {int(deck["playerId"]): deck["cards"] for deck in all_decks}
+        source_match_rows = [
+            {
+                "round": record.get("round"),
+                "phase": record.get("phase"),
+                "table": record.get("table"),
+                "completed": record.get("completed"),
+                "p1_id": record.get("player1Id"),
+                "p2_id": record.get("player2Id"),
+                "winner": record.get("winnerCode"),
+            }
+            for record in canonical_matches_map.values()
+        ]
+        source_event = build_labs_source_event(
+            labs_code, metadata, participants, source_decklists, source_match_rows
+        )
+        with open(emit_source_path, "w", encoding="utf-8") as handle:
+            json.dump(source_event, handle, separators=(",", ":"))
+        print(f"  ✓ Emitted Labs source record to {emit_source_path}")
+
     participants_phase2 = sum(1 for row in participants if row.get("madePhase2"))
     participants_topcut = sum(1 for row in participants if row.get("madeTopCut"))
     index_report = {
