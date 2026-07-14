@@ -24,8 +24,11 @@ import { pathToFileURL } from 'node:url';
 import { validateNormalizedEvent } from '../../shared/data/contracts.ts';
 import { buildEventArtifacts } from '../../shared/data/reports/eventArtifacts.ts';
 import { type LabsSourceEvent, labsSourceToNormalized } from '../../shared/data/adapters/labsSource.ts';
+import { buildArchetypeReports } from '../../shared/data/archetypes/build.ts';
+import { buildCardUsageIndex } from '../../shared/data/reports/cardUsage.ts';
+import { buildConversionIndex } from '../../shared/data/reports/conversion.ts';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
-import { createR2Client, putJson } from './lib/r2.mjs';
+import { createR2Client, getJsonResult, putJson } from './lib/r2.mjs';
 
 const CACHE_CONTROL = 'public, max-age=21600';
 
@@ -108,15 +111,189 @@ function requireEnv(name: string): string {
   return value;
 }
 
+/** A legacy `decks.json` deck row, only the fields reindex needs. */
+interface ReindexDeck {
+  archetype?: string;
+  cards?: { name?: string; set?: string | null; number?: string | number | null; count?: number }[];
+  madePhase2?: boolean;
+}
+
+/**
+ * Rebuild `cardUsage.json` and `conversion.json` from a stored `decks.json`,
+ * using the current synonym database. This is the shared-builder replacement
+ * for `reprocess-event-indexes.py`'s core (which re-bakes derived indexes when
+ * synonyms change) — parity-verified against production. Returns the two bodies;
+ * `conversion` is null when the event has no Day 2.
+ * @param decks - The stored decks
+ * @param synonymDb - Current synonyms (or null)
+ * @returns The rebuilt indexes
+ */
+export function reindexFromDecks(decks: ReindexDeck[], synonymDb: SynonymDatabase | null): { cardUsage: unknown; conversion: unknown } {
+  const built = buildArchetypeReports(
+    decks.map(deck => ({
+      cards: (deck.cards ?? []).map(c => ({ name: c.name, set: c.set ?? undefined, number: c.number ?? undefined, count: c.count })),
+      archetype: deck.archetype
+    })),
+    synonymDb,
+    { nameCasing: 'preserve', minDecksFraction: 0, percentMode: 'fraction6', sortMode: 'deckCountThenLabel', displayNames: 'trimmed', emptyBaseFallback: null, includeSignatureCards: false }
+  );
+  const cardUsage = buildCardUsageIndex(built.files);
+  const conversion = buildConversionIndex(
+    decks.map(deck => ({ cards: (deck.cards ?? []).map(c => ({ name: c.name, set: c.set ?? undefined, number: c.number ?? undefined })), madePhase2: deck.madePhase2 })),
+    synonymDb
+  );
+  return { cardUsage, conversion };
+}
+
+const DATE_PREFIX_RE = /^(\d{4}-\d{2}-\d{2}),\s+/;
+
+function extractDatePrefix(name: string): string | null {
+  const m = DATE_PREFIX_RE.exec(name.trim());
+  if (!m) return null;
+  const candidate = m[1];
+  const d = new Date(`${candidate}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === candidate ? candidate : null;
+}
+
+function stripDatePrefix(name: string): string {
+  const text = name.trim();
+  const m = DATE_PREFIX_RE.exec(text);
+  return m ? text.slice(m[0].length).trim() : text;
+}
+
+/**
+ * Rebuild the `reports/tournaments.json` catalog from event folder names:
+ * dedupe by (date, display name), keeping the dated/lexicographically-smaller
+ * entry; drop undated folders (online window, snapshots, trends); sort by date
+ * descending then name. Ported from `rebuild_tournaments_json_from_reports`;
+ * dated folders derive their date from the name, so no per-folder reads.
+ * @param folders - Event folder names (without the `reports/` prefix)
+ * @returns The catalog entries in canonical order
+ */
+export function buildTournamentCatalog(folders: string[]): string[] {
+  // Dedupe by (date, lowercased display name).
+  const byKey = new Map<string, string>();
+  const order: string[] = [];
+  for (const name of folders) {
+    const dateIso = extractDatePrefix(name) ?? '';
+    const key = `${dateIso}::${stripDatePrefix(name).toLowerCase()}`;
+    const existing = byKey.get(key);
+    if (existing === undefined) {
+      byKey.set(key, name);
+      order.push(key);
+    } else {
+      const existingDated = extractDatePrefix(existing) !== null;
+      const candidateDated = extractDatePrefix(name) !== null;
+      const replace = candidateDated !== existingDated ? candidateDated : name < existing;
+      if (replace) byKey.set(key, name);
+    }
+  }
+  const deduped = order.map(key => byKey.get(key)!);
+  // Keep only dated entries.
+  const dated = deduped.filter(name => extractDatePrefix(name) !== null);
+  // Sort by date descending, then name (case-insensitive).
+  return dated.sort((a, b) => {
+    const da = extractDatePrefix(a)!;
+    const db = extractDatePrefix(b)!;
+    if (da !== db) return da < db ? 1 : -1;
+    return a.toLowerCase() < b.toLowerCase() ? -1 : a.toLowerCase() > b.toLowerCase() ? 1 : 0;
+  });
+}
+
+async function runRebuildCatalog(rest: string[]): Promise<void> {
+  const arg = (flag: string): string | undefined => {
+    const i = rest.indexOf(flag);
+    return i >= 0 ? rest[i + 1] : undefined;
+  };
+  const outDir = arg('--out-dir');
+  if (!outDir && !rest.includes('--write')) throw new Error('rebuild-catalog needs --out-dir <dir> (dry run) or --write');
+
+  const bucket = requireEnv('R2_BUCKET_NAME');
+  const client = createR2Client({
+    accountId: requireEnv('R2_ACCOUNT_ID'),
+    accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
+    secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY')
+  });
+  const { ListObjectsV2Command } = await import('@aws-sdk/client-s3');
+  const folders: string[] = [];
+  let token: string | undefined;
+  do {
+    const page = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: 'reports/', Delimiter: '/', ContinuationToken: token }));
+    for (const p of page.CommonPrefixes ?? []) {
+      const folder = (p.Prefix ?? '').replace(/^reports\//, '').replace(/\/$/, '');
+      if (folder && folder !== 'Online - Last 14 Days') folders.push(folder);
+    }
+    token = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (token);
+
+  const catalog = buildTournamentCatalog(folders);
+  if (outDir) await writeLocal(new Map([['tournaments.json', catalog]]), outDir);
+  if (rest.includes('--write')) {
+    await putJson(client, bucket, 'reports/tournaments.json', catalog, { cacheControl: CACHE_CONTROL });
+    console.log(`[event-cli] Rebuilt reports/tournaments.json with ${catalog.length} entries`);
+  }
+}
+
+async function runReindex(rest: string[]): Promise<void> {
+  const arg = (flag: string): string | undefined => {
+    const i = rest.indexOf(flag);
+    return i >= 0 ? rest[i + 1] : undefined;
+  };
+  const r2Prefix = arg('--r2-prefix');
+  const outDir = arg('--out-dir');
+  const synonymsPath = arg('--synonyms');
+  if (!r2Prefix) throw new Error('reindex needs --r2-prefix "reports/<date, Name>"');
+  if (!outDir && !rest.includes('--write')) throw new Error('reindex needs --out-dir <dir> (dry run) or --write (upload to R2)');
+
+  const bucket = requireEnv('R2_BUCKET_NAME');
+  const client = createR2Client({
+    accountId: requireEnv('R2_ACCOUNT_ID'),
+    accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
+    secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY')
+  });
+  const read = async <T>(key: string): Promise<T | null> => {
+    const result = await getJsonResult<T>(client, bucket, key);
+    if (result.status === 'found') return result.value;
+    if (result.status === 'missing') return null;
+    throw new Error(`failed to read ${key}: ${result.status}`);
+  };
+
+  const decks = await read<ReindexDeck[]>(`${r2Prefix}/decks.json`);
+  if (!decks) throw new Error(`${r2Prefix}/decks.json not found`);
+  const synonymDb = synonymsPath ? ((await loadJson(synonymsPath)) as SynonymDatabase) : await read<SynonymDatabase>('assets/card-synonyms.json');
+
+  const { cardUsage, conversion } = reindexFromDecks(decks, synonymDb);
+
+  if (outDir) {
+    const bodies = new Map<string, unknown>([['cardUsage.json', cardUsage]]);
+    if (conversion !== null) bodies.set('conversion.json', conversion);
+    await writeLocal(bodies, outDir);
+  }
+  if (rest.includes('--write')) {
+    await putJson(client, bucket, `${r2Prefix}/cardUsage.json`, cardUsage, { cacheControl: CACHE_CONTROL });
+    if (conversion !== null) await putJson(client, bucket, `${r2Prefix}/conversion.json`, conversion, { cacheControl: CACHE_CONTROL });
+    console.log(`[event-cli] Reindexed cardUsage${conversion !== null ? ' + conversion' : ''} for ${r2Prefix}`);
+  }
+}
+
 async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
-  if (command !== 'build') {
-    throw new Error(`Unknown command "${command ?? ''}". Supported: build`);
+  if (command === 'build') {
+    const args = parseArgs(rest);
+    const artifacts = await buildFromFile(args);
+    if (args.outDir) await writeLocal(artifacts, args.outDir);
+    if (args.r2Prefix) await uploadR2(artifacts, args.r2Prefix);
+    return;
   }
-  const args = parseArgs(rest);
-  const artifacts = await buildFromFile(args);
-  if (args.outDir) await writeLocal(artifacts, args.outDir);
-  if (args.r2Prefix) await uploadR2(artifacts, args.r2Prefix);
+  if (command === 'reindex') {
+    await runReindex(rest);
+    return;
+  }
+  if (command === 'rebuild-catalog') {
+    await runRebuildCatalog(rest);
+    return;
+  }
+  throw new Error(`Unknown command "${command ?? ''}". Supported: build, reindex, rebuild-catalog`);
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;

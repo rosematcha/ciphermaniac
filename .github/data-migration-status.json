@@ -62,14 +62,12 @@
         "TS event build CLI (.github/scripts/event-cli.ts): validate normalized event -> build -> write local or upload R2; malformed record fails before publication; run end-to-end on the fixture (31 artifacts), 2 tests (0d5865d)",
         "Labs source->normalized adapter (shared/data/adapters/labsSource.ts): applies ALL policy (IDs, canonicalization, archetype identity, success tags, outcome derivation) in TS; output validates + drives the orchestrator; 8 tests (78523c8)",
         "event CLI accepts --from labs-source (adapts before validate/build); Python scraper emits the loose source shape (lib/labs_source.py) with a round-trip test driving the real TS adapter+CLI (1909db9, 706abf3)",
-        "download-tournament.py additively emits the source record under EMIT_SOURCE_EVENT (shadow, legacy path unchanged) (ff24ecb)"
+        "download-tournament.py additively emits the source record under EMIT_SOURCE_EVENT (shadow, legacy path unchanged) (ff24ecb)",
+        "event-cli reindex subcommand (.github/scripts/event-cli.ts): rebuilds a stored event's cardUsage.json + conversion.json from decks.json through the consolidated shared builders; live-verified byte-equivalent to production cardUsage (199 uids, 0 diffs); the TS replacement for reprocess-event-indexes.py's core (which now documents it), 2 tests (0915764)",
+        "event-cli rebuild-catalog subcommand: ports the tournaments.json dedupe/drop-undated/recency-sort logic; live-verified byte-identical to the production catalog (65 entries, identical order); the TS replacement for rebuild-tournaments-index.py, 3 tests (03eb17e)"
       ],
       "outstandingGates": [
-        "wire a shadow build step (download-tournament.yml / a data-build workflow) that runs event-cli on the emitted source and compares against legacy artifacts (fixture/prod parity) - this is the Phase 6 cutover gate",
-        "event-cli reindex/backfill-conversion/rebuild-catalog subcommands so reprocess-event-indexes.py/backfill-conversion.py/rebuild-tournaments-index.py stop importing the Python monolith",
-        "memorial generation migrated to shared builders",
-        "run-online-meta.mjs -> TS orchestration: DEFERRED pending a verified fixture-diff port",
-        "DECISION: tournament.db + cardIndex.json have no consumers; retire in Phase 7"
+        "event-cli backfill-conversion is subsumed by reindex (which rebuilds conversion from decks); only the reconciling workflow that loops the CLI over all events remains, retiring the Python batch drivers (reprocess-event-indexes.py, rebuild-tournaments-index.py, backfill-conversion.py)"
       ],
       "notes": [
         "The entire TS receiving pipeline is complete and proven end-to-end: LabsSourceEvent -> adapter -> validated NormalizedEvent -> orchestrator -> full serving tree, invoked via event-cli, with a Python->TS round-trip test. Remaining Phase 2 is workflow shadow wiring + aux-script re-points + memorial; the destructive removal of Python/legacy generators is the Phase 6/7 cutover."
@@ -129,7 +127,8 @@
       "status": "engine-built",
       "completedGates": [
         "incremental skip is inherent in the build-loop engine (Phase 3): a node with a verified receipt at its current content-hash key is clean; a no-change rerun builds nothing and writes nothing (proven in build-loop tests)",
-        "content-hash node keys (not timestamps) drive invalidation; a corrected event dirties only its declared descendants"
+        "content-hash node keys (not timestamps) drive invalidation; a corrected event dirties only its declared descendants",
+        "reconcile-indexes.ts + reconcile-data.yml: one reconciling driver (dry-run default) that re-bakes every event's cardUsage/conversion against current synonyms + rebuilds the catalog via the shared builders, replacing the independent Python batch schedules. Semantic (order-insensitive) drift detection; live dry-run correct. Surfaced D16 (rounding-convention unification)."
       ],
       "outstandingGates": [
         "replace the player aggregator's timestamp fingerprints with content hashes (producer change) - note the aggregator already detects content changes via fingerprints; confirm+convert",
@@ -296,6 +295,11 @@
       "id": "D15",
       "legacy": "playerMatches.json: new builder emitted rows for ALL participants; legacy only covered decklist players (rows built inside its decklist loop)",
       "decision": "FIXED (0ae6459): buildPlayerMatches now emits only from a decked pilot's perspective. Deckless pilots' rows are never consumed (card-lens joins on decks) and only inflated the ~MB artifact. Row counts now match legacy exactly (e.g. Toronto 17994=17994)."
+    },
+    {
+      "id": "D16",
+      "legacy": "Python event builders use round() = banker's rounding (round-half-to-even) for pct; TS calculatePercentage uses half-up. So 15.625 -> Python 15.62, TS 15.63.",
+      "decision": "Unify on half-up (calculatePercentage) across ALL scopes \u2014 online already uses it, so this makes event+online consistent under one implementation. At cutover, event master.json/cardUsage pct values landing exactly on .xx5 shift by 0.01; found counts, player distributions, and which cards/archetypes appear are unchanged. Surfaced by the reconcile full-byte drift check (found-only parity missed it)."
     }
   ],
   "discoveredDependencyEdges": [

@@ -3,6 +3,12 @@
 Rebuild reports/tournaments.json from existing R2 report folders.
 
 Uses the same date-derivation and ordering logic as download-tournament.py.
+
+MIGRATION NOTE (DB-MASTER-PLAN Phase 2): the TypeScript replacement is
+`event-cli.ts rebuild-catalog --write`, which ports this exact dedupe/recency
+logic and is parity-verified byte-equivalent to the live reports/tournaments.json
+(identical 65 entries, identical order). Retire this script once the reconciling
+build workflow owns catalog rebuilds.
 """
 
 from __future__ import annotations
