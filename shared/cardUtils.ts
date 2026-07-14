@@ -40,6 +40,27 @@ export function sanitizeForPath(text: unknown): string {
 }
 
 /**
+ * Sanitizes a DISPLAY name (card name, etc.) — not a path component. Preserves
+ * legitimate punctuation such as colons and apostrophes (so "Technical Machine:
+ * Evolution" keeps its colon, matching the source data) while still stripping
+ * genuinely dangerous sequences: null/control characters, `..` traversal, and
+ * path separators. Path safety for keys/filenames belongs to {@link
+ * sanitizeForPath}/{@link sanitizeForFilename}; a display name must not be
+ * flattened into a path component.
+ * @param text - The text to sanitize
+ * @returns The display string with punctuation preserved and injection removed
+ */
+export function sanitizeDisplayName(text: unknown): string {
+  const value = typeof text === 'string' ? text : String(text || '');
+  return value
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/\.\./g, '')
+    .replace(/[/\\]/g, '')
+    .trim();
+}
+
+/**
  * Sanitizes text for use as a filename by replacing spaces with underscores
  * and removing invalid characters.
  * @param text - The text to sanitize

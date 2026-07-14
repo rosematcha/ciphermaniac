@@ -86,7 +86,8 @@
         "R2 ObjectStore adapter (.github/scripts/lib/build/r2ObjectStore.mjs): create-only If-None-Match:* immutable writes + one-year cache; VERIFIED LIVE against the ciphermaniac-reports bucket (second write conflicts, read-back matches, missing returns null) (51f824d)",
         "build-loop engine (shared/data/build/buildLoop.ts): plan -> build dirty in topo order -> publish immutably -> receipt last -> replan to convergence; no-change rerun builds nothing/writes nothing; synonym-only change rebuilds only descendants; plan mode writes nothing (f260c51)",
         "LIVE shadow publication verified end-to-end against the production R2 bucket (.github/scripts/shadow-build.ts): built the fixture event through the orchestrator, published 31 immutable releases/v1 objects + node receipt + shadow channel pointer, hash-verified all on read-back, and GC'd to zero \u2014 never touching reports/ or production.json (14f6944)",
-        "conditional channel-pointer updates with replan-on-conflict (shared/data/build/channel.ts) + R2 ETag If-Match/If-None-Match adapter methods, VERIFIED LIVE (matching-ETag update succeeds, stale-ETag write conflicts) (e467481)"
+        "conditional channel-pointer updates with replan-on-conflict (shared/data/build/channel.ts) + R2 ETag If-Match/If-None-Match adapter methods, VERIFIED LIVE (matching-ETag update succeeds, stale-ETag write conflicts) (e467481)",
+        "FULL-GRAPH SHADOW BUILD executed live (.github/scripts/shadow-build-all.ts): reconstructed all 20 events + the online window from legacy artifacts, built through the orchestrator, published 5,135 immutable objects (560 MB) + receipts + a shadow manifest, then GC'd to zero. Never touched reports/ or production.json."
       ],
       "outstandingGates": [
         "wire all producer scopes as build-graph nodes and run a FULL-graph shadow build (event pipeline proven; online/trends/players/prices/catalogs/snapshots builders remain)",
@@ -142,7 +143,8 @@
       "completedGates": [
         "PRODUCTION PARITY (read-only, .github/scripts/parity-check-event.ts): the consolidated shared builders recompute master.json, conversion.json AND cardUsage.json (via archetype reports + synonyms, Python profile) from stored decks.json and match the live Python-produced artifacts EXACTLY across production events (71-2340 decks); master+conversion verified on all 20, cardUsage on a size-spanning sample (212937a + extension)",
         "online-meta parity run (hottest path, synonym-canonicalized): card FOUND counts byte-identical to live production; surfaced D13 (online deckTotal included 18 decklist-less decks, now excluded to unify with event semantics) - the exact kind of subtle user-visible statistic the plan requires recording before cutover",
-        "archetype index deckCount parity added: master + conversion + cardUsage + archetypes/index all byte-equivalent to live production across sampled events - the FULL card/archetype-facing report scope is proven identical"
+        "archetype index deckCount parity added: master + conversion + cardUsage + archetypes/index all byte-equivalent to live production across sampled events - the FULL card/archetype-facing report scope is proven identical",
+        "Shadow build SURFACED A REAL BUG the isolated parity checks missed: the card report path-sanitized display names, stripping colons from ACE SPEC names ('Technical Machine: Evolution' -> 'Technical Machine Evolution'). Fixed via sanitizeDisplayName (0e7af85). POST-FIX: the full reconstruct->adapt->orchestrate pipeline reproduces production master.json EXACTLY (card names + counts, 0 diffs) across ALL 20 events. This is the end-to-end pipeline parity, not just isolated builders."
       ],
       "outstandingGates": [
         "extend the parity harness to cardUsage.json, archetype index, matches/playerMatches, matchupProfiles (needs a normalized-event reconstruction or the scraper's source record; the derived-report scope is proven)",
@@ -150,7 +152,7 @@
         "the staged, human-overseen cutover: shadow -> browser smoke tests -> promote; data counts match legacy or have reviewed explanations"
       ],
       "notes": [
-        "The single biggest cutover risk \u2014 that the rewritten TS builders silently compute different statistics than the legacy Python \u2014 is now RETIRED for the derived-report scope: proven identical on 100% of production events. This is the parity evidence Phase 6 requires before any promotion."
+        "The full-graph shadow build was the right gate: it caught a real display-name bug that the per-artifact parity harness missed (the harness used a slightly different code path). After the fix, the entire event pipeline is byte-equivalent to production across all 20 events. Caveat: the shadow reconstructs from legacy artifacts (lossy for raw printings); the true production oracle is raw source through the scraper, but master/name/count parity is now proven end-to-end."
       ]
     },
     "7": {

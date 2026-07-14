@@ -11,6 +11,7 @@ import {
   canonicalizeVariant,
   normalizeArchetypeName,
   normalizeCardNumber,
+  sanitizeDisplayName,
   sanitizeForFilename,
   sanitizeForPath
 } from '../../shared/cardUtils';
@@ -240,4 +241,14 @@ test('normalizeArchetypeName returns "unknown" for empty input', () => {
 test('normalizeArchetypeName handles underscores and spaces together', () => {
   assert.strictEqual(normalizeArchetypeName('Charizard_Pidgeot ex'), 'charizard pidgeot ex');
   assert.strictEqual(normalizeArchetypeName('Iron Thorns_ex'), 'iron thorns ex');
+});
+
+test('sanitizeDisplayName preserves punctuation but blocks traversal/injection', () => {
+  // Colon-bearing card names (e.g. Technical Machine ACE SPECs) keep their colon.
+  assert.strictEqual(sanitizeDisplayName('Technical Machine: Evolution'), 'Technical Machine: Evolution');
+  assert.strictEqual(sanitizeDisplayName("Boss's Orders"), "Boss's Orders");
+  // Path traversal + separators are still stripped.
+  assert.strictEqual(sanitizeDisplayName('EvilCard/..\\secret'), 'EvilCardsecret');
+  // Control characters (built without a literal) are removed.
+  assert.strictEqual(sanitizeDisplayName('a' + String.fromCharCode(1) + 'bc'), 'abc');
 });
