@@ -32,6 +32,7 @@
  */
 
 import { canonicalizeVariant, getCanonicalCardFromData, type SynonymDatabase } from '../cardIdentity';
+import type { CanonicalizeOptions } from './cardReport';
 
 /** A single deck card row consumed by {@link buildConversionIndex}. */
 export interface ConversionDeckCard {
@@ -63,6 +64,8 @@ export interface LegacyConversionIndex {
   day2Total: number;
   /** Canonical UID -> its Day 1 / Day 2 counts, in first-seen order. */
   cards: Record<string, ConversionCounts>;
+  /** Event date the UIDs were canonicalized against (rolling canonicals). */
+  canonicalizedAt?: string;
 }
 
 /**
@@ -76,8 +79,10 @@ export interface LegacyConversionIndex {
  */
 export function buildConversionIndex(
   allDecks: readonly ConversionDeck[] | null | undefined,
-  synonymDb: SynonymDatabase | null = null
+  synonymDb: SynonymDatabase | null = null,
+  options: CanonicalizeOptions = {}
 ): LegacyConversionIndex | null {
+  const resolveUid = options.resolveUid ?? null;
   if (!allDecks || allDecks.length === 0) {
     return null;
   }
@@ -105,7 +110,7 @@ export function buildConversionIndex(
         continue;
       }
       const rawUid = `${card?.name ?? ''}::${sc}::${num}`;
-      const uid = getCanonicalCardFromData(synonymDb, rawUid);
+      const uid = resolveUid ? resolveUid(rawUid) : getCanonicalCardFromData(synonymDb, rawUid);
       if (seen.has(uid)) {
         continue;
       }

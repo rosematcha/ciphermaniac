@@ -8,12 +8,16 @@ import {
   fetchPriceHistory,
   fetchTournamentsList,
   getArchetypeIconMap,
+  itemUid,
   majorTournaments,
   PRICE_HISTORY_MIN_DAYS,
   priceHistorySpanDays,
   resolveArchetypeIcons,
   tournamentDate
 } from '../lib/data';
+import { getSynonymDatabase } from '../utils/cardSynonyms';
+import { getCanonicalCardFromData } from '../../shared/synonyms.js';
+import type { CardItem } from '../types';
 import {
   type ArchetypeSeries,
   computeMajorsArchetypeSeries,
@@ -588,6 +592,16 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
   // chart in place instead of flashing a skeleton.
   const snapshotsData = () => latestValue(snapshots);
 
+  // Cross-event card movers key on each item's GLOBAL cluster identity so a
+  // rebaked (rolling-canonical) master and a non-rebaked one join the same card.
+  // Only used on the fallback (client-compute) path; the resolver is a no-op for
+  // non-rebaked masters (their items are already the global canonical).
+  const [synonymDb] = createResource(() => getSynonymDatabase());
+  const moverKeyResolver = createMemo(() => {
+    const db = synonymDb();
+    return db ? (item: CardItem) => getCanonicalCardFromData(db, itemUid(item)) : undefined;
+  });
+
   /** Number of events in the window, for the section captions. */
   const sampleCount = () => {
     const w = windowResult();
@@ -609,7 +623,7 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
   /** Card movers: from the artifact when present, else computed. */
   const movers = createMemo<MoversResult>(() => {
     const w = windowResult();
-    return w ? w.movers : computeMajorsMovers(snapshotsData() ?? [], NEWCOMER_MIN_SHARE);
+    return w ? w.movers : computeMajorsMovers(snapshotsData() ?? [], NEWCOMER_MIN_SHARE, moverKeyResolver());
   });
 
   /**

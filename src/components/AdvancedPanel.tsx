@@ -5,7 +5,7 @@ import { fetchArchetypeDecks } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
 import { filterDecks, filterDecksBySuccess, generateReportAndCooccurrence } from '../utils/clientSideFiltering';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
-import { buildCardId, canonicalizeDeckCard } from '../utils/deckCardId';
+import { buildCanonicalCardId, buildCardId, canonicalizeDeckCard } from '../utils/deckCardId';
 import {
   buildCooccurrence,
   type CardRef,
@@ -139,11 +139,19 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
 
   // Look up a report card by the SET~NUMBER id rules/decks use, so a shared
   // build (which only carries cardIds) can be re-hydrated with display fields.
+  // Report items can be rolling-canonical prints on a rebaked event; the decks
+  // (and thus rule cardIds) key by the GLOBAL canonical, so resolve each item to
+  // its cluster canonical before keying — otherwise a persisted rule never
+  // rehydrates and a search pick never matches a deck.
   const itemByCardId = createMemo(() => {
+    const database = synonymDb() ?? null;
     const map = new Map<string, CardItem>();
     for (const item of props.report.items as CardItem[]) {
       if (item.set && item.number !== undefined && item.number !== null) {
-        map.set(buildCardId(item.set, item.number), item);
+        const id = buildCanonicalCardId(item, database);
+        if (id) {
+          map.set(id, item);
+        }
       }
     }
     return map;
@@ -341,12 +349,13 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
       return [];
     }
     const taken = new Set(rules().map(r => r.cardId));
+    const database = synonymDb() ?? null;
     const items = props.report.items.filter(i => {
       if (!i.set || i.number === undefined) {
         return false;
       }
-      const cardId = buildCardId(i.set, i.number);
-      if (taken.has(cardId)) {
+      const cardId = buildCanonicalCardId(i, database);
+      if (cardId && taken.has(cardId)) {
         return false;
       }
       return i.name.toLowerCase().includes(q);
@@ -357,7 +366,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
   function ruleFromCard(card: { name: string; set?: string; number?: string | number }): Rule {
     return {
       id: nextRuleId(),
-      cardId: buildCardId(card.set as string, card.number),
+      cardId: buildCanonicalCardId(card, synonymDb() ?? null) ?? buildCardId(card.set as string, card.number),
       name: card.name,
       set: card.set,
       number: card.number,

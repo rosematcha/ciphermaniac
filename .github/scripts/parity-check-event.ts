@@ -17,6 +17,7 @@ import { generateReportFromDecks } from '../../shared/data/reports/cardReport.ts
 import { buildConversionIndex } from '../../shared/data/reports/conversion.ts';
 import { buildCardUsageIndex } from '../../shared/data/reports/cardUsage.ts';
 import { buildArchetypeReports } from '../../shared/data/archetypes/build.ts';
+import { makeRollingResolver } from '../../shared/data/canonicalPrint.ts';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import { createR2Client, getJsonResult } from './lib/r2.mjs';
 
@@ -59,9 +60,12 @@ function diffReportItems(label: string, legacy: LegacyReportItem[], next: Legacy
 async function main(): Promise<void> {
   const args = process.argv.slice(2).filter(a => !a.startsWith('--'));
   const base = args[0];
-  // The online window master IS synonym-canonicalized (D5); event master is not.
+  // The online window master IS synonym-canonicalized (D5); event master is not
+  // (legacy). --rolling recomputes with the event-date rolling resolver instead,
+  // for checking parity against ROLLING-rebaked production artifacts.
   const canonicalize = process.argv.includes('--canonicalize');
-  if (!base) throw new Error('Usage: parity-check-event.ts "reports/<date, Name>" [--canonicalize]');
+  const rolling = process.argv.includes('--rolling');
+  if (!base) throw new Error('Usage: parity-check-event.ts "reports/<date, Name>" [--canonicalize|--rolling]');
 
   const client = createR2Client({
     accountId: requireEnv('R2_ACCOUNT_ID'),
@@ -88,10 +92,25 @@ async function main(): Promise<void> {
   console.log(`[parity] ${base}: ${decks.length} decks, legacy deckTotal=${legacyMaster.deckTotal}`);
   const allDiffs: string[] = [];
 
+  let resolveUid: ((uid: string) => string) | undefined;
+  if (rolling) {
+    if (!synonyms) throw new Error('--rolling requires assets/card-synonyms.json');
+    const asOfDate = /^(\d{4}-\d{2}-\d{2}),/.exec(base.replace(/^reports\//, ''))?.[1];
+    if (!asOfDate) throw new Error(`--rolling: cannot derive the event date from "${base}"`);
+    const printPrices = await load<{ prices?: Record<string, number | null> }>(`assets/print-prices/${asOfDate}.json`);
+    resolveUid = makeRollingResolver(synonyms, asOfDate, printPrices?.prices ?? null);
+  }
+
   // master.json: recompute from the same decks (no synonym DB — legacy event
-  // master is not synonym-canonicalized, so pass null to match).
+  // master is not synonym-canonicalized, so pass null to match; --rolling
+  // matches rolling-rebaked artifacts instead).
   const deckTotal = decks.filter(deck => deck.hasDecklist !== false).length;
-  const nextMaster = generateReportFromDecks(decks as never, deckTotal, canonicalize ? (synonyms ?? null) : null) as { deckTotal: number; items: LegacyReportItem[] };
+  const nextMaster = generateReportFromDecks(
+    decks as never,
+    deckTotal,
+    canonicalize || rolling ? (synonyms ?? null) : null,
+    { resolveUid }
+  ) as { deckTotal: number; items: LegacyReportItem[] };
   if (nextMaster.deckTotal !== legacyMaster.deckTotal) {
     allDiffs.push(`master.deckTotal: ${legacyMaster.deckTotal} (legacy) vs ${nextMaster.deckTotal} (new)`);
   }
@@ -99,7 +118,11 @@ async function main(): Promise<void> {
 
   // conversion.json: recompute (legacy uses null synonyms at event build time).
   if (legacyConversion) {
-    const nextConversion = buildConversionIndex(decks.map(deck => ({ cards: deck.cards ?? [], madePhase2: deck.madePhase2 })), null);
+    const nextConversion = buildConversionIndex(
+      decks.map(deck => ({ cards: deck.cards ?? [], madePhase2: deck.madePhase2 })),
+      rolling ? (synonyms ?? null) : null,
+      { resolveUid }
+    );
     if (!nextConversion) {
       allDiffs.push('conversion: new builder produced null but legacy has a conversion index');
     } else {
@@ -114,7 +137,7 @@ async function main(): Promise<void> {
     const built = buildArchetypeReports(
       decks.map(deck => ({ cards: deck.cards ?? [], archetype: deck.archetype })),
       synonyms ?? null,
-      { nameCasing: 'preserve', minDecksFraction: 0, percentMode: 'fraction6', sortMode: 'deckCountThenLabel', displayNames: 'trimmed', emptyBaseFallback: null, includeSignatureCards: false }
+      { nameCasing: 'preserve', minDecksFraction: 0, percentMode: 'fraction6', sortMode: 'deckCountThenLabel', displayNames: 'trimmed', emptyBaseFallback: null, includeSignatureCards: false, resolveUid }
     );
     // Archetype index deckCount per slug should match legacy exactly.
     if (legacyArchIndex) {

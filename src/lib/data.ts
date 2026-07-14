@@ -142,6 +142,15 @@ function fetchJsonOptional<T>(path: string): Promise<T | null> {
 export interface MasterPayload {
   deckTotal: number;
   items: CardItem[];
+  /**
+   * Present only on "rolling canonical" artifacts: historical events whose
+   * card-facing payloads were rebaked so card UIDs key by the event-date
+   * canonical print (a variant UID from the same synonym cluster) instead of
+   * today's global canonical. Its presence tells the read-time canonicalizer to
+   * leave the items untouched — they're already build-time merged, and re-mapping
+   * would rewrite the period-correct rolling print to the current global one.
+   */
+  canonicalizedAt?: string;
 }
 
 const ONLINE = ONLINE_META_NAME;
@@ -222,6 +231,15 @@ export function canonicalizeReport<T extends { deckTotal: number; items: AnyCard
   db: SynonymDatabase | null
 ): T {
   if (!db || !report?.items?.length) {
+    return report;
+  }
+
+  // "Rolling canonical" artifacts are already build-time canonicalized: their
+  // items key by the event-date canonical print (a variant UID that still
+  // resolves to the same global cluster identity through the synonym map).
+  // Re-mapping here would rewrite that period-correct rolling print to today's
+  // global canonical — destroying the historical print display — so pass through.
+  if ((report as { canonicalizedAt?: string }).canonicalizedAt) {
     return report;
   }
 
@@ -464,6 +482,11 @@ function canonicalizeReportCached<T extends { deckTotal: number; items: AnyCardI
   if (!db || !raw?.items?.length) {
     return raw;
   }
+  // Marked (rolling-canonical) payloads pass through untouched (see
+  // canonicalizeReport) — skip the memo entirely so we return the exact object.
+  if ((raw as { canonicalizedAt?: string }).canonicalizedAt) {
+    return raw;
+  }
   const hit = canonicalizedReports.get(raw);
   if (hit) {
     return hit as T;
@@ -595,6 +618,8 @@ export interface CardUsageEntry {
  */
 export interface CardUsagePayload {
   usage: Record<string, CardUsageEntry[]>;
+  /** Set on rebaked events; usage keys are then rolling-canonical UIDs. */
+  canonicalizedAt?: string;
 }
 
 export function fetchCardUsage(tournament: string): Promise<CardUsagePayload | null> {
@@ -602,15 +627,51 @@ export function fetchCardUsage(tournament: string): Promise<CardUsagePayload | n
 }
 
 /**
- * Look up a card's per-archetype usage in a `cardUsage.json` payload. Tries the
- * card's canonical UID first, then a set+number normalized scan across the index
- * keys (defensive: the card came from the canonicalized master, so a direct UID
- * hit is the norm). Returns null if the card isn't in the index.
+ * Per payload: global-canonical UID → usage entries. Both the payload keys
+ * (rolling-canonical on a rebaked event) and the lookup card are resolved
+ * through the synonym DB to the stable global cluster identity, so a
+ * rolling-keyed entry is found from a global-canonical card and vice versa.
+ * Built once per payload (usage is this page's largest join surface).
  */
-export function cardUsageForCard(payload: CardUsagePayload, card: CardItem): CardUsageEntry[] | null {
+const usageGlobalIndexCache = new WeakMap<CardUsagePayload, Map<string, CardUsageEntry[]>>();
+
+function usageGlobalIndex(payload: CardUsagePayload, db: SynonymDatabase): Map<string, CardUsageEntry[]> {
+  const cached = usageGlobalIndexCache.get(payload);
+  if (cached) {
+    return cached;
+  }
+  const map = new Map<string, CardUsageEntry[]>();
+  for (const [uid, entries] of Object.entries(payload.usage)) {
+    const global = getCanonicalCardFromData(db, uid);
+    if (!map.has(global)) {
+      map.set(global, entries);
+    }
+  }
+  usageGlobalIndexCache.set(payload, map);
+  return map;
+}
+
+/**
+ * Look up a card's per-archetype usage in a `cardUsage.json` payload. Tries the
+ * card's UID directly, then resolves both the card and the payload keys to their
+ * global cluster identity (so a rolling-uid card matches a global-keyed payload
+ * and a global-uid card matches a rolling-keyed one), then a set+number
+ * normalized scan. Returns null if the card isn't in the index.
+ */
+export function cardUsageForCard(
+  payload: CardUsagePayload,
+  card: CardItem,
+  db: SynonymDatabase | null
+): CardUsageEntry[] | null {
   const direct = payload.usage[itemUid(card)];
   if (direct) {
     return direct;
+  }
+  if (db) {
+    const byGlobal = usageGlobalIndex(payload, db).get(getCanonicalCardFromData(db, itemUid(card)));
+    if (byGlobal) {
+      return byGlobal;
+    }
   }
   if (card.set && card.number != null) {
     const setU = card.set.toUpperCase();
@@ -623,6 +684,29 @@ export function cardUsageForCard(payload: CardUsagePayload, card: CardItem): Car
     }
   }
   return null;
+}
+
+/**
+ * Find the entry whose UID identifies the same synonym cluster as `targetUid`.
+ * Tries a direct UID match first, then resolves both the target and each entry's
+ * UID to their global cluster identity — so a rolling-canonical key matches a
+ * global-canonical target and vice versa. Returns undefined when neither the DB
+ * nor a direct hit resolves it.
+ */
+export function findByClusterUid<T extends { uid: string }>(
+  items: T[],
+  targetUid: string,
+  db: SynonymDatabase | null
+): T | undefined {
+  const direct = items.find(item => item.uid === targetUid);
+  if (direct) {
+    return direct;
+  }
+  if (!db) {
+    return undefined;
+  }
+  const targetGlobal = getCanonicalCardFromData(db, targetUid);
+  return items.find(item => getCanonicalCardFromData(db, item.uid) === targetGlobal);
 }
 
 // --- Rotation snapshots ---
@@ -746,6 +830,8 @@ export interface ConversionPayload {
   day1Total: number;
   day2Total: number;
   cards: Record<string, { day1: number; day2: number }>;
+  /** Set on rebaked events; `cards` keys are then rolling-canonical UIDs. */
+  canonicalizedAt?: string;
 }
 
 export function fetchConversionIndex(tournament: string): Promise<ConversionPayload | null> {
@@ -1218,6 +1304,56 @@ export function findCardBySetNumber(items: CardItem[], set: string, number: stri
     }
     return normalizeCardNumberKey(String(item.number)) === targetKey;
   });
+}
+
+/**
+ * Resolve a (set, number) to the canonical `SET::NUMBER` key of its synonym
+ * cluster. A variant pair maps to its global canonical; an already-canonical (or
+ * unknown) pair maps to itself. Lets callers compare two prints of the same
+ * cluster — a rolling-canonical master item and the global-canonical URL — for
+ * equality without importing any date logic.
+ */
+function canonicalSetNumberKey(db: { synonyms: Record<string, string> }, set: string, number: string): string {
+  const key = `${set.toUpperCase()}::${setNumberKey(number)}`;
+  return getSetNumberCanonicalIndex(db).get(key)?.key ?? key;
+}
+
+// Per items array: canonical SET::NUMBER key → item. Items on a rebaked master
+// carry rolling prints, so a direct set/number match against the global-canonical
+// URL misses; resolving both sides to the cluster's canonical key aligns them.
+const canonicalItemIndexCache = new WeakMap<CardItem[], Map<string, CardItem>>();
+
+/**
+ * Like {@link findCardBySetNumber}, but cluster-aware: resolves both the
+ * requested (set, number) and each item's (set, number) to their canonical
+ * cluster key before comparing. Finds a rolling-variant master item from the
+ * global-canonical URL, and vice versa (stale links to a variant print). Falls
+ * back to the exact match when the DB is unavailable.
+ */
+export function findCardBySetNumberCanonical(
+  items: CardItem[],
+  set: string,
+  number: string,
+  db: SynonymDatabase | null
+): CardItem | undefined {
+  if (!db?.synonyms) {
+    return findCardBySetNumber(items, set, number);
+  }
+  let index = canonicalItemIndexCache.get(items);
+  if (!index) {
+    index = new Map<string, CardItem>();
+    for (const item of items) {
+      if (!item.set || item.number == null) {
+        continue;
+      }
+      const key = canonicalSetNumberKey(db, item.set, String(item.number));
+      if (!index.has(key)) {
+        index.set(key, item);
+      }
+    }
+    canonicalItemIndexCache.set(items, index);
+  }
+  return index.get(canonicalSetNumberKey(db, set, number)) ?? findCardBySetNumber(items, set, number);
 }
 
 /**

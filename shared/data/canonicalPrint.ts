@@ -275,3 +275,32 @@ export function resolveCanonicalUidAt(
   const chosen = chooseCanonicalPrint(variations, parsed.name, { asOfDate });
   return chosen ? `${parsed.name}::${chosen.set}::${chosen.number}` : global;
 }
+
+/**
+ * Build a memoized UID resolver bound to one event date, for injection into
+ * the report builders (which stay isomorphic and must not import the set
+ * catalog themselves). `priceOverrides` carries event-date prices from the
+ * TCGCSV archive backfill (`assets/print-prices/{date}.json`); prints the
+ * overrides miss fall back to the DB's current scrape.
+ */
+export function makeRollingResolver(
+  db: SynonymDatabase,
+  asOfDate: string,
+  priceOverrides?: Record<string, number | null> | null
+): (uid: string) => string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(asOfDate)) {
+    throw new Error(`makeRollingResolver: invalid asOfDate "${asOfDate}" (expected YYYY-MM-DD)`);
+  }
+  const effectiveDb: SynonymDatabase = priceOverrides ? { ...db, prints: { ...db.prints, ...priceOverrides } } : db;
+  const clusterIndex = buildClusterIndex(effectiveDb);
+  const cache = new Map<string, string>();
+  return (uid: string): string => {
+    const hit = cache.get(uid);
+    if (hit !== undefined) {
+      return hit;
+    }
+    const resolved = resolveCanonicalUidAt(uid, effectiveDb, clusterIndex, asOfDate);
+    cache.set(uid, resolved);
+    return resolved;
+  };
+}

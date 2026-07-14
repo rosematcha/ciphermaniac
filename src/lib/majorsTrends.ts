@@ -127,7 +127,23 @@ function eventDateRange(reps: EventSnapshot[]): string {
  * newcomer lists plus the coverage note the page renders. Mirrors the logic
  * that shipped inline in TrendsPage.
  */
-export function computeMajorsMovers(snapshots: EventSnapshot[], newcomerMin = NEWCOMER_MIN_SHARE): MoversResult {
+/**
+ * Stable cross-event key for a card. Marked ("rolling canonical") masters carry
+ * a period-correct variant print, so the same card keys differently per event
+ * under the default `set::number`. Callers with the synonym DB pass a resolver
+ * that returns the card's GLOBAL cluster identity, so one card joins across a
+ * rolling-keyed and a global-keyed event. Kept as an injected resolver so this
+ * module stays free of any synonym-DB / date dependency.
+ */
+export type CardKeyResolver = (item: CardItem) => string;
+
+const defaultCardKey: CardKeyResolver = item => `${item.set}::${item.number}`;
+
+export function computeMajorsMovers(
+  snapshots: EventSnapshot[],
+  newcomerMin = NEWCOMER_MIN_SHARE,
+  resolveKey: CardKeyResolver = defaultCardKey
+): MoversResult {
   const empty = (enough: boolean, coverage: HalfCoverage | null): MoversResult => ({
     rising: [],
     falling: [],
@@ -166,7 +182,7 @@ export function computeMajorsMovers(snapshots: EventSnapshot[], newcomerMin = NE
       if (!item.set || item.number === undefined || item.number === null || item.number === '') {
         continue;
       }
-      m.set(`${item.set}::${item.number}`, item);
+      m.set(resolveKey(item), item);
     }
     return m;
   });
@@ -181,10 +197,13 @@ export function computeMajorsMovers(snapshots: EventSnapshot[], newcomerMin = NE
   const recentWeights = repWeights.slice(0, mid);
   const olderWeights = repWeights.slice(mid);
 
+  // reps are newest-first, so the first entry seen for a key is the newest
+  // event's — use it as the mover row's display (name/set/number), so the
+  // current-canonical print art shows on the trends list.
   const allKeys = new Map<string, CardItem>();
   for (let i = 0; i < reps.length; i++) {
     for (const [key, item] of repMaps[i]) {
-      if (!allKeys.has(key) || (item.pct ?? 0) > (allKeys.get(key)!.pct ?? 0)) {
+      if (!allKeys.has(key)) {
         allKeys.set(key, item);
       }
     }
@@ -336,10 +355,11 @@ export function computeMajorsArchetypeSeries(snapshots: EventSnapshot[]): {
 export function computeMajorsWindowResult(
   snapshots: EventSnapshot[],
   sampleCount: number,
-  newcomerMin = NEWCOMER_MIN_SHARE
+  newcomerMin = NEWCOMER_MIN_SHARE,
+  resolveKey: CardKeyResolver = defaultCardKey
 ): MajorsWindowResult {
   const { series, days } = computeMajorsArchetypeSeries(snapshots);
-  const movers = computeMajorsMovers(snapshots, newcomerMin);
+  const movers = computeMajorsMovers(snapshots, newcomerMin, resolveKey);
   return {
     sampleCount,
     dayKeys: days.map(d => d.key),

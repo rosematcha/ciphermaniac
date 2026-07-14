@@ -30,7 +30,7 @@ import {
   wrOf
 } from '../lib/cardLens';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
-import { buildCardId } from '../utils/deckCardId';
+import { buildCanonicalCardId, buildCardId } from '../utils/deckCardId';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../types';
 import { Segmented } from './Segmented';
 import { EmptyState } from './EmptyState';
@@ -366,6 +366,9 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
   // ---- Suggested tech-card chips (reuse the Tech tab's source: report items in
   // the 30-90% inclusion band, most-played first). Empty → search-only fallback.
   const techSuggestions = createMemo<{ cardId: string; name: string; label: string }[]>(() => {
+    // Lens decks are canonicalized to the GLOBAL print; a rebaked report's items
+    // carry a rolling print, so resolve the chip's cardId to the cluster canonical.
+    const database = synonymDb() ?? null;
     return (props.report.items as CardItem[])
       .filter(
         i =>
@@ -378,7 +381,7 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
       .sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0))
       .slice(0, CHIP_COUNT)
       .map(i => ({
-        cardId: buildCardId(i.set!, i.number!),
+        cardId: buildCanonicalCardId(i, database) ?? buildCardId(i.set!, i.number!),
         name: i.name,
         label: `${i.name} ${i.set} ${i.number}`
       }));
@@ -405,7 +408,7 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
     if (!item.set || item.number === undefined || item.number === null) {
       return;
     }
-    pickCard(buildCardId(item.set, item.number), item.name);
+    pickCard(buildCanonicalCardId(item, synonymDb() ?? null) ?? buildCardId(item.set, item.number), item.name);
   }
   function clearLens() {
     setLensCard(null);

@@ -102,6 +102,9 @@ export interface ArchetypeBuildOptions {
   /** Hand-maintained icon override map; providing it emits `icons` on index
    * entries (Python-only field today). */
   iconConfig?: IconConfig | null;
+  /** Optional canonical-UID resolver (rolling canonicals bound to an event
+   * date), forwarded to the per-archetype card reports. */
+  resolveUid?: (uid: string) => string;
 }
 
 /** A grouped archetype's report file (producers add their own filenames). */
@@ -211,7 +214,8 @@ export function buildArchetypeReports(
     cardTypesDb = null,
     masterReport = null,
     includeSignatureCards,
-    iconConfig = null
+    iconConfig = null,
+    resolveUid
   } = options;
 
   const cardMetaLookup = cardTypesDb ? buildCardMetaLookup(cardTypesDb) : null;
@@ -245,7 +249,7 @@ export function buildArchetypeReports(
       base,
       displayName,
       deckCount: archetypeDecks.length,
-      data: generateReportFromDecks(archetypeDecks, archetypeDecks.length, synonymDb)
+      data: generateReportFromDecks(archetypeDecks, archetypeDecks.length, synonymDb, { resolveUid })
     });
     decksByBase.set(base, archetypeDecks);
   }

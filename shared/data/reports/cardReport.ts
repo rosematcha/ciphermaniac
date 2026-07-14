@@ -28,8 +28,8 @@ import {
   calculatePercentage,
   composeCategoryPath,
   createDistributionFromCounts,
-  sortReportItems,
-  type DistributionEntry
+  type DistributionEntry,
+  sortReportItems
 } from '../../reportUtils';
 
 /**
@@ -81,6 +81,23 @@ export interface ReportItem {
 export interface LegacyCardReport {
   deckTotal: number;
   items: ReportItem[];
+  /**
+   * Event date the card UIDs were canonicalized against (rolling canonicals).
+   * Present only on build-time-canonicalized artifacts; consumers must skip
+   * read-time re-canonicalization when set, or the period-correct print would
+   * be rewritten to the current global canonical.
+   */
+  canonicalizedAt?: string;
+}
+
+/**
+ * Optional canonicalization override for the report builders. When provided it
+ * replaces the flat synonym lookup — producers inject a date-bound resolver
+ * from `canonicalPrint.makeRollingResolver` (which this isomorphic module must
+ * not import itself, as it would pull the set catalog into browser bundles).
+ */
+export interface CanonicalizeOptions {
+  resolveUid?: (uid: string) => string;
 }
 
 /**
@@ -99,8 +116,10 @@ export interface LegacyCardReport {
 export function generateReportFromDecks(
   deckList: DeckEntry[],
   deckTotal: number,
-  synonymDb: SynonymDatabase | null
+  synonymDb: SynonymDatabase | null,
+  options: CanonicalizeOptions = {}
 ): LegacyCardReport {
+  const resolveUid = options.resolveUid ?? null;
   const cardData = new Map<string, number[]>();
   const nameCasing = new Map<string, string>();
   const uidMeta = new Map<string, CardMeta>();
@@ -128,8 +147,12 @@ export function generateReportFromDecks(
       const [canonSet, canonNumber] = canonicalizeVariant(card?.set, card?.number);
       let uid = canonSet && canonNumber ? `${name}::${canonSet}::${canonNumber}` : name;
 
-      // Resolve to canonical synonym if database is available
-      if (synonymDb) {
+      // Resolve to canonical synonym if database is available. An injected
+      // resolver (rolling canonicals bound to an event date) takes precedence
+      // over the flat current-canonical lookup.
+      if (resolveUid) {
+        uid = resolveUid(uid);
+      } else if (synonymDb) {
         uid = getCanonicalCardFromData(synonymDb, uid);
       }
 
