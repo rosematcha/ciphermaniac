@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 
 import {
   composeRelease,
+  isScopeArtifactServed,
   type ReleaseComposition,
   resolveEventPath,
   resolveScopePath,
@@ -26,6 +27,14 @@ function composition(): ReleaseComposition {
       catalogs: '/releases/v1/catalogs/eee555',
       snapshots: '/releases/v1/snapshots/fff666'
     },
+    served: {
+      online: ['master.json', 'archetypes/index.json'],
+      trends: ['trends.json'],
+      players: ['index.json', 'index-slim.json'],
+      prices: ['prices.json', 'prices-history.json'],
+      catalogs: ['tournaments.json'],
+      snapshots: ['index.json']
+    },
     events: { 'labs:0042': '/releases/v1/events/labs:0042/999zzz' },
     dependencies: { 'prices.online': 'aaa111' }
   };
@@ -39,12 +48,18 @@ test('composeRelease produces a valid manifest', () => {
 test('resolveScopePath joins the scope root and strips leading slashes', () => {
   const manifest = composeRelease(composition());
   assert.strictEqual(resolveScopePath(manifest, 'online', 'master.json'), '/releases/v1/online/aaa111/master.json');
-  assert.strictEqual(resolveScopePath(manifest, 'online', '/archetypes/index.json'), '/releases/v1/online/aaa111/archetypes/index.json');
+  assert.strictEqual(
+    resolveScopePath(manifest, 'online', '/archetypes/index.json'),
+    '/releases/v1/online/aaa111/archetypes/index.json'
+  );
 });
 
 test('resolveEventPath returns null for an unlinked event', () => {
   const manifest = composeRelease(composition());
-  assert.strictEqual(resolveEventPath(manifest, 'labs:0042', 'cardUsage.json'), '/releases/v1/events/labs:0042/999zzz/cardUsage.json');
+  assert.strictEqual(
+    resolveEventPath(manifest, 'labs:0042', 'cardUsage.json'),
+    '/releases/v1/events/labs:0042/999zzz/cardUsage.json'
+  );
   assert.strictEqual(resolveEventPath(manifest, 'labs:9999', 'cardUsage.json'), null);
 });
 
@@ -65,6 +80,26 @@ test('validateReleaseManifest flags missing scopes and bad paths', () => {
   });
   assert.ok(errors.some(e => e.includes('roots.online')));
   assert.ok(errors.some(e => e.includes('roots.trends: missing')));
+});
+
+test('served allowlist: only published keys are served, others are not', () => {
+  const manifest = composeRelease(composition());
+  assert.strictEqual(isScopeArtifactServed(manifest, 'online', 'master.json'), true);
+  assert.strictEqual(isScopeArtifactServed(manifest, 'online', '/master.json'), true); // leading slash tolerated
+  assert.strictEqual(isScopeArtifactServed(manifest, 'players', 'index-slim.json'), true);
+  assert.strictEqual(isScopeArtifactServed(manifest, 'players', '1272/profile.json'), false); // per-player body unpublished
+  assert.strictEqual(isScopeArtifactServed(manifest, 'online', 'conversion.json'), false); // never captured
+});
+
+test('validateReleaseManifest requires a served object with per-scope key arrays', () => {
+  const noServed = composition() as Partial<ReleaseComposition>;
+  delete noServed.served;
+  const errors = validateReleaseManifest({ contractVersion: 1, ...noServed });
+  assert.ok(errors.some(e => e.includes('served: expected object')));
+
+  const badServed = composeRelease(composition()) as unknown as Record<string, unknown>;
+  badServed.served = { ...(badServed.served as object), players: 'not-an-array' };
+  assert.ok(validateReleaseManifest(badServed).some(e => e.includes('served.players')));
 });
 
 test('a release only replaces changed scope roots (unchanged reuse prior root)', () => {

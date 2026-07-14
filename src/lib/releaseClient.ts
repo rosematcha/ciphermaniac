@@ -54,8 +54,9 @@ function classify(path: string): { scope: ReleaseScope; rel: string } | null {
 
 /**
  * Resolve a report path. Pass-through (byte-identical) when no release is
- * embedded; otherwise rewrite scope paths to their immutable release roots.
- * Event-folder paths pass through until the folder→eventId map is wired.
+ * embedded; otherwise rewrite to immutable release roots ONLY the scope keys the
+ * release actually published, passing every other path (unpublished bodies,
+ * unlinked events) through to its legacy location.
  * @param path - The legacy report path (e.g. "/reports/Online - Last 14 Days/master.json")
  * @returns The path to fetch (unchanged in production, or a `/releases/v1/…` path)
  */
@@ -76,6 +77,13 @@ export function resolvePathWith(withResolver: ReleaseResolver, path: string): st
   }
   const classified = classify(path);
   if (classified) {
+    // Only rewrite keys this release actually published; a path the release did
+    // not capture (per-player bodies, per-snapshot bodies, online files that do
+    // not exist) passes through UNCHANGED to its legacy (dual-written) location,
+    // where a 404 is a normal optional miss rather than release-body corruption.
+    if (!withResolver.servesScopePath(classified.scope, classified.rel)) {
+      return path;
+    }
     const resolved = withResolver.scopePath(classified.scope, classified.rel);
     return resolved.startsWith('/') ? resolved : `/${resolved}`;
   }

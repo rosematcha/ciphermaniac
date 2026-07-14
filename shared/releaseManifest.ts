@@ -13,6 +13,7 @@
  */
 
 import {
+  isScopeArtifactServed,
   type ReleaseManifest,
   type ReleaseScope,
   resolveEventPath,
@@ -35,6 +36,12 @@ export interface ReleaseResolver {
   readonly isReleaseAware: boolean;
   /** The frozen release id, or null in legacy mode. */
   readonly releaseId: string | null;
+  /**
+   * Whether this release actually published `relativePath` under `scope`. False
+   * in legacy mode and for any key the release did not capture — the caller then
+   * keeps the legacy path. Prevents rewriting to an unpublished immutable key.
+   */
+  servesScopePath(scope: ReleaseScope, relativePath: string): boolean;
   /** Resolve a scope artifact to a full path (release-immutable or legacy). */
   scopePath(scope: ReleaseScope, relativePath: string): string;
   /** Resolve an event artifact, or null when the event is not directly linked. */
@@ -58,6 +65,7 @@ export function createReleaseResolver(embedded: unknown): ReleaseResolver {
     return Object.freeze({
       isReleaseAware: false,
       releaseId: null,
+      servesScopePath: (_scope: ReleaseScope, _relativePath: string) => false,
       scopePath: (scope: ReleaseScope, relativePath: string) => joinLegacy(LEGACY_SCOPE_ROOTS[scope], relativePath),
       eventPath: (_eventId: string, _relativePath: string) => null
     });
@@ -66,6 +74,7 @@ export function createReleaseResolver(embedded: unknown): ReleaseResolver {
   return Object.freeze({
     isReleaseAware: true,
     releaseId: frozen.releaseId,
+    servesScopePath: (scope: ReleaseScope, relativePath: string) => isScopeArtifactServed(frozen, scope, relativePath),
     scopePath: (scope: ReleaseScope, relativePath: string) => resolveScopePath(frozen, scope, relativePath),
     eventPath: (eventId: string, relativePath: string) => resolveEventPath(frozen, eventId, relativePath)
   });
@@ -73,6 +82,8 @@ export function createReleaseResolver(embedded: unknown): ReleaseResolver {
 
 /** Validate + narrow an embedded value to a manifest, or null. */
 export function coerceManifest(value: unknown): ReleaseManifest | null {
-  if (value === null || value === undefined) return null;
+  if (value === null || value === undefined) {
+    return null;
+  }
   return validateReleaseManifest(value).length === 0 ? (value as ReleaseManifest) : null;
 }

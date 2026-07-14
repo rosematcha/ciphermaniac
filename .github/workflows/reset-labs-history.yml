@@ -86,7 +86,7 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run == true && 'true' || 'false' }}
           FAIL_FAST: ${{ inputs.fail_fast == true && 'true' || 'false' }}
           RESET_REPORTS: ${{ inputs.reset_reports == true && 'true' || 'false' }}
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
@@ -99,7 +99,7 @@ jobs:
       - name: Resync player profiles
         if: ${{ inputs.dry_run != true }}
         env:
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}

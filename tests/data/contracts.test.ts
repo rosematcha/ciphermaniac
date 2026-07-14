@@ -25,6 +25,7 @@ import {
   type NormalizedEvent,
   onlineParticipantId,
   parseCardUid,
+  validateCardRecord,
   validateNormalizedEvent
 } from '../../shared/data/contracts.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
@@ -608,4 +609,69 @@ test('canonicalStringify honors toJSON like JSON.stringify (Dates do not collide
   const b = canonicalStringify({ at: new Date('2026-07-13T00:00:00Z') });
   assert.notStrictEqual(a, b);
   assert.strictEqual(a, '{"at":"2026-07-12T00:00:00.000Z"}');
+});
+
+// --- validateCardRecord (card catalog "cards table") ---
+
+test('validateCardRecord accepts a minimal identity-only record', () => {
+  const result = validateCardRecord({ metadataVersion: 2, cardType: 'trainer', fullType: 'Trainer - Item' });
+  assert.equal(result.ok, true);
+});
+
+test('validateCardRecord accepts a fully-populated structured Pokémon record', () => {
+  const result = validateCardRecord({
+    metadataVersion: 2,
+    cardType: 'pokemon',
+    subType: null,
+    evolutionInfo: 'Stage 2 - Evolves from Kirlia',
+    fullType: 'Pokémon - Stage 2 - Evolves from Kirlia',
+    stage: 'stage2',
+    mechanicSubtypes: ['ex'],
+    regulationMark: 'H',
+    hp: 320,
+    pokemonType: 'Psychic',
+    weakness: { type: 'Metal', modifier: '×2' },
+    resistance: { type: 'Fighting', modifier: '-30' },
+    retreatCost: 2,
+    abilityDetails: [{ name: 'Psychic Embrace', effect: 'Attach energy.' }],
+    attackDetails: [{ cost: 'PP', name: 'Miracle Force', damage: '190', effect: null }],
+    legality: { standard: 'legal' },
+    lastUpdated: '2026-07-14T00:00:00.000Z'
+  });
+  assert.equal(result.ok, true);
+});
+
+test('validateCardRecord requires identity fields', () => {
+  const r1 = validateCardRecord({ cardType: 'pokemon', fullType: 'x' });
+  assert.equal(r1.ok, false);
+  assert.ok(!r1.ok && r1.errors.some(e => e.startsWith('metadataVersion')));
+  const r2 = validateCardRecord({ metadataVersion: 2, cardType: 'creature', fullType: 'x' });
+  assert.equal(r2.ok, false);
+  assert.ok(!r2.ok && r2.errors.some(e => e.startsWith('cardType')));
+});
+
+test('validateCardRecord rejects out-of-vocabulary stage/mechanic and malformed weakness', () => {
+  const bad = validateCardRecord({
+    metadataVersion: 2,
+    cardType: 'pokemon',
+    fullType: 'Pokémon - Basic',
+    stage: 'stage3',
+    mechanicSubtypes: ['GX'],
+    weakness: { type: '', modifier: 5 },
+    regulationMark: 'HH',
+    hp: -10
+  });
+  assert.equal(bad.ok, false);
+  assert.ok(!bad.ok);
+  assert.ok(bad.errors.some(e => e.startsWith('stage')));
+  assert.ok(bad.errors.some(e => e.startsWith('mechanicSubtypes')));
+  assert.ok(bad.errors.some(e => e.startsWith('weakness')));
+  assert.ok(bad.errors.some(e => e.startsWith('regulationMark')));
+  assert.ok(bad.errors.some(e => e.startsWith('hp')));
+});
+
+test('validateCardRecord rejects a non-object', () => {
+  const result = validateCardRecord(null);
+  assert.equal(result.ok, false);
+  assert.ok(!result.ok && result.errors[0] === 'root: expected object');
 });

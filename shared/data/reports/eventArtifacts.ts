@@ -17,6 +17,7 @@
 
 import type { DeckCard, NormalizedEvent, Participant } from '../contracts';
 import type { SynonymDatabase } from '../cardIdentity';
+import { makeRollingResolver } from '../canonicalPrint';
 import { type ArchetypeBuildOptions, buildArchetypeReports } from '../archetypes/build';
 import { type CardEntry, type DeckEntry, generateReportFromDecks, type LegacyCardReport } from './cardReport';
 import { buildCardUsageIndex } from './cardUsage';
@@ -81,19 +82,33 @@ function projectCards(cards: DeckCard[]): CardEntry[] {
       count: card.count,
       category: card.category
     };
-    if (card.canonical.set !== null) entry.set = card.canonical.set;
-    if (card.canonical.number !== null) entry.number = card.canonical.number;
-    if (card.trainerType) entry.trainerType = card.trainerType;
-    if (card.energyType) entry.energyType = card.energyType;
-    if (card.aceSpec) entry.aceSpec = true;
-    if (card.regulationMark) entry.regulationMark = card.regulationMark;
+    if (card.canonical.set !== null) {
+      entry.set = card.canonical.set;
+    }
+    if (card.canonical.number !== null) {
+      entry.number = card.canonical.number;
+    }
+    if (card.trainerType) {
+      entry.trainerType = card.trainerType;
+    }
+    if (card.energyType) {
+      entry.energyType = card.energyType;
+    }
+    if (card.aceSpec) {
+      entry.aceSpec = true;
+    }
+    if (card.regulationMark) {
+      entry.regulationMark = card.regulationMark;
+    }
     return entry;
   });
 }
 
 function participantIndex(event: NormalizedEvent): Map<string, Participant> {
   const map = new Map<string, Participant>();
-  for (const participant of event.participants) map.set(participant.participantId, participant);
+  for (const participant of event.participants) {
+    map.set(participant.participantId, participant);
+  }
   return map;
 }
 
@@ -161,22 +176,48 @@ function toDeckEntries(decks: DeckArtifactRow[]): DeckEntry[] {
  * report, archetype index + per-archetype cards/decks files, and the card-usage
  * index. Returns bodies keyed by path relative to `prefix`.
  */
-function buildReportBundle(decks: DeckArtifactRow[], synonymDb: SynonymDatabase | null, prefix: string): Map<string, unknown> {
+function buildReportBundle(
+  decks: DeckArtifactRow[],
+  synonymDb: SynonymDatabase | null,
+  prefix: string,
+  canonicalization: EventCanonicalization | null
+): Map<string, unknown> {
   const out = new Map<string, unknown>();
+  const resolveUid = canonicalization?.resolveUid;
   const deckTotal = decks.filter(deck => deck.hasDecklist).length;
-  const master: LegacyCardReport = generateReportFromDecks(toDeckEntries(decks), deckTotal, synonymDb);
+  const master: LegacyCardReport = generateReportFromDecks(toDeckEntries(decks), deckTotal, synonymDb, { resolveUid });
+  if (canonicalization) {
+    master.canonicalizedAt = canonicalization.asOfDate;
+  }
   out.set(`${prefix}master.json`, master);
   out.set(`${prefix}decks.json`, decks);
 
   const archetypeInputs = decks.map(deck => ({ cards: deck.cards, archetype: deck.archetype }));
-  const built = buildArchetypeReports(archetypeInputs, synonymDb, { ...ARCHETYPE_BUILD_PROFILE, masterReport: master });
+  const built = buildArchetypeReports(archetypeInputs, synonymDb, {
+    ...ARCHETYPE_BUILD_PROFILE,
+    masterReport: master,
+    resolveUid
+  });
   out.set(`${prefix}archetypes/index.json`, built.index);
   for (const file of built.files) {
+    if (canonicalization) {
+      file.data.canonicalizedAt = canonicalization.asOfDate;
+    }
     out.set(`${prefix}archetypes/${file.base}/cards.json`, file.data);
     out.set(`${prefix}archetypes/${file.base}/decks.json`, built.decksByBase.get(file.base) ?? []);
   }
-  out.set(`${prefix}cardUsage.json`, buildCardUsageIndex(built.files));
+  const usage = buildCardUsageIndex(built.files);
+  out.set(
+    `${prefix}cardUsage.json`,
+    canonicalization ? { ...usage, canonicalizedAt: canonicalization.asOfDate } : usage
+  );
   return out;
+}
+
+/** A rolling-canonical binding for one event: the date plus its bound resolver. */
+interface EventCanonicalization {
+  asOfDate: string;
+  resolveUid: (uid: string) => string;
 }
 
 /**
@@ -185,19 +226,45 @@ function buildReportBundle(decks: DeckArtifactRow[], synonymDb: SynonymDatabase 
  * @param event - Normalized event
  * @param options - Domain databases
  * @param options.synonymDb - Synonym database for canonicalization (or null)
+ * @param options.rollingCanonicals - Canonicalize card UIDs as of the event's
+ * date (rolling canonicals) instead of the flat current-canonical map. Requires
+ * `synonymDb` and `event.meta.date`; artifacts carry a `canonicalizedAt` marker
+ * so read-time re-canonicalization is skipped.
+ * @param options.printPrices - Event-date print prices (uid -> USD) from the
+ * TCGCSV backfill, overriding the synonym DB's current scrape.
  * @returns Map of relative artifact path to JSON body
  */
 export function buildEventArtifacts(
   event: NormalizedEvent,
-  options: { synonymDb?: SynonymDatabase | null } = {}
+  options: {
+    synonymDb?: SynonymDatabase | null;
+    rollingCanonicals?: boolean;
+    printPrices?: Record<string, number | null> | null;
+  } = {}
 ): Map<string, unknown> {
   const synonymDb = options.synonymDb ?? null;
+  let canonicalization: EventCanonicalization | null = null;
+  if (options.rollingCanonicals) {
+    if (!synonymDb) {
+      throw new Error('buildEventArtifacts: rollingCanonicals requires a synonymDb');
+    }
+    const asOfDate = event.meta.date;
+    if (!asOfDate) {
+      throw new Error('buildEventArtifacts: rollingCanonicals requires event.meta.date');
+    }
+    canonicalization = {
+      asOfDate,
+      resolveUid: makeRollingResolver(synonymDb, asOfDate, options.printPrices ?? null)
+    };
+  }
   const decks = buildDecksArtifact(event);
   const players = buildPlayersArtifact(event);
 
   const artifacts = new Map<string, unknown>();
   // Full-event report bundle (master, archetypes, per-archetype files, usage).
-  for (const [path, body] of buildReportBundle(decks, synonymDb, '')) artifacts.set(path, body);
+  for (const [path, body] of buildReportBundle(decks, synonymDb, '', canonicalization)) {
+    artifacts.set(path, body);
+  }
 
   // Day-2 and top-cut slices reuse the same bundle over a filtered deck set.
   for (const [name, keep] of [
@@ -206,7 +273,9 @@ export function buildEventArtifacts(
   ] as const) {
     const sliceDecks = decks.filter(keep);
     if (sliceDecks.length > 0) {
-      for (const [path, body] of buildReportBundle(sliceDecks, synonymDb, `slices/${name}/`)) artifacts.set(path, body);
+      for (const [path, body] of buildReportBundle(sliceDecks, synonymDb, `slices/${name}/`, canonicalization)) {
+        artifacts.set(path, body);
+      }
     }
   }
 
@@ -224,9 +293,15 @@ export function buildEventArtifacts(
       })),
       madePhase2: participantIndex(event).get(deck.participantId)?.flags.madePhase2 === true
     })),
-    synonymDb
+    synonymDb,
+    { resolveUid: canonicalization?.resolveUid }
   );
-  if (conversion !== null) artifacts.set('conversion.json', conversion);
+  if (conversion !== null) {
+    if (canonicalization) {
+      conversion.canonicalizedAt = canonicalization.asOfDate;
+    }
+    artifacts.set('conversion.json', conversion);
+  }
 
   // Matchup profiles are meaningful only where matches exist (Labs events).
   if (event.matches.length > 0) {

@@ -85,7 +85,7 @@ Generates the "Online - Last 14 Days" meta report by aggregating recent online t
 
 ### Required Secrets
 - `LIMITLESS_API_KEY` - API key for Limitless TCG
-- `R2_ACCOUNT_ID` - Cloudflare R2 account ID
+- `CLOUDFLARE_ACCOUNT_ID` - Cloudflare account ID (also used as R2 account ID)
 - `R2_ACCESS_KEY_ID` - R2 access key
 - `R2_SECRET_ACCESS_KEY` - R2 secret key
 - `R2_BUCKET_NAME` - Target R2 bucket (typically `ciphermaniac-reports`)
@@ -143,7 +143,7 @@ Updates card prices for all cards in the online meta by fetching current market 
 - `workflow_dispatch`: Manual trigger
 
 ### Required Secrets
-- `R2_ACCOUNT_ID` - Cloudflare R2 account ID
+- `CLOUDFLARE_ACCOUNT_ID` - Cloudflare account ID (also used as R2 account ID)
 - `R2_ACCESS_KEY_ID` - R2 access key
 - `R2_SECRET_ACCESS_KEY` - R2 secret key
 
@@ -214,7 +214,7 @@ Downloads and processes an individual tournament report from Limitless Labs (man
 - `anonymize` (optional, default: false) - Anonymize player names
 
 ### Required Secrets
-- `R2_ACCOUNT_ID` - Cloudflare R2 account ID
+- `CLOUDFLARE_ACCOUNT_ID` - Cloudflare account ID (also used as R2 account ID)
 - `R2_ACCESS_KEY_ID` - R2 access key
 - `R2_SECRET_ACCESS_KEY` - R2 secret key
 
@@ -279,7 +279,7 @@ Performs a destructive one-time reset of offline tournament reports, then rebuil
 - `reset_reports` (optional, default: `true`) - Whether to run destructive deletion phase
 
 ### Required Secrets
-- `R2_ACCOUNT_ID` - Cloudflare R2 account ID
+- `CLOUDFLARE_ACCOUNT_ID` - Cloudflare account ID (also used as R2 account ID)
 - `R2_ACCESS_KEY_ID` - R2 access key
 - `R2_SECRET_ACCESS_KEY` - R2 secret key
 - `R2_BUCKET_NAME` - Target R2 bucket
@@ -374,7 +374,7 @@ Configure these in your repository settings (`Settings` → `Secrets and variabl
 - `LIMITLESS_API_KEY` - API key for Limitless TCG API access
 
 ### Cloudflare R2 Storage
-- `R2_ACCOUNT_ID` - R2 account ID
+- `CLOUDFLARE_ACCOUNT_ID` - Cloudflare account ID (also used as R2 account ID)
 - `R2_ACCESS_KEY_ID` - R2 access key ID
 - `R2_SECRET_ACCESS_KEY` - R2 secret access key
 - `R2_BUCKET_NAME` - Target bucket (typically `ciphermaniac-reports`)

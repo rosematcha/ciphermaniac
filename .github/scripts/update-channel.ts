@@ -46,8 +46,16 @@ async function main(): Promise<void> {
     secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY')
   });
   const store = createR2ObjectStore(client, requireEnv('R2_BUCKET_NAME'));
-  const key = `build/v1/channels/${channel}.json`;
 
+  // Persist the full manifest at a stable public key BEFORE flipping the pointer,
+  // so any git-integrated source build (which re-embeds the current pointer's
+  // manifest at build time) can always fetch it. Keyed by releaseId, so it is
+  // effectively immutable and safe to write once.
+  const manifestKey = `build/v1/releases/${manifest.releaseId}.json`;
+  await store.put(manifestKey, JSON.stringify(manifest));
+  console.log(`[update-channel] persisted manifest -> ${manifestKey}`);
+
+  const key = `build/v1/channels/${channel}.json`;
   const written = await updatePointer(store, key, () => ({
     channel,
     releaseId: manifest.releaseId,

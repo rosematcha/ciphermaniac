@@ -15,18 +15,21 @@
  * manifest, and never touches `reports/` or the production channel. DRY RUN by
  * default; `--write` publishes; `--gc` removes what it wrote.
  *
- * Usage: tsx build-loop.ts [--write] [--lite] [--gc] [--limit N] [--emit-roots roots.json] [--emit-events events.json]
+ * Usage: tsx build-loop.ts [--write] [--lite] [--gc] [--limit N] [--emit-roots roots.json] [--emit-served served.json] [--emit-events events.json]
  * @module .github/scripts/build-loop
  */
 
-import { writeFile } from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
+import { readFile, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { composeRelease, type ReleaseScope } from '../../shared/data/build/release.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import { sha256HexString } from '../../shared/data/hash.ts';
 import { labsSourceToNormalized } from '../../shared/data/adapters/labsSource.ts';
 import { buildEventArtifacts } from '../../shared/data/reports/eventArtifacts.ts';
+import { buildOnlineServingArtifacts } from '../../shared/data/reports/onlineArtifacts.ts';
+import type { ArchetypeDeckInput } from '../../shared/data/archetypes/build.ts';
 import { buildTournamentCatalog } from './event-cli.ts';
 import { createR2Client, getJsonResult, putJson } from './lib/r2.mjs';
 
@@ -38,13 +41,27 @@ function requireEnv(name: string): string {
   return v;
 }
 
-// Hot index artifacts captured in --lite mode (enough for a valid manifest +
-// resolver proof without copying every body).
-const LITE_KEYS: Record<Exclude<ReleaseScope, 'online' | 'catalogs'>, string[]> = {
-  trends: ['Trends - Last 30 Days/trends.json', 'Trends - Last 30 Days/meta.json', 'majors-trends.json'],
-  players: ['index.json', 'index-slim.json'],
-  prices: ['prices.json', 'prices-history.json'],
-  snapshots: ['Snapshots/index.json']
+// Captured scopes: index artifacts copied forward from legacy. `rel` is the
+// SCOPE-RELATIVE key (what the browser resolver expects under the scope root,
+// after stripping the legacy folder); `legacy` is where the body lives today.
+// Decoupling the two is essential — publishing under the legacy folder name
+// (e.g. "Trends - Last 30 Days/trends.json") would not match the resolver's
+// scope-relative "trends.json" and would 404.
+const CAPTURED_KEYS: Record<Exclude<ReleaseScope, 'online' | 'catalogs'>, { rel: string; legacy: string }[]> = {
+  trends: [
+    { rel: 'trends.json', legacy: 'reports/Trends - Last 30 Days/trends.json' },
+    { rel: 'meta.json', legacy: 'reports/Trends - Last 30 Days/meta.json' },
+    { rel: 'majors-trends.json', legacy: 'reports/majors-trends.json' }
+  ],
+  players: [
+    { rel: 'index.json', legacy: 'players/index.json' },
+    { rel: 'index-slim.json', legacy: 'players/index-slim.json' }
+  ],
+  prices: [
+    { rel: 'prices.json', legacy: 'reports/prices.json' },
+    { rel: 'prices-history.json', legacy: 'reports/prices-history.json' }
+  ],
+  snapshots: [{ rel: 'index.json', legacy: 'reports/Snapshots/index.json' }]
 };
 
 async function main(): Promise<void> {
@@ -71,6 +88,10 @@ async function main(): Promise<void> {
   const gen = (obj: unknown): string => sha256HexString(canonicalStringify(obj)).slice(0, 12);
 
   const synonyms = await load<Parameters<typeof buildEventArtifacts>[1] extends { synonymDb?: infer S } ? S : never>('assets/card-synonyms.json');
+  // Inputs the online-window regeneration needs beyond decks: card types (thumbnail
+  // + signature inference) and the hand-maintained thumbnail overrides (repo asset).
+  const cardTypesDb = await load('assets/data/card-types.json');
+  const thumbnailConfig = JSON.parse(await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../../public/assets/data/archetype-thumbnails.json'), 'utf8'));
 
   // ---- Discover scopes ----
   const listed = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: 'reports/', Delimiter: '/' }));
@@ -78,6 +99,11 @@ async function main(): Promise<void> {
   const eventFolders = allFolders.filter(f => /^\d{4}-\d{2}-\d{2},/.test(f)).slice(0, limit);
 
   const roots: Partial<Record<ReleaseScope, string>> = {};
+  // Exactly the scope-relative keys this run publishes, per scope. The manifest
+  // records this so the browser rewrites ONLY these keys to immutable roots and
+  // passes every other path (per-player/snapshot bodies, absent online files)
+  // through to legacy — never a release-body 404 for something we never captured.
+  const served: Partial<Record<ReleaseScope, string[]>> = {};
   const events: Record<string, string> = {};
 
   // ---- Events (fresh, folder-keyed) ----
@@ -116,31 +142,60 @@ async function main(): Promise<void> {
   const catalogRoot = `releases/v1/catalogs/${gen(catalog)}`;
   await publish(`${catalogRoot}/tournaments.json`, catalog);
   roots.catalogs = `/${catalogRoot}`;
+  served.catalogs = ['tournaments.json'];
 
-  // ---- Online (fresh capture of current online window, republished immutably) ----
-  const onlineKeys = ['master.json', 'decks.json', 'meta.json', 'cardUsage.json', 'archetypes/index.json'];
-  const onlineBodies: Record<string, unknown> = {};
-  for (const k of onlineKeys) onlineBodies[k] = await load(`reports/Online - Last 14 Days/${k}`);
-  const onlineRoot = `releases/v1/online/${gen(onlineBodies)}`;
-  for (const [k, body] of Object.entries(onlineBodies)) if (body !== null) await publish(`${onlineRoot}/${k}`, body);
-  roots.online = `/${onlineRoot}`;
+  // ---- Online (source captured, derived artifacts REGENERATED via shared builders) ----
+  // decks.json + meta.json are the fetched source (kept as captured); master,
+  // cardUsage, and the archetype index are rebuilt from those decks through the
+  // consolidated builders — the same D4/D9 semantics events already use, retiring
+  // the duplicate generation inside run-online-meta.mjs.
+  const onlineDecks = await load<ArchetypeDeckInput[]>('reports/Online - Last 14 Days/decks.json');
+  if (onlineDecks) {
+    const onlineMeta = await load('reports/Online - Last 14 Days/meta.json');
+    const { master, cardUsage, archetypeIndex } = buildOnlineServingArtifacts(onlineDecks, { synonymDb: synonyms, cardTypesDb, thumbnailConfig });
+    const onlineBodies: Record<string, unknown> = {
+      'master.json': master,
+      'decks.json': onlineDecks,
+      'meta.json': onlineMeta,
+      'cardUsage.json': cardUsage,
+      'archetypes/index.json': archetypeIndex
+    };
+    const onlineRoot = `releases/v1/online/${gen(onlineBodies)}`;
+    for (const [k, body] of Object.entries(onlineBodies)) if (body !== null) await publish(`${onlineRoot}/${k}`, body);
+    served.online = Object.entries(onlineBodies)
+      .filter(([, body]) => body !== null)
+      .map(([k]) => k);
+    roots.online = `/${onlineRoot}`;
+  }
 
-  // ---- Captured scopes (not rewritten this migration) ----
+  // ---- Captured scopes (index artifacts copied forward from legacy) ----
+  // Per-entity bodies (per-player, per-snapshot) are intentionally NOT captured;
+  // the resolver passes those deep-links through to legacy (dual-written) until
+  // a later slice moves them onto immutable revision-addressed keys.
   for (const scope of ['trends', 'players', 'prices', 'snapshots'] as const) {
-    const keys = lite ? LITE_KEYS[scope] : LITE_KEYS[scope]; // full-body capture is a follow-up; lite keys are always captured
-    const prefix = scope === 'players' ? 'players' : 'reports';
-    const bodies: Record<string, unknown> = {};
-    for (const k of keys) bodies[k] = await load(`${prefix}/${k}`);
-    const root = `releases/v1/${scope}/${gen(bodies)}`;
-    for (const [k, body] of Object.entries(bodies)) if (body !== null) await publish(`${root}/${k}`, body);
+    const relBodies: Record<string, unknown> = {};
+    for (const { rel, legacy } of CAPTURED_KEYS[scope]) {
+      const body = await load(legacy);
+      if (body !== null) relBodies[rel] = body;
+    }
+    const root = `releases/v1/${scope}/${gen(relBodies)}`;
+    for (const [rel, body] of Object.entries(relBodies)) await publish(`${root}/${rel}`, body);
     roots[scope] = `/${root}`;
+    served[scope] = Object.keys(relBodies);
   }
 
   // ---- Compose + validate manifest ----
-  const releaseId = `${lite ? 'shadow' : 'release'}-${gen({ roots, events })}`;
-  const manifest = composeRelease({ releaseId, publishedAt: '1970-01-01T00:00:00Z', roots: roots as Record<ReleaseScope, string>, events });
+  const releaseId = `${lite ? 'shadow' : 'release'}-${gen({ roots, served, events })}`;
+  const manifest = composeRelease({
+    releaseId,
+    publishedAt: '1970-01-01T00:00:00Z',
+    roots: roots as Record<ReleaseScope, string>,
+    served: served as Record<ReleaseScope, string[]>,
+    events
+  });
 
   if (arg('--emit-roots')) await writeFile(arg('--emit-roots')!, JSON.stringify(roots, null, 2));
+  if (arg('--emit-served')) await writeFile(arg('--emit-served')!, JSON.stringify(served, null, 2));
   if (arg('--emit-events')) await writeFile(arg('--emit-events')!, JSON.stringify(events, null, 2));
 
   console.log('[build-loop] ===== SUMMARY =====');

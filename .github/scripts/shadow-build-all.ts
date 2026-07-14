@@ -191,7 +191,8 @@ async function main(): Promise<void> {
     online: `/${onlineRoot}`, trends: `/${onlineRoot}`, players: `/${onlineRoot}`,
     prices: `/${onlineRoot}`, catalogs: `/${onlineRoot}`, snapshots: `/${onlineRoot}`
   };
-  const manifest = composeRelease({ releaseId: `shadow-${sha256HexString(JSON.stringify(eventRoots)).slice(0, 10)}`, publishedAt: '1970-01-01T00:00:00Z', roots, events: eventRoots });
+  const served: Record<ReleaseScope, string[]> = { online: ['master.json'], trends: [], players: [], prices: [], catalogs: [], snapshots: [] };
+  const manifest = composeRelease({ releaseId: `shadow-${sha256HexString(JSON.stringify(eventRoots)).slice(0, 10)}`, publishedAt: '1970-01-01T00:00:00Z', roots, served, events: eventRoots });
   await store.put('build/v1/channels/shadow.json', JSON.stringify({ channel: 'shadow', manifest }));
   publishedKeys.push('build/v1/channels/shadow.json');
 

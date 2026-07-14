@@ -60,7 +60,7 @@ jobs:
 
       - name: Download reports from Cloudflare R2
         env:
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
@@ -91,7 +91,7 @@ jobs:
 
       - name: Download existing card types database
         env:
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
@@ -118,7 +118,7 @@ jobs:
 
       - name: Upload card types database to R2
         env:
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}

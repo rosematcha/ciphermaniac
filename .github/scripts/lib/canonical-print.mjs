@@ -22,14 +22,38 @@ const CATALOG = JSON.parse(readFileSync(join(__dirname, '../data/set-catalog.jso
 export const SET_CATALOG = CATALOG.sets;
 export const STANDARD_LEGAL_SETS = new Set(CATALOG.standardLegalSets);
 export const PROMO_SETS = new Set(CATALOG.promoSets);
+export const ENERGY_SETS = new Set(CATALOG.energySets);
 export const BASIC_ENERGY_NAMES = new Set(CATALOG.basicEnergyNames);
 
 // sets is ordered newest-first, so a larger index means an older set.
 const SET_RELEASE_INDEX = new Map(SET_CATALOG.map((entry, index) => [entry.code, index]));
 
+const SET_BY_CODE = new Map(SET_CATALOG.map(entry => [entry.code, entry]));
+
 // Unknown sets are treated as newest: they are either brand-new sets missing
 // from the catalog or oddball products, and neither should win "oldest".
 const UNKNOWN_SET_INDEX = -1;
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Was the set standard-legal on the given ISO date? Window is [legalFrom, legalUntil).
+ * @param {string|null|undefined} setCode
+ * @param {string} asOfDate
+ * @returns {boolean}
+ */
+export function isSetLegalAt(setCode, asOfDate) {
+    const entry = setCode ? SET_BY_CODE.get(setCode.toUpperCase()) : undefined;
+    if (!entry?.legalFrom || entry.legalFrom > asOfDate) return false;
+    return entry.legalUntil == null || asOfDate < entry.legalUntil;
+}
+
+// A print "existed" on a date unless its set is dated and became legal only
+// later. Undated sets are pre-era products that certainly existed already.
+function printExistedAt(setCode, asOfDate) {
+    const entry = setCode ? SET_BY_CODE.get(setCode.toUpperCase()) : undefined;
+    return !entry?.legalFrom || entry.legalFrom <= asOfDate;
+}
 
 export function getReleaseIndex(setCode) {
     if (!setCode) return UNKNOWN_SET_INDEX;
@@ -67,17 +91,41 @@ function compareKeys(a, b) {
 /**
  * Pick the canonical print from a cluster of print variations.
  *
+ * With `options.asOfDate` (ISO YYYY-MM-DD), standard legality is evaluated on
+ * that date instead of today's standardLegalSets — the rolling canonical for a
+ * historical event uses the event's start date. Prints from sets not yet legal
+ * on the date are treated as nonexistent. Prices remain today's scrape; the
+ * accessibility rule is kept as an approximation.
+ *
  * @param {Array<{set: string, number: string, price_usd?: number|null}>} variations
  * @param {string} cardName
+ * @param {{asOfDate?: string|null}} [options]
  * @returns {{set: string, number: string, price_usd?: number|null}|null}
  */
-export function chooseCanonicalPrint(variations, cardName) {
+export function chooseCanonicalPrint(variations, cardName, options) {
     if (!variations || !variations.length) return null;
 
-    // 1. Standard legality. If nothing is legal (a fully rotated card in
-    //    historical data), fall back to every print.
-    const legal = variations.filter(v => STANDARD_LEGAL_SETS.has((v.set || '').toUpperCase()));
-    let pool = legal.length ? legal : [...variations];
+    const asOfDate = options?.asOfDate ?? null;
+    if (asOfDate !== null && !ISO_DATE.test(asOfDate)) {
+        throw new Error(`chooseCanonicalPrint: invalid asOfDate "${asOfDate}" (expected YYYY-MM-DD)`);
+    }
+
+    // 1. Standard legality, on the event date when one is given. If nothing is
+    //    legal (a fully rotated card in historical data), fall back to every
+    //    print that existed on the date.
+    let pool;
+    if (asOfDate !== null) {
+        const legal = variations.filter(v => isSetLegalAt(v.set, asOfDate));
+        if (legal.length) {
+            pool = legal;
+        } else {
+            const existing = variations.filter(v => printExistedAt(v.set, asOfDate));
+            pool = existing.length ? existing : [...variations];
+        }
+    } else {
+        const legal = variations.filter(v => STANDARD_LEGAL_SETS.has((v.set || '').toUpperCase()));
+        pool = legal.length ? legal : [...variations];
+    }
 
     // 2. Accessibility. Strike collector-priced prints, and prints with no
     //    price at all when priced alternatives exist.
@@ -95,16 +143,30 @@ export function chooseCanonicalPrint(variations, cardName) {
     const nonPromo = pool.filter(v => !PROMO_SETS.has((v.set || '').toUpperCase()));
     if (nonPromo.length) pool = nonPromo;
 
-    // 4. Basic energies take the newest remaining print, everything else the
-    //    oldest. Ties break by lower price, then lower collector number.
     const wantNewest = BASIC_ENERGY_NAMES.has(cardName);
+
+    // 3.5. Basic energies prefer the dedicated energy sets (SVE/MEE) outright:
+    //      energy prints are rarely priced, so the accessibility cap cannot
+    //      strike the collector reprints in main sets (e.g. OBF 230 gold Fire),
+    //      and the newest-print rule would otherwise hand energies to whatever
+    //      bling reprint shipped last.
+    if (wantNewest) {
+        const energyPrints = pool.filter(v => ENERGY_SETS.has((v.set || '').toUpperCase()));
+        if (energyPrints.length) pool = energyPrints;
+    }
+
+    // 4. Basic energies take the newest remaining print, everything else the
+    //    oldest. Ties break by lower collector number, then lower price: within
+    //    a set the regular print carries the lower number, and a meta-spiked
+    //    regular print must still beat a transiently cheaper collector version
+    //    (the accessibility cap is the price gate; below it, number decides).
     const sortKey = v => {
         const index = getReleaseIndex(v.set);
         const price = normalizePrice(v.price_usd);
         return [
             wantNewest ? index : -index,
-            price === null ? Number.POSITIVE_INFINITY : price,
-            ...numberSortKey(v.number)
+            ...numberSortKey(v.number),
+            price === null ? Number.POSITIVE_INFINITY : price
         ];
     };
 

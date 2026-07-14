@@ -12,7 +12,8 @@ import {
   fetchPriceHistory,
   fetchPrices,
   fetchRotationIndex,
-  findCardBySetNumber,
+  findByClusterUid,
+  findCardBySetNumberCanonical,
   getArchetypeIconMap,
   isSnapshotSource,
   itemUid,
@@ -25,7 +26,9 @@ import {
   snapshotDateForCard,
   snapshotSourceKey
 } from '../lib/data';
-import { buildCardId } from '../utils/deckCardId';
+import { buildCanonicalCardId } from '../utils/deckCardId';
+import { getSynonymDatabase } from '../utils/cardSynonyms';
+import { getCanonicalCardFromData, type SynonymDatabase } from '../../shared/synonyms.js';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { ONLINE_META_NAME } from '../lib/constants';
 import { nameFromTournamentKey } from '../lib/format';
@@ -52,6 +55,11 @@ export function CardPage() {
   const { tournament } = useTournament();
   const [master] = createResource(tournament, fetchMaster);
   const [prices] = createResource(fetchPrices);
+  // Synonym DB for cluster-aware joins: a rebaked event's master/usage/conversion
+  // key by a rolling-canonical print, while the URL, prices, and deck-filter keys
+  // use the global canonical — resolving both sides through this DB aligns them.
+  const [synonymDb] = createResource(() => getSynonymDatabase());
+  const db = (): SynonymDatabase | null => synonymDb() ?? null;
   // Non-suspending reads (see lib/resource.ts). Master/prices are
   // tournament-scoped, so keep the last value while a refetch is in flight;
   // the per-card fan-out below uses `resolved` so a param change shows the
@@ -63,7 +71,7 @@ export function CardPage() {
     if (!items) {
       return undefined;
     }
-    return findCardBySetNumber(items, params.set, params.number);
+    return findCardBySetNumberCanonical(items, params.set, params.number, db());
   });
 
   // Deferred: the 49KB Snapshots index only matters for the historical
@@ -90,7 +98,7 @@ export function CardPage() {
       setCanonicalPending(false);
       return;
     }
-    if (findCardBySetNumber(items, reqSet, reqNumber)) {
+    if (findCardBySetNumberCanonical(items, reqSet, reqNumber, db())) {
       setCanonicalPending(false);
       return;
     }
@@ -138,7 +146,7 @@ export function CardPage() {
     if (!items) {
       return undefined;
     }
-    return findCardBySetNumber(items, params.set, params.number);
+    return findCardBySetNumberCanonical(items, params.set, params.number, db());
   });
 
   // The card actually rendered: live wins; snapshot fills in when there is no
@@ -193,13 +201,24 @@ export function CardPage() {
     return date ? snapshotSourceKey(date) : tournament();
   });
 
+  // `prices.json` keys are the CURRENT global canonical UID (the producer
+  // resolves through synonyms), but `card` may now be a rolling-canonical print.
+  // Try the card's own UID first, then its resolved global canonical.
+  const globalCardUid = createMemo<string | null>(() => {
+    const c = card();
+    if (!c) {
+      return null;
+    }
+    return getCanonicalCardFromData(db(), itemUid(c));
+  });
+
   const priceEntry = createMemo(() => {
     const c = card();
     const p = pricesData();
     if (!c || !p) {
       return null;
     }
-    return p[`${c.name}::${c.set}::${c.number}`] ?? null;
+    return p[`${c.name}::${c.set}::${c.number}`] ?? p[globalCardUid() ?? ''] ?? null;
   });
 
   // Rolling 90-day price history for the sparkline. One small file for the whole
@@ -218,7 +237,7 @@ export function CardPage() {
     if (!c || !h || !priceHistoryReady()) {
       return [];
     }
-    return h[`${c.name}::${c.set}::${c.number}`] ?? [];
+    return h[`${c.name}::${c.set}::${c.number}`] ?? h[globalCardUid() ?? ''] ?? [];
   });
 
   // Per-archetype usage: list every archetype that plays this card, with its
@@ -242,11 +261,11 @@ export function CardPage() {
       if (!c || !list || cardUsage.loading) {
         return null;
       }
-      return { card: c, list, tournament: t, usage: cardUsage() ?? null };
+      return { card: c, list, tournament: t, usage: cardUsage() ?? null, database: db() };
     },
-    async ({ card, list, tournament, usage }) => {
+    async ({ card, list, tournament, usage, database }) => {
       if (usage) {
-        return buildUsageRowsFromIndex(usage, list, card);
+        return buildUsageRowsFromIndex(usage, list, card, database);
       }
       const results = await Promise.all(
         list.map(async (entry): Promise<ArchetypeUsageRow | null> => {
@@ -286,9 +305,12 @@ export function CardPage() {
     if (!c || !stats) {
       return undefined;
     }
-    const byUid = stats.find(s => s.uid === itemUid(c));
-    if (byUid) {
-      return byUid;
+    // Cluster-aware: resolve both the card and each conversion key to their
+    // global cluster identity, so a rolling-keyed conversion entry matches a
+    // rolling (or global) card and vice versa.
+    const byCluster = findByClusterUid(stats, itemUid(c), db());
+    if (byCluster) {
+      return byCluster;
     }
     // Fallback: match on set + number with leading zeros normalized, mirroring
     // the archetype-report lookup above.
@@ -340,6 +362,7 @@ export function CardPage() {
       >
         <CardPageBody
           card={card()!}
+          db={db()}
           setNumber={setNumber()}
           priceEntry={priceEntry()}
           priceSeries={priceSeries()}
@@ -372,9 +395,10 @@ interface ArchetypeUsageRow {
 function buildUsageRowsFromIndex(
   payload: CardUsagePayload,
   list: ArchetypeIndexEntry[],
-  card: CardItem
+  card: CardItem,
+  db: SynonymDatabase | null
 ): ArchetypeUsageRow[] {
-  const entries = cardUsageForCard(payload, card);
+  const entries = cardUsageForCard(payload, card, db);
   if (!entries) {
     return [];
   }
@@ -406,6 +430,7 @@ function buildUsageRowsFromIndex(
 
 function CardPageBody(props: {
   card: CardItem;
+  db: SynonymDatabase | null;
   setNumber: string;
   priceEntry: { price?: number; tcgPlayerId?: string } | null;
   priceSeries: PricePoint[];
@@ -609,7 +634,7 @@ function CardPageBody(props: {
                   />
                 }
               >
-                <ArchetypeUsageTable rows={props.archetypeUsage!} card={props.card} />
+                <ArchetypeUsageTable rows={props.archetypeUsage!} card={props.card} db={props.db} />
               </Show>
             </Show>
           </div>
@@ -720,7 +745,7 @@ function fmtWholePct(p: number): string {
  * raw number of decks running the card within each archetype, descending, so
  * popular decks outrank tiny ones with a higher inclusion rate.
  */
-function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem }) {
+function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem; db: SynonymDatabase | null }) {
   const iconMap = getArchetypeIconMap();
   const sorted = createMemo(() => {
     // Rank by the raw number of players running the card in each archetype
@@ -744,11 +769,10 @@ function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem 
     });
   // Filter deep links need the card's SET~NUMBER id; without set/number the
   // expansion still renders, just without "view lists" links.
-  const cardId = createMemo(() =>
-    props.card.set && props.card.number !== undefined && props.card.number !== null
-      ? buildCardId(props.card.set, props.card.number)
-      : null
-  );
+  // Deep links target the archetype filter, whose rules key by the GLOBAL
+  // canonical printing (decks are canonicalized to global) — so resolve the
+  // card's rolling print to its cluster canonical before building the id.
+  const cardId = createMemo(() => buildCanonicalCardId(props.card, props.db));
 
   return (
     <div class='au-block'>

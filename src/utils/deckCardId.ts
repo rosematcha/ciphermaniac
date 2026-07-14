@@ -40,3 +40,23 @@ export function canonicalizeDeckCard(card: DeckCard, db: Parameters<typeof getCa
   }
   return { ...card, name: parts[0], set: parts[1], number: parts[2] };
 }
+
+/**
+ * Build the `SET~NUMBER` match key for a report card, resolved to its GLOBAL
+ * canonical printing. Report items on a rebaked ("rolling canonical") event
+ * carry a period-correct variant print, but the decks the filter/lens match
+ * against are canonicalized to the global print — so the match key must be
+ * globalized on both sides. Returns null when set/number are absent.
+ */
+export function buildCanonicalCardId(
+  card: { name?: string; set?: string | null; number?: string | number | null },
+  db: Parameters<typeof getCanonicalCardFromData>[0]
+): string | null {
+  if (!card.set || card.number === undefined || card.number === null) {
+    return null;
+  }
+  const canonical = db
+    ? canonicalizeDeckCard({ name: card.name ?? '', set: card.set, number: card.number, count: 0 } as DeckCard, db)
+    : card;
+  return canonical.set ? buildCardId(canonical.set, canonical.number ?? null) : null;
+}

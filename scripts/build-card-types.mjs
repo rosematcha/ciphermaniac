@@ -19,7 +19,110 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 // Bump when parseCardPage gains persisted enrichment fields. This lets routine
 // runs backfill prior database entries once, without repeatedly force-refreshing.
-const METADATA_SCHEMA_VERSION = 1;
+// v2 adds structured fields: stage, mechanicSubtypes, structured
+// weakness/resistance ({type, modifier}).
+const METADATA_SCHEMA_VERSION = 2;
+
+/**
+ * Structured evolution stage vocabulary. Derived from the observed first
+ * segment of the Pokémon type/evolution line in card-types.json (counts as of
+ * 2026-07): Basic (1358), Stage 1 (639), Stage 2 (228), VSTAR (29), VMAX (5),
+ * Level Up (1). Keyed by the lowercased raw segment.
+ * @type {Record<string, 'basic'|'stage1'|'stage2'|'vstar'|'vmax'|'levelUp'>}
+ */
+const STAGE_MAP = {
+  basic: 'basic',
+  'stage 1': 'stage1',
+  'stage 2': 'stage2',
+  vstar: 'vstar',
+  vmax: 'vmax',
+  'level up': 'levelUp'
+};
+
+/** All valid structured stage values, for the contract/tests. */
+export const CARD_STAGES = ['basic', 'stage1', 'stage2', 'vstar', 'vmax', 'levelUp'];
+
+/**
+ * Mechanic subtype vocabulary and canonical emission order. VSTAR/VMAX are
+ * observable offline (they appear as the type-line stage); ex/Tera/V/Radiant/
+ * Mega live only in the card NAME line, so they are derivable while scraping
+ * but NOT from the stored strings.
+ * @type {readonly string[]}
+ */
+export const CARD_MECHANIC_SUBTYPES = ['Mega', 'Tera', 'Radiant', 'ex', 'VMAX', 'VSTAR', 'V'];
+
+/**
+ * Parse the structured {@link CARD_STAGES} value from a Pokémon evolution/type
+ * line (e.g. "Stage 2 - Evolves from Kirlia" → "stage2"). Returns null for
+ * non-Pokémon or unrecognized segments.
+ * @param {string|null|undefined} evolutionInfo
+ * @returns {string|null}
+ */
+export function parseStage(evolutionInfo) {
+  if (typeof evolutionInfo !== 'string') {
+    return null;
+  }
+  const segment = evolutionInfo.split(/\s*-\s*/)[0]?.trim().toLowerCase();
+  return (segment && STAGE_MAP[segment]) || null;
+}
+
+/**
+ * Extract mechanic subtypes from a Pokémon card name. Handles multi-mechanic
+ * names ("Tera ... ex" → ["Tera", "ex"]). Prefix mechanics (Mega/Radiant) and
+ * the V-family are whole-word tokens; "ex" is a lowercase suffix token.
+ * @param {string|null|undefined} name
+ * @returns {string[]}
+ */
+export function parseMechanicSubtypes(name) {
+  if (typeof name !== 'string' || !name.trim()) {
+    return [];
+  }
+  const words = name.trim().split(/\s+/);
+  const wordSet = new Set(words);
+  const found = new Set();
+  if (words[0] === 'Mega') {
+    found.add('Mega');
+  }
+  if (words[0] === 'Radiant') {
+    found.add('Radiant');
+  }
+  if (wordSet.has('Tera')) {
+    found.add('Tera');
+  }
+  if (wordSet.has('ex')) {
+    found.add('ex');
+  }
+  if (wordSet.has('VMAX')) {
+    found.add('VMAX');
+  } else if (wordSet.has('VSTAR')) {
+    found.add('VSTAR');
+  } else if (wordSet.has('V')) {
+    found.add('V');
+  }
+  return CARD_MECHANIC_SUBTYPES.filter(m => found.has(m));
+}
+
+/**
+ * Parse a loose Weakness/Resistance string ("Fighting ×2", "Fire -30",
+ * "Fighting") into {type, modifier}. "none"/empty → null; a bare type keeps a
+ * null modifier. The modifier is normalized to its whitespace-free form.
+ * @param {string|null|undefined} value
+ * @returns {{type: string, modifier: string|null}|null}
+ */
+export function parseWeaknessResistance(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const text = value.trim();
+  if (!text || text.toLowerCase() === 'none') {
+    return null;
+  }
+  const match = text.match(/^(.+?)\s*([×x*]\s*\d+|[+-]\s*\d+)\s*$/i);
+  if (match) {
+    return { type: match[1].trim(), modifier: match[2].replace(/\s+/g, '') };
+  }
+  return { type: text, modifier: null };
+}
 
 /**
  * Produce number variants to accommodate Limitless URLs without leading zeros.
@@ -147,6 +250,72 @@ function extractCardTextDetails(html) {
 }
 
 /**
+ * Upgrade a stored card-types entry in place (offline) to the current metadata
+ * schema, recomputing every field derivable from the already-stored strings:
+ * `stage`, the V-family portion of `mechanicSubtypes`, structured
+ * weakness/resistance, and numeric hp/retreatCost. Name-only mechanics
+ * (ex/Tera/Radiant/Mega) and never-scraped fields (hp/weakness on legacy
+ * entries) can't be recovered offline and are left as-is — a re-scrape backfills
+ * them. Returns a new object; the input is untouched.
+ * @param {Record<string, any>} entry
+ * @returns {Record<string, any>}
+ */
+export function restructureEntry(entry) {
+  const next = { ...entry, metadataVersion: METADATA_SCHEMA_VERSION };
+
+  const stage = next.cardType === 'pokemon' ? parseStage(next.evolutionInfo) : null;
+  if (stage) {
+    next.stage = stage;
+  } else {
+    delete next.stage;
+  }
+
+  // mechanicSubtypes: preserve any name-derived markers already stored, and
+  // (re)add the stage-derived V-family so offline entries gain VSTAR/VMAX.
+  const mechanicSet = new Set(Array.isArray(next.mechanicSubtypes) ? next.mechanicSubtypes : []);
+  if (stage === 'vstar') {
+    mechanicSet.add('VSTAR');
+  } else if (stage === 'vmax') {
+    mechanicSet.add('VMAX');
+  }
+  const mechanicSubtypes = CARD_MECHANIC_SUBTYPES.filter(m => mechanicSet.has(m));
+  if (mechanicSubtypes.length) {
+    next.mechanicSubtypes = mechanicSubtypes;
+  } else {
+    delete next.mechanicSubtypes;
+  }
+
+  if (typeof next.weakness === 'string') {
+    const structured = parseWeaknessResistance(next.weakness);
+    if (structured) {
+      next.weakness = structured;
+    } else {
+      delete next.weakness;
+    }
+  }
+  if (typeof next.resistance === 'string') {
+    const structured = parseWeaknessResistance(next.resistance);
+    if (structured) {
+      next.resistance = structured;
+    } else {
+      delete next.resistance;
+    }
+  }
+
+  if (typeof next.hp === 'string') {
+    const n = Number(next.hp.replace(/[^\d]/g, ''));
+    if (Number.isFinite(n) && n > 0) {
+      next.hp = n;
+    }
+  }
+  if (typeof next.retreatCost === 'string' && /^\d+$/.test(next.retreatCost.trim())) {
+    next.retreatCost = Number(next.retreatCost.trim());
+  }
+
+  return next;
+}
+
+/**
  * Parse everything we can from a Limitless card page.
  * Existing fields (cardType/subType/evolutionInfo/fullType/aceSpec/
  * regulationMark/abilities/attacks) keep their historical semantics —
@@ -230,12 +399,14 @@ export function parseCardPage(html) {
   // Title line: "<name> - Darkness - 210 HP" (Pokémon only carry type + HP)
   let hp = null;
   let pokemonType = null;
+  let name = null;
   const titleMatch = html.match(/<p class="card-text-title"[^>]*>([\s\S]*?)<\/p>/i);
   if (titleMatch) {
     const titleParts = htmlToText(titleMatch[1])
       .split(/\s+-\s+/)
       .map(p => p.trim())
       .filter(Boolean);
+    name = titleParts[0] ?? null;
     for (const part of titleParts.slice(1)) {
       const hpMatch = part.match(/^(\d+)\s*HP$/i);
       if (hpMatch) {
@@ -258,8 +429,8 @@ export function parseCardPage(html) {
       const value = m ? m[1].trim() : null;
       return value && normalize(value) !== 'none' ? value : null;
     };
-    weakness = grab('Weakness');
-    resistance = grab('Resistance');
+    weakness = parseWeaknessResistance(grab('Weakness'));
+    resistance = parseWeaknessResistance(grab('Resistance'));
     const retreat = grab('Retreat');
     if (retreat && /^\d+$/.test(retreat)) {
       retreatCost = Number(retreat);
@@ -305,12 +476,26 @@ export function parseCardPage(html) {
     legality[legalityMatch[1]] = htmlToText(legalityMatch[2]);
   }
 
+  // Structured stage + mechanic subtypes (v2). Stage comes from the type line;
+  // mechanics merge the name-line markers (ex/Tera/…) with the stage-line
+  // V-family so both scraped and offline-restructured records agree.
+  const stage = cardType === 'pokemon' ? parseStage(evolutionInfo) : null;
+  const mechanicSet = new Set(parseMechanicSubtypes(name));
+  if (stage === 'vstar') {
+    mechanicSet.add('VSTAR');
+  } else if (stage === 'vmax') {
+    mechanicSet.add('VMAX');
+  }
+  const mechanicSubtypes = CARD_MECHANIC_SUBTYPES.filter(m => mechanicSet.has(m));
+
   return {
     metadataVersion: METADATA_SCHEMA_VERSION,
     cardType,
     subType,
     evolutionInfo,
     fullType,
+    ...(stage ? { stage } : {}),
+    ...(mechanicSubtypes.length ? { mechanicSubtypes } : {}),
     ...(aceSpec ? { aceSpec: true } : {}),
     ...(regulationMark ? { regulationMark } : {}),
     ...(abilities.length ? { abilities } : {}),
@@ -543,15 +728,58 @@ async function collectAllCards() {
 function parseArgs() {
   const args = process.argv.slice(2);
   return {
-    forceRefresh: args.includes('--force-refresh') || args.includes('-f')
+    forceRefresh: args.includes('--force-refresh') || args.includes('-f'),
+    restructure: args.includes('--restructure')
   };
+}
+
+/**
+ * Offline restructure pass: upgrade every stored entry via {@link
+ * restructureEntry} (no network), then save. Fields that need a re-scrape are
+ * left absent and reported.
+ * @returns {Promise<void>}
+ */
+async function runRestructure() {
+  console.log('🔧 Restructure mode: recomputing structured fields offline\n');
+  const database = await loadExistingDatabase();
+  const keys = Object.keys(database);
+  console.log(`📚 Loaded ${keys.length} entries`);
+
+  let stageCount = 0;
+  let mechanicCount = 0;
+  let weaknessCount = 0;
+  for (const key of keys) {
+    const upgraded = restructureEntry(database[key]);
+    if (upgraded.stage) {
+      stageCount++;
+    }
+    if (upgraded.mechanicSubtypes) {
+      mechanicCount++;
+    }
+    if (upgraded.weakness && typeof upgraded.weakness === 'object') {
+      weaknessCount++;
+    }
+    database[key] = upgraded;
+  }
+
+  await saveDatabase(database);
+  console.log(`\n✅ Restructure complete!`);
+  console.log(`   Entries upgraded: ${keys.length}`);
+  console.log(`   With stage: ${stageCount}`);
+  console.log(`   With mechanicSubtypes: ${mechanicCount}`);
+  console.log(`   With structured weakness: ${weaknessCount}`);
 }
 
 /**
  * Main execution
  */
 async function main() {
-  const { forceRefresh } = parseArgs();
+  const { forceRefresh, restructure } = parseArgs();
+
+  if (restructure) {
+    await runRestructure();
+    return;
+  }
 
   console.log('🎴 Card Type Database Builder\n');
   if (forceRefresh) {

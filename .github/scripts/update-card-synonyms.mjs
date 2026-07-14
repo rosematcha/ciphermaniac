@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import * as cheerio from 'cheerio';
 import { chooseCanonicalPrint } from './lib/canonical-print.mjs';
+import { normalizeSynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import { createR2Client, getJsonResult } from './lib/r2.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -83,8 +84,9 @@ async function loadPreviousSynonyms() {
     const data = result.value;
     const synonyms = data?.synonyms && typeof data.synonyms === 'object' ? data.synonyms : {};
     const canonicals = data?.canonicals && typeof data.canonicals === 'object' ? data.canonicals : {};
-    log(`  Loaded previous synonyms from R2: ${Object.keys(synonyms).length} synonyms, ${Object.keys(canonicals).length} canonicals`);
-    return { synonyms, canonicals };
+    const prints = data?.prints && typeof data.prints === 'object' ? data.prints : {};
+    log(`  Loaded previous synonyms from R2: ${Object.keys(synonyms).length} synonyms, ${Object.keys(canonicals).length} canonicals, ${Object.keys(prints).length} prints`);
+    return { synonyms, canonicals, prints };
 }
 
 async function loadTournamentDecks(folder) {
@@ -458,6 +460,10 @@ async function generateSynonyms(cardsByName) {
     log('\nGenerating canonical mappings...');
     const synonymsDict = {};
     const canonicalsDict = {};
+    // Per-print prices (uid -> USD or null) so consumers can re-choose the
+    // cluster canonical for a historical event date (rolling canonicals)
+    // without re-scraping Limitless. Includes the canonical print itself.
+    const printsDict = {};
 
     const totalCards = cardsByName.size;
     let current = 0;
@@ -497,6 +503,7 @@ async function generateSynonyms(cardsByName) {
                 if (variantUid !== canonicalUid) {
                     synonymsDict[variantUid] = canonicalUid;
                 }
+                printsDict[variantUid] = var_.price_usd ?? null;
             }
 
             if (!canonicalsDict[cardName]) {
@@ -518,10 +525,12 @@ async function generateSynonyms(cardsByName) {
     return {
         synonyms: synonymsDict,
         canonicals: canonicalsDict,
+        prints: printsDict,
         metadata: {
             generated: new Date().toISOString(),
             totalSynonyms: Object.keys(synonymsDict).length,
             totalCanonicals: Object.keys(canonicalsDict).length,
+            totalPrints: Object.keys(printsDict).length,
             totalCardsAnalyzed: totalCards,
             description: 'Canonical card mappings for handling reprints and alternate versions'
         }
@@ -590,13 +599,34 @@ async function main() {
         const beforeCanonicals = Object.keys(synonymsData.canonicals).length;
         synonymsData.synonyms = { ...previous.synonyms, ...synonymsData.synonyms };
         synonymsData.canonicals = { ...previous.canonicals, ...synonymsData.canonicals };
+        // Prices refresh every run; stale entries are only kept for clusters
+        // whose source was missing this run. Price drift must not count as a
+        // mapping change (mappingsChanged below ignores prints).
+        synonymsData.prints = { ...previous.prints, ...synonymsData.prints };
         const mergedSynonyms = Object.keys(synonymsData.synonyms).length;
         const mergedCanonicals = Object.keys(synonymsData.canonicals).length;
         log(`\nMerged with previous DB: synonyms ${beforeSynonyms}→${mergedSynonyms}, canonicals ${beforeCanonicals}→${mergedCanonicals}`);
         synonymsData.metadata.totalSynonyms = mergedSynonyms;
         synonymsData.metadata.totalCanonicals = mergedCanonicals;
+        synonymsData.metadata.totalPrints = Object.keys(synonymsData.prints).length;
         synonymsData.metadata.mergedWithPrevious = true;
     }
+
+    // Flatten the merged graph to ONE terminal canonical per reprint component.
+    // The incremental merge above retains a stale reverse edge whenever a
+    // cluster's chosen canonical flips between runs, producing cycles (A→B, B→A)
+    // and multi-hop chains that make single-hop resolution non-terminal and
+    // 301-loop the /cards edge redirect. Runs after the merge so the normalized
+    // form is what gets persisted and compared for change detection.
+    const normalized = normalizeSynonymDatabase({
+        synonyms: synonymsData.synonyms,
+        canonicals: synonymsData.canonicals,
+        prints: synonymsData.prints
+    });
+    synonymsData.synonyms = normalized.synonyms;
+    synonymsData.canonicals = normalized.canonicals;
+    synonymsData.metadata.totalSynonyms = Object.keys(synonymsData.synonyms).length;
+    synonymsData.metadata.totalCanonicals = Object.keys(synonymsData.canonicals).length;
 
     // Record processed-vs-expected source coverage for auditability.
     synonymsData.metadata.sourceTournamentsExpected = stats.expected;
