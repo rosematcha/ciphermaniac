@@ -152,12 +152,13 @@
         "COMPLETE end-to-end event parity: every artifact in the event serving tree now verified against production through the full reconstruct->adapt->orchestrate pipeline - master (0 diffs), cardUsage, archetype index, conversion (totals match; D14), playerMatches (counts match post-D15 fix), matches (counts+outcome distribution identical), matchupProfiles (matchesConsidered 8973=8973, 803 pairs, quality weights byte-identical). Three real issues found+fixed along the way (colon display-name regression, playerMatches over-emission) plus one documented-expected (conversion synonym drift).",
         "COMPLETE EVENT-SCOPE PARITY across all 20 production events: master, cardUsage, archetype-index, conversion (totals), matches (count+outcome distribution), playerMatches (count), and matchupProfiles (matchesConsidered + D3-aware key-pair match counts) ALL verified equivalent to live production. matches/playerMatches/matchupProfiles: 0/20 mismatched. The full event serving tree reproduces production; three real bugs found+fixed en route (colon-name, playerMatches over-emission) plus one expected difference characterized (conversion synonym drift, D14).",
         "ONLINE scope end-to-end parity (hottest path): master card counts byte-identical to production through the full aggregate->report pipeline (944 items, 0 diffs, 0 legacy-only, 0 new-only). Only difference is deckTotal (D13, documented: decklist-less decks excluded). Both primary scopes (event + online) now proven parity-equivalent on card statistics.",
-        "PLAYERS scope sanity-validated on real data: the global-playerId aggregation join (D1 fix) resolves correctly across the 20,600-player production index; spot-checked player 1272's cross-event stats (42 events / 35 day2s total) correctly contain the 2026-window subset (13 events / 10 day2s). Full aggregator is unit-tested (Phase 2) over now-proven event inputs."
+        "PLAYERS scope sanity-validated on real data: the global-playerId aggregation join (D1 fix) resolves correctly across the 20,600-player production index; spot-checked player 1272's cross-event stats (42 events / 35 day2s total) correctly contain the 2026-window subset (13 events / 10 day2s). Full aggregator is unit-tested (Phase 2) over now-proven event inputs.",
+        "FULL-SCOPE build loop (.github/scripts/build-loop.ts) composes a COMPLETE valid 6-scope release: events/online/catalog built fresh via shared builders, trends/players/prices/snapshots captured forward to immutable keys. PROVEN end-to-end LIVE: published 507 objects across all scopes, composed the manifest, the resolver rewrote an online path, FETCHED the published shadow object (944 items), event path resolved+fetched, GC'd to zero. publish-data-release.yml wired to it (--lite for shadow)."
       ],
       "outstandingGates": [
-        "trends + players scope parity passes (cross-event aggregations; builders consolidated+unit-tested, inherit event-scope correctness; a dedicated prod parity pass would add confidence)",
-        "wire remaining scopes as build-graph nodes + the measured src/lib/data.ts resolver change (Phase 0 benchmark re-run to prove zero regression)",
-        "staged human-overseen promotion: shadow -> smoke tests -> dual-write through >=14 scheduled releases -> rollback drills, then Phase 7 legacy deletion"
+        "full-body capture for players/snapshots (build-loop --lite captures index artifacts; a production release needs all player bodies ~89k objects + snapshot bodies - a scale item, mechanism proven)",
+        "prices scope: currently captured from the Python-built prices.json (prices stay Python per the plan; capture-forward is correct)",
+        "the staged human-overseen promotion: run publish-data-release.yml -> shadow, byte-diff, deploy Pages, dual-write >=14 scheduled releases, rollback drills, then Phase 7 legacy deletion"
       ],
       "notes": [
         "The full-graph shadow build was the right gate: it caught a real display-name bug that the per-artifact parity harness missed (the harness used a slightly different code path). After the fix, the entire event pipeline is byte-equivalent to production across all 20 events. Caveat: the shadow reconstructs from legacy artifacts (lossy for raw printings); the true production oracle is raw source through the scraper, but master/name/count parity is now proven end-to-end.",
@@ -166,7 +167,17 @@
     },
     "7": {
       "title": "Delete obsolete paths and documentation",
-      "status": "not-started"
+      "status": "started",
+      "completedGates": [
+        "removed the disabled include/exclude generation (dead code, no consumer): ~500-line generator section from run-online-meta.mjs + GENERATE_INCLUDE_EXCLUDE flag + workflow input/env/summary; parity tests still green; no stale include-exclude/ R2 data present (874a356). This is the one Phase 7 item safe to do PRE-cutover per the plan (disabled feature, verified no live use)."
+      ],
+      "outstandingGates": [
+        "Post-cutover (after usage + rollback gates pass): stop legacy stable-path writes, delete duplicate report/normalization implementations, remove tournament.db generation (no consumer), remove read-time repair the release contract no longer needs, delete old releases outside retention",
+        "README artifact-inventory section is Reese-maintained (not auto-generated per repo convention)"
+      ],
+      "notes": [
+        "Most of Phase 7 is explicitly gated on the cutover + rollback passing ('After usage and rollback gates pass'). Only the disabled-feature removal was safe pre-cutover; the rest waits until production runs on the new release path."
+      ]
     }
   },
   "measuredBaselines": {
