@@ -1,0 +1,105 @@
+# =============================================================================
+# Publish Data Release (DB-MASTER-PLAN Phase 4)
+# =============================================================================
+# Atomic, reversible data promotion. The Pages deployment is the user-facing
+# activation point: a failure before it leaves the old app + release active; a
+# failure after it does not invalidate the deployed app because that deployment
+# embeds an immutable manifest.
+#
+# This workflow is MANUAL-ONLY until the full multi-scope build graph is wired
+# and a shadow build has proven byte-parity against production. It never runs on
+# push. Promotion of the production channel pointer is a separate, post-deploy,
+# ETag-conditional step so the deployed bundle and the tooling pointer cannot
+# diverge.
+# =============================================================================
+
+name: (Data) Publish Data Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: 'Target channel'
+        type: choice
+        options: [shadow, production]
+        default: shadow
+
+concurrency:
+  # Shares the bucket-writer group so a release never races a legacy producer.
+  group: r2-bucket-writers
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 1. Build every dirty node into immutable release keys and write receipts.
+      #    (plan mode first, so the operator sees the dirty set before writing.)
+      - name: Plan build graph
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: npx tsx .github/scripts/build-loop.ts --plan
+
+      - name: Build and publish dirty nodes
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: npx tsx .github/scripts/build-loop.ts --write --emit-roots roots.json --emit-events events.json
+
+      # 2-4. Compose + validate the release manifest and generate the embed module.
+      #      composeRelease refuses any non-immutable root.
+      - name: Compose release + embed module
+        run: >-
+          npx tsx .github/scripts/publish-release.ts
+          --roots roots.json
+          --events events.json
+          --release-id "$(date -u +%Y%m%dT%H%M%SZ)-${GITHUB_SHA::7}"
+          --published-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          --manifest-out release-manifest.json
+          --module-out src/generated/release.ts
+
+      # 5. Build the frontend + Pages Functions with the manifest embedded.
+      - name: Build with embedded manifest
+        run: npm run build
+
+      # 6. Deploy Cloudflare Pages atomically (the activation point).
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=ciphermaniac
+
+      # 7. Update the channel pointer for tooling (ETag-conditional, replan on conflict).
+      #    Runs AFTER the deploy so the bundle and pointer cannot diverge.
+      - name: Update channel pointer
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: npx tsx .github/scripts/update-channel.ts --channel "${{ inputs.channel }}" --manifest release-manifest.json
+
+      # 8. Prior Pages deployment + prior release remain for rollback (no action).
+      # 9. Expired unreferenced releases are GC'd by a separate protected job.

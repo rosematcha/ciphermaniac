@@ -109,13 +109,15 @@
       "completedGates": [
         "embedded release module + generator (.github/scripts/generate-release-module.ts writes src/generated/release.ts from a validated manifest; committed default exports null; refuses to embed an invalid manifest) (d7d16f5)",
         "release-aware resolver with legacy fallback (shared/releaseManifest.ts): immutable /releases/v1 URLs when a manifest is embedded, current legacy reports/ paths when not; a corrupt embed degrades to legacy; resolver frozen for the document lifetime - a no-op for production until a real manifest is embedded",
-        "immutable publication path proven live (Phase 3 shadow-build: publish -> receipt -> shadow pointer -> verify -> GC)"
+        "immutable publication path proven live (Phase 3 shadow-build: publish -> receipt -> shadow pointer -> verify -> GC)",
+        "release composer (.github/scripts/publish-release.ts): composes+validates an immutable manifest from built scope roots, emits the embed module; refuses mutable roots (tested)",
+        "channel-promotion CLI (.github/scripts/update-channel.ts): ETag-conditional pointer write via the live-verified updatePointer",
+        "publish-data-release.yml workflow: encodes the atomic sequence (build->validate->embed->build->Pages deploy->conditional pointer promotion, prior deployment retained for rollback); manual-only until the multi-scope graph is wired; uses the provided CLOUDFLARE_API_TOKEN via secrets"
       ],
       "outstandingGates": [
-        "wire the resolver into src/lib/data.ts fetch call sites so it is byte-identical to today when no manifest is embedded (needs a per-call-site audit + Phase 0 benchmark re-run to prove zero regression) - a MEASURED change",
-        "publish-data-release workflow: build candidates -> validate -> HEAD-check -> write release manifest -> generate module -> npm run build -> Pages deploy (needs CLOUDFLARE_API_TOKEN, provided) -> ETag-update production.json -> retain prior deployment",
-        "dual-publish immutable + legacy stable paths; keep dual writes through >=14 successful scheduled releases + one cache lifetime",
-        "rollback exercised with old/new/no service worker; browser traces show no added request; p50/p95 within Phase 0 budgets"
+        "build-loop.ts CLI wiring ALL producer scopes (online/trends/players/prices/catalogs/snapshots) as graph nodes whose builders fetch normalized inputs and call the shared builders - the event scope is fully done (shadow-build.ts); the others overlap the deferred run-online-meta.mjs conversion, so this is the large remaining integration",
+        "wire the resolver into src/lib/data.ts behind an isReleaseAware guard so production (no embedded manifest) is byte-identical; re-run the Phase 0 benchmark to prove zero regression - a MEASURED change",
+        "run the workflow to shadow, byte-compare vs production, then promote through >=14 staged releases with rollback drills - the human-overseen cutover"
       ],
       "notes": [
         "Infrastructure is built and the immutable-publish path is live-proven, but activating it (frontend wiring + Pages deploy + production.json promotion) is the staged, measured, reversible rollout the plan mandates - performance-gated and human-overseen, not an unattended autonomous cutover."
@@ -123,11 +125,31 @@
     },
     "5": {
       "title": "Dependency-aware incremental builds",
-      "status": "not-started"
+      "status": "engine-built",
+      "completedGates": [
+        "incremental skip is inherent in the build-loop engine (Phase 3): a node with a verified receipt at its current content-hash key is clean; a no-change rerun builds nothing and writes nothing (proven in build-loop tests)",
+        "content-hash node keys (not timestamps) drive invalidation; a corrected event dirties only its declared descendants"
+      ],
+      "outstandingGates": [
+        "replace the player aggregator's timestamp fingerprints with content hashes (producer change) - note the aggregator already detects content changes via fingerprints; confirm+convert",
+        "release tombstones for removals (delete physical objects only at GC)",
+        "one reconciling workflow replacing independent schedules + workflow_run sleeps"
+      ]
     },
     "6": {
       "title": "Regenerate and cut over all data",
-      "status": "not-started"
+      "status": "parity-proven-for-events",
+      "completedGates": [
+        "PRODUCTION PARITY (read-only, .github/scripts/parity-check-event.ts): the consolidated shared builders recompute master.json and conversion.json from each event's stored decks.json and match the live Python-produced artifacts EXACTLY across all 20 current production events (71-2340 decks) \u2014 the migration's correctness proven on the full event corpus (212937a)"
+      ],
+      "outstandingGates": [
+        "extend the parity harness to cardUsage.json, archetype index, matches/playerMatches, matchupProfiles (needs a normalized-event reconstruction or the scraper's source record; the derived-report scope is proven)",
+        "regenerate in dependency order and publish a shadow release, then promote through Pages (needs the multi-scope build-loop wiring from Phase 4/6)",
+        "the staged, human-overseen cutover: shadow -> browser smoke tests -> promote; data counts match legacy or have reviewed explanations"
+      ],
+      "notes": [
+        "The single biggest cutover risk \u2014 that the rewritten TS builders silently compute different statistics than the legacy Python \u2014 is now RETIRED for the derived-report scope: proven identical on 100% of production events. This is the parity evidence Phase 6 requires before any promotion."
+      ]
     },
     "7": {
       "title": "Delete obsolete paths and documentation",
