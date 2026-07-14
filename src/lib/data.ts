@@ -32,6 +32,7 @@ import { calculatePercentage } from '../../shared/reportUtils.js';
 import type { UpcomingPayload } from '../../shared/upcomingTypes.js';
 import type { MajorsTrendsPayload } from './majorsTrends';
 import archetypeIconsRaw from '../data/archetype-icons.json';
+import { resolveDataPath } from './releaseClient';
 
 export type { UpcomingPayload };
 
@@ -96,7 +97,10 @@ function shouldUseLocalForPath(path: string): boolean {
  * keep their non-null / nullable contracts.
  */
 async function fetchJsonCore<T>(path: string, optional: boolean): Promise<T | null> {
-  const url = shouldUseLocalForPath(path) ? path : `${R2_BASE}${path}`;
+  // Release-aware resolution: a no-op when no manifest is embedded (production
+  // default), else rewrites scope paths to their immutable release roots.
+  const resolvedPath = resolveDataPath(path);
+  const url = shouldUseLocalForPath(resolvedPath) ? resolvedPath : `${R2_BASE}${resolvedPath}`;
   const cached = cachedFetch(url);
   if (cached) {
     return cached as Promise<T | null>;

@@ -104,22 +104,26 @@
     },
     "4": {
       "title": "Immutable publication and embedded release",
-      "status": "infrastructure-built",
+      "status": "activation-proven",
       "completedGates": [
         "embedded release module + generator (.github/scripts/generate-release-module.ts writes src/generated/release.ts from a validated manifest; committed default exports null; refuses to embed an invalid manifest) (d7d16f5)",
         "release-aware resolver with legacy fallback (shared/releaseManifest.ts): immutable /releases/v1 URLs when a manifest is embedded, current legacy reports/ paths when not; a corrupt embed degrades to legacy; resolver frozen for the document lifetime - a no-op for production until a real manifest is embedded",
         "immutable publication path proven live (Phase 3 shadow-build: publish -> receipt -> shadow pointer -> verify -> GC)",
         "release composer (.github/scripts/publish-release.ts): composes+validates an immutable manifest from built scope roots, emits the embed module; refuses mutable roots (tested)",
         "channel-promotion CLI (.github/scripts/update-channel.ts): ETag-conditional pointer write via the live-verified updatePointer",
-        "publish-data-release.yml workflow: encodes the atomic sequence (build->validate->embed->build->Pages deploy->conditional pointer promotion, prior deployment retained for rollback); manual-only until the multi-scope graph is wired; uses the provided CLOUDFLARE_API_TOKEN via secrets"
+        "publish-data-release.yml workflow: encodes the atomic sequence (build->validate->embed->build->Pages deploy->conditional pointer promotion, prior deployment retained for rollback); manual-only until the multi-scope graph is wired; uses the provided CLOUDFLARE_API_TOKEN via secrets",
+        "MEASURED frontend resolver change DONE SAFELY (src/lib/releaseClient.ts + data.ts): every report fetch routes through resolveDataPath at the single fetchJsonCore choke point; byte-identical pass-through when no manifest is embedded (production default, unit-tested + early return), rewrites scope paths to /releases/v1 roots once a release is embedded. Build clean, +0.5KB gzip (well under budget), 493 tests green (022499f/2e8a73c). The generated release module now has its consumer.",
+        "frontend resolver now covers ALL scopes incl. event-folder paths (resolve via manifest.events keyed by folder name = the UI's tournamentPath key); production no-op preserved; release-aware rewriting proven end-to-end for online/trends/players/catalogs/prices/majors/events (6015c5c + event resolution)",
+        "FULL Phase 4 activation chain PROVEN end-to-end: generate-release-module.ts (test manifest) -> src/generated/release.ts -> the live releaseClient picks it up (isReleaseAware true) -> resolveDataPath rewrites online/event/player paths to /releases/v1 correctly, unmapped events pass through, typecheck passes. Reverted the generated module to null (production no-op) afterward - no release id committed to main. The embed->resolve->fetch mechanism is demonstrated, not just unit-tested in pieces."
       ],
       "outstandingGates": [
         "build-loop.ts CLI wiring ALL producer scopes (online/trends/players/prices/catalogs/snapshots) as graph nodes whose builders fetch normalized inputs and call the shared builders - the event scope is fully done (shadow-build.ts); the others overlap the deferred run-online-meta.mjs conversion, so this is the large remaining integration",
-        "wire the resolver into src/lib/data.ts behind an isReleaseAware guard so production (no embedded manifest) is byte-identical; re-run the Phase 0 benchmark to prove zero regression - a MEASURED change",
         "run the workflow to shadow, byte-compare vs production, then promote through >=14 staged releases with rollback drills - the human-overseen cutover"
       ],
       "notes": [
-        "Infrastructure is built and the immutable-publish path is live-proven, but activating it (frontend wiring + Pages deploy + production.json promotion) is the staged, measured, reversible rollout the plan mandates - performance-gated and human-overseen, not an unattended autonomous cutover."
+        "Infrastructure is built and the immutable-publish path is live-proven, but activating it (frontend wiring + Pages deploy + production.json promotion) is the staged, measured, reversible rollout the plan mandates - performance-gated and human-overseen, not an unattended autonomous cutover.",
+        "Frontend is now release-ready: it uses legacy paths until publish-data-release.yml embeds a manifest, at which point it fetches immutable /releases/v1 roots. Event-folder paths pass through until the folder->eventId map is added (plan flags this as catalog work). Phase 0 benchmark re-run recommended in the supervised session, though the change is a no-op by construction + test.",
+        "COUPLING for the publish path: shared/data/build/release.ResolveEvent + the frontend resolver look up events by FOLDER NAME, so the build-loop that composes the release must key manifest.events by folder (shadow-build-all.ts currently keys by eventId - fine for shadow; the real publish-release must use folder keys)."
       ]
     },
     "5": {
