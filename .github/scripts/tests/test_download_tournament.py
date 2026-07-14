@@ -463,5 +463,93 @@ class ChooseCanonicalPrintTests(unittest.TestCase):
         self.assertEqual(self._choose(variations, "Boss's Orders"), ("BRS", "132"))
 
 
+BOSSS_ORDERS_PRINTS = [
+    _print("SP", "251", 13.57),
+    _print("RCL", "154", 1.35),
+    _print("RCL", "189", 67.04),
+    _print("RCL", "200", 46.56),
+    _print("SHF", "058", 0.31),
+    _print("BRS", "132", 0.44),
+    _print("LOR", "TG24", 10.96),
+    _print("PAL", "172", 0.32),
+    _print("PAL", "248", 11.18),
+    _print("PAL", "265", 19.95),
+    _print("MEG", "114", 0.25),
+    _print("ASC", "183", 0.23),
+    _print("ASC", "256", 8.05),
+]
+
+
+class RollingCanonicalPrintTests(unittest.TestCase):
+    """Rolling canonicals: legality evaluated on the event date.
+
+    Acceptance cases agreed with Reese (2026-07-14). Mirror of the rolling
+    scenarios in tests/data/canonical-print-parity.test.ts.
+    """
+
+    def _choose_at(self, variations, card_name, as_of_date):
+        result = download_tournament.choose_canonical_print(variations, card_name, as_of_date=as_of_date)
+        self.assertIsNotNone(result)
+        return (result["set"], result["number"])
+
+    def test_nest_ball_at_san_antonio_2023_is_the_svi_print(self):
+        # SUM was long rotated by the event; SVI is the oldest legal print.
+        variations = [
+            _print("SUM", "123", 0.21),
+            _print("SVI", "181", 0.15),
+            _print("PAF", "084", 0.11),
+        ]
+        self.assertEqual(self._choose_at(variations, "Nest Ball", "2023-11-18"), ("SVI", "181"))
+
+    def test_poke_pad_at_houston_2026_ignores_the_unreleased_por_reprint(self):
+        variations = [
+            _print("ASC", "198", 0.43),
+            _print("POR", "081", 0.30),
+            _print("POR", "113", 12.82),
+        ]
+        self.assertEqual(self._choose_at(variations, "Poke Pad", "2026-02-28"), ("ASC", "198"))
+
+    def test_bosss_orders_rolls_through_three_canonicals(self):
+        # Baltimore 2023 -> Monterrey 2025 -> NAIC 2026.
+        self.assertEqual(self._choose_at(BOSSS_ORDERS_PRINTS, "Boss's Orders", "2023-07-15"), ("BRS", "132"))
+        self.assertEqual(self._choose_at(BOSSS_ORDERS_PRINTS, "Boss's Orders", "2025-05-17"), ("PAL", "172"))
+        self.assertEqual(self._choose_at(BOSSS_ORDERS_PRINTS, "Boss's Orders", "2026-06-13"), ("MEG", "114"))
+
+    def test_basic_energy_takes_the_newest_print_legal_on_the_date(self):
+        # Fire Energy at a 2024 event: MEE does not exist yet, so the newest
+        # cheap legal print is the SVE energy set (cheapest of the SVE trio).
+        variations = [
+            _print("SSH", "R", 0.28),
+            _print("FST", "284", 6.34),
+            _print("SVE", "002", 0.19),
+            _print("SVE", "010", 0.11),
+            _print("SVE", "018", 0.19),
+            _print("MEE", "002", 0.22),
+        ]
+        self.assertEqual(self._choose_at(variations, "Fire Energy", "2024-01-01"), ("SVE", "010"))
+
+    def test_fallback_pool_excludes_prints_that_did_not_exist_yet(self):
+        # Every existing print has rotated at the date; the future MEG reprint
+        # (cheapest of the three) must not win the fallback.
+        variations = [
+            _print("RCL", "020", 0.30),
+            _print("SHF", "011", 0.25),
+            _print("MEG", "001", 0.10),
+        ]
+        self.assertEqual(self._choose_at(variations, "Some Card", "2023-07-15"), ("RCL", "020"))
+
+    def test_malformed_as_of_date_is_rejected(self):
+        with self.assertRaises(ValueError):
+            download_tournament.choose_canonical_print([_print("ASC", "198", 0.43)], "Poke Pad", as_of_date="2026/02/28")
+
+    def test_is_set_legal_at_window_bounds(self):
+        # Window is [legalFrom, legalUntil): legal on the rotation-in date,
+        # not legal on the rotation-out date.
+        self.assertTrue(download_tournament.is_set_legal_at("SVI", "2023-04-14"))
+        self.assertFalse(download_tournament.is_set_legal_at("SVI", "2023-04-13"))
+        self.assertFalse(download_tournament.is_set_legal_at("SVI", "2026-04-10"))
+        self.assertFalse(download_tournament.is_set_legal_at("SUM", "2023-11-18"))
+
+
 if __name__ == "__main__":
     unittest.main()

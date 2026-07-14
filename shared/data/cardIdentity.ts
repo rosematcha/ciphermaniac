@@ -127,6 +127,13 @@ export interface SynonymDatabase {
   synonyms: Record<string, string>;
   /** Maps card names to their preferred canonical UID */
   canonicals: Record<string, string>;
+  /**
+   * Scraped USD price per print UID (canonical prints included). Optional:
+   * only producers need it, to re-choose a cluster's canonical for a
+   * historical event date (rolling canonicals, `resolveCanonicalUidAt` in
+   * canonicalPrint.ts) without re-scraping Limitless.
+   */
+  prints?: Record<string, number | null>;
 }
 
 /**

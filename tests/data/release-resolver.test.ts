@@ -22,6 +22,14 @@ function manifest(): unknown {
       catalogs: '/releases/v1/catalogs/eee',
       snapshots: '/releases/v1/snapshots/fff'
     },
+    served: {
+      online: ['master.json'],
+      trends: ['trends.json'],
+      players: ['index.json', 'index-slim.json'],
+      prices: ['prices.json', 'prices-history.json'],
+      catalogs: ['tournaments.json'],
+      snapshots: ['index.json']
+    },
     events: { 'labs:0042': '/releases/v1/events/labs:0042/999' },
     dependencies: {}
   };
@@ -39,7 +47,19 @@ test('an embedded manifest resolves immutable release roots', () => {
   const resolver = createReleaseResolver(manifest());
   assert.strictEqual(resolver.isReleaseAware, true);
   assert.strictEqual(resolver.scopePath('online', 'master.json'), '/releases/v1/online/aaa/master.json');
-  assert.strictEqual(resolver.eventPath('labs:0042', 'cardUsage.json'), '/releases/v1/events/labs:0042/999/cardUsage.json');
+  assert.strictEqual(
+    resolver.eventPath('labs:0042', 'cardUsage.json'),
+    '/releases/v1/events/labs:0042/999/cardUsage.json'
+  );
+});
+
+test('servesScopePath is true only for published keys; false in legacy mode', () => {
+  const resolver = createReleaseResolver(manifest());
+  assert.strictEqual(resolver.servesScopePath('online', 'master.json'), true);
+  assert.strictEqual(resolver.servesScopePath('players', 'index-slim.json'), true);
+  assert.strictEqual(resolver.servesScopePath('players', '1272/profile.json'), false);
+  assert.strictEqual(resolver.servesScopePath('online', 'conversion.json'), false);
+  assert.strictEqual(createReleaseResolver(null).servesScopePath('online', 'master.json'), false);
 });
 
 test('a corrupt embedded manifest degrades to legacy rather than throwing', () => {

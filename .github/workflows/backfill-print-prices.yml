@@ -1,0 +1,78 @@
+# =============================================================================
+# Backfill Print Prices
+# =============================================================================
+# For each distinct event date in the dataset, write an R2 artifact
+# assets/print-prices/{YYYY-MM-DD}.json mapping every print UID to its TCGplayer
+# market price on that date, sourced from TCGCSV's daily price archives. These
+# feed rolling-canonical selection (choosing the print a player would buy at an
+# event's date).
+#
+# Manual only — this is a backfill, not a recurring chore. Idempotent: dates whose
+# artifact already exists are skipped unless `force` is set.
+# =============================================================================
+
+name: (Backfill) Print Prices
+
+run-name: >-
+  Backfill print prices${{ github.event.inputs.dates && format(' ({0})', github.event.inputs.dates) || '' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      dates:
+        description: 'Comma-separated YYYY-MM-DD dates (blank = every event date)'
+        required: false
+        default: ''
+      force:
+        description: 'Overwrite artifacts that already exist'
+        type: boolean
+        required: false
+        default: false
+
+# All R2 bucket writers share one concurrency group so producers and repair jobs
+# can never mutate the bucket at the same time (DB-MASTER-PLAN Phase 0).
+concurrency:
+  group: r2-bucket-writers
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backfill-print-prices:
+    runs-on: ubuntu-latest
+    # 54 event dates × ~3.3 MB archives, most skipped on re-runs; 30 min is ample.
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r .github/scripts/requirements.txt
+
+      - name: Install 7-Zip (PPMd archives)
+        run: sudo apt-get update && sudo apt-get install -y p7zip-full
+
+      - name: Backfill print prices
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ciphermaniac-reports
+        run: |
+          python .github/scripts/backfill-print-prices.py \
+            ${{ github.event.inputs.dates && format('--dates {0}', github.event.inputs.dates) || '' }} \
+            ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+
+      - name: Summary
+        run: |
+          echo "## Backfill Print Prices" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Dates: ${{ github.event.inputs.dates || 'all event dates' }}" >> $GITHUB_STEP_SUMMARY
+          echo "Force: ${{ github.event.inputs.force }}" >> $GITHUB_STEP_SUMMARY

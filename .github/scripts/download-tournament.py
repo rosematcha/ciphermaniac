@@ -1090,9 +1090,31 @@ _STANDARD_LEGAL_SETS = set(_SET_CATALOG_DATA["standardLegalSets"])
 _PROMO_SETS = set(_SET_CATALOG_DATA["promoSets"])
 _CANONICAL_BASIC_ENERGY_NAMES = set(_SET_CATALOG_DATA["basicEnergyNames"])
 
+_SET_BY_CODE = {entry["code"]: entry for entry in _SET_CATALOG_DATA["sets"]}
+
 # Unknown sets are treated as newest: they are either brand-new sets missing
 # from the catalog or oddball products, and neither should win "oldest".
 _UNKNOWN_SET_INDEX = -1
+
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def is_set_legal_at(set_code, as_of_date):
+    """Was the set standard-legal on the given ISO date? Window is [legalFrom, legalUntil)."""
+    entry = _SET_BY_CODE.get(str(set_code).upper()) if set_code else None
+    legal_from = entry.get("legalFrom") if entry else None
+    if not legal_from or legal_from > as_of_date:
+        return False
+    legal_until = entry.get("legalUntil")
+    return legal_until is None or as_of_date < legal_until
+
+
+def _print_existed_at(set_code, as_of_date):
+    # A print "existed" on a date unless its set is dated and became legal only
+    # later. Undated sets are pre-era products that certainly existed already.
+    entry = _SET_BY_CODE.get(str(set_code).upper()) if set_code else None
+    legal_from = entry.get("legalFrom") if entry else None
+    return not legal_from or legal_from <= as_of_date
 
 
 def _release_index(set_code):
@@ -1114,7 +1136,7 @@ def _number_sort_key(number):
     return (int(match.group(1)), match.group(2).upper())
 
 
-def choose_canonical_print(variations, card_name):
+def choose_canonical_print(variations, card_name, as_of_date=None):
     """Pick the print a player would actually buy for a standard deck.
 
     Oldest standard-legal print that is still cheap, skipping high-rarity
@@ -1122,16 +1144,34 @@ def choose_canonical_print(variations, card_name):
     energies invert the age rule: they are worthless, so take the newest
     cheap print instead.
 
+    With as_of_date (ISO YYYY-MM-DD), standard legality is evaluated on that
+    date instead of today's standardLegalSets — the rolling canonical for a
+    historical event uses the event's start date. Prints from sets not yet
+    legal on the date are treated as nonexistent. Prices remain today's
+    scrape; the accessibility rule is kept as an approximation.
+
     Mirror of chooseCanonicalPrint in lib/canonical-print.mjs — keep the two
     implementations in sync.
     """
     if not variations:
         return None
 
-    # 1. Standard legality. If nothing is legal (a fully rotated card in
-    #    historical data), fall back to every print.
-    legal = [v for v in variations if str(v.get("set", "")).upper() in _STANDARD_LEGAL_SETS]
-    pool = legal if legal else list(variations)
+    if as_of_date is not None and not _ISO_DATE_RE.match(str(as_of_date)):
+        raise ValueError(f'choose_canonical_print: invalid as_of_date "{as_of_date}" (expected YYYY-MM-DD)')
+
+    # 1. Standard legality, on the event date when one is given. If nothing is
+    #    legal (a fully rotated card in historical data), fall back to every
+    #    print that existed on the date.
+    if as_of_date is not None:
+        legal = [v for v in variations if is_set_legal_at(v.get("set"), as_of_date)]
+        if legal:
+            pool = legal
+        else:
+            existing = [v for v in variations if _print_existed_at(v.get("set"), as_of_date)]
+            pool = existing if existing else list(variations)
+    else:
+        legal = [v for v in variations if str(v.get("set", "")).upper() in _STANDARD_LEGAL_SETS]
+        pool = legal if legal else list(variations)
 
     # 2. Accessibility. Strike collector-priced prints, and prints with no
     #    price at all when priced alternatives exist. A print is accessible

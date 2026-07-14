@@ -1,173 +1,257 @@
 {
-  "_comment": "Set catalog for pipeline scripts. sets is ordered newest-first and drives release-order comparisons. standardLegalSets must be updated when a new set releases and at each rotation. promoSets are deprioritized when choosing canonical prints.",
+  "_comment": "Set catalog for pipeline scripts. sets is ordered newest-first and drives release-order comparisons. Sets from SSH onward carry a standard-legality window: legalFrom is the tournament-legality date (two weeks after release) and legalUntil is the rotation date that removed the set (null = still legal); the window is [legalFrom, legalUntil). Sets without a window were never standard-legal during the dataset era. standardLegalSets is the current-date view of those windows and must be updated together with them when a new set releases and at each rotation (a unit test pins the two in sync). promoSets are deprioritized when choosing canonical prints.",
   "sets": [
     {
       "code": "CRI",
-      "name": "Chaos Rising"
+      "name": "Chaos Rising",
+      "legalFrom": "2026-06-05",
+      "legalUntil": null
     },
     {
       "code": "POR",
-      "name": "Perfect Order"
+      "name": "Perfect Order",
+      "legalFrom": "2026-04-10",
+      "legalUntil": null
     },
     {
       "code": "ASC",
-      "name": "Ascended Heroes"
+      "name": "Ascended Heroes",
+      "legalFrom": "2026-02-13",
+      "legalUntil": null
     },
     {
       "code": "PFL",
-      "name": "Phantasmal Flames"
+      "name": "Phantasmal Flames",
+      "legalFrom": "2025-11-28",
+      "legalUntil": null
     },
     {
       "code": "MEG",
-      "name": "Mega Evolution"
+      "name": "Mega Evolution",
+      "legalFrom": "2025-10-10",
+      "legalUntil": null
     },
     {
       "code": "MEE",
-      "name": "Mega Evolution Energy"
+      "name": "Mega Evolution Energy",
+      "legalFrom": "2025-10-10",
+      "legalUntil": null
     },
     {
       "code": "MEP",
-      "name": "Mega Promos"
+      "name": "Mega Promos",
+      "legalFrom": "2025-10-10",
+      "legalUntil": null
     },
     {
       "code": "BLK",
-      "name": "Black Bolt"
+      "name": "Black Bolt",
+      "legalFrom": "2025-08-01",
+      "legalUntil": null
     },
     {
       "code": "WHT",
-      "name": "White Flare"
+      "name": "White Flare",
+      "legalFrom": "2025-08-01",
+      "legalUntil": null
     },
     {
       "code": "DRI",
-      "name": "Destined Rivals"
+      "name": "Destined Rivals",
+      "legalFrom": "2025-06-13",
+      "legalUntil": null
     },
     {
       "code": "JTG",
-      "name": "Journey Together"
+      "name": "Journey Together",
+      "legalFrom": "2025-04-11",
+      "legalUntil": null
     },
     {
       "code": "PRE",
-      "name": "Prismatic Evolutions"
+      "name": "Prismatic Evolutions",
+      "legalFrom": "2025-01-31",
+      "legalUntil": null
     },
     {
       "code": "SSP",
-      "name": "Surging Sparks"
+      "name": "Surging Sparks",
+      "legalFrom": "2024-11-22",
+      "legalUntil": null
     },
     {
       "code": "SCR",
-      "name": "Stellar Crown"
+      "name": "Stellar Crown",
+      "legalFrom": "2024-09-27",
+      "legalUntil": null
     },
     {
       "code": "SFA",
-      "name": "Shrouded Fable"
+      "name": "Shrouded Fable",
+      "legalFrom": "2024-08-16",
+      "legalUntil": null
     },
     {
       "code": "TWM",
-      "name": "Twilight Masquerade"
+      "name": "Twilight Masquerade",
+      "legalFrom": "2024-06-07",
+      "legalUntil": null
     },
     {
       "code": "TEF",
-      "name": "Temporal Forces"
+      "name": "Temporal Forces",
+      "legalFrom": "2024-04-05",
+      "legalUntil": null
     },
     {
       "code": "PAF",
-      "name": "Paldean Fates"
+      "name": "Paldean Fates",
+      "legalFrom": "2024-02-09",
+      "legalUntil": "2026-04-10"
     },
     {
       "code": "PAR",
-      "name": "Paradox Rift"
+      "name": "Paradox Rift",
+      "legalFrom": "2023-11-17",
+      "legalUntil": "2026-04-10"
     },
     {
       "code": "MEW",
-      "name": "Pok\u00e9mon 151"
+      "name": "Pokémon 151",
+      "legalFrom": "2023-10-06",
+      "legalUntil": "2026-04-10"
     },
     {
       "code": "OBF",
-      "name": "Obsidian Flames"
+      "name": "Obsidian Flames",
+      "legalFrom": "2023-08-25",
+      "legalUntil": "2026-04-10"
     },
     {
       "code": "PAL",
-      "name": "Paldea Evolved"
+      "name": "Paldea Evolved",
+      "legalFrom": "2023-06-23",
+      "legalUntil": "2026-04-10"
     },
     {
       "code": "SVI",
-      "name": "Scarlet & Violet"
+      "name": "Scarlet & Violet",
+      "legalFrom": "2023-04-14",
+      "legalUntil": "2026-04-10"
     },
     {
       "code": "SVE",
-      "name": "Scarlet & Violet Energy"
+      "name": "Scarlet & Violet Energy",
+      "legalFrom": "2023-04-14",
+      "legalUntil": null
     },
     {
       "code": "SVP",
-      "name": "Scarlet & Violet Promos"
+      "name": "Scarlet & Violet Promos",
+      "legalFrom": "2023-04-14",
+      "legalUntil": null
     },
     {
       "code": "CRZ",
-      "name": "Crown Zenith"
+      "name": "Crown Zenith",
+      "legalFrom": "2023-02-03",
+      "legalUntil": "2025-04-11"
     },
     {
       "code": "SIT",
-      "name": "Silver Tempest"
+      "name": "Silver Tempest",
+      "legalFrom": "2022-11-25",
+      "legalUntil": "2025-04-11"
     },
     {
       "code": "LOR",
-      "name": "Lost Origin"
+      "name": "Lost Origin",
+      "legalFrom": "2022-09-23",
+      "legalUntil": "2025-04-11"
     },
     {
       "code": "PGO",
-      "name": "Pok\u00e9mon GO"
+      "name": "Pokémon GO",
+      "legalFrom": "2022-07-15",
+      "legalUntil": "2025-04-11"
     },
     {
       "code": "ASR",
-      "name": "Astral Radiance"
+      "name": "Astral Radiance",
+      "legalFrom": "2022-06-10",
+      "legalUntil": "2025-04-11"
     },
     {
       "code": "BRS",
-      "name": "Brilliant Stars"
+      "name": "Brilliant Stars",
+      "legalFrom": "2022-03-11",
+      "legalUntil": "2025-04-11"
     },
     {
       "code": "FST",
-      "name": "Fusion Strike"
+      "name": "Fusion Strike",
+      "legalFrom": "2021-11-26",
+      "legalUntil": "2024-04-05"
     },
     {
       "code": "CEL",
-      "name": "Celebrations"
+      "name": "Celebrations",
+      "legalFrom": "2021-10-22",
+      "legalUntil": "2024-04-05"
     },
     {
       "code": "EVS",
-      "name": "Evolving Skies"
+      "name": "Evolving Skies",
+      "legalFrom": "2021-09-10",
+      "legalUntil": "2024-04-05"
     },
     {
       "code": "CRE",
-      "name": "Chilling Reign"
+      "name": "Chilling Reign",
+      "legalFrom": "2021-07-02",
+      "legalUntil": "2024-04-05"
     },
     {
       "code": "BST",
-      "name": "Battle Styles"
+      "name": "Battle Styles",
+      "legalFrom": "2021-04-02",
+      "legalUntil": "2024-04-05"
     },
     {
       "code": "SHF",
-      "name": "Shining Fates"
+      "name": "Shining Fates",
+      "legalFrom": "2021-03-05",
+      "legalUntil": "2023-04-14"
     },
     {
       "code": "VIV",
-      "name": "Vivid Voltage"
+      "name": "Vivid Voltage",
+      "legalFrom": "2020-11-27",
+      "legalUntil": "2023-04-14"
     },
     {
       "code": "CPA",
-      "name": "Champion's Path"
+      "name": "Champion's Path",
+      "legalFrom": "2020-10-09",
+      "legalUntil": "2023-04-14"
     },
     {
       "code": "DAA",
-      "name": "Darkness Ablaze"
+      "name": "Darkness Ablaze",
+      "legalFrom": "2020-08-28",
+      "legalUntil": "2023-04-14"
     },
     {
       "code": "RCL",
-      "name": "Rebel Clash"
+      "name": "Rebel Clash",
+      "legalFrom": "2020-05-15",
+      "legalUntil": "2023-04-14"
     },
     {
       "code": "SSH",
-      "name": "Sword & Shield"
+      "name": "Sword & Shield",
+      "legalFrom": "2020-02-21",
+      "legalUntil": "2023-04-14"
     },
     {
       "code": "SP",
@@ -383,7 +467,7 @@
     },
     {
       "code": "RM",
-      "name": "Pok\u00e9mon Rumble"
+      "name": "Pokémon Rumble"
     },
     {
       "code": "AR",

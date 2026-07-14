@@ -66,7 +66,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           LITE: ${{ inputs.channel == 'shadow' && '--lite' || '' }}
-        run: npx tsx .github/scripts/build-loop.ts --write $LITE --emit-roots roots.json --emit-events events.json
+        run: npx tsx .github/scripts/build-loop.ts --write $LITE --emit-roots roots.json --emit-served served.json --emit-events events.json
 
       # 2-4. Compose + validate the release manifest and generate the embed module.
       #      composeRelease refuses any non-immutable root.
@@ -74,6 +74,7 @@ jobs:
         run: >-
           npx tsx .github/scripts/publish-release.ts
           --roots roots.json
+          --served served.json
           --events events.json
           --release-id "$(date -u +%Y%m%dT%H%M%SZ)-${GITHUB_SHA::7}"
           --published-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"

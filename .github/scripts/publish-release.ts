@@ -10,8 +10,8 @@
  * the deployed bundle and the tooling pointer can never diverge.
  *
  * Usage:
- *   tsx publish-release.ts --roots <roots.json> --release-id <id> --published-at <iso> \
- *     --manifest-out <path> --module-out src/generated/release.ts [--events <events.json>]
+ *   tsx publish-release.ts --roots <roots.json> --served <served.json> --release-id <id> \
+ *     --published-at <iso> --manifest-out <path> --module-out src/generated/release.ts [--events <events.json>]
  * @module .github/scripts/publish-release
  */
 
@@ -27,6 +27,7 @@ interface Args {
   publishedAt: string;
   manifestOut: string;
   moduleOut: string;
+  served: string;
   events?: string;
   dependencies?: string;
 }
@@ -42,11 +43,12 @@ function parseArgs(argv: string[]): Args {
     publishedAt: get('--published-at'),
     manifestOut: get('--manifest-out'),
     moduleOut: get('--module-out') ?? 'src/generated/release.ts',
+    served: get('--served'),
     events: get('--events'),
     dependencies: get('--dependencies')
   };
   for (const [key, value] of Object.entries(args)) {
-    if (value === undefined && ['roots', 'releaseId', 'publishedAt', 'manifestOut'].includes(key)) {
+    if (value === undefined && ['roots', 'releaseId', 'publishedAt', 'manifestOut', 'served'].includes(key)) {
       throw new Error(`Missing required --${key.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)}`);
     }
   }
@@ -61,6 +63,7 @@ async function loadJson<T>(path: string | undefined): Promise<T | undefined> {
 /** Compose + validate the manifest and render the embed module (pure of I/O). */
 export function buildReleaseArtifacts(input: {
   roots: Record<ReleaseScope, string>;
+  served: Record<ReleaseScope, string[]>;
   releaseId: string;
   publishedAt: string;
   events?: Record<string, string>;
@@ -73,10 +76,11 @@ export function buildReleaseArtifacts(input: {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const roots = (await loadJson<Record<ReleaseScope, string>>(args.roots))!;
+  const served = (await loadJson<Record<ReleaseScope, string[]>>(args.served))!;
   const events = await loadJson<Record<string, string>>(args.events);
   const dependencies = await loadJson<Record<string, string>>(args.dependencies);
 
-  const { manifest, module } = buildReleaseArtifacts({ roots, releaseId: args.releaseId, publishedAt: args.publishedAt, events, dependencies });
+  const { manifest, module } = buildReleaseArtifacts({ roots, served, releaseId: args.releaseId, publishedAt: args.publishedAt, events, dependencies });
 
   await mkdir(dirname(resolve(args.manifestOut)), { recursive: true });
   await writeFile(resolve(args.manifestOut), JSON.stringify(manifest, null, 2));
