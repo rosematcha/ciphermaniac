@@ -23,6 +23,7 @@ import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { validateNormalizedEvent } from '../../shared/data/contracts.ts';
 import { buildEventArtifacts } from '../../shared/data/reports/eventArtifacts.ts';
+import { type LabsSourceEvent, labsSourceToNormalized } from '../../shared/data/adapters/labsSource.ts';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import { createR2Client, putJson } from './lib/r2.mjs';
 
@@ -30,13 +31,15 @@ const CACHE_CONTROL = 'public, max-age=21600';
 
 interface BuildArgs {
   input: string;
+  /** 'normalized' (default) or 'labs-source' (run the adapter first). */
+  from?: 'normalized' | 'labs-source';
   outDir?: string;
   r2Prefix?: string;
   synonyms?: string;
 }
 
 function parseArgs(argv: string[]): BuildArgs {
-  const args: Partial<BuildArgs> = {};
+  const args: Partial<BuildArgs> = { from: 'normalized' };
   for (let i = 0; i < argv.length; i += 2) {
     const flag = argv[i];
     const value = argv[i + 1];
@@ -44,9 +47,12 @@ function parseArgs(argv: string[]): BuildArgs {
     else if (flag === '--out-dir') args.outDir = value;
     else if (flag === '--r2-prefix') args.r2Prefix = value;
     else if (flag === '--synonyms') args.synonyms = value;
-    else throw new Error(`Unknown flag: ${flag}`);
+    else if (flag === '--from') {
+      if (value !== 'normalized' && value !== 'labs-source') throw new Error(`--from must be normalized|labs-source, got "${value}"`);
+      args.from = value;
+    } else throw new Error(`Unknown flag: ${flag}`);
   }
-  if (!args.input) throw new Error('Missing --input <normalized-event.json>');
+  if (!args.input) throw new Error('Missing --input <event.json>');
   if (!args.outDir && !args.r2Prefix) throw new Error('Provide --out-dir <dir> or --r2-prefix "<date, Name>"');
   return args as BuildArgs;
 }
@@ -62,11 +68,13 @@ async function loadJson(path: string): Promise<unknown> {
  */
 export async function buildFromFile(args: BuildArgs): Promise<Map<string, unknown>> {
   const raw = await loadJson(args.input);
-  const result = validateNormalizedEvent(raw);
+  const synonymDb = args.synonyms ? ((await loadJson(args.synonyms)) as SynonymDatabase) : null;
+  // A Labs source record is adapted (all policy applied) before validation.
+  const candidate = args.from === 'labs-source' ? labsSourceToNormalized(raw as LabsSourceEvent, { synonymDb }) : raw;
+  const result = validateNormalizedEvent(candidate);
   if (!result.ok) {
     throw new Error(`Invalid normalized event (${result.errors.length} errors):\n  ${result.errors.join('\n  ')}`);
   }
-  const synonymDb = args.synonyms ? ((await loadJson(args.synonyms)) as SynonymDatabase) : null;
   return buildEventArtifacts(result.value, { synonymDb });
 }
 

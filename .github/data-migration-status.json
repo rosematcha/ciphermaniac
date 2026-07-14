@@ -2,7 +2,7 @@
   "planDocument": "DB-MASTER-PLAN.md",
   "updatedAt": "2026-07-13",
   "currentPhase": 2,
-  "currentSlice": "phase2-python-export-boundary",
+  "currentSlice": "phase2-shadow-wiring-and-aux-cli",
   "phases": {
     "0": {
       "title": "Baseline, inventory, and safety rails",
@@ -59,15 +59,20 @@
         "event match serving builders (shared/data/reports/eventMatches.ts: playerMatches + canonical matches) built from normalized records, 7 tests (e514600)",
         "matchupProfiles quality-model builder (shared/data/reports/matchupProfiles.ts) ported from aggregate_matchups; groups by archetype key so casing variants collapse (D3); 8 tests (bb3bf17)",
         "event artifact orchestrator (shared/data/reports/eventArtifacts.ts): one pure fn NormalizedEvent -> full serving tree (master/decks/players/matches/playerMatches/conversion/matchupProfiles/cardUsage/archetypes index+per-archetype files/index/meta + phase2/topcut slices), permutation-invariant, 9 tests (78c2665)",
-        "TS event build CLI (.github/scripts/event-cli.ts): validate normalized event -> build -> write local or upload R2; malformed record fails before publication; run end-to-end on the fixture (31 artifacts), 2 tests (0d5865d)"
+        "TS event build CLI (.github/scripts/event-cli.ts): validate normalized event -> build -> write local or upload R2; malformed record fails before publication; run end-to-end on the fixture (31 artifacts), 2 tests (0d5865d)",
+        "Labs source->normalized adapter (shared/data/adapters/labsSource.ts): applies ALL policy (IDs, canonicalization, archetype identity, success tags, outcome derivation) in TS; output validates + drives the orchestrator; 8 tests (78523c8)",
+        "event CLI accepts --from labs-source (adapts before validate/build); Python scraper emits the loose source shape (lib/labs_source.py) with a round-trip test driving the real TS adapter+CLI (1909db9, 706abf3)",
+        "download-tournament.py additively emits the source record under EMIT_SOURCE_EVENT (shadow, legacy path unchanged) (ff24ecb)"
       ],
       "outstandingGates": [
-        "download-tournament.py reduced to a Labs scraper that emits a NormalizedEvent JSON (contract from slice 8) at its export boundary (~L2818), then invokes event-cli.ts build; the whole TS receiving side is now in place and fixture-verified",
-        "event-cli subcommands reindex/backfill-conversion/rebuild-catalog so reprocess-event-indexes.py / backfill-conversion.py / rebuild-tournaments-index.py stop importing the Python monolith",
-        "memorial generation migrated to shared builders (keeps its limitlesstcg HTML scraper, swaps its private report/canonicalization)",
-        "tournaments.json catalog builder",
+        "wire a shadow build step (download-tournament.yml / a data-build workflow) that runs event-cli on the emitted source and compares against legacy artifacts (fixture/prod parity) - this is the Phase 6 cutover gate",
+        "event-cli reindex/backfill-conversion/rebuild-catalog subcommands so reprocess-event-indexes.py/backfill-conversion.py/rebuild-tournaments-index.py stop importing the Python monolith",
+        "memorial generation migrated to shared builders",
         "run-online-meta.mjs -> TS orchestration: DEFERRED pending a verified fixture-diff port",
-        "DECISION: tournament.db + cardIndex.json have no consumers; retire in Phase 7 rather than port"
+        "DECISION: tournament.db + cardIndex.json have no consumers; retire in Phase 7"
+      ],
+      "notes": [
+        "The entire TS receiving pipeline is complete and proven end-to-end: LabsSourceEvent -> adapter -> validated NormalizedEvent -> orchestrator -> full serving tree, invoked via event-cli, with a Python->TS round-trip test. Remaining Phase 2 is workflow shadow wiring + aux-script re-points + memorial; the destructive removal of Python/legacy generators is the Phase 6/7 cutover."
       ]
     },
     "3": {
