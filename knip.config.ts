@@ -28,7 +28,10 @@ const config: KnipConfig = {
   ignore: [
     // Contract layer lands ahead of its producers (DB-MASTER-PLAN Phase 2 adopts
     // it); its exports have no consumers yet. Remove this ignore then.
-    'shared/data/**'
+    'shared/data/**',
+    // Generated embedded-release module; its consumer (the src/lib/data.ts
+    // release-aware resolver) arrives with the measured Phase 4 frontend rollout.
+    'src/generated/**'
   ]
 };
 

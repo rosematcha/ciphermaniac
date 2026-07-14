@@ -76,6 +76,55 @@ export function createR2ObjectStore(client, bucket) {
           CacheControl: CONTROL_CACHE_CONTROL
         })
       );
+    },
+
+    /** Read a control-plane pointer with its ETag, or null when absent. */
+    async read(key) {
+      try {
+        const response = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+        const body = await response.Body.transformToString('utf-8');
+        return { value: JSON.parse(body), etag: response.ETag };
+      } catch (error) {
+        if (isMissing(error)) return null;
+        throw error;
+      }
+    },
+
+    /** Create the pointer only if absent (If-None-Match: *). */
+    async createIfAbsent(key, value) {
+      try {
+        await client.send(
+          new PutObjectCommand({
+            Bucket: bucket, Key: key, Body: JSON.stringify(value),
+            ContentType: 'application/json', CacheControl: CONTROL_CACHE_CONTROL, IfNoneMatch: '*'
+          })
+        );
+      } catch (error) {
+        if (isConflict(error)) throw pointerConflict(key);
+        throw error;
+      }
+    },
+
+    /** Overwrite the pointer only if its ETag still matches (If-Match). */
+    async writeIfMatch(key, value, etag) {
+      try {
+        await client.send(
+          new PutObjectCommand({
+            Bucket: bucket, Key: key, Body: JSON.stringify(value),
+            ContentType: 'application/json', CacheControl: CONTROL_CACHE_CONTROL, IfMatch: etag
+          })
+        );
+      } catch (error) {
+        if (isConflict(error)) throw pointerConflict(key);
+        throw error;
+      }
     }
   };
+}
+
+function pointerConflict(key) {
+  const error = new Error(`pointer conflict on ${key}`);
+  error.name = 'PointerConflictError';
+  error.code = 'PointerConflict';
+  return error;
 }

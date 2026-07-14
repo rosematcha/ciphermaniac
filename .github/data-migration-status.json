@@ -1,8 +1,8 @@
 {
   "planDocument": "DB-MASTER-PLAN.md",
   "updatedAt": "2026-07-13",
-  "currentPhase": 3,
-  "currentSlice": "phase3-wire-real-nodes-and-shadow-run",
+  "currentPhase": 4,
+  "currentSlice": "phase4-frontend-wiring-and-publish-workflow",
   "phases": {
     "0": {
       "title": "Baseline, inventory, and safety rails",
@@ -85,12 +85,12 @@
         "publish/receipt algorithm over an abstract ObjectStore: create-only immutable writes, read-back length+hash verify, receipt written LAST; body/verify failure never writes a receipt; idempotent identical re-publish; differing-content-at-immutable-key rejected (shared/data/build/receiptStore.ts) (085a5de)",
         "R2 ObjectStore adapter (.github/scripts/lib/build/r2ObjectStore.mjs): create-only If-None-Match:* immutable writes + one-year cache; VERIFIED LIVE against the ciphermaniac-reports bucket (second write conflicts, read-back matches, missing returns null) (51f824d)",
         "build-loop engine (shared/data/build/buildLoop.ts): plan -> build dirty in topo order -> publish immutably -> receipt last -> replan to convergence; no-change rerun builds nothing/writes nothing; synonym-only change rebuilds only descendants; plan mode writes nothing (f260c51)",
-        "LIVE shadow publication verified end-to-end against the production R2 bucket (.github/scripts/shadow-build.ts): built the fixture event through the orchestrator, published 31 immutable releases/v1 objects + node receipt + shadow channel pointer, hash-verified all on read-back, and GC'd to zero \u2014 never touching reports/ or production.json (14f6944)"
+        "LIVE shadow publication verified end-to-end against the production R2 bucket (.github/scripts/shadow-build.ts): built the fixture event through the orchestrator, published 31 immutable releases/v1 objects + node receipt + shadow channel pointer, hash-verified all on read-back, and GC'd to zero \u2014 never touching reports/ or production.json (14f6944)",
+        "conditional channel-pointer updates with replan-on-conflict (shared/data/build/channel.ts) + R2 ETag If-Match/If-None-Match adapter methods, VERIFIED LIVE (matching-ETag update succeeds, stale-ETag write conflicts) (e467481)"
       ],
       "outstandingGates": [
-        "wire all producer scopes as build-graph nodes (event pipeline done; online/trends/players/prices/catalogs/snapshots builders call their shared builders) and run a full-graph shadow build",
-        "ETag conditional channel-pointer write with replan-on-conflict (store.put is unconditional; production.json needs it)",
-        "protected shadow workflow (.github/workflows) running the loop on schedule without touching production.json"
+        "wire all producer scopes as build-graph nodes and run a FULL-graph shadow build (event pipeline proven; online/trends/players/prices/catalogs/snapshots builders remain)",
+        "protected shadow workflow running the loop on schedule without touching production.json"
       ],
       "notes": [
         "Every load-bearing abstraction of the content-hash build graph is implemented and tested (in-memory + one live R2 verification of the immutable-write gate). What remains is wiring the concrete producer nodes and running a live shadow build - which per the plan's own gates (shadow publication, performance measurement, rollback testing, dual writes through 14+ releases) is a staged, measured rollout best done with human oversight rather than an unattended autonomous run against production."
@@ -100,12 +100,26 @@
         "synonym-only change dirties all and only declared descendants": "MET (build-graph tests)",
         "no-change replan reports no dirty nodes": "MET (build-loop tests)",
         "missing or corrupt referenced artifacts invalidate a receipt": "MET (graph + receipt-store tests)",
-        "receipt and pointer updates use conditional R2 writes": "PARTIAL - immutable If-None-Match:* live-verified; ETag conditional channel-pointer write still TODO"
+        "receipt and pointer updates use conditional R2 writes": "MET - immutable If-None-Match:* AND ETag If-Match pointer writes both live-verified against R2"
       }
     },
     "4": {
       "title": "Immutable publication and embedded release",
-      "status": "not-started"
+      "status": "infrastructure-built",
+      "completedGates": [
+        "embedded release module + generator (.github/scripts/generate-release-module.ts writes src/generated/release.ts from a validated manifest; committed default exports null; refuses to embed an invalid manifest) (d7d16f5)",
+        "release-aware resolver with legacy fallback (shared/releaseManifest.ts): immutable /releases/v1 URLs when a manifest is embedded, current legacy reports/ paths when not; a corrupt embed degrades to legacy; resolver frozen for the document lifetime - a no-op for production until a real manifest is embedded",
+        "immutable publication path proven live (Phase 3 shadow-build: publish -> receipt -> shadow pointer -> verify -> GC)"
+      ],
+      "outstandingGates": [
+        "wire the resolver into src/lib/data.ts fetch call sites so it is byte-identical to today when no manifest is embedded (needs a per-call-site audit + Phase 0 benchmark re-run to prove zero regression) - a MEASURED change",
+        "publish-data-release workflow: build candidates -> validate -> HEAD-check -> write release manifest -> generate module -> npm run build -> Pages deploy (needs CLOUDFLARE_API_TOKEN, provided) -> ETag-update production.json -> retain prior deployment",
+        "dual-publish immutable + legacy stable paths; keep dual writes through >=14 successful scheduled releases + one cache lifetime",
+        "rollback exercised with old/new/no service worker; browser traces show no added request; p50/p95 within Phase 0 budgets"
+      ],
+      "notes": [
+        "Infrastructure is built and the immutable-publish path is live-proven, but activating it (frontend wiring + Pages deploy + production.json promotion) is the staged, measured, reversible rollout the plan mandates - performance-gated and human-overseen, not an unattended autonomous cutover."
+      ]
     },
     "5": {
       "title": "Dependency-aware incremental builds",
