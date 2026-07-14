@@ -52,3 +52,17 @@ test('with an embedded manifest, scope paths resolve to immutable release roots'
   // An event NOT in the map passes through.
   assert.strictEqual(resolvePathWith(resolver, '/reports/2026-02-01, Other/master.json'), '/reports/2026-02-01, Other/master.json');
 });
+
+test('missing-release-body recovery: reload once for a release path, never for legacy or twice', async () => {
+  const { planMissingBodyRecovery, isReleasePath } = await import('../../src/lib/releaseClient.ts');
+  // Release-aware + immutable release path + not yet reloaded -> one reload.
+  assert.strictEqual(planMissingBodyRecovery('/releases/v1/online/aaa/master.json', true, false), 'reload');
+  // Already reloaded once -> passthrough (no loop; must not combine roots).
+  assert.strictEqual(planMissingBodyRecovery('/releases/v1/online/aaa/master.json', true, true), 'passthrough');
+  // A legacy path 404 is a normal miss, never a recovery reload.
+  assert.strictEqual(planMissingBodyRecovery('/reports/Online - Last 14 Days/master.json', true, false), 'passthrough');
+  // Not release-aware (production default) -> never reloads.
+  assert.strictEqual(planMissingBodyRecovery('/releases/v1/online/aaa/master.json', false, false), 'passthrough');
+  assert.strictEqual(isReleasePath('/releases/v1/x/y.json'), true);
+  assert.strictEqual(isReleasePath('/reports/x/y.json'), false);
+});

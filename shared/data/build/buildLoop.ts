@@ -11,7 +11,7 @@
  */
 
 import { type BuildNode, type BuildPlan, planBuild, type PlannedNode } from './graph';
-import { type CandidateOutput, type ObjectStore, publishOutputs, receiptStoreFrom, writeReceipt } from './receiptStore';
+import { type CandidateOutput, type ObjectStore, publishOutputs, verifyingReceiptStoreFrom, writeReceipt } from './receiptStore';
 
 /** Builds one node's candidate outputs from its resolved dependency keys. */
 export type NodeBuilder = (node: PlannedNode) => Promise<CandidateOutput[]> | CandidateOutput[];
@@ -57,7 +57,9 @@ export async function runBuildLoop(
 ): Promise<BuildLoopResult> {
   const receiptKeyFor = options.receiptKeyFor ?? defaultReceiptKey;
   const builderVersionFor = options.builderVersionFor ?? (() => 'v1');
-  const receiptStore = receiptStoreFrom(store, receiptKeyFor);
+  // Verify a cached receipt's outputs still exist + hash-match on every replan,
+  // so a deleted/corrupt artifact re-dirties its node instead of being skipped.
+  const receiptStore = verifyingReceiptStoreFrom(store, receiptKeyFor, hashBody);
   const maxRounds = options.maxRounds ?? 50;
   const built: string[] = [];
 

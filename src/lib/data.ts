@@ -32,7 +32,7 @@ import { calculatePercentage } from '../../shared/reportUtils.js';
 import type { UpcomingPayload } from '../../shared/upcomingTypes.js';
 import type { MajorsTrendsPayload } from './majorsTrends';
 import archetypeIconsRaw from '../data/archetype-icons.json';
-import { resolveDataPath } from './releaseClient';
+import { isReleasePath, recoverFromMissingReleaseBody, resolveDataPath } from './releaseClient';
 
 export type { UpcomingPayload };
 
@@ -107,6 +107,13 @@ async function fetchJsonCore<T>(path: string, optional: boolean): Promise<T | nu
   }
   const promise = (async () => {
     const response = await fetch(url, { mode: 'cors' });
+    // A 404 on an IMMUTABLE release body is corruption, not an optional miss:
+    // recover with one controlled reload (adopt a newer release) rather than
+    // mixing a legacy generation into this document. recoverFromMissingReleaseBody
+    // is a no-op unless a manifest is embedded and this is a release path.
+    if (response.status === 404 && isReleasePath(resolvedPath) && recoverFromMissingReleaseBody(resolvedPath)) {
+      return new Promise<T | null>(() => {}); // navigation underway; never resolves
+    }
     if (optional && response.status === 404) {
       return null;
     }

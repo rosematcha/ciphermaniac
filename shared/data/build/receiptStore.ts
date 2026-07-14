@@ -113,3 +113,36 @@ export function receiptStoreFrom(store: ObjectStore, keyFor: (node: string, node
     }
   };
 }
+
+/**
+ * Like {@link receiptStoreFrom}, but a receipt is only honored when every output
+ * it references still exists AND its content hash matches the recorded sha256.
+ * A missing or corrupt referenced artifact invalidates the receipt (returns
+ * null), so the node re-dirties instead of being wrongly skipped — the plan's
+ * "missing or corrupt referenced artifacts invalidate a receipt" exit criterion.
+ * @param store - Object store
+ * @param keyFor - Receipt key layout
+ * @param hashOf - Content-hash function over a serialized body (must match how
+ *   {@link publishOutputs} computed the recorded `sha256`)
+ * @returns A verifying receipt store
+ */
+export function verifyingReceiptStoreFrom(
+  store: ObjectStore,
+  keyFor: (node: string, nodeKey: string) => string,
+  hashOf: (body: string) => string
+): ReceiptStore {
+  return {
+    async get(node: string, nodeKey: string): Promise<NodeReceipt | null> {
+      const body = await store.get(keyFor(node, nodeKey));
+      if (body === null) return null;
+      const receipt = JSON.parse(body) as NodeReceipt;
+      for (const output of Object.values(receipt.outputs)) {
+        const objectBody = await store.get(output.key);
+        if (objectBody === null || hashOf(objectBody) !== output.sha256) {
+          return null; // referenced artifact missing or corrupt → receipt invalid
+        }
+      }
+      return receipt;
+    }
+  };
+}

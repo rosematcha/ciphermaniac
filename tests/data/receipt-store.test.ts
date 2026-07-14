@@ -90,3 +90,24 @@ test('the receipt is the last write and is then resolvable for planning', async 
   assert.strictEqual(receipt.outputs.m.key, 'releases/v1/x/m.json');
   assert.strictEqual(await planningStore.get('event:x', 'sha256:other'), null);
 });
+
+test('verifying receipt store invalidates a receipt whose output is missing or corrupt', async () => {
+  const store = new MemoryObjectStore();
+  const keyFor = (node: string, nodeKey: string): string => `build/v1/nodes/${node}/${nodeKey}.json`;
+  const { outputs } = await publishOutputs(store, [candidate('m', 'releases/v1/x/m.json', '{"a":1}')], hashOf);
+  await writeReceipt(store, { schemaVersion: 1, node: 'event:x', nodeKey: 'sha256:k', builder: 'v1', inputs: {}, outputs, completedAt: 't' }, keyFor('event:x', 'sha256:k'));
+  const { verifyingReceiptStoreFrom } = await import('../../shared/data/build/receiptStore.ts');
+  const verifying = verifyingReceiptStoreFrom(store, keyFor, hashOf);
+
+  // All outputs present + matching -> receipt honored.
+  assert.ok(await verifying.get('event:x', 'sha256:k'));
+
+  // Corrupt the output content -> receipt invalidated (node must re-dirty).
+  store.corrupt.add('releases/v1/x/m.json');
+  assert.strictEqual(await verifying.get('event:x', 'sha256:k'), null);
+  store.corrupt.delete('releases/v1/x/m.json');
+
+  // Delete the output object -> receipt invalidated.
+  store.objects.delete('releases/v1/x/m.json');
+  assert.strictEqual(await verifying.get('event:x', 'sha256:k'), null);
+});

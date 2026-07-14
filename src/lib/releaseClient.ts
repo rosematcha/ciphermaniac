@@ -92,6 +92,53 @@ export function resolvePathWith(withResolver: ReleaseResolver, path: string): st
   return path;
 }
 
+/** True when a resolved path targets an immutable release body. */
+export function isReleasePath(path: string): boolean {
+  return path.startsWith('/releases/v1/');
+}
+
+/**
+ * Decide how to handle a 404 on a resolved report path. A missing IMMUTABLE
+ * release body is treated as corruption: recover with exactly ONE controlled
+ * reload (to adopt a newer embedded release) — never fall back to a legacy
+ * generation within the same document. A 404 on a legacy path, or a second
+ * miss after we already reloaded, is a normal miss.
+ * @param resolvedPath - The path that 404'd (post-resolution)
+ * @param releaseAware - Whether a release manifest is embedded
+ * @param alreadyReloaded - Whether this document already did its one recovery reload
+ * @returns 'reload' to perform the single recovery reload, else 'passthrough'
+ */
+export function planMissingBodyRecovery(
+  resolvedPath: string,
+  releaseAware: boolean,
+  alreadyReloaded: boolean
+): 'reload' | 'passthrough' {
+  return releaseAware && isReleasePath(resolvedPath) && !alreadyReloaded ? 'reload' : 'passthrough';
+}
+
+const RELOAD_FLAG = 'ciphermaniac.releaseRecoveryReloaded';
+
+/**
+ * Browser side of {@link planMissingBodyRecovery}: perform the one controlled
+ * recovery reload for a missing release body, guarded by session storage so it
+ * can never loop. No-op outside the browser. Returns true when it initiated a
+ * reload (the caller should stop, a navigation is underway).
+ * @param resolvedPath - The 404'd resolved path
+ * @returns Whether a recovery reload was initiated
+ */
+export function recoverFromMissingReleaseBody(resolvedPath: string): boolean {
+  if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') {
+    return false;
+  }
+  const already = sessionStorage.getItem(RELOAD_FLAG) === '1';
+  if (planMissingBodyRecovery(resolvedPath, isReleaseAware, already) !== 'reload') {
+    return false;
+  }
+  sessionStorage.setItem(RELOAD_FLAG, '1');
+  window.location.reload();
+  return true;
+}
+
 /** Classify a dated event-folder report path to (folder, folder-relative path). */
 function classifyEvent(path: string): { folder: string; rel: string } | null {
   const p = path.replace(/^\/+/, '');
