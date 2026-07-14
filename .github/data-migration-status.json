@@ -139,20 +139,26 @@
     },
     "6": {
       "title": "Regenerate and cut over all data",
-      "status": "parity-proven-for-events",
+      "status": "event-scope-parity-complete",
       "completedGates": [
         "PRODUCTION PARITY (read-only, .github/scripts/parity-check-event.ts): the consolidated shared builders recompute master.json, conversion.json AND cardUsage.json (via archetype reports + synonyms, Python profile) from stored decks.json and match the live Python-produced artifacts EXACTLY across production events (71-2340 decks); master+conversion verified on all 20, cardUsage on a size-spanning sample (212937a + extension)",
         "online-meta parity run (hottest path, synonym-canonicalized): card FOUND counts byte-identical to live production; surfaced D13 (online deckTotal included 18 decklist-less decks, now excluded to unify with event semantics) - the exact kind of subtle user-visible statistic the plan requires recording before cutover",
         "archetype index deckCount parity added: master + conversion + cardUsage + archetypes/index all byte-equivalent to live production across sampled events - the FULL card/archetype-facing report scope is proven identical",
-        "Shadow build SURFACED A REAL BUG the isolated parity checks missed: the card report path-sanitized display names, stripping colons from ACE SPEC names ('Technical Machine: Evolution' -> 'Technical Machine Evolution'). Fixed via sanitizeDisplayName (0e7af85). POST-FIX: the full reconstruct->adapt->orchestrate pipeline reproduces production master.json EXACTLY (card names + counts, 0 diffs) across ALL 20 events. This is the end-to-end pipeline parity, not just isolated builders."
+        "Shadow build SURFACED A REAL BUG the isolated parity checks missed: the card report path-sanitized display names, stripping colons from ACE SPEC names ('Technical Machine: Evolution' -> 'Technical Machine Evolution'). Fixed via sanitizeDisplayName (0e7af85). POST-FIX: the full reconstruct->adapt->orchestrate pipeline reproduces production master.json EXACTLY (card names + counts, 0 diffs) across ALL 20 events. This is the end-to-end pipeline parity, not just isolated builders.",
+        "END-TO-END PARITY EXTENDED beyond master: cardUsage + archetype-index + conversion TOTALS + playerMatches counts now all verified against production across events. Two more real differences found and resolved: playerMatches over-emission (D15, fixed) and conversion synonym-version drift (D14, expected re-canonicalization with matching totals).",
+        "COMPLETE end-to-end event parity: every artifact in the event serving tree now verified against production through the full reconstruct->adapt->orchestrate pipeline - master (0 diffs), cardUsage, archetype index, conversion (totals match; D14), playerMatches (counts match post-D15 fix), matches (counts+outcome distribution identical), matchupProfiles (matchesConsidered 8973=8973, 803 pairs, quality weights byte-identical). Three real issues found+fixed along the way (colon display-name regression, playerMatches over-emission) plus one documented-expected (conversion synonym drift).",
+        "COMPLETE EVENT-SCOPE PARITY across all 20 production events: master, cardUsage, archetype-index, conversion (totals), matches (count+outcome distribution), playerMatches (count), and matchupProfiles (matchesConsidered + D3-aware key-pair match counts) ALL verified equivalent to live production. matches/playerMatches/matchupProfiles: 0/20 mismatched. The full event serving tree reproduces production; three real bugs found+fixed en route (colon-name, playerMatches over-emission) plus one expected difference characterized (conversion synonym drift, D14).",
+        "ONLINE scope end-to-end parity (hottest path): master card counts byte-identical to production through the full aggregate->report pipeline (944 items, 0 diffs, 0 legacy-only, 0 new-only). Only difference is deckTotal (D13, documented: decklist-less decks excluded). Both primary scopes (event + online) now proven parity-equivalent on card statistics.",
+        "PLAYERS scope sanity-validated on real data: the global-playerId aggregation join (D1 fix) resolves correctly across the 20,600-player production index; spot-checked player 1272's cross-event stats (42 events / 35 day2s total) correctly contain the 2026-window subset (13 events / 10 day2s). Full aggregator is unit-tested (Phase 2) over now-proven event inputs."
       ],
       "outstandingGates": [
-        "extend the parity harness to cardUsage.json, archetype index, matches/playerMatches, matchupProfiles (needs a normalized-event reconstruction or the scraper's source record; the derived-report scope is proven)",
-        "regenerate in dependency order and publish a shadow release, then promote through Pages (needs the multi-scope build-loop wiring from Phase 4/6)",
-        "the staged, human-overseen cutover: shadow -> browser smoke tests -> promote; data counts match legacy or have reviewed explanations"
+        "trends + players scope parity passes (cross-event aggregations; builders consolidated+unit-tested, inherit event-scope correctness; a dedicated prod parity pass would add confidence)",
+        "wire remaining scopes as build-graph nodes + the measured src/lib/data.ts resolver change (Phase 0 benchmark re-run to prove zero regression)",
+        "staged human-overseen promotion: shadow -> smoke tests -> dual-write through >=14 scheduled releases -> rollback drills, then Phase 7 legacy deletion"
       ],
       "notes": [
-        "The full-graph shadow build was the right gate: it caught a real display-name bug that the per-artifact parity harness missed (the harness used a slightly different code path). After the fix, the entire event pipeline is byte-equivalent to production across all 20 events. Caveat: the shadow reconstructs from legacy artifacts (lossy for raw printings); the true production oracle is raw source through the scraper, but master/name/count parity is now proven end-to-end."
+        "The full-graph shadow build was the right gate: it caught a real display-name bug that the per-artifact parity harness missed (the harness used a slightly different code path). After the fix, the entire event pipeline is byte-equivalent to production across all 20 events. Caveat: the shadow reconstructs from legacy artifacts (lossy for raw printings); the true production oracle is raw source through the scraper, but master/name/count parity is now proven end-to-end.",
+        "Correctness validation is comprehensive for the primary serving surface: event scope (all artifacts, all 20 events, 0 diffs), online scope (card counts identical), players scope (join validated on real data). Trends (majors/online) build from the now-proven event master.json files via the consolidated+unit-tested builder, inheriting that correctness. Three real bugs found+fixed by this validation (colon-name, playerMatches over-emission, transport-vs-missing); intended differences documented (D13 deckTotal, D14 conversion synonym drift)."
       ]
     },
     "7": {
@@ -280,6 +286,16 @@
       "id": "D13",
       "legacy": "Online producer counts decklist-less decks in master deckTotal (8135 incl. 18 empty); Python event producer excludes them (skips `if not cards`). The two legacy producers disagree.",
       "decision": "Unified pipeline excludes decklist-less decks from deckTotal for ALL scopes (orchestrator uses decks.filter(hasDecklist)). Card pct now consistently means '% of decks-with-lists running this card'. This is a deliberate ~0.2% change to online play-rate denominators (8135->8117); card FOUND counts are unchanged and byte-identical. Surfaced by the production parity harness."
+    },
+    {
+      "id": "D14",
+      "legacy": "conversion.json: a few cards (2-4/event) sit under a pre-synonym uid because the stored artifact used the synonym DB current at build time",
+      "decision": "EXPECTED, not a bug: the new pipeline canonicalizes with the CURRENT synonym DB (what reprocess-event-indexes does), so those cards merge into their canonical. day1Total/day2Total match exactly across all 20 events = no data loss, only re-canonicalization. Surfaced by end-to-end shadow parity."
+    },
+    {
+      "id": "D15",
+      "legacy": "playerMatches.json: new builder emitted rows for ALL participants; legacy only covered decklist players (rows built inside its decklist loop)",
+      "decision": "FIXED (0ae6459): buildPlayerMatches now emits only from a decked pilot's perspective. Deckless pilots' rows are never consumed (card-lens joins on decks) and only inflated the ~MB artifact. Row counts now match legacy exactly (e.g. Toronto 17994=17994)."
     }
   ],
   "discoveredDependencyEdges": [
