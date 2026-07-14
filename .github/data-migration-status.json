@@ -1,8 +1,8 @@
 {
   "planDocument": "DB-MASTER-PLAN.md",
   "updatedAt": "2026-07-13",
-  "currentPhase": 2,
-  "currentSlice": "phase2-shadow-wiring-and-aux-cli",
+  "currentPhase": 3,
+  "currentSlice": "phase3-wire-real-nodes-and-shadow-run",
   "phases": {
     "0": {
       "title": "Baseline, inventory, and safety rails",
@@ -77,7 +77,31 @@
     },
     "3": {
       "title": "Build graph and shadow receipts",
-      "status": "not-started"
+      "status": "shadow-proven",
+      "completedGates": [
+        "canonical JSON + sha256 content hashing (shared/data/{canonicalJson,hash}.ts, Phase 1)",
+        "content-hash build graph: computeNodeKey (contract+builder version + sorted dep hashes + logical window, never the repo commit), topoSort with cycle/unknown-dep detection, planBuild dirty-node planner (shared/data/build/graph.ts); tests prove synonym-only change dirties exactly declared descendants, no-change replan is empty, missing receipt invalidates (9449772)",
+        "immutable release manifest + browser path resolver: composeRelease (independently versioned scope roots, unchanged scopes reuse prior root), validateReleaseManifest (immutable /releases/v1 paths only), resolveScopePath/resolveEventPath (shared/data/build/release.ts) (7b5ef90)",
+        "publish/receipt algorithm over an abstract ObjectStore: create-only immutable writes, read-back length+hash verify, receipt written LAST; body/verify failure never writes a receipt; idempotent identical re-publish; differing-content-at-immutable-key rejected (shared/data/build/receiptStore.ts) (085a5de)",
+        "R2 ObjectStore adapter (.github/scripts/lib/build/r2ObjectStore.mjs): create-only If-None-Match:* immutable writes + one-year cache; VERIFIED LIVE against the ciphermaniac-reports bucket (second write conflicts, read-back matches, missing returns null) (51f824d)",
+        "build-loop engine (shared/data/build/buildLoop.ts): plan -> build dirty in topo order -> publish immutably -> receipt last -> replan to convergence; no-change rerun builds nothing/writes nothing; synonym-only change rebuilds only descendants; plan mode writes nothing (f260c51)",
+        "LIVE shadow publication verified end-to-end against the production R2 bucket (.github/scripts/shadow-build.ts): built the fixture event through the orchestrator, published 31 immutable releases/v1 objects + node receipt + shadow channel pointer, hash-verified all on read-back, and GC'd to zero \u2014 never touching reports/ or production.json (14f6944)"
+      ],
+      "outstandingGates": [
+        "wire all producer scopes as build-graph nodes (event pipeline done; online/trends/players/prices/catalogs/snapshots builders call their shared builders) and run a full-graph shadow build",
+        "ETag conditional channel-pointer write with replan-on-conflict (store.put is unconditional; production.json needs it)",
+        "protected shadow workflow (.github/workflows) running the loop on schedule without touching production.json"
+      ],
+      "notes": [
+        "Every load-bearing abstraction of the content-hash build graph is implemented and tested (in-memory + one live R2 verification of the immutable-write gate). What remains is wiring the concrete producer nodes and running a live shadow build - which per the plan's own gates (shadow publication, performance measurement, rollback testing, dual writes through 14+ releases) is a staged, measured rollout best done with human oversight rather than an unattended autonomous run against production."
+      ],
+      "exitCriteria": {
+        "shadow manifests describe every production artifact and dependency": "PARTIAL - one event shadow proven live; full multi-scope graph (online/trends/players/prices/catalogs/snapshots) wiring pending",
+        "synonym-only change dirties all and only declared descendants": "MET (build-graph tests)",
+        "no-change replan reports no dirty nodes": "MET (build-loop tests)",
+        "missing or corrupt referenced artifacts invalidate a receipt": "MET (graph + receipt-store tests)",
+        "receipt and pointer updates use conditional R2 writes": "PARTIAL - immutable If-None-Match:* live-verified; ETag conditional channel-pointer write still TODO"
+      }
     },
     "4": {
       "title": "Immutable publication and embedded release",
