@@ -23,7 +23,7 @@ import { computeNodeKey, type NodeReceipt } from '../../shared/data/build/graph.
 import { type CandidateOutput, publishOutputs, writeReceipt } from '../../shared/data/build/receiptStore.ts';
 import { composeRelease, type ReleaseScope } from '../../shared/data/build/release.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
-import { sha256Hex, sha256HexString } from '../../shared/data/hash.ts';
+import { semanticHash, sha256Hex, sha256HexString } from '../../shared/data/hash.ts';
 import { type LabsSourceEvent, labsSourceToNormalized } from '../../shared/data/adapters/labsSource.ts';
 import { buildEventArtifacts } from '../../shared/data/reports/eventArtifacts.ts';
 import { archetypeKey, archetypeSlug } from '../../shared/data/contracts.ts';
@@ -145,8 +145,8 @@ async function main(): Promise<void> {
       return { name: path, key: `${root}/${path}`, body: s, sha256: hashBody(s) };
     });
     const { outputs } = await publishOutputs(store, candidates, hashBody);
-    const nodeKey = computeNodeKey({ contractVersion: 1, builderVersion: 'event-artifacts-v1', config: { eventId: event.eventId }, dependencyHashes: { normalizedEvent: sha256Hex(event) } }, sha256Hex);
-    const receipt: NodeReceipt = { schemaVersion: 1, node: `event:${event.eventId}`, nodeKey, builder: 'event-artifacts-v1', inputs: { normalizedEvent: sha256Hex(event) }, outputs, completedAt: '1970-01-01T00:00:00Z' };
+    const nodeKey = computeNodeKey({ contractVersion: 1, builderVersion: 'event-artifacts-v1', config: { eventId: event.eventId }, dependencyHashes: { normalizedEvent: semanticHash(event) } }, sha256Hex);
+    const receipt: NodeReceipt = { schemaVersion: 1, node: `event:${event.eventId}`, nodeKey, builder: 'event-artifacts-v1', inputs: { normalizedEvent: semanticHash(event) }, outputs, completedAt: '1970-01-01T00:00:00Z' };
     await writeReceipt(store, receipt, `build/v1/nodes/event:${event.eventId}/${nodeKey}.json`);
     candidates.forEach(c => { publishedKeys.push(c.key); totalBytes += c.body.length; });
     publishedKeys.push(`build/v1/nodes/event:${event.eventId}/${nodeKey}.json`);

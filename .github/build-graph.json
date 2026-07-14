@@ -1,0 +1,25 @@
+{
+  "comment": "Declarative build dependency graph (DB-MASTER-PLAN Phase 3). Node keySpec.config identifies the node; sourceHashes name its non-node semantic inputs (source captures + catalogs) which the planner substitutes at run time. Node dependencies contribute their resolved nodeKey. Two concrete events (0054, 0055) illustrate per-event fan-out; the real graph has one event-core/event-indexes/attending-players node per stored event. Player nodes depend on the content of the events the player ATTENDED (not the global catalog) so correcting one event does not reconstruct unrelated players (Phase 5 content-hash fingerprints).",
+  "schemaVersion": 1,
+  "nodes": [
+    { "name": "synonyms", "dependsOn": [], "keySpec": { "contractVersion": 1, "builderVersion": "synonyms-v1" }, "sourceHashes": { "cardObservations": "SRC:cardObservations" } },
+    { "name": "card-types", "dependsOn": [], "keySpec": { "contractVersion": 1, "builderVersion": "card-types-v1" }, "sourceHashes": { "cardObservations": "SRC:cardObservations" } },
+
+    { "name": "event-core:0054", "dependsOn": ["synonyms", "card-types"], "keySpec": { "contractVersion": 1, "builderVersion": "event-core-v1", "config": { "eventId": "0054" } }, "sourceHashes": { "normalizedEvent": "SRC:event-0054" } },
+    { "name": "event-indexes:0054", "dependsOn": ["event-core:0054", "synonyms"], "keySpec": { "contractVersion": 1, "builderVersion": "event-indexes-v1", "config": { "eventId": "0054" } } },
+
+    { "name": "event-core:0055", "dependsOn": ["synonyms", "card-types"], "keySpec": { "contractVersion": 1, "builderVersion": "event-core-v1", "config": { "eventId": "0055" } }, "sourceHashes": { "normalizedEvent": "SRC:event-0055" } },
+    { "name": "event-indexes:0055", "dependsOn": ["event-core:0055", "synonyms"], "keySpec": { "contractVersion": 1, "builderVersion": "event-indexes-v1", "config": { "eventId": "0055" } } },
+
+    { "name": "tournament-catalog", "dependsOn": ["event-core:0054", "event-core:0055"], "keySpec": { "contractVersion": 1, "builderVersion": "catalog-v1" } },
+    { "name": "players:0054", "dependsOn": ["event-core:0054"], "keySpec": { "contractVersion": 1, "builderVersion": "players-v1", "config": { "attendedEvents": ["0054"] } } },
+    { "name": "players:0055", "dependsOn": ["event-core:0055"], "keySpec": { "contractVersion": 1, "builderVersion": "players-v1", "config": { "attendedEvents": ["0055"] } } },
+    { "name": "majors-trends", "dependsOn": ["event-core:0054", "event-core:0055", "tournament-catalog", "synonyms"], "keySpec": { "contractVersion": 1, "builderVersion": "majors-v1" } },
+
+    { "name": "online-meta", "dependsOn": ["synonyms", "card-types"], "keySpec": { "contractVersion": 1, "builderVersion": "online-meta-v1" }, "sourceHashes": { "normalizedOnlineWindow": "SRC:onlineWindow" } },
+    { "name": "online-trends", "dependsOn": ["online-meta"], "keySpec": { "contractVersion": 1, "builderVersion": "online-trends-v1" } },
+    { "name": "prices", "dependsOn": ["online-meta", "synonyms"], "keySpec": { "contractVersion": 1, "builderVersion": "prices-v1" } },
+    { "name": "price-history", "dependsOn": ["prices"], "keySpec": { "contractVersion": 1, "builderVersion": "price-history-v1" } },
+    { "name": "snapshots", "dependsOn": ["tournament-catalog", "event-core:0054", "event-core:0055"], "keySpec": { "contractVersion": 1, "builderVersion": "snapshots-v1" } }
+  ]
+}

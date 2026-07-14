@@ -58,3 +58,35 @@ function serialize(value: unknown): string {
 export function canonicalStringify(value: unknown): string {
   return serialize(value);
 }
+
+/**
+ * Volatile timestamp fields excluded from SEMANTIC hashing (DB-MASTER-PLAN
+ * Phase 3: "exclude volatile timestamps from semantic hashes"). A re-fetch or
+ * rebuild that only bumps these must not change a node key, or every run would
+ * rebuild everything and defeat incremental builds.
+ */
+export const VOLATILE_KEYS: readonly string[] = ['fetchedAt', 'updatedAt', 'generatedAt', 'publishedAt', 'completedAt'];
+
+/**
+ * Deep-copy `value`, dropping any object property whose key is in `keys`
+ * (default {@link VOLATILE_KEYS}). Array order is preserved.
+ * @param value - The value to strip
+ * @param keys - Keys to remove (default volatile timestamps)
+ * @returns A structural copy without the stripped keys
+ */
+export function stripVolatile(value: unknown, keys: readonly string[] = VOLATILE_KEYS): unknown {
+  if (Array.isArray(value)) {
+    return value.map(entry => stripVolatile(entry, keys));
+  }
+  if (value !== null && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (keys.includes(k)) {
+        continue;
+      }
+      out[k] = stripVolatile(v, keys);
+    }
+    return out;
+  }
+  return value;
+}

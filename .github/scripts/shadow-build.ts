@@ -22,7 +22,7 @@ import { validateNormalizedEvent } from '../../shared/data/contracts.ts';
 import { buildEventArtifacts } from '../../shared/data/reports/eventArtifacts.ts';
 import { type LabsSourceEvent, labsSourceToNormalized } from '../../shared/data/adapters/labsSource.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
-import { sha256Hex, sha256HexString } from '../../shared/data/hash.ts';
+import { semanticHash, sha256Hex, sha256HexString } from '../../shared/data/hash.ts';
 import { computeNodeKey, type NodeReceipt } from '../../shared/data/build/graph.ts';
 import { type CandidateOutput, publishOutputs, writeReceipt } from '../../shared/data/build/receiptStore.ts';
 import { createR2Client } from './lib/r2.mjs';
@@ -77,7 +77,7 @@ async function main(): Promise<void> {
   const store = createR2ObjectStore(client, bucket);
 
   const nodeKey = computeNodeKey(
-    { contractVersion: 1, builderVersion: BUILDER_VERSION, config: { eventId: event.eventId }, dependencyHashes: { normalizedEvent: sha256Hex(event) } },
+    { contractVersion: 1, builderVersion: BUILDER_VERSION, config: { eventId: event.eventId }, dependencyHashes: { normalizedEvent: semanticHash(event) } },
     sha256Hex
   );
 
@@ -89,7 +89,7 @@ async function main(): Promise<void> {
     node: `event:${event.eventId}`,
     nodeKey,
     builder: BUILDER_VERSION,
-    inputs: { normalizedEvent: sha256Hex(event) },
+    inputs: { normalizedEvent: semanticHash(event) },
     outputs,
     completedAt: event.meta.updatedAt || '1970-01-01T00:00:00Z'
   };
