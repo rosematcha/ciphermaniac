@@ -8,7 +8,19 @@
     "playerCount": 24,
     "format": null,
     "division": "MA",
-    "hasDay2": true
+    "hasDay2": true,
+    "country": "US",
+    "city": "Columbus",
+    "eventType": "regional",
+    "updatedAt": "2026-06-16T02:00:05.000Z",
+    "completed": true,
+    "started": true,
+    "playersRound1": 24,
+    "decklistCount": 4,
+    "rk9Id": "OH2026",
+    "playlatamId": null,
+    "labsCode": "0001",
+    "sourceTournamentId": "1"
   },
   "participants": [
     {
@@ -24,6 +36,12 @@
       },
       "opwPct": 62.5,
       "oopwPct": 58,
+      "points": 18,
+      "icons": [
+        "gardevoir"
+      ],
+      "labsDeckId": "labs-deck-77",
+      "deckName": "Gardevoir ex",
       "flags": {
         "madePhase2": true,
         "madeTopCut": true,
@@ -47,6 +65,9 @@
       },
       "opwPct": 60,
       "oopwPct": 55.5,
+      "points": 15,
+      "labsDeckId": "labs-deck-78",
+      "deckName": "Gardevoir ex",
       "flags": {
         "madePhase2": true,
         "madeTopCut": true,
@@ -70,6 +91,13 @@
       },
       "opwPct": 57,
       "oopwPct": 54,
+      "points": 15,
+      "icons": [
+        "charizard",
+        "pidgeot"
+      ],
+      "labsDeckId": "labs-deck-79",
+      "deckName": "Charizard Pidgeot",
       "flags": {
         "madePhase2": true,
         "madeTopCut": true,
@@ -93,6 +121,9 @@
       },
       "opwPct": 56.5,
       "oopwPct": 53,
+      "points": 15,
+      "labsDeckId": "labs-deck-80",
+      "deckName": "Charizard",
       "flags": {
         "madePhase2": true,
         "madeTopCut": true,
@@ -116,10 +147,14 @@
       },
       "opwPct": 50,
       "oopwPct": 49,
+      "points": 12,
+      "dropRound": 6,
+      "labsDeckId": null,
+      "deckName": null,
       "flags": {
         "madePhase2": false,
         "madeTopCut": false,
-        "dropped": false,
+        "dropped": true,
         "dqed": false,
         "late": false,
         "decklistPublished": false

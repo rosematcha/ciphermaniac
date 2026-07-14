@@ -286,12 +286,40 @@ export interface Participant {
   /** Finishing position, 1-based; null when unranked. */
   placement: number | null;
   record: ParticipantRecord;
-  /** Opponents' win percentage, 0-100, or null. */
+  /**
+   * Opponents' win percentage on a 0-100 scale, or null. NOTE: Labs standings
+   * emit this as a 0-1 fraction (`download-tournament.py` stores the raw `opw`
+   * with no scaling); the source→normalized adapter is responsible for the
+   * ×100 conversion. The contract — and its validator range — is always 0-100.
+   */
   opwPct: number | null;
-  /** Opponents' opponents' win percentage, 0-100, or null. */
+  /** Opponents' opponents' win percentage on the same 0-100 scale (see {@link Participant.opwPct}). */
   oopwPct: number | null;
+  /** Swiss match points; integer >= 0, or null when unknown. Labs source field. */
+  points?: number | null;
+  /**
+   * Labs deck-icon slugs (e.g. `["charizard", "pidgeot"]`); each entry a
+   * non-empty string. Source-assigned and labs-only — absent for online
+   * windows. May be an empty array.
+   */
+  icons?: string[];
+  /**
+   * Round the pilot dropped; integer >= 1, or null. Only meaningful when
+   * {@link ParticipantFlags.dropped} — a non-null `dropRound` REQUIRES
+   * `flags.dropped === true` (cross-validated).
+   */
+  dropRound?: number | null;
+  /**
+   * Labs-assigned deck identifier and its human label, taken verbatim from the
+   * source standings. DISTINCT from {@link Participant.deckId}: that is the
+   * content-addressed hash of the deck's cards ({@link deckId}), whereas
+   * `labsDeckId`/`deckName` are opaque source strings that take NO part in
+   * canonical deck identity.
+   */
+  labsDeckId?: string | null;
+  deckName?: string | null;
   flags: ParticipantFlags;
-  /** Resolves to a deck in `decks[]`, or null when no decklist. */
+  /** Resolves to a deck in `decks[]`, or null when no decklist. Content hash, NOT the Labs `labsDeckId`. */
   deckId: string | null;
 }
 
@@ -346,6 +374,34 @@ export interface EventMeta {
   /** Online windows only: ISO window bounds. */
   windowStart?: string | null;
   windowEnd?: string | null;
+  /** Host country (Labs). Non-empty string or null. */
+  country?: string | null;
+  /** Host city (Labs). Non-empty string or null. */
+  city?: string | null;
+  /** Labs event `type` (e.g. "regional"). Non-empty string or null. */
+  eventType?: string | null;
+  /**
+   * Source last-updated timestamp (Labs `updated_at`). SOURCE metadata — fine to
+   * store, but VOLATILE: it MUST be excluded from any semantic hash, exactly
+   * like {@link SourceRevision.fetchedAt}.
+   */
+  updatedAt?: string | null;
+  /** Whether the source marks the event completed (Labs). */
+  completed?: boolean;
+  /** Whether the source marks the event started (Labs). */
+  started?: boolean;
+  /** Players at round 1 (Labs `players_r1`); integer >= 0 or null. */
+  playersRound1?: number | null;
+  /** Published decklist count (Labs `decklists`); integer >= 0 or null. */
+  decklistCount?: number | null;
+  /** External RK9 id; non-empty string or null. */
+  rk9Id?: string | null;
+  /** External Play! LATAM id; non-empty string or null. */
+  playlatamId?: string | null;
+  /** Labs event code (e.g. "0001"); non-empty string or null. */
+  labsCode?: string | null;
+  /** Labs numeric tournament id as a string; non-empty string or null. */
+  sourceTournamentId?: string | null;
 }
 
 /** The normalized event record — one schema for both sources. */
@@ -752,6 +808,74 @@ function validateParticipant(participant: unknown, index: number, ids: Set<strin
       }
     }
   }
+  // Labs source fields — all optional; validated only when present (online
+  // windows omit them entirely).
+  const { points } = participant;
+  if (points !== null && points !== undefined && (!isInteger(points) || points < 0)) {
+    errors.push(`${path}.points: expected a non-negative integer or null`);
+  }
+  const { icons } = participant;
+  if (icons !== null && icons !== undefined) {
+    if (!Array.isArray(icons)) {
+      errors.push(`${path}.icons: expected an array of non-empty strings`);
+    } else {
+      icons.forEach((icon, iconIndex) => {
+        if (typeof icon !== 'string' || icon.length === 0) {
+          errors.push(`${path}.icons[${iconIndex}]: expected a non-empty string`);
+        }
+      });
+    }
+  }
+  const { dropRound } = participant;
+  if (dropRound !== null && dropRound !== undefined) {
+    if (!isInteger(dropRound) || dropRound < 1) {
+      errors.push(`${path}.dropRound: expected integer >= 1 or null`);
+    } else if (!isRecord(participant.flags) || participant.flags.dropped !== true) {
+      // Cross-check: a drop round is only meaningful for a dropped participant.
+      errors.push(`${path}.dropRound: non-null dropRound requires flags.dropped to be true`);
+    }
+  }
+  for (const field of ['labsDeckId', 'deckName'] as const) {
+    const value = participant[field];
+    if (value !== null && value !== undefined && (typeof value !== 'string' || value.length === 0)) {
+      errors.push(`${path}.${field}: expected a non-empty string or null`);
+    }
+  }
+}
+
+function validateMeta(meta: Record<string, unknown>, errors: string[]): void {
+  const path = 'root.meta';
+  if (!isInteger(meta.playerCount) || meta.playerCount < 0) {
+    errors.push(`${path}.playerCount: expected integer >= 0`);
+  }
+  // Optional Labs string fields — non-empty string or null when present.
+  for (const field of [
+    'country',
+    'city',
+    'eventType',
+    'updatedAt',
+    'rk9Id',
+    'playlatamId',
+    'labsCode',
+    'sourceTournamentId'
+  ] as const) {
+    const value = meta[field];
+    if (value !== null && value !== undefined && (typeof value !== 'string' || value.length === 0)) {
+      errors.push(`${path}.${field}: expected a non-empty string or null`);
+    }
+  }
+  for (const field of ['completed', 'started'] as const) {
+    const value = meta[field];
+    if (value !== null && value !== undefined && typeof value !== 'boolean') {
+      errors.push(`${path}.${field}: expected boolean or null`);
+    }
+  }
+  for (const field of ['playersRound1', 'decklistCount'] as const) {
+    const value = meta[field];
+    if (value !== null && value !== undefined && (!isInteger(value) || value < 0)) {
+      errors.push(`${path}.${field}: expected a non-negative integer or null`);
+    }
+  }
 }
 
 function validateDeck(
@@ -909,8 +1033,8 @@ export function validateNormalizedEvent(value: unknown): ValidationResult<Normal
   }
   if (!isRecord(value.meta)) {
     errors.push('root.meta: expected object');
-  } else if (!isInteger(value.meta.playerCount) || value.meta.playerCount < 0) {
-    errors.push('root.meta.playerCount: expected integer >= 0');
+  } else {
+    validateMeta(value.meta, errors);
   }
 
   const participants = Array.isArray(value.participants) ? value.participants : null;

@@ -505,6 +505,104 @@ test('ID constructors reject degenerate and delimiter-bearing inputs', () => {
   assert.throws(() => matchId(1, 1, ['a|b', 'c']), TypeError);
 });
 
+// ============================================================================
+// Labs source fields — points / icons / dropRound / labsDeckId / deckName / meta
+// ============================================================================
+
+test('labs fixture carries the new Labs source fields', () => {
+  const alice = labs.participants.find(participant => participant.participantId === 'labs:0001:101');
+  assert.ok(alice);
+  assert.strictEqual(alice.points, 18);
+  assert.deepStrictEqual(alice.icons, ['gardevoir']);
+  assert.strictEqual(alice.labsDeckId, 'labs-deck-77');
+  assert.strictEqual(alice.deckName, 'Gardevoir ex');
+  // labsDeckId is source-assigned and distinct from the content-hash deckId.
+  assert.notStrictEqual(alice.labsDeckId, alice.deckId);
+
+  const evan = labs.participants.find(participant => participant.participantId === 'labs:0001:105');
+  assert.ok(evan);
+  assert.strictEqual(evan.flags.dropped, true);
+  assert.strictEqual(evan.dropRound, 6);
+
+  assert.strictEqual(labs.meta.country, 'US');
+  assert.strictEqual(labs.meta.completed, true);
+  assert.strictEqual(labs.meta.playersRound1, 24);
+  assert.strictEqual(labs.meta.decklistCount, 4);
+  assert.strictEqual(labs.meta.labsCode, '0001');
+});
+
+test('online-window validates with all Labs source fields absent', () => {
+  // Absence (not null) must be accepted by the validators.
+  const acelia = online.participants[0] as unknown as Record<string, unknown>;
+  assert.strictEqual('points' in acelia, false);
+  assert.strictEqual('icons' in acelia, false);
+  assert.strictEqual('dropRound' in acelia, false);
+  const result = validateNormalizedEvent(online);
+  assert.strictEqual(result.ok, true);
+});
+
+test('rejects negative match points', () => {
+  const event = clone(labs);
+  event.participants[0].points = -1;
+  assertRejects(event, 'points: expected a non-negative integer or null');
+});
+
+test('rejects non-integer match points', () => {
+  const event = clone(labs);
+  event.participants[0].points = 12.5;
+  assertRejects(event, 'points: expected a non-negative integer or null');
+});
+
+test('rejects an icons entry that is an empty string', () => {
+  const event = clone(labs);
+  event.participants[0].icons = ['gardevoir', ''];
+  assertRejects(event, 'icons[1]: expected a non-empty string');
+});
+
+test('rejects icons that is not an array', () => {
+  const event = clone(labs);
+  (event.participants[0] as unknown as Record<string, unknown>).icons = 'gardevoir';
+  assertRejects(event, 'icons: expected an array of non-empty strings');
+});
+
+test('rejects a dropRound on a participant that did not drop', () => {
+  const event = clone(labs);
+  // Alice (index 0) has flags.dropped === false.
+  assert.strictEqual(event.participants[0].flags.dropped, false);
+  event.participants[0].dropRound = 3;
+  assertRejects(event, 'non-null dropRound requires flags.dropped to be true');
+});
+
+test('rejects a dropRound below 1', () => {
+  const event = clone(labs);
+  event.participants[4].dropRound = 0;
+  assertRejects(event, 'dropRound: expected integer >= 1 or null');
+});
+
+test('rejects an empty labsDeckId string', () => {
+  const event = clone(labs);
+  event.participants[0].labsDeckId = '';
+  assertRejects(event, 'labsDeckId: expected a non-empty string or null');
+});
+
+test('rejects a non-boolean meta.completed', () => {
+  const event = clone(labs);
+  (event.meta as unknown as Record<string, unknown>).completed = 'yes';
+  assertRejects(event, 'completed: expected boolean or null');
+});
+
+test('rejects a negative meta.playersRound1', () => {
+  const event = clone(labs);
+  event.meta.playersRound1 = -1;
+  assertRejects(event, 'playersRound1: expected a non-negative integer or null');
+});
+
+test('rejects an empty meta.labsCode string', () => {
+  const event = clone(labs);
+  event.meta.labsCode = '';
+  assertRejects(event, 'labsCode: expected a non-empty string or null');
+});
+
 test('canonicalStringify honors toJSON like JSON.stringify (Dates do not collide)', () => {
   const a = canonicalStringify({ at: new Date('2026-07-12T00:00:00Z') });
   const b = canonicalStringify({ at: new Date('2026-07-13T00:00:00Z') });

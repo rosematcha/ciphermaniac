@@ -2,7 +2,7 @@
   "planDocument": "DB-MASTER-PLAN.md",
   "updatedAt": "2026-07-13",
   "currentPhase": 2,
-  "currentSlice": "phase2-slice6-trends-matchups",
+  "currentSlice": "phase2-producer-cutover-checkpoint",
   "phases": {
     "0": {
       "title": "Baseline, inventory, and safety rails",
@@ -53,14 +53,17 @@
         "frontend derivation copy in src/utils/clientSideFiltering.ts replaced by the shared policy (4c10c42)",
         "card report builder consolidated into shared/data/reports/cardReport.ts with D9 deterministic tie-breakers; reportBuilder.ts is a shim; parity suite pins pre-move algorithm (457acdb)",
         "legacy cardUsage + conversion builders consolidated into shared/data/reports/{cardUsage,conversion}.ts; byte-identical to the live .mjs producer and Python semantics, 7 parity tests (9902ba5)",
-        "archetype identity/presentation/build consolidated into shared/data/archetypes/{identity,presentation,build}.ts; stale Functions thumbnail engine retired (recorded improvement: snapshot archetypes can now infer thumbnails); Python icon behavior ported; 11 parity tests (afb21cb)"
+        "archetype identity/presentation/build consolidated into shared/data/archetypes/{identity,presentation,build}.ts; stale Functions thumbnail engine retired (recorded improvement: snapshot archetypes can now infer thumbnails); Python icon behavior ported; 11 parity tests (afb21cb)",
+        "trends/matchup aggregation authority moved to shared/data/analysis/archetypeTrends.ts with explicit input contracts; survey confirmed no other TS aggregation copies exist (src/lib/matchups.ts is read-side presentation); behavior byte-preserved (1ae15b7)",
+        "normalized contract extended with Labs source fields (Participant points/icons/dropRound/labsDeckId/deckName; EventMeta country/city/eventType/updatedAt/completed/started/playersRound1/decklistCount/rk9Id/playlatamId/labsCode/sourceTournamentId), validated, opw scale documented as adapter-converted; content-hash snapshots unchanged (6aef355)"
       ],
       "outstandingGates": [
-        "trends + matchups consolidated",
-        "run-online-meta.mjs converted to orchestration around shared builders",
-        "download-tournament.py reduced to Labs scraper + normalized-record exporter",
-        "TypeScript event build CLI; reprocess/backfill call the CLI instead of importing the Python monolith",
-        "memorial generation migrated"
+        "run-online-meta.mjs -> TS orchestration: DEFERRED. A full 2290-line mechanical port was drafted but left ~15 real type errors and is unverified against the live producer's publication-safety logic; per the plan (publication safety > consolidation speed) it was backed out rather than shipped half-verified. The .mjs stays live, pinned by the success-tag/cardUsage/archetype parity corpora. Needs a dedicated careful pass with a fixture-level byte-diff harness.",
+        "new TS serving builders: cardIndex, playerMatches/matches, matchupProfiles (quality model), index/meta/slices/catalog assembly",
+        "download-tournament.py reduced to Labs scraper + normalized-record exporter feeding a TS event build CLI",
+        "reprocess/backfill/rebuild-catalog call the CLI instead of importing the Python monolith",
+        "memorial generation migrated to shared builders",
+        "DECISION: tournament.db SQLite emitter stays in Python until Phase 7 deletes it (no repo consumer; porting ~450 lines destined for removal is waste)"
       ]
     },
     "3": {
@@ -194,6 +197,11 @@
       "id": "D12",
       "legacy": "Python canonicalize_variant strips number '0' to empty (card skipped); shared TS normalizeCardNumber pads to '000'",
       "decision": "shared TS helper behavior wins ('0' is not a real card number; unrealistic edge, no production data affected)"
+    },
+    {
+      "id": "D13",
+      "legacy": "Labs opw/oopw stored raw (0-1 fraction) in players.json",
+      "decision": "source adapter multiplies by 100; contract opwPct/oopwPct always 0-100"
     }
   ],
   "discoveredDependencyEdges": [
