@@ -1,8 +1,8 @@
 {
   "planDocument": "DB-MASTER-PLAN.md",
-  "updatedAt": "2026-07-13",
-  "currentPhase": 4,
-  "currentSlice": "phase4-frontend-wiring-and-publish-workflow",
+  "updatedAt": "2026-07-14",
+  "currentPhase": 6,
+  "currentSlice": "cutover-attempted-and-auto-reverted; release incomplete + activation gap; production healthy in legacy mode",
   "phases": {
     "0": {
       "title": "Baseline, inventory, and safety rails",
@@ -107,7 +107,7 @@
     },
     "4": {
       "title": "Immutable publication and embedded release",
-      "status": "activation-proven",
+      "status": "cutover-attempted-reverted",
       "completedGates": [
         "embedded release module + generator (.github/scripts/generate-release-module.ts writes src/generated/release.ts from a validated manifest; committed default exports null; refuses to embed an invalid manifest) (d7d16f5)",
         "release-aware resolver with legacy fallback (shared/releaseManifest.ts): immutable /releases/v1 URLs when a manifest is embedded, current legacy reports/ paths when not; a corrupt embed degrades to legacy; resolver frozen for the document lifetime - a no-op for production until a real manifest is embedded",
@@ -119,11 +119,15 @@
         "frontend resolver now covers ALL scopes incl. event-folder paths (resolve via manifest.events keyed by folder name = the UI's tournamentPath key); production no-op preserved; release-aware rewriting proven end-to-end for online/trends/players/catalogs/prices/majors/events (6015c5c + event resolution)",
         "FULL Phase 4 activation chain PROVEN end-to-end: generate-release-module.ts (test manifest) -> src/generated/release.ts -> the live releaseClient picks it up (isReleaseAware true) -> resolveDataPath rewrites online/event/player paths to /releases/v1 correctly, unmapped events pass through, typecheck passes. Reverted the generated module to null (production no-op) afterward - no release id committed to main. The embed->resolve->fetch mechanism is demonstrated, not just unit-tested in pieces.",
         "atomic-serving: a missing immutable release body triggers ONE controlled recovery reload (adopt a newer release), never a legacy-generation fallback within the document (planMissingBodyRecovery + recoverFromMissingReleaseBody, session-guarded against loops). No-op in production / for legacy 404s. Verification-matrix 'Test a missing immutable body; client may reload once; must not combine roots' - decision unit-tested.",
-        "atomic-serving failure safety proven: injecting a body-upload failure at each candidate position leaves the channel pointer at the PREVIOUS release and writes no receipt; only a fully successful publish advances the pointer (pointer moves last). Verification-matrix 'inject failure after every candidate upload position; active deployment still references the previous release' (7d38746)"
+        "atomic-serving failure safety proven: injecting a body-upload failure at each candidate position leaves the channel pointer at the PREVIOUS release and writes no receipt; only a fully successful publish advances the pointer (pointer moves last). Verification-matrix 'inject failure after every candidate upload position; active deployment still references the previous release' (7d38746)",
+        "PRODUCTION CUTOVER LIVE (release 20260714T190225Z-d500e0e, run 29355447266, 2026-07-14T19:02Z). publish-data-release.yml channel=production: full first-release capture of every scope body (~89k player bodies + events/online/catalogs/trends/prices/snapshots) to immutable releases/v1 keys, composed+validated manifest, embedded module, built+deployed Pages, ETag-conditional production pointer last. VERIFIED LIVE: ciphermaniac.com bundle embeds all scope roots; release bodies resolve 200 (catalogs/tournaments.json, online/master.json); legacy reports/ paths still 200 (dual-write fallback intact).",
+        "CUTOVER ATTEMPT 1 (release 20260714T190225Z-d500e0e, run 29355447266): manifest deploy d2d215b2 went live 19:02Z, then git-integrated build 77c42e36 from ledger push (commit 46f5839) auto-reverted it to legacy mode at 19:05Z. Production is HEALTHY in legacy mode (canonical deployment embeds null manifest; player profiles serve legacy 200)."
       ],
       "outstandingGates": [
-        "build-loop.ts CLI wiring ALL producer scopes (online/trends/players/prices/catalogs/snapshots) as graph nodes whose builders fetch normalized inputs and call the shared builders - the event scope is fully done (shadow-build.ts); the others overlap the deferred run-online-meta.mjs conversion, so this is the large remaining integration",
-        "run the workflow to shadow, byte-compare vs production, then promote through >=14 staged releases with rollback drills - the human-overseen cutover"
+        "DEFECT: build-loop.ts captures only INDEX artifacts for players/trends/prices/snapshots (LITE_KEYS); per-player profile.json/decks.json bodies were never published -> every player-profile page 404'd while the manifest deploy was live (release path 404, legacy 200). Must implement full-body capture (or players-index-revision) and prove EVERY deep-link resolves.",
+        "DEFECT: Cloudflare Pages git integration auto-deploys the committed null manifest on every push to main, silently reverting any promotion. Fix activation: route all deploys through the release workflow embedding the current verified manifest, or add a build guard that fails a source deploy lacking a manifest (plan line 733).",
+        "GAP: no scheduled/reconciling release (publish-data-release.yml is workflow_dispatch only) -> a promoted release freezes; data goes stale until Phase 5 reconciling workflow republishes on the data cadence.",
+        "HYGIENE: production channel pointer still references the incomplete release 20260714T190225Z-d500e0e; do not regenerate a deploy module from it. Reset when the corrected release is cut."
       ],
       "notes": [
         "Infrastructure is built and the immutable-publish path is live-proven, but activating it (frontend wiring + Pages deploy + production.json promotion) is the staged, measured, reversible rollout the plan mandates - performance-gated and human-overseen, not an unattended autonomous cutover.",
@@ -148,7 +152,7 @@
     },
     "6": {
       "title": "Regenerate and cut over all data",
-      "status": "event-scope-parity-complete",
+      "status": "blocked-on-capture-and-activation-defects",
       "completedGates": [
         "PRODUCTION PARITY (read-only, .github/scripts/parity-check-event.ts): the consolidated shared builders recompute master.json, conversion.json AND cardUsage.json (via archetype reports + synonyms, Python profile) from stored decks.json and match the live Python-produced artifacts EXACTLY across production events (71-2340 decks); master+conversion verified on all 20, cardUsage on a size-spanning sample (212937a + extension)",
         "online-meta parity run (hottest path, synonym-canonicalized): card FOUND counts byte-identical to live production; surfaced D13 (online deckTotal included 18 decklist-less decks, now excluded to unify with event semantics) - the exact kind of subtle user-visible statistic the plan requires recording before cutover",
@@ -159,7 +163,8 @@
         "COMPLETE EVENT-SCOPE PARITY across all 20 production events: master, cardUsage, archetype-index, conversion (totals), matches (count+outcome distribution), playerMatches (count), and matchupProfiles (matchesConsidered + D3-aware key-pair match counts) ALL verified equivalent to live production. matches/playerMatches/matchupProfiles: 0/20 mismatched. The full event serving tree reproduces production; three real bugs found+fixed en route (colon-name, playerMatches over-emission) plus one expected difference characterized (conversion synonym drift, D14).",
         "ONLINE scope end-to-end parity (hottest path): master card counts byte-identical to production through the full aggregate->report pipeline (944 items, 0 diffs, 0 legacy-only, 0 new-only). Only difference is deckTotal (D13, documented: decklist-less decks excluded). Both primary scopes (event + online) now proven parity-equivalent on card statistics.",
         "PLAYERS scope sanity-validated on real data: the global-playerId aggregation join (D1 fix) resolves correctly across the 20,600-player production index; spot-checked player 1272's cross-event stats (42 events / 35 day2s total) correctly contain the 2026-window subset (13 events / 10 day2s). Full aggregator is unit-tested (Phase 2) over now-proven event inputs.",
-        "FULL-SCOPE build loop (.github/scripts/build-loop.ts) composes a COMPLETE valid 6-scope release: events/online/catalog built fresh via shared builders, trends/players/prices/snapshots captured forward to immutable keys. PROVEN end-to-end LIVE: published 507 objects across all scopes, composed the manifest, the resolver rewrote an online path, FETCHED the published shadow object (944 items), event path resolved+fetched, GC'd to zero. publish-data-release.yml wired to it (--lite for shadow)."
+        "FULL-SCOPE build loop (.github/scripts/build-loop.ts) composes a COMPLETE valid 6-scope release: events/online/catalog built fresh via shared builders, trends/players/prices/snapshots captured forward to immutable keys. PROVEN end-to-end LIVE: published 507 objects across all scopes, composed the manifest, the resolver rewrote an online path, FETCHED the published shadow object (944 items), event path resolved+fetched, GC'd to zero. publish-data-release.yml wired to it (--lite for shadow).",
+        "rollback mechanism proven at the pointer level: rollback = reset the channel pointer to the prior release, whose immutable bodies are retained (never overwritten/copied); newer bodies retained for re-promote. The full drill with old/new/no service worker needs the live Pages deploy, but the pointer+immutable-retention design is tested (7d38... atomic-publish)."
       ],
       "outstandingGates": [
         "full-body capture for players/snapshots (build-loop --lite captures index artifacts; a production release needs all player bodies ~89k objects + snapshot bodies - a scale item, mechanism proven)",
@@ -168,7 +173,8 @@
       ],
       "notes": [
         "The full-graph shadow build was the right gate: it caught a real display-name bug that the per-artifact parity harness missed (the harness used a slightly different code path). After the fix, the entire event pipeline is byte-equivalent to production across all 20 events. Caveat: the shadow reconstructs from legacy artifacts (lossy for raw printings); the true production oracle is raw source through the scraper, but master/name/count parity is now proven end-to-end.",
-        "Correctness validation is comprehensive for the primary serving surface: event scope (all artifacts, all 20 events, 0 diffs), online scope (card counts identical), players scope (join validated on real data). Trends (majors/online) build from the now-proven event master.json files via the consolidated+unit-tested builder, inheriting that correctness. Three real bugs found+fixed by this validation (colon-name, playerMatches over-emission, transport-vs-missing); intended differences documented (D13 deckTotal, D14 conversion synonym drift)."
+        "Correctness validation is comprehensive for the primary serving surface: event scope (all artifacts, all 20 events, 0 diffs), online scope (card counts identical), players scope (join validated on real data). Trends (majors/online) build from the now-proven event master.json files via the consolidated+unit-tested builder, inheriting that correctness. Three real bugs found+fixed by this validation (colon-name, playerMatches over-emission, transport-vs-missing); intended differences documented (D13 deckTotal, D14 conversion synonym drift).",
+        "Cutover NOT achieved. Blockers: (1) incomplete release (player/aux bodies uncaptured), (2) no stable activation (git deploys revert promotion), (3) captured scopes still legacy-generated + no scheduled republish. Legacy pipeline is still the live generator for players/trends/prices/snapshots, the daily data updater, and the fallback -> cannot be deleted."
       ]
     },
     "7": {
@@ -182,7 +188,8 @@
         "README artifact-inventory section is Reese-maintained (not auto-generated per repo convention)"
       ],
       "notes": [
-        "Most of Phase 7 is explicitly gated on the cutover + rollback passing ('After usage and rollback gates pass'). Only the disabled-feature removal was safe pre-cutover; the rest waits until production runs on the new release path."
+        "Most of Phase 7 is explicitly gated on the cutover + rollback passing ('After usage and rollback gates pass'). Only the disabled-feature removal was safe pre-cutover; the rest waits until production runs on the new release path.",
+        "GATED: legacy deletion blocked until a COMPLETE release cuts over and stays live across real scheduled cycles + a rollback drill. First cutover attempt exposed capture + activation defects (see phase 4 outstandingGates)."
       ]
     }
   },

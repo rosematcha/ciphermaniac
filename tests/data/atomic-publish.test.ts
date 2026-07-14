@@ -84,3 +84,31 @@ test('only a fully successful publish advances the pointer', async () => {
   await publishRelease(store, 'B', candidatesFor('B'));
   assert.strictEqual((await store.read())?.value.releaseId, 'B');
 });
+
+test('rollback drill: reset the pointer to the prior release; immutable bodies are retained, none copied', async () => {
+  const store = new Store();
+  await publishRelease(store, 'A', candidatesFor('A'));
+  await publishRelease(store, 'B', candidatesFor('B'));
+  assert.strictEqual((await store.read())?.value.releaseId, 'B');
+
+  const snapshotBefore = new Map(store.objects); // capture all object keys+bodies
+
+  // Roll back: point the channel back at A. No bodies are written or copied.
+  await updatePointer(store, 'build/v1/channels/production.json', () => ({ releaseId: 'A' }));
+
+  assert.strictEqual((await store.read())?.value.releaseId, 'A');
+  // A's immutable bodies are intact (never overwritten), so the app resolves A.
+  for (const c of candidatesFor('A')) {
+    assert.strictEqual(await store.get(c.key), c.body, `A body missing after rollback: ${c.key}`);
+  }
+  // B's bodies also remain (immutable; retained for re-promote) — rollback never deletes.
+  for (const c of candidatesFor('B')) {
+    assert.ok(store.objects.has(c.key), `B body must be retained: ${c.key}`);
+  }
+  // The object set is unchanged: rollback copied/wrote no release body (pointer-only).
+  assert.deepStrictEqual(new Map([...store.objects].filter(([k]) => k.startsWith('releases/'))), new Map([...snapshotBefore].filter(([k]) => k.startsWith('releases/'))));
+
+  // Re-promote to B: pointer forward again, still no body writes.
+  await updatePointer(store, 'build/v1/channels/production.json', () => ({ releaseId: 'B' }));
+  assert.strictEqual((await store.read())?.value.releaseId, 'B');
+});
