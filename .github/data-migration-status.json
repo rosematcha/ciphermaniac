@@ -140,7 +140,9 @@
       "title": "Regenerate and cut over all data",
       "status": "parity-proven-for-events",
       "completedGates": [
-        "PRODUCTION PARITY (read-only, .github/scripts/parity-check-event.ts): the consolidated shared builders recompute master.json and conversion.json from each event's stored decks.json and match the live Python-produced artifacts EXACTLY across all 20 current production events (71-2340 decks) \u2014 the migration's correctness proven on the full event corpus (212937a)"
+        "PRODUCTION PARITY (read-only, .github/scripts/parity-check-event.ts): the consolidated shared builders recompute master.json, conversion.json AND cardUsage.json (via archetype reports + synonyms, Python profile) from stored decks.json and match the live Python-produced artifacts EXACTLY across production events (71-2340 decks); master+conversion verified on all 20, cardUsage on a size-spanning sample (212937a + extension)",
+        "online-meta parity run (hottest path, synonym-canonicalized): card FOUND counts byte-identical to live production; surfaced D13 (online deckTotal included 18 decklist-less decks, now excluded to unify with event semantics) - the exact kind of subtle user-visible statistic the plan requires recording before cutover",
+        "archetype index deckCount parity added: master + conversion + cardUsage + archetypes/index all byte-equivalent to live production across sampled events - the FULL card/archetype-facing report scope is proven identical"
       ],
       "outstandingGates": [
         "extend the parity harness to cardUsage.json, archetype index, matches/playerMatches, matchupProfiles (needs a normalized-event reconstruction or the scraper's source record; the derived-report scope is proven)",
@@ -271,6 +273,11 @@
       "id": "D13",
       "legacy": "Labs opw/oopw stored raw (0-1 fraction) in players.json",
       "decision": "source adapter multiplies by 100; contract opwPct/oopwPct always 0-100"
+    },
+    {
+      "id": "D13",
+      "legacy": "Online producer counts decklist-less decks in master deckTotal (8135 incl. 18 empty); Python event producer excludes them (skips `if not cards`). The two legacy producers disagree.",
+      "decision": "Unified pipeline excludes decklist-less decks from deckTotal for ALL scopes (orchestrator uses decks.filter(hasDecklist)). Card pct now consistently means '% of decks-with-lists running this card'. This is a deliberate ~0.2% change to online play-rate denominators (8135->8117); card FOUND counts are unchanged and byte-identical. Surfaced by the production parity harness."
     }
   ],
   "discoveredDependencyEdges": [

@@ -15,6 +15,9 @@
 import { pathToFileURL } from 'node:url';
 import { generateReportFromDecks } from '../../shared/data/reports/cardReport.ts';
 import { buildConversionIndex } from '../../shared/data/reports/conversion.ts';
+import { buildCardUsageIndex } from '../../shared/data/reports/cardUsage.ts';
+import { buildArchetypeReports } from '../../shared/data/archetypes/build.ts';
+import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import { createR2Client, getJsonResult } from './lib/r2.mjs';
 
 interface LegacyDeck {
@@ -54,8 +57,11 @@ function diffReportItems(label: string, legacy: LegacyReportItem[], next: Legacy
 }
 
 async function main(): Promise<void> {
-  const base = process.argv[2];
-  if (!base) throw new Error('Usage: parity-check-event.ts "reports/<date, Name>"');
+  const args = process.argv.slice(2).filter(a => !a.startsWith('--'));
+  const base = args[0];
+  // The online window master IS synonym-canonicalized (D5); event master is not.
+  const canonicalize = process.argv.includes('--canonicalize');
+  if (!base) throw new Error('Usage: parity-check-event.ts "reports/<date, Name>" [--canonicalize]');
 
   const client = createR2Client({
     accountId: requireEnv('R2_ACCOUNT_ID'),
@@ -71,9 +77,12 @@ async function main(): Promise<void> {
     throw new Error(`failed to read ${key}: ${result.status}`);
   };
 
-  const decks = await load<LegacyDeck[]>(`${base}/decks.json`);
+  const decks = await load<(LegacyDeck & { archetype?: string })[]>(`${base}/decks.json`);
   const legacyMaster = await load<{ deckTotal: number; items: LegacyReportItem[] }>(`${base}/master.json`);
   const legacyConversion = await load<{ day1Total: number; day2Total: number; cards: Record<string, { day1: number; day2: number }> }>(`${base}/conversion.json`);
+  const legacyUsage = await load<{ usage: Record<string, { slug: string; found: number }[]> }>(`${base}/cardUsage.json`);
+  const legacyArchIndex = await load<{ name: string; deckCount: number }[]>(`${base}/archetypes/index.json`);
+  const synonyms = await load<SynonymDatabase>('assets/card-synonyms.json');
   if (!decks || !legacyMaster) throw new Error(`event ${base} is missing decks.json or master.json`);
 
   console.log(`[parity] ${base}: ${decks.length} decks, legacy deckTotal=${legacyMaster.deckTotal}`);
@@ -82,7 +91,7 @@ async function main(): Promise<void> {
   // master.json: recompute from the same decks (no synonym DB — legacy event
   // master is not synonym-canonicalized, so pass null to match).
   const deckTotal = decks.filter(deck => deck.hasDecklist !== false).length;
-  const nextMaster = generateReportFromDecks(decks as never, deckTotal, null) as { deckTotal: number; items: LegacyReportItem[] };
+  const nextMaster = generateReportFromDecks(decks as never, deckTotal, canonicalize ? (synonyms ?? null) : null) as { deckTotal: number; items: LegacyReportItem[] };
   if (nextMaster.deckTotal !== legacyMaster.deckTotal) {
     allDiffs.push(`master.deckTotal: ${legacyMaster.deckTotal} (legacy) vs ${nextMaster.deckTotal} (new)`);
   }
@@ -96,6 +105,36 @@ async function main(): Promise<void> {
     } else {
       if (nextConversion.day1Total !== legacyConversion.day1Total) allDiffs.push(`conversion.day1Total: ${legacyConversion.day1Total} vs ${nextConversion.day1Total}`);
       if (nextConversion.day2Total !== legacyConversion.day2Total) allDiffs.push(`conversion.day2Total: ${legacyConversion.day2Total} vs ${nextConversion.day2Total}`);
+    }
+  }
+
+  // cardUsage.json: rebuild archetype reports (Python profile + synonyms) then
+  // invert to the usage index, and compare per-uid slug found counts.
+  if (legacyUsage) {
+    const built = buildArchetypeReports(
+      decks.map(deck => ({ cards: deck.cards ?? [], archetype: deck.archetype })),
+      synonyms ?? null,
+      { nameCasing: 'preserve', minDecksFraction: 0, percentMode: 'fraction6', sortMode: 'deckCountThenLabel', displayNames: 'trimmed', emptyBaseFallback: null, includeSignatureCards: false }
+    );
+    // Archetype index deckCount per slug should match legacy exactly.
+    if (legacyArchIndex) {
+      const nextByName = new Map(built.index.map(entry => [entry.name, entry.deckCount]));
+      for (const entry of legacyArchIndex) {
+        const next = nextByName.get(entry.name);
+        if (next !== entry.deckCount) allDiffs.push(`archetypeIndex "${entry.name}": deckCount ${entry.deckCount} (legacy) vs ${next ?? 'absent'} (new)`);
+      }
+    }
+    const nextUsage = buildCardUsageIndex(built.files).usage;
+    const usageFound = (rows: { slug: string; found: number }[]): Map<string, number> => new Map(rows.map(r => [r.slug, r.found]));
+    let usageDiffs = 0;
+    for (const [uid, rows] of Object.entries(legacyUsage.usage)) {
+      const next = nextUsage[uid];
+      if (!next) { allDiffs.push(`cardUsage: legacy has uid "${uid}"; new does not`); usageDiffs++; continue; }
+      const nf = usageFound(next);
+      for (const row of rows) {
+        if (nf.get(row.slug) !== row.found) { allDiffs.push(`cardUsage["${uid}"] slug "${row.slug}": found ${row.found} (legacy) vs ${nf.get(row.slug) ?? 'absent'} (new)`); usageDiffs++; }
+      }
+      if (usageDiffs > 40) break;
     }
   }
 

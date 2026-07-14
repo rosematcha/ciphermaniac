@@ -110,3 +110,20 @@ test('the whole artifact set is permutation-invariant', () => {
     assert.strictEqual(canonicalStringify(a.get(key)), canonicalStringify(b.get(key)), `${key} differs under permutation`);
   }
 });
+
+test('D13: decklist-less decks are excluded from master deckTotal (all scopes)', () => {
+  // A deck record with hasDecklist:false + no cards is a field entry with no
+  // list; it must not inflate the denominator (unifies online with event
+  // semantics; see semanticDifferences D13).
+  const withEmpty: NormalizedEvent = JSON.parse(JSON.stringify(labs)) as NormalizedEvent;
+  const donor = withEmpty.decks[0];
+  withEmpty.decks = [
+    ...withEmpty.decks,
+    { ...JSON.parse(JSON.stringify(donor)), deckId: 'sha256:emptyfielddeckzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz', participantId: donor.participantId, cards: [], hasDecklist: false }
+  ];
+  const artifacts = buildEventArtifacts(withEmpty) as Map<string, { deckTotal: number }>;
+  const master = artifacts.get('master.json')!;
+  const withList = withEmpty.decks.filter(d => d.hasDecklist).length;
+  assert.strictEqual(master.deckTotal, withList);
+  assert.notStrictEqual(master.deckTotal, withEmpty.decks.length);
+});
