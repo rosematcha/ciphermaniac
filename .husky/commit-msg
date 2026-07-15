@@ -1,0 +1,51 @@
+#!/usr/bin/env sh
+# Reject AI attribution in commits (Cursor, Claude, OpenAI, Copilot, etc.).
+# Runs via Husky on every `git commit`. Do not bypass with --no-verify.
+
+msg_file="$1"
+if [ -z "$msg_file" ] || [ ! -f "$msg_file" ]; then
+	echo "commit-msg: missing commit message file" >&2
+	exit 1
+fi
+
+# Names / products commonly stamped into trailers or author fields
+ai_name_re='cursor|cursoragent|claude|anthropic|openai|chatgpt|gpt-|copilot|gemini|bard|devin|aider|swe-agent|codegen|tabnine|cody|ampcode|windsurf|grok|xai|codex|composer|bolt\.new|replit|ghostwriter|codewhisperer|supermaven|graphite'
+
+# Email domains used by AI tooling
+ai_email_re='cursor\.com|anthropic\.com|openai\.com|copilot@github\.com|gemini\.google|x\.ai|xai\.com'
+
+fail() {
+	echo "" >&2
+	echo "commit-msg: blocked AI attribution in this commit." >&2
+	echo "  $1" >&2
+	echo "" >&2
+	echo "Remove Co-authored-by / Generated-by / Assisted-by trailers for AI tools," >&2
+	echo "and commit as yourself only. (Keeps the GitHub contributor graph clean.)" >&2
+	echo "" >&2
+	exit 1
+}
+
+if grep -Ei "^Co-authored-by:.*(${ai_name_re})" "$msg_file" >/dev/null 2>&1; then
+	fail "AI Co-authored-by trailer found in commit message"
+fi
+if grep -Ei "^Co-authored-by:.*@(${ai_email_re})" "$msg_file" >/dev/null 2>&1; then
+	fail "AI Co-authored-by email found in commit message"
+fi
+if grep -Ei "^(Generated-by|Assisted-by|Acked-by):.*(${ai_name_re})" "$msg_file" >/dev/null 2>&1; then
+	fail "AI Generated-by / Assisted-by trailer found in commit message"
+fi
+
+author_ident=$(git var GIT_AUTHOR_IDENT 2>/dev/null || true)
+committer_ident=$(git var GIT_COMMITTER_IDENT 2>/dev/null || true)
+
+for ident in "$author_ident" "$committer_ident"; do
+	[ -z "$ident" ] && continue
+	if printf '%s\n' "$ident" | grep -Ei "(${ai_name_re})" >/dev/null 2>&1; then
+		fail "AI name in author/committer identity: $ident"
+	fi
+	if printf '%s\n' "$ident" | grep -Ei "@(${ai_email_re})" >/dev/null 2>&1; then
+		fail "AI email in author/committer identity: $ident"
+	fi
+done
+
+exit 0
