@@ -45,7 +45,7 @@ export const WR_MIN_GAMES = 20;
  * panel is never empty. The W-L-T record beside each row keeps the (small)
  * sample visible in lieu of any hidden confidence threshold.
  */
-export const MIN_SHOWN = 8;
+const MIN_SHOWN = 8;
 
 /**
  * Labels of the matchups that should render with a win rate. Every row meeting
@@ -89,7 +89,7 @@ export function bucketWinRate(winRate: number): MatchupBucket {
  * an 80/20 matchup — realistically near-unwinnable — reads as fully lopsided, and
  * a 65/35 reads as half. Deviations beyond 30pp clamp to full.
  */
-export const GAUGE_FULL_DEVIATION = 30;
+const GAUGE_FULL_DEVIATION = 30;
 
 /**
  * Gauge fill as a percentage (0..100) of the track: the deviation |WR − 50|

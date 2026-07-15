@@ -188,7 +188,7 @@ function tournamentPath(name: string): string {
  * drift from the ones the index producers write; lowercase-suffixed URLs
  * resolve the same way the edge 301 does.
  */
-export function setNumberKey(value: string | number): string {
+function setNumberKey(value: string | number): string {
   return cardNumberIndexKey(value);
 }
 
@@ -1159,10 +1159,6 @@ async function fetchPlayerJson<T>(path: string): Promise<T | null> {
   return fetchJsonOptional<T>(path);
 }
 
-export function fetchPlayerIndex(): Promise<PlayerIndexEntry[] | null> {
-  return fetchPlayerJson<PlayerIndexEntry[]>('/players/index.json');
-}
-
 /**
  * Slim index (players table + compare autocomplete). Roughly 20% smaller raw
  * than the full index — it drops `lastEventDate`. Falls back to the full index
@@ -1292,7 +1288,7 @@ export function priceHistorySpanDays(history: Record<string, PricePoint[]>): num
  * non-canonical URLs should resolve via `resolveCanonicalSetNumber` first, or
  * rely on the edge redirect in `functions/cards/[set]/[number].ts`.
  */
-export function findCardBySetNumber(items: CardItem[], set: string, number: string): CardItem | undefined {
+function findCardBySetNumber(items: CardItem[], set: string, number: string): CardItem | undefined {
   const setU = set.toUpperCase();
   const targetKey = normalizeCardNumberKey(number);
   return items.find(item => {
