@@ -188,6 +188,116 @@ export function getCanonicalCardFromData(database: SynonymDatabase | null, cardI
   return cardIdentifier;
 }
 
+/**
+ * Collapse the synonym graph so every variant maps DIRECTLY to one terminal
+ * canonical per reprint component — removing cycles (`A→B`, `B→A`) and multi-hop
+ * chains (`A→B→C`) that accumulate from the generator's incremental merge when a
+ * cluster's chosen canonical flips between runs and a stale reverse edge lingers.
+ *
+ * {@link getCanonicalCardFromData} resolves a SINGLE hop, so a cycle yields an
+ * inconsistent, non-terminal canonical (and the edge redirect 301-loops). After
+ * this pass each component has one canonical (the node the most variants point at;
+ * ties broken by smallest UID), every other member maps straight to it, and the
+ * canonical is not itself a key — so a single hop is always terminal.
+ * `canonicals` (name→UID) is re-pointed to the new terminal.
+ * @param database - The database to normalize
+ * @returns A new database with a flat, acyclic synonyms map
+ */
+export function normalizeSynonymDatabase(database: SynonymDatabase): SynonymDatabase {
+  const synonyms = database.synonyms ?? {};
+
+  // Union-find over every node that appears as a key or value.
+  const parent = new Map<string, string>();
+  const find = (x: string): string => {
+    let root = x;
+    while ((parent.get(root) ?? root) !== root) {
+      root = parent.get(root) ?? root;
+    }
+    let cur = x;
+    while (cur !== root) {
+      const next = parent.get(cur) ?? cur;
+      parent.set(cur, root);
+      cur = next;
+    }
+    return root;
+  };
+  const union = (a: string, b: string): void => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) {
+      parent.set(ra, rb);
+    }
+  };
+  for (const [variant, canonical] of Object.entries(synonyms)) {
+    if (parent.get(variant) === undefined) {
+      parent.set(variant, variant);
+    }
+    if (parent.get(canonical) === undefined) {
+      parent.set(canonical, canonical);
+    }
+    union(variant, canonical);
+  }
+
+  // A "sink" never appears as a variant key — in a clean chain it is the true
+  // terminal canonical. In-degree (how many edges point AT a node) is the
+  // fallback signal for pure cycles, where no sink exists.
+  const keySet = new Set(Object.keys(synonyms));
+  const inDegree = new Map<string, number>();
+  for (const canonical of Object.values(synonyms)) {
+    inDegree.set(canonical, (inDegree.get(canonical) ?? 0) + 1);
+  }
+
+  const members = new Map<string, string[]>();
+  for (const node of parent.keys()) {
+    const root = find(node);
+    const group = members.get(root);
+    if (group) {
+      group.push(node);
+    } else {
+      members.set(root, [node]);
+    }
+  }
+
+  // Choose one canonical per component: prefer a sink (terminal of a chain),
+  // then the node the most variants point at, then the smallest UID.
+  const canonicalOf = new Map<string, string>();
+  for (const group of members.values()) {
+    const canonical = group.reduce((best, node) => {
+      const nSink = keySet.has(node) ? 0 : 1;
+      const bSink = keySet.has(best) ? 0 : 1;
+      if (nSink !== bSink) {
+        return nSink > bSink ? node : best;
+      }
+      const nd = inDegree.get(node) ?? 0;
+      const bd = inDegree.get(best) ?? 0;
+      if (nd !== bd) {
+        return nd > bd ? node : best;
+      }
+      return node < best ? node : best;
+    });
+    for (const node of group) {
+      canonicalOf.set(node, canonical);
+    }
+  }
+
+  // Flat synonyms: every non-canonical member -> its component canonical.
+  const flatSynonyms: Record<string, string> = {};
+  for (const node of parent.keys()) {
+    const canonical = canonicalOf.get(node)!;
+    if (node !== canonical) {
+      flatSynonyms[node] = canonical;
+    }
+  }
+
+  // Re-point name canonicals to the terminal UID.
+  const flatCanonicals: Record<string, string> = {};
+  for (const [name, uid] of Object.entries(database.canonicals ?? {})) {
+    flatCanonicals[name] = canonicalOf.get(uid) ?? uid;
+  }
+
+  return { ...database, synonyms: flatSynonyms, canonicals: flatCanonicals };
+}
+
 // ============================================================================
 // Per-deck canonical aggregation (from shared/canonicalDeckCards.ts)
 // ============================================================================

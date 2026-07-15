@@ -225,8 +225,9 @@ const CORPUS: Scenario[] = [
   },
   {
     label: 'rolling: basic energy takes the newest print legal on the event date',
-    // Fire Energy at a 2024 event: MEE does not exist yet, so the newest
-    // cheap legal print is the SVE energy set (cheapest of the SVE trio).
+    // Fire Energy at a 2024 event: MEE does not exist yet, so the SVE energy
+    // set wins; within it the regular print (lowest number) beats the
+    // transiently cheaper reverse variant.
     cardName: 'Fire Energy',
     variations: [
       print('SSH', 'R', 0.28),
@@ -237,7 +238,39 @@ const CORPUS: Scenario[] = [
       print('MEE', '002', 0.22)
     ],
     asOfDate: '2024-01-01',
-    expected: ['SVE', '010']
+    expected: ['SVE', '002']
+  },
+  {
+    label: 'rolling: unpriced energies still land on the energy set, not the bling reprint',
+    // Baltimore 2024 regression: with no prices anywhere (TCGCSV carries no
+    // modern energy prints), the accessibility cap cannot strike the gold
+    // OBF 230, and OBF is newer than SVE — the energy-set preference must
+    // decide, and the regular SVE 002 wins over its variants.
+    cardName: 'Fire Energy',
+    variations: [
+      print('SVE', '002', null),
+      print('SVE', '010', null),
+      print('SVE', '018', null),
+      print('OBF', '230', null),
+      print('PAL', '278', null)
+    ],
+    asOfDate: '2024-09-13',
+    expected: ['SVE', '002']
+  },
+  {
+    label: 'rolling: a meta-spiked regular print beats a cheaper collector version',
+    // Baltimore 2024 regression (Pidgeot ex): the illustration rare OBF 217
+    // was cheaper on the event date than the meta-spiked regular OBF 164.
+    // Below the accessibility cap the collector number decides, not price.
+    cardName: 'Pidgeot ex',
+    variations: [
+      print('OBF', '164', 8.76),
+      print('OBF', '217', 5.57),
+      print('OBF', '225', 10.97),
+      print('PAF', '221', 5.91)
+    ],
+    asOfDate: '2024-09-13',
+    expected: ['OBF', '164']
   },
   {
     label: 'rolling: fully rotated at the event date falls back to prints that existed then',

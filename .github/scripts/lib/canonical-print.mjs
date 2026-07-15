@@ -22,6 +22,7 @@ const CATALOG = JSON.parse(readFileSync(join(__dirname, '../data/set-catalog.jso
 export const SET_CATALOG = CATALOG.sets;
 export const STANDARD_LEGAL_SETS = new Set(CATALOG.standardLegalSets);
 export const PROMO_SETS = new Set(CATALOG.promoSets);
+export const ENERGY_SETS = new Set(CATALOG.energySets);
 export const BASIC_ENERGY_NAMES = new Set(CATALOG.basicEnergyNames);
 
 // sets is ordered newest-first, so a larger index means an older set.
@@ -142,16 +143,30 @@ export function chooseCanonicalPrint(variations, cardName, options) {
     const nonPromo = pool.filter(v => !PROMO_SETS.has((v.set || '').toUpperCase()));
     if (nonPromo.length) pool = nonPromo;
 
-    // 4. Basic energies take the newest remaining print, everything else the
-    //    oldest. Ties break by lower price, then lower collector number.
     const wantNewest = BASIC_ENERGY_NAMES.has(cardName);
+
+    // 3.5. Basic energies prefer the dedicated energy sets (SVE/MEE) outright:
+    //      energy prints are rarely priced, so the accessibility cap cannot
+    //      strike the collector reprints in main sets (e.g. OBF 230 gold Fire),
+    //      and the newest-print rule would otherwise hand energies to whatever
+    //      bling reprint shipped last.
+    if (wantNewest) {
+        const energyPrints = pool.filter(v => ENERGY_SETS.has((v.set || '').toUpperCase()));
+        if (energyPrints.length) pool = energyPrints;
+    }
+
+    // 4. Basic energies take the newest remaining print, everything else the
+    //    oldest. Ties break by lower collector number, then lower price: within
+    //    a set the regular print carries the lower number, and a meta-spiked
+    //    regular print must still beat a transiently cheaper collector version
+    //    (the accessibility cap is the price gate; below it, number decides).
     const sortKey = v => {
         const index = getReleaseIndex(v.set);
         const price = normalizePrice(v.price_usd);
         return [
             wantNewest ? index : -index,
-            price === null ? Number.POSITIVE_INFINITY : price,
-            ...numberSortKey(v.number)
+            ...numberSortKey(v.number),
+            price === null ? Number.POSITIVE_INFINITY : price
         ];
     };
 

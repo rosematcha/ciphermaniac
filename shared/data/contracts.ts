@@ -20,6 +20,10 @@
  * - Archetype identity is a triple {key, displayName, slug}: key is the
  *   lowercased whitespace-collapsed display name, slug is URL-safe and derived
  *   from the KEY (never from a sanitized display label).
+ * - The card catalog ({@link CardRecord}, validated by {@link
+ *   validateCardRecord}) is the normalized "cards table": first-class card
+ *   attributes (stage, mechanicSubtypes, structured weakness/resistance, hp, …)
+ *   scraped into card-types.json keyed by `SET::NUMBER`.
  *
  * IMPORTANT: this module is environment-neutral (browser + Node + Workers). It
  * must not import `node:crypto`; the {@link deckId} constructor takes a hash
@@ -56,6 +60,33 @@ export type TrainerType = 'supporter' | 'item' | 'stadium' | 'tool';
 
 /** Energy subtype (present only when category is `energy`). */
 export type EnergyType = 'basic' | 'special';
+
+/**
+ * Structured evolution stage for a Pokémon card. Vocabulary derived from the
+ * observed Limitless type-line segments in card-types.json (Basic, Stage 1,
+ * Stage 2, VSTAR, VMAX, Level Up).
+ */
+export type CardStage = 'basic' | 'stage1' | 'stage2' | 'vstar' | 'vmax' | 'levelUp';
+
+/** All valid card stages, for runtime validation. */
+export const CARD_STAGES: readonly CardStage[] = ['basic', 'stage1', 'stage2', 'vstar', 'vmax', 'levelUp'];
+
+/**
+ * Card mechanic subtype (from the name/type line). VSTAR/VMAX are observable
+ * offline from the stage; the rest live only in the card name.
+ */
+export type CardMechanicSubtype = 'Mega' | 'Tera' | 'Radiant' | 'ex' | 'VMAX' | 'VSTAR' | 'V';
+
+/** All valid mechanic subtypes, for runtime validation. */
+export const CARD_MECHANIC_SUBTYPES: readonly CardMechanicSubtype[] = [
+  'Mega',
+  'Tera',
+  'Radiant',
+  'ex',
+  'VMAX',
+  'VSTAR',
+  'V'
+];
 
 /**
  * Perspective-free canonical match outcome. `decided` marks a match with a
@@ -239,6 +270,77 @@ export interface DeckCard {
   aceSpec?: boolean;
   /** Single uppercase regulation-mark letter (e.g. "H"), or null. */
   regulationMark?: string | null;
+}
+
+// ============================================================================
+// Card catalog (metadata "cards table")
+// ============================================================================
+
+/** A structured Weakness/Resistance entry: energy type + optional modifier. */
+export interface WeaknessResistance {
+  /** Energy type name as printed (e.g. "Fighting", "Fire"). */
+  type: string;
+  /** Modifier token as printed, whitespace-stripped ("×2", "-30"), or null. */
+  modifier: string | null;
+}
+
+/** A card's ability text detail (name + effect). */
+export interface CardAbilityDetail {
+  name: string;
+  effect: string | null;
+}
+
+/** A card's attack detail (energy cost, name, damage, effect). */
+export interface CardAttackDetail {
+  cost: string | null;
+  name: string;
+  damage: string | null;
+  effect: string | null;
+}
+
+/**
+ * Normalized card-catalog record — the "cards table" shape backing the metadata
+ * scraped into card-types.json (keyed `SET::NUMBER`) by build-card-types.mjs.
+ * Only the identity fields (`cardType`, `fullType`, `metadataVersion`) are
+ * required; every other attribute is optional because Limitless pages, and
+ * older scrapes, populate different subsets. Structured fields (`stage`,
+ * `mechanicSubtypes`, `weakness`/`resistance`) are the v2 additions modeled for
+ * the DB migration.
+ */
+export interface CardRecord {
+  /** Parser schema version stamped on the entry. */
+  metadataVersion: number;
+  /** Top-level category ("pokemon" | "trainer" | "energy"). */
+  cardType: CardCategory;
+  /** Trainer/energy subtype, or a free label; null for most Pokémon. */
+  subType?: string | null;
+  /** Raw evolution/type line for Pokémon (e.g. "Stage 2 - Evolves from Kirlia"). */
+  evolutionInfo?: string | null;
+  /** The full type line joined with " - " (e.g. "Pokémon - Basic"). */
+  fullType: string;
+  /** Structured evolution stage (Pokémon only). */
+  stage?: CardStage;
+  /** Mechanic subtypes parsed from the name/type line. */
+  mechanicSubtypes?: CardMechanicSubtype[];
+  aceSpec?: true;
+  /** Single uppercase regulation-mark letter (e.g. "H"). */
+  regulationMark?: string;
+  abilities?: string[];
+  attacks?: string[];
+  hp?: number;
+  pokemonType?: string;
+  weakness?: WeaknessResistance;
+  resistance?: WeaknessResistance;
+  retreatCost?: number;
+  rarity?: string;
+  artist?: string;
+  text?: string;
+  abilityDetails?: CardAbilityDetail[];
+  attackDetails?: CardAttackDetail[];
+  /** Format legality map ("standard"/"expanded" → "legal"/…). */
+  legality?: Record<string, string>;
+  /** ISO timestamp of the last scrape/upgrade of this entry. */
+  lastUpdated?: string;
 }
 
 // ============================================================================
@@ -1183,4 +1285,152 @@ export function validateNormalizedEvent(value: unknown): ValidationResult<Normal
     return { ok: false, errors };
   }
   return { ok: true, value: value as unknown as NormalizedEvent };
+}
+
+// ============================================================================
+// Card catalog validation
+// ============================================================================
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(v => typeof v === 'string');
+}
+
+/** Validate a structured Weakness/Resistance ({type: string, modifier: string|null}). */
+function validateWeaknessResistance(value: unknown, path: string, errors: string[]): void {
+  if (!isRecord(value)) {
+    errors.push(`${path}: expected object`);
+    return;
+  }
+  if (typeof value.type !== 'string' || value.type.length === 0) {
+    errors.push(`${path}.type: expected non-empty string`);
+  }
+  if (value.modifier !== null && typeof value.modifier !== 'string') {
+    errors.push(`${path}.modifier: expected string or null`);
+  }
+}
+
+/**
+ * Validate a {@link CardRecord} (a card-types.json catalog entry). Identity
+ * fields (`metadataVersion`, `cardType`, `fullType`) are required; every other
+ * attribute is optional but, when present, is shape- and vocabulary-checked
+ * against the enums frozen in this module.
+ * @param value the untrusted candidate
+ * @returns `{ ok: true, value }` or `{ ok: false, errors }`
+ */
+export function validateCardRecord(value: unknown): ValidationResult<CardRecord> {
+  const errors: string[] = [];
+  if (!isRecord(value)) {
+    return { ok: false, errors: ['root: expected object'] };
+  }
+
+  if (!isInteger(value.metadataVersion) || value.metadataVersion < 1) {
+    errors.push('metadataVersion: expected positive integer');
+  }
+  if (typeof value.cardType !== 'string' || !CARD_CATEGORIES.includes(value.cardType as CardCategory)) {
+    errors.push(`cardType: expected one of ${CARD_CATEGORIES.join('/')}`);
+  }
+  if (typeof value.fullType !== 'string' || value.fullType.length === 0) {
+    errors.push('fullType: expected non-empty string');
+  }
+
+  if (value.subType !== undefined && value.subType !== null && typeof value.subType !== 'string') {
+    errors.push('subType: expected string, null, or absent');
+  }
+  if (value.evolutionInfo !== undefined && value.evolutionInfo !== null && typeof value.evolutionInfo !== 'string') {
+    errors.push('evolutionInfo: expected string, null, or absent');
+  }
+  if (value.stage !== undefined && !CARD_STAGES.includes(value.stage as CardStage)) {
+    errors.push(`stage: expected one of ${CARD_STAGES.join('/')}`);
+  }
+  if (value.mechanicSubtypes !== undefined) {
+    if (!Array.isArray(value.mechanicSubtypes)) {
+      errors.push('mechanicSubtypes: expected array');
+    } else {
+      for (const m of value.mechanicSubtypes) {
+        if (!CARD_MECHANIC_SUBTYPES.includes(m as CardMechanicSubtype)) {
+          errors.push(`mechanicSubtypes: unknown value "${String(m)}"`);
+        }
+      }
+    }
+  }
+  if (value.aceSpec !== undefined && value.aceSpec !== true) {
+    errors.push('aceSpec: expected true or absent');
+  }
+  if (
+    value.regulationMark !== undefined &&
+    (typeof value.regulationMark !== 'string' || !/^[A-Z]$/.test(value.regulationMark))
+  ) {
+    errors.push('regulationMark: expected single uppercase letter');
+  }
+  if (value.abilities !== undefined && !isStringArray(value.abilities)) {
+    errors.push('abilities: expected string[]');
+  }
+  if (value.attacks !== undefined && !isStringArray(value.attacks)) {
+    errors.push('attacks: expected string[]');
+  }
+  if (value.hp !== undefined && (!isInteger(value.hp) || value.hp <= 0)) {
+    errors.push('hp: expected positive integer');
+  }
+  if (value.pokemonType !== undefined && typeof value.pokemonType !== 'string') {
+    errors.push('pokemonType: expected string');
+  }
+  if (value.weakness !== undefined) {
+    validateWeaknessResistance(value.weakness, 'weakness', errors);
+  }
+  if (value.resistance !== undefined) {
+    validateWeaknessResistance(value.resistance, 'resistance', errors);
+  }
+  if (value.retreatCost !== undefined && (!isInteger(value.retreatCost) || value.retreatCost < 0)) {
+    errors.push('retreatCost: expected non-negative integer');
+  }
+  if (value.rarity !== undefined && typeof value.rarity !== 'string') {
+    errors.push('rarity: expected string');
+  }
+  if (value.artist !== undefined && typeof value.artist !== 'string') {
+    errors.push('artist: expected string');
+  }
+  if (value.text !== undefined && typeof value.text !== 'string') {
+    errors.push('text: expected string');
+  }
+  if (value.abilityDetails !== undefined) {
+    if (!Array.isArray(value.abilityDetails)) {
+      errors.push('abilityDetails: expected array');
+    } else {
+      value.abilityDetails.forEach((a, i) => {
+        if (!isRecord(a) || typeof a.name !== 'string' || (a.effect !== null && typeof a.effect !== 'string')) {
+          errors.push(`abilityDetails[${i}]: expected {name: string, effect: string|null}`);
+        }
+      });
+    }
+  }
+  if (value.attackDetails !== undefined) {
+    if (!Array.isArray(value.attackDetails)) {
+      errors.push('attackDetails: expected array');
+    } else {
+      value.attackDetails.forEach((a, i) => {
+        if (
+          !isRecord(a) ||
+          typeof a.name !== 'string' ||
+          (a.cost !== null && typeof a.cost !== 'string') ||
+          (a.damage !== null && typeof a.damage !== 'string') ||
+          (a.effect !== null && typeof a.effect !== 'string')
+        ) {
+          errors.push(`attackDetails[${i}]: expected {cost, name, damage, effect}`);
+        }
+      });
+    }
+  }
+  if (value.legality !== undefined) {
+    if (!isRecord(value.legality) || !Object.values(value.legality).every(v => typeof v === 'string')) {
+      errors.push('legality: expected Record<string, string>');
+    }
+  }
+  if (value.lastUpdated !== undefined && typeof value.lastUpdated !== 'string') {
+    errors.push('lastUpdated: expected ISO string');
+  }
+
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
+  return { ok: true, value: value as unknown as CardRecord };
 }

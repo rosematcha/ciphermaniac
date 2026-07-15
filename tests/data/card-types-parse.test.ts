@@ -156,14 +156,16 @@ const SPECIAL_ENERGY_PAGE = `
 void test('parses full Pokémon enrichment: HP, type, WRR, rarity, artist, legality', () => {
   const parsed = parseCardPage(POKEMON_PAGE);
   assert.ok(parsed);
-  assert.equal(parsed.metadataVersion, 1);
+  assert.equal(parsed.metadataVersion, 2);
   assert.equal(parsed.cardType, 'pokemon');
   assert.equal(parsed.evolutionInfo, 'Basic');
   assert.equal(parsed.fullType, 'Pokémon - Basic');
+  assert.equal(parsed.stage, 'basic');
+  assert.deepEqual(parsed.mechanicSubtypes, ['ex']); // "Fezandipiti ex"
   assert.equal(parsed.regulationMark, 'H');
   assert.equal(parsed.hp, 210);
   assert.equal(parsed.pokemonType, 'Darkness');
-  assert.equal(parsed.weakness, 'Fighting');
+  assert.deepEqual(parsed.weakness, { type: 'Fighting', modifier: null });
   assert.equal(parsed.resistance, undefined); // "none" is omitted
   assert.equal(parsed.retreatCost, 1);
   assert.equal(parsed.rarity, 'Double Rare');
@@ -193,6 +195,8 @@ void test('parses attack damage and stage/evolves-from', () => {
   assert.ok(parsed);
   assert.equal(parsed.hp, 320);
   assert.equal(parsed.pokemonType, 'Dragon');
+  assert.equal(parsed.stage, 'stage2');
+  assert.deepEqual(parsed.mechanicSubtypes, ['ex']); // "Dragapult ex"
   assert.equal(parsed.evolutionInfo, 'Stage 2 - Evolves from Drakloak');
   assert.deepEqual(parsed.attacks, ['Jet Headbutt', 'Phantom Dive']);
   assert.deepEqual(parsed.attackDetails, [

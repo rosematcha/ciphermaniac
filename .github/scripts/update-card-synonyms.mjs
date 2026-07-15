@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import * as cheerio from 'cheerio';
 import { chooseCanonicalPrint } from './lib/canonical-print.mjs';
+import { normalizeSynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import { createR2Client, getJsonResult } from './lib/r2.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -610,6 +611,22 @@ async function main() {
         synonymsData.metadata.totalPrints = Object.keys(synonymsData.prints).length;
         synonymsData.metadata.mergedWithPrevious = true;
     }
+
+    // Flatten the merged graph to ONE terminal canonical per reprint component.
+    // The incremental merge above retains a stale reverse edge whenever a
+    // cluster's chosen canonical flips between runs, producing cycles (A→B, B→A)
+    // and multi-hop chains that make single-hop resolution non-terminal and
+    // 301-loop the /cards edge redirect. Runs after the merge so the normalized
+    // form is what gets persisted and compared for change detection.
+    const normalized = normalizeSynonymDatabase({
+        synonyms: synonymsData.synonyms,
+        canonicals: synonymsData.canonicals,
+        prints: synonymsData.prints
+    });
+    synonymsData.synonyms = normalized.synonyms;
+    synonymsData.canonicals = normalized.canonicals;
+    synonymsData.metadata.totalSynonyms = Object.keys(synonymsData.synonyms).length;
+    synonymsData.metadata.totalCanonicals = Object.keys(synonymsData.canonicals).length;
 
     // Record processed-vs-expected source coverage for auditability.
     synonymsData.metadata.sourceTournamentsExpected = stats.expected;

@@ -719,6 +719,10 @@
     "SVP",
     "MEP"
   ],
+  "energySets": [
+    "MEE",
+    "SVE"
+  ],
   "basicEnergyNames": [
     "Grass Energy",
     "Fire Energy",

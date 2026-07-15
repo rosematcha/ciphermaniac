@@ -516,8 +516,9 @@ class RollingCanonicalPrintTests(unittest.TestCase):
         self.assertEqual(self._choose_at(BOSSS_ORDERS_PRINTS, "Boss's Orders", "2026-06-13"), ("MEG", "114"))
 
     def test_basic_energy_takes_the_newest_print_legal_on_the_date(self):
-        # Fire Energy at a 2024 event: MEE does not exist yet, so the newest
-        # cheap legal print is the SVE energy set (cheapest of the SVE trio).
+        # Fire Energy at a 2024 event: MEE does not exist yet, so the SVE
+        # energy set wins; the regular print (lowest number) beats the
+        # transiently cheaper reverse variant.
         variations = [
             _print("SSH", "R", 0.28),
             _print("FST", "284", 6.34),
@@ -526,7 +527,31 @@ class RollingCanonicalPrintTests(unittest.TestCase):
             _print("SVE", "018", 0.19),
             _print("MEE", "002", 0.22),
         ]
-        self.assertEqual(self._choose_at(variations, "Fire Energy", "2024-01-01"), ("SVE", "010"))
+        self.assertEqual(self._choose_at(variations, "Fire Energy", "2024-01-01"), ("SVE", "002"))
+
+    def test_unpriced_energies_prefer_the_energy_set_over_bling_reprints(self):
+        # Baltimore 2024 regression: no energy prints are priced, so the
+        # accessibility cap cannot strike the gold OBF 230 and OBF is newer
+        # than SVE — the energy-set preference must decide.
+        variations = [
+            _print("SVE", "002", None),
+            _print("SVE", "010", None),
+            _print("OBF", "230", None),
+            _print("PAL", "278", None),
+        ]
+        self.assertEqual(self._choose_at(variations, "Fire Energy", "2024-09-13"), ("SVE", "002"))
+
+    def test_meta_spiked_regular_print_beats_cheaper_collector_version(self):
+        # Baltimore 2024 regression (Pidgeot ex): the illustration rare was
+        # cheaper than the meta-spiked regular on the event date; below the
+        # accessibility cap the collector number decides, not price.
+        variations = [
+            _print("OBF", "164", 8.76),
+            _print("OBF", "217", 5.57),
+            _print("OBF", "225", 10.97),
+            _print("PAF", "221", 5.91),
+        ]
+        self.assertEqual(self._choose_at(variations, "Pidgeot ex", "2024-09-13"), ("OBF", "164"))
 
     def test_fallback_pool_excludes_prints_that_did_not_exist_yet(self):
         # Every existing print has rotated at the date; the future MEG reprint

@@ -19,14 +19,17 @@
  * @module .github/scripts/build-loop
  */
 
-import { writeFile } from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
+import { readFile, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { composeRelease, type ReleaseScope } from '../../shared/data/build/release.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import { sha256HexString } from '../../shared/data/hash.ts';
 import { labsSourceToNormalized } from '../../shared/data/adapters/labsSource.ts';
 import { buildEventArtifacts } from '../../shared/data/reports/eventArtifacts.ts';
+import { buildOnlineServingArtifacts } from '../../shared/data/reports/onlineArtifacts.ts';
+import type { ArchetypeDeckInput } from '../../shared/data/archetypes/build.ts';
 import { buildTournamentCatalog } from './event-cli.ts';
 import { createR2Client, getJsonResult, putJson } from './lib/r2.mjs';
 
@@ -85,6 +88,10 @@ async function main(): Promise<void> {
   const gen = (obj: unknown): string => sha256HexString(canonicalStringify(obj)).slice(0, 12);
 
   const synonyms = await load<Parameters<typeof buildEventArtifacts>[1] extends { synonymDb?: infer S } ? S : never>('assets/card-synonyms.json');
+  // Inputs the online-window regeneration needs beyond decks: card types (thumbnail
+  // + signature inference) and the hand-maintained thumbnail overrides (repo asset).
+  const cardTypesDb = await load('assets/data/card-types.json');
+  const thumbnailConfig = JSON.parse(await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../../public/assets/data/archetype-thumbnails.json'), 'utf8'));
 
   // ---- Discover scopes ----
   const listed = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: 'reports/', Delimiter: '/' }));
@@ -137,14 +144,29 @@ async function main(): Promise<void> {
   roots.catalogs = `/${catalogRoot}`;
   served.catalogs = ['tournaments.json'];
 
-  // ---- Online (fresh capture of current online window, republished immutably) ----
-  const onlineKeys = ['master.json', 'decks.json', 'meta.json', 'cardUsage.json', 'archetypes/index.json'];
-  const onlineBodies: Record<string, unknown> = {};
-  for (const k of onlineKeys) onlineBodies[k] = await load(`reports/Online - Last 14 Days/${k}`);
-  const onlineRoot = `releases/v1/online/${gen(onlineBodies)}`;
-  for (const [k, body] of Object.entries(onlineBodies)) if (body !== null) await publish(`${onlineRoot}/${k}`, body);
-  served.online = Object.entries(onlineBodies).filter(([, body]) => body !== null).map(([k]) => k);
-  roots.online = `/${onlineRoot}`;
+  // ---- Online (source captured, derived artifacts REGENERATED via shared builders) ----
+  // decks.json + meta.json are the fetched source (kept as captured); master,
+  // cardUsage, and the archetype index are rebuilt from those decks through the
+  // consolidated builders — the same D4/D9 semantics events already use, retiring
+  // the duplicate generation inside run-online-meta.mjs.
+  const onlineDecks = await load<ArchetypeDeckInput[]>('reports/Online - Last 14 Days/decks.json');
+  if (onlineDecks) {
+    const onlineMeta = await load('reports/Online - Last 14 Days/meta.json');
+    const { master, cardUsage, archetypeIndex } = buildOnlineServingArtifacts(onlineDecks, { synonymDb: synonyms, cardTypesDb, thumbnailConfig });
+    const onlineBodies: Record<string, unknown> = {
+      'master.json': master,
+      'decks.json': onlineDecks,
+      'meta.json': onlineMeta,
+      'cardUsage.json': cardUsage,
+      'archetypes/index.json': archetypeIndex
+    };
+    const onlineRoot = `releases/v1/online/${gen(onlineBodies)}`;
+    for (const [k, body] of Object.entries(onlineBodies)) if (body !== null) await publish(`${onlineRoot}/${k}`, body);
+    served.online = Object.entries(onlineBodies)
+      .filter(([, body]) => body !== null)
+      .map(([k]) => k);
+    roots.online = `/${onlineRoot}`;
+  }
 
   // ---- Captured scopes (index artifacts copied forward from legacy) ----
   // Per-entity bodies (per-player, per-snapshot) are intentionally NOT captured;

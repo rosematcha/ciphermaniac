@@ -1089,6 +1089,7 @@ _SET_RELEASE_INDEX = {entry["code"]: index for index, entry in enumerate(_SET_CA
 _STANDARD_LEGAL_SETS = set(_SET_CATALOG_DATA["standardLegalSets"])
 _PROMO_SETS = set(_SET_CATALOG_DATA["promoSets"])
 _CANONICAL_BASIC_ENERGY_NAMES = set(_SET_CATALOG_DATA["basicEnergyNames"])
+_ENERGY_SETS = set(_SET_CATALOG_DATA["energySets"])
 
 _SET_BY_CODE = {entry["code"]: entry for entry in _SET_CATALOG_DATA["sets"]}
 
@@ -1193,17 +1194,30 @@ def choose_canonical_print(variations, card_name, as_of_date=None):
     if non_promo:
         pool = non_promo
 
-    # 4. Basic energies take the newest remaining print, everything else the
-    #    oldest. Ties break by lower price, then lower collector number.
     want_newest = card_name in _CANONICAL_BASIC_ENERGY_NAMES
 
+    # 3.5. Basic energies prefer the dedicated energy sets (SVE/MEE) outright:
+    #      energy prints are rarely priced, so the accessibility cap cannot
+    #      strike the collector reprints in main sets (e.g. OBF 230 gold Fire),
+    #      and the newest-print rule would otherwise hand energies to whatever
+    #      bling reprint shipped last.
+    if want_newest:
+        energy_prints = [v for v in pool if str(v.get("set", "")).upper() in _ENERGY_SETS]
+        if energy_prints:
+            pool = energy_prints
+
+    # 4. Basic energies take the newest remaining print, everything else the
+    #    oldest. Ties break by lower collector number, then lower price: within
+    #    a set the regular print carries the lower number, and a meta-spiked
+    #    regular print must still beat a transiently cheaper collector version
+    #    (the accessibility cap is the price gate; below it, number decides).
     def sort_key(var):
         index = _release_index(var.get("set"))
         price = _normalize_price(var.get("price_usd"))
         return (
             index if want_newest else -index,
-            price if price is not None else float("inf"),
             _number_sort_key(var.get("number")),
+            price if price is not None else float("inf"),
         )
 
     canonical = min(pool, key=sort_key)

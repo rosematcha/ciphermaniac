@@ -65,7 +65,7 @@ jobs:
 
       - name: Generate and upload card synonyms
         id: generate
-        run: node .github/scripts/update-card-synonyms.mjs
+        run: npx tsx .github/scripts/update-card-synonyms.mjs
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
