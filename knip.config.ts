@@ -1,6 +1,10 @@
 import type { KnipConfig } from 'knip';
 
 const config: KnipConfig = {
+  // Exports referenced only inside their own module (internal constants that
+  // are exported for documentation/typing) are not dead code.
+  ignoreExportsUsedInFile: true,
+
   entry: [
     // SPA entry point (src/main.tsx) is picked up by knip's Vite plugin.
 
@@ -23,12 +27,6 @@ const config: KnipConfig = {
     'scripts/**/*.{ts,mjs}',
     '.github/scripts/*.{ts,mjs}',
     'tests/**/*.{ts,js,mjs}'
-  ],
-
-  ignore: [
-    // Contract layer lands ahead of its producers (DB-MASTER-PLAN Phase 2 adopts
-    // it); its exports have no consumers yet. Remove this ignore then.
-    'shared/data/**'
   ]
 };
 

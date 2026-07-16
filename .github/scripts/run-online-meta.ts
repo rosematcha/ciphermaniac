@@ -28,6 +28,7 @@ import { generateArchetypeTrends } from '../../shared/data/analysis/archetypeTre
 import { computeSuccessTags } from '../../shared/data/contracts.js';
 import { generateReportFromDecks } from '../../shared/data/reports/cardReport.js';
 import { buildArchetypeReports } from '../../shared/data/archetypes/build.js';
+import { onlineArchetypeOptions } from '../../shared/data/reports/onlineArtifacts.js';
 import { buildCardUsageIndex } from '../../shared/data/reports/cardUsage.js';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.js';
 
@@ -603,25 +604,20 @@ async function main(): Promise<void> {
 
   console.log(`[online-meta] Aggregating ${reportDecks.length} decks`);
   const masterReport = generateReportFromDecks(reportDecks as unknown as Parameters<typeof generateReportFromDecks>[0], reportDecks.length, synonymDb);
-  // The 'preserve' online profile: case-preserving group keys (D3 quirk),
-  // 0.5% deck floor, fraction percent, deckCount-desc ordering, thumbnails +
-  // signature cards on index entries — pinned byte-identical to the old .mjs
-  // builder by tests/data/archetype-presentation-parity.test.ts before cutover.
+  // The frozen 'preserve' online profile: case-preserving group keys (D3
+  // quirk), 0.5% deck floor, fraction percent, deckCount-desc ordering,
+  // thumbnails + signature cards on index entries — pinned byte-identical to
+  // the old .mjs builder before cutover.
   const {
     files: archetypeFiles,
     index: archetypeIndex,
     minDecks,
     decksByBase
-  } = buildArchetypeReports(reportDecks as unknown as Parameters<typeof buildArchetypeReports>[0], synonymDb, {
-    nameCasing: 'preserve',
-    minDecksFraction: 0.005,
-    percentMode: 'fraction',
-    sortMode: 'deckCount',
-    thumbnailConfig: ARCHETYPE_THUMBNAILS,
-    cardTypesDb,
-    masterReport,
-    includeSignatureCards: true
-  });
+  } = buildArchetypeReports(
+    reportDecks as unknown as Parameters<typeof buildArchetypeReports>[0],
+    synonymDb,
+    onlineArchetypeOptions(ARCHETYPE_THUMBNAILS, cardTypesDb, masterReport)
+  );
 
   const meta = {
     name: TARGET_FOLDER,

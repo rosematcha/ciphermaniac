@@ -1,14 +1,13 @@
 /**
  * Online-window serving artifacts, built from decks via the shared builders.
  *
- * The online meta window (`reports/Online - Last 14 Days`) is currently produced
- * by the legacy `run-online-meta.mjs`, which carries its OWN copies of the report
- * builders. This module regenerates the derived artifacts — master, cardUsage, and
- * the archetype index — from the same online decks through the CONSOLIDATED shared
- * builders, applying the online flavor (preserve casing, 0.005 min-decks fraction,
- * fraction percent, deckCount sort, signature cards, thumbnails). It intentionally
- * does not re-fetch: the online source (`decks.json` + `meta.json`) is still
- * captured from the legacy producer; only the duplicate generation is replaced.
+ * The online meta window (`reports/Online - Last 14 Days`) is produced by
+ * `run-online-meta.ts`, which builds through the shared builders using the
+ * same frozen online flavor exported here (preserve casing, 0.005 min-decks
+ * fraction, fraction percent, deckCount sort, signature cards, thumbnails).
+ * This module regenerates the derived artifacts — master, cardUsage, and the
+ * archetype index — from an online window's captured decks without
+ * re-fetching (`decks.json` + `meta.json` remain the source).
  * @module shared/data/reports/onlineArtifacts
  */
 
