@@ -90,7 +90,12 @@ export async function onRequestGet({ request, params }: RequestContext): Promise
   const masterPath = `/reports/${tournamentEncoded}/master.json`;
   const dbPath = `/reports/${tournamentEncoded}/tournament.db`;
 
-  const masterProbe = await probeAsset([`https://r2.ciphermaniac.com${masterPath}`, `${origin}${masterPath}`]);
+  // The probes are independent — run them concurrently; the db result is
+  // simply discarded when the master turns out to be missing.
+  const [masterProbe, dbProbe] = await Promise.all([
+    probeAsset([`https://r2.ciphermaniac.com${masterPath}`, `${origin}${masterPath}`]),
+    probeAsset([`https://r2.ciphermaniac.com${dbPath}`, `${origin}${dbPath}`])
+  ]);
 
   if (!masterProbe.ok) {
     // Distinguish "report genuinely absent" (404) from "storage is unreachable"
@@ -105,8 +110,6 @@ export async function onRequestGet({ request, params }: RequestContext): Promise
     }
     return jsonError('Tournament report not found', 404, { ...JSON_HEADERS });
   }
-
-  const dbProbe = await probeAsset([`https://r2.ciphermaniac.com${dbPath}`, `${origin}${dbPath}`]);
 
   // The master exists, but if the DB probe hit a storage error we cannot
   // truthfully report hasTournamentDb — fail loud rather than claim it's absent.
