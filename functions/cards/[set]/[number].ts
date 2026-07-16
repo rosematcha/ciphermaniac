@@ -28,14 +28,45 @@ interface Context {
   next: () => Promise<Response>;
 }
 
-// Module-level cache survives within an isolate. `loadCardSynonyms` also
-// caches (KV/R2), but pinning here avoids the R2 fetch + JSON parse on each
-// request once the isolate is warm. Bound the TTL so a warm isolate doesn't
-// keep serving yesterday's synonyms forever after the daily cron writes a
-// fresh DB to R2.
-const SYNONYM_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-let cachedDb: SynonymDatabase | null = null;
-let cachedAt = 0;
+// (set, number) → canonical (set, number) index, built once per synonym DB
+// load instead of scanning Object.entries(db.synonyms) with per-entry
+// split/uppercase/normalize on every card view. Keyed by DB object identity
+// (WeakMap) so a fresh DB from `loadCardSynonyms` — which itself caches per
+// isolate with a TTL — transparently gets a fresh index. Mirrors
+// `getSetNumberCanonicalIndex` in src/lib/data.ts.
+const canonicalIndexCache = new WeakMap<object, Map<string, { set: string; number: string }>>();
+
+function getCanonicalIndex(db: SynonymDatabase): Map<string, { set: string; number: string }> {
+  const cached = canonicalIndexCache.get(db);
+  if (cached) {
+    return cached;
+  }
+  const index = new Map<string, { set: string; number: string }>();
+  for (const [variantUid, canonicalUid] of Object.entries(db.synonyms)) {
+    if (typeof canonicalUid !== 'string') {
+      continue;
+    }
+    const vParts = variantUid.split('::');
+    const cParts = canonicalUid.split('::');
+    if (vParts.length < 3 || cParts.length < 3) {
+      continue;
+    }
+    const variantKey = `${vParts[1].toUpperCase()}::${normalizeCardNumber(vParts[2])}`;
+    // Skip self-mappings (variant already canonical) so a hit always means
+    // "redirect needed" — same behavior as the old scan's break-on-canonical.
+    if (
+      cParts[1].toUpperCase() === vParts[1].toUpperCase() &&
+      normalizeCardNumber(cParts[2]) === normalizeCardNumber(vParts[2])
+    ) {
+      continue;
+    }
+    if (!index.has(variantKey)) {
+      index.set(variantKey, { set: cParts[1], number: cParts[2] });
+    }
+  }
+  canonicalIndexCache.set(db, index);
+  return index;
+}
 
 export async function onRequest(context: Context): Promise<Response> {
   const { params, env, request } = context;
@@ -47,44 +78,14 @@ export async function onRequest(context: Context): Promise<Response> {
   }
 
   try {
-    if (!cachedDb || Date.now() - cachedAt > SYNONYM_CACHE_TTL_MS) {
-      cachedDb = await loadCardSynonyms(env);
-      cachedAt = Date.now();
-    }
-    const db = cachedDb;
+    const db = await loadCardSynonyms(env);
     if (!db?.synonyms) {
       return context.next();
     }
 
-    for (const [variantUid, canonicalUid] of Object.entries(db.synonyms)) {
-      if (typeof canonicalUid !== 'string') {
-        continue;
-      }
-      const vParts = variantUid.split('::');
-      if (vParts.length < 3) {
-        continue;
-      }
-      if (vParts[1].toUpperCase() !== reqSet) {
-        continue;
-      }
-      if (normalizeCardNumber(vParts[2]) !== reqNumber) {
-        continue;
-      }
-
-      const cParts = canonicalUid.split('::');
-      if (cParts.length < 3) {
-        continue;
-      }
-      const cSet = cParts[1];
-      const cNum = cParts[2];
-
-      // Already canonical (e.g. variantUid happens to also be canonical) —
-      // no redirect needed; let the SPA render normally.
-      if (cSet.toUpperCase() === reqSet && normalizeCardNumber(cNum) === reqNumber) {
-        break;
-      }
-
-      const dest = new URL(`/cards/${cSet}/${cNum}`, request.url);
+    const canonical = getCanonicalIndex(db).get(`${reqSet}::${reqNumber}`);
+    if (canonical) {
+      const dest = new URL(`/cards/${canonical.set}/${canonical.number}`, request.url);
       return Response.redirect(dest.toString(), 301);
     }
   } catch (err) {

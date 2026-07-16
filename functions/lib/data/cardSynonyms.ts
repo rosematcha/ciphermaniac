@@ -16,9 +16,11 @@ export { getCanonicalCardFromData as getCanonicalCard };
  *
  * Reads from `assets/card-synonyms.json` on the `REPORTS` bucket. No KV cache:
  * the synonym DB updates frequently (daily cron) and a 24h KV TTL would mask
- * fresh data from the Worker. Callers that re-invoke `loadCardSynonyms` within
- * the same isolate should pin the result themselves (see
- * `functions/cards/[set]/[number].ts` for an example).
+ * fresh data from the Worker. Instead the parsed DB is pinned per bucket
+ * binding for a short TTL, so a warm isolate skips the R2 fetch + JSON parse
+ * on every request while still picking up the daily cron's fresh DB within
+ * the hour. Keying by binding identity (WeakMap) rather than a module scalar
+ * keeps test envs isolated from each other.
  *
  * The `CARD_TYPES_KV` field is preserved on the `WorkerEnv` interface only so
  * legacy callers and tests don't break; nothing reads from it here anymore.
@@ -28,13 +30,23 @@ interface WorkerEnv {
   REPORTS?: R2Bucket;
 }
 
+const SYNONYM_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const dbCache = new WeakMap<R2Bucket, { db: SynonymDatabase; at: number }>();
+
 export async function loadCardSynonyms(env: WorkerEnv): Promise<SynonymDatabase> {
   try {
     if (env.REPORTS) {
+      const cached = dbCache.get(env.REPORTS);
+      if (cached && Date.now() - cached.at < SYNONYM_CACHE_TTL_MS) {
+        return cached.db;
+      }
+
       const object = await env.REPORTS.get('assets/card-synonyms.json');
       if (object) {
         const text = await object.text();
-        return JSON.parse(text);
+        const db = JSON.parse(text) as SynonymDatabase;
+        dbCache.set(env.REPORTS, { db, at: Date.now() });
+        return db;
       }
     }
 
