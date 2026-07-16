@@ -15,10 +15,10 @@ import {
   gatherDecks,
   buildTrendReport,
   buildCardTrendReport
-} from '../../functions/lib/onlineMeta/index.ts';
-import { loadCardTypesDatabase } from '../../functions/lib/data/cardTypesDatabase.js';
-import { fetchLimitlessJson } from '../../functions/lib/api/limitless.ts';
-import type { DiagnosticsCollector, TrendSeriesEntry } from '../../functions/lib/onlineMeta/types.ts';
+} from '../../shared/onlineMeta/index.ts';
+import { loadCardTypesDatabase } from '../../shared/data/cardTypesDatabase.js';
+import { fetchLimitlessJson } from '../../shared/api/limitless.ts';
+import type { DiagnosticsCollector, TrendSeriesEntry } from '../../shared/onlineMeta/types.ts';
 
 const TRENDS_FOLDER = 'Trends - Last 30 Days';
 const LOOKBACK_DAYS = 30;

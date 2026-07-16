@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
 
-import { fetchLimitlessJson } from '../../functions/lib/api/limitless.ts';
+import { fetchLimitlessJson } from '../../shared/api/limitless.ts';
 
 // Test-only global used by limitless key resolution fallbacks.
 declare global {

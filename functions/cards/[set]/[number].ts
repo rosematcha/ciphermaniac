@@ -12,7 +12,7 @@
  * client JS.
  */
 
-import { loadCardSynonyms } from '../../lib/data/cardSynonyms';
+import { loadCardSynonyms } from '../../../shared/data/cardSynonyms';
 import { normalizeCardNumber } from '../../../shared/cardUtils';
 import type { SynonymDatabase } from '../../../shared/synonyms';
 

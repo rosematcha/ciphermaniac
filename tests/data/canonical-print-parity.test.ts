@@ -1,19 +1,17 @@
 /**
- * Parity corpus for canonical-print selection.
+ * Scenario corpus for canonical-print selection.
  *
- * DB-MASTER-PLAN Phase 2 slice 1 ports `.github/scripts/lib/canonical-print.mjs`
- * to `shared/data/canonicalPrint.ts`. The `.mjs` stays as the runtime for its
- * ESM producer (`update-card-synonyms.mjs`, which cannot import TypeScript)
- * until that producer migrates. Every scenario below runs through BOTH
- * implementations and asserts they choose the identical print, plus the
- * expected print, so the two can only be retired once proven equal.
+ * Real print tables scraped from Limitless plus synthetic edge cases; chooser
+ * expectations agreed with Reese. Originally a parity harness for the .mjs →
+ * shared/data/canonicalPrint.ts port; the .mjs retired once its producer
+ * (update-card-synonyms.mjs) switched to the shared module, so the corpus now
+ * pins the sole implementation directly.
  */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { chooseCanonicalPrint as chooseNew } from '../../shared/data/canonicalPrint.ts';
-import { chooseCanonicalPrint as chooseOld, type PrintVariation } from '../../.github/scripts/lib/canonical-print.mjs';
+import { chooseCanonicalPrint, type PrintVariation } from '../../shared/data/canonicalPrint.ts';
 
 function print(set: string, number: string, price: number | null): PrintVariation {
   // eslint-disable-next-line camelcase -- price_usd mirrors the scraped print-table shape
@@ -284,29 +282,23 @@ const CORPUS: Scenario[] = [
   }
 ];
 
-describe('canonical-print parity (old .mjs vs new TS port)', () => {
+describe('canonical-print scenario corpus', () => {
   for (const scenario of CORPUS) {
     it(scenario.label, () => {
       const options = scenario.asOfDate ? { asOfDate: scenario.asOfDate } : undefined;
-      const oldResult = chooseOld(scenario.variations, scenario.cardName, options);
-      const newResult = chooseNew(scenario.variations, scenario.cardName, options);
-
-      // The whole point of the slice: the two implementations must agree.
-      assert.deepEqual(newResult, oldResult, 'TS port must match the .mjs implementation exactly');
+      const result = chooseCanonicalPrint(scenario.variations, scenario.cardName, options);
 
       if (scenario.expected === null) {
-        assert.equal(newResult, null);
-        assert.equal(oldResult, null);
+        assert.equal(result, null);
       } else {
-        assert.ok(newResult, 'expected a canonical print');
-        assert.deepEqual([newResult.set, newResult.number], scenario.expected);
+        assert.ok(result, 'expected a canonical print');
+        assert.deepEqual([result.set, result.number], scenario.expected);
       }
     });
   }
 
-  it('both implementations reject a malformed asOfDate', () => {
+  it('rejects a malformed asOfDate', () => {
     const variations = [print('ASC', '198', 0.43)];
-    assert.throws(() => chooseOld(variations, 'Poke Pad', { asOfDate: '2026/02/28' }));
-    assert.throws(() => chooseNew(variations, 'Poke Pad', { asOfDate: '2026/02/28' }));
+    assert.throws(() => chooseCanonicalPrint(variations, 'Poke Pad', { asOfDate: '2026/02/28' }));
   });
 });

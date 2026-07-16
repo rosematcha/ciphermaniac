@@ -9,9 +9,9 @@
  * Both were originally local to AdvancedPanel; lifted here so the card-impact
  * analyzer counts cards exactly the same way.
  */
-import type { DeckCard } from '../types';
-import { getCanonicalCardFromData } from '../../shared/synonyms.js';
-import { normalizeCardNumber } from '../../shared/cardUtils.js';
+import type { DeckCard } from './deckTypes.js';
+import { getCanonicalCardFromData } from './synonyms.js';
+import { normalizeCardNumber } from './cardUtils.js';
 import { buildCardId } from './clientSideFiltering';
 
 export { buildCardId };

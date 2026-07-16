@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { buildLensRows, countInDeck, type DeckLite, partitionByCard, tallyLens, wrOf } from '../../src/lib/cardLens.ts';
-import { buildCardId } from '../../src/utils/deckCardId.ts';
+import { buildCardId } from '../../shared/deckCardId.ts';
 import type { DeckCard, PlayerMatchRecord } from '../../src/types/index.ts';
 
 const approx = (a: number, b: number, eps = 0.01) => assert.ok(Math.abs(a - b) < eps, `expected ~${b}, got ${a}`);

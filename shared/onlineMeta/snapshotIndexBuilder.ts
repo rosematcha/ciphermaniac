@@ -1,6 +1,6 @@
 import { loadCardSynonyms } from '../data/cardSynonyms.js';
-import { getCanonicalCardFromData } from '../../../shared/synonyms';
-import { cardNumberIndexKey } from '../../../shared/cardUtils.js';
+import { getCanonicalCardFromData } from '../synonyms';
+import { cardNumberIndexKey } from '../cardUtils.js';
 import { getJson, getJsonResult, putJson } from './storageWriter';
 
 const SNAPSHOT_ROOT = 'reports/Snapshots';

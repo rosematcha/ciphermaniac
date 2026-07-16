@@ -11,7 +11,7 @@
  * build them (`buildCardId`), so a chosen option maps cleanly back to a rule.
  */
 
-import type { Deck, DeckCard } from '../types';
+import type { Deck, DeckCard } from './deckTypes.js';
 import { buildCardKeyFromCard, deriveDeckId, getDeckCards } from './clientSideFiltering';
 
 export interface CardRef {

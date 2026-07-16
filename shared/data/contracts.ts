@@ -98,7 +98,11 @@ export const CARD_MECHANIC_SUBTYPES: readonly CardMechanicSubtype[] = [
  */
 export type MatchOutcome = 'decided' | 'tie' | 'double_loss' | 'bye' | 'unpaired' | 'unknown';
 
-/** Per-side outcome for later derivations; never stored on a canonical Match. */
+/**
+ * Per-side outcome for later derivations; never stored on a canonical Match.
+ * Contract surface ahead of its consumers (see {@link MatchOutcome}'s doc).
+ * @public
+ */
 export type MatchSideOutcome = 'win' | 'loss';
 
 /** All valid canonical match outcome values, for runtime validation. */
@@ -137,7 +141,7 @@ export interface PercentTagRule {
 /**
  * Versioned success-tag policy. The placement and percent rules are identical to
  * the (previously duplicated) rules in `download-tournament.py` and
- * `run-online-meta.mjs`; the cutoff uses the same ceiling as both producers.
+ * the retired `run-online-meta.mjs`; the cutoff uses the same ceiling as both.
  */
 export interface SuccessTagPolicy {
   version: number;

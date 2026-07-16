@@ -7,12 +7,12 @@
  * energies invert the age rule: they are worthless, so we take the newest
  * cheap print instead.
  *
- * TypeScript port of `.github/scripts/lib/canonical-print.mjs`, preserving its
- * behavior exactly (DB-MASTER-PLAN Phase 2, slice 1). The `.mjs` remains the
- * runtime implementation for the ESM `.mjs` producer (`update-card-synonyms.mjs`)
- * until that producer migrates; a parity test asserts the two agree on a fixture
- * corpus. Mirror of `choose_canonical_print` in `download-tournament.py` — keep
- * all three implementations in sync until the Python one retires after parity.
+ * TypeScript port of the retired `.github/scripts/lib/canonical-print.mjs`,
+ * preserving its behavior exactly (DB-MASTER-PLAN Phase 2, slice 1); the
+ * synonym producer (`update-card-synonyms.mjs`) now imports this module
+ * directly. Mirror of `choose_canonical_print` in `download-tournament.py` —
+ * keep the two implementations in sync until the Python one retires after
+ * parity.
  *
  * The set catalog is imported from the same JSON the `.mjs` and Python read, so
  * there is a single source of truth for set ordering, legality, promos, and

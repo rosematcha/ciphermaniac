@@ -3,9 +3,9 @@ import { useSearchParams } from '@solidjs/router';
 import type { ArchetypeReport, CardItem, Deck, DeckCard } from '../types';
 import { fetchArchetypeDecks } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
-import { filterDecks, filterDecksBySuccess, generateReportAndCooccurrence } from '../utils/clientSideFiltering';
+import { filterDecks, filterDecksBySuccess, generateReportAndCooccurrence } from '../../shared/clientSideFiltering';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
-import { buildCanonicalCardId, buildCardId, canonicalizeDeckCard } from '../utils/deckCardId';
+import { buildCanonicalCardId, buildCardId, canonicalizeDeckCard } from '../../shared/deckCardId';
 import {
   buildCooccurrence,
   type CardRef,
@@ -13,7 +13,7 @@ import {
   findComplements,
   findSubstituteQuestions,
   type SubstituteQuestion
-} from '../utils/cardCooccurrence';
+} from '../../shared/cardCooccurrence';
 import { buildPtcglDeck, type PtcglEntry } from '../utils/ptcglExport';
 import { averageCopiesValue, roundedCopies } from '../lib/cardStats';
 import {

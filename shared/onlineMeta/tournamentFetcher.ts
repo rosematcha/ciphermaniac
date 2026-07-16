@@ -1,4 +1,4 @@
-import { computeSuccessTags } from '../../../shared/data/contracts';
+import { computeSuccessTags } from '../data/contracts';
 import { fetchLimitlessJson, type LimitlessEnv } from '../api/limitless.js';
 import { type CardTypesDatabase, enrichCardWithType } from '../data/cardTypesDatabase.js';
 import { inferEnergyType, inferTrainerType, isAceSpecName } from '../analysis/cardTypeInference.js';

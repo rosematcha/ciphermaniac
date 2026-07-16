@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 
 import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
 
-import { enrichCardWithType, loadCardTypesDatabase } from '../../functions/lib/data/cardTypesDatabase.js';
-import { generateReportFromDecks } from '../../functions/lib/data/reportBuilder.js';
-import { gatherDecks } from '../../functions/lib/onlineMeta/index.js';
+import { enrichCardWithType, loadCardTypesDatabase } from '../../shared/data/cardTypesDatabase.js';
+import { generateReportFromDecks } from '../../shared/data/reports/cardReport.js';
+import { gatherDecks } from '../../shared/onlineMeta/index.js';
 
 // Variant merging and normalization in report generation
 test('Merge variant counts correctly across set/code variations', () => {
