@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 
 import { generateMaliciousInput, generateMockDeck } from '../__utils__/mock-data-factory.js';
 
-import { formatForTest } from '../../src/utils/logger.ts';
+import { formatForTest } from '../../shared/logger.ts';
 import { generateReportFromDecks } from '../../functions/lib/data/reportBuilder.js';
 
 /**

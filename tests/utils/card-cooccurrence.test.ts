@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildCardId, type Deck } from '../../src/utils/clientSideFiltering.ts';
-import { buildCooccurrence, findComplements, findSubstituteQuestions } from '../../src/utils/cardCooccurrence.ts';
+import { buildCardId, type Deck } from '../../shared/clientSideFiltering.ts';
+import { buildCooccurrence, findComplements, findSubstituteQuestions } from '../../shared/cardCooccurrence.ts';
 
 // Stable collector numbers per single-letter card label.
 const NUM: Record<string, string> = { S: '1', X: '2', Y: '3', P: '4', Q: '5', A: '6', B: '7', C: '8', M: '9', N: '10' };

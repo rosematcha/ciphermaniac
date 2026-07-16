@@ -30,7 +30,7 @@ import {
   wrOf
 } from '../lib/cardLens';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
-import { buildCanonicalCardId, buildCardId } from '../utils/deckCardId';
+import { buildCanonicalCardId, buildCardId } from '../../shared/deckCardId';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../types';
 import { Segmented } from './Segmented';
 import { EmptyState } from './EmptyState';

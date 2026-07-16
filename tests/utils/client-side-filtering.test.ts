@@ -6,7 +6,7 @@ import {
   filterDecks,
   filterDecksBySuccess,
   generateReportForFilters
-} from '../../src/utils/clientSideFiltering.ts';
+} from '../../shared/clientSideFiltering.ts';
 
 function makeDeck(overrides: Partial<Deck>): Deck {
   return {

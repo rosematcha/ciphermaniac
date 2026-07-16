@@ -26,7 +26,7 @@ import {
   snapshotDateForCard,
   snapshotSourceKey
 } from '../lib/data';
-import { buildCanonicalCardId } from '../utils/deckCardId';
+import { buildCanonicalCardId } from '../../shared/deckCardId';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { getCanonicalCardFromData, type SynonymDatabase } from '../../shared/synonyms.js';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';

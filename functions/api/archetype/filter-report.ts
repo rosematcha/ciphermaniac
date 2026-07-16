@@ -5,10 +5,10 @@ import {
   generateReportForFilters,
   QUANTITY_OPERATORS,
   SUCCESS_TAG_HIERARCHY
-} from '../../../src/utils/clientSideFiltering.js';
-import { canonicalizeDeckCard } from '../../../src/utils/deckCardId.js';
+} from '../../../shared/clientSideFiltering.js';
+import { canonicalizeDeckCard } from '../../../shared/deckCardId.js';
 import { loadCardSynonyms } from '../../lib/data/cardSynonyms.js';
-import type { ArchetypeFilterRequest, Filter } from '../../../src/types/index.js';
+import type { ArchetypeFilterRequest, Filter } from '../../../shared/deckTypes.js';
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
