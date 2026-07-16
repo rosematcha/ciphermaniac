@@ -7,7 +7,7 @@ import {
   SUCCESS_TAG_HIERARCHY
 } from '../../../shared/clientSideFiltering.js';
 import { canonicalizeDeckCard } from '../../../shared/deckCardId.js';
-import { loadCardSynonyms } from '../../lib/data/cardSynonyms.js';
+import { loadCardSynonyms } from '../../../shared/data/cardSynonyms.js';
 import type { ArchetypeFilterRequest, Filter } from '../../../shared/deckTypes.js';
 
 const JSON_HEADERS = {

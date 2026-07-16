@@ -12,9 +12,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildPlayerAggregates } from '../../functions/lib/onlineMeta/playerAggregator.js';
-import { rebuildSnapshotIndex } from '../../functions/lib/onlineMeta/snapshotIndexBuilder.js';
-import { runRotationSnapshot } from '../../functions/lib/onlineMeta/snapshotGenerator.js';
+import { buildPlayerAggregates } from '../../shared/onlineMeta/playerAggregator.js';
+import { rebuildSnapshotIndex } from '../../shared/onlineMeta/snapshotIndexBuilder.js';
+import { runRotationSnapshot } from '../../shared/onlineMeta/snapshotGenerator.js';
 
 interface MockOptions {
   /** Keys whose `get` should throw (simulate transport failure). */

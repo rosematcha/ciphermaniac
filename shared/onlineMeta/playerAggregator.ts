@@ -1,5 +1,5 @@
-import { normalizeArchetypeName, sanitizeForFilename } from '../data/reportBuilder.js';
-import { toSlimIndexEntry } from '../../../shared/playerTypes';
+import { normalizeArchetypeName, sanitizeForFilename } from '../cardUtils.js';
+import { toSlimIndexEntry } from '../playerTypes';
 import { runWithConcurrency } from './tournamentFetcher';
 import { batchDelete, batchPutJson, getJson, getJsonResult, putJson } from './storageWriter';
 import type {

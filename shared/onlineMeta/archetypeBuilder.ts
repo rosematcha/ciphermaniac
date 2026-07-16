@@ -1,5 +1,5 @@
-import { SUCCESS_TAG_NAMES } from '../../../shared/data/contracts';
-import { deriveArchetypeGrouping } from '../../../shared/data/archetypes/build';
+import { SUCCESS_TAG_NAMES } from '../data/contracts';
+import { deriveArchetypeGrouping } from '../data/archetypes/build';
 import { getCanonicalCard } from '../data/cardSynonyms.js';
 import type {
   BuildCardTrendReportOptions,

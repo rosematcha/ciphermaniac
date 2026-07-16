@@ -20,10 +20,10 @@
 import {
   buildArchetypeReports as buildArchetypeReportsShared,
   type ArchetypeDeckInput as SharedArchetypeDeckInput
-} from '../../../shared/data/archetypes/build';
-import type { SynonymDatabase } from '../../../shared/data/cardIdentity';
-import type { LegacyCardReport } from '../../../shared/data/reports/cardReport';
-import archetypeThumbnails from '../../../public/assets/data/archetype-thumbnails.json';
+} from '../data/archetypes/build';
+import type { SynonymDatabase } from '../data/cardIdentity';
+import type { LegacyCardReport } from '../data/reports/cardReport';
+import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json';
 import type { BuildArchetypeReportsOptions, CardEntryInput, ThumbnailConfig } from './types';
 
 /**

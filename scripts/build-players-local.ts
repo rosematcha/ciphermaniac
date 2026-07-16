@@ -8,7 +8,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildPlayerAggregates } from '../functions/lib/onlineMeta/playerAggregator';
+import { buildPlayerAggregates } from '../shared/onlineMeta/playerAggregator';
 import { toSlimIndexEntry } from '../shared/playerTypes';
 
 const R2_BASE = 'https://r2.ciphermaniac.com';

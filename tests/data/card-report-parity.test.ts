@@ -19,18 +19,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { generateReportFromDecks } from '../../functions/lib/data/reportBuilder.js';
+import { generateReportFromDecks } from '../../shared/data/reports/cardReport.js';
 import type { CardEntry, DeckEntry, ReportItem } from '../../shared/data/reports/cardReport';
-import {
-  canonicalizeVariant,
-  getCanonicalCardFromData,
-  type SynonymDatabase
-} from '../../shared/data/cardIdentity';
-import {
-  calculatePercentage,
-  composeCategoryPath,
-  createDistributionFromCounts
-} from '../../shared/reportUtils';
+import { canonicalizeVariant, getCanonicalCardFromData, type SynonymDatabase } from '../../shared/data/cardIdentity';
+import { calculatePercentage, composeCategoryPath, createDistributionFromCounts } from '../../shared/reportUtils';
 import { sanitizeForPath } from '../../shared/cardUtils';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -181,9 +173,7 @@ function legacyGenerateReportFromDecks(
 /** Strip volatile `rank` and sort items by uid/name so content can be compared
  *  independent of ordering. */
 function contentKey(items: ReportItem[]): Array<Omit<ReportItem, 'rank'>> {
-  return items
-    .map(({ rank: _rank, ...rest }) => rest)
-    .sort((a, b) => (a.uid || a.name).localeCompare(b.uid || b.name));
+  return items.map(({ rank: _rank, ...rest }) => rest).sort((a, b) => (a.uid || a.name).localeCompare(b.uid || b.name));
 }
 
 /** Assert items obey the D9 total order: pct desc, found desc, name asc, uid asc. */

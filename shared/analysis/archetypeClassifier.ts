@@ -1,7 +1,7 @@
 // Name-normalization boundary re-pointed to the consolidated archetype
 // identity module (DB-MASTER-PLAN Phase 2, slice 5). Classification logic
 // itself stays here — this file remains the classification authority.
-import { canonicalizeArchetypeLabel, normalizeForLookup } from '../../../shared/data/archetypes/identity';
+import { canonicalizeArchetypeLabel, normalizeForLookup } from '../data/archetypes/identity';
 
 interface DeckRule {
   name?: string;

@@ -4,11 +4,11 @@ import crypto from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import { createR2Client, getJsonResult, putJson as putJsonR2 } from './lib/r2.mjs';
-import { enrichCardWithType } from '../../functions/lib/data/cardTypesDatabase.js';
-import { getCanonicalCard } from '../../functions/lib/data/cardSynonyms.js';
-import { buildArchetypeDeckIndex, resolveArchetypeClassification } from '../../functions/lib/analysis/archetypeClassifier.js';
+import { enrichCardWithType } from '../../shared/data/cardTypesDatabase.js';
+import { getCanonicalCard } from '../../shared/data/cardSynonyms.js';
+import { buildArchetypeDeckIndex, resolveArchetypeClassification } from '../../shared/analysis/archetypeClassifier.js';
 import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json' with { type: 'json' };
-import { generateArchetypeTrends } from '../../functions/lib/analysis/archetypeTrends.js';
+import { generateArchetypeTrends } from '../../shared/data/analysis/archetypeTrends.js';
 
 const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api';
 const WINDOW_DAYS = 14;

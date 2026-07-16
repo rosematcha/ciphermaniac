@@ -1,4 +1,4 @@
-import { generateReportFromDecks } from '../data/reportBuilder.js';
+import { generateReportFromDecks } from '../data/reports/cardReport.js';
 import { loadCardSynonyms } from '../data/cardSynonyms.js';
 import { ARCHETYPE_THUMBNAILS, buildArchetypeReports } from './reportGenerator';
 import { batchPutJson, getJsonResult } from './storageWriter';

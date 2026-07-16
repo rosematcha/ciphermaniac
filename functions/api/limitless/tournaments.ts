@@ -1,4 +1,4 @@
-import { fetchLimitlessJson } from '../../lib/api/limitless.js';
+import { fetchLimitlessJson } from '../../../shared/api/limitless.js';
 import { corsPreflight, jsonResponse } from '../../lib/api/responses.js';
 
 // Edge/browser cache 5 minutes, serve stale for up to an hour while revalidating.

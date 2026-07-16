@@ -26,8 +26,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createR2Client, createReportsBinding } from '../.github/scripts/lib/r2.mjs';
-import { runRotationSnapshot } from '../functions/lib/onlineMeta/snapshotGenerator';
-import { rebuildSnapshotIndex, type RotationDescriptor } from '../functions/lib/onlineMeta/snapshotIndexBuilder';
+import { runRotationSnapshot } from '../shared/onlineMeta/snapshotGenerator';
+import { rebuildSnapshotIndex, type RotationDescriptor } from '../shared/onlineMeta/snapshotIndexBuilder';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_BASE = join(ROOT, 'static');

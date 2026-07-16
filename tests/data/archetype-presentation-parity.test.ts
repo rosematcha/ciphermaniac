@@ -501,8 +501,7 @@ test('build: python profile emits icons, six-decimal percent, and (-deckCount, l
 // ---------------------------------------------------------------------------
 
 test('reportGenerator: legacy shape preserved; stale 99.9%-gated thumbnails retired (approved change)', async () => {
-  const { buildArchetypeReports: buildFunctionsReports } =
-    await import('../../functions/lib/onlineMeta/reportGenerator');
+  const { buildArchetypeReports: buildFunctionsReports } = await import('../../shared/onlineMeta/reportGenerator');
 
   const decks = [
     {

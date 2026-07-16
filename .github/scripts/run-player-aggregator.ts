@@ -16,7 +16,7 @@
 
 import process from 'node:process';
 import { createR2Client, createReportsBinding } from './lib/r2.mjs';
-import { buildPlayerAggregates } from '../../functions/lib/onlineMeta/playerAggregator.ts';
+import { buildPlayerAggregates } from '../../shared/onlineMeta/playerAggregator.ts';
 
 function requireEnv(name: string): string {
   const value = process.env[name];

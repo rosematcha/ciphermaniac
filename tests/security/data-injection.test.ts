@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { generateMaliciousInput, generateMockDeck } from '../__utils__/mock-data-factory.js';
 
 import { formatForTest } from '../../shared/logger.ts';
-import { generateReportFromDecks } from '../../functions/lib/data/reportBuilder.js';
+import { generateReportFromDecks } from '../../shared/data/reports/cardReport.js';
 
 /**
  * Archetype folder name sanitization: ensure names are safe for R2 storage and local caches

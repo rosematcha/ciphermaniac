@@ -6,11 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-  normalizeArchetypeName,
-  sanitizeForFilename,
-  sanitizeForPath
-} from '../../functions/lib/data/reportBuilder.js';
+import { normalizeArchetypeName, sanitizeForFilename, sanitizeForPath } from '../../shared/cardUtils.js';
 
 import { generateMaliciousInput } from '../__utils__/mock-data-factory.js';
 

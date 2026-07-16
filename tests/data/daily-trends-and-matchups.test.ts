@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildMatchupMatrix, generateArchetypeTrends } from '../../functions/lib/analysis/archetypeTrends.js';
+import { buildMatchupMatrix, generateArchetypeTrends } from '../../shared/data/analysis/archetypeTrends.js';
 
 // ============================================================================
 // Helper Factories

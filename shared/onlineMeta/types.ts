@@ -148,7 +148,7 @@ export interface BuildCardTrendReportOptions {
    * single trend entry. When omitted, card keys are kept raw and reprints
    * appear as separate rows.
    */
-  synonymDb?: import('../../../shared/synonyms').SynonymDatabase | null;
+  synonymDb?: import('../synonyms').SynonymDatabase | null;
 }
 
 /** Trend report result structure */
@@ -259,7 +259,7 @@ export type {
   PlayerIndexEntry,
   PlayerProfile,
   PlayerTournamentEntry
-} from '../../../shared/playerTypes';
+} from '../playerTypes';
 
 /** Individual card trend item */
 export interface CardTrendItem {
