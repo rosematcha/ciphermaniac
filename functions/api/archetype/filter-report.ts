@@ -1,5 +1,6 @@
 import { corsPreflight, jsonError, jsonResponse } from '../../lib/api/responses.js';
 import {
+  filterDecks,
   filterDecksBySuccess,
   generateReportForFilters,
   QUANTITY_OPERATORS,
@@ -36,6 +37,8 @@ const INVALID_FILTER = Symbol('invalid-filter');
 interface RequestContext {
   request: Request;
   env?: Parameters<typeof loadCardSynonyms>[0];
+  /** Optional in tests, which invoke the handler with a bare `{ request }`. */
+  waitUntil?: (promise: Promise<unknown>) => void;
 }
 
 function normalizeString(value: unknown): string {
@@ -205,7 +208,7 @@ function canonicalizeDecks(decks: any[], db: Awaited<ReturnType<typeof loadCardS
   });
 }
 
-export async function onRequestPost({ request, env }: RequestContext): Promise<Response> {
+export async function onRequestPost({ request, env, waitUntil }: RequestContext): Promise<Response> {
   const rawBody = await request.json().catch(() => null);
   const payload = normalizePayload(rawBody);
   if (!payload) {
@@ -229,13 +232,25 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
     });
   }
 
+  // Scope to the success bracket and archetype BEFORE canonicalizing: in the
+  // fallback path `decks` is the full multi-MB decks.json, and rewriting every
+  // card of every deck only to discard most decks on the archetype match was
+  // the expensive order. Neither filter depends on canonical card IDs (they
+  // match on placement tags and archetype name); the card-quantity filters
+  // inside generateReportForFilters do, so canonicalize the survivors first.
+  const successScopedDecks = filterDecksBySuccess(decks, payload.successFilter);
+  const archetypeScopedDecks = filterDecks(successScopedDecks, payload.archetype, []);
+
   // loadCardSynonyms degrades to an empty DB on failure, in which case
   // canonicalizeDeckCard is a no-op — same behavior as before this existed.
-  const synonymDb = env ? await loadCardSynonyms(env) : { synonyms: {}, canonicals: {}, metadata: {} };
-  const canonicalDecks = canonicalizeDecks(decks, synonymDb as Awaited<ReturnType<typeof loadCardSynonyms>>);
+  const synonymDb =
+    env && archetypeScopedDecks.length ? await loadCardSynonyms(env) : { synonyms: {}, canonicals: {}, metadata: {} };
+  const canonicalDecks = canonicalizeDecks(
+    archetypeScopedDecks,
+    synonymDb as Awaited<ReturnType<typeof loadCardSynonyms>>
+  );
 
-  const successScopedDecks = filterDecksBySuccess(canonicalDecks, payload.successFilter);
-  const report = generateReportForFilters(successScopedDecks, payload.archetype, payload.filters || []);
+  const report = generateReportForFilters(canonicalDecks, payload.archetype, payload.filters || []);
   const response = jsonResponse(
     {
       deckTotal: report.deckTotal,
@@ -251,7 +266,14 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
   );
 
   if (cacheRequest) {
-    await caches.default.put(cacheRequest, response.clone());
+    // Don't hold the response hostage to cache serialization when the runtime
+    // lets us defer it; tests invoke the handler without waitUntil.
+    const put = caches.default.put(cacheRequest, response.clone());
+    if (waitUntil) {
+      waitUntil(put);
+    } else {
+      await put;
+    }
   }
 
   return response;
