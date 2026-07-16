@@ -58,10 +58,6 @@ const rateLimiter = createRateLimiter({
   maxRequests: 5
 });
 
-function checkRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
-  return rateLimiter.check(ip);
-}
-
 /** Trim, strip control chars, and cap length. Returns null when empty. */
 function cleanText(value: unknown, maxLen: number): string | null {
   if (typeof value !== 'string') {
@@ -198,7 +194,7 @@ export async function onRequestPost({ request, env, waitUntil }: RequestContext)
 
     const clientIp = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
 
-    const rateLimit = checkRateLimit(clientIp);
+    const rateLimit = rateLimiter.check(clientIp);
     if (!rateLimit.allowed) {
       return jsonError('Too many submissions. Please try again later.', 429, {
         ...CORS,
