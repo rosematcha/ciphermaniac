@@ -5,15 +5,12 @@
  * into `shared/data/archetypes/{identity,presentation,build}.ts`
  * (DB-MASTER-PLAN Phase 2, slice 5).
  *
- * Thumbnails + signature cards — the LIVE authority is the online pipeline in
- * `.github/scripts/run-online-meta.mjs`. We import its (export-plumbed)
- * internals and assert the shared presentation engine is byte-identical over
- * identical report inputs covering every inference stage, and that the shared
- * grouped builder reproduces the .mjs `buildArchetypeReports` output over the
- * Phase 1 fixtures plus synonym-edge decks. The production thumbnail override
- * config is empty (`{}`), so override fallbacks (a dead branch in the .mjs at
- * runtime) are pinned by direct tests of the shared engine against the
- * documented online semantics.
+ * Thumbnails + signature cards — ported verbatim from the online pipeline,
+ * whose producer (run-online-meta.ts) now imports these builders directly.
+ * These tests pin the inference stages, the grouped builder's online profile,
+ * and the override fallbacks (production's thumbnail override config is `{}`)
+ * against the documented online semantics over the Phase 1 fixtures plus
+ * synonym-edge decks.
  *
  * Icons — the only implementation was Python
  * (`download-tournament.py::resolve_archetype_icons`), which cannot run in the
@@ -21,11 +18,7 @@
  * override cap, underscore/label reconciliation (including Python's
  * curly-quote handling), thumbnail-derived slugs with padding-insensitive id
  * matching, and species dedupe.
- *
- * The one approved divergence surfaced here is D9 report-item ordering: the
- * shared card report orders equal-`found` items name-then-uid while the .mjs
- * copy leaves ties in first-seen order, so per-archetype report items are
- * compared under a shared total order.
+
  */
 
 import test from 'node:test';
@@ -34,12 +27,6 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import {
-  buildArchetypeReports as buildArchetypeReportsMjs,
-  buildCardMetaLookup as buildCardMetaLookupMjs,
-  generateSignatureCards as generateSignatureCardsMjs,
-  resolveArchetypeThumbnails as resolveArchetypeThumbnailsMjs
-} from '../../.github/scripts/run-online-meta.mjs';
 import {
   buildCardMetaLookup,
   buildMetaUsage,
@@ -54,7 +41,7 @@ import {
   buildArchetypeReports,
   deriveArchetypeGrouping
 } from '../../shared/data/archetypes/build';
-import { generateReportFromDecks, type ReportItem } from '../../shared/data/reports/cardReport';
+import { generateReportFromDecks } from '../../shared/data/reports/cardReport';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -145,81 +132,41 @@ function corpusDecks(): ArchetypeDeckInput[] {
   ];
 }
 
-/** D9 total order (pct desc, found desc, name, uid) applied to both sides so
- * the approved tie-order divergence doesn't fail the comparison. `rank` is
- * derived from position, so it is renumbered after the re-sort. */
-function sortItemsD9(report: { deckTotal: number; items: ReportItem[] }) {
-  return {
-    deckTotal: report.deckTotal,
-    items: [...report.items]
-      .sort(
-        (a, b) =>
-          b.pct - a.pct ||
-          b.found - a.found ||
-          (a.name || '').localeCompare(b.name || '') ||
-          (a.uid || '').localeCompare(b.uid || '')
-      )
-      .map((item, position) => ({ ...item, rank: position + 1 }))
-  };
-}
-
 // ---------------------------------------------------------------------------
-// Presentation parity vs the online .mjs over identical report inputs
+// Presentation semantics over the fixture corpus (formerly pinned against the
+// .mjs producer's copy; run-online-meta.ts now calls these builders directly)
 // ---------------------------------------------------------------------------
 
-interface MjsArchetypeFile {
-  filename: string;
-  base: string;
-  displayName: string;
-  deckCount: number;
-  data: { deckTotal: number; items: ReportItem[] };
-}
-interface MjsBuildResult {
-  minDecks: number;
-  files: MjsArchetypeFile[];
-  index: Array<Record<string, unknown>>;
-  decksByArchetype: Map<string, unknown[]>;
-}
-
-/** Group the corpus with the .mjs grouping so both engines see the exact same
- * per-archetype report data (built by the .mjs's own report builder). */
-function mjsGroupedReports(masterReport: PresentationReport | null, cardTypesDb: unknown): MjsBuildResult {
-  return (buildArchetypeReportsMjs as (...args: unknown[]) => MjsBuildResult)(
-    corpusDecks(),
-    SYNONYM_DB,
+function onlineProfileBuild(masterReport: PresentationReport | null) {
+  return buildArchetypeReports(corpusDecks(), SYNONYM_DB, {
+    nameCasing: 'preserve',
+    minDecksFraction: 0.005,
+    percentMode: 'fraction',
+    sortMode: 'deckCount',
+    thumbnailConfig: {},
+    cardTypesDb: CARD_TYPES_DB,
     masterReport,
-    cardTypesDb
-  );
+    includeSignatureCards: true
+  });
 }
 
-test('thumbnails: shared engine is byte-identical to run-online-meta.mjs per archetype (stages 1-3)', () => {
+test('thumbnails: the inference stages resolve faces across the corpus (stages 1-3)', () => {
   const decks = corpusDecks();
   const masterReport = generateReportFromDecks(decks, decks.length, SYNONYM_DB);
-  const metaUsageShared = buildMetaUsage(masterReport);
-  const lookupShared = buildCardMetaLookup(CARD_TYPES_DB);
-  const lookupMjs = (buildCardMetaLookupMjs as (db: unknown) => Map<string, unknown>)(CARD_TYPES_DB);
-  assert.deepStrictEqual(lookupShared, lookupMjs, 'card-meta lookup parity');
+  const metaUsage = buildMetaUsage(masterReport);
+  const lookup = buildCardMetaLookup(CARD_TYPES_DB);
 
-  const { files } = mjsGroupedReports(masterReport, CARD_TYPES_DB);
+  const { files } = onlineProfileBuild(masterReport);
   assert.ok(files.length >= 6, `expected a non-trivial corpus, got ${files.length} archetypes`);
 
   let inferred = 0;
   for (const file of files) {
-    const shared = resolveArchetypeThumbnails(file.base, file.displayName, file.data, {
-      config: {}, // live config is empty; the .mjs global is the same {}
-      cardMetaLookup: lookupShared,
-      metaUsage: metaUsageShared
+    const thumbs = resolveArchetypeThumbnails(file.base, file.displayName, file.data, {
+      config: {}, // live config is empty
+      cardMetaLookup: lookup,
+      metaUsage
     });
-    const mjs = (resolveArchetypeThumbnailsMjs as (...args: unknown[]) => string[])(
-      file.base,
-      file.displayName,
-      file.data,
-      lookupMjs,
-      buildMetaUsage(masterReport)
-    );
-    assert.deepStrictEqual(shared, mjs, `thumbnails diverged for ${file.displayName}`);
-    assert.strictEqual(JSON.stringify(shared), JSON.stringify(mjs));
-    if (shared.length) {
+    if (thumbs.length) {
       inferred += 1;
     }
   }
@@ -231,18 +178,18 @@ test('thumbnails: shared engine is byte-identical to run-online-meta.mjs per arc
   assert.ok(festival);
   const festivalThumbs = resolveArchetypeThumbnails(festival.base, festival.displayName, festival.data, {
     config: {},
-    cardMetaLookup: lookupShared,
-    metaUsage: metaUsageShared
+    cardMetaLookup: lookup,
+    metaUsage
   });
   assert.deepStrictEqual(festivalThumbs, ['TWM/018']);
 });
 
-test('signature cards: shared engine is byte-identical to run-online-meta.mjs per archetype', () => {
+test('signature cards: the corpus yields non-empty signature sets', () => {
   const decks = corpusDecks();
   const masterReport = generateReportFromDecks(decks, decks.length, SYNONYM_DB);
   const lookup = buildCardMetaLookup(CARD_TYPES_DB);
   const metaUsage = buildMetaUsage(masterReport);
-  const { files } = mjsGroupedReports(masterReport, CARD_TYPES_DB);
+  const { files } = onlineProfileBuild(masterReport);
 
   let nonEmpty = 0;
   for (const file of files) {
@@ -251,64 +198,46 @@ test('signature cards: shared engine is byte-identical to run-online-meta.mjs pe
       cardMetaLookup: lookup,
       metaUsage
     });
-    const shared = generateSignatureCards(file.displayName, file.data, masterReport, thumbnails);
-    const mjs = (generateSignatureCardsMjs as (...args: unknown[]) => unknown[])(
-      file.displayName,
-      file.data,
-      masterReport,
-      thumbnails
-    );
-    assert.deepStrictEqual(shared, mjs, `signature cards diverged for ${file.displayName}`);
-    assert.strictEqual(JSON.stringify(shared), JSON.stringify(mjs));
-    if (shared.length) {
+    const cards = generateSignatureCards(file.displayName, file.data, masterReport, thumbnails);
+    if (cards.length) {
       nonEmpty += 1;
     }
   }
   assert.ok(nonEmpty >= 2, `expected some archetypes to have signature cards, got ${nonEmpty}`);
 });
 
-test('build: shared online-profile builder matches run-online-meta.mjs buildArchetypeReports', () => {
+test('build: the online profile preserves grouping, ordering, and index shape', () => {
   const decks = corpusDecks();
   const masterReport = generateReportFromDecks(decks, decks.length, SYNONYM_DB);
 
-  const mjs = mjsGroupedReports(masterReport, CARD_TYPES_DB);
-  const shared = buildArchetypeReports(decks, SYNONYM_DB, {
-    nameCasing: 'preserve',
-    minDecksFraction: 0.005,
-    percentMode: 'fraction',
-    sortMode: 'deckCount',
-    thumbnailConfig: {},
-    cardTypesDb: CARD_TYPES_DB,
-    masterReport,
-    includeSignatureCards: true
-  });
+  const shared = onlineProfileBuild(masterReport);
 
-  assert.strictEqual(shared.minDecks, mjs.minDecks);
-
-  // Index parity: entries must be byte-identical (field order included) —
-  // this covers grouping, casing preservation, ordering, fraction percent,
-  // thumbnails, and signature cards end to end.
-  assert.deepStrictEqual(shared.index, mjs.index);
-  assert.strictEqual(JSON.stringify(shared.index), JSON.stringify(mjs.index));
+  // 0.5% floor over the corpus size.
+  assert.strictEqual(shared.minDecks, Math.max(1, Math.ceil(decks.length * 0.005)));
 
   // Case-preserving grouping (D3 quirk): the fixture's case variants stay
-  // separate groups, exactly as the online producer emits them today.
+  // separate groups, exactly as the online producer emits them.
   const names = shared.index.map(entry => entry.name);
   assert.ok(names.includes('Gardevoir_ex') && names.includes('gardevoir_EX'), `got ${names.join(', ')}`);
 
-  // File parity: same bases/labels/counts; report data equal under the shared
-  // D9 total order (the .mjs sorts equal-found ties in first-seen order).
-  assert.strictEqual(shared.files.length, mjs.files.length);
-  mjs.files.forEach((mjsFile, position) => {
-    const sharedFile = shared.files[position];
-    assert.strictEqual(sharedFile.base, mjsFile.base);
-    assert.strictEqual(sharedFile.displayName, mjsFile.displayName);
-    assert.strictEqual(sharedFile.deckCount, mjsFile.deckCount);
-    assert.deepStrictEqual(sortItemsD9(sharedFile.data), sortItemsD9(mjsFile.data));
-  });
+  // deckCount-desc ordering, fraction percent, and the full index entry shape.
+  for (let position = 1; position < shared.index.length; position += 1) {
+    assert.ok(shared.index[position - 1].deckCount >= shared.index[position].deckCount);
+  }
+  for (const entry of shared.index) {
+    assert.deepStrictEqual(Object.keys(entry), [
+      'name',
+      'label',
+      'deckCount',
+      'percent',
+      'thumbnails',
+      'signatureCards'
+    ]);
+    assert.ok(entry.percent > 0 && entry.percent <= 1, 'percent is a fraction');
+  }
 
-  // Deck maps carry the same groups.
-  assert.deepStrictEqual([...shared.decksByBase.keys()], [...mjs.decksByArchetype.keys()]);
+  // Deck map carries exactly the emitted groups, aligned with files.
+  assert.deepStrictEqual([...shared.decksByBase.keys()].sort(), shared.files.map(file => file.base).sort());
 });
 
 // ---------------------------------------------------------------------------

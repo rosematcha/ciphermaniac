@@ -5,9 +5,8 @@
  * consolidated into `shared/data/reports/cardUsage.ts` and
  * `shared/data/reports/conversion.ts` (DB-MASTER-PLAN Phase 2, slice 4).
  *
- * cardUsage — the LIVE producer is the online path's inline copy in
- * `.github/scripts/run-online-meta.mjs` (an ESM script that cannot import TS).
- * We import that copy and assert it is byte-identical to the shared builder over
+ * cardUsage — the live producer (run-online-meta.ts) now imports the shared
+ * builder directly, so these tests pin the builder's semantics over
  * per-archetype reports built from the Phase 1 normalized fixtures plus
  * synonym-edge decks (two printings in one deck; a synonym canonical rewrite).
  *
@@ -24,20 +23,19 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { buildCardUsageIndex as buildCardUsageIndexMjs } from '../../.github/scripts/run-online-meta.mjs';
 import {
-  buildCardUsageIndex as buildCardUsageIndexShared,
-  type ArchetypeUsageSource
+  type ArchetypeUsageSource,
+  buildCardUsageIndex as buildCardUsageIndexShared
 } from '../../shared/data/reports/cardUsage';
 import { buildConversionIndex } from '../../shared/data/reports/conversion';
-import { generateReportFromDecks, type DeckEntry } from '../../shared/data/reports/cardReport';
+import { type DeckEntry, generateReportFromDecks } from '../../shared/data/reports/cardReport';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_DIR = join(HERE, '..', 'fixtures', 'data-pipeline');
 
 // ---------------------------------------------------------------------------
-// cardUsage parity: shared TS builder vs the live run-online-meta.mjs copy.
+// cardUsage: the shared TS builder over the fixture corpus.
 // ---------------------------------------------------------------------------
 
 /** A normalized Phase 1 deck card (only the fields we flatten are typed). */
@@ -73,7 +71,7 @@ function toRawDeck(deck: NormalizedDeck): DeckEntry {
 function archetypeFilesFromEvent(event: NormalizedEvent, synonymDb: SynonymDatabase | null): ArchetypeUsageSource[] {
   const bySlug = new Map<string, DeckEntry[]>();
   for (const deck of event.decks) {
-    const slug = deck.archetype.slug;
+    const { slug } = deck.archetype;
     const group = bySlug.get(slug);
     if (group) {
       group.push(toRawDeck(deck));
@@ -87,22 +85,18 @@ function archetypeFilesFromEvent(event: NormalizedEvent, synonymDb: SynonymDatab
   }));
 }
 
-test('cardUsage: shared builder is byte-identical to run-online-meta.mjs over the fixtures', () => {
+test('cardUsage: builds a non-trivial index over the fixtures', () => {
   const files: ArchetypeUsageSource[] = [
     ...archetypeFilesFromEvent(loadEvent('labs-event.json'), null),
     ...archetypeFilesFromEvent(loadEvent('online-window.json'), null)
   ];
 
   const shared = buildCardUsageIndexShared(files);
-  const mjs = buildCardUsageIndexMjs(files);
-
-  assert.deepStrictEqual(shared, mjs);
-  assert.strictEqual(JSON.stringify(shared), JSON.stringify(mjs));
   // The corpus is non-trivial: several UIDs, each with usage rows.
   assert.ok(Object.keys(shared.usage).length > 3);
 });
 
-test('cardUsage: byte-identical for synonym-edge reports (two printings + canonical rewrite)', () => {
+test('cardUsage: synonym-edge reports (two printings + canonical rewrite)', () => {
   // Iono PAF 237 is a variant printing of the canonical Iono PAL 185.
   const synonymDb: SynonymDatabase = {
     synonyms: { 'Iono::PAF::237': 'Iono::PAL::185' },
@@ -122,9 +116,7 @@ test('cardUsage: byte-identical for synonym-edge reports (two printings + canoni
   ];
   // Archetype B: a deck listing only the variant printing, which the synonym DB
   // rewrites to the canonical UID — the usage key must be the canonical one.
-  const archetypeB: DeckEntry[] = [
-    { cards: [{ name: 'Iono', set: 'PAF', number: '237', count: 1 }] }
-  ];
+  const archetypeB: DeckEntry[] = [{ cards: [{ name: 'Iono', set: 'PAF', number: '237', count: 1 }] }];
 
   const files: ArchetypeUsageSource[] = [
     { base: 'archetype_a', data: generateReportFromDecks(archetypeA, archetypeA.length, synonymDb) },
@@ -132,10 +124,6 @@ test('cardUsage: byte-identical for synonym-edge reports (two printings + canoni
   ];
 
   const shared = buildCardUsageIndexShared(files);
-  const mjs = buildCardUsageIndexMjs(files);
-
-  assert.deepStrictEqual(shared, mjs);
-  assert.strictEqual(JSON.stringify(shared), JSON.stringify(mjs));
 
   // Both printings resolved to the one canonical key; A counts Iono once.
   const ionoRows = shared.usage['Iono::PAL::185'];
