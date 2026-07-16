@@ -32,10 +32,6 @@ export function _resetRateLimitStore(): void {
   rateLimiter.reset();
 }
 
-function checkRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
-  return rateLimiter.check(ip);
-}
-
 /**
  * Sanitize user text for the plain-text email body.
  *
@@ -69,17 +65,6 @@ function sanitizeSingleLine(text: string): string {
     .trim();
 }
 
-/**
- * Sanitize contact info to prevent header injection
- * Removes newlines and carriage returns
- */
-function sanitizeContactInfo(text: string): string {
-  if (typeof text !== 'string') {
-    return '';
-  }
-  return text.replace(/[\r\n]/g, ' ').trim();
-}
-
 interface FeedbackData {
   feedbackType: string;
   feedbackText: string;
@@ -105,11 +90,6 @@ interface RequestContext {
   env: Env;
 }
 
-const _JSON_HEADERS = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*'
-} as const;
-
 function isValidFeedbackData(data: unknown): data is FeedbackData {
   if (!data || typeof data !== 'object') {
     return false;
@@ -122,7 +102,7 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
   try {
     // Rate limiting check using Cloudflare's CF-Connecting-IP header
     const clientIp = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
-    const rateLimitResult = checkRateLimit(clientIp);
+    const rateLimitResult = rateLimiter.check(clientIp);
 
     if (!rateLimitResult.allowed) {
       return jsonError('Too many requests. Please try again later.', 429, {
@@ -239,7 +219,7 @@ function buildEmailContent(data: FeedbackData): string {
   if (data.followUp === 'yes' && data.contactMethod && data.contactInfo) {
     lines.push('Contact Information:');
     lines.push(`Method: ${sanitizeSingleLine(data.contactMethod)}`);
-    lines.push(`Contact: ${sanitizeContactInfo(data.contactInfo)}`);
+    lines.push(`Contact: ${sanitizeSingleLine(data.contactInfo)}`);
   } else {
     lines.push('No follow-up requested');
   }

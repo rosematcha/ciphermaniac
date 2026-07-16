@@ -87,30 +87,40 @@ function parseRatingMap(value: string | null): Record<string, number> | null {
   return parsed as Record<string, number>;
 }
 
-/** Return a new count map with `key` incremented (avoids mutating a param). */
-function bumped(counts: Record<string, number>, key: string | null | undefined): Record<string, number> {
-  if (!key) {
-    return counts;
-  }
-  return { ...counts, [key]: (counts[key] || 0) + 1 };
+/** In-place label counter (a fresh copy per bump would be O(rows × labels)). */
+function counter(): { bump(key: string | null | undefined): void; counts: Record<string, number> } {
+  const counts: Record<string, number> = {};
+  return {
+    bump(key) {
+      if (key) {
+        counts[key] = (counts[key] || 0) + 1;
+      }
+    },
+    counts
+  };
 }
 
-/** Return a new accumulator with each label in `map` folded in. */
-function accumulated(
-  acc: Record<string, { sum: number; n: number }>,
-  map: Record<string, number> | null
-): Record<string, { sum: number; n: number }> {
-  if (!map) {
-    return acc;
-  }
-  const next = { ...acc };
-  for (const [label, val] of Object.entries(map)) {
-    if (typeof val === 'number') {
-      const cur = next[label] || { sum: 0, n: 0 };
-      next[label] = { sum: cur.sum + val, n: cur.n + 1 };
-    }
-  }
-  return next;
+/** In-place per-label rating accumulator: label -> { sum, n }. */
+function ratingAccumulator(): {
+  fold(map: Record<string, number> | null): void;
+  acc: Record<string, { sum: number; n: number }>;
+} {
+  const acc: Record<string, { sum: number; n: number }> = {};
+  return {
+    fold(map) {
+      if (!map) {
+        return;
+      }
+      for (const [label, val] of Object.entries(map)) {
+        if (typeof val === 'number') {
+          const cur = acc[label] || (acc[label] = { sum: 0, n: 0 });
+          cur.sum += val;
+          cur.n += 1;
+        }
+      }
+    },
+    acc
+  };
 }
 
 function averages(nums: number[]): { avg: number | null; count: number } {
@@ -130,35 +140,34 @@ export async function onRequestGet({ env }: RequestContext): Promise<Response> {
     `SELECT * FROM responses ORDER BY created_at DESC LIMIT ${MAX_ROWS}`
   ).all<ResponseRow>();
 
-  let region: Record<string, number> = {};
-  let discovery: Record<string, number> = {};
-  let devices: Record<string, number> = {};
-  let formats: Record<string, number> = {};
-  let areas: Record<string, number> = {};
+  const region = counter();
+  const discovery = counter();
+  const devices = counter();
+  const formats = counter();
+  const areas = counter();
   const speedVals: number[] = [];
   const trustVals: number[] = [];
   const recommendVals: number[] = [];
 
-  // Per-area rating accumulators: label -> { sum, n }
-  let readAcc: Record<string, { sum: number; n: number }> = {};
-  let effAcc: Record<string, { sum: number; n: number }> = {};
-  let layoutAcc: Record<string, { sum: number; n: number }> = {};
+  const readAcc = ratingAccumulator();
+  const effAcc = ratingAccumulator();
+  const layoutAcc = ratingAccumulator();
 
   const featureText: { at: string; text: string }[] = [];
   const annoyanceText: { at: string; text: string }[] = [];
   const anythingElseText: { at: string; text: string }[] = [];
 
   for (const row of results) {
-    region = bumped(region, row.region);
-    discovery = bumped(discovery, row.discovery);
+    region.bump(row.region);
+    discovery.bump(row.discovery);
     for (const d of parseStringArray(row.devices_json)) {
-      devices = bumped(devices, d);
+      devices.bump(d);
     }
     for (const f of parseStringArray(row.formats_json)) {
-      formats = bumped(formats, f);
+      formats.bump(f);
     }
     for (const a of parseStringArray(row.areas_json)) {
-      areas = bumped(areas, a);
+      areas.bump(a);
     }
     if (typeof row.speed === 'number') {
       speedVals.push(row.speed);
@@ -169,9 +178,9 @@ export async function onRequestGet({ env }: RequestContext): Promise<Response> {
     if (typeof row.recommend === 'number') {
       recommendVals.push(row.recommend);
     }
-    readAcc = accumulated(readAcc, parseRatingMap(row.readability_json));
-    effAcc = accumulated(effAcc, parseRatingMap(row.effectiveness_json));
-    layoutAcc = accumulated(layoutAcc, parseRatingMap(row.layout_json));
+    readAcc.fold(parseRatingMap(row.readability_json));
+    effAcc.fold(parseRatingMap(row.effectiveness_json));
+    layoutAcc.fold(parseRatingMap(row.layout_json));
 
     if (row.feature_text) {
       featureText.push({ at: row.created_at, text: row.feature_text });
@@ -197,18 +206,18 @@ export async function onRequestGet({ env }: RequestContext): Promise<Response> {
   return jsonSuccess({
     total: results.length,
     generatedAt: new Date().toISOString(),
-    region,
-    discovery,
-    devices,
-    formats,
-    areas,
+    region: region.counts,
+    discovery: discovery.counts,
+    devices: devices.counts,
+    formats: formats.counts,
+    areas: areas.counts,
     speed: averages(speedVals),
     trust: averages(trustVals),
     recommend: averages(recommendVals),
     nps,
-    readability: toAvgMap(readAcc),
-    effectiveness: toAvgMap(effAcc),
-    layout: toAvgMap(layoutAcc),
+    readability: toAvgMap(readAcc.acc),
+    effectiveness: toAvgMap(effAcc.acc),
+    layout: toAvgMap(layoutAcc.acc),
     feature: featureText,
     annoyance: annoyanceText,
     anythingElse: anythingElseText
