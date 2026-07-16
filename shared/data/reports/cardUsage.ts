@@ -6,13 +6,11 @@
  * Schema (legacy, what `src/lib/data.ts` reads today):
  *   `{ usage: { "<canonicalUID>": [{ slug, found, pct, dist: [...] }, ...] } }`
  *
- * Consolidated in DB-MASTER-PLAN Phase 2, slice 4. The live producer of this
- * artifact is the online path — `.github/scripts/run-online-meta.mjs`'s inline
- * `buildCardUsageIndex` — which cannot import TypeScript, so it keeps its own
- * byte-for-byte copy pinned by `tests/data/card-usage-conversion-parity.test.ts`
- * against this module. Python's `download-tournament.py::build_card_usage_index`
- * is the other historical producer; it retires with the report migration and is
- * not pinned here.
+ * Consolidated in DB-MASTER-PLAN Phase 2, slice 4. The live producer
+ * (`.github/scripts/run-online-meta.ts`) imports this builder directly.
+ * Python's `download-tournament.py::build_card_usage_index` is the other
+ * historical producer; it retires with the report migration and is not
+ * pinned here.
  *
  * The index is built from per-archetype card reports whose items are already
  * synonym-canonicalized (their `uid` is the canonical key directly), so this

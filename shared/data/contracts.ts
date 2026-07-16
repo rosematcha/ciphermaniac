@@ -141,7 +141,7 @@ export interface PercentTagRule {
 /**
  * Versioned success-tag policy. The placement and percent rules are identical to
  * the (previously duplicated) rules in `download-tournament.py` and
- * `run-online-meta.mjs`; the cutoff uses the same ceiling as both producers.
+ * the retired `run-online-meta.mjs`; the cutoff uses the same ceiling as both.
  */
 export interface SuccessTagPolicy {
   version: number;
