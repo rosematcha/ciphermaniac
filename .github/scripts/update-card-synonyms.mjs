@@ -10,7 +10,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import * as cheerio from 'cheerio';
-import { chooseCanonicalPrint } from './lib/canonical-print.mjs';
+import { chooseCanonicalPrint } from '../../shared/data/canonicalPrint.ts';
 import { normalizeSynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import { createR2Client, getJsonResult } from './lib/r2.mjs';
 

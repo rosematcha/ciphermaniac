@@ -1151,7 +1151,7 @@ def choose_canonical_print(variations, card_name, as_of_date=None):
     legal on the date are treated as nonexistent. Prices remain today's
     scrape; the accessibility rule is kept as an approximation.
 
-    Mirror of chooseCanonicalPrint in lib/canonical-print.mjs — keep the two
+    Mirror of chooseCanonicalPrint in shared/data/canonicalPrint.ts — keep the two
     implementations in sync.
     """
     if not variations:

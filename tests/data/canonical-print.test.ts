@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { chooseCanonicalPrint, type PrintVariation } from '../../.github/scripts/lib/canonical-print.mjs';
+import { chooseCanonicalPrint, type PrintVariation } from '../../shared/data/canonicalPrint.ts';
 
 function print(set: string, number: string, price: number | null): PrintVariation {
   // eslint-disable-next-line camelcase -- price_usd mirrors the scraped print-table shape
