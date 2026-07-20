@@ -188,6 +188,48 @@ export function getCanonicalCardFromData(database: SynonymDatabase | null, cardI
   return cardIdentifier;
 }
 
+// UID format is `Name::SET::NUMBER`; names never contain `::`, but split from
+// the right anyway so a malformed name cannot shift the set/number fields.
+export function parseCardUid(uid: string): { name: string; set: string; number: string } | null {
+  const parts = uid.split('::');
+  if (parts.length < 3) {
+    return null;
+  }
+  const number = parts[parts.length - 1];
+  const set = parts[parts.length - 2];
+  const name = parts.slice(0, -2).join('::');
+  if (!name || !set || !number) {
+    return null;
+  }
+  return { name, set, number };
+}
+
+/**
+ * All printings in a card's reprint cluster: the canonical UID first, then
+ * every variant that resolves to it, in the synonyms map's iteration order.
+ *
+ * The flat `synonyms` map defines cluster membership (variant → canonical), so
+ * a single scan recovers the full cluster. A UID with no synonym entries is
+ * its own one-member cluster. Unlike `buildClusterIndex` in canonicalPrint.ts
+ * this is browser-safe — no set-catalog import — and sized for one card page
+ * (O(synonyms) per call), not a producer-side full inversion.
+ * @param database - Synonym database (or null for no-op)
+ * @param cardIdentifier - Card UID (Name::SET::NUMBER) or card name
+ * @returns Member UIDs, canonical first
+ */
+export function getClusterMembers(database: SynonymDatabase | null, cardIdentifier: string): string[] {
+  const canonical = getCanonicalCardFromData(database, cardIdentifier);
+  const members = [canonical];
+  if (database?.synonyms) {
+    for (const [variant, canon] of Object.entries(database.synonyms)) {
+      if (canon === canonical) {
+        members.push(variant);
+      }
+    }
+  }
+  return members;
+}
+
 /**
  * Collapse the synonym graph so every variant maps DIRECTLY to one terminal
  * canonical per reprint component — removing cycles (`A→B`, `B→A`) and multi-hop
