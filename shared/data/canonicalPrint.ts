@@ -24,7 +24,7 @@
 // pulls in the (~10 KB) set catalog and is a producer-only policy. Keeping it
 // out of the card-identity graph keeps the catalog out of the browser bundle.
 import CATALOG from '../../.github/scripts/data/set-catalog.json';
-import type { SynonymDatabase } from './cardIdentity';
+import { parseCardUid, type SynonymDatabase } from './cardIdentity';
 
 export type { SynonymDatabase };
 
@@ -239,21 +239,8 @@ export function buildClusterIndex(db: SynonymDatabase): ClusterIndex {
   return index;
 }
 
-// UID format is `Name::SET::NUMBER`; names never contain `::`, but split from
-// the right anyway so a malformed name cannot shift the set/number fields.
-function parseUid(uid: string): { name: string; set: string; number: string } | null {
-  const parts = uid.split('::');
-  if (parts.length < 3) {
-    return null;
-  }
-  const number = parts[parts.length - 1];
-  const set = parts[parts.length - 2];
-  const name = parts.slice(0, -2).join('::');
-  if (!name || !set || !number) {
-    return null;
-  }
-  return { name, set, number };
-}
+// UID parsing lives with the rest of the identity policy in cardIdentity.ts.
+const parseUid = parseCardUid;
 
 /**
  * Resolve a card UID to its canonical print as of an event date.
