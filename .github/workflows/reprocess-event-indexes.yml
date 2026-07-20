@@ -12,15 +12,27 @@
 # TypeScript builders (event-cli reindex-all) — parity-proven against the
 # legacy Python indexer, which this workflow no longer calls.
 #
-# Trigger: manual dispatch only. dry_run defaults to true — run it once to
-# review the logged per-event cardUsage key movement, then run with
-# dry_run=false.
+# Triggers:
+#   - Automatically after a successful synonyms run, so derived indexes never
+#     lag the new canonicals (P-32). Runs live over every event.
+#   - Manual dispatch. dry_run defaults to true — run it once to review the
+#     logged per-event cardUsage key movement, then run with dry_run=false.
+#
+# This chains via `workflow_run` rather than `workflow_call` on purpose. As a
+# called workflow it declared the same `r2-bucket-writers` concurrency group as
+# its caller, and a called workflow cannot acquire a group its caller already
+# holds — with cancel-in-progress: false the job never instantiated and the
+# caller's run was marked failed, so the rebake silently never ran. A separate
+# workflow_run QUEUES on the group instead of deadlocking against it, which is
+# the same pattern trends.yml / player-aggregator.yml already use downstream of
+# the meta report.
 # =============================================================================
 
 name: (Card Metadata) Reprocess Event Indexes
 
 run-name: >-
-  Reprocess Event Indexes (dry_run=${{ inputs.dry_run }}${{ inputs.only && format(', only={0}', inputs.only) || '' }})
+  ${{ github.event_name == 'workflow_run' && 'Reprocess Event Indexes (post-synonyms)' ||
+      format('Reprocess Event Indexes (dry_run={0}{1})', inputs.dry_run, inputs.only && format(', only={0}', inputs.only) || '') }}
 
 on:
   workflow_dispatch:
@@ -38,23 +50,15 @@ on:
         description: 'Process at most N events (optional; blank = all)'
         required: false
         type: string
-  # Reusable: the synonyms workflow calls this (with dry_run=false) after a
-  # successful publish so derived indexes never lag the new canonicals (P-32).
-  workflow_call:
-    inputs:
-      dry_run:
-        description: 'Compute and log changes without uploading'
-        required: false
-        type: boolean
-        default: true
-      only:
-        description: 'Process a single event folder by exact name (optional)'
-        required: false
-        type: string
-      limit:
-        description: 'Process at most N events (optional; blank = all)'
-        required: false
-        type: string
+  # Runs live over every event after each successful synonyms publish. The gate
+  # is unconditional rather than "only when mappings changed": a workflow_run
+  # cannot read the upstream job's outputs, the pass is idempotent and takes
+  # ~90s, and running it always also picks up drift from other sources (e.g.
+  # event-date print-price backfills).
+  workflow_run:
+    workflows: ['(Card Metadata) Synonyms']
+    types:
+      - completed
 
 # All R2 bucket writers share one concurrency group so producers and repair
 # jobs can never mutate the bucket at the same time (DB-MASTER-PLAN Phase 0).
@@ -69,6 +73,11 @@ jobs:
   reprocess:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+
+    # Only run if triggered manually OR if the upstream synonyms run succeeded.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
 
     steps:
       - name: Checkout
@@ -90,6 +99,9 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
         run: |
+          # On a workflow_run trigger `inputs.*` is empty, which resolves to a
+          # live pass over every event — exactly what the post-synonyms rebake
+          # wants. The dispatch path still honours all three inputs.
           args=()
           if [ "${{ inputs.dry_run }}" = "true" ]; then args+=(--dry-run); fi
           if [ -n "${{ inputs.only }}" ]; then args+=(--only "${{ inputs.only }}"); fi
@@ -101,7 +113,8 @@ jobs:
         run: |
           echo "## Reprocess Event Indexes" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- dry_run: \`${{ inputs.dry_run }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- trigger: \`${{ github.event_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- dry_run: \`${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- only: \`${{ inputs.only || 'all events' }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- limit: \`${{ inputs.limit || 'none' }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
