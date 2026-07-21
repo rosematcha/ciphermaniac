@@ -9,5 +9,5 @@
  * - Backend: functions/lib/cardSynonyms.js (KV/R2)
  */
 
-export { EMPTY_DATABASE, getCanonicalCardFromData } from './data/cardIdentity';
+export { EMPTY_DATABASE, getCanonicalCardFromData, getClusterMembers, parseCardUid } from './data/cardIdentity';
 export type { SynonymDatabase } from './data/cardIdentity';
