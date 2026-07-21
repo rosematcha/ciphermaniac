@@ -11,7 +11,9 @@ import {
   itemUid,
   majorTournaments,
   PRICE_HISTORY_MIN_DAYS,
-  type PriceMoverScope,
+  type PriceMoverList,
+  type PriceMoverMetric,
+  type PriceMoverRow,
   resolveArchetypeIcons,
   tournamentDate
 } from '../lib/data';
@@ -205,14 +207,19 @@ type PriceScope = 'all' | 'standard';
  * Price movers, independent of the online/majors toggle: the biggest swings
  * over the trailing window of the rolling price history. Every threshold, the
  * window boundary and the standard-printing filter live in the pipeline; this
- * renders the pre-computed artifact verbatim. Renders nothing until the history
- * spans PRICE_HISTORY_MIN_DAYS, so it stays invisible rather than showing a
- * placeholder while the pipeline accumulates its first month of data.
+ * renders the pre-computed artifact verbatim. Two toggles pick which of the four
+ * pre-sorted lists shows — printings scope (all / standard) and metric (percent
+ * / dollar). Renders nothing until the history spans PRICE_HISTORY_MIN_DAYS, so
+ * it stays invisible rather than showing a placeholder while the pipeline
+ * accumulates its first month of data.
  */
 function PriceMovers() {
   const [payload] = createResource(fetchPriceMovers);
   const [scope, setScope] = createPersistentSignal<PriceScope>('cm:trendsPriceScope', 'all', v =>
     v === 'all' || v === 'standard' ? v : null
+  );
+  const [metric, setMetric] = createPersistentSignal<PriceMoverMetric>('cm:trendsPriceMetric', 'pct', v =>
+    v === 'pct' || v === 'value' ? v : null
   );
 
   /** The artifact once it clears the readiness gate, else null. */
@@ -220,7 +227,33 @@ function PriceMovers() {
     const p = latestValue(payload);
     return p && p.spanDays >= PRICE_HISTORY_MIN_DAYS ? p : null;
   });
-  const movers = createMemo<PriceMoverScope>(() => ready()?.scopes[scope()] ?? { rising: [], falling: [] });
+  const movers = createMemo<PriceMoverList>(() => ready()?.scopes[scope()][metric()] ?? { rising: [], falling: [] });
+
+  /** The headline number for a row, in the selected metric (unsigned). */
+  const magnitude = (m: PriceMoverRow): string =>
+    metric() === 'pct' ? `${Math.abs(Math.round(m.pct))}%` : `$${Math.abs(m.delta).toFixed(2)}`;
+
+  const column = (rows: PriceMoverRow[], dir: 'up' | 'down', arrow: string) => (
+    <For each={rows}>
+      {(m, idx) => (
+        <A href={`/cards/${m.set}/${m.number}`} class='mover-row'>
+          <span class='rank'>{idx() + 1}</span>
+          <span class='name'>{m.name}</span>
+          <span class='set'>
+            {m.set}/{m.number}
+          </span>
+          <span class={`delta ${dir}`}>
+            <span class='delta-pp'>
+              {arrow} {magnitude(m)}
+            </span>
+            <span class='delta-base'>
+              ${m.start.toFixed(2)} → ${m.current.toFixed(2)}
+            </span>
+          </span>
+        </A>
+      )}
+    </For>
+  );
 
   return (
     <Show when={movers().rising.length > 0 || movers().falling.length > 0}>
@@ -229,6 +262,15 @@ function PriceMovers() {
         right={
           <div class='price-scope'>
             <span>Last {ready()?.windowDays} days</span>
+            <Segmented<PriceMoverMetric>
+              ariaLabel='Rank by'
+              options={[
+                { value: 'pct', label: 'By %' },
+                { value: 'value', label: 'By $' }
+              ]}
+              selected={metric()}
+              onSelect={setMetric}
+            />
             <Segmented<PriceScope>
               ariaLabel='Printings included'
               options={[
@@ -244,43 +286,11 @@ function PriceMovers() {
         <div class='movers'>
           <div class='mover-col'>
             <h3 class='up'>Rising: biggest gainers</h3>
-            <For each={movers().rising}>
-              {(m, idx) => (
-                <A href={`/cards/${m.set}/${m.number}`} class='mover-row'>
-                  <span class='rank'>{idx() + 1}</span>
-                  <span class='name'>{m.name}</span>
-                  <span class='set'>
-                    {m.set}/{m.number}
-                  </span>
-                  <span class='delta up'>
-                    <span class='delta-pp'>↑ {Math.round(m.pct)}%</span>
-                    <span class='delta-base'>
-                      ${m.start.toFixed(2)} → ${m.current.toFixed(2)}
-                    </span>
-                  </span>
-                </A>
-              )}
-            </For>
+            {column(movers().rising, 'up', '↑')}
           </div>
           <div class='mover-col'>
             <h3 class='down'>Falling: biggest drops</h3>
-            <For each={movers().falling}>
-              {(m, idx) => (
-                <A href={`/cards/${m.set}/${m.number}`} class='mover-row'>
-                  <span class='rank'>{idx() + 1}</span>
-                  <span class='name'>{m.name}</span>
-                  <span class='set'>
-                    {m.set}/{m.number}
-                  </span>
-                  <span class='delta down'>
-                    <span class='delta-pp'>↓ {Math.abs(Math.round(m.pct))}%</span>
-                    <span class='delta-base'>
-                      ${m.start.toFixed(2)} → ${m.current.toFixed(2)}
-                    </span>
-                  </span>
-                </A>
-              )}
-            </For>
+            {column(movers().falling, 'down', '↓')}
           </div>
         </div>
       </Section>

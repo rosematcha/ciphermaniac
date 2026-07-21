@@ -1265,15 +1265,25 @@ export interface PriceMoverRow {
   pct: number;
 }
 
-/** Rising/falling lists for one printings scope. */
-export interface PriceMoverScope {
+/** Rising/falling lists, ranked one way. */
+export interface PriceMoverList {
   rising: PriceMoverRow[];
   falling: PriceMoverRow[];
 }
 
+/** How the movers lists are ranked. */
+export type PriceMoverMetric = 'pct' | 'value';
+
+/**
+ * One printings scope, ranked both ways. Same rows in each — every row carries
+ * both `pct` and `delta` — so the metric toggle only swaps which pre-sorted
+ * list renders.
+ */
+export type PriceMoverScope = Record<PriceMoverMetric, PriceMoverList>;
+
 /**
  * Pre-computed price movers, written daily by the pipeline. All of the window,
- * threshold, sorting and standard-printing logic lives in Python — rows arrive
+ * thresholds, sorting and standard-printing logic lives in Python — rows arrive
  * already sorted (steepest first) and already capped, so the client renders
  * them verbatim.
  */
