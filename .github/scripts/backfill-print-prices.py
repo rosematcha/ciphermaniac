@@ -67,16 +67,6 @@ PRINT_PRICES_PREFIX = "assets/print-prices/"
 PRINT_PRICES_CACHE_CONTROL = "public, max-age=21600"
 SCHEMA_VERSION = 1
 
-# Sets whose TCGCSV group can't be reached by abbreviation or by catalog-name
-# match. SWSH promos: abbreviation is "SWSD" (not our "SP") and the group name is
-# "SWSH: Sword & Shield Promo Cards" while the catalog calls it "Sword & Shield
-# Promos" — neither key lines up, so pin it explicitly. update-prices'
-# MANUAL_GROUP_ID_MAP ({'MEP', 'SVP'}) is merged in on top of this.
-LOCAL_MANUAL_GROUP_ID_MAP = {
-    "SP": 2545,
-}
-
-
 def find_7z():
     """Locate a 7z binary capable of the PPMd archives, or exit loudly."""
     for name in ("7zz", "7z", "7za"):
@@ -165,73 +155,12 @@ def group_uids_by_set(uids):
     return by_set
 
 
-def build_catalog_name_index(catalog):
-    """Map lowercased set *name* → set code from the local set catalog.
-
-    Used for the name-based group fallback: TCGCSV group names look like
-    ``"SWSH09: Brilliant Stars"``, so matching the portion after ``": "`` against
-    catalog names resolves the group when abbreviations don't line up.
-    """
-    index = {}
-    for entry in catalog.get("sets", []):
-        name = (entry.get("name") or "").strip().lower()
-        code = entry.get("code")
-        if name and code:
-            # First writer wins so newest-first catalog order is respected on the
-            # (rare) chance two sets share a display name.
-            index.setdefault(name, code)
-    return index
-
-
-def _group_name_tail(name):
-    """The comparable tail of a TCGCSV group name.
-
-    ``"SWSH09: Brilliant Stars"`` → ``"brilliant stars"``; a bare
-    ``"Brilliant Stars"`` → ``"brilliant stars"``.
-    """
-    if not name:
-        return ""
-    tail = name.split(": ", 1)[1] if ": " in name else name
-    return tail.strip().lower()
-
-
-def map_sets_to_group_ids(set_codes, groups, catalog_name_index, manual_map):
-    """Resolve set codes to TCGCSV group IDs.
-
-    Resolution order per set: abbreviation match → manual map → catalog-name
-    match against the group name tail. Returns ``(mappings, unmapped)`` where
-    ``unmapped`` is the sorted list of set codes with no group so the caller can
-    log them loudly. Never fails the run for an unmapped set — a missing set just
-    yields no prices for its prints.
-    """
-    by_abbrev = {}
-    by_name_code = {}
-    for group in groups:
-        if not isinstance(group, dict):
-            continue
-        gid = group.get("groupId")
-        if gid is None:
-            continue
-        abbrev = group.get("abbreviation")
-        if abbrev:
-            by_abbrev[abbrev] = gid
-        code = catalog_name_index.get(_group_name_tail(group.get("name") or ""))
-        if code:
-            by_name_code.setdefault(code, gid)
-
-    mappings = {}
-    unmapped = []
-    for set_code in set_codes:
-        if set_code in by_abbrev:
-            mappings[set_code] = by_abbrev[set_code]
-        elif set_code in manual_map:
-            mappings[set_code] = manual_map[set_code]
-        elif set_code in by_name_code:
-            mappings[set_code] = by_name_code[set_code]
-        else:
-            unmapped.append(set_code)
-
-    return mappings, sorted(unmapped)
+# The set→group resolution (abbreviation → manual → catalog-name fallback) lives
+# in update-prices so the daily job and this backfill map identically. Re-export
+# under the local names the rest of this module and its tests already use.
+build_catalog_name_index = up.build_catalog_name_index
+_group_name_tail = up._group_name_tail
+map_sets_to_group_ids = up.resolve_group_ids
 
 
 def assemble_artifact(date_str, prices_by_uid, now=None):
@@ -414,9 +343,8 @@ def main():
     catalog_name_index = build_catalog_name_index(catalog)
     print("\nFetching TCGCSV groups...")
     groups = up.fetch_tcgcsv_results(GROUPS_URL)
-    manual_map = {**LOCAL_MANUAL_GROUP_ID_MAP, **up.MANUAL_GROUP_ID_MAP}
     set_mappings, unmapped = map_sets_to_group_ids(
-        uids_by_set.keys(), groups, catalog_name_index, manual_map
+        uids_by_set.keys(), groups, catalog_name_index, up.MANUAL_GROUP_ID_MAP
     )
     if unmapped:
         print(f"\n!! {len(unmapped)} sets have no TCGCSV group — their prints will be "

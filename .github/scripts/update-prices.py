@@ -55,11 +55,19 @@ MOVER_MIN_DELTA = 0.10
 MOVER_MIN_VALUE_DELTA = 0.25
 MOVER_LIMIT = 12
 
-# Manual group ID mappings for sets not in TCGCSV API
+# Manual group ID mappings for sets TCGCSV indexes under an unmatchable name.
+#   MEP/SVP: promo groups whose abbreviation differs from our set code.
+#   SP: SWSH promos — abbreviation "SWSD" and group name "SWSH: ... Promo Cards"
+#       line up with neither our code nor the catalog name.
 MANUAL_GROUP_ID_MAP = {
     'MEP': 24451,
-    'SVP': 22872
+    'SVP': 22872,
+    'SP': 2545
 }
+
+# Local set catalog — the single source of truth for set names, shared with the
+# name-based group fallback below.
+SET_CATALOG_PATH = Path(__file__).resolve().parent / 'data' / 'set-catalog.json'
 
 # TCGCSV publishes one price record per product per printing variant
 # (subTypeName). The card's "standard" price is the plainest printing that
@@ -339,36 +347,94 @@ def group_cards_by_set(card_list):
     return by_set
 
 
+def _group_name_tail(name):
+    """The comparable tail of a TCGCSV group name.
+
+    ``"SWSH09: Brilliant Stars"`` → ``"brilliant stars"``; a bare
+    ``"Brilliant Stars"`` → ``"brilliant stars"``.
+    """
+    if not name:
+        return ""
+    tail = name.split(": ", 1)[1] if ": " in name else name
+    return tail.strip().lower()
+
+
+def build_catalog_name_index(catalog):
+    """Map lowercased set *name* → set code from the local set catalog.
+
+    Feeds the name-based group fallback: TCGCSV group names look like
+    ``"SWSH09: Brilliant Stars"``, so matching the portion after ``": "`` against
+    catalog names resolves the group when abbreviations don't line up.
+    """
+    index = {}
+    for entry in catalog.get("sets", []):
+        name = (entry.get("name") or "").strip().lower()
+        code = entry.get("code")
+        if name and code:
+            index.setdefault(name, code)
+    return index
+
+
+def resolve_group_ids(set_codes, groups, catalog_name_index, manual_map):
+    """Resolve set codes to TCGCSV group IDs (pure).
+
+    Resolution order per set: abbreviation → manual map → catalog-name match
+    against the group name tail. Returns ``(mappings, unmapped)`` where
+    ``unmapped`` is sorted so the caller can log it loudly. Never fatal — an
+    unmapped set just yields no prices for its prints. Shared with
+    backfill-print-prices.py so the daily job and backfills map identically.
+    """
+    by_abbrev = {}
+    by_name_code = {}
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        gid = group.get("groupId")
+        if gid is None:
+            continue
+        abbrev = group.get("abbreviation")
+        if abbrev:
+            by_abbrev[abbrev] = gid
+        code = catalog_name_index.get(_group_name_tail(group.get("name") or ""))
+        if code:
+            by_name_code.setdefault(code, gid)
+
+    mappings = {}
+    unmapped = []
+    for set_code in set_codes:
+        if set_code in by_abbrev:
+            mappings[set_code] = by_abbrev[set_code]
+        elif set_code in manual_map:
+            mappings[set_code] = manual_map[set_code]
+        elif set_code in by_name_code:
+            mappings[set_code] = by_name_code[set_code]
+        else:
+            unmapped.append(set_code)
+
+    return mappings, sorted(unmapped)
+
+
 def map_sets_to_group_ids(card_sets):
-    """Map set codes to TCGCSV group IDs."""
+    """Fetch TCGCSV groups and resolve our set codes to group IDs."""
     print("\nFetching TCGCSV groups...")
     groups_data = fetch_json(TCGCSV_GROUPS_URL)
-    
+
     if not groups_data.get('success'):
         print("Error: TCGCSV groups API returned success: false")
         sys.exit(1)
-    
-    # Build group index by abbreviation
-    group_index = {}
-    for group in groups_data.get('results', []):
-        if group and group.get('abbreviation'):
-            group_index[group['abbreviation']] = group
-    
-    # Map our sets to group IDs
-    mappings = {}
-    for set_code in card_sets:
-        group = group_index.get(set_code)
-        if group:
-            mappings[set_code] = group['groupId']
-            print(f"  Found: {set_code} -> {group['groupId']} ({group['name']})")
-        else:
-            manual_id = MANUAL_GROUP_ID_MAP.get(set_code)
-            if manual_id:
-                mappings[set_code] = manual_id
-                print(f"  Manual: {set_code} -> {manual_id}")
-            else:
-                print(f"  Warning: No group ID for {set_code}")
-    
+
+    catalog = json.loads(SET_CATALOG_PATH.read_text())
+    mappings, unmapped = resolve_group_ids(
+        card_sets,
+        groups_data.get('results', []),
+        build_catalog_name_index(catalog),
+        MANUAL_GROUP_ID_MAP
+    )
+    for set_code, gid in mappings.items():
+        print(f"  {set_code} -> {gid}")
+    if unmapped:
+        print(f"  Warning: no TCGCSV group for {len(unmapped)} sets: {unmapped}")
+
     return mappings
 
 

@@ -389,6 +389,35 @@ class HistoryShardTest(unittest.TestCase):
         self.assertEqual(update_prices.history_span_days({}), 0)
 
 
+class ResolveGroupIdsTest(unittest.TestCase):
+    GROUPS = [
+        {"groupId": 100, "abbreviation": "SCR", "name": "Stellar Crown"},
+        {"groupId": 200, "abbreviation": "SWSH09", "name": "SWSH09: Brilliant Stars"},
+    ]
+    NAME_INDEX = {"brilliant stars": "BRS"}
+
+    def test_abbreviation_match_wins(self):
+        mappings, unmapped = update_prices.resolve_group_ids(["SCR"], self.GROUPS, self.NAME_INDEX, {})
+        self.assertEqual(mappings["SCR"], 100)
+        self.assertEqual(unmapped, [])
+
+    def test_catalog_name_fallback_when_abbreviation_differs(self):
+        # Our code BRS never matches the group's "SWSH09" abbreviation; the group
+        # name tail "Brilliant Stars" bridges it.
+        mappings, unmapped = update_prices.resolve_group_ids(["BRS"], self.GROUPS, self.NAME_INDEX, {})
+        self.assertEqual(mappings["BRS"], 200)
+        self.assertEqual(unmapped, [])
+
+    def test_manual_map_beats_name_fallback(self):
+        mappings, _ = update_prices.resolve_group_ids(["BRS"], self.GROUPS, self.NAME_INDEX, {"BRS": 999})
+        self.assertEqual(mappings["BRS"], 999)
+
+    def test_unmapped_is_reported_not_fatal(self):
+        mappings, unmapped = update_prices.resolve_group_ids(["ZZZ"], self.GROUPS, self.NAME_INDEX, {})
+        self.assertEqual(mappings, {})
+        self.assertEqual(unmapped, ["ZZZ"])
+
+
 class BuildPrintUniverseTest(unittest.TestCase):
     def test_includes_aliases_and_canonicals(self):
         universe = update_prices.build_print_universe(
