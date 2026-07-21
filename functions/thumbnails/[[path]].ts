@@ -34,9 +34,12 @@ function normalizeCardNumber(raw: unknown): { trimmed: string | null; padded: st
   if (parts) {
     const [, digits, suffix = ''] = parts;
     const paddedDigits = digits.padStart(3, '0');
+    // Variant suffixes are lowercase in the CDN filenames (SLG_068a,
+    // UNB_182a) and the CDN is case-sensitive.
+    const lowerSuffix = suffix.toLowerCase();
     return {
-      trimmed: withoutLeadingZeros,
-      padded: `${paddedDigits}${suffix}`
+      trimmed: `${digits}${lowerSuffix}`,
+      padded: `${paddedDigits}${lowerSuffix}`
     };
   }
 

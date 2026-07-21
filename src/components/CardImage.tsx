@@ -112,7 +112,9 @@ function buildSrcset(set: string, number: string | number, preferredSize: CardIm
   const setU = String(set).toUpperCase();
   const stripped = String(number).replace(/^0+/, '') || '0';
   const parts = stripped.match(/^(\d+)([A-Za-z]*)$/);
-  const num = parts ? `${parts[1].padStart(3, '0')}${parts[2] ?? ''}` : stripped;
+  // Variant suffixes are lowercase in the CDN filenames (SLG_068a) even though
+  // UIDs store them uppercase — and the CDN is case-sensitive.
+  const num = parts ? `${parts[1].padStart(3, '0')}${(parts[2] ?? '').toLowerCase()}` : stripped;
   // Vintage sets live on pokemontcg.io (see utils/ptcgio.ts) — neither R2 nor
   // the Limitless proxy has their scans.
   if (hasPtcgioImages(setU)) {
@@ -130,8 +132,9 @@ function buildAttempts(set: string, number: string | number, preferredSize: Card
   const numStr = String(number);
   const stripped = numStr.replace(/^0+/, '') || '0';
   const parts = stripped.match(/^(\d+)([A-Za-z]*)$/);
-  // Limitless's CDN uses 3-digit zero-padded numbers (PRE_037, not PRE_37).
-  const padded = parts ? `${parts[1].padStart(3, '0')}${parts[2] ?? ''}` : stripped;
+  // Limitless's CDN uses 3-digit zero-padded numbers (PRE_037, not PRE_37) and
+  // lowercase variant suffixes (SLG_068a) — it is case-sensitive.
+  const padded = parts ? `${parts[1].padStart(3, '0')}${(parts[2] ?? '').toLowerCase()}` : stripped;
 
   // Size fallback chain: lg → sm → xs.
   const sizeChain: CardImageSize[] =

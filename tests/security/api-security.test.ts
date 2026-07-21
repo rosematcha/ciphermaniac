@@ -442,6 +442,36 @@ test('Thumbnail API: accepts trainer gallery card numbers', async () => {
 });
 
 /**
+ * Test: variant suffixes are lowercased for the CDN's case-sensitive
+ * filenames (SLG_068a, not SLG_068A) even when the request carries uppercase.
+ */
+test('Thumbnail API: lowercases variant suffixes', async () => {
+  const requested: string[] = [];
+  mockFetch({
+    predicate: url => {
+      const urlStr = typeof url === 'string' ? url : (url as Request).url;
+      if (urlStr.includes('limitlesstcg.nyc3.cdn.digitaloceanspaces.com')) {
+        requested.push(urlStr);
+        return true;
+      }
+      return false;
+    },
+    status: 200,
+    headers: { 'Content-Type': 'image/png' },
+    body: 'fake-image-data'
+  });
+
+  const response = await ThumbnailModule.onRequest({ request: makeThumbnailRequest('/thumbnails/sm/SLG/068A') });
+  assert.strictEqual(response.status, 200, 'Should accept suffixed numbers');
+  assert.ok(
+    requested[0].endsWith('/SLG/SLG_068a_R_EN_SM.png'),
+    `Suffix should be lowercased for the CDN, got ${requested[0]}`
+  );
+
+  restoreFetch();
+});
+
+/**
  * Test: Thumbnail endpoint normalizes card numbers correctly
  */
 test('Thumbnail API: handles card number normalization', async () => {
