@@ -15,6 +15,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Price-movers heading row: window caption beside the printings toggle. */
+.price-scope {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 /* ---- Movers: percentage-point deltas with the base share beneath ---- */
 /* The delta cell now stacks the pp change over the "start -> end%" base, so the
    number reads as a share change and not a raw percent. */

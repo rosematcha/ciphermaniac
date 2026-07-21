@@ -38,6 +38,7 @@ import { EmptyState } from '../components/EmptyState';
 import { createPersistentSignal } from '../lib/persistentSignal';
 import { latestValue } from '../lib/resource';
 import { DAY_MS, parseReportDate, windowCutoff } from '../lib/trendWindow';
+import { computePriceMovers, PRICE_MOVER_WINDOW_DAYS } from '../lib/priceMovers';
 import '../styles/pages/trends.css';
 
 type Source = 'online' | 'majors';
@@ -198,67 +199,56 @@ export function TrendsPage() {
    PRICE MOVERS — biggest TCGPlayer market-price swings
    ============================================================ */
 
-interface PriceMover {
-  uid: string;
-  name: string;
-  set: string;
-  number: string;
-  start: number;
-  current: number;
-  delta: number;
-}
-
-/** Minimum current price to list — filters out penny cards whose swings are noise. */
-const PRICE_MOVER_MIN = 1;
-/** Minimum absolute dollar swing to count as a mover. */
-const PRICE_MOVER_MIN_DELTA = 0.25;
+/** Which printings the movers lists cover. */
+type PriceScope = 'all' | 'canonical';
 
 /**
- * Price movers, independent of the online/majors toggle: the biggest first-to-
- * last swings in the rolling 90-day price history. Renders nothing until the
- * history spans PRICE_HISTORY_MIN_DAYS, so it stays invisible rather than
- * showing a placeholder while the pipeline accumulates its first month of data.
+ * Price movers, independent of the online/majors toggle: the biggest swings
+ * over the last {@link PRICE_MOVER_WINDOW_DAYS} days of the rolling price
+ * history. Renders nothing until the history spans PRICE_HISTORY_MIN_DAYS, so
+ * it stays invisible rather than showing a placeholder while the pipeline
+ * accumulates its first month of data.
  */
 function PriceMovers() {
   const [history] = createResource(fetchPriceHistory);
+  const [synonymDb] = createResource(() => getSynonymDatabase());
   const historyData = () => latestValue(history);
+  const [scope, setScope] = createPersistentSignal<PriceScope>('cm:trendsPriceScope', 'all', v =>
+    v === 'all' || v === 'canonical' ? v : null
+  );
 
-  const movers = createMemo<{ rising: PriceMover[]; falling: PriceMover[] }>(() => {
+  const movers = createMemo(() => {
     const h = historyData();
     if (!h || priceHistorySpanDays(h) < PRICE_HISTORY_MIN_DAYS) {
       return { rising: [], falling: [] };
     }
-    const all: PriceMover[] = [];
-    for (const [uid, points] of Object.entries(h)) {
-      if (points.length < 2) {
-        continue;
-      }
-      const start = points[0].price;
-      const current = points[points.length - 1].price;
-      const delta = current - start;
-      if (current < PRICE_MOVER_MIN || Math.abs(delta) < PRICE_MOVER_MIN_DELTA) {
-        continue;
-      }
-      const parts = uid.split('::');
-      if (parts.length < 3) {
-        continue;
-      }
-      all.push({ uid, name: parts[0], set: parts[1], number: parts[2], start, current, delta });
-    }
-    const rising = all
-      .filter(m => m.delta > 0)
-      .sort((a, b) => b.delta - a.delta)
-      .slice(0, 12);
-    const falling = all
-      .filter(m => m.delta < 0)
-      .sort((a, b) => a.delta - b.delta)
-      .slice(0, 12);
-    return { rising, falling };
+    const db = synonymDb();
+    // Canonical scope keeps only prints that are their own canonical — alt-arts
+    // and other collector printings resolve to a different UID.
+    const isIncluded =
+      scope() === 'canonical' && db ? (uid: string) => getCanonicalCardFromData(db, uid) === uid : undefined;
+    return computePriceMovers(h, isIncluded);
   });
 
   return (
     <Show when={movers().rising.length > 0 || movers().falling.length > 0}>
-      <Section title='Price movers' right='Biggest market-price swings, last 90 days'>
+      <Section
+        title='Price movers'
+        right={
+          <div class='price-scope'>
+            <span>Last {PRICE_MOVER_WINDOW_DAYS} days</span>
+            <Segmented<PriceScope>
+              ariaLabel='Printings included'
+              options={[
+                { value: 'all', label: 'All printings' },
+                { value: 'canonical', label: 'Standard only' }
+              ]}
+              selected={scope()}
+              onSelect={setScope}
+            />
+          </div>
+        }
+      >
         <div class='movers'>
           <div class='mover-col'>
             <h3 class='up'>Rising: biggest gainers</h3>
