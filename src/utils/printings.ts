@@ -98,14 +98,15 @@ export function buildPrintingRows(database: SynonymDatabase | null, pageUid: str
 
 /**
  * Sort rows for display. 'oldest' keeps the release order rows arrive in;
- * 'price' sorts ascending with unpriced prints last. Never mutates the input.
+ * 'price' sorts ascending with unpriced prints first — an unknown price reads
+ * as bottom-tier, not bling. Never mutates the input.
  * @param rows - Rows from {@link buildPrintingRows}
  * @param sort - Sort mode
  * @returns A new sorted array
  */
 export function sortPrintings(rows: PrintingRow[], sort: PrintingsSort): PrintingRow[] {
   if (sort === 'price') {
-    return [...rows].sort((a, b) => (a.price ?? Number.POSITIVE_INFINITY) - (b.price ?? Number.POSITIVE_INFINITY));
+    return [...rows].sort((a, b) => (a.price ?? Number.NEGATIVE_INFINITY) - (b.price ?? Number.NEGATIVE_INFINITY));
   }
   return [...rows];
 }

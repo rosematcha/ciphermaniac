@@ -46,12 +46,12 @@ test('marks the page print on a variant URL, including non-padded numbers', () =
   assert.strictEqual(loose.find(r => r.isPage)?.uid, 'Night Stretcher::SFA::061');
 });
 
-test('price sort is ascending with unpriced prints last, and does not mutate', () => {
+test('price sort is ascending with unpriced prints first (bottom-tier), and does not mutate', () => {
   const rows = buildPrintingRows(DB, 'Night Stretcher::SFA::061');
   const byPrice = sortPrintings(rows, 'price');
   assert.deepStrictEqual(
     byPrice.map(r => r.number),
-    ['196', '061', '251', '173']
+    ['173', '196', '061', '251']
   );
   // original release order untouched
   assert.strictEqual(rows[0].number, '061');
