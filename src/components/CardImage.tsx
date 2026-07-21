@@ -1,4 +1,5 @@
 import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js';
+import { hasPtcgioImages, ptcgioImageUrls, ptcgioSrcset } from '../utils/ptcgio';
 
 type CardImageSize = 'xs' | 'sm' | 'lg';
 
@@ -112,6 +113,11 @@ function buildSrcset(set: string, number: string | number, preferredSize: CardIm
   const stripped = String(number).replace(/^0+/, '') || '0';
   const parts = stripped.match(/^(\d+)([A-Za-z]*)$/);
   const num = parts ? `${parts[1].padStart(3, '0')}${parts[2] ?? ''}` : stripped;
+  // Vintage sets live on pokemontcg.io (see utils/ptcgio.ts) — neither R2 nor
+  // the Limitless proxy has their scans.
+  if (hasPtcgioImages(setU)) {
+    return ptcgioSrcset(setU, num) ?? '';
+  }
   const tiers: CardImageSize[] = preferredSize === 'lg' ? ['xs', 'sm', 'lg'] : ['xs', 'sm'];
   // R2 WebP when ready, else the same-origin proxy — never hotlink the CDN in
   // srcset, since that's the path the browser bot-blocks.
@@ -139,6 +145,16 @@ function buildAttempts(set: string, number: string | number, preferredSize: Card
       urls.push(url);
     }
   };
+
+  // 0. Vintage sets (DP era and older, POP, XY promos): Limitless's CDN has no
+  //    scans, so R2 and the proxy would only 404 — go straight to
+  //    pokemontcg.io. Hotlinking is safe there: no bot-management cookie.
+  if (hasPtcgioImages(setU)) {
+    for (const url of ptcgioImageUrls(setU, padded, preferredSize)) {
+      push(url);
+    }
+    return urls;
+  }
 
   // 1. R2 WebP (preferred tier) when the pipeline has run — lightest, our domain.
   if (useR2) {
