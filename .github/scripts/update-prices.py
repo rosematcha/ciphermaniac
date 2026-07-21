@@ -42,13 +42,17 @@ HISTORY_WINDOW_DAYS = 90
 HISTORY_SHARD_PREFIX = 'reports/price-history/'
 PRICE_MOVERS_KEY = 'reports/price-movers.json'
 
-# Movers window and gates. Standard prints run $1-$20, so a flat dollar floor
-# means 1% of one card and 25% of another; rank and gate on percent instead,
-# with a small absolute floor so penny moves on cheap cards stay out.
+# Movers window and gates. Each row carries both metrics, and we emit a list
+# ranked each way (the page toggles between them client-side):
+#   - by percent: a flat dollar floor is 1% of one $20 print and 25% of another
+#     $1 print, so the percent view gates on percent with a small dollar floor
+#     to keep sub-dime noise on cheap cards out.
+#   - by value: gates on raw dollars; expensive cards dominating is the point.
 MOVER_WINDOW_DAYS = 7
 MOVER_MIN_PRICE = 1.0
 MOVER_MIN_PCT = 5.0
 MOVER_MIN_DELTA = 0.10
+MOVER_MIN_VALUE_DELTA = 0.25
 MOVER_LIMIT = 12
 
 # Manual group ID mappings for sets not in TCGCSV API
@@ -660,10 +664,22 @@ def _mover_row(uid, start, current):
     }
 
 
+def _rank_movers(rows, key, limit):
+    """Rising/falling lists ranked by `key` (a row → signed magnitude)."""
+    return {
+        'rising': sorted((r for r in rows if key(r) > 0), key=lambda r: -key(r))[:limit],
+        'falling': sorted((r for r in rows if key(r) < 0), key=key)[:limit]
+    }
+
+
 def build_price_movers(history, standard_uids, today,
                        window_days=MOVER_WINDOW_DAYS, limit=MOVER_LIMIT):
     """Pre-digest the biggest movers so the browser downloads a few KB, not the
     whole history.
+
+    Each scope carries the same rows ranked two ways — `pct` and `value` — so the
+    page can toggle the metric without recomputing. Every row already holds both
+    `pct` and `delta`, so the toggle only swaps which pre-sorted list renders.
 
     The baseline is the last observation at or before the cutoff, carried
     forward: flat runs collapse to a single point when written, so a card that
@@ -691,21 +707,19 @@ def build_price_movers(history, standard_uids, today,
         if baseline <= 0 or current < MOVER_MIN_PRICE:
             continue
         row = _mover_row(uid, round(float(baseline), 2), round(float(current), 2))
-        if abs(row['delta']) < MOVER_MIN_DELTA or abs(row['pct']) < MOVER_MIN_PCT:
-            continue
         scopes['all'].append(row)
         if uid in standard_uids:
             scopes['standard'].append(row)
 
-    return {
-        scope: {
-            'rising': sorted((r for r in rows if r['pct'] > 0),
-                             key=lambda r: -r['pct'])[:limit],
-            'falling': sorted((r for r in rows if r['pct'] < 0),
-                              key=lambda r: r['pct'])[:limit]
+    def rankings(rows):
+        by_pct = [r for r in rows if abs(r['pct']) >= MOVER_MIN_PCT and abs(r['delta']) >= MOVER_MIN_DELTA]
+        by_value = [r for r in rows if abs(r['delta']) >= MOVER_MIN_VALUE_DELTA]
+        return {
+            'pct': _rank_movers(by_pct, lambda r: r['pct'], limit),
+            'value': _rank_movers(by_value, lambda r: r['delta'], limit)
         }
-        for scope, rows in scopes.items()
-    }
+
+    return {scope: rankings(rows) for scope, rows in scopes.items()}
 
 
 def upload_price_movers_to_r2(r2_client, bucket_name, movers, span_days):
@@ -718,6 +732,7 @@ def upload_price_movers_to_r2(r2_client, bucket_name, movers, span_days):
             'generated': datetime.now(timezone.utc).isoformat(),
             'minPct': MOVER_MIN_PCT,
             'minDelta': MOVER_MIN_DELTA,
+            'minValueDelta': MOVER_MIN_VALUE_DELTA,
             'minPrice': MOVER_MIN_PRICE
         }
     }
@@ -729,8 +744,22 @@ def upload_price_movers_to_r2(r2_client, bucket_name, movers, span_days):
         ContentType='application/json',
         CacheControl=PRICES_CACHE_CONTROL
     )
-    for scope, lists in movers.items():
-        print(f"  ✓ {scope}: {len(lists['rising'])} rising, {len(lists['falling'])} falling")
+    for scope, metrics in movers.items():
+        parts = ', '.join(f"{m} {len(l['rising'])}↑/{len(l['falling'])}↓" for m, l in metrics.items())
+        print(f"  ✓ {scope}: {parts}")
+
+
+def upload_derived_artifacts(r2_client, bucket_name, history, price_data, synonyms_data, today):
+    """Write the two client-facing derivatives of the rolling history: per-set
+    shards (card sparklines) and the pre-digested movers (trends page).
+
+    Shared by the daily job and the history backfill so both stay in lockstep —
+    a backfill refreshes the whole surface, not just the monolith.
+    """
+    upload_history_shards_to_r2(r2_client, bucket_name, history)
+    standard_uids = classify_standard_prints(price_data, synonyms_data)
+    movers = build_price_movers(history, standard_uids, today)
+    upload_price_movers_to_r2(r2_client, bucket_name, movers, history_span_days(history))
 
 
 def shard_history_by_set(history):
@@ -868,11 +897,7 @@ def main():
     existing_history = load_price_history(r2_client, bucket_name)
     history = update_price_history(existing_history, price_data, today)
     upload_price_history_to_r2(r2_client, bucket_name, history)
-    upload_history_shards_to_r2(r2_client, bucket_name, history)
-
-    standard_uids = classify_standard_prints(price_data, synonyms_data)
-    movers = build_price_movers(history, standard_uids, today)
-    upload_price_movers_to_r2(r2_client, bucket_name, movers, history_span_days(history))
+    upload_derived_artifacts(r2_client, bucket_name, history, price_data, synonyms_data, today)
 
 
     # Summary

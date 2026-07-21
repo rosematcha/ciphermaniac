@@ -305,7 +305,7 @@ class BuildPriceMoversTest(unittest.TestCase):
             ]
         }
         movers = update_prices.build_price_movers(history, set(), self.TODAY)
-        row = movers["all"]["rising"][0]
+        row = movers["all"]["pct"]["rising"][0]
         self.assertEqual((row["start"], row["current"], row["delta"]), (2.51, 3.23, 0.72))
         self.assertEqual(row["pct"], 28.7)
         self.assertEqual((row["name"], row["set"], row["number"]), ("Blastoise ex", "SCR", "030"))
@@ -318,29 +318,37 @@ class BuildPriceMoversTest(unittest.TestCase):
             ]
         }
         movers = update_prices.build_price_movers(history, set(), self.TODAY)
-        self.assertEqual(movers["all"]["rising"], [])
-        self.assertEqual(movers["all"]["falling"], [])
+        self.assertEqual(movers["all"]["pct"]["rising"], [])
+        self.assertEqual(movers["all"]["value"]["rising"], [])
 
-    def test_ranks_by_percent_not_dollars(self):
-        # A $22 card shedding $3.41 is a smaller move than a $2.51 card gaining
-        # $0.72; dollar ranking would invert these.
+    def test_percent_and_value_rank_differently(self):
+        # The cheap card wins on percent; the expensive card wins on raw dollars.
         history = {
-            "Small::SVI::001": [{"d": "2026-07-19", "p": 3.23}, {"d": "2026-07-20", "p": 3.23}],
-            "Big::SVI::002": [{"d": "2026-07-19", "p": 22.54}, {"d": "2026-07-20", "p": 22.54}],
+            "Cheap::SVI::001": [{"d": "2026-07-01", "p": 2.51}, {"d": "2026-07-19", "p": 3.23}],
+            "Pricey::SVI::002": [{"d": "2026-07-01", "p": 22.54}, {"d": "2026-07-19", "p": 25.0}],
         }
-        history["Small::SVI::001"] = [{"d": "2026-07-01", "p": 2.51}, {"d": "2026-07-19", "p": 3.23}]
-        history["Big::SVI::002"] = [{"d": "2026-07-01", "p": 22.54}, {"d": "2026-07-19", "p": 25.0}]
         movers = update_prices.build_price_movers(history, set(), self.TODAY)
-        self.assertEqual([r["name"] for r in movers["all"]["rising"]], ["Small", "Big"])
+        self.assertEqual([r["name"] for r in movers["all"]["pct"]["rising"]], ["Cheap", "Pricey"])
+        self.assertEqual([r["name"] for r in movers["all"]["value"]["rising"]], ["Pricey", "Cheap"])
 
-    def test_gates_drop_penny_moves_and_cheap_cards(self):
+    def test_percent_gate_drops_penny_moves_and_cheap_cards(self):
         history = {
             "Penny::SVI::001": [{"d": "2026-07-01", "p": 0.10}, {"d": "2026-07-19", "p": 0.90}],
             "Flat::SVI::002": [{"d": "2026-07-01", "p": 10.0}, {"d": "2026-07-19", "p": 10.30}],
             "Tiny::SVI::003": [{"d": "2026-07-01", "p": 1.00}, {"d": "2026-07-19", "p": 1.09}],
         }
         movers = update_prices.build_price_movers(history, set(), self.TODAY)
-        self.assertEqual(movers["all"]["rising"], [])
+        self.assertEqual(movers["all"]["pct"]["rising"], [])
+
+    def test_value_gate_drops_sub_quarter_moves(self):
+        # A 10% move on a cheap card clears the percent gate but not the $0.25
+        # value floor, so it appears by percent and not by value.
+        history = {
+            "Small::SVI::001": [{"d": "2026-07-01", "p": 1.50}, {"d": "2026-07-19", "p": 1.65}],
+        }
+        movers = update_prices.build_price_movers(history, set(), self.TODAY)
+        self.assertEqual([r["number"] for r in movers["all"]["pct"]["rising"]], ["001"])
+        self.assertEqual(movers["all"]["value"]["rising"], [])
 
     def test_standard_scope_is_a_subset(self):
         history = {
@@ -348,8 +356,8 @@ class BuildPriceMoversTest(unittest.TestCase):
             "Card::SVI::200": [{"d": "2026-07-01", "p": 4.0}, {"d": "2026-07-19", "p": 40.0}],
         }
         movers = update_prices.build_price_movers(history, {"Card::SVI::001"}, self.TODAY)
-        self.assertEqual([r["number"] for r in movers["all"]["rising"]], ["200", "001"])
-        self.assertEqual([r["number"] for r in movers["standard"]["rising"]], ["001"])
+        self.assertEqual([r["number"] for r in movers["all"]["pct"]["rising"]], ["200", "001"])
+        self.assertEqual([r["number"] for r in movers["standard"]["pct"]["rising"]], ["001"])
 
     def test_lists_are_capped(self):
         history = {
@@ -357,7 +365,8 @@ class BuildPriceMoversTest(unittest.TestCase):
             for i in range(20)
         }
         movers = update_prices.build_price_movers(history, set(), self.TODAY)
-        self.assertEqual(len(movers["all"]["rising"]), update_prices.MOVER_LIMIT)
+        self.assertEqual(len(movers["all"]["pct"]["rising"]), update_prices.MOVER_LIMIT)
+        self.assertEqual(len(movers["all"]["value"]["rising"]), update_prices.MOVER_LIMIT)
 
 
 class HistoryShardTest(unittest.TestCase):
