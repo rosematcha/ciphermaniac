@@ -16,6 +16,7 @@ import { formatPercent } from '../lib/format';
 import { latestValue } from '../lib/resource';
 import { prefetchArchetypePage } from '../lib/prefetch';
 import { fetchAllArchetypeWinRates, type WinRateAggregate, WR_MIN_GAMES, WR_MUTE_GAMES } from '../lib/archetypeWinRate';
+import { foldSearch } from '../utils/searchFold';
 import '../styles/pages/archetype.css';
 
 type ViewMode = 'grid' | 'list';
@@ -77,11 +78,11 @@ export function ArchetypesIndexPage() {
 
   const filtered = createMemo(() => {
     const list = archetypesData() ?? [];
-    const q = query().trim().toLowerCase();
+    const q = foldSearch(query().trim());
     if (!q) {
       return list;
     }
-    return list.filter(a => (a.label || a.name).toLowerCase().includes(q));
+    return list.filter(a => foldSearch(a.label || a.name).includes(q));
   });
 
   const scopeLabel = () => (tournament() === ONLINE_META_NAME ? ONLINE_META_LABEL : prettyTournamentName(tournament()));

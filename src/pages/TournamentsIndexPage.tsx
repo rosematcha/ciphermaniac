@@ -9,6 +9,7 @@ import { EmptyState } from '../components/EmptyState';
 import { Badge } from '../components/Badge';
 import { nameFromTournamentKey } from '../lib/format';
 import { latestValue } from '../lib/resource';
+import { foldSearch } from '../utils/searchFold';
 
 type Filter = 'all' | 'regional' | 'international' | 'special';
 
@@ -36,17 +37,17 @@ export function TournamentsIndexPage() {
 
   const tournaments = createMemo(() => {
     const all = listData() ?? [];
-    const q = query().trim().toLowerCase();
+    const q = foldSearch(query().trim());
     const f = filter();
     return all.filter(t => {
       if (t === ONLINE_META_NAME) {
-        return f === 'all' && (!q || t.toLowerCase().includes(q));
+        return f === 'all' && (!q || foldSearch(t).includes(q));
       }
       const cls = classifyTournament(t);
       if (f !== 'all' && cls !== f) {
         return false;
       }
-      if (q && !t.toLowerCase().includes(q)) {
+      if (q && !foldSearch(t).includes(q)) {
         return false;
       }
       return true;
