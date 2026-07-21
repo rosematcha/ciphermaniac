@@ -220,11 +220,35 @@ export function CardPage() {
     return getCanonicalCardFromData(db(), itemUid(c));
   });
 
+  // The printings strip's live selection (hover or pin). While set, the hero
+  // art, the Market price row, and the sparkline all follow that printing.
+  // Owned here (not in the body) because the price memos below key off it.
+  const [previewPrint, setPreviewPrint] = createSignal<PrintingRow | null>(null);
+  createEffect(
+    on(
+      () => {
+        const c = card();
+        return c ? itemUid(c) : null;
+      },
+      () => setPreviewPrint(null),
+      { defer: true }
+    )
+  );
+
   const priceEntry = createMemo(() => {
     const c = card();
     const p = pricesData();
     if (!c || !p) {
       return null;
+    }
+    // A previewed printing shows its own price: prices.json when the print is
+    // the tracked canonical (which also carries the TCGplayer id), otherwise
+    // the synonym DB's scraped per-print price.
+    const pv = previewPrint();
+    if (pv) {
+      const entry = p[pv.uid];
+      const price = entry?.price ?? pv.price ?? undefined;
+      return price === undefined ? null : { price, tcgPlayerId: entry?.tcgPlayerId };
     }
     return p[`${c.name}::${c.set}::${c.number}`] ?? p[globalCardUid() ?? ''] ?? null;
   });
@@ -244,6 +268,14 @@ export function CardPage() {
     const h = priceHistoryData();
     if (!c || !h || !priceHistoryReady()) {
       return [];
+    }
+    // A previewed printing gets only its own history — another print's trend
+    // would lie. Today the pipeline tracks the canonical print, so most
+    // previews simply drop the sparkline; per-print histories light up here
+    // automatically if the producer ever starts writing them.
+    const pv = previewPrint();
+    if (pv) {
+      return h[pv.uid] ?? [];
     }
     return h[`${c.name}::${c.set}::${c.number}`] ?? h[globalCardUid() ?? ''] ?? [];
   });
@@ -372,6 +404,8 @@ export function CardPage() {
           card={card()!}
           db={db()}
           setNumber={setNumber()}
+          previewPrint={previewPrint()}
+          onPreview={setPreviewPrint}
           priceEntry={priceEntry()}
           priceSeries={priceSeries()}
           conversion={conversionStat()}
@@ -440,6 +474,8 @@ function CardPageBody(props: {
   card: CardItem;
   db: SynonymDatabase | null;
   setNumber: string;
+  previewPrint: PrintingRow | null;
+  onPreview: (p: PrintingRow | null) => void;
   priceEntry: { price?: number; tcgPlayerId?: string } | null;
   priceSeries: PricePoint[];
   conversion: Day2CardStat | undefined;
@@ -482,21 +518,13 @@ function CardPageBody(props: {
   });
 
   // Printings strip: every printing in this card's reprint cluster, with the
-  // per-print prices the synonym producer scrapes. `previewPrint` is the
-  // strip's live selection (hover or pin); while set, the hero art shows that
-  // printing instead of the page's own.
+  // per-print prices the synonym producer scrapes. The live selection
+  // (`props.previewPrint`) is owned by CardPage so the price memos up there
+  // follow it too; while set, the hero art shows that printing instead of the
+  // page's own.
   const printings = createMemo<PrintingRow[]>(() => buildPrintingRows(props.db, itemUid(props.card)));
-  const [previewPrint, setPreviewPrint] = createSignal<PrintingRow | null>(null);
-  // A navigation to another card must not carry the previous card's preview.
-  createEffect(
-    on(
-      () => itemUid(props.card),
-      () => setPreviewPrint(null),
-      { defer: true }
-    )
-  );
-  const heroSet = () => previewPrint()?.set ?? props.card.set!;
-  const heroNumber = (): string | number => previewPrint()?.number ?? props.card.number!;
+  const heroSet = () => props.previewPrint?.set ?? props.card.set!;
+  const heroNumber = (): string | number => props.previewPrint?.number ?? props.card.number!;
 
   return (
     <>
@@ -625,7 +653,7 @@ function CardPageBody(props: {
           </div>
 
           <Show when={printings().length > 1}>
-            <PrintingsStrip prints={printings()} onPreview={setPreviewPrint} />
+            <PrintingsStrip prints={printings()} onPreview={props.onPreview} />
           </Show>
         </div>
 
