@@ -391,6 +391,57 @@ test('Thumbnail API: accepts valid sm/xs sizes', async () => {
 });
 
 /**
+ * Test: Thumbnail endpoint accepts trainer-gallery numbers (letter prefix)
+ * and probes the CDN's TG-style filename (LOR_TG24_R_EN_LG.png).
+ */
+test('Thumbnail API: accepts trainer gallery card numbers', async () => {
+  const requested: string[] = [];
+  mockFetch({
+    predicate: url => {
+      const urlStr = typeof url === 'string' ? url : (url as Request).url;
+      if (urlStr.includes('limitlesstcg.nyc3.cdn.digitaloceanspaces.com')) {
+        requested.push(urlStr);
+        return true;
+      }
+      return false;
+    },
+    status: 200,
+    headers: { 'Content-Type': 'image/png' },
+    body: 'fake-image-data'
+  });
+
+  const response = await ThumbnailModule.onRequest({ request: makeThumbnailRequest('/thumbnails/lg/LOR/TG24') });
+  assert.strictEqual(response.status, 200, 'Should accept TG-prefixed numbers');
+  assert.ok(
+    requested[0].endsWith('/LOR/LOR_TG24_R_EN_LG.png'),
+    `Should build the gallery filename, got ${requested[0]}`
+  );
+
+  restoreFetch();
+
+  // Single-digit gallery numbers pad to Limitless's two-digit form (GG05).
+  const padded: string[] = [];
+  mockFetch({
+    predicate: url => {
+      const urlStr = typeof url === 'string' ? url : (url as Request).url;
+      if (urlStr.includes('limitlesstcg.nyc3.cdn.digitaloceanspaces.com')) {
+        padded.push(urlStr);
+        return true;
+      }
+      return false;
+    },
+    status: 200,
+    headers: { 'Content-Type': 'image/png' },
+    body: 'fake-image-data'
+  });
+  const ggResponse = await ThumbnailModule.onRequest({ request: makeThumbnailRequest('/thumbnails/sm/CRZ/GG5') });
+  assert.strictEqual(ggResponse.status, 200, 'Should accept GG-prefixed numbers');
+  assert.ok(padded[0].endsWith('/CRZ/CRZ_GG05_R_EN_SM.png'), `Should pad gallery digits to two, got ${padded[0]}`);
+
+  restoreFetch();
+});
+
+/**
  * Test: Thumbnail endpoint normalizes card numbers correctly
  */
 test('Thumbnail API: handles card number normalization', async () => {

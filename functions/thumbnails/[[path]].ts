@@ -14,7 +14,8 @@ const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 // Validation patterns
 const SET_CODE_PATTERN = /^[A-Z0-9]{2,8}$/;
-const CARD_NUMBER_PATTERN = /^[0-9]+[A-Za-z]*$/;
+// Plain numbers (123, 18a) or letter-prefixed gallery numbers (TG24, GG05, SV107).
+const CARD_NUMBER_PATTERN = /^(?:[0-9]+[A-Za-z]*|[A-Za-z]{1,4}[0-9]+)$/;
 
 interface Context {
   request: Request;
@@ -30,16 +31,28 @@ function normalizeCardNumber(raw: unknown): { trimmed: string | null; padded: st
 
   const withoutLeadingZeros = trimmed.replace(/^0+/, '') || '0';
   const parts = withoutLeadingZeros.match(/^(\d+)([A-Za-z]*)$/);
-  if (!parts) {
-    return { trimmed: withoutLeadingZeros, padded: withoutLeadingZeros };
+  if (parts) {
+    const [, digits, suffix = ''] = parts;
+    const paddedDigits = digits.padStart(3, '0');
+    return {
+      trimmed: withoutLeadingZeros,
+      padded: `${paddedDigits}${suffix}`
+    };
   }
 
-  const [, digits, suffix = ''] = parts;
-  const paddedDigits = digits.padStart(3, '0');
-  return {
-    trimmed: withoutLeadingZeros,
-    padded: `${paddedDigits}${suffix}`
-  };
+  // Letter-prefixed gallery numbers (trainer/character galleries: LOR_TG24,
+  // CRZ_GG05). Limitless pads their digits to 2, so probe that form first and
+  // fall back to the raw form for three-digit galleries like SV107.
+  const prefixed = withoutLeadingZeros.match(/^([A-Za-z]+)0*(\d+)$/);
+  if (prefixed) {
+    const prefix = prefixed[1].toUpperCase();
+    return {
+      trimmed: withoutLeadingZeros.toUpperCase(),
+      padded: `${prefix}${prefixed[2].padStart(2, '0')}`
+    };
+  }
+
+  return { trimmed: withoutLeadingZeros, padded: withoutLeadingZeros };
 }
 
 async function fetchWithFallback(urls: string[]): Promise<Response> {
