@@ -33,6 +33,24 @@ PRICES_HISTORY_KEY = 'reports/prices-history.json'
 PRICES_CACHE_CONTROL = 'public, max-age=21600'
 HISTORY_WINDOW_DAYS = 90
 
+# Client-facing derivatives of the rolling history. The monolith above stays the
+# job's own append state (it is the only place the full series lives), but no
+# page downloads it: at ~3,400 priced prints it runs to several MB.
+#   - Per-set shards feed one card page's sparkline (tens of KB).
+#   - The pre-digested movers artifact feeds the trends page (a few KB) so the
+#     browser does no window math over the whole corpus.
+HISTORY_SHARD_PREFIX = 'reports/price-history/'
+PRICE_MOVERS_KEY = 'reports/price-movers.json'
+
+# Movers window and gates. Standard prints run $1-$20, so a flat dollar floor
+# means 1% of one card and 25% of another; rank and gate on percent instead,
+# with a small absolute floor so penny moves on cheap cards stay out.
+MOVER_WINDOW_DAYS = 7
+MOVER_MIN_PRICE = 1.0
+MOVER_MIN_PCT = 5.0
+MOVER_MIN_DELTA = 0.10
+MOVER_LIMIT = 12
+
 # Manual group ID mappings for sets not in TCGCSV API
 MANUAL_GROUP_ID_MAP = {
     'MEP': 24451,
@@ -222,6 +240,86 @@ def extract_unique_cards(master_report, synonyms_data):
     
     print(f"Extracted {len(card_set)} unique canonical cards")
     return card_set
+
+
+def build_print_universe(synonyms_data):
+    """Every print UID across every synonyms cluster, canonical included.
+
+    Universe = keys of ``synonyms`` (the alias prints) + values of ``synonyms``
+    (their canonicals) + values of ``canonicals`` (base-name → canonical).
+
+    Pricing the whole universe, not just the canonicals, is what lets the movers
+    artifact tell a playable print from a collector one: a cluster's canonical is
+    only its *representative*, and for cards like Umbreon ex it is the $1,500
+    special illustration rare. Cheap on the wire too — TCGCSV is fetched as
+    whole-set dumps, so extra UIDs in sets we already pull cost no requests.
+
+    Shared with backfill-print-prices.py, which prices the same universe against
+    TCGCSV's daily archives.
+    """
+    universe = set()
+    synonyms = synonyms_data.get('synonyms', {}) if isinstance(synonyms_data, dict) else {}
+    canonicals = synonyms_data.get('canonicals', {}) if isinstance(synonyms_data, dict) else {}
+
+    for alias_uid, canonical_uid in synonyms.items():
+        if alias_uid:
+            universe.add(alias_uid)
+        if canonical_uid:
+            universe.add(canonical_uid)
+    for canonical_uid in canonicals.values():
+        if canonical_uid:
+            universe.add(canonical_uid)
+
+    return universe
+
+
+def accessible_price_cap(min_price):
+    """Ceiling for a "standard" print: no more than twice the cheapest print in
+    its cluster, with $0.50 of absolute slack so penny cards do not strike prints
+    over noise. Mirror of ``accessiblePriceCap`` in shared/data/cardIdentity.ts.
+    """
+    return max(min_price * 2, min_price + 0.5)
+
+
+def build_clusters(synonyms_data):
+    """Invert the synonyms map into canonical UID → list of member print UIDs."""
+    clusters = defaultdict(set)
+    for alias_uid, canonical_uid in synonyms_data.get('synonyms', {}).items():
+        if alias_uid and canonical_uid:
+            clusters[canonical_uid].update((canonical_uid, alias_uid))
+    return clusters
+
+
+def classify_standard_prints(price_data, synonyms_data):
+    """UIDs that are the playable print of their cluster, by price.
+
+    A print qualifies when it costs no more than ``accessible_price_cap`` of the
+    cheapest print in its cluster. Prints in no cluster (single-printing cards)
+    and prints we could not price qualify by default — dropping them would read
+    on the page as "this card did not move".
+    """
+    clusters = build_clusters(synonyms_data)
+    member_of = {}
+    for canonical_uid, members in clusters.items():
+        for uid in members:
+            member_of[uid] = canonical_uid
+
+    def price_of(uid):
+        entry = price_data.get(uid)
+        price = entry.get('price') if isinstance(entry, dict) else None
+        return price if isinstance(price, (int, float)) else None
+
+    standard = set()
+    for uid in price_data:
+        own = price_of(uid)
+        canonical_uid = member_of.get(uid)
+        if own is None or canonical_uid is None:
+            standard.add(uid)
+            continue
+        prices = [p for p in (price_of(m) for m in clusters[canonical_uid]) if p is not None]
+        if not prices or own <= accessible_price_cap(min(prices)):
+            standard.add(uid)
+    return standard
 
 
 def group_cards_by_set(card_list):
@@ -528,6 +626,151 @@ def update_price_history(existing_history, price_data, today, window_days=HISTOR
     return new_history
 
 
+def history_span_days(history):
+    """Calendar days between the earliest and latest observation anywhere in the
+    history. The frontend gates price UI on this so trends stay hidden until the
+    daily job has accumulated enough (there is no backfill for this artifact).
+    """
+    dates = []
+    for points in history.values():
+        for point in points:
+            try:
+                dates.append(date.fromisoformat(point['d']))
+            except (KeyError, TypeError, ValueError):
+                continue
+    if not dates:
+        return 0
+    return (max(dates) - min(dates)).days
+
+
+def _mover_row(uid, start, current):
+    # Last two segments win, mirroring parseCardUid in cardIdentity.ts — a name
+    # is free to contain '::' but a set code and number are not.
+    name, set_code, number = uid.rsplit('::', 2)
+    delta = round(current - start, 2)
+    return {
+        'uid': uid,
+        'name': name,
+        'set': set_code,
+        'number': number,
+        'start': start,
+        'current': current,
+        'delta': delta,
+        'pct': round((current - start) / start * 100, 1)
+    }
+
+
+def build_price_movers(history, standard_uids, today,
+                       window_days=MOVER_WINDOW_DAYS, limit=MOVER_LIMIT):
+    """Pre-digest the biggest movers so the browser downloads a few KB, not the
+    whole history.
+
+    The baseline is the last observation at or before the cutoff, carried
+    forward: flat runs collapse to a single point when written, so a card that
+    has not moved in weeks has no point inside the window at all. Pure (no I/O)
+    for testability.
+    """
+    cutoff = (today - timedelta(days=window_days)).isoformat()
+    scopes = {'all': [], 'standard': []}
+
+    for uid, points in history.items():
+        if len(uid.split('::')) < 3 or len(points) < 2:
+            continue
+        ordered = sorted(points, key=lambda pt: pt.get('d', ''))
+        baseline = None
+        for point in ordered:
+            if point.get('d', '') <= cutoff:
+                baseline = point.get('p')
+            else:
+                break
+        if baseline is None:
+            baseline = ordered[0].get('p')
+        current = ordered[-1].get('p')
+        if not isinstance(baseline, (int, float)) or not isinstance(current, (int, float)):
+            continue
+        if baseline <= 0 or current < MOVER_MIN_PRICE:
+            continue
+        row = _mover_row(uid, round(float(baseline), 2), round(float(current), 2))
+        if abs(row['delta']) < MOVER_MIN_DELTA or abs(row['pct']) < MOVER_MIN_PCT:
+            continue
+        scopes['all'].append(row)
+        if uid in standard_uids:
+            scopes['standard'].append(row)
+
+    return {
+        scope: {
+            'rising': sorted((r for r in rows if r['pct'] > 0),
+                             key=lambda r: -r['pct'])[:limit],
+            'falling': sorted((r for r in rows if r['pct'] < 0),
+                              key=lambda r: r['pct'])[:limit]
+        }
+        for scope, rows in scopes.items()
+    }
+
+
+def upload_price_movers_to_r2(r2_client, bucket_name, movers, span_days):
+    """Upload the pre-digested movers artifact read by the trends page."""
+    output = {
+        'windowDays': MOVER_WINDOW_DAYS,
+        'spanDays': span_days,
+        'scopes': movers,
+        'metadata': {
+            'generated': datetime.now(timezone.utc).isoformat(),
+            'minPct': MOVER_MIN_PCT,
+            'minDelta': MOVER_MIN_DELTA,
+            'minPrice': MOVER_MIN_PRICE
+        }
+    }
+    print(f"\nUploading to R2: {PRICE_MOVERS_KEY}")
+    r2_client.put_object(
+        Bucket=bucket_name,
+        Key=PRICE_MOVERS_KEY,
+        Body=json.dumps(output, separators=(',', ':')),
+        ContentType='application/json',
+        CacheControl=PRICES_CACHE_CONTROL
+    )
+    for scope, lists in movers.items():
+        print(f"  ✓ {scope}: {len(lists['rising'])} rising, {len(lists['falling'])} falling")
+
+
+def shard_history_by_set(history):
+    """Split the rolling history into one bucket per set code — a card page
+    needs its own set's series, not the whole corpus.
+    """
+    shards = defaultdict(dict)
+    for uid, points in history.items():
+        parts = uid.split('::')
+        if len(parts) >= 3:
+            shards[parts[1]][uid] = points
+    return shards
+
+
+def upload_history_shards_to_r2(r2_client, bucket_name, history):
+    """Upload per-set history shards. Every set is rewritten each run; the daily
+    write volume (tens of objects) is far inside the R2 free tier.
+    """
+    shards = shard_history_by_set(history)
+    print(f"\nUploading {len(shards)} price-history shards under {HISTORY_SHARD_PREFIX}")
+    generated = datetime.now(timezone.utc).isoformat()
+    for set_code, shard in shards.items():
+        output = {
+            'history': shard,
+            'metadata': {
+                'generated': generated,
+                'windowDays': HISTORY_WINDOW_DAYS,
+                'totalCards': len(shard)
+            }
+        }
+        r2_client.put_object(
+            Bucket=bucket_name,
+            Key=f'{HISTORY_SHARD_PREFIX}{set_code}.json',
+            Body=json.dumps(output, separators=(',', ':')),
+            ContentType='application/json',
+            CacheControl=PRICES_CACHE_CONTROL
+        )
+    print(f"  ✓ Shard upload complete ({sum(len(s) for s in shards.values())} cards)")
+
+
 def upload_price_history_to_r2(r2_client, bucket_name, history):
     """Upload the rolling price-history artifact (compact, no whitespace)."""
     output = {
@@ -550,9 +793,14 @@ def upload_price_history_to_r2(r2_client, bucket_name, history):
 
 
 def upload_prices_to_r2(r2_client, bucket_name, price_data):
-    """Upload price data to R2 (frontend-compatible format)."""
+    """Upload the spot-price snapshot to R2 (frontend-compatible format).
+
+    Canonical UIDs only. The card index and archetype pages fetch this on load
+    and only ever look up canonicals, so the extra printings we now price stay
+    out of it — they reach the browser pre-digested in the movers artifact.
+    """
     key = 'reports/prices.json'
-    
+
     # Format for frontend compatibility (matches old API response)
     output = {
         'cardPrices': price_data,  # Frontend expects 'cardPrices' key
@@ -588,9 +836,13 @@ def main():
     master_report = load_online_meta_report(r2_client, bucket_name)
     synonyms_data = load_card_synonyms(r2_client, bucket_name)
     
-    # Extract unique cards
-    card_list = extract_unique_cards(master_report, synonyms_data)
-    
+    # Canonical cards drive the snapshot; the full print universe (every
+    # printing in every cluster) is what we actually price, so the movers
+    # artifact can tell playable prints from collector ones.
+    canonical_list = extract_unique_cards(master_report, synonyms_data)
+    card_list = canonical_list | build_print_universe(synonyms_data)
+    print(f"Pricing {len(card_list)} prints ({len(canonical_list)} canonical)")
+
     # Group by set
     card_sets_map = group_cards_by_set(card_list)
     print(f"\nCards grouped into {len(card_sets_map)} sets:")
@@ -606,14 +858,23 @@ def main():
     # Add basic energy prices
     add_basic_energy_prices(price_data, card_list)
     
-    # Upload snapshot to R2
-    upload_prices_to_r2(r2_client, bucket_name, price_data)
+    # Upload snapshot to R2 (canonicals only — see upload_prices_to_r2)
+    canonical_prices = {uid: entry for uid, entry in price_data.items() if uid in canonical_list}
+    upload_prices_to_r2(r2_client, bucket_name, canonical_prices)
 
-    # Append onto the rolling price history and upload that too.
+    # Append onto the rolling price history. The monolith is this job's own
+    # append state; the browser reads the shards and the movers artifact.
+    today = datetime.now(timezone.utc).date()
     existing_history = load_price_history(r2_client, bucket_name)
-    history = update_price_history(existing_history, price_data, datetime.now(timezone.utc).date())
+    history = update_price_history(existing_history, price_data, today)
     upload_price_history_to_r2(r2_client, bucket_name, history)
-    
+    upload_history_shards_to_r2(r2_client, bucket_name, history)
+
+    standard_uids = classify_standard_prints(price_data, synonyms_data)
+    movers = build_price_movers(history, standard_uids, today)
+    upload_price_movers_to_r2(r2_client, bucket_name, movers, history_span_days(history))
+
+
     # Summary
     print("\n" + "=" * 60)
     print("Summary")

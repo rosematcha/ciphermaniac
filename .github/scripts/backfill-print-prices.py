@@ -149,25 +149,10 @@ def _leading_date(label):
 def build_uid_universe(synonyms_data):
     """Every print UID across every synonyms cluster, canonical included.
 
-    Universe = keys of ``synonyms`` (the alias prints) + values of ``synonyms``
-    (their canonicals) + values of ``canonicals`` (base-name → canonical). That
-    is exactly the set of prints rolling-canonical selection might choose, so
-    those are the prints we must price.
+    Delegates to update-prices' ``build_print_universe`` so the daily job and
+    this backfill price exactly the same set of prints.
     """
-    universe = set()
-    synonyms = synonyms_data.get("synonyms", {}) if isinstance(synonyms_data, dict) else {}
-    canonicals = synonyms_data.get("canonicals", {}) if isinstance(synonyms_data, dict) else {}
-
-    for alias_uid, canonical_uid in synonyms.items():
-        if alias_uid:
-            universe.add(alias_uid)
-        if canonical_uid:
-            universe.add(canonical_uid)
-    for canonical_uid in canonicals.values():
-        if canonical_uid:
-            universe.add(canonical_uid)
-
-    return universe
+    return up.build_print_universe(synonyms_data)
 
 
 def group_uids_by_set(uids):
