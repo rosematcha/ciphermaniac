@@ -9,7 +9,7 @@ import {
   fetchCardUsage,
   fetchDay2CardStats,
   fetchMaster,
-  fetchPriceHistory,
+  fetchPriceHistoryForSet,
   fetchPrices,
   fetchRotationIndex,
   findByClusterUid,
@@ -35,6 +35,7 @@ import { nameFromTournamentKey } from '../lib/format';
 import { useTournament } from '../lib/tournamentContext';
 import '../styles/pages/cards.css';
 import { latestValue, resolved } from '../lib/resource';
+import { computeSparkBounds } from '../lib/sparkline';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardDistributionEntry, CardItem } from '../types';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { Badge } from '../components/Badge';
@@ -253,11 +254,12 @@ export function CardPage() {
     return p[`${c.name}::${c.set}::${c.number}`] ?? p[globalCardUid() ?? ''] ?? null;
   });
 
-  // Rolling 90-day price history for the sparkline. One small file for the whole
-  // site (deduped by fetchJson); empty until the pipeline has run. The sparkline
-  // stays hidden until the history spans PRICE_HISTORY_MIN_DAYS, and any card
-  // with fewer than two points degrades to no sparkline.
-  const [priceHistory] = createResource(fetchPriceHistory);
+  // Rolling 90-day price history for the sparkline, sharded per set so this page
+  // downloads only its own set (deduped by fetchJson); empty until the pipeline
+  // has run. The sparkline stays hidden until the history spans
+  // PRICE_HISTORY_MIN_DAYS, and any card with fewer than two points degrades to
+  // no sparkline.
+  const [priceHistory] = createResource(() => card()?.set ?? false, fetchPriceHistoryForSet);
   const priceHistoryData = () => latestValue(priceHistory);
   const priceHistoryReady = createMemo(() => {
     const h = priceHistoryData();
@@ -827,13 +829,7 @@ function PriceSparkline(props: { points: PricePoint[] }) {
   // x by real calendar date (history stores only change-points, so index spacing
   // would misrepresent time); y scaled to the series' own min/max with headroom.
   const times = createMemo(() => props.points.map(p => Date.parse(`${p.date}T12:00:00Z`)));
-  const bounds = createMemo(() => {
-    const ys = prices();
-    const lo = Math.min(...ys);
-    const hi = Math.max(...ys);
-    const pad = Math.max(0.01, (hi - lo) * 0.15);
-    return { lo: lo - pad, hi: hi + pad };
-  });
+  const bounds = createMemo(() => computeSparkBounds(prices()));
   const x = (i: number) => {
     const ts = times();
     const t0 = ts[0];

@@ -24,7 +24,7 @@
 // pulls in the (~10 KB) set catalog and is a producer-only policy. Keeping it
 // out of the card-identity graph keeps the catalog out of the browser bundle.
 import CATALOG from '../../.github/scripts/data/set-catalog.json';
-import { parseCardUid, type SynonymDatabase } from './cardIdentity';
+import { accessiblePriceCap, parseCardUid, type SynonymDatabase } from './cardIdentity';
 
 export type { SynonymDatabase };
 
@@ -86,13 +86,6 @@ export function getReleaseIndex(setCode: string | null | undefined): number {
 
 function normalizePrice(value: number | null | undefined): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
-}
-
-// A print is "accessible" when it costs no more than twice the cheapest
-// print, with $0.50 of absolute slack so penny-priced cards do not strike
-// prints over noise. Anything above the cap is a collector version.
-function accessiblePriceCap(minPrice: number): number {
-  return Math.max(minPrice * 2, minPrice + 0.5);
 }
 
 type SortKey = ReadonlyArray<number | string>;

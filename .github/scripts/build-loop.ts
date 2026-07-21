@@ -59,7 +59,8 @@ const CAPTURED_KEYS: Record<Exclude<ReleaseScope, 'online' | 'catalogs'>, { rel:
   ],
   prices: [
     { rel: 'prices.json', legacy: 'reports/prices.json' },
-    { rel: 'prices-history.json', legacy: 'reports/prices-history.json' }
+    { rel: 'prices-history.json', legacy: 'reports/prices-history.json' },
+    { rel: 'price-movers.json', legacy: 'reports/price-movers.json' }
   ],
   snapshots: [{ rel: 'index.json', legacy: 'reports/Snapshots/index.json' }]
 };

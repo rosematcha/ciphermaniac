@@ -205,6 +205,20 @@ export function parseCardUid(uid: string): { name: string; set: string; number: 
 }
 
 /**
+ * A print is "accessible" when it costs no more than twice the cheapest print
+ * in its reprint cluster, with $0.50 of absolute slack so penny-priced cards do
+ * not strike prints over noise. Anything above the cap is a collector version
+ * (alt art, special illustration rare, gold energy).
+ *
+ * Lives here rather than in canonicalPrint.ts so the browser can apply the same
+ * rule without pulling the set catalog into the bundle.
+ * @param minPrice - Cheapest USD price across the cluster
+ */
+export function accessiblePriceCap(minPrice: number): number {
+  return Math.max(minPrice * 2, minPrice + 0.5);
+}
+
+/**
  * All printings in a card's reprint cluster: the canonical UID first, then
  * every variant that resolves to it, in the synonyms map's iteration order.
  *

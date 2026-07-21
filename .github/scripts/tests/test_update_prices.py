@@ -251,5 +251,189 @@ class LoadPriceHistoryTest(unittest.TestCase):
         )
 
 
+class ClassifyStandardPrintsTest(unittest.TestCase):
+    # Umbreon ex as shipped: the synonyms map's canonical for the cluster is
+    # PRE/161, the $1,500 special illustration rare, while the playable print is
+    # the cheap sibling. Classifying on "is the canonical" keeps the wrong one.
+    SYNONYMS = {
+        "synonyms": {
+            "Umbreon ex::PRE::060": "Umbreon ex::PRE::161",
+            "Umbreon ex::SVP::176": "Umbreon ex::PRE::161",
+        },
+        "canonicals": {"Umbreon ex": "Umbreon ex::PRE::161"},
+    }
+
+    def test_collector_print_is_excluded_even_when_canonical(self):
+        prices = {
+            "Umbreon ex::PRE::161": {"price": 1503.91},
+            "Umbreon ex::PRE::060": {"price": 7.81},
+            "Umbreon ex::SVP::176": {"price": 12.0},
+        }
+        standard = update_prices.classify_standard_prints(prices, self.SYNONYMS)
+        self.assertNotIn("Umbreon ex::PRE::161", standard)
+        self.assertIn("Umbreon ex::PRE::060", standard)
+
+    def test_single_print_cards_are_standard(self):
+        prices = {"Hero's Cape::TEF::152": {"price": 16.76}}
+        self.assertIn(
+            "Hero's Cape::TEF::152",
+            update_prices.classify_standard_prints(prices, self.SYNONYMS),
+        )
+
+    def test_absolute_slack_keeps_penny_reprints_together(self):
+        synonyms = {"synonyms": {"Bulbasaur::MEG::133": "Bulbasaur::MEG::001"}, "canonicals": {}}
+        prices = {
+            "Bulbasaur::MEG::001": {"price": 0.22},
+            "Bulbasaur::MEG::133": {"price": 0.60},
+        }
+        self.assertIn(
+            "Bulbasaur::MEG::133",
+            update_prices.classify_standard_prints(prices, synonyms),
+        )
+
+
+class BuildPriceMoversTest(unittest.TestCase):
+    TODAY = date(2026, 7, 20)
+
+    def test_baseline_carries_forward_from_before_the_cutoff(self):
+        # Flat runs collapse to one point when written, so the price entering the
+        # window is the last observation at or before the cutoff (July 13).
+        history = {
+            "Blastoise ex::SCR::030": [
+                {"d": "2026-07-02", "p": 2.51},
+                {"d": "2026-07-19", "p": 3.23},
+            ]
+        }
+        movers = update_prices.build_price_movers(history, set(), self.TODAY)
+        row = movers["all"]["pct"]["rising"][0]
+        self.assertEqual((row["start"], row["current"], row["delta"]), (2.51, 3.23, 0.72))
+        self.assertEqual(row["pct"], 28.7)
+        self.assertEqual((row["name"], row["set"], row["number"]), ("Blastoise ex", "SCR", "030"))
+
+    def test_movement_older_than_the_window_is_excluded(self):
+        history = {
+            "Old::SVI::001": [
+                {"d": "2026-06-01", "p": 2.0},
+                {"d": "2026-06-05", "p": 20.0},
+            ]
+        }
+        movers = update_prices.build_price_movers(history, set(), self.TODAY)
+        self.assertEqual(movers["all"]["pct"]["rising"], [])
+        self.assertEqual(movers["all"]["value"]["rising"], [])
+
+    def test_percent_and_value_rank_differently(self):
+        # The cheap card wins on percent; the expensive card wins on raw dollars.
+        history = {
+            "Cheap::SVI::001": [{"d": "2026-07-01", "p": 2.51}, {"d": "2026-07-19", "p": 3.23}],
+            "Pricey::SVI::002": [{"d": "2026-07-01", "p": 22.54}, {"d": "2026-07-19", "p": 25.0}],
+        }
+        movers = update_prices.build_price_movers(history, set(), self.TODAY)
+        self.assertEqual([r["name"] for r in movers["all"]["pct"]["rising"]], ["Cheap", "Pricey"])
+        self.assertEqual([r["name"] for r in movers["all"]["value"]["rising"]], ["Pricey", "Cheap"])
+
+    def test_percent_gate_drops_penny_moves_and_cheap_cards(self):
+        history = {
+            "Penny::SVI::001": [{"d": "2026-07-01", "p": 0.10}, {"d": "2026-07-19", "p": 0.90}],
+            "Flat::SVI::002": [{"d": "2026-07-01", "p": 10.0}, {"d": "2026-07-19", "p": 10.30}],
+            "Tiny::SVI::003": [{"d": "2026-07-01", "p": 1.00}, {"d": "2026-07-19", "p": 1.09}],
+        }
+        movers = update_prices.build_price_movers(history, set(), self.TODAY)
+        self.assertEqual(movers["all"]["pct"]["rising"], [])
+
+    def test_value_gate_drops_sub_quarter_moves(self):
+        # A 10% move on a cheap card clears the percent gate but not the $0.25
+        # value floor, so it appears by percent and not by value.
+        history = {
+            "Small::SVI::001": [{"d": "2026-07-01", "p": 1.50}, {"d": "2026-07-19", "p": 1.65}],
+        }
+        movers = update_prices.build_price_movers(history, set(), self.TODAY)
+        self.assertEqual([r["number"] for r in movers["all"]["pct"]["rising"]], ["001"])
+        self.assertEqual(movers["all"]["value"]["rising"], [])
+
+    def test_standard_scope_is_a_subset(self):
+        history = {
+            "Card::SVI::001": [{"d": "2026-07-01", "p": 4.0}, {"d": "2026-07-19", "p": 9.0}],
+            "Card::SVI::200": [{"d": "2026-07-01", "p": 4.0}, {"d": "2026-07-19", "p": 40.0}],
+        }
+        movers = update_prices.build_price_movers(history, {"Card::SVI::001"}, self.TODAY)
+        self.assertEqual([r["number"] for r in movers["all"]["pct"]["rising"]], ["200", "001"])
+        self.assertEqual([r["number"] for r in movers["standard"]["pct"]["rising"]], ["001"])
+
+    def test_lists_are_capped(self):
+        history = {
+            f"Card::SVI::{i:03d}": [{"d": "2026-07-01", "p": 10.0}, {"d": "2026-07-19", "p": 11.0 + i}]
+            for i in range(20)
+        }
+        movers = update_prices.build_price_movers(history, set(), self.TODAY)
+        self.assertEqual(len(movers["all"]["pct"]["rising"]), update_prices.MOVER_LIMIT)
+        self.assertEqual(len(movers["all"]["value"]["rising"]), update_prices.MOVER_LIMIT)
+
+
+class HistoryShardTest(unittest.TestCase):
+    def test_splits_by_set_code(self):
+        history = {
+            "A::SCR::001": [{"d": "2026-07-01", "p": 1.0}],
+            "B::SCR::002": [{"d": "2026-07-01", "p": 2.0}],
+            "C::TWM::003": [{"d": "2026-07-01", "p": 3.0}],
+        }
+        shards = update_prices.shard_history_by_set(history)
+        self.assertEqual(sorted(shards), ["SCR", "TWM"])
+        self.assertEqual(sorted(shards["SCR"]), ["A::SCR::001", "B::SCR::002"])
+
+    def test_span_days_spans_the_whole_corpus(self):
+        history = {
+            "A::SCR::001": [{"d": "2026-06-01", "p": 1.0}],
+            "B::TWM::002": [{"d": "2026-07-11", "p": 2.0}],
+        }
+        self.assertEqual(update_prices.history_span_days(history), 40)
+        self.assertEqual(update_prices.history_span_days({}), 0)
+
+
+class ResolveGroupIdsTest(unittest.TestCase):
+    GROUPS = [
+        {"groupId": 100, "abbreviation": "SCR", "name": "Stellar Crown"},
+        {"groupId": 200, "abbreviation": "SWSH09", "name": "SWSH09: Brilliant Stars"},
+    ]
+    NAME_INDEX = {"brilliant stars": "BRS"}
+
+    def test_abbreviation_match_wins(self):
+        mappings, unmapped = update_prices.resolve_group_ids(["SCR"], self.GROUPS, self.NAME_INDEX, {})
+        self.assertEqual(mappings["SCR"], 100)
+        self.assertEqual(unmapped, [])
+
+    def test_catalog_name_fallback_when_abbreviation_differs(self):
+        # Our code BRS never matches the group's "SWSH09" abbreviation; the group
+        # name tail "Brilliant Stars" bridges it.
+        mappings, unmapped = update_prices.resolve_group_ids(["BRS"], self.GROUPS, self.NAME_INDEX, {})
+        self.assertEqual(mappings["BRS"], 200)
+        self.assertEqual(unmapped, [])
+
+    def test_manual_map_beats_name_fallback(self):
+        mappings, _ = update_prices.resolve_group_ids(["BRS"], self.GROUPS, self.NAME_INDEX, {"BRS": 999})
+        self.assertEqual(mappings["BRS"], 999)
+
+    def test_unmapped_is_reported_not_fatal(self):
+        mappings, unmapped = update_prices.resolve_group_ids(["ZZZ"], self.GROUPS, self.NAME_INDEX, {})
+        self.assertEqual(mappings, {})
+        self.assertEqual(unmapped, ["ZZZ"])
+
+
+class BuildPrintUniverseTest(unittest.TestCase):
+    def test_includes_aliases_and_canonicals(self):
+        universe = update_prices.build_print_universe(
+            {
+                "synonyms": {"Umbreon ex::PRE::060": "Umbreon ex::PRE::161"},
+                "canonicals": {"Pikachu ex": "Pikachu ex::SSP::057"},
+            }
+        )
+        self.assertEqual(
+            universe,
+            {"Umbreon ex::PRE::060", "Umbreon ex::PRE::161", "Pikachu ex::SSP::057"},
+        )
+
+    def test_tolerates_empty_input(self):
+        self.assertEqual(update_prices.build_print_universe({}), set())
+
+
 if __name__ == "__main__":
     unittest.main()
