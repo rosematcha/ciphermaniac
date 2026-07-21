@@ -42,7 +42,7 @@ test('with an embedded manifest, scope paths resolve to immutable release roots'
       online: ['master.json', 'decks.json', 'meta.json', 'cardUsage.json', 'archetypes/index.json'],
       trends: ['trends.json', 'meta.json', 'majors-trends.json'],
       players: ['index.json', 'index-slim.json'],
-      prices: ['prices.json', 'prices-history.json'],
+      prices: ['prices.json', 'prices-history.json', 'price-movers.json'],
       catalogs: ['tournaments.json'],
       snapshots: ['index.json']
     },
@@ -64,6 +64,12 @@ test('with an embedded manifest, scope paths resolve to immutable release roots'
     '/releases/v1/catalogs/eee/tournaments.json'
   );
   assert.strictEqual(resolvePathWith(resolver, '/reports/prices.json'), '/releases/v1/prices/ddd/prices.json');
+  assert.strictEqual(
+    resolvePathWith(resolver, '/reports/price-movers.json'),
+    '/releases/v1/prices/ddd/price-movers.json'
+  );
+  // Per-set history shards are per-entity bodies: never captured, always legacy.
+  assert.strictEqual(resolvePathWith(resolver, '/reports/price-history/SCR.json'), '/reports/price-history/SCR.json');
   assert.strictEqual(
     resolvePathWith(resolver, '/reports/majors-trends.json'),
     '/releases/v1/trends/bbb/majors-trends.json'

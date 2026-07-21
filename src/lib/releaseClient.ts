@@ -43,7 +43,10 @@ function classify(path: string): { scope: ReleaseScope; rel: string } | null {
   if (p === 'reports/tournaments.json') {
     return { scope: 'catalogs', rel: 'tournaments.json' };
   }
-  if (p === 'reports/prices.json' || p === 'reports/prices-history.json') {
+  // Per-set history shards (reports/price-history/…) are deliberately absent:
+  // like per-player bodies they pass through to their legacy location rather
+  // than being captured into a release.
+  if (p === 'reports/prices.json' || p === 'reports/prices-history.json' || p === 'reports/price-movers.json') {
     return { scope: 'prices', rel: p.slice('reports/'.length) };
   }
   if (p === 'reports/majors-trends.json') {

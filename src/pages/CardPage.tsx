@@ -9,7 +9,7 @@ import {
   fetchCardUsage,
   fetchDay2CardStats,
   fetchMaster,
-  fetchPriceHistory,
+  fetchPriceHistoryForSet,
   fetchPrices,
   fetchRotationIndex,
   findByClusterUid,
@@ -253,11 +253,12 @@ export function CardPage() {
     return p[`${c.name}::${c.set}::${c.number}`] ?? p[globalCardUid() ?? ''] ?? null;
   });
 
-  // Rolling 90-day price history for the sparkline. One small file for the whole
-  // site (deduped by fetchJson); empty until the pipeline has run. The sparkline
-  // stays hidden until the history spans PRICE_HISTORY_MIN_DAYS, and any card
-  // with fewer than two points degrades to no sparkline.
-  const [priceHistory] = createResource(fetchPriceHistory);
+  // Rolling 90-day price history for the sparkline, sharded per set so this page
+  // downloads only its own set (deduped by fetchJson); empty until the pipeline
+  // has run. The sparkline stays hidden until the history spans
+  // PRICE_HISTORY_MIN_DAYS, and any card with fewer than two points degrades to
+  // no sparkline.
+  const [priceHistory] = createResource(() => card()?.set ?? false, fetchPriceHistoryForSet);
   const priceHistoryData = () => latestValue(priceHistory);
   const priceHistoryReady = createMemo(() => {
     const h = priceHistoryData();

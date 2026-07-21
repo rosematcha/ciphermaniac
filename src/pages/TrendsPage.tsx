@@ -5,14 +5,13 @@ import {
   fetchMajorsTrendReport,
   fetchMaster,
   fetchOnlineTrendReport,
-  fetchPriceHistory,
-  fetchPrices,
+  fetchPriceMovers,
   fetchTournamentsList,
   getArchetypeIconMap,
   itemUid,
   majorTournaments,
   PRICE_HISTORY_MIN_DAYS,
-  priceHistorySpanDays,
+  type PriceMoverScope,
   resolveArchetypeIcons,
   tournamentDate
 } from '../lib/data';
@@ -39,7 +38,6 @@ import { EmptyState } from '../components/EmptyState';
 import { createPersistentSignal } from '../lib/persistentSignal';
 import { latestValue } from '../lib/resource';
 import { DAY_MS, parseReportDate, windowCutoff } from '../lib/trendWindow';
-import { computePriceMovers, createStandardPrintFilter, PRICE_MOVER_WINDOW_DAYS } from '../lib/priceMovers';
 import '../styles/pages/trends.css';
 
 type Source = 'online' | 'majors';
@@ -205,36 +203,24 @@ type PriceScope = 'all' | 'standard';
 
 /**
  * Price movers, independent of the online/majors toggle: the biggest swings
- * over the last {@link PRICE_MOVER_WINDOW_DAYS} days of the rolling price
- * history. Renders nothing until the history spans PRICE_HISTORY_MIN_DAYS, so
- * it stays invisible rather than showing a placeholder while the pipeline
- * accumulates its first month of data.
+ * over the trailing window of the rolling price history. Every threshold, the
+ * window boundary and the standard-printing filter live in the pipeline; this
+ * renders the pre-computed artifact verbatim. Renders nothing until the history
+ * spans PRICE_HISTORY_MIN_DAYS, so it stays invisible rather than showing a
+ * placeholder while the pipeline accumulates its first month of data.
  */
 function PriceMovers() {
-  const [history] = createResource(fetchPriceHistory);
-  const [synonymDb] = createResource(() => getSynonymDatabase());
-  const [spotPrices] = createResource(fetchPrices);
-  const historyData = () => latestValue(history);
+  const [payload] = createResource(fetchPriceMovers);
   const [scope, setScope] = createPersistentSignal<PriceScope>('cm:trendsPriceScope', 'all', v =>
     v === 'all' || v === 'standard' ? v : null
   );
 
-  const movers = createMemo(() => {
-    const h = historyData();
-    if (!h || priceHistorySpanDays(h) < PRICE_HISTORY_MIN_DAYS) {
-      return { rising: [], falling: [] };
-    }
-    const db = synonymDb();
-    const prices = latestValue(spotPrices);
-    // Standard scope drops collector printings — priced by cluster, not by
-    // canonical UID (see createStandardPrintFilter). Waits for both inputs
-    // rather than falling open, which would flash the alt-arts back in.
-    const isIncluded = scope() === 'standard' && db && prices ? createStandardPrintFilter(db, prices) : undefined;
-    if (scope() === 'standard' && !isIncluded) {
-      return { rising: [], falling: [] };
-    }
-    return computePriceMovers(h, isIncluded);
+  /** The artifact once it clears the readiness gate, else null. */
+  const ready = createMemo(() => {
+    const p = latestValue(payload);
+    return p && p.spanDays >= PRICE_HISTORY_MIN_DAYS ? p : null;
   });
+  const movers = createMemo<PriceMoverScope>(() => ready()?.scopes[scope()] ?? { rising: [], falling: [] });
 
   return (
     <Show when={movers().rising.length > 0 || movers().falling.length > 0}>
@@ -242,7 +228,7 @@ function PriceMovers() {
         title='Price movers'
         right={
           <div class='price-scope'>
-            <span>Last {PRICE_MOVER_WINDOW_DAYS} days</span>
+            <span>Last {ready()?.windowDays} days</span>
             <Segmented<PriceScope>
               ariaLabel='Printings included'
               options={[
@@ -267,7 +253,7 @@ function PriceMovers() {
                     {m.set}/{m.number}
                   </span>
                   <span class='delta up'>
-                    <span class='delta-pp'>↑ ${m.delta.toFixed(2)}</span>
+                    <span class='delta-pp'>↑ {Math.round(m.pct)}%</span>
                     <span class='delta-base'>
                       ${m.start.toFixed(2)} → ${m.current.toFixed(2)}
                     </span>
@@ -287,7 +273,7 @@ function PriceMovers() {
                     {m.set}/{m.number}
                   </span>
                   <span class='delta down'>
-                    <span class='delta-pp'>↓ ${Math.abs(m.delta).toFixed(2)}</span>
+                    <span class='delta-pp'>↓ {Math.abs(Math.round(m.pct))}%</span>
                     <span class='delta-base'>
                       ${m.start.toFixed(2)} → ${m.current.toFixed(2)}
                     </span>

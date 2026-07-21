@@ -24,6 +24,13 @@
   justify-content: flex-end;
 }
 
+/* The shared rule makes .mover-col a grid, which stretches its rows apart when
+   one column holds fewer than the other (price movers can be lopsided). Pack
+   them at the top instead; equal-length columns are unaffected. */
+.mover-col {
+  align-content: start;
+}
+
 /* ---- Movers: percentage-point deltas with the base share beneath ---- */
 /* The delta cell now stacks the pp change over the "start -> end%" base, so the
    number reads as a share change and not a raw percent. */

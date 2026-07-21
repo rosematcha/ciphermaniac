@@ -1225,8 +1225,18 @@ interface PriceHistoryPayload {
   history: Record<string, { d: string; p: number }[]>;
 }
 
-export async function fetchPriceHistory(): Promise<Record<string, PricePoint[]>> {
-  const payload = await fetchJsonOptional<PriceHistoryPayload>('/reports/prices-history.json');
+/**
+ * Rolling price history for a single set, sharded by the set code as it appears
+ * in the UID (`Name::SET::NUMBER`). A card page only needs its own set, so this
+ * downloads a few KB instead of the whole site's history.
+ *
+ * Returns {} when the shard is absent (unknown set, or the pipeline has not run
+ * for it yet) so callers degrade to no sparkline rather than erroring.
+ */
+export async function fetchPriceHistoryForSet(setCode: string): Promise<Record<string, PricePoint[]>> {
+  const payload = await fetchJsonOptional<PriceHistoryPayload>(
+    `/reports/price-history/${encodeURIComponent(setCode)}.json`
+  );
   const raw = payload?.history;
   if (!raw) {
     return {};
@@ -1236,6 +1246,56 @@ export async function fetchPriceHistory(): Promise<Record<string, PricePoint[]>>
     out[uid] = points.map(pt => ({ date: pt.d, price: pt.p }));
   }
   return out;
+}
+
+/** One row of a pre-computed price-movers list. */
+export interface PriceMoverRow {
+  /** `Name::SET::NUMBER` */
+  uid: string;
+  name: string;
+  set: string;
+  number: string;
+  /** Market price entering the window, in USD. */
+  start: number;
+  /** Latest market price, in USD. */
+  current: number;
+  /** `current - start`, in USD. */
+  delta: number;
+  /** Percent change over the window (28.7 = +28.7%). */
+  pct: number;
+}
+
+/** Rising/falling lists for one printings scope. */
+export interface PriceMoverScope {
+  rising: PriceMoverRow[];
+  falling: PriceMoverRow[];
+}
+
+/**
+ * Pre-computed price movers, written daily by the pipeline. All of the window,
+ * threshold, sorting and standard-printing logic lives in Python — rows arrive
+ * already sorted (steepest first) and already capped, so the client renders
+ * them verbatim.
+ */
+export interface PriceMoversPayload {
+  /** Lookback used for the lists, in calendar days. */
+  windowDays: number;
+  /** Calendar days the rolling history covers; gate price UIs on this. */
+  spanDays: number;
+  scopes: {
+    /** Every tracked printing. */
+    all: PriceMoverScope;
+    /** Collector printings dropped — playable prints only. */
+    standard: PriceMoverScope;
+  };
+}
+
+/**
+ * Fetch the pre-computed movers artifact. Null until the pipeline has written
+ * it at least once, which callers should treat as "render nothing".
+ */
+export function fetchPriceMovers(): Promise<PriceMoversPayload | null> {
+  return fetchJsonOptional<PriceMoversPayload>('/reports/price-movers.json');
 }
 
 /**
