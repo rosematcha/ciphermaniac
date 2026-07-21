@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computePriceMovers, historyAnchorMs, PRICE_MOVER_WINDOW_DAYS } from '../../src/lib/priceMovers';
+import {
+  computePriceMovers,
+  createStandardPrintFilter,
+  historyAnchorMs,
+  PRICE_MOVER_WINDOW_DAYS
+} from '../../src/lib/priceMovers';
+import type { SynonymDatabase } from '../../shared/synonyms.js';
 
 const day = (n: number) => `2026-07-${String(n).padStart(2, '0')}`;
 
@@ -79,6 +85,62 @@ test('penny cards and sub-threshold swings are dropped', () => {
     ]
   });
   assert.equal(rising.length, 0);
+});
+
+/**
+ * Mirrors the shipped artifact: the cluster's canonical UID is PRE/161, the
+ * $1,500 special illustration rare, while the playable print is the cheap
+ * sibling. Filtering on "is its own canonical" would keep exactly the wrong one.
+ */
+const UMBREON_DB: SynonymDatabase = {
+  synonyms: {
+    'Umbreon ex::PRE::060': 'Umbreon ex::PRE::161',
+    'Umbreon ex::SVP::176': 'Umbreon ex::PRE::161'
+  },
+  canonicals: { 'Umbreon ex': 'Umbreon ex::PRE::161' },
+  prints: { 'Umbreon ex::PRE::060': 7.81, 'Umbreon ex::SVP::176': 12 }
+};
+
+test('a collector print is excluded even when it is the cluster canonical', () => {
+  const isStandard = createStandardPrintFilter(UMBREON_DB, {
+    'Umbreon ex::PRE::161': { price: 1503.91 }
+  });
+  assert.equal(isStandard('Umbreon ex::PRE::161'), false);
+  assert.equal(isStandard('Umbreon ex::PRE::060'), true);
+});
+
+test('spot prices win over the scraped fallback', () => {
+  // The artifact's stale $7.81 would keep PRE/161 under the cap; the live price
+  // for the same sibling puts it far above.
+  const isStandard = createStandardPrintFilter(UMBREON_DB, {
+    'Umbreon ex::PRE::161': { price: 900 },
+    'Umbreon ex::PRE::060': { price: 800 },
+    'Umbreon ex::SVP::176': { price: 850 }
+  });
+  assert.equal(isStandard('Umbreon ex::PRE::161'), true);
+});
+
+test('a lone print with no siblings is standard', () => {
+  const isStandard = createStandardPrintFilter(UMBREON_DB, { "Hero's Cape::TEF::152": { price: 16.76 } });
+  assert.equal(isStandard("Hero's Cape::TEF::152"), true);
+});
+
+test('an unpriced print is kept rather than silently dropped', () => {
+  const isStandard = createStandardPrintFilter(UMBREON_DB, {});
+  assert.equal(isStandard('Unknown Card::XYZ::001'), true);
+});
+
+test('the $0.50 slack keeps penny reprints together', () => {
+  const db: SynonymDatabase = {
+    synonyms: { 'Bulbasaur::MEG::133': 'Bulbasaur::MEG::001' },
+    canonicals: {},
+    prints: {}
+  };
+  const isStandard = createStandardPrintFilter(db, {
+    'Bulbasaur::MEG::001': { price: 0.22 },
+    'Bulbasaur::MEG::133': { price: 0.6 }
+  });
+  assert.equal(isStandard('Bulbasaur::MEG::133'), true);
 });
 
 test('window constant is seven days', () => {

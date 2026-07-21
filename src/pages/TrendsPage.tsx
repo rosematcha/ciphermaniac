@@ -6,6 +6,7 @@ import {
   fetchMaster,
   fetchOnlineTrendReport,
   fetchPriceHistory,
+  fetchPrices,
   fetchTournamentsList,
   getArchetypeIconMap,
   itemUid,
@@ -38,7 +39,7 @@ import { EmptyState } from '../components/EmptyState';
 import { createPersistentSignal } from '../lib/persistentSignal';
 import { latestValue } from '../lib/resource';
 import { DAY_MS, parseReportDate, windowCutoff } from '../lib/trendWindow';
-import { computePriceMovers, PRICE_MOVER_WINDOW_DAYS } from '../lib/priceMovers';
+import { computePriceMovers, createStandardPrintFilter, PRICE_MOVER_WINDOW_DAYS } from '../lib/priceMovers';
 import '../styles/pages/trends.css';
 
 type Source = 'online' | 'majors';
@@ -200,7 +201,7 @@ export function TrendsPage() {
    ============================================================ */
 
 /** Which printings the movers lists cover. */
-type PriceScope = 'all' | 'canonical';
+type PriceScope = 'all' | 'standard';
 
 /**
  * Price movers, independent of the online/majors toggle: the biggest swings
@@ -212,9 +213,10 @@ type PriceScope = 'all' | 'canonical';
 function PriceMovers() {
   const [history] = createResource(fetchPriceHistory);
   const [synonymDb] = createResource(() => getSynonymDatabase());
+  const [spotPrices] = createResource(fetchPrices);
   const historyData = () => latestValue(history);
   const [scope, setScope] = createPersistentSignal<PriceScope>('cm:trendsPriceScope', 'all', v =>
-    v === 'all' || v === 'canonical' ? v : null
+    v === 'all' || v === 'standard' ? v : null
   );
 
   const movers = createMemo(() => {
@@ -223,10 +225,14 @@ function PriceMovers() {
       return { rising: [], falling: [] };
     }
     const db = synonymDb();
-    // Canonical scope keeps only prints that are their own canonical — alt-arts
-    // and other collector printings resolve to a different UID.
-    const isIncluded =
-      scope() === 'canonical' && db ? (uid: string) => getCanonicalCardFromData(db, uid) === uid : undefined;
+    const prices = latestValue(spotPrices);
+    // Standard scope drops collector printings — priced by cluster, not by
+    // canonical UID (see createStandardPrintFilter). Waits for both inputs
+    // rather than falling open, which would flash the alt-arts back in.
+    const isIncluded = scope() === 'standard' && db && prices ? createStandardPrintFilter(db, prices) : undefined;
+    if (scope() === 'standard' && !isIncluded) {
+      return { rising: [], falling: [] };
+    }
     return computePriceMovers(h, isIncluded);
   });
 
@@ -241,7 +247,7 @@ function PriceMovers() {
               ariaLabel='Printings included'
               options={[
                 { value: 'all', label: 'All printings' },
-                { value: 'canonical', label: 'Standard only' }
+                { value: 'standard', label: 'Standard only' }
               ]}
               selected={scope()}
               onSelect={setScope}

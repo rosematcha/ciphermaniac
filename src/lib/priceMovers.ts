@@ -9,6 +9,7 @@
 
 import type { PricePoint } from './data';
 import { DAY_MS } from './trendWindow';
+import { accessiblePriceCap, type SynonymDatabase } from '../../shared/synonyms.js';
 
 export interface PriceMover {
   uid: string;
@@ -70,6 +71,70 @@ function baselinePrice(points: PricePoint[], cutoffMs: number): number | null {
     }
   }
   return baseline ?? points[0]?.price ?? null;
+}
+
+/**
+ * Predicate for "standard printing": within its reprint cluster, a print whose
+ * price is at or under {@link accessiblePriceCap}.
+ *
+ * Cluster membership comes from the synonym map, but its canonical UID is NOT
+ * the answer on its own — the map picks a cluster representative, which for
+ * cards like Umbreon ex PRE/161 is the $1,500 special illustration rare. Only
+ * price relative to the cheapest sibling separates a playable print from a
+ * collector one, so we compare prices directly.
+ *
+ * Prices come from the spot map first (fresh, but only covers played cards) and
+ * fall back to the synonym artifact's scraped `prints` (broader, staler) so
+ * unplayed siblings still set the cluster minimum. A print we can't price at
+ * all is kept — silently dropping cards would read as "no movement".
+ */
+export function createStandardPrintFilter(
+  db: SynonymDatabase | null,
+  spotPrices: Record<string, { price?: number }>
+): (uid: string) => boolean {
+  const synonyms = db?.synonyms ?? {};
+  const scraped = db?.prints ?? {};
+
+  // One inversion up front: getClusterMembers is O(synonyms) per call, which
+  // would be a full re-scan for every card in the history.
+  const clusters = new Map<string, string[]>();
+  for (const [variant, canonical] of Object.entries(synonyms)) {
+    const members = clusters.get(canonical);
+    if (members) {
+      members.push(variant);
+    } else {
+      clusters.set(canonical, [canonical, variant]);
+    }
+  }
+
+  const priceOf = (uid: string): number | null => {
+    const spot = spotPrices[uid]?.price;
+    if (typeof spot === 'number' && Number.isFinite(spot)) {
+      return spot;
+    }
+    const fallback = scraped[uid];
+    return typeof fallback === 'number' && Number.isFinite(fallback) ? fallback : null;
+  };
+
+  return (uid: string) => {
+    const own = priceOf(uid);
+    if (own === null) {
+      return true;
+    }
+    const canonical = synonyms[uid] ?? uid;
+    const members = clusters.get(canonical);
+    if (!members) {
+      return true;
+    }
+    let min = own;
+    for (const member of members) {
+      const price = priceOf(member);
+      if (price !== null && price < min) {
+        min = price;
+      }
+    }
+    return own <= accessiblePriceCap(min);
+  };
 }
 
 /**
