@@ -16,6 +16,7 @@ import { createPagination } from '../lib/pagination';
 import { debounced } from '../lib/debounce';
 import { latestValue } from '../lib/resource';
 import { averageCopies, averageCopiesValue, categoryLabel } from '../lib/cardStats';
+import { foldSearch } from '../utils/searchFold';
 import { type CardFilters, countActiveCardFilters, matchesCardFilters, type PriceBand } from '../lib/cardFilters';
 import {
   createPersistentNumberSignal,
@@ -185,13 +186,13 @@ export function CardsIndexPage() {
 
   const filtered = createMemo(() => {
     const items = masterData()?.items ?? [];
-    const q = debouncedQuery().trim().toLowerCase();
+    const q = foldSearch(debouncedQuery().trim());
     const filters = cardFilters();
     return items.filter(item => {
       if (!item.set || item.number === undefined) {
         return false;
       }
-      if (q && !item.name.toLowerCase().includes(q)) {
+      if (q && !foldSearch(item.name).includes(q)) {
         return false;
       }
       // Price is only resolved when a band filter is active — the lookup is a

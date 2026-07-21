@@ -16,6 +16,7 @@ import {
 } from '../../shared/cardCooccurrence';
 import { buildPtcglDeck, type PtcglEntry } from '../utils/ptcglExport';
 import { averageCopiesValue, roundedCopies } from '../lib/cardStats';
+import { foldSearch } from '../utils/searchFold';
 import {
   type CountOp,
   decodeBuildState,
@@ -344,7 +345,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
   // ----- Search/autocomplete -----
 
   const candidates = createMemo<CardItem[]>(() => {
-    const q = search().trim().toLowerCase();
+    const q = foldSearch(search().trim());
     if (!q) {
       return [];
     }
@@ -358,7 +359,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
       if (cardId && taken.has(cardId)) {
         return false;
       }
-      return i.name.toLowerCase().includes(q);
+      return foldSearch(i.name).includes(q);
     });
     return items.slice(0, 8);
   });

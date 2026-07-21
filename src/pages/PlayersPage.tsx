@@ -10,6 +10,7 @@ import { EmptyState } from '../components/EmptyState';
 import { createPagination } from '../lib/pagination';
 import { prefetchPlayerProfilePage } from '../lib/prefetch';
 import type { PlayerIndexSlimEntry } from '../types';
+import { foldSearch } from '../utils/searchFold';
 import '../styles/pages/players-tables.css';
 
 type SortKey = 'events' | 'day2s' | 'topCuts' | 'titles' | 'day2Rate';
@@ -55,11 +56,11 @@ export function PlayersPage() {
 
   const filtered = createMemo<PlayerIndexSlimEntry[]>(() => {
     const list = indexData() ?? [];
-    const q = query().trim().toLowerCase();
+    const q = foldSearch(query().trim());
     if (!q) {
       return list;
     }
-    return list.filter(p => p.name.toLowerCase().includes(q));
+    return list.filter(p => foldSearch(p.name).includes(q));
   });
 
   const sorted = createMemo(() => {

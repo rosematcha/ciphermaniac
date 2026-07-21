@@ -8,6 +8,7 @@ import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { resolved } from '../lib/resource';
 import type { PlayerIndexSlimEntry, PlayerProfile, PlayerTournamentEntry } from '../types';
+import { foldSearch } from '../utils/searchFold';
 import '../styles/pages/players-tables.css';
 import '../styles/pages/player-compare.css';
 
@@ -185,12 +186,12 @@ function PlayerSlot(props: {
 }) {
   const [query, setQuery] = createSignal('');
   const matches = createMemo(() => {
-    const q = query().trim().toLowerCase();
+    const q = foldSearch(query().trim());
     if (!q) {
       return [];
     }
     return props.index
-      .filter(p => p.playerId !== props.otherId && p.name.toLowerCase().includes(q))
+      .filter(p => p.playerId !== props.otherId && foldSearch(p.name).includes(q))
       .slice(0, PICKER_LIMIT);
   });
 

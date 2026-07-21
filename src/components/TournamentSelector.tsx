@@ -4,6 +4,7 @@ import { useTournament } from '../lib/tournamentContext';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
 import { latestValue } from '../lib/resource';
 import { absoluteIso, relativeTimeAgo } from '../lib/freshness';
+import { foldSearch } from '../utils/searchFold';
 
 /**
  * Sticky dropdown in the topnav that switches the global tournament scope.
@@ -17,11 +18,11 @@ export function TournamentSelector() {
 
   const filtered = createMemo(() => {
     const all = tournaments() ?? [ONLINE_META_NAME];
-    const q = query().trim().toLowerCase();
+    const q = foldSearch(query().trim());
     if (!q) {
       return all;
     }
-    return all.filter(t => t.toLowerCase().includes(q));
+    return all.filter(t => foldSearch(t).includes(q));
   });
 
   // Reconcile a stale localStorage selection: if the persisted tournament is no

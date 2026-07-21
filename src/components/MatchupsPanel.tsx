@@ -20,6 +20,7 @@ import {
   shrunkWinRate,
   summarizeMatchups
 } from '../lib/matchups';
+import { foldSearch } from '../utils/searchFold';
 import {
   buildLensRows,
   canonicalizeForLens,
@@ -389,12 +390,12 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
 
   // ---- Card search ----
   const candidates = createMemo<CardItem[]>(() => {
-    const q = search().trim().toLowerCase();
+    const q = foldSearch(search().trim());
     if (!q) {
       return [];
     }
     return (props.report.items as CardItem[])
-      .filter(i => i.set && i.number !== undefined && i.number !== null && i.name.toLowerCase().includes(q))
+      .filter(i => i.set && i.number !== undefined && i.number !== null && foldSearch(i.name).includes(q))
       .slice(0, 8);
   });
 
