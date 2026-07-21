@@ -35,6 +35,7 @@ import { nameFromTournamentKey } from '../lib/format';
 import { useTournament } from '../lib/tournamentContext';
 import '../styles/pages/cards.css';
 import { latestValue, resolved } from '../lib/resource';
+import { computeSparkBounds } from '../lib/sparkline';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardDistributionEntry, CardItem } from '../types';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { Badge } from '../components/Badge';
@@ -828,13 +829,7 @@ function PriceSparkline(props: { points: PricePoint[] }) {
   // x by real calendar date (history stores only change-points, so index spacing
   // would misrepresent time); y scaled to the series' own min/max with headroom.
   const times = createMemo(() => props.points.map(p => Date.parse(`${p.date}T12:00:00Z`)));
-  const bounds = createMemo(() => {
-    const ys = prices();
-    const lo = Math.min(...ys);
-    const hi = Math.max(...ys);
-    const pad = Math.max(0.01, (hi - lo) * 0.15);
-    return { lo: lo - pad, hi: hi + pad };
-  });
+  const bounds = createMemo(() => computeSparkBounds(prices()));
   const x = (i: number) => {
     const ts = times();
     const t0 = ts[0];
