@@ -1,0 +1,70 @@
+# =============================================================================
+# Backfill Price History
+# =============================================================================
+# Rebuild reports/prices-history.json (and its client derivatives — per-set
+# shards + the pre-digested movers) from TCGCSV's daily price archives, for the
+# full print universe. Use after widening what the daily job prices so newly
+# tracked printings get their whole window instead of a single seeded point.
+#
+# Manual only — this is a backfill, not a recurring chore. The daily job appends
+# today's point on its next run.
+# =============================================================================
+
+name: (Backfill) Price History
+
+run-name: >-
+  Backfill price history${{ github.event.inputs.days && format(' ({0}d)', github.event.inputs.days) || '' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Window to rebuild, in days (blank = 90)'
+        required: false
+        default: ''
+
+# All R2 bucket writers share one concurrency group so producers and repair jobs
+# can never mutate the bucket at the same time (DB-MASTER-PLAN Phase 0).
+concurrency:
+  group: r2-bucket-writers
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backfill-price-history:
+    runs-on: ubuntu-latest
+    # 90 daily archives × ~3.3 MB, plus 117 set catalogs; 45 min is ample.
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r .github/scripts/requirements.txt
+
+      - name: Install 7-Zip (PPMd archives)
+        run: sudo apt-get update && sudo apt-get install -y p7zip-full
+
+      - name: Backfill price history
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ciphermaniac-reports
+        run: |
+          python .github/scripts/backfill-price-history.py \
+            ${{ github.event.inputs.days && format('--days {0}', github.event.inputs.days) || '' }}
+
+      - name: Summary
+        run: |
+          echo "## Backfill Price History" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Window: ${{ github.event.inputs.days || '90' }} days" >> $GITHUB_STEP_SUMMARY
