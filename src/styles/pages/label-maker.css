@@ -1,0 +1,325 @@
+/* ============================================================
+   Deck Box Label Maker — /tools/deck-box-labels
+
+   Page chrome uses the global Stamp tokens. The label canvas
+   itself does not: it renders true #000 on #fff because that's
+   physical thermal ink, not UI, so `.lm-paper` stays white in
+   both light and dark mode.
+
+   Archivo and IBM Plex Mono are declared here rather than in
+   styles/fonts.css because nothing else on the site draws with
+   them — this file is imported by the page module, so only this
+   route pays for the download.
+   ============================================================ */
+
+/* Archivo ships as a variable font: one file covers 500–800, which is every
+   weight renderLabel draws. Splitting latin / latin-ext keeps the common case
+   to a single file while accented bylines still resolve. */
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 500 800;
+  font-display: swap;
+  src: url('/fonts/archivo-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-weight: 500 800;
+  font-display: swap;
+  src: url('/fonts/archivo-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Archivo';
+  font-style: italic;
+  font-weight: 500 800;
+  font-display: swap;
+  src: url('/fonts/archivo-latin-italic.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Archivo';
+  font-style: italic;
+  font-weight: 500 800;
+  font-display: swap;
+  src: url('/fonts/archivo-latin-ext-italic.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* Mono is only used for counters and format text — digits, slashes, caps. */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/plex-mono-latin-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC,
+    U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+.lm-page {
+  display: grid;
+  gap: var(--space-5);
+}
+
+/* ---------- Preview band ---------- */
+
+/* The label is the whole point, so it stays on screen while you work the
+   controls below it. Full-bleed background so the sticky band covers the
+   content scrolling underneath. */
+.lm-stage {
+  position: sticky;
+  top: var(--topnav-h);
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  background: var(--bg);
+  border-bottom: var(--border-width) solid var(--rule);
+}
+
+.lm-paper {
+  width: 100%;
+  max-width: 560px;
+  background: #fff;
+  border: var(--border-width) solid var(--border);
+  box-shadow: var(--shadow-1);
+}
+
+.lm-paper canvas {
+  display: block;
+  width: 100%;
+  /* 1 label dot must not be smoothed into a soft grey ramp — the preview
+     should look like what the printer will actually lay down. */
+  image-rendering: pixelated;
+}
+
+.lm-stage-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3) var(--space-4);
+}
+
+.lm-dims {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.lm-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.lm-actions .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.lm-actions .btn:disabled:active {
+  transform: none;
+}
+
+.lm-hint,
+.lm-error {
+  margin: 0;
+  font-size: 13px;
+  text-align: center;
+}
+.lm-hint {
+  color: var(--muted);
+}
+.lm-error {
+  color: var(--negative);
+  font-weight: 600;
+}
+
+/* ---------- Controls ---------- */
+
+.lm-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-5) var(--space-4);
+  align-items: start;
+  padding-bottom: var(--space-6);
+}
+
+.lm-group {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+}
+
+.lm-group h2 {
+  margin: 0;
+  padding-bottom: var(--space-2);
+  border-bottom: var(--border-width) solid var(--rule);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+
+.lm-field {
+  position: relative;
+  display: grid;
+  gap: 6px;
+}
+
+.lm-field > label,
+.lm-field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.lm-field input[type='text'],
+.lm-field input[type='number'],
+.lm-field select {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+
+.lm-field input[type='text']:focus-visible,
+.lm-field input[type='number']:focus-visible,
+.lm-field select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.lm-field input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.lm-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  cursor: pointer;
+}
+.lm-check input {
+  accent-color: var(--accent);
+}
+
+.lm-pair {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.lm-pair input {
+  width: 76px;
+  flex: none;
+}
+.lm-pair span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.lm-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ---------- Pokémon picker ---------- */
+
+.lm-picker-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.lm-picker-icon {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  image-rendering: pixelated;
+}
+
+.lm-picker-clear {
+  flex: none;
+  padding: 2px 6px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--muted);
+  border-radius: var(--radius-sm);
+}
+.lm-picker-clear:hover {
+  color: var(--fg);
+  background: var(--surface-2);
+}
+
+.lm-picker-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 4;
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+
+.lm-picker-results li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px 7px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.lm-picker-results li.active {
+  background: var(--surface-2);
+}
+.lm-picker-results img {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  image-rendering: pixelated;
+}
+
+/* ---------- Narrow screens ---------- */
+
+@media (max-width: 640px) {
+  /* A sticky band would eat a third of a phone viewport and leave no room to
+     see the control you're changing. Let it scroll away instead. */
+  .lm-stage {
+    position: static;
+    padding-top: 0;
+  }
+
+  .lm-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .lm-actions {
+    width: 100%;
+  }
+  .lm-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
