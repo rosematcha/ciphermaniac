@@ -223,11 +223,12 @@ void test('parses trainer rules text, subtype, rarity, artist', () => {
   assert.equal(parsed.pokemonType, undefined);
 });
 
-void test('flags trainer ACE SPEC and forces tool subtype', () => {
+void test('reads an ACE SPEC type-line segment without overriding the real subtype', () => {
   const parsed = parseCardPage(ACE_SPEC_TRAINER_PAGE);
   assert.ok(parsed);
   assert.equal(parsed.aceSpec, true);
-  assert.equal(parsed.subType, 'tool');
+  // Prime Catcher is an Item; the flag must not rewrite the subtype to 'tool'.
+  assert.equal(parsed.subType, 'item');
 });
 
 void test('parses special energy with multi-paragraph rules text', () => {
@@ -235,7 +236,8 @@ void test('parses special energy with multi-paragraph rules text', () => {
   assert.ok(parsed);
   assert.equal(parsed.cardType, 'energy');
   assert.equal(parsed.subType, 'special');
-  // Limitless does not mark energy ACE SPECs; the name heuristic stays downstream
+  // Card pages carry no ACE SPEC marker (this really is Legacy Energy's page);
+  // the flag is overlaid from Limitless search — see the applyAceSpecFlags tests.
   assert.equal(parsed.aceSpec, undefined);
   assert.match(parsed.text ?? '', /provides every type of Energy/);
   assert.match(parsed.text ?? '', /\n\n/); // <br><br> preserved as paragraph break

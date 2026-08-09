@@ -197,6 +197,11 @@ jobs:
             # Count cards with regulation marks
             REG_MARK_COUNT=$(jq '[.[] | select(.regulationMark != null)] | length' public/assets/data/card-types.json)
             echo "- Cards with regulation marks: **${REG_MARK_COUNT}**" >> $GITHUB_STEP_SUMMARY
+
+            # ACE SPEC comes from the site's `is:ace` search, not the card pages,
+            # so a zero here means that overlay stopped working.
+            ACE_SPEC_COUNT=$(jq '[.[] | select(.aceSpec == true)] | length' public/assets/data/card-types.json)
+            echo "- ACE SPEC cards: **${ACE_SPEC_COUNT}**" >> $GITHUB_STEP_SUMMARY
           else
             echo "No new cards to add - database is up to date" >> $GITHUB_STEP_SUMMARY
           fi

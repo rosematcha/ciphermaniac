@@ -17,6 +17,20 @@ const REPORTS_BASE_PATH = join(__dirname, '..', 'public', 'reports');
 const RATE_LIMIT_MS = 250; // 4 requests per second to be respectful
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
+
+// ACE SPEC is not printed anywhere on a Limitless card page — the type line of
+// Prime Catcher reads plain "Trainer - Item" — so it can't be scraped per-card.
+// The site's own search knows, though: the advanced-search "mechanic" facet maps
+// ACE SPEC to `is:ace`. One list-view request returns every English ACE SPEC
+// print, which we overlay onto the database as a whole. English only: the JP
+// promo set shares the `SVP` code with the English promos, so `lang=all` would
+// flag unrelated English promos by number.
+const ACE_SPEC_SEARCH_URL = 'https://limitlesstcg.com/cards?q=is%3Aace&show=all&display=list';
+// Sanity floor for the overlay. 46 English prints existed as of Aug 2026 and the
+// mechanic only ever gains cards, so a much shorter list means the query or the
+// markup changed — in which case we leave the stored flags alone rather than
+// clearing every one of them.
+const MIN_EXPECTED_ACE_SPECS = 30;
 // Bump when parseCardPage gains persisted enrichment fields. This lets routine
 // runs backfill prior database entries once, without repeatedly force-refreshing.
 // v2 adds structured fields: stage, mechanicSubtypes, structured
@@ -153,6 +167,119 @@ function buildNumberVariants(value) {
   return variants;
 }
 const MASTER_FILE_NAME = 'master.json';
+
+/**
+ * Padding-insensitive lookup key for a set/number pair. Database keys pad the
+ * number to three digits ("SFA::058") while Limitless URLs don't ("SFA/58"), so
+ * both sides normalize through here before being compared. Non-numeric numbers
+ * (e.g. "GG40") are only uppercased.
+ * @param {string} setCode
+ * @param {string|number} number
+ * @returns {string|null} `SET::NUMBER` with leading zeros stripped, or null
+ */
+export function aceSpecLookupKey(setCode, number) {
+  const set = String(setCode ?? '')
+    .trim()
+    .toUpperCase();
+  const raw = String(number ?? '')
+    .trim()
+    .toUpperCase();
+  if (!set || !raw) {
+    return null;
+  }
+  const digits = raw.match(/^0*(\d+)$/);
+  return `${set}::${digits ? digits[1] : raw}`;
+}
+
+/**
+ * Extract ACE SPEC card keys from a Limitless card-search list page. Card links
+ * are `/cards/<SET>/<NUMBER>`; set codes start with an uppercase letter, which
+ * separates them from the page's other two-segment links (`/cards/advanced`,
+ * language-prefixed `/cards/de/...`).
+ * @param {string} html
+ * @returns {string[]} unique {@link aceSpecLookupKey} values
+ */
+export function parseAceSpecList(html) {
+  const keys = new Set();
+  const linkRe = /href="\/cards\/([A-Z][A-Za-z0-9]*)\/([A-Za-z0-9]+)"/g;
+  let match;
+  while ((match = linkRe.exec(html)) !== null) {
+    const key = aceSpecLookupKey(match[1], match[2]);
+    if (key) {
+      keys.add(key);
+    }
+  }
+  return [...keys];
+}
+
+/**
+ * Fetch the authoritative ACE SPEC list from Limitless search.
+ * @returns {Promise<Set<string>|null>} lookup keys, or null when the list can't
+ *   be trusted (request failed, or it came back implausibly short)
+ */
+async function fetchAceSpecKeys() {
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(ACE_SPEC_SEARCH_URL);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const keys = parseAceSpecList(await response.text());
+      if (keys.length < MIN_EXPECTED_ACE_SPECS) {
+        console.warn(
+          `  ⚠️  ACE SPEC search returned only ${keys.length} cards (expected ≥${MIN_EXPECTED_ACE_SPECS}); leaving stored flags untouched`
+        );
+        return null;
+      }
+      console.log(`🃏 ACE SPEC list: ${keys.length} prints`);
+      return new Set(keys);
+    } catch (error) {
+      if (attempt < MAX_RETRIES - 1) {
+        console.log(`  ⚠️  Retry ${attempt + 1}/${MAX_RETRIES} for the ACE SPEC list: ${error.message}`);
+        await sleep(RETRY_DELAY_MS);
+      } else {
+        console.error(`  ❌ Failed to fetch the ACE SPEC list:`, error.message);
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Overlay the ACE SPEC flag onto every database entry. Authoritative in both
+ * directions: entries in the list gain `aceSpec: true`, entries that aren't lose
+ * a stale flag. A null list (fetch failed or looked wrong) is a no-op.
+ * @param {Record<string, any>} database mutated in place
+ * @param {Set<string>|null} aceSpecKeys
+ * @returns {{added: number, removed: number, total: number}}
+ */
+export function applyAceSpecFlags(database, aceSpecKeys) {
+  if (!aceSpecKeys) {
+    return { added: 0, removed: 0, total: 0 };
+  }
+
+  let added = 0;
+  let removed = 0;
+  let total = 0;
+  for (const [cardKey, entry] of Object.entries(database)) {
+    if (!entry || typeof entry !== 'object') {
+      continue;
+    }
+    const [setCode, number] = cardKey.split('::');
+    const isAceSpec = aceSpecKeys.has(aceSpecLookupKey(setCode, number));
+    if (isAceSpec) {
+      total++;
+      if (entry.aceSpec !== true) {
+        entry.aceSpec = true;
+        added++;
+      }
+    } else if (entry.aceSpec !== undefined) {
+      delete entry.aceSpec;
+      removed++;
+    }
+  }
+  return { added, removed, total };
+}
 
 /**
  * Extract ability and attack names from a Limitless card page.
@@ -358,9 +485,10 @@ export function parseCardPage(html) {
   const cardType = normalize(parts[0]); // "pokemon", "trainer", "energy"
   let subType = null;
   let evolutionInfo = null;
-  // ACE SPEC shows up as a segment of the type line ("Trainer - Item - ACE SPEC").
-  // Limitless only marks trainers; special-energy ACE SPECs carry no marker on
-  // the page, so downstream consumers still need the name heuristic for those.
+  // Limitless card pages carry no ACE SPEC marker at all — Prime Catcher's type
+  // line is a plain "Trainer - Item". The flag comes from the site's search
+  // instead (see applyAceSpecFlags); this stays as a belt-and-braces read in
+  // case the type line ever starts carrying the segment.
   const aceSpec = parts.some(part => normalize(part).includes('ace spec'));
 
   if (cardType === 'trainer' && parts.length > 1) {
@@ -376,9 +504,9 @@ export function parseCardPage(html) {
     } else {
       subType = subtypeText;
     }
-    if (aceSpec && subType !== 'tool') {
-      subType = 'tool';
-    }
+    // ACE SPECs keep their real subtype: Prime Catcher is an Item, Grand Tree a
+    // Stadium. (An earlier revision forced 'tool' here, which only survived
+    // because the flag was never set.)
   } else if (cardType === 'energy' && parts.length > 1) {
     // "Special Energy" or just "Basic"
     const subtypeText = normalize(parts[1]);
@@ -723,14 +851,48 @@ async function collectAllCards() {
 
 /**
  * Parse command line arguments
- * @returns {{ forceRefresh: boolean }}
+ * @returns {{ forceRefresh: boolean, restructure: boolean, aceSpecsOnly: boolean }}
  */
 function parseArgs() {
   const args = process.argv.slice(2);
   return {
     forceRefresh: args.includes('--force-refresh') || args.includes('-f'),
-    restructure: args.includes('--restructure')
+    restructure: args.includes('--restructure'),
+    aceSpecsOnly: args.includes('--ace-specs')
   };
+}
+
+/**
+ * Report the outcome of an {@link applyAceSpecFlags} pass.
+ * @param {{added: number, removed: number, total: number}} result
+ * @returns {void}
+ */
+function logAceSpecFlags({ added, removed, total }) {
+  if (added || removed) {
+    console.log(`🃏 ACE SPEC flags: ${total} cards flagged (+${added} added, -${removed} stale removed)`);
+  } else if (total) {
+    console.log(`🃏 ACE SPEC flags: ${total} cards flagged (already up to date)`);
+  }
+}
+
+/**
+ * ACE-SPEC-only pass: one search request, overlay the flags onto every stored
+ * entry, save. Backfills the whole database without re-scraping card pages.
+ * @returns {Promise<void>}
+ */
+async function runAceSpecsOnly() {
+  console.log('🃏 ACE SPEC mode: refreshing flags from Limitless search\n');
+  const database = await loadExistingDatabase();
+  console.log(`📚 Loaded ${Object.keys(database).length} entries`);
+  const aceSpecKeys = await fetchAceSpecKeys();
+  if (!aceSpecKeys) {
+    console.error('❌ No usable ACE SPEC list; database left unchanged');
+    process.exitCode = 1;
+    return;
+  }
+  logAceSpecFlags(applyAceSpecFlags(database, aceSpecKeys));
+  await saveDatabase(database);
+  console.log('\n✅ ACE SPEC flags saved');
 }
 
 /**
@@ -774,10 +936,15 @@ async function runRestructure() {
  * Main execution
  */
 async function main() {
-  const { forceRefresh, restructure } = parseArgs();
+  const { forceRefresh, restructure, aceSpecsOnly } = parseArgs();
 
   if (restructure) {
     await runRestructure();
+    return;
+  }
+
+  if (aceSpecsOnly) {
+    await runAceSpecsOnly();
     return;
   }
 
@@ -793,6 +960,10 @@ async function main() {
 
   // Collect all cards from reports
   const allCards = await collectAllCards();
+
+  // One request, applied to the whole database at the end of the run — the flag
+  // isn't per-card-page scrapable, so it doesn't ride along with cardsToFetch.
+  const aceSpecKeys = await fetchAceSpecKeys();
 
   // Re-fetch every entry only when explicitly requested. Otherwise, include
   // entries from a prior metadata schema so additive parser changes backfill
@@ -831,6 +1002,7 @@ async function main() {
     console.log('✅ All cards are already in the database!');
     // Still (re)write the slim evolves-from.json companion — the CI upload step
     // expects it to exist even when no new cards were fetched (P-19).
+    logAceSpecFlags(applyAceSpecFlags(database, aceSpecKeys));
     await saveDatabase(database);
     return;
   }
@@ -874,6 +1046,7 @@ async function main() {
   }
 
   // Final save
+  logAceSpecFlags(applyAceSpecFlags(database, aceSpecKeys));
   await saveDatabase(database);
 
   console.log(`\n✅ Complete!`);

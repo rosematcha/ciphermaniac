@@ -116,9 +116,10 @@ def compose_category_path(category, trainer_type=None, energy_type=None, ace_spe
     if base == "trainer":
         if trainer_type:
             parts.append(trainer_type.lower())
+        # Appended to the card's real subtype (trainer/item/acespec), matching
+        # compose_category_path in scrape-memorial.py and composeCategoryPath in
+        # shared/reportUtils.ts.
         if ace_spec:
-            if "tool" not in parts and (not trainer_type or trainer_type.lower() != "tool"):
-                parts.append("tool")
             parts.append("acespec")
     elif base == "energy" and energy_type:
         parts.append(energy_type.lower())
@@ -268,7 +269,8 @@ def enrich_card_entry(card, card_types_db):
             enriched["evolutionInfo"] = info["evolutionInfo"]
         if info.get("fullType"):
             enriched["fullType"] = info["fullType"]
-        if card_type == "trainer" and info.get("aceSpec"):
+        # No card-type gate: special-energy ACE SPECs are flagged too.
+        if info.get("aceSpec"):
             enriched["aceSpec"] = True
 
     return enriched

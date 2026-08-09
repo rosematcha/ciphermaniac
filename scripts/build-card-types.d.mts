@@ -45,3 +45,9 @@ export function parseStage(evolutionInfo: string | null | undefined): CardStage 
 export function parseMechanicSubtypes(name: string | null | undefined): CardMechanicSubtype[];
 export function parseWeaknessResistance(value: string | null | undefined): WeaknessResistance | null;
 export function restructureEntry(entry: Record<string, unknown>): Record<string, unknown>;
+export function aceSpecLookupKey(setCode: string, number: string | number): string | null;
+export function parseAceSpecList(html: string): string[];
+export function applyAceSpecFlags(
+  database: Record<string, Record<string, unknown>>,
+  aceSpecKeys: Set<string> | null
+): { added: number; removed: number; total: number };

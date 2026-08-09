@@ -142,7 +142,9 @@ export function enrichCardWithType<T extends CardRecord>(card: T, database: Card
     enriched.regulationMark = typeInfo.regulationMark;
   }
 
-  if (typeInfo.cardType === 'trainer' && typeInfo.aceSpec) {
+  // No card-type gate: special-energy ACE SPECs (Legacy Energy, Neo Upper
+  // Energy, Enriching Energy) are flagged too.
+  if (typeInfo.aceSpec) {
     enriched.aceSpec = true;
   }
 

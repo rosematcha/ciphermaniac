@@ -106,7 +106,8 @@ def enrich_card_entry(card: dict, card_types_db: dict) -> dict:
             enriched["energyType"] = info["subType"]
         if info.get("fullType"):
             enriched["fullType"] = info["fullType"]
-        if card_type == "trainer" and info.get("aceSpec"):
+        # No card-type gate: special-energy ACE SPECs are flagged too.
+        if info.get("aceSpec"):
             enriched["aceSpec"] = True
 
     return enriched
