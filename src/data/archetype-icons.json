@@ -162,6 +162,9 @@
     "chien-pao",
     "noctowl"
   ],
+  "Cinccino": [
+    "cinccino"
+  ],
   "Cinderace": [
     "cinderace"
   ],
@@ -210,6 +213,10 @@
   ],
   "Decidueye": [
     "decidueye"
+  ],
+  "Dhelmise": [
+    "dhelmise",
+    "banette"
   ],
   "Dialga": [
     "dialga-origin"
@@ -606,14 +613,23 @@
   "Mega Camerupt": [
     "camerupt-mega"
   ],
+  "Mega Chandelure": [
+    "chandelure-mega"
+  ],
   "Mega Charizard X": [
     "charizard-mega-x"
+  ],
+  "Mega Darkrai": [
+    "darkrai-mega"
   ],
   "Mega Diancie": [
     "diancie-mega"
   ],
   "Mega Dragonite": [
     "dragonite-mega"
+  ],
+  "Mega Excadrill": [
+    "excadrill-mega"
   ],
   "Mega Feraligatr": [
     "feraligatr-mega"
@@ -900,6 +916,9 @@
   "Steven's Metagross": [
     "metagross"
   ],
+  "Sylveon": [
+    "sylveon"
+  ],
   "Tera Box": [
     "noctowl",
     "ogerpon-wellspring"
@@ -920,6 +939,9 @@
   ],
   "Torterra": [
     "torterra"
+  ],
+  "Toucannon": [
+    "toucannon"
   ],
   "Toxtricity": [
     "toxtricity"
@@ -956,6 +978,9 @@
   "Venomoth Froslass": [
     "venomoth",
     "froslass"
+  ],
+  "Wailord": [
+    "wailord"
   ],
   "Walking Wake": [
     "walking-wake"
