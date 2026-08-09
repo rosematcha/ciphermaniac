@@ -324,9 +324,12 @@ async function _scrapeCardPrintVariations(setCode, number) {
             const priceLink = $(cells[1]).find('a.card-price');
             if (priceLink.length) {
                 const priceText = priceLink.text().trim();
-                const priceMatch = priceText.match(/\$?([\d.]+)/);
+                // Thousands separators matter: "$1,141.18" against a comma-less
+                // pattern yields 1, which then reads as the cheapest print in
+                // its cluster and wins the canonical slot.
+                const priceMatch = priceText.match(/\$?\s*([\d,]*\d(?:\.\d+)?)/);
                 if (priceMatch) {
-                    priceUsd = parseFloat(priceMatch[1]);
+                    priceUsd = parseFloat(priceMatch[1].replace(/,/g, ''));
                 }
             }
         }
