@@ -18,7 +18,8 @@
     /* env(safe-area-inset-*) keeps content clear of the Dynamic Island /
        rounded corners in landscape and the home-indicator bar at the bottom
        (viewport-fit=cover is set in index.html). */
-    padding: var(--space-5) max(var(--space-3), env(safe-area-inset-left)) max(var(--space-6), env(safe-area-inset-bottom));
+    padding: var(--space-5) max(var(--space-3), env(safe-area-inset-left))
+      max(var(--space-6), env(safe-area-inset-bottom));
     padding-right: max(var(--space-3), env(safe-area-inset-right));
   }
   .page > section + section {
@@ -1261,7 +1262,9 @@ tr.row-expansion > td {
     align-items: stretch;
     gap: 10px;
   }
-  .arche-toolbar .segmented { align-self: flex-start; }
+  .arche-toolbar .segmented {
+    align-self: flex-start;
+  }
 }
 
 /* ---------- Badge ---------- */
@@ -3894,7 +3897,9 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   /* body[data-mode] matches the specificity of the tokens.css theme blocks
      (which re-declare --row-height on body); this file loads later, so it wins. */
   :root,
-  body[data-mode] { --row-height: 44px; }
+  body[data-mode] {
+    --row-height: 44px;
+  }
 
   .topnav-mode-toggle,
   .t-selector-trigger {
@@ -3920,7 +3925,9 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
     min-height: 40px; /* inside a bordered group; the group itself clears 44px */
   }
 
-  .tabs button { min-height: 44px; }
+  .tabs button {
+    min-height: 44px;
+  }
 
   /* Icon-only buttons (row remove, lens clear, banner dismiss) render
      24-32px square — the glyph stays small, only the hit area grows. */
@@ -3935,7 +3942,9 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   }
 
   .fb-bar-btn,
-  .fb-quiz-foot button { min-height: 44px; }
+  .fb-quiz-foot button {
+    min-height: 44px;
+  }
 
   /* Tournament picker rows sit in a scrollable popover list; baseline
      alignment reads wrong once the row grows, so center instead. */
@@ -3946,6 +3955,92 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 
   /* Expand caret column on player tables: the whole row is the tap target
      (44px via --row-height); widen the column so the caret reads as tappable. */
-  .data th.expand-col, .data td.expand-col { width: 36px; }
-  .row-caret { font-size: 13px; }
+  .data th.expand-col,
+  .data td.expand-col {
+    width: 36px;
+  }
+  .row-caret {
+    font-size: 13px;
+  }
+}
+
+/* ---------- Bottom sheet (shared BottomSheet component) ----------
+   Portalled to <body>; a scrim + a panel that slides up from the bottom edge.
+   Present in the DOM at all widths but only reachable via the mobile trigger. */
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--fg);
+  opacity: 0;
+  z-index: 40;
+  pointer-events: none;
+  transition: opacity var(--ms-base) var(--ease-base);
+}
+.sheet-scrim.open {
+  opacity: 0.32;
+  pointer-events: auto;
+}
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+  transform: translateY(100%);
+  transition: transform var(--ms-base) var(--ease-base);
+  will-change: transform;
+}
+.sheet.open {
+  transform: translateY(0);
+}
+.sheet-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--rule);
+  flex-shrink: 0;
+}
+.sheet-grip {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 34px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+}
+.sheet-head h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--fg);
+  margin: 0;
+}
+.sheet-close {
+  font: inherit;
+  font-size: 13px;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 4px 2px;
+  cursor: pointer;
+}
+.sheet-close:hover {
+  color: var(--fg);
+}
+.sheet-body {
+  overflow-y: auto;
+  padding: 14px 16px 18px;
+  flex: 1 1 auto;
 }

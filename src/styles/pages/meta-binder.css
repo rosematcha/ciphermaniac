@@ -1,0 +1,272 @@
+/* ============================================================
+   Meta Binder — /tools/meta-binder
+   Card tiles follow the same treatment as .card-tile on /cards
+   and the In Loving Memory grid: no border box, rounded art with
+   the house offset shadow, contain rather than crop.
+   ============================================================ */
+
+.mb-page {
+  display: grid;
+  gap: var(--space-5);
+}
+
+/* ---- Selection ---- */
+
+.mb-controls {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.mb-tournament {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.mb-tournament select {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fg);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  min-width: 280px;
+  max-width: 100%;
+}
+.mb-tournament select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.mb-archetypes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.mb-arche-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+}
+.mb-arche-share {
+  font-size: 11px;
+  opacity: 0.65;
+}
+
+.mb-sheet-trigger {
+  justify-self: start;
+}
+
+/* ---- Summary strip ---- */
+
+/* Sticky: the binder runs long, and the running total is the number you're
+   actually watching while you add and remove archetypes. */
+.mb-summary {
+  position: sticky;
+  top: var(--topnav-h);
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+
+.mb-summary-stat {
+  font-size: 12px;
+  color: var(--muted);
+}
+.mb-summary-stat b {
+  color: var(--fg);
+  font-weight: 600;
+  margin-right: 4px;
+}
+.mb-summary-price {
+  display: inline-flex;
+  align-items: baseline;
+}
+.mb-summary-price b {
+  color: var(--accent);
+  margin-right: 0;
+}
+/* Sits after the total, which is a <b> with no trailing space of its own. */
+.mb-unpriced {
+  margin-left: 8px;
+  opacity: 0.7;
+}
+
+.mb-summary-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+.mb-summary-actions .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ---- Sections ---- */
+
+.mb-section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.mb-section h2 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  padding-bottom: var(--space-2);
+  border-bottom: var(--border-width) solid var(--rule);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.mb-section-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.mb-section-note {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.mb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+@media (max-width: 560px) {
+  .mb-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--space-2);
+  }
+}
+
+.mb-card {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 8px;
+  transition: transform var(--ms-fast) var(--ease-base);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 240px;
+}
+.mb-card:hover {
+  transform: translateY(-2px);
+}
+
+.mb-card-img {
+  position: relative;
+  aspect-ratio: 2.5 / 3.5;
+  background: var(--surface-2);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow-1);
+  display: grid;
+  place-items: center;
+  transition: box-shadow var(--ms-fast) var(--ease-base);
+}
+.mb-card:hover .mb-card-img {
+  box-shadow: 4px 4px 0 0 var(--border);
+}
+body[data-mode='dark'] .mb-card:hover .mb-card-img {
+  box-shadow: 4px 4px 0 0 var(--surface-2);
+}
+.mb-card-img img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.mb-card-img .card-image-fallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}
+.mb-card-ph {
+  padding: 8px;
+  font-size: 11px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* How many to pull. The single most important number on the tile, so it sits
+   on the art rather than in the meta line. */
+.mb-card-copies {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 1;
+  padding: 2px 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-fg);
+  background: var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.mb-card-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.mb-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mb-card-stats {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.mb-card-price {
+  margin-left: 6px;
+  color: var(--accent);
+}
+
+@media (max-width: 860px) {
+  /* The summary would take a third of the viewport above every grid. */
+  .mb-summary {
+    position: static;
+  }
+  .mb-summary-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+  .mb-summary-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+  .mb-card:hover {
+    transform: none;
+  }
+  .mb-card:hover .mb-card-img {
+    box-shadow: var(--shadow-1);
+  }
+}

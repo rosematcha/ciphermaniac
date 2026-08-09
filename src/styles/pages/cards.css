@@ -503,86 +503,12 @@
   font-weight: 700;
 }
 
-/* ---------- Bottom sheet (shared BottomSheet component) ----------
-   Portalled to <body>; a scrim + a panel that slides up from the bottom edge.
-   Present in the DOM at all widths but only reachable via the mobile trigger. */
-.sheet-scrim {
-  position: fixed;
-  inset: 0;
-  background: var(--fg);
-  opacity: 0;
-  z-index: 40;
-  pointer-events: none;
-  transition: opacity var(--ms-base) var(--ease-base);
-}
-.sheet-scrim.open {
-  opacity: 0.32;
-  pointer-events: auto;
-}
-.sheet {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 50;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-bottom: 0;
-  border-top-left-radius: var(--radius-md);
-  border-top-right-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
-  transform: translateY(100%);
-  transition: transform var(--ms-base) var(--ease-base);
-  will-change: transform;
-}
-.sheet.open {
-  transform: translateY(0);
-}
-.sheet-head {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px 10px;
-  border-bottom: 1px solid var(--rule);
-  flex-shrink: 0;
-}
-.sheet-grip {
-  position: absolute;
-  top: 6px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 34px;
-  height: 4px;
-  border-radius: 999px;
-  background: var(--border);
-}
-.sheet-head h2 {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--fg);
-  margin: 0;
-}
-.sheet-close {
-  font: inherit;
-  font-size: 13px;
-  color: var(--muted);
-  background: none;
-  border: 0;
-  padding: 4px 2px;
-  cursor: pointer;
-}
-.sheet-close:hover {
-  color: var(--fg);
-}
-.sheet-body {
-  overflow-y: auto;
-  padding: 14px 16px 18px;
-  flex: 1 1 auto;
-}
+/* ---------- Bottom sheet ----------
+   The structural .sheet* rules moved to styles/components.css: the
+   BottomSheet component is shared, so its styles cannot live in one
+   page's stylesheet. Only the cards-specific .sheet-body .group rules
+   remain below, alongside their .cards-filter-panel twins. */
+
 /* Hairline-separated "filter room": bold labels, generous breathing space. */
 .sheet-body .group,
 .cards-filter-panel .group {
