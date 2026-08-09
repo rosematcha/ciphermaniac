@@ -89,17 +89,6 @@ export function ArchetypesIndexPage() {
 
   return (
     <>
-      <section class='hero hero-collapsible'>
-        <h1>Archetypes</h1>
-        <div class='hero-meta'>
-          <Show when={archetypesData()} fallback={<Skeleton width='200px' height='13px' />}>
-            <span>{archetypesData()!.length.toLocaleString()} active archetypes</span>
-            <span class='dot'>·</span>
-            <span>{scopeLabel()}</span>
-          </Show>
-        </div>
-      </section>
-
       <Section>
         <div class='filter-bar'>
           <div class='filter-row'>
@@ -242,13 +231,6 @@ function ArchetypesListView(props: {
 
   return (
     <div class='table-wrap'>
-      <Show when={props.totalDecks}>
-        {total => (
-          <p class='table-caption'>
-            Share of {total().toLocaleString()} decks · {props.scopeLabel}
-          </p>
-        )}
-      </Show>
       <table class='data'>
         <thead>
           <tr>

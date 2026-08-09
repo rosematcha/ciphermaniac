@@ -37,7 +37,6 @@ import '../styles/pages/cards.css';
 import { latestValue, resolved } from '../lib/resource';
 import { computeSparkBounds } from '../lib/sparkline';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardDistributionEntry, CardItem } from '../types';
-import { Breadcrumb } from '../components/Breadcrumb';
 import { Badge } from '../components/Badge';
 import { Segmented } from '../components/Segmented';
 import {
@@ -375,8 +374,6 @@ export function CardPage() {
 
   return (
     <>
-      <Breadcrumb crumbs={[{ label: 'Cards', href: '/cards' }, { label: card()?.name ?? setNumber() }]} />
-
       <Show
         when={card()}
         fallback={

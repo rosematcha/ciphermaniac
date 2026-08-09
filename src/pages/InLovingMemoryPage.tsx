@@ -1,6 +1,5 @@
 import { createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { useSearchParams } from '@solidjs/router';
-import { Breadcrumb } from '../components/Breadcrumb';
 import { CardImage } from '../components/CardImage';
 import { Tabs } from '../components/Tabs';
 import { Skeleton } from '../components/Skeleton';
@@ -222,7 +221,6 @@ export function InLovingMemoryPage() {
     <div class='ilm-page'>
       <Show when={!showDetailOnly()}>
         <section class='hero'>
-          <Breadcrumb crumbs={[{ label: 'Tools', href: '/tools' }, { label: 'In Loving Memory' }]} />
           <h1>In Loving Memory</h1>
           <div class='hero-meta'>
             <span>Every Day-2 decklist from rotated archetypes, frozen at the end of their run</span>

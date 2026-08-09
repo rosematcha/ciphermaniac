@@ -1,7 +1,6 @@
 import { A, useSearchParams } from '@solidjs/router';
 import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
 import { fetchPlayerIndexSlim, fetchPlayerProfile, prettyTournamentName } from '../lib/data';
-import { Breadcrumb } from '../components/Breadcrumb';
 import { Section } from '../components/Section';
 import { SearchInput } from '../components/Chip';
 import { Skeleton } from '../components/Skeleton';
@@ -113,8 +112,6 @@ export function PlayerComparePage() {
 
   return (
     <>
-      <Breadcrumb crumbs={[{ label: 'Players', href: '/players' }, { label: 'Compare' }]} />
-
       <section class='hero'>
         <h1>Compare players</h1>
         <div class='hero-meta'>

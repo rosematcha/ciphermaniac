@@ -1,8 +1,7 @@
 import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
-import { fetchMaster, fetchPrices, prettyTournamentName, type PricingEntry } from '../lib/data';
+import { fetchMaster, fetchPrices, type PricingEntry } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
-import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
 import type { CardItem } from '../types';
 import { Section } from '../components/Section';
 import { ChipGroup, SearchInput } from '../components/Chip';
@@ -145,8 +144,6 @@ export function CardsIndexPage() {
   onMount(() => {
     document.title = 'Cards — Ciphermaniac';
   });
-
-  const scopeLabel = () => (tournament() === ONLINE_META_NAME ? ONLINE_META_LABEL : prettyTournamentName(tournament()));
 
   // Non-suspending reads (see lib/resource.ts). `latestValue` keeps the old
   // table in place while a tournament switch refetches — better than a
@@ -393,19 +390,6 @@ export function CardsIndexPage() {
 
   return (
     <>
-      <section class='hero hero-collapsible'>
-        <h1>Cards</h1>
-        <div class='hero-meta'>
-          <Show when={masterData()} fallback={<Skeleton width='240px' height='13px' />}>
-            <span>{masterData()!.items.length.toLocaleString()} cards observed</span>
-            <span class='dot'>·</span>
-            <span>{masterData()!.deckTotal.toLocaleString()} decks analyzed</span>
-            <span class='dot'>·</span>
-            <span>{scopeLabel()}</span>
-          </Show>
-        </div>
-      </section>
-
       <Section>
         {/* Desktop filter bar — search plus display controls stay inline; the
             metadata facets hide behind the same funnel trigger as mobile,

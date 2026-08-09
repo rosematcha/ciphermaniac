@@ -1,6 +1,5 @@
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { useSearchParams } from '@solidjs/router';
-import { Breadcrumb } from '../components/Breadcrumb';
 import { BottomSheet } from '../components/BottomSheet';
 import { CardImage } from '../components/CardImage';
 import { EmptyState } from '../components/EmptyState';
@@ -206,7 +205,6 @@ export function MetaBinderPage() {
   return (
     <div class='mb-page'>
       <section class='hero'>
-        <Breadcrumb crumbs={[{ label: 'Tools', href: '/tools' }, { label: 'Meta Binder' }]} />
         <h1>Meta Binder</h1>
         <div class='hero-meta'>
           <span>Work out which cards you need to own to build the decks people are actually playing</span>
