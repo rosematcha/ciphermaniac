@@ -55,9 +55,13 @@
   place-items: center;
   border: 1px solid var(--border);
 }
-.ilm-arche-thumb img {
+/* Crop to the art window near the top of the card — a whole 5:7 card scaled
+   into 56px is unreadable. */
+.ilm-arche-thumb img,
+.ilm-arche-thumb .card-image-fallback {
   width: 100%;
   height: 100%;
+  aspect-ratio: auto;
   object-fit: cover;
   object-position: 50% 22%;
 }
@@ -176,32 +180,55 @@
     gap: var(--space-2);
   }
 }
+/* Matches .card-tile on /cards: no border box around the art, just the card
+   itself on the page with the house offset shadow. The 1px ink outline this
+   used to carry read as a hard black rectangle around every tile. */
 .ilm-card {
   display: grid;
   grid-template-rows: auto auto;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  transition:
-    transform var(--ms-fast) var(--ease-base),
-    box-shadow var(--ms-fast) var(--ease-base);
+  gap: 8px;
+  transition: transform var(--ms-fast) var(--ease-base);
+  /* Offscreen tiles skip layout and image decode — these grids run to several
+     hundred cards. Mirrors .card-tile. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 240px;
 }
 .ilm-card:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: var(--shadow-1);
+  transform: translateY(-2px);
 }
 .ilm-card-img {
+  position: relative;
   aspect-ratio: 2.5 / 3.5;
   background: var(--surface-2);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow-1);
   display: grid;
   place-items: center;
-  overflow: hidden;
+  transition: box-shadow var(--ms-fast) var(--ease-base);
 }
+.ilm-card:hover .ilm-card-img {
+  box-shadow: 4px 4px 0 0 var(--border);
+}
+body[data-mode='dark'] .ilm-card:hover .ilm-card-img {
+  box-shadow: 4px 4px 0 0 var(--surface-2);
+}
+/* `contain`, not `cover`: cropping the art to fill the box cut the card frame
+   off and made every tile look mis-scaled. */
 .ilm-card-img img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  display: block;
+}
+.ilm-card-img .card-image-fallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
 }
 .ilm-card-img .ph {
   font-size: 10px;
@@ -210,9 +237,9 @@
   text-transform: uppercase;
 }
 .ilm-card-meta {
-  padding: 8px 10px 10px;
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
 .ilm-card-bar {
   height: 4px;
@@ -250,3 +277,69 @@
   letter-spacing: -0.015em;
 }
 
+/* ---- Phone drill-down ---- */
+
+/* Back out of an archetype to the list. Only rendered under 720px. */
+.ilm-back {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.ilm-back:active {
+  transform: scale(var(--press-scale));
+}
+
+@media (max-width: 720px) {
+  /* One archetype per row, full width, thumb-then-name — a wrapped row of
+     chips is hard to scan and hard to hit with a thumb. */
+  .ilm-picker {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+  .ilm-arche {
+    width: 100%;
+    padding: 10px 14px 10px 10px;
+  }
+  /* Hover transforms are meaningless on touch and leave the row displaced
+     after a tap. */
+  .ilm-arche:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  .ilm-arche-text {
+    min-width: 0;
+  }
+  .ilm-arche-name {
+    font-size: 16px;
+  }
+
+  /* The detail screen leads with the archetype name, so the summary strip
+     carries the heading weight the hero would have. */
+  .ilm-summary {
+    gap: var(--space-2) var(--space-4);
+  }
+  .ilm-summary-headline {
+    flex-basis: 100%;
+    font-size: 20px;
+  }
+
+  .ilm-toolbar {
+    align-items: stretch;
+  }
+
+  .ilm-card:hover {
+    transform: none;
+  }
+  .ilm-card:hover .ilm-card-img {
+    box-shadow: var(--shadow-1);
+  }
+}

@@ -1,6 +1,7 @@
-import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
+import { createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { useSearchParams } from '@solidjs/router';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { CardImage } from '../components/CardImage';
 import { Tabs } from '../components/Tabs';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
@@ -72,42 +73,42 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
 // Uploaded to R2 by scripts/upload-toys.ts. The R2 keys deliberately keep the
 // original `toys/` prefix even though the section is now /tools — they're
 // storage paths, not URLs, and renaming them buys nothing but a migration.
-// Pages never serves these paths in production anyway: the SPA fallback would
-// answer with HTML and a 200. In dev, vite serves the scraper's output from
-// static/ at the root.
-const DATA_BASE = import.meta.env?.DEV
-  ? '/toys/in-loving-memory/data'
-  : 'https://r2.ciphermaniac.com/toys/in-loving-memory/data';
-const THUMBNAILS_PROXY = '/thumbnails';
+const R2_BASE = 'https://r2.ciphermaniac.com/toys/in-loving-memory/data';
+const LOCAL_BASE = '/toys/in-loving-memory/data';
 
 /**
- * Same-origin card-art proxy URL, mirroring CardImage.tsx — never hotlink the
- * Limitless CDN (its `__cf_bm` bot cookie is browser-rejected → 403s).
+ * In dev, prefer a local scraper run under `static/toys/` and fall back to R2
+ * when there isn't one — that directory is gitignored, so a fresh checkout has
+ * no local copy and would otherwise render an empty page. Production always
+ * goes straight to R2: Pages never serves these paths (the SPA fallback would
+ * answer with HTML and a 200).
  */
-function cardImgUrl(set?: string, number?: string): string {
-  if (!set || !number) {
-    return '';
+async function fetchJson<T>(path: string): Promise<T> {
+  if (import.meta.env?.DEV) {
+    try {
+      const local = await fetch(`${LOCAL_BASE}${path}`);
+      // Vite's SPA fallback answers 200 with index.html for a missing file, so
+      // "did it 200" isn't enough — check that we actually got JSON back.
+      if (local.ok && local.headers.get('content-type')?.includes('json')) {
+        return (await local.json()) as T;
+      }
+    } catch {
+      /* fall through to R2 */
+    }
   }
-  const setU = set.toUpperCase();
-  const parts = number.match(/^(\d+)([A-Za-z]*)$/);
-  const padded = parts ? `${parts[1].padStart(3, '0')}${parts[2] ?? ''}` : number;
-  return `${THUMBNAILS_PROXY}/sm/${setU}/${padded}`;
+  const res = await fetch(`${R2_BASE}${path}`);
+  if (!res.ok) {
+    throw new Error(`Failed to load ${path}: ${res.status}`);
+  }
+  return (await res.json()) as T;
 }
 
 async function fetchIndex(): Promise<ArchetypeIndex> {
-  const res = await fetch(`${DATA_BASE}/index.json`);
-  if (!res.ok) {
-    throw new Error(`Failed to load archetype index: ${res.status}`);
-  }
-  return res.json();
+  return fetchJson<ArchetypeIndex>('/index.json');
 }
 
 async function fetchMaster(slug: string): Promise<MasterPayload> {
-  const res = await fetch(`${DATA_BASE}/${encodeURIComponent(slug)}/master.json`);
-  if (!res.ok) {
-    throw new Error(`Failed to load ${slug}: ${res.status}`);
-  }
-  return res.json();
+  return fetchJson<MasterPayload>(`/${encodeURIComponent(slug)}/master.json`);
 }
 
 function categoryOf(item: MasterItem): CategoryFilter {
@@ -128,21 +129,43 @@ export function InLovingMemoryPage() {
   const [category, setCategory] = createSignal<CategoryFilter>('all');
   const [sort, setSort] = createSignal<SortMode>('usage-desc');
 
+  // Phones get a two-screen drill-down instead of the desktop layout's
+  // picker-above-grid: the archetype list fills the screen, tapping one
+  // replaces it with that archetype's cards, and a back link returns. Showing
+  // both at once left a row of chips eating the viewport above every grid.
+  const narrowQuery = typeof window !== 'undefined' ? window.matchMedia('(max-width: 720px)') : null;
+  const [isNarrow, setIsNarrow] = createSignal(narrowQuery?.matches ?? false);
+  onMount(() => {
+    const onChange = (e: MediaQueryListEvent) => setIsNarrow(e.matches);
+    narrowQuery?.addEventListener('change', onChange);
+    onCleanup(() => narrowQuery?.removeEventListener('change', onChange));
+  });
+
   onMount(() => {
     document.title = 'In Loving Memory — Tools — Ciphermaniac';
   });
 
   const slug = () => (typeof searchParams.a === 'string' ? searchParams.a : '');
 
-  // Auto-pick first archetype once index loads (if none selected).
+  // Desktop auto-picks the first archetype so the page is never empty. Phones
+  // must not: the list IS the first screen, and auto-picking would skip it and
+  // fetch a master file nobody asked for.
   const effectiveSlug = createMemo(() => {
     const s = slug();
     if (s) {
       return s;
     }
+    if (isNarrow()) {
+      return '';
+    }
     const list = indexData()?.archetypes;
     return list && list.length > 0 ? list[0].slug : '';
   });
+
+  /** Phone, archetype chosen: show the cards, hide the list. */
+  const showDetailOnly = () => isNarrow() && Boolean(effectiveSlug());
+  /** Phone, nothing chosen yet: show the list, hide everything else. */
+  const showListOnly = () => isNarrow() && !effectiveSlug();
 
   const [master] = createResource(effectiveSlug, s => (s ? fetchMaster(s) : Promise.resolve(null)));
   // Archetype-keyed: show the loading grid on switch, not the previous
@@ -152,6 +175,17 @@ export function InLovingMemoryPage() {
   function pickArchetype(s: string) {
     setSearchParams({ a: s });
     setCategory('all');
+    // The phone drill-down swaps the whole screen, so land at the top of the
+    // new one rather than wherever the list was scrolled to.
+    if (isNarrow()) {
+      window.scrollTo({ top: 0 });
+    }
+  }
+
+  function clearArchetype() {
+    setSearchParams({ a: undefined });
+    setCategory('all');
+    window.scrollTo({ top: 0 });
   }
 
   const currentEntry = createMemo(() => {
@@ -186,44 +220,54 @@ export function InLovingMemoryPage() {
 
   return (
     <div class='ilm-page'>
-      <section class='hero'>
-        <Breadcrumb crumbs={[{ label: 'Tools', href: '/tools' }, { label: 'In Loving Memory' }]} />
-        <h1>In Loving Memory</h1>
-        <div class='hero-meta'>
-          <span>Every Day-2 decklist from rotated archetypes, frozen at the end of their run</span>
-        </div>
-      </section>
-
-      <Show when={indexData() && indexData()!.archetypes.length > 0} fallback={<Skeleton height='80px' />}>
-        <div class='ilm-picker' role='radiogroup' aria-label='Pick an archetype'>
-          <For each={indexData()!.archetypes}>
-            {a => {
-              const [thumbSet, thumbNum] = a.thumbnail.split('/');
-              return (
-                <button
-                  type='button'
-                  role='radio'
-                  class='ilm-arche'
-                  aria-checked={a.slug === effectiveSlug() ? 'true' : 'false'}
-                  onClick={() => pickArchetype(a.slug)}
-                >
-                  <div class='ilm-arche-thumb'>
-                    <Show when={a.thumbnail}>
-                      <img src={cardImgUrl(thumbSet, thumbNum)} alt={a.name} loading='lazy' />
-                    </Show>
-                  </div>
-                  <div>
-                    <div class='ilm-arche-name'>{a.name}</div>
-                    <div class='ilm-arche-count'>{a.listCount.toLocaleString()} lists</div>
-                  </div>
-                </button>
-              );
-            }}
-          </For>
-        </div>
+      <Show when={!showDetailOnly()}>
+        <section class='hero'>
+          <Breadcrumb crumbs={[{ label: 'Tools', href: '/tools' }, { label: 'In Loving Memory' }]} />
+          <h1>In Loving Memory</h1>
+          <div class='hero-meta'>
+            <span>Every Day-2 decklist from rotated archetypes, frozen at the end of their run</span>
+          </div>
+        </section>
       </Show>
 
-      <Show when={currentEntry()}>
+      <Show when={showDetailOnly()}>
+        <button type='button' class='ilm-back' onClick={clearArchetype}>
+          <span aria-hidden='true'>←</span> All archetypes
+        </button>
+      </Show>
+
+      <Show when={!showDetailOnly()}>
+        <Show when={indexData() && indexData()!.archetypes.length > 0} fallback={<Skeleton height='80px' />}>
+          <div class='ilm-picker' role='radiogroup' aria-label='Pick an archetype'>
+            <For each={indexData()!.archetypes}>
+              {a => {
+                const [thumbSet, thumbNum] = a.thumbnail.split('/');
+                return (
+                  <button
+                    type='button'
+                    role='radio'
+                    class='ilm-arche'
+                    aria-checked={a.slug === effectiveSlug() ? 'true' : 'false'}
+                    onClick={() => pickArchetype(a.slug)}
+                  >
+                    <div class='ilm-arche-thumb'>
+                      <Show when={a.thumbnail}>
+                        <CardImage set={thumbSet} number={thumbNum} size='xs' alt='' />
+                      </Show>
+                    </div>
+                    <div class='ilm-arche-text'>
+                      <div class='ilm-arche-name'>{a.name}</div>
+                      <div class='ilm-arche-count'>{a.listCount.toLocaleString()} lists</div>
+                    </div>
+                  </button>
+                );
+              }}
+            </For>
+          </div>
+        </Show>
+      </Show>
+
+      <Show when={currentEntry() && !showListOnly()}>
         <div class='ilm-summary'>
           <div class='ilm-summary-headline'>
             <em>{currentEntry()!.name}</em> — final cut
@@ -250,7 +294,14 @@ export function InLovingMemoryPage() {
         </div>
       </Show>
 
-      <Show when={masterData() && masterData()!.items.length > 0} fallback={<MasterLoading />}>
+      <Show
+        when={masterData() && masterData()!.items.length > 0}
+        fallback={
+          <Show when={!showListOnly()}>
+            <MasterLoading />
+          </Show>
+        }
+      >
         <div class='ilm-toolbar'>
           <Tabs<CategoryFilter>
             options={CATEGORY_TABS}
@@ -288,20 +339,31 @@ function MasterLoading() {
 }
 
 function Card(props: { item: MasterItem }) {
-  const url = createMemo(() => cardImgUrl(props.item.set, props.item.number));
-  const [errored, setErrored] = createSignal(false);
   return (
     <div class='ilm-card'>
       <div class='ilm-card-img'>
+        {/* CardImage, not a hand-rolled /thumbnails URL. The old version built
+            one proxy URL per card and latched to a permanent placeholder on the
+            first onError, with no retry — and an archetype here is 110-290
+            cards all requesting through the Function at once, so any transient
+            failure blanked that card for the rest of the session. CardImage
+            prefers the R2 WebP mirror (most cards never touch the Function at
+            all) and falls back through sm → xs before giving up. */}
         <Show
-          when={url() && !errored()}
+          when={props.item.set && props.item.number}
           fallback={
             <div class='ph'>
               {props.item.set ?? '—'}/{props.item.number ?? '—'}
             </div>
           }
         >
-          <img src={url()} alt={props.item.name} loading='lazy' onError={() => setErrored(true)} />
+          <CardImage
+            set={props.item.set!}
+            number={props.item.number!}
+            size='sm'
+            alt={props.item.name}
+            sizes='(max-width: 560px) 45vw, 160px'
+          />
         </Show>
       </div>
       <div class='ilm-card-meta'>

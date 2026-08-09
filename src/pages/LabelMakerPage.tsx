@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { Segmented } from '../components/Segmented';
@@ -50,6 +50,18 @@ export function LabelMakerPage() {
   const [error, setError] = createSignal<string | null>(null);
 
   let canvasRef: HTMLCanvasElement | undefined;
+
+  // Desktop tool. The output is a physical label going to a USB thermal
+  // printer, so the phone can't finish the job even when the UI fits — and the
+  // preview needs to be read at print scale to judge whether the dither and
+  // the fitted title actually work. Same call as Social Graphics.
+  const narrowQuery = typeof window !== 'undefined' ? window.matchMedia('(max-width: 899px)') : null;
+  const [isNarrow, setIsNarrow] = createSignal(narrowQuery?.matches ?? false);
+  onMount(() => {
+    const onChange = (e: MediaQueryListEvent) => setIsNarrow(e.matches);
+    narrowQuery?.addEventListener('change', onChange);
+    onCleanup(() => narrowQuery?.removeEventListener('change', onChange));
+  });
 
   onMount(() => {
     document.title = 'Deck Box Label Maker — Tools — Ciphermaniac';
@@ -163,317 +175,329 @@ export function LabelMakerPage() {
         </div>
       </section>
 
-      <div class='lm-stage'>
-        <div class='lm-paper'>
-          <canvas
-            ref={canvasRef}
-            width={dims().wDots}
-            height={dims().hDots}
-            style={{ 'aspect-ratio': `${dims().wDots} / ${dims().hDots}`, 'max-width': `${dims().wDots}px` }}
-            aria-label='Label preview'
-            role='img'
-          />
-        </div>
-        <div class='lm-stage-foot'>
-          <span class='lm-dims num'>
-            {dims().wDots} × {dims().hDots} dots · {dims().wMm} × {dims().hMm} mm at {dims().dpi} dpi · 1-bit
+      <Show when={isNarrow()}>
+        <div class='lm-warning' role='note'>
+          <strong>This tool is built for desktop.</strong>
+          <span>
+            The label preview needs a wide screen to read at print scale, and the finished label goes to a thermal
+            printer on a computer anyway. Open this page on a desktop browser to design and print one.
           </span>
-          <div class='lm-actions'>
-            <button type='button' class='btn btn-primary' onClick={print} disabled={isEmpty()}>
-              Print
-            </button>
-            <button type='button' class='btn btn-secondary' onClick={download} disabled={isEmpty()}>
-              Download PNG
-            </button>
-          </div>
         </div>
-        <Show when={isEmpty()}>
-          <p class='lm-hint'>Pick a Pokémon below, or type a title.</p>
-        </Show>
-        <Show when={error()}>
-          <p class='lm-error' role='alert'>
-            {error()}
-          </p>
-        </Show>
-      </div>
+      </Show>
 
-      <div class='lm-controls'>
-        <section class='lm-group'>
-          <h2>Pokémon</h2>
-          <PokemonPicker
-            id='primary'
-            label='Pokémon'
-            value={config.pokemon1}
-            clearable
-            onChange={v => {
-              // Clearing the first slot promotes the second, so there's never a
-              // hole with an icon sitting in the wrong position.
-              if (!v && config.pokemon2) {
-                setConfig({ pokemon1: config.pokemon2, pokemon2: null });
-              } else {
-                setConfig('pokemon1', v);
-              }
-            }}
-          />
-          <Show when={config.pokemon1}>
+      <Show when={!isNarrow()}>
+        <div class='lm-stage'>
+          <div class='lm-paper'>
+            <canvas
+              ref={canvasRef}
+              width={dims().wDots}
+              height={dims().hDots}
+              style={{ 'aspect-ratio': `${dims().wDots} / ${dims().hDots}`, 'max-width': `${dims().wDots}px` }}
+              aria-label='Label preview'
+              role='img'
+            />
+          </div>
+          <div class='lm-stage-foot'>
+            <span class='lm-dims num'>
+              {dims().wDots} × {dims().hDots} dots · {dims().wMm} × {dims().hMm} mm at {dims().dpi} dpi · 1-bit
+            </span>
+            <div class='lm-actions'>
+              <button type='button' class='btn btn-primary' onClick={print} disabled={isEmpty()}>
+                Print
+              </button>
+              <button type='button' class='btn btn-secondary' onClick={download} disabled={isEmpty()}>
+                Download PNG
+              </button>
+            </div>
+          </div>
+          <Show when={isEmpty()}>
+            <p class='lm-hint'>Pick a Pokémon below, or type a title.</p>
+          </Show>
+          <Show when={error()}>
+            <p class='lm-error' role='alert'>
+              {error()}
+            </p>
+          </Show>
+        </div>
+
+        <div class='lm-controls'>
+          <section class='lm-group'>
+            <h2>Pokémon</h2>
             <PokemonPicker
-              id='secondary'
-              label='Add another'
-              value={config.pokemon2}
+              id='primary'
+              label='Pokémon'
+              value={config.pokemon1}
               clearable
-              onChange={v => setConfig('pokemon2', v)}
-            />
-          </Show>
-          <Show when={config.pokemon2}>
-            <div class='lm-field'>
-              <span class='lm-field-label'>Icon sizes</span>
-              <Segmented
-                ariaLabel='Icon sizes'
-                options={DUO_SIZING_OPTIONS}
-                selected={config.duoSizing}
-                onSelect={v => setConfig('duoSizing', v)}
-              />
-            </div>
-            <label class='lm-check'>
-              <input
-                type='checkbox'
-                checked={config.titleBreak}
-                onChange={e => setConfig('titleBreak', e.currentTarget.checked)}
-              />
-              Line break between names
-            </label>
-          </Show>
-          <div class='lm-field'>
-            <span class='lm-field-label'>Icon side</span>
-            <Segmented
-              ariaLabel='Icon side'
-              options={SPRITE_SIDE_OPTIONS}
-              selected={config.spriteSide}
-              onSelect={v => setConfig('spriteSide', v)}
-            />
-          </div>
-        </section>
-
-        <section class='lm-group'>
-          <h2>Text</h2>
-          <div class='lm-field'>
-            <label for='lm-title'>Deck title</label>
-            <input
-              id='lm-title'
-              type='text'
-              placeholder='Deck title'
-              value={effectiveTitle()}
-              onInput={e => {
-                setTitleEdited(true);
-                setConfig('title', e.currentTarget.value);
+              onChange={v => {
+                // Clearing the first slot promotes the second, so there's never a
+                // hole with an icon sitting in the wrong position.
+                if (!v && config.pokemon2) {
+                  setConfig({ pokemon1: config.pokemon2, pokemon2: null });
+                } else {
+                  setConfig('pokemon1', v);
+                }
               }}
             />
-          </div>
-          <div class='lm-field'>
-            <label for='lm-subtitle'>Subtitle</label>
-            <input
-              id='lm-subtitle'
-              type='text'
-              placeholder='Andrew Hedrick, Standard 2026'
-              value={config.subtitle}
-              onInput={e => setConfig('subtitle', e.currentTarget.value)}
-            />
-          </div>
-          <div class='lm-field'>
-            <span class='lm-field-label'>Subtitle style</span>
-            <Segmented
-              ariaLabel='Subtitle style'
-              options={SUBTITLE_STYLE_OPTIONS}
-              selected={config.subtitleStyle}
-              onSelect={v => setConfig('subtitleStyle', v)}
-            />
-          </div>
-        </section>
-
-        <section class='lm-group'>
-          <h2>Layout</h2>
-          <div class='lm-field'>
-            <span class='lm-field-label'>Shape</span>
-            <Segmented
-              ariaLabel='Label layout'
-              options={LAYOUT_OPTIONS}
-              selected={config.layout}
-              onSelect={v => setConfig('layout', v)}
-            />
-          </div>
-
-          <Show
-            when={config.layout === 'keepsake'}
-            fallback={
+            <Show when={config.pokemon1}>
+              <PokemonPicker
+                id='secondary'
+                label='Add another'
+                value={config.pokemon2}
+                clearable
+                onChange={v => setConfig('pokemon2', v)}
+              />
+            </Show>
+            <Show when={config.pokemon2}>
               <div class='lm-field'>
-                <span class='lm-field-label'>Stub content</span>
+                <span class='lm-field-label'>Icon sizes</span>
                 <Segmented
-                  ariaLabel='Stub content'
-                  options={STUB_OPTIONS}
-                  selected={config.stubContent}
-                  onSelect={v => setConfig('stubContent', v)}
+                  ariaLabel='Icon sizes'
+                  options={DUO_SIZING_OPTIONS}
+                  selected={config.duoSizing}
+                  onSelect={v => setConfig('duoSizing', v)}
                 />
               </div>
-            }
-          >
-            <div class='lm-field'>
-              <span class='lm-field-label'>Third row</span>
-              <Segmented
-                ariaLabel='Third row'
-                options={THIRD_ROW_OPTIONS}
-                selected={config.thirdRow}
-                onSelect={v => setConfig('thirdRow', v)}
-              />
-            </div>
-          </Show>
-
-          <Show when={showStars()}>
-            <div class='lm-field'>
-              <label for='lm-stars'>
-                Stars: {config.stars} of {config.starsMax}
+              <label class='lm-check'>
+                <input
+                  type='checkbox'
+                  checked={config.titleBreak}
+                  onChange={e => setConfig('titleBreak', e.currentTarget.checked)}
+                />
+                Line break between names
               </label>
-              <input
-                id='lm-stars'
-                type='range'
-                min={0}
-                max={config.starsMax}
-                value={config.stars}
-                onInput={e => setConfig('stars', Number(e.currentTarget.value))}
+            </Show>
+            <div class='lm-field'>
+              <span class='lm-field-label'>Icon side</span>
+              <Segmented
+                ariaLabel='Icon side'
+                options={SPRITE_SIDE_OPTIONS}
+                selected={config.spriteSide}
+                onSelect={v => setConfig('spriteSide', v)}
               />
             </div>
-          </Show>
+          </section>
 
-          <Show when={showProgress()}>
+          <section class='lm-group'>
+            <h2>Text</h2>
             <div class='lm-field'>
-              <span class='lm-field-label'>Progress</span>
-              <div class='lm-pair'>
-                <input
-                  type='number'
-                  min={0}
-                  aria-label='Cards built'
-                  value={config.progressCurrent}
-                  onInput={e => setConfig('progressCurrent', Number(e.currentTarget.value))}
-                />
-                <span aria-hidden='true'>/</span>
-                <input
-                  type='number'
-                  min={1}
-                  aria-label='Cards total'
-                  value={config.progressTotal}
-                  onInput={e => setConfig('progressTotal', Number(e.currentTarget.value))}
-                />
-              </div>
-            </div>
-          </Show>
-
-          <Show when={config.layout === 'keepsake' && config.thirdRow === 'text'}>
-            <div class='lm-field'>
-              <label for='lm-extra'>Extra text</label>
+              <label for='lm-title'>Deck title</label>
               <input
-                id='lm-extra'
+                id='lm-title'
                 type='text'
-                value={config.extraText}
-                onInput={e => setConfig('extraText', e.currentTarget.value)}
-              />
-            </div>
-          </Show>
-
-          <Show when={config.layout === 'ticket' && config.stubContent === 'stars'}>
-            <div class='lm-field'>
-              <label for='lm-stub-label'>Stub label</label>
-              <input
-                id='lm-stub-label'
-                type='text'
-                value={config.stubLabel}
-                onInput={e => setConfig('stubLabel', e.currentTarget.value)}
+                placeholder='Deck title'
+                value={effectiveTitle()}
+                onInput={e => {
+                  setTitleEdited(true);
+                  setConfig('title', e.currentTarget.value);
+                }}
               />
             </div>
             <div class='lm-field'>
-              <label for='lm-format'>Format</label>
+              <label for='lm-subtitle'>Subtitle</label>
               <input
-                id='lm-format'
+                id='lm-subtitle'
                 type='text'
-                value={config.formatText}
-                onInput={e => setConfig('formatText', e.currentTarget.value)}
+                placeholder='Andrew Hedrick, Standard 2026'
+                value={config.subtitle}
+                onInput={e => setConfig('subtitle', e.currentTarget.value)}
               />
             </div>
-          </Show>
-        </section>
+            <div class='lm-field'>
+              <span class='lm-field-label'>Subtitle style</span>
+              <Segmented
+                ariaLabel='Subtitle style'
+                options={SUBTITLE_STYLE_OPTIONS}
+                selected={config.subtitleStyle}
+                onSelect={v => setConfig('subtitleStyle', v)}
+              />
+            </div>
+          </section>
 
-        {/* Printer last on purpose: it's a set-once decision, and putting it
-            first made every visitor scroll past it to reach the actual design. */}
-        <section class='lm-group'>
-          <h2>Printer</h2>
-          <div class='lm-field'>
-            <label for='lm-printer'>Model</label>
-            <select
-              id='lm-printer'
-              value={custom.enabled ? CUSTOM_PRINTER : printerId()}
-              onChange={e => {
-                const v = e.currentTarget.value;
-                if (v === CUSTOM_PRINTER) {
-                  setCustom('enabled', true);
-                  return;
-                }
-                setCustom('enabled', false);
-                setPrinterId(v);
-                const p = PRINTERS.find(x => x.id === v);
-                if (p && !p.labels.some(l => l.id === labelId())) {
-                  setLabelId(p.labels[0].id);
-                }
-              }}
+          <section class='lm-group'>
+            <h2>Layout</h2>
+            <div class='lm-field'>
+              <span class='lm-field-label'>Shape</span>
+              <Segmented
+                ariaLabel='Label layout'
+                options={LAYOUT_OPTIONS}
+                selected={config.layout}
+                onSelect={v => setConfig('layout', v)}
+              />
+            </div>
+
+            <Show
+              when={config.layout === 'keepsake'}
+              fallback={
+                <div class='lm-field'>
+                  <span class='lm-field-label'>Stub content</span>
+                  <Segmented
+                    ariaLabel='Stub content'
+                    options={STUB_OPTIONS}
+                    selected={config.stubContent}
+                    onSelect={v => setConfig('stubContent', v)}
+                  />
+                </div>
+              }
             >
-              <For each={PRINTERS}>{p => <option value={p.id}>{p.name}</option>}</For>
-              <option value={CUSTOM_PRINTER}>Custom…</option>
-            </select>
-          </div>
-
-          <Show
-            when={custom.enabled}
-            fallback={
               <div class='lm-field'>
-                <label for='lm-label-size'>Label size</label>
-                <select id='lm-label-size' value={labelId()} onChange={e => setLabelId(e.currentTarget.value)}>
-                  <For each={currentPrinter().labels}>{l => <option value={l.id}>{l.name}</option>}</For>
-                </select>
+                <span class='lm-field-label'>Third row</span>
+                <Segmented
+                  ariaLabel='Third row'
+                  options={THIRD_ROW_OPTIONS}
+                  selected={config.thirdRow}
+                  onSelect={v => setConfig('thirdRow', v)}
+                />
               </div>
-            }
-          >
+            </Show>
+
+            <Show when={showStars()}>
+              <div class='lm-field'>
+                <label for='lm-stars'>
+                  Stars: {config.stars} of {config.starsMax}
+                </label>
+                <input
+                  id='lm-stars'
+                  type='range'
+                  min={0}
+                  max={config.starsMax}
+                  value={config.stars}
+                  onInput={e => setConfig('stars', Number(e.currentTarget.value))}
+                />
+              </div>
+            </Show>
+
+            <Show when={showProgress()}>
+              <div class='lm-field'>
+                <span class='lm-field-label'>Progress</span>
+                <div class='lm-pair'>
+                  <input
+                    type='number'
+                    min={0}
+                    aria-label='Cards built'
+                    value={config.progressCurrent}
+                    onInput={e => setConfig('progressCurrent', Number(e.currentTarget.value))}
+                  />
+                  <span aria-hidden='true'>/</span>
+                  <input
+                    type='number'
+                    min={1}
+                    aria-label='Cards total'
+                    value={config.progressTotal}
+                    onInput={e => setConfig('progressTotal', Number(e.currentTarget.value))}
+                  />
+                </div>
+              </div>
+            </Show>
+
+            <Show when={config.layout === 'keepsake' && config.thirdRow === 'text'}>
+              <div class='lm-field'>
+                <label for='lm-extra'>Extra text</label>
+                <input
+                  id='lm-extra'
+                  type='text'
+                  value={config.extraText}
+                  onInput={e => setConfig('extraText', e.currentTarget.value)}
+                />
+              </div>
+            </Show>
+
+            <Show when={config.layout === 'ticket' && config.stubContent === 'stars'}>
+              <div class='lm-field'>
+                <label for='lm-stub-label'>Stub label</label>
+                <input
+                  id='lm-stub-label'
+                  type='text'
+                  value={config.stubLabel}
+                  onInput={e => setConfig('stubLabel', e.currentTarget.value)}
+                />
+              </div>
+              <div class='lm-field'>
+                <label for='lm-format'>Format</label>
+                <input
+                  id='lm-format'
+                  type='text'
+                  value={config.formatText}
+                  onInput={e => setConfig('formatText', e.currentTarget.value)}
+                />
+              </div>
+            </Show>
+          </section>
+
+          {/* Printer last on purpose: it's a set-once decision, and putting it
+            first made every visitor scroll past it to reach the actual design. */}
+          <section class='lm-group'>
+            <h2>Printer</h2>
             <div class='lm-field'>
-              <span class='lm-field-label'>Label size</span>
-              <div class='lm-pair'>
-                <input
-                  type='number'
-                  min={10}
-                  aria-label='Width in mm'
-                  value={custom.wMm}
-                  onInput={e => setCustom('wMm', Number(e.currentTarget.value))}
-                />
-                <span aria-hidden='true'>×</span>
-                <input
-                  type='number'
-                  min={10}
-                  aria-label='Height in mm'
-                  value={custom.hMm}
-                  onInput={e => setCustom('hMm', Number(e.currentTarget.value))}
-                />
-                <span aria-hidden='true'>mm @</span>
-                <input
-                  type='number'
-                  min={72}
-                  aria-label='Dots per inch'
-                  value={custom.dpi}
-                  onInput={e => setCustom('dpi', Number(e.currentTarget.value))}
-                />
-                <span aria-hidden='true'>dpi</span>
-              </div>
+              <label for='lm-printer'>Model</label>
+              <select
+                id='lm-printer'
+                value={custom.enabled ? CUSTOM_PRINTER : printerId()}
+                onChange={e => {
+                  const v = e.currentTarget.value;
+                  if (v === CUSTOM_PRINTER) {
+                    setCustom('enabled', true);
+                    return;
+                  }
+                  setCustom('enabled', false);
+                  setPrinterId(v);
+                  const p = PRINTERS.find(x => x.id === v);
+                  if (p && !p.labels.some(l => l.id === labelId())) {
+                    setLabelId(p.labels[0].id);
+                  }
+                }}
+              >
+                <For each={PRINTERS}>{p => <option value={p.id}>{p.name}</option>}</For>
+                <option value={CUSTOM_PRINTER}>Custom…</option>
+              </select>
             </div>
-          </Show>
-          <p class='lm-note'>
-            Thermal printers lay down pure black or nothing, so the label dithers sprite shading into a dot pattern.
-          </p>
-        </section>
-      </div>
+
+            <Show
+              when={custom.enabled}
+              fallback={
+                <div class='lm-field'>
+                  <label for='lm-label-size'>Label size</label>
+                  <select id='lm-label-size' value={labelId()} onChange={e => setLabelId(e.currentTarget.value)}>
+                    <For each={currentPrinter().labels}>{l => <option value={l.id}>{l.name}</option>}</For>
+                  </select>
+                </div>
+              }
+            >
+              <div class='lm-field'>
+                <span class='lm-field-label'>Label size</span>
+                <div class='lm-pair'>
+                  <input
+                    type='number'
+                    min={10}
+                    aria-label='Width in mm'
+                    value={custom.wMm}
+                    onInput={e => setCustom('wMm', Number(e.currentTarget.value))}
+                  />
+                  <span aria-hidden='true'>×</span>
+                  <input
+                    type='number'
+                    min={10}
+                    aria-label='Height in mm'
+                    value={custom.hMm}
+                    onInput={e => setCustom('hMm', Number(e.currentTarget.value))}
+                  />
+                  <span aria-hidden='true'>mm @</span>
+                  <input
+                    type='number'
+                    min={72}
+                    aria-label='Dots per inch'
+                    value={custom.dpi}
+                    onInput={e => setCustom('dpi', Number(e.currentTarget.value))}
+                  />
+                  <span aria-hidden='true'>dpi</span>
+                </div>
+              </div>
+            </Show>
+            <p class='lm-note'>
+              Thermal printers lay down pure black or nothing, so the label dithers sprite shading into a dot pattern.
+            </p>
+          </section>
+        </div>
+      </Show>
     </div>
   );
 }
