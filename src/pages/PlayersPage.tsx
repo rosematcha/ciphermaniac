@@ -88,15 +88,6 @@ export function PlayersPage() {
 
   return (
     <>
-      <section class='hero hero-collapsible'>
-        <h1>Players</h1>
-        <div class='hero-meta'>
-          <Show when={indexData()} fallback={<Skeleton width='240px' height='13px' />}>
-            <span>{(indexData() ?? []).length.toLocaleString()} players across all tournaments</span>
-          </Show>
-        </div>
-      </section>
-
       <Section>
         <div class='filter-bar'>
           <div class='filter-row'>

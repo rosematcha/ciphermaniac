@@ -1,6 +1,5 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { createStore } from 'solid-js/store';
-import { Breadcrumb } from '../components/Breadcrumb';
 import { Segmented } from '../components/Segmented';
 import { PokemonPicker, prettySlugName } from '../components/PokemonPicker';
 import { defaultConfig, type LabelConfig } from '../lib/labelmaker/types';
@@ -168,7 +167,6 @@ export function LabelMakerPage() {
   return (
     <div class='lm-page'>
       <section class='hero'>
-        <Breadcrumb crumbs={[{ label: 'Tools', href: '/tools' }, { label: 'Deck Box Label Maker' }]} />
         <h1>Deck Box Label Maker</h1>
         <div class='hero-meta'>
           <span>Built for the Brother QL series, DYMO LabelWriter, and Zebra desktop printers</span>

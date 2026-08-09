@@ -381,19 +381,6 @@
   margin: 0 8px;
   opacity: 0.4;
 }
-/* Index pages whose hero is a pure title + meta line drop it on phones, where
-   the vertical space is better spent on the filter controls and results. Opt-in
-   via `.hero-collapsible` so hero sections that carry real content stay put. */
-@media (max-width: 640px) {
-  .hero-collapsible {
-    display: none;
-  }
-  /* `.page > section + section` margins key off DOM adjacency, not layout, so
-     a display:none hero still pushes its sibling down without this reset. */
-  .hero-collapsible + section {
-    margin-top: 0;
-  }
-}
 
 /* ---------- Section heading ---------- */
 .section-head {
@@ -558,25 +545,6 @@
   display: inline-flex;
   gap: 8px;
   margin-top: 6px;
-}
-
-/* ---------- Breadcrumb ---------- */
-.breadcrumb {
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 14px;
-}
-.breadcrumb a {
-  color: var(--accent);
-  font-weight: 500;
-}
-.breadcrumb .sep {
-  margin: 0 8px;
-  opacity: 0.45;
-}
-.breadcrumb .current {
-  color: var(--fg);
-  font-weight: 500;
 }
 
 /* ---------- Archetype gallery card ---------- */

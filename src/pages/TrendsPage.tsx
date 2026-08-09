@@ -149,13 +149,6 @@ export function TrendsPage() {
 
   return (
     <>
-      <section class='hero hero-collapsible'>
-        <h1>Trends</h1>
-        <div class='hero-meta'>
-          <span>How the meta has shifted over the selected window</span>
-        </div>
-      </section>
-
       <Section>
         <div class='filter-bar'>
           <div class='filter-row'>

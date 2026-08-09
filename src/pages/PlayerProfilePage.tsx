@@ -1,7 +1,6 @@
 import { A, useParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
 import { fetchPlayerDecks, fetchPlayerProfile, prettyTournamentName } from '../lib/data';
-import { Breadcrumb } from '../components/Breadcrumb';
 import { Section } from '../components/Section';
 import { Badge } from '../components/Badge';
 import { Skeleton } from '../components/Skeleton';
@@ -36,10 +35,6 @@ export function PlayerProfilePage() {
 
   return (
     <>
-      <Breadcrumb
-        crumbs={[{ label: 'Players', href: '/players' }, { label: profileData()?.name ?? `#${params.id}` }]}
-      />
-
       <Show
         when={profileData()}
         fallback={

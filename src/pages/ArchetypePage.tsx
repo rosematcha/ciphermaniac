@@ -15,7 +15,6 @@ import {
 import { useTournament } from '../lib/tournamentContext';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../types';
-import { Breadcrumb } from '../components/Breadcrumb';
 import { Tabs } from '../components/Tabs';
 import { Segmented } from '../components/Segmented';
 import { EmptyState } from '../components/EmptyState';
@@ -185,8 +184,6 @@ export function ArchetypePage() {
 
   return (
     <>
-      <Breadcrumb crumbs={[{ label: 'Archetypes', href: '/archetypes' }, { label: label() }]} />
-
       <Show
         when={effectiveReport()}
         fallback={
