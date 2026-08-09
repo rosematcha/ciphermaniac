@@ -9,10 +9,10 @@
  *     fine (same policy as the 6h HTTP cache, but instant and offline-safe).
  *  2. Same-origin /assets/ + /fonts/: cache-first. Bundle filenames are
  *     content-hashed and fonts are frozen, so these never go stale.
- *  3. Navigations: stale-while-revalidate on the app shell. Repeat visitors
- *     paint instantly from the cached shell (all content is client-rendered
- *     from hashed assets + JSON, so a briefly-stale shell is harmless); a
- *     background refresh keeps the cache current and covers offline.
+ *  3. Navigations: network-first on the app shell, cached copy only as the
+ *     offline fallback. The shell must never be served stale: it points at
+ *     content-hashed bundles, and after a deploy the old hashes are gone from
+ *     the server — a stale shell means a blank page until refresh.
  *
  * Card images are intentionally NOT cached here: they're no-cors/opaque
  * responses (quota-padded heavily by browsers) and already long-cached by
@@ -20,7 +20,7 @@
  *
  * Bump VERSION to invalidate all SW caches.
  */
-const VERSION = 'v2'; // v2: flush caches poisoned by the July 2026 _redirects outage
+const VERSION = 'v3'; // v3: drop stale-shell navigations (post-deploy blank page)
 const JSON_CACHE = `cm-json-${VERSION}`;
 const ASSET_CACHE = `cm-assets-${VERSION}`;
 const SHELL_CACHE = `cm-shell-${VERSION}`;
@@ -89,32 +89,35 @@ async function cacheFirst(request) {
   if (cached) {
     return cached;
   }
-  const response = await fetch(request);
+  // Never let this handler reject: a rejected respondWith surfaces as an
+  // opaque "ServiceWorker encountered an unexpected error" and kills the
+  // module load outright. A clean network error at least hits the page's
+  // recovery path.
+  let response;
+  try {
+    response = await fetch(request);
+  } catch {
+    return Response.error();
+  }
   if (cacheable(response)) {
     cache.put(request, response.clone());
   }
   return response;
 }
 
-async function navigationStaleWhileRevalidate(request) {
+async function navigationNetworkFirst(request) {
   const cache = await caches.open(SHELL_CACHE);
-  const cached = await cache.match('/');
-  const refresh = fetch(request)
-    .then(response => {
-      if (response.ok) {
-        // Keep one shell copy fresh (also the offline fallback). The shell is
-        // tiny HTML pointing at hashed assets, so serving it stale never
-        // serves stale code — the asset URLs inside decide that.
-        cache.put('/', response.clone());
-      }
-      return response;
-    })
-    .catch(() => null);
-  if (cached) {
-    return cached;
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      // Keep one shell copy purely as the offline fallback.
+      cache.put('/', response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await cache.match('/');
+    return cached ?? Response.error();
   }
-  const fresh = await refresh;
-  return fresh ?? Response.error();
 }
 
 self.addEventListener('fetch', event => {
@@ -125,7 +128,7 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
 
   if (request.mode === 'navigate') {
-    event.respondWith(navigationStaleWhileRevalidate(request));
+    event.respondWith(navigationNetworkFirst(request));
     return;
   }
   if (url.host === 'r2.ciphermaniac.com' && !url.pathname.startsWith('/card-images/')) {

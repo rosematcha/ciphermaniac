@@ -29,6 +29,20 @@
 </head>
 <body>
   <div id="root"></div>
+  <!-- Recovery: if the entry bundle fails to load (stale service-worker shell
+       pointing at a hashed asset a deploy has since removed), reload once with
+       a fresh network fetch instead of leaving a blank page. Session-scoped
+       guard prevents a reload loop when the network is genuinely down. -->
+  <script>
+    window.addEventListener('error', event => {
+      const el = event.target;
+      if (!(el instanceof HTMLScriptElement) || el.type !== 'module') { return; }
+      if (sessionStorage.getItem('cm-shell-recovered')) { return; }
+      sessionStorage.setItem('cm-shell-recovered', '1');
+      caches?.delete?.('cm-shell-v3');
+      location.reload();
+    }, true);
+  </script>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>
