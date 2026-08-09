@@ -80,6 +80,9 @@
 .lm-shell {
   display: grid;
   gap: var(--space-5);
+  /* Chrome animates the column opening; elsewhere it snaps and the rail's own
+     slide still carries the change. */
+  transition: grid-template-columns 240ms ease;
 }
 
 .lm-main {
@@ -89,11 +92,36 @@
   align-content: start;
 }
 
+/* The second column only exists once something is queued. */
 @media (min-width: 1200px) {
-  .lm-shell {
+  .lm-shell.has-queue {
     grid-template-columns: minmax(0, 1fr) 320px;
     gap: var(--space-5);
     align-items: start;
+  }
+}
+
+/* Arrival of the rail is the confirmation that a label was added, so it slides
+   in from the edge it occupies. */
+@keyframes lm-queue-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes lm-queue-in-stacked {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -276,6 +304,16 @@
   padding-top: var(--space-5);
   padding-bottom: var(--space-6);
   border-top: var(--border-width) solid var(--rule);
+  animation: lm-queue-in-stacked 240ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lm-shell {
+    transition: none;
+  }
+  .lm-queue {
+    animation: none;
+  }
 }
 
 /* As a rail beside the editor. Deliberately not a scroll container of its own:
@@ -291,6 +329,7 @@
     padding-left: var(--space-4);
     border-top: none;
     border-left: var(--border-width) solid var(--rule);
+    animation-name: lm-queue-in;
   }
 }
 

@@ -24,9 +24,8 @@ const LAYOUT_OPTIONS = [
 ];
 const THIRD_ROW_OPTIONS = [
   { value: 'none' as const, label: 'None' },
-  { value: 'stars' as const, label: 'Stars' },
-  { value: 'progress' as const, label: 'Progress' },
-  { value: 'text' as const, label: 'Text' }
+  { value: 'text' as const, label: 'Text' },
+  { value: 'stars' as const, label: 'Stars' }
 ];
 const STUB_OPTIONS = [
   { value: 'stars' as const, label: 'Stars + format' },
@@ -294,19 +293,15 @@ export function LabelMakerPage() {
   }
 
   const showStars = () =>
-    (config.layout === 'keepsake' && (config.thirdRow === 'stars' || config.thirdRow === 'progress')) ||
+    (config.layout === 'keepsake' && config.thirdRow === 'stars') ||
     (config.layout === 'ticket' && config.stubContent === 'stars');
-  const showProgress = () =>
-    (config.layout === 'keepsake' && config.thirdRow === 'progress') ||
-    (config.layout === 'ticket' && config.stubContent !== 'stars');
+  // Progress is a ticket-stub idea only; the keepsake third row dropped it.
+  const showProgress = () => config.layout === 'ticket' && config.stubContent !== 'stars';
 
   return (
     <div class='lm-page'>
       <section class='hero'>
         <h1>Deck Box Label Maker</h1>
-        <div class='hero-meta'>
-          <span>Built for the Brother QL series, DYMO LabelWriter, and Zebra desktop printers</span>
-        </div>
       </section>
 
       <Show when={isNarrow()}>
@@ -320,7 +315,7 @@ export function LabelMakerPage() {
       </Show>
 
       <Show when={!isNarrow()}>
-        <div class='lm-shell'>
+        <div class='lm-shell' classList={{ 'has-queue': queue().length > 0 }}>
           <div class='lm-main'>
             <div class='lm-stage'>
               <div class='lm-paper'>
@@ -356,9 +351,6 @@ export function LabelMakerPage() {
                   </button>
                 </div>
               </div>
-              <Show when={isEmpty()}>
-                <p class='lm-hint'>Pick a Pokémon below, or type a title.</p>
-              </Show>
               <Show when={error()}>
                 <p class='lm-error' role='alert'>
                   {error()}
@@ -646,40 +638,29 @@ export function LabelMakerPage() {
             </div>
           </div>
 
-          <section class='lm-queue'>
-            <div class='lm-queue-head'>
-              <h2>
-                Print queue <span class='num'>({queue().length})</span>
-              </h2>
-              <div class='lm-actions'>
-                <button
-                  type='button'
-                  class='btn btn-primary'
-                  onClick={() => void printQueue()}
-                  disabled={queue().length === 0 || busy()}
-                >
-                  {busy() ? 'Rendering…' : 'Print all'}
-                </button>
-                <button
-                  type='button'
-                  class='btn btn-secondary'
-                  classList={{ 'lm-danger': clearArmed() }}
-                  onClick={clearQueue}
-                  disabled={queue().length === 0}
-                >
-                  {clearArmed() ? 'Click again to clear' : 'Clear queue'}
-                </button>
+          {/* The rail only exists once there's something in it, so an empty
+            queue costs no space and its arrival is the feedback for adding. */}
+          <Show when={queue().length > 0}>
+            <section class='lm-queue'>
+              <div class='lm-queue-head'>
+                <h2>
+                  Print queue <span class='num'>({queue().length})</span>
+                </h2>
+                <div class='lm-actions'>
+                  <button type='button' class='btn btn-primary' onClick={() => void printQueue()} disabled={busy()}>
+                    {busy() ? 'Rendering…' : 'Print all'}
+                  </button>
+                  <button
+                    type='button'
+                    class='btn btn-secondary'
+                    classList={{ 'lm-danger': clearArmed() }}
+                    onClick={clearQueue}
+                  >
+                    {clearArmed() ? 'Click again to clear' : 'Clear queue'}
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <Show
-              when={queue().length > 0}
-              fallback={
-                <p class='lm-hint'>
-                  Nothing queued yet. Labels you add wait here, saved in this browser, until you print the batch.
-                </p>
-              }
-            >
               <ul class='lm-queue-list'>
                 <For each={queue()}>
                   {item => (
@@ -701,8 +682,8 @@ export function LabelMakerPage() {
                   )}
                 </For>
               </ul>
-            </Show>
-          </section>
+            </section>
+          </Show>
         </div>
       </Show>
     </div>

@@ -366,18 +366,6 @@ function drawTextBlock(ctx: CanvasRenderingContext2D, opts: TextBlockOpts) {
     const cy = y + rowH / 2 - 4 * u;
     if (config.thirdRow === 'stars') {
       drawStars(ctx, x, cy, config.stars, config.starsMax, 26 * u, u);
-    } else if (config.thirdRow === 'progress') {
-      const starsW = drawStars(ctx, x, cy, config.stars, config.starsMax, 24 * u, u);
-      const barX = x + starsW + 18 * u;
-      const count = `${config.progressCurrent}/${config.progressTotal}`;
-      ctx.font = `600 ${19 * u}px "IBM Plex Mono"`;
-      const countW = ctx.measureText(count).width;
-      const barW = Math.max(80 * u, maxWidth - starsW - 18 * u - countW - 14 * u);
-      drawProgress(ctx, barX, cy, barW, 18 * u, config.progressCurrent, config.progressTotal, u);
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#000';
-      ctx.fillText(count, barX + barW + 14 * u, cy);
-      ctx.textBaseline = 'top';
     } else if (config.thirdRow === 'text' && config.extraText) {
       const size = fitText(ctx, config.extraText, 24 * u, maxWidth, 600, u);
       ctx.font = `600 ${size}px Archivo`;

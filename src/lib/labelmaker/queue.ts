@@ -101,7 +101,9 @@ export function sanitizeConfig(raw: unknown): LabelConfig {
     title: pickString(raw, 'title', defaultConfig.title),
     subtitle: pickString(raw, 'subtitle', defaultConfig.subtitle),
     subtitleStyle: pickEnum(raw, 'subtitleStyle', ['italic', 'regular', 'caps'], defaultConfig.subtitleStyle),
-    thirdRow: pickEnum(raw, 'thirdRow', ['none', 'stars', 'progress', 'text'], defaultConfig.thirdRow),
+    // A label queued while 'progress' was still a third-row choice falls back
+    // to the default rather than carrying a value the editor can no longer show.
+    thirdRow: pickEnum(raw, 'thirdRow', ['none', 'text', 'stars'], defaultConfig.thirdRow),
     stars: pickNumber(raw, 'stars', defaultConfig.stars),
     starsMax: pickNumber(raw, 'starsMax', defaultConfig.starsMax),
     progressCurrent: pickNumber(raw, 'progressCurrent', defaultConfig.progressCurrent),
