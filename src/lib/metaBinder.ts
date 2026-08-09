@@ -16,14 +16,11 @@
  * card-types database, so this works from archetype reports alone — ~23KB per
  * archetype instead of a 23MB decks.json per event.
  *
- * The original also had an "Ace Specs" page, which is deliberately absent here.
- * `CardItem.aceSpec` exists in the types and is read by `enrichCardItem`
- * (shared/data/cardTypesDatabase.ts) and download-tournament.py, but nothing
- * ever WRITES it: `assets/data/card-types.json` has no ace-spec marker, so the
- * flag is false for every card site-wide. Ace Specs therefore land in their
- * natural trainer/energy buckets — Prime Catcher with the items, Hero's Cape
- * with the tools. Restore the section once the scraper populates the flag;
- * a hardcoded name list here would only paper over it for this one tool.
+ * Ace Specs get their own page, as in the original. `CardItem.aceSpec` comes off
+ * the card-types database, which scripts/build-card-types.mjs populates from
+ * Limitless's `is:ace` search — the card pages themselves carry no marker. The
+ * flag covers special-energy Ace Specs too (Legacy Energy), so the check has to
+ * come before the trainer/energy routing rather than inside it.
  *
  * Pure module: no fetching, no DOM. The page hands it data and renders the result.
  */
@@ -91,7 +88,8 @@ export type BinderSectionKey =
   | 'nicheItems'
   | 'tools'
   | 'stadiums'
-  | 'specialEnergy';
+  | 'specialEnergy'
+  | 'aceSpecs';
 
 export interface BinderSection {
   key: BinderSectionKey;
@@ -125,7 +123,8 @@ const SECTION_TITLES: Record<BinderSectionKey, string> = {
   nicheItems: 'Niche / Tech Items',
   tools: 'Tools',
   stadiums: 'Stadiums',
-  specialEnergy: 'Special Energy'
+  specialEnergy: 'Special Energy',
+  aceSpecs: 'Ace Specs'
 };
 
 const SECTION_ORDER: BinderSectionKey[] = [
@@ -136,7 +135,8 @@ const SECTION_ORDER: BinderSectionKey[] = [
   'nicheItems',
   'tools',
   'stadiums',
-  'specialEnergy'
+  'specialEnergy',
+  'aceSpecs'
 ];
 
 /** Basic energy is excluded outright — nobody needs a binder page for it. */
@@ -271,6 +271,13 @@ export function buildBinder(archetypes: BinderArchetypeInput[]): BinderResult {
     const item = itemByUid.get(card.uid)!;
 
     const section = cardSupercategory(item);
+
+    // Ace Specs first: you can only play one, so they're worth a page of their
+    // own regardless of whether the card is an item, a tool or a special energy.
+    if (item.aceSpec) {
+      buckets.get('aceSpecs')!.push(card);
+      continue;
+    }
 
     if (section === 'pokemon') {
       if (isCrossArchetypeStaple(card)) {

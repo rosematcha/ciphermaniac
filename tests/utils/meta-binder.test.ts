@@ -125,6 +125,23 @@ test('no card is ever placed in two sections', () => {
   assert.deepStrictEqual(sectionCards(result, 'specialEnergy'), ['Jet']);
 });
 
+test('ace specs get their own page, whatever their card type', () => {
+  // Prime Catcher is an item, Hero's Cape a tool, Legacy Energy a special
+  // energy: the aceSpec flag wins over all three natural buckets.
+  const result = buildBinder([
+    archetype('A', 500, [
+      card('Prime Catcher', 60, { category: 'trainer', trainerType: 'item', aceSpec: true }),
+      card("Hero's Cape", 40, { category: 'trainer', trainerType: 'tool', aceSpec: true }),
+      card('Legacy Energy', 30, { category: 'energy', energyType: 'special', aceSpec: true }),
+      card('Ball', 95, ITEM)
+    ])
+  ]);
+  assert.deepStrictEqual(sectionCards(result, 'aceSpecs'), ['Prime Catcher', "Hero's Cape", 'Legacy Energy']);
+  assert.deepStrictEqual(sectionCards(result, 'tools'), []);
+  assert.deepStrictEqual(sectionCards(result, 'specialEnergy'), []);
+  assert.deepStrictEqual(sectionCards(result, 'frequentItems'), ['Ball']);
+});
+
 test('deck share is weighted by archetype size, not averaged across archetypes', () => {
   // 100% of 900 decks + 0% of 100 decks = 0.9 overall, not the 0.5 a naive
   // mean of the two percentages would give.
