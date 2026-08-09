@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { onRequest } from '../../functions/sitemap.xml.ts';
 
@@ -59,6 +60,53 @@ test('sitemap cache key ignores query string (nonce cannot bypass cache)', async
     // the differing nonce did not bypass it.
     assert.ok(keys.includes(`match:${normalized}`));
     assert.ok(keys.includes(`put:${normalized}`));
+  } finally {
+    restore();
+  }
+});
+
+// --- Every advertised URL must resolve to a real route ---
+//
+// The sitemap once listed /suggested, /feedback, /toys/meta-binder and
+// /toys/player-connections, none of which were ever routes — so Google was
+// handed four 404s. Nothing tied the two lists together, so nothing caught it.
+// This test does: it parses the router's own <Route path='...'> declarations
+// and requires each <loc> in the sitemap to match one of them.
+
+/** Route patterns declared in the SPA router, minus the `*` 404 catch-all. */
+function declaredRoutes(): string[] {
+  const source = readFileSync(new URL('../../src/main.tsx', import.meta.url), 'utf-8');
+  return [...source.matchAll(/<Route\s+path='([^']+)'/g)].map(m => m[1]).filter(path => path !== '*');
+}
+
+/** `/cards/:set/:number` matches `/cards/TEF/123`; param segments match anything. */
+function routeMatches(pattern: string, path: string): boolean {
+  const patternParts = pattern.split('/');
+  const pathParts = path.split('/');
+  if (patternParts.length !== pathParts.length) {
+    return false;
+  }
+  return patternParts.every((part, i) => part.startsWith(':') || part === pathParts[i]);
+}
+
+test('every sitemap URL resolves to a declared route', async () => {
+  const { restore } = installMockCaches();
+  try {
+    const response = await onRequest({
+      request: new Request('https://ciphermaniac.com/sitemap.xml'),
+      env: {} as never
+    });
+    assert.strictEqual(response.status, 200);
+
+    const xml = await response.text();
+    const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => new URL(m[1]).pathname);
+    assert.ok(locs.length > 0, 'sitemap produced no URLs');
+
+    const routes = declaredRoutes();
+    assert.ok(routes.length > 0, 'failed to parse routes out of src/main.tsx');
+
+    const orphans = locs.filter(path => !routes.some(pattern => routeMatches(pattern, path)));
+    assert.deepStrictEqual(orphans, [], `sitemap advertises paths with no matching route: ${orphans.join(', ')}`);
   } finally {
     restore();
   }

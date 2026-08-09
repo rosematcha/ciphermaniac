@@ -1,5 +1,4 @@
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
-import { A } from '@solidjs/router';
 import {
   fetchDay2CardStats,
   fetchEvolutionMap,
@@ -9,6 +8,7 @@ import {
 } from '../lib/data';
 import type { CardItem } from '../types';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
+import { Breadcrumb } from '../components/Breadcrumb';
 import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
 import { interEmbedCss } from '../utils/fontEmbed';
@@ -184,7 +184,7 @@ export function SocialGraphicsPage() {
   });
 
   onMount(() => {
-    document.title = 'Social Graphics — Toys — Ciphermaniac';
+    document.title = 'Social Graphics — Tools — Ciphermaniac';
   });
 
   // Auto-default the comparison tournament to the next-most-recent regional/IC
@@ -374,11 +374,7 @@ export function SocialGraphicsPage() {
   return (
     <div class='sg-page'>
       <section class='hero'>
-        <div class='breadcrumb'>
-          <A href='/toys'>Toys</A>
-          <span> / </span>
-          <span class='current'>Social Graphics</span>
-        </div>
+        <Breadcrumb crumbs={[{ label: 'Tools', href: '/tools' }, { label: 'Social Graphics' }]} />
         <h1>Social Graphics</h1>
         <div class='hero-meta'>
           <span>Build a shareable top-cards graphic from any tournament report</span>

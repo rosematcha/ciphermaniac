@@ -32,13 +32,17 @@ const STATIC_ROUTES: Array<{ path: string; changefreq: ChangeFreq; priority: num
   { path: '/archetypes', changefreq: 'daily', priority: 0.9 },
   { path: '/trends', changefreq: 'daily', priority: 0.9 },
   { path: '/players', changefreq: 'daily', priority: 0.8 },
-  { path: '/suggested', changefreq: 'weekly', priority: 0.5 },
-  { path: '/toys/meta-binder', changefreq: 'weekly', priority: 0.6 },
-  { path: '/toys/player-connections', changefreq: 'weekly', priority: 0.5 },
-  { path: '/toys/social-graphics', changefreq: 'monthly', priority: 0.4 },
-  { path: '/about', changefreq: 'monthly', priority: 0.5 },
-  { path: '/feedback', changefreq: 'monthly', priority: 0.4 }
+  { path: '/tournaments', changefreq: 'daily', priority: 0.7 },
+  { path: '/tools', changefreq: 'monthly', priority: 0.6 },
+  { path: '/tools/deck-box-labels', changefreq: 'monthly', priority: 0.5 },
+  { path: '/tools/social-graphics', changefreq: 'monthly', priority: 0.4 },
+  { path: '/tools/in-loving-memory', changefreq: 'monthly', priority: 0.4 },
+  { path: '/about', changefreq: 'monthly', priority: 0.5 }
 ];
+// Every path above must resolve to a real route in src/main.tsx — the list
+// previously advertised four routes that had never existed (/suggested,
+// /feedback, /toys/meta-binder, /toys/player-connections), so Google was
+// crawling 404s. tests/api/sitemap-endpoint.test.ts now enforces the pairing.
 
 function escapeXml(value: string): string {
   return value

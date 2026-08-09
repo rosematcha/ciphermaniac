@@ -1,5 +1,6 @@
 import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
-import { A, useSearchParams } from '@solidjs/router';
+import { useSearchParams } from '@solidjs/router';
+import { Breadcrumb } from '../components/Breadcrumb';
 import { Tabs } from '../components/Tabs';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
@@ -68,9 +69,12 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
   { value: 'name-desc', label: 'Name (Z → A)' }
 ];
 
-// Toy data is uploaded to R2 (scripts/upload-toys.ts); Pages never serves
-// /toys/* in production — the SPA fallback would answer with HTML and a 200.
-// In dev, vite serves the scraper's output from static/ at the root.
+// Uploaded to R2 by scripts/upload-toys.ts. The R2 keys deliberately keep the
+// original `toys/` prefix even though the section is now /tools — they're
+// storage paths, not URLs, and renaming them buys nothing but a migration.
+// Pages never serves these paths in production anyway: the SPA fallback would
+// answer with HTML and a 200. In dev, vite serves the scraper's output from
+// static/ at the root.
 const DATA_BASE = import.meta.env?.DEV
   ? '/toys/in-loving-memory/data'
   : 'https://r2.ciphermaniac.com/toys/in-loving-memory/data';
@@ -125,7 +129,7 @@ export function InLovingMemoryPage() {
   const [sort, setSort] = createSignal<SortMode>('usage-desc');
 
   onMount(() => {
-    document.title = 'In Loving Memory — Toys — Ciphermaniac';
+    document.title = 'In Loving Memory — Tools — Ciphermaniac';
   });
 
   const slug = () => (typeof searchParams.a === 'string' ? searchParams.a : '');
@@ -183,11 +187,7 @@ export function InLovingMemoryPage() {
   return (
     <div class='ilm-page'>
       <section class='hero'>
-        <div class='breadcrumb'>
-          <A href='/toys'>Toys</A>
-          <span> / </span>
-          <span class='current'>In Loving Memory</span>
-        </div>
+        <Breadcrumb crumbs={[{ label: 'Tools', href: '/tools' }, { label: 'In Loving Memory' }]} />
         <h1>In Loving Memory</h1>
         <div class='hero-meta'>
           <span>Every Day-2 decklist from rotated archetypes, frozen at the end of their run</span>

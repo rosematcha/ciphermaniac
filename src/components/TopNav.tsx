@@ -7,7 +7,8 @@ const links: { href: string; label: string }[] = [
   { href: '/cards', label: 'Cards' },
   { href: '/archetypes', label: 'Archetypes' },
   { href: '/trends', label: 'Trends' },
-  { href: '/players', label: 'Players' }
+  { href: '/players', label: 'Players' },
+  { href: '/tools', label: 'Tools' }
 ];
 
 export function TopNav() {

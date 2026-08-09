@@ -41,13 +41,14 @@ const TrendsPage = lazy(() => import('./pages/TrendsPage').then(m => ({ default:
 const PlayersPage = lazy(() => import('./pages/PlayersPage').then(m => ({ default: m.PlayersPage })));
 const PlayerProfilePage = lazy(() => import('./pages/PlayerProfilePage').then(m => ({ default: m.PlayerProfilePage })));
 const PlayerComparePage = lazy(() => import('./pages/PlayerComparePage').then(m => ({ default: m.PlayerComparePage })));
-const ToysPage = lazy(() => import('./pages/ToysPage').then(m => ({ default: m.ToysPage })));
+const ToolsPage = lazy(() => import('./pages/ToolsPage').then(m => ({ default: m.ToolsPage })));
 const SocialGraphicsPage = lazy(() =>
   import('./pages/SocialGraphicsPage').then(m => ({ default: m.SocialGraphicsPage }))
 );
 const InLovingMemoryPage = lazy(() =>
   import('./pages/InLovingMemoryPage').then(m => ({ default: m.InLovingMemoryPage }))
 );
+const LabelMakerPage = lazy(() => import('./pages/LabelMakerPage').then(m => ({ default: m.LabelMakerPage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
 const SurveyPage = lazy(() => import('./pages/SurveyPage').then(m => ({ default: m.SurveyPage })));
 const SurveyResultsPage = lazy(() => import('./pages/SurveyResultsPage').then(m => ({ default: m.SurveyResultsPage })));
@@ -93,9 +94,15 @@ render(
       <Route path='/players/:id' component={PlayerProfilePage} />
       <Route path='/standings' component={() => <Navigate href='/players' />} />
       <Route path='/standings/:id' component={StandingsPlayerRedirect} />
-      <Route path='/toys' component={ToysPage} />
-      <Route path='/toys/social-graphics' component={SocialGraphicsPage} />
-      <Route path='/toys/in-loving-memory' component={InLovingMemoryPage} />
+      <Route path='/tools' component={ToolsPage} />
+      <Route path='/tools/social-graphics' component={SocialGraphicsPage} />
+      <Route path='/tools/in-loving-memory' component={InLovingMemoryPage} />
+      <Route path='/tools/deck-box-labels' component={LabelMakerPage} />
+      {/* The section shipped as /toys before it was made public — keep the old
+          paths working for anyone who bookmarked or shared one. */}
+      <Route path='/toys' component={() => <Navigate href='/tools' />} />
+      <Route path='/toys/social-graphics' component={() => <Navigate href='/tools/social-graphics' />} />
+      <Route path='/toys/in-loving-memory' component={() => <Navigate href='/tools/in-loving-memory' />} />
       <Route path='/about' component={AboutPage} />
       <Route path='/survey' component={SurveyPage} />
       <Route path='/survey/results' component={SurveyResultsPage} />

@@ -1,23 +1,23 @@
 import { onMount } from 'solid-js';
 import { A } from '@solidjs/router';
 
-export function ToysPage() {
+export function ToolsPage() {
   onMount(() => {
-    document.title = 'Toys — Ciphermaniac';
+    document.title = 'Tools — Ciphermaniac';
   });
 
   return (
     <>
       <section class='hero'>
-        <h1>Toys</h1>
+        <h1>Tools</h1>
         <div class='hero-meta'>
-          <span>Experimental tools built on top of the tournament data</span>
+          <span>Make a graphic, print a label, or read the archive</span>
         </div>
       </section>
 
       <section>
         <div class='gallery-grid'>
-          <A class='arche' href='/toys/social-graphics'>
+          <A class='arche' href='/tools/social-graphics'>
             <div class='arche-thumb' aria-hidden='true'>
               <svg viewBox='0 0 100 80'>
                 <rect x='8' y='14' width='84' height='52' rx='3' fill='currentColor' opacity='0.18' />
@@ -33,7 +33,32 @@ export function ToysPage() {
             </div>
           </A>
 
-          <A class='arche' href='/toys/in-loving-memory'>
+          <A class='arche' href='/tools/deck-box-labels'>
+            <div class='arche-thumb' aria-hidden='true'>
+              <svg viewBox='0 0 100 80'>
+                <rect
+                  x='6'
+                  y='22'
+                  width='88'
+                  height='36'
+                  rx='2'
+                  fill='none'
+                  stroke='currentColor'
+                  stroke-width='2'
+                  opacity='0.45'
+                />
+                <circle cx='24' cy='40' r='9' fill='currentColor' opacity='0.42' />
+                <rect x='40' y='31' width='42' height='7' fill='currentColor' opacity='0.5' />
+                <rect x='40' y='42' width='26' height='5' fill='currentColor' opacity='0.28' />
+              </svg>
+            </div>
+            <div class='arche-name'>Deck Box Label Maker</div>
+            <div class='arche-stats'>
+              <span class='arche-wr'>Design a deck box label and print it on a thermal label printer</span>
+            </div>
+          </A>
+
+          <A class='arche' href='/tools/in-loving-memory'>
             <div class='arche-thumb' aria-hidden='true'>
               <svg viewBox='0 0 100 80'>
                 <path
