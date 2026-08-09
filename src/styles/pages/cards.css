@@ -400,17 +400,28 @@
 }
 
 /* Desktop trigger: the mobile funnel button with room for a text label, so
-   both breakpoints share one affordance for the hidden facets. */
+   both breakpoints share one affordance for the hidden facets. `align-self`
+   stretches it to the row's tallest control (the search input) instead of
+   hugging its own text, which left it a stunted box next to the segmenteds. */
 .filters-btn--labeled {
-  width: auto;
-  padding: 0 12px;
+  align-self: stretch;
+  padding: 0 13px;
   gap: 7px;
   font: inherit;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
+  color: var(--muted);
 }
+.filters-btn--labeled:hover {
+  color: var(--fg);
+}
+/* Open (but unfiltered) reads as pressed: the panel below is its extension. */
 .filters-btn--labeled.is-open:not(.is-active) {
   background: var(--surface-2);
+  color: var(--fg);
+}
+.filters-btn--labeled.is-active {
+  font-weight: 600;
 }
 
 /* Desktop disclosure panel: the sheet's interior in an in-flow bordered block
@@ -442,20 +453,36 @@
   min-width: 0;
 }
 .filters-btn {
-  width: 46px;
   flex-shrink: 0;
   color: var(--fg);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  transition:
+    background var(--ms-fast),
+    border-color var(--ms-fast),
+    color var(--ms-fast);
+}
+.filters-btn svg {
+  flex-shrink: 0;
+}
+/* Mobile trigger is a square icon-only button; the desktop one carries a label
+   and sizes to its content (see `.filters-btn--labeled`). */
+.control-row .filters-btn {
+  width: 46px;
 }
 .filters-btn:hover {
   background: var(--surface-2);
+}
+.filters-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 /* Active state: fill with the accent and widen to seat the count numeral inline
    next to the funnel — no floating corner badge. */
