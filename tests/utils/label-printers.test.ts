@@ -40,6 +40,20 @@ test('dimsForLabel derives dots from mm when no override is given', () => {
   assert.strictEqual(dims.hDots, 203);
 });
 
+test('continuous 62mm cuts keep the tape width fixed and derive the cut length', () => {
+  // On DK-2205 only the cut length is free, so the 62mm axis stays pinned to the
+  // 696 printable dots while the shorter axis comes straight from the mm figure.
+  const ql800 = PRINTERS.find(p => p.id === 'ql800');
+  assert.ok(ql800, 'ql800 preset missing');
+  const cut29 = ql800.labels.find(l => l.id === 'dk2205-29');
+  assert.ok(cut29, 'DK-2205 29mm cut missing');
+
+  const dims = dimsForLabel(ql800.dpi, cut29);
+  assert.strictEqual(dims.wDots, 696);
+  assert.strictEqual(dims.hDots, mmToDots(29, 300));
+  assert.ok(dims.hMm < dims.wMm, 'the cut should be shorter than the tape width');
+});
+
 test('every printer preset has at least one label and a sane dpi', () => {
   assert.ok(PRINTERS.length > 0);
   for (const printer of PRINTERS) {

@@ -72,6 +72,58 @@
   gap: var(--space-5);
 }
 
+/* ---------- Shell ---------- */
+
+/* Wide enough for the editor and the queue rail side by side. Below this the
+   queue stacks under the controls. */
+.lm-shell {
+  display: grid;
+  gap: var(--space-5);
+  /* Chrome animates the column opening; elsewhere it snaps and the rail's own
+     slide carries the change. */
+  transition: grid-template-columns 240ms ease;
+}
+
+.lm-main {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+}
+
+/* The second column only exists once something is queued, so an empty queue
+   leaves the editor the full width rather than a reserved void beside it. */
+@media (min-width: 1280px) {
+  .lm-shell.has-queue {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    align-items: start;
+  }
+}
+
+/* Arrival of the rail is the confirmation that a label was added, so it slides
+   in from the edge it occupies. */
+@keyframes lm-queue-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes lm-queue-in-stacked {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ---------- Preview band ---------- */
 
 /* The label is the whole point, so it stays on screen while you work the
@@ -84,14 +136,30 @@
   display: grid;
   justify-items: center;
   gap: var(--space-3);
-  padding: var(--space-4) 0;
+  padding: var(--space-2) 0 var(--space-4);
   background: var(--bg);
   border-bottom: var(--border-width) solid var(--rule);
 }
 
-.lm-paper {
+/* A constant slot for the preview. Label geometries range from a stubby 54x17
+   to a 152x102 shipping label; sizing the band to each one made every change
+   of Label size shove the controls up or down by as much as 166px. */
+.lm-stage-media {
+  display: flex;
+  /* Bottom-aligned, so a short label sits just above its caption and the slack
+     collects above the preview as margin rather than as a hole beneath it. */
+  align-items: flex-end;
+  justify-content: center;
   width: 100%;
+  /* Sized to the default 62x29 label so the common case has no slack at all;
+     taller geometries scale down into the same slot. */
+  height: 220px;
+}
+
+.lm-paper {
+  display: flex;
   max-width: 560px;
+  max-height: 100%;
   background: #fff;
   border: var(--border-width) solid var(--border);
   box-shadow: var(--shadow-1);
@@ -99,18 +167,22 @@
 
 .lm-paper canvas {
   display: block;
-  width: 100%;
+  /* Auto on both axes with a cap on each: the intrinsic canvas size keeps the
+     aspect ratio while the slot bounds the height. */
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 220px;
   /* 1 label dot must not be smoothed into a soft grey ramp — the preview
      should look like what the printer will actually lay down. */
   image-rendering: pixelated;
 }
 
+/* Actions lead, the geometry read-out is a caption under them. */
 .lm-stage-foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3) var(--space-4);
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
 }
 
 .lm-dims {
@@ -240,6 +312,178 @@
   font-size: 12px;
   line-height: 1.5;
   color: var(--muted);
+}
+
+/* ---------- Print queue ---------- */
+
+.lm-queue {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  padding-top: var(--space-5);
+  padding-bottom: var(--space-6);
+  border-top: var(--border-width) solid var(--rule);
+  animation: lm-queue-in-stacked 240ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lm-shell {
+    transition: none;
+  }
+  .lm-queue {
+    animation: none;
+  }
+}
+
+/* As a rail beside the editor. Deliberately not a scroll container of its own:
+   a sticky box taller than its column's slack gets dragged up under the topnav
+   at the end of the scroll, which reads as broken. The list grows instead, and
+   only the head is pinned. */
+@media (min-width: 1280px) {
+  .lm-queue {
+    /* Stretch so the divider runs the full height of the editor beside it
+       rather than stopping under the last row. */
+    align-self: stretch;
+    padding-top: 0;
+    padding-left: var(--space-4);
+    border-top: none;
+    border-left: var(--border-width) solid var(--rule);
+    animation-name: lm-queue-in;
+  }
+}
+
+.lm-queue-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* Print and Clear stay reachable however far down the list you have scrolled. */
+@media (min-width: 1280px) {
+  .lm-queue-head {
+    position: sticky;
+    top: var(--topnav-h);
+    z-index: 1;
+    padding-top: var(--space-3);
+    display: grid;
+    gap: var(--space-2);
+    padding-bottom: var(--space-2);
+    background: var(--bg);
+  }
+  .lm-queue-head .lm-actions {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: var(--space-2);
+  }
+}
+
+.lm-queue-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+.lm-queue-head h2 .num {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.lm-queue-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lm-queue-item {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-areas:
+    'thumb meta'
+    'thumb actions';
+  align-content: center;
+  gap: 2px var(--space-3);
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--rule);
+  border-radius: var(--radius-md);
+}
+/* Full width (below the rail breakpoint) there's room for one line per label,
+   so the row actions sit beside the name rather than under it. */
+@media (max-width: 1279px) {
+  .lm-queue-item {
+    grid-template-columns: 96px minmax(0, 1fr) auto;
+    grid-template-areas: 'thumb meta actions';
+    align-items: center;
+  }
+  .lm-queue-row-actions {
+    margin-left: 0;
+  }
+}
+
+.lm-queue-thumb {
+  grid-area: thumb;
+  align-self: center;
+}
+.lm-queue-meta {
+  grid-area: meta;
+}
+.lm-queue-row-actions {
+  grid-area: actions;
+}
+/* The row you pulled back into the editor, so a stray second edit is obvious. */
+.lm-queue-item.is-editing {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+.lm-queue-thumb {
+  display: block;
+  width: 96px;
+  height: auto;
+  background: #fff;
+  border: var(--border-width) solid var(--border);
+  image-rendering: pixelated;
+}
+
+.lm-queue-meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lm-queue-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lm-queue-size {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Armed state of the two-step clear. */
+.lm-queue .btn.lm-danger {
+  border-color: var(--negative);
+  color: var(--negative);
+}
+
+.lm-queue-row-actions {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: -6px;
+}
+.lm-queue-row-actions .btn {
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+.lm-queue-name {
+  font-size: 13px;
 }
 
 /* ---------- Pokémon picker ---------- */

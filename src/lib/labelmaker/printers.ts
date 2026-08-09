@@ -23,6 +23,15 @@ const DK_LABELS: LabelSize[] = [
   { id: 'dk1201', name: '90 × 29 mm address (DK-1201)', wMm: 90, hMm: 29, wDots: 991, hDots: 271 },
   { id: 'dk1208', name: '90 × 38 mm address (DK-1208)', wMm: 90, hMm: 38, wDots: 991, hDots: 413 },
   { id: 'dk1204', name: '54 × 17 mm multipurpose (DK-1204)', wMm: 54, hMm: 17, wDots: 566, hDots: 165 },
+  // Continuous 62mm tape: the 62mm axis is the fixed tape width (696 printable
+  // dots), the other axis is the cut length and is free. Putting 62mm on the
+  // width means the @page rule matches how the roll actually feeds — page width
+  // = tape width, page length = the cut — so these print without the driver
+  // rotating anything. Shorter cuts give a less-tall label than the 100mm one.
+  { id: 'dk2205-25', name: '62 × 25 mm cut from continuous 62 mm (DK-2205)', wMm: 62, hMm: 25, wDots: 696 },
+  { id: 'dk2205-29', name: '62 × 29 mm cut from continuous 62 mm (DK-2205)', wMm: 62, hMm: 29, wDots: 696 },
+  { id: 'dk2205-38', name: '62 × 38 mm cut from continuous 62 mm (DK-2205)', wMm: 62, hMm: 38, wDots: 696 },
+  { id: 'dk2205-50', name: '62 × 50 mm cut from continuous 62 mm (DK-2205)', wMm: 62, hMm: 50, wDots: 696 },
   { id: 'dk2205-100', name: '100 × 62 mm on continuous 62 mm (DK-2205)', wMm: 100, hMm: 62, wDots: 1181, hDots: 696 }
 ];
 

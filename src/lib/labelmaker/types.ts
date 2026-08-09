@@ -1,5 +1,5 @@
 export type Layout = 'keepsake' | 'ticket';
-export type ThirdRow = 'none' | 'stars' | 'progress' | 'text';
+export type ThirdRow = 'none' | 'text' | 'stars';
 export type StubContent = 'stars' | 'progress' | 'count';
 export type DuoSizing = 'primary-larger' | 'equal';
 export type SpriteSide = 'left' | 'right';
