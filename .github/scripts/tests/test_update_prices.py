@@ -93,6 +93,46 @@ class ParseProductTest(unittest.TestCase):
             update_prices.parse_product(_product(3, "Stellar Crown Booster Box", None))
         )
 
+    def test_strips_promo_number_suffix_without_a_total(self):
+        # Promo groups name products "CardName - Number" with no "/total".
+        parsed = update_prices.parse_product(_product(4, "Pikachu ex - 106", "106"))
+        self.assertEqual(parsed, (4, "Pikachu ex", "106"))
+
+    def test_strips_promo_suffix_with_variant_parenthetical(self):
+        parsed = update_prices.parse_product(
+            _product(5, "Pikachu - 225 (World Championship 2025)", "225")
+        )
+        self.assertEqual(parsed, (5, "Pikachu", "225"))
+
+    def test_set_prefixed_promo_number_survives_parsing(self):
+        parsed = update_prices.parse_product(
+            _product(6, "Hop's Zacian ex - SVP193", "SVP193")
+        )
+        self.assertEqual(parsed, (6, "Hop's Zacian ex", "SVP193"))
+        self.assertEqual(update_prices.strip_set_prefix("SVP193", "SVP"), "193")
+        self.assertEqual(update_prices.normalize_product_number("SVP 200"), "SVP200")
+        self.assertEqual(update_prices.strip_set_prefix("SVP200", "SVP"), "200")
+
+    def test_leaves_alphanumeric_card_numbers_prefixed(self):
+        # TG05 is the card number, not a set code — never strip it.
+        self.assertIsNone(update_prices.strip_set_prefix("TG05", "SCR"))
+
+    def test_keeps_a_dash_that_is_not_a_number_suffix(self):
+        parsed = update_prices.parse_product(_product(7, "Ho-Oh - Reshiram", "045"))
+        self.assertEqual(parsed, (7, "Ho-Oh - Reshiram", "045"))
+
+    def test_keeps_hyphenated_names_when_stripping_the_number(self):
+        parsed = update_prices.parse_product(_product(8, "Porygon-Z - 155/182", "155/182"))
+        self.assertEqual(parsed, (8, "Porygon-Z", "155"))
+
+    def test_tolerates_a_missing_space_before_the_number(self):
+        parsed = update_prices.parse_product(_product(9, "Charizard ex -196", "196"))
+        self.assertEqual(parsed, (9, "Charizard ex", "196"))
+
+    def test_name_number_may_omit_the_set_prefix_the_number_field_carries(self):
+        parsed = update_prices.parse_product(_product(10, "Espeon ex - 175", "SVP 175"))
+        self.assertEqual(parsed, (10, "Espeon ex", "SVP175"))
+
 
 class ExtractSetPricesTest(unittest.TestCase):
     def test_joins_products_and_prices_by_preference(self):
@@ -117,6 +157,22 @@ class ExtractSetPricesTest(unittest.TestCase):
         products[0]["name"] = "Boss's Orders [Ghetsis] - 172/193"
         out = update_prices.extract_set_prices(products, price_records, "PAL", [uid])
         self.assertEqual(out[uid]["price"], 1.5)
+
+    def test_matches_a_set_prefixed_promo_number(self):
+        products = [_product(30, "Hop's Zacian ex - SVP193", "SVP193")]
+        uid = "Hop's Zacian ex::SVP::193"
+        out = update_prices.extract_set_prices(
+            products, [_price(30, "Normal", 4.2)], "SVP", [uid]
+        )
+        self.assertEqual(out[uid]["price"], 4.2)
+
+    def test_matches_a_typographic_apostrophe(self):
+        products = [_product(31, "Marnie’s Morpeko", "206")]
+        uid = "Marnie's Morpeko::SVP::206"
+        out = update_prices.extract_set_prices(
+            products, [_price(31, "Normal", 0.9)], "SVP", [uid]
+        )
+        self.assertEqual(out[uid]["price"], 0.9)
 
     def test_unpriced_products_are_omitted(self):
         products = [_product(11, "Snorlax - 51/68", "51/68")]
@@ -279,6 +335,19 @@ class ClassifyStandardPrintsTest(unittest.TestCase):
             "Hero's Cape::TEF::152",
             update_prices.classify_standard_prints(prices, self.SYNONYMS),
         )
+
+    def test_unpriced_sibling_falls_back_to_the_scraped_print_price(self):
+        # Pikachu ex as shipped: SVP 106 is the cheap playable print but TCGCSV
+        # never returned it, so the $1,141 ASC 276 looked like its own cluster's
+        # floor and rode into the "standard" movers list.
+        synonyms = {
+            "synonyms": {"Pikachu ex::SVP::106": "Pikachu ex::ASC::276"},
+            "canonicals": {"Pikachu ex": "Pikachu ex::ASC::276"},
+            "prints": {"Pikachu ex::SVP::106": 11.92, "Pikachu ex::ASC::276": 1141.18},
+        }
+        prices = {"Pikachu ex::ASC::276": {"price": 1141.18}}
+        standard = update_prices.classify_standard_prints(prices, synonyms)
+        self.assertNotIn("Pikachu ex::ASC::276", standard)
 
     def test_absolute_slack_keeps_penny_reprints_together(self):
         synonyms = {"synonyms": {"Bulbasaur::MEG::133": "Bulbasaur::MEG::001"}, "canonicals": {}}

@@ -1062,10 +1062,13 @@ def scrape_card_print_variations(session, set_code, number):
         price_link = cells[1].find("a", class_="card-price") if len(cells) >= 2 else None
         if price_link:
             price_text = price_link.get_text(strip=True)
-            price_match = re.search(r"\$?([\d.]+)", price_text)
+            # Keep the comma class: "$1,141.18" against a comma-less pattern
+            # parses as 1, which makes a bling print look like the cheapest in
+            # its cluster.
+            price_match = re.search(r"\$?\s*([\d,]*\d(?:\.\d+)?)", price_text)
             if price_match:
                 try:
-                    price_usd = float(price_match.group(1))
+                    price_usd = float(price_match.group(1).replace(",", ""))
                 except ValueError:
                     pass
 

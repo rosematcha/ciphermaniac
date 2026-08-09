@@ -106,6 +106,11 @@ def normalize_card_name(name):
     
     # Remove bracketed text (e.g., "Boss's Orders [Ghetsis]" → "Boss's Orders")
     name = re.sub(r'\s*\[.*?\]\s*', '', name)
+
+    # Fold typographic apostrophes — TCGPlayer writes "Marnie’s Morpeko" where
+    # Limitless writes "Marnie's Morpeko", and trainer-owned Pokémon are a whole
+    # mechanic now, so this is not a one-card special case.
+    name = name.replace('’', "'").replace('‘', "'").replace('´', "'")
     
     # Normalize unicode characters (é → e)
     name = unicodedata.normalize('NFD', name)
@@ -174,7 +179,7 @@ def load_card_synonyms(r2_client, bucket_name):
     result = r2.read_json(r2_client, bucket_name, CARD_SYNONYMS_KEY)
     if result.status == 'missing':
         print("  No synonyms object in R2; starting with empty synonyms")
-        return {'synonyms': {}, 'canonicals': {}}
+        return {'synonyms': {}, 'canonicals': {}, 'prints': {}}
     if result.status != 'found':
         # A transport blip or corrupt payload here would mis-key every price to
         # the previous canonicals — abort rather than run with empty synonyms.
@@ -184,7 +189,10 @@ def load_card_synonyms(r2_client, bucket_name):
     print(f"  Loaded {len(data.get('synonyms', {}))} synonyms from R2")
     return {
         'synonyms': data.get('synonyms', {}),
-        'canonicals': data.get('canonicals', {})
+        'canonicals': data.get('canonicals', {}),
+        # Per-print Limitless prices; the standard/bling split falls back to
+        # these for prints TCGCSV never returns (see classify_standard_prints).
+        'prints': data.get('prints', {})
     }
 
 
@@ -309,6 +317,13 @@ def classify_standard_prints(price_data, synonyms_data):
     cheapest print in its cluster. Prints in no cluster (single-printing cards)
     and prints we could not price qualify by default — dropping them would read
     on the page as "this card did not move".
+
+    A cluster member missing from ``price_data`` falls back to the per-print
+    price in the synonym DB (scraped from Limitless). Without that fallback a
+    single unpriced sibling makes the *expensive* print look like the cheapest
+    thing in its cluster, and a $1,100 collector print lands in the "standard"
+    movers list — which is exactly how Pikachu ex ASC 276 got there while its
+    cheap SVP 106 print went unpriced.
     """
     clusters = build_clusters(synonyms_data)
     member_of = {}
@@ -316,10 +331,15 @@ def classify_standard_prints(price_data, synonyms_data):
         for uid in members:
             member_of[uid] = canonical_uid
 
+    scraped_prints = synonyms_data.get('prints', {}) if isinstance(synonyms_data, dict) else {}
+
     def price_of(uid):
         entry = price_data.get(uid)
         price = entry.get('price') if isinstance(entry, dict) else None
-        return price if isinstance(price, (int, float)) else None
+        if isinstance(price, (int, float)):
+            return price
+        fallback = scraped_prints.get(uid)
+        return fallback if isinstance(fallback, (int, float)) else None
 
     standard = set()
     for uid in price_data:
@@ -438,6 +458,68 @@ def map_sets_to_group_ids(card_sets):
     return mappings
 
 
+def normalize_product_number(value):
+    """A TCGCSV Number value reduced to our UID form.
+
+    Drops the "/total" tail, collapses internal spaces, and zero-pads pure
+    digits. Alphanumeric numbers (``TG05``, ``GG05``) keep their prefix — it is
+    part of the card number, not a set code.
+    """
+    core = str(value or '').strip().upper().split('/')[0].replace(' ', '')
+    return core.zfill(3) if core.isdigit() else core
+
+
+def strip_set_prefix(number, set_code):
+    """``SVP193`` in set SVP → ``193``. Promo groups prefix their card numbers
+    with the set code; expansion groups do not. Returns None when the number
+    carries no such prefix, so callers only try the extra lookup when it means
+    something.
+    """
+    code = (set_code or '').upper()
+    if not code or not number.startswith(code) or number == code:
+        return None
+    return normalize_product_number(number[len(code):])
+
+
+def _number_matches(tail_token, number):
+    """True when a name's trailing token names the product's own card number.
+
+    Tolerates the set-code prefix promo groups sprinkle inconsistently across
+    the two fields: ``"Espeon ex - 175"`` carries Number ``"SVP 175"``.
+    """
+    tail = normalize_product_number(tail_token)
+    target = normalize_product_number(number)
+    if not tail or not target:
+        return False
+    if tail == target:
+        return True
+    return tail.isdigit() and target.endswith(tail) and target[: -len(tail)].isalpha()
+
+
+def _strip_number_suffix(name, number):
+    """``"Pikachu - 027"`` → ``"Pikachu"``; ``"Crispin - 133/142"`` → ``"Crispin"``.
+
+    Only strips when the segment after the last ``" - "`` actually starts with
+    the product's own card number, so a card whose *name* contains a dash keeps
+    it. Promo groups name products ``"CardName - Number"`` with no ``"/total"``,
+    which the old ``'/' in name`` guard missed — that left the number glued to
+    the name and cost us every promo print's price (P-SVP). Spacing around the
+    dash is inconsistent too ("Charizard ex -196"), so split on the last dash
+    and let the number match decide — that keeps hyphenated names like
+    ``"Ho-Oh"`` and ``"Porygon-Z"`` intact.
+    """
+    head, sep, tail = name.rpartition('-')
+    if not sep:
+        return name
+    head = head.strip()
+    tail_token = tail.strip().split(' ', 1)[0]
+    if not head or not tail_token:
+        return name
+    if not _number_matches(tail_token, number):
+        return name
+    return head
+
+
 def parse_product(product):
     """
     Extract (product_id, card_name, normalized_number) from a TCGCSV product
@@ -457,15 +539,7 @@ def parse_product(product):
     if not number:
         return None
 
-    # Product names come as "CardName - Number/Total" or bare "CardName"
-    if ' - ' in name and '/' in name:
-        card_name = name.split(' - ')[0].strip()
-    else:
-        card_name = name
-
-    card_number = number.split('/')[0] if '/' in number else number
-    normalized_number = card_number.zfill(3) if card_number.isdigit() else card_number
-    return product_id, card_name, normalized_number
+    return product_id, _strip_number_suffix(name, number), normalize_product_number(number)
 
 
 def build_normalized_lookup(card_uids):
@@ -491,9 +565,22 @@ def build_product_uid_map(products, set_code, card_uids):
             continue
         product_id, card_name, number = parsed
 
-        uid = f"{card_name}::{set_code}::{number}"
-        if uid not in card_uid_lookup:
-            uid = normalized_lookup.get(f"{normalize_card_name(card_name)}::{number}")
+        # Promo numbers arrive set-prefixed ("SVP193"); our UIDs never are.
+        candidates = [number]
+        unprefixed = strip_set_prefix(number, set_code)
+        if unprefixed:
+            candidates.append(unprefixed)
+
+        uid = None
+        for candidate in candidates:
+            exact = f"{card_name}::{set_code}::{candidate}"
+            if exact in card_uid_lookup:
+                uid = exact
+                break
+            fuzzy = normalized_lookup.get(f"{normalize_card_name(card_name)}::{candidate}")
+            if fuzzy:
+                uid = fuzzy
+                break
         if uid:
             product_uid_map[product_id] = uid
     return product_uid_map
