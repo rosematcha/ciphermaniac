@@ -5,15 +5,20 @@
  * bucket (pokemon-sprites/gen9/{slug}.png), so ArchetypeIcon serves them from
  * r2.ciphermaniac.com instead of hotlinking the Limitless CDN. The component
  * falls back to Limitless for any slug this mirror doesn't have yet, so the
- * script is safe to run incrementally. Re-run when new archetypes appear:
+ * script is safe to run incrementally — slugs already in the bucket are skipped.
+ *
+ * The (Card Metadata) Archetype Icons workflow runs this daily after re-scraping
+ * the icon map. To run it by hand:
  *
  *   R2_ACCOUNT_ID=... R2_ACCESS_KEY_ID=... R2_SECRET_ACCESS_KEY=... \
  *   R2_BUCKET_NAME=ciphermaniac-reports npx tsx scripts/mirror-archetype-sprites.ts
+ *
+ * Pass --force to re-upload every slug regardless of what's already mirrored.
  */
 
 import process from 'node:process';
 import { readFile } from 'node:fs/promises';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 const SOURCE_BASE = 'https://r2.limitlesstcg.net/pokemon/gen9';
 const DEST_PREFIX = 'pokemon-sprites/gen9';
@@ -51,12 +56,29 @@ async function collectSlugs(): Promise<Set<string>> {
   return slugs;
 }
 
+async function alreadyMirrored(slug: string): Promise<boolean> {
+  try {
+    await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: `${DEST_PREFIX}/${slug}.png` }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function main() {
+  // Sprites are immutable once published, so a slug already in the bucket never
+  // needs re-fetching. Pass --force to re-upload everything anyway.
+  const force = process.argv.includes('--force');
   const slugs = [...(await collectSlugs())].sort();
-  console.log(`Mirroring ${slugs.length} sprites…`);
+  console.log(`Mirroring ${slugs.length} sprites${force ? ' (forced)' : ''}…`);
   let uploaded = 0;
+  let skipped = 0;
   let missing = 0;
   for (const slug of slugs) {
+    if (!force && (await alreadyMirrored(slug))) {
+      skipped += 1;
+      continue;
+    }
     const res = await fetch(`${SOURCE_BASE}/${slug}.png`);
     if (!res.ok) {
       missing += 1;
@@ -74,7 +96,7 @@ async function main() {
     );
     uploaded += 1;
   }
-  console.log(`Done: ${uploaded} uploaded, ${missing} missing at source.`);
+  console.log(`Done: ${uploaded} uploaded, ${skipped} already mirrored, ${missing} missing at source.`);
 }
 
 main().catch(error => {
