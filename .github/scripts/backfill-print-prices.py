@@ -136,13 +136,14 @@ def _leading_date(label):
     return head
 
 
-def build_uid_universe(synonyms_data):
-    """Every print UID across every synonyms cluster, canonical included.
+def build_uid_universe(synonyms_data, archive_uids=frozenset()):
+    """Every print UID across every synonyms cluster, canonical included, plus
+    every print of every card any archived event reported.
 
-    Delegates to update-prices' ``build_print_universe`` so the daily job and
-    this backfill price exactly the same set of prints.
+    Delegates to update-prices so the daily job and this backfill price exactly
+    the same set of prints.
     """
-    return up.build_print_universe(synonyms_data)
+    return up.build_print_universe(synonyms_data) | up.expand_to_clusters(archive_uids, synonyms_data)
 
 
 def group_uids_by_set(uids):
@@ -334,7 +335,7 @@ def main():
 
     # 1. Print-UID universe → per-set groups.
     synonyms_data = load_synonyms(r2_client, bucket, args.synonyms)
-    universe = build_uid_universe(synonyms_data)
+    universe = build_uid_universe(synonyms_data, up.load_all_event_cards(r2_client, bucket))
     uids_by_set = group_uids_by_set(universe)
     print(f"Print-UID universe: {len(universe)} prints across {len(uids_by_set)} sets")
 

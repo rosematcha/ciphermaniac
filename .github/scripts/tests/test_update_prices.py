@@ -504,5 +504,95 @@ class BuildPrintUniverseTest(unittest.TestCase):
         self.assertEqual(update_prices.build_print_universe({}), set())
 
 
+class ExpandToClustersTest(unittest.TestCase):
+    SYNONYMS = {
+        "synonyms": {
+            "Iono::PAL::185": "Iono::PAF::237",
+            "Iono::PAF::080": "Iono::PAF::237",
+        },
+        "canonicals": {"Iono": "Iono::PAF::237"},
+    }
+
+    def test_an_archive_print_pulls_in_its_whole_cluster(self):
+        # A 2023 event names PAL/185; the collector prints that make the
+        # "All printings" scope interesting are the rest of the cluster.
+        self.assertEqual(
+            update_prices.expand_to_clusters({"Iono::PAL::185"}, self.SYNONYMS),
+            {"Iono::PAL::185", "Iono::PAF::080", "Iono::PAF::237"},
+        )
+
+    def test_a_canonical_pulls_in_its_aliases(self):
+        self.assertEqual(
+            update_prices.expand_to_clusters({"Iono::PAF::237"}, self.SYNONYMS),
+            {"Iono::PAL::185", "Iono::PAF::080", "Iono::PAF::237"},
+        )
+
+    def test_unclustered_prints_pass_through(self):
+        self.assertEqual(
+            update_prices.expand_to_clusters({"Hero's Cape::TEF::152"}, self.SYNONYMS),
+            {"Hero's Cape::TEF::152"},
+        )
+
+    def test_tolerates_empty_input(self):
+        self.assertEqual(update_prices.expand_to_clusters(set(), self.SYNONYMS), set())
+
+
+class CurrentMetaCanonicalsTest(unittest.TestCase):
+    SYNONYMS = {
+        "synonyms": {"Iono::PAL::185": "Iono::PAF::237"},
+        "canonicals": {"Iono": "Iono::PAF::237"},
+    }
+
+    def test_resolves_report_cards_to_their_canonical_print(self):
+        report = {"items": [{"uid": "Iono::PAL::185"}]}
+        out = update_prices.extract_current_meta_canonicals(report, self.SYNONYMS)
+        self.assertIn("Iono::PAF::237", out)
+        self.assertNotIn("Iono::PAL::185", out)
+
+    def test_excludes_cards_absent_from_the_current_report(self):
+        # The whole point of the narrower set: an archive-only card must not
+        # qualify for the "Standard only" scope.
+        out = update_prices.extract_current_meta_canonicals({"items": []}, self.SYNONYMS)
+        self.assertNotIn("Iono::PAF::237", out)
+
+
+class _RecordingR2Client:
+    """Captures put_object bodies by key."""
+
+    def __init__(self):
+        self.puts = {}
+
+    def put_object(self, Bucket=None, Key=None, Body=None, **_kwargs):  # noqa: N803
+        self.puts[Key] = Body
+
+
+class StandardScopeTest(unittest.TestCase):
+    HISTORY = {
+        # In the current meta, cheap: belongs in both scopes.
+        "Iono::PAF::237": [{"d": "2026-07-01", "p": 2.0}, {"d": "2026-07-09", "p": 3.0}],
+        # Archive-only card, equally cheap: "all printings" only.
+        "Lost Vacuum::CRZ::162": [{"d": "2026-07-01", "p": 1.5}, {"d": "2026-07-09", "p": 2.5}],
+    }
+
+    def test_archive_cards_reach_all_printings_but_not_standard_only(self):
+        client = _RecordingR2Client()
+        price_data = {uid: {"price": pts[-1]["p"]} for uid, pts in self.HISTORY.items()}
+        update_prices.upload_derived_artifacts(
+            client,
+            "bucket",
+            self.HISTORY,
+            price_data,
+            {"synonyms": {}, "canonicals": {}, "prints": {}},
+            date(2026, 7, 9),
+            {"Iono::PAF::237"},
+        )
+        movers = json.loads(client.puts[update_prices.PRICE_MOVERS_KEY])["scopes"]
+        rising = lambda scope: [r["uid"] for r in movers[scope]["pct"]["rising"]]  # noqa: E731
+        self.assertEqual(
+            sorted(rising("all")), ["Iono::PAF::237", "Lost Vacuum::CRZ::162"]
+        )
+        self.assertEqual(rising("standard"), ["Iono::PAF::237"])
+
+
 if __name__ == "__main__":
     unittest.main()
