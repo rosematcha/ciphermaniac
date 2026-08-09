@@ -121,14 +121,15 @@ test('composeCategoryPath creates trainer paths with subtypes', () => {
   assert.strictEqual(composeCategoryPath('Trainer', 'Tool', null), 'trainer/tool');
 });
 
-test('composeCategoryPath handles ace spec tools', () => {
-  const result = composeCategoryPath('Trainer', 'Tool', null, { aceSpec: true });
-  assert.strictEqual(result, 'trainer/tool/acespec');
+test('composeCategoryPath appends acespec to the real trainer subtype', () => {
+  assert.strictEqual(composeCategoryPath('Trainer', 'Tool', null, { aceSpec: true }), 'trainer/tool/acespec');
+  // Prime Catcher is an Item and Grand Tree a Stadium — neither becomes a tool.
+  assert.strictEqual(composeCategoryPath('Trainer', 'Item', null, { aceSpec: true }), 'trainer/item/acespec');
+  assert.strictEqual(composeCategoryPath('Trainer', 'Stadium', null, { aceSpec: true }), 'trainer/stadium/acespec');
 });
 
-test('composeCategoryPath adds tool for ace spec without explicit tool type', () => {
-  const result = composeCategoryPath('Trainer', null, null, { aceSpec: true });
-  assert.strictEqual(result, 'trainer/tool/acespec');
+test('composeCategoryPath keeps ace spec paths flat when the subtype is unknown', () => {
+  assert.strictEqual(composeCategoryPath('Trainer', null, null, { aceSpec: true }), 'trainer/acespec');
 });
 
 test('composeCategoryPath creates energy paths', () => {

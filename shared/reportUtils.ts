@@ -92,10 +92,10 @@ export function composeCategoryPath(
       parts.push(trainerType.toLowerCase());
     }
     if (options.aceSpec) {
-      // Ace Spec cards are tools, ensure tool is in path
-      if (!parts.includes('tool') && (!trainerType || trainerType.toLowerCase() !== 'tool')) {
-        parts.push('tool');
-      }
+      // Appended to the card's real subtype: Prime Catcher is trainer/item/acespec,
+      // Hero's Cape trainer/tool/acespec. (An earlier revision forced 'tool' into
+      // the path, which would have produced trainer/item/tool/acespec; it only
+      // survived because nothing populated the flag.)
       parts.push('acespec');
     }
   } else if (base === 'energy' && energyType) {
@@ -113,9 +113,7 @@ export function composeCategoryPath(
  * @param items - Array of items with pct, found, name, and optional uid properties
  * @returns New sorted array (does not mutate input)
  */
-export function sortReportItems<T extends { pct: number; found: number; name: string; uid?: string }>(
-  items: T[]
-): T[] {
+export function sortReportItems<T extends { pct: number; found: number; name: string; uid?: string }>(items: T[]): T[] {
   return [...items].sort((left, right) => {
     if (right.pct !== left.pct) {
       return right.pct - left.pct;
