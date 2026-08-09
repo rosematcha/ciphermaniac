@@ -4,7 +4,18 @@ import { Segmented } from '../components/Segmented';
 import { PokemonPicker, prettySlugName } from '../components/PokemonPicker';
 import { defaultConfig, type LabelConfig } from '../lib/labelmaker/types';
 import { renderLabel } from '../lib/labelmaker/renderLabel';
-import { dimsForLabel, type LabelDims, mmToDots, PRINTERS } from '../lib/labelmaker/printers';
+import { type LabelDims, PRINTERS } from '../lib/labelmaker/printers';
+import {
+  buildPrintDocument,
+  describeSize,
+  type LabelSizeSpec,
+  loadQueue,
+  type PrintJob,
+  type QueuedLabel,
+  queueLabelName,
+  resolveDims,
+  saveQueue
+} from '../lib/labelmaker/queue';
 import '../styles/pages/label-maker.css';
 
 const LAYOUT_OPTIONS = [
@@ -38,6 +49,29 @@ const SUBTITLE_STYLE_OPTIONS = [
 
 const CUSTOM_PRINTER = 'custom';
 
+/** A queued label drawn at its own geometry, scaled down by CSS to a row thumb. */
+function QueueThumb(props: { item: QueuedLabel }) {
+  let ref: HTMLCanvasElement | undefined;
+  const dims = () => resolveDims(props.item.size);
+  createEffect(() => {
+    const canvas = ref;
+    if (canvas) {
+      void renderLabel(canvas, props.item.config, dims());
+    }
+  });
+  return (
+    <canvas
+      ref={ref}
+      class='lm-queue-thumb'
+      width={dims().wDots}
+      height={dims().hDots}
+      style={{ 'aspect-ratio': `${dims().wDots} / ${dims().hDots}` }}
+      aria-label={`Preview of ${queueLabelName(props.item)}`}
+      role='img'
+    />
+  );
+}
+
 export function LabelMakerPage() {
   const [config, setConfig] = createStore<LabelConfig>({ ...defaultConfig });
   // The title auto-follows the Pokémon selection until the user types over it,
@@ -47,6 +81,14 @@ export function LabelMakerPage() {
   const [labelId, setLabelId] = createSignal('dk1209');
   const [custom, setCustom] = createStore({ enabled: false, dpi: 300, wMm: 62, hMm: 29 });
   const [error, setError] = createSignal<string | null>(null);
+  const [queue, setQueue] = createSignal<QueuedLabel[]>([]);
+  // Set while the editor is standing in for a queued label rather than a new
+  // one, so saving updates that row instead of appending a near-duplicate.
+  const [editingId, setEditingId] = createSignal<string | null>(null);
+  const [busy, setBusy] = createSignal(false);
+  const [clearArmed, setClearArmed] = createSignal(false);
+  let clearTimer = 0;
+  onCleanup(() => window.clearTimeout(clearTimer));
 
   let canvasRef: HTMLCanvasElement | undefined;
 
@@ -64,21 +106,18 @@ export function LabelMakerPage() {
 
   onMount(() => {
     document.title = 'Deck Box Label Maker — Tools — Ciphermaniac';
+    setQueue(loadQueue(localStorage));
   });
 
   const currentPrinter = () => PRINTERS.find(p => p.id === printerId()) ?? PRINTERS[0];
 
-  const dims = createMemo<LabelDims>(() => {
-    if (custom.enabled) {
-      const dpi = Math.max(72, custom.dpi || 300);
-      const wMm = Math.max(10, custom.wMm || 62);
-      const hMm = Math.max(10, custom.hMm || 29);
-      return { dpi, wMm, hMm, wDots: mmToDots(wMm, dpi), hDots: mmToDots(hMm, dpi) };
-    }
-    const printer = currentPrinter();
-    const label = printer.labels.find(l => l.id === labelId()) ?? printer.labels[0];
-    return dimsForLabel(printer.dpi, label);
+  const sizeSpec = (): LabelSizeSpec => ({
+    printerId: printerId(),
+    labelId: labelId(),
+    custom: custom.enabled ? { wMm: custom.wMm, hMm: custom.hMm, dpi: custom.dpi } : null
   });
+
+  const dims = createMemo<LabelDims>(() => resolveDims(sizeSpec()));
 
   const autoTitle = () => {
     if (!config.pokemon1) {
@@ -133,28 +172,125 @@ export function LabelMakerPage() {
     a.click();
   }
 
-  function print() {
-    const data = snapshotPng();
-    if (!data) {
-      return;
-    }
+  /** Hand a finished document to a new tab and let it print itself. */
+  function openPrintWindow(jobs: PrintJob[], title: string) {
     const win = window.open('', '_blank');
     if (!win) {
       setError('Your browser blocked the print window. Allow pop-ups for this site, or download the PNG instead.');
       return;
     }
-    const d = dims();
-    // A bare image at exact physical size with no page margin: the printer
-    // driver then has nothing to scale, which is what keeps 1 label dot on
-    // 1 printer dot.
-    win.document.write(
-      `<!doctype html><html><head><title>${fileSlug()}</title><style>` +
-        `@page { size: ${d.wMm}mm ${d.hMm}mm; margin: 0; }` +
-        'html, body { margin: 0; padding: 0; }' +
-        `img { width: ${d.wMm}mm; height: ${d.hMm}mm; display: block; image-rendering: pixelated; }` +
-        `</style></head><body><img src="${data}" onload="window.print()"></body></html>`
-    );
+    win.document.write(buildPrintDocument(jobs, title));
     win.document.close();
+  }
+
+  function print() {
+    const data = snapshotPng();
+    if (!data) {
+      return;
+    }
+    openPrintWindow([{ dataUrl: data, dims: dims() }], fileSlug());
+  }
+
+  // ---------- queue ----------
+
+  function newId(): string {
+    return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `label-${String(Date.now())}-${String(Math.round(Math.random() * 1e6))}`;
+  }
+
+  function commitQueue(next: QueuedLabel[]) {
+    setQueue(next);
+    saveQueue(localStorage, next);
+  }
+
+  /** Back to a blank label, keeping the printer and size you're working at. */
+  function resetEditor() {
+    setConfig({ ...defaultConfig });
+    setTitleEdited(false);
+    setEditingId(null);
+  }
+
+  function saveToQueue() {
+    const entry: QueuedLabel = {
+      id: editingId() ?? newId(),
+      // The auto-title is what the canvas draws, so it's what gets stored —
+      // otherwise a queued label re-renders blank once it leaves the editor.
+      config: { ...config, title: effectiveTitle() },
+      size: sizeSpec()
+    };
+    const current = queue();
+    const at = current.findIndex(item => item.id === entry.id);
+    commitQueue(at === -1 ? [...current, entry] : current.map((item, i) => (i === at ? entry : item)));
+    resetEditor();
+  }
+
+  function editQueued(item: QueuedLabel) {
+    setConfig({ ...item.config });
+    setTitleEdited(true);
+    setEditingId(item.id);
+    if (item.size.custom) {
+      setCustom({ enabled: true, ...item.size.custom });
+    } else {
+      setCustom('enabled', false);
+      setPrinterId(item.size.printerId);
+      setLabelId(item.size.labelId);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function removeQueued(id: string) {
+    commitQueue(queue().filter(item => item.id !== id));
+    if (editingId() === id) {
+      resetEditor();
+    }
+  }
+
+  /**
+   * Two-step rather than a confirm dialog: twelve queued labels is real work to
+   * lose, and the second click re-arms itself after a few seconds so a stray
+   * first click doesn't leave a loaded gun on the page.
+   */
+  function clearQueue() {
+    if (!clearArmed()) {
+      setClearArmed(true);
+      clearTimer = window.setTimeout(() => setClearArmed(false), 4000);
+      return;
+    }
+    window.clearTimeout(clearTimer);
+    setClearArmed(false);
+    commitQueue([]);
+    setEditingId(null);
+  }
+
+  /**
+   * Render every queued label off-screen, then send the whole batch as one
+   * print job. Rendering here rather than reusing the row thumbnails keeps the
+   * output at full print resolution regardless of what the thumbnails did.
+   */
+  async function printQueue() {
+    const items = queue();
+    if (items.length === 0) {
+      return;
+    }
+    setBusy(true);
+    try {
+      const jobs: PrintJob[] = [];
+      for (const item of items) {
+        const d = resolveDims(item.size);
+        const canvas = document.createElement('canvas');
+        canvas.width = d.wDots;
+        canvas.height = d.hDots;
+        await renderLabel(canvas, item.config, d);
+        jobs.push({ dataUrl: canvas.toDataURL('image/png'), dims: d });
+      }
+      setError(null);
+      openPrintWindow(jobs, `labels-${String(jobs.length)}`);
+    } catch {
+      setError('Could not render the queued labels. Reload the page and try again.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   const showStars = () =>
@@ -200,8 +336,16 @@ export function LabelMakerPage() {
               {dims().wDots} × {dims().hDots} dots · {dims().wMm} × {dims().hMm} mm at {dims().dpi} dpi · 1-bit
             </span>
             <div class='lm-actions'>
-              <button type='button' class='btn btn-primary' onClick={print} disabled={isEmpty()}>
-                Print
+              <button type='button' class='btn btn-primary' onClick={saveToQueue} disabled={isEmpty()}>
+                {editingId() ? 'Save changes' : 'Add to queue'}
+              </button>
+              <Show when={editingId()}>
+                <button type='button' class='btn btn-secondary' onClick={resetEditor}>
+                  Cancel edit
+                </button>
+              </Show>
+              <button type='button' class='btn btn-secondary' onClick={print} disabled={isEmpty()}>
+                Print this one
               </button>
               <button type='button' class='btn btn-secondary' onClick={download} disabled={isEmpty()}>
                 Download PNG
@@ -495,6 +639,65 @@ export function LabelMakerPage() {
             </p>
           </section>
         </div>
+
+        <section class='lm-queue'>
+          <div class='lm-queue-head'>
+            <h2>
+              Print queue <span class='num'>({queue().length})</span>
+            </h2>
+            <div class='lm-actions'>
+              <button
+                type='button'
+                class='btn btn-primary'
+                onClick={() => void printQueue()}
+                disabled={queue().length === 0 || busy()}
+              >
+                {busy() ? 'Rendering…' : `Print queue (${String(queue().length)})`}
+              </button>
+              <button
+                type='button'
+                class='btn btn-secondary'
+                classList={{ 'lm-danger': clearArmed() }}
+                onClick={clearQueue}
+                disabled={queue().length === 0}
+              >
+                {clearArmed() ? 'Click again to clear' : 'Clear queue'}
+              </button>
+            </div>
+          </div>
+
+          <Show
+            when={queue().length > 0}
+            fallback={
+              <p class='lm-hint'>
+                Nothing queued yet. Design a label, hit <strong>Add to queue</strong>, and it waits here — saved in this
+                browser — until you print the batch.
+              </p>
+            }
+          >
+            <ul class='lm-queue-list'>
+              <For each={queue()}>
+                {item => (
+                  <li class='lm-queue-item' classList={{ 'is-editing': editingId() === item.id }}>
+                    <QueueThumb item={item} />
+                    <div class='lm-queue-meta'>
+                      <span class='lm-queue-name'>{queueLabelName(item)}</span>
+                      <span class='lm-queue-size num'>{describeSize(resolveDims(item.size))}</span>
+                    </div>
+                    <div class='lm-queue-row-actions'>
+                      <button type='button' class='btn btn-ghost' onClick={() => editQueued(item)}>
+                        Edit
+                      </button>
+                      <button type='button' class='btn btn-ghost' onClick={() => removeQueued(item.id)}>
+                        Remove
+                      </button>
+                    </div>
+                  </li>
+                )}
+              </For>
+            </ul>
+          </Show>
+        </section>
       </Show>
     </div>
   );
