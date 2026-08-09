@@ -320,384 +320,390 @@ export function LabelMakerPage() {
       </Show>
 
       <Show when={!isNarrow()}>
-        <div class='lm-stage'>
-          <div class='lm-paper'>
-            <canvas
-              ref={canvasRef}
-              width={dims().wDots}
-              height={dims().hDots}
-              style={{ 'aspect-ratio': `${dims().wDots} / ${dims().hDots}`, 'max-width': `${dims().wDots}px` }}
-              aria-label='Label preview'
-              role='img'
-            />
-          </div>
-          <div class='lm-stage-foot'>
-            <span class='lm-dims num'>
-              {dims().wDots} × {dims().hDots} dots · {dims().wMm} × {dims().hMm} mm at {dims().dpi} dpi · 1-bit
-            </span>
-            <div class='lm-actions'>
-              <button type='button' class='btn btn-primary' onClick={saveToQueue} disabled={isEmpty()}>
-                {editingId() ? 'Save changes' : 'Add to queue'}
-              </button>
-              <Show when={editingId()}>
-                <button type='button' class='btn btn-secondary' onClick={resetEditor}>
-                  Cancel edit
-                </button>
+        <div class='lm-shell'>
+          <div class='lm-main'>
+            <div class='lm-stage'>
+              <div class='lm-paper'>
+                <canvas
+                  ref={canvasRef}
+                  width={dims().wDots}
+                  height={dims().hDots}
+                  style={{ 'aspect-ratio': `${dims().wDots} / ${dims().hDots}`, 'max-width': `${dims().wDots}px` }}
+                  aria-label='Label preview'
+                  role='img'
+                />
+              </div>
+              <div class='lm-stage-foot'>
+                <span class='lm-dims num'>
+                  {dims().wDots} × {dims().hDots} dots · {dims().wMm} × {dims().hMm} mm at {dims().dpi} dpi · 1-bit
+                </span>
+                <div class='lm-actions'>
+                  <button type='button' class='btn btn-primary' onClick={saveToQueue} disabled={isEmpty()}>
+                    {editingId() ? 'Save changes' : 'Add to queue'}
+                  </button>
+                  <Show when={editingId()}>
+                    <button type='button' class='btn btn-secondary' onClick={resetEditor}>
+                      Cancel edit
+                    </button>
+                  </Show>
+                  {/* Quieter than Add to queue: printing or saving a single label
+                is the exception now that the batch is the main path. */}
+                  <button type='button' class='btn btn-ghost' onClick={print} disabled={isEmpty()}>
+                    Print this one
+                  </button>
+                  <button type='button' class='btn btn-ghost' onClick={download} disabled={isEmpty()}>
+                    Download PNG
+                  </button>
+                </div>
+              </div>
+              <Show when={isEmpty()}>
+                <p class='lm-hint'>Pick a Pokémon below, or type a title.</p>
               </Show>
-              <button type='button' class='btn btn-secondary' onClick={print} disabled={isEmpty()}>
-                Print this one
-              </button>
-              <button type='button' class='btn btn-secondary' onClick={download} disabled={isEmpty()}>
-                Download PNG
-              </button>
+              <Show when={error()}>
+                <p class='lm-error' role='alert'>
+                  {error()}
+                </p>
+              </Show>
             </div>
-          </div>
-          <Show when={isEmpty()}>
-            <p class='lm-hint'>Pick a Pokémon below, or type a title.</p>
-          </Show>
-          <Show when={error()}>
-            <p class='lm-error' role='alert'>
-              {error()}
-            </p>
-          </Show>
-        </div>
 
-        <div class='lm-controls'>
-          <section class='lm-group'>
-            <h2>Pokémon</h2>
-            <PokemonPicker
-              id='primary'
-              label='Pokémon'
-              value={config.pokemon1}
-              clearable
-              onChange={v => {
-                // Clearing the first slot promotes the second, so there's never a
-                // hole with an icon sitting in the wrong position.
-                if (!v && config.pokemon2) {
-                  setConfig({ pokemon1: config.pokemon2, pokemon2: null });
-                } else {
-                  setConfig('pokemon1', v);
-                }
-              }}
-            />
-            <Show when={config.pokemon1}>
-              <PokemonPicker
-                id='secondary'
-                label='Add another'
-                value={config.pokemon2}
-                clearable
-                onChange={v => setConfig('pokemon2', v)}
-              />
-            </Show>
-            <Show when={config.pokemon2}>
-              <div class='lm-field'>
-                <span class='lm-field-label'>Icon sizes</span>
-                <Segmented
-                  ariaLabel='Icon sizes'
-                  options={DUO_SIZING_OPTIONS}
-                  selected={config.duoSizing}
-                  onSelect={v => setConfig('duoSizing', v)}
+            <div class='lm-controls'>
+              <section class='lm-group'>
+                <h2>Pokémon</h2>
+                <PokemonPicker
+                  id='primary'
+                  label='Pokémon'
+                  value={config.pokemon1}
+                  clearable
+                  onChange={v => {
+                    // Clearing the first slot promotes the second, so there's never a
+                    // hole with an icon sitting in the wrong position.
+                    if (!v && config.pokemon2) {
+                      setConfig({ pokemon1: config.pokemon2, pokemon2: null });
+                    } else {
+                      setConfig('pokemon1', v);
+                    }
+                  }}
                 />
-              </div>
-              <label class='lm-check'>
-                <input
-                  type='checkbox'
-                  checked={config.titleBreak}
-                  onChange={e => setConfig('titleBreak', e.currentTarget.checked)}
-                />
-                Line break between names
-              </label>
-            </Show>
-            <div class='lm-field'>
-              <span class='lm-field-label'>Icon side</span>
-              <Segmented
-                ariaLabel='Icon side'
-                options={SPRITE_SIDE_OPTIONS}
-                selected={config.spriteSide}
-                onSelect={v => setConfig('spriteSide', v)}
-              />
-            </div>
-          </section>
-
-          <section class='lm-group'>
-            <h2>Text</h2>
-            <div class='lm-field'>
-              <label for='lm-title'>Deck title</label>
-              <input
-                id='lm-title'
-                type='text'
-                placeholder='Deck title'
-                value={effectiveTitle()}
-                onInput={e => {
-                  setTitleEdited(true);
-                  setConfig('title', e.currentTarget.value);
-                }}
-              />
-            </div>
-            <div class='lm-field'>
-              <label for='lm-subtitle'>Subtitle</label>
-              <input
-                id='lm-subtitle'
-                type='text'
-                placeholder='Andrew Hedrick, Standard 2026'
-                value={config.subtitle}
-                onInput={e => setConfig('subtitle', e.currentTarget.value)}
-              />
-            </div>
-            <div class='lm-field'>
-              <span class='lm-field-label'>Subtitle style</span>
-              <Segmented
-                ariaLabel='Subtitle style'
-                options={SUBTITLE_STYLE_OPTIONS}
-                selected={config.subtitleStyle}
-                onSelect={v => setConfig('subtitleStyle', v)}
-              />
-            </div>
-          </section>
-
-          <section class='lm-group'>
-            <h2>Layout</h2>
-            <div class='lm-field'>
-              <span class='lm-field-label'>Shape</span>
-              <Segmented
-                ariaLabel='Label layout'
-                options={LAYOUT_OPTIONS}
-                selected={config.layout}
-                onSelect={v => setConfig('layout', v)}
-              />
-            </div>
-
-            <Show
-              when={config.layout === 'keepsake'}
-              fallback={
+                <Show when={config.pokemon1}>
+                  <PokemonPicker
+                    id='secondary'
+                    label='Add another'
+                    value={config.pokemon2}
+                    clearable
+                    onChange={v => setConfig('pokemon2', v)}
+                  />
+                </Show>
+                <Show when={config.pokemon2}>
+                  <div class='lm-field'>
+                    <span class='lm-field-label'>Icon sizes</span>
+                    <Segmented
+                      ariaLabel='Icon sizes'
+                      options={DUO_SIZING_OPTIONS}
+                      selected={config.duoSizing}
+                      onSelect={v => setConfig('duoSizing', v)}
+                    />
+                  </div>
+                  <label class='lm-check'>
+                    <input
+                      type='checkbox'
+                      checked={config.titleBreak}
+                      onChange={e => setConfig('titleBreak', e.currentTarget.checked)}
+                    />
+                    Line break between names
+                  </label>
+                </Show>
                 <div class='lm-field'>
-                  <span class='lm-field-label'>Stub content</span>
+                  <span class='lm-field-label'>Icon side</span>
                   <Segmented
-                    ariaLabel='Stub content'
-                    options={STUB_OPTIONS}
-                    selected={config.stubContent}
-                    onSelect={v => setConfig('stubContent', v)}
+                    ariaLabel='Icon side'
+                    options={SPRITE_SIDE_OPTIONS}
+                    selected={config.spriteSide}
+                    onSelect={v => setConfig('spriteSide', v)}
                   />
                 </div>
-              }
-            >
-              <div class='lm-field'>
-                <span class='lm-field-label'>Third row</span>
-                <Segmented
-                  ariaLabel='Third row'
-                  options={THIRD_ROW_OPTIONS}
-                  selected={config.thirdRow}
-                  onSelect={v => setConfig('thirdRow', v)}
-                />
-              </div>
-            </Show>
+              </section>
 
-            <Show when={showStars()}>
-              <div class='lm-field'>
-                <label for='lm-stars'>
-                  Stars: {config.stars} of {config.starsMax}
-                </label>
-                <input
-                  id='lm-stars'
-                  type='range'
-                  min={0}
-                  max={config.starsMax}
-                  value={config.stars}
-                  onInput={e => setConfig('stars', Number(e.currentTarget.value))}
-                />
-              </div>
-            </Show>
-
-            <Show when={showProgress()}>
-              <div class='lm-field'>
-                <span class='lm-field-label'>Progress</span>
-                <div class='lm-pair'>
-                  <input
-                    type='number'
-                    min={0}
-                    aria-label='Cards built'
-                    value={config.progressCurrent}
-                    onInput={e => setConfig('progressCurrent', Number(e.currentTarget.value))}
-                  />
-                  <span aria-hidden='true'>/</span>
-                  <input
-                    type='number'
-                    min={1}
-                    aria-label='Cards total'
-                    value={config.progressTotal}
-                    onInput={e => setConfig('progressTotal', Number(e.currentTarget.value))}
-                  />
-                </div>
-              </div>
-            </Show>
-
-            <Show when={config.layout === 'keepsake' && config.thirdRow === 'text'}>
-              <div class='lm-field'>
-                <label for='lm-extra'>Extra text</label>
-                <input
-                  id='lm-extra'
-                  type='text'
-                  value={config.extraText}
-                  onInput={e => setConfig('extraText', e.currentTarget.value)}
-                />
-              </div>
-            </Show>
-
-            <Show when={config.layout === 'ticket' && config.stubContent === 'stars'}>
-              <div class='lm-field'>
-                <label for='lm-stub-label'>Stub label</label>
-                <input
-                  id='lm-stub-label'
-                  type='text'
-                  value={config.stubLabel}
-                  onInput={e => setConfig('stubLabel', e.currentTarget.value)}
-                />
-              </div>
-              <div class='lm-field'>
-                <label for='lm-format'>Format</label>
-                <input
-                  id='lm-format'
-                  type='text'
-                  value={config.formatText}
-                  onInput={e => setConfig('formatText', e.currentTarget.value)}
-                />
-              </div>
-            </Show>
-          </section>
-
-          {/* Printer last on purpose: it's a set-once decision, and putting it
-            first made every visitor scroll past it to reach the actual design. */}
-          <section class='lm-group'>
-            <h2>Printer</h2>
-            <div class='lm-field'>
-              <label for='lm-printer'>Model</label>
-              <select
-                id='lm-printer'
-                value={custom.enabled ? CUSTOM_PRINTER : printerId()}
-                onChange={e => {
-                  const v = e.currentTarget.value;
-                  if (v === CUSTOM_PRINTER) {
-                    setCustom('enabled', true);
-                    return;
-                  }
-                  setCustom('enabled', false);
-                  setPrinterId(v);
-                  const p = PRINTERS.find(x => x.id === v);
-                  if (p && !p.labels.some(l => l.id === labelId())) {
-                    setLabelId(p.labels[0].id);
-                  }
-                }}
-              >
-                <For each={PRINTERS}>{p => <option value={p.id}>{p.name}</option>}</For>
-                <option value={CUSTOM_PRINTER}>Custom…</option>
-              </select>
-            </div>
-
-            <Show
-              when={custom.enabled}
-              fallback={
+              <section class='lm-group'>
+                <h2>Text</h2>
                 <div class='lm-field'>
-                  <label for='lm-label-size'>Label size</label>
-                  <select id='lm-label-size' value={labelId()} onChange={e => setLabelId(e.currentTarget.value)}>
-                    <For each={currentPrinter().labels}>{l => <option value={l.id}>{l.name}</option>}</For>
+                  <label for='lm-title'>Deck title</label>
+                  <input
+                    id='lm-title'
+                    type='text'
+                    placeholder='Deck title'
+                    value={effectiveTitle()}
+                    onInput={e => {
+                      setTitleEdited(true);
+                      setConfig('title', e.currentTarget.value);
+                    }}
+                  />
+                </div>
+                <div class='lm-field'>
+                  <label for='lm-subtitle'>Subtitle</label>
+                  <input
+                    id='lm-subtitle'
+                    type='text'
+                    placeholder='Deck subtitle'
+                    value={config.subtitle}
+                    onInput={e => setConfig('subtitle', e.currentTarget.value)}
+                  />
+                </div>
+                <div class='lm-field'>
+                  <span class='lm-field-label'>Subtitle style</span>
+                  <Segmented
+                    ariaLabel='Subtitle style'
+                    options={SUBTITLE_STYLE_OPTIONS}
+                    selected={config.subtitleStyle}
+                    onSelect={v => setConfig('subtitleStyle', v)}
+                  />
+                </div>
+              </section>
+
+              <section class='lm-group'>
+                <h2>Layout</h2>
+                <div class='lm-field'>
+                  <span class='lm-field-label'>Shape</span>
+                  <Segmented
+                    ariaLabel='Label layout'
+                    options={LAYOUT_OPTIONS}
+                    selected={config.layout}
+                    onSelect={v => setConfig('layout', v)}
+                  />
+                </div>
+
+                <Show
+                  when={config.layout === 'keepsake'}
+                  fallback={
+                    <div class='lm-field'>
+                      <span class='lm-field-label'>Stub content</span>
+                      <Segmented
+                        ariaLabel='Stub content'
+                        options={STUB_OPTIONS}
+                        selected={config.stubContent}
+                        onSelect={v => setConfig('stubContent', v)}
+                      />
+                    </div>
+                  }
+                >
+                  <div class='lm-field'>
+                    <span class='lm-field-label'>Third row</span>
+                    <Segmented
+                      ariaLabel='Third row'
+                      options={THIRD_ROW_OPTIONS}
+                      selected={config.thirdRow}
+                      onSelect={v => setConfig('thirdRow', v)}
+                    />
+                  </div>
+                </Show>
+
+                <Show when={showStars()}>
+                  <div class='lm-field'>
+                    <label for='lm-stars'>
+                      Stars: {config.stars} of {config.starsMax}
+                    </label>
+                    <input
+                      id='lm-stars'
+                      type='range'
+                      min={0}
+                      max={config.starsMax}
+                      value={config.stars}
+                      onInput={e => setConfig('stars', Number(e.currentTarget.value))}
+                    />
+                  </div>
+                </Show>
+
+                <Show when={showProgress()}>
+                  <div class='lm-field'>
+                    <span class='lm-field-label'>Progress</span>
+                    <div class='lm-pair'>
+                      <input
+                        type='number'
+                        min={0}
+                        aria-label='Cards built'
+                        value={config.progressCurrent}
+                        onInput={e => setConfig('progressCurrent', Number(e.currentTarget.value))}
+                      />
+                      <span aria-hidden='true'>/</span>
+                      <input
+                        type='number'
+                        min={1}
+                        aria-label='Cards total'
+                        value={config.progressTotal}
+                        onInput={e => setConfig('progressTotal', Number(e.currentTarget.value))}
+                      />
+                    </div>
+                  </div>
+                </Show>
+
+                <Show when={config.layout === 'keepsake' && config.thirdRow === 'text'}>
+                  <div class='lm-field'>
+                    <label for='lm-extra'>Extra text</label>
+                    <input
+                      id='lm-extra'
+                      type='text'
+                      value={config.extraText}
+                      onInput={e => setConfig('extraText', e.currentTarget.value)}
+                    />
+                  </div>
+                </Show>
+
+                <Show when={config.layout === 'ticket' && config.stubContent === 'stars'}>
+                  <div class='lm-field'>
+                    <label for='lm-stub-label'>Stub label</label>
+                    <input
+                      id='lm-stub-label'
+                      type='text'
+                      value={config.stubLabel}
+                      onInput={e => setConfig('stubLabel', e.currentTarget.value)}
+                    />
+                  </div>
+                  <div class='lm-field'>
+                    <label for='lm-format'>Format</label>
+                    <input
+                      id='lm-format'
+                      type='text'
+                      value={config.formatText}
+                      onInput={e => setConfig('formatText', e.currentTarget.value)}
+                    />
+                  </div>
+                </Show>
+              </section>
+
+              {/* Printer last on purpose: it's a set-once decision, and putting it
+            first made every visitor scroll past it to reach the actual design. */}
+              <section class='lm-group'>
+                <h2>Printer</h2>
+                <div class='lm-field'>
+                  <label for='lm-printer'>Model</label>
+                  <select
+                    id='lm-printer'
+                    value={custom.enabled ? CUSTOM_PRINTER : printerId()}
+                    onChange={e => {
+                      const v = e.currentTarget.value;
+                      if (v === CUSTOM_PRINTER) {
+                        setCustom('enabled', true);
+                        return;
+                      }
+                      setCustom('enabled', false);
+                      setPrinterId(v);
+                      const p = PRINTERS.find(x => x.id === v);
+                      if (p && !p.labels.some(l => l.id === labelId())) {
+                        setLabelId(p.labels[0].id);
+                      }
+                    }}
+                  >
+                    <For each={PRINTERS}>{p => <option value={p.id}>{p.name}</option>}</For>
+                    <option value={CUSTOM_PRINTER}>Custom…</option>
                   </select>
                 </div>
-              }
-            >
-              <div class='lm-field'>
-                <span class='lm-field-label'>Label size</span>
-                <div class='lm-pair'>
-                  <input
-                    type='number'
-                    min={10}
-                    aria-label='Width in mm'
-                    value={custom.wMm}
-                    onInput={e => setCustom('wMm', Number(e.currentTarget.value))}
-                  />
-                  <span aria-hidden='true'>×</span>
-                  <input
-                    type='number'
-                    min={10}
-                    aria-label='Height in mm'
-                    value={custom.hMm}
-                    onInput={e => setCustom('hMm', Number(e.currentTarget.value))}
-                  />
-                  <span aria-hidden='true'>mm @</span>
-                  <input
-                    type='number'
-                    min={72}
-                    aria-label='Dots per inch'
-                    value={custom.dpi}
-                    onInput={e => setCustom('dpi', Number(e.currentTarget.value))}
-                  />
-                  <span aria-hidden='true'>dpi</span>
-                </div>
-              </div>
-            </Show>
-            <p class='lm-note'>
-              Thermal printers lay down pure black or nothing, so the label dithers sprite shading into a dot pattern.
-            </p>
-          </section>
-        </div>
 
-        <section class='lm-queue'>
-          <div class='lm-queue-head'>
-            <h2>
-              Print queue <span class='num'>({queue().length})</span>
-            </h2>
-            <div class='lm-actions'>
-              <button
-                type='button'
-                class='btn btn-primary'
-                onClick={() => void printQueue()}
-                disabled={queue().length === 0 || busy()}
-              >
-                {busy() ? 'Rendering…' : `Print queue (${String(queue().length)})`}
-              </button>
-              <button
-                type='button'
-                class='btn btn-secondary'
-                classList={{ 'lm-danger': clearArmed() }}
-                onClick={clearQueue}
-                disabled={queue().length === 0}
-              >
-                {clearArmed() ? 'Click again to clear' : 'Clear queue'}
-              </button>
+                <Show
+                  when={custom.enabled}
+                  fallback={
+                    <div class='lm-field'>
+                      <label for='lm-label-size'>Label size</label>
+                      <select id='lm-label-size' value={labelId()} onChange={e => setLabelId(e.currentTarget.value)}>
+                        <For each={currentPrinter().labels}>{l => <option value={l.id}>{l.name}</option>}</For>
+                      </select>
+                    </div>
+                  }
+                >
+                  <div class='lm-field'>
+                    <span class='lm-field-label'>Label size</span>
+                    <div class='lm-pair'>
+                      <input
+                        type='number'
+                        min={10}
+                        aria-label='Width in mm'
+                        value={custom.wMm}
+                        onInput={e => setCustom('wMm', Number(e.currentTarget.value))}
+                      />
+                      <span aria-hidden='true'>×</span>
+                      <input
+                        type='number'
+                        min={10}
+                        aria-label='Height in mm'
+                        value={custom.hMm}
+                        onInput={e => setCustom('hMm', Number(e.currentTarget.value))}
+                      />
+                      <span aria-hidden='true'>mm @</span>
+                      <input
+                        type='number'
+                        min={72}
+                        aria-label='Dots per inch'
+                        value={custom.dpi}
+                        onInput={e => setCustom('dpi', Number(e.currentTarget.value))}
+                      />
+                      <span aria-hidden='true'>dpi</span>
+                    </div>
+                  </div>
+                </Show>
+                <p class='lm-note'>
+                  Thermal printers lay down pure black or nothing, so the label dithers sprite shading into a dot
+                  pattern.
+                </p>
+              </section>
             </div>
           </div>
 
-          <Show
-            when={queue().length > 0}
-            fallback={
-              <p class='lm-hint'>
-                Nothing queued yet. Design a label, hit <strong>Add to queue</strong>, and it waits here — saved in this
-                browser — until you print the batch.
-              </p>
-            }
-          >
-            <ul class='lm-queue-list'>
-              <For each={queue()}>
-                {item => (
-                  <li class='lm-queue-item' classList={{ 'is-editing': editingId() === item.id }}>
-                    <QueueThumb item={item} />
-                    <div class='lm-queue-meta'>
-                      <span class='lm-queue-name'>{queueLabelName(item)}</span>
-                      <span class='lm-queue-size num'>{describeSize(resolveDims(item.size))}</span>
-                    </div>
-                    <div class='lm-queue-row-actions'>
-                      <button type='button' class='btn btn-ghost' onClick={() => editQueued(item)}>
-                        Edit
-                      </button>
-                      <button type='button' class='btn btn-ghost' onClick={() => removeQueued(item.id)}>
-                        Remove
-                      </button>
-                    </div>
-                  </li>
-                )}
-              </For>
-            </ul>
-          </Show>
-        </section>
+          <section class='lm-queue'>
+            <div class='lm-queue-head'>
+              <h2>
+                Print queue <span class='num'>({queue().length})</span>
+              </h2>
+              <div class='lm-actions'>
+                <button
+                  type='button'
+                  class='btn btn-primary'
+                  onClick={() => void printQueue()}
+                  disabled={queue().length === 0 || busy()}
+                >
+                  {busy() ? 'Rendering…' : 'Print all'}
+                </button>
+                <button
+                  type='button'
+                  class='btn btn-secondary'
+                  classList={{ 'lm-danger': clearArmed() }}
+                  onClick={clearQueue}
+                  disabled={queue().length === 0}
+                >
+                  {clearArmed() ? 'Click again to clear' : 'Clear queue'}
+                </button>
+              </div>
+            </div>
+
+            <Show
+              when={queue().length > 0}
+              fallback={
+                <p class='lm-hint'>
+                  Nothing queued yet. Labels you add wait here, saved in this browser, until you print the batch.
+                </p>
+              }
+            >
+              <ul class='lm-queue-list'>
+                <For each={queue()}>
+                  {item => (
+                    <li class='lm-queue-item' classList={{ 'is-editing': editingId() === item.id }}>
+                      <QueueThumb item={item} />
+                      <div class='lm-queue-meta'>
+                        <span class='lm-queue-name'>{queueLabelName(item)}</span>
+                        <span class='lm-queue-size num'>{describeSize(resolveDims(item.size))}</span>
+                      </div>
+                      <div class='lm-queue-row-actions'>
+                        <button type='button' class='btn btn-ghost' onClick={() => editQueued(item)}>
+                          Edit
+                        </button>
+                        <button type='button' class='btn btn-ghost' onClick={() => removeQueued(item.id)}>
+                          Remove
+                        </button>
+                      </div>
+                    </li>
+                  )}
+                </For>
+              </ul>
+            </Show>
+          </section>
+        </div>
       </Show>
     </div>
   );

@@ -72,6 +72,31 @@
   gap: var(--space-5);
 }
 
+/* ---------- Shell ---------- */
+
+/* Above 1200px the queue becomes a rail beside the editor. Below that it
+   stacks under the controls. The rail is the point: adding a label used to
+   push its own confirmation 300px below the fold. */
+.lm-shell {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.lm-main {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+}
+
+@media (min-width: 1200px) {
+  .lm-shell {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: var(--space-5);
+    align-items: start;
+  }
+}
+
 /* ---------- Preview band ---------- */
 
 /* The label is the whole point, so it stays on screen while you work the
@@ -247,9 +272,26 @@
 .lm-queue {
   display: grid;
   gap: var(--space-3);
+  align-content: start;
+  padding-top: var(--space-5);
   padding-bottom: var(--space-6);
   border-top: var(--border-width) solid var(--rule);
-  padding-top: var(--space-5);
+}
+
+/* As a rail beside the editor. Deliberately not a scroll container of its own:
+   a sticky box taller than its column's slack gets dragged up under the topnav
+   at the end of the scroll, which reads as broken. The list grows instead, and
+   only the head is pinned. */
+@media (min-width: 1200px) {
+  .lm-queue {
+    /* Stretch so the divider runs the full height of the editor beside it
+       rather than stopping under the last row. */
+    align-self: stretch;
+    padding-top: 0;
+    padding-left: var(--space-4);
+    border-top: none;
+    border-left: var(--border-width) solid var(--rule);
+  }
 }
 
 .lm-queue-head {
@@ -258,6 +300,26 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+}
+
+/* Print and Clear stay reachable however far down the list you have scrolled. */
+@media (min-width: 1200px) {
+  .lm-queue-head {
+    position: sticky;
+    top: var(--topnav-h);
+    z-index: 1;
+    padding-top: var(--space-3);
+    display: grid;
+    gap: var(--space-2);
+    padding-bottom: var(--space-2);
+    background: var(--bg);
+  }
+  .lm-queue-head .lm-actions {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: var(--space-2);
+  }
 }
 
 .lm-queue-head h2 {
@@ -280,12 +342,38 @@
 
 .lm-queue-item {
   display: grid;
-  grid-template-columns: 120px 1fr auto;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-areas:
+    'thumb meta'
+    'thumb actions';
+  align-content: center;
+  gap: 2px var(--space-3);
+  padding: var(--space-2);
   border: var(--border-width) solid var(--rule);
   border-radius: var(--radius-md);
+}
+/* Full width (below the rail breakpoint) there's room for one line per label,
+   so the row actions sit beside the name rather than under it. */
+@media (max-width: 1199px) {
+  .lm-queue-item {
+    grid-template-columns: 96px minmax(0, 1fr) auto;
+    grid-template-areas: 'thumb meta actions';
+    align-items: center;
+  }
+  .lm-queue-row-actions {
+    margin-left: 0;
+  }
+}
+
+.lm-queue-thumb {
+  grid-area: thumb;
+  align-self: center;
+}
+.lm-queue-meta {
+  grid-area: meta;
+}
+.lm-queue-row-actions {
+  grid-area: actions;
 }
 /* The row you pulled back into the editor, so a stray second edit is obvious. */
 .lm-queue-item.is-editing {
@@ -295,7 +383,7 @@
 
 .lm-queue-thumb {
   display: block;
-  width: 120px;
+  width: 96px;
   height: auto;
   background: #fff;
   border: var(--border-width) solid var(--border);
@@ -329,6 +417,15 @@
 .lm-queue-row-actions {
   display: flex;
   gap: var(--space-1);
+  margin-left: -6px;
+}
+.lm-queue-row-actions .btn {
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+.lm-queue-name {
+  font-size: 13px;
 }
 
 /* ---------- Pokémon picker ---------- */
