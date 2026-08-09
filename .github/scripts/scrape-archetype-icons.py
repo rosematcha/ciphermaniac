@@ -12,11 +12,13 @@ The slug carries form information that can't be derived from the archetype name
 (``Lucario Hariyama`` → ``lucario-mega``), which is exactly why this map exists.
 
 This builds a CUMULATIVE database across every standard-legal format from
-Shrouded Fable (SFA) onward — the earliest format our tournament data covers. Each
-``(rotation, set)`` snapshot is scraped and MERGED: an archetype's icon Pokémon are
-stable across formats (Charizard Pidgeot is always charizard + pidgeot), so adding a
-format only fills gaps, never rewrites. Hand-edited keys in the committed JSON are
-preserved too (pass --overwrite to force replacement).
+Shrouded Fable (SFA) onward — the earliest format our tournament data covers. The
+snapshot list is read from the decks page's own set selector at run time, so a newly
+released set is picked up without editing this file. Each ``(rotation, set)``
+snapshot is scraped and MERGED: an archetype's icon Pokémon are stable across
+formats (Charizard Pidgeot is always charizard + pidgeot), so adding a format only
+fills gaps, never rewrites. Hand-edited keys in the committed JSON are preserved too
+(pass --overwrite to force replacement).
 
 Usage:
     # Rebuild the full SFA→current database (default):
@@ -50,12 +52,16 @@ REQUEST_DELAY = 0.5  # be polite between snapshot fetches
 OUTPUT_PATH = Path("src") / "data" / "archetype-icons.json"
 MAX_ICONS = 2
 
-# Every standard-legal format snapshot from Shrouded Fable onward, the earliest
-# format our tournament data covers. Ordered oldest → newest. `(rotation, set)`
-# matches Limitless's decks-page filter (data-rotation / data-set on the set
-# selector). 2024 deliberately starts at SFA — TEF/TWM are pre-SFA and excluded.
-# When a new set drops, append it here (or run with --target) and re-run.
-SET_TARGETS: List[Tuple[str, str]] = [
+# Shrouded Fable is the earliest format our tournament data covers, so it's the
+# floor for the cumulative scrape. Everything older on the selector (pre-SFA
+# 2024 sets like TEF/TWM, plus the 2023-and-earlier rotations) is dropped.
+EARLIEST_TARGET: Tuple[str, str] = ("2024", "SFA")
+
+# Fallback only. `discover_targets()` reads the live set selector so a newly
+# released set is picked up without a code change; this list is what we fall
+# back to if that markup ever changes shape. Ordered oldest → newest, matching
+# the decks-page filter (data-rotation / data-set on the set selector).
+FALLBACK_SET_TARGETS: List[Tuple[str, str]] = [
     # rotation 2024 — Shrouded Fable through Prismatic Evolutions
     ("2024", "SFA"),  # Shrouded Fable
     ("2024", "SCR"),  # Stellar Crown
@@ -68,10 +74,53 @@ SET_TARGETS: List[Tuple[str, str]] = [
     ("2025", "MEG"),  # Mega Evolution
     ("2025", "PFL"),  # Phantasmal Flames
     ("2025", "ASC"),  # Ascended Heroes
-    # rotation 2026 — Perfect Order and the current format, Chaos Rising
+    # rotation 2026 — Perfect Order through the current format, Pitch Black
     ("2026", "POR"),  # Perfect Order
-    ("2026", "CRI"),  # Chaos Rising (current)
+    ("2026", "CRI"),  # Chaos Rising
+    ("2026", "PBL"),  # Pitch Black
 ]
+
+
+def parse_set_options(html: str) -> List[Tuple[str, str]]:
+    """Read the decks-page set selector, oldest → newest.
+
+    The selector lists sets newest-first and spans every rotation back to 2021,
+    so we reverse it and cut everything older than EARLIEST_TARGET. That single
+    cut handles both the rotation floor and the pre-SFA 2024 sets, because
+    document order puts older rotations after 2024.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    selector = soup.find("select", id="set")
+    if not selector:
+        return []
+
+    options: List[Tuple[str, str]] = []
+    for option in selector.find_all("option"):
+        rotation = (option.get("data-rotation") or "").strip()
+        set_code = (option.get("data-set") or "").strip()
+        if rotation and set_code and (rotation, set_code) not in options:
+            options.append((rotation, set_code))
+
+    options.reverse()
+    if EARLIEST_TARGET not in options:
+        return []
+    return options[options.index(EARLIEST_TARGET):]
+
+
+def discover_targets() -> List[Tuple[str, str]]:
+    try:
+        targets = parse_set_options(fetch_html({}))
+    except RuntimeError as err:
+        print(f"WARNING: could not fetch the set selector ({err});", file=sys.stderr)
+        targets = []
+    if targets:
+        return targets
+    print(
+        f"WARNING: set selector unreadable or missing {':'.join(EARLIEST_TARGET)} —"
+        " falling back to the hardcoded set list.",
+        file=sys.stderr,
+    )
+    return FALLBACK_SET_TARGETS
 
 
 def fetch_html(params: Dict[str, str]) -> str:
@@ -150,7 +199,7 @@ def main() -> int:
         help="Replace existing keys instead of preserving hand-edited values.",
     )
     args = parser.parse_args()
-    targets = args.targets or SET_TARGETS
+    targets = args.targets or discover_targets()
 
     scraped: Dict[str, List[str]] = {}
     for index, (rotation, set_code) in enumerate(targets):

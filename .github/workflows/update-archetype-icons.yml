@@ -1,0 +1,122 @@
+# =============================================================================
+# Update Archetype Icons
+# =============================================================================
+# Keeps src/data/archetype-icons.json in step with Limitless, then mirrors the
+# sprite PNGs into R2 so ArchetypeIcon serves them same-origin instead of
+# hotlinking the Limitless CDN.
+#
+# Both halves used to be manual, which meant a newly released set left its
+# archetypes iconless until someone remembered to run the scripts by hand.
+#
+# Triggers:
+#   - Daily at 5:00 AM UTC (ahead of the card-synonyms run at 06:00)
+#   - Manual dispatch
+# =============================================================================
+
+name: (Card Metadata) Archetype Icons
+
+run-name: >-
+  ${{ github.event_name == 'schedule' && 'Daily Archetype Icons Update' ||
+      (github.event.inputs.overwrite == 'true' && 'Archetype Icons OVERWRITE (manual)' || 'Archetype Icons Update (manual)') }}
+
+on:
+  schedule:
+    - cron: '0 5 * * *' # Daily at 5:00 AM UTC
+  workflow_dispatch:
+    inputs:
+      overwrite:
+        description: 'Replace existing keys instead of preserving hand-edited values'
+        required: false
+        type: boolean
+        default: false
+
+# All R2 bucket writers share one concurrency group so producers and repair
+# jobs can never mutate the bucket at the same time (DB-MASTER-PLAN Phase 0).
+concurrency:
+  group: r2-bucket-writers
+  cancel-in-progress: false
+
+jobs:
+  update-archetype-icons:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install -r .github/scripts/requirements.txt
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The snapshot list comes from the decks page's own set selector, so a
+      # newly released set needs no code change here.
+      - name: Scrape archetype icon map
+        run: |
+          if [ "${{ github.event.inputs.overwrite }}" == "true" ]; then
+            python .github/scripts/scrape-archetype-icons.py --overwrite
+          else
+            python .github/scripts/scrape-archetype-icons.py
+          fi
+
+      # Incremental and safe to re-run: slugs already in R2 are skipped, and
+      # ArchetypeIcon falls back to Limitless for anything not yet mirrored.
+      - name: Mirror sprites to R2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
+        run: npx tsx scripts/mirror-archetype-sprites.ts
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet src/data/archetype-icons.json; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No new archetypes"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Icon map changed"
+          fi
+
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          git add src/data/archetype-icons.json
+          git commit -m "chore: update archetype icon map [skip ci]"
+          git push
+
+      - name: Summary
+        run: |
+          echo "## Archetype Icons Update" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          ARCHETYPE_COUNT=$(jq 'length' src/data/archetype-icons.json)
+          echo "- Archetypes in map: **${ARCHETYPE_COUNT}**" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.check_changes.outputs.has_changes }}" == "true" ]; then
+            echo "- New this run:" >> $GITHUB_STEP_SUMMARY
+            git show --stat --oneline HEAD >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- No new archetypes — map is up to date" >> $GITHUB_STEP_SUMMARY
+          fi
