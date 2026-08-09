@@ -1,4 +1,9 @@
 User-agent: *
 Allow: /
 
+# Internal export tool — reachable by link, but not listed on /tools and not
+# worth a crawl budget.
+Disallow: /tools/social-graphics
+Disallow: /toys/social-graphics
+
 Sitemap: https://ciphermaniac.com/sitemap.xml

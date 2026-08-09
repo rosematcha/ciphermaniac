@@ -35,7 +35,8 @@ const STATIC_ROUTES: Array<{ path: string; changefreq: ChangeFreq; priority: num
   { path: '/tournaments', changefreq: 'daily', priority: 0.7 },
   { path: '/tools', changefreq: 'monthly', priority: 0.6 },
   { path: '/tools/deck-box-labels', changefreq: 'monthly', priority: 0.5 },
-  { path: '/tools/social-graphics', changefreq: 'monthly', priority: 0.4 },
+  // /tools/social-graphics is intentionally absent: the route works for anyone
+  // with the link, but it's an internal export tool and shouldn't be indexed.
   { path: '/tools/in-loving-memory', changefreq: 'monthly', priority: 0.4 },
   { path: '/about', changefreq: 'monthly', priority: 0.5 }
 ];
