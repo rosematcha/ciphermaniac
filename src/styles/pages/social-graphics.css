@@ -1,5 +1,5 @@
 /* ============================================================
-   Social Graphics — /toys/social-graphics
+   Social Graphics — /tools/social-graphics
    Page chrome uses the global Stamp tokens.
    The exported canvas (`.sg-canvas`) declares its own scoped
    token set so it can be exported in light or dark independent

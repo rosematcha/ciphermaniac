@@ -125,12 +125,19 @@ def main():
     r2_client = up.initialize_r2_client()
     bucket = up.os.environ.get("R2_BUCKET_NAME", "ciphermaniac-reports")
 
-    # Same card universe as the daily job: every printing in every cluster, not
-    # just the canonicals, so newly tracked collector/cheap siblings get their
-    # full 90 days rather than the single point the daily job seeds them with.
+    # Same card universe as the daily job: every printing in every cluster and
+    # every card any archived event reported, not just the canonicals, so newly
+    # tracked collector/cheap siblings get their full 90 days rather than the
+    # single point the daily job seeds them with.
     master_report = up.load_online_meta_report(r2_client, bucket)
     synonyms_data = up.load_card_synonyms(r2_client, bucket)
-    card_list = up.extract_unique_cards(master_report, synonyms_data) | up.build_print_universe(synonyms_data)
+    current_canonicals = up.extract_current_meta_canonicals(master_report, synonyms_data)
+    archive_prints = up.expand_to_clusters(up.load_all_event_cards(r2_client, bucket), synonyms_data)
+    card_list = (
+        up.extract_unique_cards(master_report, synonyms_data)
+        | up.build_print_universe(synonyms_data)
+        | archive_prints
+    )
     card_sets_map = up.group_cards_by_set(card_list)
     set_mappings = up.map_sets_to_group_ids(card_sets_map.keys())
 
@@ -209,7 +216,8 @@ def main():
         for uid, points in history.items()
         if points
     }
-    up.upload_derived_artifacts(r2_client, bucket, history, price_data, synonyms_data, today)
+    up.upload_derived_artifacts(r2_client, bucket, history, price_data, synonyms_data, today,
+                                current_canonicals)
     print("\n✓ Backfill complete!")
 
 

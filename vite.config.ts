@@ -53,6 +53,13 @@ export default defineConfig({
         target: 'https://ciphermaniac.com',
         changeOrigin: true,
         secure: true
+      },
+      // Same deal for the label maker's Pokémon sprites (/sprites Pages
+      // Function) — same-origin keeps its canvas exportable.
+      '/sprites': {
+        target: 'https://ciphermaniac.com',
+        changeOrigin: true,
+        secure: true
       }
     }
     // Card art must also load same-origin via the /thumbnails proxy (or R2) —

@@ -262,6 +262,93 @@ def extract_unique_cards(master_report, synonyms_data):
     return card_set
 
 
+def extract_current_meta_canonicals(master_report, synonyms_data):
+    """Canonical UIDs of the cards in the *current* online-meta report.
+
+    Narrower than ``extract_unique_cards``, which also folds in every canonical
+    the synonym DB has ever recorded. This is the set the "Standard only" movers
+    scope is limited to: cards being played now, at the one print the cluster
+    calls canonical.
+    """
+    card_set = set(BASIC_ENERGY_CANONICALS.values())
+    for item in master_report.get('items', []):
+        uid = item.get('uid') or build_uid_from_parts(
+            item.get('name'),
+            item.get('set'),
+            item.get('number')
+        )
+        if not uid:
+            continue
+        canonical_uid = resolve_canonical_uid(uid, synonyms_data)
+        if canonical_uid:
+            card_set.add(canonical_uid)
+    return card_set
+
+
+def load_all_event_cards(r2_client, bucket_name):
+    """Every card UID that has appeared in any tournament report we host.
+
+    Walks ``reports/tournaments.json`` and reads each event's ``master.json``.
+    Archival reports are rolling-canonical keyed, so their UIDs are period-correct
+    prints — exactly what we want in the universe. An event whose report cannot
+    be read is skipped with a warning: one missing archive costs a little
+    coverage. An unreadable *index* aborts the run, because every archive print
+    would silently fall out of today's prices and take its history with it
+    (update_price_history keeps only what was priced today).
+    """
+    print("\nCollecting cards from every archived event...")
+    result = r2.read_json(r2_client, bucket_name, 'reports/tournaments.json')
+    if result.status != 'found':
+        print(f"  Error: could not read reports/tournaments.json ({result.status}): {result.error}")
+        sys.exit(1)
+    data = result.value
+    tournaments = data if isinstance(data, list) else (data or {}).get('tournaments', [])
+
+    uids = set()
+    skipped = 0
+    for tournament in tournaments:
+        folder = tournament if isinstance(tournament, str) else (
+            tournament.get('folder') or tournament.get('name') or tournament.get('path')
+        )
+        if not folder:
+            continue
+        report = r2.read_json(r2_client, bucket_name, f'reports/{folder}/master.json')
+        if report.status != 'found':
+            skipped += 1
+            continue
+        for item in (report.value or {}).get('items', []):
+            uid = item.get('uid') or build_uid_from_parts(
+                item.get('name'),
+                item.get('set'),
+                item.get('number')
+            )
+            if uid:
+                uids.add(uid)
+    print(f"  {len(uids)} distinct prints across {len(tournaments) - skipped} events"
+          + (f" ({skipped} unreadable)" if skipped else ""))
+    return uids
+
+
+def expand_to_clusters(uids, synonyms_data):
+    """Grow a set of UIDs to every print in each one's synonym cluster.
+
+    A card observed at a 2024 event names one print; its cluster names the rest,
+    including the collector prints that make the "All printings" scope worth
+    toggling. UIDs in no cluster pass through unchanged.
+    """
+    clusters = build_clusters(synonyms_data)
+    member_of = {uid: canonical for canonical, members in clusters.items() for uid in members}
+    synonyms = synonyms_data.get('synonyms', {}) if isinstance(synonyms_data, dict) else {}
+
+    expanded = set()
+    for uid in uids:
+        expanded.add(uid)
+        canonical = member_of.get(uid) or synonyms.get(uid)
+        if canonical:
+            expanded.update(clusters.get(canonical, {canonical}))
+    return expanded
+
+
 def build_print_universe(synonyms_data):
     """Every print UID across every synonyms cluster, canonical included.
 
@@ -902,15 +989,21 @@ def upload_price_movers_to_r2(r2_client, bucket_name, movers, span_days):
         print(f"  ✓ {scope}: {parts}")
 
 
-def upload_derived_artifacts(r2_client, bucket_name, history, price_data, synonyms_data, today):
+def upload_derived_artifacts(r2_client, bucket_name, history, price_data, synonyms_data, today,
+                             current_canonicals):
     """Write the two client-facing derivatives of the rolling history: per-set
     shards (card sparklines) and the pre-digested movers (trends page).
 
     Shared by the daily job and the history backfill so both stay in lockstep —
     a backfill refreshes the whole surface, not just the monolith.
+
+    ``current_canonicals`` narrows the "Standard only" scope to the canonical
+    print of a card in the current meta. "All printings" stays deliberately wide
+    — every print of every card we have ever reported on — so the two scopes
+    answer different questions instead of near-identical ones.
     """
     upload_history_shards_to_r2(r2_client, bucket_name, history)
-    standard_uids = classify_standard_prints(price_data, synonyms_data)
+    standard_uids = classify_standard_prints(price_data, synonyms_data) & current_canonicals
     movers = build_price_movers(history, standard_uids, today)
     upload_price_movers_to_r2(r2_client, bucket_name, movers, history_span_days(history))
 
@@ -1019,11 +1112,17 @@ def main():
     synonyms_data = load_card_synonyms(r2_client, bucket_name)
     
     # Canonical cards drive the snapshot; the full print universe (every
-    # printing in every cluster) is what we actually price, so the movers
-    # artifact can tell playable prints from collector ones.
+    # printing in every cluster, for every card any archived event ever
+    # reported) is what we actually price, so the movers artifact can tell
+    # playable prints from collector ones and reach past the current meta.
+    # Archive prints cost no extra TCGCSV requests — they live in sets whose
+    # whole-set dumps we already pull.
     canonical_list = extract_unique_cards(master_report, synonyms_data)
-    card_list = canonical_list | build_print_universe(synonyms_data)
-    print(f"Pricing {len(card_list)} prints ({len(canonical_list)} canonical)")
+    current_canonicals = extract_current_meta_canonicals(master_report, synonyms_data)
+    archive_prints = expand_to_clusters(load_all_event_cards(r2_client, bucket_name), synonyms_data)
+    card_list = canonical_list | build_print_universe(synonyms_data) | archive_prints
+    print(f"Pricing {len(card_list)} prints ({len(canonical_list)} canonical, "
+          f"{len(current_canonicals)} in the current meta, {len(archive_prints)} from archived events)")
 
     # Group by set
     card_sets_map = group_cards_by_set(card_list)
@@ -1050,7 +1149,8 @@ def main():
     existing_history = load_price_history(r2_client, bucket_name)
     history = update_price_history(existing_history, price_data, today)
     upload_price_history_to_r2(r2_client, bucket_name, history)
-    upload_derived_artifacts(r2_client, bucket_name, history, price_data, synonyms_data, today)
+    upload_derived_artifacts(r2_client, bucket_name, history, price_data, synonyms_data, today,
+                             current_canonicals)
 
 
     # Summary
