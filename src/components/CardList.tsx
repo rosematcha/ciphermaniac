@@ -3,6 +3,7 @@ import { useNavigate } from '@solidjs/router';
 import type { CardItem } from '../types';
 import { EmptyState } from './EmptyState';
 import { CardTile } from './CardTile';
+import { CardHoverPreview } from './CardHoverPreview';
 import { averageCopies, categoryLabel } from '../lib/cardStats';
 
 export type CardListItem = CardItem & {
@@ -87,7 +88,14 @@ function CardsTable(props: { items: CardListItem[] }) {
                 }}
               >
                 <td>
-                  <span class='cardname'>{item.name}</span>
+                  <Show
+                    when={item.set && item.number !== undefined}
+                    fallback={<span class='cardname'>{item.name}</span>}
+                  >
+                    <CardHoverPreview set={item.set!} number={item.number!}>
+                      <span class='cardname'>{item.name}</span>
+                    </CardHoverPreview>
+                  </Show>
                 </td>
                 <td class='muted-cell'>{item.set ? `${item.set}/${item.number}` : '—'}</td>
                 <td class='muted-cell'>{categoryLabel(item)}</td>

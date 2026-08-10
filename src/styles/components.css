@@ -1050,6 +1050,48 @@ tr.row-expansion > td {
   margin-right: 4px;
 }
 
+/* ---------- Card hover preview (decklist lines) ----------
+   The anchor is inline so it doesn't disturb the list's text flow; the preview
+   itself is portalled to <body> and fixed-positioned (see CardHoverPreview),
+   because .table-wrap clips overflow and would cut an in-flow layer off. */
+.card-hover-anchor {
+  display: inline;
+}
+.card-hover-preview {
+  position: fixed;
+  z-index: 300;
+  pointer-events: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+  line-height: 0;
+  animation: card-hover-in var(--ms-fast) ease-out;
+}
+.card-hover-preview img,
+.card-hover-preview .card-image-fallback {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 63 / 88;
+}
+@keyframes card-hover-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-hover-preview {
+    animation: none;
+  }
+}
+
 .row-toggle {
   margin-top: 10px;
   padding: 6px 12px;
