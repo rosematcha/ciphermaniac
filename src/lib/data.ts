@@ -1148,7 +1148,10 @@ export function fetchArchetypeMatches(tournament: string, archetypeBase: string)
 async function fetchPlayerJson<T>(path: string): Promise<T | null> {
   if (import.meta.env.DEV) {
     const res = await fetch(path);
-    if (res.status === 404) {
+    // Vite's SPA fallback answers missing files with index.html and a 200, so
+    // a genuinely absent player file never 404s in dev. Treat HTML as a miss
+    // so not-found states behave the same as against R2.
+    if (res.status === 404 || (res.headers.get('content-type') ?? '').includes('text/html')) {
       return null;
     }
     if (!res.ok) {
