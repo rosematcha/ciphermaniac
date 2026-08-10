@@ -10,6 +10,7 @@ import { Pagination } from '../components/Pagination';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CardTile } from '../components/CardTile';
+import { CardHoverPreview } from '../components/CardHoverPreview';
 import { BottomSheet } from '../components/BottomSheet';
 import { createPagination } from '../lib/pagination';
 import { debounced } from '../lib/debounce';
@@ -689,7 +690,14 @@ function ListView(props: {
                 >
                   <td class='num muted-cell'>{item.rank ?? '—'}</td>
                   <td>
-                    <span class='cardname'>{item.name}</span>
+                    <Show
+                      when={item.set && item.number !== undefined}
+                      fallback={<span class='cardname'>{item.name}</span>}
+                    >
+                      <CardHoverPreview set={item.set!} number={item.number!}>
+                        <span class='cardname'>{item.name}</span>
+                      </CardHoverPreview>
+                    </Show>
                   </td>
                   <td class='muted-cell'>{item.set ? `${item.set}/${item.number}` : '—'}</td>
                   <td class='muted-cell'>{categoryLabel(item)}</td>

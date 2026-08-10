@@ -38,7 +38,8 @@ function hoverCapable(): boolean {
 
 interface CardHoverPreviewProps {
   set: string;
-  number: string;
+  /** Collector number; numeric forms are accepted since report data carries both. */
+  number: string | number;
   children: JSX.Element;
 }
 
