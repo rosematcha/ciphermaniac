@@ -45,6 +45,13 @@
   color: var(--accent);
 }
 
+/* ---------- Country filter beside the search box ---------- */
+.filter-row .country-select {
+  width: auto;
+  min-width: 160px;
+  flex: none;
+}
+
 /* ---------- Low-confidence / small-sample stat muting ---------- */
 .stat-dim {
   opacity: 0.45;

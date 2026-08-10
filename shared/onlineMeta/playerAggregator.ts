@@ -1,5 +1,5 @@
 import { normalizeArchetypeName, sanitizeForFilename } from '../cardUtils.js';
-import { toSlimIndexEntry } from '../playerTypes';
+import { encodeSlimIndex } from '../playerTypes';
 import { runWithConcurrency } from './tournamentFetcher';
 import { batchDelete, batchPutJson, getJson, getJsonResult, putJson } from './storageWriter';
 import type {
@@ -111,7 +111,7 @@ const SLIM_INDEX_KEY = 'players/index-slim.json';
  * real rebuild.
  */
 async function writeSlimIndex(env: unknown, index: PlayerIndexEntry[]): Promise<void> {
-  await putJson(env, SLIM_INDEX_KEY, index.map(toSlimIndexEntry), {
+  await putJson(env, SLIM_INDEX_KEY, encodeSlimIndex(index), {
     cacheControl: 'public, max-age=21600'
   });
 }
@@ -313,6 +313,17 @@ function pickPrimaryName(acc: Accumulator): string {
 
 function normalizeAliasKey(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/**
+ * Diacritic-insensitive name key for the deck-ownership guard. Upstream deck
+ * rows and participant rows don't always agree on accents ("José" vs "Jose"),
+ * and an exact comparison silently drops those players' legitimate decklists.
+ */
+function foldName(s: string): string {
+  return normalizeAliasKey(s)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '');
 }
 
 function dedupeAliases(names: Iterable<string>, primary: string): string[] {
@@ -551,10 +562,7 @@ export async function buildPlayerAggregates(
       // Even with the right convention, a deck row's `player` name should at
       // least roughly match the participant's name. If not, the join is wrong.
       const deckBelongs =
-        !deck ||
-        !deck.player ||
-        !participant.name ||
-        deck.player.trim().toLowerCase() === participant.name.trim().toLowerCase();
+        !deck || !deck.player || !participant.name || foldName(deck.player) === foldName(participant.name);
       const joinedDeck = deckBelongs ? deck : undefined;
 
       const archetypeLabel = joinedDeck?.archetype ?? participant.deckName ?? null;

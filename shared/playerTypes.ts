@@ -43,17 +43,89 @@ export interface PlayerIndexSlimEntry {
   tournamentWins: number;
 }
 
-/** Project a full index entry down to its slim wire shape. */
-export function toSlimIndexEntry(entry: PlayerIndexEntry): PlayerIndexSlimEntry {
-  return {
-    playerId: entry.playerId,
-    name: entry.name,
-    country: entry.country,
-    eventCount: entry.eventCount,
-    day2s: entry.day2s,
-    topCuts: entry.topCuts,
-    tournamentWins: entry.tournamentWins
+/**
+ * Columnar wire format for `players/index-slim.json`. Same data as
+ * `PlayerIndexSlimEntry[]`, but the seven field names are written once instead
+ * of once per player (~20k rows), which roughly halves the raw payload and
+ * shrinks the gzipped one. Arrays are index-aligned; `countries[i]` is `''`
+ * when unknown.
+ */
+export interface PlayerIndexSlimColumnar {
+  format: 'slim-columnar-v1';
+  playerIds: string[];
+  names: string[];
+  countries: string[];
+  eventCounts: number[];
+  day2s: number[];
+  topCuts: number[];
+  tournamentWins: number[];
+}
+
+/** Project index entries to the columnar slim wire shape. */
+export function encodeSlimIndex(
+  entries: readonly (PlayerIndexEntry | PlayerIndexSlimEntry)[]
+): PlayerIndexSlimColumnar {
+  const out: PlayerIndexSlimColumnar = {
+    format: 'slim-columnar-v1',
+    playerIds: [],
+    names: [],
+    countries: [],
+    eventCounts: [],
+    day2s: [],
+    topCuts: [],
+    tournamentWins: []
   };
+  for (const e of entries) {
+    out.playerIds.push(e.playerId);
+    out.names.push(e.name);
+    out.countries.push(e.country ?? '');
+    out.eventCounts.push(e.eventCount);
+    out.day2s.push(e.day2s);
+    out.topCuts.push(e.topCuts);
+    out.tournamentWins.push(e.tournamentWins);
+  }
+  return out;
+}
+
+/**
+ * Decode either wire shape of the slim index: the columnar payload, or a
+ * legacy row array (which also covers the full `index.json`, whose entries are
+ * a superset of the slim shape). Returns null for anything unrecognizable so
+ * callers can fall back to another source.
+ */
+export function decodeSlimIndex(payload: unknown): PlayerIndexSlimEntry[] | null {
+  if (Array.isArray(payload)) {
+    return payload as PlayerIndexSlimEntry[];
+  }
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+  const p = payload as Partial<PlayerIndexSlimColumnar>;
+  if (
+    p.format !== 'slim-columnar-v1' ||
+    !Array.isArray(p.playerIds) ||
+    !Array.isArray(p.names) ||
+    !Array.isArray(p.countries) ||
+    !Array.isArray(p.eventCounts) ||
+    !Array.isArray(p.day2s) ||
+    !Array.isArray(p.topCuts) ||
+    !Array.isArray(p.tournamentWins)
+  ) {
+    return null;
+  }
+  const entries: PlayerIndexSlimEntry[] = [];
+  for (let i = 0; i < p.playerIds.length; i += 1) {
+    entries.push({
+      playerId: p.playerIds[i],
+      name: p.names[i] ?? '',
+      country: p.countries[i] || undefined,
+      eventCount: p.eventCounts[i] ?? 0,
+      day2s: p.day2s[i] ?? 0,
+      topCuts: p.topCuts[i] ?? 0,
+      tournamentWins: p.tournamentWins[i] ?? 0
+    });
+  }
+  return entries;
 }
 
 /**
