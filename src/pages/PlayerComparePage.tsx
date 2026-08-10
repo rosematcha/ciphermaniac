@@ -1,10 +1,11 @@
 import { A, useSearchParams } from '@solidjs/router';
-import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js';
 import { fetchPlayerIndexSlim, fetchPlayerProfile, prettyTournamentName } from '../lib/data';
 import { Section } from '../components/Section';
 import { SearchInput } from '../components/Chip';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
+import { InfoTip } from '../components/InfoTip';
 import { resolved } from '../lib/resource';
 import type { PlayerIndexSlimEntry, PlayerProfile, PlayerTournamentEntry } from '../types';
 import { foldSearch } from '../utils/searchFold';
@@ -78,8 +79,10 @@ export function PlayerComparePage() {
   const a = () => resolved(profileA);
   const b = () => resolved(profileB);
 
-  onMount(() => {
-    document.title = 'Compare players — Ciphermaniac';
+  createEffect(() => {
+    const pa = a();
+    const pb = b();
+    document.title = pa && pb ? `${pa.name} vs ${pb.name} — Ciphermaniac` : 'Compare players — Ciphermaniac';
   });
 
   const setSlot = (slot: 'a' | 'b', id: string) => setParams({ [slot]: id || undefined });
@@ -229,7 +232,15 @@ function PlayerSlot(props: {
         }
       >
         <div class='compare-slot-chosen'>
-          <Show when={props.selected} fallback={<Skeleton width='160px' height='20px' />}>
+          <Show
+            when={props.selected}
+            fallback={
+              // undefined = still loading; null = fetched, no such profile.
+              <Show when={props.selected === null} fallback={<Skeleton width='160px' height='20px' />}>
+                <span class='muted-cell'>Player not found</span>
+              </Show>
+            }
+          >
             <A href={`/players/${props.selectedId}`} class='cardname compare-slot-name'>
               {props.selected!.name}
             </A>
@@ -356,13 +367,14 @@ function ComparisonBody(props: {
       <Section
         title='Shared events'
         right={
-          <span
-            class='compare-h2h'
-            title='Compares final standings at events both attended. Limitless publishes no round pairings, so this reflects placement, not direct matches.'
-          >
+          <span class='compare-h2h'>
             <Show when={props.shared.length > 0} fallback='—'>
               Head-to-head by finish {props.headToHead.aWins}–{props.headToHead.bWins}
-              <Show when={props.headToHead.ties > 0}> · {props.headToHead.ties} even</Show>
+              <Show when={props.headToHead.ties > 0}> · {props.headToHead.ties} even</Show>{' '}
+              <InfoTip marker='i' label='How head-to-head is counted'>
+                Compares final standings at events both attended. Limitless publishes no round pairings, so this
+                reflects placement, not direct matches.
+              </InfoTip>
             </Show>
           </span>
         }
