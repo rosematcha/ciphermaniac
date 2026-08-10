@@ -315,6 +315,17 @@ function normalizeAliasKey(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+/**
+ * Diacritic-insensitive name key for the deck-ownership guard. Upstream deck
+ * rows and participant rows don't always agree on accents ("José" vs "Jose"),
+ * and an exact comparison silently drops those players' legitimate decklists.
+ */
+function foldName(s: string): string {
+  return normalizeAliasKey(s)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 function dedupeAliases(names: Iterable<string>, primary: string): string[] {
   const primaryKey = normalizeAliasKey(primary);
   const seen = new Set<string>([primaryKey]);
@@ -551,10 +562,7 @@ export async function buildPlayerAggregates(
       // Even with the right convention, a deck row's `player` name should at
       // least roughly match the participant's name. If not, the join is wrong.
       const deckBelongs =
-        !deck ||
-        !deck.player ||
-        !participant.name ||
-        deck.player.trim().toLowerCase() === participant.name.trim().toLowerCase();
+        !deck || !deck.player || !participant.name || foldName(deck.player) === foldName(participant.name);
       const joinedDeck = deckBelongs ? deck : undefined;
 
       const archetypeLabel = joinedDeck?.archetype ?? participant.deckName ?? null;
