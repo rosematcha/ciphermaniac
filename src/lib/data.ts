@@ -1150,10 +1150,11 @@ async function fetchPlayerJson<T>(path: string): Promise<T | null> {
   if (import.meta.env.DEV) {
     const res = await fetch(path);
     // Vite's SPA fallback answers missing files with index.html and a 200, so
-    // a genuinely absent player file never 404s in dev. Treat HTML as a miss
-    // so not-found states behave the same as against R2.
+    // a genuinely absent player file never 404s in dev. A local miss doesn't
+    // mean the player is absent upstream, though — build-players-local seeds
+    // are usually partial — so fall through to public R2 before giving up.
     if (res.status === 404 || (res.headers.get('content-type') ?? '').includes('text/html')) {
-      return null;
+      return fetchJsonOptional<T>(path);
     }
     if (!res.ok) {
       throw new Error(`Failed to fetch ${path}: ${res.status}`);
