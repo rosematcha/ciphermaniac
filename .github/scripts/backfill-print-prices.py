@@ -357,13 +357,14 @@ def main():
     print("\nFetching product catalogs (once per group)...")
     group_products = {}
     for set_code, card_uids in uids_by_set.items():
-        gid = set_mappings.get(set_code)
-        if not gid:
+        gids = up.group_ids_for_set(set_code, set_mappings)
+        if not gids:
             continue
-        products = up.fetch_tcgcsv_results(f"https://tcgcsv.com/tcgplayer/3/{gid}/products")
-        group_products[gid] = (products, set_code, card_uids)
-        print(f"  {set_code} (group {gid}): {len(products)} products")
-        time.sleep(0.25)  # per TCGCSV FAQ etiquette
+        for gid in gids:
+            products = up.fetch_tcgcsv_results(f"https://tcgcsv.com/tcgplayer/3/{gid}/products")
+            group_products[gid] = (products, set_code, card_uids)
+            print(f"  {set_code} (group {gid}): {len(products)} products")
+            time.sleep(0.25)  # per TCGCSV FAQ etiquette
 
     # 4. Which dates?
     if args.dates:

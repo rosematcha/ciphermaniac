@@ -181,6 +181,52 @@ class ExtractSetPricesTest(unittest.TestCase):
         )
         self.assertEqual(out, {})
 
+    def test_matches_a_parenthesized_variant_suffix(self):
+        # TCGPlayer names special prints "Name (Full Art)" / "Name (Secret)";
+        # our UIDs carry the bare name plus the print's own number.
+        products = [_product(40, "Adaman (Full Art) - 181/189", "181/189")]
+        uid = "Adaman::ASR::181"
+        out = update_prices.extract_set_prices(
+            products, [_price(40, "Holofoil", 12.0)], "ASR", [uid]
+        )
+        self.assertEqual(out[uid]["price"], 12.0)
+
+    def test_matches_basic_energy_without_the_basic_prefix(self):
+        products = [_product(41, "Basic Grass Energy - 001", "001")]
+        uid = "Grass Energy::SVE::001"
+        out = update_prices.extract_set_prices(
+            products, [_price(41, "Normal", 0.05)], "SVE", [uid]
+        )
+        self.assertEqual(out[uid]["price"], 0.05)
+
+    def test_matches_an_aliased_promo_number_prefix(self):
+        # SWSH promos ("SP" to us) number their cards "SWSH001".."SWSH307".
+        products = [_product(42, "Arceus V - SWSH204", "SWSH204")]
+        uid = "Arceus V::SP::204"
+        out = update_prices.extract_set_prices(
+            products, [_price(42, "Holofoil", 2.5)], "SP", [uid]
+        )
+        self.assertEqual(out[uid]["price"], 2.5)
+
+    def test_matches_zero_padded_gallery_numbers(self):
+        # Our UIDs say GG1 where TCGCSV says GG01 (and vice versa for TG05).
+        products = [
+            _product(43, "Hisuian Voltorb - GG01/GG70", "GG01/GG70"),
+            _product(44, "Gardevoir - TG5/TG30", "TG5/TG30"),
+        ]
+        uids = ["Hisuian Voltorb::CRZ::GG1", "Gardevoir::SIT::TG05"]
+        out = update_prices.extract_set_prices(
+            products,
+            [_price(43, "Holofoil", 3.0), _price(44, "Holofoil", 4.0)],
+            "CRZ",
+            [uids[0]],
+        )
+        self.assertEqual(out[uids[0]]["price"], 3.0)
+        out = update_prices.extract_set_prices(
+            [products[1]], [_price(44, "Holofoil", 4.0)], "SIT", [uids[1]]
+        )
+        self.assertEqual(out[uids[1]]["price"], 4.0)
+
     def test_first_priced_product_wins_for_duplicate_uid(self):
         products = [
             _product(20, "Pikachu - 25/100", "25/100"),
