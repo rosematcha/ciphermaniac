@@ -1,10 +1,20 @@
 import { createSignal, type JSX, onCleanup, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
-import { CardImage } from './CardImage';
+import { CardImage, preloadCardImage } from './CardImage';
 import { placeHoverPreview, type PreviewPlacement } from '../utils/hoverPreviewPlacement';
 
-/** Rendered width of the preview art, in px. Height follows the card aspect. */
-const PREVIEW_WIDTH = 200;
+/**
+ * Art tier for the preview. `xs` (136×190, ~8KB) rather than `sm` (~26KB):
+ * this is a recognition affordance, not a reading surface — nobody reads rules
+ * text at this size — and a third of the bytes is the difference between the
+ * art being there when the preview opens and arriving after it.
+ */
+const PREVIEW_TIER = 'xs';
+/**
+ * Rendered width of the preview art, in px. Held near the `xs` natural width
+ * (136px) so the tier isn't upscaled into mush. Height follows the card aspect.
+ */
+const PREVIEW_WIDTH = 168;
 /** Standard Pokémon card proportions (63×88mm). */
 const CARD_ASPECT = 63 / 88;
 const PREVIEW_HEIGHT = Math.round(PREVIEW_WIDTH / CARD_ASPECT);
@@ -93,6 +103,9 @@ export function CardHoverPreview(props: CardHoverPreviewProps) {
     if (!hoverCapable() || openTimer !== undefined || placement()) {
       return;
     }
+    // Start the image fetch now rather than when the preview mounts, so the
+    // open delay is spent waiting on the network instead of adding to it.
+    preloadCardImage(props.set, props.number, PREVIEW_TIER);
     openTimer = window.setTimeout(() => {
       openTimer = undefined;
       openNow();
@@ -129,7 +142,7 @@ export function CardHoverPreview(props: CardHoverPreviewProps) {
                 width: `${PREVIEW_WIDTH}px`
               }}
             >
-              <CardImage set={props.set} number={props.number} size='sm' alt='' lazy={false} />
+              <CardImage set={props.set} number={props.number} size={PREVIEW_TIER} alt='' lazy={false} />
             </div>
           </Portal>
         )}

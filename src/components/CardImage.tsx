@@ -174,6 +174,30 @@ function buildAttempts(set: string, number: string | number, preferredSize: Card
   return urls;
 }
 
+/**
+ * Warms the browser cache for one card's art at a given tier, using the same
+ * source preference the component itself would pick — so the subsequent
+ * `<CardImage>` render is a cache hit rather than a fresh round trip.
+ *
+ * Used by hover affordances that know a moment ahead of time which card is
+ * about to be shown (see CardHoverPreview): firing this on pointer-enter lets
+ * the request overlap the open delay instead of starting after it.
+ * @param set - Card set code.
+ * @param number - Collector number.
+ * @param size - Tier to warm; must match what the eventual render requests.
+ */
+export function preloadCardImage(set: string, number: string | number, size: CardImageSize): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  const url = buildAttempts(set, number, size, r2Ready())[0];
+  if (url) {
+    // Assigning .src is enough to start (and cache) the fetch; the element is
+    // deliberately never attached to the document.
+    new Image().src = url;
+  }
+}
+
 export function CardImage(props: CardImageProps) {
   // Capture the R2 decision once per instance: an async probe flipping the
   // global signal mid-session must not re-source already-rendered images
