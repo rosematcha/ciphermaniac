@@ -1,5 +1,5 @@
-import { createMemo, createResource, createSignal, For, type JSX, onMount, Show } from 'solid-js';
-import { useNavigate } from '@solidjs/router';
+import { createMemo, createResource, For, type JSX, onMount, Show, type Signal } from 'solid-js';
+import { A, useNavigate, useSearchParams } from '@solidjs/router';
 import { fetchPlayerIndexSlim } from '../lib/data';
 import { resolved } from '../lib/resource';
 import { Section } from '../components/Section';
@@ -11,40 +11,35 @@ import { createPagination } from '../lib/pagination';
 import { prefetchPlayerProfilePage } from '../lib/prefetch';
 import type { PlayerIndexSlimEntry } from '../types';
 import { foldSearch } from '../utils/searchFold';
+import {
+  comparePlayers,
+  DAY2_RATE_MIN_EVENTS,
+  day2Rate,
+  type PlayerSortDir,
+  type PlayerSortKey
+} from '../utils/playerSort';
 import '../styles/pages/players-tables.css';
 
-type SortKey = 'events' | 'day2s' | 'topCuts' | 'titles' | 'day2Rate';
-type SortDir = 'asc' | 'desc';
-
 const PAGE_SIZE = 50;
-const DAY2_RATE_MIN_EVENTS = 5;
-
-function day2Rate(p: PlayerIndexSlimEntry): number {
-  return p.eventCount > 0 ? p.day2s / p.eventCount : 0;
-}
-
-function sortValue(p: PlayerIndexSlimEntry, key: SortKey): number {
-  switch (key) {
-    case 'day2s':
-      return p.day2s;
-    case 'topCuts':
-      return p.topCuts;
-    case 'titles':
-      return p.tournamentWins;
-    case 'day2Rate':
-      return day2Rate(p);
-    case 'events':
-    default:
-      return p.eventCount;
-  }
-}
+const SORT_KEYS: readonly PlayerSortKey[] = ['events', 'day2s', 'topCuts', 'titles', 'day2Rate'];
+const DEFAULT_SORT: PlayerSortKey = 'day2s';
 
 export function PlayersPage() {
   const [index] = createResource(fetchPlayerIndexSlim);
-  const [query, setQuery] = createSignal('');
-  const [sortKey, setSortKey] = createSignal<SortKey>('day2s');
-  const [sortDir, setSortDir] = createSignal<SortDir>('desc');
   const navigate = useNavigate();
+
+  // Filter/sort/page state lives in the URL so a refresh, a shared link, or
+  // coming back from a profile lands on the same view. Every write replaces —
+  // typing and re-sorting must not pile up history entries. Defaults are
+  // omitted from the URL so the bare /players stays canonical.
+  const [params, setParams] = useSearchParams<{ q?: string; sort?: string; dir?: string; page?: string }>();
+  const query = () => (typeof params.q === 'string' ? params.q : '');
+  const setQuery = (v: string) => setParams({ q: v || undefined, page: undefined }, { replace: true });
+  const sortKey = (): PlayerSortKey => {
+    const s = params.sort;
+    return s && (SORT_KEYS as readonly string[]).includes(s) ? (s as PlayerSortKey) : DEFAULT_SORT;
+  };
+  const sortDir = (): PlayerSortDir => (params.dir === 'asc' ? 'asc' : 'desc');
 
   onMount(() => {
     document.title = 'Players — Ciphermaniac';
@@ -54,37 +49,50 @@ export function PlayersPage() {
   // error fallbacks below actually render (see lib/resource.ts).
   const indexData = () => resolved(index);
 
+  // Fold names once per index load, not per keystroke — 20k NFKD normalizes
+  // per input event is the difference between instant and mushy search.
+  const searchable = createMemo(() => (indexData() ?? []).map(entry => ({ entry, folded: foldSearch(entry.name) })));
+
   const filtered = createMemo<PlayerIndexSlimEntry[]>(() => {
-    const list = indexData() ?? [];
     const q = foldSearch(query().trim());
-    if (!q) {
-      return list;
-    }
-    return list.filter(p => foldSearch(p.name).includes(q));
+    const rows = searchable();
+    return (q ? rows.filter(r => r.folded.includes(q)) : rows).map(r => r.entry);
   });
 
-  const sorted = createMemo(() => {
-    const list = [...filtered()];
-    const key = sortKey();
-    const factor = sortDir() === 'asc' ? 1 : -1;
-    return list.sort((a, b) => (sortValue(a, key) - sortValue(b, key)) * factor);
-  });
+  const sorted = createMemo(() => [...filtered()].sort(comparePlayers(sortKey(), sortDir())));
 
+  const pageParam: Signal<number> = [
+    () => {
+      const n = Number(params.page);
+      return Number.isInteger(n) && n > 1 ? n : 1;
+    },
+    (p => {
+      const next = typeof p === 'function' ? p(pageParam[0]()) : p;
+      setParams({ page: next > 1 ? String(next) : undefined }, { replace: true });
+      return next;
+    }) as Signal<number>[1]
+  ];
+  // No resetOn list: setQuery and setSort already clear `page` themselves.
   const { page, totalPages, pageItems: pageRows, setPage } =
     // eslint-disable-next-line solid/reactivity -- createPagination reads `sorted` inside its own createMemo (a tracked scope); the analyzer can't see through the helper
-    createPagination(sorted, PAGE_SIZE, [query, sortKey, sortDir]);
+    createPagination(sorted, PAGE_SIZE, undefined, pageParam);
 
-  function setSort(next: SortKey) {
-    if (sortKey() === next) {
-      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortKey(next);
-      setSortDir('desc');
-    }
+  function setSort(next: PlayerSortKey) {
+    const dir: PlayerSortDir = sortKey() === next ? (sortDir() === 'asc' ? 'desc' : 'asc') : 'desc';
+    setParams(
+      {
+        sort: next === DEFAULT_SORT ? undefined : next,
+        dir: dir === 'desc' ? undefined : dir,
+        page: undefined
+      },
+      { replace: true }
+    );
   }
 
-  const ariaSort = (key: SortKey): 'ascending' | 'descending' | 'none' =>
+  const ariaSort = (key: PlayerSortKey): 'ascending' | 'descending' | 'none' =>
     sortKey() === key ? (sortDir() === 'asc' ? 'ascending' : 'descending') : 'none';
+
+  const profileHref = (p: PlayerIndexSlimEntry) => `/players/${encodeURIComponent(p.playerId)}`;
 
   return (
     <>
@@ -150,24 +158,25 @@ export function PlayersPage() {
                     {p => (
                       <tr
                         class='is-link'
-                        onClick={() => navigate(`/players/${p.playerId}`)}
-                        onMouseEnter={prefetchPlayerProfilePage}
-                        onFocus={prefetchPlayerProfilePage}
-                        tabIndex={0}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') {
-                            navigate(`/players/${p.playerId}`);
+                        onClick={e => {
+                          // The name link handles its own (and modified) clicks.
+                          if (e.target instanceof Element && e.target.closest('a')) {
+                            return;
                           }
+                          navigate(profileHref(p));
                         }}
+                        onMouseEnter={prefetchPlayerProfilePage}
                       >
                         <td>
-                          <span class='cardname'>{p.name}</span>
+                          <A href={profileHref(p)} class='cardname' onFocus={prefetchPlayerProfilePage}>
+                            {p.name}
+                          </A>
                         </td>
                         <td class='muted-cell'>{p.country ?? '—'}</td>
                         <td class='num'>{p.eventCount.toLocaleString()}</td>
                         <td class='num'>{p.day2s.toLocaleString()}</td>
                         <td class='num' classList={{ 'stat-dim': p.eventCount < DAY2_RATE_MIN_EVENTS }}>
-                          {p.eventCount > 0 ? `${(day2Rate(p) * 100).toFixed(1)}%` : '—'}
+                          {p.eventCount > 0 ? `${Math.round(day2Rate(p) * 100)}%` : '—'}
                         </td>
                         <td class='num'>{p.topCuts.toLocaleString()}</td>
                         <td class='num'>{p.tournamentWins.toLocaleString()}</td>
