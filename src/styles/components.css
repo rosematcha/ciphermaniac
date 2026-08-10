@@ -978,10 +978,16 @@ table.data {
   padding-right: 4px;
   padding-left: 14px;
 }
+/* Rendered as a <button> (it toggles the row's decklist for keyboard/AT
+   users), but drawn as the same bare caret glyph as before. */
 .row-caret {
   display: inline-block;
   color: var(--muted);
   font-size: 11px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
   transition: transform var(--ms-fast);
 }
 .row-caret.open {

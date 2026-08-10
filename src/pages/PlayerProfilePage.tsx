@@ -182,7 +182,7 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
                           classList={{ 'stat-dim': smallSample }}
                           title={smallSample ? `Small sample: ${decisiveGames} games` : undefined}
                         >
-                          {pct != null ? `${pct.toFixed(1)}%` : '—'}
+                          {pct != null ? `${Math.round(pct)}%` : '—'}
                         </td>
                         <td class='num'>{a.day2s.toLocaleString()}</td>
                         <td class='num'>{a.bestPlacement ?? '—'}</td>
@@ -258,21 +258,21 @@ function TournamentRow(props: TournamentRowProps) {
 
   return (
     <>
-      <tr
-        class='is-link'
-        onClick={toggle}
-        tabIndex={0}
-        onKeyDown={e => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            toggle();
-          }
-        }}
-      >
+      <tr class='is-link' onClick={toggle}>
         <td class='num expand-col'>
-          <span class='row-caret' classList={{ open: expanded() }} aria-hidden='true'>
+          <button
+            type='button'
+            class='row-caret'
+            classList={{ open: expanded() }}
+            aria-expanded={expanded()}
+            aria-label={expanded() ? 'Hide decklist' : 'Show decklist'}
+            onClick={e => {
+              e.stopPropagation();
+              toggle();
+            }}
+          >
             ▸
-          </span>
+          </button>
         </td>
         <td class='muted-cell'>{props.entry.tournamentDate}</td>
         <td>
