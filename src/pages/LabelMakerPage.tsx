@@ -318,20 +318,18 @@ export function LabelMakerPage() {
         <div class='lm-shell' classList={{ 'has-queue': queue().length > 0 }}>
           <div class='lm-main'>
             <div class='lm-stage'>
-              <div class='lm-paper'>
-                <canvas
-                  ref={canvasRef}
-                  width={dims().wDots}
-                  height={dims().hDots}
-                  style={{ 'aspect-ratio': `${dims().wDots} / ${dims().hDots}`, 'max-width': `${dims().wDots}px` }}
-                  aria-label='Label preview'
-                  role='img'
-                />
+              <div class='lm-stage-media'>
+                <div class='lm-paper'>
+                  <canvas
+                    ref={canvasRef}
+                    width={dims().wDots}
+                    height={dims().hDots}
+                    aria-label='Label preview'
+                    role='img'
+                  />
+                </div>
               </div>
               <div class='lm-stage-foot'>
-                <span class='lm-dims num'>
-                  {dims().wDots} × {dims().hDots} dots · {dims().wMm} × {dims().hMm} mm at {dims().dpi} dpi · 1-bit
-                </span>
                 <div class='lm-actions'>
                   <button type='button' class='btn btn-primary' onClick={saveToQueue} disabled={isEmpty()}>
                     {editingId() ? 'Save changes' : 'Add to queue'}
@@ -350,6 +348,9 @@ export function LabelMakerPage() {
                     Download PNG
                   </button>
                 </div>
+                <span class='lm-dims num'>
+                  {dims().wDots} × {dims().hDots} dots · {dims().wMm} × {dims().hMm} mm at {dims().dpi} dpi · 1-bit
+                </span>
               </div>
               <Show when={error()}>
                 <p class='lm-error' role='alert'>

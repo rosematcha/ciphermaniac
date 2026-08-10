@@ -74,14 +74,13 @@
 
 /* ---------- Shell ---------- */
 
-/* Above 1200px the queue becomes a rail beside the editor. Below that it
-   stacks under the controls. The rail is the point: adding a label used to
-   push its own confirmation 300px below the fold. */
+/* Wide enough for the editor and the queue rail side by side. Below this the
+   queue stacks under the controls. */
 .lm-shell {
   display: grid;
   gap: var(--space-5);
   /* Chrome animates the column opening; elsewhere it snaps and the rail's own
-     slide still carries the change. */
+     slide carries the change. */
   transition: grid-template-columns 240ms ease;
 }
 
@@ -92,11 +91,11 @@
   align-content: start;
 }
 
-/* The second column only exists once something is queued. */
-@media (min-width: 1200px) {
+/* The second column only exists once something is queued, so an empty queue
+   leaves the editor the full width rather than a reserved void beside it. */
+@media (min-width: 1280px) {
   .lm-shell.has-queue {
     grid-template-columns: minmax(0, 1fr) 320px;
-    gap: var(--space-5);
     align-items: start;
   }
 }
@@ -137,14 +136,30 @@
   display: grid;
   justify-items: center;
   gap: var(--space-3);
-  padding: var(--space-4) 0;
+  padding: var(--space-2) 0 var(--space-4);
   background: var(--bg);
   border-bottom: var(--border-width) solid var(--rule);
 }
 
-.lm-paper {
+/* A constant slot for the preview. Label geometries range from a stubby 54x17
+   to a 152x102 shipping label; sizing the band to each one made every change
+   of Label size shove the controls up or down by as much as 166px. */
+.lm-stage-media {
+  display: flex;
+  /* Bottom-aligned, so a short label sits just above its caption and the slack
+     collects above the preview as margin rather than as a hole beneath it. */
+  align-items: flex-end;
+  justify-content: center;
   width: 100%;
+  /* Sized to the default 62x29 label so the common case has no slack at all;
+     taller geometries scale down into the same slot. */
+  height: 220px;
+}
+
+.lm-paper {
+  display: flex;
   max-width: 560px;
+  max-height: 100%;
   background: #fff;
   border: var(--border-width) solid var(--border);
   box-shadow: var(--shadow-1);
@@ -152,18 +167,22 @@
 
 .lm-paper canvas {
   display: block;
-  width: 100%;
+  /* Auto on both axes with a cap on each: the intrinsic canvas size keeps the
+     aspect ratio while the slot bounds the height. */
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 220px;
   /* 1 label dot must not be smoothed into a soft grey ramp — the preview
      should look like what the printer will actually lay down. */
   image-rendering: pixelated;
 }
 
+/* Actions lead, the geometry read-out is a caption under them. */
 .lm-stage-foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3) var(--space-4);
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
 }
 
 .lm-dims {
@@ -320,7 +339,7 @@
    a sticky box taller than its column's slack gets dragged up under the topnav
    at the end of the scroll, which reads as broken. The list grows instead, and
    only the head is pinned. */
-@media (min-width: 1200px) {
+@media (min-width: 1280px) {
   .lm-queue {
     /* Stretch so the divider runs the full height of the editor beside it
        rather than stopping under the last row. */
@@ -342,7 +361,7 @@
 }
 
 /* Print and Clear stay reachable however far down the list you have scrolled. */
-@media (min-width: 1200px) {
+@media (min-width: 1280px) {
   .lm-queue-head {
     position: sticky;
     top: var(--topnav-h);
@@ -393,7 +412,7 @@
 }
 /* Full width (below the rail breakpoint) there's room for one line per label,
    so the row actions sit beside the name rather than under it. */
-@media (max-width: 1199px) {
+@media (max-width: 1279px) {
   .lm-queue-item {
     grid-template-columns: 96px minmax(0, 1fr) auto;
     grid-template-areas: 'thumb meta actions';
