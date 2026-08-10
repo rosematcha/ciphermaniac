@@ -33,6 +33,7 @@ import {
   parseDayKey
 } from '../lib/majorsTrends';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
+import { CardHoverPreview } from '../components/CardHoverPreview';
 import { Section } from '../components/Section';
 import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
@@ -231,7 +232,11 @@ function PriceMovers() {
       {(m, idx) => (
         <A href={`/cards/${m.set}/${m.number}`} class='mover-row'>
           <span class='rank'>{idx() + 1}</span>
-          <span class='name'>{m.name}</span>
+          <span class='name'>
+            <CardHoverPreview set={m.set} number={m.number}>
+              {m.name}
+            </CardHoverPreview>
+          </span>
           <span class='set'>
             {m.set}/{m.number}
           </span>
@@ -477,6 +482,7 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
               titleClass='up'
               rows={cardMovers().rising}
               href={m => (m.set && m.number ? `/cards/${m.set}/${m.number}` : '#')}
+              cardRef={m => (m.set && m.number ? { set: m.set, number: m.number } : null)}
               name={m => m.name}
               setLabel={m => (
                 <>
@@ -497,6 +503,7 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
               titleClass='down'
               rows={cardMovers().falling}
               href={m => (m.set && m.number ? `/cards/${m.set}/${m.number}` : '#')}
+              cardRef={m => (m.set && m.number ? { set: m.set, number: m.number } : null)}
               name={m => m.name}
               setLabel={m => (
                 <>
@@ -683,6 +690,7 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
               titleClass='up'
               rows={movers().rising}
               href={m => (m.set && m.number ? `/cards/${m.set}/${m.number}` : '#')}
+              cardRef={m => (m.set && m.number ? { set: m.set, number: m.number } : null)}
               name={m => m.name}
               setLabel={m => (
                 <>
@@ -703,6 +711,7 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
               titleClass='down'
               rows={movers().falling}
               href={m => (m.set && m.number ? `/cards/${m.set}/${m.number}` : '#')}
+              cardRef={m => (m.set && m.number ? { set: m.set, number: m.number } : null)}
               name={m => m.name}
               setLabel={m => (
                 <>
@@ -737,6 +746,7 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
             }
             rows={movers().newcomers}
             href={m => (m.set && m.number ? `/cards/${m.set}/${m.number}` : '#')}
+            cardRef={m => (m.set && m.number ? { set: m.set, number: m.number } : null)}
             name={m => m.name}
             setLabel={m => (
               <>
@@ -1251,6 +1261,13 @@ function MoverColumn<T>(props: {
   name: (row: T) => string;
   setLabel: (row: T) => JSX.Element;
   trailing: (row: T) => JSX.Element;
+  /**
+   * Card identity for the hover art preview, or null for rows that have none
+   * (those render an inert `#` href). Anchored to the name rather than the
+   * whole row: `mover-row` is full-width, so a row-level anchor would centre
+   * the preview far from the pointer.
+   */
+  cardRef?: (row: T) => { set: string; number: string | number } | null;
 }) {
   return (
     <div class='mover-col'>
@@ -1259,14 +1276,26 @@ function MoverColumn<T>(props: {
       </Show>
       {props.note}
       <For each={props.rows}>
-        {(m, idx) => (
-          <A href={props.href(m)} class='mover-row'>
-            <span class='rank'>{idx() + 1}</span>
-            <span class='name'>{props.name(m)}</span>
-            <span class='set'>{props.setLabel(m)}</span>
-            {props.trailing(m)}
-          </A>
-        )}
+        {(m, idx) => {
+          const card = props.cardRef?.(m) ?? null;
+          return (
+            <A href={props.href(m)} class='mover-row'>
+              <span class='rank'>{idx() + 1}</span>
+              {/* Anchor nested inside `.name`, not wrapped around it: `.mover-row`
+                  is a 4-column grid and `.name` owns the ellipsis truncation, both
+                  of which an extra wrapper element would break. */}
+              <span class='name'>
+                <Show when={card} fallback={props.name(m)}>
+                  <CardHoverPreview set={card!.set} number={card!.number}>
+                    {props.name(m)}
+                  </CardHoverPreview>
+                </Show>
+              </span>
+              <span class='set'>{props.setLabel(m)}</span>
+              {props.trailing(m)}
+            </A>
+          );
+        }}
       </For>
     </div>
   );
