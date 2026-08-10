@@ -10,6 +10,7 @@ import {
 import { Section } from '../components/Section';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { Badge } from '../components/Badge';
+import { CardHoverPreview } from '../components/CardHoverPreview';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import type { PlayerDeckCard, PlayerProfile, PlayerTournamentEntry } from '../types';
@@ -395,12 +396,14 @@ function DeckBody(props: { archetypeName: string; cards: PlayerDeckCard[] }) {
                           </span>
                         }
                       >
-                        <A href={`/cards/${c.set}/${c.number}`} onClick={e => e.stopPropagation()}>
-                          <b>{c.count}×</b> {c.name}{' '}
-                          <span class='muted-cell'>
-                            {c.set}/{c.number}
-                          </span>
-                        </A>
+                        <CardHoverPreview set={c.set!} number={c.number!}>
+                          <A href={`/cards/${c.set}/${c.number}`} onClick={e => e.stopPropagation()}>
+                            <b>{c.count}×</b> {c.name}{' '}
+                            <span class='muted-cell'>
+                              {c.set}/{c.number}
+                            </span>
+                          </A>
+                        </CardHoverPreview>
                       </Show>
                     </li>
                   )}
