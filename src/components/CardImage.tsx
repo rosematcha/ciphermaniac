@@ -179,23 +179,33 @@ function buildAttempts(set: string, number: string | number, preferredSize: Card
  * source preference the component itself would pick — so the subsequent
  * `<CardImage>` render is a cache hit rather than a fresh round trip.
  *
- * Used by hover affordances that know a moment ahead of time which card is
- * about to be shown (see CardHoverPreview): firing this on pointer-enter lets
- * the request overlap the open delay instead of starting after it.
+ * Resolves once the bitmap is actually ready to paint, not merely downloaded:
+ * `decode()` covers the fetch *and* the decode, which is the difference
+ * between a caller being able to reveal fully-formed art and revealing an
+ * empty frame that fills in a beat later (see CardHoverPreview).
+ *
+ * Never rejects. A 404 or decode failure resolves like any other outcome —
+ * callers gate presentation on this, so a hard failure must let them proceed
+ * and fall through to `CardImage`'s own retry chain rather than hang.
  * @param set - Card set code.
  * @param number - Collector number.
  * @param size - Tier to warm; must match what the eventual render requests.
+ * @returns Resolves when the art is decoded, or when it has definitively failed.
  */
-export function preloadCardImage(set: string, number: string | number, size: CardImageSize): void {
+export function preloadCardImage(set: string, number: string | number, size: CardImageSize): Promise<void> {
   if (typeof window === 'undefined') {
-    return;
+    return Promise.resolve();
   }
   const url = buildAttempts(set, number, size, r2Ready())[0];
-  if (url) {
-    // Assigning .src is enough to start (and cache) the fetch; the element is
-    // deliberately never attached to the document.
-    new Image().src = url;
+  if (!url) {
+    return Promise.resolve();
   }
+  // Deliberately never attached to the document; assigning .src starts the
+  // fetch and populates the same HTTP + decoded-bitmap caches the real
+  // element will hit.
+  const img = new Image();
+  img.src = url;
+  return img.decode().catch(() => undefined);
 }
 
 export function CardImage(props: CardImageProps) {

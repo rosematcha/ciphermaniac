@@ -19,11 +19,17 @@ const PREVIEW_WIDTH = 168;
 const CARD_ASPECT = 63 / 88;
 const PREVIEW_HEIGHT = Math.round(PREVIEW_WIDTH / CARD_ASPECT);
 /**
- * Delay before a preview appears. Long enough that sweeping the pointer down a
- * 60-card list doesn't strobe previews, short enough to feel immediate when
- * you actually stop on a line.
+ * Dwell before a preview may appear. Long enough that sweeping the pointer
+ * down a 60-card list doesn't strobe previews, short enough to feel immediate
+ * when you actually stop on a line.
  */
 const OPEN_DELAY_MS = 130;
+/**
+ * Hard cap on waiting for art. Past this we reveal the frame anyway and let
+ * the image land inside it — a slow or broken image must not mean hovering
+ * does nothing at all.
+ */
+const ART_WAIT_CAP_MS = 500;
 
 /** True on pointer devices that genuinely hover — never on touch. */
 function hoverCapable(): boolean {
@@ -54,6 +60,9 @@ export function CardHoverPreview(props: CardHoverPreviewProps) {
   const [placement, setPlacement] = createSignal<PreviewPlacement | null>(null);
   let anchorRef: HTMLSpanElement | undefined;
   let openTimer: number | undefined;
+  let capTimer: number | undefined;
+  /** An open is scheduled or showing; cleared by close() to cancel a pending reveal. */
+  let pending = false;
 
   // Any scroll or resize moves the anchor out from under a fixed-position
   // layer, so drop the preview rather than let it drift off its row. Bound
@@ -76,10 +85,14 @@ export function CardHoverPreview(props: CardHoverPreviewProps) {
   };
 
   function close() {
-    if (openTimer !== undefined) {
-      window.clearTimeout(openTimer);
-      openTimer = undefined;
+    pending = false;
+    for (const timer of [openTimer, capTimer]) {
+      if (timer !== undefined) {
+        window.clearTimeout(timer);
+      }
     }
+    openTimer = undefined;
+    capTimer = undefined;
     bindViewportListeners(false);
     setPlacement(null);
   }
@@ -99,17 +112,32 @@ export function CardHoverPreview(props: CardHoverPreviewProps) {
     bindViewportListeners(true);
   };
 
-  const scheduleOpen = () => {
-    if (!hoverCapable() || openTimer !== undefined || placement()) {
+  /**
+   * Reveal only once the art is decoded, so the preview appears fully formed.
+   * Mounting on a bare timer instead meant the empty frame faded in first and
+   * the image popped in a beat later — read as a flicker on any cold hover.
+   *
+   * Waits on the dwell and the artwork concurrently (the fetch starts now,
+   * not when the frame mounts), so the two costs overlap instead of stacking.
+   */
+  const scheduleOpen = (dwellMs: number) => {
+    if (!hoverCapable() || pending || placement()) {
       return;
     }
-    // Start the image fetch now rather than when the preview mounts, so the
-    // open delay is spent waiting on the network instead of adding to it.
-    preloadCardImage(props.set, props.number, PREVIEW_TIER);
-    openTimer = window.setTimeout(() => {
-      openTimer = undefined;
-      openNow();
-    }, OPEN_DELAY_MS);
+    pending = true;
+    const artReady = preloadCardImage(props.set, props.number, PREVIEW_TIER);
+    const dwell = new Promise<void>(resolve => {
+      openTimer = window.setTimeout(resolve, dwellMs);
+    });
+    const capped = new Promise<void>(resolve => {
+      capTimer = window.setTimeout(resolve, ART_WAIT_CAP_MS);
+    });
+    void Promise.all([dwell, Promise.race([artReady, capped])]).then(() => {
+      // The pointer may have left while we waited; close() clears `pending`.
+      if (pending) {
+        openNow();
+      }
+    });
   };
 
   onCleanup(close);
@@ -118,15 +146,12 @@ export function CardHoverPreview(props: CardHoverPreviewProps) {
     <span
       ref={anchorRef}
       class='card-hover-anchor'
-      onMouseEnter={scheduleOpen}
+      onMouseEnter={() => scheduleOpen(OPEN_DELAY_MS)}
       onMouseLeave={close}
-      // Keyboard parity: tabbing through the decklist previews too. Focus is
-      // instant — someone who tabbed here already committed to this line.
-      onFocusIn={() => {
-        if (hoverCapable()) {
-          openNow();
-        }
-      }}
+      // Keyboard parity: tabbing through the decklist previews too, with no
+      // dwell — someone who tabbed here already committed to this line — but
+      // still gated on decoded art so it reveals the same way a hover does.
+      onFocusIn={() => scheduleOpen(0)}
       onFocusOut={close}
     >
       {props.children}
