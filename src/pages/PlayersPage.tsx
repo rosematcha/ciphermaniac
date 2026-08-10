@@ -32,9 +32,17 @@ export function PlayersPage() {
   // coming back from a profile lands on the same view. Every write replaces —
   // typing and re-sorting must not pile up history entries. Defaults are
   // omitted from the URL so the bare /players stays canonical.
-  const [params, setParams] = useSearchParams<{ q?: string; sort?: string; dir?: string; page?: string }>();
+  const [params, setParams] = useSearchParams<{
+    q?: string;
+    country?: string;
+    sort?: string;
+    dir?: string;
+    page?: string;
+  }>();
   const query = () => (typeof params.q === 'string' ? params.q : '');
   const setQuery = (v: string) => setParams({ q: v || undefined, page: undefined }, { replace: true });
+  const country = () => (typeof params.country === 'string' ? params.country : '');
+  const setCountry = (v: string) => setParams({ country: v || undefined, page: undefined }, { replace: true });
   const sortKey = (): PlayerSortKey => {
     const s = params.sort;
     return s && (SORT_KEYS as readonly string[]).includes(s) ? (s as PlayerSortKey) : DEFAULT_SORT;
@@ -53,10 +61,28 @@ export function PlayersPage() {
   // per input event is the difference between instant and mushy search.
   const searchable = createMemo(() => (indexData() ?? []).map(entry => ({ entry, folded: foldSearch(entry.name) })));
 
+  // Country codes present in the index, with player counts for the filter menu.
+  const countries = createMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of indexData() ?? []) {
+      if (p.country) {
+        counts.set(p.country, (counts.get(p.country) ?? 0) + 1);
+      }
+    }
+    return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b));
+  });
+
   const filtered = createMemo<PlayerIndexSlimEntry[]>(() => {
     const q = foldSearch(query().trim());
-    const rows = searchable();
-    return (q ? rows.filter(r => r.folded.includes(q)) : rows).map(r => r.entry);
+    const c = country();
+    let rows = searchable();
+    if (q) {
+      rows = rows.filter(r => r.folded.includes(q));
+    }
+    if (c) {
+      rows = rows.filter(r => r.entry.country === c);
+    }
+    return rows.map(r => r.entry);
   });
 
   const sorted = createMemo(() => [...filtered()].sort(comparePlayers(sortKey(), sortDir())));
@@ -100,6 +126,17 @@ export function PlayersPage() {
         <div class='filter-bar'>
           <div class='filter-row'>
             <SearchInput value={query()} onInput={setQuery} placeholder='Search by player name...' />
+            <select
+              class='fb-select country-select'
+              aria-label='Filter by country'
+              value={country()}
+              onChange={e => setCountry(e.currentTarget.value)}
+            >
+              <option value=''>All countries</option>
+              <For each={countries()}>
+                {([code, count]) => <option value={code}>{`${code} (${count.toLocaleString()})`}</option>}
+              </For>
+            </select>
           </div>
         </div>
       </Section>
@@ -121,9 +158,13 @@ export function PlayersPage() {
             fallback={
               <EmptyState
                 title='No players match.'
-                description='Try clearing the search term.'
+                description='Try clearing the search or country filter.'
                 actions={
-                  <button class='btn btn-secondary' type='button' onClick={() => setQuery('')}>
+                  <button
+                    class='btn btn-secondary'
+                    type='button'
+                    onClick={() => setParams({ q: undefined, country: undefined, page: undefined }, { replace: true })}
+                  >
                     Reset
                   </button>
                 }
