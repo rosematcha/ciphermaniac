@@ -26,6 +26,7 @@ import type {
   TournamentParticipant
 } from '../types';
 import { getCanonicalCardFromData, type SynonymDatabase } from '../../shared/synonyms.js';
+import { decodeSlimIndex } from '../../shared/playerTypes.js';
 import { cardNumberIndexKey, normalizeCardNumber } from '../../shared/cardUtils.js';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { calculatePercentage } from '../../shared/reportUtils.js';
@@ -1163,14 +1164,14 @@ async function fetchPlayerJson<T>(path: string): Promise<T | null> {
 }
 
 /**
- * Slim index (players table + compare autocomplete). Roughly 20% smaller raw
- * than the full index — it drops `lastEventDate`. Falls back to the full index
- * when `index-slim.json` 404s so the frontend keeps working if it deploys ahead
- * of the aggregator that first writes the slim file. The full entry is a
- * superset of the slim shape, so it's returned as-is.
+ * Slim index (players table + compare autocomplete). `decodeSlimIndex` accepts
+ * both wire shapes — the columnar payload the aggregator writes now and the
+ * legacy row array — so the frontend keeps working on either side of the
+ * aggregator deploy. Falls back to the full index when `index-slim.json` is
+ * missing or unrecognizable (full entries are a superset of the slim shape).
  */
 export async function fetchPlayerIndexSlim(): Promise<PlayerIndexSlimEntry[] | null> {
-  const slim = await fetchPlayerJson<PlayerIndexSlimEntry[]>('/players/index-slim.json');
+  const slim = decodeSlimIndex(await fetchPlayerJson<unknown>('/players/index-slim.json'));
   if (slim) {
     return slim;
   }

@@ -1,5 +1,5 @@
 import { normalizeArchetypeName, sanitizeForFilename } from '../cardUtils.js';
-import { toSlimIndexEntry } from '../playerTypes';
+import { encodeSlimIndex } from '../playerTypes';
 import { runWithConcurrency } from './tournamentFetcher';
 import { batchDelete, batchPutJson, getJson, getJsonResult, putJson } from './storageWriter';
 import type {
@@ -111,7 +111,7 @@ const SLIM_INDEX_KEY = 'players/index-slim.json';
  * real rebuild.
  */
 async function writeSlimIndex(env: unknown, index: PlayerIndexEntry[]): Promise<void> {
-  await putJson(env, SLIM_INDEX_KEY, index.map(toSlimIndexEntry), {
+  await putJson(env, SLIM_INDEX_KEY, encodeSlimIndex(index), {
     cacheControl: 'public, max-age=21600'
   });
 }
