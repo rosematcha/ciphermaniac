@@ -1,6 +1,13 @@
 import { A, useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js';
-import { fetchPlayerIndexSlim, fetchPlayerProfile, prettyTournamentName } from '../lib/data';
+import {
+  fetchPlayerIndexSlim,
+  fetchPlayerProfile,
+  getArchetypeIconMap,
+  prettyTournamentName,
+  resolveArchetypeIcons
+} from '../lib/data';
+import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { Section } from '../components/Section';
 import { SearchInput } from '../components/Chip';
 import { Skeleton } from '../components/Skeleton';
@@ -331,7 +338,19 @@ function ComparisonBody(props: {
   headToHead: { aWins: number; bWins: number; ties: number };
 }) {
   const metrics = createMemo(() => buildMetrics(props.a, props.b));
-  const archetypeName = (p: PlayerProfile, base: string | null) => (base ? (p.archetypeNames[base] ?? base) : '—');
+  const archetypeName = (p: PlayerProfile, base: string | null) => (base ? (p.archetypeNames[base] ?? base) : '');
+  const iconMap = getArchetypeIconMap();
+  const deckCell = (p: PlayerProfile, base: string | null) => {
+    const name = archetypeName(p, base);
+    return (
+      <Show when={name} fallback='—'>
+        <span class='arche-name-cell'>
+          <ArchetypeIcons slugs={resolveArchetypeIcons({ name }, iconMap)} size={16} reserveSlot />
+          {name}
+        </span>
+      </Show>
+    );
+  };
 
   return (
     <>
@@ -414,7 +433,7 @@ function ComparisonBody(props: {
                           {ev.a.placement ?? '—'}
                           <span class='muted-cell'> · {record(ev.a.wins, ev.a.losses, ev.a.ties)}</span>
                         </td>
-                        <td class='muted-cell'>{archetypeName(props.a, ev.a.archetype)}</td>
+                        <td class='muted-cell'>{deckCell(props.a, ev.a.archetype)}</td>
                         <td class='num' classList={{ 'compare-lead': cmp > 0 }}>
                           <Show when={cmp > 0}>
                             <span class='compare-caret' aria-label='Higher finish'>
@@ -424,7 +443,7 @@ function ComparisonBody(props: {
                           {ev.b.placement ?? '—'}
                           <span class='muted-cell'> · {record(ev.b.wins, ev.b.losses, ev.b.ties)}</span>
                         </td>
-                        <td class='muted-cell'>{archetypeName(props.b, ev.b.archetype)}</td>
+                        <td class='muted-cell'>{deckCell(props.b, ev.b.archetype)}</td>
                       </tr>
                     );
                   }}

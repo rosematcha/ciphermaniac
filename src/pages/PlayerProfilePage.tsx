@@ -1,7 +1,14 @@
 import { A, useParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
-import { fetchPlayerDecks, fetchPlayerProfile, prettyTournamentName } from '../lib/data';
+import {
+  fetchPlayerDecks,
+  fetchPlayerProfile,
+  getArchetypeIconMap,
+  prettyTournamentName,
+  resolveArchetypeIcons
+} from '../lib/data';
 import { Section } from '../components/Section';
+import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { Badge } from '../components/Badge';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
@@ -86,6 +93,7 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
   });
   const hiddenArchetypeCount = () => Math.max(0, props.profile.archetypes.length - ARCHETYPE_PREVIEW_COUNT);
   const archetypeName = (base: string | null): string => (base ? (props.profile.archetypeNames[base] ?? base) : '');
+  const iconMap = getArchetypeIconMap();
 
   return (
     <>
@@ -169,9 +177,16 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
                     return (
                       <tr>
                         <td>
-                          <A href={`/archetypes/${encodeURIComponent(a.base)}`} class='cardname'>
-                            {archetypeName(a.base)}
-                          </A>
+                          <span class='arche-name-cell'>
+                            <ArchetypeIcons
+                              slugs={resolveArchetypeIcons({ name: archetypeName(a.base) }, iconMap)}
+                              size={20}
+                              reserveSlot
+                            />
+                            <A href={`/archetypes/${encodeURIComponent(a.base)}`} class='cardname'>
+                              {archetypeName(a.base)}
+                            </A>
+                          </span>
                         </td>
                         <td class='num'>{a.eventCount.toLocaleString()}</td>
                         <td class='num'>
@@ -280,12 +295,19 @@ function TournamentRow(props: TournamentRowProps) {
         </td>
         <td class='muted-cell'>
           <Show when={props.entry.archetype} fallback='—'>
-            <A
-              href={`/archetypes/${encodeURIComponent(props.entry.archetype ?? '')}`}
-              onClick={e => e.stopPropagation()}
-            >
-              {props.archetypeName}
-            </A>
+            <span class='arche-name-cell'>
+              <ArchetypeIcons
+                slugs={resolveArchetypeIcons({ name: props.archetypeName }, getArchetypeIconMap())}
+                size={16}
+                reserveSlot
+              />
+              <A
+                href={`/archetypes/${encodeURIComponent(props.entry.archetype ?? '')}`}
+                onClick={e => e.stopPropagation()}
+              >
+                {props.archetypeName}
+              </A>
+            </span>
           </Show>
         </td>
         <td class='num'>
