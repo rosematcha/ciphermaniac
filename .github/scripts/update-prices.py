@@ -62,8 +62,53 @@ MOVER_LIMIT = 12
 MANUAL_GROUP_ID_MAP = {
     'MEP': 24451,
     'SVP': 22872,
-    'SP': 2545
+    'SP': 2545,
+    # SM-era groups: TCGCSV abbreviates these "SM01".."SM12" and names them
+    # "SM - <Set>", so neither the abbreviation nor the catalog-name tail
+    # matches our codes.
+    'SUM': 1863,
+    'GRI': 1919,
+    'BUS': 1957,
+    'CIN': 2071,
+    'UPR': 2178,
+    'FLI': 2209,
+    'LOT': 2328,
+    'TEU': 2377,
+    'UNB': 2420,
+    'UNM': 2464,
+    'CEC': 2534,
+    # SSH: abbreviation "SWSH01", name "SWSH01: Sword & Shield Base Set".
+    'SSH': 2585,
+    # BWP: abbreviation "PR", name "Black and White Promos".
+    'BWP': 1407
 }
+
+# Promo groups whose card numbers carry a prefix that is not our set code:
+# SWSH promos ("SP" to us) number their cards "SWSH001".."SWSH307".
+NUMBER_PREFIX_ALIASES = {
+    'SP': ('SWSH',),
+    'BWP': ('BW',)
+}
+
+# TCGCSV splits the SWSH Trainer/Galarian Galleries into their own groups,
+# while our UIDs keep them in the parent set (TG/GG card numbers). Prints in
+# these groups are fetched in addition to the set's primary group; the primary
+# group wins on any UID both carry.
+SUPPLEMENTAL_GROUP_IDS = {
+    'BRS': (3020,),   # Brilliant Stars Trainer Gallery
+    'ASR': (3068,),   # Astral Radiance Trainer Gallery
+    'LOR': (3172,),   # Lost Origin Trainer Gallery
+    'SIT': (17674,),  # Silver Tempest Trainer Gallery
+    'CRZ': (17689,)   # Crown Zenith Galarian Gallery
+}
+
+
+def group_ids_for_set(set_code, set_mappings):
+    """All TCGCSV group IDs holding a set's prints: primary, then galleries."""
+    gid = set_mappings.get(set_code)
+    if not gid:
+        return []
+    return [gid, *SUPPLEMENTAL_GROUP_IDS.get(set_code, ())]
 
 # Local set catalog — the single source of truth for set names, shared with the
 # name-based group fallback below.
@@ -105,7 +150,16 @@ def normalize_card_name(name):
         return ''
     
     # Remove bracketed text (e.g., "Boss's Orders [Ghetsis]" → "Boss's Orders")
+    # and parenthesized variant suffixes — TCGPlayer names special prints
+    # "Adaman (Full Art)" / "Arceus VSTAR (Secret)" where our UIDs carry the
+    # bare name plus the print's own number.
     name = re.sub(r'\s*\[.*?\]\s*', '', name)
+    name = re.sub(r'\s*\(.*?\)\s*', '', name)
+
+    # TCGPlayer names basic energies "Basic Grass Energy"; our UIDs never
+    # carry the "Basic" prefix.
+    if name.lower().endswith(' energy'):
+        name = re.sub(r'^basic\s+', '', name, flags=re.IGNORECASE)
 
     # Fold typographic apostrophes — TCGPlayer writes "Marnie’s Morpeko" where
     # Limitless writes "Marnie's Morpeko", and trainer-owned Pokémon are a whole
@@ -629,13 +683,26 @@ def parse_product(product):
     return product_id, _strip_number_suffix(name, number), normalize_product_number(number)
 
 
+def number_match_key(number):
+    """Card number reduced to a padding-insensitive matching key.
+
+    Gallery numbers are zero-padded inconsistently across sources — our UIDs
+    say ``GG1`` where TCGCSV says ``GG01``, and ``TG05`` where a UID might say
+    ``TG5`` — so prefix+digits numbers drop their leading zeros. Pure digits
+    keep the existing zfill(3) form from normalize_product_number.
+    """
+    normalized = normalize_product_number(number)
+    match = re.fullmatch(r'([A-Z]+)0*(\d+)', normalized)
+    return f"{match.group(1)}{match.group(2)}" if match else normalized
+
+
 def build_normalized_lookup(card_uids):
     """Map "normalized_name::number" to actual UID for fuzzy matching."""
     normalized_lookup = {}
     for uid in card_uids:
         parts = uid.split('::')
         if len(parts) >= 3:
-            normalized_key = f"{normalize_card_name(parts[0])}::{parts[2]}"
+            normalized_key = f"{normalize_card_name(parts[0])}::{number_match_key(parts[2])}"
             normalized_lookup[normalized_key] = uid
     return normalized_lookup
 
@@ -654,9 +721,10 @@ def build_product_uid_map(products, set_code, card_uids):
 
         # Promo numbers arrive set-prefixed ("SVP193"); our UIDs never are.
         candidates = [number]
-        unprefixed = strip_set_prefix(number, set_code)
-        if unprefixed:
-            candidates.append(unprefixed)
+        for prefix in (set_code, *NUMBER_PREFIX_ALIASES.get(set_code, ())):
+            unprefixed = strip_set_prefix(number, prefix)
+            if unprefixed:
+                candidates.append(unprefixed)
 
         uid = None
         for candidate in candidates:
@@ -664,7 +732,7 @@ def build_product_uid_map(products, set_code, card_uids):
             if exact in card_uid_lookup:
                 uid = exact
                 break
-            fuzzy = normalized_lookup.get(f"{normalize_card_name(card_name)}::{candidate}")
+            fuzzy = normalized_lookup.get(f"{normalize_card_name(card_name)}::{number_match_key(candidate)}")
             if fuzzy:
                 uid = fuzzy
                 break
@@ -752,28 +820,35 @@ def fetch_all_prices(card_sets_map, set_mappings):
     all_prices = {}
 
     for set_code, card_uids in card_sets_map.items():
-        group_id = set_mappings.get(set_code)
-        if not group_id:
+        group_ids = group_ids_for_set(set_code, set_mappings)
+        if not group_ids:
             print(f"  Skipping {set_code} (no group ID)")
             continue
 
-        set_prices = fetch_prices_for_set(set_code, group_id, card_uids)
+        set_prices = {}
+        for group_id in group_ids:
+            for uid, entry in fetch_prices_for_set(set_code, group_id, card_uids).items():
+                set_prices.setdefault(uid, entry)
+            time.sleep(0.25)  # per TCGCSV FAQ etiquette
         all_prices.update(set_prices)
-        time.sleep(0.25)  # per TCGCSV FAQ etiquette
 
     return all_prices
 
 
 def add_basic_energy_prices(price_data, card_list):
-    """Add hardcoded $0.01 prices for basic energy."""
-    for energy_name in BASIC_ENERGY_NAMES:
-        canonical_uid = BASIC_ENERGY_CANONICALS.get(energy_name)
-        if canonical_uid and canonical_uid in card_list:
-            if canonical_uid not in price_data:
-                price_data[canonical_uid] = {
-                    'price': 0.01,
-                    'tcgPlayerId': None
-                }
+    """Add hardcoded $0.01 prices for basic energy.
+
+    Covers every tracked basic-energy print, not just the canonicals — older
+    sets number their energies with synthetic UIDs (``SUM::000G``) TCGCSV has
+    no product for, and a basic energy is a penny card in any printing TCGCSV
+    doesn't price directly.
+    """
+    for uid in card_list:
+        if uid.split('::')[0] in BASIC_ENERGY_NAMES and uid not in price_data:
+            price_data[uid] = {
+                'price': 0.01,
+                'tcgPlayerId': None
+            }
     print(f"\nAdded {len([k for k in price_data if 'Energy::' in k])} basic energy prices")
 
 

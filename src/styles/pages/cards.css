@@ -70,14 +70,20 @@
 .price-spark-dot {
   fill: var(--muted);
 }
+/* Color the line by stroke only — a CSS `fill` would override the path's
+   fill="none" attribute and flood the open line shape. */
 .price-spark.up .price-spark-line,
 .price-spark.up .price-spark-dot {
   stroke: var(--positive);
+}
+.price-spark.up .price-spark-dot {
   fill: var(--positive);
 }
 .price-spark.down .price-spark-line,
 .price-spark.down .price-spark-dot {
   stroke: var(--negative);
+}
+.price-spark.down .price-spark-dot {
   fill: var(--negative);
 }
 .price-spark-delta {

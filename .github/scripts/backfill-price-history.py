@@ -146,19 +146,22 @@ def main():
     group_products = {}
     group_to_set = {}
     for set_code, card_uids in card_sets_map.items():
-        gid = set_mappings.get(set_code)
-        if not gid:
+        gids = up.group_ids_for_set(set_code, set_mappings)
+        if not gids:
             print(f"  Skipping {set_code} (no group ID)")
             continue
-        products = up.fetch_tcgcsv_results(f"https://tcgcsv.com/tcgplayer/3/{gid}/products")
-        group_products[gid] = (products, set_code, card_uids)
-        group_to_set[gid] = set_code
-        print(f"  {set_code}: {len(products)} products")
-        time.sleep(0.25)
+        for gid in gids:
+            products = up.fetch_tcgcsv_results(f"https://tcgcsv.com/tcgplayer/3/{gid}/products")
+            group_products[gid] = (products, set_code, card_uids)
+            group_to_set[gid] = set_code
+            print(f"  {set_code} (group {gid}): {len(products)} products")
+            time.sleep(0.25)
 
+    # Every basic-energy print, not just canonicals — same penny-card rule as
+    # the daily job's add_basic_energy_prices.
     energy_uids = {
         uid for uid in card_list
-        if uid in up.BASIC_ENERGY_CANONICALS.values()
+        if uid.split('::')[0] in up.BASIC_ENERGY_NAMES
     }
 
     today = datetime.now(timezone.utc).date()
@@ -187,7 +190,7 @@ def main():
             for uid, entry in extracted.items():
                 day_prices[uid] = entry["price"]
         for uid in energy_uids:
-            day_prices[uid] = 0.01
+            day_prices.setdefault(uid, 0.01)
         daily_prices[day_str] = day_prices
         print(f"  {day_str}: {len(day_prices)} cards priced", flush=True)
 
