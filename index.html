@@ -21,10 +21,8 @@
   <link rel="preconnect" href="https://r2.ciphermaniac.com">
   <link rel="preconnect" href="https://r2.limitlesstcg.net">
 
-  <!-- Inter is self-hosted (see src/styles/fonts.css); preload the three weights
-       used above the fold so text renders in the right face on first paint. -->
-  <link rel="preload" as="font" type="font/woff2" href="/fonts/inter-latin-400.woff2" crossorigin>
-  <link rel="preload" as="font" type="font/woff2" href="/fonts/inter-latin-600.woff2" crossorigin>
+  <!-- Inter is self-hosted (see src/styles/fonts.css). Only the heading weight
+       is critical; body weights can load through CSS without competing with data. -->
   <link rel="preload" as="font" type="font/woff2" href="/fonts/inter-latin-700.woff2" crossorigin>
 </head>
 <body>
