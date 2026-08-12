@@ -8,6 +8,7 @@ import { Pagination } from '../components/Pagination';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { createPagination } from '../lib/pagination';
+import { debounced } from '../lib/debounce';
 import { prefetchPlayerProfilePage } from '../lib/prefetch';
 import type { PlayerIndexSlimEntry } from '../types';
 import { foldSearch } from '../utils/searchFold';
@@ -40,6 +41,7 @@ export function PlayersPage() {
     page?: string;
   }>();
   const query = () => (typeof params.q === 'string' ? params.q : '');
+  const debouncedQuery = debounced(query, 120);
   const setQuery = (v: string) => setParams({ q: v || undefined, page: undefined }, { replace: true });
   const country = () => (typeof params.country === 'string' ? params.country : '');
   const setCountry = (v: string) => setParams({ country: v || undefined, page: undefined }, { replace: true });
@@ -57,9 +59,9 @@ export function PlayersPage() {
   // error fallbacks below actually render (see lib/resource.ts).
   const indexData = () => resolved(index);
 
-  // Fold names once per index load, not per keystroke — 20k NFKD normalizes
-  // per input event is the difference between instant and mushy search.
-  const searchable = createMemo(() => (indexData() ?? []).map(entry => ({ entry, folded: foldSearch(entry.name) })));
+  // Fold names once per index load and retain only the strings. Avoiding a
+  // second array of wrapper objects matters for this large, session-long index.
+  const foldedNames = createMemo(() => (indexData() ?? []).map(entry => foldSearch(entry.name)));
 
   // Country codes present in the index, with player counts for the filter menu.
   const countries = createMemo(() => {
@@ -73,16 +75,14 @@ export function PlayersPage() {
   });
 
   const filtered = createMemo<PlayerIndexSlimEntry[]>(() => {
-    const q = foldSearch(query().trim());
+    const q = foldSearch(debouncedQuery().trim());
     const c = country();
-    let rows = searchable();
-    if (q) {
-      rows = rows.filter(r => r.folded.includes(q));
+    const rows = indexData() ?? [];
+    if (!q && !c) {
+      return rows;
     }
-    if (c) {
-      rows = rows.filter(r => r.entry.country === c);
-    }
-    return rows.map(r => r.entry);
+    const folded = foldedNames();
+    return rows.filter((entry, index) => (!q || folded[index].includes(q)) && (!c || entry.country === c));
   });
 
   const sorted = createMemo(() => [...filtered()].sort(comparePlayers(sortKey(), sortDir())));
