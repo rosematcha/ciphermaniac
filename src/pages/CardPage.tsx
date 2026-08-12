@@ -50,6 +50,7 @@ import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CardImage } from '../components/CardImage';
 import { InfoTip } from '../components/InfoTip';
+import { mapWithConcurrency } from '../lib/concurrency';
 
 const CONVERSION_INTRO = 'Share of the Day 1 decks playing this card that advanced to Day 2.';
 
@@ -308,20 +309,18 @@ export function CardPage() {
       if (usage) {
         return buildUsageRowsFromIndex(usage, list, card, database);
       }
-      const results = await Promise.all(
-        list.map(async (entry): Promise<ArchetypeUsageRow | null> => {
-          try {
-            const report = await fetchArchetype(tournament, entry.name);
-            const item = findCardInArchetypeReport(report, card);
-            if (!item) {
-              return null;
-            }
-            return { entry, item, report };
-          } catch {
+      const results = await mapWithConcurrency(list, 6, async (entry): Promise<ArchetypeUsageRow | null> => {
+        try {
+          const report = await fetchArchetype(tournament, entry.name);
+          const item = findCardInArchetypeReport(report, card);
+          if (!item) {
             return null;
           }
-        })
-      );
+          return { entry, item, report };
+        } catch {
+          return null;
+        }
+      });
       return results.filter((r): r is ArchetypeUsageRow => r !== null);
     }
   );
