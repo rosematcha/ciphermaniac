@@ -25,6 +25,7 @@ const JSON_CACHE = `cm-json-${VERSION}`;
 const ASSET_CACHE = `cm-assets-${VERSION}`;
 const SHELL_CACHE = `cm-shell-${VERSION}`;
 const JSON_MAX_ENTRIES = 120;
+let jsonTrimPending = null;
 
 self.addEventListener('install', () => {
   self.skipWaiting();
@@ -53,6 +54,18 @@ async function trimCache(cacheName, maxEntries) {
   }
 }
 
+function scheduleJsonTrim() {
+  if (jsonTrimPending) {
+    return jsonTrimPending;
+  }
+  jsonTrimPending = new Promise(resolve => setTimeout(resolve, 1000))
+    .then(() => trimCache(JSON_CACHE, JSON_MAX_ENTRIES))
+    .finally(() => {
+      jsonTrimPending = null;
+    });
+  return jsonTrimPending;
+}
+
 // Never cache an HTML body under a data/asset URL. During an outage the
 // server can 200 the SPA shell for any path (that is exactly what the July
 // 2026 _redirects catch-all did), and cache-first would then serve the
@@ -68,7 +81,7 @@ async function staleWhileRevalidate(request) {
   const refresh = fetch(request)
     .then(response => {
       if (cacheable(response)) {
-        cache.put(request, response.clone()).then(() => trimCache(JSON_CACHE, JSON_MAX_ENTRIES));
+        cache.put(request, response.clone()).then(scheduleJsonTrim);
       }
       return response;
     })
