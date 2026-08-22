@@ -69,6 +69,7 @@ Requires Node 22+.
 | Command | What it runs |
 |---------|--------------|
 | `npm run dev` | Vite dev server |
+| `npm run dev:functions` | Local Wrangler serving `functions/` at `:8788`, which `npm run dev` proxies `/api` to |
 | `npm run build` | Production build |
 | `npm run verify` | Everything CI runs: validate, knip, metadata check, build, tests, coverage gates |
 | `npm run validate` | Typecheck (frontend, backend, node) + ESLint |
@@ -79,6 +80,13 @@ Requires Node 22+.
 | `npm run test:e2e:live` | Playwright mobile suite against live R2 data |
 | `npm run test:coverage` | Coverage report over the domain and serving surface |
 | `npm run knip` | Dead code check |
+
+`npm run dev` alone covers every page: route data comes straight from
+`r2.ciphermaniac.com`, and `/thumbnails` and `/sprites` proxy to production so
+canvas exports stay same-origin. It needs network access but no credentials.
+Run `npm run dev:functions` in a second terminal for the `/api` endpoints —
+feedback, survey, the Limitless proxies, upcoming tournaments. Wrangler
+simulates the R2, KV, and D1 bindings locally, so those stores start empty.
 
 The Python tests need the pinned producer dependencies:
 
