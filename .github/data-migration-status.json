@@ -262,7 +262,7 @@
       "consumer": "CardPage only. src/pages/cardPage/model.buildUsageRowsFromIndex reads exactly one key.",
       "proposedFix": "Shard per set the way reports/price-history/{SET}.json already does: 19 shards, largest 80 KB, median 30 KB — a ~20x cut on the page's biggest download, with no change in total stored bytes.",
       "status": "NOT IMPLEMENTED, deliberately deferred. This adds a new artifact layout, which needs build-graph nodes, release capture, and a read-time fallback for every event that only has the monolith. That fallback would land in src/lib/data/compat.ts — the module quarantined with a stated deletion condition — so adding to it before Phase 7 deletes the existing compat paths works against the plan's sequencing. Do it after the release migration lands, as a Phase 12 item.",
-      "cheaperInterimOption": "Deferring the fetch past first paint is artifact-free and may recover LCP without any pipeline change; worth measuring before committing to the shard."
+      "cheaperInterimOption": "TRIED AND REJECTED 2026-08-22. Deferring the fetch past first paint (rAF + setTimeout, the pattern AdvancedPanel uses) did NOT help: the fetch moved only 1,287ms -> 1,299ms and card-page cold LCP went 3,164ms -> 3,172ms, i.e. noise. rAF fires almost immediately on a page already blocked on network, so the deferral buys nothing, and it introduced a real trap — a deferred resource is IDLE before its source turns truthy, not loading, so the usage joiner would have taken the expensive per-archetype fan-out on its first pass. Reverted. Sharding is the actual fix; there is no cheap client-side substitute."
     }
   },
   "semanticDifferences": [
