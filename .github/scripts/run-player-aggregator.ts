@@ -14,17 +14,10 @@
  *         players/_manifest.json
  */
 
+import { requireEnv } from './lib/env.ts';
 import process from 'node:process';
 import { createR2Client, createReportsBinding } from './lib/r2.mjs';
 import { buildPlayerAggregates } from '../../shared/onlineMeta/playerAggregator.ts';
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing environment variable: ${name}`);
-  }
-  return value;
-}
 
 function parseBoolean(value: string | undefined, fallback = false): boolean {
   if (!value) {

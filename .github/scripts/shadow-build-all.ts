@@ -17,6 +17,7 @@
  * @module .github/scripts/shadow-build-all
  */
 
+import { requireEnv } from './lib/env.ts';
 import { pathToFileURL } from 'node:url';
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { computeNodeKey, type NodeReceipt } from '../../shared/data/build/graph.ts';
@@ -33,14 +34,6 @@ import { createR2ObjectStore } from './lib/build/r2ObjectStore.mjs';
 
 const hashBody = (body: string): string => `sha256:${sha256HexString(body)}`;
 const CACHE = 31536000;
-
-function requireEnv(name: string): string {
-  const v = process.env[name];
-  if (!v) {
-    throw new Error(`Missing ${name}`);
-  }
-  return v;
-}
 
 interface LegacyCard {
   name?: string;
