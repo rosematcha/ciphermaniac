@@ -16,13 +16,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  canonicalizeReport,
   type CardUsageEntry,
   cardUsageForCard,
   type CardUsagePayload,
   findByClusterUid,
   findCardBySetNumberCanonical
 } from '../../src/lib/data.ts';
+import { canonicalizeReport } from '../../src/lib/data/compat.ts';
 import { computeMajorsMovers, type EventSnapshot } from '../../src/lib/majorsTrends.ts';
 import { getCanonicalCardFromData, type SynonymDatabase } from '../../shared/synonyms.ts';
 import type { CardItem } from '../../src/types';

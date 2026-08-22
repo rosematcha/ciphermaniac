@@ -27,7 +27,7 @@ import type {
 } from '../types';
 import { getCanonicalCardFromData, type SynonymDatabase } from '../../shared/synonyms.js';
 import { decodeSlimIndex } from '../../shared/playerTypes.js';
-import { cardNumberIndexKey, normalizeCardNumber } from '../../shared/cardUtils.js';
+import { cardNumberIndexKey } from '../../shared/cardUtils.js';
 import {
   buildCanonicalRouteIndex,
   type CanonicalRouteIndex,
@@ -35,13 +35,21 @@ import {
   resolveCanonicalRoute
 } from '../../shared/data/canonicalCardRoute';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
-import { calculatePercentage } from '../../shared/reportUtils.js';
 import type { UpcomingPayload } from '../../shared/upcomingTypes.js';
 import type { MajorsTrendsPayload } from './majorsTrends';
 import archetypeIconsRaw from '../data/archetype-icons.json';
 import { dataClient, R2_BASE } from './data/client';
+import {
+  canonicalizeCardTrendEntries,
+  canonicalizeReportCached,
+  itemUid,
+  normalizeIndexPercentScale
+} from './data/compat';
 
 export type { UpcomingPayload };
+
+// Card identity helper, re-exported so pages keep one import site for it.
+export { itemUid } from './data/compat';
 
 // Transport, dedupe, and short-TTL cache live in ./data/client, which takes
 // fetch/clock/base-url as parameters so that behavior is testable. This module
@@ -101,192 +109,6 @@ function tournamentPath(name: string): string {
  */
 function setNumberKey(value: string | number): string {
   return cardNumberIndexKey(value);
-}
-
-/**
- * Compute the UID for a card item. Prefers an explicit `uid` field, then
- * `Name::SET::NUMBER`, then bare name as a last resort. The number is
- * zero-padded to the synonym DB's canonical form (e.g. `098`, not `98`) so the
- * fallback UID hits the synonym index consistently.
- */
-export function itemUid(item: CardItem): string {
-  if (item.uid) {
-    return item.uid;
-  }
-  if (item.set && item.number !== undefined && item.number !== null) {
-    const num = normalizeCardNumber(item.number) || String(item.number);
-    return `${item.name}::${item.set}::${num}`;
-  }
-  return item.name;
-}
-
-type AnyCardItem = CardItem & {
-  deckInstances?: Array<{ deckId: string; count: number; archetype?: string }>;
-};
-
-/**
- * Collapse variant printings into their canonical entry. Reports stay
- * immutable on R2; the data layer merges at read time so the page render
- * sees one row per canonical card, regardless of how the per-tournament
- * report was canonicalized when it was originally built.
- *
- * Merges `found`, `dist` buckets (by `copies`), and any `deckInstances`
- * (archetype reports). Recomputes `pct` from `(found / deckTotal) * 100` and
- * each `dist[].percent` from `(players / found) * 100`. Re-sorts by `found`
- * desc and reassigns `rank`.
- *
- * Exported for unit tests.
- */
-export function canonicalizeReport<T extends { deckTotal: number; items: AnyCardItem[] }>(
-  report: T,
-  db: SynonymDatabase | null
-): T {
-  if (!db || !report?.items?.length) {
-    return report;
-  }
-
-  // "Rolling canonical" artifacts are already build-time canonicalized: their
-  // items key by the event-date canonical print (a variant UID that still
-  // resolves to the same global cluster identity through the synonym map).
-  // Re-mapping here would rewrite that period-correct rolling print to today's
-  // global canonical — destroying the historical print display — so pass through.
-  if ((report as { canonicalizedAt?: string }).canonicalizedAt) {
-    return report;
-  }
-
-  const grouped = new Map<string, AnyCardItem>();
-
-  for (const item of report.items) {
-    const uid = itemUid(item);
-    const canonicalUid = getCanonicalCardFromData(db, uid);
-    const canonicalParts = canonicalUid.includes('::') ? canonicalUid.split('::') : null;
-
-    const existing = grouped.get(canonicalUid);
-    if (!existing) {
-      // First occurrence — clone and stamp with canonical identity. Only
-      // rewrite name/set/number when a real synonym mapping applied
-      // (canonicalUid !== uid); otherwise keep the item's own display fields so
-      // the padded lookup UID doesn't leak into the rendered number.
-      const next: AnyCardItem = { ...item, uid: canonicalUid };
-      if (canonicalUid !== uid && canonicalParts && canonicalParts.length >= 3) {
-        next.name = canonicalParts[0];
-        next.set = canonicalParts[1];
-        next.number = canonicalParts[2];
-      }
-      if (item.dist) {
-        next.dist = item.dist.map(d => ({ ...d }));
-      }
-      if (item.deckInstances) {
-        next.deckInstances = [...item.deckInstances];
-      }
-      grouped.set(canonicalUid, next);
-      continue;
-    }
-
-    // Merge variant into existing canonical entry.
-    existing.found = (existing.found ?? 0) + (item.found ?? 0);
-
-    const distMap = new Map<number, CardDistributionEntry>();
-    for (const d of existing.dist ?? []) {
-      if (d.copies === undefined) {
-        continue;
-      }
-      distMap.set(d.copies, { ...d });
-    }
-    for (const d of item.dist ?? []) {
-      if (d.copies === undefined) {
-        continue;
-      }
-      const prev = distMap.get(d.copies);
-      if (prev) {
-        prev.players = (prev.players ?? 0) + (d.players ?? 0);
-      } else {
-        distMap.set(d.copies, { ...d });
-      }
-    }
-    existing.dist = Array.from(distMap.values()).sort((a, b) => (a.copies ?? 0) - (b.copies ?? 0));
-
-    if (item.deckInstances?.length) {
-      existing.deckInstances = [...(existing.deckInstances ?? []), ...item.deckInstances];
-    }
-  }
-
-  // Recompute derived stats now that variants are merged.
-  for (const item of grouped.values()) {
-    // A deck that ran two variant printings of one canonical card is counted in
-    // each variant row's `found`, so naively summing double-counts it (pct can
-    // exceed 100%). When per-deck identity is available (archetype reports carry
-    // `deckInstances`), dedupe by deckId and recompute `found` from the distinct
-    // decks. Otherwise (pre-aggregated master rows without deckIds) the overlap
-    // can't be recovered, so clamp `found` to the deck total as a floor defense.
-    if (item.deckInstances?.length) {
-      const seen = new Set<string>();
-      const deduped: Array<{ deckId: string; count: number; archetype?: string }> = [];
-      for (const inst of item.deckInstances) {
-        const id = inst?.deckId;
-        if (id) {
-          if (seen.has(id)) {
-            continue;
-          }
-          seen.add(id);
-        }
-        deduped.push(inst);
-      }
-      if (deduped.length !== item.deckInstances.length) {
-        item.deckInstances = deduped;
-        item.found = deduped.length;
-      }
-    }
-    if (item.found !== undefined && item.found > report.deckTotal) {
-      // A producer double-counted a canonical card. Clamp so the UI stays
-      // sane, but say so — silently rendering 100% would hide the regression.
-      console.warn(
-        `[canonicalizeReport] found (${item.found}) exceeds deckTotal (${report.deckTotal}) for ${item.uid ?? item.name}; clamping`
-      );
-      item.found = report.deckTotal;
-    }
-    item.pct = calculatePercentage(item.found ?? 0, report.deckTotal);
-    if (item.dist) {
-      for (const d of item.dist) {
-        d.percent = calculatePercentage(d.players ?? 0, item.found ?? 0);
-      }
-    }
-  }
-
-  const sorted = Array.from(grouped.values()).sort((a, b) => (b.found ?? 0) - (a.found ?? 0));
-  sorted.forEach((item, idx) => {
-    item.rank = idx + 1;
-  });
-
-  return { ...report, items: sorted };
-}
-
-/**
- * Canonicalize the `cardTrends` portion of the trends payload. Updates each
- * entry's identifying fields (`key`, `set`, `number`, `name`) to canonical
- * and dedupes by canonical key (keeping the entry with higher `appearances`).
- *
- * Time-series shares are NOT re-aggregated; the trend file was built with
- * canonicalized aggregates at generation time, so the entry we keep already
- * represents the merged time series for that card.
- */
-function canonicalizeCardTrendEntries(entries: CardTrendEntry[], db: SynonymDatabase): CardTrendEntry[] {
-  const grouped = new Map<string, CardTrendEntry>();
-  for (const entry of entries) {
-    const canonicalKey = getCanonicalCardFromData(db, entry.key);
-    const canonicalParts = canonicalKey.includes('::') ? canonicalKey.split('::') : null;
-    const next: CardTrendEntry = { ...entry, key: canonicalKey };
-    if (canonicalParts && canonicalParts.length >= 3) {
-      next.name = canonicalParts[0];
-      next.set = canonicalParts[1];
-      next.number = canonicalParts[2];
-    }
-    const prev = grouped.get(canonicalKey);
-    if (!prev || (next.appearances ?? 0) > (prev.appearances ?? 0)) {
-      grouped.set(canonicalKey, next);
-    }
-  }
-  return Array.from(grouped.values());
 }
 
 /**
@@ -378,61 +200,12 @@ function decodeHtmlEntities(s: string): string {
     .replace(/&([a-zA-Z]+);/g, (m, name) => NAMED_ENTITIES[name] ?? m);
 }
 
-/**
- * Canonicalization is a full group/merge/re-sort over every item, and CardPage
- * fans `fetchArchetype` out over every archetype — so cache the result per raw
- * payload object (payloads are shared within the fetch TTL window) instead of
- * redoing the merge on every call.
- */
-const canonicalizedReports = new WeakMap<object, unknown>();
-
-function canonicalizeReportCached<T extends { deckTotal: number; items: AnyCardItem[] }>(
-  raw: T,
-  db: SynonymDatabase | null
-): T {
-  if (!db || !raw?.items?.length) {
-    return raw;
-  }
-  // Marked (rolling-canonical) payloads pass through untouched (see
-  // canonicalizeReport) — skip the memo entirely so we return the exact object.
-  if ((raw as { canonicalizedAt?: string }).canonicalizedAt) {
-    return raw;
-  }
-  const hit = canonicalizedReports.get(raw);
-  if (hit) {
-    return hit as T;
-  }
-  const out = canonicalizeReport(raw, db);
-  canonicalizedReports.set(raw, out);
-  return out;
-}
-
 export async function fetchMaster(tournament: string = ONLINE): Promise<MasterPayload> {
   const [raw, db] = await Promise.all([
     fetchJson<MasterPayload>(`${tournamentPath(tournament)}/master.json`),
     getSynonymDatabase()
   ]);
   return canonicalizeReportCached(raw, db);
-}
-
-/**
- * Archetype index files mix percent scales: indexes ingested before commit
- * 3939e71 store 0–100, newer ones store a 0–1 fraction. A per-value guess
- * (≤ 1 ⇒ fraction) misreads sub-1% archetypes in old files as ~90% shares
- * (e.g. Birmingham's 0.90% Sharpedo Toxtricity rendering as 89.7%), so decide
- * the scale once per file: any value above 1 means the file is already 0–100.
- */
-function normalizeIndexPercentScale(list: ArchetypeIndexEntry[]): ArchetypeIndexEntry[] {
-  let max = 0;
-  for (const entry of list) {
-    if (typeof entry.percent === 'number' && entry.percent > max) {
-      max = entry.percent;
-    }
-  }
-  if (max === 0 || max > 1) {
-    return list;
-  }
-  return list.map(entry => (typeof entry.percent === 'number' ? { ...entry, percent: entry.percent * 100 } : entry));
 }
 
 export async function fetchArchetypes(tournament: string = ONLINE): Promise<ArchetypeIndexEntry[]> {
