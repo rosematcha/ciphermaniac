@@ -63,6 +63,29 @@ export function ToolsPage() {
             </div>
           </A>
 
+          <A class='arche' href='/tools/card-wall'>
+            <div class='arche-thumb' aria-hidden='true'>
+              <svg viewBox='0 0 100 80'>
+                <rect x='4' y='14' width='14' height='19' rx='2' fill='currentColor' opacity='0.42' />
+                <rect x='22' y='14' width='14' height='19' rx='2' fill='currentColor' opacity='0.42' />
+                <rect x='40' y='14' width='14' height='19' rx='2' fill='currentColor' opacity='0.42' />
+                <rect x='58' y='14' width='14' height='19' rx='2' fill='currentColor' opacity='0.28' />
+                <rect x='76' y='14' width='14' height='19' rx='2' fill='currentColor' opacity='0.14' />
+                <rect x='10' y='40' width='14' height='19' rx='2' fill='currentColor' opacity='0.14' />
+                <rect x='28' y='40' width='14' height='19' rx='2' fill='currentColor' opacity='0.28' />
+                <rect x='46' y='40' width='14' height='19' rx='2' fill='currentColor' opacity='0.42' />
+                <rect x='64' y='40' width='14' height='19' rx='2' fill='currentColor' opacity='0.42' />
+                <rect x='82' y='40' width='14' height='19' rx='2' fill='currentColor' opacity='0.42' />
+              </svg>
+            </div>
+            <div class='arche-name'>Card Wall</div>
+            <div class='arche-stats'>
+              <span class='arche-wr'>
+                Scroll the cards defining the format past each other, and save the loop as a GIF or a video
+              </span>
+            </div>
+          </A>
+
           <A class='arche' href='/tools/in-loving-memory'>
             <div class='arche-thumb' aria-hidden='true'>
               <svg viewBox='0 0 100 80'>

@@ -101,6 +101,31 @@ test('tournaments index renders the catalog', async ({ page }) => {
   await expect(page.locator('main')).toBeVisible();
 });
 
+test('the tools index links to the card wall', async ({ page }) => {
+  await gotoClean(page, '/tools');
+  await expect(page.getByRole('link', { name: /Card Wall/i })).toHaveAttribute('href', '/tools/card-wall');
+});
+
+test('the card wall mounts and paints its loop', async ({ page }) => {
+  // No card art here: /thumbnails is a Pages Function and `vite preview` does
+  // not run one, so every scan 404s and the wall draws its placeholder slots.
+  // That is exactly the case worth smoke-testing — the animation loop has to
+  // survive missing images rather than divide by a zero-sized tile.
+  await gotoClean(page, '/tools/card-wall');
+  await expect(page.getByRole('img', { name: /rows of scrolling Pokemon card art/i })).toBeVisible();
+  await expect(page.locator('.cw-readout').first()).toContainText(/\d+ frames/);
+  await expect(page.locator('.cw-field-label').filter({ hasText: 'Loop' })).toContainText(/\ds/);
+  const painted = await page.evaluate(() => {
+    const canvas = document.querySelector('canvas');
+    if (!canvas || canvas.width === 0) {
+      return null;
+    }
+    const pixels = canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data;
+    return pixels ? new Set([...pixels.slice(0, 40_000)]).size : null;
+  });
+  expect(painted, 'the stage should have painted something with more than one value').toBeGreaterThan(1);
+});
+
 test('an unknown route renders the not-found page rather than erroring', async ({ page }) => {
   await gotoClean(page, '/this-route-does-not-exist');
   await expect(page.locator('body')).toContainText(/not found|404/i);
