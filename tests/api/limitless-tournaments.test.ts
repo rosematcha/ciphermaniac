@@ -236,3 +236,80 @@ test('Limitless - network timeout (fetch throws) returns 502', async () => {
 test('cleanup', () => {
   restoreFetch();
 });
+
+// --- Phase 9.3: numeric proxy params are bounded, not forwarded verbatim ---
+
+/** Swap globalThis.fetch for the duration of `run`, always restoring it. */
+async function withFetch<T>(stub: typeof globalThis.fetch, run: () => Promise<T>): Promise<T> {
+  const original = globalThis.fetch;
+  globalThis.fetch = stub;
+  try {
+    return await run();
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+function proxyRequest(query: string): Request {
+  return new Request(`https://ciphermaniac.test/api/limitless/tournaments?${query}`);
+}
+
+const PROXY_ENV = { LIMITLESS_API_KEY: 'test-key' } as never;
+
+test('Limitless tournaments - out-of-range limit/page are rejected before the upstream call', async () => {
+  let upstreamCalls = 0;
+  const stub = (async () => {
+    upstreamCalls += 1;
+    return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+  }) as typeof globalThis.fetch;
+
+  await withFetch(stub, async () => {
+    for (const query of [
+      'limit=0',
+      'limit=101',
+      'limit=1000000',
+      'limit=-5',
+      'limit=abc',
+      'limit=2.5',
+      'page=0',
+      'page=-1',
+      'page=501',
+      `format=${'x'.repeat(65)}`
+    ]) {
+      const response = await tournamentsHandler({ request: proxyRequest(query), env: PROXY_ENV });
+      assert.strictEqual(response.status, 400, `${query} was accepted`);
+    }
+  });
+  assert.strictEqual(upstreamCalls, 0, 'a rejected request must not reach Limitless');
+});
+
+test('Limitless tournaments - in-range limit/page are forwarded normalized', async () => {
+  let forwarded = '';
+  const stub = (async (input: RequestInfo | URL) => {
+    forwarded = new URL(String(input)).search;
+    return new Response('{"data":[]}', { status: 200, headers: { 'content-type': 'application/json' } });
+  }) as typeof globalThis.fetch;
+
+  const response = await withFetch(stub, () =>
+    tournamentsHandler({ request: proxyRequest('limit=050&page=3&game=PTCG'), env: PROXY_ENV })
+  );
+  assert.strictEqual(response.status, 200);
+  assert.match(forwarded, /limit=50/, 'leading zeros are normalized away');
+  assert.match(forwarded, /page=3/);
+  assert.match(forwarded, /game=PTCG/);
+});
+
+test('Limitless tournaments - boundary values are accepted', async () => {
+  const stub = (async () =>
+    new Response('{"data":[]}', {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    })) as typeof globalThis.fetch;
+
+  await withFetch(stub, async () => {
+    for (const query of ['limit=1', 'limit=100', 'page=1', 'page=500']) {
+      const response = await tournamentsHandler({ request: proxyRequest(query), env: PROXY_ENV });
+      assert.strictEqual(response.status, 200, `${query} was rejected`);
+    }
+  });
+});
