@@ -117,6 +117,32 @@ export function buildCardId(set: string, number: string | number | null | undefi
   return `${set}~${fullNumber}`;
 }
 
+/**
+ * Normalize a `SET~NUMBER` match id to the exact form deck card keys use.
+ *
+ * Deck counts are keyed by {@link buildCardKeyFromCard}, which uppercases the
+ * set and zero-pads the number, and matching is an exact Map lookup. So a
+ * match id that arrives lowercased or unpadded — from a URL, a shared build, or
+ * an API caller — silently matches ZERO decks rather than erroring. This is the
+ * `SET~NUMBER` half of the same normalization hazard D20 closed for
+ * `Name::SET::NUMBER` UIDs.
+ * @param raw - A match id, in any casing or padding
+ * @returns The canonical match id, or null when it is not a usable id
+ */
+export function normalizeCardMatchId(raw: string): string | null {
+  const separator = raw.indexOf('~');
+  if (separator < 0) {
+    return null;
+  }
+  const set = raw.slice(0, separator).trim().toUpperCase();
+  if (!set) {
+    return null;
+  }
+  // buildCardId owns the number normalization, including the `SET~` form for an
+  // absent number and the uppercase passthrough for non-numeric collectors.
+  return buildCardId(set, raw.slice(separator + 1).trim());
+}
+
 // WeakMap cache to memoize each deck's normalized archetype name. The slug
 // doesn't change per keystroke, so normalizing every deck's archetype on every
 // filter apply is pure repeated work; key the result off the deck identity.

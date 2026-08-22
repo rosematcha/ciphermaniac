@@ -304,3 +304,31 @@ test('normalizeSynonymDatabase output always projects onto a sound route graph',
   const flat = normalizeSynonymDatabase(messy);
   assert.deepEqual(findCanonicalRouteViolations(flat), { cycles: [], nonTerminal: [], ambiguous: [] });
 });
+
+// ---------------------------------------------------------------------------
+// Self-edge conflicts (found by adversarial review)
+// ---------------------------------------------------------------------------
+
+test('a route claiming to be its own canonical contradicts a redirect on the same route', () => {
+  // One synonym entry says SVI/001 IS canonical; another redirects SVI/001 away.
+  // An earlier version dropped self-edges before the ambiguity check, so this
+  // reported clean while silently redirecting a card off its own page.
+  const { ambiguous } = findCanonicalRouteViolations(
+    db({ 'Foo::SVI::001': 'Foo::SVI::0001', 'Bar::SVI::001': 'Bar::TWM::130' })
+  );
+  assert.deepEqual(ambiguous, [{ from: 'SVI::1', targets: ['SVI::1', 'TWM::130'] }]);
+});
+
+test('a plain self-mapping on its own is not an ambiguity', () => {
+  assert.deepEqual(findCanonicalRouteViolations(db({ 'Foo::SVI::001': 'Foo::SVI::0001' })), {
+    cycles: [],
+    nonTerminal: [],
+    ambiguous: []
+  });
+});
+
+test('assertCanonicalRoutesSound fails on a self-edge conflict', () => {
+  assert.throws(() =>
+    assertCanonicalRoutesSound(db({ 'Foo::SVI::001': 'Foo::SVI::0001', 'Bar::SVI::001': 'Bar::TWM::130' }))
+  );
+});

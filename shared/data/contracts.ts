@@ -31,8 +31,7 @@
  * @module shared/data/contracts
  */
 
-import { cardUidOrName } from './cardIdentity';
-import { canonicalizeVariant, normalizeCardNumber } from '../cardUtils';
+import { normalizeCardNumber } from '../cardUtils';
 import { archetypeKey, archetypeSlug } from './archetypes/identity';
 
 // Archetype identity policy (key/displayName/slug triple) lives in
@@ -594,24 +593,6 @@ export interface ParsedCardUid {
   name: string;
   set: string | null;
   number: string | null;
-}
-
-/**
- * Build a canonical card UID from name/set/number. Set is uppercased and number
- * padded via {@link normalizeCardNumber}; a bare name is returned when set or
- * number are absent.
- * @param name - Card name
- * @param set - Set code
- * @param number - Card number
- * @returns Canonical UID
- */
-export function cardUid(
-  name: string,
-  set: string | null | undefined,
-  number: string | number | null | undefined
-): string {
-  const [canonSet, canonNumber] = canonicalizeVariant(set, number);
-  return cardUidOrName(name, canonSet, canonNumber);
 }
 
 /**

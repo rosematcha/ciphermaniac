@@ -277,3 +277,78 @@ test('a broken slice fetch is reported even when the fallback is merely absent',
   );
   assert.equal(response.status, 502);
 });
+
+// ---------------------------------------------------------------------------
+// cardId normalization (found by adversarial review)
+//
+// Deck counts are keyed uppercase and zero-padded, and matching is an exact Map
+// lookup — so an un-normalized cardId matched ZERO decks silently. The cache
+// key normalized case while the matcher did not, so the wrong answer was cached
+// under the right request's key.
+// ---------------------------------------------------------------------------
+
+const PADDED_DECKS = [
+  { id: 'd1', archetype: 'Dragapult', cards: [{ name: 'Rare Candy', set: 'SVI', number: '1', count: 2 }] }
+];
+
+async function deckTotalFor(cardId: string): Promise<number> {
+  const response = await withFetch(decksResponder(PADDED_DECKS), () =>
+    onRequestPost({ request: post(base({ filters: [{ cardId, operator: '>=', count: 1 }] })) })
+  );
+  return ((await response.json()) as { deckTotal: number }).deckTotal;
+}
+
+test('a cardId matches regardless of set casing', async () => {
+  assert.equal(await deckTotalFor('svi~001'), await deckTotalFor('SVI~001'));
+  assert.equal(await deckTotalFor('svi~001'), 1, 'lowercase must not silently match zero decks');
+});
+
+test('a cardId matches regardless of zero padding', async () => {
+  for (const id of ['SVI~1', 'SVI~01', 'SVI~001']) {
+    assert.equal(await deckTotalFor(id), 1, `${id} should reach the padded deck key`);
+  }
+});
+
+test('a cardId that is not a match id is rejected rather than matching nothing', async () => {
+  const response = await onRequestPost({ request: post(base({ filters: [{ cardId: 'no-separator' }] })) });
+  assert.equal(response.status, 400);
+});
+
+test('a non-string field is rejected rather than coerced to its default', async () => {
+  // normalizeString collapses a non-string to '', which is indistinguishable
+  // from absent — so `successFilter: true` used to silently mean 'all'.
+  for (const body of [
+    base({ successFilter: true }),
+    base({ slice: 42 }),
+    base({ tournament: { a: 1 } }),
+    base({ filters: [{ cardId: 'SVI~001', operator: true }] }),
+    base({ filters: [{ cardId: ['SVI~001'] }] })
+  ]) {
+    assert.equal((await onRequestPost({ request: post(body) })).status, 400, JSON.stringify(body));
+  }
+});
+
+test('the body cap counts UTF-8 bytes, not UTF-16 code units', async () => {
+  // A multi-byte body under the cap in string length but over it in bytes must
+  // still be rejected: '€' is 1 UTF-16 unit but 3 UTF-8 bytes.
+  const multibyte = '€'.repeat(7000);
+  assert.ok(multibyte.length < 16 * 1024, 'probe must be under the cap by string length');
+  const response = await onRequestPost({ request: post(base({ tournament: multibyte })) });
+  assert.equal(response.status, 413);
+});
+
+test('count is ignored in the cache key for operators that ignore it', async () => {
+  // `any` means "one or more" and the empty operator means "none"; both ignore
+  // the count, so varying it must not split one logical request across entries.
+  const a = await withFetch(decksResponder(PADDED_DECKS), () =>
+    onRequestPost({ request: post(base({ filters: [{ cardId: 'SVI~001', operator: 'any', count: 1 }] })) })
+  );
+  const b = await withFetch(decksResponder(PADDED_DECKS), () =>
+    onRequestPost({ request: post(base({ filters: [{ cardId: 'SVI~001', operator: 'any', count: 60 }] })) })
+  );
+  const shape = async (r: Response) => {
+    const { deckTotal, items } = (await r.json()) as { deckTotal: number; items: unknown[] };
+    return { deckTotal, items };
+  };
+  assert.deepEqual(await shape(a), await shape(b));
+});
