@@ -135,12 +135,20 @@ export function normalizeCardMatchId(raw: string): string | null {
     return null;
   }
   const set = raw.slice(0, separator).trim().toUpperCase();
-  if (!set) {
+  const number = raw.slice(separator + 1).trim();
+  if (!set || !number) {
+    // `SET~` is not a usable id: buildCardId happily returns it, but no deck
+    // card can ever produce that key, so the lookup is always 0 — and with the
+    // default (exclude) operator, "count must be 0" then matches EVERY deck,
+    // returning an unfiltered report that looks filtered.
     return null;
   }
-  // buildCardId owns the number normalization, including the `SET~` form for an
-  // absent number and the uppercase passthrough for non-numeric collectors.
-  return buildCardId(set, raw.slice(separator + 1).trim());
+  // buildCardId PADS short numbers to three digits but never truncates, so an
+  // over-padded id (`SVI~0018`) would not equal the deck key `SVI~018`.
+  // Stripping first makes normalization idempotent in both directions.
+  const digits = number.match(/^0*(\d+)([A-Za-z]*)$/);
+  const canonicalNumber = digits ? `${digits[1]}${digits[2]}` : number;
+  return buildCardId(set, canonicalNumber);
 }
 
 // WeakMap cache to memoize each deck's normalized archetype name. The slug
