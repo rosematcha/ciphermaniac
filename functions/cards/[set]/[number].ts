@@ -9,11 +9,17 @@
  * The SPA also resolves canonical URLs client-side (see
  * `src/lib/data.ts:resolveCanonicalSetNumber`), so this is belt-and-suspenders:
  * direct links, crawlers, and shared URLs get a real 301 without depending on
- * client JS.
+ * client JS. Both sides route through the SAME resolver
+ * (`shared/data/canonicalCardRoute`) — when they had independent index builds
+ * they could disagree on a contested key and 301 at each other.
  */
 
+import {
+  buildCanonicalRouteIndex,
+  type CanonicalRouteIndex,
+  resolveCanonicalRoute
+} from '../../../shared/data/canonicalCardRoute';
 import { loadCardSynonyms } from '../../../shared/data/cardSynonyms';
-import { normalizeCardNumber } from '../../../shared/cardUtils';
 import type { SynonymDatabase } from '../../../shared/synonyms';
 
 interface Env {
@@ -28,54 +34,25 @@ interface Context {
   next: () => Promise<Response>;
 }
 
-// (set, number) → canonical (set, number) index, built once per synonym DB
-// load instead of scanning Object.entries(db.synonyms) with per-entry
-// split/uppercase/normalize on every card view. Keyed by DB object identity
-// (WeakMap) so a fresh DB from `loadCardSynonyms` — which itself caches per
-// isolate with a TTL — transparently gets a fresh index. Mirrors
-// `getSetNumberCanonicalIndex` in src/lib/data.ts.
-const canonicalIndexCache = new WeakMap<object, Map<string, { set: string; number: string }>>();
+// Route index built once per synonym DB load instead of re-scanning
+// db.synonyms with per-entry split/uppercase/normalize on every card view.
+// Keyed by DB object identity (WeakMap) so a fresh DB from `loadCardSynonyms`
+// — which itself caches per isolate with a TTL — transparently gets a fresh
+// index. Mirrors the SPA's cache in src/lib/data.ts.
+const routeIndexCache = new WeakMap<object, CanonicalRouteIndex>();
 
-function getCanonicalIndex(db: SynonymDatabase): Map<string, { set: string; number: string }> {
-  const cached = canonicalIndexCache.get(db);
+function getRouteIndex(db: SynonymDatabase): CanonicalRouteIndex {
+  const cached = routeIndexCache.get(db);
   if (cached) {
     return cached;
   }
-  const index = new Map<string, { set: string; number: string }>();
-  for (const [variantUid, canonicalUid] of Object.entries(db.synonyms)) {
-    if (typeof canonicalUid !== 'string') {
-      continue;
-    }
-    const vParts = variantUid.split('::');
-    const cParts = canonicalUid.split('::');
-    if (vParts.length < 3 || cParts.length < 3) {
-      continue;
-    }
-    const variantKey = `${vParts[1].toUpperCase()}::${normalizeCardNumber(vParts[2])}`;
-    // Skip self-mappings (variant already canonical) so a hit always means
-    // "redirect needed" — same behavior as the old scan's break-on-canonical.
-    if (
-      cParts[1].toUpperCase() === vParts[1].toUpperCase() &&
-      normalizeCardNumber(cParts[2]) === normalizeCardNumber(vParts[2])
-    ) {
-      continue;
-    }
-    if (!index.has(variantKey)) {
-      index.set(variantKey, { set: cParts[1], number: cParts[2] });
-    }
-  }
-  canonicalIndexCache.set(db, index);
+  const index = buildCanonicalRouteIndex(db);
+  routeIndexCache.set(db, index);
   return index;
 }
 
 export async function onRequest(context: Context): Promise<Response> {
   const { params, env, request } = context;
-  const reqSet = (params.set ?? '').toUpperCase();
-  const reqNumber = normalizeCardNumber(params.number ?? '');
-
-  if (!reqSet || !reqNumber) {
-    return context.next();
-  }
 
   try {
     const db = await loadCardSynonyms(env);
@@ -83,7 +60,7 @@ export async function onRequest(context: Context): Promise<Response> {
       return context.next();
     }
 
-    const canonical = getCanonicalIndex(db).get(`${reqSet}::${reqNumber}`);
+    const canonical = resolveCanonicalRoute(getRouteIndex(db), params.set, params.number);
     if (canonical) {
       const dest = new URL(`/cards/${canonical.set}/${canonical.number}`, request.url);
       return Response.redirect(dest.toString(), 301);

@@ -28,6 +28,12 @@ import type {
 import { getCanonicalCardFromData, type SynonymDatabase } from '../../shared/synonyms.js';
 import { decodeSlimIndex } from '../../shared/playerTypes.js';
 import { cardNumberIndexKey, normalizeCardNumber } from '../../shared/cardUtils.js';
+import {
+  buildCanonicalRouteIndex,
+  type CanonicalRouteIndex,
+  canonicalRouteKey,
+  resolveCanonicalRoute
+} from '../../shared/data/canonicalCardRoute';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { calculatePercentage } from '../../shared/reportUtils.js';
 import type { UpcomingPayload } from '../../shared/upcomingTypes.js';
@@ -1385,8 +1391,7 @@ function findCardBySetNumber(items: CardItem[], set: string, number: string): Ca
  * equality without importing any date logic.
  */
 function canonicalSetNumberKey(db: { synonyms: Record<string, string> }, set: string, number: string): string {
-  const key = `${set.toUpperCase()}::${setNumberKey(number)}`;
-  return getSetNumberCanonicalIndex(db).get(key)?.key ?? key;
+  return canonicalRouteKey(getSetNumberCanonicalIndex(db), set, number);
 }
 
 // Per items array: canonical SET::NUMBER key → item. Items on a rebaked master
@@ -1456,39 +1461,22 @@ export async function resolveCanonicalSetNumber(
   if (!db || !db.synonyms) {
     return null;
   }
-  const index = getSetNumberCanonicalIndex(db);
-  const key = `${set.toUpperCase()}::${setNumberKey(number)}`;
-  const canonical = index.get(key);
-  if (!canonical || canonical.key === key) {
-    return null;
-  }
-  return { set: canonical.set, number: canonical.number };
+  const canonical = resolveCanonicalRoute(getSetNumberCanonicalIndex(db), set, number);
+  return canonical ? { set: canonical.set, number: canonical.number } : null;
 }
 
-// (set,number) → canonical pair index. Built lazily once per synonym DB load
-// so we don't re-scan db.synonyms (~thousands of entries) on every cold card view.
-const setNumberIndexCache = new WeakMap<object, Map<string, { key: string; set: string; number: string }>>();
+// (set,number) → canonical route index. Built lazily once per synonym DB load
+// so we don't re-scan db.synonyms (~thousands of entries) on every cold card
+// view. The build itself lives in shared/data/canonicalCardRoute so the edge
+// redirect in functions/cards/[set]/[number].ts resolves identically.
+const setNumberIndexCache = new WeakMap<object, CanonicalRouteIndex>();
 
-function getSetNumberCanonicalIndex(db: { synonyms: Record<string, string> }) {
+function getSetNumberCanonicalIndex(db: { synonyms: Record<string, string> }): CanonicalRouteIndex {
   const cached = setNumberIndexCache.get(db);
   if (cached) {
     return cached;
   }
-  const index = new Map<string, { key: string; set: string; number: string }>();
-  for (const [variantUid, canonicalUid] of Object.entries(db.synonyms)) {
-    const parts = variantUid.split('::');
-    if (parts.length < 3) {
-      continue;
-    }
-    const vSet = parts[1].toUpperCase();
-    const vNum = setNumberKey(parts[2]);
-    const cParts = canonicalUid.split('::');
-    if (cParts.length < 3) {
-      continue;
-    }
-    const cKey = `${cParts[1].toUpperCase()}::${setNumberKey(cParts[2])}`;
-    index.set(`${vSet}::${vNum}`, { key: cKey, set: cParts[1], number: cParts[2] });
-  }
+  const index = buildCanonicalRouteIndex(db);
   setNumberIndexCache.set(db, index);
   return index;
 }

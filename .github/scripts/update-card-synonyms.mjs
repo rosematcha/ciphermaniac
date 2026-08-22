@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import * as cheerio from 'cheerio';
 import { chooseCanonicalPrint } from '../../shared/data/canonicalPrint.ts';
+import { assertCanonicalRoutesSound } from '../../shared/data/canonicalCardRoute.ts';
 import { normalizeSynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import { createR2Client, getJsonResult } from './lib/r2.mjs';
 
@@ -679,6 +680,14 @@ async function main() {
   synonymsData.canonicals = normalized.canonicals;
   synonymsData.metadata.totalSynonyms = Object.keys(synonymsData.synonyms).length;
   synonymsData.metadata.totalCanonicals = Object.keys(synonymsData.canonicals).length;
+
+  // The UID graph being flat does not make the CARD-ROUTE graph sound: the
+  // /cards/:set/:number layer erases the card name, so two clusters can collide
+  // on (set, number) and 301 at each other even when normalizeSynonymDatabase
+  // reports a clean component. Fail generation rather than publish a DB that
+  // loops the browser; the readers repair defensively but must never have to.
+  assertCanonicalRoutesSound(synonymsData, 'assets/card-synonyms.json');
+  log('\nCanonical card-route graph: sound (no cycles, no multi-hop, no ambiguity)');
 
   // Record processed-vs-expected source coverage for auditability.
   synonymsData.metadata.sourceTournamentsExpected = stats.expected;
