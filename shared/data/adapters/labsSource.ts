@@ -15,16 +15,16 @@
  */
 
 import {
+  type CardCategory,
   cardUid,
   computeSuccessTags,
-  deckId as makeDeckId,
-  eventId as makeEventId,
-  labsParticipantId,
-  makeArchetypeIdentity,
-  matchId as makeMatchId,
-  type CardCategory,
   type DeckCard,
   type EnergyType,
+  labsParticipantId,
+  makeArchetypeIdentity,
+  deckId as makeDeckId,
+  eventId as makeEventId,
+  matchId as makeMatchId,
   type Match,
   type NormalizedEvent,
   parseCardUid,
@@ -117,7 +117,9 @@ const ENERGY_TYPES: ReadonlySet<string> = new Set(['basic', 'special']);
 const CARD_CATEGORIES: ReadonlySet<string> = new Set(['pokemon', 'trainer', 'energy']);
 
 function toFraction100(value: number | null | undefined): number | null {
-  if (value === null || value === undefined || !Number.isFinite(value)) return null;
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return null;
+  }
   // Labs emits opp win % as a 0-1 fraction; the contract stores 0-100.
   return Math.round(value * 100 * 1000) / 1000;
 }
@@ -143,7 +145,9 @@ function buildDeckCards(rows: LabsSourceCard[], synonymDb: SynonymDatabase | nul
 
   for (const row of rows) {
     const count = Number(row.count) || 0;
-    if (count <= 0) continue;
+    if (count <= 0) {
+      continue;
+    }
     const [normSet, normNumber] = canonicalizeVariant(row.set ?? null, row.number ?? null);
     const variantUid = cardUid(row.name, normSet, normNumber);
     const canonicalUid = getCanonicalCardFromData(synonymDb, variantUid);
@@ -179,10 +183,18 @@ function buildDeckCards(rows: LabsSourceCard[], synonymDb: SynonymDatabase | nul
       count: bucket.count,
       category: bucket.category
     };
-    if (bucket.trainerType) card.trainerType = bucket.trainerType;
-    if (bucket.energyType) card.energyType = bucket.energyType;
-    if (bucket.aceSpec) card.aceSpec = true;
-    if (bucket.regulationMark) card.regulationMark = bucket.regulationMark;
+    if (bucket.trainerType) {
+      card.trainerType = bucket.trainerType;
+    }
+    if (bucket.energyType) {
+      card.energyType = bucket.energyType;
+    }
+    if (bucket.aceSpec) {
+      card.aceSpec = true;
+    }
+    if (bucket.regulationMark) {
+      card.regulationMark = bucket.regulationMark;
+    }
     cards.push(card);
   }
   // Canonical storage order: by canonical uid.
@@ -199,13 +211,23 @@ function deriveOutcome(
   rawP2: string | number | null | undefined
 ): { outcome: Match['outcome']; winnerParticipantId: string | null } {
   if (p2 === null) {
-    if (winner !== null && winner !== undefined && `${winner}` === `${rawP1}`) return { outcome: 'bye', winnerParticipantId: null };
-    if (winner === -1) return { outcome: 'unpaired', winnerParticipantId: null };
+    if (winner !== null && winner !== undefined && `${winner}` === `${rawP1}`) {
+      return { outcome: 'bye', winnerParticipantId: null };
+    }
+    if (winner === -1) {
+      return { outcome: 'unpaired', winnerParticipantId: null };
+    }
     return { outcome: 'unknown', winnerParticipantId: null };
   }
-  if (winner === 0) return { outcome: 'tie', winnerParticipantId: null };
-  if (winner === -1) return { outcome: 'double_loss', winnerParticipantId: null };
-  if (winner !== null && winner !== undefined && `${winner}` === `${rawP1}`) return { outcome: 'decided', winnerParticipantId: p1 };
+  if (winner === 0) {
+    return { outcome: 'tie', winnerParticipantId: null };
+  }
+  if (winner === -1) {
+    return { outcome: 'double_loss', winnerParticipantId: null };
+  }
+  if (winner !== null && winner !== undefined && `${winner}` === `${rawP1}`) {
+    return { outcome: 'decided', winnerParticipantId: p1 };
+  }
   if (winner !== null && winner !== undefined && rawP2 !== null && rawP2 !== undefined && `${winner}` === `${rawP2}`) {
     return { outcome: 'decided', winnerParticipantId: p2 };
   }
@@ -220,7 +242,10 @@ function deriveOutcome(
  * @param options.synonymDb - Synonym database for canonicalization (or null)
  * @returns A normalized event in canonical storage order
  */
-export function labsSourceToNormalized(source: LabsSourceEvent, options: { synonymDb?: SynonymDatabase | null } = {}): NormalizedEvent {
+export function labsSourceToNormalized(
+  source: LabsSourceEvent,
+  options: { synonymDb?: SynonymDatabase | null } = {}
+): NormalizedEvent {
   const synonymDb = options.synonymDb ?? null;
   const scopedEventId = makeEventId('labs-event', source.labsCode);
   const players = Number(source.meta.players ?? source.standings.length) || source.standings.length;
@@ -232,7 +257,9 @@ export function labsSourceToNormalized(source: LabsSourceEvent, options: { synon
 
   const deckIdByParticipant = new Map<string, string>();
   const decks = source.standings
-    .filter(standing => Array.isArray(source.decklists[`${standing.tpId}`]) && source.decklists[`${standing.tpId}`].length > 0)
+    .filter(
+      standing => Array.isArray(source.decklists[`${standing.tpId}`]) && source.decklists[`${standing.tpId}`].length > 0
+    )
     .map(standing => {
       const participantId = idByTp.get(`${standing.tpId}`)!;
       const cards = buildDeckCards(source.decklists[`${standing.tpId}`], synonymDb);
@@ -271,7 +298,7 @@ export function labsSourceToNormalized(source: LabsSourceEvent, options: { synon
       oopwPct: toFraction100(standing.oopw),
       points: standing.points ?? null,
       icons: Array.isArray(standing.icons) ? standing.icons : [],
-      dropRound: dropped ? standing.dropRound ?? null : null,
+      dropRound: dropped ? (standing.dropRound ?? null) : null,
       labsDeckId: standing.labsDeckId ?? null,
       deckName: standing.deckName ?? null,
       flags: {
@@ -288,8 +315,10 @@ export function labsSourceToNormalized(source: LabsSourceEvent, options: { synon
 
   const matches: Match[] = (source.matches ?? []).map(row => {
     const p1 = idByTp.get(`${row.p1Id}`);
-    const p2 = row.p2Id !== null && row.p2Id !== undefined ? idByTp.get(`${row.p2Id}`) ?? null : null;
-    if (!p1) throw new Error(`labsSourceToNormalized: match references unknown participant ${row.p1Id}`);
+    const p2 = row.p2Id !== null && row.p2Id !== undefined ? (idByTp.get(`${row.p2Id}`) ?? null) : null;
+    if (!p1) {
+      throw new Error(`labsSourceToNormalized: match references unknown participant ${row.p1Id}`);
+    }
     const participantIds = p2 ? [p1, p2] : [p1];
     const { outcome, winnerParticipantId } = deriveOutcome(p1, p2, row.winner, row.p1Id, row.p2Id ?? null);
     const phase = row.phase ?? 1;
@@ -338,7 +367,11 @@ export function labsSourceToNormalized(source: LabsSourceEvent, options: { synon
       {
         source: 'limitless-labs',
         entityId: source.labsCode,
-        sourceHash: sha256Hex({ standings: source.standings, decklists: source.decklists, matches: source.matches ?? [] }),
+        sourceHash: sha256Hex({
+          standings: source.standings,
+          decklists: source.decklists,
+          matches: source.matches ?? []
+        }),
         fetchedAt: source.fetchedAt ?? ''
       }
     ]

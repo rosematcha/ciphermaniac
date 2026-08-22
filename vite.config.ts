@@ -35,12 +35,15 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     proxy: {
-      // Cloudflare Functions (upcoming-tournaments scraper, etc.) live at /api/*.
-      // In dev we don't run Wrangler; proxy through to production so the calls just work.
-      // In dev, run `npx wrangler pages dev dist --port 8788` alongside `npm run dev`
-      // to serve Cloudflare Functions (the upcoming-tournaments scraper, etc.) locally.
-      // If wrangler isn't running, this proxy will fail and the UI will show its
-      // "couldn't load" empty state — that's fine, prod still works.
+      // Cloudflare Functions (upcoming-tournaments scraper, feedback, survey,
+      // the Limitless proxies) live at /api/*. Vite does not run them, so this
+      // proxies to a LOCAL Wrangler — run `npm run dev:functions` in a second
+      // terminal. Without it the proxy fails and the affected panels show their
+      // "couldn't load" empty state; every other route works, since page data
+      // comes straight from r2.ciphermaniac.com.
+      //
+      // Deliberately local rather than production: /api includes endpoints that
+      // send mail and write to D1, and a dev session must not reach them.
       '/api': {
         target: 'http://localhost:8788',
         changeOrigin: true,

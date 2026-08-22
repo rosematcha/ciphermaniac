@@ -13,12 +13,7 @@
 
 // Re-export card identity policy from its consolidated home. Callers may keep
 // importing these from 'shared/cardUtils' unchanged.
-export {
-  normalizeCardNumber,
-  cardNumberIndexKey,
-  canonicalizeVariant,
-  buildCardIdentifier
-} from './data/cardIdentity';
+export { normalizeCardNumber, cardNumberIndexKey, canonicalizeVariant, buildCardIdentifier } from './data/cardIdentity';
 
 const INVALID_PATH_CHARS = /[<>:"/\\|?*]/g;
 
@@ -52,12 +47,14 @@ export function sanitizeForPath(text: unknown): string {
  */
 export function sanitizeDisplayName(text: unknown): string {
   const value = typeof text === 'string' ? text : String(text || '');
-  return value
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\u0000-\u001f\u007f]/g, '')
-    .replace(/\.\./g, '')
-    .replace(/[/\\]/g, '')
-    .trim();
+  return (
+    value
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\u0000-\u001f\u007f]/g, '')
+      .replace(/\.\./g, '')
+      .replace(/[/\\]/g, '')
+      .trim()
+  );
 }
 
 /**

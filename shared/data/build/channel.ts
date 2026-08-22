@@ -37,7 +37,11 @@ export class PointerConflictError extends Error {
 }
 
 function isConflict(error: unknown): boolean {
-  return error instanceof PointerConflictError || (error as { name?: string })?.name === 'PointerConflictError' || (error as { code?: string })?.code === 'PointerConflict';
+  return (
+    error instanceof PointerConflictError ||
+    (error as { name?: string })?.name === 'PointerConflictError' ||
+    (error as { code?: string })?.code === 'PointerConflict'
+  );
 }
 
 /**
@@ -62,13 +66,21 @@ export async function updatePointer<T>(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const current = await store.read(key);
     const proposed = next(current?.value ?? null);
-    if (proposed === null) return current?.value ?? null;
+    if (proposed === null) {
+      return current?.value ?? null;
+    }
     try {
-      if (current === null) await store.createIfAbsent(key, proposed);
-      else await store.writeIfMatch(key, proposed, current.etag);
+      if (current === null) {
+        await store.createIfAbsent(key, proposed);
+      } else {
+        await store.writeIfMatch(key, proposed, current.etag);
+      }
       return proposed;
     } catch (error) {
-      if (isConflict(error) && attempt < maxAttempts) continue; // re-read + retry
+      if (isConflict(error) && attempt < maxAttempts) {
+        // Someone else moved the pointer; re-read and retry.
+        continue;
+      }
       throw error;
     }
   }
