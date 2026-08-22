@@ -16,6 +16,22 @@ interface CardImageProps {
   /** Whether to lazy-load (default true). Set false for above-the-fold images. */
   lazy?: boolean;
   /**
+   * Skip the R2 WebP tier and go straight to the same-origin proxy.
+   *
+   * The conversion pipeline only re-encodes cards it has SEEN in a recent
+   * tournament, so any printing outside that set is absent from R2 and its
+   * first request 404s before the proxy retry succeeds. That is fine for a
+   * report row (the card was played, so its art was converted) but not for the
+   * card page's printings filmstrip, which renders every printing in a reprint
+   * cluster including long-rotated ones: measured at 10 wasted round trips on
+   * one card page, on a throttled connection.
+   *
+   * Set this where most images are expected to be outside the converted set.
+   * The proxy is same-origin and edge-cached, so the only cost is the WebP
+   * size saving — which is smallest at the `xs` tier these callers use.
+   */
+  skipR2?: boolean;
+  /**
    * Rendered-width hint (standard img `sizes` syntax). When set, the browser
    * picks the cheapest sufficient tier from a srcset capped at the preferred
    * `size` — so a phone grid never downloads LG, and 1x screens drop to XS.
@@ -213,7 +229,7 @@ export function CardImage(props: CardImageProps) {
   // Capture the R2 decision once per instance: an async probe flipping the
   // global signal mid-session must not re-source already-rendered images
   // (double download + flicker). Future mounts pick up the new value.
-  const useR2 = r2Ready();
+  const useR2 = r2Ready() && props.skipR2 !== true;
   const attempts = createMemo(() => buildAttempts(props.set, props.number, props.size ?? 'sm', useR2));
   const [attemptIndex, setAttemptIndex] = createSignal(0);
   const [errored, setErrored] = createSignal(false);

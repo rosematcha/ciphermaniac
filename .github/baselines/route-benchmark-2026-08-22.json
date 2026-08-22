@@ -1,0 +1,4841 @@
+{
+  "generatedAt": "2026-08-22T12:13:09.875Z",
+  "date": "2026-08-22",
+  "profile": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "userAgent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36",
+    "cpuThrottleRate": 4,
+    "network": {
+      "downMbps": 1.6,
+      "upKbps": 750,
+      "rttMs": 150
+    },
+    "iterationsPerMode": 2,
+    "previewOrigin": "http://localhost:4319"
+  },
+  "params": {
+    "card": {
+      "set": "MEG",
+      "number": "114",
+      "name": "Boss's Orders"
+    },
+    "archetype": {
+      "slug": "Dragapult",
+      "label": "Dragapult"
+    },
+    "player": {
+      "id": "1272",
+      "name": "Gabriel Smart"
+    }
+  },
+  "routes": [
+    {
+      "route": "/",
+      "url": "http://localhost:4319/",
+      "cold": {
+        "networkTimeMs": 2573.5,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 984,
+        "requestCount": 14,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/archetypes/index.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 4677,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 18354,
+            "cfCacheStatus": "HIT",
+            "age": "6",
+            "firstByteMs": 937
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/_ready",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 417,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 55,
+            "cfCacheStatus": "HIT",
+            "age": "35262",
+            "firstByteMs": 943
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 1117,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "4",
+            "firstByteMs": 950
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 5761,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "4",
+            "firstByteMs": 978
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_044_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9597,
+            "encodedBodyBytes": 9212,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011627",
+            "firstByteMs": 1286
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PRE/PRE_073_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11270,
+            "encodedBodyBytes": 10930,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "242320",
+            "firstByteMs": 1293
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PBL/PBL_065_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9933,
+            "encodedBodyBytes": 9536,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011628",
+            "firstByteMs": 1299
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/JTG/JTG_024_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11523,
+            "encodedBodyBytes": 11082,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011627",
+            "firstByteMs": 1308
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_056_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9209,
+            "encodedBodyBytes": 8868,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011625",
+            "firstByteMs": 1315
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SCR/SCR_058_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 7558,
+            "encodedBodyBytes": 7222,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011627",
+            "firstByteMs": 1321
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_018_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9081,
+            "encodedBodyBytes": 8738,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011627",
+            "firstByteMs": 1329
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SFA/SFA_020_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 8683,
+            "encodedBodyBytes": 8300,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "483226",
+            "firstByteMs": 1335
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/JTG/JTG_098_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 10857,
+            "encodedBodyBytes": 10508,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011627",
+            "firstByteMs": 1342
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PRE/PRE_080_R_EN_XS.webp",
+            "status": 404,
+            "mimeType": "text/html",
+            "transferredBytes": 27150,
+            "encodedBodyBytes": 0,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "160",
+            "firstByteMs": 1350
+          }
+        ],
+        "transferredBytesTotal": 126880.5,
+        "decodedBytesTotal": 47757,
+        "lcpMs": 1928,
+        "navTiming": {
+          "domContentLoadedMs": 754.9000000059605,
+          "loadEventMs": 1958.5499999821186,
+          "responseEndMs": 165.5499999821186
+        },
+        "parse": {
+          "count": 4,
+          "totalMs": 1.5,
+          "totalBytes": 47510
+        },
+        "longTasks": {
+          "count": 0.5,
+          "totalMs": 42
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 1
+      },
+      "repeat": {
+        "networkTimeMs": 1348,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 61.5,
+        "requestCount": 13,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/archetypes/index.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 18354,
+            "cfCacheStatus": "HIT",
+            "age": "9",
+            "firstByteMs": 58
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "7",
+            "firstByteMs": 58
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "7",
+            "firstByteMs": 58
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_056_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9250,
+            "encodedBodyBytes": 8868,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011627",
+            "firstByteMs": 239
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_044_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9562,
+            "encodedBodyBytes": 9212,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011630",
+            "firstByteMs": 246
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PRE/PRE_073_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11306,
+            "encodedBodyBytes": 10930,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "242322",
+            "firstByteMs": 253
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_018_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9078,
+            "encodedBodyBytes": 8738,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011630",
+            "firstByteMs": 260
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SCR/SCR_058_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 7674,
+            "encodedBodyBytes": 7222,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011630",
+            "firstByteMs": 268
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PBL/PBL_065_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9873,
+            "encodedBodyBytes": 9536,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011630",
+            "firstByteMs": 274
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/JTG/JTG_024_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11426,
+            "encodedBodyBytes": 11082,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011630",
+            "firstByteMs": 282
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SFA/SFA_020_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 8685,
+            "encodedBodyBytes": 8300,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "483229",
+            "firstByteMs": 288
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/JTG/JTG_098_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 10858,
+            "encodedBodyBytes": 10508,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011630",
+            "firstByteMs": 296
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PRE/PRE_080_R_EN_XS.webp",
+            "status": 404,
+            "mimeType": "text/html",
+            "transferredBytes": 27150,
+            "encodedBodyBytes": 0,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "162",
+            "firstByteMs": 303
+          }
+        ],
+        "transferredBytesTotal": 114868,
+        "decodedBytesTotal": 47702,
+        "lcpMs": 676,
+        "navTiming": {
+          "domContentLoadedMs": 40.75000002980232,
+          "loadEventMs": 48.69999998807907,
+          "responseEndMs": 4.5
+        },
+        "parse": {
+          "count": 5,
+          "totalMs": 0.44999998807907104,
+          "totalBytes": 47519
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 1
+      }
+    },
+    {
+      "route": "/cards",
+      "url": "http://localhost:4319/cards",
+      "cold": {
+        "networkTimeMs": 4475,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 924,
+        "requestCount": 22,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/_ready",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 603,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 55,
+            "cfCacheStatus": "HIT",
+            "age": "35275",
+            "firstByteMs": 928
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 5774,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "17",
+            "firstByteMs": 935
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 1114,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "17",
+            "firstByteMs": 942
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/prices.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 23344,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 90829,
+            "cfCacheStatus": "HIT",
+            "age": "7",
+            "firstByteMs": 1437
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/master.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 42380,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 275334,
+            "cfCacheStatus": "HIT",
+            "age": "20",
+            "firstByteMs": 1443
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/assets/card-synonyms.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 60453,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 292692,
+            "cfCacheStatus": "HIT",
+            "age": "7",
+            "firstByteMs": 1450
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_119_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 21337,
+            "encodedBodyBytes": 20884,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011726",
+            "firstByteMs": 2372
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/ASC/ASC_198_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 18219,
+            "encodedBodyBytes": 17764,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "951072",
+            "firstByteMs": 2380
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/CRI/CRI_082_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 18995,
+            "encodedBodyBytes": 18648,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011726",
+            "firstByteMs": 2387
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_131_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 18469,
+            "encodedBodyBytes": 18114,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011726",
+            "firstByteMs": 2395
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TEF/TEF_144_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 19258,
+            "encodedBodyBytes": 18906,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011726",
+            "firstByteMs": 2402
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SFA/SFA_061_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 14957,
+            "encodedBodyBytes": 14604,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "945827",
+            "firstByteMs": 2409
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SFA/SFA_038_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 32536,
+            "encodedBodyBytes": 32174,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "641348",
+            "firstByteMs": 2416
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_114_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 19076,
+            "encodedBodyBytes": 18646,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011726",
+            "firstByteMs": 2424
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/POR/POR_062_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 30480,
+            "encodedBodyBytes": 30012,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011726",
+            "firstByteMs": 2445
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_095_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 25642,
+            "encodedBodyBytes": 25286,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011726",
+            "firstByteMs": 2452
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEE/MEE_005_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11364,
+            "encodedBodyBytes": 11026,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011726",
+            "firstByteMs": 2460
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEE/MEE_007_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11114,
+            "encodedBodyBytes": 10776,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011726",
+            "firstByteMs": 2466
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/BLK/BLK_079_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 14448,
+            "encodedBodyBytes": 14104,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "323184",
+            "firstByteMs": 2474
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_125_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 19761,
+            "encodedBodyBytes": 19410,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011726",
+            "firstByteMs": 2480
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/DRI/DRI_010_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 26395,
+            "encodedBodyBytes": 25924,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011726",
+            "firstByteMs": 2486
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PRE/PRE_004_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 23232,
+            "encodedBodyBytes": 22770,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "933982",
+            "firstByteMs": 2495
+          }
+        ],
+        "transferredBytesTotal": 459274,
+        "decodedBytesTotal": 688258,
+        "lcpMs": 3420,
+        "navTiming": {
+          "domContentLoadedMs": 717.8500000238419,
+          "loadEventMs": 1887.75,
+          "responseEndMs": 161.75000002980232
+        },
+        "parse": {
+          "count": 5,
+          "totalMs": 6.699999988079071,
+          "totalBytes": 687835
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 0
+      },
+      "repeat": {
+        "networkTimeMs": 2402,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 61,
+        "requestCount": 20,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "22",
+            "firstByteMs": 62
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "22",
+            "firstByteMs": 62
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/prices.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 90829,
+            "cfCacheStatus": "HIT",
+            "age": "12",
+            "firstByteMs": 86
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/master.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 275334,
+            "cfCacheStatus": "HIT",
+            "age": "24",
+            "firstByteMs": 89
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_119_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 21313,
+            "encodedBodyBytes": 20884,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011729",
+            "firstByteMs": 302
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/CRI/CRI_082_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 19100,
+            "encodedBodyBytes": 18648,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011729",
+            "firstByteMs": 309
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/ASC/ASC_198_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 18145,
+            "encodedBodyBytes": 17764,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "951075",
+            "firstByteMs": 316
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_114_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 18995,
+            "encodedBodyBytes": 18646,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011729",
+            "firstByteMs": 324
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_131_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 18444,
+            "encodedBodyBytes": 18114,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011729",
+            "firstByteMs": 331
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SFA/SFA_061_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 14956,
+            "encodedBodyBytes": 14604,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "945830",
+            "firstByteMs": 338
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TEF/TEF_144_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 19255,
+            "encodedBodyBytes": 18906,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011729",
+            "firstByteMs": 345
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SFA/SFA_038_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 32608,
+            "encodedBodyBytes": 32174,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "641351",
+            "firstByteMs": 352
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/POR/POR_062_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 30480,
+            "encodedBodyBytes": 30012,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011729",
+            "firstByteMs": 375
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEE/MEE_005_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11389,
+            "encodedBodyBytes": 11026,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011729",
+            "firstByteMs": 380
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_095_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 25646,
+            "encodedBodyBytes": 25286,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011729",
+            "firstByteMs": 389
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/BLK/BLK_079_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 14455,
+            "encodedBodyBytes": 14104,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "323187",
+            "firstByteMs": 395
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEE/MEE_007_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11118,
+            "encodedBodyBytes": 10776,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011729",
+            "firstByteMs": 403
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_125_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 19758,
+            "encodedBodyBytes": 19410,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011729",
+            "firstByteMs": 409
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/DRI/DRI_010_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 26358,
+            "encodedBodyBytes": 25924,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011729",
+            "firstByteMs": 418
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PRE/PRE_004_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 23230,
+            "encodedBodyBytes": 22770,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "933985",
+            "firstByteMs": 423
+          }
+        ],
+        "transferredBytesTotal": 325186.5,
+        "decodedBytesTotal": 395511,
+        "lcpMs": 1342,
+        "navTiming": {
+          "domContentLoadedMs": 47.14999997615814,
+          "loadEventMs": 58.64999997615814,
+          "responseEndMs": 2.3499999940395355
+        },
+        "parse": {
+          "count": 6,
+          "totalMs": 5.599999964237213,
+          "totalBytes": 647198
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 0
+      }
+    },
+    {
+      "route": "/cards/MEG/114",
+      "url": "http://localhost:4319/cards/MEG/114",
+      "cold": {
+        "networkTimeMs": 4211.5,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 942.5,
+        "requestCount": 51,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/_ready",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 601,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 55,
+            "cfCacheStatus": "HIT",
+            "age": "35290",
+            "firstByteMs": 943
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 1120,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "33",
+            "firstByteMs": 950
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 5776,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "33",
+            "firstByteMs": 965
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/master.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 42566,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 275334,
+            "cfCacheStatus": "HIT",
+            "age": "35",
+            "firstByteMs": 1279
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/cardUsage.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 76343,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 580595,
+            "cfCacheStatus": "HIT",
+            "age": "7",
+            "firstByteMs": 1287
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/prices.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 23348,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 90829,
+            "cfCacheStatus": "HIT",
+            "age": "23",
+            "firstByteMs": 1293
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/assets/card-synonyms.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 60686,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 292692,
+            "cfCacheStatus": "HIT",
+            "age": "23",
+            "firstByteMs": 1301
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/archetypes/index.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 4562,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 18354,
+            "cfCacheStatus": "HIT",
+            "age": "35",
+            "firstByteMs": 1308
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/price-history/MEG.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 142420,
+            "cfCacheStatus": "HIT",
+            "age": "7",
+            "firstByteMs": 2335
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dragapult.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5138,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2420
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/excadrill-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 1247,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2421
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/hariyama.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5078,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2424
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dudunsparce.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4954,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2424
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dipplin.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 809,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2425
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/greninja-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 1341,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2425
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/alakazam.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5110,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2425
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/thwackey.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4912,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2426
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/grimmsnarl.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5069,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2426
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/blaziken.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5095,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2427
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/zoroark.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5043,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2427
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/froslass.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4954,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2427
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/banette.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4981,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2428
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/raging-bolt.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 1698,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2428
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/ogerpon.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 1415,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2428
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/lucario-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5049,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2428
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dhelmise.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5128,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2430
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/clefairy.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4778,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2430
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/toucannon.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5059,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2431
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dusknoir.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5042,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2431
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/hydrapple.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 1455,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2431
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/garchomp.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5079,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2431
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/greninja.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5100,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2432
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/slowking.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5100,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2432
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/chandelure-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 959,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011745",
+            "firstByteMs": 2432
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/kangaskhan-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5198,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2432
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/beedrill.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5092,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2432
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/typhlosion.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5006,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2432
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/trevenant.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5047,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011744",
+            "firstByteMs": 2433
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/crustle.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5056,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011741",
+            "firstByteMs": 2433
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/arboliva.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5147,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "960925",
+            "firstByteMs": 2433
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/starmie-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 2118,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011758",
+            "firstByteMs": 2434
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/spidops.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5057,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011740",
+            "firstByteMs": 2434
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/lopunny-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5076,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "867453",
+            "firstByteMs": 2434
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/toxtricity.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5038,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "561417",
+            "firstByteMs": 2434
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/eelektrik.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4889,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2437
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/ceruledge.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5049,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "867461",
+            "firstByteMs": 2437
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/manectric-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5124,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2437
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/absol-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5147,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2437
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/mewtwo.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5079,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011740",
+            "firstByteMs": 2437
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/bouffalant.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5065,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 2438
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_114_R_EN_LG.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 40320,
+            "encodedBodyBytes": 39900,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "241034",
+            "firstByteMs": 2458
+          }
+        ],
+        "transferredBytesTotal": 255480.5,
+        "decodedBytesTotal": 1429627,
+        "lcpMs": 3164,
+        "navTiming": {
+          "domContentLoadedMs": 727.4500000178814,
+          "loadEventMs": 1419.2000000178814,
+          "responseEndMs": 168.80000001192093
+        },
+        "parse": {
+          "count": 8,
+          "totalMs": 12.499999970197678,
+          "totalBytes": 1429197
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 0
+      },
+      "repeat": {
+        "networkTimeMs": 2068.5,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 66.5,
+        "requestCount": 49,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "37",
+            "firstByteMs": 69
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "37",
+            "firstByteMs": 69
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/archetypes/index.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 18354,
+            "cfCacheStatus": "HIT",
+            "age": "39",
+            "firstByteMs": 84
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/prices.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 90829,
+            "cfCacheStatus": "HIT",
+            "age": "27",
+            "firstByteMs": 84
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/master.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 275334,
+            "cfCacheStatus": "HIT",
+            "age": "39",
+            "firstByteMs": 84
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/cardUsage.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 580595,
+            "cfCacheStatus": "HIT",
+            "age": "11",
+            "firstByteMs": 90
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/price-history/MEG.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 142420,
+            "cfCacheStatus": "HIT",
+            "age": "7",
+            "firstByteMs": 172
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dragapult.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5138,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 203
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/excadrill-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 1247,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 203
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/blaziken.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5095,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 205
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dipplin.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 809,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 206
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/thwackey.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4912,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 207
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/alakazam.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5110,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 207
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dudunsparce.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4954,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 208
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dusknoir.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5042,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 208
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/zoroark.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5043,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 208
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/grimmsnarl.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5069,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 208
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/froslass.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4954,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 208
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dhelmise.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5128,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 208
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/banette.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4981,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 209
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/raging-bolt.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 1698,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 209
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/ogerpon.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 1415,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 209
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/lucario-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5049,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 209
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/toucannon.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5059,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 209
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/clefairy.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4778,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 209
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/hariyama.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5078,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 209
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/greninja-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 1341,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 209
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/hydrapple.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 1455,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 209
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/garchomp.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5079,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 209
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/greninja.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5100,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 210
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/slowking.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5100,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 210
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/chandelure-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 959,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011745",
+            "firstByteMs": 210
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/kangaskhan-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5198,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 210
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/bouffalant.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5065,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 211
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/trevenant.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5047,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011744",
+            "firstByteMs": 211
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/beedrill.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5092,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 211
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/arboliva.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5147,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "960925",
+            "firstByteMs": 212
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/typhlosion.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5006,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 212
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/crustle.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5056,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011741",
+            "firstByteMs": 212
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/lopunny-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5076,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "867453",
+            "firstByteMs": 212
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/starmie-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 2118,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011758",
+            "firstByteMs": 213
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/manectric-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5124,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 213
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/eelektrik.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4889,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 213
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/toxtricity.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5038,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "561417",
+            "firstByteMs": 213
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/absol-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5147,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011759",
+            "firstByteMs": 214
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/ceruledge.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5049,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "867461",
+            "firstByteMs": 214
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/mewtwo.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5079,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011740",
+            "firstByteMs": 214
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/spidops.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5057,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011740",
+            "firstByteMs": 214
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_114_R_EN_LG.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 40341,
+            "encodedBodyBytes": 39900,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "241036",
+            "firstByteMs": 292
+          }
+        ],
+        "transferredBytesTotal": 40337,
+        "decodedBytesTotal": 1136880,
+        "lcpMs": 1066,
+        "navTiming": {
+          "domContentLoadedMs": 47.650000005960464,
+          "loadEventMs": 57.150000005960464,
+          "responseEndMs": 2.800000011920929
+        },
+        "parse": {
+          "count": 9,
+          "totalMs": 13.950000017881393,
+          "totalBytes": 1388568
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 0
+      }
+    },
+    {
+      "route": "/archetypes",
+      "url": "http://localhost:4319/archetypes",
+      "cold": {
+        "networkTimeMs": 3993,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 932,
+        "requestCount": 39,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 1307,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "48",
+            "firstByteMs": 928
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 5779,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "48",
+            "firstByteMs": 941
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/_ready",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 414,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 55,
+            "cfCacheStatus": "HIT",
+            "age": "35306",
+            "firstByteMs": 942
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/archetypes/index.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 4502,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 18354,
+            "cfCacheStatus": "HIT",
+            "age": "50",
+            "firstByteMs": 1122
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PRE/PRE_073_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11322,
+            "encodedBodyBytes": 10930,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "242364",
+            "firstByteMs": 1380
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SCR/SCR_058_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 7560,
+            "encodedBodyBytes": 7222,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011671",
+            "firstByteMs": 1384
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/JTG/JTG_024_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11421,
+            "encodedBodyBytes": 11082,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011671",
+            "firstByteMs": 1392
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PBL/PBL_065_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 10004,
+            "encodedBodyBytes": 9536,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011671",
+            "firstByteMs": 1399
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_044_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9553,
+            "encodedBodyBytes": 9212,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011671",
+            "firstByteMs": 1408
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_056_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9213,
+            "encodedBodyBytes": 8868,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011669",
+            "firstByteMs": 1414
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SFA/SFA_020_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 8673,
+            "encodedBodyBytes": 8300,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "483270",
+            "firstByteMs": 1421
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_018_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9124,
+            "encodedBodyBytes": 8738,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011671",
+            "firstByteMs": 1429
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/JTG/JTG_098_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 10857,
+            "encodedBodyBytes": 10508,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011671",
+            "firstByteMs": 1435
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PRE/PRE_080_R_EN_XS.webp",
+            "status": 404,
+            "mimeType": "text/html",
+            "transferredBytes": 27150,
+            "encodedBodyBytes": 0,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "7",
+            "firstByteMs": 1442
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_053_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 7979,
+            "encodedBodyBytes": 7516,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011671",
+            "firstByteMs": 1464
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/DRI/DRI_136_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11317,
+            "encodedBodyBytes": 10974,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011671",
+            "firstByteMs": 1472
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TEF/TEF_123_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 10416,
+            "encodedBodyBytes": 10064,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011669",
+            "firstByteMs": 1479
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_025_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11473,
+            "encodedBodyBytes": 11110,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011669",
+            "firstByteMs": 1486
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEP/MEP_084_R_EN_XS.webp",
+            "status": 404,
+            "mimeType": "text/html",
+            "transferredBytes": 27150,
+            "encodedBodyBytes": 0,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "7",
+            "firstByteMs": 1493
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_077_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11142,
+            "encodedBodyBytes": 10752,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011668",
+            "firstByteMs": 1499
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_104_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11738,
+            "encodedBodyBytes": 11266,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011669",
+            "firstByteMs": 1506
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SSP/SSP_076_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9294,
+            "encodedBodyBytes": 8946,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "621404",
+            "firstByteMs": 1514
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PBL/PBL_068_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 8490,
+            "encodedBodyBytes": 8158,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011669",
+            "firstByteMs": 1521
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_073_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9066,
+            "encodedBodyBytes": 8726,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011669",
+            "firstByteMs": 1529
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/CRI/CRI_022_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11961,
+            "encodedBodyBytes": 11594,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011669",
+            "firstByteMs": 1535
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SCR/SCR_014_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11136,
+            "encodedBodyBytes": 10792,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "229049",
+            "firstByteMs": 1543
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/ASC/ASC_127_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 8617,
+            "encodedBodyBytes": 8238,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011669",
+            "firstByteMs": 1550
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_010_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 8286,
+            "encodedBodyBytes": 7970,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "498992",
+            "firstByteMs": 1556
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/DRI/DRI_104_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11452,
+            "encodedBodyBytes": 10976,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011662",
+            "firstByteMs": 1564
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_106_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 12185,
+            "encodedBodyBytes": 11846,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011662",
+            "firstByteMs": 1572
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PBL/PBL_038_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 10621,
+            "encodedBodyBytes": 10272,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011663",
+            "firstByteMs": 1579
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SCR/SCR_119_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 8856,
+            "encodedBodyBytes": 8516,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011663",
+            "firstByteMs": 1586
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/ASC/ASC_096_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 7900,
+            "encodedBodyBytes": 7562,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011662",
+            "firstByteMs": 1593
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/CRI/CRI_003_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 10002,
+            "encodedBodyBytes": 9530,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011669",
+            "firstByteMs": 1600
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/DRI/DRI_023_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11002,
+            "encodedBodyBytes": 10614,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "324035",
+            "firstByteMs": 1607
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/DRI/DRI_034_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 8771,
+            "encodedBodyBytes": 8448,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011662",
+            "firstByteMs": 1615
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/DRI/DRI_012_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 7887,
+            "encodedBodyBytes": 7542,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011662",
+            "firstByteMs": 1622
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PFL/PFL_084_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 10104,
+            "encodedBodyBytes": 9764,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "528541",
+            "firstByteMs": 1628
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/POR/POR_021_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11575,
+            "encodedBodyBytes": 11216,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011662",
+            "firstByteMs": 1636
+          }
+        ],
+        "transferredBytesTotal": 395243,
+        "decodedBytesTotal": 47757,
+        "lcpMs": 2994,
+        "navTiming": {
+          "domContentLoadedMs": 721.8000000119209,
+          "loadEventMs": 3491.949999988079,
+          "responseEndMs": 168.34999999403954
+        },
+        "parse": {
+          "count": 3,
+          "totalMs": 0.7999999821186066,
+          "totalBytes": 47506
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 2
+      },
+      "repeat": {
+        "networkTimeMs": 2702,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 62,
+        "requestCount": 38,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "52",
+            "firstByteMs": 64
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "52",
+            "firstByteMs": 64
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/archetypes/index.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 18354,
+            "cfCacheStatus": "HIT",
+            "age": "54",
+            "firstByteMs": 73
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PRE/PRE_073_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11372,
+            "encodedBodyBytes": 10930,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "242367",
+            "firstByteMs": 245
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_044_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9552,
+            "encodedBodyBytes": 9212,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011675",
+            "firstByteMs": 252
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PBL/PBL_065_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9872,
+            "encodedBodyBytes": 9536,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011675",
+            "firstByteMs": 259
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SCR/SCR_058_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 7582,
+            "encodedBodyBytes": 7222,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011675",
+            "firstByteMs": 266
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_018_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9080,
+            "encodedBodyBytes": 8738,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011675",
+            "firstByteMs": 272
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/JTG/JTG_024_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11422,
+            "encodedBodyBytes": 11082,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011675",
+            "firstByteMs": 280
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_056_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9301,
+            "encodedBodyBytes": 8868,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011672",
+            "firstByteMs": 287
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SFA/SFA_020_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 8742,
+            "encodedBodyBytes": 8300,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "483274",
+            "firstByteMs": 295
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PRE/PRE_080_R_EN_XS.webp",
+            "status": 404,
+            "mimeType": "text/html",
+            "transferredBytes": 27150,
+            "encodedBodyBytes": 0,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "11",
+            "firstByteMs": 303
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/JTG/JTG_098_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 10861,
+            "encodedBodyBytes": 10508,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011675",
+            "firstByteMs": 308
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_053_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 7921,
+            "encodedBodyBytes": 7516,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011675",
+            "firstByteMs": 330
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/DRI/DRI_136_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11342,
+            "encodedBodyBytes": 10974,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011675",
+            "firstByteMs": 337
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEP/MEP_084_R_EN_XS.webp",
+            "status": 404,
+            "mimeType": "text/html",
+            "transferredBytes": 27150,
+            "encodedBodyBytes": 0,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "11",
+            "firstByteMs": 344
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_077_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11089,
+            "encodedBodyBytes": 10752,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011672",
+            "firstByteMs": 353
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_025_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11454,
+            "encodedBodyBytes": 11110,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011672",
+            "firstByteMs": 360
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TEF/TEF_123_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 10507,
+            "encodedBodyBytes": 10064,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011672",
+            "firstByteMs": 367
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SSP/SSP_076_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9293,
+            "encodedBodyBytes": 8946,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "621407",
+            "firstByteMs": 374
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_104_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11626,
+            "encodedBodyBytes": 11266,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011672",
+            "firstByteMs": 381
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PBL/PBL_068_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 8495,
+            "encodedBodyBytes": 8158,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011672",
+            "firstByteMs": 388
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SCR/SCR_014_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11137,
+            "encodedBodyBytes": 10792,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "229052",
+            "firstByteMs": 395
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_073_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9145,
+            "encodedBodyBytes": 8726,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011672",
+            "firstByteMs": 403
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/CRI/CRI_022_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 12039,
+            "encodedBodyBytes": 11594,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011672",
+            "firstByteMs": 410
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_010_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 8336,
+            "encodedBodyBytes": 7970,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "498996",
+            "firstByteMs": 417
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/DRI/DRI_104_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11322,
+            "encodedBodyBytes": 10976,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011666",
+            "firstByteMs": 423
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/ASC/ASC_127_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 8573,
+            "encodedBodyBytes": 8238,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011672",
+            "firstByteMs": 432
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_106_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 12190,
+            "encodedBodyBytes": 11846,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011666",
+            "firstByteMs": 438
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PBL/PBL_038_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 10613,
+            "encodedBodyBytes": 10272,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011666",
+            "firstByteMs": 444
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SCR/SCR_119_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 8951,
+            "encodedBodyBytes": 8516,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011666",
+            "firstByteMs": 453
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/CRI/CRI_003_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 9927,
+            "encodedBodyBytes": 9530,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011672",
+            "firstByteMs": 459
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/ASC/ASC_096_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 7889,
+            "encodedBodyBytes": 7562,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011666",
+            "firstByteMs": 467
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/DRI/DRI_034_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 8796,
+            "encodedBodyBytes": 8448,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011666",
+            "firstByteMs": 474
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/DRI/DRI_023_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 10958,
+            "encodedBodyBytes": 10614,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "324039",
+            "firstByteMs": 482
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PFL/PFL_084_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 10139,
+            "encodedBodyBytes": 9764,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "528545",
+            "firstByteMs": 489
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/DRI/DRI_012_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 7881,
+            "encodedBodyBytes": 7542,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011666",
+            "firstByteMs": 495
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/POR/POR_021_R_EN_XS.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11635,
+            "encodedBodyBytes": 11216,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011666",
+            "firstByteMs": 503
+          }
+        ],
+        "transferredBytesTotal": 383329,
+        "decodedBytesTotal": 47702,
+        "lcpMs": 1786,
+        "navTiming": {
+          "domContentLoadedMs": 40.85000002384186,
+          "loadEventMs": 46.099999994039536,
+          "responseEndMs": 2.6500000059604645
+        },
+        "parse": {
+          "count": 4,
+          "totalMs": 0.800000011920929,
+          "totalBytes": 47525
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 2
+      }
+    },
+    {
+      "route": "/archetypes/Dragapult",
+      "url": "http://localhost:4319/archetypes/Dragapult",
+      "cold": {
+        "networkTimeMs": 4254.5,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 946,
+        "requestCount": 26,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 1301,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "64",
+            "firstByteMs": 956
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 5773,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "64",
+            "firstByteMs": 971
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/_ready",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 413,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 55,
+            "cfCacheStatus": "HIT",
+            "age": "35322",
+            "firstByteMs": 972
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/archetypes/Dragapult/cards.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 8114,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 47756,
+            "cfCacheStatus": "HIT",
+            "age": "7",
+            "firstByteMs": 1457
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/assets/card-synonyms.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 60573,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 292692,
+            "cfCacheStatus": "HIT",
+            "age": "54",
+            "firstByteMs": 1465
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/archetypes/index.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 4414,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 18354,
+            "cfCacheStatus": "HIT",
+            "age": "66",
+            "firstByteMs": 1471
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/prices.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 90829,
+            "cfCacheStatus": "HIT",
+            "age": "54",
+            "firstByteMs": 1856
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Trends%20-%20Last%2030%20Days/trends.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 158918,
+            "cfCacheStatus": "HIT",
+            "age": "7",
+            "firstByteMs": 1859
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/matchupProfiles.json",
+            "status": 404,
+            "mimeType": "text/html",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 28392,
+            "cfCacheStatus": "HIT",
+            "age": "7",
+            "firstByteMs": 1896
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/archetypes/Dragapult/trends.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 396732,
+            "cfCacheStatus": "HIT",
+            "age": "7",
+            "firstByteMs": 1939
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PRE/PRE_073_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 34314,
+            "encodedBodyBytes": 33896,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "638721",
+            "firstByteMs": 2051
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_129_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 23971,
+            "encodedBodyBytes": 23594,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011772",
+            "firstByteMs": 2059
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEE/MEE_002_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 12680,
+            "encodedBodyBytes": 12336,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011772",
+            "firstByteMs": 2066
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEE/MEE_005_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11366,
+            "encodedBodyBytes": 11026,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011772",
+            "firstByteMs": 2073
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SFA/SFA_061_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 14951,
+            "encodedBodyBytes": 14604,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "945873",
+            "firstByteMs": 2079
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_131_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 18596,
+            "encodedBodyBytes": 18114,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011772",
+            "firstByteMs": 2087
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_128_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 16862,
+            "encodedBodyBytes": 16514,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011772",
+            "firstByteMs": 2094
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_119_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 21273,
+            "encodedBodyBytes": 20884,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011772",
+            "firstByteMs": 2101
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/POR/POR_062_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 30398,
+            "encodedBodyBytes": 30012,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011772",
+            "firstByteMs": 2109
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SCR/SCR_133_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 22394,
+            "encodedBodyBytes": 22046,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011772",
+            "firstByteMs": 2116
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_095_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 25644,
+            "encodedBodyBytes": 25286,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011772",
+            "firstByteMs": 2123
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_114_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 19057,
+            "encodedBodyBytes": 18646,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011772",
+            "firstByteMs": 2129
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/ASC/ASC_198_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 18161,
+            "encodedBodyBytes": 17764,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "951118",
+            "firstByteMs": 2138
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SFA/SFA_038_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 32563,
+            "encodedBodyBytes": 32174,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "641394",
+            "firstByteMs": 2144
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TEF/TEF_144_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 19270,
+            "encodedBodyBytes": 18906,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011772",
+            "firstByteMs": 2150
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PRE/PRE_004_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 23130,
+            "encodedBodyBytes": 22770,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "934028",
+            "firstByteMs": 2159
+          }
+        ],
+        "transferredBytesTotal": 425476,
+        "decodedBytesTotal": 1063075.5,
+        "lcpMs": 3586,
+        "navTiming": {
+          "domContentLoadedMs": 718.5499999821186,
+          "loadEventMs": 1354.3499999642372,
+          "responseEndMs": 165.24999997019768
+        },
+        "parse": {
+          "count": 8,
+          "totalMs": 10.250000029802322,
+          "totalBytes": 1034268
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 1
+      },
+      "repeat": {
+        "networkTimeMs": 2501,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 62.5,
+        "requestCount": 24,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "68",
+            "firstByteMs": 67
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "68",
+            "firstByteMs": 67
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/archetypes/index.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 18354,
+            "cfCacheStatus": "HIT",
+            "age": "70",
+            "firstByteMs": 87
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/archetypes/Dragapult/cards.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 47756,
+            "cfCacheStatus": "HIT",
+            "age": "11",
+            "firstByteMs": 87
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/prices.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 90829,
+            "cfCacheStatus": "HIT",
+            "age": "54",
+            "firstByteMs": 102
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Trends%20-%20Last%2030%20Days/trends.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 158918,
+            "cfCacheStatus": "HIT",
+            "age": "7",
+            "firstByteMs": 102
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/matchupProfiles.json",
+            "status": 404,
+            "mimeType": "text/html",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 28392,
+            "cfCacheStatus": "HIT",
+            "age": "11",
+            "firstByteMs": 137
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/archetypes/Dragapult/trends.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 396732,
+            "cfCacheStatus": "HIT",
+            "age": "7",
+            "firstByteMs": 139
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PRE/PRE_073_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 34412,
+            "encodedBodyBytes": 33896,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "638724",
+            "firstByteMs": 296
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_129_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 24004,
+            "encodedBodyBytes": 23594,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011775",
+            "firstByteMs": 304
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_128_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 16877,
+            "encodedBodyBytes": 16514,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011776",
+            "firstByteMs": 311
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEE/MEE_002_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 12678,
+            "encodedBodyBytes": 12336,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011776",
+            "firstByteMs": 318
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEE/MEE_005_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 11364,
+            "encodedBodyBytes": 11026,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011775",
+            "firstByteMs": 324
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_131_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 18468,
+            "encodedBodyBytes": 18114,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011776",
+            "firstByteMs": 332
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/ASC/ASC_198_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 18121,
+            "encodedBodyBytes": 17764,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "951122",
+            "firstByteMs": 339
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_114_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 19116,
+            "encodedBodyBytes": 18646,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011776",
+            "firstByteMs": 347
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/MEG/MEG_119_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 21299,
+            "encodedBodyBytes": 20884,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011775",
+            "firstByteMs": 354
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SCR/SCR_133_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 22402,
+            "encodedBodyBytes": 22046,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011775",
+            "firstByteMs": 361
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TEF/TEF_144_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 19263,
+            "encodedBodyBytes": 18906,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011776",
+            "firstByteMs": 367
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/POR/POR_062_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 30370,
+            "encodedBodyBytes": 30012,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011776",
+            "firstByteMs": 374
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/PRE/PRE_004_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 23123,
+            "encodedBodyBytes": 22770,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "934032",
+            "firstByteMs": 382
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SFA/SFA_038_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 32541,
+            "encodedBodyBytes": 32174,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "641397",
+            "firstByteMs": 389
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/TWM/TWM_095_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 25788,
+            "encodedBodyBytes": 25286,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011776",
+            "firstByteMs": 397
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/SFA/SFA_061_R_EN_SM.webp",
+            "status": 200,
+            "mimeType": "image/webp",
+            "transferredBytes": 14948,
+            "encodedBodyBytes": 14604,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "945876",
+            "firstByteMs": 404
+          }
+        ],
+        "transferredBytesTotal": 344787.5,
+        "decodedBytesTotal": 770329,
+        "lcpMs": 1830,
+        "navTiming": {
+          "domContentLoadedMs": 46.25000002980232,
+          "loadEventMs": 51.75,
+          "responseEndMs": 2.4500000178813934
+        },
+        "parse": {
+          "count": 9,
+          "totalMs": 9.299999982118607,
+          "totalBytes": 993646
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 1
+      }
+    },
+    {
+      "route": "/trends",
+      "url": "http://localhost:4319/trends",
+      "cold": {
+        "networkTimeMs": 2497.5,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 932.5,
+        "requestCount": 14,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/_ready",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 602,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 55,
+            "cfCacheStatus": "HIT",
+            "age": "35334",
+            "firstByteMs": 928
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 1113,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "76",
+            "firstByteMs": 934
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 5776,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "76",
+            "firstByteMs": 948
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Trends%20-%20Last%2030%20Days/trends.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 11594,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 158918,
+            "cfCacheStatus": "HIT",
+            "age": "19",
+            "firstByteMs": 1251
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/assets/card-synonyms.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 60455,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 292692,
+            "cfCacheStatus": "HIT",
+            "age": "66",
+            "firstByteMs": 1257
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/price-movers.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 3227,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 12845,
+            "cfCacheStatus": "HIT",
+            "age": "4",
+            "firstByteMs": 1265
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dipplin.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 809,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011801",
+            "firstByteMs": 1983
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dragapult.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5138,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011802",
+            "firstByteMs": 1987
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/excadrill-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 1247,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011802",
+            "firstByteMs": 1987
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/thwackey.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4912,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011802",
+            "firstByteMs": 1987
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/slowking.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5100,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011802",
+            "firstByteMs": 1987
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/blaziken.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5095,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011802",
+            "firstByteMs": 1987
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/alakazam.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5110,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011802",
+            "firstByteMs": 1988
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dudunsparce.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4954,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011802",
+            "firstByteMs": 1988
+          }
+        ],
+        "transferredBytesTotal": 82822.5,
+        "decodedBytesTotal": 493858,
+        "lcpMs": 1114,
+        "navTiming": {
+          "domContentLoadedMs": 722.6500000059605,
+          "loadEventMs": 1734.4500000178814,
+          "responseEndMs": 162.15000000596046
+        },
+        "parse": {
+          "count": 5,
+          "totalMs": 4.500000029802322,
+          "totalBytes": 493455
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 0
+      },
+      "repeat": {
+        "networkTimeMs": 628,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 67,
+        "requestCount": 12,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "79",
+            "firstByteMs": 60
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "79",
+            "firstByteMs": 66
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Trends%20-%20Last%2030%20Days/trends.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 158918,
+            "cfCacheStatus": "HIT",
+            "age": "21",
+            "firstByteMs": 83
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/price-movers.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 12845,
+            "cfCacheStatus": "HIT",
+            "age": "6",
+            "firstByteMs": 99
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/excadrill-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 1247,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011802",
+            "firstByteMs": 126
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dragapult.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5138,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011802",
+            "firstByteMs": 126
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dipplin.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 809,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011801",
+            "firstByteMs": 126
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/thwackey.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4912,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011802",
+            "firstByteMs": 126
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/blaziken.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5095,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011802",
+            "firstByteMs": 126
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/slowking.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5100,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011802",
+            "firstByteMs": 126
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/alakazam.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5110,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011802",
+            "firstByteMs": 127
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dudunsparce.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4954,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011802",
+            "firstByteMs": 127
+          }
+        ],
+        "transferredBytesTotal": 0,
+        "decodedBytesTotal": 201111,
+        "lcpMs": 80,
+        "navTiming": {
+          "domContentLoadedMs": 49.64999997615814,
+          "loadEventMs": 58.849999994039536,
+          "responseEndMs": 2.399999976158142
+        },
+        "parse": {
+          "count": 6,
+          "totalMs": 4.300000011920929,
+          "totalBytes": 452819
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 0
+      }
+    },
+    {
+      "route": "/tournaments",
+      "url": "http://localhost:4319/tournaments",
+      "cold": {
+        "networkTimeMs": 2107.5,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 932,
+        "requestCount": 3,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 5964,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "84",
+            "firstByteMs": 928
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/_ready",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 416,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 55,
+            "cfCacheStatus": "HIT",
+            "age": "35342",
+            "firstByteMs": 936
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 1115,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "84",
+            "firstByteMs": 943
+          }
+        ],
+        "transferredBytesTotal": 7494,
+        "decodedBytesTotal": 29403,
+        "lcpMs": 996,
+        "navTiming": {
+          "domContentLoadedMs": 721.5999999940395,
+          "loadEventMs": 1605.4000000059605,
+          "responseEndMs": 168.40000000596046
+        },
+        "parse": {
+          "count": 2,
+          "totalMs": 0.3500000238418579,
+          "totalBytes": 29153
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 0
+      },
+      "repeat": {
+        "networkTimeMs": 586,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 56.5,
+        "requestCount": 2,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "86",
+            "firstByteMs": 54
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "86",
+            "firstByteMs": 57
+          }
+        ],
+        "transferredBytesTotal": 0,
+        "decodedBytesTotal": 29348,
+        "lcpMs": 58,
+        "navTiming": {
+          "domContentLoadedMs": 38.75,
+          "loadEventMs": 44.60000002384186,
+          "responseEndMs": 2.7500000298023224
+        },
+        "parse": {
+          "count": 3,
+          "totalMs": 0.2499999701976776,
+          "totalBytes": 29173
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 0
+      }
+    },
+    {
+      "route": "/players",
+      "url": "http://localhost:4319/players",
+      "cold": {
+        "networkTimeMs": 3042.5,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 942,
+        "requestCount": 4,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/_ready",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 597,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 55,
+            "cfCacheStatus": "HIT",
+            "age": "35350",
+            "firstByteMs": 927
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 1131,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "93",
+            "firstByteMs": 934
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 5773,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "93",
+            "firstByteMs": 948
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/players/index-slim.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 229161,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 787370,
+            "cfCacheStatus": "HIT",
+            "age": "95",
+            "firstByteMs": 1121
+          }
+        ],
+        "transferredBytesTotal": 235656,
+        "decodedBytesTotal": 816773,
+        "lcpMs": 748,
+        "navTiming": {
+          "domContentLoadedMs": 721.75,
+          "loadEventMs": 1572.5999999940395,
+          "responseEndMs": 168.89999997615814
+        },
+        "parse": {
+          "count": 3,
+          "totalMs": 8.650000005960464,
+          "totalBytes": 814649
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 0
+      },
+      "repeat": {
+        "networkTimeMs": 651,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 66,
+        "requestCount": 3,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "96",
+            "firstByteMs": 68
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "96",
+            "firstByteMs": 68
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/players/index-slim.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 787370,
+            "cfCacheStatus": "HIT",
+            "age": "98",
+            "firstByteMs": 83
+          }
+        ],
+        "transferredBytesTotal": 0,
+        "decodedBytesTotal": 816718,
+        "lcpMs": 56,
+        "navTiming": {
+          "domContentLoadedMs": 47.349999994039536,
+          "loadEventMs": 55.30000001192093,
+          "responseEndMs": 2.800000011920929
+        },
+        "parse": {
+          "count": 4,
+          "totalMs": 6.25,
+          "totalBytes": 814665
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 0
+      }
+    },
+    {
+      "route": "/players/1272",
+      "url": "http://localhost:4319/players/1272",
+      "cold": {
+        "networkTimeMs": 2905,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 929,
+        "requestCount": 26,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 6061,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "102",
+            "firstByteMs": 936
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 1118,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "102",
+            "firstByteMs": 943
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/card-images/_ready",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 411,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 55,
+            "cfCacheStatus": "HIT",
+            "age": "35360",
+            "firstByteMs": 957
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/players/1272/profile.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 2747,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 13662,
+            "cfCacheStatus": "HIT",
+            "age": "4",
+            "firstByteMs": 1130
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/gholdengo.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5111,
+            "encodedBodyBytes": 4736,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "229026",
+            "firstByteMs": 1400
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/charizard.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5521,
+            "encodedBodyBytes": 5190,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "229026",
+            "firstByteMs": 1408
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/lunatone.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5189,
+            "encodedBodyBytes": 4793,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "40654",
+            "firstByteMs": 1414
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dragapult.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5577,
+            "encodedBodyBytes": 5138,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011827",
+            "firstByteMs": 1423
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/pidgeot.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5420,
+            "encodedBodyBytes": 5089,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "229026",
+            "firstByteMs": 1428
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/noctowl.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5331,
+            "encodedBodyBytes": 5002,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "229026",
+            "firstByteMs": 1435
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/terapagos.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 1619,
+            "encodedBodyBytes": 1286,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "40654",
+            "firstByteMs": 1443
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/froslass.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5320,
+            "encodedBodyBytes": 4954,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011827",
+            "firstByteMs": 1451
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/crustle.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5391,
+            "encodedBodyBytes": 5056,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011809",
+            "firstByteMs": 1457
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/grimmsnarl.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5451,
+            "encodedBodyBytes": 5069,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011827",
+            "firstByteMs": 1465
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dusknoir.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5480,
+            "encodedBodyBytes": 5042,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011827",
+            "firstByteMs": 1473
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/flareon.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5325,
+            "encodedBodyBytes": 4991,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "35260",
+            "firstByteMs": 1479
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/jellicent.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5292,
+            "encodedBodyBytes": 4953,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "229026",
+            "firstByteMs": 1486
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/zoroark.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5370,
+            "encodedBodyBytes": 5043,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011827",
+            "firstByteMs": 1493
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/joltik.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5170,
+            "encodedBodyBytes": 4790,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "40634",
+            "firstByteMs": 1500
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/absol-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5475,
+            "encodedBodyBytes": 5147,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011827",
+            "firstByteMs": 1507
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/kangaskhan-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5581,
+            "encodedBodyBytes": 5198,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011827",
+            "firstByteMs": 1515
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/miraidon.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5434,
+            "encodedBodyBytes": 4997,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "35260",
+            "firstByteMs": 1522
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/pikachu.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5141,
+            "encodedBodyBytes": 4809,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "35260",
+            "firstByteMs": 1528
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/flutter-mane.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5043,
+            "encodedBodyBytes": 4712,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "35260",
+            "firstByteMs": 1536
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/roaring-moon.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5440,
+            "encodedBodyBytes": 5108,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "35260",
+            "firstByteMs": 1543
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/gardevoir.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 5371,
+            "encodedBodyBytes": 4998,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "229026",
+            "firstByteMs": 1550
+          }
+        ],
+        "transferredBytesTotal": 124386.5,
+        "decodedBytesTotal": 43065,
+        "lcpMs": 1220,
+        "navTiming": {
+          "domContentLoadedMs": 724.4000000059605,
+          "loadEventMs": 2402.300000011921,
+          "responseEndMs": 168.40000000596046
+        },
+        "parse": {
+          "count": 3,
+          "totalMs": 0.800000011920929,
+          "totalBytes": 42809
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 0
+      },
+      "repeat": {
+        "networkTimeMs": 655,
+        "reachedNetworkIdle": true,
+        "firstDataMs": 67.5,
+        "requestCount": 25,
+        "requests": [
+          {
+            "url": "https://r2.ciphermaniac.com/reports/Online%20-%20Last%2014%20Days/meta.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 26229,
+            "cfCacheStatus": "HIT",
+            "age": "105",
+            "firstByteMs": 59
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/reports/tournaments.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 3119,
+            "cfCacheStatus": "HIT",
+            "age": "105",
+            "firstByteMs": 59
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/players/1272/profile.json",
+            "status": 200,
+            "mimeType": "application/json",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 0,
+            "decodedBytes": 13662,
+            "cfCacheStatus": "HIT",
+            "age": "7",
+            "firstByteMs": 75
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/pidgeot.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5089,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "229029",
+            "firstByteMs": 138
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/gardevoir.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4998,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "229029",
+            "firstByteMs": 139
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dragapult.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5138,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011830",
+            "firstByteMs": 140
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/terapagos.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 1286,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "40657",
+            "firstByteMs": 140
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/noctowl.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5002,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "229029",
+            "firstByteMs": 141
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/dusknoir.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5042,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011830",
+            "firstByteMs": 141
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/gholdengo.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4736,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "229029",
+            "firstByteMs": 141
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/lunatone.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4793,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "40657",
+            "firstByteMs": 141
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/charizard.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5190,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "229029",
+            "firstByteMs": 143
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/grimmsnarl.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5069,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011830",
+            "firstByteMs": 143
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/froslass.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4954,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011830",
+            "firstByteMs": 143
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/crustle.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5056,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011812",
+            "firstByteMs": 143
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/zoroark.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5043,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011830",
+            "firstByteMs": 143
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/jellicent.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4953,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "229029",
+            "firstByteMs": 143
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/kangaskhan-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5198,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011830",
+            "firstByteMs": 144
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/absol-mega.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5147,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "1011830",
+            "firstByteMs": 144
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/flareon.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4991,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "35262",
+            "firstByteMs": 145
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/joltik.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4790,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "40637",
+            "firstByteMs": 145
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/pikachu.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4809,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "35262",
+            "firstByteMs": 145
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/roaring-moon.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 5108,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "35262",
+            "firstByteMs": 145
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/miraidon.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4997,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "35262",
+            "firstByteMs": 146
+          },
+          {
+            "url": "https://r2.ciphermaniac.com/pokemon-sprites/gen9/flutter-mane.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "transferredBytes": 0,
+            "encodedBodyBytes": 4712,
+            "decodedBytes": null,
+            "cfCacheStatus": "HIT",
+            "age": "35262",
+            "firstByteMs": 146
+          }
+        ],
+        "transferredBytesTotal": 0,
+        "decodedBytesTotal": 43010,
+        "lcpMs": 122,
+        "navTiming": {
+          "domContentLoadedMs": 49.85000002384186,
+          "loadEventMs": 57.55000001192093,
+          "responseEndMs": 2.75
+        },
+        "parse": {
+          "count": 4,
+          "totalMs": 0.9499999582767487,
+          "totalBytes": 42830
+        },
+        "longTasks": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "jsHeapUsedBytes": 10000000,
+        "nonOkResponses": 0
+      }
+    }
+  ],
+  "summary": {
+    "cold": {
+      "routes": 9,
+      "networkTimeMs": {
+        "p50": 3043,
+        "p95": 4475
+      },
+      "firstDataMs": {
+        "p50": 933,
+        "p95": 984
+      },
+      "lcpMs": {
+        "p50": 1928,
+        "p95": 3586
+      },
+      "transferredBytes": {
+        "p50": 235656,
+        "p95": 459274
+      },
+      "parseMs": {
+        "p50": 5,
+        "p95": 12
+      }
+    },
+    "repeat": {
+      "routes": 9,
+      "networkTimeMs": {
+        "p50": 1348,
+        "p95": 2702
+      },
+      "firstDataMs": {
+        "p50": 63,
+        "p95": 68
+      },
+      "lcpMs": {
+        "p50": 676,
+        "p95": 1830
+      },
+      "transferredBytes": {
+        "p50": 40337,
+        "p95": 383329
+      },
+      "parseMs": {
+        "p50": 4,
+        "p95": 14
+      }
+    }
+  }
+}
