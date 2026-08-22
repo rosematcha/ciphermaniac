@@ -228,7 +228,10 @@ export function preloadCardImage(set: string, number: string | number, size: Car
 export function CardImage(props: CardImageProps) {
   // Capture the R2 decision once per instance: an async probe flipping the
   // global signal mid-session must not re-source already-rendered images
-  // (double download + flicker). Future mounts pick up the new value.
+  // (double download + flicker). Future mounts pick up the new value. `skipR2`
+  // is captured with it and is a static per-call-site decision, never a signal:
+  // flipping an image's source mid-render is the exact flicker this avoids.
+  // eslint-disable-next-line solid/reactivity -- capturing once is the point
   const useR2 = r2Ready() && props.skipR2 !== true;
   const attempts = createMemo(() => buildAttempts(props.set, props.number, props.size ?? 'sm', useR2));
   const [attemptIndex, setAttemptIndex] = createSignal(0);
