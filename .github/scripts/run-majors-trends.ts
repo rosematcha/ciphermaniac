@@ -25,7 +25,8 @@
 import process from 'node:process';
 import { writeFile } from 'node:fs/promises';
 import { createR2Client, getJsonResult, putJson } from './lib/r2.mjs';
-import { majorTournaments, type MasterPayload, tournamentDate } from '../../src/lib/data.ts';
+import { majorTournaments, tournamentDate } from '../../shared/data/tournamentKeys.ts';
+import type { MasterPayload } from '../../src/lib/data.ts';
 import { canonicalizeReport } from '../../src/lib/data/compat.ts';
 import {
   computeMajorsWindowResult,

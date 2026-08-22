@@ -1,6 +1,7 @@
 import { SUCCESS_TAG_NAMES } from '../data/contracts';
 import { deriveArchetypeGrouping } from '../data/archetypes/build';
 import { getCanonicalCard } from '../data/cardSynonyms.js';
+import { cardUidOrName } from '../data/cardIdentity';
 import type {
   BuildCardTrendReportOptions,
   BuildTrendReportOptions,
@@ -252,7 +253,13 @@ export function buildCardTrendReport(
       const name = card?.name || 'Unknown Card';
       const set = (card?.set || '').toString().toUpperCase();
       const number = card?.number || '';
-      let key = set && number ? `${name}::${set}::${number}` : name;
+      // Build through the one constructor: decks carry RAW collector numbers
+      // (`PRE/4`) while the synonym database and every other artifact key UIDs
+      // zero-padded (`PRE/004`). Interpolating the fields split one printing
+      // across every spelling of its number AND missed the 547 padded synonym
+      // entries outright, so the collapse below silently did nothing for them
+      // (D20).
+      let key = cardUidOrName(name, set, number);
       // Canonicalize so reprints (e.g. same card in two sets) collapse into
       // a single trend entry instead of splitting appearances + share.
       if (synonymDb) {

@@ -1,6 +1,7 @@
 import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { fetchMaster, fetchPrices, type PricingEntry } from '../lib/data';
+import { cardUid } from '../../shared/data/cardIdentity';
 import { useTournament } from '../lib/tournamentContext';
 import type { CardItem } from '../types';
 import { Section } from '../components/Section';
@@ -162,10 +163,10 @@ export function CardsIndexPage() {
     if (!map) {
       return null;
     }
-    if (!item.set || item.number === undefined) {
+    const key = cardUid(item.name, item.set, item.number);
+    if (!key) {
       return null;
     }
-    const key = `${item.name}::${item.set}::${item.number}`;
     const entry: PricingEntry | undefined = map[key];
     const p = entry?.price;
     return typeof p === 'number' && Number.isFinite(p) ? p : null;

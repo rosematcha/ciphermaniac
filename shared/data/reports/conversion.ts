@@ -31,7 +31,7 @@
  * @module shared/data/reports/conversion
  */
 
-import { canonicalizeVariant, getCanonicalCardFromData, type SynonymDatabase } from '../cardIdentity';
+import { cardUid, getCanonicalCardFromData, type SynonymDatabase } from '../cardIdentity';
 import type { CanonicalizeOptions } from './cardReport';
 
 /** A single deck card row consumed by {@link buildConversionIndex}. */
@@ -105,11 +105,10 @@ export function buildConversionIndex(
       if (!setCode || number === null || number === undefined || number === '') {
         continue;
       }
-      const [sc, num] = canonicalizeVariant(setCode, number);
-      if (!sc || !num) {
+      const rawUid = cardUid(card?.name ?? '', setCode, number);
+      if (!rawUid) {
         continue;
       }
-      const rawUid = `${card?.name ?? ''}::${sc}::${num}`;
       const uid = resolveUid ? resolveUid(rawUid) : getCanonicalCardFromData(synonymDb, rawUid);
       if (seen.has(uid)) {
         continue;

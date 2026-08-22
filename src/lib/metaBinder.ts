@@ -25,6 +25,7 @@
  * Pure module: no fetching, no DOM. The page hands it data and renders the result.
  */
 
+import { cardUidOrName } from '../../shared/data/cardIdentity';
 import type { CardItem } from '../types';
 import { averageCopiesValue, cardSupercategory, roundedCopies } from './cardStats';
 
@@ -149,8 +150,9 @@ function uidFor(item: CardItem): string {
     return item.uid;
   }
   // Reports predating canonical uids: rebuild the same Name::SET::NUMBER shape
-  // so pricing lookups still line up.
-  return `${item.name}::${item.set ?? ''}::${item.number ?? ''}`;
+  // so pricing lookups still line up. Through the constructor, so the number is
+  // padded the way price keys and the synonym database expect (D20).
+  return cardUidOrName(item.name, item.set, item.number);
 }
 
 /**

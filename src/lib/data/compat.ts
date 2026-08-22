@@ -23,7 +23,7 @@
  */
 
 import { getCanonicalCardFromData, type SynonymDatabase } from '../../../shared/synonyms.js';
-import { normalizeCardNumber } from '../../../shared/cardUtils.js';
+import { cardUidOrName } from '../../../shared/data/cardIdentity';
 import { calculatePercentage } from '../../../shared/reportUtils.js';
 import type { ArchetypeIndexEntry, CardDistributionEntry, CardItem } from '../../types';
 
@@ -50,11 +50,7 @@ export function itemUid(item: CardItem): string {
   if (item.uid) {
     return item.uid;
   }
-  if (item.set && item.number !== undefined && item.number !== null) {
-    const num = normalizeCardNumber(item.number) || String(item.number);
-    return `${item.name}::${item.set}::${num}`;
-  }
-  return item.name;
+  return cardUidOrName(item.name, item.set, item.number);
 }
 
 export type AnyCardItem = CardItem & {

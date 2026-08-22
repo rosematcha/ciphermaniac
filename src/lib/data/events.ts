@@ -11,6 +11,7 @@
 import { dataClient } from './client';
 import { tournamentPath } from './paths';
 import { getCanonicalCardFromData } from '../../../shared/synonyms.js';
+import { cardUidOrName } from '../../../shared/data/cardIdentity';
 import { getSynonymDatabase } from '../../utils/cardSynonyms';
 import type { TournamentParticipant } from '../../types';
 import { fetchMaster, type MasterPayload } from './reports';
@@ -188,7 +189,11 @@ async function day2CardStatsFromDecks(tournament: string): Promise<Day2CardStat[
       if (!card.set || card.number === undefined || card.number === null || card.number === '') {
         continue;
       }
-      const rawUid = `${card.name}::${card.set}::${card.number}`;
+      // Deck cards carry RAW printings (`TWM/95`) while the synonym database
+      // keys UIDs zero-padded (`TWM/095`) — 547 of its 2,295 entries have a
+      // leading zero. Interpolating the fields directly missed every one of
+      // them, so a card played as two printings counted as two rows here.
+      const rawUid = cardUidOrName(card.name ?? '', card.set, card.number);
       const uid = db ? getCanonicalCardFromData(db, rawUid) : rawUid;
       // A deck listing the same canonical card under two variant printings
       // should still only count once toward inclusion.
