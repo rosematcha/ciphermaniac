@@ -1,0 +1,231 @@
+/* ============================================================
+   Card Wall — /tools/card-wall
+
+   The stage is a canvas, so nothing in here styles the wall
+   itself; it styles the frame around it and the controls
+   underneath, in the same flat-border/offset-shadow language as
+   the rest of the site. The stage background is painted by the
+   renderer (cream / ink / black) and deliberately does NOT
+   follow the site theme — it's the output, not the UI.
+   ============================================================ */
+
+.cw-page {
+  display: grid;
+  gap: var(--space-5);
+}
+
+/* ---------- Stage ---------- */
+
+/* Width follows the aspect the user picked, but never so tall that a 9:16 wall
+   pushes every control below the fold — `min()` caps the height first and lets
+   the width fall out of it. */
+.cw-stage-frame {
+  position: relative;
+  aspect-ratio: var(--cw-aspect, 1.7778);
+  width: min(100%, calc(68vh * var(--cw-aspect, 1.7778)));
+  margin-inline: auto;
+  overflow: hidden;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+  /* Behind the canvas until the first paint lands. */
+  background: var(--surface-2);
+}
+
+.cw-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.cw-loading {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  padding: 3px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.cw-stage-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.cw-readout {
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* ---------- Controls ---------- */
+
+.cw-panel {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+
+.cw-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-width) solid var(--rule);
+}
+
+.cw-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-3) var(--space-4);
+}
+
+.cw-field {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-width: 0;
+}
+
+.cw-field-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cw-field-label b {
+  margin-left: 4px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.cw-field input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+/* The Segmented control sizes itself; without this it stretches the grid cell
+   and the label above it stops lining up with its neighbours. */
+.cw-field .segmented {
+  justify-self: start;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+/* ---------- Per-row direction and speed ---------- */
+
+.cw-rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--space-2) var(--space-4);
+  padding-top: var(--space-3);
+  border-top: var(--border-width) solid var(--rule);
+}
+
+.cw-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 34px;
+}
+
+.cw-row-name {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.cw-row .segmented button {
+  padding: 4px 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Export ---------- */
+
+/* Flex rather than a grid: the size and frame-rate segmented controls are wider
+   than the other fields and a fixed track made them wrap mid-control, which
+   pulled their labels out of line with everything else. */
+.cw-export {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3) var(--space-4);
+  padding-top: var(--space-3);
+  border-top: var(--border-width) solid var(--rule);
+}
+
+.cw-export .cw-field {
+  flex: 0 0 auto;
+  /* Enough for the loops slider, which is the one field here that isn't a
+     segmented control and would otherwise shrink to its label. */
+  min-width: 160px;
+}
+
+.cw-export-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.cw-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.cw-error {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--negative);
+}
+
+@media (max-width: 640px) {
+  /* Finger-sized thumbs, matching the treatment the feedback sliders get. */
+  .cw-field input[type='range'] {
+    height: 28px;
+  }
+  .cw-field input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    margin-top: -10px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .cw-field input[type='range']::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .cw-field input[type='range']::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--surface-2);
+  }
+  .cw-field input[type='range']::-moz-range-track {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--surface-2);
+  }
+}
