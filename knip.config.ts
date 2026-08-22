@@ -17,7 +17,12 @@ const config: KnipConfig = {
     '.github/scripts/*.{ts,mjs}',
 
     // Tests (so their imports count as "used")
-    'tests/**/*.{test,spec}.{ts,js,mjs}'
+    'tests/**/*.{test,spec}.{ts,js,mjs}',
+
+    // Fixture server for the deterministic browser suite: Playwright's
+    // `webServer` launches serve-fixtures.ts as a process, so no import graph
+    // reaches it.
+    'tests/e2e/serve-fixtures.ts'
   ],
 
   project: [

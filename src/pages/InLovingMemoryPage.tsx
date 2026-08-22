@@ -7,6 +7,7 @@ import { EmptyState } from '../components/EmptyState';
 import { resolved } from '../lib/resource';
 import { cardSupercategory } from '../lib/cardStats';
 import '../styles/pages/in-loving-memory.css';
+import { R2_ORIGIN } from '../lib/constants';
 
 interface ArchetypeEntry {
   name: string;
@@ -72,7 +73,7 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
 // Uploaded to R2 by scripts/upload-toys.ts. The R2 keys deliberately keep the
 // original `toys/` prefix even though the section is now /tools — they're
 // storage paths, not URLs, and renaming them buys nothing but a migration.
-const R2_BASE = 'https://r2.ciphermaniac.com/toys/in-loving-memory/data';
+const R2_BASE = `${R2_ORIGIN}/toys/in-loving-memory/data`;
 const LOCAL_BASE = '/toys/in-loving-memory/data';
 
 /**

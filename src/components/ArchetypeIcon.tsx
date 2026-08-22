@@ -1,4 +1,5 @@
 import { createSignal, For, Show } from 'solid-js';
+import { R2_ORIGIN } from '../lib/constants';
 
 /**
  * Pokémon sprite icons. Slugs are lowercase and hyphenated with form
@@ -10,7 +11,7 @@ import { createSignal, For, Show } from 'solid-js';
  * mirror doesn't have yet falls back to Limitless, then hides on a second
  * failure.
  */
-const ICON_BASE = 'https://r2.ciphermaniac.com/pokemon-sprites/gen9';
+const ICON_BASE = `${R2_ORIGIN}/pokemon-sprites/gen9`;
 const ICON_FALLBACK_BASE = 'https://r2.limitlesstcg.net/pokemon/gen9';
 
 /** Paired icons overlap by this many px (kept in sync with `.arche-icons` CSS). */
