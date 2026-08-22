@@ -246,6 +246,14 @@
         }
       },
       "existingLighthouseBudgets": "LCP <= 3s, script transfer <= 90KB, CLS <= 0.1 (.lighthouserc.json)"
+    },
+    "advancedPanel": {
+      "benchmark": "npm run bench:panel (tests/perf/advanced-panel.bench.ts)",
+      "input": "1,134 decks x ~25 cards (the largest real online archetype), synthesized from the committed 25-deck fixture",
+      "coldMs": 24.1,
+      "warmMs": 6.7,
+      "sliderMs": 0.0,
+      "webWorkerDecision": "NOT JUSTIFIED (Phase 7.5, measured 2026-08-21). The gate is a single pass sustaining > ~50 ms. The WARM path — what runs on every filter apply — is 6.7 ms here, ~27 ms on a 4x-slower phone, about half the gate; the threshold slider is unmeasurable. Moving it off-thread would also have to structured-clone 1,134 decks / 27,533 card rows across the Worker boundary each way, which plausibly costs more than the 6.7 ms it saves. The COLD path (24.1 ms, ~96 ms on a phone) is the larger number but runs once, already deferred behind rAF so it lands after first paint. Revisit if archetype deck counts grow several-fold or the analysis gains a superlinear stage."
     }
   },
   "semanticDifferences": [

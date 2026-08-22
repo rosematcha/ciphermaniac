@@ -1,3 +1,10 @@
+import {
+  buildOnlineChart,
+  type ChartData,
+  formatDateWindow,
+  relativeTimeFrom,
+  sliceCardMovers
+} from './trendsPage/model';
 import { createMemo, createResource, createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js';
 import { A } from '@solidjs/router';
 import {
@@ -40,7 +47,7 @@ import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { createPersistentSignal } from '../lib/persistentSignal';
 import { latestValue } from '../lib/resource';
-import { DAY_MS, parseReportDate, windowCutoff } from '../lib/trendWindow';
+import { DAY_MS } from '../lib/trendWindow';
 import '../styles/pages/trends.css';
 
 type Source = 'online' | 'majors';
@@ -81,47 +88,6 @@ const MAX_VISIBLE_SERIES = 8;
 /** Stable line color for a series by its rank index (cycles the palette). */
 function lineColor(index: number): string {
   return ARCHETYPE_LINE_COLORS[index % ARCHETYPE_LINE_COLORS.length];
-}
-
-/** "3 hours ago" from an ISO timestamp, or null if unparseable. Plain words, no em dashes. */
-function relativeTimeFrom(iso: string | undefined): string | null {
-  if (!iso) {
-    return null;
-  }
-  const t = Date.parse(iso);
-  if (!Number.isFinite(t)) {
-    return null;
-  }
-  const mins = Math.round((Date.now() - t) / 60000);
-  if (mins < 1) {
-    return 'just now';
-  }
-  if (mins < 60) {
-    return `${mins} minute${mins === 1 ? '' : 's'} ago`;
-  }
-  const hrs = Math.round(mins / 60);
-  if (hrs < 24) {
-    return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
-  }
-  const days = Math.round(hrs / 24);
-  return `${days} day${days === 1 ? '' : 's'} ago`;
-}
-
-/** "Jun 6 to Jul 6" from two date strings (YYYY-MM-DD or full ISO), or null if either is unparseable. */
-function formatDateWindow(start: string | undefined, end: string | undefined): string | null {
-  const fmt = (d: string | undefined): string | null => {
-    const t = parseReportDate(d);
-    if (!Number.isFinite(t)) {
-      return null;
-    }
-    return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  };
-  const s = fmt(start);
-  const e = fmt(end);
-  if (!s || !e) {
-    return null;
-  }
-  return `${s} to ${e}`;
 }
 
 /**
@@ -311,107 +277,12 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
    * Pick the top-N archetypes by avgShare across the full file, then slice
    * each archetype's timeline to the selected window.
    */
-  const chart = createMemo<{ series: ArchetypeSeries[]; days: DayBin[] }>(() => {
-    const data = trendsData();
-    if (!data) {
-      return { series: [], days: [] };
-    }
-    const report = data.trendReport;
-    if (!report || !report.series || report.series.length === 0) {
-      return { series: [], days: [] };
-    }
-
-    const windowDays = ONLINE_WINDOW_DAYS[props.windowKey];
-    // Anchor the window to the payload's own end date, not Date.now(). If the
-    // cron lags, wall-clock "now" drifts past the newest data and a 7-day window
-    // would slide off the end; anchoring to windowEnd keeps the window aligned
-    // with what the file actually contains. `windowEnd` may be a bare date or a
-    // full ISO timestamp (the producer emits `toISOString()`); parseReportDate
-    // handles both.
-    const parsedEnd = parseReportDate(report.windowEnd);
-    // Deterministic fallback when windowEnd is missing/unparseable: the latest
-    // timeline date actually present in the file — never wall-clock now.
-    let latestPoint = NaN;
-    for (const s of report.series) {
-      for (const p of s.timeline ?? []) {
-        const t = parseReportDate(p.date);
-        if (Number.isFinite(t) && (!Number.isFinite(latestPoint) || t > latestPoint)) {
-          latestPoint = t;
-        }
-      }
-    }
-    const anchorMs = Number.isFinite(parsedEnd) ? parsedEnd : latestPoint;
-    if (!Number.isFinite(anchorMs)) {
-      return { series: [], days: [] };
-    }
-    // Inclusive window: the anchor day plus the (windowDays - 1) days before it.
-    // Subtracting the full windowDays would admit N+1 calendar days.
-    const cutoffMs = windowCutoff(anchorMs, windowDays);
-
-    // Union of all dates across archetypes that fall in window (some archetypes
-    // may skip days). Sorted ascending.
-    const dateSet = new Set<string>();
-    for (const s of report.series) {
-      for (const p of s.timeline ?? []) {
-        const t = parseReportDate(p.date);
-        if (Number.isFinite(t) && t >= cutoffMs) {
-          dateSet.add(p.date);
-        }
-      }
-    }
-    const dates = Array.from(dateSet).sort();
-    if (dates.length === 0) {
-      return { series: [], days: [] };
-    }
-    const dateIdx = new Map(dates.map((d, i) => [d, i]));
-
-    const days: DayBin[] = dates.map(d => ({
-      key: d,
-      date: new Date(`${d}T12:00:00Z`),
-      count: 1
-    }));
-
-    // Rank every archetype by avgShare across the file (the cron's avg over the
-    // full 30-day window — a stable "popularity ranking"). The full ranked list
-    // is handed to the chart, which draws the top-N by default and lets the user
-    // toggle series or add their own deck. Ranking order is stable, so each
-    // series keeps its color regardless of what's toggled.
-    const ranked = [...report.series].sort((a, b) => b.avgShare - a.avgShare);
-
-    const series: ArchetypeSeries[] = ranked.map(s => {
-      const points: (number | null)[] = Array.from({ length: dates.length }, () => null);
-      for (const p of s.timeline ?? []) {
-        const idx = dateIdx.get(p.date);
-        if (idx === undefined) {
-          continue;
-        }
-        points[idx] = p.share;
-      }
-      // Recompute avgShare scoped to this window for the legend.
-      const present = points.filter((v): v is number => v !== null);
-      const windowAvg = present.length > 0 ? present.reduce((a, b) => a + b, 0) / present.length : s.avgShare;
-      return {
-        name: s.base,
-        label: s.displayName,
-        avg: windowAvg,
-        points
-      };
-    });
-
-    return { series, days };
-  });
+  const chart = createMemo<ChartData>(() =>
+    buildOnlineChart(trendsData()?.trendReport, ONLINE_WINDOW_DAYS[props.windowKey])
+  );
 
   /** Card-level movers from the cron's pre-computed lists, sliced (top 12 each). */
-  const cardMovers = createMemo(() => {
-    const data = trendsData();
-    if (!data?.cardTrends) {
-      return { rising: [] as CardTrendLike[], falling: [] as CardTrendLike[] };
-    }
-    return {
-      rising: (data.cardTrends.rising ?? []).slice(0, 12),
-      falling: (data.cardTrends.falling ?? []).slice(0, 12)
-    };
-  });
+  const cardMovers = createMemo(() => sliceCardMovers<CardTrendLike>(trendsData()?.cardTrends));
 
   /** Window meta for the right-side caption. */
   const sourceCaption = createMemo(() => {

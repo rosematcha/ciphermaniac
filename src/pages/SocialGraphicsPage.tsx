@@ -1,3 +1,4 @@
+import { buildRenderModel, type Mode, type RenderItem, shortTournament, thumbUrl } from './socialGraphics/model';
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import {
   fetchDay2CardStats,
@@ -6,16 +7,13 @@ import {
   fetchTournamentsList,
   prettyTournamentName
 } from '../lib/data';
-import type { CardItem } from '../types';
-import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
+import { ONLINE_META_NAME } from '../lib/constants';
 import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
 import { interEmbedCss } from '../utils/fontEmbed';
 import { latestValue } from '../lib/resource';
-import { cardSupercategory } from '../lib/cardStats';
 import '../styles/pages/social-graphics.css';
 
-type Mode = 'standard' | 'rising' | 'converting';
 type Size = 8 | 12 | 20;
 type Theme = 'light' | 'dark';
 type MinDecks = 5 | 10 | 25;
@@ -39,106 +37,6 @@ const THEME_OPTIONS: { value: Theme; label: string }[] = [
   { value: 'light', label: 'Cream' },
   { value: 'dark', label: 'Dark' }
 ];
-
-type CatKind = 'pokemon' | 'trainer' | 'energy-basic' | 'energy-special';
-
-interface RenderItem {
-  rank: number;
-  name: string;
-  set: string;
-  number: string;
-  found: number;
-  total: number;
-  pct: number;
-  cat: CatKind;
-  /** Rising mode only: percentage-point delta vs comparison */
-  delta?: number;
-  /** Converting mode only: Day 1 → Day 2 conversion (0..100) */
-  conversion?: number;
-  /** Converting mode only: count of Day 2 decks playing this card */
-  day2Count?: number;
-  /** Converting mode only: count of all Day 1 decks playing this card */
-  day1Count?: number;
-}
-
-function classify(item: CardItem): CatKind {
-  const section = cardSupercategory(item);
-  if (section === 'trainer') {
-    return 'trainer';
-  }
-  if (section === 'energy') {
-    const cat = (item.category ?? '').toLowerCase();
-    return cat.includes('basic') || item.energyType === 'basic' ? 'energy-basic' : 'energy-special';
-  }
-  return 'pokemon';
-}
-
-function thumbUrl(set: string, number: string | number): string {
-  const setU = String(set).toUpperCase();
-  const numStr = String(number);
-  return `/thumbnails/lg/${setU}/${numStr}`;
-}
-
-function isBasicEnergy(item: CardItem): boolean {
-  return item.set === 'SVE';
-}
-
-/**
- * Drop pre-evolutions whose evolved form ranks alongside them with comparable
- * stats — e.g. Rellor (37%) and Rabsca (35%) collapse to just Rabsca, since
- * the only reason a deck plays Rellor is to evolve into Rabsca. Items without
- * a sibling evolution in the list, or with stats too far apart to count as
- * "the same slot", are kept as-is.
- */
-function collapseEvolutions(items: RenderItem[], evoMap: Map<string, string> | undefined, mode: Mode): RenderItem[] {
-  if (!evoMap || evoMap.size === 0 || items.length === 0) {
-    return items;
-  }
-  // Index items by lowercase name so we can find a pre-evo by parent-name lookup.
-  // Multiple printings of the same Pokémon get deduped to the first (highest-ranked) entry.
-  const byName = new Map<string, RenderItem>();
-  for (const it of items) {
-    const key = it.name.toLowerCase();
-    if (!byName.has(key)) {
-      byName.set(key, it);
-    }
-  }
-  const drop = new Set<RenderItem>();
-  for (const evo of items) {
-    if (drop.has(evo)) {
-      continue;
-    }
-    const parent = evoMap.get(`${evo.set}::${evo.number}`);
-    if (!parent) {
-      continue;
-    }
-    const preEvo = byName.get(parent);
-    if (!preEvo || preEvo === evo || drop.has(preEvo)) {
-      continue;
-    }
-    if (statsAreClose(preEvo, evo, mode)) {
-      drop.add(preEvo);
-    }
-  }
-  return items.filter(it => !drop.has(it));
-}
-
-function statsAreClose(preEvo: RenderItem, evo: RenderItem, mode: Mode): boolean {
-  // In rising mode the deltas are what matter; in every other mode the visible
-  // headline number is `pct` (which holds the conversion rate in converting mode).
-  if (mode === 'rising' && preEvo.delta !== undefined && evo.delta !== undefined) {
-    return Math.abs(preEvo.delta - evo.delta) <= 2;
-  }
-  return Math.abs(preEvo.pct - evo.pct) <= 5;
-}
-
-function shortTournament(key: string): string {
-  if (key === ONLINE_META_NAME) {
-    return ONLINE_META_LABEL;
-  }
-  const m = key.match(/^\d{4}-\d{2}-\d{2},\s*(.+)$/);
-  return m ? m[1] : key;
-}
 
 export function SocialGraphicsPage() {
   const [tournaments] = createResource(fetchTournamentsList);
@@ -219,95 +117,17 @@ export function SocialGraphicsPage() {
   const day2StatsData = () => latestValue(day2Stats);
   const evolutionMapData = () => latestValue(evolutionMap);
 
-  const items = createMemo<RenderItem[]>(() => {
-    const m = masterData();
-    if (!m) {
-      return [];
-    }
-    const filtered = m.items.filter(i => !isBasicEnergy(i));
-    // Overcollect so evolution collapsing can still hit the requested size after
-    // a few pre-evos are dropped from the candidate pool.
-    const pool = size() + 8;
-
-    let candidates: RenderItem[];
-
-    if (mode() === 'converting') {
-      const stats = day2StatsData();
-      if (!stats) {
-        return [];
-      }
-      const catByUid = new Map<string, CatKind>();
-      for (const it of filtered) {
-        if (it.uid) {
-          catByUid.set(it.uid, classify(it));
-        }
-      }
-      const min = minDecks();
-      const ranked = stats
-        .filter(s => s.day1Count >= min && !(s.set === 'SVE'))
-        .sort((a, b) => {
-          if (b.conversion !== a.conversion) {
-            return b.conversion - a.conversion;
-          }
-          // Tie-break on sample size so a higher-confidence row wins.
-          return b.day1Count - a.day1Count;
-        });
-      candidates = ranked.slice(0, pool).map(s => ({
-        rank: 0,
-        name: s.name,
-        set: s.set,
-        number: s.number,
-        found: s.day2Count,
-        total: s.day1Count,
-        pct: s.conversion,
-        cat: catByUid.get(s.uid) ?? 'pokemon',
-        conversion: s.conversion,
-        day1Count: s.day1Count,
-        day2Count: s.day2Count
-      }));
-    } else if (mode() === 'rising') {
-      const cmp = comparisonMasterData();
-      if (!cmp) {
-        return [];
-      }
-      const cmpPct = new Map<string, number>();
-      for (const it of cmp.items) {
-        if (it.uid) {
-          cmpPct.set(it.uid, it.pct);
-        }
-      }
-      const rising = filtered
-        .filter(it => it.uid && cmpPct.has(it.uid))
-        .map(it => ({ item: it, delta: it.pct - (cmpPct.get(it.uid as string) ?? 0) }))
-        .filter(x => x.delta > 0)
-        .sort((a, b) => b.delta - a.delta);
-      candidates = rising.slice(0, pool).map(x => ({
-        rank: 0,
-        name: x.item.name,
-        set: x.item.set ?? '',
-        number: String(x.item.number ?? ''),
-        found: x.item.found,
-        total: x.item.total,
-        pct: x.item.pct,
-        cat: classify(x.item),
-        delta: x.delta
-      }));
-    } else {
-      candidates = filtered.slice(0, pool).map(it => ({
-        rank: 0,
-        name: it.name,
-        set: it.set ?? '',
-        number: String(it.number ?? ''),
-        found: it.found,
-        total: it.total,
-        pct: it.pct,
-        cat: classify(it)
-      }));
-    }
-
-    const collapsed = collapseEvolutions(candidates, evolutionMapData(), mode());
-    return collapsed.slice(0, size()).map((c, idx) => ({ ...c, rank: idx + 1 }));
-  });
+  const items = createMemo<RenderItem[]>(() =>
+    buildRenderModel({
+      mode: mode(),
+      size: size(),
+      minDecks: minDecks(),
+      items: masterData()?.items ?? null,
+      comparisonItems: comparisonMasterData()?.items ?? null,
+      day2Stats: day2StatsData(),
+      evolutionMap: evolutionMapData()
+    })
+  );
 
   // Export rasterizes the live preview canvas, so it must stay disabled until
   // every resource the ACTIVE mode reads has resolved — rising needs the

@@ -1,3 +1,13 @@
+import {
+  formatDeltaPp as fmtDeltaPp,
+  formatShare as fmtShare,
+  formatWinRate as fmtWinRate,
+  sortByMode,
+  suggestTechCards,
+  summarizeKeyMatchups,
+  type TechSuggestion,
+  toneClass
+} from './matchupsPanel/model';
 import { useNavigate } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, on, Show } from 'solid-js';
 import {
@@ -10,7 +20,6 @@ import {
   normalizeArchetypeKey
 } from '../lib/data';
 import {
-  bucketWinRate,
   gaugeWidth,
   type MatchupRowCore,
   rowsFromMajorsProfile,
@@ -80,69 +89,8 @@ const LENS_FLOOR = 3;
 /** Up to this many suggested tech-card chips in the lens drawer. */
 const CHIP_COUNT = 4;
 /** Tech-card inclusion band (share of lists), mirrored from ArchetypePage's Tech tab. */
-const CORE_THRESHOLD = 90;
-const TECH_THRESHOLD = 30;
 
 /** Whole-number win-rate readout, or an em-dash placeholder for low-sample rows. */
-function fmtWinRate(n: number | null): string {
-  return n === null || !Number.isFinite(n) ? '—' : `${Math.round(n)}%`;
-}
-
-/** Field-share readout: one decimal, e.g. "12.7%". Empty when unknown. */
-function fmtShare(n: number | null): string {
-  return n === null || !Number.isFinite(n) ? '' : `${n.toFixed(1)}%`;
-}
-
-/** Win-rate delta in whole percentage points, signed, for the lens rows. */
-function fmtDeltaPp(n: number | null): string {
-  if (n === null || !Number.isFinite(n)) {
-    return '—';
-  }
-  return `${n > 0 ? '+' : ''}${Math.round(n)}pp`;
-}
-
-/**
- * Per-row tone keyed off the exact 50% center (not the overview's 48-52 band):
- * above 50 reads favored (green), below reads unfavored (red), exactly 50 is
- * neutral. This is the redundant, non-color encoding of the gauge fill's hue.
- */
-function toneClass(wr: number | null): string {
-  if (wr === null || !Number.isFinite(wr) || Math.abs(wr - 50) < 0.5) {
-    return 'mu-flat';
-  }
-  return wr > 50 ? 'mu-pos' : 'mu-neg';
-}
-
-/** Sort desc by prevalence (when chosen) else by the quality metric, nulls last. */
-function sortByMode<T>(
-  rows: T[],
-  mode: SortBy,
-  quality: (t: T) => number | null,
-  prevalence: (t: T) => number | null
-): T[] {
-  const cmp = (a: number | null, b: number | null) => {
-    if (a === null && b === null) {
-      return 0;
-    }
-    if (a === null) {
-      return 1;
-    }
-    if (b === null) {
-      return -1;
-    }
-    return b - a;
-  };
-  return [...rows].sort((a, b) => {
-    if (mode === 'prevalence') {
-      const p = cmp(prevalence(a), prevalence(b));
-      if (p !== 0) {
-        return p;
-      }
-    }
-    return cmp(quality(a), quality(b));
-  });
-}
-
 export function MatchupsPanel(props: MatchupsPanelProps) {
   const navigate = useNavigate();
 
@@ -254,25 +202,7 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
     ).map(({ fieldShare: _fieldShare, ...row }) => row)
   );
 
-  const keyStats = createMemo(() => {
-    const rows = keyRows();
-    let favored = 0;
-    let even = 0;
-    let unfavored = 0;
-    let shareSum = 0;
-    for (const r of rows) {
-      const bucket = bucketWinRate(r.winRate);
-      if (bucket === 'fav') {
-        favored += 1;
-      } else if (bucket === 'even') {
-        even += 1;
-      } else {
-        unfavored += 1;
-      }
-      shareSum += r.prevalence ?? 0;
-    }
-    return { favored, even, unfavored, shareSum };
-  });
+  const keyStats = createMemo(() => summarizeKeyMatchups(keyRows()));
 
   // Rest of the field: everything not surfaced as a key row (mirror included),
   // split into a shown set (meets the floor, or fills the top-N guarantee) and the
@@ -366,27 +296,9 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
 
   // ---- Suggested tech-card chips (reuse the Tech tab's source: report items in
   // the 30-90% inclusion band, most-played first). Empty → search-only fallback.
-  const techSuggestions = createMemo<{ cardId: string; name: string; label: string }[]>(() => {
-    // Lens decks are canonicalized to the GLOBAL print; a rebaked report's items
-    // carry a rolling print, so resolve the chip's cardId to the cluster canonical.
-    const database = synonymDb() ?? null;
-    return (props.report.items as CardItem[])
-      .filter(
-        i =>
-          i.set &&
-          i.number !== undefined &&
-          i.number !== null &&
-          (i.pct ?? 0) >= TECH_THRESHOLD &&
-          (i.pct ?? 0) < CORE_THRESHOLD
-      )
-      .sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0))
-      .slice(0, CHIP_COUNT)
-      .map(i => ({
-        cardId: buildCanonicalCardId(i, database) ?? buildCardId(i.set!, i.number!),
-        name: i.name,
-        label: `${i.name} ${i.set} ${i.number}`
-      }));
-  });
+  const techSuggestions = createMemo<TechSuggestion[]>(() =>
+    suggestTechCards(props.report.items as CardItem[], synonymDb() ?? null, CHIP_COUNT)
+  );
 
   // ---- Card search ----
   const candidates = createMemo<CardItem[]>(() => {
