@@ -16,6 +16,7 @@
  * @module .github/scripts/reconcile-indexes
  */
 
+import { requireEnv } from './lib/env.ts';
 import { pathToFileURL } from 'node:url';
 import { ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
@@ -24,14 +25,6 @@ import { buildTournamentCatalog, reindexFromDecks } from './event-cli.ts';
 import { createR2Client, getJsonResult, putJson } from './lib/r2.mjs';
 
 const CACHE_CONTROL = 'public, max-age=21600';
-
-function requireEnv(name: string): string {
-  const v = process.env[name];
-  if (!v) {
-    throw new Error(`Missing required environment variable ${name}`);
-  }
-  return v;
-}
 
 interface ReconcileDeck {
   archetype?: string;

@@ -182,9 +182,7 @@ async function discoverViaS3(cards: Map<string, CardRef>): Promise<void> {
     const master = (await getJsonFromR2(`${prefix}master.json`)) as { items?: unknown } | null;
     collectFromItems(master?.items, cards);
     const archeIndex = (await getJsonFromR2(`${prefix}archetypes/index.json`)) as
-      | { archetypes?: { thumbnails?: unknown }[] }
-      | { thumbnails?: unknown }[]
-      | null;
+      { archetypes?: { thumbnails?: unknown }[] } | { thumbnails?: unknown }[] | null;
     const list = Array.isArray(archeIndex) ? archeIndex : (archeIndex?.archetypes ?? []);
     for (const entry of list) {
       collectFromThumbnails((entry as { thumbnails?: unknown }).thumbnails, cards);
@@ -202,9 +200,7 @@ async function discoverViaHttp(cards: Map<string, CardRef>): Promise<void> {
     } | null;
     collectFromItems(master?.items, cards);
     const archeIndex = (await fetchJson(`${R2_BASE}/reports/${encodeURIComponent(name)}/archetypes/index.json`)) as
-      | { archetypes?: { thumbnails?: unknown }[] }
-      | { thumbnails?: unknown }[]
-      | null;
+      { archetypes?: { thumbnails?: unknown }[] } | { thumbnails?: unknown }[] | null;
     const list = Array.isArray(archeIndex) ? archeIndex : (archeIndex?.archetypes ?? []);
     for (const entry of list) {
       collectFromThumbnails((entry as { thumbnails?: unknown }).thumbnails, cards);

@@ -15,6 +15,7 @@
  * @module .github/scripts/shadow-build
  */
 
+import { requireEnv } from './lib/env.ts';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
@@ -30,14 +31,6 @@ import { createR2ObjectStore } from './lib/build/r2ObjectStore.mjs';
 
 const BUILDER_VERSION = 'event-artifacts-v1';
 const hashBody = (body: string): string => `sha256:${sha256HexString(body)}`;
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable ${name}`);
-  }
-  return value;
-}
 
 async function loadEvent(
   input: string,

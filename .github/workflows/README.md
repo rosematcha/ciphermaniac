@@ -126,7 +126,7 @@ before you press the button:
 | `refresh-tournaments-index.yml` | `dry_run_refresh` | **true** |
 | `reconcile-data.yml` | `apply` | **false** (dry run) |
 | `publish-data-release.yml` | `channel` | **shadow** on dispatch, production on schedule |
-| `reset-labs-history.yml` | `dry_run` | **false** — this one bites |
+| `reset-labs-history.yml` | `dry_run` | **true** |
 | `online-meta.yml` | `clean_month_cache` | false; true deletes 30 days of artifacts |
 
 **Known sharp edge:** `reprocess-event-indexes.yml` also fires automatically
@@ -160,5 +160,7 @@ so a pipeline run is reproducible.
 - Put every R2 writer in the `r2-bucket-writers` concurrency group.
 - Declare `permissions:` explicitly; `check-repo-metadata` fails if you don't.
 - Give destructive operations a dry-run input, and default it to the dry run.
+  `scripts/check-repo-metadata.ts` enforces this for `dry_run`, `apply`, `force`,
+  and `overwrite`, so the convention is checked rather than remembered.
 - Set `timeout-minutes` — an R2 writer that hangs blocks every other writer.
 - Note the rollback path here if it isn't one of the ones above.

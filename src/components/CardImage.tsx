@@ -1,69 +1,5 @@
 import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js';
-import { hasPtcgioImages, ptcgioImageUrls, ptcgioSrcset } from '../utils/ptcgio';
-import { R2_ORIGIN } from '../lib/constants';
-
-type CardImageSize = 'xs' | 'sm' | 'lg';
-
-interface CardImageProps {
-  set: string;
-  number: string | number;
-  size?: CardImageSize;
-  alt?: string;
-  /** Optional class added to the root element. */
-  class?: string;
-  /** Optional inline style on the root element. */
-  style?: string;
-  /** Whether to lazy-load (default true). Set false for above-the-fold images. */
-  lazy?: boolean;
-  /**
-   * Skip the R2 WebP tier and go straight to the same-origin proxy.
-   *
-   * The conversion pipeline only re-encodes cards it has SEEN in a recent
-   * tournament, so any printing outside that set is absent from R2 and its
-   * first request 404s before the proxy retry succeeds. That is fine for a
-   * report row (the card was played, so its art was converted) but not for the
-   * card page's printings filmstrip, which renders every printing in a reprint
-   * cluster including long-rotated ones: measured at 10 wasted round trips on
-   * one card page, on a throttled connection.
-   *
-   * Set this where most images are expected to be outside the converted set.
-   * The proxy is same-origin and edge-cached, so the only cost is the WebP
-   * size saving — which is smallest at the `xs` tier these callers use.
-   */
-  skipR2?: boolean;
-  /**
-   * Rendered-width hint (standard img `sizes` syntax). When set, the browser
-   * picks the cheapest sufficient tier from a srcset capped at the preferred
-   * `size` — so a phone grid never downloads LG, and 1x screens drop to XS.
-   * Tier widths: xs 136w (~17KB), sm 274w (~52KB), lg 460w (~118KB).
-   */
-  sizes?: string;
-}
-
-/** Natural pixel width of each CDN tier, for srcset w-descriptors. */
-const TIER_WIDTH: Record<CardImageSize, number> = { xs: 136, sm: 274, lg: 460 };
-
-/**
- * Renders a Pokémon TCG card image. Source preference, most to least:
- *   1. Our R2 WebP bucket (when the conversion pipeline has run) — our domain,
- *      ~25% of the PNG weight.
- *   2. The same-origin `/thumbnails/{size}/{set}/{number}` Pages Function, which
- *      proxies the LimitlessTCG CDN server-side.
- *
- * Why not hotlink the CDN directly: LimitlessTCG's CDN sits behind Cloudflare
- * bot-management, which sets a `__cf_bm` cookie scoped to the public suffix
- * `digitaloceanspaces.com`. Browsers reject that cookie, and without the
- * session it establishes, concurrent image loads get 403-challenged — so a
- * page full of card art shows placeholders. The same-origin proxy sidesteps it
- * entirely (the browser talks to us; we fetch the CDN), and its responses are
- * edge-cached so it isn't a per-view Function cost. There is deliberately no
- * direct-CDN fallback tier — those requests are doomed in real browsers.
- *
- * Falls through the size tiers (lg → sm → xs) before finally rendering a
- * styled placeholder.
- */
-const R2_CARD_IMAGES = `${R2_ORIGIN}/card-images`;
-const THUMBNAILS_PROXY = '/thumbnails';
+import { buildAttempts, buildSrcset, type CardImageSize, R2_CARD_IMAGES } from './cardImage/sources';
 
 /**
  * Our R2 bucket serves the same art re-encoded as WebP at ~25% of the PNG
@@ -111,86 +47,63 @@ export function probeR2Ready(): void {
   }
 }
 
-function r2TierUrl(setU: string, num: string, size: CardImageSize): string {
-  return `${R2_CARD_IMAGES}/${setU}/${setU}_${num}_R_EN_${size.toUpperCase()}.webp`;
+interface CardImageProps {
+  set: string;
+  number: string | number;
+  size?: CardImageSize;
+  alt?: string;
+  /** Optional class added to the root element. */
+  class?: string;
+  /** Optional inline style on the root element. */
+  style?: string;
+  /** Whether to lazy-load (default true). Set false for above-the-fold images. */
+  lazy?: boolean;
+  /**
+   * Skip the R2 WebP tier and go straight to the same-origin proxy.
+   *
+   * The conversion pipeline only re-encodes cards it has SEEN in a recent
+   * tournament, so any printing outside that set is absent from R2 and its
+   * first request 404s before the proxy retry succeeds. That is fine for a
+   * report row (the card was played, so its art was converted) but not for the
+   * card page's printings filmstrip, which renders every printing in a reprint
+   * cluster including long-rotated ones: measured at 10 wasted round trips on
+   * one card page, on a throttled connection.
+   *
+   * Set this where most images are expected to be outside the converted set.
+   * The proxy is same-origin and edge-cached, so the only cost is the WebP
+   * size saving — which is smallest at the `xs` tier these callers use.
+   */
+  skipR2?: boolean;
+  /**
+   * Rendered-width hint (standard img `sizes` syntax). When set, the browser
+   * picks the cheapest sufficient tier from a srcset capped at the preferred
+   * `size` — so a phone grid never downloads LG, and 1x screens drop to XS.
+   * Tier widths: xs 136w (~17KB), sm 274w (~52KB), lg 460w (~118KB).
+   */
+  sizes?: string;
 }
 
-/** Same-origin proxy URL. The Function normalizes the number server-side. */
-function thumbTierUrl(setU: string, num: string, size: CardImageSize): string {
-  return `${THUMBNAILS_PROXY}/${size}/${setU}/${num}`;
-}
+/** Natural pixel width of each CDN tier, for srcset w-descriptors. */
 
 /**
- * srcset over every tier up to (and including) the preferred size, using the
- * padded number form. Only used for the first attempt — if anything 404s we
- * fall back to the plain single-src retry chain, which stays authoritative.
+ * Renders a Pokémon TCG card image. Source preference, most to least:
+ *   1. Our R2 WebP bucket (when the conversion pipeline has run) — our domain,
+ *      ~25% of the PNG weight.
+ *   2. The same-origin `/thumbnails/{size}/{set}/{number}` Pages Function, which
+ *      proxies the LimitlessTCG CDN server-side.
+ *
+ * Why not hotlink the CDN directly: LimitlessTCG's CDN sits behind Cloudflare
+ * bot-management, which sets a `__cf_bm` cookie scoped to the public suffix
+ * `digitaloceanspaces.com`. Browsers reject that cookie, and without the
+ * session it establishes, concurrent image loads get 403-challenged — so a
+ * page full of card art shows placeholders. The same-origin proxy sidesteps it
+ * entirely (the browser talks to us; we fetch the CDN), and its responses are
+ * edge-cached so it isn't a per-view Function cost. There is deliberately no
+ * direct-CDN fallback tier — those requests are doomed in real browsers.
+ *
+ * Falls through the size tiers (lg → sm → xs) before finally rendering a
+ * styled placeholder.
  */
-function buildSrcset(set: string, number: string | number, preferredSize: CardImageSize, useR2: boolean): string {
-  const setU = String(set).toUpperCase();
-  const stripped = String(number).replace(/^0+/, '') || '0';
-  const parts = stripped.match(/^(\d+)([A-Za-z]*)$/);
-  // Variant suffixes are lowercase in the CDN filenames (SLG_068a) even though
-  // UIDs store them uppercase — and the CDN is case-sensitive.
-  const num = parts ? `${parts[1].padStart(3, '0')}${(parts[2] ?? '').toLowerCase()}` : stripped;
-  // Vintage sets live on pokemontcg.io (see utils/ptcgio.ts) — neither R2 nor
-  // the Limitless proxy has their scans.
-  if (hasPtcgioImages(setU)) {
-    return ptcgioSrcset(setU, num) ?? '';
-  }
-  const tiers: CardImageSize[] = preferredSize === 'lg' ? ['xs', 'sm', 'lg'] : ['xs', 'sm'];
-  // R2 WebP when ready, else the same-origin proxy — never hotlink the CDN in
-  // srcset, since that's the path the browser bot-blocks.
-  const urlFor = useR2 ? r2TierUrl : thumbTierUrl;
-  return tiers.map(t => `${urlFor(setU, num, t)} ${TIER_WIDTH[t]}w`).join(', ');
-}
-
-function buildAttempts(set: string, number: string | number, preferredSize: CardImageSize, useR2: boolean): string[] {
-  const setU = String(set).toUpperCase();
-  const numStr = String(number);
-  const stripped = numStr.replace(/^0+/, '') || '0';
-  const parts = stripped.match(/^(\d+)([A-Za-z]*)$/);
-  // Limitless's CDN uses 3-digit zero-padded numbers (PRE_037, not PRE_37) and
-  // lowercase variant suffixes (SLG_068a) — it is case-sensitive.
-  const padded = parts ? `${parts[1].padStart(3, '0')}${(parts[2] ?? '').toLowerCase()}` : stripped;
-
-  // Size fallback chain: lg → sm → xs.
-  const sizeChain: CardImageSize[] =
-    preferredSize === 'lg' ? ['lg', 'sm', 'xs'] : preferredSize === 'sm' ? ['sm', 'xs'] : ['xs'];
-
-  const seen = new Set<string>();
-  const urls: string[] = [];
-  const push = (url: string) => {
-    if (!seen.has(url)) {
-      seen.add(url);
-      urls.push(url);
-    }
-  };
-
-  // 0. Vintage sets (DP era and older, POP, XY promos): Limitless's CDN has no
-  //    scans, so R2 and the proxy would only 404 — go straight to
-  //    pokemontcg.io. Hotlinking is safe there: no bot-management cookie.
-  if (hasPtcgioImages(setU)) {
-    for (const url of ptcgioImageUrls(setU, padded, preferredSize)) {
-      push(url);
-    }
-    return urls;
-  }
-
-  // 1. R2 WebP (preferred tier) when the pipeline has run — lightest, our domain.
-  if (useR2) {
-    push(r2TierUrl(setU, padded, preferredSize));
-  }
-  // 2. Same-origin proxy for each tier. This is the reliable browser-facing
-  //    source: it dodges the CDN's browser-rejected bot cookie, and the proxy
-  //    normalizes the number itself, so one URL per tier suffices. No direct-CDN
-  //    tail after this — those hotlinks are bot-blocked in real browsers, so the
-  //    chain ends here and falls to the placeholder.
-  for (const size of sizeChain) {
-    push(thumbTierUrl(setU, padded, size));
-  }
-  return urls;
-}
-
 /**
  * Warms the browser cache for one card's art at a given tier, using the same
  * source preference the component itself would pick — so the subsequent
@@ -207,13 +120,21 @@ function buildAttempts(set: string, number: string | number, preferredSize: Card
  * @param set - Card set code.
  * @param number - Collector number.
  * @param size - Tier to warm; must match what the eventual render requests.
+ * @param skipR2 - Mirror {@link CardImageProps.skipR2} for the eventual render.
  * @returns Resolves when the art is decoded, or when it has definitively failed.
  */
-export function preloadCardImage(set: string, number: string | number, size: CardImageSize): Promise<void> {
+export function preloadCardImage(
+  set: string,
+  number: string | number,
+  size: CardImageSize,
+  skipR2 = false
+): Promise<void> {
   if (typeof window === 'undefined') {
     return Promise.resolve();
   }
-  const url = buildAttempts(set, number, size, r2Ready())[0];
+  // Must mirror CardImage's source choice, or the preload warms a URL the
+  // render never requests and the "cache hit" is a second round trip.
+  const url = buildAttempts(set, number, size, r2Ready() && !skipR2)[0];
   if (!url) {
     return Promise.resolve();
   }
@@ -228,12 +149,17 @@ export function preloadCardImage(set: string, number: string | number, size: Car
 export function CardImage(props: CardImageProps) {
   // Capture the R2 decision once per instance: an async probe flipping the
   // global signal mid-session must not re-source already-rendered images
-  // (double download + flicker). Future mounts pick up the new value. `skipR2`
-  // is captured with it and is a static per-call-site decision, never a signal:
-  // flipping an image's source mid-render is the exact flicker this avoids.
-  // eslint-disable-next-line solid/reactivity -- capturing once is the point
-  const useR2 = r2Ready() && props.skipR2 !== true;
-  const attempts = createMemo(() => buildAttempts(props.set, props.number, props.size ?? 'sm', useR2));
+  // (double download + flicker). Future mounts pick up the new value.
+  //
+  // `skipR2` DOES track, unlike the probe: it changes with the previewed
+  // printing on the card page, and that already re-sources the image (set and
+  // number change with it), so honoring it costs no extra churn — whereas
+  // ignoring it would 404 the hero at `lg` on every hover over an unconverted
+  // print.
+  // eslint-disable-next-line solid/reactivity -- the probe specifically must not track
+  const r2Probed = r2Ready();
+  const useR2 = createMemo(() => r2Probed && props.skipR2 !== true);
+  const attempts = createMemo(() => buildAttempts(props.set, props.number, props.size ?? 'sm', useR2()));
   const [attemptIndex, setAttemptIndex] = createSignal(0);
   const [errored, setErrored] = createSignal(false);
 
@@ -276,7 +202,7 @@ export function CardImage(props: CardImageProps) {
         src={src()}
         srcset={
           props.sizes && attemptIndex() === 0
-            ? buildSrcset(props.set, props.number, props.size ?? 'sm', useR2)
+            ? buildSrcset(props.set, props.number, props.size ?? 'sm', useR2())
             : undefined
         }
         sizes={props.sizes && attemptIndex() === 0 ? props.sizes : undefined}

@@ -373,5 +373,27 @@
   ],
   "verificationMatrix": {
     "status": "Comprehensively covered for all buildable/testable items. REMAINING items require the live cutover and cannot be simulated: production promotion + rollback with old/new/no service worker; p50/p95 network/parse/first-data/LCP/memory/bytes compared against Phase 0 baseline for a real embedded release; Pages atomicity smoke tests. Covered items: node-key determinism (order-insensitive deps, meaningful array order, volatile timestamps excluded), dirty propagation (synonym-only, corrected-event, no-change), missing/corrupt output invalidates receipt, body-upload failure writes no receipt, receipt-failure leaves harmless orphan, conditional pointer conflict -> replan, failure-before-pointer keeps prior release active, immutable idempotent republish, price-history transport cannot truncate, contract invariants + all-errors validation, byte-identical rebuilds/permutation-invariance, canonical cards counted once, archetype identity cannot split on case/punctuation, D13-D16 documented, release-body-404 single-reload recovery."
-  }
+  },
+  "qualityInitiativeDecisions": [
+    {
+      "item": "Phase 6.4 — split shared/data/contracts.ts and artifacts.ts by domain",
+      "decision": "NOT DONE, deliberately.",
+      "evidence": "The plan's stated rationale is that their size makes changes non-local. Measured, it is not: contracts.ts has 10 commits in its entire history and artifacts.ts has 2, against 29 for src/lib/data.ts — which is why splitting THAT was clearly right. Both also score 0.0 on the Phase 17 mixedness report (contracts.ts registers one concern, artifacts.ts none): they are long files that do exactly one thing, define and validate contracts. Splitting them would rewrite 47 export paths across the codebase and put the parity harness at risk mid-migration, to fix a locality problem the history says does not exist. The plan's own rule applies — 'Do not split files merely to reduce line count. Split responsibilities.' Revisit if either starts changing often or picks up a second concern; `npm run report:modules --churn` is the check."
+    },
+    {
+      "item": "Phase 14.2 — remove duplicated workflow setup via composite actions",
+      "decision": "NOT DONE, deliberately.",
+      "evidence": "The repeated block is checkout + setup-node (+ setup-python), 3-4 lines in each of 18 workflows. Its only real failure mode is version drift, and scripts/check-repo-metadata.ts already fails CI when any workflow's node-version disagrees with package.json engines. A composite action would trade explicit, greppable YAML for indirection to save a handful of lines whose risk is already covered. The plan says to abstract only 'genuinely stable repeated sequences'; this one is stable but too small to be worth the indirection."
+    },
+    {
+      "item": "Phase 14.4 — pin third-party Actions to commit SHAs",
+      "decision": "OPEN — a posture choice for Reese, not a defect.",
+      "evidence": "Workflows use major-version refs (actions/checkout@v5 etc.). The plan says to pin 'if this repository's security posture warrants it'. Three workflows hold contents:write and push to main, so a compromised action tag could commit to the repo — that is the argument for pinning. Against: SHA pins need a bot (Dependabot/Renovate) to stay current or they rot into known-vulnerable versions, and none is configured. Recommend deciding the update mechanism first, then pinning; doing it without one is worse than not doing it."
+    },
+    {
+      "item": "Phase 15.2 — major dependency upgrades",
+      "decision": "STAGED, not taken in this initiative.",
+      "evidence": "Seven majors are outstanding: TypeScript 5.9->7, Vite 5->8, @solidjs/router 0.15->1.0, ESLint 8->10, c8 10->12, lint-staged 16->17, @types/node 25->26. All minors ARE taken (advisories 9 -> 3, all dev-only; production dependencies are at zero, which is what CI gates). The plan requires one ecosystem at a time with full verification and a bundle check between each, and warns against treating an ESLint flat-config rewrite as progress by itself. Each remaining major is its own change."
+    }
+  ]
 }

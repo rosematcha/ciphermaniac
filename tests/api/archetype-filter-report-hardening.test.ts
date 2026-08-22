@@ -352,3 +352,19 @@ test('count is ignored in the cache key for operators that ignore it', async () 
   };
   assert.deepEqual(await shape(a), await shape(b));
 });
+
+test('an over-padded cardId still reaches the deck key', async () => {
+  // buildCardId pads short numbers but never truncates, so `SVI~0001` would not
+  // equal the deck key `SVI~001` without stripping first.
+  for (const id of ['SVI~0001', 'SVI~00001', 'svi~0001']) {
+    assert.equal(await deckTotalFor(id), 1, `${id} should reach SVI~001`);
+  }
+});
+
+test('a cardId with no number is rejected rather than matching every deck', async () => {
+  // `SVI~` is a key no deck card can produce, so the count is always 0 — and
+  // with the default (exclude) operator, "count must be 0" then matches EVERY
+  // deck, returning an unfiltered report that looks filtered.
+  const response = await onRequestPost({ request: post(base({ filters: [{ cardId: 'SVI~' }] })) });
+  assert.equal(response.status, 400);
+});

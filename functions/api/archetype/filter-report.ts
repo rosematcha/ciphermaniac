@@ -95,22 +95,63 @@ function isPresentNonString(value: unknown): boolean {
 const BODY_TOO_LARGE = Symbol('body-too-large');
 const BODY_UNPARSEABLE = Symbol('body-unparseable');
 
+/**
+ * Read a request body to text, aborting once it exceeds `maxBytes`.
+ *
+ * Counts the bytes of each chunk as it arrives rather than buffering the whole
+ * body and measuring afterwards, so an unbounded body costs at most one chunk
+ * past the cap.
+ * @param request - The incoming request
+ * @param maxBytes - Ceiling, in UTF-8 bytes
+ * @returns The decoded text
+ * @throws {typeof BODY_TOO_LARGE} Once the running byte count exceeds the cap
+ */
+async function readBoundedText(request: Request, maxBytes: number): Promise<string> {
+  const { body } = request;
+  if (!body) {
+    // No stream (some runtimes, and tests constructing a Request from a string)
+    // — fall back to buffering, still measuring bytes rather than characters.
+    const text = await request.text();
+    if (new TextEncoder().encode(text).length > maxBytes) {
+      throw BODY_TOO_LARGE;
+    }
+    return text;
+  }
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let seen = 0;
+  let out = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    seen += value.byteLength;
+    if (seen > maxBytes) {
+      await reader.cancel().catch(() => undefined);
+      throw BODY_TOO_LARGE;
+    }
+    out += decoder.decode(value, { stream: true });
+  }
+  return out + decoder.decode();
+}
+
 async function readBody(request: Request): Promise<unknown | typeof BODY_TOO_LARGE | typeof BODY_UNPARSEABLE> {
   const declared = Number(request.headers.get('content-length'));
   if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
     return BODY_TOO_LARGE;
   }
+  // Read the body as a stream, counting BYTES and bailing the moment the count
+  // exceeds the cap. Two reasons not to buffer first: `text.length` counts
+  // UTF-16 code units, which UNDER-count UTF-8 by up to 3x for non-Latin
+  // scripts (so an oversized multi-byte body would slip through), and
+  // `request.text()` on a chunked body with no honest Content-Length buffers
+  // without bound before any check can reject it.
   let text: string;
   try {
-    text = await request.text();
-  } catch {
-    return BODY_UNPARSEABLE;
-  }
-  // Measure BYTES, not string length. `text.length` counts UTF-16 code units,
-  // which UNDER-counts UTF-8 by up to 3x for non-Latin scripts — so a body
-  // genuinely over the ceiling could slip through by being multi-byte.
-  if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) {
-    return BODY_TOO_LARGE;
+    text = await readBoundedText(request, MAX_BODY_BYTES);
+  } catch (err) {
+    return err === BODY_TOO_LARGE ? BODY_TOO_LARGE : BODY_UNPARSEABLE;
   }
   try {
     return JSON.parse(text) as unknown;
