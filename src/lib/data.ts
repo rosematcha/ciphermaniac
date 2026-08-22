@@ -11,8 +11,6 @@
  * @module src/lib/data
  */
 
-import { ONLINE_META_LABEL } from './constants';
-import { ONLINE } from './data/paths';
 import type { UpcomingPayload } from '../../shared/upcomingTypes.js';
 
 export type { UpcomingPayload };
@@ -42,6 +40,14 @@ export type { CardUsageEntry, CardUsagePayload } from './data/cards';
 export { fetchArchetypeDecks, fetchConversionIndex, fetchDay2CardStats, fetchParticipants } from './data/events';
 export type { ConversionPayload, Day2CardStat, DeckRecord } from './data/events';
 export { findCardBySetNumberCanonical, normalizeCardNumberKey, resolveCanonicalSetNumber } from './data/routes';
+// Tournament-key parsing lives in shared: the daily majors-trends pipeline
+// classifies and dates events the same way the selector does.
+export {
+  classifyTournament,
+  majorTournaments,
+  prettyTournamentName,
+  tournamentDate
+} from '../../shared/data/tournamentKeys';
 export {
   fetchArchetypeMatches,
   fetchArchetypeMatchupsOnline,
@@ -87,76 +93,4 @@ export async function fetchUpcomingTournaments(): Promise<UpcomingPayload | null
   } catch {
     return null;
   }
-}
-
-// --- Tournament name helpers ---
-
-/**
- * Tournament keys look like "2026-05-08, Regional Championship Los Angeles".
- * Pretty form for display: "Regional Championship Los Angeles · May 8, 2026"
- * Returns the input unchanged if the format doesn't match.
- */
-export function prettyTournamentName(key: string): string {
-  if (key === ONLINE) {
-    return ONLINE_META_LABEL;
-  }
-  const m = key.match(/^(\d{4})-(\d{2})-(\d{2}),\s*(.+)$/);
-  if (!m) {
-    return key;
-  }
-  const [, y, mo, d, rest] = m;
-  const date = new Date(Number(y), Number(mo) - 1, Number(d));
-  if (Number.isNaN(date.getTime())) {
-    return key;
-  }
-  const dateLabel = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  return `${rest} · ${dateLabel}`;
-}
-
-/**
- * Tournament type classification (regional / international / online / special).
- * Used to group + filter in the selector.
- */
-export function classifyTournament(key: string): 'online' | 'regional' | 'international' | 'special' | 'other' {
-  if (key === ONLINE) {
-    return 'online';
-  }
-  const lower = key.toLowerCase();
-  if (lower.includes('international championship')) {
-    return 'international';
-  }
-  if (lower.includes('regional championship')) {
-    return 'regional';
-  }
-  if (lower.includes('special event')) {
-    return 'special';
-  }
-  return 'other';
-}
-
-// --- Tournament-classification helpers ---
-
-/**
- * Parse the date portion of a tournament key like "2026-05-08, Regional Championship Los Angeles".
- */
-export function tournamentDate(key: string): Date | null {
-  if (key === ONLINE) {
-    return null;
-  }
-  const m = key.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!m) {
-    return null;
-  }
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
-/**
- * Filter a tournament list to "majors" (regional / international / special).
- */
-export function majorTournaments(list: string[]): string[] {
-  return list.filter(t => {
-    const c = classifyTournament(t);
-    return c === 'regional' || c === 'international' || c === 'special';
-  });
 }
