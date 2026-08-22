@@ -31,6 +31,7 @@
  * @module shared/data/contracts
  */
 
+import { cardUidOrName } from './cardIdentity';
 import { canonicalizeVariant, normalizeCardNumber } from '../cardUtils';
 import { archetypeKey, archetypeSlug } from './archetypes/identity';
 
@@ -610,7 +611,7 @@ export function cardUid(
   number: string | number | null | undefined
 ): string {
   const [canonSet, canonNumber] = canonicalizeVariant(set, number);
-  return canonSet && canonNumber ? `${name}::${canonSet}::${canonNumber}` : name;
+  return cardUidOrName(name, canonSet, canonNumber);
 }
 
 /**

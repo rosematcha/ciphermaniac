@@ -1,6 +1,7 @@
 import { loadCardSynonyms } from '../data/cardSynonyms.js';
 import { getCanonicalCardFromData } from '../synonyms';
 import { cardNumberIndexKey } from '../cardUtils.js';
+import { cardUid } from '../data/cardIdentity';
 import { getJson, getJsonResult, putJson } from './storageWriter';
 
 const SNAPSHOT_ROOT = 'reports/Snapshots';
@@ -43,10 +44,7 @@ function itemUid(item: MinimalCardItem): string | null {
   if (item.uid) {
     return item.uid;
   }
-  if (item.name && item.set && item.number !== undefined && item.number !== null) {
-    return `${item.name}::${item.set}::${item.number}`;
-  }
-  return null;
+  return cardUid(item.name, item.set, item.number);
 }
 
 function setNumberKey(set: string, number: string | number): string {
