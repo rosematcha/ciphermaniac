@@ -36,6 +36,7 @@
     "knip": "knip",
     "check:metadata": "tsx scripts/check-repo-metadata.ts",
     "check:release": "tsx scripts/verify-release.ts",
+    "report:modules": "tsx scripts/module-report.ts",
     "verify": "npm run validate && npm run knip && npm run check:metadata && npm run build && npm run test:all && npm run coverage:check && npm run coverage:check:domain"
   },
   "devDependencies": {
