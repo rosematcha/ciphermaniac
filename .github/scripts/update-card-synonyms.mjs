@@ -5,7 +5,7 @@
  * Creates canonical mappings for card reprints across all sets.
  */
 
-import { appendFile, writeFile, mkdir } from 'fs/promises';
+import { appendFile, mkdir, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
@@ -17,20 +17,19 @@ import { createR2Client, getJsonResult } from './lib/r2.mjs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const PUBLIC_R2_BASE = process.env.PUBLIC_R2_BASE_URL || 'https://r2.ciphermaniac.com';
 const OUTPUT_PATH = join(__dirname, '../../public/assets/card-synonyms.json');
 const ONLINE_META_FOLDER = 'Online - Last 14 Days';
 
 function log(message) {
-    console.log(message);
+  console.log(message);
 }
 
 function requireEnv(name) {
-    const value = process.env[name];
-    if (!value) {
-        throw new Error(`Missing environment variable: ${name}`);
-    }
-    return value;
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing environment variable: ${name}`);
+  }
+  return value;
 }
 
 const R2_ACCOUNT_ID = requireEnv('R2_ACCOUNT_ID');
@@ -39,200 +38,210 @@ const R2_SECRET_ACCESS_KEY = requireEnv('R2_SECRET_ACCESS_KEY');
 const R2_BUCKET_NAME = requireEnv('R2_BUCKET_NAME');
 
 const s3Client = createR2Client({
-    accountId: R2_ACCOUNT_ID,
-    accessKeyId: R2_ACCESS_KEY_ID,
-    secretAccessKey: R2_SECRET_ACCESS_KEY
+  accountId: R2_ACCOUNT_ID,
+  accessKeyId: R2_ACCESS_KEY_ID,
+  secretAccessKey: R2_SECRET_ACCESS_KEY
 });
 
 async function putObject(key, data) {
-    const body = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-    const command = new PutObjectCommand({
-        Bucket: R2_BUCKET_NAME,
-        Key: key,
-        Body: body,
-        ContentType: 'application/json'
-    });
-    await s3Client.send(command);
+  const body = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+  const command = new PutObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: key,
+    Body: body,
+    ContentType: 'application/json'
+  });
+  await s3Client.send(command);
 }
 
 async function loadTournamentsList() {
-    log('Loading tournaments list...');
-    const result = await getJsonResult(s3Client, R2_BUCKET_NAME, 'reports/tournaments.json');
-    if (result.status === 'transport' || result.status === 'corrupt') {
-        throw new Error(`Failed to load reports/tournaments.json (${result.status})`, { cause: result.error });
-    }
-    const data = result.status === 'found' ? result.value : null;
-    const tournaments = Array.isArray(data) ? data : (data?.tournaments || []);
-    log(`  Found ${tournaments.length} tournaments`);
-    return tournaments;
+  log('Loading tournaments list...');
+  const result = await getJsonResult(s3Client, R2_BUCKET_NAME, 'reports/tournaments.json');
+  if (result.status === 'transport' || result.status === 'corrupt') {
+    throw new Error(`Failed to load reports/tournaments.json (${result.status})`, { cause: result.error });
+  }
+  const data = result.status === 'found' ? result.value : null;
+  const tournaments = Array.isArray(data) ? data : data?.tournaments || [];
+  log(`  Found ${tournaments.length} tournaments`);
+  return tournaments;
 }
 
 async function loadPreviousSynonyms() {
-    // Read the live DB straight from R2 (authenticated S3 GET, so it bypasses
-    // the hours-long public edge cache). Used to MERGE rather than replace, so a
-    // transient scrape failure can never drop mappings unique to a missing
-    // source (P-06). Returns null only when there is verifiably no prior DB — a
-    // transport/corrupt read throws rather than silently discarding the DB.
-    const result = await getJsonResult(s3Client, R2_BUCKET_NAME, 'assets/card-synonyms.json');
-    if (result.status === 'transport' || result.status === 'corrupt') {
-        throw new Error(`Failed to load previous synonyms (${result.status})`, { cause: result.error });
-    }
-    if (result.status === 'missing') {
-        log('  No previous synonyms in R2; starting fresh');
-        return null;
-    }
-    const data = result.value;
-    const synonyms = data?.synonyms && typeof data.synonyms === 'object' ? data.synonyms : {};
-    const canonicals = data?.canonicals && typeof data.canonicals === 'object' ? data.canonicals : {};
-    const prints = data?.prints && typeof data.prints === 'object' ? data.prints : {};
-    log(`  Loaded previous synonyms from R2: ${Object.keys(synonyms).length} synonyms, ${Object.keys(canonicals).length} canonicals, ${Object.keys(prints).length} prints`);
-    return { synonyms, canonicals, prints };
+  // Read the live DB straight from R2 (authenticated S3 GET, so it bypasses
+  // the hours-long public edge cache). Used to MERGE rather than replace, so a
+  // transient scrape failure can never drop mappings unique to a missing
+  // source (P-06). Returns null only when there is verifiably no prior DB — a
+  // transport/corrupt read throws rather than silently discarding the DB.
+  const result = await getJsonResult(s3Client, R2_BUCKET_NAME, 'assets/card-synonyms.json');
+  if (result.status === 'transport' || result.status === 'corrupt') {
+    throw new Error(`Failed to load previous synonyms (${result.status})`, { cause: result.error });
+  }
+  if (result.status === 'missing') {
+    log('  No previous synonyms in R2; starting fresh');
+    return null;
+  }
+  const data = result.value;
+  const synonyms = data?.synonyms && typeof data.synonyms === 'object' ? data.synonyms : {};
+  const canonicals = data?.canonicals && typeof data.canonicals === 'object' ? data.canonicals : {};
+  const prints = data?.prints && typeof data.prints === 'object' ? data.prints : {};
+  log(
+    `  Loaded previous synonyms from R2: ${Object.keys(synonyms).length} synonyms, ${Object.keys(canonicals).length} canonicals, ${Object.keys(prints).length} prints`
+  );
+  return { synonyms, canonicals, prints };
 }
 
 async function loadTournamentDecks(folder) {
-    const key = `reports/${folder}/decks.json`;
-    const result = await getJsonResult(s3Client, R2_BUCKET_NAME, key);
-    if (result.status === 'transport' || result.status === 'corrupt') {
-        throw new Error(`Failed to load ${key} (${result.status})`, { cause: result.error });
-    }
-    if (result.status === 'found') {
-        return Array.isArray(result.value) ? result.value : [];
-    }
-    // Verified-missing decks.json: silently skip this tournament.
-    return [];
+  const key = `reports/${folder}/decks.json`;
+  const result = await getJsonResult(s3Client, R2_BUCKET_NAME, key);
+  if (result.status === 'transport' || result.status === 'corrupt') {
+    throw new Error(`Failed to load ${key} (${result.status})`, { cause: result.error });
+  }
+  if (result.status === 'found') {
+    return Array.isArray(result.value) ? result.value : [];
+  }
+  // Verified-missing decks.json: silently skip this tournament.
+  return [];
 }
 
 function normalizeCardNumber(number) {
-    const raw = String(number ?? '').trim();
-    if (!raw) {
-        return null;
-    }
-    const match = /^(\d+)([A-Za-z]*)$/.exec(raw);
-    if (!match) {
-        return raw.toUpperCase();
-    }
-    const [, digits, suffix = ''] = match;
-    const padded = digits.padStart(3, '0');
-    return suffix ? `${padded}${suffix.toUpperCase()}` : padded;
+  const raw = String(number ?? '').trim();
+  if (!raw) {
+    return null;
+  }
+  const match = /^(\d+)([A-Za-z]*)$/.exec(raw);
+  if (!match) {
+    return raw.toUpperCase();
+  }
+  const [, digits, suffix = ''] = match;
+  const padded = digits.padStart(3, '0');
+  return suffix ? `${padded}${suffix.toUpperCase()}` : padded;
 }
 
 function addDecksToCardMap(cardsByName, decks) {
-    for (const deck of decks) {
-        for (const card of deck.cards || []) {
-            const cardName = (card.name || '').trim();
-            const setCode = ((card.set || '').toUpperCase() || '').trim();
-            const number = normalizeCardNumber(card.number);
+  for (const deck of decks) {
+    for (const card of deck.cards || []) {
+      const cardName = (card.name || '').trim();
+      const setCode = ((card.set || '').toUpperCase() || '').trim();
+      const number = normalizeCardNumber(card.number);
 
-            if (cardName && setCode && number) {
-                if (!cardsByName.has(cardName)) {
-                    cardsByName.set(cardName, new Set());
-                }
-                cardsByName.get(cardName).add(`${setCode}::${number}`);
-            }
+      if (cardName && setCode && number) {
+        if (!cardsByName.has(cardName)) {
+          cardsByName.set(cardName, new Set());
         }
+        cardsByName.get(cardName).add(`${setCode}::${number}`);
+      }
     }
+  }
 }
 
 async function collectAllCards(tournaments) {
-    log('\nCollecting cards from all tournaments...');
-    const cardsByName = new Map();
-    let processed = 0;
-    let skipped = 0;
-    const processedFolders = new Set();
+  log('\nCollecting cards from all tournaments...');
+  const cardsByName = new Map();
+  let processed = 0;
+  let skipped = 0;
+  const processedFolders = new Set();
 
-    for (const tournament of tournaments) {
-        const folder = typeof tournament === 'object'
-            ? (tournament.folder || tournament.name || tournament.path)
-            : tournament;
+  for (const tournament of tournaments) {
+    const folder =
+      typeof tournament === 'object' ? tournament.folder || tournament.name || tournament.path : tournament;
 
-        if (!folder) {
-            continue;
-        }
-
-        processedFolders.add(folder);
-        const decks = await loadTournamentDecks(folder);
-        if (!decks.length) {
-            skipped++;
-            continue;
-        }
-
-        addDecksToCardMap(cardsByName, decks);
-
-        processed++;
-        if (processed % 5 === 0) {
-            log(`  Processed ${processed}/${tournaments.length} tournaments...`);
-        }
+    if (!folder) {
+      continue;
     }
 
-    let onlineIncluded = processedFolders.has(ONLINE_META_FOLDER);
-    if (!onlineIncluded) {
-        const onlineDecks = await loadTournamentDecks(ONLINE_META_FOLDER);
-        if (onlineDecks.length) {
-            addDecksToCardMap(cardsByName, onlineDecks);
-            processed++;
-            onlineIncluded = true;
-            log(`  Included decks from ${ONLINE_META_FOLDER} (${onlineDecks.length} entries)`);
-        } else {
-            log(`  Warning: No decks found for ${ONLINE_META_FOLDER}; online meta cards will be missing`);
-        }
+    processedFolders.add(folder);
+    const decks = await loadTournamentDecks(folder);
+    if (!decks.length) {
+      skipped++;
+      continue;
     }
 
-    const onlineNote = onlineIncluded ? ' (online meta included)' : '';
-    log(`  Processed ${processed} tournaments${onlineNote}, skipped ${skipped}`);
-    log(`  Found ${cardsByName.size} unique card names`);
-    return {
-        cardsByName,
-        stats: {
-            expected: tournaments.length,
-            processed,
-            skipped,
-            onlineIncluded
-        }
-    };
+    addDecksToCardMap(cardsByName, decks);
+
+    processed++;
+    if (processed % 5 === 0) {
+      log(`  Processed ${processed}/${tournaments.length} tournaments...`);
+    }
+  }
+
+  let onlineIncluded = processedFolders.has(ONLINE_META_FOLDER);
+  if (!onlineIncluded) {
+    const onlineDecks = await loadTournamentDecks(ONLINE_META_FOLDER);
+    if (onlineDecks.length) {
+      addDecksToCardMap(cardsByName, onlineDecks);
+      processed++;
+      onlineIncluded = true;
+      log(`  Included decks from ${ONLINE_META_FOLDER} (${onlineDecks.length} entries)`);
+    } else {
+      log(`  Warning: No decks found for ${ONLINE_META_FOLDER}; online meta cards will be missing`);
+    }
+  }
+
+  const onlineNote = onlineIncluded ? ' (online meta included)' : '';
+  log(`  Processed ${processed} tournaments${onlineNote}, skipped ${skipped}`);
+  log(`  Found ${cardsByName.size} unique card names`);
+  return {
+    cardsByName,
+    stats: {
+      expected: tournaments.length,
+      processed,
+      skipped,
+      onlineIncluded
+    }
+  };
 }
 
 function buildNumberVariants(number) {
-    if (!number) return [];
-    const raw = String(number).trim();
-    if (!raw) return [];
+  if (!number) {
+    return [];
+  }
+  const raw = String(number).trim();
+  if (!raw) {
+    return [];
+  }
 
-    const normalized = raw.toUpperCase();
-    const match = normalized.match(/^0*(\d+)([A-Z]*)$/);
-    if (!match) return [normalized];
+  const normalized = raw.toUpperCase();
+  const match = normalized.match(/^0*(\d+)([A-Z]*)$/);
+  if (!match) {
+    return [normalized];
+  }
 
-    const [, digits, suffix] = match;
-    const trimmedDigits = digits.replace(/^0+/, '') || '0';
-    const primary = `${trimmedDigits}${suffix}`;
-    const variants = [primary];
+  const [, digits, suffix] = match;
+  const trimmedDigits = digits.replace(/^0+/, '') || '0';
+  const primary = `${trimmedDigits}${suffix}`;
+  const variants = [primary];
 
-    const padded = `${digits}${suffix}`;
-    if (primary !== padded) {
-        variants.push(padded);
-    }
+  const padded = `${digits}${suffix}`;
+  if (primary !== padded) {
+    variants.push(padded);
+  }
 
-    return variants;
+  return variants;
 }
 
 async function requestWithRetries(url, retries = 3) {
-    let lastError;
-    for (let attempt = 1; attempt <= retries; attempt++) {
-        try {
-            const response = await fetch(url, {
-                headers: { 'User-Agent': 'Mozilla/5.0' }
-            });
-            if (response.ok) {
-                return response;
-            }
-            lastError = new Error(`HTTP ${response.status}`);
-        } catch (error) {
-            lastError = error;
-        }
-
-        if (attempt < retries) {
-            await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt - 1)));
-        }
+  let lastError;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
+      if (response.ok) {
+        return response;
+      }
+      lastError = new Error(`HTTP ${response.status}`);
+    } catch (error) {
+      lastError = error;
     }
-    return null;
+
+    if (attempt < retries) {
+      await new Promise(resolve => {
+        setTimeout(resolve, 500 * 2 ** (attempt - 1));
+      });
+    }
+  }
+  log(`  Giving up on ${url} after ${retries} attempts: ${lastError?.message ?? 'unknown error'}`);
+  return null;
 }
 
 // Per-run dedupe for Limitless scrapes. A single (set, number) lookup returns
@@ -241,429 +250,469 @@ async function requestWithRetries(url, retries = 3) {
 const SCRAPE_CACHE = new Map();
 
 async function scrapeCardPrintVariations(setCode, number) {
-    const cacheKey = `${(setCode || '').toUpperCase()}::${number}`;
-    if (SCRAPE_CACHE.has(cacheKey)) {
-        return SCRAPE_CACHE.get(cacheKey);
-    }
-    const result = await _scrapeCardPrintVariations(setCode, number);
-    SCRAPE_CACHE.set(cacheKey, result);
-    return result;
+  const cacheKey = `${(setCode || '').toUpperCase()}::${number}`;
+  if (SCRAPE_CACHE.has(cacheKey)) {
+    return SCRAPE_CACHE.get(cacheKey);
+  }
+  const result = await _scrapeCardPrintVariations(setCode, number);
+  SCRAPE_CACHE.set(cacheKey, result);
+  return result;
 }
 
 async function _scrapeCardPrintVariations(setCode, number) {
-    const numberVariants = buildNumberVariants(number);
-    if (!numberVariants.length) return [];
+  const numberVariants = buildNumberVariants(number);
+  if (!numberVariants.length) {
+    return [];
+  }
 
-    let html;
-    for (const variant of numberVariants) {
-        const url = `https://limitlesstcg.com/cards/${setCode}/${variant}`;
-        const resp = await requestWithRetries(url, 2);
-        if (!resp) continue;
-
-        html = await resp.text();
-        const $ = cheerio.load(html);
-        const table = $('table.card-prints-versions');
-        if (table.length) break;
-        html = null;
+  let html;
+  for (const variant of numberVariants) {
+    const url = `https://limitlesstcg.com/cards/${setCode}/${variant}`;
+    const resp = await requestWithRetries(url, 2);
+    if (!resp) {
+      continue;
     }
 
-    if (!html) return [];
-
+    html = await resp.text();
     const $ = cheerio.load(html);
     const table = $('table.card-prints-versions');
-    if (!table.length) return [];
+    if (table.length) {
+      break;
+    }
+    html = null;
+  }
 
-    const variations = [];
-    let inJpSection = false;
+  if (!html) {
+    return [];
+  }
 
-    table.find('tr').each((_, row) => {
-        const $row = $(row);
-        const th = $row.find('th');
+  const $ = cheerio.load(html);
+  const table = $('table.card-prints-versions');
+  if (!table.length) {
+    return [];
+  }
 
-        if (th.length && th.text().includes('JP. Prints')) {
-            inJpSection = true;
-            return;
+  const variations = [];
+  let inJpSection = false;
+
+  table.find('tr').each((_, row) => {
+    const $row = $(row);
+    const th = $row.find('th');
+
+    if (th.length && th.text().includes('JP. Prints')) {
+      inJpSection = true;
+      return;
+    }
+
+    if (inJpSection || th.length) {
+      return;
+    }
+
+    const cells = $row.find('td');
+    if (cells.length < 2) {
+      return;
+    }
+
+    const firstCell = $(cells[0]);
+    const numberElem = firstCell.find('span.prints-table-card-number');
+    if (!numberElem.length) {
+      return;
+    }
+
+    const cardNum = numberElem.text().trim().replace(/^#/, '');
+    const setNameElem = firstCell.find('a');
+    let setAcronym;
+
+    // Match the set segment regardless of the card-number format so promo
+    // numbers like TG24/GG05 parse to their real set instead of falling
+    // through to the self-row branch below.
+    const href = setNameElem.length ? setNameElem.attr('href') || '' : '';
+    const match = href.match(/\/cards\/([A-Z0-9]+)\//);
+    if (match) {
+      setAcronym = match[1];
+    } else if (!href && setCode) {
+      // The card's own row on its Limitless page carries an anchor with
+      // no href (you are already on it), so it has no set acronym.
+      // Attribute it to the set being scraped — otherwise a page listing
+      // only two prints yields a single usable row and the card never
+      // reaches the 2-row cluster threshold (e.g. two-print cards like
+      // Pecharunt).
+      setAcronym = setCode.toUpperCase();
+    }
+
+    if (!setAcronym) {
+      return;
+    }
+
+    const normalizedNum = cardNum.padStart(3, '0');
+
+    let priceUsd = null;
+    if (cells.length >= 2) {
+      const priceLink = $(cells[1]).find('a.card-price');
+      if (priceLink.length) {
+        const priceText = priceLink.text().trim();
+        // Thousands separators matter: "$1,141.18" against a comma-less
+        // pattern yields 1, which then reads as the cheapest print in
+        // its cluster and wins the canonical slot.
+        const priceMatch = priceText.match(/\$?\s*([\d,]*\d(?:\.\d+)?)/);
+        if (priceMatch) {
+          priceUsd = parseFloat(priceMatch[1].replace(/,/g, ''));
         }
+      }
+    }
 
-        if (inJpSection || th.length) return;
-
-        const cells = $row.find('td');
-        if (cells.length < 2) return;
-
-        const firstCell = $(cells[0]);
-        const numberElem = firstCell.find('span.prints-table-card-number');
-        if (!numberElem.length) return;
-
-        const cardNum = numberElem.text().trim().replace(/^#/, '');
-        const setNameElem = firstCell.find('a');
-        let setAcronym;
-
-        // Match the set segment regardless of the card-number format so promo
-        // numbers like TG24/GG05 parse to their real set instead of falling
-        // through to the self-row branch below.
-        const href = setNameElem.length ? setNameElem.attr('href') || '' : '';
-        const match = href.match(/\/cards\/([A-Z0-9]+)\//);
-        if (match) {
-            setAcronym = match[1];
-        } else if (!href && setCode) {
-            // The card's own row on its Limitless page carries an anchor with
-            // no href (you are already on it), so it has no set acronym.
-            // Attribute it to the set being scraped — otherwise a page listing
-            // only two prints yields a single usable row and the card never
-            // reaches the 2-row cluster threshold (e.g. two-print cards like
-            // Pecharunt).
-            setAcronym = setCode.toUpperCase();
-        }
-
-        if (!setAcronym) return;
-
-        const normalizedNum = cardNum.padStart(3, '0');
-
-        let priceUsd = null;
-        if (cells.length >= 2) {
-            const priceLink = $(cells[1]).find('a.card-price');
-            if (priceLink.length) {
-                const priceText = priceLink.text().trim();
-                // Thousands separators matter: "$1,141.18" against a comma-less
-                // pattern yields 1, which then reads as the cheapest print in
-                // its cluster and wins the canonical slot.
-                const priceMatch = priceText.match(/\$?\s*([\d,]*\d(?:\.\d+)?)/);
-                if (priceMatch) {
-                    priceUsd = parseFloat(priceMatch[1].replace(/,/g, ''));
-                }
-            }
-        }
-
-        variations.push({
-            set: setAcronym,
-            number: normalizedNum,
-            price_usd: priceUsd
-        });
+    variations.push({
+      set: setAcronym,
+      number: normalizedNum,
+      price_usd: priceUsd
     });
+  });
 
-    return variations;
+  return variations;
 }
 
 class UnionFind {
-    constructor() {
-        this.parent = new Map();
-    }
+  constructor() {
+    this.parent = new Map();
+  }
 
-    find(x) {
-        if (!this.parent.has(x)) {
-            this.parent.set(x, x);
-            return x;
-        }
-        const p = this.parent.get(x);
-        if (p === x) return x;
-        const root = this.find(p);
-        this.parent.set(x, root);
-        return root;
+  find(x) {
+    if (!this.parent.has(x)) {
+      this.parent.set(x, x);
+      return x;
     }
+    const p = this.parent.get(x);
+    if (p === x) {
+      return x;
+    }
+    const root = this.find(p);
+    this.parent.set(x, root);
+    return root;
+  }
 
-    union(a, b) {
-        const ra = this.find(a);
-        const rb = this.find(b);
-        if (ra === rb) return;
-        this.parent.set(ra, rb);
+  union(a, b) {
+    const ra = this.find(a);
+    const rb = this.find(b);
+    if (ra === rb) {
+      return;
     }
+    this.parent.set(ra, rb);
+  }
 
-    components() {
-        const groups = new Map();
-        for (const key of this.parent.keys()) {
-            const root = this.find(key);
-            if (!groups.has(root)) groups.set(root, []);
-            groups.get(root).push(key);
-        }
-        return Array.from(groups.values());
+  components() {
+    const groups = new Map();
+    for (const key of this.parent.keys()) {
+      const root = this.find(key);
+      if (!groups.has(root)) {
+        groups.set(root, []);
+      }
+      groups.get(root).push(key);
     }
+    return Array.from(groups.values());
+  }
 }
 
 async function buildClustersFromLimitless(printSet) {
-    const uf = new UnionFind();
-    const meta = new Map(); // uid -> { set, number, price_usd }
+  const uf = new UnionFind();
+  const meta = new Map(); // uid -> { set, number, price_usd }
 
-    for (const entry of printSet) {
-        if (!entry || typeof entry !== 'string') continue;
-        const [sampleSet, sampleNum] = entry.split('::');
-        if (!sampleSet || !sampleNum) continue;
-
-        // eslint-disable-next-line no-await-in-loop
-        const variations = await scrapeCardPrintVariations(sampleSet, sampleNum);
-        const filtered = (variations || [])
-            .filter(v => v?.set && v?.number)
-            .map(v => ({
-                set: v.set.toUpperCase(),
-                number: normalizeCardNumber(v.number),
-                price_usd: v.price_usd ?? null
-            }))
-            .filter(v => v.number);
-
-        if (filtered.length < 2) {
-            continue;
-        }
-
-        const ids = filtered.map(v => `${v.set}::${v.number}`);
-        ids.forEach(id => {
-            uf.find(id);
-            if (!meta.has(id)) {
-                const v = filtered.find(x => `${x.set}::${x.number}` === id);
-                meta.set(id, v);
-            }
-        });
-        const anchor = ids[0];
-        for (let i = 1; i < ids.length; i++) {
-            uf.union(anchor, ids[i]);
-        }
+  for (const entry of printSet) {
+    if (!entry || typeof entry !== 'string') {
+      continue;
+    }
+    const [sampleSet, sampleNum] = entry.split('::');
+    if (!sampleSet || !sampleNum) {
+      continue;
     }
 
-    const clusters = [];
-    for (const group of uf.components()) {
-        if (group.length < 2) continue;
-        clusters.push(
-            group.map(id => ({
-                set: meta.get(id)?.set || id.split('::')[0],
-                number: meta.get(id)?.number || id.split('::')[1],
-                price_usd: meta.get(id)?.price_usd ?? null
-            }))
-        );
+    // eslint-disable-next-line no-await-in-loop
+    const variations = await scrapeCardPrintVariations(sampleSet, sampleNum);
+    const filtered = (variations || [])
+      .filter(v => v?.set && v?.number)
+      .map(v => ({
+        set: v.set.toUpperCase(),
+        number: normalizeCardNumber(v.number),
+        price_usd: v.price_usd ?? null
+      }))
+      .filter(v => v.number);
+
+    if (filtered.length < 2) {
+      continue;
     }
 
-    return clusters;
+    const ids = filtered.map(v => `${v.set}::${v.number}`);
+    ids.forEach(id => {
+      uf.find(id);
+      if (!meta.has(id)) {
+        const v = filtered.find(x => `${x.set}::${x.number}` === id);
+        meta.set(id, v);
+      }
+    });
+    const anchor = ids[0];
+    for (let i = 1; i < ids.length; i++) {
+      uf.union(anchor, ids[i]);
+    }
+  }
+
+  const clusters = [];
+  for (const group of uf.components()) {
+    if (group.length < 2) {
+      continue;
+    }
+    clusters.push(
+      group.map(id => ({
+        set: meta.get(id)?.set || id.split('::')[0],
+        number: meta.get(id)?.number || id.split('::')[1],
+        price_usd: meta.get(id)?.price_usd ?? null
+      }))
+    );
+  }
+
+  return clusters;
 }
 
 // Basic energies keyed by their SVE base-set position; SVE reprints the same
 // energy at n, n+8, and n+16, and MEE uses the base position directly.
 const MEE_BASIC_ENERGY = [
-    { name: 'Grass Energy', position: 1 },
-    { name: 'Fire Energy', position: 2 },
-    { name: 'Water Energy', position: 3 },
-    { name: 'Lightning Energy', position: 4 },
-    { name: 'Psychic Energy', position: 5 },
-    { name: 'Fighting Energy', position: 6 },
-    { name: 'Darkness Energy', position: 7 },
-    { name: 'Metal Energy', position: 8 }
+  { name: 'Grass Energy', position: 1 },
+  { name: 'Fire Energy', position: 2 },
+  { name: 'Water Energy', position: 3 },
+  { name: 'Lightning Energy', position: 4 },
+  { name: 'Psychic Energy', position: 5 },
+  { name: 'Fighting Energy', position: 6 },
+  { name: 'Darkness Energy', position: 7 },
+  { name: 'Metal Energy', position: 8 }
 ];
 
 function ensureMeeBasicEnergySynonyms(synonymsDict, canonicalsDict) {
-    for (const energy of MEE_BASIC_ENERGY) {
-        const meeNumber = String(energy.position).padStart(3, '0');
-        const canonical = canonicalsDict[energy.name] || `${energy.name}::MEE::${meeNumber}`;
-        canonicalsDict[energy.name] = canonical;
-        for (const sveNumber of [energy.position, energy.position + 8, energy.position + 16]) {
-            const uid = `${energy.name}::SVE::${String(sveNumber).padStart(3, '0')}`;
-            if (uid !== canonical && !synonymsDict[uid]) {
-                synonymsDict[uid] = canonical;
-            }
-        }
+  for (const energy of MEE_BASIC_ENERGY) {
+    const meeNumber = String(energy.position).padStart(3, '0');
+    const canonical = canonicalsDict[energy.name] || `${energy.name}::MEE::${meeNumber}`;
+    canonicalsDict[energy.name] = canonical;
+    for (const sveNumber of [energy.position, energy.position + 8, energy.position + 16]) {
+      const uid = `${energy.name}::SVE::${String(sveNumber).padStart(3, '0')}`;
+      if (uid !== canonical && !synonymsDict[uid]) {
+        synonymsDict[uid] = canonical;
+      }
     }
+  }
 }
 
 async function generateSynonyms(cardsByName) {
-    log('\nGenerating canonical mappings...');
-    const synonymsDict = {};
-    const canonicalsDict = {};
-    // Per-print prices (uid -> USD or null) so consumers can re-choose the
-    // cluster canonical for a historical event date (rolling canonicals)
-    // without re-scraping Limitless. Includes the canonical print itself.
-    const printsDict = {};
+  log('\nGenerating canonical mappings...');
+  const synonymsDict = {};
+  const canonicalsDict = {};
+  // Per-print prices (uid -> USD or null) so consumers can re-choose the
+  // cluster canonical for a historical event date (rolling canonicals)
+  // without re-scraping Limitless. Includes the canonical print itself.
+  const printsDict = {};
 
-    const totalCards = cardsByName.size;
-    let current = 0;
-    let processedCount = 0;
-    let noClusterWithMultiSample = 0;
-    let noClusterSingleSample = 0;
+  const totalCards = cardsByName.size;
+  let current = 0;
+  let processedCount = 0;
+  let noClusterWithMultiSample = 0;
+  let noClusterSingleSample = 0;
 
-    for (const [cardName, printSet] of cardsByName.entries()) {
-        current++;
-        if (current % 50 === 0 || current === totalCards) {
-            log(`  Progress: ${current}/${totalCards} cards (${processedCount} with multiple prints)`);
-        }
-
-        // Always consult Limitless, even when only one printing has been
-        // observed in deck data — otherwise cards like Team Rocket's
-        // Watchtower (DRI 180 in decks, ASC 210 only in Limitless's print
-        // table) never get a synonym entry and split into two pages.
-        const clusters = await buildClustersFromLimitless(printSet);
-        if (!clusters.length) {
-            if (printSet.size >= 2) {
-                noClusterWithMultiSample++;
-                log(`  ⚠ No Limitless cluster for "${cardName}" despite ${printSet.size} observed printings: ${[...printSet].sort().join(', ')}`);
-            } else {
-                noClusterSingleSample++;
-            }
-            continue;
-        }
-
-        for (const cluster of clusters) {
-            const canonicalVar = chooseCanonicalPrint(cluster, cardName);
-            if (!canonicalVar) continue;
-
-            const canonicalUid = `${cardName}::${canonicalVar.set}::${canonicalVar.number}`;
-
-            for (const var_ of cluster) {
-                const variantUid = `${cardName}::${var_.set}::${var_.number}`;
-                if (variantUid !== canonicalUid) {
-                    synonymsDict[variantUid] = canonicalUid;
-                }
-                printsDict[variantUid] = var_.price_usd ?? null;
-            }
-
-            if (!canonicalsDict[cardName]) {
-                canonicalsDict[cardName] = canonicalUid;
-            }
-            processedCount++;
-        }
+  for (const [cardName, printSet] of cardsByName.entries()) {
+    current++;
+    if (current % 50 === 0 || current === totalCards) {
+      log(`  Progress: ${current}/${totalCards} cards (${processedCount} with multiple prints)`);
     }
 
-    log(`  Completed: ${processedCount} cards with multiple prints`);
-    log(`  Generated ${Object.keys(synonymsDict).length} synonym mappings`);
-    log(`  Generated ${Object.keys(canonicalsDict).length} canonical mappings`);
-    log(`  No-cluster cards: ${noClusterSingleSample} single-print (expected), ${noClusterWithMultiSample} multi-print (anomalies — see warnings above)`);
-    log(`  Limitless scrape cache hits saved ${SCRAPE_CACHE.size > 0 ? '(' + SCRAPE_CACHE.size + ' unique URLs)' : ''}`);
+    // Always consult Limitless, even when only one printing has been
+    // observed in deck data — otherwise cards like Team Rocket's
+    // Watchtower (DRI 180 in decks, ASC 210 only in Limitless's print
+    // table) never get a synonym entry and split into two pages.
+    const clusters = await buildClustersFromLimitless(printSet);
+    if (!clusters.length) {
+      if (printSet.size >= 2) {
+        noClusterWithMultiSample++;
+        log(
+          `  ⚠ No Limitless cluster for "${cardName}" despite ${printSet.size} observed printings: ${[...printSet].sort().join(', ')}`
+        );
+      } else {
+        noClusterSingleSample++;
+      }
+      continue;
+    }
 
-    // Ensure basic energies from MEE are present even if upstream data lacks print tables
-    ensureMeeBasicEnergySynonyms(synonymsDict, canonicalsDict);
+    for (const cluster of clusters) {
+      const canonicalVar = chooseCanonicalPrint(cluster, cardName);
+      if (!canonicalVar) {
+        continue;
+      }
 
-    return {
-        synonyms: synonymsDict,
-        canonicals: canonicalsDict,
-        prints: printsDict,
-        metadata: {
-            generated: new Date().toISOString(),
-            totalSynonyms: Object.keys(synonymsDict).length,
-            totalCanonicals: Object.keys(canonicalsDict).length,
-            totalPrints: Object.keys(printsDict).length,
-            totalCardsAnalyzed: totalCards,
-            description: 'Canonical card mappings for handling reprints and alternate versions'
+      const canonicalUid = `${cardName}::${canonicalVar.set}::${canonicalVar.number}`;
+
+      for (const var_ of cluster) {
+        const variantUid = `${cardName}::${var_.set}::${var_.number}`;
+        if (variantUid !== canonicalUid) {
+          synonymsDict[variantUid] = canonicalUid;
         }
-    };
+        printsDict[variantUid] = var_.price_usd ?? null;
+      }
+
+      if (!canonicalsDict[cardName]) {
+        canonicalsDict[cardName] = canonicalUid;
+      }
+      processedCount++;
+    }
+  }
+
+  log(`  Completed: ${processedCount} cards with multiple prints`);
+  log(`  Generated ${Object.keys(synonymsDict).length} synonym mappings`);
+  log(`  Generated ${Object.keys(canonicalsDict).length} canonical mappings`);
+  log(
+    `  No-cluster cards: ${noClusterSingleSample} single-print (expected), ${noClusterWithMultiSample} multi-print (anomalies — see warnings above)`
+  );
+  log(`  Limitless scrape cache hits saved ${SCRAPE_CACHE.size > 0 ? `(${SCRAPE_CACHE.size} unique URLs)` : ''}`);
+
+  // Ensure basic energies from MEE are present even if upstream data lacks print tables
+  ensureMeeBasicEnergySynonyms(synonymsDict, canonicalsDict);
+
+  return {
+    synonyms: synonymsDict,
+    canonicals: canonicalsDict,
+    prints: printsDict,
+    metadata: {
+      generated: new Date().toISOString(),
+      totalSynonyms: Object.keys(synonymsDict).length,
+      totalCanonicals: Object.keys(canonicalsDict).length,
+      totalPrints: Object.keys(printsDict).length,
+      totalCardsAnalyzed: totalCards,
+      description: 'Canonical card mappings for handling reprints and alternate versions'
+    }
+  };
 }
 
 async function saveSynonyms(data) {
-    log(`\nSaving to ${OUTPUT_PATH}...`);
-    await mkdir(dirname(OUTPUT_PATH), { recursive: true });
-    await writeFile(OUTPUT_PATH, JSON.stringify(data, null, 2) + '\n', 'utf-8');
-    log('  ✓ Saved successfully');
+  log(`\nSaving to ${OUTPUT_PATH}...`);
+  await mkdir(dirname(OUTPUT_PATH), { recursive: true });
+  await writeFile(OUTPUT_PATH, `${JSON.stringify(data, null, 2)}\n`, 'utf-8');
+  log('  ✓ Saved successfully');
 }
 
 async function uploadToR2(data) {
-    log('\nUploading to R2...');
-    await putObject('assets/card-synonyms.json', data);
-    log('  ✓ Uploaded successfully');
+  log('\nUploading to R2...');
+  await putObject('assets/card-synonyms.json', data);
+  log('  ✓ Uploaded successfully');
 }
 
 async function main() {
-    log('='.repeat(60));
-    log('Card Synonyms Generator');
-    log('='.repeat(60));
+  log('='.repeat(60));
+  log('Card Synonyms Generator');
+  log('='.repeat(60));
 
-    const fullRewrite = process.env.FULL_REWRITE === 'true';
-    if (fullRewrite) {
-        log('FULL REWRITE MODE: Ignoring existing synonyms cache');
-    }
+  const fullRewrite = process.env.FULL_REWRITE === 'true';
+  if (fullRewrite) {
+    log('FULL REWRITE MODE: Ignoring existing synonyms cache');
+  }
 
-    // Load all tournaments
-    const tournaments = await loadTournamentsList();
-    if (!tournaments.length) {
-        log('No tournaments found');
-        process.exit(1);
-    }
+  // Load all tournaments
+  const tournaments = await loadTournamentsList();
+  if (!tournaments.length) {
+    log('No tournaments found');
+    process.exit(1);
+  }
 
-    // Merge against the current DB unless a full rewrite was requested.
-    const previous = fullRewrite ? null : await loadPreviousSynonyms();
+  // Merge against the current DB unless a full rewrite was requested.
+  const previous = fullRewrite ? null : await loadPreviousSynonyms();
 
-    // Collect all cards from all tournaments
-    const { cardsByName, stats } = await collectAllCards(tournaments);
+  // Collect all cards from all tournaments
+  const { cardsByName, stats } = await collectAllCards(tournaments);
 
-    // Guard against publishing a DB built from a badly-degraded scrape. The
-    // merge below protects existing mappings, but a mass source failure still
-    // means this run's fresh clusters are untrustworthy — fail loudly (P-06).
-    const maxSkippedRaw = Number.parseInt(process.env.SYNONYM_MAX_SKIPPED ?? '', 10);
-    const maxSkipped = Number.isFinite(maxSkippedRaw) ? maxSkippedRaw : 5;
-    if (stats.processed === 0) {
-        log(`ERROR: No tournament decks could be loaded (expected ${stats.expected}); aborting`);
-        process.exit(1);
-    }
-    if (!fullRewrite && stats.skipped > maxSkipped) {
-        log(`ERROR: ${stats.skipped} tournament source(s) skipped exceeds SYNONYM_MAX_SKIPPED=${maxSkipped}; aborting to avoid an untrustworthy rebuild`);
-        log('       (set FULL_REWRITE=true or raise SYNONYM_MAX_SKIPPED to override)');
-        process.exit(1);
-    }
+  // Guard against publishing a DB built from a badly-degraded scrape. The
+  // merge below protects existing mappings, but a mass source failure still
+  // means this run's fresh clusters are untrustworthy — fail loudly (P-06).
+  const maxSkippedRaw = Number.parseInt(process.env.SYNONYM_MAX_SKIPPED ?? '', 10);
+  const maxSkipped = Number.isFinite(maxSkippedRaw) ? maxSkippedRaw : 5;
+  if (stats.processed === 0) {
+    log(`ERROR: No tournament decks could be loaded (expected ${stats.expected}); aborting`);
+    process.exit(1);
+  }
+  if (!fullRewrite && stats.skipped > maxSkipped) {
+    log(
+      `ERROR: ${stats.skipped} tournament source(s) skipped exceeds SYNONYM_MAX_SKIPPED=${maxSkipped}; aborting to avoid an untrustworthy rebuild`
+    );
+    log('       (set FULL_REWRITE=true or raise SYNONYM_MAX_SKIPPED to override)');
+    process.exit(1);
+  }
 
-    // Generate canonical synonyms (fresh clusters from this run's data)
-    const synonymsData = await generateSynonyms(cardsByName);
+  // Generate canonical synonyms (fresh clusters from this run's data)
+  const synonymsData = await generateSynonyms(cardsByName);
 
-    // Merge previous mappings UNDER the fresh ones: any card re-clustered this
-    // run overrides its old entry, while mappings whose source was missing this
-    // run are retained rather than dropped (P-06).
-    if (previous) {
-        const beforeSynonyms = Object.keys(synonymsData.synonyms).length;
-        const beforeCanonicals = Object.keys(synonymsData.canonicals).length;
-        synonymsData.synonyms = { ...previous.synonyms, ...synonymsData.synonyms };
-        synonymsData.canonicals = { ...previous.canonicals, ...synonymsData.canonicals };
-        // Prices refresh every run; stale entries are only kept for clusters
-        // whose source was missing this run. Price drift must not count as a
-        // mapping change (mappingsChanged below ignores prints).
-        synonymsData.prints = { ...previous.prints, ...synonymsData.prints };
-        const mergedSynonyms = Object.keys(synonymsData.synonyms).length;
-        const mergedCanonicals = Object.keys(synonymsData.canonicals).length;
-        log(`\nMerged with previous DB: synonyms ${beforeSynonyms}→${mergedSynonyms}, canonicals ${beforeCanonicals}→${mergedCanonicals}`);
-        synonymsData.metadata.totalSynonyms = mergedSynonyms;
-        synonymsData.metadata.totalCanonicals = mergedCanonicals;
-        synonymsData.metadata.totalPrints = Object.keys(synonymsData.prints).length;
-        synonymsData.metadata.mergedWithPrevious = true;
-    }
+  // Merge previous mappings UNDER the fresh ones: any card re-clustered this
+  // run overrides its old entry, while mappings whose source was missing this
+  // run are retained rather than dropped (P-06).
+  if (previous) {
+    const beforeSynonyms = Object.keys(synonymsData.synonyms).length;
+    const beforeCanonicals = Object.keys(synonymsData.canonicals).length;
+    synonymsData.synonyms = { ...previous.synonyms, ...synonymsData.synonyms };
+    synonymsData.canonicals = { ...previous.canonicals, ...synonymsData.canonicals };
+    // Prices refresh every run; stale entries are only kept for clusters
+    // whose source was missing this run. Price drift must not count as a
+    // mapping change (mappingsChanged below ignores prints).
+    synonymsData.prints = { ...previous.prints, ...synonymsData.prints };
+    const mergedSynonyms = Object.keys(synonymsData.synonyms).length;
+    const mergedCanonicals = Object.keys(synonymsData.canonicals).length;
+    log(
+      `\nMerged with previous DB: synonyms ${beforeSynonyms}→${mergedSynonyms}, canonicals ${beforeCanonicals}→${mergedCanonicals}`
+    );
+    synonymsData.metadata.totalSynonyms = mergedSynonyms;
+    synonymsData.metadata.totalCanonicals = mergedCanonicals;
+    synonymsData.metadata.totalPrints = Object.keys(synonymsData.prints).length;
+    synonymsData.metadata.mergedWithPrevious = true;
+  }
 
-    // Flatten the merged graph to ONE terminal canonical per reprint component.
-    // The incremental merge above retains a stale reverse edge whenever a
-    // cluster's chosen canonical flips between runs, producing cycles (A→B, B→A)
-    // and multi-hop chains that make single-hop resolution non-terminal and
-    // 301-loop the /cards edge redirect. Runs after the merge so the normalized
-    // form is what gets persisted and compared for change detection.
-    const normalized = normalizeSynonymDatabase({
-        synonyms: synonymsData.synonyms,
-        canonicals: synonymsData.canonicals,
-        prints: synonymsData.prints
-    });
-    synonymsData.synonyms = normalized.synonyms;
-    synonymsData.canonicals = normalized.canonicals;
-    synonymsData.metadata.totalSynonyms = Object.keys(synonymsData.synonyms).length;
-    synonymsData.metadata.totalCanonicals = Object.keys(synonymsData.canonicals).length;
+  // Flatten the merged graph to ONE terminal canonical per reprint component.
+  // The incremental merge above retains a stale reverse edge whenever a
+  // cluster's chosen canonical flips between runs, producing cycles (A→B, B→A)
+  // and multi-hop chains that make single-hop resolution non-terminal and
+  // 301-loop the /cards edge redirect. Runs after the merge so the normalized
+  // form is what gets persisted and compared for change detection.
+  const normalized = normalizeSynonymDatabase({
+    synonyms: synonymsData.synonyms,
+    canonicals: synonymsData.canonicals,
+    prints: synonymsData.prints
+  });
+  synonymsData.synonyms = normalized.synonyms;
+  synonymsData.canonicals = normalized.canonicals;
+  synonymsData.metadata.totalSynonyms = Object.keys(synonymsData.synonyms).length;
+  synonymsData.metadata.totalCanonicals = Object.keys(synonymsData.canonicals).length;
 
-    // Record processed-vs-expected source coverage for auditability.
-    synonymsData.metadata.sourceTournamentsExpected = stats.expected;
-    synonymsData.metadata.sourceTournamentsProcessed = stats.processed;
-    synonymsData.metadata.sourceTournamentsSkipped = stats.skipped;
-    synonymsData.metadata.onlineMetaIncluded = stats.onlineIncluded;
+  // Record processed-vs-expected source coverage for auditability.
+  synonymsData.metadata.sourceTournamentsExpected = stats.expected;
+  synonymsData.metadata.sourceTournamentsProcessed = stats.processed;
+  synonymsData.metadata.sourceTournamentsSkipped = stats.skipped;
+  synonymsData.metadata.onlineMetaIncluded = stats.onlineIncluded;
 
-    // Semantic change detection: metadata (generated timestamp, coverage
-    // stats) changes every run, so a raw file diff always reports "changed".
-    // Downstream jobs that re-bake derived indexes must only fire when the
-    // mappings themselves moved.
-    const mappingsChanged =
-        !previous ||
-        !flatMapsEqual(synonymsData.synonyms, previous.synonyms || {}) ||
-        !flatMapsEqual(synonymsData.canonicals, previous.canonicals || {});
-    log(`\nMappings changed vs previous DB: ${mappingsChanged}`);
-    if (process.env.GITHUB_OUTPUT) {
-        await appendFile(process.env.GITHUB_OUTPUT, `mappings_changed=${mappingsChanged}\n`);
-    }
+  // Semantic change detection: metadata (generated timestamp, coverage
+  // stats) changes every run, so a raw file diff always reports "changed".
+  // Downstream jobs that re-bake derived indexes must only fire when the
+  // mappings themselves moved.
+  const mappingsChanged =
+    !previous ||
+    !flatMapsEqual(synonymsData.synonyms, previous.synonyms || {}) ||
+    !flatMapsEqual(synonymsData.canonicals, previous.canonicals || {});
+  log(`\nMappings changed vs previous DB: ${mappingsChanged}`);
+  if (process.env.GITHUB_OUTPUT) {
+    await appendFile(process.env.GITHUB_OUTPUT, `mappings_changed=${mappingsChanged}\n`);
+  }
 
-    // Save to file
-    await saveSynonyms(synonymsData);
+  // Save to file
+  await saveSynonyms(synonymsData);
 
-    // Upload to R2
-    await uploadToR2(synonymsData);
+  // Upload to R2
+  await uploadToR2(synonymsData);
 
-    log('\n' + '='.repeat(60));
-    log('Summary');
-    log('='.repeat(60));
-    log(`  Full rewrite mode: ${fullRewrite}`);
-    log(`  Total unique card names: ${cardsByName.size}`);
-    log(`  Cards with multiple prints: ${synonymsData.metadata.totalCanonicals}`);
-    log(`  Total synonym mappings: ${synonymsData.metadata.totalSynonyms}`);
-    log('\nCard synonyms generation complete!');
+  log(`\n${'='.repeat(60)}`);
+  log('Summary');
+  log('='.repeat(60));
+  log(`  Full rewrite mode: ${fullRewrite}`);
+  log(`  Total unique card names: ${cardsByName.size}`);
+  log(`  Cards with multiple prints: ${synonymsData.metadata.totalCanonicals}`);
+  log(`  Total synonym mappings: ${synonymsData.metadata.totalSynonyms}`);
+  log('\nCard synonyms generation complete!');
 }
 
 /**
@@ -673,14 +722,14 @@ async function main() {
  * @returns {boolean}
  */
 function flatMapsEqual(a, b) {
-    const aKeys = Object.keys(a);
-    if (aKeys.length !== Object.keys(b).length) {
-        return false;
-    }
-    return aKeys.every(key => a[key] === b[key]);
+  const aKeys = Object.keys(a);
+  if (aKeys.length !== Object.keys(b).length) {
+    return false;
+  }
+  return aKeys.every(key => a[key] === b[key]);
 }
 
 main().catch(error => {
-    console.error('[update-card-synonyms] Failed', error);
-    process.exit(1);
+  console.error('[update-card-synonyms] Failed', error);
+  process.exit(1);
 });
