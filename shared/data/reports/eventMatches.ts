@@ -135,7 +135,9 @@ export function buildPlayerMatches(event: NormalizedEvent): PlayerMatchRow[] {
   for (const match of event.matches) {
     const ids = match.participantIds;
     ids.forEach((meId, index) => {
-      if (!deckedParticipants.has(meId)) return;
+      if (!deckedParticipants.has(meId)) {
+        return;
+      }
       const opponentId = ids.length === 2 ? ids[1 - index] : null;
       const me = views.get(meId);
       const opponent = opponentId ? views.get(opponentId) : undefined;
@@ -146,7 +148,7 @@ export function buildPlayerMatches(event: NormalizedEvent): PlayerMatchRow[] {
         opponentId,
         opponentName: opponent?.name ?? null,
         opponentCountry: opponent?.country ?? null,
-        opponentArchetype: opponentId ? labels.get(opponentId) ?? null : null,
+        opponentArchetype: opponentId ? (labels.get(opponentId) ?? null) : null,
         playerArchetype: labels.get(meId) ?? null,
         round: match.round,
         phase: match.phase ?? null,
@@ -191,7 +193,7 @@ export function buildCanonicalMatches(event: NormalizedEvent): CanonicalMatchRow
       participant1Country: v1?.country ?? null,
       participant2Country: v2?.country ?? null,
       participant1Archetype: labels.get(p1) ?? null,
-      participant2Archetype: p2 ? labels.get(p2) ?? null : null,
+      participant2Archetype: p2 ? (labels.get(p2) ?? null) : null,
       outcome: match.outcome,
       winnerParticipantId: match.winnerParticipantId,
       participant1MadePhase2: v1 ? v1.madePhase2 : null,
@@ -201,9 +203,6 @@ export function buildCanonicalMatches(event: NormalizedEvent): CanonicalMatchRow
     };
   });
 
-  rows.sort(
-    (a, b) =>
-      a.round - b.round || (a.table ?? 0) - (b.table ?? 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-  );
+  rows.sort((a, b) => a.round - b.round || (a.table ?? 0) - (b.table ?? 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return rows;
 }

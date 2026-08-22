@@ -45,12 +45,16 @@ const utf8Bytes = (body: string): number => {
   let bytes = 0;
   for (let i = 0; i < body.length; i++) {
     const code = body.charCodeAt(i);
-    if (code < 0x80) bytes += 1;
-    else if (code < 0x800) bytes += 2;
-    else if (code >= 0xd800 && code <= 0xdbff) {
+    if (code < 0x80) {
+      bytes += 1;
+    } else if (code < 0x800) {
+      bytes += 2;
+    } else if (code >= 0xd800 && code <= 0xdbff) {
       bytes += 4;
       i++;
-    } else bytes += 3;
+    } else {
+      bytes += 3;
+    }
   }
   return bytes;
 };
@@ -83,9 +87,15 @@ export async function publishOutputs(
 
     // Read back and verify length + hash before trusting the object.
     const readBack = await store.get(candidate.key);
-    if (readBack === null) throw new Error(`read-back failed: ${candidate.key} is absent after write`);
-    if (utf8Bytes(readBack) !== utf8Bytes(candidate.body)) throw new Error(`read-back length mismatch for ${candidate.key}`);
-    if (hashOf(readBack) !== candidate.sha256) throw new Error(`read-back hash mismatch for ${candidate.key}`);
+    if (readBack === null) {
+      throw new Error(`read-back failed: ${candidate.key} is absent after write`);
+    }
+    if (utf8Bytes(readBack) !== utf8Bytes(candidate.body)) {
+      throw new Error(`read-back length mismatch for ${candidate.key}`);
+    }
+    if (hashOf(readBack) !== candidate.sha256) {
+      throw new Error(`read-back hash mismatch for ${candidate.key}`);
+    }
 
     outputs[candidate.name] = { key: candidate.key, sha256: candidate.sha256, bytes: utf8Bytes(candidate.body) };
   }
@@ -108,7 +118,9 @@ export function receiptStoreFrom(store: ObjectStore, keyFor: (node: string, node
   return {
     async get(node: string, nodeKey: string): Promise<NodeReceipt | null> {
       const body = await store.get(keyFor(node, nodeKey));
-      if (body === null) return null;
+      if (body === null) {
+        return null;
+      }
       return JSON.parse(body) as NodeReceipt;
     }
   };
@@ -134,7 +146,9 @@ export function verifyingReceiptStoreFrom(
   return {
     async get(node: string, nodeKey: string): Promise<NodeReceipt | null> {
       const body = await store.get(keyFor(node, nodeKey));
-      if (body === null) return null;
+      if (body === null) {
+        return null;
+      }
       const receipt = JSON.parse(body) as NodeReceipt;
       for (const output of Object.values(receipt.outputs)) {
         const objectBody = await store.get(output.key);

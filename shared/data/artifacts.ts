@@ -39,15 +39,15 @@
 
 import { calculatePercentage } from '../reportUtils';
 import {
+  type ArchetypeIdentity,
   archetypeKey,
   archetypeSlug,
-  makeArchetypeIdentity,
-  parseCardUid,
-  type ArchetypeIdentity,
   type CardCategory,
   type Deck,
   type DeckCard,
   type EnergyType,
+  makeArchetypeIdentity,
+  parseCardUid,
   type Participant,
   type TrainerType,
   type ValidationResult
@@ -248,8 +248,8 @@ function extractMeta(card: DeckCard): CardMeta {
   return {
     name: card.canonical.name,
     category: card.category,
-    trainerType: card.category === 'trainer' ? card.trainerType ?? undefined : undefined,
-    energyType: card.category === 'energy' ? card.energyType ?? undefined : undefined,
+    trainerType: card.category === 'trainer' ? (card.trainerType ?? undefined) : undefined,
+    energyType: card.category === 'energy' ? (card.energyType ?? undefined) : undefined,
     aceSpec: card.aceSpec === true ? true : undefined,
     regulationMark: card.regulationMark ?? undefined
   };
@@ -339,7 +339,7 @@ export function buildCardReport(decks: Deck[]): CardReport {
 export function buildArchetypeCardReports(decks: Deck[]): ArchetypeCardReport[] {
   const byKey = new Map<string, Deck[]>();
   for (const deck of decks) {
-    const key = deck.archetype.key;
+    const { key } = deck.archetype;
     const group = byKey.get(key);
     if (group) {
       group.push(deck);
@@ -435,7 +435,7 @@ export function buildArchetypeIndex(decks: Deck[]): ArchetypeIndex {
   const deckTotal = decks.length;
   const groups = new Map<string, { displayName: string; deckCount: number }>();
   for (const deck of decks) {
-    const key = deck.archetype.key;
+    const { key } = deck.archetype;
     const group = groups.get(key);
     if (!group) {
       groups.set(key, { displayName: deck.archetype.displayName, deckCount: 1 });
@@ -522,11 +522,7 @@ function validateDist(dist: unknown, foundCount: number, path: string, errors: s
 }
 
 /** Shared canonical-identity check: uid parses and its name/set/number agree. */
-function validateUidMeta(
-  record: Record<string, unknown>,
-  path: string,
-  errors: string[]
-): void {
+function validateUidMeta(record: Record<string, unknown>, path: string, errors: string[]): void {
   const { uid, name, set, number } = record;
   if (typeof uid !== 'string' || uid.length === 0) {
     errors.push(`${path}.uid: expected non-empty string`);
@@ -843,7 +839,11 @@ export function validateArchetypeIndex(value: unknown): ValidationResult<Archety
   for (let i = 1; i < entries.length; i++) {
     const prev = entries[i - 1];
     const cur = entries[i];
-    if (isRecord(prev) && isRecord(cur) && compareArchetypeEntries(prev as unknown as ArchetypeIndexEntry, cur as unknown as ArchetypeIndexEntry) > 0) {
+    if (
+      isRecord(prev) &&
+      isRecord(cur) &&
+      compareArchetypeEntries(prev as unknown as ArchetypeIndexEntry, cur as unknown as ArchetypeIndexEntry) > 0
+    ) {
       errors.push(`archetypes: not in canonical sort order (index ${i})`);
       break;
     }

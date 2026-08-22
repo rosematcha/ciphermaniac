@@ -11,7 +11,13 @@
  */
 
 import { type BuildNode, type BuildPlan, planBuild, type PlannedNode } from './graph';
-import { type CandidateOutput, type ObjectStore, publishOutputs, verifyingReceiptStoreFrom, writeReceipt } from './receiptStore';
+import {
+  type CandidateOutput,
+  type ObjectStore,
+  publishOutputs,
+  verifyingReceiptStoreFrom,
+  writeReceipt
+} from './receiptStore';
 
 /** Builds one node's candidate outputs from its resolved dependency keys. */
 export type NodeBuilder = (node: PlannedNode) => Promise<CandidateOutput[]> | CandidateOutput[];
@@ -65,18 +71,24 @@ export async function runBuildLoop(
 
   let rounds = 0;
   let plan = await planBuild(nodes, receiptStore, hashValue);
-  if (options.planOnly) return { built, rounds, finalPlan: plan };
+  if (options.planOnly) {
+    return { built, rounds, finalPlan: plan };
+  }
 
   while (plan.dirty.length > 0) {
     rounds += 1;
-    if (rounds > maxRounds) throw new Error(`build loop did not converge after ${maxRounds} rounds; still dirty: ${plan.dirty.join(', ')}`);
+    if (rounds > maxRounds) {
+      throw new Error(`build loop did not converge after ${maxRounds} rounds; still dirty: ${plan.dirty.join(', ')}`);
+    }
 
     // Build dirty nodes in dependency (topological) order so a node's inputs
     // are published before it builds.
     const dirtyInOrder = plan.nodes.filter(node => node.dirty);
     for (const planned of dirtyInOrder) {
       const builder = options.builders[planned.name];
-      if (!builder) throw new Error(`no builder registered for dirty node "${planned.name}"`);
+      if (!builder) {
+        throw new Error(`no builder registered for dirty node "${planned.name}"`);
+      }
       const candidates = await builder(planned);
       const { outputs } = await publishOutputs(store, candidates, hashBody);
       await writeReceipt(

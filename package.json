@@ -11,8 +11,8 @@
     "typecheck": "tsc --noEmit --project tsconfig.frontend.json",
     "typecheck:backend": "tsc --noEmit --project tsconfig.json",
     "typecheck:node": "tsc --noEmit --project tsconfig.node.json",
-    "lint": "eslint src tests scripts .github/scripts --ext .ts,.tsx,.mts,.mjs",
-    "lint:fix": "eslint src tests scripts .github/scripts --ext .ts,.tsx,.mts,.mjs --fix",
+    "lint": "eslint src shared functions scripts tests .github/scripts --ext .ts,.tsx,.mts,.mjs,.js",
+    "lint:fix": "eslint src shared functions scripts tests .github/scripts --ext .ts,.tsx,.mts,.mjs,.js --fix",
     "validate": "npm run typecheck && npm run typecheck:backend && npm run typecheck:node && npm run lint",
     "validate:fix": "npm run lint:fix && npm run typecheck",
     "test": "npm run test:unit",
@@ -72,7 +72,7 @@
     "fast-xml-parser": "^5.4.1"
   },
   "lint-staged": {
-    "*.{ts,tsx}": [
+    "*.{ts,tsx,mts,mjs,js}": [
       "eslint --fix"
     ]
   }
