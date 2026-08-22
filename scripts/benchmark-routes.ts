@@ -32,6 +32,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type BrowserContext, type CDPSession, chromium, type Page } from '@playwright/test';
+import { decodeSlimIndex } from '../shared/playerTypes.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const R2_BASE = 'https://r2.ciphermaniac.com';
@@ -128,7 +129,7 @@ async function discoverParams(): Promise<DiscoveredParams> {
     fetchJson<{ name: string; label: string }[]>(
       `${R2_BASE}/reports/${encodeURIComponent(ONLINE_REPORT)}/archetypes/index.json`
     ),
-    fetchJson<{ playerId: string; name: string; eventCount: number }[]>(`${R2_BASE}/players/index-slim.json`)
+    fetchJson<unknown>(`${R2_BASE}/players/index-slim.json`)
   ]);
 
   const topCard = [...master.items].sort((a, b) => a.rank - b.rank)[0];
@@ -139,8 +140,17 @@ async function discoverParams(): Promise<DiscoveredParams> {
   if (!topArch?.name) {
     throw new Error('Could not resolve a top archetype slug from archetypes/index.json');
   }
+  // Decode through the shared reader rather than re-deriving the wire shape:
+  // the slim index moved from a row array to a columnar payload, and the
+  // hand-rolled parse this replaced silently broke the whole benchmark.
+  const playerEntries = decodeSlimIndex(players);
+  if (!playerEntries?.length) {
+    throw new Error(
+      'players/index-slim.json is empty or in an unrecognized wire format (see shared/playerTypes.decodeSlimIndex)'
+    );
+  }
   // Pick the most-active player so the profile is a heavy (representative) fetch.
-  const topPlayer = [...players].sort((a, b) => (b.eventCount ?? 0) - (a.eventCount ?? 0))[0];
+  const topPlayer = [...playerEntries].sort((a, b) => (b.eventCount ?? 0) - (a.eventCount ?? 0))[0];
   if (!topPlayer?.playerId) {
     throw new Error('Could not resolve a player id from players/index-slim.json');
   }
