@@ -21,9 +21,10 @@ import { R2_ORIGIN as R2_BASE } from '../constants';
 /**
  * How long a resolved response stays in the dedupe cache.
  *
- * Long enough that a page-to-page fan-out (CardPage requests every archetype
- * report) shares one download, short enough that a tab left open across the
- * daily data update picks up fresh reports within minutes.
+ * Long enough that a navigation burst shares one download of the large shared
+ * payloads (master.json, cardUsage.json, the synonym database), short enough
+ * that a tab left open across the daily data update picks up fresh reports
+ * within minutes.
  */
 export const FETCH_TTL_MS = 5 * 60 * 1000;
 
