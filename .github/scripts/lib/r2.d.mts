@@ -16,6 +16,15 @@ export type JsonReadResult<T> =
 export interface PutJsonOptions {
   cacheControl?: string;
   contentType?: string;
+  retry?: R2RetryOptions;
+}
+
+export interface GetJsonOptions {
+  retry?: R2RetryOptions;
+}
+
+export interface ReportsBindingOptions {
+  retry?: R2RetryOptions;
 }
 
 /** Cloudflare R2 `R2ObjectBody`-shaped read result. */
@@ -35,12 +44,22 @@ export interface ReportsBinding {
   delete(key: string): Promise<void>;
 }
 
+export interface R2RetryOptions {
+  attempts?: number;
+  baseDelayMs?: number;
+  maxDelayMs?: number;
+}
+
+/** Retry a transient R2 fault with exponential backoff and full jitter. */
+export declare function withR2Retry<T>(operation: () => Promise<T>, options?: R2RetryOptions): Promise<T>;
+
 export declare function createR2Client(creds: R2Credentials): S3Client;
 
 export declare function getJsonResult<T = unknown>(
   client: S3Client,
   bucket: string,
-  key: string
+  key: string,
+  options?: GetJsonOptions
 ): Promise<JsonReadResult<T>>;
 
 export declare function putJson(
@@ -51,4 +70,8 @@ export declare function putJson(
   options?: PutJsonOptions
 ): Promise<void>;
 
-export declare function createReportsBinding(client: S3Client, bucket: string): ReportsBinding;
+export declare function createReportsBinding(
+  client: S3Client,
+  bucket: string,
+  options?: ReportsBindingOptions
+): ReportsBinding;
