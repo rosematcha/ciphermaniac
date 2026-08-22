@@ -30,7 +30,7 @@ on:
         default: 'reports'
         type: string
       skip_delay:
-        description: 'Skip the 5-minute settling delay'
+        description: 'Skip the 1-minute settling delay'
         required: false
         default: false
         type: boolean
