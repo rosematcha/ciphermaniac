@@ -7,8 +7,9 @@
  */
 
 import { EMPTY_DATABASE, type SynonymDatabase } from '../../shared/synonyms.js';
+import { R2_ORIGIN } from '../lib/constants';
 
-const SYNONYMS_URL = 'https://r2.ciphermaniac.com/assets/card-synonyms.json';
+const SYNONYMS_URL = `${R2_ORIGIN}/assets/card-synonyms.json`;
 
 const SYNONYM_CACHE_KEY = 'cardSynonymsData';
 // Bound the sessionStorage cache so a tab left open across the daily synonym

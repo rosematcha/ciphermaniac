@@ -14,7 +14,9 @@
 
 import { isReleasePath, recoverFromMissingReleaseBody, resolveDataPath } from '../releaseClient';
 
-export const R2_BASE = 'https://r2.ciphermaniac.com';
+export { R2_ORIGIN as R2_BASE } from '../constants';
+
+import { R2_ORIGIN as R2_BASE } from '../constants';
 
 /**
  * How long a resolved response stays in the dedupe cache.
