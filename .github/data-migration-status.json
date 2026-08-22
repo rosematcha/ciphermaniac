@@ -22,7 +22,8 @@
       "outstandingGates": [],
       "notes": [
         "Workflow sleeps in trends/player-aggregator intentionally retained until the build graph replaces them (plan: Phase 0 work list).",
-        "Shared concurrency group means GitHub may displace a pending writer run; accepted by plan until the Phase 5 reconciling workflow rediscovers dirty state from receipts."
+        "Shared concurrency group means GitHub may displace a pending writer run; accepted by plan until the Phase 5 reconciling workflow rediscovers dirty state from receipts.",
+        "Quality-initiative baseline re-established 2026-08-21 at commit 0d92429. The route benchmark was BROKEN at that point (TypeError: players is not iterable — it hand-rolled a parse of players/index-slim.json, which had moved to the slim-columnar-v1 wire format), so no browser baseline had been collected since 2026-07-12. Fixed (b2f632e) to decode through shared/playerTypes.decodeSlimIndex; fresh numbers in .github/baselines/route-benchmark-2026-08-21.json. Standout: the card page fans out to 64 requests / 533 KB cold — the first thing to look at before any micro-optimization. The live Playwright suite currently has 3 failures (N's Zoroark archetype page overflows horizontally at 384-412px) that reproduce at the pre-work baseline commit: live-data drift, not a regression, and exactly why that suite cannot gate a PR. A deterministic fixture-backed browser suite now does that job (tests/e2e)."
       ]
     },
     "1": {

@@ -73,10 +73,11 @@ Requires Node 22+.
 | `npm run build` | Production build |
 | `npm run verify` | Everything CI runs: validate, knip, metadata check, build, tests, coverage gates |
 | `npm run validate` | Typecheck (frontend, backend, node) + ESLint |
-| `npm test` | Unit + API + Python tests |
+| `npm test` | Unit + API + Python + deterministic browser tests |
 | `npm run test:unit` | Node unit tests |
 | `npm run test:api` | Pages Functions tests |
 | `npm run test:python` | Python producer tests (`PYTHON=<path>` to pick an interpreter) |
+| `npm run test:e2e:local` | Playwright routes against fixture data (deterministic) |
 | `npm run test:e2e:live` | Playwright mobile suite against live R2 data |
 | `npm run test:coverage` | Coverage report over the domain and serving surface |
 | `npm run knip` | Dead code check |

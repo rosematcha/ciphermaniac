@@ -1,5 +1,6 @@
 import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js';
 import { hasPtcgioImages, ptcgioImageUrls, ptcgioSrcset } from '../utils/ptcgio';
+import { R2_ORIGIN } from '../lib/constants';
 
 type CardImageSize = 'xs' | 'sm' | 'lg';
 
@@ -45,7 +46,7 @@ const TIER_WIDTH: Record<CardImageSize, number> = { xs: 136, sm: 274, lg: 460 };
  * Falls through the size tiers (lg → sm → xs) before finally rendering a
  * styled placeholder.
  */
-const R2_CARD_IMAGES = 'https://r2.ciphermaniac.com/card-images';
+const R2_CARD_IMAGES = `${R2_ORIGIN}/card-images`;
 const THUMBNAILS_PROXY = '/thumbnails';
 
 /**

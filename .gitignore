@@ -101,3 +101,6 @@ trends.json
 .lighthouseci/
 .scratch/
 .venv/
+
+# Playwright artifacts
+test-results/
