@@ -39,110 +39,14 @@ import { calculatePercentage } from '../../shared/reportUtils.js';
 import type { UpcomingPayload } from '../../shared/upcomingTypes.js';
 import type { MajorsTrendsPayload } from './majorsTrends';
 import archetypeIconsRaw from '../data/archetype-icons.json';
-import { isReleasePath, recoverFromMissingReleaseBody, resolveDataPath } from './releaseClient';
+import { dataClient, R2_BASE } from './data/client';
 
 export type { UpcomingPayload };
 
-const R2_BASE = 'https://r2.ciphermaniac.com';
-
-/**
- * Fetch dedupe/short cache. `expires` is Infinity while the request is in
- * flight, then a short TTL once resolved; rejected entries are removed
- * immediately so a user-triggered retry gets a fresh fetch. Expired entries
- * are swept on insert so multi-MB payloads don't accumulate for the session.
- */
-const FETCH_TTL_MS = 5 * 60 * 1000;
-const inflight = new Map<string, { promise: Promise<unknown>; expires: number }>();
-
-function cachedFetch(url: string): Promise<unknown> | null {
-  const entry = inflight.get(url);
-  if (!entry) {
-    return null;
-  }
-  if (Date.now() > entry.expires) {
-    inflight.delete(url);
-    return null;
-  }
-  return entry.promise;
-}
-
-function rememberFetch(url: string, promise: Promise<unknown>): void {
-  const now = Date.now();
-  for (const [key, entry] of inflight) {
-    if (now > entry.expires) {
-      inflight.delete(key);
-    }
-  }
-  const entry = { promise, expires: Infinity };
-  inflight.set(url, entry);
-  promise.then(
-    () => {
-      entry.expires = Date.now() + FETCH_TTL_MS;
-    },
-    () => {
-      if (inflight.get(url) === entry) {
-        inflight.delete(url);
-      }
-    }
-  );
-}
-
-/**
- * Snapshot data (frozen pre-rotation reports) lives at /reports/Snapshots/{date}/.
- * In dev, the build-rotation-snapshots script writes to `static/reports/Snapshots/`
- * so vite serves them at the root; in prod they're on R2 like everything else.
- * We pick the right base per call rather than per-helper so non-snapshot reads
- * keep their fast path.
- */
-function shouldUseLocalForPath(path: string): boolean {
-  return Boolean(import.meta.env?.DEV) && path.startsWith('/reports/Snapshots/');
-}
-
-/**
- * Shared fetch core with dedupe/short-cache. `optional` resolves 404s to null
- * instead of throwing; the two public names below pin the return type so callers
- * keep their non-null / nullable contracts.
- */
-async function fetchJsonCore<T>(path: string, optional: boolean): Promise<T | null> {
-  // Release-aware resolution: a no-op when no manifest is embedded (production
-  // default), else rewrites scope paths to their immutable release roots.
-  const resolvedPath = resolveDataPath(path);
-  const url = shouldUseLocalForPath(resolvedPath) ? resolvedPath : `${R2_BASE}${resolvedPath}`;
-  const cached = cachedFetch(url);
-  if (cached) {
-    return cached as Promise<T | null>;
-  }
-  const promise = (async () => {
-    const response = await fetch(url, { mode: 'cors' });
-    // A 404 on an IMMUTABLE release body is corruption, not an optional miss:
-    // recover with one controlled reload (adopt a newer release) rather than
-    // mixing a legacy generation into this document. recoverFromMissingReleaseBody
-    // is a no-op unless a manifest is embedded and this is a release path.
-    if (response.status === 404 && isReleasePath(resolvedPath) && recoverFromMissingReleaseBody(resolvedPath)) {
-      return new Promise<T | null>(() => {}); // navigation underway; never resolves
-    }
-    if (optional && response.status === 404) {
-      return null;
-    }
-    if (!response.ok) {
-      throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
-    }
-    return (await response.json()) as T;
-  })();
-  rememberFetch(url, promise);
-  return promise;
-}
-
-function fetchJson<T>(path: string): Promise<T> {
-  return fetchJsonCore<T>(path, false) as Promise<T>;
-}
-
-/**
- * Optional variant of fetchJson that resolves to null on 404 rather than throwing.
- */
-function fetchJsonOptional<T>(path: string): Promise<T | null> {
-  return fetchJsonCore<T>(path, true);
-}
+// Transport, dedupe, and short-TTL cache live in ./data/client, which takes
+// fetch/clock/base-url as parameters so that behavior is testable. This module
+// uses the application's single wired instance.
+const { fetchJson, fetchJsonOptional } = dataClient;
 
 // --- Tournament-scoped reports ---
 
