@@ -2,10 +2,18 @@ name: Lighthouse Budget
 
 # Mobile performance budget (mobile plan P4.2). Lighthouse's default mobile
 # profile simulates slow 4G (1.6 Mbps / 150ms RTT) — the same network model
-# the July 2026 mobile audit used. Budgets live in .lighthouserc.json:
-# LCP <= 3s (error), script transfer <= 90KB (error), CLS <= 0.1 (error),
-# image weight and perf score as warnings until the WebP pipeline (P1.1)
-# has run in production.
+# the July 2026 mobile audit used. Budgets live in .lighthouserc.json.
+#
+# Only metrics a push can actually change are hard failures: script transfer
+# weight (<= 90KB) and CLS (<= 0.1). LCP and the performance score are
+# warnings, because the pages under test fetch their report data live from
+# r2.ciphermaniac.com — so those numbers track production CDN cache state as
+# much as the bundle, and were failing roughly every other push at 3.4-3.9s
+# against a 3s budget while passing the rest of the time.
+#
+# The 3s LCP target from the mobile audit is unchanged and still reported. To
+# make it a gate again, the app needs a configurable data origin so Lighthouse
+# can run against local fixtures instead of production.
 
 on:
   pull_request:
