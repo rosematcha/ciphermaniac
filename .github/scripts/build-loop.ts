@@ -19,6 +19,7 @@
  * @module .github/scripts/build-loop
  */
 
+import { requireEnv } from './lib/env.ts';
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -34,14 +35,6 @@ import { buildTournamentCatalog } from './event-cli.ts';
 import { createR2Client, getJsonResult, putJson } from './lib/r2.mjs';
 
 const CACHE = 'public, max-age=31536000, immutable';
-
-function requireEnv(name: string): string {
-  const v = process.env[name];
-  if (!v) {
-    throw new Error(`Missing ${name}`);
-  }
-  return v;
-}
 
 // Captured scopes: index artifacts copied forward from legacy. `rel` is the
 // SCOPE-RELATIVE key (what the browser resolver expects under the scope root,

@@ -319,6 +319,40 @@ check('script paths referenced by workflows exist', () => {
   return problems;
 });
 
+check('destructive workflows default to their safe mode', () => {
+  // The workflows README states this convention; a convention nobody checks is
+  // a suggestion. reset-labs-history shipped with dry_run defaulting to false
+  // while deleting reports and re-scraping 54 events.
+  // Tuples rather than an object literal: these are YAML input names, and an
+  // object literal would trip the camelcase rule on every one of them.
+  const SAFE_DEFAULT: Array<[name: string, safe: 'true' | 'false']> = [
+    // "preview unless told otherwise"
+    ['dry_run', 'true'],
+    ['dry_run_refresh', 'true'],
+    // "do not write unless told to"
+    ['apply', 'false'],
+    ['force', 'false'],
+    ['overwrite', 'false']
+  ];
+  const problems: string[] = [];
+  for (const file of workflowFiles) {
+    const text = readFileSync(join(WORKFLOW_DIR, file), 'utf8');
+    for (const [name, safe] of SAFE_DEFAULT) {
+      // Match the input block: `  name:` then its indented body up to the next
+      // key at the same indent.
+      const block = new RegExp(`^(\\s+)${name}:\\s*$([\\s\\S]*?)(?=^\\1\\S|^\\S)`, 'm').exec(text);
+      if (!block || !/type:\s*boolean/.test(block[2])) {
+        continue;
+      }
+      const declared = /default:\s*(true|false)/.exec(block[2])?.[1];
+      if (declared !== undefined && declared !== safe) {
+        problems.push(`${file}: input \`${name}\` defaults to ${declared}; the safe default is ${safe}`);
+      }
+    }
+  }
+  return problems;
+});
+
 check('workflows declare explicit permissions', () => {
   // A workflow with no `permissions:` block inherits the repository default,
   // which may be read-write on every scope. Least privilege has to be written down.

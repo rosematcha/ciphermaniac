@@ -76,6 +76,22 @@ function codeOnly(line: string): string {
   return idx >= 0 ? line.slice(0, idx) : line;
 }
 
+/**
+ * Collapse a file to one comment-free line per statement-ish unit.
+ *
+ * A line-by-line scan is defeated by breaking the expression across a newline —
+ * which a formatter can do by accident on a long line, not just an author
+ * evading on purpose. Joining the code lines with a single space and scanning
+ * the whole thing closes that, at the cost of a pattern being able to span two
+ * genuinely unrelated statements. The patterns are specific enough
+ * (`}::${`, a three-element array `.join('::')`, two `'::'` operands) that this
+ * has not produced a false positive on this repo; the second test below is what
+ * would catch it if it started to.
+ */
+function scannableSource(text: string): string {
+  return text.split('\n').map(codeOnly).join(' ').replace(/\s+/g, ' ');
+}
+
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
     if (entry === 'node_modules' || entry === '__pycache__' || entry.startsWith('.')) {
@@ -100,15 +116,24 @@ test('no source file assembles a card UID by hand', () => {
       if (ALLOWED.has(rel)) {
         continue;
       }
-      readFileSync(file, 'utf8')
-        .split('\n')
-        .forEach((line, i) => {
-          const code = codeOnly(line);
-          if (!UID_PATTERNS.some(re => re.test(code)) || NON_CARD_KEY.test(code)) {
-            return;
-          }
-          offenders.push(`${rel}:${i + 1}  ${line.trim()}`);
-        });
+      const text = readFileSync(file, 'utf8');
+      // Line scan first, so a finding can be reported at its line.
+      let reported = false;
+      text.split('\n').forEach((line, i) => {
+        const code = codeOnly(line);
+        if (!UID_PATTERNS.some(re => re.test(code)) || NON_CARD_KEY.test(code)) {
+          return;
+        }
+        offenders.push(`${rel}:${i + 1}  ${line.trim()}`);
+        reported = true;
+      });
+      // Then the whole-file scan, which catches expressions split across lines.
+      if (!reported) {
+        const joined = scannableSource(text);
+        if (UID_PATTERNS.some(re => re.test(joined)) && !NON_CARD_KEY.test(joined)) {
+          offenders.push(`${rel}  (card UID assembled across multiple lines)`);
+        }
+      }
     }
   }
 
@@ -157,6 +182,25 @@ test('the guard still ignores the two-part index-key form and deck fingerprints'
   for (const line of allowed) {
     const code = codeOnly(line);
     assert.ok(!UID_PATTERNS.some(re => re.test(code)) || NON_CARD_KEY.test(code), `guard falsely flags: ${line}`);
+  }
+});
+/* eslint-enable no-template-curly-in-string */
+
+/* eslint-disable no-template-curly-in-string -- these strings ARE the code samples under test */
+test('the guard catches a UID split across lines', () => {
+  // A line-by-line scan misses these, and a formatter can produce them by
+  // accident on a long line — not just an author evading deliberately.
+  const multiline = [
+    'const uid = `${name}::${\n  set\n}::${number}`;',
+    "const uid = [name, set, number]\n  .join('::');",
+    "const uid = name + '::' +\n  set + '::' + number;"
+  ];
+  for (const sample of multiline) {
+    const joined = scannableSource(sample);
+    assert.ok(
+      UID_PATTERNS.some(re => re.test(joined)),
+      `guard misses across lines: ${JSON.stringify(sample)}`
+    );
   }
 });
 /* eslint-enable no-template-curly-in-string */

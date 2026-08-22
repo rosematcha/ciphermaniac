@@ -242,3 +242,40 @@ The system now features **on-the-fly card type fetching**, eliminating the need 
 - [ ] Promo card support (different URL pattern)
 - [ ] Batch API endpoint on Limitless (if available)
 - [ ] Database versioning and migration support
+
+## Where a script belongs
+
+Settled convention (DB-MASTER-PLAN Phase 14.1), so a new script has an obvious
+home rather than landing wherever the last one did:
+
+| Location | For | Runs |
+|---|---|---|
+| `scripts/` | Developer and maintainer tooling | By a person, locally |
+| `.github/scripts/` | Pipeline entrypoints | By a workflow, on a schedule |
+| `.github/scripts/lib/` | Shared implementation for the above two | Imported, never invoked |
+| `shared/` | Domain logic with no environment assumptions | Everywhere: browser, Workers, Node |
+
+The test is who invokes it, not what it touches. `scripts/verify-release.ts`
+reads production R2 but lives in `scripts/` because a person runs it before a
+promotion; `.github/scripts/publish-release.ts` writes to R2 because a workflow
+runs it.
+
+Pure logic keeps moving down: if two scripts need it, it belongs in
+`.github/scripts/lib/`; if a Worker or the browser needs it too, `shared/`. An
+ESLint rule enforces the bottom of that graph — `shared/` may not import
+`src/`, `functions/`, Solid, an AWS SDK, or Node built-ins.
+
+### Reports and checks
+
+| Command | What it answers |
+|---|---|
+| `npm run check:metadata` | Do facts stated in two places still agree? |
+| `npm run check:release` | Does every reference in the published release resolve? |
+| `npm run report:modules` | Which modules mix the most unrelated responsibilities? |
+| `npm run bench:routes` | What does each route cost on a throttled phone? |
+| `npm run bench:panel` | Is the AdvancedPanel work worth moving off-thread? |
+| `npm run bench:budget` | Did the last benchmark regress against the previous one? |
+
+Only `check:metadata` is part of `npm run verify`. The rest are reports: they
+either need the network or measure something too noisy to gate a pull request
+on, which is a deliberate choice rather than an omission.

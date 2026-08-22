@@ -18,6 +18,7 @@
  * @module .github/scripts/event-cli
  */
 
+import { requireEnv } from './lib/env.ts';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -130,14 +131,6 @@ async function uploadR2(artifacts: Map<string, unknown>, prefix: string): Promis
     await putJson(client, bucket, `${base}/${path}`, body, { cacheControl: CACHE_CONTROL });
   }
   console.log(`[event-cli] Uploaded ${artifacts.size} artifacts to ${bucket}/${base}`);
-}
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable ${name}`);
-  }
-  return value;
 }
 
 /** A legacy `decks.json` deck row, only the fields reindex/rebake need. */

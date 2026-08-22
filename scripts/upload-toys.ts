@@ -11,6 +11,7 @@
  *   R2_BUCKET_NAME=ciphermaniac-reports npx tsx scripts/upload-toys.ts
  */
 
+import { requireEnv } from '../.github/scripts/lib/env.ts';
 import process from 'node:process';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
@@ -18,14 +19,6 @@ import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 const TOYS_DIR = 'static/toys';
 const CACHE_CONTROL = 'public, max-age=21600';
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing environment variable: ${name}`);
-  }
-  return value;
-}
 
 const s3Client = new S3Client({
   region: 'auto',

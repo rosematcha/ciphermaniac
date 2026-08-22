@@ -431,10 +431,14 @@ function CardPageBody(props: {
                 </div>
               }
             >
+              {/* skipR2: a previewed filmstrip print may be one the conversion
+                  pipeline never saw, and this is the lg tier. The page's own
+                  print was played, so it is in R2 and keeps the WebP win. */}
               <CardImage
                 set={heroSet()}
                 number={heroNumber()}
                 size='lg'
+                skipR2={Boolean(props.previewPrint)}
                 sizes='(max-width: 760px) 240px, 300px'
                 lazy={false}
                 alt={`${props.card.name} card`}

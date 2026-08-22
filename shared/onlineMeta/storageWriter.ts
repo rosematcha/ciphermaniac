@@ -68,9 +68,7 @@ export async function getJson<T = unknown>(env: unknown, key: string): Promise<T
  * "empty" silently produces a wrong index (Theme E, P-05, P-16).
  */
 export type JsonLoadResult<T> =
-  | { status: 'ok'; value: T }
-  | { status: 'missing' }
-  | { status: 'error'; error: unknown };
+  { status: 'ok'; value: T } | { status: 'missing' } | { status: 'error'; error: unknown };
 
 export async function getJsonResult<T = unknown>(env: unknown, key: string): Promise<JsonLoadResult<T>> {
   const bucket = (env as EnvWithReports)?.REPORTS;

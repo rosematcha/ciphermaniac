@@ -16,6 +16,7 @@
  * Pass --force to re-upload every slug regardless of what's already mirrored.
  */
 
+import { requireEnv } from '../.github/scripts/lib/env.ts';
 import process from 'node:process';
 import { readFile } from 'node:fs/promises';
 import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
@@ -24,14 +25,6 @@ const SOURCE_BASE = 'https://r2.limitlesstcg.net/pokemon/gen9';
 const DEST_PREFIX = 'pokemon-sprites/gen9';
 // Sprites for a given gen are effectively frozen once published.
 const CACHE_CONTROL = 'public, max-age=31536000, immutable';
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing environment variable: ${name}`);
-  }
-  return value;
-}
 
 const s3Client = new S3Client({
   region: 'auto',

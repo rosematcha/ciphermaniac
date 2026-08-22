@@ -22,6 +22,7 @@
  *   DRY_RUN=1 MAJORS_TRENDS_OUT=/tmp/majors-trends.json npx tsx .github/scripts/run-majors-trends.ts
  */
 
+import { requireEnv } from './lib/env.ts';
 import process from 'node:process';
 import { writeFile } from 'node:fs/promises';
 import { createR2Client, getJsonResult, putJson } from './lib/r2.mjs';
@@ -48,14 +49,6 @@ const MAX_EVENTS = Math.max(...WINDOWS.map(w => w.count));
 const ARTIFACT_KEY = 'majors-trends.json';
 /** 6 hours — majors data changes at most a few times a week. */
 const CACHE_CONTROL = 'public, max-age=21600';
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing environment variable: ${name}`);
-  }
-  return value;
-}
 
 // Read the R2 bucket through the authenticated S3 endpoint, not the public
 // r2.ciphermaniac.com origin. The public origin sits behind Cloudflare's WAF,

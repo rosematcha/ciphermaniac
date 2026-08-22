@@ -19,12 +19,11 @@ export { fetchEvolutionMap } from './data/evolution';
 
 // Card identity helper, re-exported so pages keep one import site for it.
 export { itemUid } from './data/compat';
-export { isSnapshotSource, snapshotSourceKey } from './data/paths';
+export { snapshotSourceKey } from './data/paths';
 export { fetchRotationIndex, snapshotDateForArchetype, snapshotDateForCard } from './data/snapshots';
-export type { SnapshotIndex } from './data/snapshots';
 export { fetchPlayerDecks, fetchPlayerIndexSlim, fetchPlayerProfile } from './data/players';
 export { fetchMajorsTrendReport, fetchOnlineTrendReport } from './data/trends';
-export type { OnlineTrendsPayload, TrendTimelinePoint } from './data/trends';
+export type { TrendTimelinePoint } from './data/trends';
 export { fetchMaster, fetchMeta, fetchTournamentsList } from './data/reports';
 export type { MasterPayload } from './data/reports';
 export {
@@ -38,7 +37,7 @@ export {
 export { cardUsageForCard, fetchCardUsage, findByClusterUid } from './data/cards';
 export type { CardUsageEntry, CardUsagePayload } from './data/cards';
 export { fetchArchetypeDecks, fetchConversionIndex, fetchDay2CardStats, fetchParticipants } from './data/events';
-export type { ConversionPayload, Day2CardStat, DeckRecord } from './data/events';
+export type { Day2CardStat, DeckRecord } from './data/events';
 export { findCardBySetNumberCanonical, normalizeCardNumberKey, resolveCanonicalSetNumber } from './data/routes';
 // Tournament-key parsing lives in shared: the daily majors-trends pipeline
 // classifies and dates events the same way the selector does.
@@ -54,7 +53,7 @@ export {
   fetchMatchupProfiles,
   fetchPlayerMatches
 } from './data/matchups';
-export type { MatchupPair, MatchupProfile, MatchupProfilesPayload, OnlineMatchupRecord } from './data/matchups';
+export type { MatchupPair, MatchupProfile, OnlineMatchupRecord } from './data/matchups';
 
 // Pricing moved to ./data/prices; re-exported so page imports stay at one site.
 export {
@@ -64,15 +63,7 @@ export {
   PRICE_HISTORY_MIN_DAYS,
   priceHistorySpanDays
 } from './data/prices';
-export type {
-  PriceMoverList,
-  PriceMoverMetric,
-  PriceMoverRow,
-  PriceMoversPayload,
-  PriceMoverScope,
-  PricePoint,
-  PricingEntry
-} from './data/prices';
+export type { PriceMoverList, PriceMoverMetric, PriceMoverRow, PricePoint, PricingEntry } from './data/prices';
 
 // --- Upcoming tournaments (Limitless scraper Function) ---
 // Types live in shared/upcomingTypes.ts so the producing Pages Function

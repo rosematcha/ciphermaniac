@@ -31,6 +31,12 @@ import { buildArchetypeReports } from '../../shared/data/archetypes/build.js';
 import { onlineArchetypeOptions } from '../../shared/data/reports/onlineArtifacts.js';
 import { buildCardUsageIndex } from '../../shared/data/reports/cardUsage.js';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.js';
+import {
+  decodeStandings,
+  decodeTournamentDetails,
+  decodeTournamentList,
+  detectDecodeBreakage
+} from '../../shared/api/limitlessDecoders.js';
 
 const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api';
 const WINDOW_DAYS = 14;
@@ -205,15 +211,21 @@ async function fetchRecentOnlineTournaments(since: Date): Promise<TournamentSumm
 
   for (let page = 1; page <= MAX_PAGES; page += 1) {
     // eslint-disable-next-line no-await-in-loop
-    const list = await fetchLimitless<
-      Array<{ id: string; name: string; date: string; format?: string; game: string; players?: number }>
-    >('/tournaments', {
+    const raw = await fetchLimitless('/tournaments', {
       game: 'PTCG',
       limit: PAGE_SIZE,
       page
     });
-
-    if (!Array.isArray(list) || list.length === 0) {
+    // Decode rather than cast: this response becomes published artifacts, so a
+    // shape change upstream must fail loudly here instead of being baked into a
+    // release.
+    const decoded = decodeTournamentList(raw);
+    const breakage = detectDecodeBreakage(decoded, `tournament list page ${page}`);
+    if (breakage) {
+      console.warn(`[online-meta] ${breakage}`);
+    }
+    const list = decoded.rows;
+    if (list.length === 0) {
       break;
     }
 
@@ -226,14 +238,7 @@ async function fetchRecentOnlineTournaments(since: Date): Promise<TournamentSumm
       }
 
       // eslint-disable-next-line no-await-in-loop
-      const details = await fetchLimitless<{
-        decklists?: boolean;
-        isOnline?: boolean;
-        format?: string;
-        platform?: string;
-        players?: number;
-        organizer?: { name?: string };
-      }>(`/tournaments/${entry.id}/details`);
+      const details = decodeTournamentDetails(await fetchLimitless(`/tournaments/${entry.id}/details`));
       if (details.decklists === false) {
         continue;
       }
@@ -251,7 +256,10 @@ async function fetchRecentOnlineTournaments(since: Date): Promise<TournamentSumm
         date: entry.date,
         format: formatId || 'UNKNOWN',
         platform: details.platform || null,
-        game: entry.game,
+        // The list was queried with game=PTCG, so a row that omits `game` is
+        // the one we asked for. The old cast asserted this field was always
+        // present; the decoder showed it is not guaranteed.
+        game: entry.game ?? 'PTCG',
         players: details.players || entry.players || null,
         organizer: details.organizer?.name || null
       });
@@ -376,7 +384,12 @@ async function gatherDecks(
     let standings: StandingsEntry[];
     try {
       // eslint-disable-next-line no-await-in-loop
-      standings = await fetchLimitless<StandingsEntry[]>(`/tournaments/${tournament.id}/standings`);
+      const decodedStandings = decodeStandings(await fetchLimitless(`/tournaments/${tournament.id}/standings`));
+      const standingsBreakage = detectDecodeBreakage(decodedStandings, `standings for ${tournament.name}`);
+      if (standingsBreakage) {
+        console.warn(`[online-meta] ${standingsBreakage}`);
+      }
+      standings = decodedStandings.rows;
     } catch (error) {
       console.warn(`Failed to fetch standings for ${tournament.name}: ${(error as Error).message}`);
       continue;

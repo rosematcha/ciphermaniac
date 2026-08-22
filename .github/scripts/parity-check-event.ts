@@ -12,6 +12,7 @@
  * @module .github/scripts/parity-check-event
  */
 
+import { requireEnv } from './lib/env.ts';
 import { pathToFileURL } from 'node:url';
 import { generateReportFromDecks } from '../../shared/data/reports/cardReport.ts';
 import { buildConversionIndex } from '../../shared/data/reports/conversion.ts';
@@ -32,14 +33,6 @@ interface LegacyReportItem {
   uid?: string;
   found: number;
   pct: number;
-}
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable ${name}`);
-  }
-  return value;
 }
 
 /** Compare two report item lists by (uid|name) -> found, ignoring order. */

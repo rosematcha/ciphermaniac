@@ -7,6 +7,7 @@
  *   reports/Trends - Last 30 Days/meta.json
  */
 
+import { requireEnv } from './lib/env.ts';
 import process from 'node:process';
 import { DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { createR2Client, createReportsBinding } from './lib/r2.mjs';
@@ -28,14 +29,6 @@ const MAX_ARCHETYPES_IN_SERIES = 32;
 // to produce non-degenerate deltas. 4 events => chunk=2 on each side, no overlap.
 const MIN_TREND_TOURNAMENTS = 4;
 const LOOKBACK_FALLBACK_STEPS = [45, 60, 90];
-
-function requireEnv(name: string) {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing environment variable: ${name}`);
-  }
-  return value;
-}
 
 const R2_ACCOUNT_ID = requireEnv('R2_ACCOUNT_ID');
 const R2_ACCESS_KEY_ID = requireEnv('R2_ACCESS_KEY_ID');

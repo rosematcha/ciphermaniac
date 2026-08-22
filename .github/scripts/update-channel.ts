@@ -10,20 +10,13 @@
  * @module .github/scripts/update-channel
  */
 
+import { requireEnv } from './lib/env.ts';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { validateReleaseManifest } from '../../shared/data/build/release.ts';
 import { updatePointer } from '../../shared/data/build/channel.ts';
 import { createR2Client } from './lib/r2.mjs';
 import { createR2ObjectStore } from './lib/build/r2ObjectStore.mjs';
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable ${name}`);
-  }
-  return value;
-}
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);

@@ -251,4 +251,4 @@ export interface MetaReport {
 // Deck and filter domain types moved to shared/deckTypes (used by Pages
 // Functions and pipeline code as well); re-exported here so frontend imports
 // keep working unchanged.
-export type { Deck, DeckCard, Operator, Filter, ArchetypeFilterRequest } from '../../shared/deckTypes.js';
+export type { Deck, DeckCard } from '../../shared/deckTypes.js';

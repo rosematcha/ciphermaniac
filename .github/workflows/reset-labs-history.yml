@@ -29,10 +29,14 @@ on:
         type: string
         default: '54'
       dry_run:
+        # Defaults to the SAFE side, matching every other destructive workflow
+        # here (reprocess-event-indexes, refresh-tournaments-index,
+        # reconcile-data). This job deletes tournament reports and re-scrapes 54
+        # events; the default invocation should not do that.
         description: 'Preview only (no delete/no rebuild)'
         required: false
         type: boolean
-        default: false
+        default: true
       fail_fast:
         description: 'Stop on first failed tournament'
         required: false
