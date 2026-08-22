@@ -95,34 +95,48 @@ export function shuffled<T>(items: readonly T[], rng: () => number): T[] {
 }
 
 /**
- * Deal the roster into rows.
+ * The cards available to a wall, split by whether they are guaranteed a slot.
  *
- * Concatenated independent shuffles rather than one shuffle read cyclically:
- * when the wall wants more slots than the roster has cards, cycling would make
- * every row after the first repeat the previous row's run in the same order,
- * which reads as an obvious loop. Reshuffling each pass keeps the repeats
- * scattered.
+ * A wall usually has fewer slots than the roster has cards, so somebody is
+ * always left out — and left to chance, the card the format is named after can
+ * be the one that misses. `always` is dealt first so that cannot happen.
  */
-export function dealRows(
-  roster: readonly WallCard[],
-  rows: number,
-  cardsPerRow: number,
-  rng: () => number
-): WallCard[][] {
+export interface WallDeal {
+  /** Guaranteed a slot, while there are slots to give. */
+  always: readonly WallCard[];
+  /** Fills whatever is left over. */
+  rest: readonly WallCard[];
+}
+
+/**
+ * Deal the available cards into rows.
+ *
+ * Selection and placement are two separate shuffles, and they have to be. The
+ * first decides WHICH cards make the wall, and puts the guaranteed ones at the
+ * front of the queue so they survive the cut. Dealing that queue straight into
+ * rows would then park every guaranteed card in the top row, so the survivors
+ * are shuffled again before being laid out.
+ *
+ * Where more slots exist than cards, each extra pass is its own shuffle rather
+ * than a repeat of the first: cycling one order would make every row after the
+ * first replay the previous row's run, which reads as an obvious loop.
+ */
+export function dealRows(deal: WallDeal, rows: number, cardsPerRow: number, rng: () => number): WallCard[][] {
   const needed = rows * cardsPerRow;
-  const pool: WallCard[] = [];
-  while (pool.length < needed) {
-    pool.push(...shuffled(roster, rng));
+  const queue: WallCard[] = [];
+  while (queue.length < needed) {
+    queue.push(...shuffled(deal.always, rng), ...shuffled(deal.rest, rng));
   }
+  const selected = shuffled(queue.slice(0, needed), rng);
   const out: WallCard[][] = [];
   for (let i = 0; i < rows; i++) {
-    out.push(pool.slice(i * cardsPerRow, (i + 1) * cardsPerRow));
+    out.push(selected.slice(i * cardsPerRow, (i + 1) * cardsPerRow));
   }
   return out;
 }
 
 /** Build the scene for a stage of the given pixel size. */
-export function buildScene(config: WallConfig, roster: readonly WallCard[], width: number, height: number): WallScene {
+export function buildScene(config: WallConfig, deal: WallDeal, width: number, height: number): WallScene {
   const rows = Math.max(1, Math.floor(config.rows));
   const cardsPerRow = Math.max(1, Math.floor(config.cardsPerRow));
   const band = height / rows;
@@ -136,7 +150,7 @@ export function buildScene(config: WallConfig, roster: readonly WallCard[], widt
   const loopSeconds = Math.max(0.1, config.loopSeconds);
   const cardsPerSecond = tileWidth / (cardWidth * loopSeconds);
 
-  const hands = dealRows(roster, rows, cardsPerRow, createRng(config.seed));
+  const hands = dealRows(deal, rows, cardsPerRow, createRng(config.seed));
   // Phases come off their own stream. Sharing one with the deal would make them
   // depend on how many draws the deal happened to consume, so nudging
   // cards-per-row would also re-stagger every row for no reason the user asked for.
@@ -171,22 +185,24 @@ export function tileOriginX(row: SceneRow, tileWidth: number, loopSeconds: numbe
 }
 
 /**
- * Per-frame delays in centiseconds, GIF's only time unit.
+ * The per-frame delay, in centiseconds — GIF's only time unit, and the reason
+ * the frame-rate choices are what they are.
  *
- * Rounding each frame independently would drift — 30fps wants 3.33cs and would
- * land on 3, running the loop 11% fast. Accumulating against the exact total
- * instead spreads the remainder (3,3,4,3,3,4...) so the loop lasts precisely as
- * long as the preview did. Two centiseconds is the floor because renderers
- * silently rewrite anything faster to 10.
+ * Spreading a fractional delay across frames (3,3,4,3,3,4 for 30fps) makes the
+ * loop last exactly the right time, but each frame is then held 33% longer or
+ * shorter than its neighbour, and on a smooth horizontal scroll that reads as a
+ * constant judder. A uniform delay is the opposite trade: every frame is held
+ * equally, and the loop's total length is quantised to a whole number of
+ * centiseconds. Evenness wins — the eye tracks a pan and sees the jitter, but
+ * cannot see that the loop is 9.9 seconds instead of 10.
+ *
+ * At a frame rate that divides 100 there is no trade at all, which is why the
+ * GIF export only offers those.
  */
-export function planFrameDelays(loopSeconds: number, frameCount: number): number[] {
-  const totalCs = loopSeconds * 100;
-  const delays: number[] = [];
-  let emitted = 0;
-  for (let i = 1; i <= frameCount; i++) {
-    const target = Math.round((i * totalCs) / frameCount);
-    delays.push(Math.max(2, target - emitted));
-    emitted = target;
-  }
-  return delays;
+export function gifFrameDelayCs(fps: number): number {
+  // Renderers silently rewrite anything under 2cs to 10cs.
+  return Math.max(2, Math.round(100 / fps));
 }
+
+/** Frame rates that divide 100, so every GIF frame is held for the same whole centisecond. */
+export const GIF_FRAME_RATES = [10, 20, 25, 50];

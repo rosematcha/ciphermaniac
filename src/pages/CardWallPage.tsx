@@ -1,16 +1,17 @@
-import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
-import { loadWallImages, type WallImages } from '../lib/cardWall/images';
-import { buildScene, type RowSetting, type WallConfig } from '../lib/cardWall/scene';
+import { createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { cardKey, loadWallImages, type WallImages } from '../lib/cardWall/images';
+import { buildScene, GIF_FRAME_RATES, type RowSetting, type WallConfig, type WallDeal } from '../lib/cardWall/scene';
 import { createWallPainter, type WallLook } from '../lib/cardWall/render';
 import {
+  describeVideoOutput,
   downloadBlob,
   estimateGifBytes,
   exportGif,
   exportVideo,
-  gifFrameCount,
-  pickVideoType
+  gifFrameCount
 } from '../lib/cardWall/export';
 import { WALL_ROSTER } from '../lib/cardWall/roster';
+import { createPersistentSignal } from '../lib/persistentSignal';
 import { Segmented } from '../components/Segmented';
 import '../styles/pages/card-wall.css';
 
@@ -33,7 +34,10 @@ const FORMAT_OPTIONS: { value: Format; label: string }[] = [
   { value: 'video', label: 'Video' }
 ];
 const WIDTH_OPTIONS = [640, 960, 1280, 1920];
-const FPS_OPTIONS = [15, 20, 25, 30];
+// GIF holds each frame for a whole number of centiseconds, so only rates that
+// divide 100 play evenly — anything else alternates frame lengths and judders.
+const GIF_FPS_OPTIONS = GIF_FRAME_RATES;
+const VIDEO_FPS_OPTIONS = [24, 30, 60];
 const COLOR_OPTIONS = [64, 128, 256];
 const MAX_ROWS = 6;
 
@@ -95,6 +99,21 @@ const PRESETS: Preset[] = [
   }
 ];
 
+/** Card keys round-trip through storage as one comma-separated string. */
+function parseKeys(raw: string): Set<string> {
+  return new Set(raw.split(',').filter(Boolean));
+}
+
+function toggleKey(raw: string, key: string): string {
+  const keys = parseKeys(raw);
+  if (keys.has(key)) {
+    keys.delete(key);
+  } else {
+    keys.add(key);
+  }
+  return [...keys].join(',');
+}
+
 function defaultRowSettings(): RowSetting[] {
   return Array.from({ length: MAX_ROWS }, (_, i) => ({
     direction: i % 2 === 0 ? ('left' as const) : ('right' as const),
@@ -120,6 +139,12 @@ export function CardWallPage() {
   const [cardScale, setCardScale] = createSignal(0.84);
   const [seed, setSeed] = createSignal(7);
   const [rowSettings, setRowSettings] = createSignal<RowSetting[]>(defaultRowSettings());
+  // Kept across visits: curating 48 cards is work, and losing it to a refresh
+  // would be the kind of small betrayal that stops people curating at all.
+  const [alwaysRaw, setAlwaysRaw] = createPersistentSignal<string>('cm:card-wall:always', '', v => v);
+  const [offRaw, setOffRaw] = createPersistentSignal<string>('cm:card-wall:off', '', v => v);
+  const always = createMemo(() => parseKeys(alwaysRaw()));
+  const off = createMemo(() => parseKeys(offRaw()));
 
   const [background, setBackground] = createSignal<WallLook['background']>('cream');
   const [blur, setBlur] = createSignal(0);
@@ -127,7 +152,9 @@ export function CardWallPage() {
 
   const [format, setFormat] = createSignal<Format>('gif');
   const [exportWidth, setExportWidth] = createSignal(640);
-  const [fps, setFps] = createSignal(15);
+  const [gifFps, setGifFps] = createSignal(20);
+  const [videoFps, setVideoFps] = createSignal(30);
+  const fps = () => (format() === 'gif' ? gifFps() : videoFps());
   const [loops, setLoops] = createSignal(2);
   const [colors, setColors] = createSignal(128);
   const [lastSize, setLastSize] = createSignal<number | null>(null);
@@ -156,14 +183,35 @@ export function CardWallPage() {
   }));
   const look = createMemo<WallLook>(() => ({ background: background(), blur: blur(), darken: darken() }));
 
+  const deal = createMemo<WallDeal>(() => {
+    const pinned = always();
+    const excluded = off();
+    const usable = WALL_ROSTER.filter(card => !excluded.has(cardKey(card)));
+    // Everything switched off leaves nothing to draw, so fall back to the whole
+    // roster rather than show an empty stage the user has to guess their way out of.
+    const pool = usable.length > 0 ? usable : WALL_ROSTER;
+    return {
+      always: pool.filter(card => pinned.has(cardKey(card))),
+      rest: pool.filter(card => !pinned.has(cardKey(card)))
+    };
+  });
+
   const scene = createMemo(() => {
     const size = stageSize();
-    return buildScene(config(), WALL_ROSTER, size.width, size.height);
+    return buildScene(config(), deal(), size.width, size.height);
   });
   const exportHeight = createMemo(() => Math.round(exportWidth() / ASPECT[aspect()]));
+  const slots = createMemo(() => rows() * cardsPerRow());
+  /** Distinct cards the current shuffle actually put on the wall. */
+  const onWall = createMemo(() => new Set(scene().rows.flatMap(row => row.cards.map(cardKey))).size);
   const frameCount = createMemo(() => gifFrameCount(scene().loopSeconds, fps()));
   const ready = createMemo(() => loadedCount() >= WALL_ROSTER.length);
-  const videoType = createMemo(() => pickVideoType());
+  // What a video export would actually produce here: MP4 encoded offline where
+  // WebCodecs can, a real-time recording where it can't.
+  const [videoOutput] = createResource(
+    () => (format() === 'video' ? ([exportWidth(), exportHeight(), videoFps()] as const) : null),
+    ([w, h, rate]) => describeVideoOutput(w, h, rate)
+  );
   const estimatedMb = createMemo(
     () => estimateGifBytes(frameCount(), exportWidth(), exportHeight(), colors()) / 1_000_000
   );
@@ -258,7 +306,7 @@ export function CardWallPage() {
     const height = exportHeight();
     const request = {
       config: config(),
-      roster: WALL_ROSTER,
+      deal: deal(),
       images: images(),
       look: look(),
       width,
@@ -481,6 +529,62 @@ export function CardWallPage() {
           </For>
         </div>
 
+        <div class='cw-cards'>
+          <div class='cw-cards-head'>
+            <span class='cw-field-label'>Cards</span>
+            <span class='cw-readout'>
+              {onWall()} of {WALL_ROSTER.length - off().size} on {slots()} slots
+              <Show when={always().size > 0}> · {always().size} always</Show>
+            </span>
+            <div class='cw-cards-actions'>
+              <button type='button' class='btn btn-ghost' onClick={() => setOffRaw('')} disabled={off().size === 0}>
+                Use all
+              </button>
+              <button
+                type='button'
+                class='btn btn-ghost'
+                onClick={() => setAlwaysRaw('')}
+                disabled={always().size === 0}
+              >
+                Clear always
+              </button>
+            </div>
+          </div>
+          <Show when={always().size > slots()}>
+            <p class='cw-error' role='status'>
+              {always().size} cards are set to always appear, but the wall only has {slots()} slots. Add rows or cards
+              per row, or some of them will still miss out.
+            </p>
+          </Show>
+          <div class='cw-card-grid'>
+            <For each={WALL_ROSTER}>
+              {card => {
+                const key = cardKey(card);
+                return (
+                  <div class='cw-card' classList={{ 'is-off': off().has(key), 'is-always': always().has(key) }}>
+                    <button
+                      type='button'
+                      class='cw-card-pin'
+                      aria-pressed={always().has(key)}
+                      aria-label={`Always include ${card.name}`}
+                      title='Always include this card'
+                      onClick={() => setAlwaysRaw(prev => toggleKey(prev, key))}
+                    />
+                    <button
+                      type='button'
+                      class='cw-card-name'
+                      aria-pressed={!off().has(key)}
+                      onClick={() => setOffRaw(prev => toggleKey(prev, key))}
+                    >
+                      {card.name}
+                    </button>
+                  </div>
+                );
+              }}
+            </For>
+          </div>
+        </div>
+
         <div class='cw-export'>
           <div class='cw-field'>
             <span class='cw-field-label'>Format</span>
@@ -503,9 +607,12 @@ export function CardWallPage() {
           <div class='cw-field'>
             <span class='cw-field-label'>Frame rate</span>
             <Segmented
-              options={FPS_OPTIONS.map(f => ({ value: String(f), label: String(f) }))}
+              options={(format() === 'gif' ? GIF_FPS_OPTIONS : VIDEO_FPS_OPTIONS).map(f => ({
+                value: String(f),
+                label: String(f)
+              }))}
               selected={String(fps())}
-              onSelect={value => setFps(Number(value))}
+              onSelect={value => (format() === 'gif' ? setGifFps(Number(value)) : setVideoFps(Number(value)))}
               ariaLabel='Frames per second'
             />
           </div>
@@ -556,13 +663,23 @@ export function CardWallPage() {
             when={format() === 'gif'}
             fallback={
               <Show
-                when={videoType()}
-                fallback={<>This browser can't record video from a canvas — use the GIF export.</>}
+                when={videoOutput()}
+                fallback={
+                  <Show
+                    when={videoOutput.loading}
+                    fallback={<>This browser can neither encode nor record video — use the GIF export.</>}
+                  >
+                    Checking what this browser can encode&hellip;
+                  </Show>
+                }
               >
-                {type => (
+                {out => (
                   <>
-                    Records at {formatSeconds(scene().loopSeconds * loops())}, in real time, as{' '}
-                    {type().startsWith('video/mp4') ? 'MP4' : 'WebM'}. Keep the tab in front.
+                    {formatSeconds(scene().loopSeconds * loops())} of {out().extension.toUpperCase()} at {exportWidth()}
+                    &times;{exportHeight()}.{' '}
+                    {out().realtime
+                      ? 'This browser has no H.264 encoder, so the clip is recorded as it plays — it takes as long as it runs, and the tab has to stay in front.'
+                      : 'Encoded offline, so it finishes faster than it plays.'}
                   </>
                 )}
               </Show>

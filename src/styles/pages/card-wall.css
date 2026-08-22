@@ -156,6 +156,107 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- Which cards are in play ---------- */
+
+.cw-cards {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: var(--border-width) solid var(--rule);
+}
+
+.cw-cards-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.cw-cards-actions {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.cw-cards-actions .btn {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.cw-cards-actions .btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Capped rather than collapsed: the list has to be visible enough that people
+   discover they can curate it, without pushing the export controls off screen. */
+.cw-card-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-height: 208px;
+  overflow-y: auto;
+  padding-right: var(--space-1);
+}
+
+.cw-card {
+  display: inline-flex;
+  align-items: stretch;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.cw-card-name {
+  padding: 3px 8px;
+  font-size: 12px;
+  color: var(--fg);
+  white-space: nowrap;
+}
+
+/* The pin is a target, not a dot — the visible mark is small but the button is
+   the full height of the chip. */
+.cw-card-pin {
+  position: relative;
+  width: 18px;
+  border-right: var(--border-width) solid var(--rule);
+  background: transparent;
+}
+
+.cw-card-pin::before {
+  content: '';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border: var(--border-width) solid var(--muted);
+  border-radius: 50%;
+}
+
+.cw-card-pin:hover::before {
+  border-color: var(--fg);
+}
+
+.cw-card.is-always {
+  border-color: var(--accent);
+}
+
+.cw-card.is-always .cw-card-pin::before {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.cw-card.is-off {
+  background: transparent;
+}
+
+.cw-card.is-off .cw-card-name {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
 /* ---------- Export ---------- */
 
 /* Flex rather than a grid: the size and frame-rate segmented controls are wider

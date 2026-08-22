@@ -11,10 +11,10 @@
  */
 
 import { buildPalette, createColorCache, createGifWriter, quantizeFrame, samplePixels } from './gif';
-import { buildScene, planFrameDelays, type WallConfig } from './scene';
+import { buildMp4, type Mp4Sample } from './mp4';
+import { buildScene, gifFrameDelayCs, type WallConfig, type WallDeal } from './scene';
 import { type WallImages } from './images';
 import { createWallPainter, type WallLook } from './render';
-import type { WallCard } from './roster';
 
 /** Frames sampled to build the global palette. The wall's colours barely move, so a few is plenty. */
 const PALETTE_FRAMES = 8;
@@ -24,7 +24,7 @@ const YIELD_EVERY = 3;
 
 export interface ExportRequest {
   config: WallConfig;
-  roster: readonly WallCard[];
+  deal: WallDeal;
   images: WallImages;
   look: WallLook;
   width: number;
@@ -70,12 +70,12 @@ function assertLive(signal: AbortSignal | undefined): void {
 }
 
 export async function exportGif(request: ExportRequest): Promise<ExportResult> {
-  const { config, roster, images, look, width, height, fps, onProgress, signal } = request;
+  const { config, deal, images, look, width, height, fps, onProgress, signal } = request;
   const { canvas, ctx } = createStage(width, height);
-  const scene = buildScene(config, roster, canvas.width, canvas.height);
+  const scene = buildScene(config, deal, canvas.width, canvas.height);
   const painter = createWallPainter();
   const frames = gifFrameCount(scene.loopSeconds, fps);
-  const delays = planFrameDelays(scene.loopSeconds, frames);
+  const delayCs = gifFrameDelayCs(fps);
   const frameTime = (i: number) => (i / frames) * scene.loopSeconds;
   // Progress covers both passes so the bar doesn't stall at the start.
   const total = Math.min(PALETTE_FRAMES, frames) + frames;
@@ -119,7 +119,7 @@ export async function exportGif(request: ExportRequest): Promise<ExportResult> {
     assertLive(signal);
     painter.paint(ctx, scene, images, frameTime(i), canvas.width, canvas.height, look);
     const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-    writer.addFrame(quantizeFrame(pixels, palette, cache), delays[i]!);
+    writer.addFrame(quantizeFrame(pixels, palette, cache), delayCs);
     tick();
     if (i % YIELD_EVERY === 0) {
       await yieldToUi();
@@ -130,7 +130,54 @@ export async function exportGif(request: ExportRequest): Promise<ExportResult> {
   return { blob: new Blob([bytes as unknown as BlobPart], { type: 'image/gif' }), extension: 'gif' };
 }
 
-/** Recorder formats in preference order: MP4 where the browser can, WebM where it can't. */
+/**
+ * H.264 profiles to try, best first: High 4.0, Main 4.0, then Baseline 3.0 for
+ * anything that only implements the floor. All three decode everywhere that
+ * matters; the difference is compression, not compatibility.
+ */
+const AVC_CODECS = ['avc1.640028', 'avc1.4d0028', 'avc1.42e01e'];
+
+/** MP4 media timescale. 90kHz divides evenly by every frame rate offered. */
+const MP4_TIMESCALE = 90_000;
+/** A keyframe every couple of seconds, so scrubbing and looping stay responsive. */
+const KEYFRAME_SECONDS = 2;
+
+function videoBitrate(width: number, height: number, fps: number): number {
+  return Math.min(24_000_000, Math.max(2_000_000, Math.round(width * height * fps * 0.15)));
+}
+
+/**
+ * The first AVC config this browser will actually encode, or null if none.
+ *
+ * Checked against the real output size rather than a nominal one: a level that
+ * covers 640x360 may refuse 1920x1080, and finding that out at `configure()`
+ * time means failing after the user has already waited.
+ */
+export async function pickAvcCodec(width: number, height: number, fps: number): Promise<string | null> {
+  if (typeof VideoEncoder === 'undefined') {
+    return null;
+  }
+  for (const codec of AVC_CODECS) {
+    try {
+      const support = await VideoEncoder.isConfigSupported({
+        codec,
+        width,
+        height,
+        bitrate: videoBitrate(width, height, fps),
+        framerate: fps,
+        avc: { format: 'avc' }
+      });
+      if (support.supported) {
+        return codec;
+      }
+    } catch {
+      // An unparseable codec string throws rather than reporting unsupported.
+    }
+  }
+  return null;
+}
+
+/** Recorder formats in preference order, for browsers with no usable AVC encoder. */
 const VIDEO_TYPES = [
   'video/mp4;codecs=avc1.4d002a',
   'video/mp4;codecs=avc1.42E01E',
@@ -152,20 +199,151 @@ export function videoExtension(mimeType: string): string {
   return mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
 }
 
-export async function exportVideo(request: ExportRequest & { loops: number }): Promise<ExportResult> {
-  const { config, roster, images, look, width, height, fps, loops, onProgress, signal } = request;
+/**
+ * What a video export will actually produce here, so the page can say so before
+ * the user commits a minute to it rather than after.
+ */
+export async function describeVideoOutput(
+  width: number,
+  height: number,
+  fps: number
+): Promise<{ extension: 'mp4' | 'webm'; realtime: boolean } | null> {
+  if (await pickAvcCodec(width, height, fps)) {
+    return { extension: 'mp4', realtime: false };
+  }
+  const type = pickVideoType();
+  return type ? { extension: videoExtension(type) as 'mp4' | 'webm', realtime: true } : null;
+}
+
+/** Let the encoder drain, and the page repaint, before queueing more frames. */
+async function drain(encoder: VideoEncoder, limit: number): Promise<void> {
+  while (encoder.encodeQueueSize > limit) {
+    await new Promise(resolve => {
+      setTimeout(resolve, 0);
+    });
+  }
+}
+
+/**
+ * Encode the wall to MP4 with WebCodecs.
+ *
+ * Offline and frame-exact, like the GIF path: frame `i` is painted at a
+ * computed time and handed to the encoder, so the export is reproducible and
+ * finishes as fast as the machine allows instead of taking as long as the clip.
+ */
+async function encodeMp4(request: ExportRequest & { loops: number }, codec: string): Promise<ExportResult> {
+  const { config, deal, images, look, width, height, fps, loops, onProgress, signal } = request;
+  const { canvas, ctx } = createStage(width, height);
+  const scene = buildScene(config, deal, canvas.width, canvas.height);
+  const painter = createWallPainter();
+
+  const perLoop = Math.max(2, Math.round(scene.loopSeconds * fps));
+  const total = perLoop * Math.max(1, loops);
+  const keyframeInterval = Math.max(1, Math.round(fps * KEYFRAME_SECONDS));
+
+  const samples: Mp4Sample[] = [];
+  let avcC: Uint8Array | null = null;
+  let failure: Error | null = null;
+  const encoder = new VideoEncoder({
+    output: (chunk, metadata) => {
+      const description = metadata?.decoderConfig?.description;
+      if (!avcC && description) {
+        // The spec allows either an ArrayBuffer or a view onto one; copy out of
+        // whichever, because the buffer is only ours for the callback.
+        avcC = ArrayBuffer.isView(description)
+          ? new Uint8Array(description.buffer, description.byteOffset, description.byteLength).slice()
+          : new Uint8Array(description.slice(0));
+      }
+      const data = new Uint8Array(chunk.byteLength);
+      chunk.copyTo(data);
+      samples.push({ data, key: chunk.type === 'key' });
+    },
+    error: err => {
+      failure = err instanceof Error ? err : new Error(String(err));
+    }
+  });
+
+  try {
+    encoder.configure({
+      codec,
+      width: canvas.width,
+      height: canvas.height,
+      bitrate: videoBitrate(canvas.width, canvas.height, fps),
+      framerate: fps,
+      avc: { format: 'avc' }
+    });
+
+    for (let i = 0; i < total; i++) {
+      assertLive(signal);
+      if (failure) {
+        throw failure;
+      }
+      // Modulo the per-loop frame count rather than the wall clock, so every
+      // repeat lands on exactly the same frames and the seam stays invisible.
+      painter.paint(
+        ctx,
+        scene,
+        images,
+        ((i % perLoop) / perLoop) * scene.loopSeconds,
+        canvas.width,
+        canvas.height,
+        look
+      );
+      const frame = new VideoFrame(canvas, {
+        timestamp: Math.round((i * 1_000_000) / fps),
+        duration: Math.round(1_000_000 / fps)
+      });
+      encoder.encode(frame, { keyFrame: i % keyframeInterval === 0 });
+      frame.close();
+      onProgress?.(i + 1, total);
+      await drain(encoder, 8);
+    }
+    await encoder.flush();
+  } finally {
+    if (encoder.state !== 'closed') {
+      encoder.close();
+    }
+  }
+
+  if (failure) {
+    throw failure;
+  }
+  if (!avcC) {
+    throw new Error('The encoder produced no decoder configuration.');
+  }
+  const bytes = buildMp4({
+    width: canvas.width,
+    height: canvas.height,
+    timescale: MP4_TIMESCALE,
+    sampleDelta: Math.round(MP4_TIMESCALE / fps),
+    samples,
+    avcC
+  });
+  return { blob: new Blob([bytes as unknown as BlobPart], { type: 'video/mp4' }), extension: 'mp4' };
+}
+
+/**
+ * Fallback capture for browsers with no AVC encoder — Firefox, today.
+ *
+ * MediaRecorder only records what a canvas actually displayed, so this one has
+ * to animate in real time: a six-second clip takes six seconds to make.
+ */
+async function recordVideo(request: ExportRequest & { loops: number }): Promise<ExportResult> {
+  const { config, deal, images, look, width, height, fps, loops, onProgress, signal } = request;
   const mimeType = pickVideoType();
   if (!mimeType) {
-    throw new Error('This browser cannot record video from a canvas.');
+    throw new Error('This browser cannot encode or record video from a canvas.');
   }
   const { canvas, ctx } = createStage(width, height);
-  const scene = buildScene(config, roster, canvas.width, canvas.height);
+  const scene = buildScene(config, deal, canvas.width, canvas.height);
   const painter = createWallPainter();
   const duration = scene.loopSeconds * Math.max(1, loops);
 
   const stream = canvas.captureStream(fps);
-  const bitrate = Math.min(24_000_000, Math.max(2_000_000, Math.round(canvas.width * canvas.height * fps * 0.15)));
-  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitrate });
+  const recorder = new MediaRecorder(stream, {
+    mimeType,
+    videoBitsPerSecond: videoBitrate(canvas.width, canvas.height, fps)
+  });
   const parts: Blob[] = [];
   recorder.ondataavailable = event => {
     if (event.data.size > 0) {
@@ -216,6 +394,11 @@ export async function exportVideo(request: ExportRequest & { loops: number }): P
 
   onProgress?.(duration, duration);
   return { blob: new Blob(parts, { type: mimeType }), extension: videoExtension(mimeType) };
+}
+
+export async function exportVideo(request: ExportRequest & { loops: number }): Promise<ExportResult> {
+  const codec = await pickAvcCodec(Math.round(request.width), Math.round(request.height), request.fps);
+  return codec ? encodeMp4(request, codec) : recordVideo(request);
 }
 
 /**
