@@ -310,11 +310,14 @@ export function findCanonicalRouteViolations(
 ): CanonicalRouteViolations {
   const allEdges = collectRouteEdges(db);
 
+  // A self-edge (`from === to`) is a real claim: "this route IS its own
+  // canonical". Skipping it here — as an earlier version did — hid the case
+  // where one synonym entry makes that claim while another redirects the same
+  // route elsewhere, so the conflict went unreported AND the reader silently
+  // redirected a card away from its own page. Record the self-target so it can
+  // contradict a redirect.
   const targetsByFrom = new Map<string, Set<string>>();
   for (const edge of allEdges) {
-    if (edge.from === edge.to) {
-      continue;
-    }
     let targets = targetsByFrom.get(edge.from);
     if (!targets) {
       targets = new Set<string>();
