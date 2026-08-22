@@ -56,18 +56,31 @@ function parseArgs(argv: string[]): BuildArgs {
       continue;
     }
     const value = argv[++i];
-    if (flag === '--input') args.input = value;
-    else if (flag === '--out-dir') args.outDir = value;
-    else if (flag === '--r2-prefix') args.r2Prefix = value;
-    else if (flag === '--synonyms') args.synonyms = value;
-    else if (flag === '--print-prices') args.printPrices = value;
-    else if (flag === '--from') {
-      if (value !== 'normalized' && value !== 'labs-source') throw new Error(`--from must be normalized|labs-source, got "${value}"`);
+    if (flag === '--input') {
+      args.input = value;
+    } else if (flag === '--out-dir') {
+      args.outDir = value;
+    } else if (flag === '--r2-prefix') {
+      args.r2Prefix = value;
+    } else if (flag === '--synonyms') {
+      args.synonyms = value;
+    } else if (flag === '--print-prices') {
+      args.printPrices = value;
+    } else if (flag === '--from') {
+      if (value !== 'normalized' && value !== 'labs-source') {
+        throw new Error(`--from must be normalized|labs-source, got "${value}"`);
+      }
       args.from = value;
-    } else throw new Error(`Unknown flag: ${flag}`);
+    } else {
+      throw new Error(`Unknown flag: ${flag}`);
+    }
   }
-  if (!args.input) throw new Error('Missing --input <event.json>');
-  if (!args.outDir && !args.r2Prefix) throw new Error('Provide --out-dir <dir> or --r2-prefix "<date, Name>"');
+  if (!args.input) {
+    throw new Error('Missing --input <event.json>');
+  }
+  if (!args.outDir && !args.r2Prefix) {
+    throw new Error('Provide --out-dir <dir> or --r2-prefix "<date, Name>"');
+  }
   return args as BuildArgs;
 }
 
@@ -89,7 +102,9 @@ export async function buildFromFile(args: BuildArgs): Promise<Map<string, unknow
   if (!result.ok) {
     throw new Error(`Invalid normalized event (${result.errors.length} errors):\n  ${result.errors.join('\n  ')}`);
   }
-  const printPrices = args.printPrices ? ((await loadJson(args.printPrices)) as { prices?: Record<string, number | null> }).prices ?? null : null;
+  const printPrices = args.printPrices
+    ? (((await loadJson(args.printPrices)) as { prices?: Record<string, number | null> }).prices ?? null)
+    : null;
   return buildEventArtifacts(result.value, { synonymDb, rollingCanonicals: args.rolling === true, printPrices });
 }
 
@@ -119,7 +134,9 @@ async function uploadR2(artifacts: Map<string, unknown>, prefix: string): Promis
 
 function requireEnv(name: string): string {
   const value = process.env[name];
-  if (!value) throw new Error(`Missing required environment variable ${name}`);
+  if (!value) {
+    throw new Error(`Missing required environment variable ${name}`);
+  }
   return value;
 }
 
@@ -153,10 +170,18 @@ const PYTHON_ARCHETYPE_PROFILE = {
  * @param synonymDb - Current synonyms (or null)
  * @returns The rebuilt indexes
  */
-export function reindexFromDecks(decks: ReindexDeck[], synonymDb: SynonymDatabase | null): { cardUsage: unknown; conversion: unknown } {
+export function reindexFromDecks(
+  decks: ReindexDeck[],
+  synonymDb: SynonymDatabase | null
+): { cardUsage: unknown; conversion: unknown } {
   const built = buildArchetypeReports(
     decks.map(deck => ({
-      cards: (deck.cards ?? []).map(c => ({ name: c.name, set: c.set ?? undefined, number: c.number ?? undefined, count: c.count })),
+      cards: (deck.cards ?? []).map(c => ({
+        name: c.name,
+        set: c.set ?? undefined,
+        number: c.number ?? undefined,
+        count: c.count
+      })),
       archetype: deck.archetype
     })),
     synonymDb,
@@ -164,7 +189,10 @@ export function reindexFromDecks(decks: ReindexDeck[], synonymDb: SynonymDatabas
   );
   const cardUsage = buildCardUsageIndex(built.files);
   const conversion = buildConversionIndex(
-    decks.map(deck => ({ cards: (deck.cards ?? []).map(c => ({ name: c.name, set: c.set ?? undefined, number: c.number ?? undefined })), madePhase2: deck.madePhase2 })),
+    decks.map(deck => ({
+      cards: (deck.cards ?? []).map(c => ({ name: c.name, set: c.set ?? undefined, number: c.number ?? undefined })),
+      madePhase2: deck.madePhase2
+    })),
     synonymDb
   );
   return { cardUsage, conversion };
@@ -209,7 +237,12 @@ export function rebakeFromDecks(
 
     const built = buildArchetypeReports(
       subset.map(deck => ({
-        cards: (deck.cards ?? []).map(c => ({ name: c.name, set: c.set ?? undefined, number: c.number ?? undefined, count: c.count })),
+        cards: (deck.cards ?? []).map(c => ({
+          name: c.name,
+          set: c.set ?? undefined,
+          number: c.number ?? undefined,
+          count: c.count
+        })),
         archetype: deck.archetype
       })),
       synonymDb,
@@ -237,7 +270,10 @@ export function rebakeFromDecks(
   }
 
   const conversion = buildConversionIndex(
-    decks.map(deck => ({ cards: (deck.cards ?? []).map(c => ({ name: c.name, set: c.set ?? undefined, number: c.number ?? undefined })), madePhase2: deck.madePhase2 })),
+    decks.map(deck => ({
+      cards: (deck.cards ?? []).map(c => ({ name: c.name, set: c.set ?? undefined, number: c.number ?? undefined })),
+      madePhase2: deck.madePhase2
+    })),
     synonymDb,
     { resolveUid }
   );
@@ -252,7 +288,9 @@ const DATE_PREFIX_RE = /^(\d{4}-\d{2}-\d{2}),\s+/;
 
 function extractDatePrefix(name: string): string | null {
   const m = DATE_PREFIX_RE.exec(name.trim());
-  if (!m) return null;
+  if (!m) {
+    return null;
+  }
   const candidate = m[1];
   const d = new Date(`${candidate}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === candidate ? candidate : null;
@@ -288,7 +326,9 @@ export function buildTournamentCatalog(folders: string[]): string[] {
       const existingDated = extractDatePrefix(existing) !== null;
       const candidateDated = extractDatePrefix(name) !== null;
       const replace = candidateDated !== existingDated ? candidateDated : name < existing;
-      if (replace) byKey.set(key, name);
+      if (replace) {
+        byKey.set(key, name);
+      }
     }
   }
   const deduped = order.map(key => byKey.get(key)!);
@@ -298,7 +338,9 @@ export function buildTournamentCatalog(folders: string[]): string[] {
   return dated.sort((a, b) => {
     const da = extractDatePrefix(a)!;
     const db = extractDatePrefix(b)!;
-    if (da !== db) return da < db ? 1 : -1;
+    if (da !== db) {
+      return da < db ? 1 : -1;
+    }
     return a.toLowerCase() < b.toLowerCase() ? -1 : a.toLowerCase() > b.toLowerCase() ? 1 : 0;
   });
 }
@@ -309,7 +351,9 @@ async function runRebuildCatalog(rest: string[]): Promise<void> {
     return i >= 0 ? rest[i + 1] : undefined;
   };
   const outDir = arg('--out-dir');
-  if (!outDir && !rest.includes('--write')) throw new Error('rebuild-catalog needs --out-dir <dir> (dry run) or --write');
+  if (!outDir && !rest.includes('--write')) {
+    throw new Error('rebuild-catalog needs --out-dir <dir> (dry run) or --write');
+  }
 
   const bucket = requireEnv('R2_BUCKET_NAME');
   const client = createR2Client({
@@ -321,16 +365,22 @@ async function runRebuildCatalog(rest: string[]): Promise<void> {
   const folders: string[] = [];
   let token: string | undefined;
   do {
-    const page = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: 'reports/', Delimiter: '/', ContinuationToken: token }));
+    const page = await client.send(
+      new ListObjectsV2Command({ Bucket: bucket, Prefix: 'reports/', Delimiter: '/', ContinuationToken: token })
+    );
     for (const p of page.CommonPrefixes ?? []) {
       const folder = (p.Prefix ?? '').replace(/^reports\//, '').replace(/\/$/, '');
-      if (folder && folder !== 'Online - Last 14 Days') folders.push(folder);
+      if (folder && folder !== 'Online - Last 14 Days') {
+        folders.push(folder);
+      }
     }
     token = page.IsTruncated ? page.NextContinuationToken : undefined;
   } while (token);
 
   const catalog = buildTournamentCatalog(folders);
-  if (outDir) await writeLocal(new Map([['tournaments.json', catalog]]), outDir);
+  if (outDir) {
+    await writeLocal(new Map([['tournaments.json', catalog]]), outDir);
+  }
   if (rest.includes('--write')) {
     await putJson(client, bucket, 'reports/tournaments.json', catalog, { cacheControl: CACHE_CONTROL });
     console.log(`[event-cli] Rebuilt reports/tournaments.json with ${catalog.length} entries`);
@@ -352,8 +402,12 @@ function makeR2Reader(): R2Reader {
   });
   const read = async <T>(key: string): Promise<T | null> => {
     const result = await getJsonResult<T>(client, bucket, key);
-    if (result.status === 'found') return result.value;
-    if (result.status === 'missing') return null;
+    if (result.status === 'found') {
+      return result.value;
+    }
+    if (result.status === 'missing') {
+      return null;
+    }
     throw new Error(`failed to read ${key}: ${result.status}`);
   };
   return { read, client, bucket };
@@ -393,27 +447,41 @@ async function runReindex(rest: string[]): Promise<void> {
   const synonymsPath = arg('--synonyms');
   const rolling = rest.includes('--rolling');
   const printPricesPath = arg('--print-prices');
-  if (!r2Prefix) throw new Error('reindex needs --r2-prefix "reports/<date, Name>"');
-  if (!outDir && !rest.includes('--write')) throw new Error('reindex needs --out-dir <dir> (dry run) or --write (upload to R2)');
+  if (!r2Prefix) {
+    throw new Error('reindex needs --r2-prefix "reports/<date, Name>"');
+  }
+  if (!outDir && !rest.includes('--write')) {
+    throw new Error('reindex needs --out-dir <dir> (dry run) or --write (upload to R2)');
+  }
 
   const r2 = makeR2Reader();
   const decks = await r2.read<ReindexDeck[]>(`${r2Prefix}/decks.json`);
-  if (!decks) throw new Error(`${r2Prefix}/decks.json not found`);
-  const synonymDb = synonymsPath ? ((await loadJson(synonymsPath)) as SynonymDatabase) : await r2.read<SynonymDatabase>('assets/card-synonyms.json');
+  if (!decks) {
+    throw new Error(`${r2Prefix}/decks.json not found`);
+  }
+  const synonymDb = synonymsPath
+    ? ((await loadJson(synonymsPath)) as SynonymDatabase)
+    : await r2.read<SynonymDatabase>('assets/card-synonyms.json');
 
   let bodies: Map<string, unknown>;
   if (rolling) {
-    if (!synonymDb) throw new Error('reindex --rolling requires a synonym database');
+    if (!synonymDb) {
+      throw new Error('reindex --rolling requires a synonym database');
+    }
     const asOfDate = eventDateFromPrefix(r2Prefix);
-    if (!asOfDate) throw new Error(`reindex --rolling: cannot derive the event date from "${r2Prefix}"`);
+    if (!asOfDate) {
+      throw new Error(`reindex --rolling: cannot derive the event date from "${r2Prefix}"`);
+    }
     const printPrices = printPricesPath
-      ? ((await loadJson(printPricesPath)) as PrintPricesArtifact).prices ?? null
+      ? (((await loadJson(printPricesPath)) as PrintPricesArtifact).prices ?? null)
       : await loadPrintPrices(r2, asOfDate);
     bodies = rebakeFromDecks(decks, synonymDb, asOfDate, printPrices);
   } else {
     const { cardUsage, conversion } = reindexFromDecks(decks, synonymDb);
     bodies = new Map<string, unknown>([['cardUsage.json', cardUsage]]);
-    if (conversion !== null) bodies.set('conversion.json', conversion);
+    if (conversion !== null) {
+      bodies.set('conversion.json', conversion);
+    }
   }
 
   if (outDir) {
@@ -444,13 +512,20 @@ async function runReindexAll(rest: string[]): Promise<void> {
   const only = arg('--only');
   const limitRaw = arg('--limit');
   const limit = limitRaw ? Number.parseInt(limitRaw, 10) : Number.POSITIVE_INFINITY;
-  if (limitRaw && !Number.isFinite(limit)) throw new Error(`--limit must be a number, got "${limitRaw}"`);
+  if (limitRaw && !Number.isFinite(limit)) {
+    throw new Error(`--limit must be a number, got "${limitRaw}"`);
+  }
 
   const r2 = makeR2Reader();
-  const catalog = await r2.read<(string | { folder?: string; name?: string; path?: string })[]>('reports/tournaments.json');
-  if (!catalog) throw new Error('reports/tournaments.json not found');
+  const catalog =
+    await r2.read<(string | { folder?: string; name?: string; path?: string })[]>('reports/tournaments.json');
+  if (!catalog) {
+    throw new Error('reports/tournaments.json not found');
+  }
   const synonymDb = await r2.read<SynonymDatabase>('assets/card-synonyms.json');
-  if (!synonymDb) throw new Error('assets/card-synonyms.json not found');
+  if (!synonymDb) {
+    throw new Error('assets/card-synonyms.json not found');
+  }
 
   const folders = catalog
     .map(entry => (typeof entry === 'string' ? entry : entry.folder || entry.name || entry.path || ''))
@@ -461,7 +536,9 @@ async function runReindexAll(rest: string[]): Promise<void> {
   let processed = 0;
   let skipped = 0;
   for (const folder of folders) {
-    if (processed >= limit) break;
+    if (processed >= limit) {
+      break;
+    }
     const asOfDate = extractDatePrefix(folder);
     if (!asOfDate) {
       console.log(`[event-cli] Skipping undated folder "${folder}"`);
@@ -496,7 +573,9 @@ async function runReindexAll(rest: string[]): Promise<void> {
     }
     processed++;
   }
-  console.log(`[event-cli] reindex-all complete: ${processed} event(s) ${dryRun ? 'analyzed' : 'rebaked'}, ${skipped} skipped`);
+  console.log(
+    `[event-cli] reindex-all complete: ${processed} event(s) ${dryRun ? 'analyzed' : 'rebaked'}, ${skipped} skipped`
+  );
 }
 
 async function main(): Promise<void> {
@@ -504,8 +583,12 @@ async function main(): Promise<void> {
   if (command === 'build') {
     const args = parseArgs(rest);
     const artifacts = await buildFromFile(args);
-    if (args.outDir) await writeLocal(artifacts, args.outDir);
-    if (args.r2Prefix) await uploadR2(artifacts, args.r2Prefix);
+    if (args.outDir) {
+      await writeLocal(artifacts, args.outDir);
+    }
+    if (args.r2Prefix) {
+      await uploadR2(artifacts, args.r2Prefix);
+    }
     return;
   }
   if (command === 'reindex') {

@@ -56,7 +56,9 @@ function parseArgs(argv: string[]): Args {
 }
 
 async function loadJson<T>(path: string | undefined): Promise<T | undefined> {
-  if (!path) return undefined;
+  if (!path) {
+    return undefined;
+  }
   return JSON.parse(await readFile(path, 'utf8')) as T;
 }
 
@@ -80,7 +82,14 @@ async function main(): Promise<void> {
   const events = await loadJson<Record<string, string>>(args.events);
   const dependencies = await loadJson<Record<string, string>>(args.dependencies);
 
-  const { manifest, module } = buildReleaseArtifacts({ roots, served, releaseId: args.releaseId, publishedAt: args.publishedAt, events, dependencies });
+  const { manifest, module } = buildReleaseArtifacts({
+    roots,
+    served,
+    releaseId: args.releaseId,
+    publishedAt: args.publishedAt,
+    events,
+    dependencies
+  });
 
   await mkdir(dirname(resolve(args.manifestOut)), { recursive: true });
   await writeFile(resolve(args.manifestOut), JSON.stringify(manifest, null, 2));

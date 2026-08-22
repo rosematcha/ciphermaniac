@@ -17,9 +17,51 @@ function source(): LabsSourceEvent {
     fetchedAt: '2026-07-13T00:00:00.000Z',
     meta: { name: 'Test Regional', date: '2026-07-01', players: 8, division: 'MA', hasDay2: true, country: 'US' },
     standings: [
-      { tpId: 1, playerId: 'p-alice', name: 'Alice', country: 'US', placement: 1, wins: 5, losses: 1, ties: 0, points: 15, opw: 0.62, oopw: 0.58, madePhase2: true, madeTopCut: true, decklistPublished: true, deckName: 'Gardevoir ex' },
-      { tpId: 2, playerId: 'p-bob', name: 'Bob', country: 'CA', placement: 2, wins: 5, losses: 1, ties: 0, points: 15, opw: 0.55, madePhase2: true, madeTopCut: true, decklistPublished: true, deckName: 'gardevoir EX' },
-      { tpId: 3, name: 'Cara', placement: 3, wins: 4, losses: 2, ties: 0, madePhase2: true, deckName: 'Charizard Pidgeot', dropped: true, dropRound: 7 },
+      {
+        tpId: 1,
+        playerId: 'p-alice',
+        name: 'Alice',
+        country: 'US',
+        placement: 1,
+        wins: 5,
+        losses: 1,
+        ties: 0,
+        points: 15,
+        opw: 0.62,
+        oopw: 0.58,
+        madePhase2: true,
+        madeTopCut: true,
+        decklistPublished: true,
+        deckName: 'Gardevoir ex'
+      },
+      {
+        tpId: 2,
+        playerId: 'p-bob',
+        name: 'Bob',
+        country: 'CA',
+        placement: 2,
+        wins: 5,
+        losses: 1,
+        ties: 0,
+        points: 15,
+        opw: 0.55,
+        madePhase2: true,
+        madeTopCut: true,
+        decklistPublished: true,
+        deckName: 'gardevoir EX'
+      },
+      {
+        tpId: 3,
+        name: 'Cara',
+        placement: 3,
+        wins: 4,
+        losses: 2,
+        ties: 0,
+        madePhase2: true,
+        deckName: 'Charizard Pidgeot',
+        dropped: true,
+        dropRound: 7
+      },
       { tpId: 4, name: 'Dan', placement: 4, wins: 3, losses: 3, ties: 0, deckName: 'Charizard Pidgeot' }
     ],
     decklists: {
@@ -61,7 +103,9 @@ test('two synonym printings of one card in a deck count once', () => {
   const synonymDb = { synonyms: { 'Rare Candy::PAL::256': 'Rare Candy::SVI::191' }, canonicals: {} };
   const event = labsSourceToNormalized(source(), { synonymDb });
   assert.ok(validateNormalizedEvent(event).ok);
-  const aliceDeck = event.decks.find(d => event.participants.find(p => p.participantId === d.participantId)?.name === 'Alice');
+  const aliceDeck = event.decks.find(
+    d => event.participants.find(p => p.participantId === d.participantId)?.name === 'Alice'
+  );
   assert.ok(aliceDeck);
   const rareCandy = aliceDeck.cards.filter(c => c.canonical.name === 'Rare Candy');
   assert.strictEqual(rareCandy.length, 1, 'one canonical Rare Candy entry');
@@ -87,7 +131,9 @@ test('match outcomes derive from raw Labs winner codes', () => {
 
 test('success tags include phase tags for a Labs event', () => {
   const event = labsSourceToNormalized(source());
-  const winnerDeck = event.decks.find(d => event.participants.find(p => p.participantId === d.participantId)?.placement === 1);
+  const winnerDeck = event.decks.find(
+    d => event.participants.find(p => p.participantId === d.participantId)?.placement === 1
+  );
   assert.ok(winnerDeck?.successTags.includes('winner'));
   assert.ok(winnerDeck?.successTags.includes('topcut'));
 });
@@ -98,10 +144,15 @@ test('the adapter output drives the artifact orchestrator end to end', () => {
   assert.ok(artifacts.has('master.json'));
   assert.ok(artifacts.has('matchupProfiles.json'));
   // Gardevoir mirror (Alice vs Bob, same key) is present in the matchup profiles.
-  const mp = artifacts.get('matchupProfiles.json') as { profiles: { all: { byArchetypePair: { archetypeA: string; archetypeB: string }[] } } };
+  const mp = artifacts.get('matchupProfiles.json') as {
+    profiles: { all: { byArchetypePair: { archetypeA: string; archetypeB: string }[] } };
+  };
   assert.ok(mp.profiles.all.byArchetypePair.some(p => p.archetypeA === p.archetypeB));
 });
 
 test('deterministic: same source builds byte-identical normalized output twice', () => {
-  assert.strictEqual(canonicalStringify(labsSourceToNormalized(source())), canonicalStringify(labsSourceToNormalized(source())));
+  assert.strictEqual(
+    canonicalStringify(labsSourceToNormalized(source())),
+    canonicalStringify(labsSourceToNormalized(source()))
+  );
 });

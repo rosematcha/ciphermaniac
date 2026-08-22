@@ -34,10 +34,28 @@ class MemoryStore implements ReceiptStore {
 /** A small graph mirroring the plan: synonyms -> event indexes; source -> event. */
 function graph(synonymsHash: string): BuildNode[] {
   return [
-    { name: 'synonyms', dependsOn: [], keySpec: { contractVersion: 1, builderVersion: 'syn-v1' }, sourceHashes: { catalog: synonymsHash } },
-    { name: 'event-core', dependsOn: [], keySpec: { contractVersion: 1, builderVersion: 'core-v1' }, sourceHashes: { normalizedEvent: 'sha256:evt' } },
-    { name: 'event-indexes', dependsOn: ['event-core', 'synonyms'], keySpec: { contractVersion: 1, builderVersion: 'idx-v1' } },
-    { name: 'majors-trends', dependsOn: ['event-core', 'synonyms'], keySpec: { contractVersion: 1, builderVersion: 'majors-v1' } },
+    {
+      name: 'synonyms',
+      dependsOn: [],
+      keySpec: { contractVersion: 1, builderVersion: 'syn-v1' },
+      sourceHashes: { catalog: synonymsHash }
+    },
+    {
+      name: 'event-core',
+      dependsOn: [],
+      keySpec: { contractVersion: 1, builderVersion: 'core-v1' },
+      sourceHashes: { normalizedEvent: 'sha256:evt' }
+    },
+    {
+      name: 'event-indexes',
+      dependsOn: ['event-core', 'synonyms'],
+      keySpec: { contractVersion: 1, builderVersion: 'idx-v1' }
+    },
+    {
+      name: 'majors-trends',
+      dependsOn: ['event-core', 'synonyms'],
+      keySpec: { contractVersion: 1, builderVersion: 'majors-v1' }
+    },
     { name: 'players', dependsOn: ['event-core'], keySpec: { contractVersion: 1, builderVersion: 'players-v1' } }
   ];
 }
@@ -46,13 +64,27 @@ function graph(synonymsHash: string): BuildNode[] {
 async function seedReceipts(store: MemoryStore, nodes: BuildNode[]): Promise<void> {
   const plan = await planBuild(nodes, store, sha256Hex);
   for (const node of plan.nodes) {
-    store.put({ schemaVersion: 1, node: node.name, nodeKey: node.nodeKey, builder: 'x', inputs: {}, outputs: {}, completedAt: '2026-07-13T00:00:00Z' });
+    store.put({
+      schemaVersion: 1,
+      node: node.name,
+      nodeKey: node.nodeKey,
+      builder: 'x',
+      inputs: {},
+      outputs: {},
+      completedAt: '2026-07-13T00:00:00Z'
+    });
   }
 }
 
 test('computeNodeKey is order-insensitive over dependency hashes', () => {
-  const a = computeNodeKey({ contractVersion: 1, builderVersion: 'v1', dependencyHashes: { b: 'h2', a: 'h1' } }, sha256Hex);
-  const b = computeNodeKey({ contractVersion: 1, builderVersion: 'v1', dependencyHashes: { a: 'h1', b: 'h2' } }, sha256Hex);
+  const a = computeNodeKey(
+    { contractVersion: 1, builderVersion: 'v1', dependencyHashes: { b: 'h2', a: 'h1' } },
+    sha256Hex
+  );
+  const b = computeNodeKey(
+    { contractVersion: 1, builderVersion: 'v1', dependencyHashes: { a: 'h1', b: 'h2' } },
+    sha256Hex
+  );
   assert.strictEqual(a, b);
 });
 
@@ -63,13 +95,18 @@ test('a builder-version change changes only that node key', () => {
 });
 
 test('topoSort throws on cycles and unknown dependencies', () => {
-  assert.throws(() => topoSort([
-    { name: 'a', dependsOn: ['b'], keySpec: { contractVersion: 1, builderVersion: 'v' } },
-    { name: 'b', dependsOn: ['a'], keySpec: { contractVersion: 1, builderVersion: 'v' } }
-  ]), /cycle/);
-  assert.throws(() => topoSort([
-    { name: 'a', dependsOn: ['ghost'], keySpec: { contractVersion: 1, builderVersion: 'v' } }
-  ]), /unknown build node/);
+  assert.throws(
+    () =>
+      topoSort([
+        { name: 'a', dependsOn: ['b'], keySpec: { contractVersion: 1, builderVersion: 'v' } },
+        { name: 'b', dependsOn: ['a'], keySpec: { contractVersion: 1, builderVersion: 'v' } }
+      ]),
+    /cycle/
+  );
+  assert.throws(
+    () => topoSort([{ name: 'a', dependsOn: ['ghost'], keySpec: { contractVersion: 1, builderVersion: 'v' } }]),
+    /unknown build node/
+  );
 });
 
 test('first plan marks every node dirty (leaves no-receipt, dependents dependency-dirty)', async () => {
@@ -111,15 +148,35 @@ test('a missing receipt (corrupt/absent output) invalidates a node', async () =>
   const plan1 = await planBuild(nodes, store, sha256Hex);
   const coreKey = plan1.nodes.find(node => node.name === 'event-core')!.nodeKey;
   // A store that pretends event-core's receipt vanished.
-  const holed: ReceiptStore = { get: async (node, key) => (node === 'event-core' && key === coreKey ? null : store.get(node, key)) };
+  const holed: ReceiptStore = {
+    get: async (node, key) => (node === 'event-core' && key === coreKey ? null : store.get(node, key))
+  };
   const plan2 = await planBuild(nodes, holed, sha256Hex);
   assert.ok(plan2.dirty.includes('event-core'));
   assert.ok(plan2.dirty.includes('event-indexes'), 'dependents of the holed node rebuild too');
 });
 
 test('validateNodeReceipt collects structural errors', () => {
-  assert.deepStrictEqual(validateNodeReceipt({ schemaVersion: 1, node: 'n', nodeKey: 'k', builder: 'b', inputs: {}, outputs: { a: { key: 'x', sha256: 'y', bytes: 3 } }, completedAt: 't' }), []);
-  const errors = validateNodeReceipt({ schemaVersion: 2, node: '', builder: 'b', inputs: {}, outputs: { a: { key: 'x', sha256: 'y', bytes: -1 } }, completedAt: 't' });
+  assert.deepStrictEqual(
+    validateNodeReceipt({
+      schemaVersion: 1,
+      node: 'n',
+      nodeKey: 'k',
+      builder: 'b',
+      inputs: {},
+      outputs: { a: { key: 'x', sha256: 'y', bytes: 3 } },
+      completedAt: 't'
+    }),
+    []
+  );
+  const errors = validateNodeReceipt({
+    schemaVersion: 2,
+    node: '',
+    builder: 'b',
+    inputs: {},
+    outputs: { a: { key: 'x', sha256: 'y', bytes: -1 } },
+    completedAt: 't'
+  });
   assert.ok(errors.some(e => e.includes('schemaVersion')));
   assert.ok(errors.some(e => e.includes('node:')));
   assert.ok(errors.some(e => e.includes('nodeKey')));

@@ -27,7 +27,9 @@ const CACHE_CONTROL = 'public, max-age=21600';
 
 function requireEnv(name: string): string {
   const v = process.env[name];
-  if (!v) throw new Error(`Missing required environment variable ${name}`);
+  if (!v) {
+    throw new Error(`Missing required environment variable ${name}`);
+  }
   return v;
 }
 
@@ -53,7 +55,9 @@ interface UsageIndex {
  * trigger a needless rewrite.
  */
 function normalizeUsage(index: UsageIndex | null): string {
-  if (!index || typeof index.usage !== 'object' || index.usage === null) return canonicalStringify(index);
+  if (!index || typeof index.usage !== 'object' || index.usage === null) {
+    return canonicalStringify(index);
+  }
   const normalized: Record<string, UsageRow[]> = {};
   for (const [uid, rows] of Object.entries(index.usage)) {
     normalized[uid] = [...(rows as UsageRow[])].sort(
@@ -76,8 +80,12 @@ async function main(): Promise<void> {
   });
   const read = async <T>(key: string): Promise<T | null> => {
     const r = await getJsonResult<T>(client, bucket, key);
-    if (r.status === 'found') return r.value;
-    if (r.status === 'missing') return null;
+    if (r.status === 'found') {
+      return r.value;
+    }
+    if (r.status === 'missing') {
+      return null;
+    }
     throw new Error(`failed to read ${key}: ${r.status}`);
   };
 
@@ -85,10 +93,19 @@ async function main(): Promise<void> {
   const folders: string[] = [];
   let token: string | undefined;
   do {
-    const page = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: 'reports/', Delimiter: '/', ContinuationToken: token }));
+    const page = await client.send(
+      new ListObjectsV2Command({ Bucket: bucket, Prefix: 'reports/', Delimiter: '/', ContinuationToken: token })
+    );
     for (const p of page.CommonPrefixes ?? []) {
       const folder = (p.Prefix ?? '').replace(/^reports\//, '').replace(/\/$/, '');
-      if (folder && folder !== 'Online - Last 14 Days' && folder !== 'Snapshots' && folder !== 'Trends - Last 30 Days') folders.push(folder);
+      if (
+        folder &&
+        folder !== 'Online - Last 14 Days' &&
+        folder !== 'Snapshots' &&
+        folder !== 'Trends - Last 30 Days'
+      ) {
+        folders.push(folder);
+      }
     }
     token = page.IsTruncated ? page.NextContinuationToken : undefined;
   } while (token);
@@ -102,7 +119,9 @@ async function main(): Promise<void> {
   for (const folder of events) {
     const base = `reports/${folder}`;
     const decks = await read<ReconcileDeck[]>(`${base}/decks.json`);
-    if (!decks) continue;
+    if (!decks) {
+      continue;
+    }
     const { cardUsage, conversion } = reindexFromDecks(decks, synonymDb);
 
     const storedUsage = await read<UsageIndex>(`${base}/cardUsage.json`);

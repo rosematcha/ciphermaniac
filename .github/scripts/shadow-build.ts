@@ -33,13 +33,20 @@ const hashBody = (body: string): string => `sha256:${sha256HexString(body)}`;
 
 function requireEnv(name: string): string {
   const value = process.env[name];
-  if (!value) throw new Error(`Missing required environment variable ${name}`);
+  if (!value) {
+    throw new Error(`Missing required environment variable ${name}`);
+  }
   return value;
 }
 
-async function loadEvent(input: string, from: string, synonymDb: unknown): Promise<ReturnType<typeof validateNormalizedEvent>> {
+async function loadEvent(
+  input: string,
+  from: string,
+  synonymDb: unknown
+): Promise<ReturnType<typeof validateNormalizedEvent>> {
   const raw = JSON.parse(await readFile(input, 'utf8')) as unknown;
-  const candidate = from === 'labs-source' ? labsSourceToNormalized(raw as LabsSourceEvent, { synonymDb: synonymDb as never }) : raw;
+  const candidate =
+    from === 'labs-source' ? labsSourceToNormalized(raw as LabsSourceEvent, { synonymDb: synonymDb as never }) : raw;
   return validateNormalizedEvent(candidate);
 }
 
@@ -52,10 +59,14 @@ async function main(): Promise<void> {
   const input = arg('--input');
   const from = arg('--from') ?? 'normalized';
   const gc = argv.includes('--gc');
-  if (!input) throw new Error('Missing --input <event.json>');
+  if (!input) {
+    throw new Error('Missing --input <event.json>');
+  }
 
   const validated = await loadEvent(input, from, null);
-  if (!validated.ok) throw new Error(`Invalid event (${validated.errors.length} errors):\n  ${validated.errors.join('\n  ')}`);
+  if (!validated.ok) {
+    throw new Error(`Invalid event (${validated.errors.length} errors):\n  ${validated.errors.join('\n  ')}`);
+  }
   const event = validated.value;
 
   const artifacts = buildEventArtifacts(event);
@@ -77,7 +88,12 @@ async function main(): Promise<void> {
   const store = createR2ObjectStore(client, bucket);
 
   const nodeKey = computeNodeKey(
-    { contractVersion: 1, builderVersion: BUILDER_VERSION, config: { eventId: event.eventId }, dependencyHashes: { normalizedEvent: semanticHash(event) } },
+    {
+      contractVersion: 1,
+      builderVersion: BUILDER_VERSION,
+      config: { eventId: event.eventId },
+      dependencyHashes: { normalizedEvent: semanticHash(event) }
+    },
     sha256Hex
   );
 
@@ -111,14 +127,20 @@ async function main(): Promise<void> {
   let verified = 0;
   for (const candidate of candidates) {
     const body = await store.get(candidate.key);
-    if (body === null || hashBody(body) !== candidate.sha256) throw new Error(`verification failed for ${candidate.key}`);
+    if (body === null || hashBody(body) !== candidate.sha256) {
+      throw new Error(`verification failed for ${candidate.key}`);
+    }
     verified += 1;
   }
   console.log(`[shadow] Verified ${verified}/${candidates.length} objects by hash`);
 
   if (gc) {
-    for (const candidate of candidates) await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: candidate.key }));
-    await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: `build/v1/nodes/event:${event.eventId}/${nodeKey}.json` }));
+    for (const candidate of candidates) {
+      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: candidate.key }));
+    }
+    await client.send(
+      new DeleteObjectCommand({ Bucket: bucket, Key: `build/v1/nodes/event:${event.eventId}/${nodeKey}.json` })
+    );
     await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: 'build/v1/channels/shadow.json' }));
     console.log('[shadow] Garbage-collected shadow objects');
   }

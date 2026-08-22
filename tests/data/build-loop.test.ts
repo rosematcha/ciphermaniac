@@ -14,7 +14,9 @@ import { sha256Hex, sha256HexString } from '../../shared/data/hash.ts';
 class MemoryObjectStore implements ObjectStore {
   readonly objects = new Map<string, string>();
   async putIfAbsent(key: string, body: string): Promise<void> {
-    if (this.objects.has(key)) throw new Error(`conflict: ${key}`);
+    if (this.objects.has(key)) {
+      throw new Error(`conflict: ${key}`);
+    }
     this.objects.set(key, body);
   }
   async get(key: string): Promise<string | null> {
@@ -29,9 +31,23 @@ const hashBody = (body: string): string => `sha256:${sha256HexString(body)}`;
 
 function graph(synonymsHash: string): BuildNode[] {
   return [
-    { name: 'synonyms', dependsOn: [], keySpec: { contractVersion: 1, builderVersion: 'syn-v1' }, sourceHashes: { catalog: synonymsHash } },
-    { name: 'event-core', dependsOn: [], keySpec: { contractVersion: 1, builderVersion: 'core-v1' }, sourceHashes: { normalizedEvent: 'sha256:evt' } },
-    { name: 'event-indexes', dependsOn: ['event-core', 'synonyms'], keySpec: { contractVersion: 1, builderVersion: 'idx-v1' } }
+    {
+      name: 'synonyms',
+      dependsOn: [],
+      keySpec: { contractVersion: 1, builderVersion: 'syn-v1' },
+      sourceHashes: { catalog: synonymsHash }
+    },
+    {
+      name: 'event-core',
+      dependsOn: [],
+      keySpec: { contractVersion: 1, builderVersion: 'core-v1' },
+      sourceHashes: { normalizedEvent: 'sha256:evt' }
+    },
+    {
+      name: 'event-indexes',
+      dependsOn: ['event-core', 'synonyms'],
+      keySpec: { contractVersion: 1, builderVersion: 'idx-v1' }
+    }
   ];
 }
 
@@ -45,12 +61,19 @@ function builderFor(name: string): NodeBuilder {
 }
 
 function builders(): Record<string, NodeBuilder> {
-  return { synonyms: builderFor('synonyms'), 'event-core': builderFor('event-core'), 'event-indexes': builderFor('event-indexes') };
+  return {
+    synonyms: builderFor('synonyms'),
+    'event-core': builderFor('event-core'),
+    'event-indexes': builderFor('event-indexes')
+  };
 }
 
 test('first run builds every node and writes receipts', async () => {
   const store = new MemoryObjectStore();
-  const result = await runBuildLoop(graph('sha256:s1'), store, sha256Hex, hashBody, { builders: builders(), completedAt: '2026-07-13T00:00:00Z' });
+  const result = await runBuildLoop(graph('sha256:s1'), store, sha256Hex, hashBody, {
+    builders: builders(),
+    completedAt: '2026-07-13T00:00:00Z'
+  });
   assert.deepStrictEqual(result.built.sort(), ['event-core', 'event-indexes', 'synonyms']);
   assert.strictEqual(result.finalPlan.dirty.length, 0);
   // Receipts exist for each node.
@@ -70,13 +93,20 @@ test('a no-input-change rerun builds nothing and uploads no serving objects', as
 test('a synonym-only change rebuilds only its descendants', async () => {
   const store = new MemoryObjectStore();
   await runBuildLoop(graph('sha256:s1'), store, sha256Hex, hashBody, { builders: builders(), completedAt: 't' });
-  const rerun = await runBuildLoop(graph('sha256:s2'), store, sha256Hex, hashBody, { builders: builders(), completedAt: 't' });
+  const rerun = await runBuildLoop(graph('sha256:s2'), store, sha256Hex, hashBody, {
+    builders: builders(),
+    completedAt: 't'
+  });
   assert.deepStrictEqual(rerun.built.sort(), ['event-indexes', 'synonyms']);
 });
 
 test('plan mode reports dirty nodes without writing', async () => {
   const store = new MemoryObjectStore();
-  const result = await runBuildLoop(graph('sha256:s1'), store, sha256Hex, hashBody, { builders: builders(), completedAt: 't', planOnly: true });
+  const result = await runBuildLoop(graph('sha256:s1'), store, sha256Hex, hashBody, {
+    builders: builders(),
+    completedAt: 't',
+    planOnly: true
+  });
   assert.deepStrictEqual(result.finalPlan.dirty.sort(), ['event-core', 'event-indexes', 'synonyms']);
   assert.strictEqual(store.objects.size, 0, 'plan mode writes nothing');
   assert.deepStrictEqual(result.built, []);

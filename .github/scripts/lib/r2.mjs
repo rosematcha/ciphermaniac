@@ -14,7 +14,7 @@
  * already resolved, so a mid-stream drop escapes its retry middleware.
  */
 
-import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 /**
@@ -25,33 +25,33 @@ import { setTimeout as sleep } from 'node:timers/promises';
  * @returns {boolean}
  */
 function isNotFound(error) {
-    const meta = /** @type {{ name?: string; $metadata?: { httpStatusCode?: number } }} */ (error);
-    return meta?.name === 'NoSuchKey' || meta?.$metadata?.httpStatusCode === 404;
+  const meta = /** @type {{ name?: string; $metadata?: { httpStatusCode?: number } }} */ (error);
+  return meta?.name === 'NoSuchKey' || meta?.$metadata?.httpStatusCode === 404;
 }
 
 /** R2/S3 error codes that describe a transient server-side or throttling fault. */
 const RETRYABLE_ERROR_NAMES = new Set([
-    'InternalError',
-    'InternalServerError',
-    'ServiceUnavailable',
-    'SlowDown',
-    'RequestTimeout',
-    'RequestTimeTooSkewed',
-    'ThrottlingException',
-    'TimeoutError',
-    'NetworkingError'
+  'InternalError',
+  'InternalServerError',
+  'ServiceUnavailable',
+  'SlowDown',
+  'RequestTimeout',
+  'RequestTimeTooSkewed',
+  'ThrottlingException',
+  'TimeoutError',
+  'NetworkingError'
 ]);
 
 /** Socket-level failures that arrive with no HTTP status attached. */
 const RETRYABLE_SYSCALL_CODES = new Set([
-    'ECONNRESET',
-    'ECONNREFUSED',
-    'EPIPE',
-    'ETIMEDOUT',
-    'ENOTFOUND',
-    'EAI_AGAIN',
-    'EHOSTUNREACH',
-    'ENETUNREACH'
+  'ECONNRESET',
+  'ECONNREFUSED',
+  'EPIPE',
+  'ETIMEDOUT',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'EHOSTUNREACH',
+  'ENETUNREACH'
 ]);
 
 /**
@@ -64,12 +64,18 @@ const RETRYABLE_SYSCALL_CODES = new Set([
  * @returns {boolean}
  */
 function isRetryable(error) {
-    if (isNotFound(error)) return false;
-    const meta = /** @type {{ name?: string; code?: string; $metadata?: { httpStatusCode?: number } }} */ (error);
-    const status = meta?.$metadata?.httpStatusCode;
-    if (typeof status === 'number') return status === 429 || status >= 500;
-    if (meta?.name && RETRYABLE_ERROR_NAMES.has(meta.name)) return true;
-    return Boolean(meta?.code && RETRYABLE_SYSCALL_CODES.has(meta.code));
+  if (isNotFound(error)) {
+    return false;
+  }
+  const meta = /** @type {{ name?: string; code?: string; $metadata?: { httpStatusCode?: number } }} */ (error);
+  const status = meta?.$metadata?.httpStatusCode;
+  if (typeof status === 'number') {
+    return status === 429 || status >= 500;
+  }
+  if (meta?.name && RETRYABLE_ERROR_NAMES.has(meta.name)) {
+    return true;
+  }
+  return Boolean(meta?.code && RETRYABLE_SYSCALL_CODES.has(meta.code));
 }
 
 /** Outer-retry defaults: four retries over roughly 15s of jittered backoff. */
@@ -90,16 +96,18 @@ const DEFAULT_RETRY = { attempts: 5, baseDelayMs: 1000, maxDelayMs: 15000 };
  * @returns {Promise<T>}
  */
 export async function withR2Retry(operation, options = {}) {
-    const { attempts, baseDelayMs, maxDelayMs } = { ...DEFAULT_RETRY, ...options };
-    for (let attempt = 1; ; attempt++) {
-        try {
-            return await operation();
-        } catch (error) {
-            if (attempt >= attempts || !isRetryable(error)) throw error;
-            const ceiling = Math.min(maxDelayMs, baseDelayMs * 2 ** (attempt - 1));
-            await sleep(Math.floor(Math.random() * ceiling));
-        }
+  const { attempts, baseDelayMs, maxDelayMs } = { ...DEFAULT_RETRY, ...options };
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (attempt >= attempts || !isRetryable(error)) {
+        throw error;
+      }
+      const ceiling = Math.min(maxDelayMs, baseDelayMs * 2 ** (attempt - 1));
+      await sleep(Math.floor(Math.random() * ceiling));
     }
+  }
 }
 
 /**
@@ -111,10 +119,16 @@ export async function withR2Retry(operation, options = {}) {
  * @returns {string | Buffer}
  */
 function toBody(data) {
-    if (typeof data === 'string') return data;
-    if (data instanceof ArrayBuffer) return Buffer.from(new Uint8Array(data));
-    if (ArrayBuffer.isView(data)) return Buffer.from(data.buffer, data.byteOffset, data.byteLength);
-    return JSON.stringify(data);
+  if (typeof data === 'string') {
+    return data;
+  }
+  if (data instanceof ArrayBuffer) {
+    return Buffer.from(new Uint8Array(data));
+  }
+  if (ArrayBuffer.isView(data)) {
+    return Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+  }
+  return JSON.stringify(data);
 }
 
 /**
@@ -130,13 +144,13 @@ function toBody(data) {
  * @returns {S3Client}
  */
 export function createR2Client({ accountId, accessKeyId, secretAccessKey }) {
-    return new S3Client({
-        region: 'auto',
-        endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-        credentials: { accessKeyId, secretAccessKey },
-        maxAttempts: 4,
-        retryMode: 'standard'
-    });
+  return new S3Client({
+    region: 'auto',
+    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    credentials: { accessKeyId, secretAccessKey },
+    maxAttempts: 4,
+    retryMode: 'standard'
+  });
 }
 
 /**
@@ -155,21 +169,23 @@ export function createR2Client({ accountId, accessKeyId, secretAccessKey }) {
  * >}
  */
 export async function getJsonResult(client, bucket, key, options = {}) {
-    let text;
-    try {
-        text = await withR2Retry(async () => {
-            const response = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-            return response.Body.transformToString();
-        }, options.retry);
-    } catch (error) {
-        if (isNotFound(error)) return { status: 'missing' };
-        return { status: 'transport', error };
+  let text;
+  try {
+    text = await withR2Retry(async () => {
+      const response = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+      return response.Body.transformToString();
+    }, options.retry);
+  } catch (error) {
+    if (isNotFound(error)) {
+      return { status: 'missing' };
     }
-    try {
-        return { status: 'found', value: JSON.parse(text) };
-    } catch (error) {
-        return { status: 'corrupt', error };
-    }
+    return { status: 'transport', error };
+  }
+  try {
+    return { status: 'found', value: JSON.parse(text) };
+  } catch (error) {
+    return { status: 'corrupt', error };
+  }
 }
 
 /**
@@ -183,18 +199,19 @@ export async function getJsonResult(client, bucket, key, options = {}) {
  * @returns {Promise<void>}
  */
 export async function putJson(client, bucket, key, value, options = {}) {
-    await withR2Retry(() =>
-        client.send(
-            new PutObjectCommand({
-                Bucket: bucket,
-                Key: key,
-                Body: typeof value === 'string' ? value : JSON.stringify(value),
-                ContentType: options.contentType ?? 'application/json',
-                CacheControl: options.cacheControl
-            })
-        ),
-        options.retry
-    );
+  await withR2Retry(
+    () =>
+      client.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: key,
+          Body: typeof value === 'string' ? value : JSON.stringify(value),
+          ContentType: options.contentType ?? 'application/json',
+          CacheControl: options.cacheControl
+        })
+      ),
+    options.retry
+  );
 }
 
 /**
@@ -208,59 +225,62 @@ export async function putJson(client, bucket, key, value, options = {}) {
  * @param {{ retry?: { attempts?: number, baseDelayMs?: number, maxDelayMs?: number } }} [options]
  */
 export function createReportsBinding(client, bucket, options = {}) {
-    const retry = options.retry;
-    return {
-        /**
-         * @param {string} key
-         * @returns {Promise<{ text(): Promise<string>, json(): Promise<unknown> } | null>}
-         */
-        async get(key) {
-            // The body is drained inside the retry rather than handed back as a
-            // lazy stream: every caller reads it immediately, and buffering here
-            // is what lets a mid-stream drop be retried as a fresh GET.
-            let text;
-            try {
-                text = await withR2Retry(async () => {
-                    const response = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-                    return response.Body.transformToString();
-                }, retry);
-            } catch (error) {
-                if (isNotFound(error)) return null;
-                throw error;
-            }
-            return {
-                async text() {
-                    return text;
-                },
-                async json() {
-                    return JSON.parse(text);
-                }
-            };
-        },
-        /**
-         * @param {string} key
-         * @param {string | ArrayBuffer | ArrayBufferView} data
-         * @param {{ httpMetadata?: { contentType?: string, cacheControl?: string } }} [opts]
-         */
-        async put(key, data, opts) {
-            await withR2Retry(() =>
-                client.send(
-                    new PutObjectCommand({
-                        Bucket: bucket,
-                        Key: key,
-                        Body: toBody(data),
-                        ContentType: opts?.httpMetadata?.contentType ?? 'application/json',
-                        CacheControl: opts?.httpMetadata?.cacheControl
-                    })
-                ),
-                retry
-            );
-        },
-        /**
-         * @param {string} key
-         */
-        async delete(key) {
-            await withR2Retry(() => client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key })), retry);
+  const { retry } = options;
+  return {
+    /**
+     * @param {string} key
+     * @returns {Promise<{ text(): Promise<string>, json(): Promise<unknown> } | null>}
+     */
+    async get(key) {
+      // The body is drained inside the retry rather than handed back as a
+      // lazy stream: every caller reads it immediately, and buffering here
+      // is what lets a mid-stream drop be retried as a fresh GET.
+      let text;
+      try {
+        text = await withR2Retry(async () => {
+          const response = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+          return response.Body.transformToString();
+        }, retry);
+      } catch (error) {
+        if (isNotFound(error)) {
+          return null;
         }
-    };
+        throw error;
+      }
+      return {
+        async text() {
+          return text;
+        },
+        async json() {
+          return JSON.parse(text);
+        }
+      };
+    },
+    /**
+     * @param {string} key
+     * @param {string | ArrayBuffer | ArrayBufferView} data
+     * @param {{ httpMetadata?: { contentType?: string, cacheControl?: string } }} [opts]
+     */
+    async put(key, data, opts) {
+      await withR2Retry(
+        () =>
+          client.send(
+            new PutObjectCommand({
+              Bucket: bucket,
+              Key: key,
+              Body: toBody(data),
+              ContentType: opts?.httpMetadata?.contentType ?? 'application/json',
+              CacheControl: opts?.httpMetadata?.cacheControl
+            })
+          ),
+        retry
+      );
+    },
+    /**
+     * @param {string} key
+     */
+    async delete(key) {
+      await withR2Retry(() => client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key })), retry);
+    }
+  };
 }

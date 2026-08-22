@@ -61,7 +61,9 @@ export function createR2ObjectStore(client, bucket) {
         const response = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
         return await response.Body.transformToString('utf-8');
       } catch (error) {
-        if (isMissing(error)) return null;
+        if (isMissing(error)) {
+          return null;
+        }
         throw error;
       }
     },
@@ -85,7 +87,9 @@ export function createR2ObjectStore(client, bucket) {
         const body = await response.Body.transformToString('utf-8');
         return { value: JSON.parse(body), etag: response.ETag };
       } catch (error) {
-        if (isMissing(error)) return null;
+        if (isMissing(error)) {
+          return null;
+        }
         throw error;
       }
     },
@@ -95,12 +99,18 @@ export function createR2ObjectStore(client, bucket) {
       try {
         await client.send(
           new PutObjectCommand({
-            Bucket: bucket, Key: key, Body: JSON.stringify(value),
-            ContentType: 'application/json', CacheControl: CONTROL_CACHE_CONTROL, IfNoneMatch: '*'
+            Bucket: bucket,
+            Key: key,
+            Body: JSON.stringify(value),
+            ContentType: 'application/json',
+            CacheControl: CONTROL_CACHE_CONTROL,
+            IfNoneMatch: '*'
           })
         );
       } catch (error) {
-        if (isConflict(error)) throw pointerConflict(key);
+        if (isConflict(error)) {
+          throw pointerConflict(key);
+        }
         throw error;
       }
     },
@@ -110,12 +120,18 @@ export function createR2ObjectStore(client, bucket) {
       try {
         await client.send(
           new PutObjectCommand({
-            Bucket: bucket, Key: key, Body: JSON.stringify(value),
-            ContentType: 'application/json', CacheControl: CONTROL_CACHE_CONTROL, IfMatch: etag
+            Bucket: bucket,
+            Key: key,
+            Body: JSON.stringify(value),
+            ContentType: 'application/json',
+            CacheControl: CONTROL_CACHE_CONTROL,
+            IfMatch: etag
           })
         );
       } catch (error) {
-        if (isConflict(error)) throw pointerConflict(key);
+        if (isConflict(error)) {
+          throw pointerConflict(key);
+        }
         throw error;
       }
     }
