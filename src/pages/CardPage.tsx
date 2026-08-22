@@ -1,8 +1,21 @@
+import {
+  type ArchetypeUsageRow,
+  averageCopies,
+  conversionCaveats as buildCaveats,
+  buildUsageRowsFromIndex,
+  emptyDescription as emptyStateDescription,
+  findCardInArchetypeReport,
+  findConversionStat,
+  formatWholePct as fmtWholePct,
+  snapshotDateLabel as formatSnapshotDate,
+  resolvePriceEntry,
+  resolvePriceSeries,
+  effectiveTournament as scopeTournament,
+  supportsConversion
+} from './cardPage/model';
 import { A, useNavigate, useParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, on, Show } from 'solid-js';
 import {
-  cardUsageForCard,
-  type CardUsagePayload,
   type Day2CardStat,
   fetchArchetype,
   fetchArchetypes,
@@ -12,12 +25,9 @@ import {
   fetchPriceHistoryForSet,
   fetchPrices,
   fetchRotationIndex,
-  findByClusterUid,
   findCardBySetNumberCanonical,
   getArchetypeIconMap,
-  isSnapshotSource,
   itemUid,
-  normalizeCardNumberKey,
   PRICE_HISTORY_MIN_DAYS,
   priceHistorySpanDays,
   type PricePoint,
@@ -29,15 +39,12 @@ import {
 import { buildCanonicalCardId } from '../../shared/deckCardId';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { getCanonicalCardFromData, type SynonymDatabase } from '../../shared/synonyms.js';
-import { cardUidOrName } from '../../shared/data/cardIdentity';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
-import { ONLINE_META_NAME } from '../lib/constants';
-import { nameFromTournamentKey } from '../lib/format';
 import { useTournament } from '../lib/tournamentContext';
 import '../styles/pages/cards.css';
 import { latestValue, resolved } from '../lib/resource';
 import { computeSparkBounds } from '../lib/sparkline';
-import type { ArchetypeIndexEntry, ArchetypeReport, CardDistributionEntry, CardItem } from '../types';
+import type { CardDistributionEntry, CardItem } from '../types';
 import { Badge } from '../components/Badge';
 import { Segmented } from '../components/Segmented';
 import {
@@ -176,40 +183,18 @@ export function CardPage() {
   });
 
   // Human-readable snapshot date for the banner (snapshotDate() is YYYY-MM-DD).
-  const snapshotDateLabel = createMemo<string>(() => {
-    const raw = snapshotDate();
-    if (!raw) {
-      return '';
-    }
-    const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (!m) {
-      return raw;
-    }
-    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-    return Number.isNaN(d.getTime())
-      ? raw
-      : d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
-  });
+  const snapshotDateLabel = createMemo<string>(() => formatSnapshotDate(snapshotDate()));
 
   // Empty-state copy reflects the active scope: the online meta has its rolling
   // 14-day caveat, but a specific event should name that event instead.
-  const emptyDescription = createMemo<string>(() => {
-    if (tournament() === ONLINE_META_NAME) {
-      return "That set/number combination doesn't appear in the current online meta report. The card may not have been played in the rolling 14-day window.";
-    }
-    return `That set/number combination doesn't appear in the ${nameFromTournamentKey(tournament())} report.`;
-  });
+  const emptyDescription = createMemo<string>(() => emptyStateDescription(tournament()));
 
   // Tournament key threaded into the archetype fan-out below. When the page is
   // rendering snapshot data, point downstream fetches at the same snapshot so
   // "Where it's played" shows historical archetypes, not the current ones.
-  const effectiveTournament = createMemo<string>(() => {
-    if (liveCard()) {
-      return tournament();
-    }
-    const date = snapshotDate();
-    return date ? snapshotSourceKey(date) : tournament();
-  });
+  const effectiveTournament = createMemo<string>(() =>
+    scopeTournament(Boolean(liveCard()), tournament(), snapshotDate())
+  );
 
   // `prices.json` keys are the CURRENT global canonical UID (the producer
   // resolves through synonyms), but `card` may now be a rolling-canonical print.
@@ -237,23 +222,7 @@ export function CardPage() {
     )
   );
 
-  const priceEntry = createMemo(() => {
-    const c = card();
-    const p = pricesData();
-    if (!c || !p) {
-      return null;
-    }
-    // A previewed printing shows its own price: prices.json when the print is
-    // the tracked canonical (which also carries the TCGplayer id), otherwise
-    // the synonym DB's scraped per-print price.
-    const pv = previewPrint();
-    if (pv) {
-      const entry = p[pv.uid];
-      const price = entry?.price ?? pv.price ?? undefined;
-      return price === undefined ? null : { price, tcgPlayerId: entry?.tcgPlayerId };
-    }
-    return p[cardUidOrName(c.name, c.set, c.number)] ?? p[globalCardUid() ?? ''] ?? null;
-  });
+  const priceEntry = createMemo(() => resolvePriceEntry(card(), pricesData() ?? null, previewPrint(), globalCardUid()));
 
   // Rolling 90-day price history for the sparkline, sharded per set so this page
   // downloads only its own set (deduped by fetchJson); empty until the pipeline
@@ -266,22 +235,9 @@ export function CardPage() {
     const h = priceHistoryData();
     return Boolean(h) && priceHistorySpanDays(h!) >= PRICE_HISTORY_MIN_DAYS;
   });
-  const priceSeries = createMemo<PricePoint[]>(() => {
-    const c = card();
-    const h = priceHistoryData();
-    if (!c || !h || !priceHistoryReady()) {
-      return [];
-    }
-    // A previewed printing gets only its own history — another print's trend
-    // would lie. Today the pipeline tracks the canonical print, so most
-    // previews simply drop the sparkline; per-print histories light up here
-    // automatically if the producer ever starts writing them.
-    const pv = previewPrint();
-    if (pv) {
-      return h[pv.uid] ?? [];
-    }
-    return h[cardUidOrName(c.name, c.set, c.number)] ?? h[globalCardUid() ?? ''] ?? [];
-  });
+  const priceSeries = createMemo<PricePoint[]>(() =>
+    resolvePriceSeries(card(), priceHistoryData(), priceHistoryReady(), previewPrint(), globalCardUid())
+  );
 
   // Per-archetype usage: list every archetype that plays this card, with its
   // inclusion rate + average copy count. Fast path loads the precomputed
@@ -335,33 +291,12 @@ export function CardPage() {
   const [day2Stats] = createResource(
     () => {
       const t = effectiveTournament();
-      return t && t !== ONLINE_META_NAME && !isSnapshotSource(t) ? t : null;
+      return supportsConversion(t) ? t : null;
     },
     t => fetchDay2CardStats(t)
   );
   const day2StatsData = () => resolved(day2Stats);
-  const conversionStat = createMemo<Day2CardStat | undefined>(() => {
-    const c = card();
-    const stats = day2StatsData();
-    if (!c || !stats) {
-      return undefined;
-    }
-    // Cluster-aware: resolve both the card and each conversion key to their
-    // global cluster identity, so a rolling-keyed conversion entry matches a
-    // rolling (or global) card and vice versa.
-    const byCluster = findByClusterUid(stats, itemUid(c), db());
-    if (byCluster) {
-      return byCluster;
-    }
-    // Fallback: match on set + number with leading zeros normalized, mirroring
-    // the archetype-report lookup above.
-    if (c.set && c.number != null) {
-      const setU = c.set.toUpperCase();
-      const numKey = normalizeCardNumberKey(String(c.number));
-      return stats.find(s => s.set?.toUpperCase() === setU && normalizeCardNumberKey(String(s.number)) === numKey);
-    }
-    return undefined;
-  });
+  const conversionStat = createMemo<Day2CardStat | undefined>(() => findConversionStat(day2StatsData(), card(), db()));
 
   const setNumber = () => `${params.set.toUpperCase()}/${params.number}`;
 
@@ -419,56 +354,6 @@ export function CardPage() {
   );
 }
 
-interface ArchetypeUsageRow {
-  entry: ArchetypeIndexEntry;
-  item: CardItem;
-  /** Only `deckTotal` is read; the fan-out path passes a full ArchetypeReport (structurally compatible). */
-  report: { deckTotal: number };
-}
-
-/**
- * Turn the precomputed `cardUsage.json` index into the same row shape the
- * per-archetype fan-out produces. Joins each usage entry's slug to the
- * archetype index for label/icons; deckTotal comes from the index's deckCount
- * (equal to the archetype report's deckTotal). Rows the index can't join to an
- * archetype entry are dropped.
- */
-function buildUsageRowsFromIndex(
-  payload: CardUsagePayload,
-  list: ArchetypeIndexEntry[],
-  card: CardItem,
-  db: SynonymDatabase | null
-): ArchetypeUsageRow[] {
-  const entries = cardUsageForCard(payload, card, db);
-  if (!entries) {
-    return [];
-  }
-  const bySlug = new Map(list.map(e => [e.name, e]));
-  const rows: ArchetypeUsageRow[] = [];
-  for (const usage of entries) {
-    const entry = bySlug.get(usage.slug);
-    if (!entry) {
-      continue;
-    }
-    const deckTotal = entry.deckCount ?? 0;
-    rows.push({
-      entry,
-      item: {
-        name: card.name,
-        set: card.set,
-        number: card.number,
-        uid: itemUid(card),
-        found: usage.found,
-        total: deckTotal,
-        pct: usage.pct,
-        dist: usage.dist
-      },
-      report: { deckTotal }
-    });
-  }
-  return rows;
-}
-
 function CardPageBody(props: {
   card: CardItem;
   db: SynonymDatabase | null;
@@ -487,34 +372,8 @@ function CardPageBody(props: {
   // Caveats that make the conversion rate less trustworthy. A card played by
   // nearly the whole field just tracks the field's overall Day 2 rate, and a
   // card seen in a handful of decks is too small a sample to read into.
-  const conversionCaveats = createMemo<string[]>(() => {
-    const cv = props.conversion;
-    if (!cv) {
-      return [];
-    }
-    const out: string[] = [];
-    if (props.card.pct >= 60) {
-      out.push(
-        `${props.card.pct.toFixed(0)}% of decks play this card. At that usage, conversion mirrors the field's Day 2 rate instead of telling you anything about the card.`
-      );
-    }
-    if (cv.day1Count <= 15) {
-      out.push(
-        `Only ${cv.day1Count.toLocaleString()} deck${cv.day1Count === 1 ? '' : 's'} in this event played this card. That's too small a sample for a reliable conversion rate.`
-      );
-    }
-    return out;
-  });
-
-  const avgCopies = createMemo(() => {
-    const dist = props.card.dist ?? [];
-    const players = dist.reduce((acc, d) => acc + (d.players ?? 0), 0);
-    if (!players) {
-      return null;
-    }
-    const copies = dist.reduce((acc, d) => acc + (d.copies ?? 0) * (d.players ?? 0), 0);
-    return copies / players;
-  });
+  const conversionCaveats = createMemo<string[]>(() => buildCaveats(props.card, props.conversion));
+  const avgCopies = createMemo(() => averageCopies(props.card));
 
   // Printings strip: every printing in this card's reprint cluster, with the
   // per-print prices the synonym producer scrapes. The live selection
@@ -866,34 +725,6 @@ function categoryToBadge(category: string): string {
  * (preferred) or falling back to name match. Number comparison strips leading
  * zeros so PAL/185 ≈ PAL/0185.
  */
-function findCardInArchetypeReport(report: ArchetypeReport, card: CardItem): CardItem | null {
-  if (!report?.items) {
-    return null;
-  }
-  const setU = card.set?.toUpperCase();
-  const numKey = card.number != null ? normalizeCardNumberKey(String(card.number)) : null;
-  for (const item of report.items) {
-    if (setU && numKey && item.set && item.number !== undefined) {
-      if (item.set.toUpperCase() === setU && normalizeCardNumberKey(String(item.number)) === numKey) {
-        return item;
-      }
-    }
-  }
-  // Fallback: name-only match. Useful for cards that lack set/number in the
-  // archetype report (rare, but defensive).
-  for (const item of report.items) {
-    if (item.name && card.name && item.name === card.name) {
-      return item;
-    }
-  }
-  return null;
-}
-
-/** Whole-number percent for the usage rows; sub-1% shows as "<1%" instead of rounding to 0. */
-function fmtWholePct(p: number): string {
-  return p > 0 && p < 1 ? '<1%' : `${Math.round(p)}%`;
-}
-
 /**
  * Expandable per-archetype usage rows: every archetype that plays this card,
  * with its inclusion rate and most common copy count on the collapsed row, and

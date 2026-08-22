@@ -1,22 +1,31 @@
 import { createEffect, createMemo, createResource, createSignal, For, on, onCleanup, Show } from 'solid-js';
 import { useSearchParams } from '@solidjs/router';
-import type { ArchetypeReport, CardItem, Deck, DeckCard } from '../types';
+import type { ArchetypeReport, CardItem, Deck } from '../types';
 import { fetchArchetypeDecks } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
-import { filterDecks, filterDecksBySuccess, generateReportAndCooccurrence } from '../../shared/clientSideFiltering';
+import { generateReportAndCooccurrence } from '../../shared/clientSideFiltering';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
-import { buildCanonicalCardId, buildCardId, canonicalizeDeckCard } from '../../shared/deckCardId';
+import { buildCanonicalCardId, buildCardId } from '../../shared/deckCardId';
 import {
-  buildCooccurrence,
   type CardRef,
   type ComplementSuggestion,
   findComplements,
   findSubstituteQuestions,
   type SubstituteQuestion
 } from '../../shared/cardCooccurrence';
+import {
+  applyFilters,
+  buildBaselinePct,
+  canonicalizeDecks,
+  inclusionPct,
+  indexItemsByCardId,
+  reconcileDisplayedItems,
+  rulesFromPersisted as rulesFromPersistedPure,
+  rulesToFilters,
+  searchCandidates
+} from './advancedPanel/model';
 import { buildPtcglDeck, type PtcglEntry } from '../utils/ptcglExport';
 import { averageCopiesValue, roundedCopies } from '../lib/cardStats';
-import { foldSearch } from '../utils/searchFold';
 import {
   type CountOp,
   decodeBuildState,
@@ -52,32 +61,6 @@ const nextRuleId = () => ++ruleIdSeq;
 
 // Router params can be repeated (string[]); collapse to the first value.
 const firstParam = (v: string | string[] | undefined): string | undefined => (Array.isArray(v) ? v[0] : v);
-
-// Cheap deep-enough equality for the reconciliation in `displayedItems` below.
-// Both candidates are report items for the SAME cardId, so identity fields
-// (name/set/number) can't differ — only the aggregated stats can. Comparing
-// those directly is far cheaper than the JSON round-trip this used to do,
-// which showed up hot when the threshold slider re-ran the reconciliation.
-function shallowEqualCardItem(a: CardListItem, b: CardListItem): boolean {
-  if (a.pct !== b.pct || a.found !== b.found || a.total !== b.total || a.rank !== b.rank) {
-    return false;
-  }
-  const distA = a.dist ?? [];
-  const distB = b.dist ?? [];
-  if (distA.length !== distB.length) {
-    return false;
-  }
-  for (let i = 0; i < distA.length; i++) {
-    if (
-      distA[i].copies !== distB[i].copies ||
-      distA[i].players !== distB[i].players ||
-      distA[i].percent !== distB[i].percent
-    ) {
-      return false;
-    }
-  }
-  return true;
-}
 
 interface AdvancedPanelProps {
   slug: string;
@@ -132,10 +115,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
     if (!db) {
       return undefined;
     }
-    return raw.map(deck => ({
-      ...deck,
-      cards: (deck.cards ?? []).map(card => canonicalizeDeckCard(card as DeckCard, db))
-    })) as Deck[];
+    return canonicalizeDecks(raw, db);
   });
 
   // Look up a report card by the SET~NUMBER id rules/decks use, so a shared
@@ -144,61 +124,16 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
   // (and thus rule cardIds) key by the GLOBAL canonical, so resolve each item to
   // its cluster canonical before keying — otherwise a persisted rule never
   // rehydrates and a search pick never matches a deck.
-  const itemByCardId = createMemo(() => {
-    const database = synonymDb() ?? null;
-    const map = new Map<string, CardItem>();
-    for (const item of props.report.items as CardItem[]) {
-      if (item.set && item.number !== undefined && item.number !== null) {
-        const id = buildCanonicalCardId(item, database);
-        if (id) {
-          map.set(id, item);
-        }
-      }
-    }
-    return map;
-  });
+  const itemByCardId = createMemo(() => indexItemsByCardId(props.report.items as CardItem[], synonymDb() ?? null));
 
   // Archetype-wide inclusion rate per card (cardId → fraction), derived from a
   // co-occurrence over ALL canonicalized decks. Built the same way the filtered
   // context is, so the cardIds line up exactly (deriving the baseline from the
   // report instead mis-keys energy/reprints and the niche math silently fails).
-  const baselinePct = createMemo(() => {
-    const d = canonicalDecks();
-    const map = new Map<string, number>();
-    if (!d || !d.length) {
-      return map;
-    }
-    const full = buildCooccurrence(d, props.report.items);
-    if (!full.totalDecks) {
-      return map;
-    }
-    for (const [cardId, entry] of full.presence) {
-      map.set(cardId, entry.count / full.totalDecks);
-    }
-    return map;
-  });
+  const baselinePct = createMemo(() => buildBaselinePct(canonicalDecks() ?? [], props.report.items));
 
   function rulesFromPersisted(persisted: PersistedRule[]): Rule[] {
-    const map = itemByCardId();
-    const out: Rule[] = [];
-    for (const p of persisted) {
-      const item = map.get(p.cardId);
-      if (!item) {
-        // Drop cardIds that aren't in this archetype (e.g. a rotated list).
-        continue;
-      }
-      out.push({
-        id: nextRuleId(),
-        cardId: p.cardId,
-        name: item.name,
-        set: item.set,
-        number: item.number,
-        mode: p.mode,
-        countOp: p.countOp,
-        count: p.count
-      });
-    }
-    return out;
+    return rulesFromPersistedPure(persisted, itemByCardId(), nextRuleId);
   }
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -344,25 +279,9 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
 
   // ----- Search/autocomplete -----
 
-  const candidates = createMemo<CardItem[]>(() => {
-    const q = foldSearch(search().trim());
-    if (!q) {
-      return [];
-    }
-    const taken = new Set(rules().map(r => r.cardId));
-    const database = synonymDb() ?? null;
-    const items = props.report.items.filter(i => {
-      if (!i.set || i.number === undefined) {
-        return false;
-      }
-      const cardId = buildCanonicalCardId(i, database);
-      if (cardId && taken.has(cardId)) {
-        return false;
-      }
-      return foldSearch(i.name).includes(q);
-    });
-    return items.slice(0, 8);
-  });
+  const candidates = createMemo<CardItem[]>(() =>
+    searchCandidates(props.report.items, search(), new Set(rules().map(r => r.cardId)), synonymDb() ?? null)
+  );
 
   function ruleFromCard(card: { name: string; set?: string; number?: string | number }): Rule {
     return {
@@ -437,17 +356,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
 
   // ----- Filter math -----
 
-  const activeFilters = createMemo(() =>
-    appliedRules()
-      // Skip rules whose count is mid-edit (NaN). Otherwise the aggregator would
-      // compare against NaN and silently match zero decks.
-      .filter(r => r.mode === 'exclude' || Number.isFinite(r.count))
-      .map(r => ({
-        cardId: r.cardId,
-        operator: r.mode === 'exclude' ? ('' as const) : (r.countOp as '>=' | '=' | '<='),
-        count: r.mode === 'exclude' ? null : r.count
-      }))
-  );
+  const activeFilters = createMemo(() => rulesToFilters(appliedRules()));
 
   // Decks matching the current bracket + rules — the subset the report and the
   // co-occurrence analysis are built from.
@@ -456,8 +365,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
     if (!d) {
       return null;
     }
-    const successed = appliedSuccess() === 'all' ? d : filterDecksBySuccess(d, appliedSuccess());
-    return filterDecks(successed, props.slug, activeFilters());
+    return applyFilters(d, props.slug, appliedSuccess(), activeFilters());
   });
 
   // Aggregate the report and the co-occurrence presence index in ONE pass over
@@ -488,7 +396,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
   // change even when a card's numbers didn't move. Reconcile by cardId here: reuse the
   // previous item object whenever its content is unchanged, so <For> sees the same
   // reference and leaves that tile mounted.
-  let prevItemsById = new Map<string, CardListItem>();
+  let prevItemsById: ReadonlyMap<string, CardListItem> = new Map();
   const displayedItems = createMemo<CardListItem[]>(() => {
     const r = filteredReport();
     if (!r) {
@@ -498,23 +406,9 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
     // Debounced (see `schedule`): the slider fires per drag tick, and this memo
     // re-filters + reconciles the whole report — the readout stays on the raw
     // `threshold()` so the % label still tracks the thumb instantly.
-    const t = appliedThreshold();
-    const filtered = (r.items as unknown as CardListItem[]).filter(i => (i.pct ?? 0) >= t);
-    const nextItemsById = new Map<string, CardListItem>();
-    const reconciled = filtered.map(item => {
-      const cardId = item.set && item.number !== undefined ? buildCardId(item.set, item.number) : undefined;
-      if (cardId) {
-        const prev = prevItemsById.get(cardId);
-        if (prev && shallowEqualCardItem(prev, item)) {
-          nextItemsById.set(cardId, prev);
-          return prev;
-        }
-        nextItemsById.set(cardId, item);
-      }
-      return item;
-    });
-    prevItemsById = nextItemsById;
-    return reconciled;
+    const next = reconcileDisplayedItems(r.items as unknown as CardListItem[], appliedThreshold(), prevItemsById);
+    prevItemsById = next.byCardId;
+    return next.items;
   });
 
   // ----- Build-toward-60 derived state -----
@@ -562,12 +456,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
   });
 
   function optionPct(opt: CardRef): string {
-    const ctx = cooccurrence();
-    const entry = ctx?.presence.get(opt.cardId);
-    if (!ctx || !entry || !ctx.totalDecks) {
-      return '0';
-    }
-    return ((entry.count / ctx.totalDecks) * 100).toFixed(0);
+    return inclusionPct(cooccurrence(), opt.cardId);
   }
 
   // Answering instantly re-derives questions()[0] into the same spot, so the
