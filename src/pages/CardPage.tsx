@@ -631,7 +631,7 @@ function PrintingsStrip(props: { prints: PrintingRow[]; onPreview: (p: PrintingR
               onBlur={() => setHovered(null)}
               onClick={() => setPinned(p)}
             >
-              <CardImage set={p.set} number={p.number} size='xs' alt='' />
+              <CardImage set={p.set} number={p.number} size='xs' alt='' skipR2 />
             </button>
           )}
         </For>
