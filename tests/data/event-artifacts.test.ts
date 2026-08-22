@@ -9,7 +9,11 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { buildDecksArtifact, buildEventArtifacts, buildPlayersArtifact } from '../../shared/data/reports/eventArtifacts.ts';
+import {
+  buildDecksArtifact,
+  buildEventArtifacts,
+  buildPlayersArtifact
+} from '../../shared/data/reports/eventArtifacts.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import type { NormalizedEvent } from '../../shared/data/contracts.ts';
 
@@ -19,7 +23,19 @@ const online = JSON.parse(readFileSync(join(fixturesDir, 'online-window.json'), 
 
 test('labs event produces the full artifact set', () => {
   const artifacts = buildEventArtifacts(labs);
-  for (const key of ['master.json', 'decks.json', 'players.json', 'matches.json', 'playerMatches.json', 'conversion.json', 'matchupProfiles.json', 'index.json', 'meta.json', 'cardUsage.json', 'archetypes/index.json']) {
+  for (const key of [
+    'master.json',
+    'decks.json',
+    'players.json',
+    'matches.json',
+    'playerMatches.json',
+    'conversion.json',
+    'matchupProfiles.json',
+    'index.json',
+    'meta.json',
+    'cardUsage.json',
+    'archetypes/index.json'
+  ]) {
     assert.ok(artifacts.has(key), `missing ${key}`);
   }
 });
@@ -37,7 +53,9 @@ test('archetype index + per-archetype files + cardUsage are generated and consis
   const usage = artifacts.get('cardUsage.json') as { usage: Record<string, { slug: string }[]> };
   const indexSlugs = new Set(index.map(e => e.name));
   for (const rows of Object.values(usage.usage)) {
-    for (const row of rows) assert.ok(indexSlugs.has(row.slug), `usage slug ${row.slug} not in index`);
+    for (const row of rows) {
+      assert.ok(indexSlugs.has(row.slug), `usage slug ${row.slug} not in index`);
+    }
   }
 });
 
@@ -59,7 +77,10 @@ test('online window omits match-derived and conversion artifacts', () => {
 });
 
 test('master.json deckTotal counts only decks with a decklist; found <= deckTotal', () => {
-  const artifacts = buildEventArtifacts(labs) as Map<string, { deckTotal: number; items: { found: number; total: number }[] }>;
+  const artifacts = buildEventArtifacts(labs) as Map<
+    string,
+    { deckTotal: number; items: { found: number; total: number }[] }
+  >;
   const master = artifacts.get('master.json')!;
   const withList = labs.decks.filter(d => d.hasDecklist).length;
   assert.strictEqual(master.deckTotal, withList);
@@ -89,7 +110,10 @@ test('players.json is sorted by placement then name', () => {
 });
 
 test('index.json reports consistent counts', () => {
-  const artifacts = buildEventArtifacts(labs) as Map<string, { participantCount: number; deckCount: number; matchCount: number }>;
+  const artifacts = buildEventArtifacts(labs) as Map<
+    string,
+    { participantCount: number; deckCount: number; matchCount: number }
+  >;
   const index = artifacts.get('index.json')!;
   assert.strictEqual(index.participantCount, labs.participants.length);
   assert.strictEqual(index.deckCount, labs.decks.length);
@@ -107,7 +131,11 @@ test('the whole artifact set is permutation-invariant', () => {
   const b = buildEventArtifacts(shuffled);
   assert.deepStrictEqual([...a.keys()].sort(), [...b.keys()].sort());
   for (const key of a.keys()) {
-    assert.strictEqual(canonicalStringify(a.get(key)), canonicalStringify(b.get(key)), `${key} differs under permutation`);
+    assert.strictEqual(
+      canonicalStringify(a.get(key)),
+      canonicalStringify(b.get(key)),
+      `${key} differs under permutation`
+    );
   }
 });
 
@@ -119,7 +147,13 @@ test('D13: decklist-less decks are excluded from master deckTotal (all scopes)',
   const donor = withEmpty.decks[0];
   withEmpty.decks = [
     ...withEmpty.decks,
-    { ...JSON.parse(JSON.stringify(donor)), deckId: 'sha256:emptyfielddeckzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz', participantId: donor.participantId, cards: [], hasDecklist: false }
+    {
+      ...JSON.parse(JSON.stringify(donor)),
+      deckId: 'sha256:emptyfielddeckzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz',
+      participantId: donor.participantId,
+      cards: [],
+      hasDecklist: false
+    }
   ];
   const artifacts = buildEventArtifacts(withEmpty) as Map<string, { deckTotal: number }>;
   const master = artifacts.get('master.json')!;

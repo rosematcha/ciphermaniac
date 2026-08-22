@@ -37,10 +37,14 @@ async function main(): Promise<void> {
   const outIndex = argv.indexOf('--out');
   const out = resolve(outIndex >= 0 ? argv[outIndex + 1] : DEFAULT_OUT);
 
-  if (!manifestPath) throw new Error('Usage: generate-release-module.ts <manifest.json> [--out <path>]');
+  if (!manifestPath) {
+    throw new Error('Usage: generate-release-module.ts <manifest.json> [--out <path>]');
+  }
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as unknown;
   const errors = validateReleaseManifest(manifest);
-  if (errors.length > 0) throw new Error(`Refusing to embed an invalid manifest:\n  ${errors.join('\n  ')}`);
+  if (errors.length > 0) {
+    throw new Error(`Refusing to embed an invalid manifest:\n  ${errors.join('\n  ')}`);
+  }
 
   await mkdir(dirname(out), { recursive: true });
   await writeFile(out, renderModule(manifest));

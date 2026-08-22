@@ -109,6 +109,8 @@
       {
         "props": true,
         "ignorePropertyModificationsFor": [
+          "synonymsDict",
+          "canonicalsDict",
           "element",
           "el",
           "img",
@@ -236,7 +238,13 @@
     "no-unreachable-loop": "error",
 
     // Naming conventions
-    "camelcase": ["error", { "properties": "always", "ignoreDestructuring": false, "ignoreImports": false }],
+    // `price_usd` is exempt because it is a field name in the published card
+    // data, not a local identifier — renaming it would break the contract the
+    // frontend pricing code reads.
+    "camelcase": [
+      "error",
+      { "properties": "always", "ignoreDestructuring": false, "ignoreImports": false, "allow": ["price_usd"] }
+    ],
     // `id-length` is off: Solid idioms lean on short callback params
     // (`(e) => …`, `s => …`, `i()`), and TypeScript inference makes single-letter
     // names safer than they were in plain-JS days. Reinstate if drift starts.

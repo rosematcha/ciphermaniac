@@ -8,13 +8,13 @@
  */
 
 import process from 'node:process';
-import { ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
+import { DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { createR2Client, createReportsBinding } from './lib/r2.mjs';
 import {
-  fetchRecentOnlineTournaments,
-  gatherDecks,
+  buildCardTrendReport,
   buildTrendReport,
-  buildCardTrendReport
+  fetchRecentOnlineTournaments,
+  gatherDecks
 } from '../../shared/onlineMeta/index.ts';
 import { loadCardTypesDatabase } from '../../shared/data/cardTypesDatabase.js';
 import { fetchLimitlessJson } from '../../shared/api/limitless.ts';
@@ -228,7 +228,9 @@ async function main() {
   const deckCountByTournament = new Map();
   for (const deck of decks) {
     const tid = deck?.tournamentId;
-    if (!tid) continue;
+    if (!tid) {
+      continue;
+    }
     deckCountByTournament.set(tid, (deckCountByTournament.get(tid) || 0) + 1);
   }
   const tournamentsWithDecks = tournaments.filter(t => (deckCountByTournament.get(t.id) || 0) > 0);

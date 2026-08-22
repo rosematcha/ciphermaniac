@@ -19,7 +19,9 @@ import { createR2ObjectStore } from './lib/build/r2ObjectStore.mjs';
 
 function requireEnv(name: string): string {
   const value = process.env[name];
-  if (!value) throw new Error(`Missing required environment variable ${name}`);
+  if (!value) {
+    throw new Error(`Missing required environment variable ${name}`);
+  }
   return value;
 }
 
@@ -31,8 +33,12 @@ async function main(): Promise<void> {
   };
   const channel = arg('--channel');
   const manifestPath = arg('--manifest');
-  if (channel !== 'shadow' && channel !== 'production') throw new Error('--channel must be shadow|production');
-  if (!manifestPath) throw new Error('Missing --manifest <release-manifest.json>');
+  if (channel !== 'shadow' && channel !== 'production') {
+    throw new Error('--channel must be shadow|production');
+  }
+  if (!manifestPath) {
+    throw new Error('Missing --manifest <release-manifest.json>');
+  }
 
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as { releaseId: string };
   const errors = validateReleaseManifest(manifest);

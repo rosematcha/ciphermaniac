@@ -36,7 +36,9 @@ interface LegacyReportItem {
 
 function requireEnv(name: string): string {
   const value = process.env[name];
-  if (!value) throw new Error(`Missing required environment variable ${name}`);
+  if (!value) {
+    throw new Error(`Missing required environment variable ${name}`);
+  }
   return value;
 }
 
@@ -48,11 +50,16 @@ function diffReportItems(label: string, legacy: LegacyReportItem[], next: Legacy
   const nextMap = new Map(next.map(item => [keyOf(item), item]));
   for (const [key, item] of legacyMap) {
     const other = nextMap.get(key);
-    if (!other) diffs.push(`${label}: legacy has "${key}" (found=${item.found}); new does not`);
-    else if (other.found !== item.found) diffs.push(`${label}: "${key}" found ${item.found} (legacy) vs ${other.found} (new)`);
+    if (!other) {
+      diffs.push(`${label}: legacy has "${key}" (found=${item.found}); new does not`);
+    } else if (other.found !== item.found) {
+      diffs.push(`${label}: "${key}" found ${item.found} (legacy) vs ${other.found} (new)`);
+    }
   }
   for (const key of nextMap.keys()) {
-    if (!legacyMap.has(key)) diffs.push(`${label}: new has "${key}"; legacy does not`);
+    if (!legacyMap.has(key)) {
+      diffs.push(`${label}: new has "${key}"; legacy does not`);
+    }
   }
   return diffs;
 }
@@ -65,7 +72,9 @@ async function main(): Promise<void> {
   // for checking parity against ROLLING-rebaked production artifacts.
   const canonicalize = process.argv.includes('--canonicalize');
   const rolling = process.argv.includes('--rolling');
-  if (!base) throw new Error('Usage: parity-check-event.ts "reports/<date, Name>" [--canonicalize|--rolling]');
+  if (!base) {
+    throw new Error('Usage: parity-check-event.ts "reports/<date, Name>" [--canonicalize|--rolling]');
+  }
 
   const client = createR2Client({
     accountId: requireEnv('R2_ACCOUNT_ID'),
@@ -76,27 +85,43 @@ async function main(): Promise<void> {
 
   const load = async <T>(key: string): Promise<T | null> => {
     const result = await getJsonResult<T>(client, bucket, key);
-    if (result.status === 'found') return result.value;
-    if (result.status === 'missing') return null;
+    if (result.status === 'found') {
+      return result.value;
+    }
+    if (result.status === 'missing') {
+      return null;
+    }
     throw new Error(`failed to read ${key}: ${result.status}`);
   };
 
   const decks = await load<(LegacyDeck & { archetype?: string })[]>(`${base}/decks.json`);
   const legacyMaster = await load<{ deckTotal: number; items: LegacyReportItem[] }>(`${base}/master.json`);
-  const legacyConversion = await load<{ day1Total: number; day2Total: number; cards: Record<string, { day1: number; day2: number }> }>(`${base}/conversion.json`);
-  const legacyUsage = await load<{ usage: Record<string, { slug: string; found: number }[]> }>(`${base}/cardUsage.json`);
+  const legacyConversion = await load<{
+    day1Total: number;
+    day2Total: number;
+    cards: Record<string, { day1: number; day2: number }>;
+  }>(`${base}/conversion.json`);
+  const legacyUsage = await load<{ usage: Record<string, { slug: string; found: number }[]> }>(
+    `${base}/cardUsage.json`
+  );
   const legacyArchIndex = await load<{ name: string; deckCount: number }[]>(`${base}/archetypes/index.json`);
   const synonyms = await load<SynonymDatabase>('assets/card-synonyms.json');
-  if (!decks || !legacyMaster) throw new Error(`event ${base} is missing decks.json or master.json`);
+  if (!decks || !legacyMaster) {
+    throw new Error(`event ${base} is missing decks.json or master.json`);
+  }
 
   console.log(`[parity] ${base}: ${decks.length} decks, legacy deckTotal=${legacyMaster.deckTotal}`);
   const allDiffs: string[] = [];
 
   let resolveUid: ((uid: string) => string) | undefined;
   if (rolling) {
-    if (!synonyms) throw new Error('--rolling requires assets/card-synonyms.json');
+    if (!synonyms) {
+      throw new Error('--rolling requires assets/card-synonyms.json');
+    }
     const asOfDate = /^(\d{4}-\d{2}-\d{2}),/.exec(base.replace(/^reports\//, ''))?.[1];
-    if (!asOfDate) throw new Error(`--rolling: cannot derive the event date from "${base}"`);
+    if (!asOfDate) {
+      throw new Error(`--rolling: cannot derive the event date from "${base}"`);
+    }
     const printPrices = await load<{ prices?: Record<string, number | null> }>(`assets/print-prices/${asOfDate}.json`);
     resolveUid = makeRollingResolver(synonyms, asOfDate, printPrices?.prices ?? null);
   }
@@ -126,8 +151,12 @@ async function main(): Promise<void> {
     if (!nextConversion) {
       allDiffs.push('conversion: new builder produced null but legacy has a conversion index');
     } else {
-      if (nextConversion.day1Total !== legacyConversion.day1Total) allDiffs.push(`conversion.day1Total: ${legacyConversion.day1Total} vs ${nextConversion.day1Total}`);
-      if (nextConversion.day2Total !== legacyConversion.day2Total) allDiffs.push(`conversion.day2Total: ${legacyConversion.day2Total} vs ${nextConversion.day2Total}`);
+      if (nextConversion.day1Total !== legacyConversion.day1Total) {
+        allDiffs.push(`conversion.day1Total: ${legacyConversion.day1Total} vs ${nextConversion.day1Total}`);
+      }
+      if (nextConversion.day2Total !== legacyConversion.day2Total) {
+        allDiffs.push(`conversion.day2Total: ${legacyConversion.day2Total} vs ${nextConversion.day2Total}`);
+      }
     }
   }
 
@@ -137,27 +166,52 @@ async function main(): Promise<void> {
     const built = buildArchetypeReports(
       decks.map(deck => ({ cards: deck.cards ?? [], archetype: deck.archetype })),
       synonyms ?? null,
-      { nameCasing: 'preserve', minDecksFraction: 0, percentMode: 'fraction6', sortMode: 'deckCountThenLabel', displayNames: 'trimmed', emptyBaseFallback: null, includeSignatureCards: false, resolveUid }
+      {
+        nameCasing: 'preserve',
+        minDecksFraction: 0,
+        percentMode: 'fraction6',
+        sortMode: 'deckCountThenLabel',
+        displayNames: 'trimmed',
+        emptyBaseFallback: null,
+        includeSignatureCards: false,
+        resolveUid
+      }
     );
     // Archetype index deckCount per slug should match legacy exactly.
     if (legacyArchIndex) {
       const nextByName = new Map(built.index.map(entry => [entry.name, entry.deckCount]));
       for (const entry of legacyArchIndex) {
         const next = nextByName.get(entry.name);
-        if (next !== entry.deckCount) allDiffs.push(`archetypeIndex "${entry.name}": deckCount ${entry.deckCount} (legacy) vs ${next ?? 'absent'} (new)`);
+        if (next !== entry.deckCount) {
+          allDiffs.push(
+            `archetypeIndex "${entry.name}": deckCount ${entry.deckCount} (legacy) vs ${next ?? 'absent'} (new)`
+          );
+        }
       }
     }
     const nextUsage = buildCardUsageIndex(built.files).usage;
-    const usageFound = (rows: { slug: string; found: number }[]): Map<string, number> => new Map(rows.map(r => [r.slug, r.found]));
+    const usageFound = (rows: { slug: string; found: number }[]): Map<string, number> =>
+      new Map(rows.map(r => [r.slug, r.found]));
     let usageDiffs = 0;
     for (const [uid, rows] of Object.entries(legacyUsage.usage)) {
       const next = nextUsage[uid];
-      if (!next) { allDiffs.push(`cardUsage: legacy has uid "${uid}"; new does not`); usageDiffs++; continue; }
+      if (!next) {
+        allDiffs.push(`cardUsage: legacy has uid "${uid}"; new does not`);
+        usageDiffs++;
+        continue;
+      }
       const nf = usageFound(next);
       for (const row of rows) {
-        if (nf.get(row.slug) !== row.found) { allDiffs.push(`cardUsage["${uid}"] slug "${row.slug}": found ${row.found} (legacy) vs ${nf.get(row.slug) ?? 'absent'} (new)`); usageDiffs++; }
+        if (nf.get(row.slug) !== row.found) {
+          allDiffs.push(
+            `cardUsage["${uid}"] slug "${row.slug}": found ${row.found} (legacy) vs ${nf.get(row.slug) ?? 'absent'} (new)`
+          );
+          usageDiffs++;
+        }
       }
-      if (usageDiffs > 40) break;
+      if (usageDiffs > 40) {
+        break;
+      }
     }
   }
 
@@ -165,8 +219,12 @@ async function main(): Promise<void> {
     console.log(`[parity] PASS — new builders match legacy artifacts for ${base}`);
   } else {
     console.log(`[parity] ${allDiffs.length} semantic difference(s):`);
-    for (const diff of allDiffs.slice(0, 40)) console.log(`  - ${diff}`);
-    if (allDiffs.length > 40) console.log(`  … and ${allDiffs.length - 40} more`);
+    for (const diff of allDiffs.slice(0, 40)) {
+      console.log(`  - ${diff}`);
+    }
+    if (allDiffs.length > 40) {
+      console.log(`  … and ${allDiffs.length - 40} more`);
+    }
   }
 }
 

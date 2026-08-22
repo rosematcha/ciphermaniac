@@ -7,7 +7,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { sha256Hex, semanticHash } from '../../shared/data/hash.ts';
+import { semanticHash, sha256Hex } from '../../shared/data/hash.ts';
 import { stripVolatile, VOLATILE_KEYS } from '../../shared/data/canonicalJson.ts';
 
 const event = {
@@ -35,7 +35,12 @@ test('a meaningful data change DOES change the semantic hash', () => {
 });
 
 test('stripVolatile removes exactly the volatile keys, recursively, preserving array order', () => {
-  const stripped = stripVolatile({ a: 1, fetchedAt: 't', nested: [{ updatedAt: 't', keep: 2 }], order: [3, 1, 2] }) as Record<string, unknown>;
+  const stripped = stripVolatile({
+    a: 1,
+    fetchedAt: 't',
+    nested: [{ updatedAt: 't', keep: 2 }],
+    order: [3, 1, 2]
+  }) as Record<string, unknown>;
   assert.deepStrictEqual(stripped, { a: 1, nested: [{ keep: 2 }], order: [3, 1, 2] });
   assert.ok(VOLATILE_KEYS.includes('fetchedAt') && VOLATILE_KEYS.includes('updatedAt'));
 });

@@ -30,7 +30,9 @@ const DEFAULT_OUT = 'src/generated/release.ts';
 async function fetchJson(url: string): Promise<unknown | null> {
   try {
     const res = await fetch(url, { headers: { 'cache-control': 'no-cache' } });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      return null;
+    }
     return (await res.json()) as unknown;
   } catch {
     return null;
@@ -42,9 +44,13 @@ export async function resolveCurrentManifest(dataBase: string, channel: string):
   const base = dataBase.replace(/\/+$/, '');
   const pointer = (await fetchJson(`${base}/build/v1/channels/${channel}.json`)) as { releaseId?: unknown } | null;
   const releaseId = pointer && typeof pointer.releaseId === 'string' ? pointer.releaseId : null;
-  if (!releaseId) return null;
+  if (!releaseId) {
+    return null;
+  }
   const manifest = await fetchJson(`${base}/build/v1/releases/${encodeURIComponent(releaseId)}.json`);
-  if (manifest === null) return null;
+  if (manifest === null) {
+    return null;
+  }
   return validateReleaseManifest(manifest).length === 0 ? manifest : null;
 }
 

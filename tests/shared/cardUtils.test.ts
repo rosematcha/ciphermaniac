@@ -250,5 +250,5 @@ test('sanitizeDisplayName preserves punctuation but blocks traversal/injection',
   // Path traversal + separators are still stripped.
   assert.strictEqual(sanitizeDisplayName('EvilCard/..\\secret'), 'EvilCardsecret');
   // Control characters (built without a literal) are removed.
-  assert.strictEqual(sanitizeDisplayName('a' + String.fromCharCode(1) + 'bc'), 'abc');
+  assert.strictEqual(sanitizeDisplayName(`a${String.fromCharCode(1)}bc`), 'abc');
 });

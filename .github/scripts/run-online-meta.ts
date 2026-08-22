@@ -15,7 +15,7 @@
 import crypto from 'node:crypto';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
-import { ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
+import { DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { createR2Client, getJsonResult, putJson as putJsonR2 } from './lib/r2.mjs';
 import { type CardTypesDatabase, enrichCardWithType } from '../../shared/data/cardTypesDatabase.js';
 import {
@@ -603,7 +603,11 @@ async function main(): Promise<void> {
   const pairingsData = await gatherPairingsData(reportTournaments);
 
   console.log(`[online-meta] Aggregating ${reportDecks.length} decks`);
-  const masterReport = generateReportFromDecks(reportDecks as unknown as Parameters<typeof generateReportFromDecks>[0], reportDecks.length, synonymDb);
+  const masterReport = generateReportFromDecks(
+    reportDecks as unknown as Parameters<typeof generateReportFromDecks>[0],
+    reportDecks.length,
+    synonymDb
+  );
   // The frozen 'preserve' online profile: case-preserving group keys (D3
   // quirk), 0.5% deck floor, fraction percent, deckCount-desc ordering,
   // thumbnails + signature cards on index entries — pinned byte-identical to
@@ -656,10 +660,15 @@ async function main(): Promise<void> {
       }
       try {
         const archetypeName = file.displayName || file.base.replace(/_/g, ' ');
-        const trends = generateArchetypeTrends(archetypeDecks as unknown as Parameters<typeof generateArchetypeTrends>[0], reportTournaments, synonymDb, {
-          pairingsData,
-          archetypeName
-        });
+        const trends = generateArchetypeTrends(
+          archetypeDecks as unknown as Parameters<typeof generateArchetypeTrends>[0],
+          reportTournaments,
+          synonymDb,
+          {
+            pairingsData,
+            archetypeName
+          }
+        );
         trendsByBase.set(file.base, trends);
       } catch (err) {
         trendFailures.push(`${file.base}: ${(err as Error)?.message || err}`);

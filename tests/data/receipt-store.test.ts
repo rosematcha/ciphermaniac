@@ -6,7 +6,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { type CandidateOutput, type ObjectStore, publishOutputs, receiptStoreFrom, writeReceipt } from '../../shared/data/build/receiptStore.ts';
+import {
+  type CandidateOutput,
+  type ObjectStore,
+  publishOutputs,
+  receiptStoreFrom,
+  writeReceipt
+} from '../../shared/data/build/receiptStore.ts';
 import { sha256HexString } from '../../shared/data/hash.ts';
 
 /** In-memory object store with create-only semantics + failure injection. */
@@ -18,14 +24,20 @@ class MemoryObjectStore implements ObjectStore {
   failPut: string | null = null;
 
   async putIfAbsent(key: string, body: string): Promise<void> {
-    if (this.failPut === key) throw new Error(`injected upload failure for ${key}`);
-    if (this.objects.has(key)) throw new Error(`conflict: ${key} exists`);
+    if (this.failPut === key) {
+      throw new Error(`injected upload failure for ${key}`);
+    }
+    if (this.objects.has(key)) {
+      throw new Error(`conflict: ${key} exists`);
+    }
     this.objects.set(key, body);
   }
   async get(key: string): Promise<string | null> {
     const body = this.objects.get(key) ?? null;
     // Same-length tamper so the length check passes and the hash check fires.
-    if (body !== null && this.corrupt.has(key)) return [...body].reverse().join('');
+    if (body !== null && this.corrupt.has(key)) {
+      return [...body].reverse().join('');
+    }
     return body;
   }
   async put(key: string, body: string): Promise<void> {
@@ -41,7 +53,11 @@ function candidate(name: string, key: string, body: string): CandidateOutput {
 
 test('publishes immutable outputs, verifies, and reports records', async () => {
   const store = new MemoryObjectStore();
-  const result = await publishOutputs(store, [candidate('cardUsage', 'releases/v1/events/e/abc/cardUsage.json', '{"usage":{}}')], hashOf);
+  const result = await publishOutputs(
+    store,
+    [candidate('cardUsage', 'releases/v1/events/e/abc/cardUsage.json', '{"usage":{}}')],
+    hashOf
+  );
   assert.strictEqual(result.outputs.cardUsage.key, 'releases/v1/events/e/abc/cardUsage.json');
   assert.strictEqual(result.outputs.cardUsage.bytes, 12);
   assert.ok(result.outputs.cardUsage.sha256.startsWith('sha256:'));
@@ -76,14 +92,21 @@ test('re-publishing identical content is idempotent (no conflict)', async () => 
 test('re-publishing different content at an immutable key is rejected', async () => {
   const store = new MemoryObjectStore();
   await publishOutputs(store, [candidate('m', 'releases/v1/x/m.json', '{"a":1}')], hashOf);
-  await assert.rejects(() => publishOutputs(store, [candidate('m', 'releases/v1/x/m.json', '{"a":2}')], hashOf), /different content/);
+  await assert.rejects(
+    () => publishOutputs(store, [candidate('m', 'releases/v1/x/m.json', '{"a":2}')], hashOf),
+    /different content/
+  );
 });
 
 test('the receipt is the last write and is then resolvable for planning', async () => {
   const store = new MemoryObjectStore();
   const { outputs } = await publishOutputs(store, [candidate('m', 'releases/v1/x/m.json', '{}')], hashOf);
   const keyFor = (node: string, nodeKey: string): string => `build/v1/nodes/${node}/${nodeKey}.json`;
-  await writeReceipt(store, { schemaVersion: 1, node: 'event:x', nodeKey: 'sha256:k', builder: 'v1', inputs: {}, outputs, completedAt: 't' }, keyFor('event:x', 'sha256:k'));
+  await writeReceipt(
+    store,
+    { schemaVersion: 1, node: 'event:x', nodeKey: 'sha256:k', builder: 'v1', inputs: {}, outputs, completedAt: 't' },
+    keyFor('event:x', 'sha256:k')
+  );
   const planningStore = receiptStoreFrom(store, keyFor);
   const receipt = await planningStore.get('event:x', 'sha256:k');
   assert.ok(receipt);
@@ -95,7 +118,11 @@ test('verifying receipt store invalidates a receipt whose output is missing or c
   const store = new MemoryObjectStore();
   const keyFor = (node: string, nodeKey: string): string => `build/v1/nodes/${node}/${nodeKey}.json`;
   const { outputs } = await publishOutputs(store, [candidate('m', 'releases/v1/x/m.json', '{"a":1}')], hashOf);
-  await writeReceipt(store, { schemaVersion: 1, node: 'event:x', nodeKey: 'sha256:k', builder: 'v1', inputs: {}, outputs, completedAt: 't' }, keyFor('event:x', 'sha256:k'));
+  await writeReceipt(
+    store,
+    { schemaVersion: 1, node: 'event:x', nodeKey: 'sha256:k', builder: 'v1', inputs: {}, outputs, completedAt: 't' },
+    keyFor('event:x', 'sha256:k')
+  );
   const { verifyingReceiptStoreFrom } = await import('../../shared/data/build/receiptStore.ts');
   const verifying = verifyingReceiptStoreFrom(store, keyFor, hashOf);
 
