@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 /**
  * Mobile viewport regression suite (mobile plan P4.1).
- * Run with `npm run test:mobile`. Needs network access (report data comes
+ * Run with `npm run test:e2e:live`. Needs network access (report data comes
  * from r2.ciphermaniac.com), so it's separate from the unit-test gate.
  */
 export default defineConfig({

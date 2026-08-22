@@ -70,12 +70,23 @@ Requires Node 22+.
 |---------|--------------|
 | `npm run dev` | Vite dev server |
 | `npm run build` | Production build |
+| `npm run verify` | Everything CI runs: validate, knip, metadata check, build, tests, coverage gates |
 | `npm run validate` | Typecheck (frontend, backend, node) + ESLint |
-| `npm test` | Unit tests |
-| `npm run test:mobile` | Playwright mobile tests |
+| `npm test` | Unit + API + Python tests |
+| `npm run test:unit` | Node unit tests |
+| `npm run test:api` | Pages Functions tests |
+| `npm run test:python` | Python producer tests (`PYTHON=<path>` to pick an interpreter) |
+| `npm run test:e2e:live` | Playwright mobile suite against live R2 data |
+| `npm run test:coverage` | Coverage report over the domain and serving surface |
 | `npm run knip` | Dead code check |
 
-CI runs the same quality gates plus a Lighthouse performance budget on every push.
+The Python tests need the pinned producer dependencies:
+
+```bash
+pip install -r .github/scripts/requirements.txt
+```
+
+CI runs `npm run verify` and nothing else, plus a Lighthouse performance budget on every push.
 
 ## Credits
 

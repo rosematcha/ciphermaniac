@@ -1,5 +1,11 @@
 name: Quality Gates
 
+# Runs the same command a developer runs locally: `npm run verify`. The steps
+# below only exist to install the two runtimes it needs and to keep the failure
+# output attributable to a stage — CI must not maintain its own idea of what
+# "verified" means, or the local command drifts into meaning less than the
+# remote one.
+
 on:
   pull_request:
   push:
@@ -22,36 +28,6 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Security audit
-        run: npm audit --omit=dev --audit-level=high
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Knip (dead code)
-        run: npm run knip
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Typecheck backend
-        run: npm run typecheck:backend
-
-      - name: Typecheck node scripts and tests
-        run: npm run typecheck:node
-
-      - name: Build production bundle
-        run: npm run build
-
-      - name: Coverage
-        run: npm run test:coverage
-
-      - name: API tests
-        run: npm run test:api
-
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
@@ -59,9 +35,14 @@ jobs:
           cache: pip
           cache-dependency-path: .github/scripts/requirements.txt
 
+      - name: Install Node dependencies
+        run: npm ci
+
       - name: Install Python dependencies
         run: pip install -r .github/scripts/requirements.txt
 
-      - name: Python tests
-        working-directory: .github/scripts
-        run: python -m unittest discover -s tests -p 'test_*.py'
+      - name: Security audit
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Verify
+        run: npm run verify

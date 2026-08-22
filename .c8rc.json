@@ -1,0 +1,13 @@
+{
+  "comment": [
+    "Coverage scope is the domain and serving surface: shared builders/contracts, the browser data+logic layer, and the Pages Functions. `all: true` counts files the tests never import, so an untested module shows as 0% instead of vanishing from the report.",
+    "scripts/ and .github/scripts/ are deliberately out of scope: they are CLI entrypoints whose bodies are argument parsing and R2 I/O, and DB-MASTER-PLAN Phase 7 deletes a large share of them. Their extracted logic already lives in shared/ and is measured here.",
+    "src/**/*.tsx is out of scope: components need a browser, and their behavior is covered by the Playwright suites rather than by node:test.",
+    "Thresholds are set at the measured baseline (see the coverage:check script), not at an aspirational round number. Raise them as logic moves out of the excluded roots."
+  ],
+  "all": true,
+  "include": ["src/lib/**/*.ts", "src/utils/**/*.ts", "shared/**/*.ts", "functions/**/*.{ts,js}"],
+  "exclude": ["**/*.d.ts", "shared/**/types.ts", "src/types/**"],
+  "reporter": ["text", "lcov"],
+  "skip-full": false
+}
