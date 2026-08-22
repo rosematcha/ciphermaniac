@@ -1,6 +1,6 @@
 {
   "planDocument": "DB-MASTER-PLAN.md",
-  "updatedAt": "2026-08-21",
+  "updatedAt": "2026-08-22",
   "currentPhase": 6,
   "currentSlice": "online-port investigated; blocked on presentation-layer parity (signatureCards/thumbnails)",
   "phases": {
@@ -254,6 +254,14 @@
       "warmMs": 6.7,
       "sliderMs": 0.0,
       "webWorkerDecision": "NOT JUSTIFIED (Phase 7.5, measured 2026-08-21). The gate is a single pass sustaining > ~50 ms. The WARM path — what runs on every filter apply — is 6.7 ms here, ~27 ms on a 4x-slower phone, about half the gate; the threshold slider is unmeasurable. Moving it off-thread would also have to structured-clone 1,134 decks / 27,533 card rows across the Worker boundary each way, which plausibly costs more than the 6.7 ms it saves. The COLD path (24.1 ms, ~96 ms on a phone) is the larger number but runs once, already deferred behind rAF so it lands after first paint. Revisit if archetype deck counts grow several-fold or the analysis gains a superlinear stage."
+    },
+    "cardUsageSharding": {
+      "finding": "cardUsage.json is the card page's largest payload and the page uses ~0.3% of it.",
+      "measured": "Online window: 644 KB serialized / 567 KB decoded, 846 entries. A single card's slice is 1.73 KB. First byte at ~1,287 ms on the throttled mobile profile, competing for bandwidth with master.json (269 KB) and card-synonyms.json (286 KB) while cold LCP is ~3,160 ms.",
+      "consumer": "CardPage only. src/pages/cardPage/model.buildUsageRowsFromIndex reads exactly one key.",
+      "proposedFix": "Shard per set the way reports/price-history/{SET}.json already does: 19 shards, largest 80 KB, median 30 KB — a ~20x cut on the page's biggest download, with no change in total stored bytes.",
+      "status": "NOT IMPLEMENTED, deliberately deferred. This adds a new artifact layout, which needs build-graph nodes, release capture, and a read-time fallback for every event that only has the monolith. That fallback would land in src/lib/data/compat.ts — the module quarantined with a stated deletion condition — so adding to it before Phase 7 deletes the existing compat paths works against the plan's sequencing. Do it after the release migration lands, as a Phase 12 item.",
+      "cheaperInterimOption": "Deferring the fetch past first paint is artifact-free and may recover LCP without any pipeline change; worth measuring before committing to the shard."
     }
   },
   "semanticDifferences": [
