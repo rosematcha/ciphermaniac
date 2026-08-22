@@ -16,7 +16,6 @@
 
 import {
   type CardCategory,
-  cardUid,
   computeSuccessTags,
   type DeckCard,
   type EnergyType,
@@ -31,7 +30,7 @@ import {
   type Participant,
   type TrainerType
 } from '../contracts';
-import { canonicalizeVariant, getCanonicalCardFromData, type SynonymDatabase } from '../cardIdentity';
+import { canonicalizeVariant, cardUidOrName, getCanonicalCardFromData, type SynonymDatabase } from '../cardIdentity';
 import { sha256Hex } from '../hash';
 
 /** One raw decklist card row as scraped from Labs. */
@@ -149,7 +148,7 @@ function buildDeckCards(rows: LabsSourceCard[], synonymDb: SynonymDatabase | nul
       continue;
     }
     const [normSet, normNumber] = canonicalizeVariant(row.set ?? null, row.number ?? null);
-    const variantUid = cardUid(row.name, normSet, normNumber);
+    const variantUid = cardUidOrName(row.name, normSet, normNumber);
     const canonicalUid = getCanonicalCardFromData(synonymDb, variantUid);
 
     let bucket = buckets.get(canonicalUid);

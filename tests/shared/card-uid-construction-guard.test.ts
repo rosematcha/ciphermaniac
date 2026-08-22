@@ -38,18 +38,43 @@ const ALLOWED = new Map<string, string>([
 ]);
 
 /**
- * The three-part `Name::SET::NUMBER` card-UID shape, built by interpolation.
+ * Ways to assemble the three-part `Name::SET::NUMBER` card-UID shape.
  *
- * Scoped to THREE interpolated segments on purpose. The two-part `SET::NUMBER`
- * form is a different key (zero-STRIPPED, used for snapshot/card-type/sitemap
- * indexes) with its own constructors — `cardNumberIndexKey` and `cardRouteKey`.
- * Lumping them together made this guard fire on legitimate index-key builders
- * and on deck fingerprint strings, which is how a guard earns a blanket ignore.
+ * Scoped to THREE segments on purpose. The two-part `SET::NUMBER` form is a
+ * different key (zero-STRIPPED, used for snapshot/card-type/sitemap indexes)
+ * with its own constructors — `cardNumberIndexKey` and `cardRouteKey`. Lumping
+ * them together made this guard fire on legitimate index builders and deck
+ * fingerprints, which is how a guard earns a blanket ignore.
+ *
+ * An adversarial review defeated the first version three ways, so all three are
+ * covered now: a template literal, `.join('::')`, and `+` concatenation. This is
+ * still a text search, not a parser — someone determined to route around it
+ * can. It exists to catch the ACCIDENTAL fourteenth call site, which is what
+ * D20 actually was.
  */
-const UID_TEMPLATE = /`[^`]*\$\{[^}]*\}::\$\{[^}]*\}::\$\{/;
+const UID_PATTERNS: RegExp[] = [
+  // `${name}::${set}::${number}` — the original shape.
+  /`[^`]*\$\{[^}]*\}::\$\{[^}]*\}::\$\{/,
+  // [name, set, number].join('::') — any three-element array joined on '::'.
+  /\[[^\]]+,[^\]]+,[^\]]+\]\s*\.join\(\s*['"`]::['"`]/,
+  // name + '::' + set + '::' + number
+  /['"`]::['"`]\s*\+[\s\S]{0,80}?['"`]::['"`]\s*\+/
+];
 
-/** `::`-joined strings that are not card identity at all. */
-const NON_CARD_KEY = /tournament|archetypeBase|dateIso|placing|player|file|entry\.|\bpath\b|\$\{card\.count\}x/i;
+/**
+ * `::`-joined strings that are not card identity at all.
+ *
+ * Deliberately matched against the code BEFORE its trailing comment: the first
+ * version tested the whole line, so any real violation could be silenced by
+ * writing `// read from file` after it.
+ */
+const NON_CARD_KEY = /tournament|archetypeBase|dateIso|placing|player|entry\.|\bpath\b|\$\{card\.count\}x/i;
+
+/** Strip a trailing line comment so it cannot suppress a real finding. */
+function codeOnly(line: string): string {
+  const idx = line.indexOf('//');
+  return idx >= 0 ? line.slice(0, idx) : line;
+}
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
@@ -78,7 +103,8 @@ test('no source file assembles a card UID by hand', () => {
       readFileSync(file, 'utf8')
         .split('\n')
         .forEach((line, i) => {
-          if (!UID_TEMPLATE.test(line) || NON_CARD_KEY.test(line)) {
+          const code = codeOnly(line);
+          if (!UID_PATTERNS.some(re => re.test(code)) || NON_CARD_KEY.test(code)) {
             return;
           }
           offenders.push(`${rel}:${i + 1}  ${line.trim()}`);
@@ -100,8 +126,37 @@ test('the allowlist stays honest — every entry still exists and still needs to
     const full = join(ROOT, rel);
     assert.doesNotThrow(() => statSync(full), `allowlisted ${rel} no longer exists — drop the entry`);
     assert.ok(
-      UID_TEMPLATE.test(readFileSync(full, 'utf8')),
+      UID_PATTERNS.some(re => re.test(readFileSync(full, 'utf8'))),
       `allowlisted ${rel} no longer builds a UID by hand (${reason}) — drop the entry`
     );
   }
 });
+
+/* eslint-disable no-template-curly-in-string -- these strings ARE the code samples under test */
+test('the guard catches the evasions an adversarial review found', () => {
+  // The first version matched only a single-line template literal and tested
+  // NON_CARD_KEY against the whole line, so join(), concatenation, and a
+  // trailing comment each defeated it.
+  const evasions = [
+    "const uid = [name, set, number].join('::');",
+    "const uid = name + '::' + set + '::' + number;",
+    'const uid = `${name}::${set}::${number}`; // read from file'
+  ];
+  for (const line of evasions) {
+    const code = codeOnly(line);
+    assert.ok(UID_PATTERNS.some(re => re.test(code)) && !NON_CARD_KEY.test(code), `guard does not catch: ${line}`);
+  }
+});
+
+test('the guard still ignores the two-part index-key form and deck fingerprints', () => {
+  const allowed = [
+    'return `${set.toUpperCase()}::${cardNumberIndexKey(number)}`;',
+    'const cacheKey = `${tournament}::${archetypeBase}`;',
+    ".map(card => `${card.count}x${card.name || ''}::${card.set || ''}::${card.number || ''}`)"
+  ];
+  for (const line of allowed) {
+    const code = codeOnly(line);
+    assert.ok(!UID_PATTERNS.some(re => re.test(code)) || NON_CARD_KEY.test(code), `guard falsely flags: ${line}`);
+  }
+});
+/* eslint-enable no-template-curly-in-string */

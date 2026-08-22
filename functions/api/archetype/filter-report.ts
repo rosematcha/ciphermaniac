@@ -17,6 +17,7 @@ import {
   filterDecks,
   filterDecksBySuccess,
   generateReportForFilters,
+  normalizeCardMatchId,
   QUANTITY_OPERATORS,
   SUCCESS_TAG_HIERARCHY
 } from '../../../shared/clientSideFiltering.js';
@@ -72,6 +73,18 @@ function normalizeString(value: unknown): string {
 }
 
 /**
+ * True when a field is present but not a string.
+ *
+ * {@link normalizeString} collapses a non-string to `''`, which is
+ * indistinguishable from absent — so `successFilter: true` would silently
+ * become `'all'` rather than being rejected, defeating the point of an
+ * allowlist.
+ */
+function isPresentNonString(value: unknown): boolean {
+  return value !== undefined && value !== null && typeof value !== 'string';
+}
+
+/**
  * Read the body with a hard byte ceiling.
  *
  * Checks Content-Length first (cheap rejection for an honest client) and then
@@ -93,9 +106,10 @@ async function readBody(request: Request): Promise<unknown | typeof BODY_TOO_LAR
   } catch {
     return BODY_UNPARSEABLE;
   }
-  // UTF-16 length is a lower bound on UTF-8 byte length, so this can only
-  // reject bodies that are genuinely over the ceiling.
-  if (text.length > MAX_BODY_BYTES) {
+  // Measure BYTES, not string length. `text.length` counts UTF-16 code units,
+  // which UNDER-counts UTF-8 by up to 3x for non-Latin scripts — so a body
+  // genuinely over the ceiling could slip through by being multi-byte.
+  if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) {
     return BODY_TOO_LARGE;
   }
   try {
@@ -123,11 +137,25 @@ function normalizeFilter(raw: unknown): Filter | null | typeof INVALID {
     return null;
   }
   const record = raw as Record<string, unknown>;
-  const cardId = normalizeString(record.cardId);
-  if (!cardId) {
+  if (isPresentNonString(record.cardId)) {
+    return INVALID;
+  }
+  const rawCardId = normalizeString(record.cardId);
+  if (!rawCardId) {
     return null;
   }
-  if (cardId.length > MAX_CARD_ID_LENGTH) {
+  if (rawCardId.length > MAX_CARD_ID_LENGTH) {
+    return INVALID;
+  }
+  // Normalize to the exact form deck counts are keyed by. Matching is an exact
+  // Map lookup, so `svi~191` or `SVI~1` would match ZERO decks silently — and
+  // because the cache key normalized case but the matcher did not, the wrong
+  // answer was cached under the right request's key.
+  const cardId = normalizeCardMatchId(rawCardId);
+  if (!cardId) {
+    return INVALID;
+  }
+  if (isPresentNonString(record.operator)) {
     return INVALID;
   }
   const rawOperator = normalizeString(record.operator);
@@ -164,6 +192,18 @@ function normalizeFilter(raw: unknown): Filter | null | typeof INVALID {
  * request two cache keys. Plain string comparison rather than `localeCompare`
  * so the ordering is not locale-dependent.
  */
+/**
+ * Whether a filter's `count` changes which decks match.
+ *
+ * `any` means "one or more" and the empty operator means "none"; both ignore
+ * the count (shared/clientSideFiltering matchesQuantity). Ordering, dedupe and
+ * the cache key all have to agree on that, or two spellings of one request
+ * diverge.
+ */
+function countAffectsMatching(operator: Operator | null | undefined): boolean {
+  return Boolean(operator) && operator !== 'any';
+}
+
 function compareFilters(a: Filter, b: Filter): number {
   if (a.cardId !== b.cardId) {
     return a.cardId < b.cardId ? -1 : 1;
@@ -173,7 +213,9 @@ function compareFilters(a: Filter, b: Filter): number {
   if (aOp !== bOp) {
     return aOp < bOp ? -1 : 1;
   }
-  return (a.count ?? -1) - (b.count ?? -1);
+  const aCount = countAffectsMatching(a.operator) ? (a.count ?? -1) : -1;
+  const bCount = countAffectsMatching(b.operator) ? (b.count ?? -1) : -1;
+  return aCount - bCount;
 }
 
 /**
@@ -202,6 +244,14 @@ function normalizePayload(raw: unknown): ArchetypeFilterRequest | null {
     return null;
   }
   const record = raw as Record<string, unknown>;
+  if (
+    isPresentNonString(record.tournament) ||
+    isPresentNonString(record.archetype) ||
+    isPresentNonString(record.successFilter) ||
+    isPresentNonString(record.slice)
+  ) {
+    return null;
+  }
   const tournament = normalizeString(record.tournament);
   const archetype = normalizeString(record.archetype);
   const successFilter = normalizeString(record.successFilter || 'all') || 'all';
@@ -347,9 +397,12 @@ function buildCachePayload(payload: ArchetypeFilterRequest): string {
     successFilter: payload.successFilter,
     slice: payload.slice || 'all',
     filters: payload.filters.map(filter => ({
-      cardId: filter.cardId.toUpperCase(),
+      cardId: filter.cardId,
       operator: filter.operator || null,
-      count: filter.count ?? null
+      // `any` and the exclude operator ignore the count entirely (see
+      // matchesQuantity), so keeping it in the key would split one logical
+      // request across cache entries that can only ever hold the same answer.
+      count: countAffectsMatching(filter.operator) ? (filter.count ?? null) : null
     }))
   });
 }

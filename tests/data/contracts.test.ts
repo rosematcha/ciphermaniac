@@ -6,6 +6,7 @@
  * derivation, and stable content-addressed IDs (with snapshotted hashes).
  */
 
+import { cardUidOrName } from '../../shared/data/cardIdentity.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -15,7 +16,6 @@ import { dirname, join } from 'node:path';
 import {
   archetypeKey,
   archetypeSlug,
-  cardUid,
   computeSuccessTags,
   deckId,
   eventId,
@@ -311,8 +311,8 @@ test('card numbers normalize to canonical padded form', () => {
 });
 
 test('SVI/1 and svi/001 resolve to the same canonical UID', () => {
-  assert.strictEqual(cardUid('Pikachu ex', 'SVI', '1'), cardUid('Pikachu ex', 'svi', '001'));
-  assert.strictEqual(cardUid('Pikachu ex', 'SVI', '1'), 'Pikachu ex::SVI::001');
+  assert.strictEqual(cardUidOrName('Pikachu ex', 'SVI', '1'), cardUidOrName('Pikachu ex', 'svi', '001'));
+  assert.strictEqual(cardUidOrName('Pikachu ex', 'SVI', '1'), 'Pikachu ex::SVI::001');
 });
 
 test('parseCardUid round-trips canonical and bare-name UIDs', () => {
