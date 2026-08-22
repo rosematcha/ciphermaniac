@@ -23,7 +23,10 @@ test('playerMatches: two rows per pair match, one per solo match', () => {
   // 3 pair matches (all four pilots decked) = 6 rows, + 103's bye = 1. Player
   // 105 has no decklist, so its unpaired row is excluded. 6 + 1 = 7.
   assert.strictEqual(rows.length, 7);
-  assert.strictEqual(rows.some(r => r.playerId === 'labs:0001:105'), false);
+  assert.strictEqual(
+    rows.some(r => r.playerId === 'labs:0001:105'),
+    false
+  );
 });
 
 test('playerMatches: decided match yields win for winner, loss for the other', () => {
@@ -36,7 +39,10 @@ test('playerMatches: decided match yields win for winner, loss for the other', (
   // opponent joins resolve
   assert.strictEqual(winner?.opponentId, 'labs:0001:102');
   assert.strictEqual(winner?.opponentName, 'Bob');
-  assert.strictEqual(winner?.playerArchetype, labs.decks.find(d => d.participantId === 'labs:0001:101')?.archetype.displayName);
+  assert.strictEqual(
+    winner?.playerArchetype,
+    labs.decks.find(d => d.participantId === 'labs:0001:101')?.archetype.displayName
+  );
 });
 
 test('playerMatches: tie/double_loss/bye/unpaired map through per side', () => {
@@ -47,7 +53,10 @@ test('playerMatches: tie/double_loss/bye/unpaired map through per side', () => {
   assert.strictEqual(bye?.outcome, 'bye');
   assert.strictEqual(bye?.opponentId, null);
   // 105 (no decklist) contributes no perspective rows, so its unpaired row is absent.
-  assert.strictEqual(rows.find(r => r.playerId === 'labs:0001:105' && r.round === 2), undefined);
+  assert.strictEqual(
+    rows.find(r => r.playerId === 'labs:0001:105' && r.round === 2),
+    undefined
+  );
 });
 
 test('playerMatches: flags come from the pilot participant', () => {
@@ -63,7 +72,10 @@ test('canonical matches: one row per match, winner + archetypes resolved', () =>
   const decided = rows.find(r => r.outcome === 'decided');
   assert.ok(decided);
   assert.strictEqual(decided.winnerParticipantId, 'labs:0001:101');
-  assert.strictEqual(decided.participant1Archetype, labs.decks.find(d => d.participantId === decided.participant1Id)?.archetype.displayName);
+  assert.strictEqual(
+    decided.participant1Archetype,
+    labs.decks.find(d => d.participantId === decided.participant1Id)?.archetype.displayName
+  );
   const bye = rows.find(r => r.outcome === 'bye');
   assert.strictEqual(bye?.participant2Id, null);
   assert.strictEqual(bye?.participant2MadePhase2, null);
@@ -72,7 +84,10 @@ test('canonical matches: one row per match, winner + archetypes resolved', () =>
 test('both builders are permutation-invariant (input order cannot change bytes)', () => {
   const reversed: NormalizedEvent = { ...labs, matches: [...labs.matches].reverse() };
   assert.strictEqual(canonicalStringify(buildPlayerMatches(labs)), canonicalStringify(buildPlayerMatches(reversed)));
-  assert.strictEqual(canonicalStringify(buildCanonicalMatches(labs)), canonicalStringify(buildCanonicalMatches(reversed)));
+  assert.strictEqual(
+    canonicalStringify(buildCanonicalMatches(labs)),
+    canonicalStringify(buildCanonicalMatches(reversed))
+  );
 });
 
 test('online windows have no matches (empty artifacts)', () => {

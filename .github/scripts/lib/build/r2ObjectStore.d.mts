@@ -6,4 +6,7 @@ import type { ConditionalPointerStore } from '../../../../shared/data/build/chan
  * Build an ObjectStore over an R2 bucket (create-only immutable writes) that
  * also satisfies the conditional pointer store (ETag If-Match / If-None-Match).
  */
-export declare function createR2ObjectStore(client: S3Client, bucket: string): ObjectStore & ConditionalPointerStore<unknown>;
+export declare function createR2ObjectStore(
+  client: S3Client,
+  bucket: string
+): ObjectStore & ConditionalPointerStore<unknown>;

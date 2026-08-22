@@ -7,11 +7,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-  PRICE_HISTORY_MIN_DAYS,
-  priceHistorySpanDays,
-  type PricePoint
-} from '../../src/lib/data.ts';
+import { PRICE_HISTORY_MIN_DAYS, priceHistorySpanDays, type PricePoint } from '../../src/lib/data.ts';
 
 function pts(...dates: string[]): PricePoint[] {
   return dates.map((date, i) => ({ date, price: 1 + i }));

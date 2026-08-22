@@ -76,7 +76,10 @@ export function parseStage(evolutionInfo) {
   if (typeof evolutionInfo !== 'string') {
     return null;
   }
-  const segment = evolutionInfo.split(/\s*-\s*/)[0]?.trim().toLowerCase();
+  const segment = evolutionInfo
+    .split(/\s*-\s*/)[0]
+    ?.trim()
+    .toLowerCase();
   return (segment && STAGE_MAP[segment]) || null;
 }
 
@@ -346,17 +349,21 @@ function extractCardTextDetails(html) {
   const abilityDetails = [];
   const attackDetails = [];
 
-  const abilityBlockRe = /<div class="card-text-ability">([\s\S]*?)<\/p>\s*<p class="card-text-ability-effect"[^>]*>([\s\S]*?)<\/p>/gi;
+  const abilityBlockRe =
+    /<div class="card-text-ability">([\s\S]*?)<\/p>\s*<p class="card-text-ability-effect"[^>]*>([\s\S]*?)<\/p>/gi;
   let match;
   while ((match = abilityBlockRe.exec(html)) !== null) {
-    const name = htmlToText(match[1]).replace(/^\s*ability\s*:\s*/i, '').trim();
+    const name = htmlToText(match[1])
+      .replace(/^\s*ability\s*:\s*/i, '')
+      .trim();
     const effect = htmlToText(match[2]) || null;
     if (name) {
       abilityDetails.push({ name, effect });
     }
   }
 
-  const attackBlockRe = /<p class="card-text-attack-info"[^>]*>([\s\S]*?)<\/p>\s*<p class="card-text-attack-effect"[^>]*>([\s\S]*?)<\/p>/gi;
+  const attackBlockRe =
+    /<p class="card-text-attack-info"[^>]*>([\s\S]*?)<\/p>\s*<p class="card-text-attack-effect"[^>]*>([\s\S]*?)<\/p>/gi;
   while ((match = attackBlockRe.exec(html)) !== null) {
     const costMatch = match[1].match(/<span class="ptcg-symbol"[^>]*>([\s\S]*?)<\/span>/i);
     const cost = costMatch ? htmlToText(costMatch[1]).replace(/\s+/g, '') || null : null;
@@ -598,7 +605,8 @@ export function parseCardPage(html) {
 
   // Format legality (EN formats only; JP rows link via /cards/jp)
   const legality = {};
-  const legalityRe = /<a href="\/cards\?q=format:(standard|expanded)">[\s\S]*?<div class="[^"]*">\s*([\s\S]*?)\s*<\/div>/gi;
+  const legalityRe =
+    /<a href="\/cards\?q=format:(standard|expanded)">[\s\S]*?<div class="[^"]*">\s*([\s\S]*?)\s*<\/div>/gi;
   let legalityMatch;
   while ((legalityMatch = legalityRe.exec(html)) !== null) {
     legality[legalityMatch[1]] = htmlToText(legalityMatch[2]);

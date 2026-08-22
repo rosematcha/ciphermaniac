@@ -37,7 +37,9 @@ const CACHE = 'public, max-age=31536000, immutable';
 
 function requireEnv(name: string): string {
   const v = process.env[name];
-  if (!v) throw new Error(`Missing ${name}`);
+  if (!v) {
+    throw new Error(`Missing ${name}`);
+  }
   return v;
 }
 
@@ -74,7 +76,11 @@ async function main(): Promise<void> {
   const arg = (f: string): string | undefined => (argv.indexOf(f) >= 0 ? argv[argv.indexOf(f) + 1] : undefined);
 
   const bucket = requireEnv('R2_BUCKET_NAME');
-  const client = createR2Client({ accountId: requireEnv('R2_ACCOUNT_ID'), accessKeyId: requireEnv('R2_ACCESS_KEY_ID'), secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY') });
+  const client = createR2Client({
+    accountId: requireEnv('R2_ACCOUNT_ID'),
+    accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
+    secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY')
+  });
   const written: string[] = [];
   const load = async <T>(key: string): Promise<T | null> => {
     const r = await getJsonResult<T>(client, bucket, key);
@@ -88,11 +94,19 @@ async function main(): Promise<void> {
   };
   const gen = (obj: unknown): string => sha256HexString(canonicalStringify(obj)).slice(0, 12);
 
-  const synonyms = await load<Parameters<typeof buildEventArtifacts>[1] extends { synonymDb?: infer S } ? S : never>('assets/card-synonyms.json');
+  const synonyms =
+    await load<Parameters<typeof buildEventArtifacts>[1] extends { synonymDb?: infer S } ? S : never>(
+      'assets/card-synonyms.json'
+    );
   // Inputs the online-window regeneration needs beyond decks: card types (thumbnail
   // + signature inference) and the hand-maintained thumbnail overrides (repo asset).
   const cardTypesDb = await load('assets/data/card-types.json');
-  const thumbnailConfig = JSON.parse(await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../../public/assets/data/archetype-thumbnails.json'), 'utf8'));
+  const thumbnailConfig = JSON.parse(
+    await readFile(
+      resolve(dirname(fileURLToPath(import.meta.url)), '../../public/assets/data/archetype-thumbnails.json'),
+      'utf8'
+    )
+  );
 
   // ---- Discover scopes ----
   const listed = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: 'reports/', Delimiter: '/' }));
@@ -111,30 +125,71 @@ async function main(): Promise<void> {
   for (const folder of eventFolders) {
     const base = `reports/${folder}`;
     const [decks, players, matches, meta] = await Promise.all([
-      load<Record<string, unknown>[]>(`${base}/decks.json`), load<Record<string, unknown>[]>(`${base}/players.json`),
-      load<Record<string, unknown>[]>(`${base}/matches.json`), load<Record<string, unknown>>(`${base}/meta.json`)
+      load<Record<string, unknown>[]>(`${base}/decks.json`),
+      load<Record<string, unknown>[]>(`${base}/players.json`),
+      load<Record<string, unknown>[]>(`${base}/matches.json`),
+      load<Record<string, unknown>>(`${base}/meta.json`)
     ]);
-    if (!decks || !players || !meta) continue;
+    if (!decks || !players || !meta) {
+      continue;
+    }
     const archByTp = new Map<string, string>();
     const cardsByTp: Record<string, unknown[]> = {};
     for (const d of decks) {
       if (d.playerId !== undefined) {
-        if (d.archetype) archByTp.set(String(d.playerId), String(d.archetype));
-        if (Array.isArray(d.cards)) cardsByTp[String(d.playerId)] = d.cards;
+        if (d.archetype) {
+          archByTp.set(String(d.playerId), String(d.archetype));
+        }
+        if (Array.isArray(d.cards)) {
+          cardsByTp[String(d.playerId)] = d.cards;
+        }
       }
     }
     const source = {
-      labsCode: folder.replace(/[^a-z0-9]/gi, '').slice(-8), fetchedAt: '1970-01-01T00:00:00Z',
-      meta: { name: String(meta.name), date: String(meta.startDate ?? meta.date), players: meta.players as number, division: (meta.division as string) ?? null, country: (meta.country as string) ?? null },
-      standings: players.map(p => ({ tpId: p.tpId as number, playerId: (p.playerId as string) ?? null, name: String(p.name), country: (p.country as string) ?? null, placement: (p.placement as number) ?? null, wins: p.wins as number, losses: p.losses as number, ties: p.ties as number, points: (p.points as number) ?? null, opw: (p.opw as number) ?? null, oopw: (p.oopw as number) ?? null, madePhase2: Boolean(p.madePhase2), madeTopCut: Boolean(p.madeTopCut), decklistPublished: Boolean(p.decklistPublished), deckName: archByTp.get(String(p.tpId)) ?? null })),
+      labsCode: folder.replace(/[^a-z0-9]/gi, '').slice(-8),
+      fetchedAt: '1970-01-01T00:00:00Z',
+      meta: {
+        name: String(meta.name),
+        date: String(meta.startDate ?? meta.date),
+        players: meta.players as number,
+        division: (meta.division as string) ?? null,
+        country: (meta.country as string) ?? null
+      },
+      standings: players.map(p => ({
+        tpId: p.tpId as number,
+        playerId: (p.playerId as string) ?? null,
+        name: String(p.name),
+        country: (p.country as string) ?? null,
+        placement: (p.placement as number) ?? null,
+        wins: p.wins as number,
+        losses: p.losses as number,
+        ties: p.ties as number,
+        points: (p.points as number) ?? null,
+        opw: (p.opw as number) ?? null,
+        oopw: (p.oopw as number) ?? null,
+        madePhase2: Boolean(p.madePhase2),
+        madeTopCut: Boolean(p.madeTopCut),
+        decklistPublished: Boolean(p.decklistPublished),
+        deckName: archByTp.get(String(p.tpId)) ?? null
+      })),
       decklists: cardsByTp as never,
-      matches: (matches ?? []).map(m => ({ round: m.round as number, phase: (m.phase as number) ?? null, table: (m.table as number) ?? null, completed: Boolean(m.completed), p1Id: m.player1Id as number, p2Id: (m.player2Id as number) ?? null, winner: (m.winnerCode as number) ?? null }))
+      matches: (matches ?? []).map(m => ({
+        round: m.round as number,
+        phase: (m.phase as number) ?? null,
+        table: (m.table as number) ?? null,
+        completed: Boolean(m.completed),
+        p1Id: m.player1Id as number,
+        p2Id: (m.player2Id as number) ?? null,
+        winner: (m.winnerCode as number) ?? null
+      }))
     };
     const event = labsSourceToNormalized(source, { synonymDb: synonyms });
     const artifacts = buildEventArtifacts(event, { synonymDb: synonyms });
     const g = gen([...artifacts.entries()].sort());
     const root = `releases/v1/events/${folder}/${g}`;
-    for (const [path, body] of artifacts) await publish(`${root}/${path}`, body);
+    for (const [path, body] of artifacts) {
+      await publish(`${root}/${path}`, body);
+    }
     events[folder] = `/${root}`;
   }
 
@@ -153,7 +208,11 @@ async function main(): Promise<void> {
   const onlineDecks = await load<ArchetypeDeckInput[]>('reports/Online - Last 14 Days/decks.json');
   if (onlineDecks) {
     const onlineMeta = await load('reports/Online - Last 14 Days/meta.json');
-    const { master, cardUsage, archetypeIndex } = buildOnlineServingArtifacts(onlineDecks, { synonymDb: synonyms, cardTypesDb, thumbnailConfig });
+    const { master, cardUsage, archetypeIndex } = buildOnlineServingArtifacts(onlineDecks, {
+      synonymDb: synonyms,
+      cardTypesDb,
+      thumbnailConfig
+    });
     const onlineBodies: Record<string, unknown> = {
       'master.json': master,
       'decks.json': onlineDecks,
@@ -162,7 +221,11 @@ async function main(): Promise<void> {
       'archetypes/index.json': archetypeIndex
     };
     const onlineRoot = `releases/v1/online/${gen(onlineBodies)}`;
-    for (const [k, body] of Object.entries(onlineBodies)) if (body !== null) await publish(`${onlineRoot}/${k}`, body);
+    for (const [k, body] of Object.entries(onlineBodies)) {
+      if (body !== null) {
+        await publish(`${onlineRoot}/${k}`, body);
+      }
+    }
     served.online = Object.entries(onlineBodies)
       .filter(([, body]) => body !== null)
       .map(([k]) => k);
@@ -177,10 +240,14 @@ async function main(): Promise<void> {
     const relBodies: Record<string, unknown> = {};
     for (const { rel, legacy } of CAPTURED_KEYS[scope]) {
       const body = await load(legacy);
-      if (body !== null) relBodies[rel] = body;
+      if (body !== null) {
+        relBodies[rel] = body;
+      }
     }
     const root = `releases/v1/${scope}/${gen(relBodies)}`;
-    for (const [rel, body] of Object.entries(relBodies)) await publish(`${root}/${rel}`, body);
+    for (const [rel, body] of Object.entries(relBodies)) {
+      await publish(`${root}/${rel}`, body);
+    }
     roots[scope] = `/${root}`;
     served[scope] = Object.keys(relBodies);
   }
@@ -195,9 +262,15 @@ async function main(): Promise<void> {
     events
   });
 
-  if (arg('--emit-roots')) await writeFile(arg('--emit-roots')!, JSON.stringify(roots, null, 2));
-  if (arg('--emit-served')) await writeFile(arg('--emit-served')!, JSON.stringify(served, null, 2));
-  if (arg('--emit-events')) await writeFile(arg('--emit-events')!, JSON.stringify(events, null, 2));
+  if (arg('--emit-roots')) {
+    await writeFile(arg('--emit-roots')!, JSON.stringify(roots, null, 2));
+  }
+  if (arg('--emit-served')) {
+    await writeFile(arg('--emit-served')!, JSON.stringify(served, null, 2));
+  }
+  if (arg('--emit-events')) {
+    await writeFile(arg('--emit-events')!, JSON.stringify(events, null, 2));
+  }
 
   console.log('[build-loop] ===== SUMMARY =====');
   console.log(`  events built    : ${Object.keys(events).length}`);
@@ -207,7 +280,9 @@ async function main(): Promise<void> {
   console.log(write ? `  objects written : ${written.length}` : '  DRY RUN — nothing written (pass --write)');
 
   if (gc && write) {
-    for (const key of written) await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+    for (const key of written) {
+      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+    }
     console.log(`[build-loop] GC'd ${written.length} objects`);
   }
 }

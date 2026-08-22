@@ -6,7 +6,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { type ConditionalPointerStore, PointerConflictError, type PointerState, updatePointer } from '../../shared/data/build/channel.ts';
+import {
+  type ConditionalPointerStore,
+  PointerConflictError,
+  type PointerState,
+  updatePointer
+} from '../../shared/data/build/channel.ts';
 
 /** In-memory ETag store; a "poisoner" can inject one race before the retry. */
 class MemoryPointerStore<T> implements ConditionalPointerStore<T> {
@@ -19,7 +24,9 @@ class MemoryPointerStore<T> implements ConditionalPointerStore<T> {
     return this.state ? { ...this.state } : null;
   }
   async createIfAbsent(_key: string, value: T): Promise<void> {
-    if (this.state !== null) throw new PointerConflictError('x');
+    if (this.state !== null) {
+      throw new PointerConflictError('x');
+    }
     this.state = { value, etag: `e${++this.seq}` };
   }
   async writeIfMatch(_key: string, value: T, etag: string): Promise<void> {
@@ -28,7 +35,9 @@ class MemoryPointerStore<T> implements ConditionalPointerStore<T> {
       this.state = { value: this.state!.value, etag: `e${++this.seq}` }; // someone else moved it
       throw new PointerConflictError('x');
     }
-    if (!this.state || this.state.etag !== etag) throw new PointerConflictError('x');
+    if (!this.state || this.state.etag !== etag) {
+      throw new PointerConflictError('x');
+    }
     this.state = { value, etag: `e${++this.seq}` };
   }
 }

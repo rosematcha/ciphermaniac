@@ -63,12 +63,22 @@ test('pair labels are sorted (archetypeA <= archetypeB) and rows sorted by weigh
     assert.ok(pair.archetypeA <= pair.archetypeB);
   }
   const wm = body.profiles.all.byArchetypePair.map(p => p.weightedMatches);
-  assert.deepStrictEqual(wm, [...wm].sort((a, b) => b - a));
+  assert.deepStrictEqual(
+    wm,
+    [...wm].sort((a, b) => b - a)
+  );
 });
 
 test('permutation-invariant: input match order cannot change bytes', () => {
-  const reversed: NormalizedEvent = { ...labs, matches: [...labs.matches].reverse(), participants: [...labs.participants].reverse() };
-  assert.strictEqual(canonicalStringify(buildMatchupProfiles(labs)), canonicalStringify(buildMatchupProfiles(reversed)));
+  const reversed: NormalizedEvent = {
+    ...labs,
+    matches: [...labs.matches].reverse(),
+    participants: [...labs.participants].reverse()
+  };
+  assert.strictEqual(
+    canonicalStringify(buildMatchupProfiles(labs)),
+    canonicalStringify(buildMatchupProfiles(reversed))
+  );
 });
 
 test('online windows produce empty profiles', () => {

@@ -31,7 +31,9 @@ class SeededStore implements ReceiptStore {
   private readonly keys = new Set<string>();
   async seed(nodes: BuildNode[]): Promise<void> {
     const plan = await planBuild(nodes, { get: async () => null }, sha256Hex);
-    for (const node of plan.nodes) this.keys.add(`${node.name}@${node.nodeKey}`);
+    for (const node of plan.nodes) {
+      this.keys.add(`${node.name}@${node.nodeKey}`);
+    }
   }
   async get(node: string, nodeKey: string): Promise<NodeReceipt | null> {
     return this.keys.has(`${node}@${nodeKey}`)
@@ -73,7 +75,9 @@ test('a synonym-only change dirties all and only its declared descendants', asyn
     'tournament-catalog'
   ]);
   // Sanity: synonyms + prices + majors + event-indexes are all in (canonical-card dependents).
-  for (const n of ['synonyms', 'prices', 'majors-trends', 'event-indexes:0054']) assert.ok(dirty.includes(n));
+  for (const n of ['synonyms', 'prices', 'majors-trends', 'event-indexes:0054']) {
+    assert.ok(dirty.includes(n));
+  }
 });
 
 test('a corrected event dirties its release, catalog, majors, and attending players — not unrelated events', async () => {
@@ -96,7 +100,10 @@ test('a corrected event dirties its release, catalog, majors, and attending play
   // NOT the online chain.
   assert.ok(!result.includes('event-core:0055'), 'unrelated event core must stay clean');
   assert.ok(!result.includes('event-indexes:0055'), 'unrelated event indexes must stay clean');
-  assert.ok(!result.includes('players:0055'), 'unrelated attendees must not rebuild (Phase 5 content-hash fingerprints)');
+  assert.ok(
+    !result.includes('players:0055'),
+    'unrelated attendees must not rebuild (Phase 5 content-hash fingerprints)'
+  );
   assert.ok(!result.includes('online-meta'), 'online meta must stay clean');
   assert.ok(!result.includes('prices'), 'prices must stay clean');
 });

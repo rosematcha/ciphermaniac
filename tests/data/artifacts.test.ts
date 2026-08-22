@@ -14,14 +14,14 @@ import { dirname, join } from 'node:path';
 
 import {
   type ArchetypeIndex,
-  type CardReport,
-  type ConversionIndex,
-  type CardUsageIndex,
   buildArchetypeCardReports,
   buildArchetypeIndex,
   buildCardReport,
   buildCardUsageIndex,
   buildConversionIndex,
+  type CardReport,
+  type CardUsageIndex,
+  type ConversionIndex,
   validateArchetypeIndex,
   validateCardReport,
   validateCardUsageIndex,
@@ -123,19 +123,13 @@ test('permuting the input decks yields byte-identical artifacts', () => {
     canonicalStringify(buildCardUsageIndex(buildArchetypeCardReports(decks))),
     canonicalStringify(labsCardUsage)
   );
-  assert.strictEqual(
-    canonicalStringify(buildConversionIndex(decks, participants)),
-    canonicalStringify(labsConversion)
-  );
+  assert.strictEqual(canonicalStringify(buildConversionIndex(decks, participants)), canonicalStringify(labsConversion));
 });
 
 test('rebuilding twice produces identical artifacts', () => {
   assert.strictEqual(sha256Hex(buildCardReport(labs.decks)), sha256Hex(labsCardReport));
   assert.strictEqual(sha256Hex(buildArchetypeIndex(labs.decks)), sha256Hex(labsArchetypeIndex));
-  assert.strictEqual(
-    sha256Hex(buildCardUsageIndex(buildArchetypeCardReports(labs.decks))),
-    sha256Hex(labsCardUsage)
-  );
+  assert.strictEqual(sha256Hex(buildCardUsageIndex(buildArchetypeCardReports(labs.decks))), sha256Hex(labsCardUsage));
 });
 
 // ============================================================================
@@ -232,7 +226,7 @@ test('rejects items that are out of the canonical sort order', () => {
   }
 });
 
-test("rejects a report item whose set disagrees with its UID", () => {
+test('rejects a report item whose set disagrees with its UID', () => {
   const report = clone(labsCardReport);
   const withSet = report.items.find(item => item.set !== null);
   assert.ok(withSet);

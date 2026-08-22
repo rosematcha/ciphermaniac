@@ -63,14 +63,11 @@ async function main() {
     forceFullRebuild: FORCE_FULL_REBUILD
   });
 
-  const result = await buildPlayerAggregates(
-    { REPORTS: reportsBinding } as any,
-    {
-      concurrency: 6,
-      r2Concurrency: 8,
-      forceFullRebuild: FORCE_FULL_REBUILD
-    }
-  );
+  const result = await buildPlayerAggregates({ REPORTS: reportsBinding } as any, {
+    concurrency: 6,
+    r2Concurrency: 8,
+    forceFullRebuild: FORCE_FULL_REBUILD
+  });
 
   const ms = Date.now() - t0;
   console.log('[player-aggregator] Done', {

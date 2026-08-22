@@ -9,7 +9,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { type CandidateOutput, type ObjectStore, publishOutputs, writeReceipt } from '../../shared/data/build/receiptStore.ts';
+import {
+  type CandidateOutput,
+  type ObjectStore,
+  publishOutputs,
+  writeReceipt
+} from '../../shared/data/build/receiptStore.ts';
 import { type ConditionalPointerStore, type PointerState, updatePointer } from '../../shared/data/build/channel.ts';
 import { sha256HexString } from '../../shared/data/hash.ts';
 
@@ -22,8 +27,12 @@ class Store implements ObjectStore, ConditionalPointerStore<{ releaseId: string 
   private seq = 0;
 
   async putIfAbsent(key: string, body: string): Promise<void> {
-    if (this.failPut === key) throw new Error(`injected failure at ${key}`);
-    if (this.objects.has(key)) throw new Error(`conflict ${key}`);
+    if (this.failPut === key) {
+      throw new Error(`injected failure at ${key}`);
+    }
+    if (this.objects.has(key)) {
+      throw new Error(`conflict ${key}`);
+    }
     this.objects.set(key, body);
   }
   async get(key: string): Promise<string | null> {
@@ -46,7 +55,19 @@ class Store implements ObjectStore, ConditionalPointerStore<{ releaseId: string 
 /** Publish a release's candidates, receipt, then move the channel pointer LAST. */
 async function publishRelease(store: Store, releaseId: string, candidates: CandidateOutput[]): Promise<void> {
   const { outputs } = await publishOutputs(store, candidates, hashOf);
-  await writeReceipt(store, { schemaVersion: 1, node: `release:${releaseId}`, nodeKey: `sha256:${releaseId}`, builder: 'v1', inputs: {}, outputs, completedAt: 't' }, `build/v1/nodes/release:${releaseId}.json`);
+  await writeReceipt(
+    store,
+    {
+      schemaVersion: 1,
+      node: `release:${releaseId}`,
+      nodeKey: `sha256:${releaseId}`,
+      builder: 'v1',
+      inputs: {},
+      outputs,
+      completedAt: 't'
+    },
+    `build/v1/nodes/release:${releaseId}.json`
+  );
   await updatePointer(store, 'build/v1/channels/production.json', () => ({ releaseId }));
 }
 
@@ -106,7 +127,10 @@ test('rollback drill: reset the pointer to the prior release; immutable bodies a
     assert.ok(store.objects.has(c.key), `B body must be retained: ${c.key}`);
   }
   // The object set is unchanged: rollback copied/wrote no release body (pointer-only).
-  assert.deepStrictEqual(new Map([...store.objects].filter(([k]) => k.startsWith('releases/'))), new Map([...snapshotBefore].filter(([k]) => k.startsWith('releases/'))));
+  assert.deepStrictEqual(
+    new Map([...store.objects].filter(([k]) => k.startsWith('releases/'))),
+    new Map([...snapshotBefore].filter(([k]) => k.startsWith('releases/')))
+  );
 
   // Re-promote to B: pointer forward again, still no body writes.
   await updatePointer(store, 'build/v1/channels/production.json', () => ({ releaseId: 'B' }));
