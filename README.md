@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://ciphermaniac.com"><img src="https://img.shields.io/badge/website-ciphermaniac.com-fee475?style=flat-square" alt="Website"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
-  <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=flat-square" alt="Node Version">
+  <img src="https://img.shields.io/badge/node-%3E%3D22-brightgreen?style=flat-square" alt="Node Version">
   <img src="https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square" alt="TypeScript Strict">
 </p>
 
@@ -64,18 +64,37 @@ npm install
 npm run dev
 ```
 
-Requires Node 20+.
+Requires Node 22+.
 
 | Command | What it runs |
 |---------|--------------|
 | `npm run dev` | Vite dev server |
+| `npm run dev:functions` | Local Wrangler serving `functions/` at `:8788`, which `npm run dev` proxies `/api` to |
 | `npm run build` | Production build |
+| `npm run verify` | Everything CI runs: validate, knip, metadata check, build, tests, coverage gates |
 | `npm run validate` | Typecheck (frontend, backend, node) + ESLint |
-| `npm test` | Unit tests |
-| `npm run test:mobile` | Playwright mobile tests |
+| `npm test` | Unit + API + Python tests |
+| `npm run test:unit` | Node unit tests |
+| `npm run test:api` | Pages Functions tests |
+| `npm run test:python` | Python producer tests (`PYTHON=<path>` to pick an interpreter) |
+| `npm run test:e2e:live` | Playwright mobile suite against live R2 data |
+| `npm run test:coverage` | Coverage report over the domain and serving surface |
 | `npm run knip` | Dead code check |
 
-CI runs the same quality gates plus a Lighthouse performance budget on every push.
+`npm run dev` alone covers every page: route data comes straight from
+`r2.ciphermaniac.com`, and `/thumbnails` and `/sprites` proxy to production so
+canvas exports stay same-origin. It needs network access but no credentials.
+Run `npm run dev:functions` in a second terminal for the `/api` endpoints —
+feedback, survey, the Limitless proxies, upcoming tournaments. Wrangler
+simulates the R2, KV, and D1 bindings locally, so those stores start empty.
+
+The Python tests need the pinned producer dependencies:
+
+```bash
+pip install -r .github/scripts/requirements.txt
+```
+
+CI runs `npm run verify` and nothing else, plus a Lighthouse performance budget on every push.
 
 ## Credits
 

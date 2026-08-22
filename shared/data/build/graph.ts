@@ -121,16 +121,26 @@ export function topoSort(nodes: BuildNode[]): string[] {
   const order: string[] = [];
   const visit = (name: string, stack: string[]): void => {
     const status = state.get(name);
-    if (status === 'done') return;
-    if (status === 'visiting') throw new Error(`build graph cycle: ${[...stack, name].join(' -> ')}`);
+    if (status === 'done') {
+      return;
+    }
+    if (status === 'visiting') {
+      throw new Error(`build graph cycle: ${[...stack, name].join(' -> ')}`);
+    }
     const node = byName.get(name);
-    if (!node) throw new Error(`unknown build node "${name}" referenced by ${stack[stack.length - 1] ?? '(root)'}`);
+    if (!node) {
+      throw new Error(`unknown build node "${name}" referenced by ${stack[stack.length - 1] ?? '(root)'}`);
+    }
     state.set(name, 'visiting');
-    for (const dep of node.dependsOn) visit(dep, [...stack, name]);
+    for (const dep of node.dependsOn) {
+      visit(dep, [...stack, name]);
+    }
     state.set(name, 'done');
     order.push(name);
   };
-  for (const node of nodes) visit(node.name, []);
+  for (const node of nodes) {
+    visit(node.name, []);
+  }
   return order;
 }
 
@@ -161,7 +171,9 @@ export async function planBuild(
     let anyDepDirty = false;
     for (const dep of node.dependsOn) {
       dependencyKeys[dep] = keyByName.get(dep)!;
-      if (dirtyByName.get(dep)) anyDepDirty = true;
+      if (dirtyByName.get(dep)) {
+        anyDepDirty = true;
+      }
     }
     const nodeKey = computeNodeKey({ ...node.keySpec, dependencyHashes: dependencyKeys }, hashValue);
     keyByName.set(name, nodeKey);
@@ -192,13 +204,17 @@ export function validateNodeReceipt(value: unknown): string[] {
     return ['receipt: expected object'];
   }
   const receipt = value as Record<string, unknown>;
-  if (receipt.schemaVersion !== BUILD_SCHEMA_VERSION) errors.push(`schemaVersion: expected ${BUILD_SCHEMA_VERSION}`);
+  if (receipt.schemaVersion !== BUILD_SCHEMA_VERSION) {
+    errors.push(`schemaVersion: expected ${BUILD_SCHEMA_VERSION}`);
+  }
   for (const field of ['node', 'nodeKey', 'builder', 'completedAt'] as const) {
     if (typeof receipt[field] !== 'string' || (receipt[field] as string).length === 0) {
       errors.push(`${field}: expected non-empty string`);
     }
   }
-  if (typeof receipt.inputs !== 'object' || receipt.inputs === null) errors.push('inputs: expected object');
+  if (typeof receipt.inputs !== 'object' || receipt.inputs === null) {
+    errors.push('inputs: expected object');
+  }
   if (typeof receipt.outputs !== 'object' || receipt.outputs === null) {
     errors.push('outputs: expected object');
   } else {
@@ -208,9 +224,15 @@ export function validateNodeReceipt(value: unknown): string[] {
         continue;
       }
       const record = output as Record<string, unknown>;
-      if (typeof record.key !== 'string' || record.key.length === 0) errors.push(`outputs.${name}.key: expected non-empty string`);
-      if (typeof record.sha256 !== 'string' || record.sha256.length === 0) errors.push(`outputs.${name}.sha256: expected non-empty string`);
-      if (!Number.isInteger(record.bytes) || (record.bytes as number) < 0) errors.push(`outputs.${name}.bytes: expected a non-negative integer`);
+      if (typeof record.key !== 'string' || record.key.length === 0) {
+        errors.push(`outputs.${name}.key: expected non-empty string`);
+      }
+      if (typeof record.sha256 !== 'string' || record.sha256.length === 0) {
+        errors.push(`outputs.${name}.sha256: expected non-empty string`);
+      }
+      if (!Number.isInteger(record.bytes) || (record.bytes as number) < 0) {
+        errors.push(`outputs.${name}.bytes: expected a non-negative integer`);
+      }
     }
   }
   return errors;

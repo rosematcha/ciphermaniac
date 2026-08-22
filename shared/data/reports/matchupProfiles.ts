@@ -89,7 +89,11 @@ interface Pilot {
 }
 
 function playerQuality(madePhase2: boolean, madeTopCut: boolean, placement: number | null, players: number): number {
-  const tierBase = madeTopCut ? QUALITY_MODEL.tierBase.topcut : madePhase2 ? QUALITY_MODEL.tierBase.phase2 : QUALITY_MODEL.tierBase.other;
+  const tierBase = madeTopCut
+    ? QUALITY_MODEL.tierBase.topcut
+    : madePhase2
+      ? QUALITY_MODEL.tierBase.phase2
+      : QUALITY_MODEL.tierBase.other;
   let percentile = 0;
   if (placement !== null && Number.isInteger(placement) && players > 0) {
     percentile = Math.max(0, Math.min(1, (players - placement + 1) / players));
@@ -117,7 +121,9 @@ export function buildMatchupProfiles(event: NormalizedEvent): MatchupProfilesBod
     keyByParticipant.set(deck.participantId, key || 'unknown');
     if (key) {
       const existing = labelByKey.get(key);
-      if (existing === undefined || display < existing) labelByKey.set(key, display);
+      if (existing === undefined || display < existing) {
+        labelByKey.set(key, display);
+      }
     }
   }
   const labelFor = (key: string): string => labelByKey.get(key) ?? 'Unknown';
@@ -137,35 +143,73 @@ export function buildMatchupProfiles(event: NormalizedEvent): MatchupProfilesBod
 
   const profiles: Record<MatchupWeighting, MatchupProfile> = {
     all: { name: 'all', matchesConsidered: 0, weightedMatches: 0, byArchetypePair: [], byArchetype: [] },
-    qualityWeighted: { name: 'qualityWeighted', matchesConsidered: 0, weightedMatches: 0, byArchetypePair: [], byArchetype: [] }
+    qualityWeighted: {
+      name: 'qualityWeighted',
+      matchesConsidered: 0,
+      weightedMatches: 0,
+      byArchetypePair: [],
+      byArchetype: []
+    }
   };
-  const pairMaps: Record<MatchupWeighting, Map<string, MatchupPairRow>> = { all: new Map(), qualityWeighted: new Map() };
-  const archMaps: Record<MatchupWeighting, Map<string, MatchupArchetypeRow>> = { all: new Map(), qualityWeighted: new Map() };
+  const pairMaps: Record<MatchupWeighting, Map<string, MatchupPairRow>> = {
+    all: new Map(),
+    qualityWeighted: new Map()
+  };
+  const archMaps: Record<MatchupWeighting, Map<string, MatchupArchetypeRow>> = {
+    all: new Map(),
+    qualityWeighted: new Map()
+  };
 
   // Internal maps are keyed by the comparison KEY; `archetype` holds the label.
-  const addSideTotals = (weighting: MatchupWeighting, key: string, label: string, weight: number, result: string): void => {
+  const addSideTotals = (
+    weighting: MatchupWeighting,
+    key: string,
+    label: string,
+    weight: number,
+    result: string
+  ): void => {
     let entry = archMaps[weighting].get(key);
     if (!entry) {
-      entry = { archetype: label, matches: 0, weightedMatches: 0, weightedWins: 0, weightedLosses: 0, weightedTies: 0, weightedWinRate: 0 };
+      entry = {
+        archetype: label,
+        matches: 0,
+        weightedMatches: 0,
+        weightedWins: 0,
+        weightedLosses: 0,
+        weightedTies: 0,
+        weightedWinRate: 0
+      };
       archMaps[weighting].set(key, entry);
     }
     entry.matches += 1;
     entry.weightedMatches += weight;
-    if (result === 'win') entry.weightedWins += weight;
-    else if (result === 'loss') entry.weightedLosses += weight;
-    else if (result === 'tie') entry.weightedTies += weight;
+    if (result === 'win') {
+      entry.weightedWins += weight;
+    } else if (result === 'loss') {
+      entry.weightedLosses += weight;
+    } else if (result === 'tie') {
+      entry.weightedTies += weight;
+    }
   };
 
   for (const match of event.matches) {
-    if (match.participantIds.length !== 2) continue;
-    if (!COUNTED_OUTCOMES.has(match.outcome)) continue;
+    if (match.participantIds.length !== 2) {
+      continue;
+    }
+    if (!COUNTED_OUTCOMES.has(match.outcome)) {
+      continue;
+    }
     const [p1, p2] = match.participantIds;
     const pilot1 = pilotByParticipant.get(p1);
     const pilot2 = pilotByParticipant.get(p2);
-    if (!pilot1 || !pilot2) continue;
+    if (!pilot1 || !pilot2) {
+      continue;
+    }
     const arch1 = pilot1.archetype;
     const arch2 = pilot2.archetype;
-    if (arch1 === 'unknown' || arch2 === 'unknown') continue;
+    if (arch1 === 'unknown' || arch2 === 'unknown') {
+      continue;
+    }
 
     // Per-side result from the perspective-free outcome.
     let r1: string;
@@ -201,9 +245,19 @@ export function buildMatchupProfiles(event: NormalizedEvent): MatchupProfilesBod
       let pair = pairMaps[weighting].get(pairKey);
       if (!pair) {
         pair = {
-          archetypeA: labelFor(leftArch), archetypeB: labelFor(rightArch), matches: 0, weightedMatches: 0,
-          winsA: 0, winsB: 0, ties: 0, doubleLosses: 0, weightedWinsA: 0, weightedWinsB: 0,
-          weightedTies: 0, weightedWinRateA: 0, weightedWinRateB: 0
+          archetypeA: labelFor(leftArch),
+          archetypeB: labelFor(rightArch),
+          matches: 0,
+          weightedMatches: 0,
+          winsA: 0,
+          winsB: 0,
+          ties: 0,
+          doubleLosses: 0,
+          weightedWinsA: 0,
+          weightedWinsB: 0,
+          weightedTies: 0,
+          weightedWinRateA: 0,
+          weightedWinRateB: 0
         };
         pairMaps[weighting].set(pairKey, pair);
       }
@@ -227,8 +281,12 @@ export function buildMatchupProfiles(event: NormalizedEvent): MatchupProfilesBod
         pair.weightedWinsB += weight;
       }
 
-      if (r1 === 'win' || r1 === 'loss' || r1 === 'tie') addSideTotals(weighting, arch1, labelFor(arch1), weight, r1);
-      if (r2 === 'win' || r2 === 'loss' || r2 === 'tie') addSideTotals(weighting, arch2, labelFor(arch2), weight, r2);
+      if (r1 === 'win' || r1 === 'loss' || r1 === 'tie') {
+        addSideTotals(weighting, arch1, labelFor(arch1), weight, r1);
+      }
+      if (r2 === 'win' || r2 === 'loss' || r2 === 'tie') {
+        addSideTotals(weighting, arch2, labelFor(arch2), weight, r2);
+      }
     });
   }
 
@@ -238,33 +296,50 @@ export function buildMatchupProfiles(event: NormalizedEvent): MatchupProfilesBod
 
     const pairRows = [...pairMaps[weighting].values()].map(pair => {
       const wm = pair.weightedMatches;
-      pair.weightedMatches = round(wm, 6);
-      pair.weightedWinsA = round(pair.weightedWinsA, 6);
-      pair.weightedWinsB = round(pair.weightedWinsB, 6);
-      pair.weightedTies = round(pair.weightedTies, 6);
-      pair.weightedWinRateA = wm > 0 ? round((pair.weightedWinsA / wm) * 100, 3) : 0;
-      pair.weightedWinRateB = wm > 0 ? round((pair.weightedWinsB / wm) * 100, 3) : 0;
-      return pair;
+      const weightedWinsA = round(pair.weightedWinsA, 6);
+      const weightedWinsB = round(pair.weightedWinsB, 6);
+      return {
+        ...pair,
+        weightedMatches: round(wm, 6),
+        weightedWinsA,
+        weightedWinsB,
+        weightedTies: round(pair.weightedTies, 6),
+        weightedWinRateA: wm > 0 ? round((weightedWinsA / wm) * 100, 3) : 0,
+        weightedWinRateB: wm > 0 ? round((weightedWinsB / wm) * 100, 3) : 0
+      };
     });
     const archRows = [...archMaps[weighting].values()].map(arc => {
       const wm = arc.weightedMatches;
-      arc.weightedMatches = round(wm, 6);
-      arc.weightedWins = round(arc.weightedWins, 6);
-      arc.weightedLosses = round(arc.weightedLosses, 6);
-      arc.weightedTies = round(arc.weightedTies, 6);
-      arc.weightedWinRate = wm > 0 ? round((arc.weightedWins / wm) * 100, 3) : 0;
-      return arc;
+      const weightedWins = round(arc.weightedWins, 6);
+      return {
+        ...arc,
+        weightedMatches: round(wm, 6),
+        weightedWins,
+        weightedLosses: round(arc.weightedLosses, 6),
+        weightedTies: round(arc.weightedTies, 6),
+        weightedWinRate: wm > 0 ? round((weightedWins / wm) * 100, 3) : 0
+      };
     });
 
-    pairRows.sort((a, b) => b.weightedMatches - a.weightedMatches || (a.archetypeA < b.archetypeA ? -1 : a.archetypeA > b.archetypeA ? 1 : 0) || (a.archetypeB < b.archetypeB ? -1 : a.archetypeB > b.archetypeB ? 1 : 0));
-    archRows.sort((a, b) => b.weightedMatches - a.weightedMatches || (a.archetype < b.archetype ? -1 : a.archetype > b.archetype ? 1 : 0));
+    pairRows.sort(
+      (a, b) =>
+        b.weightedMatches - a.weightedMatches ||
+        (a.archetypeA < b.archetypeA ? -1 : a.archetypeA > b.archetypeA ? 1 : 0) ||
+        (a.archetypeB < b.archetypeB ? -1 : a.archetypeB > b.archetypeB ? 1 : 0)
+    );
+    archRows.sort(
+      (a, b) =>
+        b.weightedMatches - a.weightedMatches || (a.archetype < b.archetype ? -1 : a.archetype > b.archetype ? 1 : 0)
+    );
 
     profile.byArchetypePair = pairRows;
     profile.byArchetype = archRows;
   });
 
   const phaseMultipliers: Record<string, number> = {};
-  for (const [k, v] of Object.entries(PHASE_MULTIPLIERS)) phaseMultipliers[k] = v;
+  for (const [k, v] of Object.entries(PHASE_MULTIPLIERS)) {
+    phaseMultipliers[k] = v;
+  }
 
   return { phaseMultipliers, qualityModel: QUALITY_MODEL, profiles };
 }

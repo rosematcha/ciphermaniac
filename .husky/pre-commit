@@ -1,19 +1,37 @@
 #!/usr/bin/env sh
+# Fast, hermetic gate. CI owns the full `npm run verify` (typechecks, knip,
+# build, coverage); this hook only runs what needs no provisioning and returns
+# in seconds.
 
-echo "🔍 Running pre-commit checks..."
-
-# Run lint-staged for linting
-echo "📝 Linting changed files..."
+echo "Linting changed files..."
 ./node_modules/.bin/lint-staged
 
-# Run tests
-echo "🧪 Running test suite..."
-if [ -n "$WINDIR" ] || [ -n "$MSYSTEM" ]; then
-	# On Windows / Git Bash environments the npm executable can have a Windows path
-	# which bash cannot execute directly. Run via cmd to use the native npm runner.
-	cmd //C "npm run test:all"
-else
-	npm run test:all
+run_npm() {
+	if [ -n "$WINDIR" ] || [ -n "$MSYSTEM" ]; then
+		# On Windows / Git Bash the npm executable can have a Windows path that
+		# bash cannot execute directly; go through cmd's native runner.
+		cmd //C "npm run $1"
+	else
+		npm run "$1"
+	fi
+}
+
+echo "Running Node tests..."
+run_npm test:node || exit 1
+
+# The Python producer tests need the pinned deps from
+# .github/scripts/requirements.txt, which not every checkout has installed. Run
+# them only when a Python producer is actually staged — but then insist, so a
+# .py change cannot reach CI without its tests having run once.
+if git diff --cached --name-only --diff-filter=ACM | grep -qE '^\.github/scripts/.*\.py$'; then
+	echo "Python producer changed - running Python tests..."
+	if ! run_npm test:python; then
+		echo ""
+		echo "Python tests failed. If this is a missing-dependency error, install them:"
+		echo "  pip install -r .github/scripts/requirements.txt"
+		echo "  (or point the hook at a virtualenv: PYTHON=/path/to/venv/bin/python git commit ...)"
+		exit 1
+	fi
 fi
 
-echo "✅ All pre-commit checks passed!"
+echo "Pre-commit checks passed."
