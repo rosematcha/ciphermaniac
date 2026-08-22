@@ -11,6 +11,7 @@
  *
  * Kept free of Solid + DOM so it's unit-testable.
  */
+import { cardUid } from '../../shared/data/cardIdentity';
 import type { CardItem } from '../types';
 import type { PricingEntry } from './data';
 
@@ -27,8 +28,8 @@ export interface DeckCostEstimate {
 }
 
 /** Price map key: `Name::SET::NUMBER` (matches `PricingPayload.cardPrices`). */
-function priceKey(name: string, set: string, number: string | number): string {
-  return `${name}::${set}::${number}`;
+function priceKey(name: string, set: string, number: string | number): string | null {
+  return cardUid(name, set, number);
 }
 
 /** The copy count the most players ran (falls back to 1 with no distribution). */

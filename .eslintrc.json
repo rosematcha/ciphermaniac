@@ -350,6 +350,105 @@
   // =========================================================================
   "overrides": [
     // -------------------------------------------------------------------------
+    // Dependency direction (DB-MASTER-PLAN Phase 6.5)
+    //
+    //   shared/domain + shared/data
+    //           v
+    //   scripts / functions / frontend adapters
+    //           v
+    //   frontend view models
+    //           v
+    //   UI components / pages
+    //
+    // shared/ is the bottom of the graph: the pipeline, the edge Functions, and
+    // the browser all build on it, so it must not reach back up into any of
+    // them. This was already true; the rule keeps it true. A violation here is
+    // not a style nit — importing solid-js into shared/ breaks every producer,
+    // and importing src/ into shared/ makes the daily pipeline depend on the
+    // browser bundle.
+    // -------------------------------------------------------------------------
+    {
+      "files": ["shared/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/src/**", "../src/*", "../../src/*"],
+                "message": "shared/ must not import frontend code. Move the shared piece down into shared/ instead."
+              },
+              {
+                "group": ["**/functions/**"],
+                "message": "shared/ must not import Cloudflare Functions. Move the shared piece down into shared/ instead."
+              },
+              {
+                "group": ["solid-js", "solid-js/*", "@solidjs/*"],
+                "message": "shared/ is isomorphic - it runs in Node producers and Workers, where Solid does not exist."
+              },
+              {
+                "group": ["@aws-sdk/*"],
+                "message": "shared/ must not depend on a storage vendor. Take an ObjectStore-shaped parameter instead."
+              },
+              {
+                "group": ["node:*"],
+                "message": "shared/ runs in the browser too. Node built-ins belong in a producer module (see shared/data/hash.ts for the one sanctioned exception)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      // shared/data/hash.ts is the one deliberate exception to the node:*
+      // restriction: it needs node:crypto, is documented as producer/test-only,
+      // and exists precisely so contracts.ts and canonicalJson.ts can stay
+      // environment-neutral. ESLint overrides REPLACE a rule's options rather
+      // than merging them, so this restates the other patterns.
+      "files": ["shared/data/hash.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/src/**", "../src/*", "../../src/*"],
+                "message": "shared/ must not import frontend code."
+              },
+              {
+                "group": ["**/functions/**"],
+                "message": "shared/ must not import Cloudflare Functions."
+              },
+              {
+                "group": ["solid-js", "solid-js/*", "@solidjs/*"],
+                "message": "shared/ is isomorphic."
+              },
+              {
+                "group": ["@aws-sdk/*"],
+                "message": "shared/ must not depend on a storage vendor."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["functions/**/*.ts", "functions/**/*.js"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/src/**", "../src/*", "../../src/*", "../../../src/*"],
+                "message": "Edge Functions must not import frontend code. Shared logic belongs in shared/."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    // -------------------------------------------------------------------------
     // Test files: Relaxed rules for testing convenience
     // -------------------------------------------------------------------------
     {

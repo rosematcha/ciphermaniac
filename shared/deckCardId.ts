@@ -11,7 +11,7 @@
  */
 import type { DeckCard } from './deckTypes.js';
 import { getCanonicalCardFromData } from './synonyms.js';
-import { normalizeCardNumber } from './cardUtils.js';
+import { cardUid } from './data/cardIdentity';
 import { buildCardId } from './clientSideFiltering';
 
 export { buildCardId };
@@ -28,8 +28,10 @@ export function canonicalizeDeckCard(card: DeckCard, db: Parameters<typeof getCa
   if (!card?.name || !card?.set || card.number === undefined || card.number === null) {
     return card;
   }
-  const normalizedNumber = normalizeCardNumber(card.number) || String(card.number);
-  const variantUid = `${card.name}::${card.set}::${normalizedNumber}`;
+  const variantUid = cardUid(card.name, card.set, card.number);
+  if (!variantUid) {
+    return card;
+  }
   const canonical = getCanonicalCardFromData(db, variantUid);
   if (canonical === variantUid) {
     return card;

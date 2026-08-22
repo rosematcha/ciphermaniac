@@ -6,6 +6,7 @@
  */
 
 import { normalizeArchetypeName, normalizeCardNumber } from './cardUtils.js';
+import { cardUid } from './data/cardIdentity';
 import { logger } from './logger.js';
 import { assignRanks, calculatePercentage, createDistFromHistogram, sortReportItems } from './reportUtils.js';
 import { computeSuccessTags, SUCCESS_TAG_NAMES } from './data/contracts.js';
@@ -316,11 +317,7 @@ function aggregateDecks(decks: Deck[], options: AggregateOptions = {}): Aggregat
           energyType: card?.energyType,
           aceSpec: Boolean(card?.aceSpec),
           supertype: card?.supertype,
-          uid:
-            card?.uid ||
-            (card?.name && card?.set && normalizedNumber
-              ? `${card.name}::${card.set}::${normalizedNumber}`
-              : undefined),
+          uid: card?.uid || cardUid(card?.name, card?.set, normalizedNumber) || undefined,
           found: 0,
           deckInstances: [],
           histogram: new Map()

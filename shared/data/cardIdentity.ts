@@ -73,6 +73,102 @@ export function cardNumberIndexKey(value: string | number): string {
   return `${digits}${suffix}`;
 }
 
+// ============================================================================
+// Card identity forms
+// ============================================================================
+
+/**
+ * The three string forms of card identity in this codebase. They are all
+ * strings, they all look alike, and confusing two of them is how
+ * `/cards/TWM/130` and `/cards/PRE/073` came to 301 at each other (D19). The
+ * branded types below exist so the compiler can tell them apart.
+ *
+ * | Form | Shape | Number | Built by |
+ * |---|---|---|---|
+ * | {@link CardUid} | `Name::SET::NUMBER` | zero-PADDED (`073`) | {@link cardUid} |
+ * | `CardRouteKey` | `SET::NUMBER` | zero-STRIPPED (`73`) | `cardRouteKey` in canonicalCardRoute |
+ * | `CardMatchId` | `SET~NUMBER` | zero-PADDED | `buildCardId` in clientSideFiltering |
+ *
+ * The padded/stripped split is not cosmetic. The synonym database keys UIDs
+ * padded — 547 of its 2,295 entries have a leading zero — so a UID built
+ * without padding misses roughly a quarter of all reprint mappings, silently.
+ */
+declare const CARD_UID_BRAND: unique symbol;
+
+/**
+ * A canonicalized card UID: `Name::SET::NUMBER` with the set uppercased and the
+ * number zero-padded. This is the key form of the synonym database, price maps,
+ * report items, and every cross-artifact card join.
+ *
+ * Branded so it cannot be built by hand — {@link cardUid} is the only
+ * constructor, and it always normalizes. Deck cards carry RAW printings
+ * (`TWM/95`) while reports, prices, and synonyms carry padded ones
+ * (`TWM/095`), so "just interpolate the fields" produces a key that matches on
+ * some inputs and silently misses on others.
+ */
+export type CardUid = string & { readonly [CARD_UID_BRAND]: 'CardUid' };
+
+/**
+ * Build a canonical card UID from a card's parts.
+ *
+ * The ONE constructor for this form. Normalizes the set (uppercase) and the
+ * number (zero-padded), so a deck-shaped card and a report-shaped card for the
+ * same printing produce the same UID.
+ * @param name - Card name, used verbatim (names are the identity, not a slug)
+ * @param setCode - Set code, any casing
+ * @param number - Card number, padded or not
+ * @returns The UID, or null when set or number is missing or unusable
+ */
+export function cardUid(
+  name: string | null | undefined,
+  setCode: string | null | undefined,
+  number: string | number | null | undefined
+): CardUid | null {
+  if (!name) {
+    return null;
+  }
+  const [set, normalized] = canonicalizeVariant(setCode, number);
+  if (!set || !normalized) {
+    return null;
+  }
+  return `${name}::${set}::${normalized}` as CardUid;
+}
+
+/**
+ * {@link cardUid}, falling back to the bare card name when set or number is
+ * absent.
+ *
+ * Several producers key un-setted cards (basic energy, malformed rows) by name
+ * alone, and the synonym database's name-only `canonicals` map is keyed that
+ * way too. The result is NOT a `CardUid` — it may be a bare name — so it is
+ * typed as a plain string on purpose.
+ * @param name - Card name
+ * @param setCode - Set code, possibly absent
+ * @param number - Card number, possibly absent
+ * @returns The UID, or the bare name when the printing is unidentified
+ */
+export function cardUidOrName(
+  name: string,
+  setCode: string | null | undefined,
+  number: string | number | null | undefined
+): string {
+  return cardUid(name, setCode, number) ?? name;
+}
+
+/**
+ * Assert that an existing string is already a canonical card UID.
+ *
+ * For values that came OUT of a trusted producer (a report item's `uid`, a
+ * synonym-database key) rather than being assembled locally. Use {@link cardUid}
+ * for anything you are building; this is the "I read this, I did not make it"
+ * escape hatch, and it is deliberately noisy to type.
+ * @param uid - A UID from an artifact
+ * @returns The same string, typed
+ */
+export function asCardUid(uid: string): CardUid {
+  return uid as CardUid;
+}
+
 /**
  * Canonicalizes a card variant by normalizing set code and number.
  * @param setCode - The set code (e.g., "SVI", "paldea")

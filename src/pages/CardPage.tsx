@@ -29,6 +29,7 @@ import {
 import { buildCanonicalCardId } from '../../shared/deckCardId';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { getCanonicalCardFromData, type SynonymDatabase } from '../../shared/synonyms.js';
+import { cardUidOrName } from '../../shared/data/cardIdentity';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { ONLINE_META_NAME } from '../lib/constants';
 import { nameFromTournamentKey } from '../lib/format';
@@ -251,7 +252,7 @@ export function CardPage() {
       const price = entry?.price ?? pv.price ?? undefined;
       return price === undefined ? null : { price, tcgPlayerId: entry?.tcgPlayerId };
     }
-    return p[`${c.name}::${c.set}::${c.number}`] ?? p[globalCardUid() ?? ''] ?? null;
+    return p[cardUidOrName(c.name, c.set, c.number)] ?? p[globalCardUid() ?? ''] ?? null;
   });
 
   // Rolling 90-day price history for the sparkline, sharded per set so this page
@@ -279,7 +280,7 @@ export function CardPage() {
     if (pv) {
       return h[pv.uid] ?? [];
     }
-    return h[`${c.name}::${c.set}::${c.number}`] ?? h[globalCardUid() ?? ''] ?? [];
+    return h[cardUidOrName(c.name, c.set, c.number)] ?? h[globalCardUid() ?? ''] ?? [];
   });
 
   // Per-archetype usage: list every archetype that plays this card, with its

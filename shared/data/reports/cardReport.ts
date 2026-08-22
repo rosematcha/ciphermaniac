@@ -22,7 +22,7 @@
  * @module shared/data/reports/cardReport
  */
 
-import { canonicalizeVariant, getCanonicalCardFromData, type SynonymDatabase } from '../cardIdentity';
+import { canonicalizeVariant, cardUidOrName, getCanonicalCardFromData, type SynonymDatabase } from '../cardIdentity';
 import { sanitizeDisplayName } from '../../cardUtils';
 import {
   calculatePercentage,
@@ -145,7 +145,7 @@ export function generateReportFromDecks(
       const regulationMark = card?.regulationMark || null;
 
       const [canonSet, canonNumber] = canonicalizeVariant(card?.set, card?.number);
-      let uid = canonSet && canonNumber ? `${name}::${canonSet}::${canonNumber}` : name;
+      let uid = cardUidOrName(name, canonSet, canonNumber);
 
       // Resolve to canonical synonym if database is available. An injected
       // resolver (rolling canonicals bound to an event date) takes precedence

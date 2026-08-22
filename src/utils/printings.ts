@@ -7,7 +7,8 @@
  */
 
 import { getClusterMembers, parseCardUid, type SynonymDatabase } from '../../shared/synonyms.js';
-import { cardNumberIndexKey, normalizeCardNumber } from '../../shared/cardUtils.js';
+import { cardUid } from '../../shared/data/cardIdentity';
+import { cardNumberIndexKey } from '../../shared/cardUtils.js';
 
 export interface PrintingRow {
   /** Full print UID (Name::SET::NUMBER, number zero-padded). */
@@ -45,9 +46,7 @@ export function buildPrintingRows(database: SynonymDatabase | null, pageUid: str
   // Normalize the page UID to the DB's canonical form (uppercase set,
   // zero-padded number) so loose URLs still land in their cluster.
   const page = parseCardUid(pageUid);
-  const normalizedUid = page
-    ? `${page.name}::${page.set.toUpperCase()}::${normalizeCardNumber(page.number) || page.number}`
-    : pageUid;
+  const normalizedUid = (page && cardUid(page.name, page.set, page.number)) || pageUid;
   const members = getClusterMembers(database, normalizedUid);
   if (members.length < 2) {
     return [];
