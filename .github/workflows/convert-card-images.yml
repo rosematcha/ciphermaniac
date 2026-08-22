@@ -28,6 +28,9 @@ concurrency:
   group: r2-bucket-writers
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   convert-card-images:
     runs-on: ubuntu-latest

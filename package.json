@@ -26,7 +26,8 @@
     "check:card-types": "node scripts/check-card-types.mjs",
     "bench:routes": "tsx scripts/benchmark-routes.ts",
     "prepare": "husky",
-    "knip": "knip"
+    "knip": "knip",
+    "check:metadata": "tsx scripts/check-repo-metadata.ts"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.928.0",

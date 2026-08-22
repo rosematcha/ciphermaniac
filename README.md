@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://ciphermaniac.com"><img src="https://img.shields.io/badge/website-ciphermaniac.com-fee475?style=flat-square" alt="Website"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
-  <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=flat-square" alt="Node Version">
+  <img src="https://img.shields.io/badge/node-%3E%3D22-brightgreen?style=flat-square" alt="Node Version">
   <img src="https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square" alt="TypeScript Strict">
 </p>
 
@@ -64,7 +64,7 @@ npm install
 npm run dev
 ```
 
-Requires Node 20+.
+Requires Node 22+.
 
 | Command | What it runs |
 |---------|--------------|
