@@ -40,7 +40,6 @@
 import { calculatePercentage } from '../reportUtils';
 import {
   type ArchetypeIdentity,
-  archetypeKey,
   archetypeSlug,
   type CardCategory,
   type Deck,
@@ -52,6 +51,17 @@ import {
   type TrainerType,
   type ValidationResult
 } from './contracts';
+import { validateArchetypeIdentity } from './archetypes/identity';
+import {
+  checkFields,
+  type FieldSpec,
+  isFiniteInRange,
+  isInteger,
+  isIntegerAtLeast,
+  isNonEmptyString,
+  isRecord,
+  required
+} from './validate';
 
 /** Schema version stamped on every serving artifact. */
 export const ARTIFACT_SCHEMA_VERSION = 1;
@@ -464,14 +474,6 @@ export function buildArchetypeIndex(decks: Deck[]): ArchetypeIndex {
 // Runtime validation
 // ============================================================================
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isInteger(value);
-}
-
 /** True when a stored percentage agrees with its recomputation (within 2dp noise). */
 function pctAgrees(stored: unknown, expected: number): boolean {
   return typeof stored === 'number' && Number.isFinite(stored) && Math.abs(stored - expected) <= PCT_EPSILON;
@@ -631,6 +633,78 @@ export function validateCardReport(value: unknown): ValidationResult<CardReport>
   return { ok: true, value: value as unknown as CardReport };
 }
 
+/** Rules for one usage row, before the ordering cross-check. */
+const USAGE_ROW_SPEC: FieldSpec = {
+  slug: required(isNonEmptyString, 'expected non-empty string'),
+  foundCount: required(isIntegerAtLeast(1), 'expected integer >= 1'),
+  usagePct: required(isFiniteInRange(0, 100), 'expected a finite number in [0, 100]')
+};
+
+/**
+ * Validate every usage row recorded against one card UID. Rows are stored
+ * sorted by archetype slug so the frontend can render them without re-sorting,
+ * so ordering is an invariant rather than a convention — which is the one check
+ * here that needs to see the previous row.
+ */
+function checkUsageRows(uid: string, rows: unknown, errors: string[]): void {
+  const path = `usage["${uid}"]`;
+  if (!parseCardUid(uid)) {
+    errors.push(`${path}: unparseable UID key "${uid}"`);
+  }
+  if (!Array.isArray(rows) || rows.length === 0) {
+    errors.push(`${path}: expected non-empty array`);
+    return;
+  }
+  let prevSlug: string | null = null;
+  rows.forEach((row, index) => {
+    const rowPath = `${path}[${index}]`;
+    if (!isRecord(row)) {
+      errors.push(`${rowPath}: expected object`);
+      return;
+    }
+    checkFields(row, rowPath, USAGE_ROW_SPEC, errors);
+    const { slug, foundCount } = row;
+    if (isNonEmptyString(slug)) {
+      if (prevSlug !== null && slug <= prevSlug) {
+        errors.push(`${rowPath}.slug: usage rows not ascending/unique by slug`);
+      }
+      prevSlug = slug;
+    }
+    if (isInteger(foundCount)) {
+      validateDist(row.dist, foundCount, `${rowPath}.dist`, errors);
+    }
+  });
+}
+
+/**
+ * Validate one archetype index entry. `sharePct` is re-derived from the entry's
+ * own deckCount against the index-wide deck total, so a stored share that has
+ * drifted from its count is caught rather than served.
+ */
+function checkArchetypeEntry(entry: unknown, index: number, deckTotal: number, errors: string[]): void {
+  const path = `archetypes[${index}]`;
+  if (!isRecord(entry)) {
+    errors.push(`${path}: expected object`);
+    return;
+  }
+  validateArchetypeIdentity(entry.identity, `${path}.identity`, errors);
+  const { deckCount, sharePct } = entry;
+  if (!isInteger(deckCount) || deckCount < 1) {
+    errors.push(`${path}.deckCount: expected integer >= 1`);
+  } else if (!pctAgrees(sharePct, calculatePercentage(deckCount, deckTotal))) {
+    errors.push(
+      `${path}.sharePct: ${String(sharePct)} inconsistent with deckCount/deckTotal ` +
+        `(${calculatePercentage(deckCount, deckTotal)})`
+    );
+  }
+  // D8: all three presentation arrays are always present, even when empty.
+  for (const field of ['thumbnails', 'signatureCards', 'icons'] as const) {
+    if (!Array.isArray(entry[field])) {
+      errors.push(`${path}.${field}: expected array`);
+    }
+  }
+}
+
 /**
  * Validate an unknown value as a {@link CardUsageIndex}: each key parses as a
  * canonical UID; each usage row has an archetype slug, a valid foundCount and
@@ -654,47 +728,60 @@ export function validateCardUsageIndex(value: unknown): ValidationResult<CardUsa
   }
 
   for (const uid of Object.keys(value.usage)) {
-    const path = `usage["${uid}"]`;
-    if (!parseCardUid(uid)) {
-      errors.push(`${path}: unparseable UID key "${uid}"`);
-    }
-    const rows = value.usage[uid];
-    if (!Array.isArray(rows) || rows.length === 0) {
-      errors.push(`${path}: expected non-empty array`);
-      continue;
-    }
-    let prevSlug: string | null = null;
-    rows.forEach((row, index) => {
-      const rowPath = `${path}[${index}]`;
-      if (!isRecord(row)) {
-        errors.push(`${rowPath}: expected object`);
-        return;
-      }
-      const { slug, foundCount, usagePct } = row;
-      if (typeof slug !== 'string' || slug.length === 0) {
-        errors.push(`${rowPath}.slug: expected non-empty string`);
-      } else {
-        if (prevSlug !== null && slug <= prevSlug) {
-          errors.push(`${rowPath}.slug: usage rows not ascending/unique by slug`);
-        }
-        prevSlug = slug;
-      }
-      if (!isInteger(foundCount) || foundCount < 1) {
-        errors.push(`${rowPath}.foundCount: expected integer >= 1`);
-      }
-      if (typeof usagePct !== 'number' || !Number.isFinite(usagePct) || usagePct < 0 || usagePct > 100) {
-        errors.push(`${rowPath}.usagePct: expected a finite number in [0, 100]`);
-      }
-      if (isInteger(foundCount)) {
-        validateDist(row.dist, foundCount, `${rowPath}.dist`, errors);
-      }
-    });
+    checkUsageRows(uid, value.usage[uid], errors);
   }
 
   if (errors.length > 0) {
     return { ok: false, errors };
   }
   return { ok: true, value: value as unknown as CardUsageIndex };
+}
+
+/** Rules for the root scalars of a conversion index. */
+const CONVERSION_ROOT_SPEC: FieldSpec = {
+  schemaVersion: required(value => value === ARTIFACT_SCHEMA_VERSION, `expected ${ARTIFACT_SCHEMA_VERSION}`),
+  day1Total: required(isIntegerAtLeast(0), 'expected integer >= 0'),
+  day2Total: required(isIntegerAtLeast(1), 'expected integer >= 1 (a conversion index requires a Day 2)')
+};
+
+/** Rules for one card's Day 1 / Day 2 counts, before the cross-checks. */
+const CONVERSION_CARD_SPEC: FieldSpec = {
+  day1: required(isIntegerAtLeast(1), 'expected integer >= 1'),
+  day2: required(isIntegerAtLeast(0), 'expected integer >= 0')
+};
+
+/**
+ * Validate one card entry of a conversion index. Beyond its own two counts,
+ * every card is bounded three ways — a card cannot make Day 2 more often than
+ * it made Day 1, and neither count can exceed the event-wide total — which is
+ * why the entry needs the totals passed in rather than validating in isolation.
+ */
+function checkConversionCard(
+  uid: string,
+  counts: unknown,
+  day1Total: unknown,
+  day2Total: unknown,
+  errors: string[]
+): void {
+  const path = `cards["${uid}"]`;
+  if (!parseCardUid(uid)) {
+    errors.push(`${path}: unparseable UID key "${uid}"`);
+  }
+  if (!isRecord(counts)) {
+    errors.push(`${path}: expected object`);
+    return;
+  }
+  checkFields(counts, path, CONVERSION_CARD_SPEC, errors);
+  const { day1, day2 } = counts;
+  if (isInteger(day1) && isInteger(day2) && day2 > day1) {
+    errors.push(`${path}.day2: ${day2} exceeds day1 ${day1}`);
+  }
+  if (isInteger(day1) && isInteger(day1Total) && day1 > day1Total) {
+    errors.push(`${path}.day1: ${day1} exceeds day1Total ${day1Total}`);
+  }
+  if (isInteger(day2) && isInteger(day2Total) && day2 > day2Total) {
+    errors.push(`${path}.day2: ${day2} exceeds day2Total ${day2Total}`);
+  }
 }
 
 /**
@@ -710,16 +797,8 @@ export function validateConversionIndex(value: unknown): ValidationResult<Conver
   if (!isRecord(value)) {
     return { ok: false, errors: ['root: expected object'] };
   }
-  if (value.schemaVersion !== ARTIFACT_SCHEMA_VERSION) {
-    errors.push(`root.schemaVersion: expected ${ARTIFACT_SCHEMA_VERSION}`);
-  }
+  checkFields(value, 'root', CONVERSION_ROOT_SPEC, errors);
   const { day1Total, day2Total } = value;
-  if (!isInteger(day1Total) || day1Total < 0) {
-    errors.push('root.day1Total: expected integer >= 0');
-  }
-  if (!isInteger(day2Total) || day2Total < 1) {
-    errors.push('root.day2Total: expected integer >= 1 (a conversion index requires a Day 2)');
-  }
   if (isInteger(day1Total) && isInteger(day2Total) && day2Total > day1Total) {
     errors.push(`root.day2Total: ${day2Total} exceeds day1Total ${day1Total}`);
   }
@@ -729,58 +808,13 @@ export function validateConversionIndex(value: unknown): ValidationResult<Conver
   }
 
   for (const uid of Object.keys(value.cards)) {
-    const path = `cards["${uid}"]`;
-    if (!parseCardUid(uid)) {
-      errors.push(`${path}: unparseable UID key "${uid}"`);
-    }
-    const counts = value.cards[uid];
-    if (!isRecord(counts)) {
-      errors.push(`${path}: expected object`);
-      continue;
-    }
-    const { day1, day2 } = counts;
-    if (!isInteger(day1) || day1 < 1) {
-      errors.push(`${path}.day1: expected integer >= 1`);
-    }
-    if (!isInteger(day2) || day2 < 0) {
-      errors.push(`${path}.day2: expected integer >= 0`);
-    }
-    if (isInteger(day1) && isInteger(day2) && day2 > day1) {
-      errors.push(`${path}.day2: ${day2} exceeds day1 ${day1}`);
-    }
-    if (isInteger(day1) && isInteger(day1Total) && day1 > day1Total) {
-      errors.push(`${path}.day1: ${day1} exceeds day1Total ${day1Total}`);
-    }
-    if (isInteger(day2) && isInteger(day2Total) && day2 > day2Total) {
-      errors.push(`${path}.day2: ${day2} exceeds day2Total ${day2Total}`);
-    }
+    checkConversionCard(uid, value.cards[uid], day1Total, day2Total, errors);
   }
 
   if (errors.length > 0) {
     return { ok: false, errors };
   }
   return { ok: true, value: value as unknown as ConversionIndex };
-}
-
-/** Validate one archetype identity triple (key/slug derive from the display name). */
-function validateIdentity(identity: unknown, path: string, errors: string[]): void {
-  if (!isRecord(identity)) {
-    errors.push(`${path}: expected object`);
-    return;
-  }
-  const { key, displayName, slug } = identity;
-  if (typeof key !== 'string' || typeof displayName !== 'string' || typeof slug !== 'string') {
-    errors.push(`${path}: key, displayName, and slug must all be strings`);
-    return;
-  }
-  const expectedKey = archetypeKey(displayName);
-  if (key !== expectedKey) {
-    errors.push(`${path}.key: "${key}" does not match derived key "${expectedKey}"`);
-  }
-  const expectedSlug = archetypeSlug(key);
-  if (slug !== expectedSlug) {
-    errors.push(`${path}.slug: "${slug}" does not match derived slug "${expectedSlug}"`);
-  }
 }
 
 /**
@@ -813,28 +847,7 @@ export function validateArchetypeIndex(value: unknown): ValidationResult<Archety
     }
   }
 
-  entries.forEach((entry, index) => {
-    const path = `archetypes[${index}]`;
-    if (!isRecord(entry)) {
-      errors.push(`${path}: expected object`);
-      return;
-    }
-    validateIdentity(entry.identity, `${path}.identity`, errors);
-    const { deckCount, sharePct } = entry;
-    if (!isInteger(deckCount) || deckCount < 1) {
-      errors.push(`${path}.deckCount: expected integer >= 1`);
-    } else if (!pctAgrees(sharePct, calculatePercentage(deckCount, deckTotal))) {
-      errors.push(
-        `${path}.sharePct: ${String(sharePct)} inconsistent with deckCount/deckTotal ` +
-          `(${calculatePercentage(deckCount, deckTotal)})`
-      );
-    }
-    for (const field of ['thumbnails', 'signatureCards', 'icons'] as const) {
-      if (!Array.isArray(entry[field])) {
-        errors.push(`${path}.${field}: expected array`);
-      }
-    }
-  });
+  entries.forEach((entry, index) => checkArchetypeEntry(entry, index, deckTotal, errors));
 
   for (let i = 1; i < entries.length; i++) {
     const prev = entries[i - 1];

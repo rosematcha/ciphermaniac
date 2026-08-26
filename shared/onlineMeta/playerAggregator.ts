@@ -426,6 +426,336 @@ function arrayEquals(a: string[], b: string[]): boolean {
   return true;
 }
 
+/** The result shape for a run that had nothing to build. */
+function emptyAggregateResult(): BuildPlayerAggregatesResult {
+  return {
+    index: [],
+    profileCount: 0,
+    profilesWritten: 0,
+    tournamentsScanned: 0,
+    tournamentsSkipped: 0,
+    skippedNoChanges: false
+  };
+}
+
+/**
+ * Reuse the last run's output when nothing has changed, or null to rebuild.
+ *
+ * Key-membership equality alone is not enough to skip: refresh-recent-tournaments
+ * corrects placements and decklists under the same folder name, which changes a
+ * tournament's content fingerprint but not the key set (P-04). Manifests written
+ * before fingerprints existed have no `fingerprints` map and so always rebuild.
+ */
+async function tryFastPath(
+  env: unknown,
+  tournamentList: string[],
+  previousManifest: PlayerAggregateManifestV2 | null,
+  sliceConcurrency: number
+): Promise<BuildPlayerAggregatesResult | null> {
+  const prevSorted = previousManifest?.tournamentKeys ? [...previousManifest.tournamentKeys].sort() : null;
+  if (!previousManifest || !prevSorted || !arrayEquals([...tournamentList].sort(), prevSorted)) {
+    return null;
+  }
+
+  const prevFingerprints = previousManifest.fingerprints;
+  if (!prevFingerprints) {
+    return null;
+  }
+  const current = await runWithConcurrency(tournamentList, sliceConcurrency, (key: string) =>
+    loadFingerprint(env, key)
+  );
+  if (!tournamentList.every((key, i) => (prevFingerprints[key] ?? '') === current[i])) {
+    console.info('[playerAggregator] Tournament set unchanged but content fingerprints differ; rebuilding');
+    return null;
+  }
+
+  console.info('[playerAggregator] Tournament set and content unchanged; skipping rebuild', {
+    tournaments: tournamentList.length
+  });
+  const index = (await getJson<PlayerIndexEntry[]>(env, INDEX_KEY)) ?? [];
+  await writeSlimIndex(env, index);
+  return {
+    index,
+    profileCount: Object.keys(previousManifest.players).length,
+    profilesWritten: 0,
+    tournamentsScanned: 0,
+    tournamentsSkipped: 0,
+    skippedNoChanges: true
+  };
+}
+
+/**
+ * Whether this tournament's decks.json keys its `playerId` field by the
+ * tournament-scoped `tpId` rather than the canonical Limitless `playerId`.
+ *
+ * Upstream is inconsistent about this (Worlds 2025, Orlando 2026 and others
+ * store tpId there), and the two namespaces overlap — so a try-both join
+ * silently misattributes decks across players. Decide once per tournament by
+ * sampling which key matches more participants, then use only that one.
+ */
+function detectJoinsByTpId(slice: TournamentSlice): boolean {
+  const deckPidSet = new Set<string>();
+  for (const deck of slice.decks) {
+    const pid = normalizePlayerId(deck.playerId);
+    if (pid) {
+      deckPidSet.add(pid);
+    }
+  }
+
+  let hitsByPlayerId = 0;
+  let hitsByTpId = 0;
+  for (const participant of slice.participants) {
+    const pid = normalizePlayerId(participant.playerId);
+    const tpid = participant.tpId != null ? String(participant.tpId) : null;
+    if (pid && deckPidSet.has(pid)) {
+      hitsByPlayerId += 1;
+    }
+    if (tpid && deckPidSet.has(tpid)) {
+      hitsByTpId += 1;
+    }
+  }
+
+  if (slice.decks.length && hitsByPlayerId === 0 && hitsByTpId === 0) {
+    console.warn(
+      `[playerAggregator] Slice ${slice.key} has ${slice.decks.length} decks but neither playerId nor tpId joins — decks will be dropped`
+    );
+  }
+  return hitsByTpId > hitsByPlayerId;
+}
+
+/**
+ * The deck joined to this participant, or undefined.
+ *
+ * Even with the right join convention, a deck row's `player` name should
+ * roughly match the participant's. When it does not, the join is wrong and the
+ * deck is dropped rather than cross-attributed.
+ */
+function joinDeck(
+  participant: ParticipantRow,
+  playerId: string,
+  decksByJoinKey: Map<string, DeckRow>,
+  joinByTpId: boolean
+): DeckRow | undefined {
+  const joinKey = joinByTpId ? (participant.tpId != null ? String(participant.tpId) : null) : playerId;
+  const deck = joinKey ? decksByJoinKey.get(joinKey) : undefined;
+  const belongs = !deck || !deck.player || !participant.name || foldName(deck.player) === foldName(participant.name);
+  return belongs ? deck : undefined;
+}
+
+/** Normalize a joined deck's card rows for the player's decks.json. */
+function toPlayerDeckCards(cards: DeckRow['cards']): PlayerDeckCard[] {
+  return (cards ?? [])
+    .filter(card => card && card.name)
+    .map(card => ({
+      count: typeof card.count === 'number' ? card.count : Number(card.count) || 1,
+      name: String(card.name),
+      set: card.set ? String(card.set) : undefined,
+      number: card.number != null ? String(card.number) : undefined,
+      category: card.category ? String(card.category) : undefined
+    }));
+}
+
+/**
+ * Count one observation of a name or country and return it, or null when the
+ * value is blank. The caller decides whether it is the latest, because the
+ * accumulator stores the two under different field names.
+ */
+function countObservation(
+  counts: Map<string, number>,
+  value: string | null | undefined,
+  date: string
+): { value: string; date: string } | null {
+  const trimmed = (value ?? '').trim();
+  if (!trimmed) {
+    return null;
+  }
+  counts.set(trimmed, (counts.get(trimmed) ?? 0) + 1);
+  return { value: trimmed, date };
+}
+
+/** True when `seen` is newer than what the accumulator already holds. */
+function isNewer(seen: { date: string } | null, latest: { date: string } | null | undefined): boolean {
+  return Boolean(seen) && (!latest || seen!.date > latest.date);
+}
+
+/** One participant's row in their player profile's tournament history. */
+function toTournamentEntry(
+  participant: ParticipantRow,
+  slice: TournamentSlice,
+  archetype: string | null,
+  joinedDeck: DeckRow | undefined
+): PlayerTournamentEntry {
+  return {
+    tournamentId: slice.key,
+    tournamentDate: slice.date,
+    totalPlayers: slice.totalPlayers,
+    placement: participant.placement ?? null,
+    wins: participant.wins ?? 0,
+    losses: participant.losses ?? 0,
+    ties: participant.ties ?? 0,
+    madePhase2: Boolean(participant.madePhase2),
+    madeTopCut: Boolean(participant.madeTopCut),
+    archetype,
+    deckId: joinedDeck?.deckId ?? joinedDeck?.id ?? participant.deckId ?? null
+  };
+}
+
+/** Fold one tournament's participants and decks into the per-player accumulators. */
+function accumulateSlice(accs: Map<string, Accumulator>, slice: TournamentSlice): void {
+  const joinByTpId = detectJoinsByTpId(slice);
+
+  const decksByJoinKey = new Map<string, DeckRow>();
+  for (const deck of slice.decks) {
+    const key = normalizePlayerId(deck.playerId);
+    if (key) {
+      decksByJoinKey.set(key, deck);
+    }
+  }
+
+  for (const participant of slice.participants) {
+    const playerId = normalizePlayerId(participant.playerId);
+    if (!playerId) {
+      continue;
+    }
+
+    const acc = ensureAcc(accs, playerId);
+    const joinedDeck = joinDeck(participant, playerId, decksByJoinKey, joinByTpId);
+
+    const archetypeLabel = joinedDeck?.archetype ?? participant.deckName ?? null;
+    const archetypeInfo = archetypeBase(archetypeLabel ?? undefined);
+    if (archetypeInfo) {
+      acc.archetypeNames.set(archetypeInfo.base, archetypeInfo.displayName);
+    }
+
+    acc.entries.push(toTournamentEntry(participant, slice, archetypeInfo?.base ?? null, joinedDeck));
+
+    // Stashed for the separate decks.json. Never cross-attribute.
+    const cards = toPlayerDeckCards(joinedDeck?.cards);
+    if (cards.length) {
+      acc.decks.set(slice.key, cards);
+    }
+
+    const nameSeen = countObservation(acc.names, participant.name, slice.date);
+    if (isNewer(nameSeen, acc.latestName)) {
+      acc.latestName = { name: nameSeen!.value, date: nameSeen!.date };
+    }
+    const countrySeen = countObservation(acc.countries, participant.country, slice.date);
+    if (isNewer(countrySeen, acc.latestCountry)) {
+      acc.latestCountry = { country: countrySeen!.value, date: countrySeen!.date };
+    }
+  }
+}
+
+/** Everything one pass over the accumulators produces. */
+interface WritePlan {
+  index: PlayerIndexEntry[];
+  profileWrites: Array<{ key: string; data: PlayerProfile }>;
+  deckWrites: Array<{ key: string; data: PlayerDecks }>;
+  deckDeletes: string[];
+  manifestPlayers: Record<string, string[]>;
+}
+
+/**
+ * Decide, for every accumulated player, whether they belong in the index and
+ * whether their objects need rewriting this run.
+ *
+ * A player is skipped only when their tournament set is unchanged from the last
+ * run AND none of their events had their content corrected (P-04) — key
+ * equality alone would miss a corrected event under an unchanged folder name.
+ */
+function planWrites(
+  accs: Map<string, Accumulator>,
+  generatedAt: string,
+  prevPlayers: Record<string, string[]>,
+  changedTournaments: Set<string>
+): WritePlan {
+  const plan: WritePlan = { index: [], profileWrites: [], deckWrites: [], deckDeletes: [], manifestPlayers: {} };
+
+  for (const acc of accs.values()) {
+    const profile = buildProfile(acc, generatedAt);
+    const tournamentKeys = profile.tournaments.map(entry => entry.tournamentId).sort();
+    plan.manifestPlayers[acc.playerId] = tournamentKeys;
+
+    if (profile.summary.eventCount >= INDEX_MIN_EVENTS) {
+      plan.index.push({
+        playerId: profile.playerId,
+        name: profile.name,
+        country: acc.latestCountry?.country ?? profile.countries[0],
+        eventCount: profile.summary.eventCount,
+        day2s: profile.summary.day2s,
+        topCuts: profile.summary.topCuts,
+        tournamentWins: profile.summary.tournamentWins,
+        lastEventDate: profile.summary.lastEventDate
+      });
+    }
+
+    const prevKeys = prevPlayers[acc.playerId];
+    const keysUnchanged = prevKeys && arrayEquals(tournamentKeys, [...prevKeys].sort());
+    const contentUnchanged = !profile.tournaments.some(entry => changedTournaments.has(entry.tournamentId));
+    if (keysUnchanged && contentUnchanged) {
+      continue;
+    }
+
+    plan.profileWrites.push({ key: `players/${profile.playerId}/profile.json`, data: profile });
+    const decks = buildDecks(acc, generatedAt);
+    if (decks) {
+      plan.deckWrites.push({ key: `players/${profile.playerId}/decks.json`, data: decks });
+    } else {
+      // No decks this run. A decks.json written by a prior run is now stale, so
+      // delete it rather than let expanded rows surface last run's decklists
+      // (P-23). Deleting an absent key is a harmless no-op.
+      plan.deckDeletes.push(`players/${profile.playerId}/decks.json`);
+    }
+  }
+
+  return plan;
+}
+
+/**
+ * Which loaded tournaments changed content since the last manifest. With no
+ * previous fingerprints (old manifest, or a forced rebuild) every tournament
+ * counts as changed, so every player is rewritten.
+ */
+function changedTournamentKeys(
+  loadedTournamentKeys: string[],
+  prevFingerprints: Record<string, string> | undefined,
+  fingerprints: Record<string, string>
+): Set<string> {
+  const changed = new Set<string>();
+  for (const key of loadedTournamentKeys) {
+    if (!prevFingerprints || (prevFingerprints[key] ?? '') !== (fingerprints[key] ?? '')) {
+      changed.add(key);
+    }
+  }
+  return changed;
+}
+
+/**
+ * Objects belonging to players who were in the previous manifest but not this
+ * run — they have dropped out entirely (e.g. their only event was corrected
+ * away) and their objects stay addressable unless deleted (P-25).
+ */
+function orphanDeleteKeys(prevPlayers: Record<string, string[]>, manifestPlayers: Record<string, string[]>): string[] {
+  const deletes: string[] = [];
+  for (const prevId of Object.keys(prevPlayers)) {
+    if (!(prevId in manifestPlayers)) {
+      deletes.push(`players/${prevId}/profile.json`, `players/${prevId}/decks.json`);
+    }
+  }
+  return deletes;
+}
+
+/**
+ * Build every player's profile, decks and the player index from the published
+ * tournament slices, and write them to R2.
+ *
+ * Incremental by default: an unchanged tournament set with unchanged content
+ * fingerprints short-circuits entirely, and within a rebuild only players whose
+ * events changed are rewritten.
+ * @param env - Storage binding
+ * @param options - Concurrency limits, and `forceFullRebuild` to ignore the manifest
+ * @returns Counts describing what this run scanned and wrote
+ */
 export async function buildPlayerAggregates(
   env: unknown,
   options: { concurrency?: number; r2Concurrency?: number; forceFullRebuild?: boolean } = {}
@@ -436,53 +766,16 @@ export async function buildPlayerAggregates(
   const tournamentList = await getJson<string[]>(env, 'reports/tournaments.json');
   if (!Array.isArray(tournamentList) || !tournamentList.length) {
     console.warn('[playerAggregator] reports/tournaments.json missing or empty');
-    return {
-      index: [],
-      profileCount: 0,
-      profilesWritten: 0,
-      tournamentsScanned: 0,
-      tournamentsSkipped: 0,
-      skippedNoChanges: false
-    };
+    return emptyAggregateResult();
   }
 
   const previousManifest = options.forceFullRebuild
     ? null
     : await getJson<PlayerAggregateManifestV2>(env, MANIFEST_KEY);
 
-  // Fast path: skip the rebuild only if BOTH the tournament set AND every
-  // tournament's content fingerprint match the last run. Key-membership
-  // equality alone is not enough: `refresh-recent-tournaments.py` corrects
-  // placements/decklists under the same folder name, which changes meta's
-  // `fetchedAt` but not the key set (P-04). Manifests written before
-  // fingerprints existed have no `fingerprints` map → treated as changed.
-  const currentSorted = [...tournamentList].sort();
-  const prevSorted = previousManifest?.tournamentKeys ? [...previousManifest.tournamentKeys].sort() : null;
-  if (previousManifest && prevSorted && arrayEquals(currentSorted, prevSorted)) {
-    const prevFingerprints = previousManifest.fingerprints;
-    let contentUnchanged = false;
-    if (prevFingerprints) {
-      const current = await runWithConcurrency(tournamentList, sliceConcurrency, (key: string) =>
-        loadFingerprint(env, key)
-      );
-      contentUnchanged = tournamentList.every((key, i) => (prevFingerprints[key] ?? '') === current[i]);
-    }
-    if (contentUnchanged) {
-      console.info('[playerAggregator] Tournament set and content unchanged; skipping rebuild', {
-        tournaments: currentSorted.length
-      });
-      const index = (await getJson<PlayerIndexEntry[]>(env, INDEX_KEY)) ?? [];
-      await writeSlimIndex(env, index);
-      return {
-        index,
-        profileCount: Object.keys(previousManifest.players).length,
-        profilesWritten: 0,
-        tournamentsScanned: 0,
-        tournamentsSkipped: 0,
-        skippedNoChanges: true
-      };
-    }
-    console.info('[playerAggregator] Tournament set unchanged but content fingerprints differ; rebuilding');
+  const reused = await tryFastPath(env, tournamentList, previousManifest, sliceConcurrency);
+  if (reused) {
+    return reused;
   }
 
   // A transport/corrupt failure in loadTournamentSlice throws and propagates
@@ -507,238 +800,54 @@ export async function buildPlayerAggregates(
     scanned += 1;
     loadedTournamentKeys.push(slice.key);
     fingerprints[slice.key] = slice.fingerprint;
-
-    // Upstream tournaments are inconsistent about what they put in
-    // decks.json's `playerId` field: some use the canonical Limitless
-    // `playerId`, others (Worlds 2025, Orlando 2026, ...) actually store the
-    // tournament-scoped `tpId` there. The two namespaces overlap, so a
-    // try-both join silently misattributes decks across players. Detect the
-    // convention once per tournament by sampling which key matches more
-    // participants, then use only that key.
-    const deckPidSet = new Set<string>();
-    for (const deck of slice.decks) {
-      const pid = normalizePlayerId(deck.playerId);
-      if (pid) {
-        deckPidSet.add(pid);
-      }
-    }
-    let hitsByPlayerId = 0;
-    let hitsByTpId = 0;
-    for (const p of slice.participants) {
-      const pid = normalizePlayerId(p.playerId);
-      const tpid = p.tpId != null ? String(p.tpId) : null;
-      if (pid && deckPidSet.has(pid)) {
-        hitsByPlayerId += 1;
-      }
-      if (tpid && deckPidSet.has(tpid)) {
-        hitsByTpId += 1;
-      }
-    }
-    if (slice.decks.length && hitsByPlayerId === 0 && hitsByTpId === 0) {
-      console.warn(
-        `[playerAggregator] Slice ${slice.key} has ${slice.decks.length} decks but neither playerId nor tpId joins — decks will be dropped`
-      );
-    }
-    const joinByTpId = hitsByTpId > hitsByPlayerId;
-
-    const decksByJoinKey = new Map<string, DeckRow>();
-    for (const deck of slice.decks) {
-      const key = normalizePlayerId(deck.playerId);
-      if (key) {
-        decksByJoinKey.set(key, deck);
-      }
-    }
-
-    for (const participant of slice.participants) {
-      const playerId = normalizePlayerId(participant.playerId);
-      if (!playerId) {
-        continue;
-      }
-
-      const acc = ensureAcc(accs, playerId);
-      const joinKey = joinByTpId ? (participant.tpId != null ? String(participant.tpId) : null) : playerId;
-      const deck = joinKey ? decksByJoinKey.get(joinKey) : undefined;
-
-      // Even with the right convention, a deck row's `player` name should at
-      // least roughly match the participant's name. If not, the join is wrong.
-      const deckBelongs =
-        !deck || !deck.player || !participant.name || foldName(deck.player) === foldName(participant.name);
-      const joinedDeck = deckBelongs ? deck : undefined;
-
-      const archetypeLabel = joinedDeck?.archetype ?? participant.deckName ?? null;
-      const archetypeInfo = archetypeBase(archetypeLabel ?? undefined);
-      if (archetypeInfo) {
-        acc.archetypeNames.set(archetypeInfo.base, archetypeInfo.displayName);
-      }
-
-      const wins = participant.wins ?? 0;
-      const losses = participant.losses ?? 0;
-      const ties = participant.ties ?? 0;
-
-      const entry: PlayerTournamentEntry = {
-        tournamentId: slice.key,
-        tournamentDate: slice.date,
-        totalPlayers: slice.totalPlayers,
-        placement: participant.placement ?? null,
-        wins,
-        losses,
-        ties,
-        madePhase2: Boolean(participant.madePhase2),
-        madeTopCut: Boolean(participant.madeTopCut),
-        archetype: archetypeInfo?.base ?? null,
-        deckId: joinedDeck?.deckId ?? joinedDeck?.id ?? participant.deckId ?? null
-      };
-      acc.entries.push(entry);
-
-      // Stash the deck for the separate decks.json. Never cross-attribute.
-      if (joinedDeck?.cards?.length) {
-        const cards: PlayerDeckCard[] = joinedDeck.cards
-          .filter(c => c && c.name)
-          .map(c => ({
-            count: typeof c.count === 'number' ? c.count : Number(c.count) || 1,
-            name: String(c.name),
-            set: c.set ? String(c.set) : undefined,
-            number: c.number != null ? String(c.number) : undefined,
-            category: c.category ? String(c.category) : undefined
-          }));
-        if (cards.length) {
-          acc.decks.set(slice.key, cards);
-        }
-      }
-
-      const name = (participant.name ?? '').trim();
-      if (name) {
-        acc.names.set(name, (acc.names.get(name) ?? 0) + 1);
-        if (!acc.latestName || slice.date > acc.latestName.date) {
-          acc.latestName = { name, date: slice.date };
-        }
-      }
-      const country = (participant.country ?? '').trim();
-      if (country) {
-        acc.countries.set(country, (acc.countries.get(country) ?? 0) + 1);
-        if (!acc.latestCountry || slice.date > acc.latestCountry.date) {
-          acc.latestCountry = { country, date: slice.date };
-        }
-      }
-    }
+    accumulateSlice(accs, slice);
   }
 
   const generatedAt = new Date().toISOString();
-  const index: PlayerIndexEntry[] = [];
-  const profileWrites: Array<{ key: string; data: PlayerProfile }> = [];
-  const deckWrites: Array<{ key: string; data: PlayerDecks }> = [];
-  const deckDeletes: string[] = [];
-  const manifestPlayers: Record<string, string[]> = {};
   const prevPlayers = previousManifest?.players ?? {};
+  const changedTournaments = changedTournamentKeys(loadedTournamentKeys, previousManifest?.fingerprints, fingerprints);
 
-  // Which loaded tournaments changed content since the last manifest. A player
-  // whose tournament *key set* is unchanged but one of whose events was
-  // corrected (same folder, new fingerprint) must still be rewritten (P-04).
-  // No previous fingerprints (old manifest / forced rebuild) → treat every
-  // tournament as changed so all players are rewritten.
-  const prevFingerprintMap = previousManifest?.fingerprints;
-  const changedTournaments = new Set<string>();
-  for (const key of loadedTournamentKeys) {
-    if (!prevFingerprintMap || (prevFingerprintMap[key] ?? '') !== (fingerprints[key] ?? '')) {
-      changedTournaments.add(key);
+  const plan = planWrites(accs, generatedAt, prevPlayers, changedTournaments);
+  const orphanDeletes = orphanDeleteKeys(prevPlayers, plan.manifestPlayers);
+
+  plan.index.sort((first, second) => {
+    if (second.lastEventDate !== first.lastEventDate) {
+      return second.lastEventDate.localeCompare(first.lastEventDate);
     }
-  }
-
-  for (const acc of accs.values()) {
-    const profile = buildProfile(acc, generatedAt);
-    const tournamentKeys = profile.tournaments.map(t => t.tournamentId).sort();
-    manifestPlayers[acc.playerId] = tournamentKeys;
-
-    if (profile.summary.eventCount >= INDEX_MIN_EVENTS) {
-      index.push({
-        playerId: profile.playerId,
-        name: profile.name,
-        country: acc.latestCountry?.country ?? profile.countries[0],
-        eventCount: profile.summary.eventCount,
-        day2s: profile.summary.day2s,
-        topCuts: profile.summary.topCuts,
-        tournamentWins: profile.summary.tournamentWins,
-        lastEventDate: profile.summary.lastEventDate
-      });
-    }
-
-    // Incremental skip: skip the write only if this player's tournament set is
-    // unchanged from the last run AND none of their events had their content
-    // corrected this run (P-04).
-    const prevKeys = prevPlayers[acc.playerId];
-    const keysUnchanged = prevKeys && arrayEquals(tournamentKeys, [...prevKeys].sort());
-    const contentUnchanged = !profile.tournaments.some(t => changedTournaments.has(t.tournamentId));
-    if (keysUnchanged && contentUnchanged) {
-      continue;
-    }
-
-    profileWrites.push({
-      key: `players/${profile.playerId}/profile.json`,
-      data: profile
-    });
-    const decks = buildDecks(acc, generatedAt);
-    if (decks) {
-      deckWrites.push({
-        key: `players/${profile.playerId}/decks.json`,
-        data: decks
-      });
-    } else {
-      // This player has no decks this run. If a prior run wrote a
-      // players/{id}/decks.json, it's now stale — delete it so expanded rows
-      // don't surface last run's decklists (P-23). Deleting an absent key is a
-      // harmless no-op.
-      deckDeletes.push(`players/${profile.playerId}/decks.json`);
-    }
-  }
-
-  // Orphan cleanup: players present in the previous manifest but not in this
-  // run have dropped out entirely (e.g. their only event was corrected away).
-  // Their profile/decks objects stay addressable unless deleted (P-25).
-  const orphanDeletes: string[] = [];
-  for (const prevId of Object.keys(prevPlayers)) {
-    if (!(prevId in manifestPlayers)) {
-      orphanDeletes.push(`players/${prevId}/profile.json`, `players/${prevId}/decks.json`);
-    }
-  }
-
-  index.sort((a, b) => {
-    if (b.lastEventDate !== a.lastEventDate) {
-      return b.lastEventDate.localeCompare(a.lastEventDate);
-    }
-    return b.eventCount - a.eventCount;
+    return second.eventCount - first.eventCount;
   });
 
   // Publication order (Theme A / P-24): write bodies FIRST, then delete stale
   // bodies, then the index that points at them, then the manifest last. A
   // failure mid-run must never leave the index/manifest referencing objects
   // that don't exist yet.
-  await batchPutJson(env, [...profileWrites, ...deckWrites], writeConcurrency);
-  await batchDelete(env, [...deckDeletes, ...orphanDeletes], writeConcurrency);
-  await putJson(env, INDEX_KEY, index);
-  await writeSlimIndex(env, index);
+  await batchPutJson(env, [...plan.profileWrites, ...plan.deckWrites], writeConcurrency);
+  await batchDelete(env, [...plan.deckDeletes, ...orphanDeletes], writeConcurrency);
+  await putJson(env, INDEX_KEY, plan.index);
+  await writeSlimIndex(env, plan.index);
 
   const manifest: PlayerAggregateManifestV2 = {
     generatedAt,
     // Only successfully-loaded slices: a transient R2 fetch failure must not
     // be cached as "covered" — next run's fast-path needs to retry it.
     tournamentKeys: loadedTournamentKeys.slice().sort(),
-    players: manifestPlayers,
+    players: plan.manifestPlayers,
     fingerprints
   };
   await putJson(env, MANIFEST_KEY, manifest);
 
   console.info('[playerAggregator] Built player aggregates', {
     profiles: accs.size,
-    profilesWritten: profileWrites.length,
-    deckFilesWritten: deckWrites.length,
+    profilesWritten: plan.profileWrites.length,
+    deckFilesWritten: plan.deckWrites.length,
     tournamentsScanned: scanned,
     tournamentsSkipped: skipped
   });
 
   return {
-    index,
+    index: plan.index,
     profileCount: accs.size,
-    profilesWritten: profileWrites.length,
+    profilesWritten: plan.profileWrites.length,
     tournamentsScanned: scanned,
     tournamentsSkipped: skipped,
     skippedNoChanges: false
