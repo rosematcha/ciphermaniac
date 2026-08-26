@@ -229,13 +229,13 @@
     // that is the whole point of the rule.
     //
     // Ceilings as of the ratchet's introduction:
-    //   complexity 76             shared/onlineMeta/playerAggregator.ts buildPlayerAggregates
+    //   complexity 51             scripts/build-card-types.mjs parseCardPage
     //   max-lines-per-function 663 src/components/AdvancedPanel.tsx AdvancedPanel
-    //   max-lines 990             shared/data/contracts.ts
-    //   max-depth 6               shared/data/analysis/archetypeTrends.ts
+    //   max-lines 990             src/pages/TrendsPage.tsx
+    //   max-depth 5               scripts/check-card-types.mjs
     //   max-params 8              src/lib/labelmaker/renderLabel.ts drawProgress
-    "complexity": ["error", 76],
-    "max-depth": ["error", 6],
+    "complexity": ["error", 51],
+    "max-depth": ["error", 5],
     "max-lines-per-function": ["error", { "max": 670, "skipBlankLines": true, "skipComments": true }],
     "max-nested-callbacks": ["warn", 4],
     "max-params": ["error", 8],
