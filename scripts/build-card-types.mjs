@@ -755,28 +755,73 @@ async function saveDatabase(database) {
 
   await fs.writeFile(CARD_TYPES_DB_PATH, `${JSON.stringify(sorted, null, 2)}\n`, 'utf-8');
 
-  // Slim companion artifact: just "SET::NUMBER" → lowercase evolves-from name.
-  // The frontend's evolution collapsing needs only this mapping, so it can
-  // fetch ~a few KB instead of the full 700KB database (see fetchEvolutionMap).
-  const NAMED_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
-  const decodeEntities = s =>
-    s.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (all, ent) => {
-      if (ent[0] === '#') {
-        const code = ent[1].toLowerCase() === 'x' ? parseInt(ent.slice(2), 16) : parseInt(ent.slice(1), 10);
-        return Number.isFinite(code) ? String.fromCodePoint(code) : all;
-      }
-      return NAMED_ENTITIES[ent.toLowerCase()] ?? all;
-    });
+  const { evolvesFrom, facets } = buildSlimArtifacts(sorted);
+  const dir = dirname(CARD_TYPES_DB_PATH);
+  await fs.writeFile(join(dir, 'evolves-from.json'), `${JSON.stringify(evolvesFrom)}\n`, 'utf-8');
+  await fs.writeFile(join(dir, 'card-facets.json'), `${JSON.stringify(facets)}\n`, 'utf-8');
+}
+
+const NAMED_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+
+/**
+ * Decode the HTML entities Limitless leaves in card names ("Farfetch&#39;d").
+ * @param {string} value
+ * @returns {string}
+ */
+function decodeEntities(value) {
+  return value.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (all, ent) => {
+    if (ent[0] === '#') {
+      const code = ent[1].toLowerCase() === 'x' ? parseInt(ent.slice(2), 16) : parseInt(ent.slice(1), 10);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : all;
+    }
+    return NAMED_ENTITIES[ent.toLowerCase()] ?? all;
+  });
+}
+
+/**
+ * Derive the two slim companion artifacts from the full database.
+ *
+ * `evolves-from` is `"SET::NUMBER"` → lowercase pre-evolution name; the
+ * frontend's evolution collapsing needs nothing else, so it fetches ~20KB
+ * instead of the 2.6MB database (see fetchEvolutionMap).
+ *
+ * `card-facets` adds the category path and evolution stage that deck-order
+ * sorting needs. Reports carry their own `category`, but one built before a set
+ * landed in this database keeps a bare `"trainer"` with no subtype forever,
+ * which can't separate supporters from items — so the frontend prefers this,
+ * which is rebuilt daily. Field names are single letters to keep the whole
+ * database near 100KB uncompressed.
+ * @param {Record<string, Record<string, any>>} database - The full card-types database
+ * @returns {{ evolvesFrom: Record<string, string>, facets: Record<string, {c?: string, s?: string, e?: string}> }}
+ */
+export function buildSlimArtifacts(database) {
   const evolvesFrom = {};
-  for (const key of sortedKeys) {
-    const info = sorted[key]?.evolutionInfo;
-    const m = typeof info === 'string' ? info.match(/Evolves from\s+(.+?)\s*$/i) : null;
-    if (m) {
-      evolvesFrom[key] = decodeEntities(m[1]).trim().toLowerCase();
+  const facets = {};
+  for (const key of Object.keys(database).sort()) {
+    const entry = database[key];
+    if (!entry) {
+      continue;
+    }
+    const info = entry.evolutionInfo;
+    const match = typeof info === 'string' ? info.match(/Evolves from\s+(.+?)\s*$/i) : null;
+    if (match) {
+      evolvesFrom[key] = decodeEntities(match[1]).trim().toLowerCase();
+    }
+    const facet = {};
+    if (entry.cardType) {
+      facet.c = entry.subType ? `${entry.cardType}/${entry.subType}` : entry.cardType;
+    }
+    if (entry.stage) {
+      facet.s = entry.stage;
+    }
+    if (evolvesFrom[key]) {
+      facet.e = evolvesFrom[key];
+    }
+    if (Object.keys(facet).length > 0) {
+      facets[key] = facet;
     }
   }
-  const evolvesFromPath = join(dirname(CARD_TYPES_DB_PATH), 'evolves-from.json');
-  await fs.writeFile(evolvesFromPath, `${JSON.stringify(evolvesFrom)}\n`, 'utf-8');
+  return { evolvesFrom, facets };
 }
 
 /**

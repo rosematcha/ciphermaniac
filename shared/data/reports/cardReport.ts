@@ -101,6 +101,40 @@ export interface CanonicalizeOptions {
 }
 
 /**
+ * Count the decks that can actually contribute a card to a usage report.
+ *
+ * This is the correct denominator for card inclusion (D13). A standings entry
+ * whose decklist was never published still counts as a deck in the meta — it
+ * has a placement, a player, and an archetype — but it can never contain a
+ * card, so dividing inclusion by it caps every card in the group at
+ * `(n-1)/n`. That is why Blaziken ex read 99.9% of Dragapult Blaziken lists
+ * rather than 100%: one of 778 decks had no list.
+ *
+ * Derived from the deck's cards rather than from a producer-supplied
+ * `hasDecklist` flag, because that flag is declared, not observed (the Labs
+ * adapter hardcodes it to true), and a denominator should describe the data
+ * being aggregated.
+ *
+ * The predicate is "has card rows", deliberately not "has a row with a
+ * positive count": it must hold for every aggregator that divides by this
+ * (here, and `clientSideFiltering.aggregateDecks`, whose numerator counts a
+ * zero-copy row as present), and a scraped decklist row always carries a
+ * count of at least one.
+ * @param deckList - The decks about to be aggregated
+ * @returns How many of them carry a decklist
+ */
+export function listedDeckCount(deckList: readonly { cards?: unknown }[]): number {
+  const decks = Array.isArray(deckList) ? deckList : [];
+  let count = 0;
+  for (const deck of decks) {
+    if (Array.isArray(deck?.cards) && deck.cards.length > 0) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+/**
  * Build the legacy-shape usage report from a list of decks.
  *
  * Presence is counted once per deck per canonical UID (two synonym variants in
@@ -109,7 +143,7 @@ export interface CanonicalizeOptions {
  * consistent after a synonym rewrite (D4). Items carry an explicit total order:
  * `pct`/`found` descending, then `name`, then `uid` (D9).
  * @param deckList - Decks to aggregate
- * @param deckTotal - Denominator for `pct`/`total` (usually `deckList.length`)
+ * @param deckTotal - Denominator for `pct`/`total` (see {@link listedDeckCount})
  * @param synonymDb - Synonym database (or null for no canonicalization)
  * @returns Legacy-shape report `{ deckTotal, items }`
  */

@@ -5,7 +5,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCardPage } from '../../scripts/build-card-types.mjs';
+import { buildSlimArtifacts, parseCardPage } from '../../scripts/build-card-types.mjs';
 
 const POKEMON_PAGE = `
 <div class="card-text">
@@ -245,4 +245,34 @@ void test('parses special energy with multi-paragraph rules text', () => {
 
 void test('returns null when no type line exists', () => {
   assert.equal(parseCardPage('<html><body>nothing here</body></html>'), null);
+});
+
+void test('buildSlimArtifacts derives the evolves-from and card-facets companions', () => {
+  const { evolvesFrom, facets } = buildSlimArtifacts({
+    'JTG::024': {
+      cardType: 'pokemon',
+      subType: null,
+      stage: 'stage2',
+      evolutionInfo: 'Stage 2 - Evolves from Combusken'
+    },
+    'DRI::040': { cardType: 'pokemon', subType: null, stage: 'basic', evolutionInfo: 'Basic' },
+    'ASC::198': { cardType: 'trainer', subType: 'item', evolutionInfo: null },
+    'MEE::002': { cardType: 'energy', subType: 'basic', evolutionInfo: null },
+    'XXX::001': { cardType: 'pokemon', subType: null, evolutionInfo: 'Stage 1 - Evolves from Farfetch&#39;d' },
+    'XXX::002': {}
+  });
+
+  assert.deepEqual(evolvesFrom, {
+    'JTG::024': 'combusken',
+    'XXX::001': "farfetch'd"
+  });
+
+  // Category paths join cardType and subType; stage and pre-evolution are only
+  // present when the database has them.
+  assert.deepEqual(facets['JTG::024'], { c: 'pokemon', s: 'stage2', e: 'combusken' });
+  assert.deepEqual(facets['DRI::040'], { c: 'pokemon', s: 'basic' });
+  assert.deepEqual(facets['ASC::198'], { c: 'trainer/item' });
+  assert.deepEqual(facets['MEE::002'], { c: 'energy/basic' });
+  // An entry with nothing worth recording is omitted rather than stored empty.
+  assert.equal('XXX::002' in facets, false);
 });

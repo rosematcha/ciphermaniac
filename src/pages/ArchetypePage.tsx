@@ -23,10 +23,12 @@ import { InfoTip } from '../components/InfoTip';
 import { CardList, type ViewMode } from '../components/CardList';
 import { AdvancedPanel } from '../components/AdvancedPanel';
 import { MatchupsPanel } from '../components/MatchupsPanel';
-import { createPersistentViewMode } from '../lib/persistentSignal';
+import { createPersistentSignal, createPersistentViewMode } from '../lib/persistentSignal';
 import { latestValue, resolved } from '../lib/resource';
 import { fetchArchetypeWinRate, WR_MIN_GAMES, WR_MUTE_GAMES } from '../lib/archetypeWinRate';
 import { estimateDeckCost } from '../lib/deckCost';
+import { fetchCardFacets } from '../lib/data/cardFacets';
+import { sortByDeckOrder } from '../lib/cardOrder';
 import '../styles/pages/archetype.css';
 
 type ArchTab = 'core' | 'tech' | 'cards' | 'matchups' | 'advanced';
@@ -41,6 +43,17 @@ const TAB_OPTIONS: { value: ArchTab; label: string }[] = [
 const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
   { value: 'grid', label: 'Grid' },
   { value: 'list', label: 'List' }
+];
+
+/**
+ * How the card lists are ordered. `usage` is inclusion-descending; `deck` reads
+ * like a written decklist (see {@link sortByDeckOrder}).
+ */
+type CardSort = 'usage' | 'deck';
+
+const SORT_OPTIONS: { value: CardSort; label: string }[] = [
+  { value: 'usage', label: 'Usage' },
+  { value: 'deck', label: 'Deck order' }
 ];
 
 const CORE_THRESHOLD = 90;
@@ -112,6 +125,9 @@ export function ArchetypePage() {
       : null;
   const [tab, setTab] = createSignal<ArchTab>(sharedTab ?? (sharedFilters ? 'advanced' : 'core'));
   const [viewMode, setViewMode] = createPersistentViewMode('cm:cardsView');
+  const [cardSort, setCardSort] = createPersistentSignal<CardSort>('cm:archetypeCardSort', 'usage', v =>
+    v === 'deck' || v === 'usage' ? v : null
+  );
 
   // Pre-rotation snapshot fallback. Fires when the live archetype lookup has
   // settled with an error (404 from R2) and the rotation index knows where
@@ -212,6 +228,8 @@ export function ArchetypePage() {
           onTabChange={setTab}
           viewMode={viewMode()}
           onViewChange={setViewMode}
+          cardSort={cardSort()}
+          onCardSortChange={setCardSort}
         />
       </Show>
     </>
@@ -231,15 +249,29 @@ interface ArchetypeBodyProps {
   onTabChange: (t: ArchTab) => void;
   viewMode: ViewMode;
   onViewChange: (v: ViewMode) => void;
+  cardSort: CardSort;
+  onCardSortChange: (s: CardSort) => void;
 }
 
 function ArchetypeBody(props: ArchetypeBodyProps) {
   const sortedByPct = createMemo(() =>
     [...(props.report.items as CardItem[])].sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0))
   );
-  const coreCards = createMemo(() => sortedByPct().filter(i => (i.pct ?? 0) >= CORE_THRESHOLD));
+
+  // Deck order needs per-card category/stage/pre-evolution facets. They're
+  // optional decoration: until the fetch lands (or if it fails) the sort falls
+  // back to report categories and no evolution grouping, so the list is never
+  // blocked on it.
+  const [facets] = createResource(fetchCardFacets);
+  const orderedCards = createMemo<CardItem[]>(() =>
+    props.cardSort === 'deck' ? sortByDeckOrder(sortedByPct(), latestValue(facets) ?? null) : sortedByPct()
+  );
+
+  // Both tiers are cut from the ordered list, so the active sort carries into
+  // them rather than only applying to the All-cards tab.
+  const coreCards = createMemo(() => orderedCards().filter(i => (i.pct ?? 0) >= CORE_THRESHOLD));
   const techCards = createMemo(() =>
-    sortedByPct().filter(i => (i.pct ?? 0) < CORE_THRESHOLD && (i.pct ?? 0) >= TECH_THRESHOLD)
+    orderedCards().filter(i => (i.pct ?? 0) < CORE_THRESHOLD && (i.pct ?? 0) >= TECH_THRESHOLD)
   );
 
   const sharePct = () => {
@@ -370,12 +402,22 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
           <Tabs options={TAB_OPTIONS} selected={props.tab} onSelect={props.onTabChange} />
           {/* Grid/List only affects the card views; the Matchups tab has its own layout. */}
           <Show when={props.tab !== 'matchups'}>
-            <Segmented<ViewMode>
-              options={VIEW_OPTIONS}
-              selected={props.viewMode}
-              onSelect={props.onViewChange}
-              ariaLabel='View mode'
-            />
+            <div class='arche-toolbar-controls'>
+              <Show when={props.tab !== 'advanced'}>
+                <Segmented<CardSort>
+                  options={SORT_OPTIONS}
+                  selected={props.cardSort}
+                  onSelect={props.onCardSortChange}
+                  ariaLabel='Card order'
+                />
+              </Show>
+              <Segmented<ViewMode>
+                options={VIEW_OPTIONS}
+                selected={props.viewMode}
+                onSelect={props.onViewChange}
+                ariaLabel='View mode'
+              />
+            </div>
           </Show>
         </div>
 
@@ -412,7 +454,7 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
         <Show when={props.tab === 'cards'}>
           <CardList
             title='All cards observed'
-            items={sortedByPct()}
+            items={orderedCards()}
             viewMode={props.viewMode}
             emptyMessage='No cards in this report.'
             initialLimit={60}
