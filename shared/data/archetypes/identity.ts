@@ -22,6 +22,7 @@
 
 import { normalizeArchetypeName } from '../../cardUtils';
 import type { ArchetypeIdentity } from '../contracts';
+import { isRecord } from '../validate';
 
 // Re-export the identity triple type so callers can import it from the domain
 // package. The interface is defined in contracts.ts (the schema authority).
@@ -106,4 +107,42 @@ export function normalizeForLookup(value: unknown): string {
     .replace(/['’]/g, '')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
+}
+
+// ============================================================================
+// Validation
+// ============================================================================
+
+/**
+ * Validate an archetype identity triple: all three fields are strings, the key
+ * derives from the display name, and the slug derives from the key.
+ *
+ * The derivation is the whole point of the triple — a stored key or slug that
+ * disagrees with its display name means two producers disagree about which
+ * archetype a deck belongs to, which silently splits an archetype in two. Both
+ * the normalized contract (`deck.archetype`) and the serving artifact
+ * (`ArchetypeIndexEntry.identity`) carry this triple, so the check lives here
+ * with the derivation rather than being written out once per layer.
+ * @param identity the untrusted candidate triple
+ * @param path dotted path for error messages
+ * @param errors accumulator appended to in place
+ */
+export function validateArchetypeIdentity(identity: unknown, path: string, errors: string[]): void {
+  if (!isRecord(identity)) {
+    errors.push(`${path}: expected object`);
+    return;
+  }
+  const { key, displayName, slug } = identity;
+  if (typeof key !== 'string' || typeof displayName !== 'string' || typeof slug !== 'string') {
+    errors.push(`${path}: key, displayName, and slug must all be strings`);
+    return;
+  }
+  const expectedKey = archetypeKey(displayName);
+  if (key !== expectedKey) {
+    errors.push(`${path}.key: "${key}" does not match derived key "${expectedKey}"`);
+  }
+  const expectedSlug = archetypeSlug(key);
+  if (slug !== expectedSlug) {
+    errors.push(`${path}.slug: "${slug}" does not match derived slug "${expectedSlug}"`);
+  }
 }
