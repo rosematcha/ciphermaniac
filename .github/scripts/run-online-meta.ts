@@ -26,7 +26,7 @@ import {
 import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json';
 import { generateArchetypeTrends } from '../../shared/data/analysis/archetypeTrends.js';
 import { computeSuccessTags } from '../../shared/data/contracts.js';
-import { generateReportFromDecks } from '../../shared/data/reports/cardReport.js';
+import { generateReportFromDecks, listedDeckCount } from '../../shared/data/reports/cardReport.js';
 import { buildArchetypeReports } from '../../shared/data/archetypes/build.js';
 import { onlineArchetypeOptions } from '../../shared/data/reports/onlineArtifacts.js';
 import { buildCardUsageIndex } from '../../shared/data/reports/cardUsage.js';
@@ -616,9 +616,12 @@ async function main(): Promise<void> {
   const pairingsData = await gatherPairingsData(reportTournaments);
 
   console.log(`[online-meta] Aggregating ${reportDecks.length} decks`);
+  // Decklist-less standings entries stay in the deck list — they're real decks
+  // in the meta and carry an archetype — but they can't contribute a card, so
+  // card inclusion divides by the listed decks only (D13).
   const masterReport = generateReportFromDecks(
     reportDecks as unknown as Parameters<typeof generateReportFromDecks>[0],
-    reportDecks.length,
+    listedDeckCount(reportDecks as unknown as Parameters<typeof listedDeckCount>[0]),
     synonymDb
   );
   // The frozen 'preserve' online profile: case-preserving group keys (D3

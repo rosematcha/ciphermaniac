@@ -9,6 +9,7 @@ import { normalizeArchetypeName, normalizeCardNumber } from './cardUtils.js';
 import { cardUid } from './data/cardIdentity';
 import { logger } from './logger.js';
 import { assignRanks, calculatePercentage, createDistFromHistogram, sortReportItems } from './reportUtils.js';
+import { listedDeckCount } from './data/reports/cardReport.js';
 import { computeSuccessTags, SUCCESS_TAG_NAMES } from './data/contracts.js';
 import type { Deck, DeckCard, Filter, Operator } from './deckTypes.js';
 import type { CardPresence, CooccurrenceContext } from './cardCooccurrence';
@@ -390,7 +391,9 @@ function aggregateDecks(decks: Deck[], options: AggregateOptions = {}): Aggregat
     }
   });
 
-  const deckTotal = decks.length;
+  // Decklist-less decks can't contribute a card, so they'd cap every card in
+  // the filtered set below 100% (D13) — same rule the published reports use.
+  const deckTotal = listedDeckCount(decks);
   const items = Array.from(cardUsage.values()).map(usage => {
     // Use shared distribution calculation - note: we sort by percent desc here (different from backend)
     const distEntries = createDistFromHistogram(usage.histogram, usage.found);

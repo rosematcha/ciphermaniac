@@ -19,7 +19,13 @@ import type { DeckCard, NormalizedEvent, Participant } from '../contracts';
 import type { SynonymDatabase } from '../cardIdentity';
 import { makeRollingResolver } from '../canonicalPrint';
 import { type ArchetypeBuildOptions, buildArchetypeReports } from '../archetypes/build';
-import { type CardEntry, type DeckEntry, generateReportFromDecks, type LegacyCardReport } from './cardReport';
+import {
+  type CardEntry,
+  type DeckEntry,
+  generateReportFromDecks,
+  type LegacyCardReport,
+  listedDeckCount
+} from './cardReport';
 import { buildCardUsageIndex } from './cardUsage';
 import { buildConversionIndex } from './conversion';
 import { buildCanonicalMatches, buildPlayerMatches } from './eventMatches';
@@ -184,8 +190,9 @@ function buildReportBundle(
 ): Map<string, unknown> {
   const out = new Map<string, unknown>();
   const resolveUid = canonicalization?.resolveUid;
-  const deckTotal = decks.filter(deck => deck.hasDecklist).length;
-  const master: LegacyCardReport = generateReportFromDecks(toDeckEntries(decks), deckTotal, synonymDb, { resolveUid });
+  const deckEntries = toDeckEntries(decks);
+  const deckTotal = listedDeckCount(deckEntries);
+  const master: LegacyCardReport = generateReportFromDecks(deckEntries, deckTotal, synonymDb, { resolveUid });
   if (canonicalization) {
     master.canonicalizedAt = canonicalization.asOfDate;
   }

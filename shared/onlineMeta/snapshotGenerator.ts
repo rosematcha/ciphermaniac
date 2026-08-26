@@ -1,4 +1,4 @@
-import { generateReportFromDecks } from '../data/reports/cardReport.js';
+import { generateReportFromDecks, listedDeckCount } from '../data/reports/cardReport.js';
 import { loadCardSynonyms } from '../data/cardSynonyms.js';
 import { ARCHETYPE_THUMBNAILS, buildArchetypeReports } from './reportGenerator';
 import { batchPutJson, getJsonResult } from './storageWriter';
@@ -176,7 +176,9 @@ export async function runRotationSnapshot(
   // (this is literally what gatherDecks wrote to R2 originally). Cast at the
   // boundary to satisfy reportBuilder's narrower DeckEntry/CardEntry types.
   const typedDecks = decks as unknown as Parameters<typeof generateReportFromDecks>[0];
-  const masterReport = generateReportFromDecks(typedDecks, deckTotal, synonymDb);
+  // `deckTotal` above is the window's deck count (the snapshot's meta size);
+  // card inclusion divides by the decks that actually carry a list (D13).
+  const masterReport = generateReportFromDecks(typedDecks, listedDeckCount(typedDecks), synonymDb);
   const { archetypeFiles, archetypeIndex, minDecks, deckMap } = buildArchetypeReports(
     typedDecks,
     MIN_USAGE_PERCENT,
