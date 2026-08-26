@@ -51,3 +51,8 @@ export function applyAceSpecFlags(
   database: Record<string, Record<string, unknown>>,
   aceSpecKeys: Set<string> | null
 ): { added: number; removed: number; total: number };
+
+export function buildSlimArtifacts(database: Record<string, Record<string, unknown>>): {
+  evolvesFrom: Record<string, string>;
+  facets: Record<string, { c?: string; s?: string; e?: string }>;
+};

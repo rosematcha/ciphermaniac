@@ -24,7 +24,7 @@
 
 import { normalizeArchetypeName, sanitizeForFilename } from '../../cardUtils';
 import { canonicalizeArchetypeLabel } from './identity';
-import { type DeckEntry, generateReportFromDecks, type LegacyCardReport } from '../reports/cardReport';
+import { type DeckEntry, generateReportFromDecks, type LegacyCardReport, listedDeckCount } from '../reports/cardReport';
 import type { SynonymDatabase } from '../cardIdentity';
 import {
   buildCardMetaLookup,
@@ -248,8 +248,12 @@ export function buildArchetypeReports(
     files.push({
       base,
       displayName,
+      // `deckCount` is the archetype's meta share and counts every deck the
+      // archetype was played in, decklist or not. The report's denominator is
+      // the narrower listed-deck count — a deck with no list can't contain a
+      // card, so counting it would cap every card below 100% (D13).
       deckCount: archetypeDecks.length,
-      data: generateReportFromDecks(archetypeDecks, archetypeDecks.length, synonymDb, { resolveUid })
+      data: generateReportFromDecks(archetypeDecks, listedDeckCount(archetypeDecks), synonymDb, { resolveUid })
     });
     decksByBase.set(base, archetypeDecks);
   }

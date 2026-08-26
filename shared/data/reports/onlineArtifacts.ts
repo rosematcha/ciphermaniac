@@ -11,7 +11,7 @@
  * @module shared/data/reports/onlineArtifacts
  */
 
-import { generateReportFromDecks, type LegacyCardReport } from './cardReport';
+import { generateReportFromDecks, type LegacyCardReport, listedDeckCount } from './cardReport';
 import { buildCardUsageIndex, type LegacyCardUsageIndex } from './cardUsage';
 import { type ArchetypeDeckInput, buildArchetypeReports } from '../archetypes/build';
 import type { SynonymDatabase } from '../cardIdentity';
@@ -57,7 +57,7 @@ export function buildOnlineServingArtifacts(
   decks: ArchetypeDeckInput[],
   inputs: OnlineArtifactInputs
 ): OnlineServingArtifacts {
-  const master = generateReportFromDecks(decks as never, decks.length, inputs.synonymDb);
+  const master = generateReportFromDecks(decks as never, listedDeckCount(decks), inputs.synonymDb);
   const { files, index } = buildArchetypeReports(
     decks,
     inputs.synonymDb,
