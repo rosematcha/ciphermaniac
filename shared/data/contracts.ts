@@ -33,6 +33,22 @@
 
 import { normalizeCardNumber } from '../cardUtils';
 import { archetypeKey, archetypeSlug } from './archetypes/identity';
+import {
+  checkArrayOf,
+  checkFields,
+  type FieldSpec,
+  isBoolean,
+  isFiniteInRange,
+  isInteger,
+  isIntegerAtLeast,
+  isMemberOf,
+  isNonEmptyString,
+  isRecord,
+  isStringArray,
+  orNull,
+  required,
+  whenPresent
+} from './validate';
 
 // Archetype identity policy (key/displayName/slug triple) lives in
 // shared/data/archetypes/identity.ts (DB-MASTER-PLAN Phase 2, slice 5). These
@@ -670,14 +686,6 @@ export function matchId(round: number, phase: number, participantIds: string[]):
 /** Result of validating a normalized record. */
 export type ValidationResult<T> = { ok: true; value: T } | { ok: false; errors: string[] };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isInteger(value);
-}
-
 function pushDuplicate(seen: Set<string>, id: string, label: string, errors: string[]): void {
   if (seen.has(id)) {
     errors.push(`${label}: duplicate stable id "${id}"`);
@@ -685,6 +693,96 @@ function pushDuplicate(seen: Set<string>, id: string, label: string, errors: str
     seen.add(id);
   }
 }
+
+// ----------------------------------------------------------------------------
+// Field specs
+//
+// One table per record shape. What lives here is every check that is purely a
+// function of a single field's own value; anything that needs a second field,
+// a sibling record, or a position in a list stays hand-written in the validator
+// below, where the reason for the cross-check can be stated. Message tails are
+// verbatim — they are read out of pipeline logs and matched by the contract
+// tests, so they are the stable surface, not an implementation detail.
+// ----------------------------------------------------------------------------
+
+/** Reused often enough across the Labs-optional fields to be worth naming. */
+const NON_EMPTY_STRING_OR_NULL = orNull(isNonEmptyString, 'expected a non-empty string or null');
+
+/** Non-negative integer, or null/absent. */
+const NON_NEGATIVE_INTEGER_OR_NULL = orNull(isIntegerAtLeast(0), 'expected a non-negative integer or null');
+
+/** Rules for the scalar fields of a participant. */
+const PARTICIPANT_SPEC: FieldSpec = {
+  participantId: required(isNonEmptyString, 'expected non-empty string'),
+  name: required(value => typeof value === 'string', 'expected string'),
+  placement: orNull(isIntegerAtLeast(1), 'expected integer >= 1 or null'),
+  opwPct: orNull(isFiniteInRange(0, 100), 'expected a finite number in [0, 100] or null'),
+  oopwPct: orNull(isFiniteInRange(0, 100), 'expected a finite number in [0, 100] or null'),
+  // Labs source fields — online windows omit them entirely.
+  points: NON_NEGATIVE_INTEGER_OR_NULL,
+  dropRound: orNull(isIntegerAtLeast(1), 'expected integer >= 1 or null'),
+  labsDeckId: NON_EMPTY_STRING_OR_NULL,
+  deckName: NON_EMPTY_STRING_OR_NULL
+};
+
+/** Rules for `participant.record`. */
+const PARTICIPANT_RECORD_SPEC: FieldSpec = {
+  wins: required(isIntegerAtLeast(0), 'expected a non-negative integer'),
+  losses: required(isIntegerAtLeast(0), 'expected a non-negative integer'),
+  ties: required(isIntegerAtLeast(0), 'expected a non-negative integer')
+};
+
+/** Rules for `participant.flags`. Every flag is required and boolean. */
+const PARTICIPANT_FLAGS_SPEC: FieldSpec = {
+  madePhase2: required(isBoolean, 'expected boolean'),
+  madeTopCut: required(isBoolean, 'expected boolean'),
+  dropped: required(isBoolean, 'expected boolean'),
+  dqed: required(isBoolean, 'expected boolean'),
+  late: required(isBoolean, 'expected boolean'),
+  decklistPublished: required(isBoolean, 'expected boolean')
+};
+
+/** Rules for `root.meta`. Everything but `playerCount` is Labs-optional. */
+const META_SPEC: FieldSpec = {
+  playerCount: required(isIntegerAtLeast(0), 'expected integer >= 0'),
+  country: NON_EMPTY_STRING_OR_NULL,
+  city: NON_EMPTY_STRING_OR_NULL,
+  eventType: NON_EMPTY_STRING_OR_NULL,
+  updatedAt: NON_EMPTY_STRING_OR_NULL,
+  rk9Id: NON_EMPTY_STRING_OR_NULL,
+  playlatamId: NON_EMPTY_STRING_OR_NULL,
+  labsCode: NON_EMPTY_STRING_OR_NULL,
+  sourceTournamentId: NON_EMPTY_STRING_OR_NULL,
+  completed: orNull(isBoolean, 'expected boolean or null'),
+  started: orNull(isBoolean, 'expected boolean or null'),
+  playersRound1: NON_NEGATIVE_INTEGER_OR_NULL,
+  decklistCount: NON_NEGATIVE_INTEGER_OR_NULL
+};
+
+/** Rules for the scalar fields of a deck. */
+const DECK_SPEC: FieldSpec = {
+  schemaVersion: required(value => value === SCHEMA_VERSION, `expected ${SCHEMA_VERSION}`),
+  hasDecklist: required(isBoolean, 'expected boolean'),
+  successTags: required(value => Array.isArray(value), 'expected array')
+};
+
+/** Rules for the scalar fields of a deck card. */
+const DECK_CARD_SPEC: FieldSpec = {
+  count: required(isIntegerAtLeast(1), 'expected integer >= 1'),
+  category: required(isMemberOf(CARD_CATEGORY_SET), value => `invalid category "${String(value)}"`),
+  aceSpec: orNull(isBoolean, 'expected boolean'),
+  regulationMark: orNull(value => /^[A-Z]$/.test(String(value)), 'expected a single uppercase letter')
+};
+
+/** Rules for the scalar fields of a match. */
+const MATCH_SPEC: FieldSpec = {
+  schemaVersion: required(value => value === SCHEMA_VERSION, `expected ${SCHEMA_VERSION}`),
+  outcome: required(isMemberOf(MATCH_OUTCOME_SET), value => `invalid outcome "${String(value)}"`),
+  round: required(isIntegerAtLeast(1), 'expected integer >= 1'),
+  phase: required(isIntegerAtLeast(1), 'expected integer >= 1'),
+  table: orNull(isIntegerAtLeast(1), 'expected integer >= 1 or null'),
+  completed: required(isBoolean, 'expected boolean')
+};
 
 /**
  * Assert an array of extracted keys is in canonical ascending (plain string)
@@ -801,33 +899,31 @@ function validateDeckCard(card: unknown, path: string, canonicalUidsInDeck: Set<
       errors
     );
   }
-  if (!isInteger(card.count) || card.count < 1) {
-    errors.push(`${path}.count: expected integer >= 1`);
-  }
-  const { category } = card;
-  if (!CARD_CATEGORY_SET.has(category as string)) {
-    errors.push(`${path}.category: invalid category "${String(category)}"`);
-  }
-  const { trainerType, energyType, aceSpec, regulationMark } = card;
-  if (trainerType !== null && trainerType !== undefined) {
-    if (category !== 'trainer') {
-      errors.push(`${path}.trainerType: only allowed when category is "trainer"`);
-    } else if (!TRAINER_TYPE_SET.has(trainerType as string)) {
-      errors.push(`${path}.trainerType: invalid trainer type "${String(trainerType)}"`);
+  checkFields(card, path, DECK_CARD_SPEC, errors);
+  checkCategorySubtype(card, path, errors);
+}
+
+/**
+ * `trainerType` and `energyType` are each legal only under their own category,
+ * so a bad value has two distinct meanings — wrong category, or an unknown
+ * value within the right one — and the reader needs to be told which. That
+ * pairing is what keeps these two out of {@link DECK_CARD_SPEC}.
+ */
+function checkCategorySubtype(card: Record<string, unknown>, path: string, errors: string[]): void {
+  const { category, trainerType, energyType } = card;
+  const subtypes = [
+    { field: 'trainerType', value: trainerType, category: 'trainer', label: 'trainer type', allowed: TRAINER_TYPE_SET },
+    { field: 'energyType', value: energyType, category: 'energy', label: 'energy type', allowed: ENERGY_TYPE_SET }
+  ] as const;
+  for (const subtype of subtypes) {
+    if (subtype.value === null || subtype.value === undefined) {
+      continue;
     }
-  }
-  if (energyType !== null && energyType !== undefined) {
-    if (category !== 'energy') {
-      errors.push(`${path}.energyType: only allowed when category is "energy"`);
-    } else if (!ENERGY_TYPE_SET.has(energyType as string)) {
-      errors.push(`${path}.energyType: invalid energy type "${String(energyType)}"`);
+    if (category !== subtype.category) {
+      errors.push(`${path}.${subtype.field}: only allowed when category is "${subtype.category}"`);
+    } else if (!subtype.allowed.has(subtype.value as string)) {
+      errors.push(`${path}.${subtype.field}: invalid ${subtype.label} "${String(subtype.value)}"`);
     }
-  }
-  if (aceSpec !== null && aceSpec !== undefined && typeof aceSpec !== 'boolean') {
-    errors.push(`${path}.aceSpec: expected boolean`);
-  }
-  if (regulationMark !== null && regulationMark !== undefined && !/^[A-Z]$/.test(String(regulationMark))) {
-    errors.push(`${path}.regulationMark: expected a single uppercase letter`);
   }
 }
 
@@ -862,108 +958,39 @@ function validateParticipant(participant: unknown, index: number, ids: Set<strin
   } else {
     pushDuplicate(ids, participant.participantId, path, errors);
   }
-  if (typeof participant.name !== 'string') {
-    errors.push(`${path}.name: expected string`);
-  }
-  const { placement } = participant;
-  if (placement !== null && placement !== undefined && (!isInteger(placement) || placement < 1)) {
-    errors.push(`${path}.placement: expected integer >= 1 or null`);
-  }
+  checkFields(participant, path, PARTICIPANT_SPEC, errors);
+
   if (!isRecord(participant.record)) {
     errors.push(`${path}.record: expected object`);
   } else {
-    for (const field of ['wins', 'losses', 'ties'] as const) {
-      const value = participant.record[field];
-      if (!isInteger(value) || value < 0) {
-        errors.push(`${path}.record.${field}: expected a non-negative integer`);
-      }
-    }
+    checkFields(participant.record, `${path}.record`, PARTICIPANT_RECORD_SPEC, errors);
   }
   if (!isRecord(participant.flags)) {
     errors.push(`${path}.flags: expected object`);
   } else {
-    for (const flag of ['madePhase2', 'madeTopCut', 'dropped', 'dqed', 'late', 'decklistPublished'] as const) {
-      if (typeof participant.flags[flag] !== 'boolean') {
-        errors.push(`${path}.flags.${flag}: expected boolean`);
-      }
-    }
+    checkFields(participant.flags, `${path}.flags`, PARTICIPANT_FLAGS_SPEC, errors);
   }
-  for (const field of ['opwPct', 'oopwPct'] as const) {
-    const value = participant[field];
-    if (value !== null && value !== undefined) {
-      if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100) {
-        errors.push(`${path}.${field}: expected a finite number in [0, 100] or null`);
-      }
-    }
+  if (participant.icons !== null && participant.icons !== undefined) {
+    checkArrayOf(
+      participant.icons,
+      `${path}.icons`,
+      'expected an array of non-empty strings',
+      required(isNonEmptyString, 'expected a non-empty string'),
+      errors
+    );
   }
-  // Labs source fields — all optional; validated only when present (online
-  // windows omit them entirely).
-  const { points } = participant;
-  if (points !== null && points !== undefined && (!isInteger(points) || points < 0)) {
-    errors.push(`${path}.points: expected a non-negative integer or null`);
-  }
-  const { icons } = participant;
-  if (icons !== null && icons !== undefined) {
-    if (!Array.isArray(icons)) {
-      errors.push(`${path}.icons: expected an array of non-empty strings`);
-    } else {
-      icons.forEach((icon, iconIndex) => {
-        if (typeof icon !== 'string' || icon.length === 0) {
-          errors.push(`${path}.icons[${iconIndex}]: expected a non-empty string`);
-        }
-      });
-    }
-  }
+  // Cross-check: a drop round is only meaningful for a dropped participant, so
+  // it is validated against flags rather than in isolation.
   const { dropRound } = participant;
-  if (dropRound !== null && dropRound !== undefined) {
-    if (!isInteger(dropRound) || dropRound < 1) {
-      errors.push(`${path}.dropRound: expected integer >= 1 or null`);
-    } else if (!isRecord(participant.flags) || participant.flags.dropped !== true) {
-      // Cross-check: a drop round is only meaningful for a dropped participant.
+  if (dropRound !== null && dropRound !== undefined && isIntegerAtLeast(1)(dropRound)) {
+    if (!isRecord(participant.flags) || participant.flags.dropped !== true) {
       errors.push(`${path}.dropRound: non-null dropRound requires flags.dropped to be true`);
-    }
-  }
-  for (const field of ['labsDeckId', 'deckName'] as const) {
-    const value = participant[field];
-    if (value !== null && value !== undefined && (typeof value !== 'string' || value.length === 0)) {
-      errors.push(`${path}.${field}: expected a non-empty string or null`);
     }
   }
 }
 
 function validateMeta(meta: Record<string, unknown>, errors: string[]): void {
-  const path = 'root.meta';
-  if (!isInteger(meta.playerCount) || meta.playerCount < 0) {
-    errors.push(`${path}.playerCount: expected integer >= 0`);
-  }
-  // Optional Labs string fields — non-empty string or null when present.
-  for (const field of [
-    'country',
-    'city',
-    'eventType',
-    'updatedAt',
-    'rk9Id',
-    'playlatamId',
-    'labsCode',
-    'sourceTournamentId'
-  ] as const) {
-    const value = meta[field];
-    if (value !== null && value !== undefined && (typeof value !== 'string' || value.length === 0)) {
-      errors.push(`${path}.${field}: expected a non-empty string or null`);
-    }
-  }
-  for (const field of ['completed', 'started'] as const) {
-    const value = meta[field];
-    if (value !== null && value !== undefined && typeof value !== 'boolean') {
-      errors.push(`${path}.${field}: expected boolean or null`);
-    }
-  }
-  for (const field of ['playersRound1', 'decklistCount'] as const) {
-    const value = meta[field];
-    if (value !== null && value !== undefined && (!isInteger(value) || value < 0)) {
-      errors.push(`${path}.${field}: expected a non-negative integer or null`);
-    }
-  }
+  checkFields(meta, 'root.meta', META_SPEC, errors);
 }
 
 function validateDeck(
@@ -978,9 +1005,7 @@ function validateDeck(
     errors.push(`${path}: expected object`);
     return;
   }
-  if (deck.schemaVersion !== SCHEMA_VERSION) {
-    errors.push(`${path}.schemaVersion: expected ${SCHEMA_VERSION}`);
-  }
+  checkFields(deck, path, DECK_SPEC, errors);
   if (typeof deck.deckId !== 'string' || deck.deckId.length === 0) {
     errors.push(`${path}.deckId: expected non-empty string`);
   } else {
@@ -1010,12 +1035,6 @@ function validateDeck(
       errors
     );
   }
-  if (typeof deck.hasDecklist !== 'boolean') {
-    errors.push(`${path}.hasDecklist: expected boolean`);
-  }
-  if (!Array.isArray(deck.successTags)) {
-    errors.push(`${path}.successTags: expected array`);
-  }
 }
 
 function validateMatch(
@@ -1030,59 +1049,68 @@ function validateMatch(
     errors.push(`${path}: expected object`);
     return;
   }
-  if (match.schemaVersion !== SCHEMA_VERSION) {
-    errors.push(`${path}.schemaVersion: expected ${SCHEMA_VERSION}`);
-  }
+  checkFields(match, path, MATCH_SPEC, errors);
   if (typeof match.matchId !== 'string' || match.matchId.length === 0) {
     errors.push(`${path}.matchId: expected non-empty string`);
   } else {
     pushDuplicate(ids, match.matchId, path, errors);
   }
-  const { outcome } = match;
-  if (!MATCH_OUTCOME_SET.has(outcome as string)) {
-    errors.push(`${path}.outcome: invalid outcome "${String(outcome)}"`);
-  }
-  if (!isInteger(match.round) || match.round < 1) {
-    errors.push(`${path}.round: expected integer >= 1`);
-  }
-  if (!isInteger(match.phase) || match.phase < 1) {
-    errors.push(`${path}.phase: expected integer >= 1`);
-  }
-  if (match.table !== null && match.table !== undefined && (!isInteger(match.table) || match.table < 1)) {
-    errors.push(`${path}.table: expected integer >= 1 or null`);
-  }
-  if (typeof match.completed !== 'boolean') {
-    errors.push(`${path}.completed: expected boolean`);
-  }
+  checkMatchMembers(match, path, participantIds, errors);
+  checkMatchWinner(match, path, participantIds, errors);
+}
+
+/**
+ * A match's participant list must resolve, and its arity must agree with the
+ * outcome: solo outcomes (bye/unpaired/unknown) name one participant, pair
+ * outcomes (decided/tie/double_loss) name two.
+ */
+function checkMatchMembers(
+  match: Record<string, unknown>,
+  path: string,
+  participantIds: Set<string>,
+  errors: string[]
+): void {
   const memberIds = match.participantIds;
   if (!Array.isArray(memberIds) || memberIds.length < 1 || memberIds.length > 2) {
     errors.push(`${path}.participantIds: expected 1 or 2 participant ids`);
-  } else {
-    memberIds.forEach((memberId, memberIndex) => {
-      if (typeof memberId !== 'string' || !participantIds.has(memberId)) {
-        errors.push(`${path}.participantIds[${memberIndex}]: unresolved participant "${String(memberId)}"`);
-      }
-    });
-    // Cross-validate arity against outcome: solo outcomes name one participant,
-    // pair outcomes name two.
-    if (SOLO_OUTCOMES.has(outcome as string) && memberIds.length !== 1) {
-      errors.push(`${path}.participantIds: outcome "${String(outcome)}" requires exactly 1 participant`);
-    }
-    if (PAIR_OUTCOMES.has(outcome as string) && memberIds.length !== 2) {
-      errors.push(`${path}.participantIds: outcome "${String(outcome)}" requires exactly 2 participants`);
-    }
+    return;
   }
+  memberIds.forEach((memberId, memberIndex) => {
+    if (typeof memberId !== 'string' || !participantIds.has(memberId)) {
+      errors.push(`${path}.participantIds[${memberIndex}]: unresolved participant "${String(memberId)}"`);
+    }
+  });
+  const outcome = match.outcome as string;
+  if (SOLO_OUTCOMES.has(outcome) && memberIds.length !== 1) {
+    errors.push(`${path}.participantIds: outcome "${String(outcome)}" requires exactly 1 participant`);
+  }
+  if (PAIR_OUTCOMES.has(outcome) && memberIds.length !== 2) {
+    errors.push(`${path}.participantIds: outcome "${String(outcome)}" requires exactly 2 participants`);
+  }
+}
+
+/**
+ * `winnerParticipantId` is REQUIRED for a 'decided' match and FORBIDDEN for
+ * every other outcome; when present it must resolve and must be one of the
+ * match's own participants.
+ */
+function checkMatchWinner(
+  match: Record<string, unknown>,
+  path: string,
+  participantIds: Set<string>,
+  errors: string[]
+): void {
+  const { outcome } = match;
   const winner = match.winnerParticipantId;
   const hasWinner = winner !== null && winner !== undefined;
   if (hasWinner) {
+    const memberIds = match.participantIds;
     if (typeof winner !== 'string' || !participantIds.has(winner)) {
       errors.push(`${path}.winnerParticipantId: unresolved participant "${String(winner)}"`);
     } else if (Array.isArray(memberIds) && !memberIds.includes(winner)) {
       errors.push(`${path}.winnerParticipantId: winner "${winner}" is not a match participant`);
     }
   }
-  // winnerParticipantId is REQUIRED for 'decided' and FORBIDDEN for every other
-  // outcome.
   if (outcome === 'decided' && !hasWinner) {
     errors.push(`${path}.winnerParticipantId: required for a decided match`);
   }
@@ -1091,6 +1119,210 @@ function validateMatch(
       `${path}.winnerParticipantId: forbidden for outcome "${String(outcome)}" (only "decided" names a winner)`
     );
   }
+}
+
+/**
+ * Rules for the top level of a normalized event. The four collection fields are
+ * only checked for being arrays here; their contents are validated by the
+ * passes below, which need the whole collection at once.
+ */
+const EVENT_ROOT_SPEC: FieldSpec = {
+  schemaVersion: required(value => value === SCHEMA_VERSION, `expected ${SCHEMA_VERSION}`),
+  eventId: required(isNonEmptyString, 'expected non-empty string'),
+  kind: required(isMemberOf(['labs-event', 'online-window']), value => `invalid kind "${String(value)}"`),
+  participants: required(value => Array.isArray(value), 'expected array'),
+  decks: required(value => Array.isArray(value), 'expected array'),
+  matches: required(value => Array.isArray(value), 'expected array'),
+  sourceRevisions: required(value => Array.isArray(value), 'expected array')
+};
+
+/**
+ * A collection field as an array, or null when it was not one. The null lets
+ * each pass below skip cleanly — the "expected array" complaint has already
+ * been recorded by {@link EVENT_ROOT_SPEC}, and re-reporting it per pass would
+ * bury the real problem under duplicates.
+ */
+function asArray(value: unknown): unknown[] | null {
+  return Array.isArray(value) ? value : null;
+}
+
+/** Assert sourceRevisions are in canonical (source, entityId) ascending order. */
+function checkSourceRevisionOrder(sourceRevisions: unknown, errors: string[]): void {
+  if (!Array.isArray(sourceRevisions)) {
+    return;
+  }
+  checkAscending(
+    sourceRevisions.map(revision =>
+      isRecord(revision) && typeof revision.source === 'string' && typeof revision.entityId === 'string'
+        ? `${revision.source}\u0000${revision.entityId}`
+        : undefined
+    ),
+    'root.sourceRevisions',
+    'sourceRevisions',
+    errors
+  );
+}
+
+/**
+ * Validate every participant, collecting the id set later passes resolve
+ * against and an index from id to record for the successTags cross-check.
+ */
+function collectParticipants(
+  participants: unknown[] | null,
+  errors: string[]
+): { participantIds: Set<string>; participantById: Map<string, Record<string, unknown>> } {
+  const participantIds = new Set<string>();
+  const participantById = new Map<string, Record<string, unknown>>();
+  if (!participants) {
+    return { participantIds, participantById };
+  }
+  participants.forEach((participant, index) => {
+    validateParticipant(participant, index, participantIds, errors);
+    if (isRecord(participant) && typeof participant.participantId === 'string') {
+      participantById.set(participant.participantId, participant);
+    }
+  });
+  checkAscending(
+    participants.map(participant =>
+      isRecord(participant) && typeof participant.participantId === 'string' ? participant.participantId : undefined
+    ),
+    'root.participants',
+    'participants',
+    errors
+  );
+  return { participantIds, participantById };
+}
+
+/**
+ * Validate every deck, collecting the deck id set and an index from id to
+ * record. A participant may be claimed by at most one deck, which is checked
+ * here because it is the only pass that sees all decks at once.
+ */
+function collectDecks(
+  decks: unknown[] | null,
+  participantIds: Set<string>,
+  errors: string[]
+): { deckIds: Set<string>; deckById: Map<string, Record<string, unknown>> } {
+  const deckIds = new Set<string>();
+  const deckById = new Map<string, Record<string, unknown>>();
+  const deckByParticipant = new Map<string, number>();
+  if (!decks) {
+    return { deckIds, deckById };
+  }
+  decks.forEach((deck, index) => {
+    validateDeck(deck, index, deckIds, participantIds, errors);
+    if (!isRecord(deck) || typeof deck.deckId !== 'string') {
+      return;
+    }
+    deckById.set(deck.deckId, deck);
+    if (typeof deck.participantId !== 'string') {
+      return;
+    }
+    if (deckByParticipant.has(deck.participantId)) {
+      errors.push(
+        `decks[${index}].participantId: participant "${deck.participantId}" is claimed by more than one deck`
+      );
+    } else {
+      deckByParticipant.set(deck.participantId, index);
+    }
+  });
+  checkAscending(
+    decks.map(deck => (isRecord(deck) && typeof deck.deckId === 'string' ? deck.deckId : undefined)),
+    'root.decks',
+    'decks',
+    errors
+  );
+  return { deckIds, deckById };
+}
+
+/**
+ * `participant.deckId` must resolve to a deck AND that deck must point back at
+ * the same participant. Checking only one direction would let a deck and a
+ * participant disagree about which of them owns the pairing.
+ */
+function checkDeckBackReferences(
+  participants: unknown[] | null,
+  deckIds: Set<string>,
+  deckById: Map<string, Record<string, unknown>>,
+  errors: string[]
+): void {
+  if (!participants) {
+    return;
+  }
+  participants.forEach((participant, index) => {
+    if (!isRecord(participant)) {
+      return;
+    }
+    const ref = participant.deckId;
+    if (ref === null || ref === undefined) {
+      return;
+    }
+    if (typeof ref !== 'string' || !deckIds.has(ref)) {
+      errors.push(`participants[${index}].deckId: unresolved deck "${String(ref)}"`);
+      return;
+    }
+    const deck = deckById.get(ref);
+    if (deck && deck.participantId !== participant.participantId) {
+      errors.push(
+        `participants[${index}].deckId: deck "${ref}" back-references participant "${String(deck.participantId)}", not "${String(participant.participantId)}"`
+      );
+    }
+  });
+}
+
+/** Validate every match and assert canonical matchId ordering. */
+function collectMatches(matches: unknown[] | null, participantIds: Set<string>, errors: string[]): void {
+  if (!matches) {
+    return;
+  }
+  const matchIds = new Set<string>();
+  matches.forEach((match, index) => validateMatch(match, index, matchIds, participantIds, errors));
+  checkAscending(
+    matches.map(match => (isRecord(match) && typeof match.matchId === 'string' ? match.matchId : undefined)),
+    'root.matches',
+    'matches',
+    errors
+  );
+}
+
+/**
+ * successTags must equal the policy recomputation exactly, order included, so
+ * the artifacts built from them are byte-deterministic. Phase tags append only
+ * for Labs events (D7 divergence).
+ */
+function checkSuccessTagDrift(
+  decks: unknown[] | null,
+  participantById: Map<string, Record<string, unknown>>,
+  playerCount: number | null,
+  appendPhaseTags: boolean,
+  errors: string[]
+): void {
+  if (!decks) {
+    return;
+  }
+  decks.forEach((deck, index) => {
+    if (!isRecord(deck) || !Array.isArray(deck.successTags) || typeof deck.participantId !== 'string') {
+      return;
+    }
+    const participant = participantById.get(deck.participantId);
+    if (!participant || !isRecord(participant.flags)) {
+      return;
+    }
+    const { flags } = participant;
+    const placement = typeof participant.placement === 'number' ? participant.placement : null;
+    const expected = computeSuccessTags(placement, playerCount, {
+      madePhase2: flags.madePhase2 === true,
+      madeTopCut: flags.madeTopCut === true,
+      appendPhaseTags
+    });
+    const actual = deck.successTags;
+    const drifted = actual.length !== expected.length || expected.some((tag, tagIndex) => actual[tagIndex] !== tag);
+    if (drifted) {
+      errors.push(
+        `decks[${index}].successTags: [${actual.map(String).join(', ')}] does not match policy recomputation [${expected.join(', ')}]`
+      );
+    }
+  });
 }
 
 /**
@@ -1109,158 +1341,26 @@ export function validateNormalizedEvent(value: unknown): ValidationResult<Normal
     return { ok: false, errors: ['root: expected object'] };
   }
 
-  if (value.schemaVersion !== SCHEMA_VERSION) {
-    errors.push(`root.schemaVersion: expected ${SCHEMA_VERSION}`);
-  }
-  if (typeof value.eventId !== 'string' || value.eventId.length === 0) {
-    errors.push('root.eventId: expected non-empty string');
-  }
-  const { kind } = value;
-  if (kind !== 'labs-event' && kind !== 'online-window') {
-    errors.push(`root.kind: invalid kind "${String(kind)}"`);
-  }
+  checkFields(value, 'root', EVENT_ROOT_SPEC, errors);
   if (!isRecord(value.meta)) {
     errors.push('root.meta: expected object');
   } else {
     validateMeta(value.meta, errors);
   }
 
-  const participants = Array.isArray(value.participants) ? value.participants : null;
-  if (!participants) {
-    errors.push('root.participants: expected array');
-  }
-  const decks = Array.isArray(value.decks) ? value.decks : null;
-  if (!decks) {
-    errors.push('root.decks: expected array');
-  }
-  const matches = Array.isArray(value.matches) ? value.matches : null;
-  if (!matches) {
-    errors.push('root.matches: expected array');
-  }
-  if (!Array.isArray(value.sourceRevisions)) {
-    errors.push('root.sourceRevisions: expected array');
-  }
+  const { kind } = value;
+  const participants = asArray(value.participants);
+  const decks = asArray(value.decks);
+  const matches = asArray(value.matches);
 
-  const participantIds = new Set<string>();
-  const participantById = new Map<string, Record<string, unknown>>();
-  if (participants) {
-    participants.forEach((participant, index) => {
-      validateParticipant(participant, index, participantIds, errors);
-      if (isRecord(participant) && typeof participant.participantId === 'string') {
-        participantById.set(participant.participantId, participant);
-      }
-    });
-    checkAscending(
-      participants.map(participant =>
-        isRecord(participant) && typeof participant.participantId === 'string' ? participant.participantId : undefined
-      ),
-      'root.participants',
-      'participants',
-      errors
-    );
-  }
+  const { participantIds, participantById } = collectParticipants(participants, errors);
+  const { deckIds, deckById } = collectDecks(decks, participantIds, errors);
+  checkDeckBackReferences(participants, deckIds, deckById, errors);
+  collectMatches(matches, participantIds, errors);
+  checkSourceRevisionOrder(value.sourceRevisions, errors);
 
-  const deckIds = new Set<string>();
-  const deckById = new Map<string, Record<string, unknown>>();
-  const deckByParticipant = new Map<string, number>();
-  if (decks) {
-    decks.forEach((deck, index) => {
-      validateDeck(deck, index, deckIds, participantIds, errors);
-      if (isRecord(deck) && typeof deck.deckId === 'string') {
-        deckById.set(deck.deckId, deck);
-        if (typeof deck.participantId === 'string') {
-          if (deckByParticipant.has(deck.participantId)) {
-            errors.push(
-              `decks[${index}].participantId: participant "${deck.participantId}" is claimed by more than one deck`
-            );
-          } else {
-            deckByParticipant.set(deck.participantId, index);
-          }
-        }
-      }
-    });
-    checkAscending(
-      decks.map(deck => (isRecord(deck) && typeof deck.deckId === 'string' ? deck.deckId : undefined)),
-      'root.decks',
-      'decks',
-      errors
-    );
-  }
-
-  // Participant.deckId must resolve to a deck AND the referenced deck must
-  // point back at that same participant (deck↔participant reconciliation).
-  if (participants) {
-    participants.forEach((participant, index) => {
-      if (isRecord(participant)) {
-        const ref = participant.deckId;
-        if (ref !== null && ref !== undefined) {
-          if (typeof ref !== 'string' || !deckIds.has(ref)) {
-            errors.push(`participants[${index}].deckId: unresolved deck "${String(ref)}"`);
-          } else {
-            const deck = deckById.get(ref);
-            if (deck && deck.participantId !== participant.participantId) {
-              errors.push(
-                `participants[${index}].deckId: deck "${ref}" back-references participant "${String(deck.participantId)}", not "${String(participant.participantId)}"`
-              );
-            }
-          }
-        }
-      }
-    });
-  }
-
-  const matchIds = new Set<string>();
-  if (matches) {
-    matches.forEach((match, index) => validateMatch(match, index, matchIds, participantIds, errors));
-    checkAscending(
-      matches.map(match => (isRecord(match) && typeof match.matchId === 'string' ? match.matchId : undefined)),
-      'root.matches',
-      'matches',
-      errors
-    );
-  }
-
-  if (Array.isArray(value.sourceRevisions)) {
-    checkAscending(
-      value.sourceRevisions.map(revision =>
-        isRecord(revision) && typeof revision.source === 'string' && typeof revision.entityId === 'string'
-          ? `${revision.source}\u0000${revision.entityId}`
-          : undefined
-      ),
-      'root.sourceRevisions',
-      'sourceRevisions',
-      errors
-    );
-  }
-
-  // successTags must equal the policy recomputation exactly (order included, for
-  // byte-determinism). Phase tags append only for Labs events (D7 divergence).
   const playerCount = isRecord(value.meta) && isInteger(value.meta.playerCount) ? value.meta.playerCount : null;
-  if (decks) {
-    decks.forEach((deck, index) => {
-      if (!isRecord(deck) || !Array.isArray(deck.successTags) || typeof deck.participantId !== 'string') {
-        return;
-      }
-      const participant = participantById.get(deck.participantId);
-      if (!participant || !isRecord(participant.flags)) {
-        return;
-      }
-      const { flags } = participant;
-      const placement = typeof participant.placement === 'number' ? participant.placement : null;
-      const expected = computeSuccessTags(placement, playerCount, {
-        madePhase2: flags.madePhase2 === true,
-        madeTopCut: flags.madeTopCut === true,
-        appendPhaseTags: kind === 'labs-event'
-      });
-      const actual = deck.successTags;
-      const drifted = actual.length !== expected.length || expected.some((tag, tagIndex) => actual[tagIndex] !== tag);
-      if (drifted) {
-        errors.push(
-          `decks[${index}].successTags: [${actual.map(String).join(', ')}] does not match policy recomputation [${expected.join(', ')}]`
-        );
-      }
-    });
-  }
+  checkSuccessTagDrift(decks, participantById, playerCount, kind === 'labs-event', errors);
 
   // Structural asymmetry (D11): online windows carry no match data.
   if (kind === 'online-window' && matches && matches.length > 0) {
@@ -1277,9 +1377,11 @@ export function validateNormalizedEvent(value: unknown): ValidationResult<Normal
 // Card catalog validation
 // ============================================================================
 
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every(v => typeof v === 'string');
-}
+/** Field rules for a structured Weakness/Resistance. */
+const WEAKNESS_RESISTANCE_SPEC: FieldSpec = {
+  type: required(isNonEmptyString, 'expected non-empty string'),
+  modifier: required(v => v === null || typeof v === 'string', 'expected string or null')
+};
 
 /** Validate a structured Weakness/Resistance ({type: string, modifier: string|null}). */
 function validateWeaknessResistance(value: unknown, path: string, errors: string[]): void {
@@ -1287,11 +1389,74 @@ function validateWeaknessResistance(value: unknown, path: string, errors: string
     errors.push(`${path}: expected object`);
     return;
   }
-  if (typeof value.type !== 'string' || value.type.length === 0) {
-    errors.push(`${path}.type: expected non-empty string`);
+  checkFields(value, path, WEAKNESS_RESISTANCE_SPEC, errors);
+}
+
+/** `{name, effect}` shape of one entry in `abilityDetails`. */
+function isAbilityDetail(value: unknown): boolean {
+  return (
+    isRecord(value) && typeof value.name === 'string' && (value.effect === null || typeof value.effect === 'string')
+  );
+}
+
+/** `{cost, name, damage, effect}` shape of one entry in `attackDetails`. */
+function isAttackDetail(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.name === 'string' &&
+    (value.cost === null || typeof value.cost === 'string') &&
+    (value.damage === null || typeof value.damage === 'string') &&
+    (value.effect === null || typeof value.effect === 'string')
+  );
+}
+
+/**
+ * Field rules for a {@link CardRecord}.
+ *
+ * Identity (`metadataVersion`, `cardType`, `fullType`) is required. Everything
+ * else is a card attribute that a given printing may simply not have, so it is
+ * absent-optional: `undefined` skips the check, while an explicit `null` is
+ * still wrong for everything except the two fields Limitless genuinely emits as
+ * null (`subType`, `evolutionInfo`).
+ */
+const CARD_RECORD_SPEC: FieldSpec = {
+  metadataVersion: required(isIntegerAtLeast(1), 'expected positive integer'),
+  cardType: required(isMemberOf(CARD_CATEGORIES), `expected one of ${CARD_CATEGORIES.join('/')}`),
+  fullType: required(isNonEmptyString, 'expected non-empty string'),
+  subType: orNull(v => typeof v === 'string', 'expected string, null, or absent'),
+  evolutionInfo: orNull(v => typeof v === 'string', 'expected string, null, or absent'),
+  stage: whenPresent(isMemberOf(CARD_STAGES), `expected one of ${CARD_STAGES.join('/')}`),
+  aceSpec: whenPresent(v => v === true, 'expected true or absent'),
+  regulationMark: whenPresent(v => typeof v === 'string' && /^[A-Z]$/.test(v), 'expected single uppercase letter'),
+  abilities: whenPresent(isStringArray, 'expected string[]'),
+  attacks: whenPresent(isStringArray, 'expected string[]'),
+  hp: whenPresent(v => isInteger(v) && v > 0, 'expected positive integer'),
+  pokemonType: whenPresent(v => typeof v === 'string', 'expected string'),
+  retreatCost: whenPresent(isIntegerAtLeast(0), 'expected non-negative integer'),
+  rarity: whenPresent(v => typeof v === 'string', 'expected string'),
+  artist: whenPresent(v => typeof v === 'string', 'expected string'),
+  text: whenPresent(v => typeof v === 'string', 'expected string'),
+  legality: whenPresent(
+    v => isRecord(v) && Object.values(v).every(entry => typeof entry === 'string'),
+    'expected Record<string, string>'
+  ),
+  lastUpdated: whenPresent(v => typeof v === 'string', 'expected ISO string')
+};
+
+/**
+ * `mechanicSubtypes` is the one list whose bad elements are reported without an
+ * index — the value itself identifies the offender better than its position
+ * does, and the message is load-bearing in the card-types build logs.
+ */
+function validateMechanicSubtypes(value: unknown, errors: string[]): void {
+  if (!Array.isArray(value)) {
+    errors.push('mechanicSubtypes: expected array');
+    return;
   }
-  if (value.modifier !== null && typeof value.modifier !== 'string') {
-    errors.push(`${path}.modifier: expected string or null`);
+  for (const subtype of value) {
+    if (!CARD_MECHANIC_SUBTYPES.includes(subtype as CardMechanicSubtype)) {
+      errors.push(`mechanicSubtypes: unknown value "${String(subtype)}"`);
+    }
   }
 }
 
@@ -1300,6 +1465,10 @@ function validateWeaknessResistance(value: unknown, path: string, errors: string
  * fields (`metadataVersion`, `cardType`, `fullType`) are required; every other
  * attribute is optional but, when present, is shape- and vocabulary-checked
  * against the enums frozen in this module.
+ *
+ * Scalar and enum fields come from {@link CARD_RECORD_SPEC}; what remains here
+ * is the handful of fields whose failure reporting is structural rather than
+ * per-field (nested objects and element-indexed lists).
  * @param value the untrusted candidate
  * @returns `{ ok: true, value }` or `{ ok: false, errors }`
  */
@@ -1309,56 +1478,10 @@ export function validateCardRecord(value: unknown): ValidationResult<CardRecord>
     return { ok: false, errors: ['root: expected object'] };
   }
 
-  if (!isInteger(value.metadataVersion) || value.metadataVersion < 1) {
-    errors.push('metadataVersion: expected positive integer');
-  }
-  if (typeof value.cardType !== 'string' || !CARD_CATEGORIES.includes(value.cardType as CardCategory)) {
-    errors.push(`cardType: expected one of ${CARD_CATEGORIES.join('/')}`);
-  }
-  if (typeof value.fullType !== 'string' || value.fullType.length === 0) {
-    errors.push('fullType: expected non-empty string');
-  }
+  checkFields(value, '', CARD_RECORD_SPEC, errors);
 
-  if (value.subType !== undefined && value.subType !== null && typeof value.subType !== 'string') {
-    errors.push('subType: expected string, null, or absent');
-  }
-  if (value.evolutionInfo !== undefined && value.evolutionInfo !== null && typeof value.evolutionInfo !== 'string') {
-    errors.push('evolutionInfo: expected string, null, or absent');
-  }
-  if (value.stage !== undefined && !CARD_STAGES.includes(value.stage as CardStage)) {
-    errors.push(`stage: expected one of ${CARD_STAGES.join('/')}`);
-  }
   if (value.mechanicSubtypes !== undefined) {
-    if (!Array.isArray(value.mechanicSubtypes)) {
-      errors.push('mechanicSubtypes: expected array');
-    } else {
-      for (const m of value.mechanicSubtypes) {
-        if (!CARD_MECHANIC_SUBTYPES.includes(m as CardMechanicSubtype)) {
-          errors.push(`mechanicSubtypes: unknown value "${String(m)}"`);
-        }
-      }
-    }
-  }
-  if (value.aceSpec !== undefined && value.aceSpec !== true) {
-    errors.push('aceSpec: expected true or absent');
-  }
-  if (
-    value.regulationMark !== undefined &&
-    (typeof value.regulationMark !== 'string' || !/^[A-Z]$/.test(value.regulationMark))
-  ) {
-    errors.push('regulationMark: expected single uppercase letter');
-  }
-  if (value.abilities !== undefined && !isStringArray(value.abilities)) {
-    errors.push('abilities: expected string[]');
-  }
-  if (value.attacks !== undefined && !isStringArray(value.attacks)) {
-    errors.push('attacks: expected string[]');
-  }
-  if (value.hp !== undefined && (!isInteger(value.hp) || value.hp <= 0)) {
-    errors.push('hp: expected positive integer');
-  }
-  if (value.pokemonType !== undefined && typeof value.pokemonType !== 'string') {
-    errors.push('pokemonType: expected string');
+    validateMechanicSubtypes(value.mechanicSubtypes, errors);
   }
   if (value.weakness !== undefined) {
     validateWeaknessResistance(value.weakness, 'weakness', errors);
@@ -1366,53 +1489,23 @@ export function validateCardRecord(value: unknown): ValidationResult<CardRecord>
   if (value.resistance !== undefined) {
     validateWeaknessResistance(value.resistance, 'resistance', errors);
   }
-  if (value.retreatCost !== undefined && (!isInteger(value.retreatCost) || value.retreatCost < 0)) {
-    errors.push('retreatCost: expected non-negative integer');
-  }
-  if (value.rarity !== undefined && typeof value.rarity !== 'string') {
-    errors.push('rarity: expected string');
-  }
-  if (value.artist !== undefined && typeof value.artist !== 'string') {
-    errors.push('artist: expected string');
-  }
-  if (value.text !== undefined && typeof value.text !== 'string') {
-    errors.push('text: expected string');
-  }
   if (value.abilityDetails !== undefined) {
-    if (!Array.isArray(value.abilityDetails)) {
-      errors.push('abilityDetails: expected array');
-    } else {
-      value.abilityDetails.forEach((a, i) => {
-        if (!isRecord(a) || typeof a.name !== 'string' || (a.effect !== null && typeof a.effect !== 'string')) {
-          errors.push(`abilityDetails[${i}]: expected {name: string, effect: string|null}`);
-        }
-      });
-    }
+    checkArrayOf(
+      value.abilityDetails,
+      'abilityDetails',
+      'expected array',
+      required(isAbilityDetail, 'expected {name: string, effect: string|null}'),
+      errors
+    );
   }
   if (value.attackDetails !== undefined) {
-    if (!Array.isArray(value.attackDetails)) {
-      errors.push('attackDetails: expected array');
-    } else {
-      value.attackDetails.forEach((a, i) => {
-        if (
-          !isRecord(a) ||
-          typeof a.name !== 'string' ||
-          (a.cost !== null && typeof a.cost !== 'string') ||
-          (a.damage !== null && typeof a.damage !== 'string') ||
-          (a.effect !== null && typeof a.effect !== 'string')
-        ) {
-          errors.push(`attackDetails[${i}]: expected {cost, name, damage, effect}`);
-        }
-      });
-    }
-  }
-  if (value.legality !== undefined) {
-    if (!isRecord(value.legality) || !Object.values(value.legality).every(v => typeof v === 'string')) {
-      errors.push('legality: expected Record<string, string>');
-    }
-  }
-  if (value.lastUpdated !== undefined && typeof value.lastUpdated !== 'string') {
-    errors.push('lastUpdated: expected ISO string');
+    checkArrayOf(
+      value.attackDetails,
+      'attackDetails',
+      'expected array',
+      required(isAttackDetail, 'expected {cost, name, damage, effect}'),
+      errors
+    );
   }
 
   if (errors.length > 0) {

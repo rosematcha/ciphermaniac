@@ -234,7 +234,7 @@
     //   max-lines 990             shared/data/contracts.ts
     //   max-depth 6               shared/data/analysis/archetypeTrends.ts
     //   max-params 8              src/lib/labelmaker/renderLabel.ts drawProgress
-    "complexity": ["error", 80],
+    "complexity": ["error", 79],
     "max-depth": ["error", 6],
     "max-lines-per-function": ["error", { "max": 670, "skipBlankLines": true, "skipComments": true }],
     "max-nested-callbacks": ["warn", 4],
