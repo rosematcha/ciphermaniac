@@ -219,15 +219,29 @@
     // CODE QUALITY & MAINTAINABILITY
     // =========================================================================
 
-    // Complexity limits (relaxed for existing codebase)
-    "complexity": "off",
-    "max-depth": "off",
-    "max-lines-per-function": "off",
+    // Complexity ratchet.
+    //
+    // These are set to the codebase's CURRENT worst value, not to a target. At
+    // that setting they cost nothing today and make it impossible to add a
+    // function worse than the worst one we already have. Each refactor that
+    // lowers a ceiling lowers the number here in the same commit, so the gain
+    // can never silently erode. Never raise one of these to make a build pass —
+    // that is the whole point of the rule.
+    //
+    // Ceilings as of the ratchet's introduction:
+    //   complexity 79             shared/data/analysis/archetypeTrends.ts generateArchetypeTrends
+    //   max-lines-per-function 663 src/components/AdvancedPanel.tsx AdvancedPanel
+    //   max-lines 990             shared/data/contracts.ts
+    //   max-depth 6               shared/data/analysis/archetypeTrends.ts
+    //   max-params 8              src/lib/labelmaker/renderLabel.ts drawProgress
+    "complexity": ["error", 80],
+    "max-depth": ["error", 6],
+    "max-lines-per-function": ["error", { "max": 670, "skipBlankLines": true, "skipComments": true }],
     "max-nested-callbacks": ["warn", 4],
-    "max-params": "off",
+    "max-params": ["error", 8],
     "max-statements": "off",
     "no-magic-numbers": "off",
-    "max-lines": "off",
+    "max-lines": ["error", { "max": 1000, "skipBlankLines": true, "skipComments": true }],
 
     // Ternary expressions
     "no-nested-ternary": "off",
@@ -467,6 +481,9 @@
       "rules": {
         "no-magic-numbers": "off",
         "max-lines-per-function": "off",
+        "max-lines": "off",
+        "max-params": "off",
+        "complexity": "off",
         "max-nested-callbacks": "off",
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-unused-vars": "off",
