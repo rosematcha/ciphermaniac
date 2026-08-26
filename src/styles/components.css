@@ -1197,6 +1197,13 @@ tr.row-expansion > td {
   flex: 1;
   min-width: 0;
 }
+/* Card-order and Grid/List toggles share the toolbar's right edge. */
+.arche-toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 
 /* ---------- Tabs (underline) ---------- */
 .tabs {
@@ -1278,7 +1285,7 @@ tr.row-expansion > td {
     align-items: stretch;
     gap: 10px;
   }
-  .arche-toolbar .segmented {
+  .arche-toolbar-controls {
     align-self: flex-start;
   }
 }
