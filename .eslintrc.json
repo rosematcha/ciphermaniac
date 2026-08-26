@@ -229,12 +229,12 @@
     // that is the whole point of the rule.
     //
     // Ceilings as of the ratchet's introduction:
-    //   complexity 79             shared/data/analysis/archetypeTrends.ts generateArchetypeTrends
+    //   complexity 76             shared/onlineMeta/playerAggregator.ts buildPlayerAggregates
     //   max-lines-per-function 663 src/components/AdvancedPanel.tsx AdvancedPanel
     //   max-lines 990             shared/data/contracts.ts
     //   max-depth 6               shared/data/analysis/archetypeTrends.ts
     //   max-params 8              src/lib/labelmaker/renderLabel.ts drawProgress
-    "complexity": ["error", 79],
+    "complexity": ["error", 76],
     "max-depth": ["error", 6],
     "max-lines-per-function": ["error", { "max": 670, "skipBlankLines": true, "skipComments": true }],
     "max-nested-callbacks": ["warn", 4],
