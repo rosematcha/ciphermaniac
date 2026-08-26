@@ -32,7 +32,7 @@
  */
 
 import { normalizeCardNumber } from '../cardUtils';
-import { archetypeKey, archetypeSlug } from './archetypes/identity';
+import { validateArchetypeIdentity } from './archetypes/identity';
 import {
   checkArrayOf,
   checkFields,
@@ -927,26 +927,6 @@ function checkCategorySubtype(card: Record<string, unknown>, path: string, error
   }
 }
 
-function validateArchetype(archetype: unknown, path: string, errors: string[]): void {
-  if (!isRecord(archetype)) {
-    errors.push(`${path}: expected object`);
-    return;
-  }
-  const { key, displayName, slug } = archetype;
-  if (typeof key !== 'string' || typeof displayName !== 'string' || typeof slug !== 'string') {
-    errors.push(`${path}: key, displayName, and slug must all be strings`);
-    return;
-  }
-  const expectedKey = archetypeKey(displayName);
-  if (key !== expectedKey) {
-    errors.push(`${path}.key: "${key}" does not match derived key "${expectedKey}"`);
-  }
-  const expectedSlug = archetypeSlug(key);
-  if (slug !== expectedSlug) {
-    errors.push(`${path}.slug: "${slug}" does not match derived slug "${expectedSlug}"`);
-  }
-}
-
 function validateParticipant(participant: unknown, index: number, ids: Set<string>, errors: string[]): void {
   const path = `participants[${index}]`;
   if (!isRecord(participant)) {
@@ -1016,7 +996,7 @@ function validateDeck(
   } else if (!participantIds.has(deck.participantId)) {
     errors.push(`${path}.participantId: unresolved participant "${deck.participantId}"`);
   }
-  validateArchetype(deck.archetype, `${path}.archetype`, errors);
+  validateArchetypeIdentity(deck.archetype, `${path}.archetype`, errors);
   if (!Array.isArray(deck.cards)) {
     errors.push(`${path}.cards: expected array`);
   } else {
