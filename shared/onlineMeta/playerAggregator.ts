@@ -311,34 +311,18 @@ function pickPrimaryName(acc: Accumulator): string {
   return best?.name ?? `Player ${acc.playerId}`;
 }
 
-function normalizeAliasKey(s: string): string {
-  return s.trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
 /**
  * Diacritic-insensitive name key for the deck-ownership guard. Upstream deck
  * rows and participant rows don't always agree on accents ("José" vs "Jose"),
  * and an exact comparison silently drops those players' legitimate decklists.
  */
 function foldName(s: string): string {
-  return normalizeAliasKey(s)
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '');
-}
-
-function dedupeAliases(names: Iterable<string>, primary: string): string[] {
-  const primaryKey = normalizeAliasKey(primary);
-  const seen = new Set<string>([primaryKey]);
-  const out: string[] = [];
-  for (const raw of names) {
-    const key = normalizeAliasKey(raw);
-    if (!key || seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    out.push(raw);
-  }
-  return out;
 }
 
 function buildProfile(acc: Accumulator, generatedAt: string): PlayerProfile {
@@ -356,7 +340,6 @@ function buildProfile(acc: Accumulator, generatedAt: string): PlayerProfile {
   const firstEventDate = tournaments[tournaments.length - 1]?.tournamentDate ?? lastEventDate;
 
   const name = pickPrimaryName(acc);
-  const aliases = dedupeAliases(acc.names.keys(), name);
   const countries = Array.from(acc.countries.keys());
 
   // Only include archetypeNames that actually appear in this profile.
@@ -370,7 +353,6 @@ function buildProfile(acc: Accumulator, generatedAt: string): PlayerProfile {
   return {
     playerId: acc.playerId,
     name,
-    aliases,
     countries,
     generatedAt,
     summary: {

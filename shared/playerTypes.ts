@@ -199,7 +199,6 @@ interface PlayerProfileSummary {
 export interface PlayerProfile {
   playerId: string;
   name: string;
-  aliases: string[];
   countries: string[];
   generatedAt: string;
   summary: PlayerProfileSummary;
