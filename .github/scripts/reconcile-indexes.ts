@@ -18,10 +18,9 @@
 
 import { requireEnv } from './lib/env.ts';
 import { pathToFileURL } from 'node:url';
-import { ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
-import { buildTournamentCatalog, reindexFromDecks } from './event-cli.ts';
+import { buildTournamentCatalog, listReportFolders, reindexFromDecks } from './event-cli.ts';
 import { createR2Client, getJsonResult, putJson } from './lib/r2.mjs';
 
 const CACHE_CONTROL = 'public, max-age=21600';
@@ -83,25 +82,9 @@ async function main(): Promise<void> {
   };
 
   // Discover event folders.
-  const folders: string[] = [];
-  let token: string | undefined;
-  do {
-    const page = await client.send(
-      new ListObjectsV2Command({ Bucket: bucket, Prefix: 'reports/', Delimiter: '/', ContinuationToken: token })
-    );
-    for (const p of page.CommonPrefixes ?? []) {
-      const folder = (p.Prefix ?? '').replace(/^reports\//, '').replace(/\/$/, '');
-      if (
-        folder &&
-        folder !== 'Online - Last 14 Days' &&
-        folder !== 'Snapshots' &&
-        folder !== 'Trends - Last 30 Days'
-      ) {
-        folders.push(folder);
-      }
-    }
-    token = page.IsTruncated ? page.NextContinuationToken : undefined;
-  } while (token);
+  const folders = (await listReportFolders(client, bucket)).filter(
+    f => f !== 'Online - Last 14 Days' && f !== 'Snapshots' && f !== 'Trends - Last 30 Days'
+  );
 
   const synonymDb = await read<SynonymDatabase>('assets/card-synonyms.json');
   const events = folders.filter(f => /^\d{4}-\d{2}-\d{2},/.test(f)).slice(0, limit);

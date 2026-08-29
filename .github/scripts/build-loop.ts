@@ -23,7 +23,7 @@ import { requireEnv } from './lib/env.ts';
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { composeRelease, type ReleaseScope } from '../../shared/data/build/release.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import { sha256HexString } from '../../shared/data/hash.ts';
@@ -31,7 +31,7 @@ import { labsSourceToNormalized } from '../../shared/data/adapters/labsSource.ts
 import { buildEventArtifacts } from '../../shared/data/reports/eventArtifacts.ts';
 import { buildOnlineServingArtifacts } from '../../shared/data/reports/onlineArtifacts.ts';
 import type { ArchetypeDeckInput } from '../../shared/data/archetypes/build.ts';
-import { buildTournamentCatalog } from './event-cli.ts';
+import { buildTournamentCatalog, listReportFolders } from './event-cli.ts';
 import { createR2Client, getJsonResult, putJson } from './lib/r2.mjs';
 
 const CACHE = 'public, max-age=31536000, immutable';
@@ -102,8 +102,7 @@ async function main(): Promise<void> {
   );
 
   // ---- Discover scopes ----
-  const listed = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: 'reports/', Delimiter: '/' }));
-  const allFolders = (listed.CommonPrefixes ?? []).map(p => p.Prefix!.replace(/^reports\//, '').replace(/\/$/, ''));
+  const allFolders = await listReportFolders(client, bucket);
   const eventFolders = allFolders.filter(f => /^\d{4}-\d{2}-\d{2},/.test(f)).slice(0, limit);
 
   const roots: Partial<Record<ReleaseScope, string>> = {};
