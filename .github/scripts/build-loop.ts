@@ -15,7 +15,7 @@
  * manifest, and never touches `reports/` or the production channel. DRY RUN by
  * default; `--write` publishes; `--gc` removes what it wrote.
  *
- * Usage: tsx build-loop.ts [--write] [--lite] [--gc] [--limit N] [--emit-roots roots.json] [--emit-served served.json] [--emit-events events.json]
+ * Usage: tsx build-loop.ts [--write] [--lite] [--gc] [--limit N] [--allow-shrink] [--emit-roots roots.json] [--emit-served served.json] [--emit-events events.json]
  * @module .github/scripts/build-loop
  */
 
@@ -23,7 +23,7 @@ import { requireEnv } from './lib/env.ts';
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { composeRelease, type ReleaseScope } from '../../shared/data/build/release.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import { sha256HexString } from '../../shared/data/hash.ts';
@@ -31,7 +31,7 @@ import { labsSourceToNormalized } from '../../shared/data/adapters/labsSource.ts
 import { buildEventArtifacts } from '../../shared/data/reports/eventArtifacts.ts';
 import { buildOnlineServingArtifacts } from '../../shared/data/reports/onlineArtifacts.ts';
 import type { ArchetypeDeckInput } from '../../shared/data/archetypes/build.ts';
-import { buildTournamentCatalog } from './event-cli.ts';
+import { buildTournamentCatalog, listReportFolders } from './event-cli.ts';
 import { createR2Client, getJsonResult, putJson } from './lib/r2.mjs';
 
 const CACHE = 'public, max-age=31536000, immutable';
@@ -59,6 +59,39 @@ const CAPTURED_KEYS: Record<Exclude<ReleaseScope, 'online' | 'catalogs'>, { rel:
   ],
   snapshots: [{ rel: 'index.json', legacy: 'reports/Snapshots/index.json' }]
 };
+
+/**
+ * Fail the build when a release would publish FEWER events than the one
+ * currently served. A truncated `reports/` listing (the un-paginated
+ * ListObjectsV2 bug) dropped six months of events while every run still
+ * reported success, so a shrinking event set is treated as a build error
+ * rather than a silent regression. Legitimate removals pass `--allow-shrink`.
+ * @param folders - Event folders this build is about to publish
+ * @param load - JSON reader for the bucket
+ * @throws When events present in the served release are absent from this build
+ */
+async function assertNoEventRegression(
+  folders: string[],
+  load: <T>(key: string) => Promise<T | null>
+): Promise<void> {
+  const pointer = await load<{ releaseId?: string }>('build/v1/channels/production.json');
+  if (!pointer?.releaseId) {
+    console.log('[build-loop] no production release to compare against — skipping regression guard');
+    return;
+  }
+  const served = await load<{ events?: Record<string, string> }>(`build/v1/releases/${pointer.releaseId}.json`);
+  const previous = Object.keys(served?.events ?? {});
+  const current = new Set(folders);
+  const missing = previous.filter(folder => !current.has(folder));
+  if (missing.length > 0) {
+    throw new Error(
+      `event regression: ${missing.length} event(s) in release ${pointer.releaseId} are missing from this build ` +
+        `(${missing.slice(0, 5).join('; ')}${missing.length > 5 ? '; …' : ''}). ` +
+        'Pass --allow-shrink if the removal is intentional.'
+    );
+  }
+  console.log(`[build-loop] regression guard: ${previous.length} served event(s) all present`);
+}
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
@@ -102,9 +135,11 @@ async function main(): Promise<void> {
   );
 
   // ---- Discover scopes ----
-  const listed = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: 'reports/', Delimiter: '/' }));
-  const allFolders = (listed.CommonPrefixes ?? []).map(p => p.Prefix!.replace(/^reports\//, '').replace(/\/$/, ''));
+  const allFolders = await listReportFolders(client, bucket);
   const eventFolders = allFolders.filter(f => /^\d{4}-\d{2}-\d{2},/.test(f)).slice(0, limit);
+  if (!argv.includes('--allow-shrink') && limit === Infinity) {
+    await assertNoEventRegression(eventFolders, load);
+  }
 
   const roots: Partial<Record<ReleaseScope, string>> = {};
   // Exactly the scope-relative keys this run publishes, per scope. The manifest

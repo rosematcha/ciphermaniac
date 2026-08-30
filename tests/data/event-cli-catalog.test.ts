@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildTournamentCatalog } from '../../.github/scripts/event-cli.ts';
+import { buildTournamentCatalog, listReportFolders } from '../../.github/scripts/event-cli.ts';
 
 test('sorts dated folders by date descending then name', () => {
   const out = buildTournamentCatalog([
@@ -32,4 +32,34 @@ test('dedupes same date + display name, keeping the dated / lexicographically sm
     '2026-01-16, Regional X' // exact dup
   ]);
   assert.deepStrictEqual(out, ['2026-01-16, Regional X']);
+});
+
+test('listReportFolders follows pagination instead of dropping later folders', async () => {
+  const pages = [
+    {
+      CommonPrefixes: [{ Prefix: 'reports/2024-09-13, Regional Baltimore/' }, { Prefix: 'reports/Snapshots/' }],
+      IsTruncated: true,
+      NextContinuationToken: 'page2'
+    },
+    {
+      CommonPrefixes: [{ Prefix: 'reports/2026-06-12, International New Orleans/' }],
+      IsTruncated: false
+    }
+  ];
+  const seen: (string | undefined)[] = [];
+  const client = {
+    send: (command: { input: { ContinuationToken?: string } }) => {
+      seen.push(command.input.ContinuationToken);
+      return Promise.resolve(pages[seen.length - 1]);
+    }
+  } as unknown as Parameters<typeof listReportFolders>[0];
+
+  const folders = await listReportFolders(client, 'bucket');
+
+  assert.deepStrictEqual(seen, [undefined, 'page2']);
+  assert.deepStrictEqual(folders, [
+    '2024-09-13, Regional Baltimore',
+    'Snapshots',
+    '2026-06-12, International New Orleans'
+  ]);
 });
