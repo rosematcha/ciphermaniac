@@ -1,4 +1,5 @@
 import { normalizeArchetypeName, sanitizeForFilename } from '../cardUtils.js';
+import { canonicalPlayerId, overriddenPlayerName } from './playerIdentity';
 import { encodeSlimIndex } from '../playerTypes';
 import { runWithConcurrency } from './tournamentFetcher';
 import { batchDelete, batchPutJson, getJson, getJsonResult, putJson } from './storageWriter';
@@ -339,7 +340,7 @@ function buildProfile(acc: Accumulator, generatedAt: string): PlayerProfile {
   const lastEventDate = tournaments[0]?.tournamentDate ?? '';
   const firstEventDate = tournaments[tournaments.length - 1]?.tournamentDate ?? lastEventDate;
 
-  const name = pickPrimaryName(acc);
+  const name = overriddenPlayerName(acc.playerId) ?? pickPrimaryName(acc);
   const countries = Array.from(acc.countries.keys());
 
   // Only include archetypeNames that actually appear in this profile.
@@ -595,13 +596,15 @@ function accumulateSlice(accs: Map<string, Accumulator>, slice: TournamentSlice)
   }
 
   for (const participant of slice.participants) {
-    const playerId = normalizePlayerId(participant.playerId);
-    if (!playerId) {
+    const rawPlayerId = normalizePlayerId(participant.playerId);
+    if (!rawPlayerId) {
       continue;
     }
 
-    const acc = ensureAcc(accs, playerId);
-    const joinedDeck = joinDeck(participant, playerId, decksByJoinKey, joinByTpId);
+    // The career accumulates under the canonical id, but the deck join is
+    // slice-local and must use the id this tournament actually recorded.
+    const acc = ensureAcc(accs, canonicalPlayerId(rawPlayerId));
+    const joinedDeck = joinDeck(participant, rawPlayerId, decksByJoinKey, joinByTpId);
 
     const archetypeLabel = joinedDeck?.archetype ?? participant.deckName ?? null;
     const archetypeInfo = archetypeBase(archetypeLabel ?? undefined);
