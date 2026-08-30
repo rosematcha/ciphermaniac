@@ -338,6 +338,40 @@ export function buildTournamentCatalog(folders: string[]): string[] {
   });
 }
 
+/**
+ * List every folder directly under `reports/`, following S3 pagination.
+ *
+ * R2 caps a delimited listing at 1000 scanned keys per page, and an event
+ * folder holds ~18 objects — so a single un-paginated call silently returns
+ * only the lexicographically FIRST folders. Because folder names are date-
+ * prefixed, that drops the most recent events, which is how the published
+ * catalog lost every event after 2026-02-13. Always page to exhaustion.
+ * @param client - R2/S3 client
+ * @param bucket - Bucket name
+ * @returns Folder names without the `reports/` prefix or trailing slash
+ */
+export async function listReportFolders(
+  client: ReturnType<typeof createR2Client>,
+  bucket: string
+): Promise<string[]> {
+  const { ListObjectsV2Command } = await import('@aws-sdk/client-s3');
+  const folders: string[] = [];
+  let token: string | undefined;
+  do {
+    const page = await client.send(
+      new ListObjectsV2Command({ Bucket: bucket, Prefix: 'reports/', Delimiter: '/', ContinuationToken: token })
+    );
+    for (const p of page.CommonPrefixes ?? []) {
+      const folder = (p.Prefix ?? '').replace(/^reports\//, '').replace(/\/$/, '');
+      if (folder) {
+        folders.push(folder);
+      }
+    }
+    token = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (token);
+  return folders;
+}
+
 async function runRebuildCatalog(rest: string[]): Promise<void> {
   const arg = (flag: string): string | undefined => {
     const i = rest.indexOf(flag);
@@ -354,21 +388,7 @@ async function runRebuildCatalog(rest: string[]): Promise<void> {
     accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
     secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY')
   });
-  const { ListObjectsV2Command } = await import('@aws-sdk/client-s3');
-  const folders: string[] = [];
-  let token: string | undefined;
-  do {
-    const page = await client.send(
-      new ListObjectsV2Command({ Bucket: bucket, Prefix: 'reports/', Delimiter: '/', ContinuationToken: token })
-    );
-    for (const p of page.CommonPrefixes ?? []) {
-      const folder = (p.Prefix ?? '').replace(/^reports\//, '').replace(/\/$/, '');
-      if (folder && folder !== 'Online - Last 14 Days') {
-        folders.push(folder);
-      }
-    }
-    token = page.IsTruncated ? page.NextContinuationToken : undefined;
-  } while (token);
+  const folders = (await listReportFolders(client, bucket)).filter(f => f !== 'Online - Last 14 Days');
 
   const catalog = buildTournamentCatalog(folders);
   if (outDir) {
