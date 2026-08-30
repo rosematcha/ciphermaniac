@@ -33,7 +33,10 @@ export interface PlayerIdentityOverride {
 export const PLAYER_IDENTITY_OVERRIDES: readonly PlayerIdentityOverride[] = [
   // Two Limitless accounts, one player; Caitlin is the name she goes by, and
   // the busier account (16920) registers under the other one.
-  { canonicalId: '9397', aliasIds: ['16920'], displayName: 'Caitlin White' }
+  { canonicalId: '9397', aliasIds: ['16920'], displayName: 'Caitlin White' },
+  // Re-registered under a new account (45677) from Houston 2026 onward; the
+  // older account (17712) holds her events through NAIC 2025.
+  { canonicalId: '45677', aliasIds: ['17712'], displayName: 'Reese Lundquist' }
 ];
 
 const CANONICAL_BY_ALIAS = new Map<string, string>();

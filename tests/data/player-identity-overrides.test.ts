@@ -104,6 +104,6 @@ test('a deck recorded under the alias id still attaches to the merged career', a
 });
 
 test('ids without an override pass through untouched', () => {
-  assert.equal(canonicalPlayerId('17712'), '17712');
-  assert.equal(overriddenPlayerName('17712'), null);
+  assert.equal(canonicalPlayerId('12786'), '12786');
+  assert.equal(overriddenPlayerName('12786'), null);
 });
