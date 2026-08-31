@@ -1,6 +1,5 @@
 import {
   buildRenderModel,
-  FRAUD_PLAYRATE_POOL,
   type Mode,
   needsDay2Stats,
   type RenderItem,
@@ -27,6 +26,7 @@ import '../styles/pages/social-graphics.css';
 type Size = 8 | 12 | 20;
 type Theme = 'light' | 'dark';
 type MinDecks = 5 | 10 | 25;
+type PlayFloor = 5 | 10 | 20 | 33;
 
 const MODE_OPTIONS: { value: Mode; label: string }[] = [
   { value: 'standard', label: 'Standard' },
@@ -43,6 +43,12 @@ const MIN_DECKS_OPTIONS: { value: string; label: string }[] = [
   { value: '5', label: 'Min 5' },
   { value: '10', label: 'Min 10' },
   { value: '25', label: 'Min 25' }
+];
+const PLAY_FLOOR_OPTIONS: { value: string; label: string }[] = [
+  { value: '5', label: '5%' },
+  { value: '10', label: '10%' },
+  { value: '20', label: '20%' },
+  { value: '33', label: '33%' }
 ];
 const THEME_OPTIONS: { value: Theme; label: string }[] = [
   { value: 'light', label: 'Cream' },
@@ -71,6 +77,17 @@ const TITLES: Record<Mode, { lead: string; accent: string }> = {
 /** The headline is one line too, and 'FRAUDULENT CARDS' is wider than the column. */
 const TITLE_FIT: FitBounds = { max: 64, min: 44 };
 
+/** Why the canvas is empty, in the terms of the mode the user picked. */
+function emptyNote(mode: Mode): string {
+  if (mode === 'fraudulent') {
+    return 'No cards clear the outlier filter here — try a lower play rate, or this event has no Day 2 data.';
+  }
+  if (mode === 'converting') {
+    return 'No Day 2 data for this tournament (or no cards clear the min-decks filter).';
+  }
+  return 'No data yet for this selection.';
+}
+
 export function SocialGraphicsPage() {
   const [tournaments] = createResource(fetchTournamentsList);
   // Non-suspending reads (see lib/resource.ts). All selector-keyed, so keep
@@ -82,6 +99,7 @@ export function SocialGraphicsPage() {
   const [size, setSize] = createSignal<Size>(20);
   const [theme, setTheme] = createSignal<Theme>('light');
   const [minDecks, setMinDecks] = createSignal<MinDecks>(10);
+  const [playFloor, setPlayFloor] = createSignal<PlayFloor>(10);
   const [busy, setBusy] = createSignal<null | 'png' | 'jpg'>(null);
   const [error, setError] = createSignal<string | null>(null);
 
@@ -167,6 +185,8 @@ export function SocialGraphicsPage() {
       size: size(),
       minDecks: minDecks(),
       items: masterData()?.items ?? null,
+      fieldConversion: fieldConversion(),
+      playFloor: playFloor(),
       comparisonItems: comparisonMasterData()?.items ?? null,
       day2Stats: day2StatsData(),
       evolutionMap: evolutionMapData()
@@ -186,6 +206,11 @@ export function SocialGraphicsPage() {
       (mode() === 'rising' && comparisonMaster.loading) ||
       (needsDay2Stats(mode()) && day2Stats.loading)
   );
+
+  // Fraudulent only shows cards whose shortfall clears the outlier test, so a
+  // small event can fill fewer slots than the chosen size. Say so rather than
+  // leaving the user to wonder why Top 20 rendered six cards.
+  const shortList = () => mode() === 'fraudulent' && !exportBlocked() && items().length > 0 && items().length < size();
 
   async function exportImage(format: 'png' | 'jpg') {
     setBusy(format);
@@ -311,7 +336,7 @@ export function SocialGraphicsPage() {
                 ariaLabel='Layout size'
               />
             </label>
-            <Show when={needsDay2Stats(mode())}>
+            <Show when={mode() === 'converting'}>
               <label>
                 Min decks
                 <Segmented
@@ -319,6 +344,17 @@ export function SocialGraphicsPage() {
                   selected={String(minDecks())}
                   onSelect={v => setMinDecks(Number(v) as MinDecks)}
                   ariaLabel='Minimum Day 1 deck count'
+                />
+              </label>
+            </Show>
+            <Show when={mode() === 'fraudulent'}>
+              <label>
+                Min play rate
+                <Segmented
+                  options={PLAY_FLOOR_OPTIONS}
+                  selected={String(playFloor())}
+                  onSelect={v => setPlayFloor(Number(v) as PlayFloor)}
+                  ariaLabel='Minimum share of Day 1 decks'
                 />
               </label>
             </Show>
@@ -338,6 +374,11 @@ export function SocialGraphicsPage() {
             <Show when={error()}>
               <span class='sg-status error'>{error()}</span>
             </Show>
+            <Show when={!error() && shortList()}>
+              <span class='sg-status'>
+                {items().length} of {size()} slots filled — the rest of the field is within noise at this play rate.
+              </span>
+            </Show>
           </div>
         </div>
 
@@ -351,13 +392,7 @@ export function SocialGraphicsPage() {
                   (mode() === 'rising' && comparisonMaster.loading) ||
                   (needsDay2Stats(mode()) && day2Stats.loading)
                 }
-                fallback={
-                  <div class='sg-stage-empty'>
-                    {needsDay2Stats(mode())
-                      ? 'No Day 2 data for this tournament (or no cards clear the min-decks filter).'
-                      : 'No data yet for this selection.'}
-                  </div>
-                }
+                fallback={<div class='sg-stage-empty'>{emptyNote(mode())}</div>}
               >
                 <Skeleton height='540px' />
               </Show>
@@ -370,6 +405,7 @@ export function SocialGraphicsPage() {
               deckTotal={masterData()?.deckTotal ?? 0}
               items={items()}
               minDecks={minDecks()}
+              playFloor={playFloor()}
               fieldConversion={fieldConversion()}
             />
           </Show>
@@ -386,6 +422,7 @@ interface CanvasProps {
   deckTotal: number;
   items: RenderItem[];
   minDecks: number;
+  playFloor: number;
   /** The event's overall Day 1 to Day 2 rate, when it is known. */
   fieldConversion: number | null;
 }
@@ -438,7 +475,7 @@ function SocialCanvas(props: CanvasProps) {
       return 'biggest gain';
     }
     if (props.mode === 'fraudulent') {
-      return `lowest Day 1 → Day 2 conversion, top ${FRAUD_PLAYRATE_POOL} most played (min ${props.minDecks} decks)${fieldNote()}`;
+      return `biggest shortfall vs the field (min ${props.playFloor}% play rate)${fieldNote()}`;
     }
     if (props.mode === 'converting') {
       return `Day 1 → Day 2 conversion (min ${props.minDecks} decks)${fieldNote()}`;
@@ -564,7 +601,9 @@ function SocialCanvas(props: CanvasProps) {
       </Show>
 
       <Show when={grid().length > 0}>
-        <div class='sg-grid'>
+        {/* A short list (fraudulent mode filters hard) would otherwise leave a
+            half-empty row of cells; spread them across the width instead. */}
+        <div class='sg-grid' style={{ 'grid-template-columns': `repeat(${Math.min(4, grid().length)}, 1fr)` }}>
           <For each={grid()}>
             {c => (
               <div class='sg-cell'>

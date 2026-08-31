@@ -50,14 +50,35 @@ export function needsDay2Stats(mode: Mode): boolean {
 const POOL_SLACK = 8;
 
 /**
- * How many of the event's most-played cards the fraudulent mode considers.
+ * How far below the field a card's conversion must fall, in standard
+ * deviations, before it counts as a fraud rather than a bad weekend.
  *
- * "Fraudulent" means popular AND bad at converting, so the low-conversion
- * ranking is taken over a fixed slice of the most-played cards rather than the
- * whole field — otherwise it just surfaces fringe cards that four people
- * played and none of them made Day 2.
+ * Roughly a one-sided 93% confidence that the shortfall is real. It doubles as
+ * the sample-size guard: a card in twelve decks that converted none of them is
+ * only about 0.8 sigma below an 18% field, so it never reaches the graphic.
  */
-export const FRAUD_PLAYRATE_POOL = 50;
+export const FRAUD_MAX_Z = -1.5;
+
+/**
+ * How far a card's conversion sits from the field's, in standard deviations.
+ *
+ * The field rate is the null hypothesis — if a card were just another card,
+ * its Day 2 count would be a binomial draw at that rate — so this measures how
+ * unlikely its conversion is rather than how low it is. Popularity enters only
+ * through the sample size, which is the point: the same 6-point shortfall is
+ * far more damning across 300 decks than across 20.
+ * @param conversion - The card's Day 1 to Day 2 conversion (0..100)
+ * @param fieldConversion - The event's overall Day 2 rate (0..100)
+ * @param sampleSize - Day 1 decks playing the card
+ * @returns Standard deviations from the field rate; negative means below it
+ */
+export function conversionZScore(conversion: number, fieldConversion: number, sampleSize: number): number {
+  if (sampleSize <= 0 || fieldConversion <= 0 || fieldConversion >= 100) {
+    return 0;
+  }
+  const sigma = Math.sqrt((fieldConversion * (100 - fieldConversion)) / sampleSize);
+  return sigma === 0 ? 0 : (conversion - fieldConversion) / sigma;
+}
 
 /** Basic energy is its own set code; it never belongs in a usage graphic. */
 export function isBasicEnergy(item: Pick<CardItem, 'set'>): boolean {
@@ -165,6 +186,10 @@ export interface RenderModelInput {
   comparisonItems?: CardItem[] | null;
   /** Converting and fraudulent modes: the event's day-2 stats. */
   day2Stats?: Day2CardStat[] | null;
+  /** Fraudulent mode: the event's overall Day 2 rate, the yardstick for the outlier test. */
+  fieldConversion?: number | null;
+  /** Fraudulent mode: minimum share of Day 1 decks (0..100) a card must appear in. */
+  playFloor?: number;
   /** `SET::NUMBER` to the name it evolves from. */
   evolutionMap?: Map<string, string>;
 }
@@ -226,27 +251,26 @@ function convertingCandidates(input: RenderModelInput, master: CardItem[], pool:
 }
 
 /**
- * Popular cards that converted worst: lowest conversion among the event's most
- * played cards.
+ * Cards the field overplayed: a real play rate paired with a conversion far
+ * enough below the field to be an outlier rather than variance.
  *
- * The play-rate slice is what separates this from "worst converters" — a card
- * nobody played converting at 0% is noise, while a staple in a third of the
- * field converting below the pack is the story.
+ * Ranked by how many standard deviations below the field each card sits, so
+ * the list is ordered by how unlikely the shortfall is. Basic energy is
+ * dropped — its conversion tracks whichever archetypes happened to sleeve it,
+ * which says nothing about the card.
  */
 function fraudulentCandidates(input: RenderModelInput, master: CardItem[], pool: number): RenderItem[] {
   const stats = input.day2Stats;
-  if (!stats) {
+  const field = input.fieldConversion;
+  if (!stats || field === null || field === undefined) {
     return [];
   }
-  return day2Candidates(stats, master, input.minDecks)
-    .filter(c => c.playRate > 0)
-    .sort((a, b) => b.playRate - a.playRate)
-    .slice(0, FRAUD_PLAYRATE_POOL)
-    .sort((a, b) =>
-      // Tie-break toward the more played card — the same conversion hurts more
-      // when more of the field was holding it.
-      a.row.pct !== b.row.pct ? a.row.pct - b.row.pct : b.playRate - a.playRate
-    )
+  const floor = input.playFloor ?? 0;
+  return day2Candidates(stats, master, 0)
+    .filter(c => c.playRate >= floor && c.row.cat !== 'energy-basic')
+    .map(c => ({ ...c, z: conversionZScore(c.row.pct, field, c.row.total) }))
+    .filter(c => c.z <= FRAUD_MAX_Z)
+    .sort((a, b) => a.z - b.z)
     .slice(0, pool)
     .map(c => c.row);
 }
