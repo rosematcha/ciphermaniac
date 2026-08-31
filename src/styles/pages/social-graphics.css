@@ -331,13 +331,19 @@
   gap: 20px;
   align-items: end;
 }
+/* Font size is driven by fitText() — long names scale down from 42px rather
+   than spilling past the card. The clip is the last-resort backstop for a name
+   that still does not fit at the floor size; the roomier line-height keeps
+   descenders out of the clip. */
 .sg-hero-name {
   font-size: 42px;
   font-weight: 800;
   letter-spacing: -0.028em;
-  line-height: 1.0;
+  line-height: 1.15;
   color: var(--sg-fg);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .sg-hero-decks {
   font-size: 15px;

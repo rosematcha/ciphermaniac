@@ -126,6 +126,26 @@ test('the card wall mounts and paints its loop', async ({ page }) => {
   expect(painted, 'the stage should have painted something with more than one value').toBeGreaterThan(1);
 });
 
+test('social graphics fits long card names inside their cards', async ({ page }, testInfo) => {
+  // The canvas is a fixed 1280px desktop composition; the mobile project gets
+  // the "built for desktop" note instead, so there is nothing to measure.
+  test.skip(testInfo.project.name !== 'desktop', 'canvas only renders on desktop');
+  await gotoClean(page, '/tools/social-graphics');
+  await page.locator('#sg-canvas').waitFor({ timeout: 15_000 });
+  await page.evaluate(() => document.fonts.ready);
+  // Every name slot is single-line and shrink-to-fit: overflow here means a
+  // long name is spilling out of its card or being cut to an ellipsis.
+  const overflow = await page.$$eval(
+    '#sg-canvas .sg-hero-name, #sg-canvas .sg-row-name, #sg-canvas .sg-cell-name, #sg-canvas .sg-tail-name',
+    els =>
+      els
+        .map(el => ({ name: el.textContent ?? '', over: el.scrollWidth - el.clientWidth }))
+        .filter(entry => entry.over > 0)
+  );
+  expect(overflow, 'card names should be scaled down to fit their slot').toEqual([]);
+  await expect(page.locator('#sg-canvas')).toContainText("Lillie's Determination");
+});
+
 test('an unknown route renders the not-found page rather than erroring', async ({ page }) => {
   await gotoClean(page, '/this-route-does-not-exist');
   await expect(page.locator('body')).toContainText(/not found|404/i);

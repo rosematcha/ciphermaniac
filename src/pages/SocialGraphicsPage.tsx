@@ -1,4 +1,5 @@
 import { buildRenderModel, type Mode, type RenderItem, shortTournament, thumbUrl } from './socialGraphics/model';
+import { type FitBounds, fitText } from './socialGraphics/fitText';
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import {
   fetchDay2CardStats,
@@ -37,6 +38,17 @@ const THEME_OPTIONS: { value: Theme; label: string }[] = [
   { value: 'light', label: 'Cream' },
   { value: 'dark', label: 'Dark' }
 ];
+
+/**
+ * Shrink-to-fit bounds per name slot. `max` is the design size; long names
+ * scale down toward `min` instead of overflowing the card or ellipsizing.
+ */
+const NAME_FIT: Record<'hero' | 'row' | 'cell' | 'tail', FitBounds> = {
+  hero: { max: 42, min: 24 },
+  row: { max: 22, min: 15 },
+  cell: { max: 17, min: 11 },
+  tail: { max: 13, min: 10 }
+};
 
 export function SocialGraphicsPage() {
   const [tournaments] = createResource(fetchTournamentsList);
@@ -345,6 +357,9 @@ interface CanvasProps {
 
 function SocialCanvas(props: CanvasProps) {
   const hero = () => props.items[0];
+  // Tracked separately so the hero's shrink-to-fit recomputes when the #1 card
+  // changes; the other slots remount with their row.
+  const heroName = createMemo(() => hero()?.name ?? '');
   const stack = () => props.items.slice(1, 4);
   const grid = () => props.items.slice(4, 12);
   const tail = () => props.items.slice(12, 20);
@@ -438,7 +453,9 @@ function SocialCanvas(props: CanvasProps) {
             </div>
             <div class='sg-hero-body'>
               <div>
-                <h2 class='sg-hero-name'>{hero()!.name}</h2>
+                <h2 class='sg-hero-name' ref={el => fitText(el, heroName, NAME_FIT.hero)}>
+                  {hero()!.name}
+                </h2>
                 <div class='sg-hero-decks'>{heroDecks()}</div>
               </div>
               <div>
@@ -466,7 +483,9 @@ function SocialCanvas(props: CanvasProps) {
                       <CanvasImg item={c} />
                     </div>
                     <div class='sg-row-meta'>
-                      <div class='sg-row-name'>{c.name}</div>
+                      <div class='sg-row-name' ref={el => fitText(el, () => c.name, NAME_FIT.row)}>
+                        {c.name}
+                      </div>
                       <div class='sg-row-decks'>
                         {props.mode === 'rising' && c.delta !== undefined
                           ? `${c.pct.toFixed(1)}% (+${c.delta.toFixed(1)} pts)`
@@ -494,7 +513,9 @@ function SocialCanvas(props: CanvasProps) {
                   <div class='sg-cell-rank'>{rankStr(c.rank)}</div>
                 </div>
                 <div class='sg-cell-body'>
-                  <div class='sg-cell-name'>{c.name}</div>
+                  <div class='sg-cell-name' ref={el => fitText(el, () => c.name, NAME_FIT.cell)}>
+                    {c.name}
+                  </div>
                   <div class='sg-cell-pct'>{pctLabel(c)}</div>
                 </div>
               </div>
@@ -509,7 +530,9 @@ function SocialCanvas(props: CanvasProps) {
             {c => (
               <div class='sg-tail-cell'>
                 <div class='sg-tail-rank'>№ {rankStr(c.rank)}</div>
-                <div class='sg-tail-name'>{c.name}</div>
+                <div class='sg-tail-name' ref={el => fitText(el, () => c.name, NAME_FIT.tail)}>
+                  {c.name}
+                </div>
                 <div class='sg-tail-pct'>{pctLabel(c)}</div>
               </div>
             )}
