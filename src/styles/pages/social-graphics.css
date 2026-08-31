@@ -380,8 +380,11 @@
   grid-template-rows: auto 1fr;
   gap: 18px;
 }
+/* Font size is driven by fitText(): 'FRAUDULENT CARDS' is wider than the
+   column at the design size, so the headline scales like the card names do. */
 .sg-title {
   font-size: 64px;
+  overflow: hidden;
   font-weight: 900;
   font-style: italic;
   letter-spacing: -0.04em;

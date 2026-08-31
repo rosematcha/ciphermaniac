@@ -1,7 +1,16 @@
-import { buildRenderModel, type Mode, type RenderItem, shortTournament, thumbUrl } from './socialGraphics/model';
+import {
+  buildRenderModel,
+  FRAUD_PLAYRATE_POOL,
+  type Mode,
+  needsDay2Stats,
+  type RenderItem,
+  shortTournament,
+  thumbUrl
+} from './socialGraphics/model';
 import { type FitBounds, fitText } from './socialGraphics/fitText';
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import {
+  fetchConversionIndex,
   fetchDay2CardStats,
   fetchEvolutionMap,
   fetchMaster,
@@ -22,7 +31,8 @@ type MinDecks = 5 | 10 | 25;
 const MODE_OPTIONS: { value: Mode; label: string }[] = [
   { value: 'standard', label: 'Standard' },
   { value: 'rising', label: 'Rising' },
-  { value: 'converting', label: 'Converting' }
+  { value: 'converting', label: 'Converting' },
+  { value: 'fraudulent', label: 'Fraudulent' }
 ];
 const SIZE_OPTIONS: { value: string; label: string }[] = [
   { value: '8', label: 'Top 8' },
@@ -49,6 +59,17 @@ const NAME_FIT: Record<'hero' | 'row' | 'cell' | 'tail', FitBounds> = {
   cell: { max: 17, min: 11 },
   tail: { max: 13, min: 10 }
 };
+
+/** The two-part headline per mode; the second half renders in the accent. */
+const TITLES: Record<Mode, { lead: string; accent: string }> = {
+  standard: { lead: 'MOST', accent: 'PLAYED' },
+  rising: { lead: 'RISING', accent: 'CARDS' },
+  converting: { lead: 'BEST', accent: 'CONVERTERS' },
+  fraudulent: { lead: 'FRAUDULENT', accent: 'CARDS' }
+};
+
+/** The headline is one line too, and 'FRAUDULENT CARDS' is wider than the column. */
+const TITLE_FIT: FitBounds = { max: 64, min: 44 };
 
 export function SocialGraphicsPage() {
   const [tournaments] = createResource(fetchTournamentsList);
@@ -83,11 +104,11 @@ export function SocialGraphicsPage() {
   });
 
   // The Day 1 → Day 2 cut only exists for individual tournaments, so the
-  // Converting mode is meaningless against the rolling Online Meta window.
-  // Auto-revert to Standard whenever the user lands on Online Meta with
-  // Converting selected.
+  // Converting and Fraudulent modes are meaningless against the rolling Online
+  // Meta window. Auto-revert to Standard whenever the user lands on Online Meta
+  // with one of them selected.
   createEffect(() => {
-    if (mode() === 'converting' && tournament() === ONLINE_META_NAME) {
+    if (needsDay2Stats(mode()) && tournament() === ONLINE_META_NAME) {
       setMode('standard');
     }
   });
@@ -120,10 +141,21 @@ export function SocialGraphicsPage() {
     key => (key ? fetchMaster(key) : Promise.resolve(null))
   );
   const [day2Stats] = createResource(
-    () => (mode() === 'converting' && tournament() !== ONLINE_META_NAME ? tournament() : null),
+    () => (needsDay2Stats(mode()) && tournament() !== ONLINE_META_NAME ? tournament() : null),
     key => (key ? fetchDay2CardStats(key) : Promise.resolve(null))
   );
+  // The event's overall Day 2 rate, so a card's conversion can be read against
+  // the field instead of in a vacuum. Same file the day-2 stats come from, so
+  // the client's dedupe cache serves it rather than fetching twice.
+  const [conversionIndex] = createResource(
+    () => (needsDay2Stats(mode()) && tournament() !== ONLINE_META_NAME ? tournament() : null),
+    key => (key ? fetchConversionIndex(key) : Promise.resolve(null))
+  );
   const [evolutionMap] = createResource(fetchEvolutionMap);
+  const fieldConversion = () => {
+    const payload = latestValue(conversionIndex);
+    return payload && payload.day1Total > 0 ? (payload.day2Total / payload.day1Total) * 100 : null;
+  };
   const masterData = () => latestValue(master);
   const comparisonMasterData = () => latestValue(comparisonMaster);
   const day2StatsData = () => latestValue(day2Stats);
@@ -152,7 +184,7 @@ export function SocialGraphicsPage() {
       master.loading ||
       items().length === 0 ||
       (mode() === 'rising' && comparisonMaster.loading) ||
-      (mode() === 'converting' && day2Stats.loading)
+      (needsDay2Stats(mode()) && day2Stats.loading)
   );
 
   async function exportImage(format: 'png' | 'jpg') {
@@ -263,7 +295,7 @@ export function SocialGraphicsPage() {
               Mode
               <Segmented<Mode>
                 options={
-                  tournament() === ONLINE_META_NAME ? MODE_OPTIONS.filter(o => o.value !== 'converting') : MODE_OPTIONS
+                  tournament() === ONLINE_META_NAME ? MODE_OPTIONS.filter(o => !needsDay2Stats(o.value)) : MODE_OPTIONS
                 }
                 selected={mode()}
                 onSelect={setMode}
@@ -279,7 +311,7 @@ export function SocialGraphicsPage() {
                 ariaLabel='Layout size'
               />
             </label>
-            <Show when={mode() === 'converting'}>
+            <Show when={needsDay2Stats(mode())}>
               <label>
                 Min decks
                 <Segmented
@@ -317,11 +349,11 @@ export function SocialGraphicsPage() {
                 when={
                   master.loading ||
                   (mode() === 'rising' && comparisonMaster.loading) ||
-                  (mode() === 'converting' && day2Stats.loading)
+                  (needsDay2Stats(mode()) && day2Stats.loading)
                 }
                 fallback={
                   <div class='sg-stage-empty'>
-                    {mode() === 'converting'
+                    {needsDay2Stats(mode())
                       ? 'No Day 2 data for this tournament (or no cards clear the min-decks filter).'
                       : 'No data yet for this selection.'}
                   </div>
@@ -338,6 +370,7 @@ export function SocialGraphicsPage() {
               deckTotal={masterData()?.deckTotal ?? 0}
               items={items()}
               minDecks={minDecks()}
+              fieldConversion={fieldConversion()}
             />
           </Show>
         </div>
@@ -353,6 +386,8 @@ interface CanvasProps {
   deckTotal: number;
   items: RenderItem[];
   minDecks: number;
+  /** The event's overall Day 1 to Day 2 rate, when it is known. */
+  fieldConversion: number | null;
 }
 
 function SocialCanvas(props: CanvasProps) {
@@ -364,33 +399,51 @@ function SocialCanvas(props: CanvasProps) {
   const grid = () => props.items.slice(4, 12);
   const tail = () => props.items.slice(12, 20);
 
-  const titleRow1 = () => {
-    if (props.mode === 'rising') {
-      return 'RISING';
-    }
-    if (props.mode === 'converting') {
-      return 'BEST';
-    }
-    return 'MOST';
-  };
-  const titleRow2 = () => {
-    if (props.mode === 'rising') {
-      return 'CARDS';
-    }
-    if (props.mode === 'converting') {
-      return 'CONVERTERS';
-    }
-    return 'PLAYED';
-  };
+  const title = () => TITLES[props.mode];
+  const titleText = createMemo(() => `${title().lead} ${title().accent}`);
 
   function pctLabel(c: RenderItem): string {
     if (props.mode === 'rising' && c.delta !== undefined) {
       return `+${c.delta.toFixed(1)}`;
     }
-    if (props.mode === 'converting') {
+    if (needsDay2Stats(props.mode)) {
       return `${Math.round(c.pct)}%`;
     }
     return `${c.pct.toFixed(1)}%`;
+  }
+
+  /** The line under a stack row's name — whatever context its mode needs. */
+  function rowDecks(c: RenderItem): string {
+    if (props.mode === 'rising' && c.delta !== undefined) {
+      return `${c.pct.toFixed(1)}% (+${c.delta.toFixed(1)} pts)`;
+    }
+    if (props.mode === 'fraudulent') {
+      return `${Math.round(c.playRate ?? 0)}% played · ${c.day2Count?.toLocaleString()} / ${c.day1Count?.toLocaleString()} to Day 2`;
+    }
+    if (props.mode === 'converting') {
+      return `${c.day2Count?.toLocaleString()} / ${c.day1Count?.toLocaleString()} to Day 2`;
+    }
+    return `${c.found.toLocaleString()} / ${c.total.toLocaleString()} decks`;
+  }
+
+  /** The field's own conversion rate, the yardstick every row is read against. */
+  function fieldNote(): string {
+    const field = props.fieldConversion;
+    return field === null ? '' : ` · field ${Math.round(field)}%`;
+  }
+
+  /** How the footer describes the ranking. */
+  function footNote(): string {
+    if (props.mode === 'rising') {
+      return 'biggest gain';
+    }
+    if (props.mode === 'fraudulent') {
+      return `lowest Day 1 → Day 2 conversion, top ${FRAUD_PLAYRATE_POOL} most played (min ${props.minDecks} decks)${fieldNote()}`;
+    }
+    if (props.mode === 'converting') {
+      return `Day 1 → Day 2 conversion (min ${props.minDecks} decks)${fieldNote()}`;
+    }
+    return 'inclusion rate';
   }
 
   function rankStr(n: number) {
@@ -402,6 +455,19 @@ function SocialCanvas(props: CanvasProps) {
   // export environments while element children survived.
   function heroDecks() {
     const h = hero()!;
+    if (props.mode === 'fraudulent') {
+      return (
+        <>
+          <span>In </span>
+          <strong>{Math.round(h.playRate ?? 0)}%</strong>
+          <span> of decks, </span>
+          <strong>{h.day2Count?.toLocaleString()}</strong>
+          <span> of </span>
+          <strong>{h.day1Count?.toLocaleString()}</strong>
+          <span> made Day 2</span>
+        </>
+      );
+    }
     if (props.mode === 'converting') {
       return (
         <>
@@ -463,7 +529,7 @@ function SocialCanvas(props: CanvasProps) {
                 <Show when={props.mode === 'rising'}>
                   <div class='sg-hero-delta'>pts gained</div>
                 </Show>
-                <Show when={props.mode === 'converting'}>
+                <Show when={needsDay2Stats(props.mode)}>
                   <div class='sg-hero-delta'>to Day 2</div>
                 </Show>
               </div>
@@ -471,8 +537,8 @@ function SocialCanvas(props: CanvasProps) {
           </div>
 
           <div class='sg-right'>
-            <h1 class='sg-title'>
-              {titleRow1()} <span class='accent'>{titleRow2()}</span>
+            <h1 class='sg-title' ref={el => fitText(el, titleText, TITLE_FIT)}>
+              {title().lead} <span class='accent'>{title().accent}</span>
             </h1>
             <div class='sg-stack'>
               <For each={stack()}>
@@ -486,13 +552,7 @@ function SocialCanvas(props: CanvasProps) {
                       <div class='sg-row-name' ref={el => fitText(el, () => c.name, NAME_FIT.row)}>
                         {c.name}
                       </div>
-                      <div class='sg-row-decks'>
-                        {props.mode === 'rising' && c.delta !== undefined
-                          ? `${c.pct.toFixed(1)}% (+${c.delta.toFixed(1)} pts)`
-                          : props.mode === 'converting'
-                            ? `${c.day2Count?.toLocaleString()} / ${c.day1Count?.toLocaleString()} to Day 2`
-                            : `${c.found.toLocaleString()} / ${c.total.toLocaleString()} decks`}
-                      </div>
+                      <div class='sg-row-decks'>{rowDecks(c)}</div>
                     </div>
                     <div class='sg-row-pct'>{pctLabel(c)}</div>
                   </div>
@@ -542,12 +602,7 @@ function SocialCanvas(props: CanvasProps) {
 
       <div class='sg-foot'>
         <span>
-          <b>Top {props.items.length}</b> by{' '}
-          {props.mode === 'rising'
-            ? 'biggest gain'
-            : props.mode === 'converting'
-              ? `Day 1 → Day 2 conversion (min ${props.minDecks} decks)`
-              : 'inclusion rate'}
+          <b>Top {props.items.length}</b> by {footNote()}
         </span>
         <span class='src'>CIPHERMANIAC.COM</span>
       </div>

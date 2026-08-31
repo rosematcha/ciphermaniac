@@ -13,7 +13,7 @@ import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../../lib/constants';
 import type { Day2CardStat } from '../../lib/data/events';
 import type { CardItem } from '../../types';
 
-export type Mode = 'standard' | 'rising' | 'converting';
+export type Mode = 'standard' | 'rising' | 'converting' | 'fraudulent';
 export type CatKind = 'pokemon' | 'trainer' | 'energy-basic' | 'energy-special';
 
 /** One row in the rendered graphic. */
@@ -34,6 +34,13 @@ export interface RenderItem {
   day2Count?: number;
   /** Converting mode only: count of all Day 1 decks playing this card. */
   day1Count?: number;
+  /** Fraudulent mode only: share of Day 1 decks playing the card (0..100). */
+  playRate?: number;
+}
+
+/** Modes whose numbers come from the event's Day 1 to Day 2 cut. */
+export function needsDay2Stats(mode: Mode): boolean {
+  return mode === 'converting' || mode === 'fraudulent';
 }
 
 /**
@@ -41,6 +48,16 @@ export interface RenderItem {
  * list can still reach the requested size after a few pre-evos are dropped.
  */
 const POOL_SLACK = 8;
+
+/**
+ * How many of the event's most-played cards the fraudulent mode considers.
+ *
+ * "Fraudulent" means popular AND bad at converting, so the low-conversion
+ * ranking is taken over a fixed slice of the most-played cards rather than the
+ * whole field — otherwise it just surfaces fringe cards that four people
+ * played and none of them made Day 2.
+ */
+export const FRAUD_PLAYRATE_POOL = 50;
 
 /** Basic energy is its own set code; it never belongs in a usage graphic. */
 export function isBasicEnergy(item: Pick<CardItem, 'set'>): boolean {
@@ -146,10 +163,141 @@ export interface RenderModelInput {
   items: CardItem[] | null;
   /** Rising mode: the comparison tournament's master items. */
   comparisonItems?: CardItem[] | null;
-  /** Converting mode: the event's day-2 stats. */
+  /** Converting and fraudulent modes: the event's day-2 stats. */
   day2Stats?: Day2CardStat[] | null;
   /** `SET::NUMBER` to the name it evolves from. */
   evolutionMap?: Map<string, string>;
+}
+
+/** Master items indexed by uid, for joining day-2 stats back to card metadata. */
+function indexByUid(items: CardItem[]): Map<string, CardItem> {
+  const byUid = new Map<string, CardItem>();
+  for (const it of items) {
+    if (it.uid) {
+      byUid.set(it.uid, it);
+    }
+  }
+  return byUid;
+}
+
+/** A day-2 stat row as a render row, carrying its conversion as the headline. */
+function fromDay2Stat(stat: Day2CardStat, master: CardItem | undefined): RenderItem {
+  return {
+    rank: 0,
+    name: stat.name,
+    set: stat.set,
+    number: stat.number,
+    found: stat.day2Count,
+    total: stat.day1Count,
+    pct: stat.conversion,
+    cat: master ? classify(master) : 'pokemon',
+    conversion: stat.conversion,
+    day1Count: stat.day1Count,
+    day2Count: stat.day2Count,
+    playRate: master?.pct
+  };
+}
+
+/** Day-2 rows with enough of a sample to mean anything, joined to master. */
+function day2Candidates(
+  stats: Day2CardStat[],
+  master: CardItem[],
+  minDecks: number
+): { row: RenderItem; playRate: number }[] {
+  const byUid = indexByUid(master);
+  return stats
+    .filter(s => s.day1Count >= minDecks && s.set !== 'SVE')
+    .map(s => ({ row: fromDay2Stat(s, byUid.get(s.uid)), playRate: byUid.get(s.uid)?.pct ?? 0 }));
+}
+
+/** Highest Day 1 to Day 2 conversion first. */
+function convertingCandidates(input: RenderModelInput, master: CardItem[], pool: number): RenderItem[] {
+  const stats = input.day2Stats;
+  if (!stats) {
+    return [];
+  }
+  return day2Candidates(stats, master, input.minDecks)
+    .sort((a, b) =>
+      // Tie-break on sample size so a higher-confidence row wins.
+      b.row.pct !== a.row.pct ? b.row.pct - a.row.pct : b.row.total - a.row.total
+    )
+    .slice(0, pool)
+    .map(c => c.row);
+}
+
+/**
+ * Popular cards that converted worst: lowest conversion among the event's most
+ * played cards.
+ *
+ * The play-rate slice is what separates this from "worst converters" — a card
+ * nobody played converting at 0% is noise, while a staple in a third of the
+ * field converting below the pack is the story.
+ */
+function fraudulentCandidates(input: RenderModelInput, master: CardItem[], pool: number): RenderItem[] {
+  const stats = input.day2Stats;
+  if (!stats) {
+    return [];
+  }
+  return day2Candidates(stats, master, input.minDecks)
+    .filter(c => c.playRate > 0)
+    .sort((a, b) => b.playRate - a.playRate)
+    .slice(0, FRAUD_PLAYRATE_POOL)
+    .sort((a, b) =>
+      // Tie-break toward the more played card — the same conversion hurts more
+      // when more of the field was holding it.
+      a.row.pct !== b.row.pct ? a.row.pct - b.row.pct : b.playRate - a.playRate
+    )
+    .slice(0, pool)
+    .map(c => c.row);
+}
+
+/** Biggest gain in play rate against the comparison event. */
+function risingCandidates(input: RenderModelInput, master: CardItem[], pool: number): RenderItem[] {
+  const cmp = input.comparisonItems;
+  if (!cmp) {
+    return [];
+  }
+  const cmpPct = new Map<string, number>();
+  for (const it of cmp) {
+    if (it.uid) {
+      cmpPct.set(it.uid, it.pct);
+    }
+  }
+  return master
+    .filter(it => it.uid && cmpPct.has(it.uid))
+    .map(it => ({ item: it, delta: it.pct - (cmpPct.get(it.uid as string) ?? 0) }))
+    .filter(x => x.delta > 0)
+    .sort((a, b) => b.delta - a.delta)
+    .slice(0, pool)
+    .map(x => ({ ...fromMasterItem(x.item), delta: x.delta }));
+}
+
+/** A master row as a render row, with play rate as the headline. */
+function fromMasterItem(item: CardItem): RenderItem {
+  return {
+    rank: 0,
+    name: item.name,
+    set: item.set ?? '',
+    number: String(item.number ?? ''),
+    found: item.found,
+    total: item.total,
+    pct: item.pct,
+    cat: classify(item)
+  };
+}
+
+/** The candidate pool for a mode, before evolution collapsing. */
+function candidatesFor(input: RenderModelInput, master: CardItem[], pool: number): RenderItem[] {
+  if (input.mode === 'converting') {
+    return convertingCandidates(input, master, pool);
+  }
+  if (input.mode === 'fraudulent') {
+    return fraudulentCandidates(input, master, pool);
+  }
+  if (input.mode === 'rising') {
+    return risingCandidates(input, master, pool);
+  }
+  return master.slice(0, pool).map(fromMasterItem);
 }
 
 /**
@@ -166,81 +314,8 @@ export function buildRenderModel(input: RenderModelInput): RenderItem[] {
   if (!items) {
     return [];
   }
-  const filtered = items.filter(i => !isBasicEnergy(i));
-  const pool = size + POOL_SLACK;
-
-  let candidates: RenderItem[];
-
-  if (mode === 'converting') {
-    const stats = input.day2Stats;
-    if (!stats) {
-      return [];
-    }
-    const catByUid = new Map<string, CatKind>();
-    for (const it of filtered) {
-      if (it.uid) {
-        catByUid.set(it.uid, classify(it));
-      }
-    }
-    const ranked = stats
-      .filter(s => s.day1Count >= input.minDecks && s.set !== 'SVE')
-      .sort((a, b) =>
-        // Tie-break on sample size so a higher-confidence row wins.
-        b.conversion !== a.conversion ? b.conversion - a.conversion : b.day1Count - a.day1Count
-      );
-    candidates = ranked.slice(0, pool).map(s => ({
-      rank: 0,
-      name: s.name,
-      set: s.set,
-      number: s.number,
-      found: s.day2Count,
-      total: s.day1Count,
-      pct: s.conversion,
-      cat: catByUid.get(s.uid) ?? 'pokemon',
-      conversion: s.conversion,
-      day1Count: s.day1Count,
-      day2Count: s.day2Count
-    }));
-  } else if (mode === 'rising') {
-    const cmp = input.comparisonItems;
-    if (!cmp) {
-      return [];
-    }
-    const cmpPct = new Map<string, number>();
-    for (const it of cmp) {
-      if (it.uid) {
-        cmpPct.set(it.uid, it.pct);
-      }
-    }
-    candidates = filtered
-      .filter(it => it.uid && cmpPct.has(it.uid))
-      .map(it => ({ item: it, delta: it.pct - (cmpPct.get(it.uid as string) ?? 0) }))
-      .filter(x => x.delta > 0)
-      .sort((a, b) => b.delta - a.delta)
-      .slice(0, pool)
-      .map(x => ({
-        rank: 0,
-        name: x.item.name,
-        set: x.item.set ?? '',
-        number: String(x.item.number ?? ''),
-        found: x.item.found,
-        total: x.item.total,
-        pct: x.item.pct,
-        cat: classify(x.item),
-        delta: x.delta
-      }));
-  } else {
-    candidates = filtered.slice(0, pool).map(it => ({
-      rank: 0,
-      name: it.name,
-      set: it.set ?? '',
-      number: String(it.number ?? ''),
-      found: it.found,
-      total: it.total,
-      pct: it.pct,
-      cat: classify(it)
-    }));
-  }
+  const master = items.filter(i => !isBasicEnergy(i));
+  const candidates = candidatesFor(input, master, size + POOL_SLACK);
 
   return collapseEvolutions(candidates, input.evolutionMap, mode)
     .slice(0, size)
