@@ -1,0 +1,6130 @@
+{
+ "event": "2026-08-28, World Championship San Francisco",
+ "note": "Decks reconstructed from RK9 public decklists for players Limitless Labs did not scrape. Japanese-print card codes were resolved to their English prints via the Int. Prints cross-reference on limitlesstcg.com; archetypes assigned by nearest-neighbour over the 774 already-labelled decks from the same event.",
+ "sources": {
+  "624": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/ThZAmpXpUjIaKGDdine6",
+  "293": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/xyISlQKB0c6WDCfITt5I",
+  "494": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/xLzqrX40wuHES408KtFR",
+  "319": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/u9gbppUrr5eGPqGF96wO",
+  "520": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/yppPQVV4mJArPbuELHAD",
+  "273": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/OBNYZUxpWFKa6tRR4c5R",
+  "694": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/0cqU6rowLBh6m6SccAQN",
+  "99": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/LRvWnmCUl8pXRQQuscSG",
+  "575": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/am0ZRzAQl4AOhnsHMnbC",
+  "158": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/ZZ18XnLXKfXeTZGJpA4w",
+  "25": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/QLE6pqQTHvMYK9kS0N2C",
+  "519": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/nJXgeGbQNHouc6rOyDiD",
+  "18": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/Jw36O6ssae3LKbGSiEjo",
+  "750": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/1G7KachbG6g4Ksjrc4g3",
+  "383": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/f2mNN5IZpkoDhpJEQ0AM",
+  "66": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/VMhvsFqYFW63qyhXiaE9",
+  "658": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/XMb8tKhHkTLcGObEcphU",
+  "267": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/PmcUlU5fgnoChNKPpECY",
+  "291": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/hYuJ9iA9sQNnNBp58Ve9",
+  "270": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/VrvbW0OqiAEFIILAW5sP",
+  "322": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/EZuDMifgRZdkeIvDFRGT",
+  "328": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/vso3pyoMWY3AzUOIkAlw",
+  "640": "https://rk9.gg/decklist/public/WCS01wI9lfI55wHtvrdy/Pl3Zkewe6sEciLx7FEmZ"
+ },
+ "decks": [
+  {
+   "id": "fb1e0b4042",
+   "deckId": "lopunny-dusknoir",
+   "player": "Joji Koyama",
+   "playerId": "624",
+   "country": "JP",
+   "placement": 55,
+   "archetype": "Lopunny Dusknoir",
+   "archetypeId": "lopunny-dusknoir",
+   "cards": [
+    {
+     "count": 2,
+     "name": "Bronzong",
+     "set": "TEF",
+     "number": "069",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Bronzor",
+     "fullType": "Pokémon - Stage 1 - Evolves from Bronzor"
+    },
+    {
+     "count": 2,
+     "name": "Bronzor",
+     "set": "TEF",
+     "number": "068",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Mega Kangaskhan ex",
+     "set": "MEG",
+     "number": "104",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Dusknoir",
+     "set": "PRE",
+     "number": "037",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Dusclops",
+     "fullType": "Pokémon - Stage 2 - Evolves from Dusclops"
+    },
+    {
+     "count": 2,
+     "name": "Dusclops",
+     "set": "PRE",
+     "number": "036",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Duskull",
+     "fullType": "Pokémon - Stage 1 - Evolves from Duskull"
+    },
+    {
+     "count": 4,
+     "name": "Duskull",
+     "set": "PRE",
+     "number": "035",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Mega Lopunny ex",
+     "set": "PFL",
+     "number": "084",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Buneary",
+     "fullType": "Pokémon - Stage 1 - Evolves from Buneary"
+    },
+    {
+     "count": 2,
+     "name": "Buneary",
+     "set": "PFL",
+     "number": "083",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Bloodmoon Ursaluna ex",
+     "set": "TWM",
+     "number": "141",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Latias ex",
+     "set": "SSP",
+     "number": "076",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Budew",
+     "set": "ASC",
+     "number": "016",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Flutter Mane",
+     "set": "TEF",
+     "number": "078",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Rare Candy",
+     "set": "MEG",
+     "number": "125",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Switch",
+     "set": "MEG",
+     "number": "130",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Hilda",
+     "set": "WHT",
+     "number": "084",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Jamming Tower",
+     "set": "TWM",
+     "number": "153",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 1,
+     "name": "Special Red Card",
+     "set": "CRI",
+     "number": "082",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Enriching Energy",
+     "set": "SSP",
+     "number": "191",
+     "category": "energy",
+     "energyType": "special",
+     "fullType": "Energy - Special Energy",
+     "aceSpec": true
+    },
+    {
+     "count": 4,
+     "name": "Telepathic Psychic Energy",
+     "set": "POR",
+     "number": "088",
+     "category": "energy",
+     "energyType": "special",
+     "fullType": "Energy - Special Energy"
+    },
+    {
+     "count": 1,
+     "name": "Psychic Energy",
+     "set": "MEE",
+     "number": "005",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "fb1e0b4042676cfe992218e52ca5eeb3d6e69679",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [
+    "top10",
+    "top25",
+    "top50"
+   ],
+   "madePhase2": true,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "45db0556d3",
+   "deckId": "dragapult-blaziken",
+   "player": "Naoya Iwamoto",
+   "playerId": "293",
+   "country": "JP",
+   "placement": 111,
+   "archetype": "Dragapult Blaziken",
+   "archetypeId": "dragapult-blaziken",
+   "cards": [
+    {
+     "count": 2,
+     "name": "Dragapult ex",
+     "set": "ASC",
+     "number": "160",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Drakloak",
+     "fullType": "Pokémon - Stage 2 - Evolves from Drakloak"
+    },
+    {
+     "count": 4,
+     "name": "Drakloak",
+     "set": "ASC",
+     "number": "159",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dreepy",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dreepy"
+    },
+    {
+     "count": 4,
+     "name": "Dreepy",
+     "set": "ASC",
+     "number": "158",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Blaziken ex",
+     "set": "JTG",
+     "number": "024",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Combusken",
+     "fullType": "Pokémon - Stage 2 - Evolves from Combusken"
+    },
+    {
+     "count": 1,
+     "name": "Combusken",
+     "set": "DRI",
+     "number": "041",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Torchic",
+     "fullType": "Pokémon - Stage 1 - Evolves from Torchic"
+    },
+    {
+     "count": 2,
+     "name": "Torchic",
+     "set": "DRI",
+     "number": "040",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Budew",
+     "set": "ASC",
+     "number": "016",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Munkidori",
+     "set": "ASC",
+     "number": "099",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Chien-Pao",
+     "set": "SSP",
+     "number": "056",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Shaymin",
+     "set": "DRI",
+     "number": "010",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Buddy-Buddy Poffin",
+     "set": "ASC",
+     "number": "184",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 4,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Rare Candy",
+     "set": "MEG",
+     "number": "125",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Unfair Stamp",
+     "set": "TWM",
+     "number": "165",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 1,
+     "name": "Dawn",
+     "set": "PFL",
+     "number": "087",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Judge",
+     "set": "POR",
+     "number": "076",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Crispin",
+     "set": "SCR",
+     "number": "133",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Area Zero Underdepths",
+     "set": "SCR",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 3,
+     "name": "Fire Energy",
+     "set": "MEE",
+     "number": "002",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Psychic Energy",
+     "set": "MEE",
+     "number": "005",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 2,
+     "name": "Darkness Energy",
+     "set": "MEE",
+     "number": "007",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "45db0556d3ce6f8bfd8a3f1d1b903ff218410da7",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [
+    "top25",
+    "top50"
+   ],
+   "madePhase2": true,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "5f2ec60e2d",
+   "deckId": "mega-lucario-ex",
+   "player": "YUTA ITO",
+   "playerId": "494",
+   "country": "JP",
+   "placement": 241,
+   "archetype": "Mega Lucario",
+   "archetypeId": "mega-lucario-ex",
+   "cards": [
+    {
+     "count": 3,
+     "name": "Riolu",
+     "set": "PRE",
+     "number": "050",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 3,
+     "name": "Mega Lucario ex",
+     "set": "MEG",
+     "number": "077",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Riolu",
+     "fullType": "Pokémon - Stage 1 - Evolves from Riolu"
+    },
+    {
+     "count": 2,
+     "name": "Solrock",
+     "set": "MEG",
+     "number": "075",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Lunatone",
+     "set": "MEG",
+     "number": "074",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Dunsparce",
+     "set": "JTG",
+     "number": "120",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Dudunsparce",
+     "set": "TEF",
+     "number": "129",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dunsparce",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dunsparce"
+    },
+    {
+     "count": 1,
+     "name": "Dudunsparce ex",
+     "set": "JTG",
+     "number": "121",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dunsparce",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dunsparce"
+    },
+    {
+     "count": 1,
+     "name": "Shaymin",
+     "set": "DRI",
+     "number": "010",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Ciphermaniac's Codebreaking",
+     "set": "TEF",
+     "number": "145",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 4,
+     "name": "Fighting Gong",
+     "set": "MEG",
+     "number": "116",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Buddy-Buddy Poffin",
+     "set": "ASC",
+     "number": "184",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Switch",
+     "set": "MEG",
+     "number": "130",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Premium Power Pro",
+     "set": "MEG",
+     "number": "124",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Hero's Cape",
+     "set": "TEF",
+     "number": "152",
+     "category": "trainer",
+     "trainerType": "tool",
+     "fullType": "Trainer - Tool",
+     "aceSpec": true
+    },
+    {
+     "count": 2,
+     "name": "Gravity Mountain",
+     "set": "SSP",
+     "number": "177",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 2,
+     "name": "Judge",
+     "set": "POR",
+     "number": "076",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Rocky Fighting Energy",
+     "set": "POR",
+     "number": "087",
+     "category": "energy",
+     "energyType": "special",
+     "fullType": "Energy - Special Energy"
+    },
+    {
+     "count": 10,
+     "name": "Fighting Energy",
+     "set": "MEE",
+     "number": "006",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "5f2ec60e2d4a5fabedb4bbe2187547c3f881402e",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [
+    "top50"
+   ],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "78ceda2d86",
+   "deckId": "basic-box-m",
+   "player": "TOMOKI HASEGAWA",
+   "playerId": "319",
+   "country": "JP",
+   "placement": 263,
+   "archetype": "Basic Box",
+   "archetypeId": "basic-box-m",
+   "cards": [
+    {
+     "count": 2,
+     "name": "Mega Kangaskhan ex",
+     "set": "MEG",
+     "number": "104",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Teal Mask Ogerpon ex",
+     "set": "TWM",
+     "number": "025",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Wellspring Mask Ogerpon ex",
+     "set": "TWM",
+     "number": "064",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Lillie's Clefairy ex",
+     "set": "ASC",
+     "number": "076",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Iron Leaves ex",
+     "set": "TEF",
+     "number": "025",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Pecharunt",
+     "set": "SVP",
+     "number": "129",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Chi-Yu",
+     "set": "TWM",
+     "number": "039",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Latias ex",
+     "set": "SSP",
+     "number": "076",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Bug Catching Set",
+     "set": "TWM",
+     "number": "143",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Tera Orb",
+     "set": "SSP",
+     "number": "189",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Energy Switch",
+     "set": "MEG",
+     "number": "115",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Unfair Stamp",
+     "set": "TWM",
+     "number": "165",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Ciphermaniac's Codebreaking",
+     "set": "TEF",
+     "number": "145",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "N's Plan",
+     "set": "BLK",
+     "number": "083",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Area Zero Underdepths",
+     "set": "SCR",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 1,
+     "name": "Jamming Tower",
+     "set": "TWM",
+     "number": "153",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 11,
+     "name": "Grass Energy",
+     "set": "MEE",
+     "number": "001",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 4,
+     "name": "Prism Energy",
+     "set": "ASC",
+     "number": "216",
+     "category": "energy",
+     "energyType": "special",
+     "fullType": "Energy - Special Energy"
+    }
+   ],
+   "deckHash": "78ceda2d86d91c5ccfe8bc7035d7d88471282b2d",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [
+    "top50"
+   ],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "ca9c0f2159",
+   "deckId": "rocket-mewtwo-ex",
+   "player": "Tomoki Takasaka",
+   "playerId": "520",
+   "country": "JP",
+   "placement": 272,
+   "archetype": "Rocket's Mewtwo",
+   "archetypeId": "rocket-mewtwo-ex",
+   "cards": [
+    {
+     "count": 2,
+     "name": "Team Rocket's Mewtwo ex",
+     "set": "ASC",
+     "number": "079",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Team Rocket's Tarountula",
+     "set": "ASC",
+     "number": "018",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Team Rocket's Spidops",
+     "set": "ASC",
+     "number": "019",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Team Rocket&#039;s Tarountula",
+     "fullType": "Pokémon - Stage 1 - Evolves from Team Rocket&#039;s Tarountula"
+    },
+    {
+     "count": 2,
+     "name": "Team Rocket's Mimikyu",
+     "set": "ASC",
+     "number": "097",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Team Rocket's Articuno",
+     "set": "DRI",
+     "number": "051",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Team Rocket's Sneasel",
+     "set": "DRI",
+     "number": "128",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Lillie's Clefairy ex",
+     "set": "ASC",
+     "number": "076",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Team Rocket's Transceiver",
+     "set": "ASC",
+     "number": "209",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Bug Catching Set",
+     "set": "TWM",
+     "number": "143",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Brave Bangle",
+     "set": "WHT",
+     "number": "080",
+     "category": "trainer",
+     "trainerType": "tool",
+     "fullType": "Trainer - Tool"
+    },
+    {
+     "count": 1,
+     "name": "Secret Box",
+     "set": "TWM",
+     "number": "163",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 1,
+     "name": "Team Rocket's Petrel",
+     "set": "ASC",
+     "number": "207",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Team Rocket's Proton",
+     "set": "ASC",
+     "number": "208",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Team Rocket's Archer",
+     "set": "ASC",
+     "number": "201",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Team Rocket's Ariana",
+     "set": "ASC",
+     "number": "202",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Team Rocket's Giovanni",
+     "set": "ASC",
+     "number": "204",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Team Rocket's Factory",
+     "set": "ASC",
+     "number": "203",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 1,
+     "name": "Energy Switch",
+     "set": "MEG",
+     "number": "115",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Team Rocket's Energy",
+     "set": "ASC",
+     "number": "217",
+     "category": "energy",
+     "energyType": "special",
+     "fullType": "Energy - Special Energy"
+    },
+    {
+     "count": 7,
+     "name": "Grass Energy",
+     "set": "MEE",
+     "number": "001",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "ca9c0f2159377d9427b42d3632ee0eccc4f38509",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [
+    "top50"
+   ],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "8bc778f37c",
+   "deckId": "dragapult-ex",
+   "player": "TENSEI TSUBAKINO",
+   "playerId": "273",
+   "country": "JP",
+   "placement": 292,
+   "archetype": "Dragapult",
+   "archetypeId": "dragapult-ex",
+   "cards": [
+    {
+     "count": 3,
+     "name": "Dragapult ex",
+     "set": "ASC",
+     "number": "160",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Drakloak",
+     "fullType": "Pokémon - Stage 2 - Evolves from Drakloak"
+    },
+    {
+     "count": 4,
+     "name": "Drakloak",
+     "set": "ASC",
+     "number": "159",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dreepy",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dreepy"
+    },
+    {
+     "count": 4,
+     "name": "Dreepy",
+     "set": "ASC",
+     "number": "158",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Budew",
+     "set": "ASC",
+     "number": "016",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Munkidori",
+     "set": "ASC",
+     "number": "099",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Shaymin",
+     "set": "DRI",
+     "number": "010",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Buddy-Buddy Poffin",
+     "set": "ASC",
+     "number": "184",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Crushing Hammer",
+     "set": "POR",
+     "number": "071",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Unfair Stamp",
+     "set": "TWM",
+     "number": "165",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 1,
+     "name": "Special Red Card",
+     "set": "CRI",
+     "number": "082",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Dark Bell",
+     "set": "PBL",
+     "number": "075",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Team Rocket's Watchtower",
+     "set": "ASC",
+     "number": "210",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 1,
+     "name": "Jamming Tower",
+     "set": "TWM",
+     "number": "153",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Crispin",
+     "set": "SCR",
+     "number": "133",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Dawn",
+     "set": "PFL",
+     "number": "087",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Rosa's Encouragement",
+     "set": "POR",
+     "number": "084",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Fire Energy",
+     "set": "MEE",
+     "number": "002",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Psychic Energy",
+     "set": "MEE",
+     "number": "005",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 2,
+     "name": "Darkness Energy",
+     "set": "MEE",
+     "number": "007",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "8bc778f37cc97070e4f76ead3da62a35e5360ab9",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [
+    "top50"
+   ],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "43d74b54f5",
+   "deckId": "dragapult-ex",
+   "player": "星輔 平田",
+   "playerId": "694",
+   "country": "JP",
+   "placement": 317,
+   "archetype": "Dragapult",
+   "archetypeId": "dragapult-ex",
+   "cards": [
+    {
+     "count": 3,
+     "name": "Dragapult ex",
+     "set": "ASC",
+     "number": "160",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Drakloak",
+     "fullType": "Pokémon - Stage 2 - Evolves from Drakloak"
+    },
+    {
+     "count": 4,
+     "name": "Dreepy",
+     "set": "ASC",
+     "number": "158",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Dudunsparce ex",
+     "set": "JTG",
+     "number": "121",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dunsparce",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dunsparce"
+    },
+    {
+     "count": 1,
+     "name": "Dunsparce",
+     "set": "JTG",
+     "number": "120",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Dudunsparce",
+     "set": "TEF",
+     "number": "129",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dunsparce",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dunsparce"
+    },
+    {
+     "count": 1,
+     "name": "Dunsparce",
+     "set": "TEF",
+     "number": "128",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Munkidori",
+     "set": "ASC",
+     "number": "099",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Budew",
+     "set": "ASC",
+     "number": "016",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Drakloak",
+     "set": "ASC",
+     "number": "159",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dreepy",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dreepy"
+    },
+    {
+     "count": 4,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Rosa's Encouragement",
+     "set": "POR",
+     "number": "084",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 4,
+     "name": "Buddy-Buddy Poffin",
+     "set": "ASC",
+     "number": "184",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Crushing Hammer",
+     "set": "POR",
+     "number": "071",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Special Red Card",
+     "set": "CRI",
+     "number": "082",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Unfair Stamp",
+     "set": "TWM",
+     "number": "165",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Crispin",
+     "set": "SCR",
+     "number": "133",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Risky Ruins",
+     "set": "MEG",
+     "number": "127",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 3,
+     "name": "Fire Energy",
+     "set": "MEE",
+     "number": "002",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 2,
+     "name": "Darkness Energy",
+     "set": "MEE",
+     "number": "007",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Psychic Energy",
+     "set": "MEE",
+     "number": "005",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "43d74b54f5b608b158616149833e85091d2c1e60",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [
+    "top50"
+   ],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "476f99455f",
+   "deckId": "festival-lead",
+   "player": "Takuya Shomura",
+   "playerId": "99",
+   "country": "JP",
+   "placement": 329,
+   "archetype": "Festival Lead",
+   "archetypeId": "festival-lead",
+   "cards": [
+    {
+     "count": 4,
+     "name": "Dipplin",
+     "set": "TWM",
+     "number": "018",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Applin",
+     "fullType": "Pokémon - Stage 1 - Evolves from Applin"
+    },
+    {
+     "count": 4,
+     "name": "Applin",
+     "set": "TWM",
+     "number": "126",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Thwackey",
+     "set": "TWM",
+     "number": "015",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Grookey",
+     "fullType": "Pokémon - Stage 1 - Evolves from Grookey"
+    },
+    {
+     "count": 4,
+     "name": "Grookey",
+     "set": "TWM",
+     "number": "014",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Rabsca",
+     "set": "TEF",
+     "number": "024",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Rellor",
+     "fullType": "Pokémon - Stage 1 - Evolves from Rellor"
+    },
+    {
+     "count": 1,
+     "name": "Rellor",
+     "set": "TEF",
+     "number": "023",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Shaymin",
+     "set": "DRI",
+     "number": "010",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Seaking",
+     "set": "PRE",
+     "number": "021",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Goldeen",
+     "fullType": "Pokémon - Stage 1 - Evolves from Goldeen"
+    },
+    {
+     "count": 2,
+     "name": "Goldeen",
+     "set": "TWM",
+     "number": "044",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Brave Bangle",
+     "set": "WHT",
+     "number": "080",
+     "category": "trainer",
+     "trainerType": "tool",
+     "fullType": "Trainer - Tool"
+    },
+    {
+     "count": 2,
+     "name": "Air Balloon",
+     "set": "ASC",
+     "number": "181",
+     "category": "trainer",
+     "trainerType": "tool",
+     "fullType": "Trainer - Tool"
+    },
+    {
+     "count": 1,
+     "name": "Secret Box",
+     "set": "TWM",
+     "number": "163",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 1,
+     "name": "Switch",
+     "set": "MEG",
+     "number": "130",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Tool Scrapper",
+     "set": "ASC",
+     "number": "212",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Buddy-Buddy Poffin",
+     "set": "ASC",
+     "number": "184",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Kieran",
+     "set": "TWM",
+     "number": "154",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Gladion's Final Battle",
+     "set": "PBL",
+     "number": "077",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 4,
+     "name": "Festival Grounds",
+     "set": "TWM",
+     "number": "149",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 4,
+     "name": "Growing Grass Energy",
+     "set": "POR",
+     "number": "086",
+     "category": "energy",
+     "energyType": "special",
+     "fullType": "Energy - Special Energy"
+    },
+    {
+     "count": 2,
+     "name": "Grass Energy",
+     "set": "MEE",
+     "number": "001",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "476f99455fb62b4034a5f01d1070eecb31c36cb8",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [
+    "top50"
+   ],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "302e934418",
+   "deckId": "n-zoroark",
+   "player": "Shunsuke Shoda",
+   "playerId": "575",
+   "country": "JP",
+   "placement": 349,
+   "archetype": "N's Zoroark",
+   "archetypeId": "n-zoroark",
+   "cards": [
+    {
+     "count": 4,
+     "name": "N's Zorua",
+     "set": "ASC",
+     "number": "136",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "N's Zoroark ex",
+     "set": "ASC",
+     "number": "137",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from N&#039;s Zorua",
+     "fullType": "Pokémon - Stage 1 - Evolves from N&#039;s Zorua"
+    },
+    {
+     "count": 2,
+     "name": "N's Zekrom",
+     "set": "ASC",
+     "number": "155",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "N's Darumaka",
+     "set": "ASC",
+     "number": "032",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "N's Darmanitan",
+     "set": "ASC",
+     "number": "033",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from N&#039;s Darumaka",
+     "fullType": "Pokémon - Stage 1 - Evolves from N&#039;s Darumaka"
+    },
+    {
+     "count": 2,
+     "name": "Pecharunt ex",
+     "set": "SFA",
+     "number": "039",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Yveltal",
+     "set": "MEG",
+     "number": "088",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Tatsugiri",
+     "set": "TWM",
+     "number": "131",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Munkidori",
+     "set": "ASC",
+     "number": "099",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Buddy-Buddy Poffin",
+     "set": "ASC",
+     "number": "184",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "N's PP Up",
+     "set": "ASC",
+     "number": "195",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Special Red Card",
+     "set": "CRI",
+     "number": "082",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Secret Box",
+     "set": "TWM",
+     "number": "163",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 2,
+     "name": "Binding Mochi",
+     "set": "PRE",
+     "number": "095",
+     "category": "trainer",
+     "trainerType": "tool",
+     "fullType": "Trainer - Tool"
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 4,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Cyrano",
+     "set": "SSP",
+     "number": "170",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Black Belt's Training",
+     "set": "JTG",
+     "number": "143",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "N's Castle",
+     "set": "JTG",
+     "number": "152",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 1,
+     "name": "Team Rocket's Watchtower",
+     "set": "ASC",
+     "number": "210",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 8,
+     "name": "Darkness Energy",
+     "set": "MEE",
+     "number": "007",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "302e9344184763d9cfb76c3c0090213bd872259a",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [
+    "top50"
+   ],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "a443a1f825",
+   "deckId": "n-zoroark",
+   "player": "HIROICHI AOYAMA",
+   "playerId": "158",
+   "country": "JP",
+   "placement": 411,
+   "archetype": "N's Zoroark",
+   "archetypeId": "n-zoroark",
+   "cards": [
+    {
+     "count": 4,
+     "name": "N's Zoroark ex",
+     "set": "ASC",
+     "number": "137",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from N&#039;s Zorua",
+     "fullType": "Pokémon - Stage 1 - Evolves from N&#039;s Zorua"
+    },
+    {
+     "count": 4,
+     "name": "N's Zorua",
+     "set": "ASC",
+     "number": "136",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Yveltal",
+     "set": "MEG",
+     "number": "088",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Pecharunt ex",
+     "set": "SFA",
+     "number": "039",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Shaymin",
+     "set": "DRI",
+     "number": "010",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Munkidori",
+     "set": "ASC",
+     "number": "099",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "N's Zekrom",
+     "set": "ASC",
+     "number": "155",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "N's Reshiram",
+     "set": "ASC",
+     "number": "154",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "N's Darumaka",
+     "set": "ASC",
+     "number": "032",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "N's Darmanitan",
+     "set": "ASC",
+     "number": "033",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from N&#039;s Darumaka",
+     "fullType": "Pokémon - Stage 1 - Evolves from N&#039;s Darumaka"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 4,
+     "name": "Buddy-Buddy Poffin",
+     "set": "ASC",
+     "number": "184",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Cyrano",
+     "set": "SSP",
+     "number": "170",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Black Belt's Training",
+     "set": "JTG",
+     "number": "143",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Janine's Secret Art",
+     "set": "PRE",
+     "number": "112",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Ciphermaniac's Codebreaking",
+     "set": "TEF",
+     "number": "145",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Binding Mochi",
+     "set": "PRE",
+     "number": "095",
+     "category": "trainer",
+     "trainerType": "tool",
+     "fullType": "Trainer - Tool"
+    },
+    {
+     "count": 1,
+     "name": "Punk Helmet",
+     "set": "PFL",
+     "number": "092",
+     "category": "trainer",
+     "trainerType": "tool",
+     "fullType": "Trainer - Tool"
+    },
+    {
+     "count": 3,
+     "name": "N's PP Up",
+     "set": "ASC",
+     "number": "195",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "N's Castle",
+     "set": "JTG",
+     "number": "152",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 1,
+     "name": "Survival Brace",
+     "set": "TWM",
+     "number": "164",
+     "category": "trainer",
+     "trainerType": "tool",
+     "fullType": "Trainer - Tool"
+    },
+    {
+     "count": 1,
+     "name": "Special Red Card",
+     "set": "CRI",
+     "number": "082",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Tool Scrapper",
+     "set": "ASC",
+     "number": "212",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 8,
+     "name": "Darkness Energy",
+     "set": "MEE",
+     "number": "007",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "a443a1f8254d455a924ce78a34eca187437f2420",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "3c2f5c385e",
+   "deckId": "basic-box-m",
+   "player": "YUKI TOKUNAGA",
+   "playerId": "25",
+   "country": "JP",
+   "placement": 427,
+   "archetype": "Basic Box",
+   "archetypeId": "basic-box-m",
+   "cards": [
+    {
+     "count": 2,
+     "name": "Fan Rotom",
+     "set": "ASC",
+     "number": "171",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 3,
+     "name": "Hoothoot",
+     "set": "SCR",
+     "number": "114",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 3,
+     "name": "Noctowl",
+     "set": "SCR",
+     "number": "115",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Hoothoot",
+     "fullType": "Pokémon - Stage 1 - Evolves from Hoothoot"
+    },
+    {
+     "count": 2,
+     "name": "Teal Mask Ogerpon ex",
+     "set": "TWM",
+     "number": "025",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Wellspring Mask Ogerpon ex",
+     "set": "TWM",
+     "number": "064",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Terapagos ex",
+     "set": "ASC",
+     "number": "179",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Raging Bolt ex",
+     "set": "TEF",
+     "number": "123",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Lillie's Clefairy ex",
+     "set": "ASC",
+     "number": "076",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Iron Leaves ex",
+     "set": "TEF",
+     "number": "025",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Mega Kangaskhan ex",
+     "set": "MEG",
+     "number": "104",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Latias ex",
+     "set": "SSP",
+     "number": "076",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Crispin",
+     "set": "SCR",
+     "number": "133",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Cyrano",
+     "set": "SSP",
+     "number": "170",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Brock's Scouting",
+     "set": "JTG",
+     "number": "146",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 4,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Tera Orb",
+     "set": "SSP",
+     "number": "189",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Energy Switch",
+     "set": "MEG",
+     "number": "115",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Glass Trumpet",
+     "set": "ASC",
+     "number": "189",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Unfair Stamp",
+     "set": "TWM",
+     "number": "165",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 1,
+     "name": "Energy Search",
+     "set": "POR",
+     "number": "072",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Area Zero Underdepths",
+     "set": "SCR",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 1,
+     "name": "Jamming Tower",
+     "set": "TWM",
+     "number": "153",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 1,
+     "name": "Energy Retrieval",
+     "set": "SVI",
+     "number": "171",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 5,
+     "name": "Grass Energy",
+     "set": "MEE",
+     "number": "001",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 2,
+     "name": "Fighting Energy",
+     "set": "MEE",
+     "number": "006",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 2,
+     "name": "Lightning Energy",
+     "set": "MEE",
+     "number": "004",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 2,
+     "name": "Psychic Energy",
+     "set": "MEE",
+     "number": "005",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 1,
+     "name": "Water Energy",
+     "set": "MEE",
+     "number": "003",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "3c2f5c385e51a0f566219d173c5fbcc3a061f7d1",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "0957d53c07",
+   "deckId": "clefairy-ogerpon",
+   "player": "Ryunosuke Murata",
+   "playerId": "519",
+   "country": "JP",
+   "placement": 434,
+   "archetype": "Clefairy Ogerpon",
+   "archetypeId": "clefairy-ogerpon",
+   "cards": [
+    {
+     "count": 3,
+     "name": "Mega Kangaskhan ex",
+     "set": "MEG",
+     "number": "104",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 3,
+     "name": "Lillie's Clefairy ex",
+     "set": "ASC",
+     "number": "076",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Teal Mask Ogerpon ex",
+     "set": "TWM",
+     "number": "025",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Wellspring Mask Ogerpon ex",
+     "set": "TWM",
+     "number": "064",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 3,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Latias ex",
+     "set": "SSP",
+     "number": "076",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Iron Crown ex",
+     "set": "TEF",
+     "number": "081",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Iron Leaves ex",
+     "set": "TEF",
+     "number": "025",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Bloodmoon Ursaluna ex",
+     "set": "TWM",
+     "number": "141",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Paldean Tauros",
+     "set": "SSP",
+     "number": "018",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Flutter Mane",
+     "set": "TEF",
+     "number": "078",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Chien-Pao",
+     "set": "SSP",
+     "number": "056",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Energy Switch",
+     "set": "MEG",
+     "number": "115",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Unfair Stamp",
+     "set": "TWM",
+     "number": "165",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 2,
+     "name": "Lillie's Pearl",
+     "set": "JTG",
+     "number": "151",
+     "category": "trainer",
+     "trainerType": "tool",
+     "fullType": "Trainer - Tool"
+    },
+    {
+     "count": 3,
+     "name": "Area Zero Underdepths",
+     "set": "SCR",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 3,
+     "name": "Crispin",
+     "set": "SCR",
+     "number": "133",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Cyrano",
+     "set": "SSP",
+     "number": "170",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Ciphermaniac's Codebreaking",
+     "set": "TEF",
+     "number": "145",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Xerosic's Machinations",
+     "set": "SFA",
+     "number": "064",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Psychic Energy",
+     "set": "MEE",
+     "number": "005",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 1,
+     "name": "Fire Energy",
+     "set": "MEE",
+     "number": "002",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 1,
+     "name": "Water Energy",
+     "set": "MEE",
+     "number": "003",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Telepathic Psychic Energy",
+     "set": "POR",
+     "number": "088",
+     "category": "energy",
+     "energyType": "special",
+     "fullType": "Energy - Special Energy"
+    },
+    {
+     "count": 1,
+     "name": "Prism Energy",
+     "set": "ASC",
+     "number": "216",
+     "category": "energy",
+     "energyType": "special",
+     "fullType": "Energy - Special Energy"
+    },
+    {
+     "count": 5,
+     "name": "Grass Energy",
+     "set": "MEE",
+     "number": "001",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "0957d53c0707c50db8bc4fe0a81ecb53ebe91abd",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "56b7d2a0fe",
+   "deckId": "dragapult-dusknoir",
+   "player": "Sango Makimura",
+   "playerId": "18",
+   "country": "JP",
+   "placement": 445,
+   "archetype": "Dragapult Dusknoir",
+   "archetypeId": "dragapult-dusknoir",
+   "cards": [
+    {
+     "count": 4,
+     "name": "Dreepy",
+     "set": "ASC",
+     "number": "158",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Drakloak",
+     "set": "ASC",
+     "number": "159",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dreepy",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dreepy"
+    },
+    {
+     "count": 3,
+     "name": "Dragapult ex",
+     "set": "ASC",
+     "number": "160",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Drakloak",
+     "fullType": "Pokémon - Stage 2 - Evolves from Drakloak"
+    },
+    {
+     "count": 2,
+     "name": "Duskull",
+     "set": "PRE",
+     "number": "035",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Dusclops",
+     "set": "PRE",
+     "number": "036",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Duskull",
+     "fullType": "Pokémon - Stage 1 - Evolves from Duskull"
+    },
+    {
+     "count": 1,
+     "name": "Dusknoir",
+     "set": "PRE",
+     "number": "037",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Dusclops",
+     "fullType": "Pokémon - Stage 2 - Evolves from Dusclops"
+    },
+    {
+     "count": 1,
+     "name": "Munkidori",
+     "set": "ASC",
+     "number": "099",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Budew",
+     "set": "ASC",
+     "number": "016",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Shaymin",
+     "set": "DRI",
+     "number": "010",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Buddy-Buddy Poffin",
+     "set": "ASC",
+     "number": "184",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Crushing Hammer",
+     "set": "POR",
+     "number": "071",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Unfair Stamp",
+     "set": "TWM",
+     "number": "165",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Crispin",
+     "set": "SCR",
+     "number": "133",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Rosa's Encouragement",
+     "set": "POR",
+     "number": "084",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Dawn",
+     "set": "PFL",
+     "number": "087",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Team Rocket's Watchtower",
+     "set": "ASC",
+     "number": "210",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 1,
+     "name": "Jamming Tower",
+     "set": "TWM",
+     "number": "153",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 3,
+     "name": "Fire Energy",
+     "set": "MEE",
+     "number": "002",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Psychic Energy",
+     "set": "MEE",
+     "number": "005",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 2,
+     "name": "Darkness Energy",
+     "set": "MEE",
+     "number": "007",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "56b7d2a0fed4c83530bd0c0cef414d3929d1743e",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "1bcdd4b8ff",
+   "deckId": "ogerpon-meganium-hydrapple",
+   "player": "Yano Wataru",
+   "playerId": "750",
+   "country": "JP",
+   "placement": 449,
+   "archetype": "Ogerpon Meganium Hydrapple",
+   "archetypeId": "ogerpon-meganium-hydrapple",
+   "cards": [
+    {
+     "count": 4,
+     "name": "Mega Kangaskhan ex",
+     "set": "MEG",
+     "number": "104",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Teal Mask Ogerpon ex",
+     "set": "TWM",
+     "number": "025",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Chikorita",
+     "set": "MEG",
+     "number": "008",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Bayleef",
+     "set": "MEG",
+     "number": "009",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Chikorita",
+     "fullType": "Pokémon - Stage 1 - Evolves from Chikorita"
+    },
+    {
+     "count": 2,
+     "name": "Meganium",
+     "set": "MEG",
+     "number": "010",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Bayleef",
+     "fullType": "Pokémon - Stage 2 - Evolves from Bayleef"
+    },
+    {
+     "count": 1,
+     "name": "Applin",
+     "set": "TWM",
+     "number": "017",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Dipplin",
+     "set": "TWM",
+     "number": "018",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Applin",
+     "fullType": "Pokémon - Stage 1 - Evolves from Applin"
+    },
+    {
+     "count": 1,
+     "name": "Hydrapple ex",
+     "set": "SCR",
+     "number": "014",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Dipplin",
+     "fullType": "Pokémon - Stage 2 - Evolves from Dipplin"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Latias ex",
+     "set": "SSP",
+     "number": "076",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Dawn",
+     "set": "PFL",
+     "number": "087",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Morty's Conviction",
+     "set": "TEF",
+     "number": "155",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Lana's Aid",
+     "set": "TWM",
+     "number": "155",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Eri",
+     "set": "TEF",
+     "number": "146",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 4,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Bug Catching Set",
+     "set": "TWM",
+     "number": "143",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Switch",
+     "set": "MEG",
+     "number": "130",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Jumbo Ice Cream",
+     "set": "PFL",
+     "number": "091",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Unfair Stamp",
+     "set": "TWM",
+     "number": "165",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 4,
+     "name": "Forest of Vitality",
+     "set": "MEG",
+     "number": "117",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 13,
+     "name": "Grass Energy",
+     "set": "MEE",
+     "number": "001",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "1bcdd4b8ff169cafbfc27b34ab37455282d534e6",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "18ee773493",
+   "deckId": "dragapult-ex",
+   "player": "ryota okano",
+   "playerId": "383",
+   "country": "JP",
+   "placement": 479,
+   "archetype": "Dragapult",
+   "archetypeId": "dragapult-ex",
+   "cards": [
+    {
+     "count": 4,
+     "name": "Dreepy",
+     "set": "ASC",
+     "number": "158",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Drakloak",
+     "set": "ASC",
+     "number": "159",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dreepy",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dreepy"
+    },
+    {
+     "count": 3,
+     "name": "Dragapult ex",
+     "set": "ASC",
+     "number": "160",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Drakloak",
+     "fullType": "Pokémon - Stage 2 - Evolves from Drakloak"
+    },
+    {
+     "count": 2,
+     "name": "Munkidori",
+     "set": "ASC",
+     "number": "099",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Budew",
+     "set": "ASC",
+     "number": "016",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Shaymin",
+     "set": "DRI",
+     "number": "010",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Moltres",
+     "set": "PFL",
+     "number": "014",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Dunsparce",
+     "set": "JTG",
+     "number": "120",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Dudunsparce",
+     "set": "TEF",
+     "number": "129",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dunsparce",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dunsparce"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Crushing Hammer",
+     "set": "POR",
+     "number": "071",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Buddy-Buddy Poffin",
+     "set": "ASC",
+     "number": "184",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Crispin",
+     "set": "SCR",
+     "number": "133",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Rosa's Encouragement",
+     "set": "POR",
+     "number": "084",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Judge",
+     "set": "POR",
+     "number": "076",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Unfair Stamp",
+     "set": "TWM",
+     "number": "165",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 1,
+     "name": "Jamming Tower",
+     "set": "TWM",
+     "number": "153",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 1,
+     "name": "Team Rocket's Watchtower",
+     "set": "ASC",
+     "number": "210",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 2,
+     "name": "Darkness Energy",
+     "set": "MEE",
+     "number": "007",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Fire Energy",
+     "set": "MEE",
+     "number": "002",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Psychic Energy",
+     "set": "MEE",
+     "number": "005",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "18ee7734932a218f8a9e14ef3a252e914aa49435",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "4e45e1ed22",
+   "deckId": "dragapult-blaziken",
+   "player": "Takumi Mitani",
+   "playerId": "66",
+   "country": "JP",
+   "placement": 506,
+   "archetype": "Dragapult Blaziken",
+   "archetypeId": "dragapult-blaziken",
+   "cards": [
+    {
+     "count": 4,
+     "name": "Dreepy",
+     "set": "ASC",
+     "number": "158",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Drakloak",
+     "set": "ASC",
+     "number": "159",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dreepy",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dreepy"
+    },
+    {
+     "count": 2,
+     "name": "Dragapult ex",
+     "set": "ASC",
+     "number": "160",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Drakloak",
+     "fullType": "Pokémon - Stage 2 - Evolves from Drakloak"
+    },
+    {
+     "count": 2,
+     "name": "Torchic",
+     "set": "DRI",
+     "number": "040",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Combusken",
+     "set": "DRI",
+     "number": "041",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Torchic",
+     "fullType": "Pokémon - Stage 1 - Evolves from Torchic"
+    },
+    {
+     "count": 2,
+     "name": "Blaziken ex",
+     "set": "JTG",
+     "number": "024",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Combusken",
+     "fullType": "Pokémon - Stage 2 - Evolves from Combusken"
+    },
+    {
+     "count": 2,
+     "name": "Munkidori",
+     "set": "ASC",
+     "number": "099",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Budew",
+     "set": "ASC",
+     "number": "016",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Shaymin",
+     "set": "DRI",
+     "number": "010",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Buddy-Buddy Poffin",
+     "set": "ASC",
+     "number": "184",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Special Red Card",
+     "set": "CRI",
+     "number": "082",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Unfair Stamp",
+     "set": "TWM",
+     "number": "165",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 2,
+     "name": "Area Zero Underdepths",
+     "set": "SCR",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Dawn",
+     "set": "PFL",
+     "number": "087",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Crispin",
+     "set": "SCR",
+     "number": "133",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Rare Candy",
+     "set": "MEG",
+     "number": "125",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Fire Energy",
+     "set": "MEE",
+     "number": "002",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Psychic Energy",
+     "set": "MEE",
+     "number": "005",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Darkness Energy",
+     "set": "MEE",
+     "number": "007",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "4e45e1ed2204825b434bb83dae8f5981a10ebf5b",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "139315a525",
+   "deckId": "dragapult-ex",
+   "player": "Takumi Mizusugi",
+   "playerId": "658",
+   "country": "JP",
+   "placement": 507,
+   "archetype": "Dragapult",
+   "archetypeId": "dragapult-ex",
+   "cards": [
+    {
+     "count": 4,
+     "name": "Dreepy",
+     "set": "ASC",
+     "number": "158",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Drakloak",
+     "set": "ASC",
+     "number": "159",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dreepy",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dreepy"
+    },
+    {
+     "count": 3,
+     "name": "Dragapult ex",
+     "set": "ASC",
+     "number": "160",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Drakloak",
+     "fullType": "Pokémon - Stage 2 - Evolves from Drakloak"
+    },
+    {
+     "count": 1,
+     "name": "Moltres",
+     "set": "PFL",
+     "number": "014",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Budew",
+     "set": "ASC",
+     "number": "016",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Shaymin",
+     "set": "DRI",
+     "number": "010",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Munkidori",
+     "set": "ASC",
+     "number": "099",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Yveltal",
+     "set": "MEG",
+     "number": "088",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Buddy-Buddy Poffin",
+     "set": "ASC",
+     "number": "184",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Crushing Hammer",
+     "set": "POR",
+     "number": "071",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Special Red Card",
+     "set": "CRI",
+     "number": "082",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Unfair Stamp",
+     "set": "TWM",
+     "number": "165",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Crispin",
+     "set": "SCR",
+     "number": "133",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Dawn",
+     "set": "PFL",
+     "number": "087",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Team Rocket's Watchtower",
+     "set": "ASC",
+     "number": "210",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 1,
+     "name": "Jamming Tower",
+     "set": "TWM",
+     "number": "153",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 4,
+     "name": "Fire Energy",
+     "set": "MEE",
+     "number": "002",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Psychic Energy",
+     "set": "MEE",
+     "number": "005",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 2,
+     "name": "Darkness Energy",
+     "set": "MEE",
+     "number": "007",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "139315a525ace3ddc4d7279c29c7c4e81acda2ca",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "3e9fcace81",
+   "deckId": "basic-box-m",
+   "player": "Takuro Hirasawa",
+   "playerId": "267",
+   "country": "JP",
+   "placement": 554,
+   "archetype": "Basic Box",
+   "archetypeId": "basic-box-m",
+   "cards": [
+    {
+     "count": 3,
+     "name": "Mega Kangaskhan ex",
+     "set": "MEG",
+     "number": "104",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 3,
+     "name": "Froakie",
+     "set": "CRI",
+     "number": "020",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Frogadier",
+     "set": "CRI",
+     "number": "021",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Froakie",
+     "fullType": "Pokémon - Stage 1 - Evolves from Froakie"
+    },
+    {
+     "count": 2,
+     "name": "Greninja ex",
+     "set": "TWM",
+     "number": "106",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Frogadier",
+     "fullType": "Pokémon - Stage 2 - Evolves from Frogadier"
+    },
+    {
+     "count": 1,
+     "name": "Mega Greninja ex",
+     "set": "CRI",
+     "number": "022",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Frogadier",
+     "fullType": "Pokémon - Stage 2 - Evolves from Frogadier"
+    },
+    {
+     "count": 2,
+     "name": "Dratini",
+     "set": "ASC",
+     "number": "150",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Dragonair",
+     "set": "ASC",
+     "number": "151",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dratini",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dratini"
+    },
+    {
+     "count": 2,
+     "name": "Mega Dragonite ex",
+     "set": "ASC",
+     "number": "152",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Dragonair",
+     "fullType": "Pokémon - Stage 2 - Evolves from Dragonair"
+    },
+    {
+     "count": 2,
+     "name": "Latias ex",
+     "set": "SSP",
+     "number": "076",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Bloodmoon Ursaluna ex",
+     "set": "TWM",
+     "number": "141",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Budew",
+     "set": "ASC",
+     "number": "016",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Chien-Pao",
+     "set": "SSP",
+     "number": "056",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Rare Candy",
+     "set": "MEG",
+     "number": "125",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Team Rocket's Petrel",
+     "set": "ASC",
+     "number": "207",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Crispin",
+     "set": "SCR",
+     "number": "133",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Precious Trolley",
+     "set": "SSP",
+     "number": "185",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 2,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Judge",
+     "set": "POR",
+     "number": "076",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Hilda",
+     "set": "WHT",
+     "number": "084",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Brock's Scouting",
+     "set": "JTG",
+     "number": "146",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Area Zero Underdepths",
+     "set": "SCR",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 1,
+     "name": "Jamming Tower",
+     "set": "TWM",
+     "number": "153",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 4,
+     "name": "Water Energy",
+     "set": "MEE",
+     "number": "003",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Lightning Energy",
+     "set": "MEE",
+     "number": "004",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 2,
+     "name": "Ignition Energy",
+     "set": "WHT",
+     "number": "086",
+     "category": "energy",
+     "energyType": "special",
+     "fullType": "Energy - Special Energy"
+    }
+   ],
+   "deckHash": "3e9fcace817144296cde702a51134444e54ddd20",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "d158ab891c",
+   "deckId": "dragapult-ex",
+   "player": "Ryoji Inoue",
+   "playerId": "291",
+   "country": "JP",
+   "placement": 603,
+   "archetype": "Dragapult",
+   "archetypeId": "dragapult-ex",
+   "cards": [
+    {
+     "count": 3,
+     "name": "Dragapult ex",
+     "set": "ASC",
+     "number": "160",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Drakloak",
+     "fullType": "Pokémon - Stage 2 - Evolves from Drakloak"
+    },
+    {
+     "count": 4,
+     "name": "Drakloak",
+     "set": "ASC",
+     "number": "159",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dreepy",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dreepy"
+    },
+    {
+     "count": 4,
+     "name": "Dreepy",
+     "set": "ASC",
+     "number": "158",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Moltres",
+     "set": "PFL",
+     "number": "014",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Munkidori",
+     "set": "ASC",
+     "number": "099",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Budew",
+     "set": "ASC",
+     "number": "016",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Dudunsparce",
+     "set": "TEF",
+     "number": "129",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dunsparce",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dunsparce"
+    },
+    {
+     "count": 1,
+     "name": "Dunsparce",
+     "set": "TEF",
+     "number": "128",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 4,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Buddy-Buddy Poffin",
+     "set": "ASC",
+     "number": "184",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Crispin",
+     "set": "SCR",
+     "number": "133",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Rosa's Encouragement",
+     "set": "POR",
+     "number": "084",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 4,
+     "name": "Crushing Hammer",
+     "set": "POR",
+     "number": "071",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Risky Ruins",
+     "set": "MEG",
+     "number": "127",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 1,
+     "name": "Team Rocket's Watchtower",
+     "set": "ASC",
+     "number": "210",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 1,
+     "name": "Special Red Card",
+     "set": "CRI",
+     "number": "082",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Unfair Stamp",
+     "set": "TWM",
+     "number": "165",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 1,
+     "name": "Jamming Tower",
+     "set": "TWM",
+     "number": "153",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 2,
+     "name": "Darkness Energy",
+     "set": "MEE",
+     "number": "007",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Fire Energy",
+     "set": "MEE",
+     "number": "002",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Psychic Energy",
+     "set": "MEE",
+     "number": "005",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "d158ab891c017d1058d2378059e77a1717d4b74f",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "c9f5867f7b",
+   "deckId": "alakazam-dudunsparce",
+   "player": "Yudai Abe",
+   "playerId": "270",
+   "country": "JP",
+   "placement": 637,
+   "archetype": "Alakazam Dudunsparce",
+   "archetypeId": "alakazam-dudunsparce",
+   "cards": [
+    {
+     "count": 4,
+     "name": "Abra",
+     "set": "MEG",
+     "number": "054",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Kadabra",
+     "set": "MEG",
+     "number": "055",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Abra",
+     "fullType": "Pokémon - Stage 1 - Evolves from Abra"
+    },
+    {
+     "count": 3,
+     "name": "Alakazam",
+     "set": "MEG",
+     "number": "056",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Kadabra",
+     "fullType": "Pokémon - Stage 2 - Evolves from Kadabra"
+    },
+    {
+     "count": 3,
+     "name": "Dunsparce",
+     "set": "JTG",
+     "number": "120",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Dudunsparce",
+     "set": "TEF",
+     "number": "129",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dunsparce",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dunsparce"
+    },
+    {
+     "count": 1,
+     "name": "Psyduck",
+     "set": "ASC",
+     "number": "039",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Shaymin",
+     "set": "DRI",
+     "number": "010",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Genesect",
+     "set": "SFA",
+     "number": "040",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Buddy-Buddy Poffin",
+     "set": "ASC",
+     "number": "184",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Rare Candy",
+     "set": "MEG",
+     "number": "125",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Sacred Ash",
+     "set": "DRI",
+     "number": "168",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Handheld Fan",
+     "set": "TWM",
+     "number": "150",
+     "category": "trainer",
+     "trainerType": "tool",
+     "fullType": "Trainer - Tool"
+    },
+    {
+     "count": 4,
+     "name": "Nighttime Mine",
+     "set": "ASC",
+     "number": "197",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 4,
+     "name": "Dawn",
+     "set": "PFL",
+     "number": "087",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Hilda",
+     "set": "WHT",
+     "number": "084",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Lana's Aid",
+     "set": "TWM",
+     "number": "155",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Eri",
+     "set": "TEF",
+     "number": "146",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Gwynn",
+     "set": "PBL",
+     "number": "078",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 4,
+     "name": "Telepathic Psychic Energy",
+     "set": "POR",
+     "number": "088",
+     "category": "energy",
+     "energyType": "special",
+     "fullType": "Energy - Special Energy"
+    },
+    {
+     "count": 1,
+     "name": "Enriching Energy",
+     "set": "SSP",
+     "number": "191",
+     "category": "energy",
+     "energyType": "special",
+     "fullType": "Energy - Special Energy",
+     "aceSpec": true
+    },
+    {
+     "count": 2,
+     "name": "Psychic Energy",
+     "set": "MEE",
+     "number": "005",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "c9f5867f7b13726b5613e229cf22904869c9e747",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "5302a3cb5e",
+   "deckId": "dragapult-ex",
+   "player": "MYUNG JOON KIM",
+   "playerId": "322",
+   "country": "KR",
+   "placement": 666,
+   "archetype": "Dragapult",
+   "archetypeId": "dragapult-ex",
+   "cards": [
+    {
+     "count": 4,
+     "name": "Dreepy",
+     "set": "ASC",
+     "number": "158",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Drakloak",
+     "set": "ASC",
+     "number": "159",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dreepy",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dreepy"
+    },
+    {
+     "count": 3,
+     "name": "Dragapult ex",
+     "set": "ASC",
+     "number": "160",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Drakloak",
+     "fullType": "Pokémon - Stage 2 - Evolves from Drakloak"
+    },
+    {
+     "count": 1,
+     "name": "Budew",
+     "set": "ASC",
+     "number": "016",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Dunsparce",
+     "set": "JTG",
+     "number": "120",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Dudunsparce",
+     "set": "TEF",
+     "number": "129",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dunsparce",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dunsparce"
+    },
+    {
+     "count": 2,
+     "name": "Munkidori",
+     "set": "ASC",
+     "number": "099",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Moltres",
+     "set": "PFL",
+     "number": "014",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Crispin",
+     "set": "SCR",
+     "number": "133",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Rosa's Encouragement",
+     "set": "POR",
+     "number": "084",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 4,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Buddy-Buddy Poffin",
+     "set": "ASC",
+     "number": "184",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Special Red Card",
+     "set": "CRI",
+     "number": "082",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Unfair Stamp",
+     "set": "TWM",
+     "number": "165",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item",
+     "aceSpec": true
+    },
+    {
+     "count": 2,
+     "name": "Risky Ruins",
+     "set": "MEG",
+     "number": "127",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 4,
+     "name": "Crushing Hammer",
+     "set": "POR",
+     "number": "071",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Fire Energy",
+     "set": "MEE",
+     "number": "002",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Psychic Energy",
+     "set": "MEE",
+     "number": "005",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 2,
+     "name": "Darkness Energy",
+     "set": "MEE",
+     "number": "007",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "5302a3cb5ece6a1efb5471e1a36b211f0ccd0aba",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "7360471b8e",
+   "deckId": "dragapult-dudunsparce",
+   "player": "Junya Tanaka",
+   "playerId": "328",
+   "country": "JP",
+   "placement": 729,
+   "archetype": "Dragapult Dudunsparce",
+   "archetypeId": "dragapult-dudunsparce",
+   "cards": [
+    {
+     "count": 4,
+     "name": "Dreepy",
+     "set": "ASC",
+     "number": "158",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Drakloak",
+     "set": "ASC",
+     "number": "159",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dreepy",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dreepy"
+    },
+    {
+     "count": 2,
+     "name": "Dragapult ex",
+     "set": "ASC",
+     "number": "160",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Drakloak",
+     "fullType": "Pokémon - Stage 2 - Evolves from Drakloak"
+    },
+    {
+     "count": 2,
+     "name": "Dunsparce",
+     "set": "JTG",
+     "number": "120",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Dudunsparce",
+     "set": "TEF",
+     "number": "129",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dunsparce",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dunsparce"
+    },
+    {
+     "count": 1,
+     "name": "Dudunsparce ex",
+     "set": "JTG",
+     "number": "121",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dunsparce",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dunsparce"
+    },
+    {
+     "count": 1,
+     "name": "Lillie's Clefairy ex",
+     "set": "ASC",
+     "number": "076",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Munkidori",
+     "set": "ASC",
+     "number": "099",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Moltres",
+     "set": "PFL",
+     "number": "014",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Budew",
+     "set": "ASC",
+     "number": "016",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Buddy-Buddy Poffin",
+     "set": "ASC",
+     "number": "184",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Special Red Card",
+     "set": "CRI",
+     "number": "082",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Energy Recycler",
+     "set": "DRI",
+     "number": "164",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Hero's Cape",
+     "set": "TEF",
+     "number": "152",
+     "category": "trainer",
+     "trainerType": "tool",
+     "fullType": "Trainer - Tool",
+     "aceSpec": true
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Crispin",
+     "set": "SCR",
+     "number": "133",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Judge",
+     "set": "POR",
+     "number": "076",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Area Zero Underdepths",
+     "set": "SCR",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 1,
+     "name": "Risky Ruins",
+     "set": "MEG",
+     "number": "127",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 3,
+     "name": "Fire Energy",
+     "set": "MEE",
+     "number": "002",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Psychic Energy",
+     "set": "MEE",
+     "number": "005",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 2,
+     "name": "Darkness Energy",
+     "set": "MEE",
+     "number": "007",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "7360471b8efc668f23a67f66f6ad09b0085de48b",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  },
+  {
+   "id": "71dddec360",
+   "deckId": "dragapult-ex",
+   "player": "Takumi Tamaru",
+   "playerId": "640",
+   "country": "JP",
+   "placement": 736,
+   "archetype": "Dragapult",
+   "archetypeId": "dragapult-ex",
+   "cards": [
+    {
+     "count": 4,
+     "name": "Dreepy",
+     "set": "ASC",
+     "number": "158",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Drakloak",
+     "set": "ASC",
+     "number": "159",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dreepy",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dreepy"
+    },
+    {
+     "count": 2,
+     "name": "Dragapult ex",
+     "set": "ASC",
+     "number": "160",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 2 - Evolves from Drakloak",
+     "fullType": "Pokémon - Stage 2 - Evolves from Drakloak"
+    },
+    {
+     "count": 1,
+     "name": "Dunsparce",
+     "set": "TEF",
+     "number": "128",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Dunsparce",
+     "set": "JTG",
+     "number": "120",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Dudunsparce",
+     "set": "TEF",
+     "number": "129",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dunsparce",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dunsparce"
+    },
+    {
+     "count": 1,
+     "name": "Dudunsparce ex",
+     "set": "JTG",
+     "number": "121",
+     "category": "pokemon",
+     "evolutionInfo": "Stage 1 - Evolves from Dunsparce",
+     "fullType": "Pokémon - Stage 1 - Evolves from Dunsparce"
+    },
+    {
+     "count": 1,
+     "name": "Budew",
+     "set": "ASC",
+     "number": "016",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Yveltal",
+     "set": "MEG",
+     "number": "088",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Moltres",
+     "set": "PFL",
+     "number": "014",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 2,
+     "name": "Munkidori",
+     "set": "ASC",
+     "number": "099",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Lillie's Clefairy ex",
+     "set": "ASC",
+     "number": "076",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Meowth ex",
+     "set": "POR",
+     "number": "062",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 1,
+     "name": "Fezandipiti ex",
+     "set": "ASC",
+     "number": "142",
+     "category": "pokemon",
+     "evolutionInfo": "Basic",
+     "fullType": "Pokémon - Basic"
+    },
+    {
+     "count": 4,
+     "name": "Lillie's Determination",
+     "set": "MEG",
+     "number": "119",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 2,
+     "name": "Crispin",
+     "set": "SCR",
+     "number": "133",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Rosa's Encouragement",
+     "set": "POR",
+     "number": "084",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 1,
+     "name": "Judge",
+     "set": "POR",
+     "number": "076",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 3,
+     "name": "Boss's Orders",
+     "set": "MEG",
+     "number": "114",
+     "category": "trainer",
+     "trainerType": "supporter",
+     "fullType": "Trainer - Supporter"
+    },
+    {
+     "count": 4,
+     "name": "Buddy-Buddy Poffin",
+     "set": "ASC",
+     "number": "184",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Poké Pad",
+     "set": "POR",
+     "number": "081",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 4,
+     "name": "Ultra Ball",
+     "set": "MEG",
+     "number": "131",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 2,
+     "name": "Night Stretcher",
+     "set": "ASC",
+     "number": "196",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 1,
+     "name": "Hero's Cape",
+     "set": "TEF",
+     "number": "152",
+     "category": "trainer",
+     "trainerType": "tool",
+     "fullType": "Trainer - Tool",
+     "aceSpec": true
+    },
+    {
+     "count": 2,
+     "name": "Risky Ruins",
+     "set": "MEG",
+     "number": "127",
+     "category": "trainer",
+     "trainerType": "stadium",
+     "fullType": "Trainer - Stadium"
+    },
+    {
+     "count": 1,
+     "name": "Special Red Card",
+     "set": "CRI",
+     "number": "082",
+     "category": "trainer",
+     "trainerType": "item",
+     "fullType": "Trainer - Item"
+    },
+    {
+     "count": 3,
+     "name": "Psychic Energy",
+     "set": "MEE",
+     "number": "005",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Fire Energy",
+     "set": "MEE",
+     "number": "002",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    },
+    {
+     "count": 3,
+     "name": "Darkness Energy",
+     "set": "MEE",
+     "number": "007",
+     "category": "energy",
+     "energyType": "basic",
+     "fullType": "Energy - Basic Energy"
+    }
+   ],
+   "deckHash": "71dddec3605f3cceab6a62afe0d13df8e70f4f2d",
+   "tournamentId": "71",
+   "tournamentName": "World Championship San Francisco",
+   "tournamentDate": "2026-08-28",
+   "tournamentPlayers": 797,
+   "tournamentFormat": null,
+   "tournamentPlatform": "offline",
+   "tournamentOrganizer": null,
+   "deckSource": "rk9",
+   "successTags": [],
+   "madePhase2": false,
+   "madeTopCut": false,
+   "hasDecklist": true
+  }
+ ]
+}

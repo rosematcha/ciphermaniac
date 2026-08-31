@@ -1,0 +1,56 @@
+# =============================================================================
+# Backfill Worlds 2026 Decklists (one-off repair)
+# =============================================================================
+# Limitless Labs published the 2026 World Championship with 797 players but only
+# 774 decklists. The 23 missing players — 22 Japanese, 1 Korean — have public
+# lists on RK9 that Labs never scraped. This dispatches the one-off merge.
+#
+# Manual only, and DRY RUN by default: it exists to be run once, checked, and
+# then deleted along with its script. Derived artifacts are NOT written here;
+# the release build regenerates them from decks.json + players.json.
+# =============================================================================
+
+name: (One-off) Backfill Worlds Decklists
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report the merge without writing to R2'
+        required: false
+        type: boolean
+        default: true
+
+# Shares the bucket-writer group so this can never race a release or a producer.
+concurrency:
+  group: r2-bucket-writers
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r .github/scripts/requirements.txt
+
+      - name: Backfill decklists
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: python .github/scripts/backfill-worlds-decks.py
