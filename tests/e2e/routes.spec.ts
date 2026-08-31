@@ -146,6 +146,30 @@ test('social graphics fits long card names inside their cards', async ({ page },
   await expect(page.locator('#sg-canvas')).toContainText("Lillie's Determination");
 });
 
+test('a lazy route whose chunk a deploy removed recovers with one reload', async ({ page }) => {
+  // A tab left open across a deploy still asks for the chunks its shell was
+  // built with, and the server no longer has them: the stylesheet request
+  // fails and Vite's preload helper throws. Simulate that for the first
+  // request only, then let the retry through.
+  let poisoned = false;
+  await page.route('**/assets/SocialGraphicsPage-*.css', async route => {
+    if (poisoned) {
+      await route.continue();
+      return;
+    }
+    poisoned = true;
+    await route.fulfill({ status: 404, contentType: 'text/html', body: '<!doctype html><title>not found</title>' });
+  });
+  const errors: string[] = [];
+  page.on('pageerror', err => errors.push(err.message));
+  await page.goto('/tools/social-graphics', { waitUntil: 'load' });
+  // The reload is what makes the route render at all; without recovery the
+  // page stays on its Suspense fallback forever.
+  await expect(page.locator('.sg-controls, .sg-warning')).toBeVisible({ timeout: 15_000 });
+  expect(poisoned, 'the stale-chunk response should have been served once').toBe(true);
+  expect(errors, 'the preload failure should be handled, not thrown').toEqual([]);
+});
+
 test('an unknown route renders the not-found page rather than erroring', async ({ page }) => {
   await gotoClean(page, '/this-route-does-not-exist');
   await expect(page.locator('body')).toContainText(/not found|404/i);

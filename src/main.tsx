@@ -15,7 +15,12 @@ import { App } from './app';
 // pages never tax a visitor who only reads card stats (P1.3).
 import { HomePage } from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { installPreloadRecovery } from './lib/preloadRecovery';
 import { probeR2Ready } from './components/CardImage';
+
+// A deploy replaces every content-hashed chunk, so a tab that predates it will
+// fail the next lazy route's preload. Recover before any route can hit it.
+installPreloadRecovery();
 
 // Warm the image origin marker at startup. The synonym database is intentionally
 // demand-loaded by card-facing data fetches; most routes never need its payload.
