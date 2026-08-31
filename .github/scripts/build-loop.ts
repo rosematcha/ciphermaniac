@@ -93,6 +93,44 @@ async function assertNoEventRegression(
   console.log(`[build-loop] regression guard: ${previous.length} served event(s) all present`);
 }
 
+type EventBody = Record<string, unknown>;
+
+/** The decision to capture an event folder, carrying the narrowed bodies. */
+export type EventCapturePlan =
+  | { capture: true; decks: EventBody[]; players: EventBody[]; meta: EventBody }
+  | { capture: false; reason: string };
+
+/**
+ * Decide whether an event folder may be captured into an immutable release.
+ *
+ * Beyond the obvious missing-file case, an event with ZERO decks is a
+ * not-yet-published event rather than a real one: Labs posts standings as soon
+ * as an event starts and the decklists hours or days later. Capturing that
+ * window freezes `{"deckTotal":0}` into an IMMUTABLE release body, and because
+ * that body serves 200 the browser never falls back to the legacy path where
+ * the decks eventually land — the event reads as empty across the whole app
+ * until the next release. Skipping leaves it unlinked in the manifest, so it
+ * passes through to its legacy location and self-heals the moment the decks
+ * are downloaded.
+ * @param bodies - The folder's loaded decks/players/meta bodies (null when absent)
+ * @returns The capture decision, with a human-readable reason when declining
+ */
+export function planEventCapture(bodies: {
+  decks: EventBody[] | null;
+  players: EventBody[] | null;
+  meta: EventBody | null;
+}): EventCapturePlan {
+  const { decks, players, meta } = bodies;
+  if (!decks || !players || !meta) {
+    const absent = [!decks && 'decks.json', !players && 'players.json', !meta && 'meta.json'].filter(Boolean);
+    return { capture: false, reason: `missing ${absent.join(', ')}` };
+  }
+  if (decks.length === 0) {
+    return { capture: false, reason: '0 decks (decklists not published yet)' };
+  }
+  return { capture: true, decks, players, meta };
+}
+
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   const write = argv.includes('--write');
@@ -158,12 +196,14 @@ async function main(): Promise<void> {
       load<Record<string, unknown>[]>(`${base}/matches.json`),
       load<Record<string, unknown>>(`${base}/meta.json`)
     ]);
-    if (!decks || !players || !meta) {
+    const plan = planEventCapture({ decks, players, meta });
+    if (!plan.capture) {
+      console.log(`[build-loop] skipping ${folder}: ${plan.reason}`);
       continue;
     }
     const archByTp = new Map<string, string>();
     const cardsByTp: Record<string, unknown[]> = {};
-    for (const d of decks) {
+    for (const d of plan.decks) {
       if (d.playerId !== undefined) {
         if (d.archetype) {
           archByTp.set(String(d.playerId), String(d.archetype));
@@ -177,13 +217,13 @@ async function main(): Promise<void> {
       labsCode: folder.replace(/[^a-z0-9]/gi, '').slice(-8),
       fetchedAt: '1970-01-01T00:00:00Z',
       meta: {
-        name: String(meta.name),
-        date: String(meta.startDate ?? meta.date),
-        players: meta.players as number,
-        division: (meta.division as string) ?? null,
-        country: (meta.country as string) ?? null
+        name: String(plan.meta.name),
+        date: String(plan.meta.startDate ?? plan.meta.date),
+        players: plan.meta.players as number,
+        division: (plan.meta.division as string) ?? null,
+        country: (plan.meta.country as string) ?? null
       },
-      standings: players.map(p => ({
+      standings: plan.players.map(p => ({
         tpId: p.tpId as number,
         playerId: (p.playerId as string) ?? null,
         name: String(p.name),
