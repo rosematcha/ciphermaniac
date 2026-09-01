@@ -87,6 +87,71 @@ function nestOffset(front: Raster, back: Raster, gap: number): number {
   return closest + gap;
 }
 
+const BLACK_CUT = 64;
+const WHITE_CUT = 214;
+
+/** Luminance at which `frac` of the sprite's opaque pixels are darker. */
+function percentile(hist: Uint32Array, total: number, frac: number): number {
+  const target = total * frac;
+  let seen = 0;
+  for (let g = 0; g < 256; g++) {
+    seen += hist[g]!;
+    if (seen >= target) {
+      return g;
+    }
+  }
+  return 255;
+}
+
+/**
+ * Per-sprite tone curve: a 256-entry lookup from source luminance to print
+ * luminance. Two stages, both driven by the sprite's own histogram.
+ *
+ * First an auto-level onto [p2, p98] with the shadow end crushed to black, so
+ * a sprite that only occupies a narrow slice of the range still uses the full
+ * one and keeps its outline. Then a gamma chosen so the sprite's median tone
+ * lands on TARGET_MEDIAN — that's what keeps overall ink
+ * coverage roughly constant across sprites, instead of letting dark Pokemon
+ * clip to a solid blob and pale ones dissolve.
+ */
+export function buildToneCurve(hist: Uint32Array, total: number): Uint8Array {
+  const TARGET_MEDIAN = 0.56;
+  const lut = new Uint8Array(256);
+  if (total === 0) {
+    for (let g = 0; g < 256; g++) {
+      lut[g] = g;
+    }
+    return lut;
+  }
+  let lo = percentile(hist, total, 0.02);
+  let hi = percentile(hist, total, 0.98);
+  // A near-flat sprite has no contrast worth stretching; expanding it would
+  // amplify compression noise into dither speckle.
+  if (hi - lo < 40) {
+    lo = 0;
+    hi = 255;
+  }
+  const span = hi - lo;
+  // The darkest slice of the range is the sprite's outline. Reserve it for
+  // solid black before the gamma runs, otherwise lightening a dark Pokemon
+  // lifts its outline into the dither band and the silhouette falls apart.
+  const SHADOW = 0.18;
+  const norm = (g: number) => {
+    const n = Math.min(1, Math.max(0, (g - lo) / span));
+    return n <= SHADOW ? 0 : (n - SHADOW) / (1 - SHADOW);
+  };
+  const median = norm(percentile(hist, total, 0.5));
+  // gamma < 1 lightens (dark sprites), > 1 darkens (pale ones). Clamped so a
+  // sprite that is genuinely almost all black or all white keeps looking that
+  // way rather than being forced to mid-gray.
+  const gamma =
+    median <= 0.02 || median >= 0.98 ? 1 : Math.min(1.7, Math.max(0.35, Math.log(TARGET_MEDIAN) / Math.log(median)));
+  for (let g = 0; g < 256; g++) {
+    lut[g] = Math.round(255 * norm(g) ** gamma);
+  }
+  return lut;
+}
+
 /** Rasterize a sprite: scale, dither to 1-bit, and trim transparent padding. */
 function rasterize(img: HTMLImageElement, scale: number): Raster | null {
   const w = Math.round(img.naturalWidth * scale);
@@ -106,34 +171,43 @@ function rasterize(img: HTMLImageElement, scale: number): Raster | null {
   const data = octx.getImageData(0, 0, w, h);
   const px = data.data;
 
-  // Sprites carry black outlines and white highlights, so their raw range is
-  // already full; what makes pale Pokemon (Alakazam, Pikachu) vanish is that
-  // their body tones sit above the white cutoff. A gamma curve pulls midtones
-  // down into the dither band without touching true blacks or true whites.
-  const TONE = new Uint8Array(256);
-  for (let g = 0; g < 256; g++) {
-    TONE[g] = Math.round(255 * (g / 255) ** 1.45);
+  // Tone mapping is per sprite, not a fixed curve. A single global gamma has to
+  // be tuned for one kind of sprite and wrecks the other: pale Pokemon
+  // (Alakazam) wash out, and dark ones (Dragapult) fall entirely under the
+  // black cutoff and print as a silhouette. Instead, read each sprite's own
+  // luminance distribution and stretch it onto the printable range.
+  const lum = new Uint8Array(w * h);
+  const hist = new Uint32Array(256);
+  let opaque = 0;
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i + 3]! < 128) {
+      continue;
+    }
+    const g = Math.round(0.299 * px[i]! + 0.587 * px[i + 1]! + 0.114 * px[i + 2]!);
+    lum[i / 4] = g;
+    hist[g]! += 1;
+    opaque += 1;
   }
+  const TONE = buildToneCurve(hist, opaque);
 
   for (let i = 0; i < px.length; i += 4) {
     const p = i / 4;
     const sx = p % w;
     const sy = Math.floor(p / w);
-    const a = px[i + 3]!;
-    if (a < 128) {
+    if (px[i + 3]! < 128) {
       px[i + 3] = 0;
       continue;
     }
-    const gray = TONE[Math.round(0.299 * px[i]! + 0.587 * px[i + 1]! + 0.114 * px[i + 2]!)]!;
+    const gray = TONE[lum[p]!]!;
     // Hybrid: outlines/dark pixels go solid black, near-white goes clean white,
     // and only the midtones are Bayer-dithered for shading.
     let v: number;
-    if (gray < 96) {
+    if (gray < BLACK_CUT) {
       v = 0;
-    } else if (gray > 210) {
+    } else if (gray > WHITE_CUT) {
       v = 255;
     } else {
-      const threshold = 96 + ((BAYER[sy % 4]![sx % 4]! + 0.5) / 16) * (210 - 96);
+      const threshold = BLACK_CUT + ((BAYER[sy % 4]![sx % 4]! + 0.5) / 16) * (WHITE_CUT - BLACK_CUT);
       v = gray > threshold ? 255 : 0;
     }
     px[i] = px[i + 1] = px[i + 2] = v;
