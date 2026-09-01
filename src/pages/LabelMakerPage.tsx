@@ -28,7 +28,7 @@ const THIRD_ROW_OPTIONS = [
   { value: 'stars' as const, label: 'Stars' }
 ];
 const STUB_OPTIONS = [
-  { value: 'stars' as const, label: 'Stars + format' },
+  { value: 'stars' as const, label: 'Stars' },
   { value: 'progress' as const, label: 'Build meter' },
   { value: 'count' as const, label: 'Big count' }
 ];
@@ -430,6 +430,7 @@ export function LabelMakerPage() {
                       setConfig('title', e.currentTarget.value);
                     }}
                   />
+                  <span class='lm-field-hint'>Type /n for a line break</span>
                 </div>
                 <div class='lm-field'>
                   <label for='lm-subtitle'>Subtitle</label>
@@ -551,7 +552,7 @@ export function LabelMakerPage() {
                     />
                   </div>
                   <div class='lm-field'>
-                    <label for='lm-format'>Format</label>
+                    <label for='lm-format'>Format (optional)</label>
                     <input
                       id='lm-format'
                       type='text'

@@ -314,14 +314,40 @@ interface TextBlockOpts {
   u: number;
 }
 
+/**
+ * Manual line breaks. The title comes from a single-line <input>, so there's no
+ * real newline to type — `/n` is the escape, and `\n` is accepted too since
+ * people reach for it out of habit.
+ */
+function manualLines(text: string): string[] {
+  return text
+    .split(/\/n|\\n/)
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
+}
+
+function titleLinesFor(config: LabelConfig): string[] {
+  const manual = manualLines(config.title);
+  if (manual.length > 1) {
+    return manual;
+  }
+  const title = manual[0] ?? '';
+  if (config.titleBreak && title.includes(' ') && config.pokemon2) {
+    return [title.slice(0, title.indexOf(' ')), title.slice(title.indexOf(' ') + 1)];
+  }
+  return [title];
+}
+
 function drawTextBlock(ctx: CanvasRenderingContext2D, opts: TextBlockOpts) {
   const { x, maxWidth, config, labelH, u } = opts;
-  const titleLines =
-    config.titleBreak && config.title.includes(' ') && config.pokemon2
-      ? [config.title.slice(0, config.title.indexOf(' ')), config.title.slice(config.title.indexOf(' ') + 1)]
-      : [config.title];
+  const titleLines = titleLinesFor(config);
 
   let { titleSize } = opts;
+  // Three or more manual lines would otherwise run off the label, so cap the
+  // title by the height it has to live in as well as by each line's width.
+  if (titleLines.length > 2) {
+    titleSize = Math.min(titleSize, (labelH * 0.72) / (titleLines.length * 1.06));
+  }
   for (const line of titleLines) {
     titleSize = Math.min(titleSize, fitText(ctx, line, titleSize, maxWidth, 800, u));
   }
@@ -468,15 +494,22 @@ export async function renderLabel(canvas: HTMLCanvasElement, config: LabelConfig
     ctx.textBaseline = 'top';
     ctx.fillStyle = '#000';
     if (config.stubContent === 'stars') {
+      // Format is optional; with it omitted the stars sit centred in the stub
+      // instead of leaving a hole where the format block would have been.
+      const format = config.formatText.trim();
+      const labelY = (format ? 78 : 100) * u;
+      const starsY = (format ? 118 : 140) * u;
       ctx.font = `700 ${15 * u}px Archivo`;
-      ctx.fillText(config.stubLabel.toUpperCase(), cx, 78 * u);
+      ctx.fillText(config.stubLabel.toUpperCase(), cx, labelY);
       const starSize = 21 * u;
       const starsW = config.starsMax * starSize + (config.starsMax - 1) * starSize * 0.4;
-      drawStars(ctx, cx - starsW / 2, 118 * u, config.stars, config.starsMax, starSize, u);
-      ctx.font = `700 ${15 * u}px Archivo`;
-      ctx.fillText('FORMAT', cx, 152 * u);
-      ctx.font = `600 ${25 * u}px "IBM Plex Mono"`;
-      ctx.fillText(config.formatText, cx, 174 * u);
+      drawStars(ctx, cx - starsW / 2, starsY, config.stars, config.starsMax, starSize, u);
+      if (format) {
+        ctx.font = `700 ${15 * u}px Archivo`;
+        ctx.fillText('FORMAT', cx, 152 * u);
+        ctx.font = `600 ${25 * u}px "IBM Plex Mono"`;
+        ctx.fillText(format, cx, 174 * u);
+      }
     } else if (config.stubContent === 'progress') {
       ctx.font = `700 ${15 * u}px Archivo`;
       ctx.fillText('BUILT', cx, 84 * u);
