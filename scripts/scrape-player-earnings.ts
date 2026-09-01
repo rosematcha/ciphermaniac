@@ -23,6 +23,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 import * as cheerio from 'cheerio';
+import type { EarningsPayload, EarningsPlayer, EarningsSeason } from '../shared/earningsTypes';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_PATH = join(ROOT, 'static', 'earnings.json');
@@ -35,12 +36,10 @@ const RETRY_DELAY_MS = 2000;
 const MAX_ATTEMPTS = 3;
 const PER_PAGE = 100;
 
-/** How deep into each season's leaderboard to go. */
+/** How deep into each season's leaderboard to go, counted in distinct players. */
 const TOP_N = Number(process.env.TOP_N ?? 500);
-
-interface Season {
-  key: string;
-  label: string;
+if (!Number.isInteger(TOP_N) || TOP_N < 1) {
+  throw new Error(`TOP_N must be a positive integer, got ${JSON.stringify(process.env.TOP_N)}`);
 }
 
 interface LeaderboardRow {
@@ -48,14 +47,6 @@ interface LeaderboardRow {
   name: string;
   country: string;
   earnings: number;
-}
-
-interface PlayerRecord {
-  id: string;
-  name: string;
-  country: string;
-  seasons: Record<string, number>;
-  total: number;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -87,9 +78,9 @@ async function fetchHtml(url: string): Promise<string> {
  * Season buckets come from the page's own time filter rather than a hardcoded
  * list, so a new season starts showing up the next time this runs.
  */
-function parseSeasons(html: string): Season[] {
+function parseSeasons(html: string): EarningsSeason[] {
   const $ = cheerio.load(html);
-  const seasons: Season[] = [];
+  const seasons: EarningsSeason[] = [];
   $('select[name="time"] optgroup option').each((_, el) => {
     const key = $(el).attr('value');
     const label = $(el).text().trim();
@@ -135,26 +126,38 @@ function leaderboardUrl(seasonKey: string, page: number): string {
   return `${BASE_URL}/players?rank=money&zone=all&time=${seasonKey}&show=${PER_PAGE}&page=${page}`;
 }
 
-async function scrapeSeason(season: Season): Promise<LeaderboardRow[]> {
-  const rows: LeaderboardRow[] = [];
+async function scrapeSeason(season: EarningsSeason): Promise<LeaderboardRow[]> {
+  // Keyed by player id: a tie spanning a page boundary can list the same
+  // player on both pages, and Limitless's own rank column repeats too. Dedupe
+  // as we go so TOP_N counts distinct players rather than distinct rows.
+  const rows = new Map<string, LeaderboardRow>();
   const lastPage = Math.ceil(TOP_N / PER_PAGE);
   let maxPage = lastPage;
 
-  for (let page = 1; page <= Math.min(lastPage, maxPage); page += 1) {
+  for (let page = 1; page <= Math.min(lastPage, maxPage) && rows.size < TOP_N; page += 1) {
     const html = await fetchHtml(leaderboardUrl(season.key, page));
     if (page === 1) {
       maxPage = parseMaxPage(html);
     }
     const pageRows = parseLeaderboardRows(html);
-    rows.push(...pageRows);
-    console.log(`[earnings] ${season.label} page ${page}/${Math.min(lastPage, maxPage)}: ${pageRows.length} rows`);
+    if (pageRows.length === 0) {
+      // Every season on the filter has at least one cashing player, so an
+      // empty table means the row markup moved — not that nobody earned.
+      throw new Error(`No leaderboard rows for ${season.label} page ${page} — the Limitless table markup changed`);
+    }
+    for (const row of pageRows) {
+      if (!rows.has(row.id)) {
+        rows.set(row.id, row);
+      }
+    }
+    console.log(`[earnings] ${season.label} page ${page}/${Math.min(lastPage, maxPage)}: ${rows.size} players`);
     if (pageRows.length < PER_PAGE) {
       break;
     }
     await sleep(RATE_LIMIT_MS);
   }
 
-  return rows.slice(0, TOP_N);
+  return [...rows.values()].slice(0, TOP_N);
 }
 
 /**
@@ -163,12 +166,11 @@ async function scrapeSeason(season: Season): Promise<LeaderboardRow[]> {
  * of players who haven't opted into full display, and that preference can
  * change, so the newest rendering is the one to trust.
  */
-function mergeSeason(players: Map<string, PlayerRecord>, season: Season, rows: LeaderboardRow[]): void {
+function mergeSeason(players: Map<string, EarningsPlayer>, season: EarningsSeason, rows: LeaderboardRow[]): void {
   for (const row of rows) {
     const existing = players.get(row.id);
     if (existing) {
       existing.seasons[season.key] = row.earnings;
-      existing.total += row.earnings;
       continue;
     }
     players.set(row.id, {
@@ -176,9 +178,14 @@ function mergeSeason(players: Map<string, PlayerRecord>, season: Season, rows: L
       name: row.name,
       country: row.country,
       seasons: { [season.key]: row.earnings },
-      total: row.earnings
+      total: 0
     });
   }
+}
+
+/** Career total, recomputed from the season map rather than accumulated. */
+function sumSeasons(player: EarningsPlayer): number {
+  return Object.values(player.seasons).reduce((sum, amount) => sum + amount, 0);
 }
 
 async function main(): Promise<void> {
@@ -190,14 +197,20 @@ async function main(): Promise<void> {
   console.log(`[earnings] ${seasons.length} seasons, top ${TOP_N} each`);
 
   // Newest season first so the freshest name/country wins in mergeSeason.
-  const players = new Map<string, PlayerRecord>();
+  const players = new Map<string, EarningsPlayer>();
   for (const season of seasons) {
     await sleep(RATE_LIMIT_MS);
     mergeSeason(players, season, await scrapeSeason(season));
   }
 
+  for (const player of players.values()) {
+    player.total = sumSeasons(player);
+  }
   const ranked = [...players.values()].sort((a, b) => b.total - a.total);
-  const payload = {
+  if (ranked.length === 0) {
+    throw new Error('Scrape produced no players — refusing to overwrite the existing file');
+  }
+  const payload: EarningsPayload = {
     generatedAt: new Date().toISOString(),
     source: `${BASE_URL}/players?rank=money`,
     topPerSeason: TOP_N,
