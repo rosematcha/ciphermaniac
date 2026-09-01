@@ -326,7 +326,7 @@ function manualLines(text: string): string[] {
     .filter(line => line.length > 0);
 }
 
-function titleLinesFor(config: LabelConfig): string[] {
+export function titleLinesFor(config: LabelConfig): string[] {
   const manual = manualLines(config.title);
   if (manual.length > 1) {
     return manual;
