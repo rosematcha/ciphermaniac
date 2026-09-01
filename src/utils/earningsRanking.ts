@@ -2,17 +2,17 @@
  * Ranking for the earnings table.
  *
  * The page shows one table under three lenses, so the ordering rules live here
- * rather than inside the component: each lens picks a different amount out of
- * the same player record, and every lens shares the tie handling.
+ * rather than inside the component: each lens pulls a different set of amounts
+ * out of the same player records, and every lens shares the tie handling.
  */
 import type { EarningsPlayer } from '../../shared/earningsTypes.js';
 
-export type EarningsLens = 'career' | 'best' | 'season';
+export type EarningsLens = 'career' | 'top-seasons' | 'current';
 
 export interface EarningsRow {
   /**
    * Competition rank: equal amounts share a rank and the next distinct amount
-   * skips, the way Limitless itself ranks its leaderboards.
+   * skips, the way Limitless ranks its own leaderboards.
    */
   rank: number;
   player: EarningsPlayer;
@@ -21,47 +21,45 @@ export interface EarningsRow {
   seasonKey: string | null;
 }
 
-/** The season a player made the most in. Null for a player with no seasons. */
-export function bestSeason(player: EarningsPlayer): { key: string; amount: number } | null {
-  let best: { key: string; amount: number } | null = null;
-  for (const [key, amount] of Object.entries(player.seasons)) {
-    if (!best || amount > best.amount) {
-      best = { key, amount };
-    }
-  }
-  return best;
+type Scored = Omit<EarningsRow, 'rank'>;
+
+/**
+ * Every season a player cashed in, as its own row.
+ *
+ * Deliberately not one row per player: a player with two huge years should
+ * occupy two places on a table of the biggest seasons ever, not have the
+ * smaller one hidden behind the bigger one.
+ */
+function seasonRows(player: EarningsPlayer): Scored[] {
+  return Object.entries(player.seasons).map(([seasonKey, amount]) => ({ player, amount, seasonKey }));
 }
 
-/** The (amount, season) a lens reads off a player, or null if it doesn't apply. */
-function lensAmount(
-  player: EarningsPlayer,
-  lens: EarningsLens,
-  seasonKey: string
-): { amount: number; seasonKey: string | null } | null {
+/** The amounts a lens reads off one player — none, one, or one per season. */
+function lensRows(player: EarningsPlayer, lens: EarningsLens, currentSeason: string): Scored[] {
   if (lens === 'career') {
-    return { amount: player.total, seasonKey: null };
+    return [{ player, amount: player.total, seasonKey: null }];
   }
-  if (lens === 'best') {
-    const best = bestSeason(player);
-    return best ? { amount: best.amount, seasonKey: best.key } : null;
+  if (lens === 'top-seasons') {
+    return seasonRows(player);
   }
-  const amount = player.seasons[seasonKey];
-  return amount == null ? null : { amount, seasonKey };
+  const amount = player.seasons[currentSeason];
+  return amount == null ? [] : [{ player, amount, seasonKey: currentSeason }];
 }
 
 /**
- * Rank every player who has a value under this lens. Players the lens doesn't
- * apply to — someone who didn't cash in the selected season — drop out rather
- * than ranking at zero.
+ * Rank every row a lens produces. Players the lens doesn't apply to — someone
+ * who didn't cash in the selected season — drop out rather than ranking at zero.
  *
- * Ties break by name so the order is stable across renders and lens switches.
+ * Ties break by name, then season, so the order is stable across renders.
  */
-export function rankByLens(players: EarningsPlayer[], lens: EarningsLens, seasonKey: string): EarningsRow[] {
-  const scored = players.flatMap(player => {
-    const hit = lensAmount(player, lens, seasonKey);
-    return hit ? [{ player, ...hit }] : [];
-  });
-  scored.sort((a, b) => b.amount - a.amount || a.player.name.localeCompare(b.player.name));
+export function rankByLens(players: EarningsPlayer[], lens: EarningsLens, currentSeason: string): EarningsRow[] {
+  const scored = players.flatMap(player => lensRows(player, lens, currentSeason));
+  scored.sort(
+    (a, b) =>
+      b.amount - a.amount ||
+      a.player.name.localeCompare(b.player.name) ||
+      (a.seasonKey ?? '').localeCompare(b.seasonKey ?? '')
+  );
 
   let rank = 0;
   let previousAmount: number | null = null;

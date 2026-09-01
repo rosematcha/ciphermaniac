@@ -9,13 +9,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  bestSeason,
-  type EarningsRow,
-  formatEarnings,
-  rankByLens,
-  shortSeasonLabel
-} from '../../src/utils/earningsRanking.ts';
+import { type EarningsRow, formatEarnings, rankByLens, shortSeasonLabel } from '../../src/utils/earningsRanking.ts';
 import type { EarningsPlayer } from '../../shared/earningsTypes.ts';
 
 function player(name: string, seasons: Record<string, number>): EarningsPlayer {
@@ -48,25 +42,27 @@ test('career lens ranks by the summed total', () => {
   );
 });
 
-test("best-season lens ranks by each player's single best year and names it", () => {
-  const rows = rankByLens(ROSTER, 'best', '2526');
-  assert.deepEqual(names(rows), ['Bo', 'Ada', 'Cy']);
-  assert.deepEqual(amounts(rows), [20000, 10000, 9000]);
+test('top-seasons lens ranks every season separately, so one player can repeat', () => {
+  const rows = rankByLens(ROSTER, 'top-seasons', '2526');
+  // Bo's $20,000 year and Ada's $10,000 year both place, and so do their
+  // smaller ones — a big second season must not be hidden behind a bigger first.
+  assert.deepEqual(names(rows), ['Bo', 'Ada', 'Cy', 'Ada', 'Bo']);
+  assert.deepEqual(amounts(rows), [20000, 10000, 9000, 5000, 4000]);
   assert.deepEqual(
     rows.map(r => r.seasonKey),
-    ['2425', '2526', '2425']
+    ['2425', '2526', '2425', '2425', '2526']
   );
 });
 
-test('season lens drops players who did not cash that season', () => {
-  const rows = rankByLens(ROSTER, 'season', '2526');
+test('current-season lens drops players who did not cash that season', () => {
+  const rows = rankByLens(ROSTER, 'current', '2526');
   assert.deepEqual(names(rows), ['Ada', 'Bo']);
   assert.deepEqual(amounts(rows), [10000, 4000]);
 });
 
 test('ties share a rank and the next distinct amount skips', () => {
   const tied = [player('Ada', { 2526: 5000 }), player('Bo', { 2526: 5000 }), player('Cy', { 2526: 1000 })];
-  const rows = rankByLens(tied, 'season', '2526');
+  const rows = rankByLens(tied, 'current', '2526');
   assert.deepEqual(
     rows.map(r => r.rank),
     [1, 1, 3]
@@ -75,13 +71,14 @@ test('ties share a rank and the next distinct amount skips', () => {
 
 test('equal amounts order by name so a lens switch is stable', () => {
   const tied = [player('Zoe', { 2526: 5000 }), player('Ada', { 2526: 5000 })];
-  assert.deepEqual(names(rankByLens(tied, 'season', '2526')), ['Ada', 'Zoe']);
+  assert.deepEqual(names(rankByLens(tied, 'current', '2526')), ['Ada', 'Zoe']);
 });
 
-test('a player with no seasons at all has no best season and no career row', () => {
+test('a player with no seasons contributes no season rows', () => {
   const empty = player('Nil', {});
-  assert.equal(bestSeason(empty), null);
-  assert.deepEqual(names(rankByLens([empty], 'best', '2526')), []);
+  assert.deepEqual(names(rankByLens([empty], 'top-seasons', '2526')), []);
+  // The career lens still ranks them, at the $0 their empty season map sums to.
+  assert.deepEqual(amounts(rankByLens([empty], 'career', '2526')), [0]);
 });
 
 test('amounts render as whole dollars with thousands separators', () => {

@@ -135,10 +135,10 @@ test('the earnings table re-ranks under each lens', async ({ page }) => {
   await expect(page.locator('table.data tbody tr').first()).toBeVisible();
   await expect(page.locator('thead th').last()).toHaveText('Career');
 
-  await page.getByRole('tab', { name: 'Best season' }).click();
-  await expect(page).toHaveURL(/lens=best/);
-  await expect(page.locator('thead th').last()).toHaveText('Best season');
-  // The best-season lens annotates each amount with the season it came from.
+  await page.getByRole('tab', { name: 'Top seasons' }).click();
+  await expect(page).toHaveURL(/lens=top-seasons/);
+  await expect(page.locator('thead th').last()).toHaveText('Top seasons');
+  // The top-seasons lens annotates each amount with the season it came from.
   await expect(page.locator('tbody tr').first().locator('.earnings-season')).toBeVisible();
 });
 

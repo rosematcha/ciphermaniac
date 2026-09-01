@@ -20,7 +20,7 @@ import '../styles/pages/players-tables.css';
 import '../styles/pages/earnings.css';
 
 const PAGE_SIZE = 50;
-const LENSES: readonly EarningsLens[] = ['career', 'best', 'season'];
+const LENSES: readonly EarningsLens[] = ['career', 'top-seasons', 'current'];
 
 export function EarningsPage() {
   const [payload] = createResource(fetchEarnings);
@@ -73,8 +73,8 @@ export function EarningsPage() {
     const season = currentSeason();
     return [
       { value: 'career' as const, label: 'Career' },
-      { value: 'best' as const, label: 'Best season' },
-      { value: 'season' as const, label: season ? shortSeasonLabel(season.label) : 'This season' }
+      { value: 'top-seasons' as const, label: 'Top seasons' },
+      { value: 'current' as const, label: season ? shortSeasonLabel(season.label) : 'This season' }
     ];
   });
 
@@ -160,7 +160,7 @@ export function EarningsPage() {
                         <td class='muted-cell'>{row.player.country || '—'}</td>
                         <td class='num'>
                           {formatEarnings(row.amount)}
-                          <Show when={lens() === 'best' && seasonLabel(row.seasonKey)}>
+                          <Show when={lens() === 'top-seasons' && seasonLabel(row.seasonKey)}>
                             {label => <span class='earnings-season'>{label()}</span>}
                           </Show>
                         </td>
