@@ -9,14 +9,21 @@
  * tournament id behind every payout. That is what a "today's payouts" view
  * needs, including for players whose placements earned nothing at the time.
  *
- * Writes NDJSON to `.cache/limitless/player-results.ndjson`, one record per
- * player, appended as it goes. A full sweep takes about two hours, so it is
+ * Runs twice, because Limitless's results table never states which age
+ * division a finish was in. `CRAWL_DIVISION=ma` fetches the Masters-filtered
+ * page and `CRAWL_DIVISION=all` the unfiltered one; a row in the second but
+ * not the first was a Junior or Senior finish, which pays from a different
+ * column. Each pass has its own output file and its own resume state.
+ *
+ * Writes NDJSON to `.cache/limitless/player-results-{division}.ndjson`, one
+ * record per player, appended as it goes. A full sweep takes about two hours, so it is
  * built to be killed and restarted: re-running skips every id already
  * accounted for — players in the results file, dead ids in `dead-ids.txt` —
  * and picks up where it stopped. Nothing is ever re-fetched.
  *
  * Usage:
- *   npx tsx scripts/crawl-player-results.ts              # ids 1..MAX_PLAYER_ID
+ *   npx tsx scripts/crawl-player-results.ts                    # Masters pass
+ *   CRAWL_DIVISION=all npx tsx scripts/crawl-player-results.ts  # every division
  *   MAX_PLAYER_ID=200 npx tsx scripts/crawl-player-results.ts
  *
  * Survives a dropped terminal:
@@ -33,13 +40,20 @@ import { parseCash, parseCrawledIds, parsePlace, parseSeasonKey } from '../share
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE_DIR = join(ROOT, '.cache', 'limitless');
-const OUT_PATH = join(CACHE_DIR, 'player-results.ndjson');
+/** `ma` for the Masters-filtered pass, `all` for every division. */
+const DIVISION = process.env.CRAWL_DIVISION ?? 'ma';
+if (DIVISION !== 'ma' && DIVISION !== 'all') {
+  throw new Error(`CRAWL_DIVISION must be 'ma' or 'all', got ${JSON.stringify(DIVISION)}`);
+}
+const OUT_PATH = join(CACHE_DIR, `player-results-${DIVISION}.ndjson`);
 /**
  * Ids with no player behind them. Recorded separately so a resume doesn't
  * re-fetch them — they leave no record in the results file, and there are
  * hundreds of them scattered through the range.
  */
 const DEAD_PATH = join(CACHE_DIR, 'dead-ids.txt');
+/** The results page, filtered to Masters or left across every division. */
+const RESULTS_QUERY = DIVISION === 'ma' ? '?division=ma' : '';
 
 const BASE_URL = 'https://limitlesstcg.com';
 const USER_AGENT = 'ciphermaniac-earnings/1.0 (+https://ciphermaniac.com)';
@@ -162,9 +176,7 @@ function loadSettledIds(): Set<string> {
 
 /** Crawl one id. Returns false when the id has no player behind it. */
 async function crawlPlayer(id: number): Promise<boolean> {
-  // Masters only: payouts differ by age division, and every other dataset in
-  // this repo is Masters (see .github/scripts/download-tournament.py).
-  const html = await fetchHtml(`${BASE_URL}/players/${id}/results?division=ma`);
+  const html = await fetchHtml(`${BASE_URL}/players/${id}/results${RESULTS_QUERY}`);
   if (!html) {
     // Record the miss too — otherwise every resume re-fetches all of them.
     appendFileSync(DEAD_PATH, `${id}\n`);
@@ -185,7 +197,9 @@ async function main(): Promise<void> {
       pending.push(id);
     }
   }
-  console.log(`[crawl] ids 1-${MAX_PLAYER_ID}, ${settled.size} already settled, ${pending.length} to fetch`);
+  console.log(
+    `[crawl] division=${DIVISION}, ids 1-${MAX_PLAYER_ID}, ${settled.size} already settled, ${pending.length} to fetch`
+  );
   if (pending.length === 0) {
     console.log('[crawl] Nothing to do');
     return;
