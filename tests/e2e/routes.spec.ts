@@ -126,6 +126,22 @@ test('the card wall mounts and paints its loop', async ({ page }) => {
   expect(painted, 'the stage should have painted something with more than one value').toBeGreaterThan(1);
 });
 
+test('the earnings table re-ranks under each lens', async ({ page }) => {
+  // Unlike the routes above, this page's data is a build artifact
+  // (static/earnings.json), so it is served by the preview itself rather than
+  // the fixture origin. Assertions stay structural — the numbers change every
+  // time the scrape is re-run.
+  await gotoClean(page, '/tools/earnings');
+  await expect(page.locator('table.data tbody tr').first()).toBeVisible();
+  await expect(page.locator('thead th').last()).toHaveText('Career');
+
+  await page.getByRole('tab', { name: 'Best season' }).click();
+  await expect(page).toHaveURL(/lens=best/);
+  await expect(page.locator('thead th').last()).toHaveText('Best season');
+  // The best-season lens annotates each amount with the season it came from.
+  await expect(page.locator('tbody tr').first().locator('.earnings-season')).toBeVisible();
+});
+
 test('social graphics fits long card names inside their cards', async ({ page }, testInfo) => {
   // The canvas is a fixed 1280px desktop composition; the mobile project gets
   // the "built for desktop" note instead, so there is nothing to measure.

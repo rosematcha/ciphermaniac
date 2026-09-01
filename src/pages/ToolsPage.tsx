@@ -86,6 +86,21 @@ export function ToolsPage() {
             </div>
           </A>
 
+          <A class='arche' href='/tools/earnings'>
+            <div class='arche-thumb' aria-hidden='true'>
+              <svg viewBox='0 0 100 80'>
+                <rect x='14' y='20' width='72' height='7' fill='currentColor' opacity='0.5' />
+                <rect x='14' y='32' width='56' height='7' fill='currentColor' opacity='0.42' />
+                <rect x='14' y='44' width='38' height='7' fill='currentColor' opacity='0.28' />
+                <rect x='14' y='56' width='24' height='7' fill='currentColor' opacity='0.16' />
+              </svg>
+            </div>
+            <div class='arche-name'>Earnings</div>
+            <div class='arche-stats'>
+              <span class='arche-wr'>Rank players by prize money, across a career or inside a single season</span>
+            </div>
+          </A>
+
           <A class='arche' href='/tools/in-loving-memory'>
             <div class='arche-thumb' aria-hidden='true'>
               <svg viewBox='0 0 100 80'>

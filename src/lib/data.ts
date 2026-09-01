@@ -22,6 +22,7 @@ export { itemUid } from './data/compat';
 export { snapshotSourceKey } from './data/paths';
 export { fetchRotationIndex, snapshotDateForArchetype, snapshotDateForCard } from './data/snapshots';
 export { fetchPlayerDecks, fetchPlayerIndexSlim, fetchPlayerProfile } from './data/players';
+export { fetchEarnings } from './data/earnings';
 export { fetchMajorsTrendReport, fetchOnlineTrendReport } from './data/trends';
 export type { TrendTimelinePoint } from './data/trends';
 export { fetchMaster, fetchMeta, fetchTournamentsList } from './data/reports';

@@ -49,6 +49,7 @@ const InLovingMemoryPage = lazy(() =>
 const LabelMakerPage = lazy(() => import('./pages/LabelMakerPage').then(m => ({ default: m.LabelMakerPage })));
 const MetaBinderPage = lazy(() => import('./pages/MetaBinderPage').then(m => ({ default: m.MetaBinderPage })));
 const CardWallPage = lazy(() => import('./pages/CardWallPage').then(m => ({ default: m.CardWallPage })));
+const EarningsPage = lazy(() => import('./pages/EarningsPage').then(m => ({ default: m.EarningsPage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
 const SurveyPage = lazy(() => import('./pages/SurveyPage').then(m => ({ default: m.SurveyPage })));
 const SurveyResultsPage = lazy(() => import('./pages/SurveyResultsPage').then(m => ({ default: m.SurveyResultsPage })));
@@ -100,6 +101,7 @@ render(
       <Route path='/tools/deck-box-labels' component={LabelMakerPage} />
       <Route path='/tools/meta-binder' component={MetaBinderPage} />
       <Route path='/tools/card-wall' component={CardWallPage} />
+      <Route path='/tools/earnings' component={EarningsPage} />
       {/* The section shipped as /toys before it was made public — keep the old
           paths working for anyone who bookmarked or shared one. */}
       <Route path='/toys' component={() => <Navigate href='/tools' />} />
