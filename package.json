@@ -30,6 +30,7 @@
     "images:convert": "tsx scripts/convert-card-images.ts",
     "build:card-types": "node scripts/build-card-types.mjs",
     "check:card-types": "node scripts/check-card-types.mjs",
+    "scrape:earnings": "tsx scripts/scrape-player-earnings.ts",
     "bench:routes": "tsx scripts/benchmark-routes.ts",
     "bench:panel": "tsx tests/perf/advanced-panel.bench.ts",
     "bench:budget": "tsx scripts/check-route-budget.ts",
