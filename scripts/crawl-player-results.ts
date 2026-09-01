@@ -195,9 +195,11 @@ async function main(): Promise<void> {
   let written = 0;
   let missing = 0;
 
-  // Each worker sleeps RATE_LIMIT_MS between its own requests, so CONCURRENCY
-  // workers land at roughly 4 requests/second overall — the same ceiling
-  // scripts/build-card-types.mjs uses against the same site.
+  // Each worker sleeps RATE_LIMIT_MS between its own requests. Limitless
+  // answers a results page in well under the sleep, so two workers measure at
+  // ~6.5 requests/second rather than the 4/s the sleep alone would imply —
+  // above the ceiling scripts/build-card-types.mjs sets against the same site.
+  // Lower CONCURRENCY to 1 for ~3/s if that ever needs to come down.
   async function worker(): Promise<void> {
     for (let index = cursor; index < pending.length; index = cursor) {
       cursor += 1;
