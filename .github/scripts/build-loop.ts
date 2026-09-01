@@ -70,10 +70,7 @@ const CAPTURED_KEYS: Record<Exclude<ReleaseScope, 'online' | 'catalogs'>, { rel:
  * @param load - JSON reader for the bucket
  * @throws When events present in the served release are absent from this build
  */
-async function assertNoEventRegression(
-  folders: string[],
-  load: <T>(key: string) => Promise<T | null>
-): Promise<void> {
+async function assertNoEventRegression(folders: string[], load: <T>(key: string) => Promise<T | null>): Promise<void> {
   const pointer = await load<{ releaseId?: string }>('build/v1/channels/production.json');
   if (!pointer?.releaseId) {
     console.log('[build-loop] no production release to compare against — skipping regression guard');
@@ -97,8 +94,7 @@ type EventBody = Record<string, unknown>;
 
 /** The decision to capture an event folder, carrying the narrowed bodies. */
 export type EventCapturePlan =
-  | { capture: true; decks: EventBody[]; players: EventBody[]; meta: EventBody }
-  | { capture: false; reason: string };
+  { capture: true; decks: EventBody[]; players: EventBody[]; meta: EventBody } | { capture: false; reason: string };
 
 /**
  * Decide whether an event folder may be captured into an immutable release.
