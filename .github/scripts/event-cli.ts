@@ -350,10 +350,7 @@ export function buildTournamentCatalog(folders: string[]): string[] {
  * @param bucket - Bucket name
  * @returns Folder names without the `reports/` prefix or trailing slash
  */
-export async function listReportFolders(
-  client: ReturnType<typeof createR2Client>,
-  bucket: string
-): Promise<string[]> {
+export async function listReportFolders(client: ReturnType<typeof createR2Client>, bucket: string): Promise<string[]> {
   const { ListObjectsV2Command } = await import('@aws-sdk/client-s3');
   const folders: string[] = [];
   let token: string | undefined;
