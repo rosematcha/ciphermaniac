@@ -31,7 +31,6 @@
     "build:card-types": "node scripts/build-card-types.mjs",
     "check:card-types": "node scripts/check-card-types.mjs",
     "crawl:players": "tsx scripts/crawl-player-results.ts",
-    "crawl:players:all": "CRAWL_DIVISION=all tsx scripts/crawl-player-results.ts",
     "build:earnings": "tsx scripts/build-earnings.ts",
     "bench:routes": "tsx scripts/benchmark-routes.ts",
     "bench:panel": "tsx tests/perf/advanced-panel.bench.ts",

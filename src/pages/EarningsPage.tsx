@@ -10,6 +10,7 @@ import { EmptyState } from '../components/EmptyState';
 import { createPagination } from '../lib/pagination';
 import { parseISODate, shortDate } from '../lib/format';
 import {
+  type EarningsBasis,
   type EarningsLens,
   type EarningsRow,
   formatEarnings,
@@ -21,17 +22,26 @@ import '../styles/pages/earnings.css';
 
 const PAGE_SIZE = 50;
 const LENSES: readonly EarningsLens[] = ['career', 'top-seasons', 'current'];
+const BASES: readonly EarningsBasis[] = ['actual', 'adjusted'];
+const BASIS_OPTIONS: { value: EarningsBasis; label: string }[] = [
+  { value: 'actual', label: 'As paid' },
+  { value: 'adjusted', label: "Today's payouts" }
+];
 
 export function EarningsPage() {
   const [payload] = createResource(fetchEarnings);
 
   // Lens and page live in the URL so a shared link lands on the same view.
   // `career` and page 1 are omitted, keeping the bare /tools/earnings canonical.
-  const [params, setParams] = useSearchParams<{ lens?: string; page?: string }>();
+  const [params, setParams] = useSearchParams<{ lens?: string; basis?: string; page?: string }>();
   const lens = (): EarningsLens =>
     LENSES.includes(params.lens as EarningsLens) ? (params.lens as EarningsLens) : 'career';
   const setLens = (next: EarningsLens) =>
     setParams({ lens: next === 'career' ? undefined : next, page: undefined }, { replace: true });
+  const basis = (): EarningsBasis =>
+    BASES.includes(params.basis as EarningsBasis) ? (params.basis as EarningsBasis) : 'actual';
+  const setBasis = (next: EarningsBasis) =>
+    setParams({ basis: next === 'actual' ? undefined : next, page: undefined }, { replace: true });
 
   onMount(() => {
     document.title = 'Earnings — Ciphermaniac';
@@ -50,7 +60,7 @@ export function EarningsPage() {
     if (!loaded || !season) {
       return [];
     }
-    return rankByLens(loaded.players, lens(), season.key);
+    return rankByLens(loaded.players, lens(), season.key, basis());
   });
 
   const pageParam: Signal<number> = [
@@ -64,7 +74,7 @@ export function EarningsPage() {
       return next;
     }) as Signal<number>[1]
   ];
-  // No resetOn list: setLens already clears `page` itself.
+  // No resetOn list: setLens and setBasis already clear `page` themselves.
   const { page, totalPages, pageItems, setPage } =
     // eslint-disable-next-line solid/reactivity -- createPagination reads `rows` inside its own createMemo (a tracked scope); the analyzer can't see through the helper
     createPagination(rows, PAGE_SIZE, undefined, pageParam);
@@ -111,7 +121,25 @@ export function EarningsPage() {
       </section>
 
       <Section>
-        <Segmented<EarningsLens> options={lensOptions()} selected={lens()} onSelect={setLens} ariaLabel='Rank by' />
+        <div class='earnings-controls'>
+          <Segmented<EarningsLens> options={lensOptions()} selected={lens()} onSelect={setLens} ariaLabel='Rank by' />
+          <Segmented<EarningsBasis>
+            options={BASIS_OPTIONS}
+            selected={basis()}
+            onSelect={setBasis}
+            ariaLabel='Pay scale'
+          />
+        </div>
+        <p class='earnings-note'>
+          <Show when={basis() === 'adjusted'} fallback={<>Prize money as it was paid at the time.</>}>
+            Every finish paid at the{' '}
+            <a href={data()?.payoutSource} target='_blank' rel='noopener'>
+              current published rates
+            </a>
+            . Regionals, Internationals and Worlds only; Nationals count at International rates and Special
+            Championships at Regional rates. Junior and Senior finishes pay from their own, lower column.
+          </Show>
+        </p>
       </Section>
 
       {/* No section heading: the hero names the page and Pagination's

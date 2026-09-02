@@ -9,7 +9,7 @@
  * @module shared/earningsPayouts
  */
 
-import type { DividedResult, EarningsDivision, EarningsSeason, EarningsTier, EarningsTotals } from './earningsTypes.js';
+import type { CrawledResult, EarningsDivision, EarningsSeason, EarningsTier, EarningsTotals } from './earningsTypes.js';
 
 /**
  * TCG payouts for the 2027 Championship Series, as published at
@@ -120,7 +120,7 @@ function totalsOf(seasons: Record<string, number>): EarningsTotals {
  * it from.
  */
 export function totalsFor(
-  results: DividedResult[],
+  results: CrawledResult[],
   typeOf: (tournamentId: string) => string | undefined
 ): { actual: EarningsTotals; adjusted: EarningsTotals } {
   const actual: Record<string, number> = {};

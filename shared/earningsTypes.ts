@@ -61,17 +61,7 @@ export interface CrawledResult {
   place: number | null;
   /** Prize money actually paid, in whole dollars. */
   cash: number;
-}
-
-/**
- * A crawled finish with its age division resolved.
- *
- * Limitless's results table never states the division, so it can't be crawled
- * — the build infers it by crawling twice, once filtered to Masters: a row
- * present unfiltered but absent from the Masters pass was a Junior or Senior
- * finish.
- */
-export interface DividedResult extends CrawledResult {
+  /** Age division, read off the tournament link's `/JR` or `/SR` suffix. */
   division: EarningsDivision;
 }
 

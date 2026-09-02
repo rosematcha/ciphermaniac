@@ -9,7 +9,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { parseCash, parseCrawledIds, parsePlace, parseSeasonKey } from '../../shared/earningsParse.ts';
+import {
+  parseCash,
+  parseCrawledIds,
+  parsePlace,
+  parseSeasonKey,
+  parseTournamentRef
+} from '../../shared/earningsParse.ts';
 
 test('abbreviated thousands expand', () => {
   assert.equal(parseCash('2.5K$'), 2500);
@@ -73,4 +79,22 @@ test('a record without an id counts as torn rather than resuming a blank', () =>
   const { ids, torn } = parseCrawledIds('{"results":[]}');
   assert.equal(ids.size, 0);
   assert.equal(torn, 1);
+});
+
+test('a tournament link yields the numeric id, not its trailing division code', () => {
+  // Taking the last path segment reads "SR" as the tournament id, which makes
+  // every Junior/Senior finish fail its tier lookup and restate to $0.
+  assert.deepEqual(parseTournamentRef('/tournaments/522'), { id: '522', division: 'masters' });
+  assert.deepEqual(parseTournamentRef('/tournaments/375/SR'), { id: '375', division: 'junior-senior' });
+  assert.deepEqual(parseTournamentRef('/tournaments/210/JR'), { id: '210', division: 'junior-senior' });
+});
+
+test('an explicit Masters suffix reads as Masters', () => {
+  assert.deepEqual(parseTournamentRef('/tournaments/9/MA'), { id: '9', division: 'masters' });
+});
+
+test('a non-tournament link has no reference, and an unknown suffix throws', () => {
+  assert.equal(parseTournamentRef('/decks/list/3730'), null);
+  assert.equal(parseTournamentRef(''), null);
+  assert.throws(() => parseTournamentRef('/tournaments/5/XX'), /Unrecognized division suffix/);
 });

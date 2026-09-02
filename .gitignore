@@ -107,3 +107,4 @@ trends.json
 
 # Playwright artifacts
 test-results/
+.cache/

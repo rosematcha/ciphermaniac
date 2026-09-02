@@ -15,3 +15,18 @@
   color: var(--muted);
   font-size: 12px;
 }
+
+/* Lens and pay-scale controls share a row and wrap together on narrow screens. */
+.earnings-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* What the money in the table means under the current pay scale. */
+.earnings-note {
+  margin-top: var(--space-3);
+  max-width: 68ch;
+  font-size: 12px;
+  color: var(--muted);
+}
