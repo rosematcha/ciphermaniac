@@ -1460,13 +1460,6 @@ body[data-mode='dark'] .tournament-row-link:hover {
   display: grid;
   gap: 8px;
 }
-.callout-eyebrow {
-  font-size: 10.5px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: var(--accent);
-}
 .callout-title {
   font-size: 28px;
   font-weight: 700;
@@ -1517,12 +1510,13 @@ body[data-mode='dark'] .tournament-row-link:hover {
   border-top: 1px solid var(--rule);
 }
 .callout-cut-strip-label {
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 600;
   color: var(--muted);
-  margin-bottom: 8px;
+  margin: 0 0 8px;
+  font-variant-numeric: tabular-nums;
 }
 .callout-cut-strip-list {
   list-style: none;

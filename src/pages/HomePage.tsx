@@ -159,7 +159,7 @@ export function HomePage() {
 
   return (
     <>
-      <Show when={calloutKey()} keyed>
+      <Show when={calloutKey()} keyed fallback={<h1 class='sr-only'>Ciphermaniac</h1>}>
         {key => (
           <section class='home-callout-wrap'>
             <LatestEventCallout tournamentKey={key} onlineArchetypes={onlineArchetypesData()} />
@@ -566,8 +566,7 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
   return (
     <article class='callout'>
       <header class='callout-head'>
-        <span class='callout-eyebrow'>Latest event</span>
-        <h2 class='callout-title'>{eventMeta()?.name ?? prettyTournamentName(props.tournamentKey)}</h2>
+        <h1 class='callout-title'>{eventMeta()?.name ?? prettyTournamentName(props.tournamentKey)}</h1>
         <div class='callout-meta'>
           <Show when={eventMeta()?.date}>
             <span>{eventMeta()!.date}</span>
@@ -630,7 +629,10 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
 
       <Show when={topCutParticipants().length > 0}>
         <div class='callout-cut-strip'>
-          <ul class='callout-cut-strip-list'>
+          <h2 class='callout-cut-strip-label' id='callout-cut-heading'>
+            Top cut · {topCutParticipants().length}
+          </h2>
+          <ul class='callout-cut-strip-list' aria-labelledby='callout-cut-heading'>
             <For
               each={topCutParticipants()
                 .slice()
