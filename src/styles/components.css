@@ -1652,8 +1652,9 @@ body[data-mode='dark'] .tournament-row-link:hover {
    bordered, ink-offset shadow, hover lifts to expose the offset. */
 .story-card {
   display: grid;
-  grid-template-rows: auto auto auto 1fr auto;
-  gap: 10px;
+  grid-template-rows: auto auto auto auto 1fr;
+  align-content: start;
+  gap: 8px;
   padding: 14px 16px 16px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1723,18 +1724,38 @@ body[data-mode='dark'] .tournament-row-link:hover {
   color: var(--accent);
 }
 
-.story-card-headline {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
+.story-card-subject {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   line-height: 1.25;
   margin: 0;
   color: var(--fg);
 }
-.story-card-body {
-  font-size: 13px;
-  line-height: 1.45;
+.story-card-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.story-card-value {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+.story-card-measure {
+  font-size: 12px;
   color: var(--muted);
+}
+.story-card-detail {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
   margin: 0;
 }
 

@@ -1,11 +1,15 @@
-// Storyline engine for the "Latest event" home-page callout. Each generator is
+// Storyline engine for the event callout on the home page. Each generator is
 // a pure function returning null or a `StoryCandidate` (Story + weight 0..100).
 // `buildStories` runs every generator, dedupes by subject, sorts by weight, and
 // returns the top 3. Pure module — JSON-serializable output so the cron can
 // pre-pick stories server-side later.
+//
+// Stories carry numbers, not verdicts: a subject, the one figure that made it
+// a story, what that figure measures, and optional numeric context. The tag
+// label classifies (which generator fired); the data does the rest.
 
 import type { ArchetypeIndexEntry, TournamentParticipant } from '../types';
-import { capitalize, formatRecord as formatRecordBase } from './format';
+import { formatRecord as formatRecordBase } from './format';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -63,10 +67,16 @@ export interface FieldRow {
 export interface Story {
   tag: ArcTag;
   row: FieldRow;
-  headline: string;
-  body: string;
-  /** Override the ARC tag label (e.g. "Underdog" instead of "Surged"). */
-  tagLabel?: string;
+  /** Which generator fired, as a short classifier ("Top performer"). */
+  tagLabel: string;
+  /** Archetype label or player name the story is about. */
+  subject: string;
+  /** The lead figure: "30%", "#9", "9-0-0", "+6.2 pp". */
+  figure: string;
+  /** What the figure measures: "Day 2 conversion", "through Swiss". */
+  measure: string;
+  /** Numeric context: "12 of 40 pilots · best finish #3". */
+  detail?: string;
   /** Override the archetype href (e.g. link to a player page). */
   href?: string;
   /** Override the thumbnail set (e.g. show a specific deck's CardStack). */
@@ -279,13 +289,7 @@ const genTopPerformer: StoryGenerator = ctx => {
     return null;
   }
   return {
-    ...makeConversionStory({
-      row: best,
-      tag: 'surged',
-      headline: `${best.label} converted best`,
-      tagLabel: 'Top performer',
-      body: buildPerformanceLine(best)
-    }),
+    ...makeConversionStory({ row: best, tag: 'surged', tagLabel: 'Top performer' }),
     weight: Math.min(100, best.day2Conversion!),
     subjectKey: `archetype:${best.archetype?.name ?? best.label}`
   };
@@ -312,23 +316,16 @@ const genUnderdog: StoryGenerator = ctx => {
   }
   const entry = ctx.lookupArchetype(underdog.deckName);
   const record = formatRecordBase(underdog, { compact: true });
-  const country = countryLabel(underdog.country);
-  const parts: string[] = [];
-  parts.push(`${underdog.name}${country ? ` (${country})` : ''} finished #${underdog.placement}`);
-  if (underdog.deckName) {
-    parts.push(`piloting ${underdog.deckName}`);
-  }
-  if (record) {
-    parts.push(`record ${record}`);
-  }
   const stubRow: FieldRow = makeStubRow(underdog.deckName ?? '—', entry, underdog.placement);
   const gap = underdog.placement - ctx.cutLine;
   return {
     tag: 'climbed',
     tagLabel: 'Just outside',
     row: stubRow,
-    headline: gap <= 1 ? `${underdog.name} just missed top cut` : `${underdog.name} led the players out`,
-    body: `${capitalize(parts.join(' · '))}.`,
+    subject: withCountry(underdog),
+    figure: `#${underdog.placement}`,
+    measure: `cut line #${ctx.cutLine}`,
+    detail: joinParts([record, underdog.deckName]),
     href: entry ? `/archetypes/${encodeURIComponent(entry.name)}` : undefined,
     weight: 20 + Math.max(0, 8 - gap),
     subjectKey: `player:${underdog.name}#${underdog.placement}`
@@ -352,13 +349,12 @@ const genDisappointment: StoryGenerator = ctx => {
   // — the bar this deck failed to clear — with its own rate alongside.
   const fieldAvgConversion = computeFieldAvgConversion(ctx.rows);
   return {
-    ...makeConversionStory({
-      row: worst,
-      tag: 'faded',
-      headline: `${worst.label} couldn't deliver`,
-      tagLabel: 'Disappointment',
-      body: buildFadeLine(worst)
-    }),
+    ...makeConversionStory({ row: worst, tag: 'faded', tagLabel: 'Disappointment' }),
+    detail: joinParts([
+      `${worst.day2Count} of ${worst.fieldDecks} pilots`,
+      fieldAvgConversion !== null ? `field avg ${fmtPct(fieldAvgConversion)}` : null,
+      bestFinish(worst)
+    ]),
     statBar:
       fieldAvgConversion !== null
         ? {
@@ -387,13 +383,7 @@ const genHiddenGem: StoryGenerator = ctx => {
     return null;
   }
   return {
-    ...makeConversionStory({
-      row: gem,
-      tag: 'climbed',
-      headline: `${gem.label} punched above weight`,
-      tagLabel: 'Hidden gem',
-      body: buildGemLine(gem)
-    }),
+    ...makeConversionStory({ row: gem, tag: 'climbed', tagLabel: 'Hidden gem' }),
     weight: Math.min(100, gem.day2Conversion! - 30),
     subjectKey: `archetype:${gem.archetype?.name ?? gem.label}`
   };
@@ -413,10 +403,10 @@ const genMetaSurprise: StoryGenerator = ctx => {
     tag: overbrought ? 'climbed' : 'faded',
     tagLabel: overbrought ? 'Overbrought' : 'Underbrought',
     row: surprise,
-    headline: overbrought
-      ? `${surprise.label} was the day's most popular pick`
-      : `${surprise.label} was conspicuously absent`,
-    body: buildSurpriseLine(surprise, overbrought),
+    subject: surprise.label,
+    figure: `${overbrought ? '+' : '−'}${Math.abs(surprise.delta!).toFixed(1)} pp`,
+    measure: 'vs. online meta',
+    detail: `${fmtPct(surprise.fieldPct)} field · ${fmtPct(surprise.onlinePct ?? 0)} online`,
     statBar: {
       label: 'vs. online meta',
       fillPct: Math.min(100, Math.abs(surprise.delta!) * 4),
@@ -448,8 +438,10 @@ const genCutDomination: StoryGenerator = ctx => {
     tag: 'surged',
     tagLabel: 'Cut domination',
     row: dominant,
-    headline: `${dominant.label} took over the cut`,
-    body: `${dominant.topCutCount} of ${ctx.totalTopCut} top-cut slots — ${fmtPct(share)} of the bracket.`,
+    subject: dominant.label,
+    figure: `${dominant.topCutCount} of ${ctx.totalTopCut}`,
+    measure: 'top-cut slots',
+    detail: `${fmtPct(share)} of the cut`,
     statBar: {
       label: 'Share of top cut',
       fillPct: share,
@@ -475,13 +467,14 @@ const genOffMetaFinalist: StoryGenerator = ctx => {
   if (!best || !best.row) {
     return null;
   }
-  const country = countryLabel(best.p.country);
   return {
     tag: 'climbed',
     tagLabel: 'Off-meta',
     row: best.row,
-    headline: `${best.p.deckName} made cut against the grain`,
-    body: `${best.p.name}${country ? ` (${country})` : ''} finished #${best.p.placement} on an archetype just ${fmtPct(best.row.onlinePct!)} of the online meta.`,
+    subject: best.p.deckName ?? best.row.label,
+    figure: `#${best.p.placement}`,
+    measure: `on ${fmtPct(best.row.onlinePct!)} of the online meta`,
+    detail: joinParts([withCountry(best.p), `${best.row.fieldDecks} pilots`]),
     statBar: {
       label: 'Online meta share',
       fillPct: Math.min(100, best.row.onlinePct! * 20),
@@ -507,8 +500,10 @@ const genNoShowMeta: StoryGenerator = ctx => {
     tag: 'faded',
     tagLabel: 'No-show',
     row: missing,
-    headline: `${missing.label} didn't show up`,
-    body: `A ${fmtPct(missing.onlinePct!)} share of the online meta — and not a single pilot brought it.`,
+    subject: missing.label,
+    figure: '0 pilots',
+    measure: 'in the field',
+    detail: `${fmtPct(missing.onlinePct!)} of the online meta`,
     statBar: {
       label: 'Online meta vs. field',
       fillPct: Math.min(100, missing.onlinePct! * 10),
@@ -538,8 +533,10 @@ const genUnbrokenWinner: StoryGenerator = ctx => {
     tag: 'surged',
     tagLabel: 'Unbeaten',
     row,
-    headline: `${ctx.winner.name} ran the table`,
-    body: `${w}-0${ctx.winner.ties ? `-${ctx.winner.ties}` : ''} through Swiss${ctx.winner.deckName ? ` on ${ctx.winner.deckName}` : ''}.`,
+    subject: withCountry(ctx.winner),
+    figure: `${w}-0${ctx.winner.ties ? `-${ctx.winner.ties}` : ''}`,
+    measure: 'through Swiss',
+    detail: joinParts(['1st', ctx.winner.deckName]),
     href: entry ? `/archetypes/${encodeURIComponent(entry.name)}` : undefined,
     statBar: day2ConversionStatBar(row),
     weight: 85,
@@ -572,8 +569,9 @@ const genMirrorCut: StoryGenerator = ctx => {
     tag: 'climbed',
     tagLabel: 'Cut mirror',
     row,
-    headline: `${label} owned the cut`,
-    body: `${count} of the ${cut.length} top-cut spots went to the same archetype.`,
+    subject: label,
+    figure: `${count} of ${cut.length}`,
+    measure: 'top-cut slots',
     weight: 60 + count * 8,
     subjectKey: `archetype:${entry?.name ?? label}`
   };
@@ -613,22 +611,39 @@ function day2ConversionStatBar(row: FieldRow): Story['statBar'] {
   };
 }
 
-function makeConversionStory(args: {
-  row: FieldRow;
-  tag: ArcTag;
-  headline: string;
-  tagLabel: string;
-  body: string;
-}): Story {
+/**
+ * Story whose lead figure is the row's Day 2 conversion. Callers only reach
+ * here after filtering on `day2Conversion !== null`.
+ */
+function makeConversionStory(args: { row: FieldRow; tag: ArcTag; tagLabel: string }): Story {
   const r = args.row;
   return {
     tag: args.tag,
     tagLabel: args.tagLabel,
     row: r,
-    headline: args.headline,
-    body: args.body,
+    subject: r.label,
+    figure: fmtPct(r.day2Conversion ?? 0),
+    measure: 'Day 2 conversion',
+    detail: joinParts([`${r.day2Count} of ${r.fieldDecks} pilots`, bestFinish(r)]),
     statBar: day2ConversionStatBar(r)
   };
+}
+
+/** "best finish #N" when the row carries a placement. */
+function bestFinish(r: FieldRow): string | null {
+  return r.bestPlacement !== null ? `best finish #${r.bestPlacement}` : null;
+}
+
+/** Player name with their country label in parentheses when known. */
+function withCountry(p: TournamentParticipant): string {
+  const country = countryLabel(p.country);
+  return country ? `${p.name} (${country})` : p.name;
+}
+
+/** Middle-dot join, dropping empty parts; undefined when nothing remains. */
+function joinParts(parts: Array<string | null | undefined>): string | undefined {
+  const kept = parts.filter((x): x is string => typeof x === 'string' && x.length > 0);
+  return kept.length > 0 ? kept.join(' · ') : undefined;
 }
 
 /**
@@ -661,25 +676,6 @@ function makeStubRow(
   };
 }
 
-function buildSurpriseLine(r: FieldRow, overbrought: boolean): string {
-  if (overbrought) {
-    return `${fmtPct(r.fieldPct)} of the field showed up on this archetype — well above its ${fmtPct(r.onlinePct ?? 0)} online share.`;
-  }
-  return `Just ${fmtPct(r.fieldPct)} of the field brought this, compared with ${fmtPct(r.onlinePct ?? 0)} online.`;
-}
-
-function buildPerformanceLine(r: FieldRow): string {
-  const parts: string[] = [];
-  parts.push(`${r.day2Count} of ${r.fieldDecks} survived Day 2 (${fmtPct(r.day2Conversion!)})`);
-  if (r.avgWins !== null) {
-    parts.push(`avg record ${r.avgWins.toFixed(1)} wins`);
-  }
-  if (r.bestPlacement !== null) {
-    parts.push(`best finish #${r.bestPlacement}`);
-  }
-  return `${capitalize(parts.join(' · '))}.`;
-}
-
 /**
  * Field-wide Day-2 conversion (%, 0..100): total pilots who reached Day 2
  * divided by total pilots, across every archetype with conversion data. This
@@ -696,29 +692,6 @@ function computeFieldAvgConversion(rows: FieldRow[]): number | null {
     }
   }
   return total > 0 ? (day2 / total) * 100 : null;
-}
-
-function buildFadeLine(r: FieldRow): string {
-  const parts: string[] = [];
-  parts.push(
-    r.day2Count === 0
-      ? `${r.fieldDecks} brought it, not one made Day 2`
-      : `${r.fieldDecks} brought it, only ${r.day2Count} made Day 2 (${fmtPct(r.day2Conversion!)} conversion)`
-  );
-  if (r.bestPlacement !== null) {
-    parts.push(`best finish #${r.bestPlacement}`);
-  }
-  return `${capitalize(parts.join(' · '))}.`;
-}
-
-function buildGemLine(r: FieldRow): string {
-  const parts: string[] = [];
-  parts.push(`only ${r.fieldDecks} pilots, ${r.day2Count} cleared Day 2`);
-  parts.push(`${fmtPct(r.day2Conversion!)} conversion`);
-  if (r.bestPlacement !== null) {
-    parts.push(`best finish #${r.bestPlacement}`);
-  }
-  return `${capitalize(parts.join(' · '))}.`;
 }
 
 function fmtPct(p: number): string {

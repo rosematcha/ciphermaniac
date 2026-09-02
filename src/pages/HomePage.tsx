@@ -11,7 +11,7 @@ import {
   prettyTournamentName,
   tournamentDate
 } from '../lib/data';
-import type { ArcTag, FieldRow, Story } from '../lib/storylines';
+import type { FieldRow, Story } from '../lib/storylines';
 import type { ArchetypeIndexEntry, MetaReport, TournamentParticipant } from '../types';
 import { Skeleton } from '../components/Skeleton';
 import { Section } from '../components/Section';
@@ -788,14 +788,20 @@ function StoryCard(props: { story: Story; hasDay2: boolean }) {
           <CardStack thumbnails={thumbnails()} size='sm' />
         </Show>
       </div>
-      <div class='story-card-tag' title={ARC_TAG_TITLES[props.story.tag]}>
+      <div class='story-card-tag'>
         <span class='story-card-symbol' aria-hidden='true'>
           {meta().symbol}
         </span>
-        <span>{props.story.tagLabel ?? meta().label}</span>
+        <span>{props.story.tagLabel}</span>
       </div>
-      <h4 class='story-card-headline'>{props.story.headline}</h4>
-      <p class='story-card-body'>{props.story.body}</p>
+      <h3 class='story-card-subject'>{props.story.subject}</h3>
+      <p class='story-card-figure'>
+        <span class='story-card-value'>{props.story.figure}</span>
+        <span class='story-card-measure'>{props.story.measure}</span>
+      </p>
+      <Show when={props.story.detail}>
+        <p class='story-card-detail'>{props.story.detail}</p>
+      </Show>
     </A>
   );
 }
@@ -808,18 +814,6 @@ function normalize(s: string): string {
 function isOtherEntry(a: ArchetypeIndexEntry): boolean {
   return normalize(a.label || a.name) === 'other';
 }
-
-/**
- * Concrete scale for each story tag, taken verbatim from the thresholds in
- * `classifyArc` (src/lib/storylines.ts). Surfaced as a `title` on the tag so a
- * bare "surged"/"faded" chip states what it actually measures.
- */
-const ARC_TAG_TITLES: Record<ArcTag, string> = {
-  surged: 'Share climbed at least 1 pp at both the Day 2 and top-cut steps.',
-  climbed: 'Share climbed at least 1 pp at either the Day 2 or top-cut step.',
-  faded: 'At least 5% of the field, but none of the top cut.',
-  steady: 'No move of at least 1 pp through the Day 2 and top-cut steps.'
-};
 
 /* ---------- Recent major row ---------- */
 
