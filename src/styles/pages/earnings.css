@@ -30,3 +30,42 @@
   font-size: 12px;
   color: var(--muted);
 }
+
+/* ---------- Expanded row breakdown ---------- */
+
+/* Sits inside tr.row-expansion, which already supplies the recessed surface. */
+.earnings-breakdown {
+  width: 100%;
+  border-collapse: collapse;
+}
+.earnings-breakdown td {
+  padding: 5px 14px 5px 0;
+  font-size: 12.5px;
+  vertical-align: baseline;
+}
+.earnings-breakdown td.bd-amount {
+  padding-right: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* Placement and season lead each line, so they get a fixed gutter to line up in. */
+.earnings-breakdown td.bd-place,
+.earnings-breakdown td.bd-season {
+  width: 74px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.earnings-breakdown td.bd-event {
+  width: 100%;
+}
+.earnings-breakdown td.bd-meta {
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* An event that paid nothing is context for the season, not a result — it
+   recedes so the paying finishes carry the eye. */
+.earnings-breakdown tr.bd-unpaid td {
+  color: var(--muted);
+}

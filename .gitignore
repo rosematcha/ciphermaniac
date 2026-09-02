@@ -101,6 +101,7 @@ trends.json
 # Player prize earnings (scripts/scrape-player-earnings.ts). Small, changes only
 # when a season's results move, and served straight off the build.
 !/static/earnings.json
+!/static/earnings-events.json
 .lighthouseci/
 .scratch/
 .venv/

@@ -72,6 +72,36 @@ export interface CrawledPlayer {
   results: CrawledResult[];
 }
 
+/**
+ * One tournament finish, as shown in an expanded row.
+ *
+ * Carries both money figures so the panel can follow whichever pay scale the
+ * table is showing without a second lookup.
+ */
+export interface EarningsEvent {
+  name: string;
+  season: string;
+  /** Finishing position, or null when the page showed none. */
+  place: number | null;
+  /** Prize money as paid at the time. */
+  cash: number;
+  /** The same finish at today's published rates. */
+  adjusted: number;
+}
+
+/**
+ * Per-event detail, keyed by player id.
+ *
+ * A separate file from the leaderboard: the table itself needs only season
+ * aggregates, and this is three times the size, so it is fetched once on the
+ * first row a visitor expands and never at all otherwise.
+ */
+export interface EarningsEventsPayload {
+  generatedAt: string;
+  /** Player id to their finishes, oldest first. */
+  events: Record<string, EarningsEvent[]>;
+}
+
 export interface EarningsPayload {
   generatedAt: string;
   source: string;

@@ -16,7 +16,8 @@
  * League, online events, Players Cup and invitationals adjust to $0.
  *
  * Reads:  .cache/limitless/player-results.ndjson (npm run crawl:players)
- * Writes: static/earnings.json
+ * Writes: static/earnings.json        — the leaderboard the table ranks
+ *         static/earnings-events.json — per-event detail for expanded rows
  *
  * Usage:
  *   npx tsx scripts/build-earnings.ts
@@ -27,14 +28,21 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 import * as cheerio from 'cheerio';
-import type { CrawledPlayer, EarningsPayload, EarningsPlayer } from '../shared/earningsTypes';
-import { seasonList, TIER_OF_TYPE, totalsFor } from '../shared/earningsPayouts';
+import type {
+  CrawledPlayer,
+  EarningsEvent,
+  EarningsEventsPayload,
+  EarningsPayload,
+  EarningsPlayer
+} from '../shared/earningsTypes';
+import { payoutFor, seasonList, TIER_OF_TYPE, totalsFor } from '../shared/earningsPayouts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE_DIR = join(ROOT, '.cache', 'limitless');
 const RESULTS_PATH = join(CACHE_DIR, 'player-results.ndjson');
 const TIERS_PATH = join(CACHE_DIR, 'tournament-tiers.json');
 const OUT_PATH = join(ROOT, 'static', 'earnings.json');
+const EVENTS_OUT_PATH = join(ROOT, 'static', 'earnings-events.json');
 
 const BASE_URL = 'https://limitlesstcg.com';
 const USER_AGENT = 'ciphermaniac-earnings/1.0 (+https://ciphermaniac.com)';
@@ -108,6 +116,7 @@ async function main(): Promise<void> {
   console.log(`[earnings] ${crawled.length} crawled players, ${Object.keys(types).length} tiered tournaments`);
 
   const players: EarningsPlayer[] = [];
+  const events: Record<string, EarningsEvent[]> = {};
   for (const entry of crawled) {
     const { actual, adjusted } = totalsFor(entry.results, typeOf);
     // A player who never cashed and never placed into a paying bracket has
@@ -116,6 +125,16 @@ async function main(): Promise<void> {
       continue;
     }
     players.push({ id: entry.id, name: entry.name, country: entry.country, actual, adjusted });
+    events[entry.id] = entry.results.map(row => {
+      const tier = TIER_OF_TYPE[typeOf(row.tournamentId) ?? ''];
+      return {
+        name: row.name,
+        season: row.season,
+        place: row.place,
+        cash: row.cash,
+        adjusted: tier ? payoutFor(tier, row.place, row.division) : 0
+      };
+    });
   }
   if (players.length === 0) {
     throw new Error('No players with earnings — refusing to overwrite the existing file');
@@ -130,6 +149,9 @@ async function main(): Promise<void> {
     players
   };
   writeFileSync(OUT_PATH, `${JSON.stringify(payload)}\n`, 'utf8');
+
+  const eventsPayload: EarningsEventsPayload = { generatedAt: payload.generatedAt, events };
+  writeFileSync(EVENTS_OUT_PATH, `${JSON.stringify(eventsPayload)}\n`, 'utf8');
 
   console.log(
     `[earnings] Wrote ${players.length} players, ${payload.seasons.length} seasons to ${OUT_PATH} in ${(

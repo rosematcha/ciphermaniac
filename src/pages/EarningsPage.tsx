@@ -1,6 +1,6 @@
-import { createMemo, createResource, For, onMount, Show, type Signal } from 'solid-js';
+import { createMemo, createResource, createSignal, For, onMount, Show, type Signal } from 'solid-js';
 import { useSearchParams } from '@solidjs/router';
-import { fetchEarnings } from '../lib/data';
+import { fetchEarnings, fetchEarningsEvents } from '../lib/data';
 import { resolved } from '../lib/resource';
 import { Section } from '../components/Section';
 import { Segmented } from '../components/Segmented';
@@ -9,6 +9,14 @@ import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { createPagination } from '../lib/pagination';
 import { parseISODate, shortDate } from '../lib/format';
+import {
+  eventAmount,
+  eventsInSeason,
+  ordinalPlace,
+  type SeasonSummary,
+  summarizeSeasons
+} from '../utils/earningsBreakdown';
+import type { EarningsEvent } from '../../shared/earningsTypes';
 import {
   type EarningsBasis,
   type EarningsLens,
@@ -53,6 +61,21 @@ export function EarningsPage() {
 
   /** Newest season in the payload — what the third lens ranks. */
   const currentSeason = () => data()?.seasons[0] ?? null;
+
+  // Per-event detail is three times the size of the leaderboard, so it is only
+  // requested once a visitor actually opens a row. One row is open at a time:
+  // these panels are tall, and two of them push the table off screen.
+  const [wantEvents, setWantEvents] = createSignal(false);
+  const [eventsData] = createResource(wantEvents, fetchEarningsEvents);
+  const [openRow, setOpenRow] = createSignal<string | null>(null);
+
+  const rowKey = (row: EarningsRow) => `${row.player.id}:${row.seasonKey ?? 'career'}`;
+  const toggleRow = (row: EarningsRow) => {
+    const key = rowKey(row);
+    setOpenRow(current => (current === key ? null : key));
+    setWantEvents(true);
+  };
+  const eventsFor = (playerId: string): EarningsEvent[] | undefined => resolved(eventsData)?.events[playerId];
 
   const rows = createMemo<EarningsRow[]>(() => {
     const loaded = data();
@@ -165,6 +188,7 @@ export function EarningsPage() {
                 <thead>
                   <tr>
                     <th class='earnings-rank'>#</th>
+                    <th class='num expand-col' aria-label='Expand' />
                     <th>Player</th>
                     <th>Country</th>
                     <th class='num'>{amountHeader()}</th>
@@ -173,26 +197,16 @@ export function EarningsPage() {
                 <tbody>
                   <For each={pageItems()}>
                     {row => (
-                      <tr>
-                        <td class='earnings-rank'>{row.rank.toLocaleString()}</td>
-                        <td>
-                          <a
-                            class='cardname'
-                            href={`https://limitlesstcg.com/players/${row.player.id}`}
-                            target='_blank'
-                            rel='noopener'
-                          >
-                            {row.player.name}
-                          </a>
-                        </td>
-                        <td class='muted-cell'>{row.player.country || '—'}</td>
-                        <td class='num'>
-                          {formatEarnings(row.amount)}
-                          <Show when={lens() === 'top-seasons' && seasonLabel(row.seasonKey)}>
-                            {label => <span class='earnings-season'>{label()}</span>}
-                          </Show>
-                        </td>
-                      </tr>
+                      <BreakdownRow
+                        row={row}
+                        basis={basis()}
+                        seasonLabel={seasonLabel}
+                        expanded={openRow() === rowKey(row)}
+                        onToggle={() => toggleRow(row)}
+                        events={eventsFor(row.player.id)}
+                        loading={eventsData.loading}
+                        failed={Boolean(eventsData.error)}
+                      />
                     )}
                   </For>
                 </tbody>
@@ -214,6 +228,168 @@ export function EarningsPage() {
   );
 }
 
+/**
+ * One leaderboard row, plus the panel it opens.
+ *
+ * What the panel shows follows the lens the row came from: a career row has no
+ * season attached and breaks down into per-season lines, while a season row
+ * breaks down into that season's finishes.
+ */
+function BreakdownRow(props: {
+  row: EarningsRow;
+  basis: EarningsBasis;
+  seasonLabel: (key: string | null) => string | null;
+  expanded: boolean;
+  onToggle: () => void;
+  events: EarningsEvent[] | undefined;
+  loading: boolean;
+  failed: boolean;
+}) {
+  return (
+    <>
+      <tr class='is-link' onClick={() => props.onToggle()}>
+        <td class='earnings-rank'>{props.row.rank.toLocaleString()}</td>
+        <td class='num expand-col'>
+          <button
+            type='button'
+            class='row-caret'
+            classList={{ open: props.expanded }}
+            aria-expanded={props.expanded}
+            aria-label={props.expanded ? 'Hide breakdown' : 'Show breakdown'}
+            onClick={e => {
+              e.stopPropagation();
+              props.onToggle();
+            }}
+          >
+            ▸
+          </button>
+        </td>
+        <td>
+          {/* Stops the row toggle so a click on the name still leaves for Limitless. */}
+          <a
+            class='cardname'
+            href={`https://limitlesstcg.com/players/${props.row.player.id}`}
+            target='_blank'
+            rel='noopener'
+            onClick={e => e.stopPropagation()}
+          >
+            {props.row.player.name}
+          </a>
+        </td>
+        <td class='muted-cell'>{props.row.player.country || '—'}</td>
+        <td class='num'>
+          {formatEarnings(props.row.amount)}
+          <Show when={props.row.seasonKey && props.seasonLabel(props.row.seasonKey)}>
+            {label => <span class='earnings-season'>{label()}</span>}
+          </Show>
+        </td>
+      </tr>
+      <Show when={props.expanded}>
+        <tr class='row-expansion'>
+          <td colspan={5}>
+            <BreakdownPanel
+              events={props.events}
+              loading={props.loading}
+              failed={props.failed}
+              basis={props.basis}
+              seasonKey={props.row.seasonKey}
+              seasonLabel={props.seasonLabel}
+            />
+          </td>
+        </tr>
+      </Show>
+    </>
+  );
+}
+
+function BreakdownPanel(props: {
+  events: EarningsEvent[] | undefined;
+  loading: boolean;
+  failed: boolean;
+  basis: EarningsBasis;
+  seasonKey: string | null;
+  seasonLabel: (key: string | null) => string | null;
+}) {
+  // <Show> rather than a plain `if`: the events file lands after the first
+  // expand, and the body has to re-evaluate when it does.
+  return (
+    <Show
+      when={props.events}
+      fallback={
+        <div class='row-expansion-empty'>
+          <Show when={!props.failed} fallback={<>Couldn't load the event breakdown.</>}>
+            <Show when={props.loading} fallback={<>No events recorded for this player.</>}>
+              <Skeleton width='220px' height='14px' />
+            </Show>
+          </Show>
+        </div>
+      }
+    >
+      {events => (
+        <Show
+          when={props.seasonKey}
+          fallback={<SeasonLines rows={summarizeSeasons(events(), props.basis)} seasonLabel={props.seasonLabel} />}
+        >
+          {season => <EventLines events={eventsInSeason(events(), season())} basis={props.basis} />}
+        </Show>
+      )}
+    </Show>
+  );
+}
+
+/** Career breakdown: one line per season that earned money. */
+function SeasonLines(props: { rows: SeasonSummary[]; seasonLabel: (key: string | null) => string | null }) {
+  return (
+    <Show
+      when={props.rows.length > 0}
+      fallback={<div class='row-expansion-empty'>No earning seasons under this pay scale.</div>}
+    >
+      <table class='earnings-breakdown'>
+        <tbody>
+          <For each={props.rows}>
+            {season => (
+              <tr>
+                <td class='bd-season'>{props.seasonLabel(season.season) ?? season.season}</td>
+                <td class='bd-meta'>
+                  {season.eventCount.toLocaleString()} {season.eventCount === 1 ? 'event' : 'events'}
+                </td>
+                <td class='bd-meta'>Best {ordinalPlace(season.bestPlace)}</td>
+                <td class='num bd-amount'>{formatEarnings(season.amount)}</td>
+              </tr>
+            )}
+          </For>
+        </tbody>
+      </table>
+    </Show>
+  );
+}
+
+/** Season breakdown: every finish that season, paying or not. */
+function EventLines(props: { events: EarningsEvent[]; basis: EarningsBasis }) {
+  return (
+    <Show
+      when={props.events.length > 0}
+      fallback={<div class='row-expansion-empty'>No events recorded for this season.</div>}
+    >
+      <table class='earnings-breakdown'>
+        <tbody>
+          <For each={props.events}>
+            {event => (
+              <tr classList={{ 'bd-unpaid': eventAmount(event, props.basis) === 0 }}>
+                <td class='bd-place'>{ordinalPlace(event.place)}</td>
+                <td class='bd-event'>{event.name}</td>
+                <td class='num bd-amount'>
+                  {eventAmount(event, props.basis) > 0 ? formatEarnings(eventAmount(event, props.basis)) : '—'}
+                </td>
+              </tr>
+            )}
+          </For>
+        </tbody>
+      </table>
+    </Show>
+  );
+}
+
 function TableSkeleton() {
   return (
     <div class='table-wrap'>
@@ -221,6 +397,7 @@ function TableSkeleton() {
         <thead>
           <tr>
             <th class='earnings-rank'>#</th>
+            <th class='num expand-col' aria-label='Expand' />
             <th>Player</th>
             <th>Country</th>
             <th class='num'>Career</th>
@@ -233,6 +410,7 @@ function TableSkeleton() {
                 <td class='earnings-rank'>
                   <Skeleton width='16px' />
                 </td>
+                <td class='num expand-col' />
                 <td>
                   <Skeleton width='60%' />
                 </td>
