@@ -233,28 +233,27 @@ test('converting mode excludes basic energy', () => {
 // Fraudulent
 // ---------------------------------------------------------------------------
 
-/** An event field in which every named card sits at `rate` percent of decks. */
+/** A tournament in which every named card sits at `rate` percent of its decks. */
 function field(rates: Record<string, number>, deckTotal = 800, sets = ['SVI']) {
   const found = new Map<string, number>();
   for (const [name, rate] of Object.entries(rates)) {
     found.set(`${name}::SVI::001`, Math.round((rate / 100) * deckTotal));
   }
-  return {
-    deckTotal,
-    found,
-    events: ['2026-08-28, World Championship San Francisco'],
-    sets: new Set(sets),
-    fellBack: false
-  };
+  return { deckTotal, found, sets: new Set(sets) };
 }
 
-/** Fraudulent reads the online rates off master and the results off the field. */
-function fraudulent(master: CardItem[], eventField: unknown, playFloor = 0) {
+/**
+ * Fraudulent reads its candidates off the ONLINE rows and their results off the
+ * selected tournament; `items` is that tournament's own master, which the mode
+ * never reads but the model still requires.
+ */
+function fraudulent(onlineItems: CardItem[], eventField: unknown, playFloor = 0) {
   return buildRenderModel({
     mode: 'fraudulent',
     size: 10,
     minDecks: 5,
-    items: master,
+    items: MASTER,
+    onlineItems,
     eventField: eventField as never,
     playFloor
   });
@@ -296,7 +295,7 @@ test('fraudulent mode drops gaps that are within noise', () => {
   assert.deepEqual(fraudulent([online('Steady', 20)], field({ Steady: 18 })), []);
 });
 
-test('a card the events never sleeved is the strongest fraud there is', () => {
+test('a card nobody at the tournament sleeved is the strongest fraud there is', () => {
   const out = fraudulent([online('Absent', 25)], field({}));
   assert.deepEqual(
     out.map(r => r.name),
@@ -328,9 +327,9 @@ test('fraudulent mode excludes basic energy', () => {
   );
 });
 
-test('a set the events never saw is a format gap, not a fraud', () => {
-  // A set that released mid-window, or after the event the field fell back to,
-  // would otherwise put its whole roster at the top of the list.
+test('a set the event never saw is a format gap, not a fraud', () => {
+  // The online window is always current, so a set that released after the
+  // chosen event would otherwise put its whole roster at the top of the list.
   const master = [online('Brand New', 30)];
   assert.deepEqual(fraudulent(master, field({}, 800, ['MEG'])), []);
   assert.deepEqual(
@@ -340,12 +339,24 @@ test('a set the events never saw is a format gap, not a fraud', () => {
   );
 });
 
-test('fraudulent mode renders nothing without events to measure against', () => {
+test('fraudulent mode renders nothing without a tournament to measure against', () => {
   const master = [online('Widespread', 40)];
   assert.deepEqual(fraudulent(master, null), []);
+  assert.deepEqual(fraudulent(master, { deckTotal: 0, found: new Map(), sets: new Set() }), []);
+});
+
+test('fraudulent mode renders nothing until the online window arrives', () => {
   assert.deepEqual(
-    fraudulent(master, { deckTotal: 0, found: new Map(), events: [], sets: new Set(), fellBack: false }),
-    []
+    buildRenderModel({
+      mode: 'fraudulent',
+      size: 10,
+      minDecks: 5,
+      items: MASTER,
+      onlineItems: null,
+      eventField: field({ Alpha: 5 }) as never
+    }),
+    [],
+    'the candidates come from the online side, so there are none without it'
   );
 });
 
@@ -370,7 +381,7 @@ test('a mode renders nothing until its own data arrives', () => {
   assert.deepEqual(
     buildRenderModel({ mode: 'fraudulent', size: 10, minDecks: 5, items: MASTER, eventField: null }),
     [],
-    'fraudulent needs the event field'
+    'fraudulent needs the tournament it measures'
   );
 });
 

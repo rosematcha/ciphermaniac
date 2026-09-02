@@ -30,8 +30,8 @@ export interface RenderItem {
   cat: CatKind;
   /**
    * Rising mode: percentage-point gain over the comparison event.
-   * Fraudulent mode: the card's event play rate minus its online one, so a
-   * fraud is always negative.
+   * Fraudulent mode: the card's rate at the tournament minus its online one,
+   * so a fraud is always negative.
    */
   delta?: number;
   /** Converting mode only: Day 1 to Day 2 conversion (0..100). */
@@ -40,13 +40,22 @@ export interface RenderItem {
   day2Count?: number;
   /** Converting mode only: count of all Day 1 decks playing this card. */
   day1Count?: number;
-  /** Fraudulent mode only: share of the pooled events' decks playing it (0..100). */
+  /** Fraudulent mode only: share of the tournament's decks playing it (0..100). */
   eventRate?: number;
 }
 
 /** Modes whose numbers come from the event's Day 1 to Day 2 cut. */
 export function needsDay2Stats(mode: Mode): boolean {
   return mode === 'converting';
+}
+
+/**
+ * Modes that measure one tournament, and so cannot run against the rolling
+ * online window: Converting needs its Day 2 cut, and Fraudulent would be
+ * comparing the online window against itself.
+ */
+export function needsTournament(mode: Mode): boolean {
+  return mode === 'converting' || mode === 'fraudulent';
 }
 
 /**
@@ -204,7 +213,9 @@ export interface RenderModelInput {
   comparisonItems?: CardItem[] | null;
   /** Converting mode: the event's day-2 stats. */
   day2Stats?: Day2CardStat[] | null;
-  /** Fraudulent mode: the majors of the online window, pooled into one field. */
+  /** Fraudulent mode: the online window's rows, the reputation being tested. */
+  onlineItems?: CardItem[] | null;
+  /** Fraudulent mode: the selected tournament, indexed for lookup. */
   eventField?: EventField | null;
   /** Fraudulent mode: minimum share of online decks (0..100) a card must appear in. */
   playFloor?: number;
@@ -261,18 +272,26 @@ function convertingCandidates(input: RenderModelInput, master: CardItem[], pool:
 }
 
 /**
- * Whether the card's set was even available at the events.
+ * Whether the card's set was even available at the tournament.
  *
- * A set that released inside the online window, or after the event the field
- * fell back to, puts its whole roster at the top of the list — heavily played
- * online, in none of the event's decks. If not one card from a set made those
- * decks, the format was not the same one.
+ * The online window is always current, so a set that released after the chosen
+ * event puts its whole roster at the top of the list — heavily played online,
+ * in none of the event's decks. If not one card from a set made those decks,
+ * the two sides were not playing the same format.
  */
-function playedAtEvents(item: CardItem, field: EventField): boolean {
+function playedAtEvent(item: CardItem, field: EventField): boolean {
   return !item.set || field.sets.has(item.set.toUpperCase());
 }
 
-/** One online row measured against the pooled event field. */
+/** Whether an online row is even eligible to be called a fraud. */
+function isFraudCandidate(item: CardItem, field: EventField, floor: number): boolean {
+  if (isBasicEnergy(item) || classify(item) === 'energy-basic') {
+    return false;
+  }
+  return item.pct >= floor && playedAtEvent(item, field);
+}
+
+/** One online row measured against the tournament. */
 function fromOnlineItem(item: CardItem, field: EventField): { row: RenderItem; z: number } {
   // Same UID the field was pooled under, so a padded collector number on one
   // side cannot quietly read as "never played" on the other.
@@ -293,8 +312,12 @@ function fromOnlineItem(item: CardItem, field: EventField): { row: RenderItem; z
 }
 
 /**
- * Cards the ladder rates higher than the events do: a real online play rate
- * paired with a drop at the events too large to be a different weekend.
+ * Cards the ladder rates higher than the tournament did: a real online play
+ * rate paired with a drop at the event too large to be a different weekend.
+ *
+ * The candidates come from the ONLINE side, not the event's own report — a card
+ * nobody at the tournament sleeved is the strongest fraud there is, and it has
+ * no row in the event to be found on.
  *
  * The z-score is the gate rather than the sort. Both sides have fixed deck
  * totals, so significance tracks the size of the drop closely enough that
@@ -302,14 +325,15 @@ function fromOnlineItem(item: CardItem, field: EventField): { row: RenderItem; z
  * sees percentage points, and those should descend. Basic energy is dropped:
  * its play rate tracks whichever archetypes happened to sleeve it.
  */
-function fraudulentCandidates(input: RenderModelInput, master: CardItem[], pool: number): RenderItem[] {
+function fraudulentCandidates(input: RenderModelInput, pool: number): RenderItem[] {
   const field = input.eventField;
-  if (!field || field.deckTotal <= 0) {
+  const { onlineItems } = input;
+  if (!field || !onlineItems || field.deckTotal <= 0) {
     return [];
   }
   const floor = input.playFloor ?? 0;
-  return master
-    .filter(it => it.pct >= floor && classify(it) !== 'energy-basic' && playedAtEvents(it, field))
+  return onlineItems
+    .filter(it => isFraudCandidate(it, field, floor))
     .map(it => fromOnlineItem(it, field))
     .filter(c => c.z <= FRAUD_MAX_Z)
     .sort((a, b) => (a.row.delta ?? 0) - (b.row.delta ?? 0))
@@ -358,7 +382,7 @@ function candidatesFor(input: RenderModelInput, master: CardItem[], pool: number
     return convertingCandidates(input, master, pool);
   }
   if (input.mode === 'fraudulent') {
-    return fraudulentCandidates(input, master, pool);
+    return fraudulentCandidates(input, pool);
   }
   if (input.mode === 'rising') {
     return risingCandidates(input, master, pool);
