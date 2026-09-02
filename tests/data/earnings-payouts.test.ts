@@ -11,9 +11,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { payoutFor, seasonLabel, seasonList, TIER_OF_TYPE, totalsFor } from '../../shared/earningsPayouts.ts';
-import type { DividedResult } from '../../shared/earningsTypes.ts';
+import type { CrawledResult } from '../../shared/earningsTypes.ts';
 
-function result(over: Partial<DividedResult> = {}): DividedResult {
+function result(over: Partial<CrawledResult> = {}): CrawledResult {
   return { tournamentId: '1', name: 'Event', season: '2526', place: 1, cash: 0, division: 'masters', ...over };
 }
 

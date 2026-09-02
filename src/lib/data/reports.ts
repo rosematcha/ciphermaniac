@@ -8,9 +8,10 @@ import { dataClient } from './client';
 import { canonicalizeReportCached } from './compat';
 import { ONLINE, tournamentPath } from './paths';
 import { getSynonymDatabase } from '../../utils/cardSynonyms';
+import type { CardSuccessIndex } from '../../../shared/data/reports/cardSuccess';
 import type { CardItem, MetaReport } from '../../types';
 
-const { fetchJson } = dataClient;
+const { fetchJson, fetchJsonOptional } = dataClient;
 
 export interface MasterPayload {
   deckTotal: number;
@@ -41,6 +42,18 @@ export async function fetchTournamentsList(): Promise<string[]> {
 
 export function fetchMeta(tournament: string = ONLINE): Promise<MetaReport> {
   return fetchJson<MetaReport>(`${tournamentPath(tournament)}/meta.json`);
+}
+
+/**
+ * Per-card finish rates for the online window (`cardSuccess.json`), written by
+ * the online-meta cron beside master.json.
+ *
+ * Optional: the artifact postdates the reports that were built before it, and
+ * the only caller (the Fraudulent graphic) drops the term rather than the whole
+ * view when it is absent.
+ */
+export function fetchCardSuccessIndex(tournament: string = ONLINE): Promise<CardSuccessIndex | null> {
+  return fetchJsonOptional<CardSuccessIndex>(`${tournamentPath(tournament)}/cardSuccess.json`);
 }
 
 export async function fetchMaster(tournament: string = ONLINE): Promise<MasterPayload> {

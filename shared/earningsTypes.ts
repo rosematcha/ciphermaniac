@@ -61,17 +61,7 @@ export interface CrawledResult {
   place: number | null;
   /** Prize money actually paid, in whole dollars. */
   cash: number;
-}
-
-/**
- * A crawled finish with its age division resolved.
- *
- * Limitless's results table never states the division, so it can't be crawled
- * — the build infers it by crawling twice, once filtered to Masters: a row
- * present unfiltered but absent from the Masters pass was a Junior or Senior
- * finish.
- */
-export interface DividedResult extends CrawledResult {
+  /** Age division, read off the tournament link's `/JR` or `/SR` suffix. */
   division: EarningsDivision;
 }
 
@@ -80,6 +70,36 @@ export interface CrawledPlayer {
   name: string;
   country: string;
   results: CrawledResult[];
+}
+
+/**
+ * One tournament finish, as shown in an expanded row.
+ *
+ * Carries both money figures so the panel can follow whichever pay scale the
+ * table is showing without a second lookup.
+ */
+export interface EarningsEvent {
+  name: string;
+  season: string;
+  /** Finishing position, or null when the page showed none. */
+  place: number | null;
+  /** Prize money as paid at the time. */
+  cash: number;
+  /** The same finish at today's published rates. */
+  adjusted: number;
+}
+
+/**
+ * Per-event detail, keyed by player id.
+ *
+ * A separate file from the leaderboard: the table itself needs only season
+ * aggregates, and this is three times the size, so it is fetched once on the
+ * first row a visitor expands and never at all otherwise.
+ */
+export interface EarningsEventsPayload {
+  generatedAt: string;
+  /** Player id to their finishes, oldest first. */
+  events: Record<string, EarningsEvent[]>;
 }
 
 export interface EarningsPayload {
