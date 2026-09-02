@@ -19,7 +19,9 @@ import { ArchetypeCard } from '../components/ArchetypeCard';
 import { CardStack } from '../components/CardImage';
 import { EmptyState } from '../components/EmptyState';
 import { formatPercent, nameFromTournamentKey, parseISODate, shortDate } from '../lib/format';
-import { resolved } from '../lib/resource';
+import { latestValue, resolved } from '../lib/resource';
+import { useTournament } from '../lib/tournamentContext';
+import { ONLINE_META_NAME } from '../lib/constants';
 
 /**
  * storylines.ts (~25KB source) is home-only, but HomePage is deliberately
@@ -57,24 +59,32 @@ const UPCOMING_COUNT = 6;
 /**
  * Home page.
  *
- * Locked to the rolling online meta regardless of the global tournament
- * selector — this page is a site-wide overview, not a tournament view.
+ * Follows the global tournament selector. On the default online-meta scope
+ * the page is a site-wide overview: the callout auto-picks the most recent
+ * major and Top archetypes reads the rolling online meta. When a specific
+ * event is selected, the callout shows that event (no recency gate) and
+ * Top archetypes reads that event's field.
  *
  * Sections:
- *   1. Latest major-event callout (only if a regional/international finished
- *      within the last 14 days)
- *   2. Top archetypes gallery (online meta)
+ *   1. Event callout (latest major within 14 days, or the selected event)
+ *   2. Top archetypes gallery (scope's archetype index)
  *   3. Recent major tournaments (regional + international + special)
  *   4. Upcoming tournaments (scraped from Limitless)
  */
 export function HomePage() {
-  const [archetypes] = createResource(fetchOnlineArchetypes);
+  const { tournament } = useTournament();
+  const isOnlineScope = () => tournament() === ONLINE_META_NAME;
+  const [onlineArchetypes] = createResource(fetchOnlineArchetypes);
+  const [scopeArchetypes] = createResource(tournament, fetchArchetypes);
   const [tournamentsList] = createResource(fetchTournamentsList);
   const [upcoming] = createResource(fetchUpcomingTournaments);
 
   // Non-suspending reads: keep navigation instant and let the skeleton /
   // error fallbacks below actually render (see lib/resource.ts).
-  const archetypesData = () => resolved(archetypes);
+  const onlineArchetypesData = () => resolved(onlineArchetypes);
+  // Scope-keyed: stale-while-revalidate so a selector switch updates the grid
+  // in place rather than flashing the skeleton.
+  const archetypesData = () => latestValue(scopeArchetypes);
   const tournamentsListData = () => resolved(tournamentsList);
   const upcomingData = () => resolved(upcoming);
 
@@ -126,6 +136,8 @@ export function HomePage() {
   });
 
   const latestMajorData = () => resolved(latestMajor);
+  /** Event the callout shows: the selected tournament, else the auto-picked latest major. */
+  const calloutKey = () => (isOnlineScope() ? latestMajorData() : tournament());
 
   // The residual "Other" bucket is not a real archetype and must not rank
   // inline among named decks. Pull it out of the grid and surface it as a
@@ -144,10 +156,12 @@ export function HomePage() {
 
   return (
     <>
-      <Show when={latestMajorData()}>
-        <section class='home-callout-wrap'>
-          <LatestEventCallout tournamentKey={latestMajorData()!} onlineArchetypes={archetypesData()} />
-        </section>
+      <Show when={calloutKey()} keyed>
+        {key => (
+          <section class='home-callout-wrap'>
+            <LatestEventCallout tournamentKey={key} onlineArchetypes={onlineArchetypesData()} />
+          </section>
+        )}
       </Show>
 
       <Section title='Top archetypes' right={<A href='/archetypes'>View all →</A>}>
