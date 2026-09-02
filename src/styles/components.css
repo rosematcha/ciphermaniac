@@ -199,7 +199,7 @@
 
 @media (max-width: 640px) {
   .topnav {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: max-content minmax(0, 1fr);
     grid-template-rows: auto auto;
     grid-template-areas:
       'word actions'
@@ -216,6 +216,18 @@
   .topnav-actions {
     grid-area: actions;
     gap: 4px;
+    min-width: 0;
+    justify-content: flex-end;
+  }
+  .t-selector {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .t-selector-trigger {
+    min-width: 0;
+  }
+  .t-selector-label {
+    min-width: 0;
   }
   .topnav-links {
     grid-area: links;
@@ -238,7 +250,7 @@
     bottom: 4px;
   }
   .t-selector-trigger {
-    max-width: 140px;
+    max-width: 100%;
     padding: 8px 10px;
   }
   .topnav-mode-toggle {
@@ -397,6 +409,28 @@
   font-size: 11px;
   color: var(--muted);
   letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.scope-line {
+  font-variant-numeric: tabular-nums;
+}
+.scope-line .dot {
+  margin: 0 5px;
+  opacity: 0.5;
+}
+@media (max-width: 640px) {
+  .section-head {
+    flex-wrap: wrap;
+  }
+  .section-head .right:has(.scope-line) {
+    flex-basis: 100%;
+    justify-content: space-between;
+  }
 }
 
 /* ---------- KPI tile ---------- */
@@ -1438,13 +1472,6 @@ body[data-mode='dark'] .tournament-row-link:hover {
   display: grid;
   gap: 8px;
 }
-.callout-eyebrow {
-  font-size: 10.5px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: var(--accent);
-}
 .callout-title {
   font-size: 28px;
   font-weight: 700;
@@ -1465,16 +1492,9 @@ body[data-mode='dark'] .tournament-row-link:hover {
   opacity: 0.5;
 }
 
-/* Body splits into "winner with deck thumbnail" (left) + "top cut" (right). */
-.callout-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0;
-}
-@media (max-width: 720px) {
-  .callout-body {
-    grid-template-columns: 1fr;
-  }
+/* Skeleton slot while participants load; same inset as the stories block. */
+.callout-loading {
+  padding: 22px 28px 26px;
 }
 
 .callout-format-pill {
@@ -1495,12 +1515,13 @@ body[data-mode='dark'] .tournament-row-link:hover {
   border-top: 1px solid var(--rule);
 }
 .callout-cut-strip-label {
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 600;
   color: var(--muted);
-  margin-bottom: 8px;
+  margin: 0 0 8px;
+  font-variant-numeric: tabular-nums;
 }
 .callout-cut-strip-list {
   list-style: none;
@@ -1562,6 +1583,75 @@ body[data-mode='dark'] .tournament-row-link:hover {
 .callout-cut-strip-row .cut-deck:hover {
   text-decoration: underline;
 }
+.callout-cut-more {
+  margin-top: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.callout-cut-more:hover {
+  color: var(--fg);
+}
+
+@media (max-width: 640px) {
+  .callout-head,
+  .callout-cut-strip,
+  .callout-stories,
+  .callout-loading {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+  .callout-head {
+    padding-top: var(--space-4);
+    padding-bottom: var(--space-3);
+  }
+  .callout-title {
+    font-size: 24px;
+  }
+  .callout-meta-extra {
+    display: none;
+  }
+  .callout-cut-strip-list {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .callout-cut-strip-row {
+    grid-template-columns: 36px auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    row-gap: 2px;
+    padding: 6px 0;
+  }
+  .callout-cut-strip-row .cut-place {
+    grid-row: 1 / span 2;
+    align-self: start;
+  }
+  .callout-cut-strip-row .cut-name {
+    grid-column: 2 / span 2;
+    grid-row: 1;
+  }
+  .callout-cut-strip-row .cut-country {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .callout-cut-strip-row .cut-country-empty {
+    display: none;
+  }
+  .callout-cut-strip-row .cut-deck {
+    grid-column: 3;
+    grid-row: 2;
+    max-width: none;
+  }
+  .callout-cut-strip-row .cut-country-empty + .cut-name + .cut-deck {
+    grid-column: 2 / span 2;
+  }
+}
 
 /* ---------- Conversion table (Field → Day 2 → top cut) ---------- */
 .conversion-disclosure {
@@ -1595,30 +1685,8 @@ body[data-mode='dark'] .tournament-row-link:hover {
    Latest Event callout — Story layout (Stamp design system)
    ===================================================================== */
 
-/* Storylines section header */
 .callout-stories {
   padding: 22px 28px 26px;
-}
-.callout-stories-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-.callout-stories-head h3 {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  margin: 0;
-  color: var(--fg);
-}
-.callout-stories-head .right {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-weight: 600;
-  color: var(--muted);
 }
 .callout-stories-grid {
   display: grid;
@@ -1630,8 +1698,9 @@ body[data-mode='dark'] .tournament-row-link:hover {
    bordered, ink-offset shadow, hover lifts to expose the offset. */
 .story-card {
   display: grid;
-  grid-template-rows: auto auto auto 1fr auto;
-  gap: 10px;
+  grid-template-rows: auto auto auto 1fr;
+  align-content: start;
+  gap: 8px;
   padding: 14px 16px 16px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1652,16 +1721,14 @@ body[data-mode='dark'] .tournament-row-link:hover {
   transform: translate(0, 0);
   box-shadow: 1px 1px 0 0 var(--border);
 }
-@media (prefers-color-scheme: dark) {
-  .story-card {
-    box-shadow: 2px 2px 0 0 var(--surface-2);
-  }
-  .story-card:hover {
-    box-shadow: 3px 3px 0 0 var(--surface-2);
-  }
-  .story-card:active {
-    box-shadow: 1px 1px 0 0 var(--surface-2);
-  }
+body[data-mode='dark'] .story-card {
+  box-shadow: 2px 2px 0 0 var(--surface-2);
+}
+body[data-mode='dark'] .story-card:hover {
+  box-shadow: 3px 3px 0 0 var(--surface-2);
+}
+body[data-mode='dark'] .story-card:active {
+  box-shadow: 1px 1px 0 0 var(--surface-2);
 }
 
 .story-card-art {
@@ -1673,15 +1740,28 @@ body[data-mode='dark'] .tournament-row-link:hover {
   display: block;
 }
 
+.story-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
 .story-card-tag {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
   font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+  line-height: 1.3;
   color: var(--muted);
+  white-space: nowrap;
 }
 .story-card-symbol {
   font-size: 11px;
@@ -1701,18 +1781,38 @@ body[data-mode='dark'] .tournament-row-link:hover {
   color: var(--accent);
 }
 
-.story-card-headline {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
+.story-card-subject {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   line-height: 1.25;
   margin: 0;
   color: var(--fg);
 }
-.story-card-body {
-  font-size: 13px;
-  line-height: 1.45;
+.story-card-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.story-card-value {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+.story-card-measure {
+  font-size: 12px;
   color: var(--muted);
+}
+.story-card-detail {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
   margin: 0;
 }
 
