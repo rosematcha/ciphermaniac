@@ -16,8 +16,10 @@ import {
   classify,
   collapseEvolutions,
   FRAUD_MAX_Z,
+  fraudScore,
   isBasicEnergy,
   playRateZScore,
+  rateZScore,
   type RenderItem,
   shortTournament,
   statsAreClose,
@@ -233,13 +235,44 @@ test('converting mode excludes basic energy', () => {
 // Fraudulent
 // ---------------------------------------------------------------------------
 
-/** A tournament in which every named card sits at `rate` percent of its decks. */
-function field(rates: Record<string, number>, deckTotal = 800, sets = ['SVI']) {
-  const found = new Map<string, number>();
-  for (const [name, rate] of Object.entries(rates)) {
-    found.set(`${name}::SVI::001`, Math.round((rate / 100) * deckTotal));
+/**
+ * A tournament: how often each card was played, and how the decks that played
+ * it then did. `conversions` is a card's Day 2 rate; omit it and the event
+ * published no cut, which drops that term from the score.
+ */
+function field(opts: {
+  rates: Record<string, number>;
+  conversions?: Record<string, number>;
+  fieldConversion?: number | null;
+  deckTotal?: number;
+  sets?: string[];
+}) {
+  const deckTotal = opts.deckTotal ?? 800;
+  const cards = new Map<string, { found: number; day1: number; day2: number }>();
+  for (const [name, rate] of Object.entries(opts.rates)) {
+    const found = Math.round((rate / 100) * deckTotal);
+    const conversion = opts.conversions?.[name];
+    cards.set(`${name}::SVI::001`, {
+      found,
+      day1: conversion === undefined ? 0 : found,
+      day2: conversion === undefined ? 0 : Math.round((conversion / 100) * found)
+    });
   }
-  return { deckTotal, found, sets: new Set(sets) };
+  return {
+    deckTotal,
+    cards,
+    sets: new Set(opts.sets ?? ['SVI']),
+    fieldConversion: opts.fieldConversion ?? (opts.conversions ? 20 : null)
+  };
+}
+
+/** The online window's finish rates: each card's rate against a 25% field. */
+function finishes(rates: Record<string, number>, decks = 3000) {
+  const cards = new Map<string, { decks: number; success: number }>();
+  for (const [name, rate] of Object.entries(rates)) {
+    cards.set(`${name}::SVI::001`, { decks, success: Math.round((rate / 100) * decks) });
+  }
+  return { tag: 'top25', deckTotal: 10000, successTotal: 2500, cards };
 }
 
 /**
@@ -247,7 +280,7 @@ function field(rates: Record<string, number>, deckTotal = 800, sets = ['SVI']) {
  * selected tournament; `items` is that tournament's own master, which the mode
  * never reads but the model still requires.
  */
-function fraudulent(onlineItems: CardItem[], eventField: unknown, playFloor = 0) {
+function fraudulent(onlineItems: CardItem[], eventField: unknown, playFloor = 0, onlineField: unknown = null) {
   return buildRenderModel({
     mode: 'fraudulent',
     size: 10,
@@ -255,6 +288,7 @@ function fraudulent(onlineItems: CardItem[], eventField: unknown, playFloor = 0)
     items: MASTER,
     onlineItems,
     eventField: eventField as never,
+    onlineField: onlineField as never,
     playFloor
   });
 }
@@ -277,26 +311,84 @@ test('a drop from the online rate scores as an outlier, and both deck totals dec
   assert.equal(playRateZScore(0, 10000, 0, 1000), 0);
 });
 
-test('fraudulent mode ranks by how far a card fell, not by how popular it was', () => {
-  const master = [online('Ladder Darling', 30), online('Bigger Faller', 40)];
-  const out = fraudulent(master, field({ 'Ladder Darling': 18, 'Bigger Faller': 22 }));
-  assert.deepEqual(
-    out.map(r => r.name),
-    ['Bigger Faller', 'Ladder Darling']
-  );
-  assert.equal(out[0].pct, 40, 'the online rate is what the drop is measured from');
-  assert.equal(Math.round(out[0].eventRate ?? 0), 22, 'the event rate rides along for the subtitle');
-  assert.equal(Math.round(out[0].delta ?? 0), -18);
-  assert.equal(out[0].total, 800, 'the deck counts describe the events, which is the claim');
+test('a rate below the field scores by how unlikely it is, not how low', () => {
+  // Same 10-point shortfall, four times the decks: twice the certainty.
+  assert.ok(rateZScore(10, 20, 100) < FRAUD_MAX_Z);
+  assert.ok(rateZScore(10, 20, 400) < rateZScore(10, 20, 100));
+  assert.equal(rateZScore(20, 20, 100), 0);
+  assert.ok(rateZScore(30, 20, 100) > 0);
+  assert.equal(rateZScore(0, 20, 0), 0);
+  assert.equal(rateZScore(0, 0, 50), 0);
 });
 
-test('fraudulent mode drops gaps that are within noise', () => {
-  // Two points off a 20% card, against 800 event decks, is an ordinary weekend.
-  assert.deepEqual(fraudulent([online('Steady', 20)], field({ Steady: 18 })), []);
+test('the score pools whatever signals exist, and two agreeing beat one', () => {
+  assert.equal(fraudScore({ play: -2, conversion: null, online: null }), -2);
+  // Two independent one-sigma shortfalls are stronger evidence than either.
+  assert.ok(Math.abs(fraudScore({ play: -1, conversion: -1, online: null }) + Math.SQRT2) < 1e-9);
+  assert.ok(fraudScore({ play: -1, conversion: -1, online: null }) < -1);
+  // A card the event dropped but that won when played is pulled back toward
+  // the middle, which is the whole point of blending.
+  assert.ok(fraudScore({ play: -3, conversion: 2, online: null }) > -3);
+  assert.equal(fraudScore({ play: 0, conversion: null, online: null }), 0);
+});
+
+test('fraudulent mode ranks by the pooled score', () => {
+  const master = [online('Dropped Hard', 30), online('Dropped And Lost', 30)];
+  const out = fraudulent(
+    master,
+    field({
+      rates: { 'Dropped Hard': 16, 'Dropped And Lost': 18 },
+      conversions: { 'Dropped Hard': 20, 'Dropped And Lost': 8 }
+    })
+  );
+  assert.deepEqual(
+    out.map(r => r.name),
+    ['Dropped And Lost', 'Dropped Hard'],
+    'the smaller play-rate drop wins the ranking because its decks also missed Day 2'
+  );
+  assert.ok((out[0].score ?? 0) < (out[1].score ?? 0));
+  assert.equal(out[0].pct, 30, 'the online rate is what the drop is measured from');
+  assert.equal(Math.round(out[0].eventRate ?? 0), 18);
+  assert.equal(Math.round(out[0].conversion ?? 0), 8);
+  assert.equal(out[0].total, 800, 'the deck counts describe the event, which is the claim');
+});
+
+test('a card the event underplayed but won with is not a fraud', () => {
+  // The case the blend exists for: barely sleeved, and every deck that did
+  // sleeve it made the cut. That card is underrated, not fraudulent.
+  const master = [online('Underrated', 25)];
+  const out = fraudulent(
+    master,
+    field({ rates: { Underrated: 10 }, conversions: { Underrated: 75 }, fieldConversion: 20 })
+  );
+  assert.deepEqual(out, []);
+});
+
+test('losing online counts against a card too', () => {
+  const master = [online('Ladder Trap', 30)];
+  const played = field({ rates: { 'Ladder Trap': 28 } });
+  assert.deepEqual(fraudulent(master, played), [], 'the play-rate drop alone is within noise');
+  const out = fraudulent(master, played, 0, finishes({ 'Ladder Trap': 19 }));
+  assert.deepEqual(
+    out.map(r => r.name),
+    ['Ladder Trap'],
+    'a card losing on ladder as well clears the gate'
+  );
+  assert.equal(Math.round(out[0].onlineSuccessRate ?? 0), 19);
+});
+
+test('an event with no published cut still scores on play rate alone', () => {
+  const master = [online('Widespread', 40)];
+  const out = fraudulent(master, field({ rates: { Widespread: 20 } }));
+  assert.deepEqual(
+    out.map(r => r.name),
+    ['Widespread']
+  );
+  assert.equal(out[0].conversion, undefined, 'no cut, no conversion to show');
 });
 
 test('a card nobody at the tournament sleeved is the strongest fraud there is', () => {
-  const out = fraudulent([online('Absent', 25)], field({}));
+  const out = fraudulent([online('Absent', 25)], field({ rates: {} }));
   assert.deepEqual(
     out.map(r => r.name),
     ['Absent']
@@ -308,7 +400,7 @@ test('a card nobody at the tournament sleeved is the strongest fraud there is', 
 test('fraudulent mode ignores cards below the online play floor', () => {
   const master = [online('Popular', 25), online('Fringe', 4)];
   assert.deepEqual(
-    fraudulent(master, field({ Popular: 8, Fringe: 0 }), 10).map(r => r.name),
+    fraudulent(master, field({ rates: { Popular: 8, Fringe: 0 } }), 10).map(r => r.name),
     ['Popular'],
     'a card in 4% of online decks was never hyped enough to be a fraud'
   );
@@ -320,7 +412,7 @@ test('fraudulent mode excludes basic energy', () => {
     online('Darkness Energy', 60, 10000, { category: 'energy/basic' } as Partial<CardItem>),
     online('Boss Card', 30)
   ];
-  const out = fraudulent(master, field({ 'Darkness Energy': 30, 'Boss Card': 12 }));
+  const out = fraudulent(master, field({ rates: { 'Darkness Energy': 30, 'Boss Card': 12 } }));
   assert.deepEqual(
     out.map(r => r.name),
     ['Boss Card']
@@ -331,9 +423,9 @@ test('a set the event never saw is a format gap, not a fraud', () => {
   // The online window is always current, so a set that released after the
   // chosen event would otherwise put its whole roster at the top of the list.
   const master = [online('Brand New', 30)];
-  assert.deepEqual(fraudulent(master, field({}, 800, ['MEG'])), []);
+  assert.deepEqual(fraudulent(master, field({ rates: {}, sets: ['MEG'] })), []);
   assert.deepEqual(
-    fraudulent(master, field({}, 800, ['SVI'])).map(r => r.name),
+    fraudulent(master, field({ rates: {}, sets: ['SVI'] })).map(r => r.name),
     ['Brand New'],
     'the same card is a fraud once its set is on the table'
   );
@@ -342,7 +434,7 @@ test('a set the event never saw is a format gap, not a fraud', () => {
 test('fraudulent mode renders nothing without a tournament to measure against', () => {
   const master = [online('Widespread', 40)];
   assert.deepEqual(fraudulent(master, null), []);
-  assert.deepEqual(fraudulent(master, { deckTotal: 0, found: new Map(), sets: new Set() }), []);
+  assert.deepEqual(fraudulent(master, { deckTotal: 0, cards: new Map(), sets: new Set(), fieldConversion: null }), []);
 });
 
 test('fraudulent mode renders nothing until the online window arrives', () => {
@@ -353,7 +445,7 @@ test('fraudulent mode renders nothing until the online window arrives', () => {
       minDecks: 5,
       items: MASTER,
       onlineItems: null,
-      eventField: field({ Alpha: 5 }) as never
+      eventField: field({ rates: { Alpha: 5 } }) as never
     }),
     [],
     'the candidates come from the online side, so there are none without it'

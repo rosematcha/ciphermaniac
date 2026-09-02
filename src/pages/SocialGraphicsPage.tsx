@@ -8,6 +8,7 @@ import {
   thumbUrl
 } from './socialGraphics/model';
 import { fetchEventField } from './socialGraphics/eventField';
+import { fetchOnlineField } from './socialGraphics/onlineField';
 import { type FitBounds, fitText } from './socialGraphics/fitText';
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import {
@@ -181,6 +182,12 @@ export function SocialGraphicsPage() {
     () => (mode() === 'fraudulent' ? ONLINE_META_NAME : null),
     key => (key ? fetchMaster(key) : Promise.resolve(null))
   );
+  // How the ladder's own decks finished. Optional: reports built before the
+  // cron published it drop the term from the score rather than the whole view.
+  const [onlineField] = createResource(
+    () => (mode() === 'fraudulent' ? ONLINE_META_NAME : null),
+    key => (key ? fetchOnlineField() : Promise.resolve(null))
+  );
   const [evolutionMap] = createResource(fetchEvolutionMap);
   const fieldConversion = () => {
     const payload = latestValue(conversionIndex);
@@ -191,6 +198,7 @@ export function SocialGraphicsPage() {
   const day2StatsData = () => latestValue(day2Stats);
   const eventFieldData = () => latestValue(eventField);
   const onlineMasterData = () => latestValue(onlineMaster);
+  const onlineFieldData = () => latestValue(onlineField);
   const evolutionMapData = () => latestValue(evolutionMap);
 
   const items = createMemo<RenderItem[]>(() =>
@@ -201,6 +209,7 @@ export function SocialGraphicsPage() {
       items: masterData()?.items ?? null,
       onlineItems: onlineMasterData()?.items ?? null,
       eventField: eventFieldData(),
+      onlineField: onlineFieldData(),
       playFloor: playFloor(),
       comparisonItems: comparisonMasterData()?.items ?? null,
       day2Stats: day2StatsData(),
@@ -219,7 +228,7 @@ export function SocialGraphicsPage() {
       master.loading ||
       items().length === 0 ||
       (mode() === 'rising' && comparisonMaster.loading) ||
-      (mode() === 'fraudulent' && (eventField.loading || onlineMaster.loading)) ||
+      (mode() === 'fraudulent' && (eventField.loading || onlineMaster.loading || onlineField.loading)) ||
       (needsDay2Stats(mode()) && day2Stats.loading)
   );
 
@@ -406,7 +415,7 @@ export function SocialGraphicsPage() {
                 when={
                   master.loading ||
                   (mode() === 'rising' && comparisonMaster.loading) ||
-                  (mode() === 'fraudulent' && (eventField.loading || onlineMaster.loading)) ||
+                  (mode() === 'fraudulent' && (eventField.loading || onlineMaster.loading || onlineField.loading)) ||
                   (needsDay2Stats(mode()) && day2Stats.loading)
                 }
                 fallback={<div class='sg-stage-empty'>{emptyNote(mode())}</div>}
@@ -425,6 +434,7 @@ export function SocialGraphicsPage() {
               playFloor={playFloor()}
               fieldConversion={fieldConversion()}
               onlineDecks={onlineMasterData()?.deckTotal ?? 0}
+              scoresFinishes={onlineFieldData() !== null}
             />
           </Show>
         </div>
@@ -445,6 +455,8 @@ interface CanvasProps {
   fieldConversion: number | null;
   /** Fraudulent mode: decks in the online window the event is measured against. */
   onlineDecks: number;
+  /** Fraudulent mode: whether online finish rates made it into the score. */
+  scoresFinishes: boolean;
 }
 
 function SocialCanvas(props: CanvasProps) {
@@ -463,8 +475,10 @@ function SocialCanvas(props: CanvasProps) {
     if (props.mode === 'rising' && c.delta !== undefined) {
       return `+${c.delta.toFixed(1)}`;
     }
-    if (props.mode === 'fraudulent' && c.delta !== undefined) {
-      return c.delta.toFixed(1);
+    if (props.mode === 'fraudulent') {
+      // The score pools play rate, conversion and finishes, so no single
+      // percentage can carry the ranking; sigma is what the rows are sorted by.
+      return `${Math.abs(c.score ?? 0).toFixed(1)}σ`;
     }
     if (needsDay2Stats(props.mode)) {
       return `${Math.round(c.pct)}%`;
@@ -480,7 +494,8 @@ function SocialCanvas(props: CanvasProps) {
     if (props.mode === 'fraudulent') {
       // The header names the tournament already, so the row only has to say
       // which side each number came from.
-      return `${c.pct.toFixed(1)}% online → ${(c.eventRate ?? 0).toFixed(1)}% here`;
+      const played = `${c.pct.toFixed(1)}% online → ${(c.eventRate ?? 0).toFixed(1)}% here`;
+      return c.conversion === undefined ? played : `${played} · ${Math.round(c.conversion)}% to Day 2`;
     }
     if (props.mode === 'converting') {
       return `${c.day2Count?.toLocaleString()} / ${c.day1Count?.toLocaleString()} to Day 2`;
@@ -505,7 +520,8 @@ function SocialCanvas(props: CanvasProps) {
       return 'biggest gain';
     }
     if (props.mode === 'fraudulent') {
-      return `drop from online play (min ${props.playFloor}% online)${onlineNote()}`;
+      const signals = props.scoresFinishes ? 'play rate, Day 2 and online finishes' : 'play rate and Day 2';
+      return `${signals} against its online rate (min ${props.playFloor}%)${onlineNote()}`;
     }
     if (props.mode === 'converting') {
       return `Day 1 → Day 2 conversion (min ${props.minDecks} decks)${fieldNote()}`;
@@ -529,6 +545,16 @@ function SocialCanvas(props: CanvasProps) {
           <span> of decks online, </span>
           <strong>{(h.eventRate ?? 0).toFixed(1)}%</strong>
           <span> here</span>
+          <Show when={h.conversion !== undefined}>
+            <span> · </span>
+            <strong>{Math.round(h.conversion ?? 0)}%</strong>
+            <span> to Day 2</span>
+          </Show>
+          <Show when={h.onlineSuccessRate !== undefined}>
+            <span> · </span>
+            <strong>{Math.round(h.onlineSuccessRate ?? 0)}%</strong>
+            <span> cut online</span>
+          </Show>
         </>
       );
     }
@@ -594,7 +620,7 @@ function SocialCanvas(props: CanvasProps) {
                   <div class='sg-hero-delta'>pts gained</div>
                 </Show>
                 <Show when={props.mode === 'fraudulent'}>
-                  <div class='sg-hero-delta'>pts vs online</div>
+                  <div class='sg-hero-delta'>below its billing</div>
                 </Show>
                 <Show when={needsDay2Stats(props.mode)}>
                   <div class='sg-hero-delta'>to Day 2</div>
