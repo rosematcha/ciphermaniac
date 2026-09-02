@@ -173,7 +173,7 @@ export function HomePage() {
         title='Top archetypes'
         right={
           <>
-            <ScopeLine tournament={tournament()} meta={scopeMetaData()} />
+            <ScopeLine tournament={tournament()} meta={scopeMetaData()} archetypes={archetypesData()} />
             <A href='/archetypes'>View all →</A>
           </>
         }
@@ -275,10 +275,16 @@ export function HomePage() {
  * the site's core promise, so it belongs next to the numbers, not only in
  * the topnav chip.
  */
-function ScopeLine(props: { tournament: string; meta: MetaReport | undefined }) {
+function ScopeLine(props: {
+  tournament: string;
+  meta: MetaReport | undefined;
+  archetypes: ArchetypeIndexEntry[] | undefined;
+}) {
   const label = () =>
     props.tournament === ONLINE_META_NAME ? ONLINE_META_LABEL : prettyTournamentName(props.tournament);
-  const decks = () => props.meta?.deckTotal;
+  // Event meta.json files predate deckTotal; sum the index as a fallback.
+  const decks = () =>
+    props.meta?.deckTotal ?? props.archetypes?.reduce((acc, a) => acc + (a.deckCount ?? 0), 0) ?? undefined;
   const updated = () => (props.meta?.generatedAt ? relativeTimeAgo(props.meta.generatedAt) : null);
   return (
     <span class='scope-line'>
@@ -792,13 +798,15 @@ function StoryCard(props: { story: Story; hasDay2: boolean }) {
           <CardStack thumbnails={thumbnails()} size='sm' />
         </Show>
       </div>
-      <div class='story-card-tag'>
-        <span class='story-card-symbol' aria-hidden='true'>
-          {meta().symbol}
+      <div class='story-card-head'>
+        <h3 class='story-card-subject'>{props.story.subject}</h3>
+        <span class='story-card-tag'>
+          <span class='story-card-symbol' aria-hidden='true'>
+            {meta().symbol}
+          </span>
+          <span>{props.story.tagLabel}</span>
         </span>
-        <span>{props.story.tagLabel}</span>
       </div>
-      <h3 class='story-card-subject'>{props.story.subject}</h3>
       <p class='story-card-figure'>
         <span class='story-card-value'>{props.story.figure}</span>
         <span class='story-card-measure'>{props.story.measure}</span>

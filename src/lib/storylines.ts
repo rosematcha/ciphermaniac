@@ -352,8 +352,7 @@ const genDisappointment: StoryGenerator = ctx => {
     ...makeConversionStory({ row: worst, tag: 'faded', tagLabel: 'Disappointment' }),
     detail: joinParts([
       `${worst.day2Count} of ${worst.fieldDecks} pilots`,
-      fieldAvgConversion !== null ? `field avg ${fmtPct(fieldAvgConversion)}` : null,
-      bestFinish(worst)
+      fieldAvgConversion !== null ? `field avg ${fmtPct(fieldAvgConversion)}` : null
     ]),
     statBar:
       fieldAvgConversion !== null
@@ -695,6 +694,9 @@ function computeFieldAvgConversion(rows: FieldRow[]): number | null {
 }
 
 function fmtPct(p: number): string {
+  if (p === 0) {
+    return '0%';
+  }
   if (p < 10) {
     return `${p.toFixed(1)}%`;
   }
