@@ -20,6 +20,7 @@ import { CardStack } from '../components/CardImage';
 import { EmptyState } from '../components/EmptyState';
 import { formatPercent, nameFromTournamentKey, parseISODate, shortDate } from '../lib/format';
 import { latestValue, resolved } from '../lib/resource';
+import type { UpcomingEvent } from '../../shared/upcomingTypes.js';
 import { useTournament } from '../lib/tournamentContext';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
 import { absoluteIso, relativeTimeAgo } from '../lib/freshness';
@@ -199,7 +200,8 @@ export function HomePage() {
             </div>
             <Show when={otherEntry()}>
               <p class='gallery-other'>
-                + Other: {(otherEntry()!.deckCount ?? 0).toLocaleString()} decks, {formatPercent(otherEntry()!.percent)}
+                + Other: {(otherEntry()!.deckCount ?? 0).toLocaleString()} decks,{' '}
+                {formatPercent(otherEntry()!.percent, 0)}
               </p>
             </Show>
           </Show>
@@ -256,22 +258,7 @@ export function HomePage() {
             }
           >
             <div class='tournament-list'>
-              <For each={upcomingData()!.events.slice(0, UPCOMING_COUNT)}>
-                {e => (
-                  <a
-                    class='tournament-row tournament-row-link'
-                    href={e.limitlessUrl ?? e.externalUrl ?? '#'}
-                    target='_blank'
-                    rel='noopener'
-                  >
-                    <span class='date'>{shortDate(parseISODate(e.date))}</span>
-                    <span class='name'>{e.name}</span>
-                    <span class='players'>
-                      {labelType(e.type)} · {e.country}
-                    </span>
-                  </a>
-                )}
-              </For>
+              <For each={upcomingData()!.events.slice(0, UPCOMING_COUNT)}>{e => <UpcomingRow event={e} />}</For>
             </div>
           </Show>
         </Show>
@@ -842,6 +829,30 @@ function RecentMajorRow(props: { tournamentKey: string }) {
       <span class='name'>{nameFromTournamentKey(props.tournamentKey)}</span>
       <span class='players'>{classifyByName(props.tournamentKey)}</span>
     </div>
+  );
+}
+
+/**
+ * Upcoming row: an external link when Limitless gives us one, otherwise a
+ * plain row — never a `#` anchor that opens an empty tab.
+ */
+function UpcomingRow(props: { event: UpcomingEvent }) {
+  const href = () => props.event.limitlessUrl ?? props.event.externalUrl ?? null;
+  const cells = (
+    <>
+      <span class='date'>{shortDate(parseISODate(props.event.date))}</span>
+      <span class='name'>{props.event.name}</span>
+      <span class='players'>
+        {labelType(props.event.type)} · {props.event.country}
+      </span>
+    </>
+  );
+  return (
+    <Show when={href()} fallback={<div class='tournament-row'>{cells}</div>}>
+      <a class='tournament-row tournament-row-link' href={href()!} target='_blank' rel='noopener'>
+        {cells}
+      </a>
+    </Show>
   );
 }
 

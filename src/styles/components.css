@@ -1709,16 +1709,14 @@ body[data-mode='dark'] .tournament-row-link:hover {
   transform: translate(0, 0);
   box-shadow: 1px 1px 0 0 var(--border);
 }
-@media (prefers-color-scheme: dark) {
-  .story-card {
-    box-shadow: 2px 2px 0 0 var(--surface-2);
-  }
-  .story-card:hover {
-    box-shadow: 3px 3px 0 0 var(--surface-2);
-  }
-  .story-card:active {
-    box-shadow: 1px 1px 0 0 var(--surface-2);
-  }
+body[data-mode='dark'] .story-card {
+  box-shadow: 2px 2px 0 0 var(--surface-2);
+}
+body[data-mode='dark'] .story-card:hover {
+  box-shadow: 3px 3px 0 0 var(--surface-2);
+}
+body[data-mode='dark'] .story-card:active {
+  box-shadow: 1px 1px 0 0 var(--surface-2);
 }
 
 .story-card-art {
