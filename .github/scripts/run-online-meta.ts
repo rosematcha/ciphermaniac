@@ -696,6 +696,14 @@ async function main(): Promise<void> {
     }
   }
 
+  // Per-card finish rates, computed with the trends above and for the same
+  // reason (P-31): it is pure, in-memory work, so a bug here must surface while
+  // the previous report is still whole rather than between two uploads.
+  const cardSuccess = buildCardSuccessIndex(
+    reportDecks as unknown as Parameters<typeof buildCardSuccessIndex>[0],
+    synonymDb
+  );
+
   // Everything needed for a complete report is now in hand. In clean mode it is
   // finally safe to clear the old artifacts (P-03): a fetch outage, empty window,
   // or trend bug above already aborted without touching production.
@@ -714,10 +722,6 @@ async function main(): Promise<void> {
     // Finish rates ride with master: same population, same canonical keys, and
     // the only other place this window's placements survive is the 36 MB
     // decks.json that no browser should be asked to download.
-    const cardSuccess = buildCardSuccessIndex(
-      reportDecks as unknown as Parameters<typeof buildCardSuccessIndex>[0],
-      synonymDb
-    );
     if (cardSuccess) {
       console.log(
         `[online-meta] Uploading cardSuccess.json (${cardSuccess.successTotal}/${cardSuccess.deckTotal} decks ${cardSuccess.tag})...`
